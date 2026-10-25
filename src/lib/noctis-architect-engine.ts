@@ -762,290 +762,321 @@ export function buildArchitecturalBlueprintSvg(
   const b3L = brief.bedroomResizeTo.lengthFt;
   const b3Area = b3W * b3L;
   const hasBed5 = brief.bedrooms >= 5;
-  const overhangLabel = brief.jurisdiction === "United States" ? "2'-0\" Overhang" : "900 mm Overhang";
+  const overhangLabel = brief.jurisdiction === "United States" ? "2'-0\" Overhang" : "900mm Overhang";
+  const shortTitle =
+    brief.projectTitle.length > 58 ? `${brief.projectTitle.slice(0, 55)}...` : brief.projectTitle;
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 780" width="100%" style="background:#06101e;border-radius:14px;font-family:system-ui,-apple-system,Segoe UI,Roboto,monospace">
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 790" width="100%" style="background:#06101e;border-radius:14px;font-family:system-ui,-apple-system,Segoe UI,Roboto,monospace">
   <defs>
     <pattern id="cadGrid" width="20" height="20" patternUnits="userSpaceOnUse">
-      <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#11294d" stroke-width="0.6"/>
+      <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#102646" stroke-width="0.6"/>
     </pattern>
     <pattern id="cadGridMajor" width="100" height="100" patternUnits="userSpaceOnUse">
       <rect width="100" height="100" fill="url(#cadGrid)"/>
-      <path d="M 100 0 L 0 0 0 100" fill="none" stroke="#1b3f73" stroke-width="1"/>
+      <path d="M 100 0 L 0 0 0 100" fill="none" stroke="#193968" stroke-width="1"/>
     </pattern>
     <linearGradient id="roofGrad" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="#2b4c7e"/>
       <stop offset="100%" stop-color="#152847"/>
     </linearGradient>
     <linearGradient id="glassGrad" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.55"/>
-      <stop offset="100%" stop-color="#0284c7" stop-opacity="0.25"/>
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.58"/>
+      <stop offset="100%" stop-color="#0284c7" stop-opacity="0.22"/>
     </linearGradient>
   </defs>
 
-  <!-- CAD Sheet Background & Border -->
-  <rect width="1080" height="780" fill="url(#cadGridMajor)"/>
-  <rect x="10" y="10" width="1060" height="760" rx="8" fill="none" stroke="#e4b86a" stroke-width="2"/>
-  <rect x="16" y="16" width="1048" height="748" rx="5" fill="none" stroke="#38bdf8" stroke-width="0.8" stroke-dasharray="4,4"/>
+  <!-- CAD Sheet Background & Outer Borders -->
+  <rect width="1080" height="790" fill="url(#cadGridMajor)"/>
+  <rect x="10" y="10" width="1060" height="770" rx="8" fill="none" stroke="#e4b86a" stroke-width="2"/>
+  <rect x="16" y="16" width="1048" height="758" rx="5" fill="none" stroke="#38bdf8" stroke-width="0.8" stroke-dasharray="4,4"/>
 
-  <!-- Top Header Banner -->
+  <!-- Top Master Banner -->
   <rect x="16" y="16" width="1048" height="40" fill="#09192f" stroke="#1f4e94" stroke-width="1"/>
-  <text x="30" y="34" fill="#e4b86a" font-size="13" font-weight="700">NOCTIS ARCHITECTURAL CAD &amp; BIM SHEET SET (A-101 · A-102 · A-201 · A-501) — ${brief.projectTitle.toUpperCase()}</text>
-  <text x="30" y="49" fill="#99ceff" font-size="10.5">Scale: 1/4" = 1'-0" (1:50) · Plot: ${brief.lotWidthFt}'×${brief.lotDepthFt}' · Lot Cov: ${lotCoveragePct}% (&lt;=40%) · Gross: ${grossConditionedSqFt.toLocaleString()} sq ft · Code: ${profile.codeStandard.slice(0, 48)}</text>
-  <text x="1050" y="38" text-anchor="end" fill="#4ade80" font-size="11" font-weight="700">10/10 ARCH-AT VERIFIED</text>
+  <text x="28" y="34" fill="#e4b86a" font-size="12.5" font-weight="700">NOCTIS ARCHITECTURAL CAD &amp; BIM SHEET SET (A-101 · A-102 · A-201 · A-501) — ${shortTitle.toUpperCase()}</text>
+  <text x="28" y="49" fill="#99ceff" font-size="10">Scale: 1/4" = 1'-0" (1:50) · Plot: ${brief.lotWidthFt}'×${brief.lotDepthFt}' · Lot Cov: ${lotCoveragePct}% (&lt;=40%) · Gross: ${grossConditionedSqFt.toLocaleString()} sq ft · Code: ${profile.codeStandard.slice(0, 44)}</text>
+  <rect x="912" y="23" width="142" height="24" rx="12" fill="#052e16" stroke="#4ade80" stroke-width="1.2"/>
+  <text x="983" y="39" text-anchor="middle" fill="#4ade80" font-size="10" font-weight="700">10/10 ARCH-AT PASS</text>
 
-  <!-- Center Divider Lines -->
-  <line x1="540" y1="56" x2="540" y2="764" stroke="#1f4e94" stroke-width="1.5"/>
-  <line x1="16" y1="418" x2="1064" y2="418" stroke="#1f4e94" stroke-width="1.5"/>
+  <!-- Center Quadrant Divider Lines -->
+  <line x1="540" y1="56" x2="540" y2="774" stroke="#1f4e94" stroke-width="1.8"/>
+  <line x1="16" y1="420" x2="1064" y2="420" stroke="#1f4e94" stroke-width="1.8"/>
 
   <!-- ========================================================================= -->
   <!-- QUADRANT 1 (TOP-LEFT): SHEET A-101 GROUND FLOOR PLAN (LEVEL 1)             -->
   <!-- ========================================================================= -->
-  <text x="30" y="76" fill="#e4b86a" font-size="12" font-weight="700">SHEET A-101 — GROUND FLOOR PLAN (STOREY 1 · +0'-0" DATUM · 10'-0" CEILING)</text>
+  <rect x="24" y="62" width="506" height="22" rx="4" fill="#09192f" stroke="#1f4e94" stroke-width="1"/>
+  <text x="34" y="77" fill="#e4b86a" font-size="11" font-weight="700">SHEET A-101 — GROUND FLOOR PLAN (STOREY 1 · +0'-0" DATUM · 10'-0" CEILING)</text>
+
   <!-- Lot Setback Envelope -->
-  <rect x="34" y="88" width="486" height="316" fill="#081528" stroke="#334155" stroke-width="1" stroke-dasharray="6,4"/>
-  <text x="42" y="102" fill="#64748b" font-size="9">PROPERTY SETBACK ENVELOPE (FRONT 25'-0" · REAR 20'-0" · SIDE 7'-6")</text>
+  <rect x="30" y="90" width="494" height="318" fill="#081528" stroke="#334155" stroke-width="1" stroke-dasharray="6,4"/>
+  <text x="40" y="103" fill="#64748b" font-size="8.5">SETBACK ENVELOPE (FRONT 25'-0" · REAR 20'-0" · SIDE 7'-6")</text>
 
   <!-- North Arrow -->
-  <g transform="translate(495, 112)">
-    <circle cx="0" cy="0" r="14" fill="#0b1d36" stroke="#e4b86a" stroke-width="1.2"/>
-    <polygon points="0,-11 -5,7 0,3 5,7" fill="#e4b86a"/>
-    <text x="0" y="-15" text-anchor="middle" fill="#e4b86a" font-size="8" font-weight="700">N</text>
+  <g transform="translate(502, 112)">
+    <circle cx="0" cy="0" r="13" fill="#0b1d36" stroke="#e4b86a" stroke-width="1.2"/>
+    <polygon points="0,-10 -4.5,6 0,2.5 4.5,6" fill="#e4b86a"/>
+    <text x="0" y="-14" text-anchor="middle" fill="#e4b86a" font-size="7.5" font-weight="700">N</text>
   </g>
 
-  <!-- EX-101 Covered Veranda & Courtyard Pool -->
-  <rect x="54" y="110" width="210" height="68" fill="#0c263b" stroke="#38bdf8" stroke-width="2" stroke-dasharray="5,3"/>
-  <text x="159" y="135" text-anchor="middle" fill="#7dd3fc" font-size="10.5" font-weight="700">EX-101 COVERED VERANDA</text>
-  <text x="159" y="150" text-anchor="middle" fill="#bae6fd" font-size="9.5">24'-0" × 12'-0" (288 sq ft · Timber Deck)</text>
-  <text x="159" y="164" text-anchor="middle" fill="#e4b86a" font-size="8.5">[D-02 12'-0" Multi-Slide Glass Wall]</text>
+  <!-- EX-101 Covered Veranda -->
+  <rect x="48" y="110" width="212" height="66" fill="#0c263b" stroke="#38bdf8" stroke-width="2" stroke-dasharray="5,3"/>
+  <!-- Veranda Deck Planks & Patio Table Fixture -->
+  <rect x="70" y="122" width="38" height="22" rx="4" fill="none" stroke="#38bdf8" stroke-opacity="0.4" stroke-width="1"/>
+  <text x="154" y="133" text-anchor="middle" fill="#7dd3fc" font-size="10" font-weight="700">EX-101 COVERED VERANDA</text>
+  <text x="154" y="147" text-anchor="middle" fill="#bae6fd" font-size="8.5">24'-0" × 12'-0" (288 sq ft · Timber Deck)</text>
+  <text x="154" y="161" text-anchor="middle" fill="#e4b86a" font-size="8">[D-02 12'-0" Multi-Slide Glass Wall]</text>
 
   <!-- RM-104 Daylight Dining -->
-  <rect x="264" y="110" width="220" height="68" fill="#0d213d" stroke="#99ceff" stroke-width="2.5"/>
-  <line x1="320" y1="110" x2="430" y2="110" stroke="#38bdf8" stroke-width="5"/>
-  <text x="374" y="138" text-anchor="middle" fill="#ffffff" font-size="10.5" font-weight="700">RM-104 DAYLIGHT DINING</text>
-  <text x="374" y="154" text-anchor="middle" fill="#99ceff" font-size="9.5">16'-0" × 14'-0" (224 sq ft · 20.8 m²)</text>
+  <rect x="260" y="110" width="222" height="66" fill="#0d213d" stroke="#99ceff" stroke-width="2.5"/>
+  <line x1="315" y1="110" x2="425" y2="110" stroke="#38bdf8" stroke-width="5"/>
+  <!-- Dining Table Fixture -->
+  <rect x="326" y="120" width="90" height="44" rx="6" fill="none" stroke="#38bdf8" stroke-opacity="0.3" stroke-width="1.2"/>
+  <text x="371" y="138" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="700">RM-104 DAYLIGHT DINING</text>
+  <text x="371" y="153" text-anchor="middle" fill="#99ceff" font-size="8.5">16'-0" × 14'-0" (224 sq ft · 20.8 m²)</text>
 
   <!-- RM-102 Great Room / Living -->
-  <rect x="54" y="178" width="210" height="122" fill="#102a4c" stroke="#99ceff" stroke-width="2.5"/>
-  <line x1="54" y1="205" x2="54" y2="275" stroke="#38bdf8" stroke-width="5"/>
-  <text x="159" y="226" text-anchor="middle" fill="#ffffff" font-size="11.5" font-weight="700">RM-102 GREAT ROOM / LIVING</text>
-  <text x="159" y="243" text-anchor="middle" fill="#99ceff" font-size="9.5">22'-0" × 18'-0" (396 sq ft · 36.8 m²)</text>
-  <text x="159" y="259" text-anchor="middle" fill="#38bdf8" font-size="9">W-01 Low-E Glazing: 84 sq ft (21.2%)</text>
+  <rect x="48" y="176" width="212" height="122" fill="#102a4c" stroke="#99ceff" stroke-width="2.5"/>
+  <line x1="48" y1="202" x2="48" y2="274" stroke="#38bdf8" stroke-width="5"/>
+  <!-- L-Sofa & Coffee Table Fixture -->
+  <path d="M 66 192 H 135 V 210 H 84 V 252 H 66 Z" fill="none" stroke="#38bdf8" stroke-opacity="0.32" stroke-width="1.2"/>
+  <rect x="94" y="220" width="36" height="22" rx="3" fill="none" stroke="#e4b86a" stroke-opacity="0.35" stroke-width="1"/>
+  <text x="154" y="226" text-anchor="middle" fill="#ffffff" font-size="10.5" font-weight="700">RM-102 GREAT ROOM / LIVING</text>
+  <text x="154" y="242" text-anchor="middle" fill="#99ceff" font-size="9">22'-0" × 18'-0" (396 sq ft · 36.8 m²)</text>
+  <text x="154" y="257" text-anchor="middle" fill="#38bdf8" font-size="8.5">W-01 Low-E Glazing: 84 sq ft (21.2%)</text>
 
   <!-- RM-103 Chef's Kitchen + Island -->
-  <rect x="264" y="178" width="220" height="74" fill="#0f2544" stroke="#99ceff" stroke-width="2.5"/>
-  <rect x="318" y="204" width="96" height="24" rx="3" fill="#1b3b66" stroke="#e4b86a" stroke-width="1.2"/>
-  <text x="366" y="219" text-anchor="middle" fill="#e4b86a" font-size="8.5" font-weight="600">ISLAND + SINK</text>
-  <text x="374" y="196" text-anchor="middle" fill="#ffffff" font-size="10.5" font-weight="700">RM-103 CHEF'S KITCHEN (18'×16' · 288 sf)</text>
+  <rect x="260" y="176" width="222" height="74" fill="#0f2544" stroke="#99ceff" stroke-width="2.5"/>
+  <text x="371" y="194" text-anchor="middle" fill="#ffffff" font-size="9.5" font-weight="700">RM-103 CHEF'S KITCHEN (18'×16' · 288 sf)</text>
+  <rect x="315" y="203" width="112" height="26" rx="4" fill="#17345b" stroke="#e4b86a" stroke-width="1.2"/>
+  <circle cx="338" cy="216" r="5" fill="none" stroke="#38bdf8" stroke-width="1"/>
+  <circle cx="352" cy="216" r="5" fill="none" stroke="#38bdf8" stroke-width="1"/>
+  <text x="386" y="219" text-anchor="middle" fill="#e4b86a" font-size="8" font-weight="700">ISLAND + SINK</text>
+  <text x="371" y="242" text-anchor="middle" fill="#99ceff" font-size="8">42 sq ft Glazing · Range Hood Exhaust</text>
 
   <!-- RM-105 Pantry & RM-106 Mudroom -->
-  <rect x="264" y="252" width="98" height="48" fill="#0b1c33" stroke="#99ceff" stroke-width="2"/>
-  <text x="313" y="274" text-anchor="middle" fill="#e2e8f0" font-size="9.5" font-weight="700">RM-105 PANTRY</text>
-  <text x="313" y="288" text-anchor="middle" fill="#99ceff" font-size="8.5">10'×8' (80 sf)</text>
+  <rect x="260" y="250" width="98" height="48" fill="#0b1c33" stroke="#99ceff" stroke-width="2"/>
+  <text x="309" y="272" text-anchor="middle" fill="#e2e8f0" font-size="9" font-weight="700">RM-105 PANTRY</text>
+  <text x="309" y="286" text-anchor="middle" fill="#99ceff" font-size="8">10'×8' (80 sf)</text>
 
-  <rect x="362" y="252" width="122" height="48" fill="#0b1c33" stroke="#99ceff" stroke-width="2"/>
-  <text x="423" y="274" text-anchor="middle" fill="#e2e8f0" font-size="9.5" font-weight="700">RM-106 MUDROOM / MEP</text>
-  <text x="423" y="288" text-anchor="middle" fill="#99ceff" font-size="8.5">12'×9' (108 sf · 200A)</text>
+  <rect x="358" y="250" width="124" height="48" fill="#0b1c33" stroke="#99ceff" stroke-width="2"/>
+  <text x="420" y="272" text-anchor="middle" fill="#e2e8f0" font-size="9" font-weight="700">RM-106 MUDROOM / MEP</text>
+  <text x="420" y="286" text-anchor="middle" fill="#99ceff" font-size="8">12'×9' (108 sf · 200A)</text>
 
   <!-- RM-108 Bedroom 1 (Ground Guest Suite) -->
-  <rect x="54" y="300" width="114" height="90" fill="#123159" stroke="#e4b86a" stroke-width="2.5"/>
-  <line x1="75" y1="390" x2="140" y2="390" stroke="#38bdf8" stroke-width="5"/>
-  <text x="111" y="336" text-anchor="middle" fill="#fde68a" font-size="10" font-weight="700">RM-108 BEDROOM 1</text>
-  <text x="111" y="351" text-anchor="middle" fill="#ffffff" font-size="9">14'-0" × 12'-0" (168 sf)</text>
-  <text x="111" y="366" text-anchor="middle" fill="#4ade80" font-size="8.5">W-04 Egress 9.2 sf</text>
+  <rect x="48" y="298" width="116" height="92" fill="#123159" stroke="#e4b86a" stroke-width="2.5"/>
+  <line x1="72" y1="390" x2="140" y2="390" stroke="#38bdf8" stroke-width="5"/>
+  <!-- Queen Bed Fixture -->
+  <rect x="58" y="308" width="42" height="50" rx="3" fill="none" stroke="#e4b86a" stroke-opacity="0.3" stroke-width="1"/>
+  <text x="106" y="334" text-anchor="middle" fill="#fde68a" font-size="9.5" font-weight="700">RM-108 BEDROOM 1</text>
+  <text x="106" y="349" text-anchor="middle" fill="#ffffff" font-size="8.5">14'-0" × 12'-0" (168 sf)</text>
+  <text x="106" y="364" text-anchor="middle" fill="#4ade80" font-size="8">W-04 Egress 9.2 sf</text>
 
   <!-- RM-107 Guest Bath (ADA) -->
-  <rect x="168" y="300" width="96" height="90" fill="#0c203b" stroke="#99ceff" stroke-width="2"/>
-  <circle cx="216" cy="348" r="18" fill="none" stroke="#38bdf8" stroke-width="1" stroke-dasharray="3,2"/>
-  <text x="216" y="324" text-anchor="middle" fill="#ffffff" font-size="9.5" font-weight="700">RM-107 ADA BATH</text>
-  <text x="216" y="351" text-anchor="middle" fill="#7dd3fc" font-size="8">60" ADA Turn</text>
-  <text x="216" y="376" text-anchor="middle" fill="#99ceff" font-size="8.5">10'×8' (80 sf)</text>
+  <rect x="164" y="298" width="96" height="92" fill="#0c203b" stroke="#99ceff" stroke-width="2"/>
+  <circle cx="212" cy="346" r="16" fill="#08172e" stroke="#38bdf8" stroke-width="1" stroke-dasharray="3,2"/>
+  <text x="212" y="318" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="700">RM-107 ADA BATH</text>
+  <text x="212" y="349" text-anchor="middle" fill="#7dd3fc" font-size="7.5" font-weight="600">60" ADA Turn</text>
+  <text x="212" y="378" text-anchor="middle" fill="#99ceff" font-size="8">10'×8' (80 sf)</text>
 
   <!-- RM-101 Foyer + Stair ST-101 -->
-  <rect x="264" y="300" width="98" height="90" fill="#102849" stroke="#99ceff" stroke-width="2.5"/>
-  <text x="313" y="325" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="700">RM-101 FOYER</text>
-  <text x="313" y="340" text-anchor="middle" fill="#99ceff" font-size="8.5">12'×10' (120 sf)</text>
-  <!-- Stair Treads -->
-  <rect x="274" y="348" width="78" height="22" fill="#173763" stroke="#e4b86a" stroke-width="1"/>
-  <text x="313" y="363" text-anchor="middle" fill="#e4b86a" font-size="8">ST-101 UP (7.25"/10.5")</text>
+  <rect x="260" y="298" width="98" height="92" fill="#102849" stroke="#99ceff" stroke-width="2.5"/>
+  <text x="309" y="318" text-anchor="middle" fill="#ffffff" font-size="9.5" font-weight="700">RM-101 FOYER</text>
+  <text x="309" y="332" text-anchor="middle" fill="#99ceff" font-size="8">12'×10' (120 sf)</text>
+  <rect x="270" y="340" width="78" height="20" rx="2" fill="#173763" stroke="#e4b86a" stroke-width="1"/>
+  <text x="309" y="353" text-anchor="middle" fill="#e4b86a" font-size="7.5" font-weight="700">ST-101 UP (7.25"/10.5")</text>
   <!-- Entry Door D-01 Swing Arc -->
-  <path d="M 300 390 L 300 372 A 18 18 0 0 1 318 390 Z" fill="#e4b86a" fill-opacity="0.35" stroke="#e4b86a" stroke-width="1.5"/>
-  <text x="313" y="401" text-anchor="middle" fill="#e4b86a" font-size="8.5" font-weight="700">D-01 ENTRY (42")</text>
+  <path d="M 296 390 L 296 373 A 17 17 0 0 1 313 390 Z" fill="#e4b86a" fill-opacity="0.35" stroke="#e4b86a" stroke-width="1.4"/>
+  <text x="309" y="402" text-anchor="middle" fill="#e4b86a" font-size="8" font-weight="700">D-01 ENTRY (42")</text>
 
   <!-- GR-101 Garage (Fire Separated) -->
-  <rect x="362" y="300" width="122" height="90" fill="#111827" stroke="#f87171" stroke-width="2.5"/>
-  <text x="423" y="332" text-anchor="middle" fill="#fca5a5" font-size="10" font-weight="700">GR-101 ${brief.garageBays}-CAR GARAGE</text>
-  <text x="423" y="347" text-anchor="middle" fill="#e2e8f0" font-size="9">${brief.garageBays * 12}'-0" × 22'-0" (${brief.garageBays * 264} sf)</text>
-  <text x="423" y="362" text-anchor="middle" fill="#f87171" font-size="8">D-08 20-Min Fire Door + Type X</text>
+  <rect x="358" y="298" width="124" height="92" fill="#111827" stroke="#f87171" stroke-width="2.5"/>
+  <!-- 2 EV Car Outlines -->
+  <rect x="368" y="308" width="44" height="70" rx="6" fill="none" stroke="#475569" stroke-width="1"/>
+  <rect x="426" y="308" width="44" height="70" rx="6" fill="none" stroke="#475569" stroke-width="1"/>
+  <text x="420" y="330" text-anchor="middle" fill="#fca5a5" font-size="9.5" font-weight="700">GR-101 ${brief.garageBays}-CAR GARAGE</text>
+  <text x="420" y="346" text-anchor="middle" fill="#e2e8f0" font-size="8.5">${brief.garageBays * 12}'-0" × 22'-0" (${brief.garageBays * 264} sf)</text>
+  <text x="420" y="362" text-anchor="middle" fill="#f87171" font-size="7.5" font-weight="600">D-08 20-Min Fire + Type X</text>
 
   <!-- ========================================================================= -->
   <!-- QUADRANT 2 (TOP-RIGHT): SHEET A-102 UPPER FLOOR PLAN (LEVEL 2)            -->
   <!-- ========================================================================= -->
-  <text x="556" y="76" fill="#e4b86a" font-size="12" font-weight="700">SHEET A-102 — UPPER FLOOR PLAN (STOREY 2 · +10'-0" DATUM · ${brief.bedrooms} BEDROOMS)</text>
-  <rect x="556" y="88" width="490" height="316" fill="#081528" stroke="#334155" stroke-width="1" stroke-dasharray="6,4"/>
+  <rect x="550" y="62" width="506" height="22" rx="4" fill="#09192f" stroke="#1f4e94" stroke-width="1"/>
+  <text x="560" y="77" fill="#e4b86a" font-size="11" font-weight="700">SHEET A-102 — UPPER FLOOR PLAN (STOREY 2 · +10'-0" DATUM · ${brief.bedrooms} BEDROOMS)</text>
+  <rect x="554" y="90" width="498" height="318" fill="#081528" stroke="#334155" stroke-width="1" stroke-dasharray="6,4"/>
 
   <!-- Upper Balcony Overhang -->
-  <rect x="574" y="102" width="175" height="36" fill="#0c263b" stroke="#38bdf8" stroke-width="1.5" stroke-dasharray="4,3"/>
-  <text x="661" y="124" text-anchor="middle" fill="#7dd3fc" font-size="9.5" font-weight="600">UPPER COVERED BALCONY (GLASS RAILING · 42" GUARD)</text>
+  <rect x="568" y="98" width="286" height="30" fill="#0c263b" stroke="#38bdf8" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <text x="711" y="117" text-anchor="middle" fill="#7dd3fc" font-size="8.5" font-weight="700">EX-101 UPPER COVERED BALCONY (GLASS RAILING · 42" GUARD)</text>
 
   <!-- RM-201 Bedroom 2 Primary Suite -->
-  <rect x="574" y="138" width="175" height="112" fill="#123159" stroke="#e4b86a" stroke-width="2.5"/>
-  <line x1="574" y1="160" x2="574" y2="230" stroke="#38bdf8" stroke-width="5"/>
-  <text x="661" y="182" text-anchor="middle" fill="#fde68a" font-size="11" font-weight="700">RM-201 BEDROOM 2 (PRIMARY)</text>
-  <text x="661" y="198" text-anchor="middle" fill="#ffffff" font-size="9.5">20'-0" × 16'-0" (320 sq ft · 29.7 m²)</text>
-  <text x="661" y="214" text-anchor="middle" fill="#7dd3fc" font-size="8.5">Walk-In Wardrobe + W-04 Egress (9.2 sf)</text>
+  <rect x="568" y="128" width="174" height="118" fill="#123159" stroke="#e4b86a" stroke-width="2.5"/>
+  <line x1="568" y1="152" x2="568" y2="224" stroke="#38bdf8" stroke-width="5"/>
+  <!-- King Bed Fixture -->
+  <rect x="578" y="140" width="52" height="58" rx="4" fill="none" stroke="#e4b86a" stroke-opacity="0.32" stroke-width="1.2"/>
+  <text x="655" y="174" text-anchor="middle" fill="#fde68a" font-size="10" font-weight="700">RM-201 PRIMARY SUITE</text>
+  <text x="655" y="190" text-anchor="middle" fill="#ffffff" font-size="9">20'-0" × 16'-0" (320 sq ft)</text>
+  <text x="655" y="206" text-anchor="middle" fill="#7dd3fc" font-size="8">Walk-In Closet + W-04 (9.2 sf)</text>
 
   <!-- RM-202 Primary Spa Bath -->
-  <rect x="749" y="138" width="115" height="112" fill="#0d2340" stroke="#99ceff" stroke-width="2"/>
-  <text x="806" y="182" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="700">RM-202 SPA BATH</text>
-  <text x="806" y="198" text-anchor="middle" fill="#99ceff" font-size="9">14'-0" × 12'-0" (168 sf)</text>
-  <text x="806" y="214" text-anchor="middle" fill="#38bdf8" font-size="8.5">Stacked Wet-Wall Core</text>
+  <rect x="742" y="128" width="112" height="118" fill="#0d2340" stroke="#99ceff" stroke-width="2"/>
+  <!-- Soaking Tub Oval -->
+  <ellipse cx="798" cy="150" rx="22" ry="10" fill="none" stroke="#38bdf8" stroke-opacity="0.4" stroke-width="1.2"/>
+  <text x="798" y="178" text-anchor="middle" fill="#ffffff" font-size="9.5" font-weight="700">RM-202 SPA BATH</text>
+  <text x="798" y="194" text-anchor="middle" fill="#99ceff" font-size="8.5">14'-0" × 12'-0" (168 sf)</text>
+  <text x="798" y="210" text-anchor="middle" fill="#38bdf8" font-size="8">Stacked Wet-Wall Core</text>
 
   <!-- RM-203 Bedroom 3 (RIPPLE ENLARGED HIGHLIGHT) -->
-  <rect x="864" y="126" width="168" height="124" fill="#231c0d" stroke="#f59e0b" stroke-width="3"/>
-  <line x1="1032" y1="145" x2="1032" y2="225" stroke="#38bdf8" stroke-width="5"/>
-  <rect x="874" y="134" width="148" height="18" rx="4" fill="#f59e0b"/>
-  <text x="948" y="147" text-anchor="middle" fill="#0f172a" font-size="8.5" font-weight="800">RIPPLE ENLARGED (+${ripple.areaDeltaSqFt} SQ FT)</text>
-  <text x="948" y="174" text-anchor="middle" fill="#fde68a" font-size="11" font-weight="700">RM-203 BEDROOM 3</text>
-  <text x="948" y="190" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="700">${b3W}'-0" × ${b3L}'-0" (${b3Area} sq ft)</text>
-  <text x="948" y="206" text-anchor="middle" fill="#fbbf24" font-size="8.5">From ${brief.bedroomResizeFrom.widthFt}'×${brief.bedroomResizeFrom.lengthFt}' · 2×10 Joists @ 16" OC</text>
-  <text x="948" y="220" text-anchor="middle" fill="#4ade80" font-size="8.5">Cost Delta: +$${ripple.costDeltaUsd.toLocaleString()} · W-04 Egress</text>
+  <rect x="854" y="114" width="184" height="132" fill="#231c0d" stroke="#f59e0b" stroke-width="3"/>
+  <line x1="1038" y1="138" x2="1038" y2="224" stroke="#38bdf8" stroke-width="5"/>
+  <rect x="866" y="122" width="160" height="18" rx="4" fill="#f59e0b"/>
+  <text x="946" y="134" text-anchor="middle" fill="#0f172a" font-size="8.5" font-weight="800">RIPPLE ENLARGED (+${ripple.areaDeltaSqFt} SQ FT)</text>
+  <text x="946" y="160" text-anchor="middle" fill="#fde68a" font-size="10.5" font-weight="700">RM-203 BEDROOM 3</text>
+  <text x="946" y="177" text-anchor="middle" fill="#ffffff" font-size="9.5" font-weight="700">${b3W}'-0" × ${b3L}'-0" (${b3Area} sq ft)</text>
+  <text x="946" y="194" text-anchor="middle" fill="#fbbf24" font-size="8">From ${brief.bedroomResizeFrom.widthFt}'×${brief.bedroomResizeFrom.lengthFt}' · 2×10 Joists @ 16" OC</text>
+  <text x="946" y="210" text-anchor="middle" fill="#4ade80" font-size="8" font-weight="600">Cost Delta: +$${ripple.costDeltaUsd.toLocaleString()} · W-04 Egress</text>
 
   <!-- CR-201 Gallery Corridor -->
-  <rect x="574" y="250" width="458" height="38" fill="#162d4c" stroke="#e4b86a" stroke-width="1.8"/>
-  <text x="803" y="273" text-anchor="middle" fill="#fde68a" font-size="9.5" font-weight="700">CR-201 GALLERY CORRIDOR (48" / 4'-0" CLEAR WIDTH · ST-101 LANDING · INTERCONNECTED SMOKE/CO)</text>
+  <rect x="568" y="246" width="470" height="38" fill="#162d4c" stroke="#e4b86a" stroke-width="1.8"/>
+  <text x="803" y="269" text-anchor="middle" fill="#fde68a" font-size="8.5" font-weight="700">CR-201 GALLERY CORRIDOR (48" / 4'-0" CLEAR · ST-101 LANDING · INTERCONNECTED SMOKE/CO)</text>
 
   <!-- RM-204 Bedroom 4 -->
-  <rect x="574" y="288" width="152" height="102" fill="#123159" stroke="#e4b86a" stroke-width="2.5"/>
-  <line x1="595" y1="390" x2="695" y2="390" stroke="#38bdf8" stroke-width="5"/>
-  <text x="650" y="330" text-anchor="middle" fill="#fde68a" font-size="10.5" font-weight="700">RM-204 BEDROOM 4</text>
-  <text x="650" y="346" text-anchor="middle" fill="#ffffff" font-size="9.5">13'-0" × 12'-0" (156 sq ft)</text>
-  <text x="650" y="362" text-anchor="middle" fill="#4ade80" font-size="8.5">W-04 Egress Window (9.2 sf)</text>
+  <rect x="568" y="284" width="154" height="108" fill="#123159" stroke="#e4b86a" stroke-width="2.5"/>
+  <line x1="590" y1="392" x2="695" y2="392" stroke="#38bdf8" stroke-width="5"/>
+  <rect x="578" y="300" width="40" height="46" rx="3" fill="none" stroke="#e4b86a" stroke-opacity="0.3" stroke-width="1"/>
+  <text x="645" y="328" text-anchor="middle" fill="#fde68a" font-size="9.5" font-weight="700">RM-204 BEDROOM 4</text>
+  <text x="645" y="344" text-anchor="middle" fill="#ffffff" font-size="8.5">13'-0" × 12'-0" (156 sq ft)</text>
+  <text x="645" y="360" text-anchor="middle" fill="#4ade80" font-size="8">W-04 Egress (9.2 sf)</text>
 
   <!-- RM-205 Upper Shared Full Bath -->
-  <rect x="726" y="288" width="128" height="102" fill="#0d2340" stroke="#99ceff" stroke-width="2"/>
-  <text x="790" y="330" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="700">RM-205 SHARED BATH</text>
-  <text x="790" y="346" text-anchor="middle" fill="#99ceff" font-size="9">12'-0" × 9'-0" (108 sq ft)</text>
-  <text x="790" y="362" text-anchor="middle" fill="#7dd3fc" font-size="8.5">Double Vanity + Tub/Shower</text>
+  <rect x="722" y="284" width="132" height="108" fill="#0d2340" stroke="#99ceff" stroke-width="2"/>
+  <text x="788" y="328" text-anchor="middle" fill="#ffffff" font-size="9.5" font-weight="700">RM-205 SHARED BATH</text>
+  <text x="788" y="344" text-anchor="middle" fill="#99ceff" font-size="8.5">12'-0" × 9'-0" (108 sq ft)</text>
+  <text x="788" y="360" text-anchor="middle" fill="#7dd3fc" font-size="8">Dual Vanity + Tub/Shower</text>
 
-  <!-- RM-209 Bedroom 5 (or Study / Terrace when 4BR) -->
-  <rect x="854" y="288" width="178" height="102" fill="#123159" stroke="${hasBed5 ? "#e4b86a" : "#99ceff"}" stroke-width="2.5"/>
-  <line x1="885" y1="390" x2="1000" y2="390" stroke="#38bdf8" stroke-width="5"/>
-  <text x="943" y="330" text-anchor="middle" fill="#fde68a" font-size="10.5" font-weight="700">${hasBed5 ? "RM-209 BEDROOM 5 (UPPER SUITE)" : "EX-202 UPPER DAYLIGHT TERRACE"}</text>
-  <text x="943" y="346" text-anchor="middle" fill="#ffffff" font-size="9.5">${hasBed5 ? "12'-0\" × 12'-0\" (144 sq ft · 13.4 m²)" : "14'-0\" × 12'-0\" (Covered Terrace)"}</text>
-  <text x="943" y="362" text-anchor="middle" fill="#4ade80" font-size="8.5">${hasBed5 ? "W-04 Egress Window (9.2 sf >= 5.7 sf)" : "Passive Solar Shading Louvers"}</text>
+  <!-- RM-209 Bedroom 5 (or Daylight Terrace when 4BR) -->
+  <rect x="854" y="284" width="184" height="108" fill="#123159" stroke="${hasBed5 ? "#e4b86a" : "#99ceff"}" stroke-width="2.5"/>
+  <line x1="885" y1="392" x2="1005" y2="392" stroke="#38bdf8" stroke-width="5"/>
+  <rect x="866" y="300" width="40" height="46" rx="3" fill="none" stroke="#e4b86a" stroke-opacity="0.3" stroke-width="1"/>
+  <text x="946" y="328" text-anchor="middle" fill="#fde68a" font-size="9.5" font-weight="700">${hasBed5 ? "RM-209 BEDROOM 5 (SUITE)" : "EX-202 DAYLIGHT TERRACE"}</text>
+  <text x="946" y="344" text-anchor="middle" fill="#ffffff" font-size="8.5">${hasBed5 ? "12'-0\" × 12'-0\" (144 sf · 13.4 m²)" : "14'-0\" × 12'-0\" (Covered Terrace)"}</text>
+  <text x="946" y="360" text-anchor="middle" fill="#4ade80" font-size="8">${hasBed5 ? "W-04 Egress (9.2 sf >= 5.7 sf)" : "Solar Shading Louvers"}</text>
 
   <!-- ========================================================================= -->
   <!-- QUADRANT 3 (BOTTOM-LEFT): SHEET A-201 SOUTH ELEVATION & SECTION           -->
   <!-- ========================================================================= -->
-  <text x="30" y="438" fill="#e4b86a" font-size="12" font-weight="700">SHEET A-201 &amp; A-301 — SOUTH ARCHITECTURAL ELEVATION &amp; STRUCTURAL SECTION</text>
+  <rect x="24" y="428" width="506" height="22" rx="4" fill="#09192f" stroke="#1f4e94" stroke-width="1"/>
+  <text x="34" y="443" fill="#e4b86a" font-size="11" font-weight="700">SHEET A-201 &amp; A-301 — SOUTH FRONT ELEVATION &amp; FOUNDATION SECTION</text>
 
-  <!-- Datum Level Lines -->
-  <line x1="45" y1="482" x2="515" y2="482" stroke="#e4b86a" stroke-width="0.8" stroke-dasharray="4,4"/>
-  <text x="518" y="485" text-anchor="end" fill="#e4b86a" font-size="8.5">+25'-6" ROOF RIDGE</text>
-
-  <line x1="45" y1="532" x2="515" y2="532" stroke="#38bdf8" stroke-width="0.8" stroke-dasharray="4,4"/>
-  <text x="518" y="529" text-anchor="end" fill="#7dd3fc" font-size="8.5">+19'-0" ROOF EAVE (${overhangLabel})</text>
-
-  <line x1="45" y1="612" x2="515" y2="612" stroke="#38bdf8" stroke-width="0.8" stroke-dasharray="4,4"/>
-  <text x="518" y="609" text-anchor="end" fill="#7dd3fc" font-size="8.5">+10'-0" LEVEL 2 SLAB (2×10 / RC 150mm)</text>
-
-  <line x1="35" y1="704" x2="520" y2="704" stroke="#4ade80" stroke-width="2.5"/>
-  <text x="518" y="700" text-anchor="end" fill="#4ade80" font-size="8.5" font-weight="700">+0'-0" FINISHED GRADE &amp; SLAB</text>
+  <!-- Datum Dashed Guide Lines (drawn behind house) -->
+  <line x1="34" y1="484" x2="524" y2="484" stroke="#e4b86a" stroke-width="0.9" stroke-dasharray="4,4"/>
+  <line x1="34" y1="534" x2="524" y2="534" stroke="#38bdf8" stroke-width="0.9" stroke-dasharray="4,4"/>
+  <line x1="34" y1="614" x2="524" y2="614" stroke="#38bdf8" stroke-width="0.9" stroke-dasharray="4,4"/>
+  <line x1="28" y1="706" x2="524" y2="706" stroke="#4ade80" stroke-width="2.5"/>
 
   <!-- Footings in Ground (-4'-0") -->
-  <rect x="78" y="704" width="28" height="26" fill="#334155" stroke="#94a3b8" stroke-width="1.2"/>
-  <rect x="235" y="704" width="28" height="26" fill="#334155" stroke="#94a3b8" stroke-width="1.2"/>
-  <rect x="355" y="704" width="28" height="26" fill="#334155" stroke="#94a3b8" stroke-width="1.2"/>
-  <rect x="442" y="704" width="28" height="26" fill="#334155" stroke="#94a3b8" stroke-width="1.2"/>
-  <text x="275" y="744" text-anchor="middle" fill="#94a3b8" font-size="9">CONTINUOUS SPREAD FOOTINGS &amp; RC GRADE BEAM (-4'-0" · ASSUMED 2,000 PSF SOIL — PE GATE)</text>
+  <rect x="56" y="706" width="26" height="26" fill="#334155" stroke="#94a3b8" stroke-width="1.2"/>
+  <rect x="195" y="706" width="26" height="26" fill="#334155" stroke="#94a3b8" stroke-width="1.2"/>
+  <rect x="302" y="706" width="26" height="26" fill="#334155" stroke="#94a3b8" stroke-width="1.2"/>
+  <rect x="386" y="706" width="26" height="26" fill="#334155" stroke="#94a3b8" stroke-width="1.2"/>
+  <text x="275" y="750" text-anchor="middle" fill="#94a3b8" font-size="8.5" font-weight="600">CONTINUOUS SPREAD FOOTINGS &amp; RC GRADE BEAM (-4'-0" · 2,000 PSF SOIL — PE GATE)</text>
 
-  <!-- Main 2-Story House Elevation Body -->
-  <!-- Ground Floor Body -->
-  <rect x="84" y="612" width="285" height="92" fill="#132a4a" stroke="#e2e8f0" stroke-width="2"/>
+  <!-- Main 2-Story House Elevation Body (shifted left x=62..410 so right datum column is 100% clear) -->
+  <rect x="62" y="614" width="256" height="92" fill="#132a4a" stroke="#e2e8f0" stroke-width="2"/>
   <!-- Garage Wing -->
-  <rect x="369" y="622" width="96" height="82" fill="#0f213a" stroke="#e2e8f0" stroke-width="2"/>
-  <rect x="381" y="642" width="72" height="62" fill="#1e293b" stroke="#e4b86a" stroke-width="1.5"/>
-  <line x1="381" y1="657" x2="453" y2="657" stroke="#475569" stroke-width="1"/>
-  <line x1="381" y1="672" x2="453" y2="672" stroke="#475569" stroke-width="1"/>
-  <line x1="381" y1="687" x2="453" y2="687" stroke="#475569" stroke-width="1"/>
-  <text x="417" y="636" text-anchor="middle" fill="#e4b86a" font-size="8" font-weight="700">GR-101 EV GARAGE</text>
+  <rect x="318" y="624" width="88" height="82" fill="#0f213a" stroke="#e2e8f0" stroke-width="2"/>
+  <rect x="328" y="644" width="68" height="62" fill="#1e293b" stroke="#e4b86a" stroke-width="1.5"/>
+  <line x1="328" y1="659" x2="396" y2="659" stroke="#475569" stroke-width="1"/>
+  <line x1="328" y1="674" x2="396" y2="674" stroke="#475569" stroke-width="1"/>
+  <line x1="328" y1="689" x2="396" y2="689" stroke="#475569" stroke-width="1"/>
+  <text x="362" y="638" text-anchor="middle" fill="#e4b86a" font-size="7.5" font-weight="700">GR-101 GARAGE</text>
 
   <!-- Upper Floor Body -->
-  <rect x="84" y="532" width="295" height="80" fill="#17335a" stroke="#e2e8f0" stroke-width="2"/>
+  <rect x="62" y="534" width="266" height="80" fill="#17335a" stroke="#e2e8f0" stroke-width="2"/>
   <!-- Highlight Resized RM-203 Wing on Upper Right -->
-  <rect x="285" y="532" width="94" height="80" fill="#262010" stroke="#f59e0b" stroke-width="2.2"/>
-  <text x="332" y="546" text-anchor="middle" fill="#fbbf24" font-size="8" font-weight="700">RM-203 (${b3W}'×${b3L}')</text>
+  <rect x="240" y="534" width="88" height="80" fill="#262010" stroke="#f59e0b" stroke-width="2.2"/>
+  <text x="284" y="547" text-anchor="middle" fill="#fbbf24" font-size="8" font-weight="700">RM-203 (${b3W}'×${b3L}')</text>
 
   <!-- Pitched / Hip Roof with Overhangs -->
-  <polygon points="62,532 195,482 325,482 402,532" fill="url(#roofGrad)" stroke="#e4b86a" stroke-width="2.2"/>
-  <polygon points="365,622 415,595 480,622" fill="url(#roofGrad)" stroke="#e4b86a" stroke-width="1.8"/>
+  <polygon points="44,534 155,484 265,484 348,534" fill="url(#roofGrad)" stroke="#e4b86a" stroke-width="2.2"/>
+  <polygon points="314,624 362,598 416,624" fill="url(#roofGrad)" stroke="#e4b86a" stroke-width="1.8"/>
 
   <!-- Windows & Entry Door on Elevation -->
-  <!-- W-01 Curtain Glazing (Great Room) -->
-  <rect x="102" y="626" width="115" height="66" fill="url(#glassGrad)" stroke="#38bdf8" stroke-width="2"/>
-  <line x1="140" y1="626" x2="140" y2="692" stroke="#38bdf8" stroke-width="1.2"/>
-  <line x1="178" y1="626" x2="178" y2="692" stroke="#38bdf8" stroke-width="1.2"/>
-  <text x="159" y="662" text-anchor="middle" fill="#e0f2fe" font-size="8.5" font-weight="700">W-01 LOW-E GLAZING</text>
+  <rect x="78" y="628" width="104" height="64" fill="url(#glassGrad)" stroke="#38bdf8" stroke-width="2"/>
+  <line x1="112" y1="628" x2="112" y2="692" stroke="#38bdf8" stroke-width="1.2"/>
+  <line x1="146" y1="628" x2="146" y2="692" stroke="#38bdf8" stroke-width="1.2"/>
+  <text x="130" y="663" text-anchor="middle" fill="#e0f2fe" font-size="8" font-weight="700">W-01 LOW-E GLAZING</text>
 
-  <!-- D-01 Main Pivot Entry Door -->
-  <rect x="242" y="632" width="34" height="72" fill="#78350f" stroke="#e4b86a" stroke-width="2"/>
-  <circle cx="269" cy="668" r="2.5" fill="#e4b86a"/>
-  <text x="259" y="626" text-anchor="middle" fill="#e4b86a" font-size="8" font-weight="700">D-01</text>
+  <rect x="202" y="634" width="32" height="72" fill="#78350f" stroke="#e4b86a" stroke-width="2"/>
+  <circle cx="227" cy="670" r="2.3" fill="#e4b86a"/>
+  <text x="218" y="628" text-anchor="middle" fill="#e4b86a" font-size="8" font-weight="700">D-01</text>
 
   <!-- Upper Level Egress Windows (W-04) -->
-  <rect x="108" y="550" width="54" height="44" fill="url(#glassGrad)" stroke="#38bdf8" stroke-width="1.8"/>
-  <line x1="135" y1="550" x2="135" y2="594" stroke="#38bdf8" stroke-width="1"/>
-  <text x="135" y="605" text-anchor="middle" fill="#7dd3fc" font-size="7.5">W-04 (36" Sill)</text>
+  <rect x="82" y="552" width="48" height="42" fill="url(#glassGrad)" stroke="#38bdf8" stroke-width="1.8"/>
+  <line x1="106" y1="552" x2="106" y2="594" stroke="#38bdf8" stroke-width="1"/>
+  <text x="106" y="605" text-anchor="middle" fill="#7dd3fc" font-size="7.5">W-04 (36" Sill)</text>
 
-  <rect x="195" y="550" width="54" height="44" fill="url(#glassGrad)" stroke="#38bdf8" stroke-width="1.8"/>
-  <line x1="222" y1="550" x2="222" y2="594" stroke="#38bdf8" stroke-width="1"/>
-  <text x="222" y="605" text-anchor="middle" fill="#7dd3fc" font-size="7.5">W-04 Egress</text>
+  <rect x="158" y="552" width="48" height="42" fill="url(#glassGrad)" stroke="#38bdf8" stroke-width="1.8"/>
+  <line x1="182" y1="552" x2="182" y2="594" stroke="#38bdf8" stroke-width="1"/>
+  <text x="182" y="605" text-anchor="middle" fill="#7dd3fc" font-size="7.5">W-04 Egress</text>
 
-  <rect x="305" y="550" width="56" height="44" fill="url(#glassGrad)" stroke="#f59e0b" stroke-width="1.8"/>
-  <line x1="333" y1="550" x2="333" y2="594" stroke="#f59e0b" stroke-width="1"/>
-  <text x="333" y="605" text-anchor="middle" fill="#fde68a" font-size="7.5">W-04 (40 sf Glz)</text>
+  <rect x="258" y="552" width="52" height="42" fill="url(#glassGrad)" stroke="#f59e0b" stroke-width="1.8"/>
+  <line x1="284" y1="552" x2="284" y2="594" stroke="#f59e0b" stroke-width="1"/>
+  <text x="284" y="605" text-anchor="middle" fill="#fde68a" font-size="7.5">W-04 (40 sf)</text>
+
+  <!-- Dedicated Right-Column Datum Callout Pills (drawn ON TOP so never occluded) -->
+  <rect x="418" y="472" width="110" height="18" rx="4" fill="#09192f" stroke="#e4b86a" stroke-width="1"/>
+  <text x="473" y="484" text-anchor="middle" fill="#e4b86a" font-size="7.5" font-weight="700">+25'-6" ROOF RIDGE</text>
+
+  <rect x="418" y="522" width="110" height="18" rx="4" fill="#09192f" stroke="#38bdf8" stroke-width="1"/>
+  <text x="473" y="534" text-anchor="middle" fill="#7dd3fc" font-size="7.5" font-weight="700">+19'-0" (${overhangLabel})</text>
+
+  <rect x="418" y="602" width="110" height="18" rx="4" fill="#09192f" stroke="#38bdf8" stroke-width="1"/>
+  <text x="473" y="614" text-anchor="middle" fill="#7dd3fc" font-size="7.5" font-weight="700">+10'-0" LEVEL 2 SLAB</text>
+
+  <rect x="418" y="684" width="110" height="18" rx="4" fill="#052e16" stroke="#4ade80" stroke-width="1"/>
+  <text x="473" y="696" text-anchor="middle" fill="#4ade80" font-size="7.5" font-weight="700">+0'-0" GRADE &amp; SLAB</text>
 
   <!-- ========================================================================= -->
   <!-- QUADRANT 4 (BOTTOM-RIGHT): SHEET A-501 3D AXONOMETRIC VILLA & TITLE BLOCK -->
   <!-- ========================================================================= -->
-  <text x="556" y="438" fill="#e4b86a" font-size="12" font-weight="700">SHEET A-501 — 3D AXONOMETRIC VILLA MODEL &amp; COURTYARD MASSING (IFC 4.3)</text>
+  <rect x="550" y="428" width="506" height="22" rx="4" fill="#09192f" stroke="#1f4e94" stroke-width="1"/>
+  <text x="560" y="443" fill="#e4b86a" font-size="11" font-weight="700">SHEET A-501 — 3D AXONOMETRIC VILLA MODEL &amp; COURTYARD MASSING (IFC 4.3)</text>
 
-  <!-- 3D Isometric Site Lawn / Courtyard Pad -->
-  <polygon points="565,645 760,555 1045,625 845,720" fill="#0b2239" stroke="#1e40af" stroke-width="1.5"/>
+  <!-- 3D Isometric Site Lawn / Courtyard Pad (shifted down so roof peak at y=458 clears header) -->
+  <polygon points="562,648 755,568 1042,630 842,702" fill="#0b2239" stroke="#1e40af" stroke-width="1.5"/>
   <!-- Courtyard Reflection Pool / Veranda Terrace -->
-  <polygon points="615,648 725,598 815,624 705,676" fill="#0369a1" fill-opacity="0.55" stroke="#38bdf8" stroke-width="1.5"/>
-  <text x="715" y="640" text-anchor="middle" fill="#bae6fd" font-size="8.5" font-weight="700">COURTYARD VERANDA &amp; TERRACE</text>
+  <polygon points="608,650 718,604 808,628 698,674" fill="#0369a1" fill-opacity="0.58" stroke="#38bdf8" stroke-width="1.5"/>
+  <text x="708" y="644" text-anchor="middle" fill="#e0f2fe" font-size="8" font-weight="700">COURTYARD VERANDA &amp; POOL</text>
 
   <!-- 3D Main Villa Left Wall (South-West Facade) -->
-  <polygon points="640,615 640,515 795,455 795,555" fill="#17365e" stroke="#99ceff" stroke-width="1.8"/>
+  <polygon points="638,620 638,530 788,478 788,568" fill="#17365e" stroke="#99ceff" stroke-width="1.8"/>
   <!-- 3D Main Villa Right Wall (South-East Facade + Resized RM-203 Wing) -->
-  <polygon points="795,555 795,455 965,505 965,605" fill="#0f2442" stroke="#e4b86a" stroke-width="1.8"/>
+  <polygon points="788,568 788,478 955,522 955,612" fill="#0f2442" stroke="#e4b86a" stroke-width="1.8"/>
   <!-- 3D Resized RM-203 Upper Corner Callout -->
-  <polygon points="865,525 865,476 965,505 965,554" fill="#3b280c" fill-opacity="0.75" stroke="#f59e0b" stroke-width="2"/>
+  <polygon points="856,540 856,496 955,522 955,566" fill="#3b280c" fill-opacity="0.82" stroke="#f59e0b" stroke-width="2.2"/>
 
   <!-- 3D Glazed Windows on Left Facade -->
-  <polygon points="660,595 660,558 765,518 765,555" fill="url(#glassGrad)" stroke="#38bdf8" stroke-width="1.5"/>
-  <polygon points="660,545 660,518 765,478 765,505" fill="url(#glassGrad)" stroke="#38bdf8" stroke-width="1.5"/>
+  <polygon points="656,602 656,568 760,532 760,566" fill="url(#glassGrad)" stroke="#38bdf8" stroke-width="1.5"/>
+  <polygon points="656,556 656,532 760,496 760,520" fill="url(#glassGrad)" stroke="#38bdf8" stroke-width="1.5"/>
 
   <!-- 3D Glazed Windows on Right Facade -->
-  <polygon points="815,548 815,512 940,548 940,584" fill="url(#glassGrad)" stroke="#38bdf8" stroke-width="1.5"/>
-  <polygon points="875,518 875,488 950,510 950,540" fill="url(#glassGrad)" stroke="#fbbf24" stroke-width="1.5"/>
+  <polygon points="806,562 806,530 930,562 930,594" fill="url(#glassGrad)" stroke="#38bdf8" stroke-width="1.5"/>
+  <polygon points="866,534 866,506 942,526 942,554" fill="url(#glassGrad)" stroke="#fbbf24" stroke-width="1.5"/>
 
-  <!-- 3D Overhanging Hip Roof -->
-  <polygon points="622,520 795,448 982,502 805,412" fill="#254778" stroke="#e4b86a" stroke-width="2"/>
-  <polygon points="805,412 982,502 795,455" fill="#1b355c" stroke="#e4b86a" stroke-width="1.5"/>
+  <!-- 3D Overhanging Hip Roof (peak at y=456 — cleanly below header bar at y=450) -->
+  <polygon points="620,534 788,472 972,520 798,456" fill="#254778" stroke="#e4b86a" stroke-width="2"/>
+  <polygon points="798,456 972,520 788,478" fill="#1b355c" stroke="#e4b86a" stroke-width="1.5"/>
 
-  <!-- 3D Dimension & BIM Callout Labels -->
-  <line x1="920" y1="495" x2="985" y2="462" stroke="#f59e0b" stroke-width="1.5"/>
-  <rect x="905" y="442" width="148" height="22" rx="4" fill="#1e1b18" stroke="#f59e0b" stroke-width="1.2"/>
-  <text x="979" y="456" text-anchor="middle" fill="#fde68a" font-size="8.5" font-weight="700">RM-203: ${b3W}'×${b3L}' (+${ripple.areaDeltaSqFt} sf)</text>
+  <!-- 3D Dimension & BIM Callout Pill -->
+  <line x1="912" y1="510" x2="965" y2="480" stroke="#f59e0b" stroke-width="1.5"/>
+  <rect x="895" y="458" width="154" height="22" rx="4" fill="#1e1b18" stroke="#f59e0b" stroke-width="1.2"/>
+  <text x="972" y="473" text-anchor="middle" fill="#fde68a" font-size="8.5" font-weight="700">RM-203: ${b3W}'×${b3L}' (+${ripple.areaDeltaSqFt} sf)</text>
 
-  <!-- Official AIA / BIM Title Block Stamp -->
-  <rect x="556" y="704" width="494" height="50" rx="6" fill="#09192f" stroke="#e4b86a" stroke-width="1.5"/>
-  <text x="568" y="722" fill="#e4b86a" font-size="10" font-weight="700">PROJECT: ${brief.projectTitle} · ${brief.bedrooms}BR / ${brief.bathrooms}BA</text>
-  <text x="568" y="736" fill="#e2e8f0" font-size="9">STRUCTURAL: ${profile.structuralSystem.slice(0, 62)}</text>
-  <text x="568" y="749" fill="#4ade80" font-size="9" font-weight="700">COST ESTIMATE: $${baselineCostUsd.toLocaleString()} (Incl. +$${ripple.costDeltaUsd.toLocaleString()} Ripple) · IFC 4.3 + buildingSMART IDS: PASS</text>
+  <!-- Official AIA / BIM Title Block Stamp (cleanly fitted inside 502px width) -->
+  <rect x="552" y="708" width="502" height="54" rx="6" fill="#09192f" stroke="#e4b86a" stroke-width="1.5"/>
+  <text x="564" y="725" fill="#e4b86a" font-size="9.5" font-weight="700">PROJECT: ${shortTitle} (${brief.bedrooms}BR / ${brief.bathrooms}BA)</text>
+  <text x="564" y="740" fill="#e2e8f0" font-size="8.5">STRUCTURAL: ${profile.structuralSystem.slice(0, 68)}</text>
+  <text x="564" y="754" fill="#4ade80" font-size="8.5" font-weight="700">ESTIMATED COST: $${baselineCostUsd.toLocaleString()} (Incl. +$${ripple.costDeltaUsd.toLocaleString()} Ripple) · IFC 4.3 + buildingSMART IDS: PASS</text>
 </svg>`;
 }
 
