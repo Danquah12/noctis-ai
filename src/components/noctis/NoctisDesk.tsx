@@ -1271,16 +1271,22 @@ function parseMermaidGraph(mermaidSource: string) {
 
   function parseNodeToken(token: string): string {
     const t = token.trim();
-    const rectMatch = t.match(/^([A-Za-z0-9_]+)\s*\[\s*\(?\s*"?([^"\])\]]+)"?\s*\)?\s*\]$/);
+    const rectMatch = t.match(/^([A-Za-z0-9_]+)\s*\[\s*"?([^"\]]+)"?\s*\]$/);
     if (rectMatch) {
       const id = rectMatch[1];
-      nodeMap.set(id, { id, label: rectMatch[2].trim(), isDecision: false });
+      const label = rectMatch[2]
+        .replace(/^\(\s*"?/, "")
+        .replace(/"?\s*\)$/, "")
+        .replace(/\\n/g, " · ")
+        .trim();
+      nodeMap.set(id, { id, label, isDecision: false });
       return id;
     }
     const decMatch = t.match(/^([A-Za-z0-9_]+)\s*\{\s*"?([^"\}]+)"?\s*\}$/);
     if (decMatch) {
       const id = decMatch[1];
-      nodeMap.set(id, { id, label: decMatch[2].trim(), isDecision: true });
+      const label = decMatch[2].replace(/\\n/g, " · ").trim();
+      nodeMap.set(id, { id, label, isDecision: true });
       return id;
     }
     const plainId = t.replace(/[^A-Za-z0-9_]/g, "") || "N";
@@ -2060,8 +2066,8 @@ function renderBlocks(source: string) {
       return <CodeBlock key={index} body={body} lang={lang} />;
     }
     const normalized = part
-      .replace(/\n(#{1,3}\s+)/g, "\n\n$1")
-      .replace(/(^|\n)(#{1,3}\s+[^\n]+)\n(?!\n)/g, "$1$2\n\n")
+      .replace(/\n(#{1,4}\s+)/g, "\n\n$1")
+      .replace(/(^|\n)(#{1,4}\s+[^\n]+)\n(?!\n)/g, "$1$2\n\n")
       .replace(/(^|\n)(?!\|)([^\n]+)\n(\|[^\n]+\|)/g, "$1$2\n\n$3")
       .replace(/(\|[^\n]+\|)\n(?!\|)([^\n]+)/g, "$1\n\n$2");
     return normalized
@@ -2112,12 +2118,12 @@ function renderBlocks(source: string) {
             );
           }
         }
-        if (lines.length === 1 && /^#{1,3}\s+/.test(lines[0])) {
+        if (lines.length === 1 && /^#{1,4}\s+/.test(lines[0])) {
           return (
             <h3
               key={`${index}-${p}`}
               className="text-xl font-semibold tracking-tight text-white"
-              dangerouslySetInnerHTML={{ __html: inlineHtml(lines[0].replace(/^#{1,3}\s+/, "")) }}
+              dangerouslySetInnerHTML={{ __html: inlineHtml(lines[0].replace(/^#{1,4}\s+/, "")) }}
             />
           );
         }
