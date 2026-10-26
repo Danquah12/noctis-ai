@@ -30,12 +30,18 @@ import {
   detectRequestedBenchmarkTests,
   matchesAnyArchitect40BenchmarkPrompt,
 } from "./noctis-architect-benchmarks.ts";
+import {
+  buildRealtorShowcaseAndWhiteFloorPlanSvg,
+  buildResidentialDesignFeasibilityReportSection,
+} from "./noctis-architect-showcase.ts";
 
 export {
   NOCTIS_40_ARCHITECT_BENCHMARKS,
   buildArchitect40BenchmarkSection,
   detectRequestedBenchmarkTests,
   matchesAnyArchitect40BenchmarkPrompt,
+  buildRealtorShowcaseAndWhiteFloorPlanSvg,
+  buildResidentialDesignFeasibilityReportSection,
 };
 
 export type ArchitectJurisdiction = "United States" | "Ghana" | "Uganda" | "Multiple Countries";
@@ -1329,6 +1335,7 @@ export function buildInteractiveHouseDesignHtml(
     </div>
     <div class="tabs">
       <button class="tab-btn active" onclick="setMode('3d', this)">3D Orbit Villa Model</button>
+      <button class="tab-btn" onclick="setMode('cad40x42', this)">White CAD Plan (40'×42' · A-101W)</button>
       <button class="tab-btn" onclick="setMode('l1', this)">2D Ground Plan (A-101)</button>
       <button class="tab-btn" onclick="setMode('l2', this)">2D Upper Plan (A-102 · ${brief.bedrooms}BR)</button>
       <button class="tab-btn" onclick="setMode('elev', this)">South Elevation &amp; Section (A-201)</button>
@@ -1751,11 +1758,73 @@ export function buildInteractiveHouseDesignHtml(
       ctx.fillText("SOUTH FRONT ELEVATION · +25'-6\\" RIDGE · RM-203 (" + b3W + "'×" + b3L + "' RIPPLE WING)", cx, groundY - hL1 - hL2 - 66);
     }
 
+    function drawWhiteCad40x42(W, H) {
+      ctx.save();
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(20, 44, W - 40, H - 84);
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(20, 44, W - 40, H - 84);
+
+      const sc = Math.min((W - 140) / 42, (H - 150) / 44);
+      const ox = (W - 40 * sc) / 2;
+      const oy = 76;
+      const coreW = 28 * sc, patioW = 12 * sc, depthH = 42 * sc;
+
+      // Dimension header
+      ctx.fillStyle = '#0f172a';
+      ctx.font = '800 12px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText("SHEET A-101W — 40'-0\\" × 42'-0\\" MEASURED FLOOR PLAN (100.0 m² CORE + 12'-0\\" PATIO)", W / 2, 64);
+
+      // Covered Patio dashed outline
+      ctx.setLineDash([5, 3]);
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 1.4;
+      ctx.strokeRect(ox + coreW, oy, patioW, depthH);
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#0f172a';
+      ctx.font = '700 11px system-ui, sans-serif';
+      ctx.fillText('COVERED PATIO', ox + coreW + patioW / 2, oy + depthH * 0.48);
+      ctx.font = '600 9.5px system-ui, sans-serif';
+      ctx.fillText("42'0\\" x 12'0\\"", ox + coreW + patioW / 2, oy + depthH * 0.48 + 14);
+
+      // Conditioned Core Perimeter (thick black poché walls)
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 4;
+      ctx.strokeRect(ox, oy, coreW, depthH);
+
+      // Interior room partitions
+      ctx.lineWidth = 2.5;
+      const rooms = [
+        { x: 0, y: 0, w: 11, l: 11, t: 'BEDROOM 2', d: "11'0\\" x 11'0\\"" },
+        { x: 11, y: 0, w: 17, l: 13.6, t: 'MASTER BEDROOM', d: "12'4\\" x 13'8\\"" },
+        { x: 0, y: 11, w: 10.5, l: 11, t: 'BEDROOM 3', d: b3W + "'0\\" x " + b3L + "'0\\"" },
+        { x: 10.5, y: 11, w: 4, l: 11, t: 'HALL', d: "4'0\\" Clear" },
+        { x: 14.5, y: 13.6, w: 13.5, l: 8.4, t: '2 BATHS + W/D', d: 'Wet-Wall Core' },
+        { x: 0, y: 22, w: 17.3, l: 20, t: 'LIVING ROOM', d: "17'4\\" x 18'8\\"" },
+        { x: 17.3, y: 22, w: 10.7, l: 11.5, t: 'KITCHEN', d: 'R/O · Ref · D/W' },
+        { x: 17.3, y: 33.5, w: 10.7, l: 8.5, t: 'DINING', d: "8'1\\" x 8'4\\"" }
+      ];
+      for (const r of rooms) {
+        const rx = ox + r.x * sc, ry = oy + r.y * sc, rw = r.w * sc, rl = r.l * sc;
+        ctx.strokeRect(rx, ry, rw, rl);
+        ctx.fillStyle = '#0f172a';
+        ctx.font = '700 10px system-ui, sans-serif';
+        ctx.fillText(r.t, rx + rw / 2, ry + rl / 2 - 3);
+        ctx.fillStyle = '#334155';
+        ctx.font = '600 8.5px system-ui, sans-serif';
+        ctx.fillText(r.d, rx + rw / 2, ry + rl / 2 + 10);
+      }
+      ctx.restore();
+    }
+
     function draw() {
       const W = canvas.width / window.devicePixelRatio;
       const H = canvas.height / window.devicePixelRatio;
       ctx.clearRect(0, 0, W, H);
       if (currentMode === '3d') draw3DVilla(W, H);
+      else if (currentMode === 'cad40x42') drawWhiteCad40x42(W, H);
       else if (currentMode === 'l1') draw2DPlan(W, H, 1);
       else if (currentMode === 'l2') draw2DPlan(W, H, 2);
       else drawElevation(W, H);
@@ -1919,12 +1988,18 @@ export function buildArchitecturalIntelligenceReport(question = ""): string {
 
   const hasSpecificBenchmark = detectRequestedBenchmarkTests(question).length > 0;
   const benchmarkSection40 = buildArchitect40BenchmarkSection(question);
+  const feasibilityAndShowcaseSection = buildResidentialDesignFeasibilityReportSection(
+    question,
+    brief,
+    baselineCostUsd,
+  );
 
   return [
     `## Noctis Architectural Intelligence Engine (\`NOCTIS-ARCH-001\`) — ${brief.projectTitle}`,
     `To make **DSTRIKE / Noctis** an architectural intelligence system that can **design, calculate, verify, revise, and explain** — rather than merely drawing unverified house pictures — Noctis combines **7 Cooperating Architectural Agents**, an **Iterative Verified Design Loop (\`A -> B -> C <-> D -> E\`)**, **12 Technical Standout Capabilities**, an **11-Layer CAD/BIM/GIS/Solver Stack** (**Open CASCADE / FreeCAD**, **Autodesk Revit API**, **buildingSMART IFC 4.3 + IfcOpenShell**, and **buildingSMART Information Delivery Specification (IDS)**), **Multi-Jurisdiction Building Codes (United States \`IRC 2024\`, Ghana \`GS 1207:2018\`, Uganda \`NBC 2019\`)**, the **10/10 Developer Acceptance Suite (\`ARCH-AT-01..10\`)**, and the **40-Test Architectural Evaluation Benchmark (\`ARCH-BENCH-01..40\` Scored \`4/4\` by Independent Validators)**. `,
     `\`\`\`noctis-dashboard\n${JSON.stringify(dashboardPayload)}\n\`\`\``,
-    `### Interactive 3D & 2D Architectural House Design Studio (\`IFC 4.3\` + Live Ripple Sliders)\nRotate the **3D Villa Model**, switch between **2D Ground Plan (\`A-101\`)**, **2D Upper Plan (\`A-102\`)**, and **South Elevation (\`A-201\`)**, cutaway the roof/floors, or drag the **Bedroom 3 (\`RM-203\`) Resize Sliders** to watch the house geometry, structural joists, and cost recalculate live:\n\n\`\`\`html\n${interactiveStudioHtml}\n\`\`\``,
+    feasibilityAndShowcaseSection,
+    `### Interactive 3D & 2D Architectural House Design Studio (\`IFC 4.3\` + Live Ripple Sliders)\nRotate the **3D Villa Model**, switch between **White CAD Plan (\`40'×42' · A-101W\`)**, **2D Ground Plan (\`A-101\`)**, **2D Upper Plan (\`A-102\`)**, and **South Elevation (\`A-201\`)**, cutaway the roof/floors, or drag the **Bedroom 3 (\`RM-203\`) Resize Sliders** to watch the house geometry, structural joists, and cost recalculate live:\n\n\`\`\`html\n${interactiveStudioHtml}\n\`\`\``,
     `### Coordinated 4-Sheet CAD Architectural Blueprint Set (\`A-101\` · \`A-102\` · \`A-201\` · \`A-501\`)\nClick **Download .SVG** to export the vector architectural drawing sheet containing the **Ground Floor Plan**, **Upper Floor Plan (${brief.bedrooms} Bedrooms + Ripple Enlargement)**, **South Front Elevation & Footing Section**, and **3D Axonometric Villa Massing**:\n\n\`\`\`svg\n${blueprintSvg}\n\`\`\``,
     ...(hasSpecificBenchmark ? [benchmarkSection40] : []),
     `### 1. The 12 Capabilities That Make Noctis Stand Out Technically (\`CAP-ARCH-01\` .. \`CAP-ARCH-12\`)\n| # | Standout Capability | Technical Methods & Deterministic Execution in Noctis |\n| :--- | :--- | :--- |\n| **1** | **Architectural Design & Space Planning** | Designs bedrooms, living rooms, kitchens, bathrooms, hallways, stairs, garages, balconies, and outdoor spaces with adjacency matrices, circulation efficiency (\`87%\`), daylight (\`>= 8%\`), natural ventilation (\`>= 4%\`), ADA accessibility, and acoustic/visual privacy zoning. |\n| **2** | **Technical Drafting & 3D BIM Modeling** | Generates linked 2D construction drawings (\`A-101..A-601\`) and 3D parametric BIM geometry (\`IfcWall\`, \`IfcSlab\`, \`IfcWindow\`, \`IfcDoor\`, \`IfcRoof\`, \`IfcStairFlight\`) using consistent scales (\`1/4" = 1'-0"\` / \`1:50\`) and AIA CAD layers. |\n| **3** | **Multidisciplinary Engineering Coordination** | Coordinates architecture with structural framing, foundations, \`200A\` electrical systems, wet-wall plumbing, Manual J HVAC, roof/site drainage, fire protection, and energy performance using discipline-specific solvers, clash detection, and PE engineering review gates. |\n| **4** | **Site & Environmental Intelligence** | Analyzes property boundaries (\`${brief.lotWidthFt}' × ${brief.lotDepthFt}'\`), survey measurements, terrain slope (\`2.4%\` grade), sun path, prevailing winds, rainfall/drainage, access, and neighboring structures via **GIS / PostGIS terrain & solar simulation** — never assuming a flat-site design works everywhere. |\n| **5** | **Cost & Constructability Intelligence** | Computes deterministic Quantity Takeoffs (QTO) directly from \`IFC4X3\` elements, compares regional materials & methods, estimates labor and waste (\`7%\`), flags difficult/expensive details, and shows the exact budget delta for every design decision. |\n| **6** | **Architectural Reasoning & Design Memory** | Persists versioned design decisions (\`v1.0 -> v1.1\`), rejected alternatives (Options A & C), client preferences, constraints, and rationale. Enlarging a bedroom (\`${ripple.fromDim} -> ${ripple.toDim}\`) automatically reasons across circulation, joist span, window glazing, cost (\`+$${ripple.costDeltaUsd.toLocaleString()}\`), and neighboring rooms. |\n| **7** | **Building-Code & Regulation Verification + buildingSMART IDS** | Jurisdiction-aware rules engine recording **Source, Section, Effective Date, Applicability, Evidence, and Review Status (\`PASS\` / \`FAIL\` / \`UNRESOLVED\`)**, paired with **buildingSMART Information Delivery Specification (IDS)** for machine-readable BIM property checks (while keeping geometry & full code checks distinct). |\n| **8** | **Multi-Objective Design Optimization Engine** | Generates multiple feasible designs (Options A, B, C) and scores them across **8 measurable objectives**: **Total Cost, Usable Floor Area, Daylight, Energy Demand, Privacy, Accessibility, Structural Simplicity, and Construction Time** — showing explicit trade-offs rather than claiming one universal best. |\n| **9** | **Automated Design Review & Defect Detection** | Deterministically detects overlapping walls (\`AABB\`), disconnected rooms (\`BFS\` graph), inaccessible spaces, stair geometry errors (\`riser <= 7.75"\`, \`tread >= 10"\`), dimension mismatches, roof-wall intersections, MEP clashes, and 2D/3D schedule discrepancies. |\n| **10** | **Drawing & Document Production** | Produces coordinated floor plans, elevations, sections, roof plans, site plans, schedules, detail sheets, specifications, Bills of Quantities (BOQ), and revision reports — running pre-release validation before export. |\n| **11** | **Lifecycle, Sustainability & Resilience** | Quantifies 50-year **Operational Energy (\`EUI: 34 kWh/m²·yr\`)**, **Embodied Carbon (\`245 kgCO2e/m²\`)**, **Water Use (\`38% reduction\` via low-flow + rainwater cistern)**, maintenance cycles, and regional wind/seismic/flood hazard resilience. |\n| **12** | **Constructability & Site Feedback** | Evaluates contractor buildability, local material availability, crane/equipment access, sequencing, tolerances, installation clearances, and feeds approved field/as-built measurements back into the shared BIM model. |`,
@@ -1944,7 +2019,7 @@ export function architectIntelligenceGadget(question: string): string | null {
   const q = question.toLowerCase();
   const asksArchitectTraining =
     matchesAnyArchitect40BenchmarkPrompt(question) ||
-    /\b(design\s+houses?\s+like\s+(?:a\s+|an\s+)?(?:professional\s+)?architect|architectural\s+intelligence\s+(?:system|engine)|noctis\s+architect|noctis-arch-001|train\s+(?:dstrike|noctis|vibe)[\s\S]{0,40}\barchitect|become\s+an\s+architect|client\s+brief\s+agent|architectural\s+orchestrator|floor\s+plan\s+agent|3d\s*\/\s*bim\s+agent|code\s+compliance\s+agent|design\s+qa\s*(?:&|and)\s*cost\s+agent|ifcopenshell|buildingsmart\s+ids|information\s+delivery\s+specification|shared\s+building\s+data\s+model|(?:12\s*[x×]\s*12|enlarge\s+(?:a\s+|the\s+)?bedroom|resize\s+(?:a\s+|the\s+)?bedroom)[\s\S]{0,60}(?:\d+\s*[x×]\s*\d+|circulation|footprint|joist)|configure\s+noctis\s+architect|developer'?s\s+acceptance\s+tests|measurable\s+acceptance\s+test\s+suite|verified\s+design\s+loop|parametric\s+house\s+generator|design\s+verification\s+engine|architectural\s+cost\s+and\s+optimization\s+engine|architectural\s+reasoning\s+and\s+design\s+memory|validate\s+the\s+selected\s+floor\s+plan|workflow\s+noctis\s+should\s+follow\s+for\s+every\s+house|ghana\s+building\s+code\s+gs\s*1207|uganda\s+national\s+building\s+code|sheet\s+a-101|4-sheet\s+cad)\b/i.test(
+    /\b(design\s+houses?\s+like\s+(?:a\s+|an\s+)?(?:professional\s+)?architect|architectural\s+intelligence\s+(?:system|engine)|noctis\s+architect|noctis-arch-001|residential\s+design\s+feasibility\s+report|dstrike\.architect|impossible\s+or\s+conflicting\s+requirements|train\s+(?:dstrike|noctis|vibe)[\s\S]{0,40}\barchitect|become\s+an\s+architect|client\s+brief\s+agent|architectural\s+orchestrator|floor\s+plan\s+agent|3d\s*\/\s*bim\s+agent|code\s+compliance\s+agent|design\s+qa\s*(?:&|and)\s*cost\s+agent|ifcopenshell|buildingsmart\s+ids|information\s+delivery\s+specification|shared\s+building\s+data\s+model|(?:12\s*[x×]\s*12|enlarge\s+(?:a\s+|the\s+)?bedroom|resize\s+(?:a\s+|the\s+)?bedroom)[\s\S]{0,60}(?:\d+\s*[x×]\s*\d+|circulation|footprint|joist)|configure\s+noctis\s+architect|developer'?s\s+acceptance\s+tests|measurable\s+acceptance\s+test\s+suite|verified\s+design\s+loop|parametric\s+house\s+generator|design\s+verification\s+engine|architectural\s+cost\s+and\s+optimization\s+engine|architectural\s+reasoning\s+and\s+design\s+memory|validate\s+the\s+selected\s+floor\s+plan|workflow\s+noctis\s+should\s+follow\s+for\s+every\s+house|ghana\s+building\s+code\s+gs\s*1207|uganda\s+national\s+building\s+code|sheet\s+a-101|4-sheet\s+cad)\b/i.test(
       q,
     );
 

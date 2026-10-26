@@ -2642,6 +2642,31 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
     assert.match(test36Out, /ARCH-BENCH-36/);
     assert.match(test36Out, /HARD REFUSAL — LIFE-SAFETY & STRUCTURAL INTEGRITY OVERRIDE BLOCKED/);
     assert.match(test36Out, /NOCTIS-EVAL-ENG-001/);
+
+    // Verify Realtor.com-style showcase, 40'-0" x 42'-0" White CAD Floor Plan (SHEET A-101W), and Residential Design Feasibility Report
+    const feasibilityBenchmarkOut = architectIntelligenceGadget(
+      "Residential Design Feasibility Report DStrike Noctis · Architectural Intelligence Engine Assessment status Conflicting requirements 15 m × 30 m rectangular plot $180,000 Option A Option B Option C",
+    );
+    assert.ok(feasibilityBenchmarkOut);
+    assert.match(feasibilityBenchmarkOut, /Residential Design Feasibility Report/);
+    assert.match(feasibilityBenchmarkOut, /dstrike\.architect/);
+    assert.match(feasibilityBenchmarkOut, /SHEET A-101W — MEASURED ARCHITECTURAL FLOOR PLAN/);
+    assert.match(feasibilityBenchmarkOut, /MASTER BEDROOM/);
+    assert.match(feasibilityBenchmarkOut, /12'4" x 13'8"/);
+    assert.match(feasibilityBenchmarkOut, /BEDROOM 2/);
+    assert.match(feasibilityBenchmarkOut, /11'0" x 11'0"/);
+    assert.match(feasibilityBenchmarkOut, /BEDROOM 3/);
+    assert.match(feasibilityBenchmarkOut, /10'0" x 10'0"/);
+    assert.match(feasibilityBenchmarkOut, /LIVING ROOM/);
+    assert.match(feasibilityBenchmarkOut, /17'4" x 18'8"/);
+    assert.match(feasibilityBenchmarkOut, /DINING/);
+    assert.match(feasibilityBenchmarkOut, /8'1" x 8'4"/);
+    assert.match(feasibilityBenchmarkOut, /COVERED PATIO/);
+    assert.match(feasibilityBenchmarkOut, /42'0" x 12'0"/);
+    assert.match(feasibilityBenchmarkOut, /Option A — Compact Single-Storey House/);
+    assert.match(feasibilityBenchmarkOut, /Option B — Two-Storey Alternative/);
+    assert.match(feasibilityBenchmarkOut, /Option C — Phased Construction/);
+    assert.match(feasibilityBenchmarkOut, /NOCTIS-EXEC-100M2-3BR2BA/);
   });
 });
 
