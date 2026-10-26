@@ -1334,6 +1334,7 @@ export function buildInteractiveHouseDesignHtml(
         <div class="hud-pill">Bedroom 3 (RM-203): <strong id="hudBed3">${brief.bedroomResizeTo.widthFt}' × ${brief.bedroomResizeTo.lengthFt}' (${brief.bedroomResizeTo.widthFt * brief.bedroomResizeTo.lengthFt} sf)</strong></div>
         <div class="hud-pill">Estimated Cost: <strong id="hudCost">$${baselineCostUsd.toLocaleString()}</strong></div>
         <div class="hud-pill">Lot Coverage: <strong>${lotCoveragePct}% (&lt;=40%)</strong></div>
+        <div class="hud-pill">Solar Path: <strong id="hudSun">SUN 14:00</strong></div>
       </div>
       <div class="bottom-bar">
         <span>Drag canvas to rotate 3D house · Use sliders on the right to resize <strong>Bedroom 3 (RM-203)</strong> or cutaway roof/floors</span>
@@ -1450,7 +1451,10 @@ export function buildInteractiveHouseDesignHtml(
       document.getElementById('pitchVal').innerText = pitchDeg + '°';
       document.getElementById('cutVal').innerText =
         cutMode === 0 ? 'Full 3D Villa' : cutMode === 1 ? 'Roof Off (Inspect L2)' : 'Level 1 Cutaway';
-      document.getElementById('sunVal').innerText = String(sunHour).padStart(2, '0') + ':00';
+      const sunStr = String(sunHour).padStart(2, '0') + ':00';
+      document.getElementById('sunVal').innerText = sunStr;
+      const hudSunEl = document.getElementById('hudSun');
+      if (hudSunEl) hudSunEl.innerText = 'SUN ' + sunStr;
       draw();
     }
 
@@ -1543,12 +1547,12 @@ export function buildInteractiveHouseDesignHtml(
     }
 
     function draw3DVilla(W, H) {
-      const cx = W * 0.5;
-      const cy = H * 0.62;
-      const scale = Math.min(W, H) / 58;
+      const cx = W * 0.55;
+      const cy = H * 0.65;
+      const scale = Math.min(W, H) / 68;
 
       // Site Plot Pad
-      const plotPts = [[-28, -24, 0], [28, -24, 0], [28, 24, 0], [-28, 24, 0]].map(p => project3D(p[0], p[1], p[2], cx, cy, scale));
+      const plotPts = [[-26, -22, 0], [26, -22, 0], [26, 23, 0], [-26, 23, 0]].map(p => project3D(p[0], p[1], p[2], cx, cy, scale));
       ctx.beginPath();
       plotPts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
       ctx.closePath();
@@ -1652,25 +1656,6 @@ export function buildInteractiveHouseDesignHtml(
         ctx.fillStyle = '#fef08a';
         ctx.fillText(lbl.text, lbl.x, py);
       }
-
-      // Draw Sun Position Indicator in dedicated top-right solar arc (clear of top-left HUD pills)
-      const sunAngle = ((sunHour - 6) / 13) * Math.PI;
-      const arcCx = W - 76;
-      const arcCy = 46;
-      ctx.beginPath();
-      ctx.arc(arcCx, arcCy, 34, Math.PI, 0, false);
-      ctx.strokeStyle = 'rgba(251, 191, 36, 0.35)';
-      ctx.lineWidth = 1.2;
-      ctx.stroke();
-      const sx = arcCx + Math.cos(Math.PI - sunAngle) * 34;
-      const sy = arcCy - Math.sin(sunAngle) * 24;
-      ctx.beginPath();
-      ctx.arc(sx, sy, 8.5, 0, Math.PI * 2);
-      ctx.fillStyle = '#fbbf24';
-      ctx.fill();
-      ctx.fillStyle = '#fde68a';
-      ctx.font = '700 10px system-ui, sans-serif';
-      ctx.fillText('SUN ' + String(sunHour).padStart(2, '0') + ':00', arcCx, arcCy + 14);
     }
 
     function draw2DPlan(W, H, storey) {
@@ -1954,7 +1939,7 @@ export function buildArchitecturalIntelligenceReport(question = ""): string {
           label: "Structure, Foundation & Framing (Div 03–06)",
           value: 31,
           max: 100,
-          display: `31% · $${Math.round(baselineCostUsd * 0.31).toLocaleString()} (${profile.structuralSystem.slice(0, 52)}...)`,
+          display: `31% · $${Math.round(baselineCostUsd * 0.31).toLocaleString()} (Footings, Slab, Columns & Roof/Floor Framing)`,
           tone: "cyan",
         },
         {

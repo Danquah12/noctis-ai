@@ -360,10 +360,20 @@ export function formatDashboardForSocial(raw: string): string {
     const minV = Math.min(...vals);
     const maxV = Math.max(...vals);
     const span = Math.max(maxV - minV, 1);
-    for (const p of pts.slice(0, 7)) {
+    const secLabel = (dash.trend?.secondaryLabel || "").toLowerCase();
+    const isTemp = /temp|deg|°|celsius|fahrenheit/.test(secLabel);
+    const isClash = /clash|defect/.test(secLabel);
+    for (const p of pts.slice(0, 8)) {
       const filled = Math.max(1, Math.min(8, Math.round(((p.value - minV) / span) * 7) + 1));
       const bar = `${"█".repeat(filled)}${"░".repeat(8 - filled)}`;
-      const sec = typeof p.secondary === "number" ? ` / ${p.secondary}°` : "";
+      const sec =
+        typeof p.secondary === "number"
+          ? isTemp
+            ? ` / ${p.secondary}°`
+            : isClash
+              ? ` (${p.secondary} clashes)`
+              : ` / ${p.secondary}`
+          : "";
       lines.push(`${bar} ${p.label}: ${p.display}${sec}`);
     }
   }

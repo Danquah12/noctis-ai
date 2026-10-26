@@ -243,7 +243,7 @@ export function buildRealtorShowcaseAndWhiteFloorPlanSvg(
   <!-- Card 3 Metadata & Trade-Offs -->
   <text x="734" y="423" fill="#ffffff" font-size="10.5" font-weight="800">Option C — Phased Construction + Measured CAD Plan</text>
   <text x="734" y="438" fill="#e4b86a" font-size="10" font-weight="700">Phase 1: $${optCCostPhase1.toLocaleString()} · Full 40'×42' Plan Below ↓</text>
-  <text x="734" y="452" fill="#cbd5e1" font-size="9">+ Advantage: Spreads expenditure across approved construction phases.</text>
+  <text x="734" y="452" fill="#cbd5e1" font-size="9">+ Advantage: Spreads expenditure across approved building phases.</text>
   <text x="734" y="465" fill="#fbbf24" font-size="9">− Trade-off: Requires pre-sized lintels, 200A panel &amp; capped MEP stubs.</text>
 
   <!-- ================================================================================= -->
@@ -415,9 +415,10 @@ export function buildRealtorShowcaseAndWhiteFloorPlanSvg(
   <line x1="272" y1="924" x2="292" y2="904" stroke="#0f172a" stroke-width="1.5"/>
   <path d="M 300 924 A 28 28 0 0 0 292 904" fill="none" stroke="#475569" stroke-width="1"/>
 
-  <!-- Bedroom 2 Door Swing -->
-  <line x1="252" y1="660" x2="234" y2="676" stroke="#0f172a" stroke-width="1.4"/>
-  <path d="M 230 660 A 22 22 0 0 0 234 676" fill="none" stroke="#475569" stroke-width="0.9"/>
+  <!-- Bedroom 2 Door Swing (swings upward into Bedroom 2, clear of Linen closet) -->
+  <rect x="245" y="657" width="16" height="6" fill="#ffffff"/>
+  <line x1="245" y1="660" x2="259" y2="644" stroke="#0f172a" stroke-width="1.4"/>
+  <path d="M 261 660 A 18 18 0 0 0 259 644" fill="none" stroke="#475569" stroke-width="0.9"/>
   <!-- Master Bedroom Door Swing -->
   <line x1="286" y1="664" x2="306" y2="678" stroke="#0f172a" stroke-width="1.4"/>
   <path d="M 286 680 A 22 22 0 0 0 306 678" fill="none" stroke="#475569" stroke-width="0.9"/>
