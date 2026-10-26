@@ -256,14 +256,14 @@ export function parseArchitecturalBrief(question: string): ArchitecturalBrief {
   }
 
   const lotWidthFt = metricLotMatch
-    ? Math.max(60, Math.round(Number(metricLotMatch[1]) * 3.28084))
+    ? Math.max(30, Math.round(Number(metricLotMatch[1]) * 3.28084))
     : lotMatch
-      ? Math.max(60, Number(lotMatch[1]))
+      ? Math.max(30, Number(lotMatch[1]))
       : 70;
   const lotDepthFt = metricLotMatch
-    ? Math.max(100, Math.round(Number(metricLotMatch[2]) * 3.28084))
+    ? Math.max(50, Math.round(Number(metricLotMatch[2]) * 3.28084))
     : lotMatch
-      ? Math.max(100, Number(lotMatch[2]))
+      ? Math.max(50, Number(lotMatch[2]))
       : 130;
 
 
@@ -803,7 +803,7 @@ export function buildArchitecturalBlueprintSvg(
   const hasBed5 = brief.bedrooms >= 5;
   const overhangLabel = brief.jurisdiction === "United States" ? "2'-0\" Overhang" : "900mm Overhang";
   const shortTitle =
-    brief.projectTitle.length > 58 ? `${brief.projectTitle.slice(0, 55)}...` : brief.projectTitle;
+    brief.projectTitle.length > 36 ? `${brief.projectTitle.slice(0, 34)}...` : brief.projectTitle;
 
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 790" width="100%" style="background:#06101e;border-radius:14px;font-family:system-ui,-apple-system,Segoe UI,Roboto,monospace">
   <defs>
@@ -831,7 +831,7 @@ export function buildArchitecturalBlueprintSvg(
 
   <!-- Top Master Banner -->
   <rect x="16" y="16" width="1048" height="40" fill="#09192f" stroke="#1f4e94" stroke-width="1"/>
-  <text x="28" y="34" fill="#e4b86a" font-size="12.5" font-weight="700">NOCTIS ARCHITECTURAL CAD &amp; BIM SHEET SET (A-101 · A-102 · A-201 · A-501) — ${shortTitle.toUpperCase()}</text>
+  <text x="28" y="34" fill="#e4b86a" font-size="11" font-weight="700">NOCTIS ARCHITECTURAL CAD &amp; BIM SHEET SET (A-101 · A-102 · A-201 · A-501) — ${shortTitle.toUpperCase()}</text>
   <text x="28" y="49" fill="#99ceff" font-size="10">Scale: 1/4" = 1'-0" (1:50) · Plot: ${brief.lotWidthFt}'×${brief.lotDepthFt}' · Lot Cov: ${lotCoveragePct}% (&lt;=40%) · Gross: ${grossConditionedSqFt.toLocaleString()} sq ft · Code: ${profile.codeStandard.slice(0, 44)}</text>
   <rect x="912" y="23" width="142" height="24" rx="12" fill="#052e16" stroke="#4ade80" stroke-width="1.2"/>
   <text x="983" y="39" text-anchor="middle" fill="#4ade80" font-size="10" font-weight="700">10/10 ARCH-AT PASS</text>
@@ -886,10 +886,10 @@ export function buildArchitecturalBlueprintSvg(
   <!-- RM-103 Chef's Kitchen + Island -->
   <rect x="260" y="176" width="222" height="74" fill="#0f2544" stroke="#99ceff" stroke-width="2.5"/>
   <text x="371" y="194" text-anchor="middle" fill="#ffffff" font-size="9.5" font-weight="700">RM-103 CHEF'S KITCHEN (18'×16' · 288 sf)</text>
-  <rect x="315" y="203" width="112" height="26" rx="4" fill="#17345b" stroke="#e4b86a" stroke-width="1.2"/>
-  <circle cx="338" cy="216" r="5" fill="none" stroke="#38bdf8" stroke-width="1"/>
-  <circle cx="352" cy="216" r="5" fill="none" stroke="#38bdf8" stroke-width="1"/>
-  <text x="386" y="219" text-anchor="middle" fill="#e4b86a" font-size="8" font-weight="700">ISLAND + SINK</text>
+  <rect x="315" y="203" width="116" height="26" rx="4" fill="#17345b" stroke="#e4b86a" stroke-width="1.2"/>
+  <circle cx="328" cy="216" r="4.2" fill="none" stroke="#38bdf8" stroke-width="1"/>
+  <circle cx="340" cy="216" r="4.2" fill="none" stroke="#38bdf8" stroke-width="1"/>
+  <text x="390" y="219" text-anchor="middle" fill="#e4b86a" font-size="7.5" font-weight="700">ISLAND + SINK</text>
   <text x="371" y="242" text-anchor="middle" fill="#99ceff" font-size="8">42 sq ft Glazing · Range Hood Exhaust</text>
 
   <!-- RM-105 Pantry & RM-106 Mudroom -->
@@ -912,10 +912,11 @@ export function buildArchitecturalBlueprintSvg(
 
   <!-- RM-107 Guest Bath (ADA) -->
   <rect x="164" y="298" width="96" height="92" fill="#0c203b" stroke="#99ceff" stroke-width="2"/>
-  <circle cx="212" cy="346" r="16" fill="#08172e" stroke="#38bdf8" stroke-width="1" stroke-dasharray="3,2"/>
-  <text x="212" y="318" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="700">RM-107 ADA BATH</text>
-  <text x="212" y="349" text-anchor="middle" fill="#7dd3fc" font-size="7.5" font-weight="600">60" ADA Turn</text>
-  <text x="212" y="378" text-anchor="middle" fill="#99ceff" font-size="8">10'×8' (80 sf)</text>
+  <circle cx="212" cy="346" r="22" fill="#08172e" stroke="#38bdf8" stroke-width="1" stroke-dasharray="3,2"/>
+  <text x="212" y="316" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="700">RM-107 ADA BATH</text>
+  <text x="212" y="344" text-anchor="middle" fill="#7dd3fc" font-size="7" font-weight="700">60" ADA</text>
+  <text x="212" y="353" text-anchor="middle" fill="#7dd3fc" font-size="6.8" font-weight="600">TURN</text>
+  <text x="212" y="381" text-anchor="middle" fill="#99ceff" font-size="8">10'×8' (80 sf)</text>
 
   <!-- RM-101 Foyer + Stair ST-101 -->
   <rect x="260" y="298" width="98" height="92" fill="#102849" stroke="#99ceff" stroke-width="2.5"/>
@@ -945,7 +946,7 @@ export function buildArchitecturalBlueprintSvg(
 
   <!-- Upper Balcony Overhang -->
   <rect x="568" y="98" width="286" height="30" fill="#0c263b" stroke="#38bdf8" stroke-width="1.5" stroke-dasharray="4,3"/>
-  <text x="711" y="117" text-anchor="middle" fill="#7dd3fc" font-size="8.5" font-weight="700">EX-101 UPPER COVERED BALCONY (GLASS RAILING · 42" GUARD)</text>
+  <text x="711" y="117" text-anchor="middle" fill="#7dd3fc" font-size="7.6" font-weight="700">EX-101 UPPER COVERED BALCONY (GLASS RAILING · 42" GUARD)</text>
 
   <!-- RM-201 Bedroom 2 Primary Suite -->
   <rect x="568" y="128" width="174" height="118" fill="#123159" stroke="#e4b86a" stroke-width="2.5"/>
@@ -1010,23 +1011,23 @@ export function buildArchitecturalBlueprintSvg(
   <line x1="34" y1="484" x2="524" y2="484" stroke="#e4b86a" stroke-width="0.9" stroke-dasharray="4,4"/>
   <line x1="34" y1="534" x2="524" y2="534" stroke="#38bdf8" stroke-width="0.9" stroke-dasharray="4,4"/>
   <line x1="34" y1="614" x2="524" y2="614" stroke="#38bdf8" stroke-width="0.9" stroke-dasharray="4,4"/>
-  <line x1="28" y1="706" x2="524" y2="706" stroke="#4ade80" stroke-width="2.5"/>
+  <line x1="28" y1="696" x2="524" y2="696" stroke="#4ade80" stroke-width="2.5"/>
 
   <!-- Footings in Ground (-4'-0") -->
-  <rect x="56" y="706" width="26" height="26" fill="#334155" stroke="#94a3b8" stroke-width="1.2"/>
-  <rect x="195" y="706" width="26" height="26" fill="#334155" stroke="#94a3b8" stroke-width="1.2"/>
-  <rect x="302" y="706" width="26" height="26" fill="#334155" stroke="#94a3b8" stroke-width="1.2"/>
-  <rect x="386" y="706" width="26" height="26" fill="#334155" stroke="#94a3b8" stroke-width="1.2"/>
-  <text x="275" y="750" text-anchor="middle" fill="#94a3b8" font-size="8.5" font-weight="600">CONTINUOUS SPREAD FOOTINGS &amp; RC GRADE BEAM (-4'-0" · 2,000 PSF SOIL — PE GATE)</text>
+  <rect x="56" y="696" width="26" height="24" fill="#334155" stroke="#94a3b8" stroke-width="1.2"/>
+  <rect x="195" y="696" width="26" height="24" fill="#334155" stroke="#94a3b8" stroke-width="1.2"/>
+  <rect x="302" y="696" width="26" height="24" fill="#334155" stroke="#94a3b8" stroke-width="1.2"/>
+  <rect x="386" y="696" width="26" height="24" fill="#334155" stroke="#94a3b8" stroke-width="1.2"/>
+  <text x="275" y="738" text-anchor="middle" fill="#94a3b8" font-size="8.5" font-weight="600">CONTINUOUS SPREAD FOOTINGS &amp; RC GRADE BEAM (-4'-0" · 2,000 PSF SOIL — PE GATE)</text>
 
   <!-- Main 2-Story House Elevation Body (shifted left x=62..410 so right datum column is 100% clear) -->
-  <rect x="62" y="614" width="256" height="92" fill="#132a4a" stroke="#e2e8f0" stroke-width="2"/>
+  <rect x="62" y="614" width="256" height="82" fill="#132a4a" stroke="#e2e8f0" stroke-width="2"/>
   <!-- Garage Wing -->
-  <rect x="318" y="624" width="88" height="82" fill="#0f213a" stroke="#e2e8f0" stroke-width="2"/>
-  <rect x="328" y="644" width="68" height="62" fill="#1e293b" stroke="#e4b86a" stroke-width="1.5"/>
-  <line x1="328" y1="659" x2="396" y2="659" stroke="#475569" stroke-width="1"/>
-  <line x1="328" y1="674" x2="396" y2="674" stroke="#475569" stroke-width="1"/>
-  <line x1="328" y1="689" x2="396" y2="689" stroke="#475569" stroke-width="1"/>
+  <rect x="318" y="624" width="88" height="72" fill="#0f213a" stroke="#e2e8f0" stroke-width="2"/>
+  <rect x="328" y="642" width="68" height="54" fill="#1e293b" stroke="#e4b86a" stroke-width="1.5"/>
+  <line x1="328" y1="656" x2="396" y2="656" stroke="#475569" stroke-width="1"/>
+  <line x1="328" y1="670" x2="396" y2="670" stroke="#475569" stroke-width="1"/>
+  <line x1="328" y1="684" x2="396" y2="684" stroke="#475569" stroke-width="1"/>
   <text x="362" y="638" text-anchor="middle" fill="#e4b86a" font-size="7.5" font-weight="700">GR-101 GARAGE</text>
 
   <!-- Upper Floor Body -->
@@ -1040,14 +1041,14 @@ export function buildArchitecturalBlueprintSvg(
   <polygon points="314,624 362,598 416,624" fill="url(#roofGrad)" stroke="#e4b86a" stroke-width="1.8"/>
 
   <!-- Windows & Entry Door on Elevation -->
-  <rect x="78" y="628" width="104" height="64" fill="url(#glassGrad)" stroke="#38bdf8" stroke-width="2"/>
-  <line x1="112" y1="628" x2="112" y2="692" stroke="#38bdf8" stroke-width="1.2"/>
-  <line x1="146" y1="628" x2="146" y2="692" stroke="#38bdf8" stroke-width="1.2"/>
-  <text x="130" y="663" text-anchor="middle" fill="#e0f2fe" font-size="8" font-weight="700">W-01 LOW-E GLAZING</text>
+  <rect x="78" y="626" width="104" height="58" fill="url(#glassGrad)" stroke="#38bdf8" stroke-width="2"/>
+  <line x1="112" y1="626" x2="112" y2="684" stroke="#38bdf8" stroke-width="1.2"/>
+  <line x1="146" y1="626" x2="146" y2="684" stroke="#38bdf8" stroke-width="1.2"/>
+  <text x="130" y="658" text-anchor="middle" fill="#e0f2fe" font-size="8" font-weight="700">W-01 LOW-E GLAZING</text>
 
-  <rect x="202" y="634" width="32" height="72" fill="#78350f" stroke="#e4b86a" stroke-width="2"/>
-  <circle cx="227" cy="670" r="2.3" fill="#e4b86a"/>
-  <text x="218" y="628" text-anchor="middle" fill="#e4b86a" font-size="8" font-weight="700">D-01</text>
+  <rect x="202" y="632" width="32" height="64" fill="#78350f" stroke="#e4b86a" stroke-width="2"/>
+  <circle cx="227" cy="664" r="2.3" fill="#e4b86a"/>
+  <text x="218" y="627" text-anchor="middle" fill="#e4b86a" font-size="8" font-weight="700">D-01</text>
 
   <!-- Upper Level Egress Windows (W-04) -->
   <rect x="82" y="552" width="48" height="42" fill="url(#glassGrad)" stroke="#38bdf8" stroke-width="1.8"/>
@@ -1072,8 +1073,8 @@ export function buildArchitecturalBlueprintSvg(
   <rect x="418" y="602" width="110" height="18" rx="4" fill="#09192f" stroke="#38bdf8" stroke-width="1"/>
   <text x="473" y="614" text-anchor="middle" fill="#7dd3fc" font-size="7.5" font-weight="700">+10'-0" LEVEL 2 SLAB</text>
 
-  <rect x="418" y="684" width="110" height="18" rx="4" fill="#052e16" stroke="#4ade80" stroke-width="1"/>
-  <text x="473" y="696" text-anchor="middle" fill="#4ade80" font-size="7.5" font-weight="700">+0'-0" GRADE &amp; SLAB</text>
+  <rect x="418" y="687" width="110" height="18" rx="4" fill="#052e16" stroke="#4ade80" stroke-width="1"/>
+  <text x="473" y="699" text-anchor="middle" fill="#4ade80" font-size="7.5" font-weight="700">+0'-0" GRADE &amp; SLAB</text>
 
   <!-- ========================================================================= -->
   <!-- QUADRANT 4 (BOTTOM-RIGHT): SHEET A-501 3D AXONOMETRIC VILLA & TITLE BLOCK -->

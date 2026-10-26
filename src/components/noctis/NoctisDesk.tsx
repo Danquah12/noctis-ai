@@ -384,13 +384,18 @@ export function formatDashboardForSocial(raw: string): string {
 
 function plainAnswer(raw: string) {
   const dashText = formatDashboardForSocial(raw);
+  let inCodeFence = false;
   return (raw.split(/\n\s*Claim standing:/i)[0] || raw)
     .replace(/```noctis-dashboard[\s\S]*?```/gi, dashText ? `\n${dashText}\n` : "")
-    .replace(/```(?:json|html)[\s\S]*?```/gi, "")
-    .replace(/```/g, "")
+    .replace(/```(?:json|html|svg|mermaid)[\s\S]*?```/gi, "")
     .split("\n")
     .map((line) => {
       const t = line.trim();
+      if (t.startsWith("```")) {
+        inCodeFence = !inCodeFence;
+        return "";
+      }
+      if (inCodeFence) return line;
       if (!t.startsWith("|") || !t.endsWith("|")) return line;
       const cells = t
         .slice(1, -1)
@@ -402,7 +407,7 @@ function plainAnswer(raw: string) {
       return `• ${cells[0]}: ${cells.slice(1).join(" · ")}`;
     })
     .join("\n")
-    .replace(/#{1,6}\s*/g, "")
+    .replace(/^\s*#{1,6}\s+/gm, "")
     .replace(/\*\*/g, "")
     .replace(/`([^`]+)`/g, "$1")
     .replace(/[ \t]+\n/g, "\n")
