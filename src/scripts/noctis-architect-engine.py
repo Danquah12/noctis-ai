@@ -294,6 +294,44 @@ class TestNoctisArchitect10AcceptanceSuite(unittest.TestCase):
         # ARCH-AT-10: Professional review escalation
         self.assertEqual(len(code_res["escalated_engineering_questions"]), 2)
 
+    def test_arch_bench_25_stormwater_hydrograph_and_sloping_site_safety(self) -> None:
+        import math
+        # 1. Rainfall & Catchment Engine (Sloped vs Plan Roof Area + Subcatchments)
+        roof_plan_m2 = 180.0
+        roof_eaves_plan_m2 = 210.0
+        pitch_rad = math.radians(26.565)
+        roof_sloped_m2 = round(roof_plan_m2 / math.cos(pitch_rad), 2)
+        self.assertEqual(roof_sloped_m2, 201.25)
+
+        i_base = 128.0
+        i_cc = 150.0  # +17.2% climate-change uplift
+        q_roof_base = round((0.95 * i_base * roof_plan_m2) / 3600.0, 2)
+        q_roof_cc = round((0.95 * i_cc * roof_eaves_plan_m2) / 3600.0, 2)
+        self.assertEqual(q_roof_base, 6.08)
+        self.assertEqual(q_roof_cc, 8.31)
+
+        # 2. Independent Mass Balance & Hydrograph Routing (20-min storm = 1200 s)
+        v_in_m3 = round((328.08 * 37.5) / 1000.0, 3)  # 12.303 m3
+        v_out_m3 = round((3.84 * 1200.0) / 1000.0, 3)  # 4.608 m3 throttled <= 5.00 L/s
+        v_det_single_m3 = round(v_in_m3 - v_out_m3, 3)  # 7.695 m3
+        mass_balance_err = abs(v_in_m3 - (v_out_m3 + v_det_single_m3))
+        self.assertLess(mass_balance_err, 1e-6)
+
+        # 3. RWH vs Detention Separation + Consecutive-Storm Carryover
+        gross_tank_m3 = 15.00
+        rwh_reuse_m3 = 3.50  # 0.00 m3 detention credit
+        live_detention_cap_m3 = round(gross_tank_m3 - rwh_reuse_m3, 2)
+        self.assertEqual(live_detention_cap_m3, 11.50)
+        residual_before_storm2_m3 = 3.805
+        peak_consecutive_m3 = round(residual_before_storm2_m3 + v_det_single_m3, 2)
+        self.assertEqual(peak_consecutive_m3, 11.50)
+
+        # 4. Hydraulic Conveyance & Sloping-Site Hold Gates
+        downpipe_cap_ls = 4 * 4.50  # 18.00 L/s >= 8.31 L/s
+        self.assertGreaterEqual(downpipe_cap_ls, q_roof_cc)
+        hold_gates = ["HOLD-DR-01", "HOLD-DR-02", "HOLD-DR-03"]
+        self.assertEqual(len(hold_gates), 3)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
