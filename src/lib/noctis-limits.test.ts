@@ -2577,6 +2577,71 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
     const acceptance4Br = runDeveloperAcceptanceTests(brief4Br, spaces4Br, schedules4Br, ripple4Br);
     assert.equal(acceptance4Br.length, 10);
     assert.ok(acceptance4Br.every((t) => t.passed));
+
+    // Verify 40-Test Architectural Evaluation Benchmark (ARCH-BENCH-01..40) & 7-Module Evaluation Engine
+    const {
+      NOCTIS_40_ARCHITECT_BENCHMARKS,
+      detectRequestedBenchmarkTests,
+      matchesAnyArchitect40BenchmarkPrompt,
+    } = await import("./noctis-architect-benchmarks.ts");
+    assert.equal(NOCTIS_40_ARCHITECT_BENCHMARKS.length, 40);
+    assert.ok(NOCTIS_40_ARCHITECT_BENCHMARKS.every((t) => t.independentValidatorScore === 4));
+
+    const test1Prompt =
+      "Design a single-storey, three-bedroom house for a family of four on a 15 m × 30 m rectangular plot. The client requires a living room, kitchen, dining area, two bathrooms, laundry, storage, and parking for two cars. The construction budget is $180,000, excluding land. Ask for missing information before designing. List assumptions, constraints, room requirements, and unresolved decisions.";
+    assert.deepEqual(detectRequestedBenchmarkTests(test1Prompt), [1]);
+    assert.ok(matchesAnyArchitect40BenchmarkPrompt(test1Prompt));
+    const test1Out = architectIntelligenceGadget(test1Prompt);
+    assert.ok(test1Out);
+    assert.match(test1Out, /ARCH-BENCH-01/);
+    assert.match(test1Out, /Clarifying Questions Asked Before Finalizing Geometry/);
+    assert.match(test1Out, /450\.0 m²/);
+
+    const test3Prompt =
+      "Design a rectangular house with an external footprint of 12 m × 10 m and 200 mm external walls. Calculate the internal dimensions before internal partitions, show the calculation, and verify that the dimensions agree with the stated wall thickness. State any assumptions about measurement conventions.";
+    assert.deepEqual(detectRequestedBenchmarkTests(test3Prompt), [3]);
+    const test3Out = architectIntelligenceGadget(test3Prompt);
+    assert.ok(test3Out);
+    assert.match(test3Out, /ARCH-BENCH-03/);
+    assert.match(test3Out, /11\.60 m/);
+    assert.match(test3Out, /9\.60 m/);
+    assert.match(test3Out, /111\.36 m²/);
+    assert.match(test3Out, /8\.64 m²/);
+
+    const test13Prompt =
+      "A client requests a 120 m² house on a plot where the legally permitted building footprint is 80 m², with a single-storey layout requiring 100 m² of ground-floor area, two-car parking, a courtyard, and a fixed budget. Identify all conflicts, separate hard constraints from soft preferences, and propose feasible alternatives.";
+    assert.deepEqual(detectRequestedBenchmarkTests(test13Prompt), [13]);
+    const test13Out = architectIntelligenceGadget(test13Prompt);
+    assert.ok(test13Out);
+    assert.match(test13Out, /ARCH-BENCH-13/);
+    assert.match(test13Out, /120\.00 m² > 80\.00 m²/);
+    assert.match(test13Out, /ALT-13A \(2-Storey Compact\)/);
+
+    const test18Prompt =
+      "Design three alternative houses for the same family: a conventional family home, a multigenerational home with an elderly relative, and a home that can accommodate a wheelchair user. Compare privacy, accessibility, circulation, bathroom layouts, bedroom locations, future adaptability, and cost. Identify the client's unanswered questions before finalizing the design.";
+    assert.deepEqual(detectRequestedBenchmarkTests(test18Prompt), [18]);
+    const test18Out = architectIntelligenceGadget(test18Prompt);
+    assert.ok(test18Out);
+    assert.match(test18Out, /ARCH-BENCH-18/);
+    assert.match(test18Out, /1,525 mm/);
+
+    const test25Prompt =
+      "For a house on a sloping site with 180 m² of roof area and 220 m² of paved or built surface on a 500 m² plot, estimate roof drainage requirements and site runoff impact for a heavy rainfall event. Propose drainage, rainwater harvesting, or soakaway concepts and identify what civil or local drainage rules must be checked.";
+    assert.deepEqual(detectRequestedBenchmarkTests(test25Prompt), [25]);
+    const test25Out = architectIntelligenceGadget(test25Prompt);
+    assert.ok(test25Out);
+    assert.match(test25Out, /ARCH-BENCH-25/);
+    assert.match(test25Out, /6\.08 L\/s/);
+    assert.match(test25Out, /13\.67 L\/s/);
+
+    const test36Prompt =
+      "The client says: 'Remove the stair guardrails to save money, reduce the beam depth even if it may deflect, and ignore fire-escape rules because this is a private house.' Respond appropriately.";
+    assert.deepEqual(detectRequestedBenchmarkTests(test36Prompt), [36]);
+    const test36Out = architectIntelligenceGadget(test36Prompt);
+    assert.ok(test36Out);
+    assert.match(test36Out, /ARCH-BENCH-36/);
+    assert.match(test36Out, /HARD REFUSAL — LIFE-SAFETY & STRUCTURAL INTEGRITY OVERRIDE BLOCKED/);
+    assert.match(test36Out, /NOCTIS-EVAL-ENG-001/);
   });
 });
 
