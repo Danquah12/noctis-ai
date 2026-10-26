@@ -802,8 +802,15 @@ export function buildArchitecturalBlueprintSvg(
   const b3Area = b3W * b3L;
   const hasBed5 = brief.bedrooms >= 5;
   const overhangLabel = brief.jurisdiction === "United States" ? "2'-0\" Overhang" : "900mm Overhang";
+  const cleanTitle = brief.projectTitle.replace(/\s*\([^)]*\)\s*$/, "").trim();
   const shortTitle =
-    brief.projectTitle.length > 36 ? `${brief.projectTitle.slice(0, 34)}...` : brief.projectTitle;
+    cleanTitle.length > 62 ? cleanTitle.slice(0, 62).replace(/\s+\S*$/, "") : cleanTitle;
+  const shortCode =
+    brief.jurisdiction === "Multiple Countries"
+      ? "US IRC 2024 + Ghana GS 1207 + Uganda NBC 2019 + IFC 4.3 / IDS"
+      : profile.codeStandard.length > 56
+        ? profile.codeStandard.slice(0, 56).replace(/\s+\S*$/, "")
+        : profile.codeStandard;
 
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 790" width="100%" style="background:#06101e;border-radius:14px;font-family:system-ui,-apple-system,Segoe UI,Roboto,monospace">
   <defs>
@@ -831,8 +838,8 @@ export function buildArchitecturalBlueprintSvg(
 
   <!-- Top Master Banner -->
   <rect x="16" y="16" width="1048" height="40" fill="#09192f" stroke="#1f4e94" stroke-width="1"/>
-  <text x="28" y="34" fill="#e4b86a" font-size="11" font-weight="700">NOCTIS ARCHITECTURAL CAD &amp; BIM SHEET SET (A-101 · A-102 · A-201 · A-501) — ${shortTitle.toUpperCase()}</text>
-  <text x="28" y="49" fill="#99ceff" font-size="10">Scale: 1/4" = 1'-0" (1:50) · Plot: ${brief.lotWidthFt}'×${brief.lotDepthFt}' · Lot Cov: ${lotCoveragePct}% (&lt;=40%) · Gross: ${grossConditionedSqFt.toLocaleString()} sq ft · Code: ${profile.codeStandard.slice(0, 44)}</text>
+  <text x="28" y="34" fill="#e4b86a" font-size="10" font-weight="700">NOCTIS ARCHITECTURAL CAD &amp; BIM SHEET SET (A-101 · A-102 · A-201 · A-501) — ${shortTitle.toUpperCase()}</text>
+  <text x="28" y="49" fill="#99ceff" font-size="9.5">Scale: 1/4" = 1'-0" (1:50) · Plot: ${brief.lotWidthFt}'×${brief.lotDepthFt}' · Lot Cov: ${lotCoveragePct}% (&lt;=40%) · Gross: ${grossConditionedSqFt.toLocaleString()} sq ft · Code: ${shortCode}</text>
   <rect x="912" y="23" width="142" height="24" rx="12" fill="#052e16" stroke="#4ade80" stroke-width="1.2"/>
   <text x="983" y="39" text-anchor="middle" fill="#4ade80" font-size="10" font-weight="700">10/10 ARCH-AT PASS</text>
 
@@ -1096,7 +1103,7 @@ export function buildArchitecturalBlueprintSvg(
 
   <!-- Official AIA / BIM Title Block Stamp (cleanly fitted inside 502px width) -->
   <rect x="552" y="708" width="502" height="54" rx="6" fill="#09192f" stroke="#e4b86a" stroke-width="1.5"/>
-  <text x="564" y="725" fill="#e4b86a" font-size="9.5" font-weight="700">PROJECT: ${shortTitle} (${brief.bedrooms}BR / ${brief.bathrooms}BA)</text>
+  <text x="564" y="725" fill="#e4b86a" font-size="9" font-weight="700">PROJECT: ${shortTitle} (${brief.bedrooms}BR / ${brief.bathrooms}BA)</text>
   <text x="564" y="740" fill="#e2e8f0" font-size="8.5">STRUCTURAL: Engineered Timber / Steel / RC Frame · 2×10 Joists @ 16" OC · RC Spread Footings</text>
   <text x="564" y="754" fill="#4ade80" font-size="8.5" font-weight="700">ESTIMATED COST: $${baselineCostUsd.toLocaleString()} (Incl. +$${ripple.costDeltaUsd.toLocaleString()} Ripple) · IFC 4.3 + buildingSMART IDS: PASS</text>
 </svg>`;
@@ -1113,6 +1120,12 @@ export function buildInteractiveHouseDesignHtml(
 ): string {
   const spacesJson = JSON.stringify(spaces);
   const baseCostWithoutBed3 = baselineCostUsd - brief.bedroomResizeTo.widthFt * brief.bedroomResizeTo.lengthFt * 210;
+  const shortCode =
+    brief.jurisdiction === "Multiple Countries"
+      ? "US IRC 2024 + Ghana GS 1207 + Uganda NBC 2019 + IFC 4.3 / IDS"
+      : profile.codeStandard.length > 56
+        ? profile.codeStandard.slice(0, 56).replace(/\s+\S*$/, "")
+        : profile.codeStandard;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -1315,7 +1328,7 @@ export function buildInteractiveHouseDesignHtml(
   <header>
     <div>
       <div class="brand-title">NOCTIS 3D &amp; 2D ARCHITECTURAL HOUSE DESIGN STUDIO (IFC 4.3 + IDS)</div>
-      <div class="brand-sub">${brief.projectTitle.replace(/[<>&"]/g, "")} · ${brief.jurisdiction} (${profile.codeStandard.slice(0, 42).replace(/[<>&"]/g, "")})</div>
+      <div class="brand-sub">${brief.projectTitle.replace(/[<>&"]/g, "")} · ${brief.jurisdiction} (${shortCode.replace(/[<>&"]/g, "")})</div>
     </div>
     <div class="tabs">
       <button class="tab-btn active" onclick="setMode('3d', this)">3D Orbit Villa Model</button>
@@ -1547,9 +1560,9 @@ export function buildInteractiveHouseDesignHtml(
     }
 
     function draw3DVilla(W, H) {
-      const cx = W * 0.55;
-      const cy = H * 0.65;
-      const scale = Math.min(W, H) / 68;
+      const cx = W * 0.50;
+      const cy = H * 0.57;
+      const scale = Math.min(W, H) / 76;
 
       // Site Plot Pad
       const plotPts = [[-26, -22, 0], [26, -22, 0], [26, 23, 0], [-26, 23, 0]].map(p => project3D(p[0], p[1], p[2], cx, cy, scale));
