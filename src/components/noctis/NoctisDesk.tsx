@@ -371,7 +371,7 @@ export function formatDashboardForSocial(raw: string): string {
           ? isTemp
             ? ` / ${p.secondary}°`
             : isClash
-              ? ` (${p.secondary} clashes)`
+              ? ` (${p.secondary} ${p.secondary === 1 ? "clash" : "clashes"})`
               : ` / ${p.secondary}`
           : "";
       lines.push(`${bar} ${p.label}: ${p.display}${sec}`);
@@ -407,7 +407,10 @@ function plainAnswer(raw: string) {
       }
       if (inCodeFence) return line;
       if (!t.startsWith("|") || !t.endsWith("|")) {
-        return line.replace(/^\s*#{1,6}\s+/, "");
+        return line
+          .replace(/^\s*#{1,6}\s+/, "")
+          .replace(/\*\*/g, "")
+          .replace(/`([^`]+)`/g, "$1");
       }
       const cells = t
         .slice(1, -1)
@@ -419,8 +422,6 @@ function plainAnswer(raw: string) {
       return `• ${cells[0]}: ${cells.slice(1).join(" · ")}`;
     })
     .join("\n")
-    .replace(/\*\*/g, "")
-    .replace(/`([^`]+)`/g, "$1")
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
