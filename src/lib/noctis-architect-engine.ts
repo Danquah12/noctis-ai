@@ -1905,15 +1905,27 @@ export function buildArchitecturalIntelligenceReport(question = ""): string {
 export function architectIntelligenceGadget(question: string): string | null {
   const q = question.toLowerCase();
   const asksArchitectTraining =
-    /\b(design\s+houses?\s+like\s+(?:a\s+|an\s+)?(?:professional\s+)?architect|architectural\s+intelligence\s+(?:system|engine)|noctis\s+architect|noctis-arch-001|train\s+(?:dstrike|noctis|vibe)[\s\S]{0,40}\barchitect|become\s+an\s+architect|client\s+brief\s+agent|architectural\s+orchestrator|floor\s+plan\s+agent|3d\s*\/\s*bim\s+agent|code\s+compliance\s+agent|design\s+qa\s*(?:&|and)\s*cost\s+agent|ifcopenshell|buildingsmart\s+ids|information\s+delivery\s+specification|shared\s+building\s+data\s+model|(?:12\s*[x×]\s*12|enlarge\s+a?\s*bedroom|resize\s+a?\s*bedroom)[\s\S]{0,40}(?:14\s*[x×]\s*14|circulation|footprint|joist)|configure\s+noctis\s+architect|developer'?s\s+acceptance\s+tests|measurable\s+acceptance\s+test\s+suite|verified\s+design\s+loop|parametric\s+house\s+generator|design\s+verification\s+engine|architectural\s+cost\s+and\s+optimization\s+engine|architectural\s+reasoning\s+and\s+design\s+memory|validate\s+the\s+selected\s+floor\s+plan|workflow\s+noctis\s+should\s+follow\s+for\s+every\s+house|ghana\s+building\s+code\s+gs\s*1207|uganda\s+national\s+building\s+code)\b/i.test(
+    /\b(design\s+houses?\s+like\s+(?:a\s+|an\s+)?(?:professional\s+)?architect|architectural\s+intelligence\s+(?:system|engine)|noctis\s+architect|noctis-arch-001|train\s+(?:dstrike|noctis|vibe)[\s\S]{0,40}\barchitect|become\s+an\s+architect|client\s+brief\s+agent|architectural\s+orchestrator|floor\s+plan\s+agent|3d\s*\/\s*bim\s+agent|code\s+compliance\s+agent|design\s+qa\s*(?:&|and)\s*cost\s+agent|ifcopenshell|buildingsmart\s+ids|information\s+delivery\s+specification|shared\s+building\s+data\s+model|(?:12\s*[x×]\s*12|enlarge\s+(?:a\s+|the\s+)?bedroom|resize\s+(?:a\s+|the\s+)?bedroom)[\s\S]{0,60}(?:\d+\s*[x×]\s*\d+|circulation|footprint|joist)|configure\s+noctis\s+architect|developer'?s\s+acceptance\s+tests|measurable\s+acceptance\s+test\s+suite|verified\s+design\s+loop|parametric\s+house\s+generator|design\s+verification\s+engine|architectural\s+cost\s+and\s+optimization\s+engine|architectural\s+reasoning\s+and\s+design\s+memory|validate\s+the\s+selected\s+floor\s+plan|workflow\s+noctis\s+should\s+follow\s+for\s+every\s+house|ghana\s+building\s+code\s+gs\s*1207|uganda\s+national\s+building\s+code|sheet\s+a-101|4-sheet\s+cad)\b/i.test(
       q,
     );
 
+  const hasNonBuildingFalsePositive = /\b(data\s+warehouse|clearing\s*house|white\s+house|house\s+of\s+representatives|in-house\s+team)\b/i.test(
+    q,
+  );
+
   const asksHouseDesign =
-    /\b((?:design|create|build|generate|draw|plan|draft)\s+(?:me\s+|us\s+)?(?:a\s+|an\s+|the\s+)?(?:\d+\s*(?:-|\s)?(?:bed(?:room)?s?|br|story|stories|storey|sq\.?\s*ft\.?|square\s*foot)\s+|four[-\s]bedroom\s+|three[-\s]bedroom\s+|five[-\s]bedroom\s+|two[-\s]bedroom\s+|modern\s+|contemporary\s+|custom\s+|luxury\s+|affordable\s+|detached\s+|single[-\s]family\s+|two[-\s]story\s+|single[-\s]story\s+|ranch\s+|tropical\s+)*(?:house|home|residence|villa|bungalow|duplex|apartment\s+building|floor\s+plan|house\s+plan|building\s+plan|architectural\s+plan|architectural\s+package|bim\s+model)|door\s+and\s+window\s+schedule|house\s+planning\s+assistant|3d\s+house\s+generator)\b/i.test(
+    !hasNonBuildingFalsePositive &&
+    (/\b(?:design|create|build|generate|draw|plan|draft|sketch|layout|model)\b[\s\S]{0,120}\b(?:house|home|residence|villa|bungalow|duplex|cottage|townhouse|apartment\s+building|floor\s+plan|house\s+plan|building\s+plan|architectural\s+plan|architectural\s+package|cad\s+blueprint|blueprint|bim\s+model|house\s+design)\b/i.test(
       q,
-    );
+    ) ||
+      /\b(?:\d+|two|three|four|five|six)\s*(?:-|\s)?(?:bed(?:room)?s?|br)\b[\s\S]{0,100}\b(?:house|home|residence|villa|bungalow|duplex|floor\s+plan|blueprint|bath(?:room)?s?|ba\b|lot\b|sq\.?\s*ft)/i.test(
+        q,
+      ) ||
+      /\b(?:door\s+and\s+window\s+schedule|house\s+planning\s+assistant|3d\s+house\s+generator|3d\s+house\s+design)\b/i.test(
+        q,
+      ));
 
   if (!asksArchitectTraining && !asksHouseDesign) return null;
   return buildArchitecturalIntelligenceReport(question);
 }
+

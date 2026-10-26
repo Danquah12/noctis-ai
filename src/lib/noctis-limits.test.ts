@@ -2550,6 +2550,21 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
     const ghanaHouse = architectIntelligenceGadget("Design a 4-bedroom house in Ghana with floor plan and schedules");
     assert.ok(ghanaHouse);
     assert.match(ghanaHouse, /Ghana Building Code GS 1207:2018/);
+    assert.match(ghanaHouse, /<!DOCTYPE html>/);
+    assert.match(ghanaHouse, /<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg" viewBox="0 0 1080 790"/);
+
+    const ghana5BrVilla = architectIntelligenceGadget(
+      "Design a 5-bedroom, 4.5-bath tropical courtyard villa in Accra, Ghana on a 100x120 ft lot with a $320,000 budget, enlarge Bedroom 2 from 12x12 ft to 14x15 ft, and generate the 3D house design and 4-sheet CAD blueprint.",
+    );
+    assert.ok(ghana5BrVilla);
+    assert.match(ghana5BrVilla, /5-Bedroom, 4\.5-Bath/);
+    assert.match(ghana5BrVilla, /RM-209 BEDROOM 5/);
+    assert.match(ghana5BrVilla, /SHEET A-101 — GROUND FLOOR PLAN/);
+    assert.match(ghana5BrVilla, /SHEET A-102 — UPPER FLOOR PLAN/);
+    assert.match(ghana5BrVilla, /SHEET A-201 &amp; A-301 — SOUTH FRONT ELEVATION/);
+    assert.match(ghana5BrVilla, /SHEET A-501 — 3D AXONOMETRIC VILLA MODEL/);
+    assert.ok(ghana5BrVilla.includes('x="418" y="522"'));
+    assert.ok(ghana5BrVilla.includes("798,456"));
 
     const ugandaHouse = architectIntelligenceGadget("Design a 3-bedroom house in Uganda");
     assert.ok(ugandaHouse);
@@ -2564,4 +2579,5 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
     assert.ok(acceptance4Br.every((t) => t.passed));
   });
 });
+
 
