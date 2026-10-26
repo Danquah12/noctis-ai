@@ -396,7 +396,9 @@ function plainAnswer(raw: string) {
         return "";
       }
       if (inCodeFence) return line;
-      if (!t.startsWith("|") || !t.endsWith("|")) return line;
+      if (!t.startsWith("|") || !t.endsWith("|")) {
+        return line.replace(/^\s*#{1,6}\s+/, "");
+      }
       const cells = t
         .slice(1, -1)
         .split("|")
@@ -407,7 +409,6 @@ function plainAnswer(raw: string) {
       return `• ${cells[0]}: ${cells.slice(1).join(" · ")}`;
     })
     .join("\n")
-    .replace(/^\s*#{1,6}\s+/gm, "")
     .replace(/\*\*/g, "")
     .replace(/`([^`]+)`/g, "$1")
     .replace(/[ \t]+\n/g, "\n")

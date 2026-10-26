@@ -859,8 +859,8 @@ export function buildArchitecturalBlueprintSvg(
 
   <!-- EX-101 Covered Veranda -->
   <rect x="48" y="110" width="212" height="66" fill="#0c263b" stroke="#38bdf8" stroke-width="2" stroke-dasharray="5,3"/>
-  <!-- Veranda Deck Planks & Patio Table Fixture -->
-  <rect x="70" y="122" width="38" height="22" rx="4" fill="none" stroke="#38bdf8" stroke-opacity="0.4" stroke-width="1"/>
+  <!-- Corner Patio Table Icon (clear of centered text) -->
+  <rect x="54" y="116" width="18" height="14" rx="3" fill="none" stroke="#38bdf8" stroke-opacity="0.32" stroke-width="1"/>
   <text x="154" y="133" text-anchor="middle" fill="#7dd3fc" font-size="10" font-weight="700">EX-101 COVERED VERANDA</text>
   <text x="154" y="147" text-anchor="middle" fill="#bae6fd" font-size="8.5">24'-0" × 12'-0" (288 sq ft · Timber Deck)</text>
   <text x="154" y="161" text-anchor="middle" fill="#e4b86a" font-size="8">[D-02 12'-0" Multi-Slide Glass Wall]</text>
@@ -868,17 +868,16 @@ export function buildArchitecturalBlueprintSvg(
   <!-- RM-104 Daylight Dining -->
   <rect x="260" y="110" width="222" height="66" fill="#0d213d" stroke="#99ceff" stroke-width="2.5"/>
   <line x1="315" y1="110" x2="425" y2="110" stroke="#38bdf8" stroke-width="5"/>
-  <!-- Dining Table Fixture -->
-  <rect x="326" y="120" width="90" height="44" rx="6" fill="none" stroke="#38bdf8" stroke-opacity="0.3" stroke-width="1.2"/>
+  <!-- Corner Dining Icon (clear of centered text) -->
+  <rect x="268" y="118" width="20" height="14" rx="3" fill="none" stroke="#38bdf8" stroke-opacity="0.3" stroke-width="1"/>
   <text x="371" y="138" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="700">RM-104 DAYLIGHT DINING</text>
   <text x="371" y="153" text-anchor="middle" fill="#99ceff" font-size="8.5">16'-0" × 14'-0" (224 sq ft · 20.8 m²)</text>
 
   <!-- RM-102 Great Room / Living -->
   <rect x="48" y="176" width="212" height="122" fill="#102a4c" stroke="#99ceff" stroke-width="2.5"/>
   <line x1="48" y1="202" x2="48" y2="274" stroke="#38bdf8" stroke-width="5"/>
-  <!-- L-Sofa & Coffee Table Fixture -->
-  <path d="M 66 192 H 135 V 210 H 84 V 252 H 66 Z" fill="none" stroke="#38bdf8" stroke-opacity="0.32" stroke-width="1.2"/>
-  <rect x="94" y="220" width="36" height="22" rx="3" fill="none" stroke="#e4b86a" stroke-opacity="0.35" stroke-width="1"/>
+  <!-- Corner L-Sofa Icon (above text, zero overlap) -->
+  <path d="M 56 184 H 92 V 194 H 66 V 212 H 56 Z" fill="none" stroke="#38bdf8" stroke-opacity="0.32" stroke-width="1.1"/>
   <text x="154" y="226" text-anchor="middle" fill="#ffffff" font-size="10.5" font-weight="700">RM-102 GREAT ROOM / LIVING</text>
   <text x="154" y="242" text-anchor="middle" fill="#99ceff" font-size="9">22'-0" × 18'-0" (396 sq ft · 36.8 m²)</text>
   <text x="154" y="257" text-anchor="middle" fill="#38bdf8" font-size="8.5">W-01 Low-E Glazing: 84 sq ft (21.2%)</text>
@@ -904,11 +903,11 @@ export function buildArchitecturalBlueprintSvg(
   <!-- RM-108 Bedroom 1 (Ground Guest Suite) -->
   <rect x="48" y="298" width="116" height="92" fill="#123159" stroke="#e4b86a" stroke-width="2.5"/>
   <line x1="72" y1="390" x2="140" y2="390" stroke="#38bdf8" stroke-width="5"/>
-  <!-- Queen Bed Fixture -->
-  <rect x="58" y="308" width="42" height="50" rx="3" fill="none" stroke="#e4b86a" stroke-opacity="0.3" stroke-width="1"/>
-  <text x="106" y="334" text-anchor="middle" fill="#fde68a" font-size="9.5" font-weight="700">RM-108 BEDROOM 1</text>
-  <text x="106" y="349" text-anchor="middle" fill="#ffffff" font-size="8.5">14'-0" × 12'-0" (168 sf)</text>
-  <text x="106" y="364" text-anchor="middle" fill="#4ade80" font-size="8">W-04 Egress 9.2 sf</text>
+  <!-- Corner Bed Icon (above text, zero overlap) -->
+  <rect x="54" y="304" width="22" height="16" rx="2" fill="none" stroke="#e4b86a" stroke-opacity="0.32" stroke-width="1"/>
+  <text x="106" y="336" text-anchor="middle" fill="#fde68a" font-size="9.5" font-weight="700">RM-108 BEDROOM 1</text>
+  <text x="106" y="351" text-anchor="middle" fill="#ffffff" font-size="8.5">14'-0" × 12'-0" (168 sf)</text>
+  <text x="106" y="366" text-anchor="middle" fill="#4ade80" font-size="8">W-04 Egress 9.2 sf</text>
 
   <!-- RM-107 Guest Bath (ADA) -->
   <rect x="164" y="298" width="96" height="92" fill="#0c203b" stroke="#99ceff" stroke-width="2"/>
@@ -930,9 +929,9 @@ export function buildArchitecturalBlueprintSvg(
 
   <!-- GR-101 Garage (Fire Separated) -->
   <rect x="358" y="298" width="124" height="92" fill="#111827" stroke="#f87171" stroke-width="2.5"/>
-  <!-- 2 EV Car Outlines -->
-  <rect x="368" y="308" width="44" height="70" rx="6" fill="none" stroke="#475569" stroke-width="1"/>
-  <rect x="426" y="308" width="44" height="70" rx="6" fill="none" stroke="#475569" stroke-width="1"/>
+  <!-- 2 Subtle EV Bay Outlines -->
+  <rect x="368" y="308" width="44" height="70" rx="6" fill="none" stroke="#475569" stroke-opacity="0.25" stroke-width="1"/>
+  <rect x="426" y="308" width="44" height="70" rx="6" fill="none" stroke="#475569" stroke-opacity="0.25" stroke-width="1"/>
   <text x="420" y="330" text-anchor="middle" fill="#fca5a5" font-size="9.5" font-weight="700">GR-101 ${brief.garageBays}-CAR GARAGE</text>
   <text x="420" y="346" text-anchor="middle" fill="#e2e8f0" font-size="8.5">${brief.garageBays * 12}'-0" × 22'-0" (${brief.garageBays * 264} sf)</text>
   <text x="420" y="362" text-anchor="middle" fill="#f87171" font-size="7.5" font-weight="600">D-08 20-Min Fire + Type X</text>
@@ -951,11 +950,11 @@ export function buildArchitecturalBlueprintSvg(
   <!-- RM-201 Bedroom 2 Primary Suite -->
   <rect x="568" y="128" width="174" height="118" fill="#123159" stroke="#e4b86a" stroke-width="2.5"/>
   <line x1="568" y1="152" x2="568" y2="224" stroke="#38bdf8" stroke-width="5"/>
-  <!-- King Bed Fixture -->
-  <rect x="578" y="140" width="52" height="58" rx="4" fill="none" stroke="#e4b86a" stroke-opacity="0.32" stroke-width="1.2"/>
-  <text x="655" y="174" text-anchor="middle" fill="#fde68a" font-size="10" font-weight="700">RM-201 PRIMARY SUITE</text>
-  <text x="655" y="190" text-anchor="middle" fill="#ffffff" font-size="9">20'-0" × 16'-0" (320 sq ft)</text>
-  <text x="655" y="206" text-anchor="middle" fill="#7dd3fc" font-size="8">Walk-In Closet + W-04 (9.2 sf)</text>
+  <!-- Corner King Bed Icon (above text, zero overlap) -->
+  <rect x="576" y="135" width="26" height="20" rx="3" fill="none" stroke="#e4b86a" stroke-opacity="0.32" stroke-width="1.1"/>
+  <text x="655" y="176" text-anchor="middle" fill="#fde68a" font-size="10" font-weight="700">RM-201 PRIMARY SUITE</text>
+  <text x="655" y="192" text-anchor="middle" fill="#ffffff" font-size="9">20'-0" × 16'-0" (320 sq ft)</text>
+  <text x="655" y="208" text-anchor="middle" fill="#7dd3fc" font-size="8">Walk-In Closet + W-04 (9.2 sf)</text>
 
   <!-- RM-202 Primary Spa Bath -->
   <rect x="742" y="128" width="112" height="118" fill="#0d2340" stroke="#99ceff" stroke-width="2"/>
@@ -982,7 +981,7 @@ export function buildArchitecturalBlueprintSvg(
   <!-- RM-204 Bedroom 4 -->
   <rect x="568" y="284" width="154" height="108" fill="#123159" stroke="#e4b86a" stroke-width="2.5"/>
   <line x1="590" y1="392" x2="695" y2="392" stroke="#38bdf8" stroke-width="5"/>
-  <rect x="578" y="300" width="40" height="46" rx="3" fill="none" stroke="#e4b86a" stroke-opacity="0.3" stroke-width="1"/>
+  <rect x="576" y="291" width="22" height="16" rx="2" fill="none" stroke="#e4b86a" stroke-opacity="0.32" stroke-width="1"/>
   <text x="645" y="328" text-anchor="middle" fill="#fde68a" font-size="9.5" font-weight="700">RM-204 BEDROOM 4</text>
   <text x="645" y="344" text-anchor="middle" fill="#ffffff" font-size="8.5">13'-0" × 12'-0" (156 sq ft)</text>
   <text x="645" y="360" text-anchor="middle" fill="#4ade80" font-size="8">W-04 Egress (9.2 sf)</text>
@@ -996,7 +995,7 @@ export function buildArchitecturalBlueprintSvg(
   <!-- RM-209 Bedroom 5 (or Daylight Terrace when 4BR) -->
   <rect x="854" y="284" width="184" height="108" fill="#123159" stroke="${hasBed5 ? "#e4b86a" : "#99ceff"}" stroke-width="2.5"/>
   <line x1="885" y1="392" x2="1005" y2="392" stroke="#38bdf8" stroke-width="5"/>
-  <rect x="866" y="300" width="40" height="46" rx="3" fill="none" stroke="#e4b86a" stroke-opacity="0.3" stroke-width="1"/>
+  <rect x="862" y="291" width="22" height="16" rx="2" fill="none" stroke="#e4b86a" stroke-opacity="0.32" stroke-width="1"/>
   <text x="946" y="328" text-anchor="middle" fill="#fde68a" font-size="9.5" font-weight="700">${hasBed5 ? "RM-209 BEDROOM 5 (SUITE)" : "EX-202 DAYLIGHT TERRACE"}</text>
   <text x="946" y="344" text-anchor="middle" fill="#ffffff" font-size="8.5">${hasBed5 ? "12'-0\" × 12'-0\" (144 sf · 13.4 m²)" : "14'-0\" × 12'-0\" (Covered Terrace)"}</text>
   <text x="946" y="360" text-anchor="middle" fill="#4ade80" font-size="8">${hasBed5 ? "W-04 Egress (9.2 sf >= 5.7 sf)" : "Solar Shading Louvers"}</text>
@@ -1115,7 +1114,7 @@ export function buildArchitecturalBlueprintSvg(
   <!-- Official AIA / BIM Title Block Stamp (cleanly fitted inside 502px width) -->
   <rect x="552" y="708" width="502" height="54" rx="6" fill="#09192f" stroke="#e4b86a" stroke-width="1.5"/>
   <text x="564" y="725" fill="#e4b86a" font-size="9.5" font-weight="700">PROJECT: ${shortTitle} (${brief.bedrooms}BR / ${brief.bathrooms}BA)</text>
-  <text x="564" y="740" fill="#e2e8f0" font-size="8.5">STRUCTURAL: ${profile.structuralSystem.slice(0, 68)}</text>
+  <text x="564" y="740" fill="#e2e8f0" font-size="8.5">STRUCTURAL: Engineered Timber / Steel / RC Frame · 2×10 Joists @ 16" OC · RC Spread Footings</text>
   <text x="564" y="754" fill="#4ade80" font-size="8.5" font-weight="700">ESTIMATED COST: $${baselineCostUsd.toLocaleString()} (Incl. +$${ripple.costDeltaUsd.toLocaleString()} Ripple) · IFC 4.3 + buildingSMART IDS: PASS</text>
 </svg>`;
 }
@@ -1202,16 +1201,17 @@ export function buildInteractiveHouseDesignHtml(
     }
     .workspace {
       display: grid;
-      grid-template-columns: 1fr 305px;
+      grid-template-columns: 1fr 268px;
       flex: 1;
       min-height: 0;
     }
-    @media (max-width: 780px) {
+    @media (max-width: 520px) {
       .workspace { grid-template-columns: 1fr; overflow-y: auto; }
     }
     .viewport {
       position: relative;
-      background: radial-gradient(circle at 50% 35%, #0e2445 0%, #050c17 75%);
+      min-height: 410px;
+      background: radial-gradient(circle at 50% 42%, #0e2445 0%, #050c17 75%);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -1561,8 +1561,8 @@ export function buildInteractiveHouseDesignHtml(
 
     function draw3DVilla(W, H) {
       const cx = W * 0.5;
-      const cy = H * 0.56;
-      const scale = Math.min(W, H) / 72;
+      const cy = H * 0.60;
+      const scale = Math.min(W, H) / 50;
 
       // Site Plot Pad
       const plotPts = [[-28, -24, 0], [28, -24, 0], [28, 24, 0], [-28, 24, 0]].map(p => project3D(p[0], p[1], p[2], cx, cy, scale));
@@ -1586,22 +1586,25 @@ export function buildInteractiveHouseDesignHtml(
       ctx.stroke();
 
       const faces = [];
+      const showL1Labels = cutMode === 2;
+      const showL2Labels = cutMode === 1;
+
       // Level 1 Rooms (z: 0 -> 10)
-      drawBox3D(faces, -20, -8, 0, 22, 16, 10, '#163a66', '#123055', '#0e2543', '#7dd3fc', 'RM-102 Great Room (22x18)');
-      drawBox3D(faces, 2, -8, 0, 18, 16, 10, '#14335b', '#10294a', '#0c203b', '#99ceff', "RM-103 Chef's Kitchen (18x16)");
-      drawBox3D(faces, -20, 8, 0, 14, 12, 10, '#1b3f6e', '#153259', '#102644', '#e4b86a', 'RM-108 Bedroom 1 (14x12)');
-      drawBox3D(faces, -6, 8, 0, 12, 12, 10, '#132d52', '#0f2442', '#0b1b33', '#99ceff', 'RM-101 Foyer & Bath');
-      drawBox3D(faces, 6, 8, 0, 18, 14, 10, '#1e293b', '#172030', '#0f172a', '#f87171', 'GR-101 2-Car Garage');
+      drawBox3D(faces, -20, -8, 0, 22, 16, 10, '#163a66', '#123055', '#0e2543', '#7dd3fc', showL1Labels ? 'RM-102 Great Room (22×18)' : null);
+      drawBox3D(faces, 2, -8, 0, 18, 16, 10, '#14335b', '#10294a', '#0c203b', '#99ceff', showL1Labels ? "RM-103 Kitchen (18×16)" : null);
+      drawBox3D(faces, -20, 8, 0, 14, 12, 10, '#1b3f6e', '#153259', '#102644', '#e4b86a', showL1Labels ? 'RM-108 Bed 1 (14×12)' : null);
+      drawBox3D(faces, -6, 8, 0, 12, 12, 10, '#132d52', '#0f2442', '#0b1b33', '#99ceff', showL1Labels ? 'RM-101 Foyer' : null);
+      drawBox3D(faces, 6, 8, 0, 18, 14, 10, '#1e293b', '#172030', '#0f172a', '#f87171', cutMode !== 1 ? 'GR-101 2-Car Garage' : null);
 
       // Level 2 Rooms (z: 10 -> 19) unless cutMode === 2
       if (cutMode <= 1) {
-        drawBox3D(faces, -20, -8, 10, 20, 15, 9, '#1c4578', '#163761', '#112a4a', '#e4b86a', 'RM-201 Primary Suite (20x16)');
-        drawBox3D(faces, 0, -8, 10, 8, 12, 9, '#143258', '#102846', '#0c1f38', '#99ceff', 'RM-202 Spa Bath');
+        drawBox3D(faces, -20, -8, 10, 20, 15, 9, '#1c4578', '#163761', '#112a4a', '#e4b86a', showL2Labels ? 'RM-201 Primary (20×16)' : null);
+        drawBox3D(faces, 0, -8, 10, 8, 12, 9, '#143258', '#102846', '#0c1f38', '#99ceff', showL2Labels ? 'RM-202 Bath' : null);
         // Dynamic Resized RM-203 Bedroom 3!
-        drawBox3D(faces, 8, -8, 10, b3W, b3L, 9, '#52360c', '#3d2808', '#2b1c05', '#f59e0b', 'RM-203 (' + b3W + 'x' + b3L + ' ft)');
-        drawBox3D(faces, -20, 7, 10, 14, 12, 9, '#193d6b', '#143156', '#0f2542', '#e4b86a', 'RM-204 Bedroom 4');
+        drawBox3D(faces, 8, -8, 10, b3W, b3L, 9, '#52360c', '#3d2808', '#2b1c05', '#f59e0b', 'RM-203 (' + b3W + '×' + b3L + ' ft)');
+        drawBox3D(faces, -20, 7, 10, 14, 12, 9, '#193d6b', '#143156', '#0f2542', '#e4b86a', cutMode === 0 ? 'RM-204 Bed 4' : 'RM-204 Bed 4 (13×12)');
         if (HAS_BED5) {
-          drawBox3D(faces, -6, 7, 10, 14, 12, 9, '#1b4273', '#15355c', '#102847', '#e4b86a', 'RM-209 Bedroom 5');
+          drawBox3D(faces, -6, 7, 10, 14, 12, 9, '#1b4273', '#15355c', '#102847', '#e4b86a', showL2Labels ? 'RM-209 Bed 5' : null);
         }
       }
 
@@ -1611,7 +1614,7 @@ export function buildInteractiveHouseDesignHtml(
         const rMidY = (ry0 + ry1) / 2;
         const c0 = [rx0, ry0, 19], c1 = [rx1, ry0, 19], c2 = [rx1, ry1, 19], c3 = [rx0, ry1, 19];
         const r0 = [rx0 + 6, rMidY, 25.5], r1 = [rx1 - 6, rMidY, 25.5];
-        faces.push({ pts: [c0, c1, r1, r0], color: 'rgba(37, 71, 120, 0.92)', stroke: '#e4b86a', label: 'IfcRoof (Overhang + Low-E Solar)' });
+        faces.push({ pts: [c0, c1, r1, r0], color: 'rgba(37, 71, 120, 0.92)', stroke: '#e4b86a', label: 'IfcRoof · Solar + Overhang' });
         faces.push({ pts: [c2, c3, r0, r1], color: 'rgba(25, 50, 88, 0.92)', stroke: '#e4b86a', label: null });
         faces.push({ pts: [c1, c2, r1], color: 'rgba(30, 58, 99, 0.92)', stroke: '#e4b86a', label: null });
         faces.push({ pts: [c3, c0, r0], color: 'rgba(20, 42, 74, 0.92)', stroke: '#e4b86a', label: null });
@@ -1624,6 +1627,7 @@ export function buildInteractiveHouseDesignHtml(
         return { ...f, pPts, avgDepth };
       }).sort((a, b) => a.avgDepth - b.avgDepth);
 
+      const pendingLabels = [];
       for (const f of projected) {
         ctx.beginPath();
         f.pPts.forEach((p, idx) => (idx === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
@@ -1637,24 +1641,46 @@ export function buildInteractiveHouseDesignHtml(
         if (f.label) {
           const lx = f.pPts.reduce((a, p) => a + p.x, 0) / f.pPts.length;
           const ly = f.pPts.reduce((a, p) => a + p.y, 0) / f.pPts.length;
-          ctx.fillStyle = '#fef08a';
-          ctx.font = '700 10.5px system-ui, sans-serif';
-          ctx.textAlign = 'center';
-          ctx.fillText(f.label, lx, ly);
+          pendingLabels.push({ text: f.label, x: lx, y: ly, stroke: f.stroke });
         }
+      }
+
+      // Draw collision-free dark pill callouts on top of the 3D geometry
+      ctx.font = '700 10px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      const placedBoxes = [];
+      for (const lbl of pendingLabels) {
+        const tw = ctx.measureText(lbl.text).width + 14;
+        const th = 18;
+        let py = lbl.y;
+        for (let iter = 0; iter < 6; iter++) {
+          const hit = placedBoxes.find(b => Math.abs(b.x - lbl.x) < (b.w + tw) * 0.48 && Math.abs(b.y - py) < 20);
+          if (!hit) break;
+          py = py <= hit.y ? hit.y - 21 : hit.y + 21;
+        }
+        placedBoxes.push({ x: lbl.x, y: py, w: tw, h: th });
+        ctx.fillStyle = 'rgba(6, 16, 30, 0.88)';
+        ctx.strokeStyle = lbl.stroke || '#e4b86a';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.roundRect(lbl.x - tw / 2, py - 12, tw, th, 5);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = '#fef08a';
+        ctx.fillText(lbl.text, lbl.x, py);
       }
 
       // Draw Sun Position Indicator
       const sunAngle = ((sunHour - 6) / 12) * Math.PI;
-      const sx = cx + Math.cos(Math.PI - sunAngle) * (W * 0.36);
-      const sy = 55 + Math.sin(Math.PI - sunAngle) * -32;
+      const sx = cx + Math.cos(Math.PI - sunAngle) * (W * 0.34);
+      const sy = 56 + Math.sin(Math.PI - sunAngle) * -24;
       ctx.beginPath();
-      ctx.arc(sx, Math.max(36, sy), 11, 0, Math.PI * 2);
+      ctx.arc(sx, Math.max(44, sy), 10, 0, Math.PI * 2);
       ctx.fillStyle = '#fbbf24';
       ctx.fill();
       ctx.fillStyle = '#fde68a';
       ctx.font = '700 10px system-ui, sans-serif';
-      ctx.fillText('SUN ' + String(sunHour).padStart(2, '0') + ':00', sx, Math.max(36, sy) + 22);
+      ctx.fillText('SUN ' + String(sunHour).padStart(2, '0') + ':00', sx, Math.max(44, sy) + 21);
     }
 
     function draw2DPlan(W, H, storey) {

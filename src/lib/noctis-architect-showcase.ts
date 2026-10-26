@@ -165,7 +165,7 @@ export function buildRealtorShowcaseAndWhiteFloorPlanSvg(
   <circle cx="328" cy="388" r="13" fill="#ffffff"/>
   <text x="328" y="393" text-anchor="middle" fill="#dc2626" font-size="13" font-weight="700">♥</text>
   <!-- Card 1 Metadata & Trade-Offs -->
-  <text x="30" y="423" fill="#ffffff" font-size="11.5" font-weight="800">Option A — Compact Single-Storey House (100 m²)</text>
+  <text x="30" y="423" fill="#ffffff" font-size="10.5" font-weight="800">Option A — Compact Single-Storey House (100 m²)</text>
   <text x="30" y="438" fill="#4ade80" font-size="10" font-weight="700">Est. $${optACost.toLocaleString()} · 3BR / 2BA · 40'×42' Core · Simple Roof</text>
   <text x="30" y="452" fill="#cbd5e1" font-size="9">+ Advantage: Simpler 1-level construction, zero stair cost, step-free.</text>
   <text x="30" y="465" fill="#fbbf24" font-size="9">− Trade-off: Compact bedrooms/storage to fit budget &amp; lot coverage.</text>
@@ -210,7 +210,7 @@ export function buildRealtorShowcaseAndWhiteFloorPlanSvg(
   <circle cx="680" cy="388" r="13" fill="#ffffff"/>
   <text x="680" y="393" text-anchor="middle" fill="#dc2626" font-size="13" font-weight="700">♥</text>
   <!-- Card 2 Metadata & Trade-Offs -->
-  <text x="382" y="423" fill="#ffffff" font-size="11.5" font-weight="800">Option B — Two-Storey Alternative (72 + 48 = 120 m²)</text>
+  <text x="382" y="423" fill="#ffffff" font-size="10.5" font-weight="800">Option B — Two-Storey Alternative (72 + 48 = 120 m²)</text>
   <text x="382" y="438" fill="#38bdf8" font-size="10" font-weight="700">Est. $${optBCost.toLocaleString()} · 72 m² Ground Footprint (&lt;= 80 m² Cap)</text>
   <text x="382" y="452" fill="#cbd5e1" font-size="9">+ Advantage: Preserves outdoor yard &amp; satisfies 80 m² footprint cap.</text>
   <text x="382" y="465" fill="#fbbf24" font-size="9">− Trade-off: Adds stair core, upper slab structure &amp; framing complexity.</text>
@@ -228,20 +228,20 @@ export function buildRealtorShowcaseAndWhiteFloorPlanSvg(
   <line x1="772" y1="360" x2="836" y2="360" stroke="#111827" stroke-width="1.8"/>
   <line x1="854" y1="330" x2="928" y2="330" stroke="#111827" stroke-width="1.8"/>
   <line x1="854" y1="356" x2="928" y2="356" stroke="#111827" stroke-width="1.8"/>
-  <text x="804" y="316" text-anchor="middle" fill="#111827" font-size="7" font-weight="700">BED 2 (11'×11')</text>
-  <text x="888" y="316" text-anchor="middle" fill="#111827" font-size="7" font-weight="700">MASTER (12'4"×13'8")</text>
-  <text x="804" y="348" text-anchor="middle" fill="#111827" font-size="7" font-weight="700">BED 3 (10'×10')</text>
-  <text x="890" y="346" text-anchor="middle" fill="#111827" font-size="6.5" font-weight="700">2 BATHS</text>
-  <text x="812" y="382" text-anchor="middle" fill="#111827" font-size="7.5" font-weight="700">LIVING (17'4"×18'8")</text>
-  <text x="896" y="378" text-anchor="middle" fill="#111827" font-size="7" font-weight="700">KITCHEN/DIN</text>
-  <text x="954" y="348" text-anchor="middle" fill="#334155" font-size="6.5" font-weight="700">PATIO 12'×42'</text>
+  <text x="804" y="317" text-anchor="middle" fill="#111827" font-size="6.5" font-weight="700">BED 2 (11'×11')</text>
+  <text x="882" y="317" text-anchor="middle" fill="#111827" font-size="6.4" font-weight="700">MASTER (12'×14')</text>
+  <text x="804" y="348" text-anchor="middle" fill="#111827" font-size="6.5" font-weight="700">BED 3 (10'×10')</text>
+  <text x="890" y="346" text-anchor="middle" fill="#111827" font-size="6.4" font-weight="700">2 BATHS</text>
+  <text x="812" y="382" text-anchor="middle" fill="#111827" font-size="6.6" font-weight="700">LIVING (17'×19')</text>
+  <text x="892" y="382" text-anchor="middle" fill="#111827" font-size="6.4" font-weight="700">KITCHEN/DIN</text>
+  <text x="954" y="348" text-anchor="middle" fill="#334155" font-size="6.2" font-weight="700">PATIO 12'×42'</text>
   <!-- Gold Pill Badge & Heart -->
   <rect x="740" y="294" width="88" height="18" rx="9" fill="#059669"/>
   <text x="784" y="306" text-anchor="middle" fill="#ffffff" font-size="8.5" font-weight="700">Option C · Phased</text>
   <circle cx="1032" cy="388" r="13" fill="#0f172a"/>
   <text x="1032" y="393" text-anchor="middle" fill="#e4b86a" font-size="13" font-weight="700">♥</text>
   <!-- Card 3 Metadata & Trade-Offs -->
-  <text x="734" y="423" fill="#ffffff" font-size="11.5" font-weight="800">Option C — Phased Construction + Measured CAD Plan</text>
+  <text x="734" y="423" fill="#ffffff" font-size="10.5" font-weight="800">Option C — Phased Construction + Measured CAD Plan</text>
   <text x="734" y="438" fill="#e4b86a" font-size="10" font-weight="700">Phase 1: $${optCCostPhase1.toLocaleString()} · Full 40'×42' Plan Below ↓</text>
   <text x="734" y="452" fill="#cbd5e1" font-size="9">+ Advantage: Spreads expenditure across approved construction phases.</text>
   <text x="734" y="465" fill="#fbbf24" font-size="9">− Trade-off: Requires pre-sized lintels, 200A panel &amp; capped MEP stubs.</text>
@@ -253,7 +253,7 @@ export function buildRealtorShowcaseAndWhiteFloorPlanSvg(
   <rect x="20" y="486" width="660" height="478" rx="10" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5"/>
 
   <!-- Sheet Header on Crisp White Paper -->
-  <text x="350" y="508" text-anchor="middle" fill="#0f172a" font-size="12" font-weight="800">SHEET A-101W — MEASURED ARCHITECTURAL FLOOR PLAN (3 BEDROOMS · 2 BATHS · 100 m² / 1,076 SQ FT CORE)</text>
+  <text x="350" y="507" text-anchor="middle" fill="#0f172a" font-size="10" font-weight="800">SHEET A-101W — MEASURED ARCHITECTURAL FLOOR PLAN (3 BEDROOMS · 2 BATHS · 100 m² / 1,076 SQ FT CORE)</text>
 
   <!-- Top Dimension Lines: 40'-0" Total Width (Core 28'-0" + Patio 12'-0") -->
   <line x1="120" y1="522" x2="120" y2="564" stroke="#475569" stroke-width="0.9"/>
