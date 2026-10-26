@@ -859,8 +859,6 @@ export function buildArchitecturalBlueprintSvg(
 
   <!-- EX-101 Covered Veranda -->
   <rect x="48" y="110" width="212" height="66" fill="#0c263b" stroke="#38bdf8" stroke-width="2" stroke-dasharray="5,3"/>
-  <!-- Corner Patio Table Icon (clear of centered text) -->
-  <rect x="54" y="116" width="18" height="14" rx="3" fill="none" stroke="#38bdf8" stroke-opacity="0.32" stroke-width="1"/>
   <text x="154" y="133" text-anchor="middle" fill="#7dd3fc" font-size="10" font-weight="700">EX-101 COVERED VERANDA</text>
   <text x="154" y="147" text-anchor="middle" fill="#bae6fd" font-size="8.5">24'-0" × 12'-0" (288 sq ft · Timber Deck)</text>
   <text x="154" y="161" text-anchor="middle" fill="#e4b86a" font-size="8">[D-02 12'-0" Multi-Slide Glass Wall]</text>
@@ -868,16 +866,12 @@ export function buildArchitecturalBlueprintSvg(
   <!-- RM-104 Daylight Dining -->
   <rect x="260" y="110" width="222" height="66" fill="#0d213d" stroke="#99ceff" stroke-width="2.5"/>
   <line x1="315" y1="110" x2="425" y2="110" stroke="#38bdf8" stroke-width="5"/>
-  <!-- Corner Dining Icon (clear of centered text) -->
-  <rect x="268" y="118" width="20" height="14" rx="3" fill="none" stroke="#38bdf8" stroke-opacity="0.3" stroke-width="1"/>
   <text x="371" y="138" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="700">RM-104 DAYLIGHT DINING</text>
   <text x="371" y="153" text-anchor="middle" fill="#99ceff" font-size="8.5">16'-0" × 14'-0" (224 sq ft · 20.8 m²)</text>
 
   <!-- RM-102 Great Room / Living -->
   <rect x="48" y="176" width="212" height="122" fill="#102a4c" stroke="#99ceff" stroke-width="2.5"/>
   <line x1="48" y1="202" x2="48" y2="274" stroke="#38bdf8" stroke-width="5"/>
-  <!-- Corner L-Sofa Icon (above text, zero overlap) -->
-  <path d="M 56 184 H 92 V 194 H 66 V 212 H 56 Z" fill="none" stroke="#38bdf8" stroke-opacity="0.32" stroke-width="1.1"/>
   <text x="154" y="226" text-anchor="middle" fill="#ffffff" font-size="10.5" font-weight="700">RM-102 GREAT ROOM / LIVING</text>
   <text x="154" y="242" text-anchor="middle" fill="#99ceff" font-size="9">22'-0" × 18'-0" (396 sq ft · 36.8 m²)</text>
   <text x="154" y="257" text-anchor="middle" fill="#38bdf8" font-size="8.5">W-01 Low-E Glazing: 84 sq ft (21.2%)</text>
@@ -903,8 +897,6 @@ export function buildArchitecturalBlueprintSvg(
   <!-- RM-108 Bedroom 1 (Ground Guest Suite) -->
   <rect x="48" y="298" width="116" height="92" fill="#123159" stroke="#e4b86a" stroke-width="2.5"/>
   <line x1="72" y1="390" x2="140" y2="390" stroke="#38bdf8" stroke-width="5"/>
-  <!-- Corner Bed Icon (above text, zero overlap) -->
-  <rect x="54" y="304" width="22" height="16" rx="2" fill="none" stroke="#e4b86a" stroke-opacity="0.32" stroke-width="1"/>
   <text x="106" y="336" text-anchor="middle" fill="#fde68a" font-size="9.5" font-weight="700">RM-108 BEDROOM 1</text>
   <text x="106" y="351" text-anchor="middle" fill="#ffffff" font-size="8.5">14'-0" × 12'-0" (168 sf)</text>
   <text x="106" y="366" text-anchor="middle" fill="#4ade80" font-size="8">W-04 Egress 9.2 sf</text>
@@ -929,9 +921,6 @@ export function buildArchitecturalBlueprintSvg(
 
   <!-- GR-101 Garage (Fire Separated) -->
   <rect x="358" y="298" width="124" height="92" fill="#111827" stroke="#f87171" stroke-width="2.5"/>
-  <!-- 2 Subtle EV Bay Outlines -->
-  <rect x="368" y="308" width="44" height="70" rx="6" fill="none" stroke="#475569" stroke-opacity="0.25" stroke-width="1"/>
-  <rect x="426" y="308" width="44" height="70" rx="6" fill="none" stroke="#475569" stroke-opacity="0.25" stroke-width="1"/>
   <text x="420" y="330" text-anchor="middle" fill="#fca5a5" font-size="9.5" font-weight="700">GR-101 ${brief.garageBays}-CAR GARAGE</text>
   <text x="420" y="346" text-anchor="middle" fill="#e2e8f0" font-size="8.5">${brief.garageBays * 12}'-0" × 22'-0" (${brief.garageBays * 264} sf)</text>
   <text x="420" y="362" text-anchor="middle" fill="#f87171" font-size="7.5" font-weight="600">D-08 20-Min Fire + Type X</text>
@@ -950,16 +939,12 @@ export function buildArchitecturalBlueprintSvg(
   <!-- RM-201 Bedroom 2 Primary Suite -->
   <rect x="568" y="128" width="174" height="118" fill="#123159" stroke="#e4b86a" stroke-width="2.5"/>
   <line x1="568" y1="152" x2="568" y2="224" stroke="#38bdf8" stroke-width="5"/>
-  <!-- Corner King Bed Icon (above text, zero overlap) -->
-  <rect x="576" y="135" width="26" height="20" rx="3" fill="none" stroke="#e4b86a" stroke-opacity="0.32" stroke-width="1.1"/>
   <text x="655" y="176" text-anchor="middle" fill="#fde68a" font-size="10" font-weight="700">RM-201 PRIMARY SUITE</text>
   <text x="655" y="192" text-anchor="middle" fill="#ffffff" font-size="9">20'-0" × 16'-0" (320 sq ft)</text>
   <text x="655" y="208" text-anchor="middle" fill="#7dd3fc" font-size="8">Walk-In Closet + W-04 (9.2 sf)</text>
 
   <!-- RM-202 Primary Spa Bath -->
   <rect x="742" y="128" width="112" height="118" fill="#0d2340" stroke="#99ceff" stroke-width="2"/>
-  <!-- Soaking Tub Oval -->
-  <ellipse cx="798" cy="150" rx="22" ry="10" fill="none" stroke="#38bdf8" stroke-opacity="0.4" stroke-width="1.2"/>
   <text x="798" y="178" text-anchor="middle" fill="#ffffff" font-size="9.5" font-weight="700">RM-202 SPA BATH</text>
   <text x="798" y="194" text-anchor="middle" fill="#99ceff" font-size="8.5">14'-0" × 12'-0" (168 sf)</text>
   <text x="798" y="210" text-anchor="middle" fill="#38bdf8" font-size="8">Stacked Wet-Wall Core</text>
@@ -981,7 +966,6 @@ export function buildArchitecturalBlueprintSvg(
   <!-- RM-204 Bedroom 4 -->
   <rect x="568" y="284" width="154" height="108" fill="#123159" stroke="#e4b86a" stroke-width="2.5"/>
   <line x1="590" y1="392" x2="695" y2="392" stroke="#38bdf8" stroke-width="5"/>
-  <rect x="576" y="291" width="22" height="16" rx="2" fill="none" stroke="#e4b86a" stroke-opacity="0.32" stroke-width="1"/>
   <text x="645" y="328" text-anchor="middle" fill="#fde68a" font-size="9.5" font-weight="700">RM-204 BEDROOM 4</text>
   <text x="645" y="344" text-anchor="middle" fill="#ffffff" font-size="8.5">13'-0" × 12'-0" (156 sq ft)</text>
   <text x="645" y="360" text-anchor="middle" fill="#4ade80" font-size="8">W-04 Egress (9.2 sf)</text>
@@ -995,7 +979,6 @@ export function buildArchitecturalBlueprintSvg(
   <!-- RM-209 Bedroom 5 (or Daylight Terrace when 4BR) -->
   <rect x="854" y="284" width="184" height="108" fill="#123159" stroke="${hasBed5 ? "#e4b86a" : "#99ceff"}" stroke-width="2.5"/>
   <line x1="885" y1="392" x2="1005" y2="392" stroke="#38bdf8" stroke-width="5"/>
-  <rect x="862" y="291" width="22" height="16" rx="2" fill="none" stroke="#e4b86a" stroke-opacity="0.32" stroke-width="1"/>
   <text x="946" y="328" text-anchor="middle" fill="#fde68a" font-size="9.5" font-weight="700">${hasBed5 ? "RM-209 BEDROOM 5 (SUITE)" : "EX-202 DAYLIGHT TERRACE"}</text>
   <text x="946" y="344" text-anchor="middle" fill="#ffffff" font-size="8.5">${hasBed5 ? "12'-0\" × 12'-0\" (144 sf · 13.4 m²)" : "14'-0\" × 12'-0\" (Covered Terrace)"}</text>
   <text x="946" y="360" text-anchor="middle" fill="#4ade80" font-size="8">${hasBed5 ? "W-04 Egress (9.2 sf >= 5.7 sf)" : "Solar Shading Louvers"}</text>
@@ -1561,8 +1544,8 @@ export function buildInteractiveHouseDesignHtml(
 
     function draw3DVilla(W, H) {
       const cx = W * 0.5;
-      const cy = H * 0.60;
-      const scale = Math.min(W, H) / 50;
+      const cy = H * 0.62;
+      const scale = Math.min(W, H) / 58;
 
       // Site Plot Pad
       const plotPts = [[-28, -24, 0], [28, -24, 0], [28, 24, 0], [-28, 24, 0]].map(p => project3D(p[0], p[1], p[2], cx, cy, scale));
@@ -1670,17 +1653,24 @@ export function buildInteractiveHouseDesignHtml(
         ctx.fillText(lbl.text, lbl.x, py);
       }
 
-      // Draw Sun Position Indicator
-      const sunAngle = ((sunHour - 6) / 12) * Math.PI;
-      const sx = cx + Math.cos(Math.PI - sunAngle) * (W * 0.34);
-      const sy = 56 + Math.sin(Math.PI - sunAngle) * -24;
+      // Draw Sun Position Indicator in dedicated top-right solar arc (clear of top-left HUD pills)
+      const sunAngle = ((sunHour - 6) / 13) * Math.PI;
+      const arcCx = W - 76;
+      const arcCy = 46;
       ctx.beginPath();
-      ctx.arc(sx, Math.max(44, sy), 10, 0, Math.PI * 2);
+      ctx.arc(arcCx, arcCy, 34, Math.PI, 0, false);
+      ctx.strokeStyle = 'rgba(251, 191, 36, 0.35)';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+      const sx = arcCx + Math.cos(Math.PI - sunAngle) * 34;
+      const sy = arcCy - Math.sin(sunAngle) * 24;
+      ctx.beginPath();
+      ctx.arc(sx, sy, 8.5, 0, Math.PI * 2);
       ctx.fillStyle = '#fbbf24';
       ctx.fill();
       ctx.fillStyle = '#fde68a';
       ctx.font = '700 10px system-ui, sans-serif';
-      ctx.fillText('SUN ' + String(sunHour).padStart(2, '0') + ':00', sx, Math.max(44, sy) + 21);
+      ctx.fillText('SUN ' + String(sunHour).padStart(2, '0') + ':00', arcCx, arcCy + 14);
     }
 
     function draw2DPlan(W, H, storey) {

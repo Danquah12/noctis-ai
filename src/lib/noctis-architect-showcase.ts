@@ -335,7 +335,7 @@ export function buildRealtorShowcaseAndWhiteFloorPlanSvg(
   <line x1="244" y1="660" x2="244" y2="778" stroke="#0f172a" stroke-width="3.5"/>
   <text x="148" y="676" text-anchor="middle" fill="#334155" font-size="7">CLOSET</text>
   <text x="200" y="676" text-anchor="middle" fill="#334155" font-size="7">CLOSET</text>
-  <text x="234" y="676" text-anchor="middle" fill="#334155" font-size="6.5" transform="rotate(-90 234 676)">LINEN</text>
+  <text x="234" y="673" text-anchor="middle" fill="#334155" font-size="5.2" font-weight="600" transform="rotate(-90 234 673)">LINEN</text>
 
   <!-- Bedroom 3 (Middle-Left: 10'0" x 10'0") -->
   <line x1="120" y1="778" x2="244" y2="778" stroke="#0f172a" stroke-width="3.5"/>

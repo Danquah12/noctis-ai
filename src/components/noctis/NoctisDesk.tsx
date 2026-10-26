@@ -448,19 +448,73 @@ async function loadPortrait(src: string) {
   }
 }
 
-function paintShareLines(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, max: number, lineHeight: number, rows: number) {
-  const paragraphs = text.split(/\n+/).map((p) => p.trim()).filter(Boolean);
+function fitTextToWidth(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+  weight: string,
+  maxPx: number,
+  minPx: number,
+  family = "sans-serif"
+): string {
+  const clean = text.replace(/\s+/g, " ").trim();
+  for (let px = maxPx; px >= minPx; px -= 0.5) {
+    ctx.font = `${weight} ${px}px ${family}`;
+    if (ctx.measureText(clean).width <= maxWidth) {
+      return clean;
+    }
+  }
+  ctx.font = `${weight} ${minPx}px ${family}`;
+  const words = clean.split(" ");
+  let fitted = "";
+  for (const w of words) {
+    const candidate = fitted ? `${fitted} ${w}` : w;
+    if (ctx.measureText(`${candidate}…`).width <= maxWidth) {
+      fitted = candidate;
+    } else {
+      break;
+    }
+  }
+  if (fitted) return `${fitted}…`;
+  let chars = clean;
+  while (chars.length > 1 && ctx.measureText(`${chars}…`).width > maxWidth) {
+    chars = chars.slice(0, -1);
+  }
+  return `${chars}…`;
+}
+
+function paintShareLines(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  max: number,
+  lineHeight: number,
+  rows: number
+) {
+  const paragraphs = text
+    .split(/\n+/)
+    .map((p) => p.trim())
+    .filter(Boolean);
   let row = 0;
-  for (const para of paragraphs) {
-    const words = para.split(/\s+/);
+  for (let pIdx = 0; pIdx < paragraphs.length; pIdx++) {
+    const words = paragraphs[pIdx].split(/\s+/);
     let line = "";
-    for (const word of words) {
+    for (let wIdx = 0; wIdx < words.length; wIdx++) {
+      const word = words[wIdx];
       const test = line ? `${line} ${word}` : word;
       if (ctx.measureText(test).width > max && line) {
+        if (row === rows - 1) {
+          let clipped = line.replace(/[,;:\-–—]+$/, "");
+          while (clipped.length > 1 && ctx.measureText(`${clipped}…`).width > max) {
+            clipped = clipped.replace(/\s+\S*$/, "");
+          }
+          ctx.fillText(`${clipped}…`, x, y + row * lineHeight);
+          return;
+        }
         ctx.fillText(line, x, y + row * lineHeight);
         line = word;
         row += 1;
-        if (row >= rows) return;
       } else {
         line = test;
       }
@@ -506,8 +560,8 @@ async function senderCard(photo: string, byline: string, message: string, rawSou
   ctx.lineWidth = 4;
   ctx.stroke();
   ctx.fillStyle = "#f6f1e6";
-  ctx.font = "700 32px Georgia, serif";
-  ctx.fillText(byline.slice(0, 26), 214, 148, 520);
+  const fittedByline = fitTextToWidth(ctx, byline, 520, "700", 32, 20, "Georgia, serif");
+  ctx.fillText(fittedByline, 214, 148);
   try {
     const brandImg = await loadImg("/brand/dstrike-logo.png");
     if (brandImg) {
@@ -523,10 +577,10 @@ async function senderCard(photo: string, byline: string, message: string, rawSou
   let textStartY = 270;
 
   if (dash) {
-    // Draw Dashboard Title
+    // Draw Dashboard Title (auto-fitted so zero words are cut off)
     ctx.fillStyle = "#e4b86a";
-    ctx.font = "700 28px Georgia, serif";
-    ctx.fillText(dash.title.slice(0, 56), 68, 252);
+    const fittedTitle = fitTextToWidth(ctx, dash.title, 944, "700", 26, 16.5, "Georgia, serif");
+    ctx.fillText(fittedTitle, 68, 252);
 
     // Draw 4 KPI Boxes
     const kpis = (dash.kpis ?? []).slice(0, 4);
@@ -535,21 +589,47 @@ async function senderCard(photo: string, byline: string, message: string, rawSou
     kpis.forEach((k, idx) => {
       const bx = 68 + idx * (boxW + 18);
       const by = 272;
+      const innerW = boxW - 24;
       ctx.fillStyle = "#141f36";
       ctx.fillRect(bx, by, boxW, boxH);
       ctx.strokeStyle = "rgba(228,184,106,0.35)";
       ctx.lineWidth = 2;
       ctx.strokeRect(bx, by, boxW, boxH);
+
       ctx.fillStyle = "#94a3b8";
-      ctx.font = "600 16px sans-serif";
-      ctx.fillText(k.label.toUpperCase().slice(0, 20), bx + 16, by + 32);
+      const fittedKpiLabel = fitTextToWidth(ctx, k.label.toUpperCase(), innerW, "600", 14, 10.5, "sans-serif");
+      ctx.fillText(fittedKpiLabel, bx + 12, by + 28);
+
       ctx.fillStyle = "#e4b86a";
-      ctx.font = "700 30px sans-serif";
-      ctx.fillText(k.value.slice(0, 14), bx + 16, by + 72);
+      const fittedKpiVal = fitTextToWidth(ctx, k.value, innerW, "700", 28, 18, "sans-serif");
+      ctx.fillText(fittedKpiVal, bx + 12, by + 64);
+
       if (k.sub) {
         ctx.fillStyle = "#cbd5e1";
-        ctx.font = "400 15px sans-serif";
-        ctx.fillText(k.sub.slice(0, 24), bx + 16, by + 100);
+        const compactSub = k.sub.replace(/\s*\(incl\.[^)]*\)/i, "").trim();
+        ctx.font = "400 12.5px sans-serif";
+        if (ctx.measureText(compactSub).width <= innerW) {
+          ctx.fillText(compactSub, bx + 12, by + 94);
+        } else {
+          // Wrap cleanly across 2 lines inside the KPI box
+          ctx.font = "400 11.5px sans-serif";
+          const words = compactSub.split(/\s+/);
+          let line1 = "";
+          let line2 = "";
+          for (const w of words) {
+            const c1 = line1 ? `${line1} ${w}` : w;
+            if (!line2 && ctx.measureText(c1).width <= innerW) {
+              line1 = c1;
+            } else {
+              line2 = line2 ? `${line2} ${w}` : w;
+            }
+          }
+          ctx.fillText(line1, bx + 12, by + 88);
+          if (line2) {
+            const fittedL2 = fitTextToWidth(ctx, line2, innerW, "400", 11.5, 10, "sans-serif");
+            ctx.fillText(fittedL2, bx + 12, by + 104);
+          }
+        }
       }
     });
 
@@ -565,16 +645,24 @@ async function senderCard(photo: string, byline: string, message: string, rawSou
       ctx.strokeStyle = "rgba(255,255,255,0.12)";
       ctx.strokeRect(chartX, chartY, chartW, chartH);
       ctx.fillStyle = "#f8fafc";
-      ctx.font = "600 18px sans-serif";
-      ctx.fillText((dash.trend?.title ?? "Forecast Trend").slice(0, 38), chartX + 18, chartY + 30);
+      const fittedTrendTitle = fitTextToWidth(
+        ctx,
+        dash.trend?.title ?? "Forecast Trend",
+        chartW - 32,
+        "600",
+        16.5,
+        11.5,
+        "sans-serif"
+      );
+      ctx.fillText(fittedTrendTitle, chartX + 16, chartY + 28);
 
       const vals = pts.map((p) => p.value);
       const minV = Math.min(...vals);
       const maxV = Math.max(...vals);
       const span = Math.max(maxV - minV, 1);
-      const plotX = chartX + 28;
+      const plotX = chartX + 30;
       const plotY = chartY + 58;
-      const plotW = chartW - 56;
+      const plotW = chartW - 60;
       const plotH = chartH - 96;
 
       ctx.strokeStyle = "#e4b86a";
@@ -588,20 +676,24 @@ async function senderCard(photo: string, byline: string, message: string, rawSou
       });
       ctx.stroke();
 
+      ctx.textAlign = "center";
       pts.forEach((p, i) => {
         const px = plotX + (i / (pts.length - 1)) * plotW;
         const py = plotY + plotH - ((p.value - minV) / span) * plotH;
         ctx.fillStyle = "#e4b86a";
         ctx.beginPath();
-        ctx.arc(px, py, 6, 0, Math.PI * 2);
+        ctx.arc(px, py, 5.5, 0, Math.PI * 2);
         ctx.fill();
         ctx.fillStyle = "#f8fafc";
-        ctx.font = "600 15px sans-serif";
-        ctx.fillText(String(p.display ?? p.value), px - 14, py - 12);
+        ctx.font = "600 13.5px sans-serif";
+        ctx.fillText(String(p.display ?? p.value), px, py - 11);
         ctx.fillStyle = "#94a3b8";
-        ctx.font = "400 14px sans-serif";
-        ctx.fillText(p.label.slice(0, 6), px - 16, chartY + chartH - 14);
+        const slotW = plotW / Math.max(pts.length - 1, 1) - 4;
+        const shortAxisLabel = p.label.includes("/") ? p.label.split("/")[0] : p.label;
+        const fittedAxis = fitTextToWidth(ctx, shortAxisLabel, Math.max(46, slotW), "500", 12, 9.5, "sans-serif");
+        ctx.fillText(fittedAxis, px, chartY + chartH - 14);
       });
+      ctx.textAlign = "left";
     }
 
     const bars = (dash.bars?.items ?? []).slice(0, 4);
@@ -615,17 +707,34 @@ async function senderCard(photo: string, byline: string, message: string, rawSou
       ctx.strokeStyle = "rgba(255,255,255,0.12)";
       ctx.strokeRect(barX, barY, barW, barH);
       ctx.fillStyle = "#f8fafc";
-      ctx.font = "600 18px sans-serif";
-      ctx.fillText((dash.bars?.title ?? "Forecast Breakdown").slice(0, 38), barX + 18, barY + 30);
+      const fittedBarsTitle = fitTextToWidth(
+        ctx,
+        dash.bars?.title ?? "Forecast Breakdown",
+        barW - 32,
+        "600",
+        16.5,
+        11.5,
+        "sans-serif"
+      );
+      ctx.fillText(fittedBarsTitle, barX + 16, barY + 28);
 
       bars.forEach((b, idx) => {
         const ry = barY + 62 + idx * 44;
-        ctx.fillStyle = "#e2e8f0";
-        ctx.font = "500 15px sans-serif";
-        ctx.fillText(b.label.slice(0, 28), barX + 18, ry);
+        const cleanDisplay = b.display.replace(/\s*\([^)]*\)?\s*$/, "").trim() || b.display;
+        const cleanLabel = b.label.replace(/\s*\([^)]*\)?\s*$/, "").trim() || b.label;
+
         ctx.fillStyle = "#e4b86a";
-        ctx.font = "600 15px sans-serif";
-        ctx.fillText(b.display.slice(0, 22), barX + 270, ry);
+        ctx.font = "600 13.5px sans-serif";
+        ctx.textAlign = "right";
+        ctx.fillText(cleanDisplay, barX + barW - 18, ry);
+        const dispW = ctx.measureText(cleanDisplay).width;
+        ctx.textAlign = "left";
+
+        ctx.fillStyle = "#e2e8f0";
+        const availLabelW = Math.max(160, barW - 48 - dispW);
+        const fittedBarLabel = fitTextToWidth(ctx, cleanLabel, availLabelW, "500", 14, 11, "sans-serif");
+        ctx.fillText(fittedBarLabel, barX + 18, ry);
+
         ctx.fillStyle = "rgba(255,255,255,0.12)";
         ctx.fillRect(barX + 18, ry + 8, barW - 36, 10);
         const pct = Math.max(0.06, Math.min(1, b.value / Math.max(b.max ?? 100, 1)));
@@ -634,18 +743,26 @@ async function senderCard(photo: string, byline: string, message: string, rawSou
       });
     }
 
-    textStartY = 700;
+    textStartY = 696;
   }
 
   ctx.fillStyle = "#f4efe6";
-  ctx.font = dash ? "500 31px Georgia, serif" : "500 38px Georgia, serif";
-  const body = message
+  ctx.font = dash ? "500 25px Georgia, serif" : "500 36px Georgia, serif";
+  let body = message
     .replace(/^[^\n]+\s@\sNoctis\s*\n+/i, "")
     .replace(/\n*https?:\/\/\S+\s*$/i, "")
     .replace(/\n*.{1,80}\s@\sNoctis\s*$/g, "")
     .replace(/\n*[A-Z0-9][A-Z0-9 .'-]{0,80}@Noctis\s*$/g, "")
     .trim();
-  paintShareLines(ctx, body, 68, textStartY, 944, dash ? 44 : 54, dash ? 12 : 16);
+  if (dash) {
+    // Strip duplicate ASCII dashboard summary from card prose since visual dashboard is already rendered above
+    const proseParas = body
+      .split(/\n{2,}/)
+      .map((p) => p.trim())
+      .filter((p) => p && !p.startsWith("📊") && !p.startsWith("█"));
+    body = proseParas.slice(0, 3).join("\n\n");
+  }
+  paintShareLines(ctx, body, 68, textStartY, 944, dash ? 37 : 50, dash ? 14 : 17);
   ctx.fillStyle = "#e4b86a";
   ctx.font = "600 28px Georgia, serif";
   ctx.fillText("Noctis · dstrike.app/noctis", 68, 1290);
@@ -1327,9 +1444,8 @@ function parseMermaidGraph(mermaidSource: string) {
 function buildMermaidSvg(mermaidSource: string): string {
   const { nodes, edges } = parseMermaidGraph(mermaidSource);
 
-  const width = 960;
-  const rowHeight = 96;
-  const boxH = 54;
+  const rowHeight = 104;
+  const boxH = 56;
 
   // Assign topological rank using forward edges (ignoring feedback back-edges where target appeared earlier)
   const orderMap = new Map<string, number>();
@@ -1352,6 +1468,13 @@ function buildMermaidSvg(mermaidSource: string): string {
     }
   }
 
+  const hasBackEdge = edges.some((e) => (rankMap.get(e.to) ?? 0) <= (rankMap.get(e.from) ?? 0));
+  const width = hasBackEdge ? 1080 : 960;
+  const leftMargin = 28;
+  const rightMargin = hasBackEdge ? 188 : 28;
+  const usableW = width - leftMargin - rightMargin;
+  const gapX = 14;
+
   const layers = new Map<number, typeof nodes>();
   for (const n of nodes) {
     const r = rankMap.get(n.id) ?? 0;
@@ -1361,23 +1484,20 @@ function buildMermaidSvg(mermaidSource: string): string {
   }
 
   const sortedRanks = [...layers.keys()].sort((a, b) => a - b);
-  const svgHeight = Math.max(240, sortedRanks.length * rowHeight + 44);
+  const svgHeight = Math.max(260, 52 + Math.max(0, sortedRanks.length - 1) * rowHeight + boxH / 2 + 42);
 
   const positions = new Map<string, { x: number; y: number; w: number; h: number }>();
-  const marginX = 36;
-  const usableW = width - marginX * 2;
-  const gapX = 14;
 
   sortedRanks.forEach((r, rankIdx) => {
     const rowNodes = layers.get(r) || [];
     const count = rowNodes.length;
     const w =
       count === 1
-        ? 460
+        ? 480
         : Math.min(290, Math.floor((usableW - gapX * (count - 1)) / count));
     const totalRowW = count * w + (count - 1) * gapX;
-    const startX = (width - totalRowW) / 2;
-    const y = 48 + rankIdx * rowHeight;
+    const startX = leftMargin + (usableW - totalRowW) / 2;
+    const y = 52 + rankIdx * rowHeight;
     rowNodes.forEach((n, colIdx) => {
       positions.set(n.id, {
         x: startX + colIdx * (w + gapX) + w / 2,
@@ -1413,35 +1533,41 @@ function buildMermaidSvg(mermaidSource: string): string {
     return line2 ? [line1, line2] : [line1];
   };
 
-  const edgeSvg = edges
-    .map((e) => {
-      const p1 = positions.get(e.from);
-      const p2 = positions.get(e.to);
-      if (!p1 || !p2) return "";
-      const y1 = p1.y + p1.h / 2;
-      const y2 = p2.y - p2.h / 2 - 4;
-      const dashAttr = e.dashed ? `stroke-dasharray="6,4"` : "";
-      const midY = (y1 + y2) / 2;
-      const isBackEdge = p2.y <= p1.y;
-      const pathD = isBackEdge
-        ? `M ${p1.x + p1.w / 2} ${p1.y} C ${width - 16} ${p1.y}, ${width - 16} ${p2.y}, ${p2.x + p2.w / 2 + 4} ${p2.y}`
-        : Math.abs(p1.x - p2.x) > 4
-          ? `M ${p1.x} ${y1} C ${p1.x} ${midY}, ${p2.x} ${midY}, ${p2.x} ${y2}`
-          : `M ${p1.x} ${y1} L ${p2.x} ${y2}`;
-      const labelX = isBackEdge ? width - 95 : (p1.x + p2.x) / 2;
+  const edgePaths: string[] = [];
+  const edgeLabels: string[] = [];
+  const railX = width - 94;
+
+  for (const e of edges) {
+    const p1 = positions.get(e.from);
+    const p2 = positions.get(e.to);
+    if (!p1 || !p2) continue;
+    const y1 = p1.y + p1.h / 2;
+    const y2 = p2.y - p2.h / 2 - 4;
+    const isBackEdge = p2.y <= p1.y;
+    const dashAttr = e.dashed || isBackEdge ? `stroke-dasharray="6,4"` : "";
+    const midY = (y1 + y2) / 2;
+    const pathD = isBackEdge
+      ? `M ${p1.x + p1.w / 2} ${p1.y} L ${railX - 18} ${p1.y} Q ${railX} ${p1.y} ${railX} ${p1.y - 18} L ${railX} ${p2.y + 18} Q ${railX} ${p2.y} ${railX - 18} ${p2.y} L ${p2.x + p2.w / 2 + 4} ${p2.y}`
+      : Math.abs(p1.x - p2.x) > 4
+        ? `M ${p1.x} ${y1} C ${p1.x} ${midY}, ${p2.x} ${midY}, ${p2.x} ${y2}`
+        : `M ${p1.x} ${y1} L ${p2.x} ${y2}`;
+
+    edgePaths.push(
+      `<path d="${pathD}" fill="none" stroke="${e.dashed || isBackEdge ? "#e4b86a" : "#94a3b8"}" stroke-width="${isBackEdge ? "1.8" : "1.5"}" ${dashAttr} marker-end="url(#arrow)" />`
+    );
+
+    if (e.label) {
+      const labelX = isBackEdge ? railX : (p1.x + p2.x) / 2;
       const labelY = isBackEdge ? (p1.y + p2.y) / 2 : midY;
-      const labelBlock = e.label
-        ? `<g transform="translate(${labelX}, ${labelY})">
-            <rect x="-88" y="-10" width="176" height="20" rx="10" fill="#000e1a" stroke="#1a3e5f" stroke-width="1"/>
-            <text x="0" y="4" text-anchor="middle" fill="#99ceff" font-size="10.5" font-weight="600">${escapeXml(e.label.slice(0, 30))}</text>
-          </g>`
-        : "";
-      return `<g>
-        <path d="${pathD}" fill="none" stroke="${e.dashed || isBackEdge ? "#e4b86a" : "#94a3b8"}" stroke-width="1.5" ${dashAttr} marker-end="url(#arrow)" />
-        ${labelBlock}
-      </g>`;
-    })
-    .join("\n");
+      const pillW = Math.min(180, Math.max(132, e.label.length * 6.4 + 22));
+      edgeLabels.push(
+        `<g transform="translate(${labelX}, ${labelY})">
+          <rect x="${-pillW / 2}" y="-11" width="${pillW}" height="22" rx="11" fill="#041022" stroke="${isBackEdge ? "#e4b86a" : "#1f4e94"}" stroke-width="1.2"/>
+          <text x="0" y="4" text-anchor="middle" fill="${isBackEdge ? "#fde68a" : "#99ceff"}" font-size="10.5" font-weight="700">${escapeXml(e.label.slice(0, 28))}</text>
+        </g>`
+      );
+    }
+  }
 
   const nodeSvg = nodes
     .map((n) => {
@@ -1451,9 +1577,9 @@ function buildMermaidSvg(mermaidSource: string): string {
       const fill = n.isDecision ? "#000e1a" : "#00284d";
       const stroke = n.isDecision ? "#e4b86a" : "#1f4e94";
       const textFill = n.isDecision ? "#e4b86a" : "#99ceff";
-      const maxChars = Math.max(18, Math.floor(pos.w / 7.5));
+      const maxChars = Math.max(20, Math.floor(pos.w / 7.1));
       const [line1, line2] = wrapLabel(n.label, maxChars);
-      const fontSize = pos.w < 200 ? "11.5" : "13";
+      const fontSize = pos.w < 215 ? "11.5" : "13";
       const textElement = line2
         ? `<text x="${pos.x}" y="${pos.y - 4}" text-anchor="middle" fill="${textFill}" font-size="${fontSize}" font-weight="600">
             <tspan x="${pos.x}" dy="0">${escapeXml(line1)}</tspan>
@@ -1467,14 +1593,15 @@ function buildMermaidSvg(mermaidSource: string): string {
     })
     .join("\n");
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${svgHeight}" width="100%" style="max-height:700px;background:#070d19;border-radius:12px;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif">
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${svgHeight}" width="100%" style="max-height:720px;background:#070d19;border-radius:12px;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif">
     <defs>
       <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
         <path d="M 0 1 L 10 5 L 0 9 z" fill="#94a3b8" />
       </marker>
     </defs>
-    ${edgeSvg}
+    ${edgePaths.join("\n")}
     ${nodeSvg}
+    ${edgeLabels.join("\n")}
   </svg>`;
 }
 
