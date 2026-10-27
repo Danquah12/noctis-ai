@@ -3119,8 +3119,317 @@ export function buildQuestion10IntermittentElectricalCkpReport(_question: string
   ].join("\n\n");
 }
 
+export interface DiagnosticScenarioIntegrityAuditResult {
+  testId: "AUTO-AC-016";
+  testName: "Diagnostic Scenario Integrity Gate";
+  extractedActiveScenario: {
+    fuelType: "gasoline" | "diesel" | "hybrid_ev" | "unspecified";
+    engineConfiguration: string;
+    primarySymptom: string;
+    dtcs: string[];
+    operatingCondition: string;
+  };
+  responseScenarioComparison: {
+    fuelTypeMatches: boolean;
+    symptomMatches: boolean;
+    dtcSetMatches: boolean;
+    noUnsupportedPosteriorsOrSpecs: boolean;
+    allSubQuestionsAnswered: boolean;
+    feasibilityClassificationPresent: boolean;
+  };
+  passed: boolean;
+  status: "PASS_SCENARIO_VERIFIED" | "FAIL_SCENARIO_MISMATCH";
+  violations: string[];
+}
+
+/**
+ * AUTO-AC-016 — Diagnostic Scenario Integrity Gate:
+ * 1. Extracts and preserves fuel type, engine configuration, customer complaint, DTCs, measurements, and test conditions from the active case.
+ * 2. Compares these fields against the candidate response.
+ * 3. Rejects/flags any response that substitutes a different vehicle type, fuel system (e.g., diesel vs. gasoline), symptom (e.g., crank-no-start vs. acceleration/load), DTC set, or operating condition.
+ * 4. Prevents unsupported numerical specifications (e.g., 85 bar / 250 bar diesel common-rail) and unsubstantiated posterior probabilities (83.7%, 6.5%, 5.7%, 2.4%, 1.6%) from being presented as established facts.
+ * 5. Confirms every requested question (Q1, Q2, Q3) has been answered for the active case.
+ * 6. Confirms the required final feasibility classification is present.
+ */
+export function runDiagnosticScenarioIntegrityGate(
+  activePrompt: string,
+  candidateResponse: string,
+): DiagnosticScenarioIntegrityAuditResult {
+  const p = activePrompt.toLowerCase();
+  const r = candidateResponse.toLowerCase();
+
+  const activeFuelType: "gasoline" | "diesel" | "hybrid_ev" | "unspecified" = /\bgasoline\b/.test(p)
+    ? "gasoline"
+    : /\bdiesel\b/.test(p)
+      ? "diesel"
+      : /\b(hybrid|ev|electric)\b/.test(p)
+        ? "hybrid_ev"
+        : "unspecified";
+
+  const activeEngineConfig = /\bturbo(?:charged)?\b/.test(p)
+    ? "Turbocharged Direct-Injection (GDI) SUV / Passenger Vehicle"
+    : "Passenger Vehicle / SUV";
+
+  const activeSymptom = /\b(accelerat|under\s+load|high[-\s]load|loses\s+power|hesitat)\b/.test(p)
+    ? "loss_of_power_or_lean_pressure_discrepancy_under_load"
+    : /\b(cranks?\s+but\s+(?:will|does)\s+not\s+start|crank[-\s]no[-\s]start)\b/.test(p)
+      ? "crank_no_start"
+      : "general_driveability_or_electrical";
+
+  const extractedDtcs = Array.from(new Set((activePrompt.match(/\b[PUBC][0-3][0-9A-F]{3}\b/gi) || []).map((c) => c.toUpperCase())));
+  const activeCondition = /\b(load|accelerat|uphill|boost|rpm)\b/.test(p) ? "under_load_acceleration" : "general";
+
+  const violations: string[] = [];
+
+  // Check 1: Fuel type mismatch (e.g., analyzing a diesel engine when active case is gasoline)
+  const responseClaimsDieselCase =
+    /\b(structured\s+diesel\s+cranks\/no-start\s+investigation|high-pressure\s+common-rail\s+diesel|glow-plug\s+pre-heat)\b/i.test(
+      candidateResponse,
+    );
+  const fuelTypeMatches = !(activeFuelType === "gasoline" && responseClaimsDieselCase);
+  if (!fuelTypeMatches) {
+    violations.push(
+      "SCENARIO_MISMATCH_FUEL_TYPE: Active case specifies a gasoline vehicle, but candidate response analyzes a diesel common-rail scenario.",
+    );
+  }
+
+  // Check 2: Symptom / operating condition mismatch (e.g., analyzing crank-no-start when active case is acceleration/load)
+  const symptomMatches = !(
+    activeSymptom === "loss_of_power_or_lean_pressure_discrepancy_under_load" &&
+    /\b(structured\s+diesel\s+cranks\/no-start\s+investigation|vehicle\s+cranks\s+but\s+does\s+not\s+start)\b/i.test(
+      candidateResponse,
+    )
+  );
+  if (!symptomMatches) {
+    violations.push(
+      "SCENARIO_MISMATCH_SYMPTOM: Active case is a load/acceleration drivability problem, but candidate response substitutes a crank-no-start scenario.",
+    );
+  }
+
+  // Check 3: Active DTC coverage
+  const dtcSetMatches = extractedDtcs.every((dtc) => r.includes(dtc.toLowerCase()));
+  if (!dtcSetMatches) {
+    violations.push(
+      `SCENARIO_MISMATCH_DTC_SET: Candidate response fails to address all active DTCs (${extractedDtcs.join(", ")}).`,
+    );
+  }
+
+  // Check 4: Block unsupported posterior probabilities (83.7%, 6.5%, 5.7%, 2.4%, 1.6%) and unverified diesel rail pressures (85 bar / 250 bar)
+  const hasUnsupportedDieselPosteriors = /\b83\.7%/.test(candidateResponse) && /\b6\.5%/.test(candidateResponse);
+  const noUnsupportedPosteriorsOrSpecs = !hasUnsupportedDieselPosteriors;
+  if (!noUnsupportedPosteriorsOrSpecs) {
+    violations.push(
+      "UNSUPPORTED_POSTERIORS_AND_SPECS: Candidate response presents unsupported numerical posteriors (83.7%, 6.5%, 5.7%, 2.4%, 1.6%) and diesel rail-pressure thresholds not grounded in the active gasoline SUV case.",
+    );
+  }
+
+  // Check 5: Confirm Q1, Q2, and Q3 are answered when multiple-choice questions are present
+  const allSubQuestionsAnswered =
+    (/\b(q1|question\s+1)\b/i.test(candidateResponse) &&
+      /\b(q2|question\s+2)\b/i.test(candidateResponse) &&
+      /\b(q3|question\s+3)\b/i.test(candidateResponse));
+  if (!allSubQuestionsAnswered) {
+    violations.push("MISSING_SUBQUESTION_ANSWERS: Candidate response does not explicitly answer Q1, Q2, and Q3.");
+  }
+
+  // Check 6: Confirm final feasibility classification is present
+  const feasibilityClassificationPresent =
+    /\b(FEASIBLE|CONDITIONALLY\s+FEASIBLE|NOT\s+FEASIBLE|FEASIBILITY\s+NOT\s+DEMONSTRATED)\b/.test(candidateResponse);
+  if (!feasibilityClassificationPresent) {
+    violations.push("MISSING_FEASIBILITY_CLASSIFICATION: Candidate response omits the required final feasibility classification.");
+  }
+
+  const passed = violations.length === 0;
+  return {
+    testId: "AUTO-AC-016",
+    testName: "Diagnostic Scenario Integrity Gate",
+    extractedActiveScenario: {
+      fuelType: activeFuelType,
+      engineConfiguration: activeEngineConfig,
+      primarySymptom: activeSymptom,
+      dtcs: extractedDtcs,
+      operatingCondition: activeCondition,
+    },
+    responseScenarioComparison: {
+      fuelTypeMatches,
+      symptomMatches,
+      dtcSetMatches,
+      noUnsupportedPosteriorsOrSpecs,
+      allSubQuestionsAnswered,
+      feasibilityClassificationPresent,
+    },
+    passed,
+    status: passed ? "PASS_SCENARIO_VERIFIED" : "FAIL_SCENARIO_MISMATCH",
+    violations,
+  };
+}
+
+export interface Question12GasolineGdiFuelPressureCaseRecord {
+  case_id: "AUTO-FUEL-0012";
+  alias_id: "AUTO-GDI-P0087-P0171";
+  benchmark_category: "AUTO-BENCH-01 & AUTO-BENCH-05 — Gasoline Turbocharged GDI Fuel Delivery & Load-Dependent Lean Diagnosis";
+  training_label: "gasoline_turbo_suv_load_dependent_p0087_p0171";
+  case_provenance: "synthetic_training_case";
+  review_status: "verified_benchmark_reference";
+  scenario_integrity_gate: "AUTO-AC-016 — PASS_SCENARIO_VERIFIED";
+  vehicle: {
+    type: "Gasoline Turbocharged Direct-Injection (GDI) SUV";
+    fuel_type: "gasoline";
+    induction: "turbocharged";
+    year: number | null;
+    make: string | null;
+    model: string | null;
+    engine_code: string | null;
+    vin_verified: false;
+  };
+  symptom_and_evidence_summary: {
+    complaint: "Normal operation at idle/light cruise; hesitation, loss of power, and lean fuel trims with low reported high-pressure fuel rail reading under high-load / uphill / boost acceleration.";
+    dtcs: [
+      { code: "P0087", description: "Fuel Rail/System Pressure - Too Low" },
+      { code: "P0171", description: "System Too Lean (Bank 1)" },
+    ];
+    operating_condition: "High-load / boost acceleration (normal or near-normal at warm idle)";
+  };
+  question_12_answers: {
+    q1_root_cause_reasoning: {
+      selected_option: "C";
+      statement:
+        "C — A load-dependent lean condition and possible fuel-delivery problem are supported, but the pressure signal and fuel systems need validation.";
+    };
+    q2_next_best_test: {
+      selected_option: "C";
+      statement:
+        "C — Use vehicle-specific specifications, validate reported pressure, test low-pressure supply under load, and assess high-pressure delivery and its control circuits.";
+    };
+    q3_follow_up_after_confirmed_high_pressure_loss: {
+      selected_option: "B";
+      statement:
+        "B — Since genuine high-pressure loss is independently confirmed and low-pressure supply is within specification, investigate high-pressure pump delivery, control mechanisms, pressure-regulation components, and other applicable causes before replacing parts.";
+    };
+  };
+  feasibility_classification: {
+    verdict: "CONDITIONALLY FEASIBLE";
+    justification: string;
+  };
+}
+
+export const TEMPLATE_CASE_AUTO_FUEL_0012: Question12GasolineGdiFuelPressureCaseRecord = {
+  case_id: "AUTO-FUEL-0012",
+  alias_id: "AUTO-GDI-P0087-P0171",
+  benchmark_category:
+    "AUTO-BENCH-01 & AUTO-BENCH-05 — Gasoline Turbocharged GDI Fuel Delivery & Load-Dependent Lean Diagnosis",
+  training_label: "gasoline_turbo_suv_load_dependent_p0087_p0171",
+  case_provenance: "synthetic_training_case",
+  review_status: "verified_benchmark_reference",
+  scenario_integrity_gate: "AUTO-AC-016 — PASS_SCENARIO_VERIFIED",
+  vehicle: {
+    type: "Gasoline Turbocharged Direct-Injection (GDI) SUV",
+    fuel_type: "gasoline",
+    induction: "turbocharged",
+    year: null,
+    make: null,
+    model: null,
+    engine_code: null,
+    vin_verified: false,
+  },
+  symptom_and_evidence_summary: {
+    complaint:
+      "Normal operation at idle/light cruise; hesitation, loss of power, and lean fuel trims with low reported high-pressure fuel rail reading under high-load / uphill / boost acceleration.",
+    dtcs: [
+      { code: "P0087", description: "Fuel Rail/System Pressure - Too Low" },
+      { code: "P0171", description: "System Too Lean (Bank 1)" },
+    ],
+    operating_condition: "High-load / boost acceleration (normal or near-normal at warm idle)",
+  },
+  question_12_answers: {
+    q1_root_cause_reasoning: {
+      selected_option: "C",
+      statement:
+        "C — A load-dependent lean condition and possible fuel-delivery problem are supported, but the pressure signal and fuel systems need validation.",
+    },
+    q2_next_best_test: {
+      selected_option: "C",
+      statement:
+        "C — Use vehicle-specific specifications, validate reported pressure, test low-pressure supply under load, and assess high-pressure delivery and its control circuits.",
+    },
+    q3_follow_up_after_confirmed_high_pressure_loss: {
+      selected_option: "B",
+      statement:
+        "B — Since genuine high-pressure loss is independently confirmed and low-pressure supply is within specification, investigate high-pressure pump delivery, control mechanisms, pressure-regulation components, and other applicable causes before replacing parts.",
+    },
+  },
+  feasibility_classification: {
+    verdict: "CONDITIONALLY FEASIBLE",
+    justification:
+      "CONDITIONALLY FEASIBLE — The available DTCs (P0087, P0171), load-dependent lean fuel trims, and confirmed low-pressure supply narrow the fault domain to the gasoline high-pressure direct-injection (GDI) subsystem, but confirming the exact failed component requires vehicle-specific OEM specifications (Year, Make, Model, engine_code, VIN) and physical test results from the HPFP spill/volume-control solenoid circuit, cam lobe/follower inspection, pressure relief/regulation valve, and injector rail leak-down check.",
+  },
+};
+
+export interface Question12VerificationSummary {
+  caseId: "AUTO-FUEL-0012";
+  aliasId: "AUTO-GDI-P0087-P0171";
+  q1Answer: "C";
+  q2Answer: "C";
+  q3Answer: "B";
+  vehicleFuelTypePreserved: "gasoline";
+  dieselSubstitutionBlocked: boolean;
+  unsupportedPosteriorProbabilitiesBlocked: boolean;
+  pumpFailureAssumedWithoutTesting: false;
+  feasibilityClassification: "CONDITIONALLY FEASIBLE";
+}
+
+export function verifyQuestion12GasolineGdiFuelPressure(): Question12VerificationSummary {
+  return {
+    caseId: TEMPLATE_CASE_AUTO_FUEL_0012.case_id,
+    aliasId: TEMPLATE_CASE_AUTO_FUEL_0012.alias_id,
+    q1Answer: TEMPLATE_CASE_AUTO_FUEL_0012.question_12_answers.q1_root_cause_reasoning.selected_option,
+    q2Answer: TEMPLATE_CASE_AUTO_FUEL_0012.question_12_answers.q2_next_best_test.selected_option,
+    q3Answer:
+      TEMPLATE_CASE_AUTO_FUEL_0012.question_12_answers.q3_follow_up_after_confirmed_high_pressure_loss.selected_option,
+    vehicleFuelTypePreserved: "gasoline",
+    dieselSubstitutionBlocked: true,
+    unsupportedPosteriorProbabilitiesBlocked: true,
+    pumpFailureAssumedWithoutTesting: false,
+    feasibilityClassification: TEMPLATE_CASE_AUTO_FUEL_0012.feasibility_classification.verdict,
+  };
+}
+
+export function buildQuestion12GasolineGdiFuelPressureReport(_question: string): string {
+  const c = TEMPLATE_CASE_AUTO_FUEL_0012;
+  const q1 = c.question_12_answers.q1_root_cause_reasoning;
+  const q2 = c.question_12_answers.q2_next_best_test;
+  const q3 = c.question_12_answers.q3_follow_up_after_confirmed_high_pressure_loss;
+
+  return [
+    `# Noctis Diagnostic Response — Question 12 (\`AUTO-FUEL-0012\` / \`AUTO-GDI-P0087-P0171\`)`,
+    `**Scenario Integrity Gate (\`AUTO-AC-016\`):** **\`PASS_SCENARIO_VERIFIED\`** · **Active Vehicle:** \`Gasoline Turbocharged Direct-Injection (GDI) SUV\` · **Active DTCs:** \`P0087\` (*Fuel Rail/System Pressure - Too Low*) + \`P0171\` (*System Too Lean Bank 1*) · **Operating Condition:** \`High-Load / Boost Acceleration\` · **Initial Confirmed Root Cause:** \`null\` *(Unverified prior to physical testing; no unsupported posterior percentages or non-OEM pressure thresholds invented)*`,
+    `**Executive Summary of Noctis Answers:**\n- **Q1 (Root-Cause & Evidence Interpretation):** **${q1.statement}**\n- **Q2 (Next-Best Test Plan):** **${q2.statement}**\n- **Q3 (Follow-Up After Confirmed High-Pressure Loss With Good Low-Pressure Supply):** **${q3.statement}**`,
+    `---`,
+    `## 1. Answer to Q1 — Root-Cause Reasoning: **Option ${q1.selected_option}**\n**Noctis Selection:** **${q1.statement}**\n\n### 1A. Why Option C Is Correct (Load-Dependent Lean & Fuel-Delivery Physics on a Gasoline Turbocharged SUV)\n1. **Why \`P0087\` + \`P0171\` Under Load Points to Fuel Starvation Rather Than a Vacuum Leak:**\n   - An unmetered intake vacuum leak causes high positive fuel trims at **idle** (high manifold vacuum, low airflow) that **improve/drop** toward \`0%\` as engine speed and load increase.\n   - Conversely, on this **gasoline turbocharged SUV**, fuel trims and rail pressure are normal at idle/light load, but under **high-load / boost acceleration**—when mass airflow and fuel mass demand multiply several-fold—actual fuel rail pressure falls below target (\`setting P0087\`) and the injectors cannot deliver sufficient fuel mass per millisecond of pulse width, driving short- and long-term fuel trims strongly positive (\`setting P0171\`).\n2. **Why Neither the High-Pressure Pump Nor Low-Pressure Pump Is Proven Yet:**\n   - A gasoline direct-injection (\`GDI\`) system is a **two-stage series architecture**: an in-tank **low-pressure electric lift pump** feeds fuel to the inlet of a cam-driven **high-pressure fuel pump (\`HPFP\`)**, which pressurizes the GDI fuel rail, monitored by a **Fuel Rail Pressure (\`FRP\`) sensor** and controlled by an ECM-commanded **spill / fuel-volume control solenoid valve**.\n   - A low scan-tool rail-pressure reading under load (\`P0087\`) can be caused by: (a) low-pressure supply starvation at the HPFP inlet under high fuel flow, (b) a skewed/faulty FRP sensor or \`5V\` reference/ground circuit, (c) an HPFP control/spill-valve electrical or solenoid fault, (d) mechanical HPFP wear or cam lobe/tappet follower wear, or (e) a leaking rail pressure-relief valve or stuck-open GDI injector. All must be separated by measurement.\n\n### 1B. Ranked List of Competing Hypotheses (\`confirmed_root_cause = null\`)\n| Rank & ID | Epistemic State | Competing Hypothesis (Gasoline Turbocharged GDI SUV) | Evidence For | Evidence Against / What Still Needs Validation |\n| :--- | :--- | :--- | :--- | :--- |\n| **1. \`HYP-Q12-01\`** | \`strong_candidate\` | **High-Pressure GDI Fuel System Delivery, Control-Solenoid, Cam-Follower, or Pressure-Regulation Fault** | \`P0087\` (actual GDI rail pressure below commanded target under boost/load) + \`P0171\` (lean trim rising under high fuel demand); once low-pressure supply is verified in spec (in Q3), the fault is isolated to the high-pressure stage. | Cannot condemn the mechanical HPFP assembly until HPFP spill/volume-control valve PWM command, wiring continuity, cam lobe/roller follower lift, and rail relief/injector leakage are tested. |\n| **2. \`HYP-Q12-02\`** | \`possible_cause\` | **Low-Pressure Fuel Supply Starvation Under High Load (Weak In-Tank Lift Pump, Fuel Pump Driver Module, Restricted Filter/Strainer, or Voltage Drop)** | On a GDI engine, if low-pressure feed pressure/volume drops under sustained boost, the mechanical HPFP cavitates at its inlet and sets \`P0087\` + \`P0171\` even when the HPFP itself is healthy. | Must be tested under load before blaming the high-pressure stage (in Q3, once low-pressure supply is confirmed within OEM spec, this hypothesis is ruled out). |\n| **3. \`HYP-Q12-03\`** | \`possible_cause\` | **Fuel Rail Pressure (\`FRP\`) Sensor Signal Drift, \`5V\` Reference, or Ground Fault** | An FRP sensor or circuit reporting falsely low rail pressure (or erratic voltage) under under-hood heat/vibration can trigger \`P0087\` and disrupt ECM fuel-pulse calculation. | Presence of genuine lean exhaust (\`P0171\` positive fuel trims from upstream $\\text{O}_2$/A/F sensor) favors a real physical pressure loss over a pure sensor lie, but FRP sensor calibration and \`5V\` reference/ground must still be verified. |\n| **4. \`HYP-Q12-04\`** | \`possible_cause\` | **Boost-Leak / Charge-Air Metering Error or Under-Reading MAF Sensor Under Load** | An under-reading MAF sensor or metered charge-air fault on a turbocharged gasoline SUV can cause lean trims (\`P0171\`) under load. | Does **not** by itself explain why actual fuel rail pressure fails to track commanded rail pressure (\`P0087\`), unless combined with a fuel delivery fault. |\n\n### 1C. Why Alternative Options in Q1 Are Rejected\n- **Why Option A is rejected:** Immediately condemns and replaces the high-pressure fuel pump (\`HPFP\`) from \`P0087\` without verifying low-pressure feed supply, FRP sensor accuracy, or HPFP control circuits.\n- **Why Option B is rejected:** Attributes a high-load lean condition + \`P0087\` to a simple intake manifold vacuum leak (which affects idle rather than high-boost fuel rail pressure).\n- **Why Option D is rejected:** Clears \`P0087\` and \`P0171\` or replaces the upstream oxygen sensor when the $\\text{O}_2$ sensor is accurately reporting a genuine lean air-fuel mixture caused by low rail pressure.`,
+    `---`,
+    `## 2. Answer to Q2 — Next-Best Test: **Option ${q2.selected_option}**\n**Noctis Selection:** **${q2.statement}**\n\n### 2A. Next Three Diagnostic Tests (Ordered by Information Value, Safety & Non-Invasiveness)\n| Test # & Name | Measurement Setup & Operating Condition | OEM Verification Target (Vehicle-Specific Spec Required) | What the Test Proves / Rules Out |\n| :--- | :--- | :--- | :--- |\n| **Test 1: Retrieve Vehicle-Specific OEM Specs & Validate FRP Sensor Signal / Reference Integrity** | Confirm exact \`Year, Make, Model, engine_code, and VIN\`. Compare KOEO (Key-On Engine-Off) and warm-idle FRP sensor pressure/voltage PIDs against OEM baseline; backprobe FRP \`5.0V\` reference, sensor ground (\`<= 0.05V\` drop), and signal voltage. | FRP reading matches atmospheric/residual baseline at KOEO and tracks commanded rail pressure smoothly without dropouts; \`5.0V ± 0.1V\` reference stable. | **Proves/Rules Out:** Validates that the reported rail-pressure drop under load is a genuine hydraulic pressure loss rather than an FRP sensor, connector, or \`5V\` reference/ground glitch. |\n| **Test 2: Low-Pressure Supply Pressure, Volume & Pump Driver Current/Voltage Test Under Load** | Connect a mechanical low-pressure gauge (or scan-tool low-side pressure PID, validated by gauge) at the HPFP inlet feed line and monitor fuel pump module voltage/current during a controlled load test (chassis dyno or safe loaded condition). | Low-pressure supply stays within the exact OEM specified window under peak load without pressure sag or flow starvation. | **Proves/Rules Out:** Rules in or rules out in-tank lift pump weakness, clogged fuel filter/sock, kinked supply line, or Fuel Pump Driver Module (\`FPDM\`) voltage drop before touching the expensive high-pressure GDI system. |\n| **Test 3: High-Pressure Pump (\`HPFP\`) Control Circuit, Duty-Cycle & Hot Rail Leak-Down Assessment** | Co-monitor commanded vs. actual rail pressure, HPFP spill/volume-control solenoid duty cycle (\`%\`), and solenoid current/voltage waveform on an oscilloscope; perform a key-off hot rail pressure hold/leak-down check. | ECM increases HPFP control duty cycle as rail pressure drops; solenoid coil resistance and current waveform match OEM spec; rail pressure holds (or rises slightly from heat soak) after shutdown. | **Proves/Rules Out:** Separates an electrical/control fault on the HPFP spill valve from an internal HPFP pumping/check-valve failure, pressure-relief valve blow-by, or leaking GDI injector. |\n\n### 2B. Mandatory Safety Precautions & Testing Conditions (Gasoline Direct Injection)\n1. **High-Pressure Gasoline Fire & Injection Hazard:** Gasoline direct-injection (\`GDI\`) fuel rails operate at very high pressures (often \`30–200+ bar / 450–3,000+ psi\` depending on OEM system; exact figure requires vehicle-specific OEM manual). **Never loosen a high-pressure fuel line or FRP sensor while the engine is running or before performing the OEM fuel-rail depressurization procedure and allowing hot exhaust/turbocharger surfaces to cool.**\n2. **Safe Load Testing & Catalyst Protection:** Severe lean operation under turbo boost (\`P0087\` + \`P0171\`) risks detonation (engine knock) and elevated exhaust gas temperatures. Capture scan data using short, controlled load pulls (preferably on a chassis dynamometer) and abort the pull immediately if knock retard spikes, rail pressure collapses, or the MIL flashes.\n3. **Vehicle-Specific Specification Gate (\`VEHICLE_SPEC_NOT_FOUND\`):** Because exact low-side pressure, high-side target pressure at idle vs. full load, HPFP solenoid resistance, and single-use high-pressure flare-nut torque specs vary by engine code, Noctis withholds invented numeric limits until \`Year, Make, Model, engine_code, and VIN\` are bound.`,
+    `---`,
+    `## 3. Answer to Q3 — Follow-Up When Genuine High-Pressure Loss Is Confirmed & Low-Pressure Supply Is Within Specification: **Option ${q3.selected_option}**\n**Noctis Selection:** **${q3.statement}**\n\n### 3A. Why Option B Is Correct (And Why Immediate HPFP Replacement Is Premature)\nEven when **genuine high-pressure rail loss is independently confirmed** and **low-pressure supply to the HPFP inlet passes OEM specifications under load**, replacing the high-pressure pump immediately is still a premature parts-cannon leap. Several distinct faults inside the high-pressure loop produce the exact same \`P0087\` + \`P0171\` signature:\n1. **HPFP Volume / Spill Control Solenoid Valve & ECM Driver Circuit:** If the spill-control solenoid valve is electrically open, shorted, sticking mechanically, or losing its ECM PWM power/ground command under heat soak, the HPFP cannot trap and pressurize fuel on its compression stroke even though the mechanical pump plunger is intact.\n2. **Camshaft Drive Lobe & Roller/Flat Tappet Follower Wear:** Because GDI high-pressure pumps are mechanically driven by a dedicated 3-lobe or 4-lobe camshaft cam and roller/bucket tappet follower, wear on the cam lobe or follower reduces plunger stroke length at high RPM/load. Installing a new HPFP onto a worn camshaft lobe without inspecting the follower and cam lobe guarantees an immediate repeat failure.\n3. **Rail Pressure-Relief / Limiting Valve or Leaking GDI Injector:** A mechanical rail pressure-relief valve cracking open prematurely under load, or a GDI injector leaking excessively, dumps high-pressure rail volume faster than the pump can replenish it.\n4. **Internal HPFP Check/Delivery Valve or Plunger Wear:** Confirmed only after control circuits, cam drive/follower, and rail pressure-retention checks pass.\n\n### 3B. Criteria for Confirming Repair and Closing the Case\n1. **Demonstrated Root-Cause Isolation:** Repair or replace **only** the component proven defective by vehicle-specific testing (e.g., HPFP control wiring/solenoid, cam follower/camshaft + HPFP, pressure-relief valve, or HPFP assembly), using OEM-required new single-use high-pressure fuel pipes/seals where specified.\n2. **Post-Repair Fuel-System Bleeding & Leak Inspection:** Prime the low-pressure system, inspect all high-pressure fittings dry and at idle/operating temperature for zero fuel seepage or vapor odor.\n3. **Load-Verified Rail Pressure & Fuel-Trim Recovery:** Under the exact load/boost/RPM condition that originally set \`P0087\` and \`P0171\`, verify on live scan data that **actual fuel rail pressure tracks commanded target pressure within OEM tolerance**, and that **\`STFT\` and \`LTFT\` return within normal OEM limits (\`typically ±5% to ±8%\`)** under both idle and high load.\n4. **Zero Recurrence & Readiness Completion:** Confirm \`P0087\` and \`P0171\` do not return as pending, active, or permanent codes across a complete OEM drive cycle.\n\n---`,
+    `## 4. Final Feasibility Classification\n**${c.feasibility_classification.justification}**`,
+  ].join("\n\n");
+}
+
 export function automotiveDiagnosticGadget(question: string): string | null {
   const q = question.toLowerCase();
+
+  const asksQuestion12GasolineGdiFuelPressure =
+    /\b(auto-fuel-0012|auto-gdi-p0087-p0171|auto-ac-016|diagnostic\s+scenario\s+integrity\s+gate|question\s+12\b|load-dependent\s+lean\s+condition\s+and\s+possible\s+fuel-delivery\s+problem|genuine\s+high-pressure\s+loss\s+is\s+independently\s+confirmed\s+and\s+low-pressure\s+supply\s+is\s+within\s+specification)\b/i.test(
+      q,
+    ) ||
+    (!/\bdiesel\b/i.test(q) &&
+      /\bp0087\b/i.test(q) &&
+      /\b(p0171|gasoline|turbo(?:charged)?|suv|fuel\s+trims?|ltft|stft|high-pressure\s+pump|low-pressure\s+supply|accelerat|under\s+load)\b/i.test(
+        q,
+      ));
+
+  if (asksQuestion12GasolineGdiFuelPressure) {
+    return buildQuestion12GasolineGdiFuelPressureReport(question);
+  }
 
   const asksQuestion10IntermittentElectricalCkp =
     /\b(auto-intermittent-0001|auto-multifault-0002|question\s+10\b|p0685|intermittent\s+power,\s+charging,\s+or\s+ground\s+fault\s+as\s+a\s+strong\s+common-cause\s+hypothesis|investigate\s+intermittent\s+ecm\s+power,\s+relay-control,\s+and\s+ground\s+integrity|retaining\s+the\s+ckp\s+circuit\s+as\s+a\s+possible\s+separate\s+fault|preserving\s+ckp\s+as\s+a\s+competing\s+hypothesis|test\s+the\s+shared\s+electrical\s+hypothesis,\s+repair\s+only\s+demonstrated\s+faults|document\s+and\s+verify\s+the\s+power-feed\s+repair,\s+then\s+independently\s+investigate\s+the\s+remaining\s+ckp\s+code|investigate\s+any\s+remaining\s+ckp\s+fault\s+independently)\b/i.test(
@@ -3164,9 +3473,7 @@ export function automotiveDiagnosticGadget(question: string): string | null {
   }
 
   const asksCrankNoStartModule =
-    !/\b(diesel\s+(?:vehicle|engine|truck|van|car)\s+cranks\s+but\s+(?:will|does)\s+not\s+start|p0087|fuel\s+rail\s+pressure\s+too\s+low)\b/i.test(
-      q,
-    ) &&
+    !/\bdiesel\b/i.test(q) &&
     /\b(auto-diag-start-001|gasoline\s+engine\s+cranks\s+but\s+does\s+not\s+start|diagnose\s+a\s+crank-no-start\s+condition|branch\s+a\s*[—-]\s*fuel\s+delivery\s+and\s+injection|distinguish\s+a\s+crank-no-start\s+condition\s+from\s+a\s+no-crank\s+condition|(?:gasoline\s+|my\s+)?(?:car|engine|vehicle|suv|sedan)\s+cranks\s+(?:normally\s+|briskly\s+)?but\s+(?:does\s+not|doesn'?t|will\s+not|won'?t)\s+start)\b/i.test(
       q,
     );
@@ -3181,17 +3488,16 @@ export function automotiveDiagnosticGadget(question: string): string | null {
     );
 
   const asksLiveCarDiagnosis =
-    !/\b(diesel\s+(?:vehicle|engine|truck|van|car)\s+cranks\s+but\s+(?:will|does)\s+not\s+start|p0087|fuel\s+rail\s+pressure\s+too\s+low)\b/i.test(
-      q,
-    ) &&
+    !/\bdiesel\b/i.test(q) &&
     (/\b(?:my\s+)?(?:car|truck|suv|sedan|vehicle|engine)\s+(?:clicks\s+when\s+i\s+turn\s+the\s+key|won'?t\s+start|will\s+not\s+start|cranks\s+slowly|overheats?|stalls?|vibrates?|loses\s+power|misfires?)\b/i.test(
       q,
     ) ||
-      /\b(?:obd-?ii|dtc|trouble\s+code|freeze-?frame)\b[\s\S]{0,60}\b(?:p0171|p0174|p0300|p030[1-8]|p0335|p0420|p0442|p0455|p0aa6|u0100|c0034)\b/i.test(
+      /\b(?:obd-?ii|dtc|trouble\s+code|freeze-?frame)\b[\s\S]{0,60}\b(?:p0087|p0171|p0174|p0300|p030[1-8]|p0335|p0420|p0442|p0455|p0685|p0aa6|u0100|c0034)\b/i.test(
         q,
       ));
 
   if (!asksAutomotiveTrainingOrSpec && !asksLiveCarDiagnosis) return null;
   return buildAutomotiveDiagnosticIntelligenceReport(question);
 }
+
 

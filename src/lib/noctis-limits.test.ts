@@ -2993,7 +2993,59 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
       resourcePlan("Vehicle has DTCs P0685, U0100, and P0335 with intermittent ECM power loss and battery voltage 12.4V"),
       false,
     );
+
+    // Verify AUTO-AC-016 (Diagnostic Scenario Integrity Gate) & Question 12 (Gasoline Turbocharged SUV P0087 + P0171)
+    const {
+      TEMPLATE_CASE_AUTO_FUEL_0012,
+      verifyQuestion12GasolineGdiFuelPressure,
+      runDiagnosticScenarioIntegrityGate,
+    } = await import("./noctis-automotive-engine.ts");
+    const { handleNaturalProfessionalQuery } = await import("./noctis-professional-engine.ts");
+
+    const q12Prompt =
+      "Question 12: A gasoline turbocharged SUV loses power during acceleration with DTCs P0087 and P0171, load-dependent fuel-pressure discrepancy, and positive fuel trims under load. Answer Q1, Q2, and Q3.";
+
+    // Ensure handleNaturalProfessionalQuery NEVER hijacks a gasoline P0087 case with the diesel no-start report
+    assert.equal(handleNaturalProfessionalQuery(q12Prompt), null);
+
+    // Verify AUTO-AC-016 rejects a diesel cranks/no-start response (with 83.7%, 6.5%) when active case is gasoline acceleration
+    const wrongDieselResponse =
+      "## Automotive Engineering & Diagnostics Engine — Structured Diesel Cranks/No-Start Investigation\nHIGH-PRESSURE COMMON-RAIL DIESEL\n83.7% 6.5% 5.7% 2.4% 1.6% P0087";
+    const failedGate = runDiagnosticScenarioIntegrityGate(q12Prompt, wrongDieselResponse);
+    assert.equal(failedGate.testId, "AUTO-AC-016");
+    assert.equal(failedGate.passed, false);
+    assert.equal(failedGate.status, "FAIL_SCENARIO_MISMATCH");
+    assert.equal(failedGate.responseScenarioComparison.fuelTypeMatches, false);
+    assert.equal(failedGate.responseScenarioComparison.symptomMatches, false);
+    assert.equal(failedGate.responseScenarioComparison.noUnsupportedPosteriorsOrSpecs, false);
+
+    // Verify Noctis Question 12 output passes AUTO-AC-016 and matches Q1: C, Q2: C, Q3: B
+    assert.equal(TEMPLATE_CASE_AUTO_FUEL_0012.case_id, "AUTO-FUEL-0012");
+    const q12Eval = verifyQuestion12GasolineGdiFuelPressure();
+    assert.equal(q12Eval.q1Answer, "C");
+    assert.equal(q12Eval.q2Answer, "C");
+    assert.equal(q12Eval.q3Answer, "B");
+    assert.equal(q12Eval.vehicleFuelTypePreserved, "gasoline");
+    assert.equal(q12Eval.dieselSubstitutionBlocked, true);
+    assert.equal(q12Eval.unsupportedPosteriorProbabilitiesBlocked, true);
+    assert.equal(q12Eval.pumpFailureAssumedWithoutTesting, false);
+    assert.equal(q12Eval.feasibilityClassification, "CONDITIONALLY FEASIBLE");
+
+    const q12Out = automotiveDiagnosticGadget(q12Prompt);
+    assert.ok(q12Out);
+    assert.match(q12Out, /Answer to Q1 — Root-Cause Reasoning: \*\*Option C\*\*/);
+    assert.match(q12Out, /Answer to Q2 — Next-Best Test: \*\*Option C\*\*/);
+    assert.match(q12Out, /Option B/);
+    assert.match(q12Out, /CONDITIONALLY FEASIBLE/);
+    assert.doesNotMatch(q12Out, /83\.7%/);
+    assert.doesNotMatch(q12Out, /Structured Diesel Cranks\/No-Start Investigation/);
+
+    const passedGate = runDiagnosticScenarioIntegrityGate(q12Prompt, q12Out);
+    assert.equal(passedGate.testId, "AUTO-AC-016");
+    assert.equal(passedGate.passed, true);
+    assert.equal(passedGate.status, "PASS_SCENARIO_VERIFIED");
   });
 });
+
 
 

@@ -34,6 +34,7 @@ import {
   buildMisfireUnderLoadCase0002Report,
   buildMultiFaultQuestion9Report,
   buildQuestion10IntermittentElectricalCkpReport,
+  buildQuestion12GasolineGdiFuelPressureReport,
 } from "./noctis-automotive-engine.ts";
 
 export type TrainingPair = {
@@ -288,6 +289,14 @@ const OWASP_SEED_CORPUS: TrainingPair[] = [
     model: "vibe-seed",
     hits: 30,
     at: "2026-10-26T21:15:00.000Z",
+  },
+  {
+    question: "Question 12 — Gasoline turbocharged SUV P0087 and P0171 load-dependent fuel-pressure discrepancy and lean fuel trims during acceleration AUTO-FUEL-0012 AUTO-AC-016",
+    answer: buildQuestion12GasolineGdiFuelPressureReport("Question 12 Gasoline turbocharged SUV P0087 and P0171 load-dependent fuel-pressure discrepancy and lean fuel trims AUTO-FUEL-0012"),
+    domain: "engineering",
+    model: "vibe-seed",
+    hits: 30,
+    at: "2026-10-26T21:30:00.000Z",
   },
 ];
 

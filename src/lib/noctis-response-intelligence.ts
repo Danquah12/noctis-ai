@@ -6,6 +6,7 @@ import { handleNaturalHealthQuery } from "./noctis-health-engine.ts";
 import { handleNaturalProfessionalQuery } from "./noctis-professional-engine.ts";
 import { handleNaturalVerifiedExecutionQuery } from "./noctis-verified-execution.ts";
 import { handleNaturalPredictiveIntelligenceQuery } from "./noctis-predictive-intelligence.ts";
+import { automotiveDiagnosticGadget } from "./noctis-automotive-engine.ts";
 
 export type AdaptiveResponseMode = "Direct" | "Teaching" | "Technical" | "Audit";
 
@@ -614,6 +615,12 @@ export function runFollowUpIntelligence(
   const predictiveResponse = handleNaturalPredictiveIntelligenceQuery(currentQuestion);
   if (predictiveResponse) {
     return predictiveResponse;
+  }
+
+  // 00b-0. Noctis Automotive Diagnostic Intelligence & Assurance Engine (NOCTIS-AUTO-001, AUTO-AC-016 Scenario Integrity Gate, Question 7/9/10/12 & Gasoline Diagnostics)
+  const automotiveResponse = automotiveDiagnosticGadget(currentQuestion);
+  if (automotiveResponse) {
+    return automotiveResponse;
   }
 
   // 00b. Noctis Professional Intelligence Engine (42 Profession Categories, 22 Specialist Engineering Engines, 6 Shared Technical Engines, 20 Advanced Execution Engines, Autonomous Professional Work Engine, Diesel Fault-Tree & Construction BOQ)

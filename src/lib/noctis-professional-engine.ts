@@ -2033,9 +2033,11 @@ export function buildProfessionalIntelligenceReport(question = ""): string {
 export function handleNaturalProfessionalQuery(question: string): string | null {
   const q = question.trim();
 
-  // 1. Specific vehicle fault query: "My diesel vehicle cranks but will not start" / P0087 / low rail pressure
+  // 1. Specific vehicle fault query: "My diesel vehicle cranks but will not start" (strictly diesel only — never hijack gasoline P0087 or gasoline crank-no-start)
   if (
-    /\b(diesel\s+(?:vehicle|engine|truck|van|car)\s+cranks\s+but\s+(?:will|does)\s+not\s+start|cranks\s+but\s+(?:will|does|won't|doesn't)\s+(?:not\s+)?start|p0087|fuel\s+rail\s+pressure\s+too\s+low)\b/i.test(
+    /\bdiesel\b/i.test(q) &&
+    !/\bgasoline\b/i.test(q) &&
+    /\b(cranks\s+but\s+(?:will|does|won't|doesn't)\s+(?:not\s+)?start|p0087|fuel\s+rail\s+pressure\s+too\s+low)\b/i.test(
       q
     )
   ) {
