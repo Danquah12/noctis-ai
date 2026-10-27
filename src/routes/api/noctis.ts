@@ -172,11 +172,33 @@ export const Route = createFileRoute("/api/noctis")({
           );
           return Response.json(
             {
-              fhirVersion: "HL7 FHIR v5.0.0 / HL7 US Core v9.0.0",
+              fhirVersion: "HL7 FHIR R4 (v4.0.1) / HL7 US Core IG v9.0.0",
               totalVerifiedSources: NOCTIS_MEDICAL_REPOSITORY.filter((s) => s.actionableForClinicalSupport).length,
               quarantinedSources: NOCTIS_MEDICAL_REPOSITORY.filter((s) => !s.actionableForClinicalSupport).length,
               sources: NOCTIS_MEDICAL_REPOSITORY,
               sampleFhirObservations: SAMPLE_PATIENT_FHIR_OBSERVATIONS,
+            },
+            { headers: { "cache-control": "no-store" } }
+          );
+        }
+        if (url.searchParams.get("health") === "nh-eng-004") {
+          const {
+            NH_ENG_004_RELEASE_MANIFEST_JSON_SCHEMA,
+            runNhEng004AdversarialSuite,
+            buildNhEng004ReleaseManifest,
+            validateNhEng004ReleaseManifest,
+          } = await import("@/lib/noctis-health-engine");
+          const currentManifest = buildNhEng004ReleaseManifest("CURRENT_TRUTHFUL_STATE");
+          const failedGateManifest = buildNhEng004ReleaseManifest("SAMPLE_FAILED_GATE");
+          return Response.json(
+            {
+              challengeId: "NH-ENG-004",
+              jsonSchema: NH_ENG_004_RELEASE_MANIFEST_JSON_SCHEMA,
+              adversarialSuite8: runNhEng004AdversarialSuite(),
+              currentTruthfulManifest: currentManifest,
+              currentTruthfulValidation: validateNhEng004ReleaseManifest(currentManifest),
+              sampleFailedGateManifest: failedGateManifest,
+              sampleFailedGateValidation: validateNhEng004ReleaseManifest(failedGateManifest),
             },
             { headers: { "cache-control": "no-store" } }
           );

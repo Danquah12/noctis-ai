@@ -3868,4 +3868,69 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
     assert.match(report, /33\.756/);
     assert.match(report, /CONDITIONAL PASS/);
   });
+
+  it("verifies NH-ENG-004 (Challenge 004: Implementation Reality, FHIR R4 / US Core v9.0.0 Alignment, 8 Adversarial Gates, JSON Schema & Release-Gate Manifest Validator)", async () => {
+    const {
+      NOCTIS_MEDICAL_REPOSITORY,
+      NH_ENG_004_RELEASE_MANIFEST_JSON_SCHEMA,
+      runNhEng004AdversarialSuite,
+      buildNhEng004ReleaseManifest,
+      validateNhEng004ReleaseManifest,
+      buildNhEng004ImplementationRealityReport,
+      handleNaturalHealthQuery,
+    } = await import("./noctis-health-engine.ts");
+
+    // 1. Verify FHIR R4 (v4.0.1) + US Core v9.0.0 alignment in MED-SRC-04
+    const medSrc04 = NOCTIS_MEDICAL_REPOSITORY.find((s) => s.id === "MED-SRC-04");
+    assert.ok(medSrc04);
+    assert.match(medSrc04.jurisdiction, /HL7 FHIR R4 \(v4\.0\.1\) \/ HL7 US Core IG v9\.0\.0/);
+
+    // 2. Verify all 8 NH-ENG-004 adversarial scenarios pass
+    const advSuite = runNhEng004AdversarialSuite();
+    assert.equal(advSuite.totalCount, 8);
+    assert.equal(advSuite.passedCount, 8);
+    assert.equal(advSuite.allPassed, true);
+    for (const t of advSuite.tests) {
+      assert.equal(t.passed, true, `Expected ${t.testId} to pass (${t.actualExecutedResult})`);
+    }
+
+    // 3. Verify Current Truthful Release-Gate Manifest & JSON Schema Validation
+    assert.equal(NH_ENG_004_RELEASE_MANIFEST_JSON_SCHEMA.$schema, "https://json-schema.org/draft/2020-12/schema");
+    const truthfulManifest = buildNhEng004ReleaseManifest("CURRENT_TRUTHFUL_STATE");
+    const truthfulVal = validateNhEng004ReleaseManifest(truthfulManifest);
+    assert.equal(truthfulVal.schemaValid, true);
+    assert.equal(truthfulVal.mandatoryRulesSatisfied, true);
+    assert.equal(truthfulVal.failedGatesCount, 0);
+    assert.equal(truthfulVal.unverifiedGatesCount, 1); // EXT-CLIN-VAL-01 honestly marked UNVERIFIED
+    assert.equal(truthfulVal.unconditionalProductionReleaseAllowed, false);
+    assert.equal(truthfulVal.sandboxEngineeringReviewAllowed, true);
+    assert.equal(truthfulManifest.release_decision.overall_status, "CONDITIONAL_SANDBOX_PASS_PRODUCTION_BLOCKED");
+
+    // 4. Verify Sample Failed-Gate Manifest blocks release cleanly
+    const failedManifest = buildNhEng004ReleaseManifest("SAMPLE_FAILED_GATE");
+    const failedVal = validateNhEng004ReleaseManifest(failedManifest);
+    assert.equal(failedVal.schemaValid, true);
+    assert.equal(failedVal.mandatoryRulesSatisfied, true);
+    assert.equal(failedVal.failedGatesCount, 1);
+    assert.equal(failedVal.unconditionalProductionReleaseAllowed, false);
+    assert.equal(failedVal.sandboxEngineeringReviewAllowed, false);
+    assert.equal(failedManifest.release_decision.overall_status, "BLOCKED_CRITICAL_FAILURE");
+
+    // 5. Verify Mandatory Release Rule #6 blocks any fraudulent attempt to claim unconditional production release while clinical validation is UNVERIFIED
+    const fraudulentManifest = structuredClone(truthfulManifest);
+    fraudulentManifest.release_decision.release_allowed_for_unconditional_production = true;
+    const fraudulentVal = validateNhEng004ReleaseManifest(fraudulentManifest);
+    assert.equal(fraudulentVal.mandatoryRulesSatisfied, false);
+    assert.ok(fraudulentVal.errors.some((e) => e.includes("MANDATORY_RULE_6_VIOLATION")));
+
+    // 6. Verify natural-language routing for NH-ENG-004 / Challenge 004
+    const report = handleNaturalHealthQuery(
+      "# NOCTIS HEALTH — CHALLENGE 004\n## Implementation Reality, Clinical Correctness, and Release-Gate Integrity\nChallenge ID: NH-ENG-004"
+    );
+    assert.ok(report);
+    assert.equal(report, buildNhEng004ImplementationRealityReport());
+    assert.match(report, /NH-ENG-004-ADV-01/);
+    assert.match(report, /NH-ENG-004-ADV-08/);
+    assert.match(report, /CONDITIONAL_SANDBOX_PASS_PRODUCTION_BLOCKED/);
+  });
 });
