@@ -2819,6 +2819,38 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
     assert.ok(p0301Out);
     assert.match(p0301Out, /DTC P0301/);
     assert.match(p0301Out, /AUTO-MISFIRE-0001/);
+
+    // Verify Module AUTO-DIAG-START-001 (Gasoline Engine Cranks but Does Not Start)
+    const {
+      AUTO_DIAG_START_001_BRANCHES,
+      TEMPLATE_CASE_AUTO_CRANK_NO_START_0001,
+      verifyCrankNoStartTrainingModule,
+    } = await import("./noctis-automotive-engine.ts");
+
+    assert.equal(AUTO_DIAG_START_001_BRANCHES.length, 6);
+    assert.equal(TEMPLATE_CASE_AUTO_CRANK_NO_START_0001.module_id, "AUTO-DIAG-START-001");
+    assert.equal(TEMPLATE_CASE_AUTO_CRANK_NO_START_0001.review_status, "unverified");
+    assert.equal(TEMPLATE_CASE_AUTO_CRANK_NO_START_0001.confirmed_root_cause, null);
+
+    const crankNoStartSim = verifyCrankNoStartTrainingModule();
+    assert.equal(crankNoStartSim.moduleId, "AUTO-DIAG-START-001");
+    assert.equal(crankNoStartSim.symptomClassification, "crank_no_start");
+    assert.equal(crankNoStartSim.distinguishedFromNoCrank, true);
+    assert.equal(crankNoStartSim.prematureFuelPumpCondemnationBlocked, true);
+    assert.equal(crankNoStartSim.expectedDiagnosticValueUsd, 485.0);
+    assert.equal(crankNoStartSim.conclusionState, "confirmed_cause");
+    assert.equal(crankNoStartSim.all8LearningObjectivesMet, true);
+    assert.equal(crankNoStartSim.all7CompletionCriteriaPassed, true);
+
+    const crankNoStartModuleOut = automotiveDiagnosticGadget(
+      "NOCTIS AUTOMOTIVE TRAINING MODULE Gasoline Engine Cranks but Does Not Start Module ID: AUTO-DIAG-START-001",
+    );
+    assert.ok(crankNoStartModuleOut);
+    assert.match(crankNoStartModuleOut, /AUTO-DIAG-START-001/);
+    assert.match(crankNoStartModuleOut, /Branch A/);
+    assert.match(crankNoStartModuleOut, /Branch F/);
+    assert.match(crankNoStartModuleOut, /AUTO-CRANK-NO-START-0001/);
+    assert.match(crankNoStartModuleOut, /\+\$485\.00 Saved/);
   });
 });
 

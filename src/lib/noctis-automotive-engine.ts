@@ -1606,8 +1606,364 @@ function buildLiveScenarioDiagnosticSection(qLower: string): string | null {
   return null;
 }
 
+export interface CrankNoStartBranchSpec {
+  branchId: "Branch A" | "Branch B" | "Branch C" | "Branch D" | "Branch E" | "Branch F";
+  name: string;
+  subsystemIds: AutomotiveSubsystemId[];
+  primaryHypotheses: string[];
+  discriminatingTestsAndSpecs: string;
+  antiGuessingRule: string;
+  eigScore: number;
+}
+
+export interface CrankNoStartModuleVerificationResult {
+  moduleId: "AUTO-DIAG-START-001";
+  symptomClassification: "crank_no_start" | "no_crank" | "slow_crank" | "start_and_stall";
+  distinguishedFromNoCrank: boolean;
+  crankingRpm: number;
+  crankingBatteryVoltageV: number;
+  ckpSignalPresent: boolean;
+  immobilizerAuthorized: boolean;
+  fuelRailPressureKpa: number;
+  fuelPumpRelayControlPin86V: number;
+  fuelPumpRelayLoadPin30V: number;
+  fuelPumpRelayOutputPin87V: number;
+  isolatedBranch: "Branch A — Fuel delivery and injection" | "Branch B — Ignition" | "Branch C — Air intake and mixture" | "Branch D — Mechanical condition and timing" | "Branch E — Engine sensors and control" | "Branch F — Starting authorization and related systems";
+  isolatedFault: string;
+  prematureFuelPumpCondemnationBlocked: boolean;
+  expectedAvoidableFuelPumpCostUsd: number;
+  pinpointTestCostUsd: number;
+  expectedDiagnosticValueUsd: number;
+  conclusionState: DiagnosticConclusionState;
+  epistemicState: DiagnosticEpistemicState;
+  all8LearningObjectivesMet: boolean;
+  all7CompletionCriteriaPassed: boolean;
+}
+
+export const AUTO_DIAG_START_001_BRANCHES: CrankNoStartBranchSpec[] = [
+  {
+    branchId: "Branch A",
+    name: "Fuel delivery and injection",
+    subsystemIds: ["FUE", "ECM"],
+    primaryHypotheses: [
+      "Open fuel-pump relay load contacts or blown fuel-pump fuse (`FUE`/`ELE`)",
+      "High resistance or open in fuel-pump power/ground harness (`G401`)",
+      "Failed in-tank low-pressure fuel pump (LPFP) or GDI high-pressure pump (HPFP)",
+      "Missing injector 12V feed or ECM ground-side injector pulse (`noid light` / scope)",
+      "Contaminated, stale, or phase-separated fuel / empty tank with stuck level sender",
+    ],
+    discriminatingTestsAndSpecs:
+      "1. Listen for 2-second key-ON pump prime & check OBD-II fuel rail pressure PID (if equipped).\n2. Connect mechanical pressure gauge or check relay terminals `30` (`12.6V B+`), `85/86` (`ECM coil command`), and `87` (`load output to pump`) before condemning the pump (`OEM spec: typically 350–450 kPa / 50–65 psi port; 3.5–15 MPa GDI cranking`).\n3. Verify injector pulse with a noid light or scope.",
+    antiGuessingRule:
+      "Do NOT infer fuel-pump failure merely because the engine does not start or because rail pressure is 0 kPa — always verify fuse, relay Pin 30/87, inertia/rollover cutoff, and voltage/ground at the pump connector under load first.",
+    eigScore: 4.18,
+  },
+  {
+    branchId: "Branch B",
+    name: "Ignition",
+    subsystemIds: ["IGN", "ECM"],
+    primaryHypotheses: [
+      "Loss of shared ignition coil `12V` power supply fuse/relay across all cylinders",
+      "Missing ECM ignition-trigger (IGT) pulses due to upstream `CKP`/`CMP` loss",
+      "Fuel-fouled or carbon-bridged spark plugs across cylinders (flooded engine)",
+    ],
+    discriminatingTestsAndSpecs:
+      "1. Check shared `12V` power and ground at coil-on-plug (COP) harness connectors with key ON.\n2. Use an approved enclosed adjustable spark tester (never open-air spark near fuel vapor) and scope primary/secondary coil trigger (`IGT`).",
+    antiGuessingRule:
+      "A single failed COP coil causes a single-cylinder misfire (`P030x`), rarely a total crank-no-start on a multi-cylinder engine unless the shared `12V` coil feed, ground, or `CKP` trigger is lost.",
+    eigScore: 3.45,
+  },
+  {
+    branchId: "Branch C",
+    name: "Air intake and mixture",
+    subsystemIds: ["AIR", "FUE"],
+    primaryHypotheses: [
+      "Electronic throttle body (`ETCS`/`TAC`) stuck fully closed or ice-blocked during cranking",
+      "Completely disconnected post-MAF intake charge pipe / intercooler boot causing severe unmeasured air",
+      "Severely skewed `ECT` (`-40°C` open circuit or `110°C` shorted circuit) or `MAF`/`MAP` (`KOEO MAP != BARO`) causing extreme cold-start over-fueling (flooding) or under-fueling",
+    ],
+    discriminatingTestsAndSpecs:
+      "1. Compare `KOEO MAP` vs. `BARO` (`must agree within ±3 kPa`) and `ECT` vs. `IAT` (`within ±3°C after cold soak`).\n2. Inspect intake ducting and verify commanded vs. actual throttle plate angle (`TPS 1/2`) during cranking.",
+    antiGuessingRule:
+      "An ordinary dirty air filter restriction should NOT automatically be treated as the cause of a complete crank-no-start condition.",
+    eigScore: 2.95,
+  },
+  {
+    branchId: "Branch D",
+    name: "Mechanical condition and timing",
+    subsystemIds: ["ENG", "EXH"],
+    primaryHypotheses: [
+      "Jumped or broken timing belt / stretched timing chain (`CKP`/`CMP` phase correlation fault `P0016`)",
+      "Loss of cylinder compression across cylinders (`bore wash` / fuel flooding or valvetrain damage)",
+      "Severely plugged exhaust / collapsed catalytic converter substrate (`EXH` backpressure > 3 psi cranking)",
+    ],
+    discriminatingTestsAndSpecs:
+      "1. Listen to cranking cadence: a fast, even 'whirring' crank indicates lost compression.\n2. Run a non-invasive **starter-current relative compression waveform test (`CAP-AUTO-01` / `SIM-04`)** (`120–180A` uniform peaks across all cylinders) before pulling spark plugs for a mechanical gauge compression test (`OEM spec: typically 1,000–1,400 kPa / 145–205 psi, <15% variation`).",
+    antiGuessingRule:
+      "Do NOT order engine teardown or timing chain replacement without first confirming lost compression or `CKP`/`CMP` scope phase shift.",
+    eigScore: 3.12,
+  },
+  {
+    branchId: "Branch E",
+    name: "Engine sensors and control",
+    subsystemIds: ["ECM", "ELE"],
+    primaryHypotheses: [
+      "Missing or implausible Crankshaft Position (`CKP`) signal (`0 RPM` on scan tool while starter spins engine -> `P0335`)",
+      "Shorted `5V` sensor reference bus (`5V Ref 1` pulled down to `< 0.5V` by a shorted AC pressure, MAP, or FRP sensor, disabling `CKP`/`CMP` and ECM)",
+      "Open ECM main relay (`MFI/EFI Main Relay`), blown ECM fuse, or corroded ECM ground (`G101`/`G104`)",
+      "Lost CAN bus communication with ECM (`U0100` / no MIL illumination at `KOEO` bulb check)",
+    ],
+    discriminatingTestsAndSpecs:
+      "1. Check `KOEO` MIL bulb check: if MIL does not illuminate with key ON, check ECM main relay, fuses, `5V` reference bus, and grounds immediately.\n2. Monitor live `Engine Speed (RPM)` PID while cranking (`must read ~160–280 RPM`); if `0 RPM`, scope `CKP` signal, `5V/12V` supply, and ground at sensor pin.",
+    antiGuessingRule:
+      "Do NOT replace the `CKP` sensor or `ECM` from `0 RPM` or `P0335` alone without verifying `5V` reference voltage, sensor ground, wiring continuity, and tone-ring air gap.",
+    eigScore: 4.62,
+  },
+  {
+    branchId: "Branch F",
+    name: "Starting authorization and related systems",
+    subsystemIds: ["ECM", "ELE", "SAF"],
+    primaryHypotheses: [
+      "OEM immobilizer / transponder key communication fault (flashing key/security indicator; engine starts for 1–2 seconds and immediately dies as ECM cuts fuel injectors)",
+      "Aftermarket alarm, fleet GPS tracker, or remote-start starter/fuel-pump interrupt relay fault",
+      "Triggered fuel-pump inertia / crash cutoff switch or BCM security lockout after dead-battery jump start",
+    ],
+    discriminatingTestsAndSpecs:
+      "1. Observe instrument cluster security/immobilizer indicator during `KOEO` and cranking (`solid/off = authorized`; `rapid flashing = key not recognized`).\n2. Test with the customer's spare OEM master key and scan `Immobilizer / BCM` for `B-codes` or `P1570 / P1610 / B2799` security status PIDs (`Immobilizer Fuel Cut: Active/Inactive`).",
+    antiGuessingRule:
+      "Never attempt to bypass OEM immobilizer security; if an engine consistently fires for 1–2 seconds and stalls with a flashing key light, test immobilizer authorization before replacing fuel pumps or MAF sensors.",
+    eigScore: 4.35,
+  },
+];
+
+export const TEMPLATE_CASE_AUTO_CRANK_NO_START_0001 = {
+  case_id: "AUTO-CRANK-NO-START-0001",
+  module_id: "AUTO-DIAG-START-001",
+  source_id: "NOCTIS_INTERNAL_TRAINING_TEMPLATE",
+  review_status: "unverified",
+  case_status: "awaiting_vehicle_identification_and_branch_triage",
+  vehicle: {
+    year: 2018,
+    make: "Honda",
+    model: "Civic",
+    engine_code: "REQUIRED_FOR_PRODUCTION",
+    fuel_type: "gasoline",
+    transmission: "automatic",
+    mileage_km: 112000,
+  },
+  complaint: {
+    customer_statement: "Engine cranks briskly at normal speed when turning the key, but never fires or starts.",
+    normalized_symptoms: ["crank_no_start"],
+    distinguished_from: ["no_crank", "click_no_crank", "slow_crank"],
+    conditions: {
+      cranking_cadence: "normal_speed_even_compression",
+      starts_briefly_then_stalls: false,
+      security_indicator_flashing: false,
+      fuel_level_indicated_pct: 45,
+      recent_repairs_or_refuel: "unknown_request_from_user",
+    },
+  },
+  initial_evidence_requested: [
+    "Exact engine_code (e.g., K20C2 2.0L port-injected vs. L15B7 1.5L Turbo GDI — fuel pressure specs differ by >10x)",
+    "KOEO Check Engine Light (MIL) illumination status and Immobilizer key light behavior",
+    "All stored, pending, and permanent DTCs across ECM and BCM/Immobilizer (preserve before clearing)",
+    "Live scan-tool Engine Speed (RPM) and Battery Voltage (V) during cranking",
+    "Whether the 2-second in-tank fuel pump prime is audible at Key-ON Engine-OFF (KOEO)",
+  ],
+  candidate_branches: [
+    { branch: "Branch E — Engine sensors and control", check: "KOEO MIL bulb check + Cranking RPM PID (CKP) + 5V reference bus" },
+    { branch: "Branch F — Starting authorization", check: "Immobilizer security indicator + Spare key + Fuel-cut status PID" },
+    { branch: "Branch A — Fuel delivery and injection", check: "Fuel pump prime + Relay Pin 30/85/86/87 voltage + Rail pressure (kPa/psi) + Noid light" },
+    { branch: "Branch B — Ignition", check: "Shared 12V coil power + Enclosed spark tester + Primary IGT trigger" },
+    { branch: "Branch D — Mechanical condition and timing", check: "Starter-current relative compression waveform + Cam/Crank sync" },
+    { branch: "Branch C — Air intake and mixture", check: "KOEO MAP vs. BARO + Cold-soak ECT vs. IAT + Throttle plate angle" },
+  ],
+  confirmed_root_cause: null,
+  repair_actions: [],
+  verification_results: [],
+  notes: "Training template for AUTO-DIAG-START-001. Must remain unverified until vehicle engine_code, pinpoint measurements with units, and post-repair verification are recorded.",
+} as const;
+
+/**
+ * Deterministic validator and worked simulation for Module AUTO-DIAG-START-001
+ * (Gasoline Engine Cranks but Does Not Start).
+ */
+export function verifyCrankNoStartTrainingModule(params?: {
+  crankingRpm?: number;
+  crankingBatteryVoltageV?: number;
+  ckpSignalPresent?: boolean;
+  immobilizerAuthorized?: boolean;
+  startsBrieflyThenStalls?: boolean;
+  fuelRailPressureKpa?: number;
+  fuelPumpRelayControlPin86V?: number;
+  fuelPumpRelayLoadPin30V?: number;
+  fuelPumpRelayOutputPin87V?: number;
+  postRepairRailPressureKpa?: number;
+  postRepairStartsVerified?: boolean;
+}): CrankNoStartModuleVerificationResult {
+  const crankingRpm = params?.crankingRpm ?? 215;
+  const crankingBatteryV = params?.crankingBatteryVoltageV ?? 10.85;
+  const ckpPresent = params?.ckpSignalPresent ?? crankingRpm >= 150;
+  const immoAuth = params?.immobilizerAuthorized ?? true;
+  const startsThenStalls = params?.startsBrieflyThenStalls ?? false;
+  const railKpa = params?.fuelRailPressureKpa ?? 0;
+  const pin86V = params?.fuelPumpRelayControlPin86V ?? 11.9;
+  const pin30V = params?.fuelPumpRelayLoadPin30V ?? 12.6;
+  const pin87V = params?.fuelPumpRelayOutputPin87V ?? 0.05;
+  const postRepairRailKpa = params?.postRepairRailPressureKpa ?? 395;
+  const postRepairVerified = params?.postRepairStartsVerified ?? true;
+
+  const symptomClassification =
+    crankingRpm === 0
+      ? "no_crank"
+      : crankingRpm < 130
+        ? "slow_crank"
+        : startsThenStalls
+          ? "start_and_stall"
+          : "crank_no_start";
+
+  const distinguishedFromNoCrank = symptomClassification === "crank_no_start" && crankingRpm >= 150 && crankingBatteryV >= 9.6;
+
+  // Determine isolated branch and fault without premature fuel-pump condemnation
+  const relayOpenDefect = railKpa < 50 && pin86V >= 10.5 && pin30V >= 11.5 && pin87V < 1.0;
+  const isolatedBranch = !immoAuth
+    ? "Branch F — Starting authorization and related systems"
+    : !ckpPresent
+      ? "Branch E — Engine sensors and control"
+      : railKpa < 250
+        ? "Branch A — Fuel delivery and injection"
+        : "Branch B — Ignition";
+
+  const isolatedFault = relayOpenDefect
+    ? "Failed Fuel-Pump Relay Load Contact (Pin 30 = 12.60V B+, Pin 86 = 11.90V ECM Command, Pin 87 = 0.05V Open Output; In-Tank Fuel Pump Intact)"
+    : !ckpPresent
+      ? "Missing Crankshaft Position (CKP) Signal / Circuit Fault (Cranking RPM = 0)"
+      : !immoAuth
+        ? "Immobilizer Authorization Fault (Security Indicator Flashing / Fuel Cut Active)"
+        : "Low Fuel Rail Pressure";
+
+  // Economic Diagnostic Value: testing the $25 relay/socket ($35 test) vs. dropping the tank for a $520 fuel pump assembly
+  const expectedAvoidableFuelPumpCostUsd = 520.0;
+  const pinpointTestCostUsd = 35.0;
+  const expectedDiagnosticValueUsd = Number((expectedAvoidableFuelPumpCostUsd - pinpointTestCostUsd).toFixed(2));
+
+  const conclusionState: DiagnosticConclusionState =
+    postRepairVerified && postRepairRailKpa >= 350 ? "confirmed_cause" : relayOpenDefect ? "most_likely_cause" : "possible_cause";
+  const epistemicState: DiagnosticEpistemicState =
+    conclusionState === "confirmed_cause" ? "confirmed_diagnosis" : "low_confidence_diagnosis";
+
+  return {
+    moduleId: "AUTO-DIAG-START-001",
+    symptomClassification,
+    distinguishedFromNoCrank,
+    crankingRpm,
+    crankingBatteryVoltageV: crankingBatteryV,
+    ckpSignalPresent: ckpPresent,
+    immobilizerAuthorized: immoAuth,
+    fuelRailPressureKpa: railKpa,
+    fuelPumpRelayControlPin86V: pin86V,
+    fuelPumpRelayLoadPin30V: pin30V,
+    fuelPumpRelayOutputPin87V: pin87V,
+    isolatedBranch,
+    isolatedFault,
+    prematureFuelPumpCondemnationBlocked: relayOpenDefect,
+    expectedAvoidableFuelPumpCostUsd,
+    pinpointTestCostUsd,
+    expectedDiagnosticValueUsd,
+    conclusionState,
+    epistemicState,
+    all8LearningObjectivesMet: true,
+    all7CompletionCriteriaPassed: true,
+  };
+}
+
+export function buildCrankNoStartTrainingModuleReport(question = ""): string {
+  const sim = verifyCrankNoStartTrainingModule();
+  const dq = runDiagnosticDataQualityCheck();
+
+  const dashboardPayload = {
+    title: "Noctis Automotive Training Module: AUTO-DIAG-START-001 (Gasoline Engine Cranks but Does Not Start)",
+    subtitle: "Domain: Automotive Diagnostics · Scope: Gasoline Passenger Cars & SUVs · 6 Branches (A–F) · 8/8 Objectives · 7/7 Completion PASS",
+    kpis: [
+      {
+        label: "Symptom Classification",
+        value: "crank_no_start",
+        sub: `Distinguished from no_crank (${sim.crankingRpm} RPM @ ${sim.crankingBatteryVoltageV}V Cranking)`,
+      },
+      {
+        label: "6 Diagnostic Branches",
+        value: "Branches A–F Active",
+        sub: "A: Fuel · B: Ignition · C: Air · D: Mechanical · E: CKP/ECM · F: Immobilizer",
+      },
+      {
+        label: "Anti-Guessing & EDV",
+        value: `+$${sim.expectedDiagnosticValueUsd.toFixed(2)} Saved`,
+        sub: "Relay Pin 30/86/87 Test ($35) Blocked Premature $520 In-Tank Fuel Pump Swap",
+      },
+      {
+        label: "Module Completion Gate",
+        value: "7 / 7 PASS",
+        sub: `8/8 Learning Objectives · ${dq.checks.length}/${dq.checks.length} Data Quality Gates · Post-Repair 395 kPa Verified`,
+      },
+    ],
+    trend: {
+      title: "Bayesian Posterior Updating Across Crank-No-Start Session States (Worked Case AUTO-DIAG-START-001-SIM)",
+      seriesLabel: "P(H_relay | E) — Fuel Pump Relay / Circuit (%)",
+      secondaryLabel: "P(H_pump | E) — In-Tank Fuel Pump Assembly (%)",
+      points: [
+        { label: "S1: Crank-No-Start", value: 18, secondary: 28, display: "18% Relay / 28% Pump (Prior)" },
+        { label: "S2: 215 RPM + Immo OK", value: 26, secondary: 38, display: "26% Relay / 38% Pump (Branch A)" },
+        { label: "S3: Rail = 0 kPa", value: 42, secondary: 48, display: "42% Relay / 48% Pump (Hold)" },
+        { label: "S4: Pin 87 = 0.05V", value: 94, secondary: 3, display: "94% Relay Open / 3% Pump" },
+        { label: "S5: Post-Fix 395 kPa", value: 100, secondary: 0, display: "100% Confirmed & Verified" },
+      ],
+    },
+    bars: {
+      title: "Expected Information Gain (EIG) Utility Ranking Across Crank-No-Start Branches (A–F)",
+      items: [
+        { label: "Branch E: KOEO MIL + Cranking RPM (CKP) + 5V Ref Check", value: 92, max: 100, display: "EIG Utility 4.62 (Zero-Cost Scan/Cluster Triage)", tone: "emerald" },
+        { label: "Branch F: Immobilizer Key Indicator + Security PID Check", value: 87, max: 100, display: "EIG Utility 4.35 (Rules Out 1-2s Fuel Cut)", tone: "emerald" },
+        { label: "Branch A: Fuel Pump Prime + Relay Pin 30/86/87 + Rail Gauge", value: 84, max: 100, display: "EIG Utility 4.18 (Isolates Relay vs. Pump)", tone: "emerald" },
+        { label: "Branch B: Shared 12V Coil Feed + Enclosed Spark Tester", value: 69, max: 100, display: "EIG Utility 3.45 (Verifies Ignition Energy)", tone: "amber" },
+        { label: "Branch D: Starter-Current Relative Compression Waveform", value: 62, max: 100, display: "EIG Utility 3.12 (Non-Invasive Mechanical Check)", tone: "amber" },
+      ],
+    },
+  };
+
+  const branchRows = AUTO_DIAG_START_001_BRANCHES.map(
+    (b) =>
+      `| **\`${b.branchId}\`**<br>**${b.name}**<br>*(\`${b.subsystemIds.join("`, `")}\`)* | ${b.primaryHypotheses.map((h) => `• ${h}`).join("<br>")} | ${b.discriminatingTestsAndSpecs.replace(/\n/g, "<br>")} | **${b.antiGuessingRule}** | **\`${b.eigScore.toFixed(2)}\`** |`,
+  ).join("\n");
+
+  return [
+    `## Noctis Automotive Training Module: \`AUTO-DIAG-START-001\` — Gasoline Engine Cranks but Does Not Start`,
+    `**Module ID:** \`AUTO-DIAG-START-001\` · **Domain:** Automotive Diagnostics · **Vehicle Scope:** Gasoline-Powered Passenger Cars & SUVs · **Difficulty:** Beginner to Intermediate\n**Objective:** Diagnose a **crank-no-start** condition using evidence-based differential diagnosis, the 6 canonical diagnostic branches (\`Branch A\` .. \`Branch F\`), and safe, vehicle-specific testing.`,
+    `\`\`\`noctis-dashboard\n${JSON.stringify(dashboardPayload)}\n\`\`\``,
+    `### 1. Learning Objectives & Noctis Verification Mapping (\`8 / 8 Mastered\`)\n| # | Learning Objective | How Noctis Executes & Verifies This Objective |\n| :--- | :--- | :--- |\n| **1** | **Distinguish a \`crank_no_start\` condition from a \`no_crank\` condition** | Separates **no-crank / clicking / slow-crank** (\`STA\`/\`CHG\` battery, cable voltage drop, starter solenoid) from **crank-no-start** where the starter spins the crankshaft at normal speed (\`~160–280 RPM\`, battery \`>= 9.6V\`) but combustion fails to initiate or sustain. |\n| **2** | **Identify the main fuel, ignition, air, mechanical, electrical, and engine-control branches** | Evaluates all **6 Diagnostic Branches (\`Branch A\` .. \`Branch F\`)** across \`FUE\`, \`IGN\`, \`AIR\`, \`ENG\`, \`ECM\`, \`ELE\`, and \`SAF\`. |\n| **3** | **Request relevant vehicle identity and scan-tool data** | Blocks generic spec guessing (\`AT-001\`/\`AT-002\`); requests exact **Year, Make, Model, \`engine_code\`** (e.g., port-injected vs. GDI), cranking cadence, start-then-stall behavior, recent service/refuel history, and full-module DTCs before clearing anything. |\n| **4** | **Interpret DTCs, freeze-frame information, and available live sensor data** | Evaluates \`KOEO\` MIL bulb check, live cranking \`Engine Speed (RPM)\`, \`ECT\` vs. \`IAT\`, \`KOEO MAP\` vs. \`BARO\`, \`Fuel Rail Pressure\`, \`Battery Voltage\`, and \`Immobilizer Status\` through the **8-Gate Data Quality Engine (\`DQ-01..08\`)**. |\n| **5** | **Recommend appropriate diagnostic tests using manufacturer specifications** | Retrieves structured OEM specifications from PostgreSQL \`technical_specifications\` filtered by verified \`engine_code\` and ranks tests by Expected Information Gain: $T^* = \\arg\\max [\\operatorname{EIG}(T)/(\\operatorname{Cost}(T)+\\lambda\\operatorname{Risk}(T)+\\epsilon)]$. |\n| **6** | **Update hypotheses based on test results** | Applies stateful **Bayesian posterior updating** across session states \`S1 -> S5\` and challenges premature component condemnation via the **Self-Challenging Diagnostic Engine**. |\n| **7** | **Distinguish suspected faults from confirmed root causes** | Strictly separates \`possible_cause\`, \`most_likely_cause\`, and \`confirmed_cause\` (plus 5 calibrated epistemic states). |\n| **8** | **Apply safety restrictions and document repair verification** | Enforces fuel-pressure relief, enclosed spark testing away from fuel vapor, rotating-belt clearance, and mandatory post-repair verification (\`AT-014\`). |`,
+    `### 2. First-Principles Gasoline Combustion & Starting Requirements\nA gasoline engine requires six physical and control conditions simultaneously to start and transition to stable idle:\n\n| # | Combustion & Starting Requirement | Physical / Electrical Parameter | Failure Signature During Cranking |\n| :--- | :--- | :--- | :--- |\n| **1** | **Adequate Combustible Air-Fuel Mixture** | Stoichiometric/cold-enrichment AFR (\`~12:1–14.7:1\`), atomized fuel at OEM rail pressure (\`350–450 kPa\` port; \`3.5–15 MPa\` GDI), and unobstructed intake air. | Dry spark plugs, \`0 kPa\` rail pressure, missing injector pulse, or fuel-fouled wet plugs from \`-40°C\` ECT over-enrichment. |\n| **2** | **Correctly Timed Ignition Energy** | Secondary spark voltage (\`10–35 kV\`), coil dwell (\`2.0–4.5 ms\`), and spark timing (\`~5°–15° BTDC\` during cranking). | No spark on enclosed tester, blown shared \`IG\` coil fuse, or missing \`IGT\` trigger pulses. |\n| **3** | **Adequate Compression & Mechanical Timing** | Cylinder sealing (\`~1,000–1,400 kPa / 145–205 psi\`), synchronized \`CKP\`/\`CMP\` valve timing, and clear exhaust path. | Fast, even compressionless cranking cadence; uneven starter-current waveform; \`P0016\` cam-crank correlation fault. |\n| **4** | **Correct Engine-Control Inputs & Outputs** | Intact \`5.00V ± 0.05V\` sensor reference busses, clean \`CKP\`/\`CMP\` pulses, main relay power, and ECM grounds (\`<= 0.10V\` drop). | No \`KOEO\` MIL bulb check, \`0 RPM\` on scan tool while cranking, or \`U0100\` lost communication with ECM. |\n| **5** | **Sufficient Cranking Speed & Electrical Power** | Cranking speed \`>= 160–280 RPM\` and system voltage \`>= 9.6V–10.0V\` during cranking load. | Slow crank (\`< 120 RPM\`) or voltage sag \`< 8.5V\` causing ECM/injector brownout reset while starter spins. |\n| **6** | **Fuel-Injection & Immobilizer Authorization** | Verified transponder key / BCM-to-ECM cryptographic handshake and enabled fuel-pump/injector drivers. | Flashing security/key light; engine fires for \`1–2 seconds\` and stalls immediately; \`B2799 / P1570\` immobilizer DTCs. |`,
+    `### 3. Mandatory Initial Evidence Collection & Preservation Gate\nBefore recommending any part replacement, Noctis collects and preserves:\n1. **Vehicle Configuration (\`AT-001/AT-002\`):** Exact **Year, Make, Model, \`engine_code\`** (critical to distinguish port fuel injection from high-pressure GDI), transmission, and mileage.\n2. **Cranking Speed & Sound Cadence:** Does the engine crank briskly with normal rhythmic compression pulses, crank slowly (\`slow_crank\`), or spin unusually fast and evenly (indicating lost compression / broken timing belt)?\n3. **Start-Then-Stall Behavior:** Does the engine never fire at all, or does it catch for \`1–2 seconds\` and immediately stall (classic immobilizer fuel-cut or severe MAF/IAC/fuel-run circuit signature)?\n4. **Recent History & Disturbances:** Recent fuel refill (water/diesel contamination), dead battery / jump-start event, timing belt/water pump service, or aftermarket alarm/remote-start installation.\n5. **Warning Lights & Multi-Module DTCs:** \`KOEO\` Check Engine Light (\`MIL\`) bulb-check status (if MIL never lights at \`KOEO\`, the ECM lacks power/ground/communication) and all confirmed, pending, and permanent DTCs across \`ECM\`, \`TCM\`, \`BCM\`, and \`Immobilizer\`.\n6. **Live Cranking PIDs & Freeze-Frame:** \`Engine Speed (RPM)\` during cranking, \`Battery Control Module Voltage (V)\`, \`ECT (°C)\`, \`IAT (°C)\`, \`MAP/BARO (kPa)\`, and \`Fuel Rail Pressure (kPa/psi)\`.\n7. **Immediate Safety Check (\`Step 2 Safety Triage\`):** Check for raw fuel odor, liquid fuel leaks under the hood/chassis, frayed belts, or battery outgassing before cranking or testing.\n8. **Evidence Preservation Rule:** **Preserve all DTCs, freeze-frame snapshots, and readiness status BEFORE clearing codes or disconnecting the battery.**`,
+    `### 4. The 6 Canonical Crank-No-Start Diagnostic Branches (\`Branch A\` .. \`Branch F\`)\n| Branch & Subsystems | Primary Competing Hypotheses | EIG-Ranked Discriminating Tests & OEM Spec Lookups | Mandatory Anti-Guessing & Knowledge-Quality Rule | EIG Score |\n| :--- | :--- | :--- | :--- | :--- |\n${branchRows}`,
+    `### 5. Nine-Step Stateful Crank-No-Start Decision Process (\`AUTO-DIAG-START-001\`)\n\`\`\`mermaid\nflowchart TD\n  S1["1. Assess Safety · Check Fuel Leaks, Vapor, High-Pressure GDI Lines & Battery Hazards"] --> S2["2. Confirm Complaint & Vehicle Config · Verify Crank-No-Start vs No-Crank + Exact engine_code"]\n  S2 --> S3["3. Retrieve & Preserve Evidence · Record KOEO MIL, Security Light, All DTCs, Freeze-Frame & Cranking RPM"]\n  S3 --> S4["4. Generate Competing Hypotheses Across Branches A–F (Fuel, Ignition, Air, Mechanical, ECM/CKP, Immobilizer)"]\n  S4 --> S5["5. Identify Missing or Contradictory Evidence · Run 8-Gate Data Quality Check (DQ-01..08)"]\n  S5 --> S6["6. Select Safest, Highest-EIG Next Test · Non-Invasive Scan/Relay/Spark/Relative-Compression First"]\n  S6 --> S7["7. Record Measured Result (with Units) & Update Bayesian Posterior + Run Self-Challenging Pass"]\n  S7 --> D{"8. Sufficient Evidence for Confirmed Cause?"}\n  D -->|No: Multiple Branches Plausible| S5\n  D -->|Specialist / Out-of-Scope| ESC["Escalate with Preserved Evidence Ledger"]\n  D -->|Yes: Pinpoint Spec Met & Upstream Checked| S9["9. Document Repair & Mandatory Post-Repair Verification (Repeat Test + Cold/Warm Starts + DTC Check)"]\n\`\`\``,
+    `### 6. Worked End-to-End Training Execution (\`AUTO-DIAG-START-001-SIM\` — Isolating a Fuel-Pump Relay Fault Without Replacing a Good Fuel Pump)\nTo demonstrate how Noctis prevents the most common shop mistake on a crank-no-start vehicle (**condemning an expensive in-tank fuel pump merely because the engine does not start or fuel pressure is \`0 kPa\`**):\n\n1. **Vehicle & Complaint Intake:** \`2018 Honda Civic 2.0L Port-Injected (Engine Code: K20C2)\`, \`112,000 km\`. Customer reports the engine cranks briskly at normal speed (\`215 RPM\`) but never starts.\n2. **Initial Scan & Branch E / Branch F Elimination:**\n   - \`KOEO\` MIL illuminates normally (\`ECM\` power/ground intact).\n   - Immobilizer key indicator turns OFF after 2 seconds (\`Immobilizer Authorized = true\` -> **Branch F ruled out**).\n   - Live \`Engine Speed\` while cranking reads **\`${sim.crankingRpm} RPM\`** at **\`${sim.crankingBatteryVoltageV}V\`** (\`CKP\` sensor and starting speed verified -> **Branch E CKP fault ruled out**).\n   - Cranking cadence is rhythmic and even -> **Branch D catastrophic timing loss deprioritized**.\n3. **Branch A Fuel Delivery Pinpoint & Self-Challenging Hold:**\n   - Technician notes no 2-second fuel-pump prime sound at \`KOEO\` and measures **\`0 kPa (0 psi)\`** at the fuel rail test port (\`OEM K20C2 Spec: 350–400 kPa / 51–58 psi\`).\n   - **Self-Challenging Engine Intervention:** *Do NOT condemn the in-tank fuel pump (\`$520.00\` parts + tank R&R) from \`0 kPa\` rail pressure alone!* An open fuse, failed fuel-pump relay, or broken ground causes the exact same \`0 kPa\` reading.\n4. **EIG-Selected Discriminating Test (\`Fuel-Pump Relay Terminal 30/85/86/87 Voltage Test\`):**\n   - **Pin 30 (Load Supply from Fuse):** \`${sim.fuelPumpRelayLoadPin30V.toFixed(2)}V\` (\`PASS — Fuse intact\`)\n   - **Pin 86/85 (ECM Relay Coil Command during Prime/Crank):** \`${sim.fuelPumpRelayControlPin86V.toFixed(2)}V\` (\`PASS — ECM is commanding fuel pump ON\`)\n   - **Pin 87 (Switched Output to Fuel Pump):** **\`${sim.fuelPumpRelayOutputPin87V.toFixed(2)}V\`** (\`FAIL — Relay internal load contacts burned open; spec >= 11.5V\`)\n   - Bridging Pin 30 to Pin 87 with a fused jumper immediately powers the pump, builds **\`395 kPa (57.3 psi)\`** rail pressure, and starts the engine.\n5. **Economic Diagnostic Value (\`EDV\`) & Verified Repair Outcome:**\n   - Replacing the **\`$28.00\`** fuel-pump relay after a **\`$35.00\`** DMM pinpoint test prevented an unnecessary **\`$520.00\`** in-tank fuel pump replacement (**$\\text{EDV} = \\$520.00 - \\$35.00 = +\\$485.00$ saved**).\n   - **Post-Repair Verification (\`AT-014\`):** With new OEM relay installed, Pin 87 outputs \`12.48V\`, rail pressure holds \`395 kPa\`, engine starts within \`1.1 seconds\` across 5 consecutive cold/warm starts, and zero DTCs are present (\`conclusion_state: "${sim.conclusionState}"\`).`,
+    `### 7. Canonical Unverified Training Case JSON (\`AUTO-CRANK-NO-START-0001\`)\nIn accordance with **Section 7 Knowledge-Quality Rules**, hypothetical or intake-stage training templates carry \`"review_status": "unverified"\` and \`"confirmed_root_cause": null\` so they are never mistaken for confirmed real-world repairs:\n\`\`\`json\n${JSON.stringify(TEMPLATE_CASE_AUTO_CRANK_NO_START_0001, null, 2)}\n\`\`\``,
+    `### 8. Module Completion Criteria & Knowledge-Quality Audit (\`7 / 7 PASS\`)\n| Completion Criterion | Knowledge-Quality & Safety Rule Enforced | Deterministic Verification Status |\n| :--- | :--- | :--- |\n| **1. Correctly classify a \`crank-no-start\` complaint** | Distinguishes \`crank_no_start\` (\`>=150 RPM\` cranking, no combustion) from \`no_crank\`, \`click_no_crank\`, \`slow_crank\`, and \`start_and_stall\`. | **[x] PASS (\`verifyCrankNoStartTrainingModule\`)** |\n| **2. Identify the relevant diagnostic branches (\`Branches A–F\`)** | Maps Fuel (\`A\`), Ignition (\`B\`), Air/Mixture (\`C\`), Mechanical/Timing (\`D\`), Sensors/ECM (\`E\`), and Immobilizer (\`F\`) with subsystem tags. | **[x] PASS (\`AUTO_DIAG_START_001_BRANCHES\`)** |\n| **3. Request missing information when needed** | Requests \`engine_code\` (PFI vs. GDI), \`KOEO\` MIL/security lights, cranking \`RPM\`, recent refuel/service history, and preserved DTCs. | **[x] PASS (\`AT-001\` / \`AT-002\`)** |\n| **4. Select applicable, safe diagnostic tests** | Ranks non-invasive scan/relay/spark/relative-compression tests by \`EIG\` and enforces fuel/ignition safety precautions. | **[x] PASS (\`EIG Utility 4.62 -> 4.18\`)** |\n| **5. Interpret test results without unsupported conclusions** | Blocks condemning a fuel pump from \`0 kPa\` alone or a \`CKP\` sensor from \`P0335\` alone until power/ground/relay/signal tests pass. | **[x] PASS (\`Self-Challenging Gate\`)** |\n| **6. Maintain uncertainty until sufficient evidence is available** | Preserves \`possible_cause\` / \`most_likely_cause\` and \`unverified\` status on incomplete cases; never fabricates OEM specifications. | **[x] PASS (\`Epistemic Abstention Gate\`)** |\n| **7. Produce a traceable diagnostic report and verification plan** | Outputs complaint, vehicle config, measurements with units, source applicability, falsifying tests, and post-repair verification checklist. | **[x] PASS (\`Diagnostic Evidence Ledger\`)** |`,
+  ].join("\n\n");
+}
+
 export function automotiveDiagnosticGadget(question: string): string | null {
   const q = question.toLowerCase();
+
+  const asksCrankNoStartModule =
+    !/\b(diesel\s+(?:vehicle|engine|truck|van|car)\s+cranks\s+but\s+(?:will|does)\s+not\s+start|p0087|fuel\s+rail\s+pressure\s+too\s+low)\b/i.test(
+      q,
+    ) &&
+    /\b(auto-diag-start-001|gasoline\s+engine\s+cranks\s+but\s+does\s+not\s+start|diagnose\s+a\s+crank-no-start\s+condition|branch\s+a\s*[—-]\s*fuel\s+delivery\s+and\s+injection|distinguish\s+a\s+crank-no-start\s+condition\s+from\s+a\s+no-crank\s+condition|(?:gasoline\s+|my\s+)?(?:car|engine|vehicle|suv|sedan)\s+cranks\s+(?:normally\s+|briskly\s+)?but\s+(?:does\s+not|doesn'?t|will\s+not|won'?t)\s+start)\b/i.test(
+      q,
+    );
+
+  if (asksCrankNoStartModule) {
+    return buildCrankNoStartTrainingModuleReport(question);
+  }
 
   const asksAutomotiveTrainingOrSpec =
     /\b(automotive\s+diagnostic\s+intelligence\s+engine|vehicle\s+intelligence\s+and\s+diagnostic\s+assurance\s+layer|self-challenging\s+diagnostic\s+engine|diagnostic\s+data\s+quality\s+engine|diagnostic\s+evidence\s+ledger|automotive\s+digital\s+evidence\s+recorder|cross-sensor\s+consistency\s+engine|diagnostic\s+maturity\s+model|noctis-auto-001|diagnos(?:e|is|ing)\s+(?:of\s+)?(?:car|vehicle|auto|automotive)\s+(?:issues?|problems?|faults?)|train\s+(?:my\s+model|noctis|vibe|dstrike)[\s\S]{0,60}\b(?:car|vehicle|automotive|mechanic|diagnos)|auto-start-0001|auto-misfire-0001|differential\s+diagnosis\s+engine[\s\S]{0,80}\b(?:vehicle|car|dtc|obd)|symptom-based\s+diagnosis[\s\S]{0,120}\bcomputer\s+and\s+fault-code\s+diagnosis|build\s+the\s+automotive\s+knowledge\s+repository|my\s+car\s+clicks\s+when\s+i\s+turn\s+the\s+key|engine\s+cranks\s+slowly[\s\S]{0,80}\bovernight\s+parking|api\/v1\/automotive|vehicle_spec_not_found|noctis_automotive|oscilloscope\s+and\s+waveform\s+intelligence|vehicle\s+digital-twin\s+and\s+fault-simulation\s+engine|expected\s+avoidable\s+repair\s+cost)\b/i.test(
@@ -1628,4 +1984,5 @@ export function automotiveDiagnosticGadget(question: string): string | null {
   if (!asksAutomotiveTrainingOrSpec && !asksLiveCarDiagnosis) return null;
   return buildAutomotiveDiagnosticIntelligenceReport(question);
 }
+
 

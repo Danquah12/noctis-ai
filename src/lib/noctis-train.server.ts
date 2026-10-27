@@ -27,7 +27,10 @@ import {
   webSecurityAcademyLabsGadget,
 } from "../scripts/vulnerabilityScriptMap.ts";
 import { buildArchitecturalIntelligenceReport } from "./noctis-architect-engine.ts";
-import { buildAutomotiveDiagnosticIntelligenceReport } from "./noctis-automotive-engine.ts";
+import {
+  buildAutomotiveDiagnosticIntelligenceReport,
+  buildCrankNoStartTrainingModuleReport,
+} from "./noctis-automotive-engine.ts";
 
 export type TrainingPair = {
   id?: string;
@@ -241,6 +244,14 @@ const OWASP_SEED_CORPUS: TrainingPair[] = [
     model: "vibe-seed",
     hits: 30,
     at: "2026-10-26T20:00:00.000Z",
+  },
+  {
+    question: "NOCTIS AUTOMOTIVE TRAINING MODULE Gasoline Engine Cranks but Does Not Start Module ID: AUTO-DIAG-START-001 Diagnose a crank-no-start condition using evidence-based differential diagnosis and safe, vehicle-specific testing.",
+    answer: buildCrankNoStartTrainingModuleReport("AUTO-DIAG-START-001 Gasoline Engine Cranks but Does Not Start"),
+    domain: "engineering",
+    model: "vibe-seed",
+    hits: 30,
+    at: "2026-10-26T20:35:00.000Z",
   },
 ];
 
