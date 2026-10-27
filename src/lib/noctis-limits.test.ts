@@ -3256,6 +3256,79 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
     assert.equal(q16ScenarioGate.passed, true);
     const q16SpecGate = runSpecificationAndMeasurementValidityGate(q16Prompt, q16Out);
     assert.equal(q16SpecGate.passed, true);
+
+    // Verify Next-Best-Test Engine (AUTO-NBT-001), Question 17 (AUTO-MULTIFAULT-0017), and Question 18 (AUTO-TRANS-0018)
+    const {
+      QUESTION_17_NBT_CANDIDATES,
+      QUESTION_18_NBT_CANDIDATES,
+      TEMPLATE_CASE_AUTO_MULTIFAULT_0017,
+      TEMPLATE_CASE_AUTO_TRANS_0018,
+      runNextBestTestEngine,
+      verifyQuestion17IdleTrimMisfireCompression,
+      verifyQuestion18TransmissionNetworkMechanicalVsElectrical,
+    } = await import("./noctis-automotive-engine.ts");
+
+    const q17Ranked = runNextBestTestEngine(QUESTION_17_NBT_CANDIDATES);
+    assert.equal(q17Ranked.length, 5);
+    assert.equal(q17Ranked[0].testId, "NBT-Q17-01");
+    assert.equal(q17Ranked[1].testId, "NBT-Q17-02");
+    assert.ok(q17Ranked[0].compositePriorityScore >= q17Ranked[1].compositePriorityScore);
+
+    assert.equal(TEMPLATE_CASE_AUTO_MULTIFAULT_0017.case_id, "AUTO-MULTIFAULT-0017");
+    const q17Eval = verifyQuestion17IdleTrimMisfireCompression();
+    assert.equal(q17Eval.q1Answer, "B");
+    assert.equal(q17Eval.q2Answer, "C");
+    assert.equal(q17Eval.q3Answer, "C");
+    assert.equal(q17Eval.nextBestTestEngineActive, true);
+    assert.equal(q17Eval.separatesComponentFailureFromCircuitFailureAfterCoilSwap, true);
+    assert.equal(q17Eval.rejectsSimilarEnginesAsFallbackCompressionPassFailStandard, true);
+    assert.equal(q17Eval.prohibitsBurnedValveOrHeadRemovalFromUnverifiedCompression, true);
+    assert.equal(q17Eval.feasibilityClassification, "CONDITIONALLY FEASIBLE");
+
+    const q17Prompt =
+      "Question 17: Fuel trims are substantially more positive at hot idle than at 2,500 RPM with P0101 and P0301. Repairing the smoke-test-confirmed intake leak improved fuel trims, but the remaining cylinder 1 misfire did not follow the coil when moved, and an initial low compression reading was reported without validated test conditions.";
+    const q17Out = automotiveDiagnosticGadget(q17Prompt);
+    assert.ok(q17Out);
+    assert.match(q17Out, /AUTO-MULTIFAULT-0017/);
+    assert.match(q17Out, /Next-Best-Test Engine/);
+    assert.match(q17Out, /Component Failure vs\. Circuit Failure Separation/);
+    assert.match(q17Out, /strictly prohibits using compression numbers from "similar engines"/i);
+    assert.match(q17Out, /CONDITIONALLY FEASIBLE/);
+    assert.doesNotMatch(q17Out, /noctis-dashboard/);
+
+    const q17ScenarioGate = runDiagnosticScenarioIntegrityGate(q17Prompt, q17Out);
+    assert.equal(q17ScenarioGate.passed, true);
+    const q17SpecGate = runSpecificationAndMeasurementValidityGate(q17Prompt, q17Out);
+    assert.equal(q17SpecGate.passed, true);
+
+    // Verify Question 18 — Intermittent Transmission Behavior, Network Communication Faults (U0101 / P0700) & Mechanical vs. Electrical Isolation
+    const q18Ranked = runNextBestTestEngine(QUESTION_18_NBT_CANDIDATES);
+    assert.equal(q18Ranked.length, 5);
+    assert.equal(q18Ranked[0].testId, "NBT-Q18-01");
+    assert.equal(q18Ranked[1].testId, "NBT-Q18-02");
+
+    assert.equal(TEMPLATE_CASE_AUTO_TRANS_0018.case_id, "AUTO-TRANS-0018");
+    const q18Eval = verifyQuestion18TransmissionNetworkMechanicalVsElectrical();
+    assert.equal(q18Eval.q1Answer, "C");
+    assert.equal(q18Eval.q2Answer, "B");
+    assert.equal(q18Eval.q3Answer, "C");
+    assert.equal(q18Eval.nextBestTestEngineActive, true);
+    assert.equal(q18Eval.distinguishesMechanicalTransmissionFailureFromElectricalControlFault, true);
+    assert.equal(q18Eval.explainsHydraulicLimpHomeDefaultFromTcmPowerOrCanLoss, true);
+    assert.equal(q18Eval.separatesSensorFalseSlipFromPhysicalClutchSlip, true);
+    assert.equal(q18Eval.feasibilityClassification, "CONDITIONALLY FEASIBLE");
+
+    const q18Prompt =
+      "Question 18: Intermittent transmission behavior, network communication faults (U0101, P0700), and distinguishing a genuine mechanical transmission failure from an electrical or control-system fault.";
+    const q18Out = automotiveDiagnosticGadget(q18Prompt);
+    assert.ok(q18Out);
+    assert.match(q18Out, /AUTO-TRANS-0018/);
+    assert.match(q18Out, /Next-Best-Test Engine/);
+    assert.match(q18Out, /CONDITIONALLY FEASIBLE/);
+    assert.doesNotMatch(q18Out, /noctis-dashboard/);
+
+    const q18ScenarioGate = runDiagnosticScenarioIntegrityGate(q18Prompt, q18Out);
+    assert.equal(q18ScenarioGate.passed, true);
   });
 });
 

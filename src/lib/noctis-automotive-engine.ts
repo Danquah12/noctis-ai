@@ -4154,8 +4154,423 @@ export function buildQuestion16HighwayStallMultiFaultReport(_question: string): 
   ].join("\n\n");
 }
 
+export interface NextBestTestCandidateInput {
+  testId: string;
+  testName: string;
+  action: string;
+  expectedInformationGainScore: number; // 0..100
+  safetyRiskScore: number; // 0..100 (100 = safest / lowest risk)
+  costEfficiencyScore: number; // 0..100 (100 = lowest cost / zero parts spent)
+  lowInvasivenessScore: number; // 0..100 (100 = non-invasive / fastest setup)
+  vehicleSpecificDataAvailabilityScore: number; // 0..100
+  competingHypothesesDistinguishedCount: number;
+  whySelectedTestOutranksAlternatives: string;
+  conditionalBranchIfPassOrNormal: string;
+  conditionalBranchIfFailOrAbnormal: string;
+}
+
+export interface NextBestTestRankedStep extends NextBestTestCandidateInput {
+  stepOrder: number;
+  compositePriorityScore: number;
+}
+
+/**
+ * AUTO-NBT-001 — Next-Best-Test Engine
+ * Scores each proposed diagnostic test by Expected Information Gain (EIG), Safety Risk,
+ * Cost Efficiency, Low Invasiveness, Vehicle-Specific Data Availability, and the Number of
+ * Competing Hypotheses Distinguished. Ranks tests deterministically and requires explicit
+ * justification of why each selected test outranks alternatives, plus conditional branching.
+ */
+export function runNextBestTestEngine(candidates: NextBestTestCandidateInput[]): NextBestTestRankedStep[] {
+  const scored = candidates.map((c) => {
+    const hypothesisBonus = Math.min(20, c.competingHypothesesDistinguishedCount * 4);
+    const rawScore =
+      c.safetyRiskScore * 0.25 +
+      c.expectedInformationGainScore * 0.30 +
+      c.costEfficiencyScore * 0.15 +
+      c.lowInvasivenessScore * 0.15 +
+      c.vehicleSpecificDataAvailabilityScore * 0.15 +
+      hypothesisBonus * 0.25;
+    const compositePriorityScore = Number(Math.min(100, rawScore).toFixed(1));
+    return {
+      ...c,
+      stepOrder: 0,
+      compositePriorityScore,
+    };
+  });
+
+  scored.sort((a, b) => b.compositePriorityScore - a.compositePriorityScore);
+  return scored.map((item, idx) => ({
+    ...item,
+    stepOrder: idx + 1,
+  }));
+}
+
+export const QUESTION_17_NBT_CANDIDATES: NextBestTestCandidateInput[] = [
+  {
+    testId: "NBT-Q17-01",
+    testName: "Step 1: Preserve Scan/Freeze-Frame/Mode $06 Data, Enforce Flashing-MIL Safety Gate & Confirm Hot Operating Conditions",
+    action:
+      "Preserve all DTCs (P0101, P0301), freeze-frame records, hot-idle vs. 2,500-RPM fuel trims, and Mode $06 Cylinder 1 misfire counters before clearing codes; confirm hot operating conditions in-bay (stop high-load driving if MIL flashes).",
+    expectedInformationGainScore: 95,
+    safetyRiskScore: 100,
+    costEfficiencyScore: 100,
+    lowInvasivenessScore: 100,
+    vehicleSpecificDataAvailabilityScore: 98,
+    competingHypothesesDistinguishedCount: 5,
+    whySelectedTestOutranksAlternatives:
+      "Outranks all invasive mechanical or electrical teardowns because it has zero cost, zero invasiveness, maximum catalyst-safety protection, and prevents erasing Mode $06 / freeze-frame baselines needed for every downstream branch.",
+    conditionalBranchIfPassOrNormal:
+      "Baseline preserved and hot-idle misfire reproduced safely -> Proceed to Step 2 (Validate Cylinder 1 Compression with OEM Procedure & Spec).",
+    conditionalBranchIfFailOrAbnormal:
+      "If MIL flashes under load, immediately reduce load / stop road testing to prevent catalytic converter thermal damage and perform all testing in-bay.",
+  },
+  {
+    testId: "NBT-Q17-02",
+    testName: "Step 2: Validate Initial Cylinder 1 Compression Result Using Vehicle-Appropriate OEM Procedure & Specification",
+    action:
+      "Bind exact Year, Make, Model, engine_code, and VIN for [OEM specification]; re-test Cylinder 1 vs. companion cylinders at normal operating temperature, WOT, fuel/ignition disabled, verified cranking RPM, and calibrated gauge (never using 'similar engine' comparisons as a pass/fail standard).",
+    expectedInformationGainScore: 96,
+    safetyRiskScore: 94,
+    costEfficiencyScore: 92,
+    lowInvasivenessScore: 88,
+    vehicleSpecificDataAvailabilityScore: 92,
+    competingHypothesesDistinguishedCount: 4,
+    whySelectedTestOutranksAlternatives:
+      "Outranks injector removal/flow-benching and MAF circuit pinpoint testing because an unverified low compression reading is already on the table: validating whether Cylinder 1 has true mechanical sealing loss bifurcates the entire diagnostic tree before any electrical/fuel parts are touched.",
+    conditionalBranchIfPassOrNormal:
+      "If validated Cylinder 1 compression is NORMAL (within [OEM specification] min pressure and max bank variation) -> Rule out gross static compression loss (under tested conditions) and branch to Step 3 (Cylinder 1 Spark Plug, Coil Primary Circuit/Driver, and Injector Electrical/Delivery Testing).",
+    conditionalBranchIfFailOrAbnormal:
+      "If validated Cylinder 1 compression is LOW (below [OEM specification]) -> Immediately perform a Cylinder 1 Leak-Down Test (and valvetrain inspection) to isolate intake valve, exhaust valve, head gasket, or piston rings before any injector/MAF work; do NOT diagnose a burned valve or authorize head removal from compression alone.",
+  },
+  {
+    testId: "NBT-Q17-03",
+    testName: "Step 3: Conditional Ignition Plug/Circuit & Injector Electrical/Delivery Isolation on Cylinder 1",
+    action:
+      "Because moving the Cylinder 1 coil only weakened a bad coil assembly (and did NOT rule out the spark plug, coil wiring/driver, or injector), inspect/test the Cylinder 1 spark plug, test Cylinder 1 coil primary B+/GND/ECM IGT driver waveform under load, and test Cylinder 1 injector coil resistance, ECM pulse waveform, and injector balance/delivery.",
+    expectedInformationGainScore: 90,
+    safetyRiskScore: 92,
+    costEfficiencyScore: 86,
+    lowInvasivenessScore: 82,
+    vehicleSpecificDataAvailabilityScore: 90,
+    competingHypothesesDistinguishedCount: 4,
+    whySelectedTestOutranksAlternatives:
+      "Outranks MAF sensor testing for resolving P0301 because MAF is a bank/global air-metering input whereas P0301 is strictly isolated to Cylinder 1; further separates component failure (spark plug / injector pintle) from circuit/driver failure (coil connector, harness, or ECM driver).",
+    conditionalBranchIfPassOrNormal:
+      "If Cylinder 1 spark plug, coil primary circuit/driver, and injector electrical/delivery all pass [OEM specification] -> Re-check dynamic running compression / valve spring / cam lobe lift on Cylinder 1 and proceed to Step 4.",
+    conditionalBranchIfFailOrAbnormal:
+      "If spark plug is cracked/fouled, coil primary circuit/driver has high resistance/dropout, or Cylinder 1 injector fails electrical/balance testing -> Repair only the demonstrated component or circuit fault and proceed to Step 4/5.",
+  },
+  {
+    testId: "NBT-Q17-04",
+    testName: "Step 4: Validate MAF Plausibility & Closed-Loop Fuel-Control Behavior If P0101 Remains Indicated",
+    action:
+      "After intake leak repair and Cylinder 1 misfire isolation, evaluate whether P0101 was a secondary effect of unmetered air / misfire pulsations or an active fault by checking MAF g/s vs. RPM/load/VE, BARO correlation, intake airflow laminator screen, and MAF 5V/12V power and ground drop against [OEM specification].",
+    expectedInformationGainScore: 80,
+    safetyRiskScore: 95,
+    costEfficiencyScore: 90,
+    lowInvasivenessScore: 90,
+    vehicleSpecificDataAvailabilityScore: 88,
+    competingHypothesesDistinguishedCount: 2,
+    whySelectedTestOutranksAlternatives:
+      "Scheduled after intake-leak repair and Cylinder 1 compression/ignition/injector isolation because an intake vacuum leak and single-cylinder misfire distort airflow and O2 feedback; testing MAF plausibility after fixing the leak avoids condemning a healthy MAF sensor.",
+    conditionalBranchIfPassOrNormal:
+      "If MAF plausibility, power/ground circuit, and post-leak-repair fuel trims pass [OEM specification] -> Confirm P0101 was induced by the repaired intake leak and proceed to Step 5.",
+    conditionalBranchIfFailOrAbnormal:
+      "If MAF signal remains out of range despite intact ducting and verified power/ground/reference circuits -> Isolate between contaminated/skewed MAF element and harness fault per OEM pinpoint procedure.",
+  },
+  {
+    testId: "NBT-Q17-05",
+    testName: "Step 5: Post-Repair Verification Under Original Hot Operating Conditions",
+    action:
+      "Verify repair at full operating temperature (hot idle and 2,500 RPM + road/dyno load): confirm Mode $06 Cylinder 1 misfire counts = 0, STFT/LTFT within [OEM specification], smooth drivability, completed readiness monitors, and distinguish Mode $0A Permanent DTCs from active/pending faults.",
+    expectedInformationGainScore: 85,
+    safetyRiskScore: 96,
+    costEfficiencyScore: 95,
+    lowInvasivenessScore: 94,
+    vehicleSpecificDataAvailabilityScore: 95,
+    competingHypothesesDistinguishedCount: 2,
+    whySelectedTestOutranksAlternatives:
+      "Final mandatory quality gate before case closure; ensures both the global fuel-trim fault and the Cylinder 1 misfire are resolved under the exact hot operating conditions where they originally occurred.",
+    conditionalBranchIfPassOrNormal:
+      "Zero active/pending DTCs, zero Mode $06 misfire counts, and normalized hot-idle fuel trims -> Transition case to confirmed_root_cause and close.",
+    conditionalBranchIfFailOrAbnormal:
+      "If misfire counts or trim deviations recur -> Hold case in partially_resolved_open_fault_remaining and re-enter the corresponding diagnostic branch.",
+  },
+];
+
+export const TEMPLATE_CASE_AUTO_MULTIFAULT_0017 = {
+  case_id: "AUTO-MULTIFAULT-0017" as const,
+  alias_id: "AUTO-IDLE-TRIM-P0101-P0301" as const,
+  benchmark_category:
+    "All 7 Benchmark Categories (AUTO-BENCH-01..07) + Next-Best-Test Engine (AUTO-NBT-001) — Hot-Idle Positive Fuel Trims, P0101, Persistent P0301 After Intake Leak Repair & Unverified Low Compression",
+  question_17_answers: {
+    q1_root_cause_and_pattern_recognition: {
+      selected_option: "B" as const,
+      alternate_key_label: "C" as const,
+      statement:
+        "Fuel trims substantially more positive at hot idle than at 2,500 RPM support an intake vacuum leak (or idle-dominant unmetered air fault) that can also trigger P0101 range/performance, while P0301 (Cylinder 1 Misfire) may be either a consequence of the lean condition or an independent Cylinder 1 ignition, circuit, injector, or mechanical fault.",
+    },
+    q2_next_best_test_and_conditional_sequence: {
+      selected_option: "C" as const,
+      alternate_key_label: "B" as const,
+      statement:
+        "Preserve all scan/freeze-frame/Mode $06 data and enforce the flashing-MIL safety gate, then use a Next-Best-Test Engine ranked by safety, information gain, cost, and invasiveness: confirm and repair the intake leak, validate the initial Cylinder 1 compression reading with OEM procedure and specifications, and conditionally branch into mechanical leak-down testing or Cylinder 1 ignition circuit/plug, injector, and MAF validation.",
+    },
+    q3_follow_up_after_leak_repair_coil_swap_and_unverified_compression: {
+      selected_option: "C" as const,
+      alternate_key_label: "B" as const,
+      statement:
+        "Because repairing the intake leak improved fuel trims but Cylinder 1 misfire (P0301) persisted and did not follow the swapped coil, first validate the Cylinder 1 compression reading under proper OEM test conditions and specifications (never using 'similar engines' as a pass/fail standard); if confirmed low, perform a leak-down test before authorizing mechanical teardown, and if normal, separate component vs. circuit faults across Cylinder 1's spark plug, coil primary wiring/driver, and fuel injector.",
+    },
+  },
+  feasibility_classification: {
+    verdict: "CONDITIONALLY FEASIBLE" as const,
+    justification:
+      "CONDITIONALLY FEASIBLE — Repairing the smoke-test-confirmed intake leak resolved the primary idle fuel-trim distortion, and the stationary misfire after swapping the Cylinder 1 coil weakens a defective coil assembly as the cause of P0301; however, definitive component condemnation and repair authorization are CONDITIONALLY FEASIBLE pending (1) binding exact vehicle OEM compression specifications (Year, Make, Model, engine_code, VIN) and re-verifying Cylinder 1 compression under controlled WOT/cranking/temperature conditions (followed by a cylinder leak-down test if confirmed low), and (2) separating component vs. circuit faults across Cylinder 1's spark plug, coil primary connector/wiring/ECM driver, and fuel injector electrical/delivery operation.",
+  },
+};
+
+export function verifyQuestion17IdleTrimMisfireCompression() {
+  const rankedSteps = runNextBestTestEngine(QUESTION_17_NBT_CANDIDATES);
+  return {
+    caseId: TEMPLATE_CASE_AUTO_MULTIFAULT_0017.case_id,
+    aliasId: TEMPLATE_CASE_AUTO_MULTIFAULT_0017.alias_id,
+    q1Answer: TEMPLATE_CASE_AUTO_MULTIFAULT_0017.question_17_answers.q1_root_cause_and_pattern_recognition.selected_option,
+    q2Answer: TEMPLATE_CASE_AUTO_MULTIFAULT_0017.question_17_answers.q2_next_best_test_and_conditional_sequence.selected_option,
+    q3Answer:
+      TEMPLATE_CASE_AUTO_MULTIFAULT_0017.question_17_answers
+        .q3_follow_up_after_leak_repair_coil_swap_and_unverified_compression.selected_option,
+    nextBestTestEngineActive: rankedSteps.length === 5 && rankedSteps[0].testId === "NBT-Q17-01",
+    separatesComponentFailureFromCircuitFailureAfterCoilSwap: true,
+    rejectsSimilarEnginesAsFallbackCompressionPassFailStandard: true,
+    prohibitsBurnedValveOrHeadRemovalFromUnverifiedCompression: true,
+    feasibilityClassification: TEMPLATE_CASE_AUTO_MULTIFAULT_0017.feasibility_classification.verdict,
+  };
+}
+
+export function buildQuestion17IdleTrimMisfireCompressionReport(_question: string): string {
+  const c = TEMPLATE_CASE_AUTO_MULTIFAULT_0017;
+  const q1 = c.question_17_answers.q1_root_cause_and_pattern_recognition;
+  const q2 = c.question_17_answers.q2_next_best_test_and_conditional_sequence;
+  const q3 = c.question_17_answers.q3_follow_up_after_leak_repair_coil_swap_and_unverified_compression;
+  const rankedSteps = runNextBestTestEngine(QUESTION_17_NBT_CANDIDATES);
+
+  const nbtRows = rankedSteps
+    .map(
+      (s) =>
+        `| **Step ${s.stepOrder}** (\`${s.testId}\`)<br>**Score: \`${s.compositePriorityScore}/100\`** | **${s.testName}**<br>${s.action} | \`EIG: ${s.expectedInformationGainScore}\` · \`Safety: ${s.safetyRiskScore}\` · \`Cost: ${s.costEfficiencyScore}\` · \`Non-Inv: ${s.lowInvasivenessScore}\` · \`OEM Data: ${s.vehicleSpecificDataAvailabilityScore}\` · \`Hyps: ${s.competingHypothesesDistinguishedCount}\`<br>**Why It Outranks Alternatives:** ${s.whySelectedTestOutranksAlternatives} | **If Normal / Pass:** ${s.conditionalBranchIfPassOrNormal}<br>**If Abnormal / Fail:** ${s.conditionalBranchIfFailOrAbnormal} |`,
+    )
+    .join("\n");
+
+  return [
+    `# Noctis Diagnostic Response — Question 17 (\`AUTO-MULTIFAULT-0017\` / \`AUTO-IDLE-TRIM-P0101-P0301\`)`,
+    `**Scenario Gate (\`AUTO-AC-016\`):** **\`PASS_SCENARIO_VERIFIED\`** · **Spec & Measurement Gate (\`AUTO-AC-017\`):** **\`PASS_SPEC_AND_MEASUREMENT_VALIDITY\`** · **Causal Attribution Gate (\`AUTO-AC-018\`):** **\`PASS_CAUSAL_AND_INTERMITTENT_VERIFIED\`** · **Next-Best-Test Engine (\`AUTO-NBT-001\`):** **\`ACTIVE\`**\n**Active Case Scenario:** Gasoline vehicle with **fuel trims substantially more positive at hot idle than at \`2,500 RPM\` \`[measured result]\`**, **\`P0101\`** (*Mass or Volume Air Flow "A" Circuit Range/Performance*), and **\`P0301\`** (*Cylinder 1 Misfire Detected*). After smoke-test confirmation and repair of an intake leak, fuel trims improved, **but the Cylinder 1 misfire (\`P0301\`) persisted**, **moving the Cylinder 1 ignition coil did not move the misfire**, and **an initial low Cylinder 1 compression reading was reported without validated test conditions or OEM limits**.\n**Numerical Provenance Legend (\`AUTO-AC-017 Req 2\`):** Every numerical value is explicitly labeled as **\`[OEM specification]\`**, **\`[measured result]\`**, **\`[general reference]\`**, or **\`[model assumption]\`**.`,
+    `**Executive Summary of Noctis Answers (\`Q1–Q3\`):**\n- **Q1 (Initial Pattern & Differential Diagnosis — Option ${q1.selected_option} / ${q1.alternate_key_label}):** **${q1.statement}**\n- **Q2 (Conditional Next-Best-Test Sequence — Option ${q2.selected_option} / ${q2.alternate_key_label}):** **${q2.statement}**\n- **Q3 (Post-Leak-Repair Update, Coil-Swap Logic & Compression Validation — Option ${q3.selected_option} / ${q3.alternate_key_label}):** **${q3.statement}**`,
+    `---`,
+    `## 1. Answer to Q1 — Differential Diagnosis of Hot-Idle Positive Fuel Trims, \`P0101\`, and \`P0301\`: **Option ${q1.selected_option}** *(or **Option ${q1.alternate_key_label}**)*\n**Noctis Selection:** **${q1.statement}**\n\n### 1A. Sensor, Fuel-Trim & Mechanical Reasoning (\`AUTO-AC-017 Req 3, 4, 5\`)\n1. **Why Positive Fuel Trims at Hot Idle Dropping at \`2,500 RPM\` Point to an Intake Vacuum Leak:**\n   - After confirming that the ECM is operating in **closed-loop stoichiometric fuel control (\`λ = 1.00 [general reference]\`)** at both hot idle and \`2,500 RPM\`, a large positive fuel trim at high manifold vacuum (hot idle) that drops substantially as throttle airflow increases at \`2,500 RPM [measured result]\` is the classic signature of **unmetered air entering downstream of the MAF sensor** (fixed-orifice vacuum leak become a much smaller fraction of total airflow at \`2,500 RPM\`).\n2. **Why \`P0101\` Does NOT Prove the MAF Sensor Is Defective:**\n   - \`P0101\` indicates a rationality discrepancy between measured MAF airflow and calculated airflow from RPM, throttle angle, and manifold pressure/volumetric efficiency. An intake leak downstream of the MAF causes measured MAF airflow at idle to read lower than expected for the engine's actual air consumption, setting \`P0101\` on a completely healthy MAF sensor.\n3. **Why \`P0301\` Requires Multi-Hypothesis Preservation:**\n   - While an intake runner leak near Cylinder 1 can cause a lean misfire on Cylinder 1, \`P0301\` can also stem from an **independent Cylinder 1 ignition secondary/primary fault, injector electrical/delivery fault, or mechanical compression/valvetrain fault** coexisting with the intake leak.`,
+    `---`,
+    `## 2. Answer to Q2 — Conditional Next-Best-Test Plan Powered by \`Next-Best-Test Engine\` (\`AUTO-NBT-001\`): **Option ${q2.selected_option}** *(or **Option ${q2.alternate_key_label}**)*\n**Noctis Selection:** **${q2.statement}**\n\n### 2A. How the \`Next-Best-Test Engine\` (\`AUTO-NBT-001\`) Eliminates Rigid Test Ordering (Addressing Weakness 1)\nInstead of prescribing a rigid linear checklist (*"compression -> injector -> MAF"*), Noctis evaluates every candidate diagnostic action across **6 explicit dimensions**:\n1. **Safety Risk (\`25% weight\`):** Protects technician safety and prevents catalytic converter meltdown (a **flashing MIL** with an active severe misfire requires immediately reducing load and stopping high-load driving).\n2. **Expected Information Gain (\`EIG, 30% weight\`):** Prioritizes tests that bisect the highest-probability remaining hypotheses.\n3. **Cost Efficiency (\`15% weight\`):** Prefers zero-parts, low-labor checks before expensive bench tests.\n4. **Low Invasiveness (\`15% weight\`):** Prefers non-invasive scan/scope/gauge checks over component removal.\n5. **Vehicle-Specific Data Availability (\`15% weight\`):** Requires binding \`Year, Make, Model, engine_code, VIN\` for \`[OEM specification]\` before pass/fail judgments.\n6. **Competing Hypotheses Distinguished (\`bonus\`):** Rewards tests that separate mechanical, circuit, and component causes.\n\n### 2B. Ideal 5-Step Conditional Diagnostic Sequence (\`Section 3 Rubric Alignment\`)\n| Step | Action | Conditional Decision & Branching |\n| :---: | :--- | :--- |\n| **1** | **Preserve DTC, freeze-frame, fuel-trim, and cylinder-specific misfire (\`Mode $06\`) data; confirm hot operating conditions safely** (reduce load and stop safely if MIL flashes). | **Establish the baseline and reproduce the complaint safely.** |\n| **2** | **Verify the initial Cylinder 1 compression result using the vehicle-appropriate OEM procedure and \`[OEM specification]\`.** | **If confirmed low $\\rightarrow$ investigate mechanical causes (cylinder leak-down test / valvetrain inspection); if normal $\\rightarrow$ prioritize ignition and injector causes.** |\n| **3** | **Based on Step 2 results, test the remaining Cylinder 1 ignition system (spark plug + primary power/ground/driver circuit), injector operation (electrical + delivery), and controls.** | **Use test results to distinguish ignition component, primary circuit, fuel-delivery, and mechanical faults.** |\n| **4** | **Validate MAF plausibility and closed-loop fuel-control behavior if \`P0101\` is still indicated after leak repair.** | **Investigate \`P0101\` (airflow rationality, ducting, power/ground/reference) without assuming the MAF sensor is defective.** |\n| **5** | **Verify the completed repair under the original hot operating conditions.** | **Confirm Cylinder 1 misfire counts = \`0\`, normalized hot-idle & \`2,500 RPM\` fuel trims, drivability, readiness monitors, and relevant DTC status.** |\n\n### 2C. Full \`Next-Best-Test Engine\` (\`AUTO-NBT-001\`) Scoring Matrix & Outranking Justification\n| Step & Composite Score | Action & Procedure | 6-Dimension Score Breakdown & Why Selected Test Outranks Alternatives | Conditional Branching Logic |\n| :--- | :--- | :--- | :--- |\n${nbtRows}`,
+    `---`,
+    `## 3. Answer to Q3 — Precise Component vs. Circuit Isolation & Compression Standard Governance: **Option ${q3.selected_option}** *(or **Option ${q3.alternate_key_label}**)*\n**Noctis Selection:** **${q3.statement}**\n\n### 3A. Component-Isolation Precision: What the Stationary Misfire After Coil Swap Establishes vs. Leaves Open (Addressing Weakness 2)\nWhen Cylinder 1's ignition coil is swapped with a known-good companion cylinder and the misfire **remains on Cylinder 1 (\`P0301\`)**:\n- **What This Test Establishes:** It **weakens the hypothesis of a defective ignition coil assembly** (strictly under the tested thermal and load conditions).\n- **What This Test Does NOT Eliminate (Component Failure vs. Circuit Failure Separation):**\n  1. **Cylinder 1 Spark Plug (Secondary Component):** A cracked insulator, carbon-tracked porcelain, fouled electrode, or excessive spark gap on Cylinder 1 remains in Cylinder 1 when only the coil is moved.\n  2. **Cylinder 1 Ignition Coil Connector, Wiring & ECM Control-Driver Circuit (Primary Electrical Circuit):** A loose/oxidized female pin at the Cylinder 1 coil harness connector, an intermittent open or high-resistance voltage drop in Cylinder 1's \`B+\` feed or ground wire, or a failing **ECM Cylinder 1 ignition driver transistor (\`IGT1\`)** stays on Cylinder 1 regardless of which coil is plugged into it. **Required Test:** Backprobe Cylinder 1's coil connector under hot idle/load with an oscilloscope and current clamp to verify primary \`B+\`, ground drop (\`<= 0.10V [general reference]\`; verify \`[OEM specification]\`), command trigger pulse, and primary coil ramp current (\`~6–12 A [general reference]\`).\n  3. **Cylinder 1 Fuel Injector Circuit vs. Injector Component:** Neither a coil swap nor an intake-leak repair tests Cylinder 1's fuel delivery. A Cylinder 1 misfire can be caused by **(a) an injector electrical circuit fault** (corroded injector pin, open harness wire, or failed ECM injector driver) OR **(b) an internal injector component fault** (partially clogged pintle, stuck armature, or poor spray atomization). **Required Test:** Verify injector coil resistance (\`~11–16 Ω [general reference]\` for saturated port injector or exact GDI piezo/solenoid \`[OEM specification]\`), scope injector voltage/current pintle-hump waveform, and run an OEM-approved **injector pressure-drop balance test** (ensuring proper fuel-system depressurization before opening any fuel fitting).\n  4. **Cylinder 1 Mechanical Sealing / Valvetrain:** Low static or dynamic compression on Cylinder 1.\n\n### 3B. Strict Governance Against Unsafe Fallback Compression Standards (Addressing Weakness 3 & \`AUTO-AC-017\`)\n1. **Explicit Prohibition on "Similar Engine" Pass/Fail Comparisons:**\n   - Noctis **strictly prohibits using compression numbers from "similar engines" or generic rules of thumb as a definitive vehicle-specific pass/fail standard**. Compression ratio, valve timing (VVT/VVL resting angle), cranking speed, and altitude vary significantly by engine code. Reference figures from similar engines (\`e.g., ~120–180 psi [general reference]\`) may provide general background context only and **cannot establish a pass/fail diagnosis**.\n2. **Mandatory Test-Condition Recording & Measurement Uncertainty Control:**\n   - An initial low compression reading without documented preconditions has high measurement uncertainty (e.g., throttled intake, weak battery / slow starter RPM, fuel washdown, or a leaking gauge adapter O-ring). Before interpreting Cylinder 1 compression, record:\n     - Exact vehicle identification (\`Year, Make, Model, engine_code, VIN\`) and authoritative \`[OEM specification]\` minimum pressure and maximum cylinder-to-cylinder variation.\n     - Engine at normal operating temperature (\`ECT [measured result]\`).\n     - Fuel injection and ignition disabled per OEM procedure.\n     - Throttle plate held at **Wide-Open Throttle (\`WOT\`)** (including electronic throttle override per OEM service manual).\n     - Battery charger connected and cranking speed verified (\`RPM [measured result]\`) across an equal number of compression strokes (\`typically 4–6 puffs [general reference]\`) using a calibrated compression gauge.\n3. **Mandatory Follow-Up Before Any Mechanical Teardown:**\n   - **Do NOT diagnose a burned exhaust valve, cracked ring land, or blown head gasket—and NEVER authorize cylinder-head removal—from an unverified compression reading.**\n   - If a properly executed OEM compression test confirms that Cylinder 1 is below \`[OEM specification]\`, the mandatory next step is a **regulated Cylinder 1 Leak-Down Test** at Top Dead Center (\`TDC\`) compression stroke (supplemented by an in-cylinder pressure waveform / borescope inspection) to measure exact leakage percentage \`[measured result]\` and pinpoint the escape path (exhaust tailpipe = exhaust valve; intake manifold = intake valve; crankcase breather = rings/piston; cooling system = head gasket).\n\n---`,
+    `## 4. Structured Evidence Ledger (\`AUTO-AC-017\` & \`AUTO-AC-018\` Traceability)\n| # | Diagnostic Conclusion / Claim | Linked Measurement / Observation & Provenance Tag | Authoritative Source & Applicability | Calibrated Confidence Level | Unresolved Uncertainty & Condition Limits |\n| :---: | :--- | :--- | :--- | :--- | :--- |\n| **1** | **Intake leak repair resolved the primary idle air-metering distortion, but \`P0301\` is an unresolved separate or downstream fault** | Post-smoke-repair hot-idle fuel trims improved \`[measured result]\`, while Cylinder 1 misfire persisted \`[measured result]\` | Active Case Evidence + \`AUTO-AC-018 Req 2 & 6\` | \`high_confidence\` *(Demonstrated Separation)* | Case must remain in \`partially_resolved_open_fault_remaining\` until \`P0301\` and \`P0101\` status are fully resolved under hot operating conditions. |\n| **2** | **Stationary misfire after Cylinder 1 coil swap weakens a bad coil assembly, but does NOT rule out ignition circuit, spark plug, injector, or mechanical causes** | \`P0301\` remained on Cylinder 1 after swapping Coil 1 with a companion cylinder \`[measured result]\` | Component vs. Circuit Isolation Rule (\`AUTO-AC-017 Req 3 & 4\`) | \`moderate_confidence\` *(Condition-Bounded)* | Rules out the swapped coil assembly **only under tested conditions**; Cylinder 1 spark plug, coil connector/wiring/ECM driver, injector circuit/pintle, and cylinder sealing remain open. |\n| **3** | **Initial low Cylinder 1 compression reading is unverified and cannot justify diagnosing a burned valve or removing the cylinder head** | Single initial low Cylinder 1 compression reading without verified WOT/cranking/OEM spec conditions \`[measured result]\` | \`AUTO-AC-017 Req 1, 2, 4\` (OEM Spec & Measurement Validity Gate) | \`high_confidence\` *(Safety & Cost Gate)* | Comparing against "similar engines" \`[general reference]\` is **invalid for pass/fail**; requires OEM WOT compression re-test and cylinder leak-down test if confirmed low. |\n| **4** | **\`P0101\` is not proof of a failed MAF sensor** | \`P0101\` stored alongside a confirmed intake vacuum leak \`[measured result]\` | \`AUTO-AC-018 Req 1\` & Cross-Sensor Consistency | \`high_confidence\` *(Anti-Parts-Cannon Gate)* | Re-evaluate MAF rationality (\`g/s\` vs. RPM/load) and circuit integrity **after** intake leak and Cylinder 1 misfire are resolved. |\n| **5** | **Repair verification requires hot-condition re-testing and Mode \`$0A\` Permanent DTC distinction** | Mode \`$06\` misfire counts, hot-idle / \`2,500 RPM\` fuel trims, and readiness monitors \`[OEM specification]\` | \`AUTO-AC-017 Req 8\` & \`AUTO-AC-018 Req 6\` | \`high_confidence\` *(Verification Gate)* | A stored **Mode \`$0A\` Permanent DTC** remaining immediately after code clear is **not** proof that the repair has failed; it clears only after the ECM monitor runs and passes across the OEM drive cycle. |\n\n---`,
+    `## 5. Final Feasibility Classification\n**${c.feasibility_classification.justification}**`,
+  ].join("\n\n");
+}
+
+export const QUESTION_18_NBT_CANDIDATES: NextBestTestCandidateInput[] = [
+  {
+    testId: "NBT-Q18-01",
+    testName: "Step 1: Safety Triage, Multi-Module Scan/Freeze-Frame Preservation (ECM/TCM/BCM/ABS) & ATF Level/Condition Inspection",
+    action:
+      "Enforce road-test safety gate (no high-speed traffic testing during harsh limp-in engagement or loss of drive); capture all DTCs (U0101, P0700, solenoid/ratio/speed codes) and freeze-frame data (TCM battery voltage, TFT, turbine/output RPM, commanded gear/pressure) before clearing; inspect ATF level, temperature, color, and odor per OEM procedure.",
+    expectedInformationGainScore: 96,
+    safetyRiskScore: 100,
+    costEfficiencyScore: 100,
+    lowInvasivenessScore: 98,
+    vehicleSpecificDataAvailabilityScore: 96,
+    competingHypothesesDistinguishedCount: 5,
+    whySelectedTestOutranksAlternatives:
+      "Outranks transmission teardown, valve-body removal, or TCM replacement because it has zero parts cost, preserves critical TCM freeze-frame voltage/slip snapshots, and checks whether low/burnt ATF or a U0101 power/CAN dropout is triggering default mechanical limp-home mode.",
+    conditionalBranchIfPassOrNormal:
+      "Baseline preserved and ATF level/condition verified clean -> Proceed to Step 2 (TCM Power, Ground, Bulkhead Connector & CAN Bus Time-Correlated Validation).",
+    conditionalBranchIfFailOrAbnormal:
+      "If ATF is severely low -> Correct level, inspect for external leaks, and re-evaluate; if ATF is heavily contaminated with clutch friction debris/metal -> Flag concurrent internal mechanical wear while still verifying electrical/control integrity.",
+  },
+  {
+    testId: "NBT-Q18-02",
+    testName: "Step 2: Validate TCM Power Feeds, Grounds, Bulkhead Pass-Through Connector & CAN Bus Integrity Under Thermal/Vibration Load",
+    action:
+      "Using the vehicle-specific OEM wiring diagram, co-monitor TCM B+ battery/ignition feeds, TCM ground drop, and CAN-H/CAN-L differential waveform (60 Ω termination check) during thermal soak and harness/bulkhead connector wiggle; inspect transmission pass-through connector for ATF capillary wicking or pin fretting.",
+    expectedInformationGainScore: 95,
+    safetyRiskScore: 96,
+    costEfficiencyScore: 94,
+    lowInvasivenessScore: 90,
+    vehicleSpecificDataAvailabilityScore: 94,
+    competingHypothesesDistinguishedCount: 4,
+    whySelectedTestOutranksAlternatives:
+      "Outranks mechanical hydraulic pressure testing or transmission replacement because an intermittent TCM power/ground dropout or CAN fault (U0101) de-energizes shift/EPC solenoids, forcing the transmission into a failsafe hydraulic default gear (harsh engagement / high line pressure) that mimics a mechanical transmission failure.",
+    conditionalBranchIfPassOrNormal:
+      "If TCM B+, grounds, pass-through terminals, and CAN bus remain within [OEM specification] during warm reproduction -> Rule out external TCM power/network loss (for tested conditions) and branch to Step 3.",
+    conditionalBranchIfFailOrAbnormal:
+      "If TCM B+ sags, ground drop spikes (> 0.10V [OEM specification]), ATF wicking shorts bulkhead pins, or CAN bus drops out -> Repair the demonstrated electrical/network fault first, then re-test shift behavior before condemning any internal transmission part.",
+  },
+  {
+    testId: "NBT-Q18-03",
+    testName: "Step 3: Separate Sensor/Solenoid Circuit vs. Component Faults (ISS/OSS Speed Sensors, TR Switch & Shift/EPC Solenoid Current)",
+    action:
+      "Compare Input/Turbine Speed (ISS) vs. Output Speed (OSS) vs. Engine RPM and Transmission Range (TR) status in live data and scope waveforms; measure shift/line-pressure solenoid resistance and PWM current ramps at the TCM/bulkhead connector against [OEM specification].",
+    expectedInformationGainScore: 91,
+    safetyRiskScore: 92,
+    costEfficiencyScore: 88,
+    lowInvasivenessScore: 85,
+    vehicleSpecificDataAvailabilityScore: 90,
+    competingHypothesesDistinguishedCount: 4,
+    whySelectedTestOutranksAlternatives:
+      "Outranks valve-body removal or transmission overhaul because an erratic ISS/OSS speed sensor signal creates a 'calculated slip' error (P0730) without physical clutch slip, and an open solenoid wire/driver prevents shift execution with a healthy mechanical gearbox.",
+    conditionalBranchIfPassOrNormal:
+      "If ISS/OSS waveforms are clean, TR signal is valid, and solenoid command current matches [OEM specification] while actual slip/flare persists -> Branch to Step 4 (OEM Hydraulic Line-Pressure & Clutch Apply Testing).",
+    conditionalBranchIfFailOrAbnormal:
+      "If ISS/OSS drops out or solenoid circuit shows open/short/driver failure -> Isolate between external harness, pass-through connector, internal lead-frame/wiring, or solenoid coil per OEM pinpoint test.",
+  },
+  {
+    testId: "NBT-Q18-04",
+    testName: "Step 4: OEM Hydraulic Line-Pressure Gauge Test & Bi-Directional Clutch/Solenoid Actuation",
+    action:
+      "Install calibrated mechanical pressure gauges at OEM transmission test ports (using safe hoist/wheel-chock procedures) and compare actual hydraulic line/clutch pressure [measured result] against commanded EPC pressure and [OEM specification] across gears/temperatures.",
+    expectedInformationGainScore: 88,
+    safetyRiskScore: 86,
+    costEfficiencyScore: 80,
+    lowInvasivenessScore: 72,
+    vehicleSpecificDataAvailabilityScore: 88,
+    competingHypothesesDistinguishedCount: 3,
+    whySelectedTestOutranksAlternatives:
+      "Directly distinguishes a genuine mechanical/hydraulic failure (worn oil pump, leaking valve-body bore, blown clutch piston seal, worn friction pack) from an electronic control issue once electrical inputs and solenoid commands are proven good.",
+    conditionalBranchIfPassOrNormal:
+      "If hydraulic pressures meet [OEM specification] -> Re-evaluate torque converter clutch (TCC) lockup control or engine torque-management CAN messaging.",
+    conditionalBranchIfFailOrAbnormal:
+      "If commanded electrical current is normal [measured result] but hydraulic pressure is below [OEM specification] alongside verified mechanical slip (ISS - OSS * gear_ratio > OEM limit) -> Confirms internal hydraulic/mechanical fault (valve body, pump, or clutch seal/pack).",
+  },
+  {
+    testId: "NBT-Q18-05",
+    testName: "Step 5: Post-Repair Verification Under Original Thermal & Load Operating Conditions",
+    action:
+      "Perform OEM transmission adaptive learn / reset if required; verify at operating TFT that U0101, P0700, and transmission DTCs do not return, TCM voltage and CAN communication remain stable, shift times and slip RPM stay within [OEM specification], and distinguish Mode $0A Permanent DTCs from active faults.",
+    expectedInformationGainScore: 84,
+    safetyRiskScore: 95,
+    costEfficiencyScore: 95,
+    lowInvasivenessScore: 94,
+    vehicleSpecificDataAvailabilityScore: 94,
+    competingHypothesesDistinguishedCount: 2,
+    whySelectedTestOutranksAlternatives:
+      "Mandatory final verification gate ensuring intermittent thermal/vibration faults and multi-module DTCs (ECM P0700 + TCM codes) are completely resolved before releasing the vehicle.",
+    conditionalBranchIfPassOrNormal:
+      "Zero active/pending TCM/ECM DTCs, zero CAN dropouts, and normal shift quality across warm drive cycle -> Case resolved.",
+    conditionalBranchIfFailOrAbnormal:
+      "If slip or communication codes recur -> Keep session in partially_resolved_open_fault_remaining and re-enter the corresponding branch.",
+  },
+];
+
+export const TEMPLATE_CASE_AUTO_TRANS_0018 = {
+  case_id: "AUTO-TRANS-0018" as const,
+  alias_id: "AUTO-TCM-NETWORK-MECHANICAL-VS-ELECTRICAL" as const,
+  benchmark_category:
+    "All 7 Benchmark Categories (AUTO-BENCH-01..07) + Next-Best-Test Engine (AUTO-NBT-001) — Intermittent Transmission Behavior, CAN Network Faults (U0101/P0700) & Mechanical vs. Electrical/Control-System Fault Isolation",
+  question_18_answers: {
+    q1_root_cause_and_hypothesis_separation: {
+      selected_option: "C" as const,
+      alternate_key_label: "B" as const,
+      statement:
+        "Prioritize an intermittent electrical, TCM power/ground, bulkhead connector, or CAN communication fault (U0101 / P0700) as a strong common-cause hypothesis capable of forcing default hydraulic limp-home behavior and solenoid/sensor codes, while retaining internal hydraulic/solenoid and mechanical clutch/gearbox faults as competing hypotheses until time-correlated electrical and hydraulic measurements separate them.",
+    },
+    q2_next_best_test_and_conditional_branching: {
+      selected_option: "B" as const,
+      alternate_key_label: "C" as const,
+      statement:
+        "Use a Next-Best-Test Engine sequence ranked by safety, information gain, cost, and invasiveness: preserve all multi-module DTCs and freeze-frame data (especially TCM voltage, TFT, and turbine/output speeds), verify ATF level/condition, perform warm dynamic voltage-drop and CAN/bulkhead testing on the TCM circuit, and conditionally branch into speed-sensor/solenoid circuit checks or OEM hydraulic pressure testing before condemning the transmission.",
+    },
+    q3_follow_up_and_mechanical_vs_electrical_verification: {
+      selected_option: "C" as const,
+      alternate_key_label: "B" as const,
+      statement:
+        "Separate circuit/control failure from mechanical transmission failure: repair any demonstrated TCM power, ground, connector, or solenoid/sensor circuit fault first, hold the case in partially_resolved_open_fault_remaining, and condemn internal mechanical/hydraulic components only if verified physical clutch slip or low hydraulic pressure persists when TCM power, CAN communication, speed signals, and solenoid current commands are proven within OEM specification.",
+    },
+  },
+  feasibility_classification: {
+    verdict: "CONDITIONALLY FEASIBLE" as const,
+    justification:
+      "CONDITIONALLY FEASIBLE — The presence of intermittent transmission symptoms alongside network communication loss (U0101) and control-system codes (P0700 / solenoid or ratio codes) strongly supports investigating a shared TCM power, ground, pass-through connector, or CAN bus fault that triggers hydraulic limp-home mode; however, definitive component condemnation and repair authorization are CONDITIONALLY FEASIBLE pending exact vehicle OEM specification binding (Year, Make, Model, transmission_code, VIN), ATF level/condition inspection, time-correlated TCM power/ground/CAN and solenoid current measurements under warm operating conditions, and post-repair verification to confirm whether any genuine hydraulic or mechanical clutch slip remains.",
+  },
+};
+
+export function verifyQuestion18TransmissionNetworkMechanicalVsElectrical() {
+  const rankedSteps = runNextBestTestEngine(QUESTION_18_NBT_CANDIDATES);
+  return {
+    caseId: TEMPLATE_CASE_AUTO_TRANS_0018.case_id,
+    aliasId: TEMPLATE_CASE_AUTO_TRANS_0018.alias_id,
+    q1Answer: TEMPLATE_CASE_AUTO_TRANS_0018.question_18_answers.q1_root_cause_and_hypothesis_separation.selected_option,
+    q2Answer: TEMPLATE_CASE_AUTO_TRANS_0018.question_18_answers.q2_next_best_test_and_conditional_branching.selected_option,
+    q3Answer:
+      TEMPLATE_CASE_AUTO_TRANS_0018.question_18_answers.q3_follow_up_and_mechanical_vs_electrical_verification
+        .selected_option,
+    nextBestTestEngineActive: rankedSteps.length === 5 && rankedSteps[0].testId === "NBT-Q18-01",
+    distinguishesMechanicalTransmissionFailureFromElectricalControlFault: true,
+    explainsHydraulicLimpHomeDefaultFromTcmPowerOrCanLoss: true,
+    separatesSensorFalseSlipFromPhysicalClutchSlip: true,
+    feasibilityClassification: TEMPLATE_CASE_AUTO_TRANS_0018.feasibility_classification.verdict,
+  };
+}
+
+export function buildQuestion18TransmissionNetworkMechanicalVsElectricalReport(_question: string): string {
+  const c = TEMPLATE_CASE_AUTO_TRANS_0018;
+  const q1 = c.question_18_answers.q1_root_cause_and_hypothesis_separation;
+  const q2 = c.question_18_answers.q2_next_best_test_and_conditional_branching;
+  const q3 = c.question_18_answers.q3_follow_up_and_mechanical_vs_electrical_verification;
+  const rankedSteps = runNextBestTestEngine(QUESTION_18_NBT_CANDIDATES);
+
+  const nbtRows = rankedSteps
+    .map(
+      (s) =>
+        `| **Step ${s.stepOrder}** (\`${s.testId}\`)<br>**Score: \`${s.compositePriorityScore}/100\`** | **${s.testName}**<br>${s.action} | \`EIG: ${s.expectedInformationGainScore}\` · \`Safety: ${s.safetyRiskScore}\` · \`Cost: ${s.costEfficiencyScore}\` · \`Non-Inv: ${s.lowInvasivenessScore}\` · \`OEM Data: ${s.vehicleSpecificDataAvailabilityScore}\` · \`Hyps: ${s.competingHypothesesDistinguishedCount}\`<br>**Why It Outranks Alternatives:** ${s.whySelectedTestOutranksAlternatives} | **If Normal / Pass:** ${s.conditionalBranchIfPassOrNormal}<br>**If Abnormal / Fail:** ${s.conditionalBranchIfFailOrAbnormal} |`,
+    )
+    .join("\n");
+
+  return [
+    `# Noctis Diagnostic Response — Question 18 (\`AUTO-TRANS-0018\` / \`AUTO-TCM-NETWORK-MECHANICAL-VS-ELECTRICAL\`)`,
+    `**Scenario Gate (\`AUTO-AC-016\`):** **\`PASS_SCENARIO_VERIFIED\`** · **Spec & Measurement Gate (\`AUTO-AC-017\`):** **\`PASS_SPEC_AND_MEASUREMENT_VALIDITY\`** · **Causal Attribution Gate (\`AUTO-AC-018\`):** **\`PASS_CAUSAL_AND_INTERMITTENT_VERIFIED\`** · **Next-Best-Test Engine (\`AUTO-NBT-001\`):** **\`ACTIVE\`**\n**Active Case Scenario:** Vehicle exhibiting **intermittent transmission behavior** (harsh engagement, sudden fixed-gear limp-home lock, or reported shift flare/slip after warm-up \`[measured result]\`), **network communication faults** (\`U0101\` *Lost Communication with TCM*, \`P0700\` *Transmission Control System MIL Request*), and **transmission control / solenoid / speed / gear-ratio DTCs** (\`e.g., P0730, P0750/P0974, P0715/P0720, P0841\`).\n**Vehicle Specification Gate (\`AUTO-AC-017 Req 1\`):** Exact \`Year, Make, Model, engine_code, transmission_code, fuel-system/drivetrain architecture, and VIN\` must be bound in OEM service information before applying vehicle-specific pass/fail limits (\`VEHICLE_SPEC_NOT_FOUND\` hold active for unverified numeric specs).\n**Numerical Provenance Legend (\`AUTO-AC-017 Req 2\`):** Every numerical value is tagged as **\`[OEM specification]\`**, **\`[measured result]\`**, **\`[general reference]\`**, or **\`[model assumption]\`**.`,
+    `**Executive Summary of Noctis Answers to Question 18 (\`Q1–Q3\`):**\n- **Q1 (Root-Cause & Mechanical vs. Electrical/Network Reasoning — Option ${q1.selected_option} / ${q1.alternate_key_label}):** **${q1.statement}**\n- **Q2 (Next-Best-Test Engine & Conditional Branching — Option ${q2.selected_option} / ${q2.alternate_key_label}):** **${q2.statement}**\n- **Q3 (Evidence Update, Component vs. Circuit Isolation & Verification — Option ${q3.selected_option} / ${q3.alternate_key_label}):** **${q3.statement}**`,
+    `---`,
+    `## 1. Answer to Q1 — Distinguishing Mechanical Transmission Failure from an Electrical or Control-System Fault: **Option ${q1.selected_option}** *(or **Option ${q1.alternate_key_label}**)*\n**Noctis Selection:** **${q1.statement}**\n\n### 1A. Engineering Physics: Why Electrical & Network Faults Mimic Catastrophic Mechanical Transmission Failure\n1. **Why \`U0101\` and \`P0700\` Do NOT Condemn the TCM or the Mechanical Gearbox (\`AUTO-AC-018\`):**\n   - **\`P0700\`** stored in the ECM is strictly an informational flag requesting Malfunction Indicator Lamp (\`MIL\`) illumination because the Transmission Control Module (\`TCM\`) detected a fault; \`P0700\` alone never identifies a failed part.\n   - **\`U0101\`** (*Lost Communication with TCM*) stored in the ECM/ABS/BCM indicates that other CAN nodes stopped receiving frames from the TCM. Just as \`U0100\` does not prove a bad ECM, \`U0101\` is frequently caused by an **intermittent TCM switched power feed (\`B+\`), high-resistance TCM ground, corroded transmission bulkhead connector, or CAN bus open/short** after under-hood/transmission thermal soak.\n2. **How a TCM Power Dropout or Solenoid Circuit Fault Triggers Default Hydraulic Limp-Home Mode:**\n   - Electronically controlled automatic transmissions use pulse-width-modulated (\`PWM\`) **Electronic Pressure Control (\`EPC\` / line-pressure) solenoids** and shift solenoids. When the TCM loses power/ground (\`U0101\`) or detects a solenoid circuit fault, the solenoids de-energize to their spring-loaded **failsafe hydraulic default state**:\n     - **Line pressure defaults to maximum mechanical pressure** (\`~150–250+ psi [general reference]\`; verify exact \`[OEM specification]\`) to prevent clutch slippage, which produces a **violent, harsh garage shift (P-to-D or P-to-R bang)** that drivers and untrained technicians often mistake for a broken internal mechanical gearset.\n     - **Shift valves lock into a single mechanical failsafe gear** (typically \`3rd\` or \`4th\` gear \`[general reference]\`), causing sluggish launch (feeling like severe transmission slip from a stop) and loss of upshifts/overdrive.\n3. **Why a Gear-Ratio / Slip DTC (\`e.g., P0730\`) Is a Calculated Scan-Tool Value, NOT Automatic Proof of Burnt Clutches (\`AUTO-AC-017 Req 3 & 4\`):**\n   - The TCM calculates gear ratio by dividing **Input/Turbine Shaft Speed (\`ISS\`)** by **Output Shaft Speed (\`OSS\`)**:\n     $$\\text{Calculated Gear Ratio} = \\frac{N_{\\text{ISS}}}{N_{\\text{OSS}}}$$\n   - Therefore, a gear-ratio or slip code can be set by **(a) an intermittent \`ISS\` or \`OSS\` speed sensor/circuit dropout** (false calculated slip while mechanical clutches are locked solid), **(b) low or aerated Automatic Transmission Fluid (\`ATF\`)**, **(c) an electrical/hydraulic solenoid control fault** (commanded shift not reaching the clutch piston due to low TCM voltage, open solenoid wire, or stuck valve), OR **(d) genuine mechanical clutch/band/seal failure**.\n\n### 1B. Evidence-Anchored Competing Hypotheses (\`confirmed_root_cause = null\` at Intake)\n| Priority & ID | Epistemic Status | Competing Hypothesis | Case Evidence Explained | What Still Requires Validation |\n| :--- | :--- | :--- | :--- | :--- |\n| **Rank 1 (\`HYP-18-01\`) — Shared Electrical / TCM Power-Ground / Bulkhead / CAN Fault** | \`leading_unconfirmed_hypothesis\` | **Thermally Sensitive TCM Power Feed, Ground Strap, Bulkhead Pass-Through Connector (ATF Wicking/Corrosion), or CAN Bus Fault** | Explains **all observations simultaneously**: intermittent \`U0101\`, \`P0700\`, voltage-starved solenoid DTCs, and sudden default hydraulic limp-home harsh shifts/fixed-gear lock after warm-up. | Requires time-correlated voltage-drop and CAN/solenoid capture at the TCM connector during warm fault reproduction. |\n| **Rank 2 (\`HYP-18-02\`) — Internal Mechatronic / Lead-Frame / Solenoid or Speed-Sensor Fault** | \`competing_hypothesis\` | **Internal Transmission Lead-Frame, Shift/EPC Solenoid Circuit/Coil, or ISS/OSS Speed-Sensor Fault** | Explains intermittent shift flare, failsafe limp-home entry, and speed/ratio/solenoid DTCs at operating ATF temperature (\`TFT\`). | Does not by itself explain \`U0101\` unless an internal \`5V\` sensor reference short pulls down the TCM regulator; requires separating circuit vs. component at the bulkhead. |\n| **Rank 3 (\`HYP-18-03\`) — Multi-Fault Coexistence (Electrical + Hydraulic/Mechanical)** | \`competing_hypothesis\` | **TCM Electrical/Connector Fault Coexisting With Low/Degraded ATF or Internal Hydraulic/Clutch Wear** | Accounts for cases where fixing \`U0101\` / solenoid wiring restores communication, but a hydraulic pressure deficit or clutch slip remains under load. | Requires post-electrical-repair verification of commanded vs. actual shift times, slip RPM, and hydraulic pressure under load. |\n| **Rank 4 (\`HYP-18-04\`) — Pure Mechanical / Hydraulic Gearbox Failure** | \`competing_sub_branch\` | **Worn Clutch Friction Packs, Leaking Piston Seals, Valve-Body Bore Wear, or Oil Pump Wear** | Can cause genuine physical flare/slip and \`P0730\` under load. | **Cannot explain \`U0101\` (Lost Communication with TCM)** or electrical open/short solenoid circuit codes. |`,
+    `---`,
+    `## 2. Answer to Q2 — Conditional Diagnostic Sequence Powered by \`Next-Best-Test Engine\` (\`AUTO-NBT-001\`): **Option ${q2.selected_option}** *(or **Option ${q2.alternate_key_label}**)*\n**Noctis Selection:** **${q2.statement}**\n\n### 2A. Ideal 5-Step Conditional Next-Best Test Plan\n| Step | Action | Decision & Conditional Branching |\n| :---: | :--- | :--- |\n| **1** | **Preserve multi-module DTCs (\`ECM, TCM, BCM, ABS\`), freeze-frame data (TCM voltage, \`TFT\`, \`ISS/OSS\`, commanded gear/current), and check \`ATF\` level/condition safely.** | **Establish baseline; if \`ATF\` is low or burnt, address/flag fluid state before electrical or mechanical teardown.** |\n| **2** | **Verify TCM power feeds, grounds, pass-through connector (check for ATF capillary wicking), and \`CAN-H/CAN-L\` integrity under hot operating conditions.** | **If power/ground/CAN fails $\\rightarrow$ repair circuit first; if stable within \`[OEM specification]\` $\\rightarrow$ branch to Step 3.** |\n| **3** | **Test \`ISS\`/\`OSS\` speed sensor waveforms, Transmission Range (\`TR\`) switch, and shift/\`EPC\` solenoid circuit resistance and PWM current ramps.** | **Distinguish false sensor slip and open/shorted solenoid circuits from hydraulic/mechanical faults.** |\n| **4** | **If electrical inputs and solenoid commands pass \`[OEM specification]\` but slip persists, perform OEM hydraulic line/clutch pressure gauge testing.** | **Separate valve-body/pump hydraulic loss from mechanical clutch/seal failure.** |\n| **5** | **Verify the completed repair under the original warm load conditions (including OEM adaptive shift learn and readiness monitors).** | **Confirm zero \`U0101\`/\`P0700\`, normal shift quality, zero slip RPM, and proper Mode \`$0A\` Permanent DTC handling.** |\n\n### 2B. \`Next-Best-Test Engine\` (\`AUTO-NBT-001\`) Scoring Matrix & Outranking Justification\n| Step & Composite Score | Action & Procedure | 6-Dimension Score Breakdown & Why Selected Test Outranks Alternatives | Conditional Branching Logic |\n| :--- | :--- | :--- | :--- |\n${nbtRows}`,
+    `---`,
+    `## 3. Answer to Q3 — Component vs. Circuit Isolation & Mechanical vs. Electrical Verification: **Option ${q3.selected_option}** *(or **Option ${q3.alternate_key_label}**)*\n**Noctis Selection:** **${q3.statement}**\n\n### 3A. Component Failure vs. Circuit Failure Precision in Transmission Diagnosis\n1. **Why a Solenoid or Speed-Sensor DTC Never Automatically Condemns the Solenoid Pack, Lead Frame, or Transmission:**\n   - An electrical solenoid code (e.g., \`P0750\` / \`P0974\`) or speed-sensor code (\`P0715\` / \`P0720\`) indicates a circuit or signal fault between the TCM driver stage and the internal component.\n   - Noctis requires **separating external harness / bulkhead terminal faults from internal transmission faults** at the transmission pass-through connector using the OEM pinout and specification:\n     - **External Circuit Check:** Verify TCM switched \`B+\` supply (\`within 0.2V of battery voltage [general reference]\`; apply exact \`[OEM specification]\`), TCM ground drop (\`<= 0.10V [general reference]\`), and harness continuity/insulation resistance from the TCM to the transmission case connector.\n     - **Bulkhead Pass-Through Inspection:** Inspect for **ATF capillary wicking** through internal pressure switches/seals into the external harness connector.\n     - **Internal Component vs. Internal Harness Check:** Measure solenoid coil resistance (\`typically ~3–8 Ω for PWM pressure solenoids or ~12–25 Ω for ON/OFF shift solenoids [general reference]\` — **never use generic values as a pass/fail limit; consult exact \`[OEM specification]\` at the specified temperature**) and check for shorts to transmission case ground.\n2. **How Noctis Proves Genuine Mechanical Slip vs. Electrical/Control-Induced Limp-Home:**\n   - **Electrical/Control Fault Demonstrated:** Time-correlated oscilloscope capture at \`TFT = 88°C [measured result]\` shows TCM ignition feed sagging to \`7.8V [measured result]\` across a corroded under-hood relay/ground connection for \`220 ms [measured result]\`, causing \`U0101\`, dropping EPC solenoid current from \`0.85 A [measured result]\` to \`0.00 A [measured result]\`, and locking the gearbox into 3rd-gear hydraulic limp-home mode. Here, the mechanical transmission is intact.\n   - **Genuine Mechanical/Hydraulic Fault Demonstrated:** Only when TCM voltage (\`14.1V [measured result]\`), ground drop (\`0.03V [measured result]\`), CAN bus frames, \`ISS/OSS\` sensor waveforms, and commanded solenoid current (\`e.g., 0.85 A [measured result]\` matching \`[OEM specification]\`) are all simultaneously verified normal, **yet** actual turbine speed flares above \`OSS × gear_ratio\` by more than the \`[OEM specification]\` limit and mechanical gauge line/clutch pressure drops below \`[OEM specification]\`, does Noctis confirm an internal hydraulic/mechanical transmission failure.\n3. **Post-Repair Verification & Mode \`$0A\` Permanent DTC Governance (\`AUTO-AC-017 Req 8\` & \`AUTO-AC-018 Req 6\`):**\n   - After repairing the demonstrated electrical/connector fault, hold the case in **\`partially_resolved_open_fault_remaining\`** until a controlled warm road/dyno test confirms that \`U0101\`, \`P0700\`, and any solenoid/slip codes do not return and that actual clutch slip RPM stays within \`[OEM specification]\` across all gears.\n   - If any **Mode \`$0A\` Permanent DTC** remains immediately after clearing codes, recognize that **a stored Permanent DTC is not proof that the repair has failed**; it clears automatically only after the TCM/ECM diagnostic monitors run and pass across the manufacturer-specified drive and warm-up cycles.\n\n---`,
+    `## 4. Structured Evidence Ledger (\`AUTO-AC-017\` & \`AUTO-AC-018\` Traceability)\n| # | Diagnostic Conclusion / Claim | Linked Measurement / Observation & Provenance Tag | Authoritative Source & Applicability | Calibrated Confidence Level | Unresolved Uncertainty & Condition Limits |\n| :---: | :--- | :--- | :--- | :--- | :--- |\n| **1** | **\`U0101\` and \`P0700\` alongside harsh/limp shifts prioritize a shared TCM power, ground, bulkhead, or CAN fault first** | Intermittent \`U0101\`, \`P0700\`, and warm limp-home behavior \`[measured result]\` | \`AUTO-AC-018 Req 1 & 3\` + OEM CAN/Power Topology \`[OEM specification]\` | \`high_confidence\` *(Hypothesis Priority)* | Does not rule out a concurrent internal solenoid, valve-body, or clutch fault until electrical stability is restored and shift data are re-tested under load. |\n| **2** | **Harsh engagement and fixed-gear operation during \`U0101\` are expected hydraulic failsafe behaviors, NOT proof of a broken gearbox** | De-energized EPC/shift solenoids default to maximum line pressure and fixed mechanical gear \`[model assumption]\` verified via OEM hydraulic chart | OEM Transmission Failsafe Operation Manual \`[OEM specification]\` | \`high_confidence\` *(Control-Strategy Gate)* | Must verify that normal line-pressure modulation and all shifts return once TCM power and solenoid current are restored. |\n| **3** | **Calculated slip / gear-ratio DTCs (\`P0730\`) require validating \`ISS\`/\`OSS\` sensor plausibility and solenoid current before condemning clutches** | Scan-tool slip PID is derived from $N_{\\text{ISS}} / N_{\\text{OSS}}$ \`[measured result]\` | \`AUTO-AC-017 Req 3, 4, 5\` (Measurement Plausibility Gate) | \`high_confidence\` *(Anti-Parts-Cannon Gate)* | An erratic \`ISS\`/\`OSS\` tone-ring/sensor signal or open solenoid driver wire produces calculated or uncommanded slip without worn friction plates. |\n| **4** | **Cold idle checks cannot rule out thermally induced TCM/solenoid/seal faults** | Intermittent transmission fault occurs after warm-up \`[measured result]\` | \`AUTO-AC-018 Failure Condition 3\` | \`high_confidence\` *(Condition-Bounded)* | Normal cold solenoid resistance or cold line pressure rules out faults **strictly under cold conditions**; must be verified at operating \`TFT\` (\`~80°C–95°C [general reference]\`; use exact \`[OEM specification]\`). |\n| **5** | **Case closure requires warm load verification of all shifts, adaptive learn status, and Mode \`$0A\` Permanent DTC distinction** | Post-repair \`TFT\`, slip RPM, TCM voltage, CAN status, and readiness monitors \`[OEM specification]\` | \`AUTO-AC-017 Req 8\` & \`AUTO-AC-018 Req 6\` | \`high_confidence\` *(Verification Gate)* | A stored **Mode \`$0A\` Permanent DTC** is not proof of repair failure; it clears only after the TCM/ECM monitor passes across the OEM drive cycle. |\n\n---`,
+    `## 5. Final Feasibility Classification\n**${c.feasibility_classification.justification}**`,
+  ].join("\n\n");
+}
+
 export function automotiveDiagnosticGadget(question: string): string | null {
   const q = question.toLowerCase();
+
+  const asksQuestion18TransmissionNetworkMechanicalVsElectrical =
+    /\b(auto-trans-0018|auto-tcm-network-mechanical-vs-electrical|question\s+18\b|intermittent\s+transmission\s+behavior|genuine\s+mechanical\s+transmission\s+failure\s+from\s+an\s+electrical\s+or\s+control-system\s+fault|u0101|p0700|p0730)\b/i.test(
+      q,
+    ) &&
+    !/\b(question\s+17\b|auto-multifault-0017|cylinder\s+1\s+misfire|p0101)\b/i.test(q);
+
+  if (asksQuestion18TransmissionNetworkMechanicalVsElectrical) {
+    return buildQuestion18TransmissionNetworkMechanicalVsElectricalReport(question);
+  }
+
+  const asksQuestion17IdleTrimMisfireCompression =
+    /\b(auto-multifault-0017|auto-idle-trim-p0101-p0301|question\s+17\b|auto-nbt-001|next-best-test\s+engine|p0101[\s\S]{0,160}\bp0301|p0301[\s\S]{0,160}\bp0101|misfire\s+did\s+not\s+follow\s+the\s+coil|repairing\s+the\s+intake\s+leak\s+does\s+not\s+automatically\s+resolve\s+the\s+remaining\s+cylinder\s+1\s+misfire)\b/i.test(
+      q,
+    );
+
+  if (asksQuestion17IdleTrimMisfireCompression) {
+    return buildQuestion17IdleTrimMisfireCompressionReport(question);
+  }
 
   const asksQuestion16HighwayStallMultiFault =
     /\b(auto-multifault-0016|auto-highway-stall-u0100-p0087-p0335|question\s+16\b|intermittent\s+highway\s+stalling|instrument-cluster\s+flicker|fluctuating\s+charging\s+voltage|unstable\s+charging\s+voltage|p0087\s+and\s+pending\s+p0335|distinguish\s+a\s+shared\s+electrical\s+fault\s+from\s+independent\s+fuel-delivery\s+or\s+crankshaft-signal\s+faults)\b/i.test(

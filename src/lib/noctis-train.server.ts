@@ -38,6 +38,8 @@ import {
   buildQuestion12GasolineGdiFuelPressureReport,
   buildQuestion15MisfireCompressionOilCatalystReport,
   buildQuestion16HighwayStallMultiFaultReport,
+  buildQuestion17IdleTrimMisfireCompressionReport,
+  buildQuestion18TransmissionNetworkMechanicalVsElectricalReport,
 } from "./noctis-automotive-engine.ts";
 
 export type TrainingPair = {
@@ -324,6 +326,22 @@ const OWASP_SEED_CORPUS: TrainingPair[] = [
     model: "vibe-seed",
     hits: 30,
     at: "2026-10-26T22:05:00.000Z",
+  },
+  {
+    question: "Question 17 — Fuel trims positive at hot idle vs 2,500 RPM P0101 and P0301 intake leak repaired remaining cylinder 1 misfire did not follow coil swap unverified low compression Next-Best-Test Engine AUTO-MULTIFAULT-0017",
+    answer: buildQuestion17IdleTrimMisfireCompressionReport("Question 17 hot idle fuel trims P0101 P0301 remaining cylinder 1 misfire did not follow coil unverified compression Next-Best-Test Engine"),
+    domain: "engineering",
+    model: "vibe-seed",
+    hits: 30,
+    at: "2026-10-27T10:15:00.000Z",
+  },
+  {
+    question: "Question 18 — Intermittent transmission behavior network communication faults U0101 P0700 distinguishing a genuine mechanical transmission failure from an electrical or control-system fault AUTO-TRANS-0018",
+    answer: buildQuestion18TransmissionNetworkMechanicalVsElectricalReport("Question 18 intermittent transmission behavior U0101 P0700 genuine mechanical transmission failure vs electrical or control-system fault"),
+    domain: "engineering",
+    model: "vibe-seed",
+    hits: 30,
+    at: "2026-10-27T10:16:00.000Z",
   },
 ];
 
