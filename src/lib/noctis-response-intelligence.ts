@@ -609,7 +609,17 @@ export function runFollowUpIntelligence(
 
   // 00. Noctis Health Intelligence Engine (18 Health Engines, Emergency/988 Safety Gateway, FHIR v5.0.0, Calculators, 7-Part Medical Response & Follow-Up Continuity)
   const healthResponse = handleNaturalHealthQuery(currentQuestion, state.lastAssistantText);
+  const alsoAsksArchitectValidationAudit =
+    /\b(noctis\s+architectural\s+validation\s+challenge|noctis\s+architectural\s+intelligence\s+engine\s+—\s+technical\s+audit|arch-at-1[1-5]|mandatory\s+geometry,\s*schedule\s+and\s+evidence\s+reconciliation\s+patch)\b/i.test(
+      currentQuestion
+    );
   if (healthResponse) {
+    if (alsoAsksArchitectValidationAudit) {
+      const combinedArchitectResponse = architectIntelligenceGadget(currentQuestion);
+      if (combinedArchitectResponse) {
+        return `${healthResponse}\n\n---\n\n${combinedArchitectResponse}`;
+      }
+    }
     return healthResponse;
   }
 

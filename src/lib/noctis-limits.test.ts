@@ -3626,14 +3626,17 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
     assert.match(globalReply, /98\. International education and credentials/);
   });
 
-  it("verifies NOCTIS-PHYSICIAN-DX-001 (Physician Clinical Diagnostic & Differential Reasoning Engine + 17/17 Clinical Audit & Regression Suite RESP-001..RESP-010 & NH-TROP-001..NH-TROP-007)", async () => {
+  it("verifies NOCTIS-PHYSICIAN-DX-001 (Physician Clinical Diagnostic & Differential Reasoning Engine + 17/17 Clinical Audit & Regression Suite RESP-001..RESP-010 & NH-TROP-001..NH-TROP-007 + Challenge Test 003 + NH-RED-031..036)", async () => {
     const {
       NOCTIS_PHYSICIAN_DIAGNOSTIC_ATLAS,
       extractClinicalParametersFromText,
       handleNaturalHealthQuery,
       runRespiratoryRegressionSuiteResp001To010,
       runTropicalFebrileRegressionSuiteNhTrop001To007,
+      runClinicalFailureTrapSuiteNh031To036,
+      buildPhysicianChallengeTest003Report,
     } = await import("./noctis-health-engine.ts");
+    const { runFollowUpIntelligence } = await import("./noctis-response-intelligence.ts");
 
     assert.equal(NOCTIS_PHYSICIAN_DIAGNOSTIC_ATLAS.length, 8);
 
@@ -3652,6 +3655,43 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
       assert.equal(check.passed, true, `Expected ${check.testId} to pass (${check.measuredOutputSummary})`);
     }
     assert.equal(tropChecks.allPassed, true);
+
+    // 2b. Verify all 6 Clinical Failure Trap Checks (NH-RED-031..NH-DRIFT-036)
+    const trapChecks = runClinicalFailureTrapSuiteNh031To036();
+    assert.equal(trapChecks.totalCount, 6);
+    for (const check of trapChecks.tests) {
+      assert.equal(check.passed, true, `Expected ${check.testId} to pass (${check.measuredOutputSummary})`);
+    }
+    assert.equal(trapChecks.allPassed, true);
+
+    // 2c. Verify Physician Challenge Test 003 (67yo male post-10h flight with acute PE & hemodynamic instability)
+    const challenge003 = buildPhysicianChallengeTest003Report(
+      "NOCTIS PHYSICIAN ENGINE — CHALLENGE TEST 003 + Governed Clinical Platform NH-021..NH-030 NH-RED-031..036"
+    );
+    assert.match(challenge003, /CHALLENGE TEST 003/);
+    assert.match(challenge003, /73\.3 mmHg/);
+    assert.match(challenge003, /1\.37/);
+    assert.match(challenge003, /sPESI[\s\S]*?≥ 3/);
+    assert.match(challenge003, /Wells PE[\s\S]*?INCOMPLETE/);
+    assert.match(challenge003, /Revised Geneva[\s\S]*?INCOMPLETE/);
+    assert.match(challenge003, /Type 2 RV Demand Ischemia/);
+    assert.match(challenge003, /250–500 mL/);
+    assert.match(challenge003, /Scanner of Death/);
+    assert.match(challenge003, /Norepinephrine/);
+    assert.match(challenge003, /Unfractionated Heparin/);
+    assert.match(challenge003, /NH-RED-031/);
+    assert.match(challenge003, /NH-DRIFT-036/);
+
+    // 2d. Verify combined Challenge Test 003 + Architectural Validation Challenge routing
+    const combinedReply = runFollowUpIntelligence(
+      [],
+      "NOCTIS PHYSICIAN ENGINE — CHALLENGE TEST 003 (67-year-old male 4 days after a 10-hour international flight, HR 126 bpm, BP 92/64 mmHg, RR 30, SpO2 88%) and NOCTIS ARCHITECTURAL VALIDATION CHALLENGE (ARCH-AT-11 .. ARCH-AT-15)"
+    );
+    assert.ok(combinedReply);
+    assert.match(combinedReply, /CHALLENGE TEST 003/);
+    assert.match(combinedReply, /ARCH-AT-11/);
+    assert.match(combinedReply, /ARCH-AT-15/);
+    assert.match(combinedReply, /HOLD — EXTERNAL ARTIFACT REQUIRED \(Escalated to PE\)/);
 
     // 3. Verify clinical audit review prompt routes to 17/17 Clinical Audit & Regression Verification Report
     const auditReply = handleNaturalHealthQuery(
