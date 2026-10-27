@@ -27,6 +27,7 @@ import {
   webSecurityAcademyLabsGadget,
 } from "../scripts/vulnerabilityScriptMap.ts";
 import { buildArchitecturalIntelligenceReport } from "./noctis-architect-engine.ts";
+import { buildAutomotiveDiagnosticIntelligenceReport } from "./noctis-automotive-engine.ts";
 
 export type TrainingPair = {
   id?: string;
@@ -224,6 +225,22 @@ const OWASP_SEED_CORPUS: TrainingPair[] = [
     model: "vibe-seed",
     hits: 25,
     at: "2026-10-25T18:00:00.000Z",
+  },
+  {
+    question: "want to train my model to know how to do diagnosis of car issues. how do i train it",
+    answer: buildAutomotiveDiagnosticIntelligenceReport("want to train my model to know how to do diagnosis of car issues. how do i train it"),
+    domain: "engineering",
+    model: "vibe-seed",
+    hits: 30,
+    at: "2026-10-26T20:00:00.000Z",
+  },
+  {
+    question: "Noctis Automotive Diagnostic Intelligence Engine Engineering Blueprint Version 1.0 gasoline cars and SUVs symptom-based and scan-tool diagnosis",
+    answer: buildAutomotiveDiagnosticIntelligenceReport("Noctis Automotive Diagnostic Intelligence Engine Engineering Blueprint Version 1.0"),
+    domain: "engineering",
+    model: "vibe-seed",
+    hits: 30,
+    at: "2026-10-26T20:00:00.000Z",
   },
 ];
 

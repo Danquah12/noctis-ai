@@ -2703,6 +2703,63 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
     assert.match(feasibilityBenchmarkOut, /Option B — Two-Storey Alternative/);
     assert.match(feasibilityBenchmarkOut, /Option C — Phased Construction/);
     assert.match(feasibilityBenchmarkOut, /NOCTIS-EXEC-100M2-3BR2BA/);
+
+    // Verify Noctis Automotive Diagnostic Intelligence Engine (NOCTIS-AUTO-001 · Blueprint v1.0)
+    const {
+      NOCTIS_17_SUBSYSTEM_TAXONOMY,
+      NOCTIS_8_DATASET_LAYERS,
+      NOCTIS_14_FUNCTIONAL_ACCEPTANCE_TESTS,
+      TEMPLATE_CASE_AUTO_START_0001,
+      TEMPLATE_CASE_AUTO_MISFIRE_0001,
+      verifyAutomotiveDiagnosticWorkflow,
+      automotiveDiagnosticGadget,
+    } = await import("./noctis-automotive-engine.ts");
+
+    assert.equal(NOCTIS_17_SUBSYSTEM_TAXONOMY.length, 17);
+    assert.equal(NOCTIS_8_DATASET_LAYERS.length, 8);
+    assert.equal(NOCTIS_14_FUNCTIONAL_ACCEPTANCE_TESTS.length, 14);
+    assert.equal(TEMPLATE_CASE_AUTO_START_0001.case_id, "AUTO-START-0001");
+    assert.equal(TEMPLATE_CASE_AUTO_START_0001.review_status, "unverified");
+    assert.equal(TEMPLATE_CASE_AUTO_MISFIRE_0001.case_id, "AUTO-MISFIRE-0001");
+    assert.equal(TEMPLATE_CASE_AUTO_MISFIRE_0001.vehicle.engine_code, "REQUIRED_FOR_PRODUCTION");
+
+    const autoCheck = verifyAutomotiveDiagnosticWorkflow();
+    assert.equal(autoCheck.openCircuitBatteryVoltageV, 12.64);
+    assert.equal(autoCheck.positiveCableVoltageDropV, 2.9);
+    assert.equal(autoCheck.batteryPass, true);
+    assert.equal(autoCheck.positiveCablePass, false);
+    assert.equal(autoCheck.contradictionRevised, true);
+    assert.equal(autoCheck.antiGuessingGatePassed, true);
+    assert.equal(autoCheck.conclusionState, "confirmed_cause");
+
+    const unverifiedRepairCheck = verifyAutomotiveDiagnosticWorkflow({
+      repairPerformed: true,
+      postRepairTested: false,
+    });
+    assert.equal(unverifiedRepairCheck.repairVerified, false);
+    assert.equal(unverifiedRepairCheck.conclusionState, "most_likely_cause");
+
+    const missingUnitCheck = verifyAutomotiveDiagnosticWorkflow({
+      measurementUnitProvided: false,
+    });
+    assert.equal(missingUnitCheck.missingUnitsRejected, true);
+    assert.equal(missingUnitCheck.conclusionState, "unverified");
+
+    const autoBlueprintOut = automotiveDiagnosticGadget(
+      "want to train my model to know how to do diagnosis of car issues. Noctis Automotive Diagnostic Intelligence Engine Engineering Blueprint Version 1.0",
+    );
+    assert.ok(autoBlueprintOut);
+    assert.match(autoBlueprintOut, /NOCTIS-AUTO-001/);
+    assert.match(autoBlueprintOut, /AUTO-MISFIRE-0001/);
+    assert.match(autoBlueprintOut, /AUTO-START-0001/);
+    assert.match(autoBlueprintOut, /\/api\/v1\/automotive\/sessions/);
+    assert.match(autoBlueprintOut, /AT-001/);
+    assert.match(autoBlueprintOut, /AT-014/);
+
+    const p0301Out = automotiveDiagnosticGadget("Diagnose OBD-II trouble code P0301 on my gasoline car");
+    assert.ok(p0301Out);
+    assert.match(p0301Out, /DTC P0301/);
+    assert.match(p0301Out, /AUTO-MISFIRE-0001/);
   });
 });
 

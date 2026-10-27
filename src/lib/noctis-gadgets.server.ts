@@ -9,6 +9,7 @@ import {
 import { evalBenchmarkGadget } from "./noctis-eval-suite.ts";
 import { webSecurityAcademyLabsGadget } from "../scripts/vulnerabilityScriptMap.ts";
 import { architectIntelligenceGadget } from "./noctis-architect-engine.ts";
+import { automotiveDiagnosticGadget } from "./noctis-automotive-engine.ts";
 
 function decodeBase64Url(segment: string): string {
   const normalized = segment.replace(/-/g, "+").replace(/_/g, "/");
@@ -1849,6 +1850,7 @@ export async function runVibeGadgets(question: string): Promise<string | null> {
     evalBenchmarkGadget(question) ||
     webSecurityAcademyLabsGadget(question) ||
     architectIntelligenceGadget(question) ||
+    automotiveDiagnosticGadget(question) ||
     jwtGadget(question) ||
     cidrGadget(question) ||
     cryptoGadget(question) ||
