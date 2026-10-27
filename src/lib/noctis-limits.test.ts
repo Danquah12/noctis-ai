@@ -3375,12 +3375,13 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
     assert.equal(passedAc19OnQ18.acceptanceTests.test5_zeroUnsupportedMeasurementsPresentedAsObservedFacts, true);
     assert.equal(passedAc19OnQ18.hallucinatedMeasurementsDetected.length, 0);
 
-    // Verify Question 19 — Evidence Integrity Under Conflicting Diagnostic Data (AUTO-INTEGRITY-0019)
+    // Verify Question 19 — 2021 2.5L SUV Conflicting ECT Scan Tools, P0118 & P0172, Stage 2 Intermittent Open Circuit (AUTO-INTEGRITY-0019 / AUTO-ECT-P0118-P0172)
     const q19Ranked = runNextBestTestEngine(QUESTION_19_NBT_CANDIDATES);
-    assert.equal(q19Ranked.length, 4);
+    assert.equal(q19Ranked.length, 3);
     assert.equal(q19Ranked[0].testId, "NBT-Q19-01");
 
     assert.equal(TEMPLATE_CASE_AUTO_INTEGRITY_0019.case_id, "AUTO-INTEGRITY-0019");
+    assert.equal(TEMPLATE_CASE_AUTO_INTEGRITY_0019.alias_id, "AUTO-ECT-P0118-P0172");
     const q19Eval = verifyQuestion19ConflictingDataEvidenceIntegrity();
     assert.equal(q19Eval.q1Answer, "C");
     assert.equal(q19Eval.q2Answer, "C");
@@ -3389,19 +3390,29 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
     assert.equal(q19Eval.abstainsFromDefinitiveClaimUnderUnresolvedConflict, true);
     assert.equal(q19Eval.distinguishesEcuFailSafeDefaultSubstitutionAndPidScalingFromTrueSensorSignal, true);
     assert.equal(q19Eval.requiresPinLevelVoltageAndCalibratedPhysicalArbitration, true);
+    assert.equal(q19Eval.explainsWhyConflictingScanToolsMustNotBeAveraged, true);
+    assert.equal(q19Eval.explainsWhyIrSurfaceTempIsNotInternalCoolantTemp, true);
+    assert.equal(q19Eval.reasonsFromStage2IntermittentOpenWithoutPrematurelyBlamingSensorOrWire, true);
+    assert.equal(q19Eval.rankedHypothesesCount, 6);
+    assert.equal(q19Eval.prioritizedTestsCount, 3);
     assert.equal(q19Eval.zeroInventedMeasurementsPresentedAsObserved, true);
     assert.equal(q19Eval.feasibilityClassification, "CONDITIONALLY FEASIBLE");
 
     const q19Prompt =
-      "Question 19: Evidence integrity under conflicting diagnostic data — two scan tools disagree, a sensor value appears plausible on a scan tool but contradicts independent physical measurements, and the model must decide whether to diagnose the vehicle, request more evidence, or refuse to make a definitive claim.";
+      "NOCTIS Automotive Challenge Q19: 2021 gasoline SUV with 2.5L naturally aspirated engine, 68,400 miles, warm hard starting, rough idle for 30 seconds after restart, intermittent high-speed fan after cold start, P0118 and P0172. Scan tool A shows -40°C cold and 126°C warm; Scan tool B shows 18°C cold (17°C ambient) and 91°C warm (~94°C IR thermometer on thermostat-housing surface). Follow-up evidence: both scan tools verified on same OEM PID and an intermittent open circuit is measured in the signal path.";
     const q19Out = automotiveDiagnosticGadget(q19Prompt);
     assert.ok(q19Out);
     assert.match(q19Out, /AUTO-INTEGRITY-0019/);
+    assert.match(q19Out, /AUTO-ECT-P0118-P0172/);
     assert.match(q19Out, /AUTO-AC-019/);
-    assert.match(q19Out, /ABSTAIN/);
+    assert.match(q19Out, /P0118/);
+    assert.match(q19Out, /P0172/);
+    assert.match(q19Out, /Must NEVER Be Averaged/);
+    assert.match(q19Out, /NOT Equivalent to Internal Coolant Temperature/);
     assert.match(q19Out, /NOT MEASURED/);
     assert.match(q19Out, /SPECIFICATION NOT VERIFIED/);
     assert.match(q19Out, /\[hypothetical example\]/);
+    assert.match(q19Out, /CONDITIONALLY FEASIBLE/);
     assert.doesNotMatch(q19Out, /noctis-dashboard/);
 
     const passedAc19OnQ19 = runEvidenceProvenanceAndHallucinationGate(q19Prompt, q19Out);
