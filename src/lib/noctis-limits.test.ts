@@ -3959,5 +3959,56 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
     const sha = computeClinicalContentSha256("Noctis-SHA256-Deterministic-Check");
     assert.match(sha, /^sha256:[a-f0-9]{64}$/);
   });
+
+  it("executes the 58-year-old acute chest pressure scenario and Top 5 Prioritized Deliverables suite (NH-CP58-01..05)", async () => {
+    const {
+      runChestPain58YoAndTop5DeliverablesSuite,
+      evaluateAcuteChestPainMedicationSafety,
+      buildAcuteChestPain58YoAndTop5DeliverablesReport,
+      evaluateHealthSafetyGateway,
+      handleNaturalHealthQuery,
+    } = await import("./noctis-health-engine.ts");
+
+    // 1. Verify pre-execution safety gateway triggers immediate 0-second ACS escalation on "chest pressure radiating to his left arm"
+    const safetyRes = evaluateHealthSafetyGateway({
+      question:
+        "A 58-year-old man experiencing 35 minutes of chest pressure radiating to his left arm, shortness of breath, nausea, and a heart rate of 108.",
+    });
+    assert.equal(safetyRes.urgency, "IMMEDIATE_EMERGENCY_ESCALATION");
+    assert.equal(safetyRes.intent, "possible_emergency");
+    assert.ok(safetyRes.auditTrail.rulesTriggered.includes("RULE-01A-ACS-CHEST-PAIN-IMMEDIATE-911-LOCK"));
+    assert.ok(safetyRes.emergencyBanner && safetyRes.emergencyBanner.includes("Call 911"));
+
+    // 2. Verify all 5 prioritized deliverable checks pass deterministically
+    const suite = runChestPain58YoAndTop5DeliverablesSuite();
+    assert.equal(suite.totalCount, 5);
+    assert.equal(suite.passedCount, 5);
+    assert.equal(suite.allPassed, true);
+    for (const d of suite.top5DeliverablesProof) {
+      assert.equal(d.passed, true, `Expected Deliverable #${d.order} (${d.deliverable}) to pass (${d.measuredProof})`);
+    }
+
+    // 3. Verify medication-safety evaluation for acute chest pain
+    const medSafety = evaluateAcuteChestPainMedicationSafety({ sbpMmHg: undefined });
+    assert.equal(medSafety.autonomousPrescriptionBlocked, true);
+    assert.equal(medSafety.decisions.length, 4);
+    assert.equal(medSafety.decisions[0].decisionStatus, "CONDITIONAL_EMS_CLINICIAN_PROTOCOL_ONLY");
+    assert.equal(medSafety.decisions[1].decisionStatus, "HELD_MISSING_BP_AND_PDE5_SCREEN");
+    assert.equal(medSafety.decisions[2].decisionStatus, "CONTRAINDICATED_CLASS_III_HARM");
+    assert.equal(medSafety.decisions[3].decisionStatus, "HELD_PENDING_12_LEAD_ECG_AND_DISSECTION_EXCLUSION");
+
+    // 4. Verify natural-language query routing for the 58-year-old chest-pressure prompt
+    const report = handleNaturalHealthQuery(
+      "Return to the chest-pain case we gave Noctis. Submit the scenario with the 58-year-old man experiencing 35 minutes of chest pressure radiating to his left arm, shortness of breath, nausea, and a heart rate of 108."
+    );
+    assert.ok(report);
+    assert.equal(report, buildAcuteChestPain58YoAndTop5DeliverablesReport());
+    assert.match(report, /IMMEDIATE_EMERGENCY_ESCALATION/);
+    assert.match(report, /RULE-01A-ACS-CHEST-PAIN-IMMEDIATE-911-LOCK/);
+    assert.match(report, /HELD_MISSING_BP_AND_PDE5_SCREEN/);
+    assert.match(report, /CONTRAINDICATED_CLASS_III_HARM/);
+  });
 });
+
+
 
