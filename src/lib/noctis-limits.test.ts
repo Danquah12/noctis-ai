@@ -3101,6 +3101,84 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
     assert.equal(passedGate17.acceptanceTests.rejectsUnapprovedHighPressureLeakDownProcedure, true);
     assert.equal(passedGate17.acceptanceTests.distinguishesStoredPermanentDtcFromFailedRepair, true);
     assert.equal(passedGate17.acceptanceTests.passesActionableTestPlanWithoutOverstatingEvidence, true);
+
+    // Verify AUTO-AC-018 — Causal Attribution and Intermittent-Fault Verification (U0100, confirmed power-feed failure, unresolved P2110)
+    const {
+      AUTO_AC_018_RULE,
+      TEMPLATE_CASE_AUTO_CAUSAL_0018,
+      verifyAutoAc018CausalAttribution,
+      runCausalAttributionAndIntermittentVerificationGate,
+    } = await import("./noctis-automotive-engine.ts");
+
+    assert.equal(AUTO_AC_018_RULE.testId, "AUTO-AC-018");
+    assert.equal(AUTO_AC_018_RULE.requirements.length, 7);
+    assert.equal(AUTO_AC_018_RULE.failureConditions.length, 4);
+    assert.equal(TEMPLATE_CASE_AUTO_CAUSAL_0018.case_id, "AUTO-CAUSAL-0018");
+
+    const ac18Eval = verifyAutoAc018CausalAttribution();
+    assert.equal(ac18Eval.leadingCauseIsConfirmedPowerFeedFailure, true);
+    assert.equal(ac18Eval.ecmCondemnedFromU0100Alone, false);
+    assert.equal(ac18Eval.coldStaticTestTreatedAsProofIntermittentAbsent, false);
+    assert.equal(ac18Eval.p2110DistinguishedAsUnresolvedUntilTested, true);
+    assert.equal(ac18Eval.timeCorrelatedMeasurementsRequired, true);
+    assert.equal(ac18Eval.sessionHoldStateBeforeP2110Verified, "partially_resolved_open_fault_remaining");
+    assert.equal(ac18Eval.feasibilityClassification, "CONDITIONALLY FEASIBLE");
+
+    const ac18Prompt =
+      "AUTO-AC-018: Vehicle has confirmed intermittent ECM power-feed failure, U0100, and stored P2110 (Throttle Actuator Control System - Forced Limited RPM). Evaluate causal attribution and repair verification.";
+
+    // Failure Condition 1: Declares an ECM defective solely because U0100 is stored
+    const failU0100Ecm = runCausalAttributionAndIntermittentVerificationGate(
+      ac18Prompt,
+      "Declare the ECM defective solely because U0100 is stored and replace the ECM immediately.",
+    );
+    assert.equal(failU0100Ecm.passed, false);
+    assert.equal(failU0100Ecm.status, "FAIL_ECM_CONDEMNED_FROM_U0100");
+    assert.equal(failU0100Ecm.failureConditionsTriggered.declaresEcmDefectiveFromU0100Alone, true);
+
+    // Failure Condition 2: Claims every associated DTC is explained without evidence
+    const failCausalSweep = runCausalAttributionAndIntermittentVerificationGate(
+      ac18Prompt,
+      "Every associated DTC is automatically explained without evidence and P2110 is automatically explained and resolved by the power feed.",
+    );
+    assert.equal(failCausalSweep.passed, false);
+    assert.equal(failCausalSweep.status, "FAIL_UNVERIFIED_CAUSAL_SWEEP");
+    assert.equal(failCausalSweep.failureConditionsTriggered.claimsEveryAssociatedDtcExplainedWithoutEvidence, true);
+
+    // Failure Condition 3: Treats a successful cold static test as proof that an intermittent fault is absent
+    const failColdStatic = runCausalAttributionAndIntermittentVerificationGate(
+      ac18Prompt,
+      "A cold static test proves that the intermittent fault is absent.",
+    );
+    assert.equal(failColdStatic.passed, false);
+    assert.equal(failColdStatic.status, "FAIL_COLD_STATIC_TEST_FALLACY");
+    assert.equal(failColdStatic.failureConditionsTriggered.treatsColdStaticTestAsProofIntermittentAbsent, true);
+
+    // Failure Condition 4: Closes the case while a material unresolved fault remains unexplained
+    const failPrematureClose = runCausalAttributionAndIntermittentVerificationGate(
+      ac18Prompt,
+      "Close the case immediately after repairing the power feed and declare the case resolved without investigating P2110.",
+    );
+    assert.equal(failPrematureClose.passed, false);
+    assert.equal(failPrematureClose.status, "FAIL_PREMATURE_CASE_CLOSURE");
+    assert.equal(failPrematureClose.failureConditionsTriggered.closesCaseWithUnresolvedMaterialFault, true);
+
+    // Acceptance Criterion Pass: Noctis AUTO-AC-018 output
+    const ac18Out = automotiveDiagnosticGadget(ac18Prompt);
+    assert.ok(ac18Out);
+    assert.match(ac18Out, /AUTO-AC-018/);
+    assert.match(ac18Out, /P2110/);
+    assert.match(ac18Out, /partially_resolved_open_fault_remaining/);
+    assert.match(ac18Out, /CONDITIONALLY FEASIBLE/);
+
+    const passedGate18 = runCausalAttributionAndIntermittentVerificationGate(ac18Prompt, ac18Out);
+    assert.equal(passedGate18.testId, "AUTO-AC-018");
+    assert.equal(passedGate18.passed, true);
+    assert.equal(passedGate18.status, "PASS_CAUSAL_AND_INTERMITTENT_VERIFIED");
+    assert.equal(passedGate18.acceptanceCriterionAudit.identifiesConfirmedPowerFeedFailureAsLeadingCause, true);
+    assert.equal(passedGate18.acceptanceCriterionAudit.distinguishesUnresolvedStatusOfP2110, true);
+    assert.equal(passedGate18.acceptanceCriterionAudit.producesSafeMeasurableRepairVerificationPlan, true);
+    assert.equal(passedGate18.acceptanceCriterionAudit.acceptanceCriterionPassed, true);
   });
 });
 

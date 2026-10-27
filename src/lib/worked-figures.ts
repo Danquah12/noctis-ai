@@ -17,7 +17,7 @@ export function onlyMath(question: string) {
 }
 
 const AUTOMOTIVE_DIAGNOSTIC_EXCLUSION =
-  /\b([pu bc][0-3][0-9a-f]{3}|obd-?ii|dtc|dtcs|freeze-?frame|ltft|stft|fuel\s+trims?|ckp|crankshaft\s+position|camshaft\s+position|ecm|pcm|bcm|wiring\s+diagram|spark\s+plugs?|ignition\s+coils?|alternator|crank-no-start|misfires?|auto-diag-|auto-misfire-|auto-multifault-|auto-intermittent-|noctis-auto-001)\b/i;
+  /\b([pu bc][0-3][0-9a-f]{3}|obd-?ii|dtc|dtcs|freeze-?frame|ltft|stft|fuel\s+trims?|ckp|crankshaft\s+position|camshaft\s+position|ecm|pcm|bcm|wiring\s+diagram|spark\s+plugs?|ignition\s+coils?|alternator|crank-no-start|misfires?|auto-diag-|auto-misfire-|auto-multifault-|auto-intermittent-|auto-fuel-|auto-causal-|auto-ac-|noctis-auto-001)\b/i;
 
 export function resourcePlan(question: string) {
   if (AUTOMOTIVE_DIAGNOSTIC_EXCLUSION.test(question)) return false;

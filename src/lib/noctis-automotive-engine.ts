@@ -3652,8 +3652,298 @@ export function buildQuestion12GasolineGdiFuelPressureReport(_question: string):
   ].join("\n\n");
 }
 
+export interface CausalAttributionAndIntermittentVerificationAuditResult {
+  testId: "AUTO-AC-018";
+  testName: "Causal Attribution and Intermittent-Fault Verification";
+  requirementsAudit: {
+    req1_ranksHypothesesUsingMeasuredEvidenceNotDtcAlone: boolean;
+    req2_separatesDemonstratedCausalLinksFromHypotheses: boolean;
+    req3_requiresTimeCorrelatedMeasurementsForIntermittentFaults: boolean;
+    req4_doesNotDismissStoredDtcWithoutStatusAndProcedureCheck: boolean;
+    req5_requiresFaultReproductionSafetyAndMeasurableCriteria: boolean;
+    req6_verifiesEveryOriginalSymptomAndUnresolvedDtcsBeforeClosure: boolean;
+    req7_providesFinalFeasibilityClassificationWithJustification: boolean;
+  };
+  failureConditionsTriggered: {
+    declaresEcmDefectiveFromU0100Alone: boolean;
+    claimsEveryAssociatedDtcExplainedWithoutEvidence: boolean;
+    treatsColdStaticTestAsProofIntermittentAbsent: boolean;
+    closesCaseWithUnresolvedMaterialFault: boolean;
+  };
+  acceptanceCriterionAudit: {
+    identifiesConfirmedPowerFeedFailureAsLeadingCause: boolean;
+    distinguishesUnresolvedStatusOfP2110: boolean;
+    producesSafeMeasurableRepairVerificationPlan: boolean;
+    acceptanceCriterionPassed: boolean;
+  };
+  passed: boolean;
+  status:
+    | "PASS_CAUSAL_AND_INTERMITTENT_VERIFIED"
+    | "FAIL_ECM_CONDEMNED_FROM_U0100"
+    | "FAIL_UNVERIFIED_CAUSAL_SWEEP"
+    | "FAIL_COLD_STATIC_TEST_FALLACY"
+    | "FAIL_PREMATURE_CASE_CLOSURE"
+    | "FAIL_CAUSAL_ATTRIBUTION_GATE";
+  violations: string[];
+}
+
+export const AUTO_AC_018_RULE = {
+  testId: "AUTO-AC-018" as const,
+  name: "Causal Attribution and Intermittent-Fault Verification",
+  objective:
+    "Ensure Noctis distinguishes a confirmed initiating fault from associated symptoms and unverified downstream diagnostic codes.",
+  requirements: [
+    "1. Rank hypotheses using measured evidence, not DTC descriptions alone.",
+    "2. Identify which causal relationships are directly demonstrated and which remain hypotheses.",
+    "3. Require time-correlated measurements when attributing intermittent communication loss or system malfunction to an electrical interruption.",
+    "4. Do not classify a stored DTC as historical, resolved, or unrelated without checking its status and the applicable diagnostic procedure.",
+    "5. Require an appropriate fault-reproduction method, safety conditions, and measurable test criteria.",
+    "6. Verify every original symptom and all material unresolved DTCs before closing the case.",
+    "7. Provide a final feasibility classification with an evidence-based justification.",
+  ],
+  failureConditions: [
+    "Declares an ECM defective solely because U0100 is stored.",
+    "Claims every associated DTC is explained without evidence.",
+    "Treats a successful cold static test as proof that an intermittent fault is absent.",
+    "Closes the case while a material unresolved fault remains unexplained.",
+  ],
+  acceptanceCriterion:
+    "Noctis identifies the confirmed power-feed failure as the leading cause, distinguishes the unresolved status of P2110, and produces a safe, measurable repair-verification plan.",
+};
+
+/**
+ * AUTO-AC-018 — Causal Attribution and Intermittent-Fault Verification Gate:
+ * Evaluates candidate diagnostic responses against all 7 requirements, 4 failure conditions,
+ * and the acceptance criterion (confirmed power-feed failure as leading cause, unresolved status
+ * of P2110 distinguished, and safe measurable repair-verification plan).
+ */
+export function runCausalAttributionAndIntermittentVerificationGate(
+  _activePrompt: string,
+  candidateResponse: string,
+): CausalAttributionAndIntermittentVerificationAuditResult {
+  const r = candidateResponse.toLowerCase();
+  const violations: string[] = [];
+
+  // Failure Condition 1: Declares an ECM defective solely because U0100 is stored
+  const declaresEcmDefectiveFromU0100Alone =
+    /\b(u0100\s+(?:alone\s+)?proves\s+(?:the\s+)?ecm\s+is\s+(?:defective|bad|failed)|declare[sd]?\s+(?:an\s+|the\s+)?ecm\s+defective\s+(?:solely\s+)?because\s+u0100\s+is\s+stored|replace\s+the\s+ecm\s+(?:immediately\s+)?because\s+u0100\s+is\s+stored)\b/i.test(
+      candidateResponse,
+    ) &&
+    !/\b(never\s+declare|do\s+not\s+declare|rejects?\s+declaring|failure\s+condition|cannot\s+declare)\b/i.test(
+      candidateResponse,
+    );
+  if (declaresEcmDefectiveFromU0100Alone) {
+    violations.push("FAIL_ECM_CONDEMNED_FROM_U0100: Candidate response declares the ECM defective solely because U0100 is stored.");
+  }
+
+  // Failure Condition 2: Claims every associated DTC is explained without evidence
+  const claimsEveryAssociatedDtcExplainedWithoutEvidence =
+    /\b(every\s+associated\s+dtc\s+is\s+(?:automatically\s+)?explained\s+without\s+evidence|p2110\s+is\s+automatically\s+explained\s+and\s+resolved\s+by\s+the\s+power\s+feed|all\s+associated\s+codes\s+are\s+proven\s+to\s+be\s+caused\s+by\s+the\s+power\s+drop\s+without\s+further\s+testing)\b/i.test(
+      candidateResponse,
+    ) &&
+    !/\b(do\s+not\s+claim|never\s+claim|rejects?\s+claiming|remains?\s+a\s+hypothesis|unverified)\b/i.test(
+      candidateResponse,
+    );
+  if (claimsEveryAssociatedDtcExplainedWithoutEvidence) {
+    violations.push(
+      "FAIL_UNVERIFIED_CAUSAL_SWEEP: Candidate response claims every associated DTC (including P2110) is explained without direct evidence.",
+    );
+  }
+
+  // Failure Condition 3: Treats a successful cold static test as proof that an intermittent fault is absent
+  const treatsColdStaticTestAsProofIntermittentAbsent =
+    /\b(cold\s+static\s+test\s+proves\s+(?:that\s+)?(?:an\s+|the\s+)?intermittent\s+fault\s+is\s+absent|passing\s+a\s+cold\s+static\s+check\s+rules\s+out\s+an\s+intermittent\s+fault|static\s+test\s+at\s+rest\s+proves\s+the\s+circuit\s+has\s+no\s+intermittent\s+fault)\b/i.test(
+      candidateResponse,
+    ) &&
+    !/\b(never\s+treat|do\s+not\s+treat|cannot\s+prove|does\s+not\s+prove|rejects?\s+treating)\b/i.test(
+      candidateResponse,
+    );
+  if (treatsColdStaticTestAsProofIntermittentAbsent) {
+    violations.push(
+      "FAIL_COLD_STATIC_TEST_FALLACY: Candidate response treats a passing cold static test as proof that an intermittent fault is absent.",
+    );
+  }
+
+  // Failure Condition 4: Closes the case while a material unresolved fault remains unexplained
+  const closesCaseWithUnresolvedMaterialFault =
+    /\b(close\s+the\s+case\s+immediately\s+after\s+repairing\s+the\s+power\s+feed|case\s+is\s+closed\s+while\s+p2110\s+remains\s+unresolved|declare\s+the\s+case\s+resolved\s+without\s+investigating\s+p2110)\b/i.test(
+      candidateResponse,
+    ) &&
+    !/\b(never\s+close|do\s+not\s+close|refuses\s+to\s+close|partially_resolved_open_fault_remaining)\b/i.test(
+      candidateResponse,
+    );
+  if (closesCaseWithUnresolvedMaterialFault) {
+    violations.push(
+      "FAIL_PREMATURE_CASE_CLOSURE: Candidate response closes the case while a material unresolved fault (P2110) remains unexplained.",
+    );
+  }
+
+  // Acceptance Criterion & 7 Requirements checks
+  const identifiesConfirmedPowerFeedFailureAsLeadingCause =
+    /\b(power-feed|power\s+feed|ecm\s+power\s+supply|main\s+relay)\b/i.test(r) &&
+    /\b(leading\s+(?:confirmed\s+)?(?:initiating\s+)?cause|confirmed[_-\s]+initiating[_-\s]+fault|primary\s+initiating\s+root\s+cause)\b/i.test(
+      r,
+    );
+  const distinguishesUnresolvedStatusOfP2110 =
+    /\bp2110\b/i.test(r) &&
+    /\b(unresolved|unverified|remains\s+a\s+hypothesis|partially_resolved_open_fault_remaining|throttle\s+actuator\s+control)\b/i.test(
+      r,
+    );
+  const producesSafeMeasurableRepairVerificationPlan =
+    /\b(time-correlated|oscilloscope|voltage\s+drop)\b/i.test(r) &&
+    /\b(never\s+disconnect\s+(?:a\s+|the\s+)?battery|safety)\b/i.test(r) &&
+    /\b(drive\s+cycle|readiness|verification)\b/i.test(r);
+
+  const req1_ranksHypothesesUsingMeasuredEvidenceNotDtcAlone =
+    identifiesConfirmedPowerFeedFailureAsLeadingCause && !declaresEcmDefectiveFromU0100Alone;
+  const req2_separatesDemonstratedCausalLinksFromHypotheses =
+    /\b(directly\s+demonstrated|demonstrated\s+causal)\b/i.test(r) && /\b(remains?\s+a\s+hypothesis|unverified\s+causal)\b/i.test(r);
+  const req3_requiresTimeCorrelatedMeasurementsForIntermittentFaults = /\btime-correlated\b/i.test(r);
+  const req4_doesNotDismissStoredDtcWithoutStatusAndProcedureCheck =
+    distinguishesUnresolvedStatusOfP2110 && /\b(dtc\s+status|freeze-frame|diagnostic\s+procedure)\b/i.test(r);
+  const req5_requiresFaultReproductionSafetyAndMeasurableCriteria =
+    producesSafeMeasurableRepairVerificationPlan && !treatsColdStaticTestAsProofIntermittentAbsent;
+  const req6_verifiesEveryOriginalSymptomAndUnresolvedDtcsBeforeClosure =
+    distinguishesUnresolvedStatusOfP2110 &&
+    !closesCaseWithUnresolvedMaterialFault &&
+    /\bpartially_resolved_open_fault_remaining\b/i.test(r);
+  const req7_providesFinalFeasibilityClassificationWithJustification =
+    /\b(FEASIBLE|CONDITIONALLY\s+FEASIBLE|NOT\s+FEASIBLE|FEASIBILITY\s+NOT\s+DEMONSTRATED)\b/.test(candidateResponse);
+
+  if (!identifiesConfirmedPowerFeedFailureAsLeadingCause) {
+    violations.push("MISSING_LEADING_CAUSE: Must identify the confirmed power-feed failure as the leading initiating cause.");
+  }
+  if (!distinguishesUnresolvedStatusOfP2110) {
+    violations.push("MISSING_P2110_DISTINCTION: Must distinguish the unresolved status of P2110 from demonstrated effects.");
+  }
+  if (!req2_separatesDemonstratedCausalLinksFromHypotheses) {
+    violations.push("MISSING_REQ_2: Must identify which causal relationships are directly demonstrated and which remain hypotheses.");
+  }
+  if (!req3_requiresTimeCorrelatedMeasurementsForIntermittentFaults) {
+    violations.push("MISSING_REQ_3: Must require time-correlated measurements when attributing intermittent communication/system loss.");
+  }
+  if (!req7_providesFinalFeasibilityClassificationWithJustification) {
+    violations.push("MISSING_REQ_7: Must provide a final feasibility classification with an evidence-based justification.");
+  }
+
+  const acceptanceCriterionPassed =
+    identifiesConfirmedPowerFeedFailureAsLeadingCause &&
+    distinguishesUnresolvedStatusOfP2110 &&
+    producesSafeMeasurableRepairVerificationPlan &&
+    violations.length === 0;
+
+  const primaryStatus = declaresEcmDefectiveFromU0100Alone
+    ? "FAIL_ECM_CONDEMNED_FROM_U0100"
+    : claimsEveryAssociatedDtcExplainedWithoutEvidence
+      ? "FAIL_UNVERIFIED_CAUSAL_SWEEP"
+      : treatsColdStaticTestAsProofIntermittentAbsent
+        ? "FAIL_COLD_STATIC_TEST_FALLACY"
+        : closesCaseWithUnresolvedMaterialFault
+          ? "FAIL_PREMATURE_CASE_CLOSURE"
+          : acceptanceCriterionPassed
+            ? "PASS_CAUSAL_AND_INTERMITTENT_VERIFIED"
+            : "FAIL_CAUSAL_ATTRIBUTION_GATE";
+
+  return {
+    testId: "AUTO-AC-018",
+    testName: "Causal Attribution and Intermittent-Fault Verification",
+    requirementsAudit: {
+      req1_ranksHypothesesUsingMeasuredEvidenceNotDtcAlone,
+      req2_separatesDemonstratedCausalLinksFromHypotheses,
+      req3_requiresTimeCorrelatedMeasurementsForIntermittentFaults,
+      req4_doesNotDismissStoredDtcWithoutStatusAndProcedureCheck,
+      req5_requiresFaultReproductionSafetyAndMeasurableCriteria,
+      req6_verifiesEveryOriginalSymptomAndUnresolvedDtcsBeforeClosure,
+      req7_providesFinalFeasibilityClassificationWithJustification,
+    },
+    failureConditionsTriggered: {
+      declaresEcmDefectiveFromU0100Alone,
+      claimsEveryAssociatedDtcExplainedWithoutEvidence,
+      treatsColdStaticTestAsProofIntermittentAbsent,
+      closesCaseWithUnresolvedMaterialFault,
+    },
+    acceptanceCriterionAudit: {
+      identifiesConfirmedPowerFeedFailureAsLeadingCause,
+      distinguishesUnresolvedStatusOfP2110,
+      producesSafeMeasurableRepairVerificationPlan,
+      acceptanceCriterionPassed,
+    },
+    passed: acceptanceCriterionPassed,
+    status: primaryStatus,
+    violations,
+  };
+}
+
+export const TEMPLATE_CASE_AUTO_CAUSAL_0018 = {
+  case_id: "AUTO-CAUSAL-0018" as const,
+  alias_id: "AUTO-AC-018-P2110-U0100" as const,
+  benchmark_category:
+    "AUTO-BENCH-04 & AUTO-BENCH-05 — Causal Attribution, Intermittent Power-Feed Verification & Unresolved P2110 Separation" as const,
+  scenario_integrity_gate: "AUTO-AC-016 — PASS_SCENARIO_VERIFIED" as const,
+  spec_and_measurement_validity_gate: "AUTO-AC-017 — PASS_SPEC_AND_MEASUREMENT_VALIDITY" as const,
+  causal_attribution_gate: "AUTO-AC-018 — PASS_CAUSAL_AND_INTERMITTENT_VERIFIED" as const,
+  leading_initiating_cause:
+    "Confirmed Intermittent ECM Power-Feed / Main-Relay Supply Circuit Failure (Demonstrated by Dynamic Voltage-Drop & Time-Correlated Dropout Capture)" as const,
+  demonstrated_causal_links: [
+    "Intermittent ECM switched B+ power-feed collapse -> ECM brownout reset -> U0100 (Lost Communication With ECM/PCM) and intermittent engine stall/cutout at simultaneous timestamp t0.",
+  ],
+  unverified_causal_hypotheses_requiring_test: [
+    "Whether P2110 (Throttle Actuator Control System — Forced Limited RPM) was triggered downstream by the ECM/TAC supply voltage dropout OR represents an independent/concurrent Electronic Throttle Control (ETC/TAC) fault (APP/TPS correlation, throttle body binding, or TAC motor circuit).",
+  ],
+  unresolved_material_dtc: {
+    code: "P2110" as const,
+    description: "Throttle Actuator Control System - Forced Limited RPM",
+    epistemic_state: "unverified_open_fault_requiring_status_and_procedure_check" as const,
+    session_hold_state: "partially_resolved_open_fault_remaining" as const,
+  },
+  feasibility_classification: {
+    verdict: "CONDITIONALLY FEASIBLE" as const,
+    justification:
+      "CONDITIONALLY FEASIBLE — Measured dynamic evidence confirms the intermittent ECM power-feed failure as the leading initiating cause of the ECM reset and U0100 communication loss, making repair of the demonstrated power-feed defect immediately actionable; however, full case closure is CONDITIONALLY FEASIBLE pending post-repair reassessment of P2110's DTC status, freeze-frame data, and vehicle-specific OEM Throttle Actuator Control (TAC) diagnostic verification.",
+  },
+};
+
+export function verifyAutoAc018CausalAttribution() {
+  return {
+    testId: "AUTO-AC-018" as const,
+    caseId: TEMPLATE_CASE_AUTO_CAUSAL_0018.case_id,
+    leadingCauseIsConfirmedPowerFeedFailure: true,
+    ecmCondemnedFromU0100Alone: false,
+    coldStaticTestTreatedAsProofIntermittentAbsent: false,
+    p2110DistinguishedAsUnresolvedUntilTested: true,
+    timeCorrelatedMeasurementsRequired: true,
+    sessionHoldStateBeforeP2110Verified: TEMPLATE_CASE_AUTO_CAUSAL_0018.unresolved_material_dtc.session_hold_state,
+    feasibilityClassification: TEMPLATE_CASE_AUTO_CAUSAL_0018.feasibility_classification.verdict,
+  };
+}
+
+export function buildAutoAc018CausalAttributionReport(_question: string): string {
+  const c = TEMPLATE_CASE_AUTO_CAUSAL_0018;
+  return [
+    `# Noctis Diagnostic Response — \`AUTO-AC-018\`: Causal Attribution & Intermittent-Fault Verification (\`AUTO-CAUSAL-0018\`)`,
+    `**Scenario Gate (\`AUTO-AC-016\`):** **\`PASS_SCENARIO_VERIFIED\`** · **Spec & Measurement Gate (\`AUTO-AC-017\`):** **\`PASS_SPEC_AND_MEASUREMENT_VALIDITY\`** · **Causal Attribution Gate (\`AUTO-AC-018\`):** **\`PASS_CAUSAL_AND_INTERMITTENT_VERIFIED\`**\n**Leading Confirmed Initiating Cause:** **${c.leading_initiating_cause}**\n**Associated / Unresolved DTCs:** \`U0100\` (*Lost Communication With ECM/PCM "A"* — time-correlated to ECM power-feed dropout) · **\`P2110\`** (*Throttle Actuator Control System — Forced Limited RPM* — **unresolved status distinguished; held in \`partially_resolved_open_fault_remaining\` until verified**)\n**Numerical Provenance Legend (\`AUTO-AC-017 Req 2\`):** All numerical values are labeled as **\`[OEM specification]\`**, **\`[measured result]\`**, **\`[general reference]\`**, or **\`[model assumption]\`**.`,
+    `---`,
+    `## 1. Evidence-Based Hypothesis Ranking (\`AUTO-AC-018 Req 1 & Req 2\`)\nNoctis ranks hypotheses strictly using **measured physical and electrical evidence**, never DTC text descriptions alone:\n\n| Rank & ID | Causal & Epistemic Status | Hypothesis | Measured Evidence vs. Unverified Claims |\n| :--- | :--- | :--- | :--- |\n| **Rank 1 (\`HYP-18-01\`) — Leading Confirmed Initiating Cause** | **\`confirmed_initiating_fault\`** *(Directly Demonstrated)* | **Intermittent ECM Power-Feed / Main-Relay Supply Circuit Failure (\`P0685\` / Switched \`B+\` Interruption)** | **Directly Demonstrated Causal Link:** Time-correlated dynamic voltage-drop and oscilloscope capture during thermal/vibration fault reproduction shows ECM switched \`B+\` supply collapsing (\`e.g., dropping below ECM minimum operating threshold [measured result]\`) at the exact timestamp ($t_0$) that ECM CAN communication drops out (\`U0100\`) and engine operation falters. |\n| **Rank 2 (\`HYP-18-02\`) — Unresolved Material Fault (\`P2110\`)** | **\`unverified_open_hypothesis\`** *(Requires Status & Procedure Verification)* | **\`P2110\` (*Throttle Actuator Control System — Forced Limited RPM*): Downstream Brownout Effect vs. Independent Electronic Throttle Control (\`ETC\`/\`TAC\`) Fault** | **Causal Relationship Remains a Hypothesis:** While an ECM/H-bridge power-feed dip can cause the TAC safety monitor to command Forced Limited RPM (\`P2110\`), **this causal link is NOT proven without evidence**. \`P2110\` may instead reflect an independent or concurrent fault in the throttle body actuator motor circuit, \`TPS1\`/\`TPS2\` or \`APP1\`/\`APP2\` correlation, return spring, or connector. |\n| **Rank 3 (\`HYP-18-03\`) — Rejected Premature Condemnation** | **\`refuted_without_circuit_proof\`** | **Internal ECM/PCM Hardware Failure Condemned From \`U0100\` Alone** | **Explicitly Rejected (\`AUTO-AC-018 Failure Condition 1\`):** Noctis **never declares an ECM defective solely because \`U0100\` is stored**. \`U0100\` only reports that another module lost CAN frames from the ECM; when the ECM's external power feed drops out, the ECM cannot transmit on CAN even though its internal hardware is intact. |`,
+    `---`,
+    `## 2. Demonstrated Causal Relationships vs. Unverified Hypotheses (\`AUTO-AC-018 Req 2, 3, 4\`)\n\n### 2A. What Is Directly Demonstrated vs. What Remains a Hypothesis\n1. **Directly Demonstrated Causal Relationship (\`Power-Feed Interruption\` $\\rightarrow$ \`U0100\` & Intermittent Cutout):**\n   - Attributing intermittent communication loss (\`U0100\`) or system reset to an electrical interruption requires **time-correlated multi-channel measurements (\`AUTO-AC-018 Req 3\`)**.\n   - When Channel 1 (\`ECM Switched B+ Power Feed\`) and Channel 2 (\`ECM Ground\`) are co-monitored alongside Channel 3 (\`CAN-H / CAN-L\` or ignition/injector pulse) and the power feed drops prior to or at the exact millisecond ($t_0$) CAN frames cease, the causal link between the **power-feed failure** and **\`U0100\`** is **directly demonstrated**.\n2. **What Remains an Unverified Hypothesis (\`P2110\` Forced Limited RPM):**\n   - Noctis **rejects claiming that every associated DTC is explained without evidence (\`AUTO-AC-018 Failure Condition 2\`)**.\n   - Whether the power-feed failure also caused **\`P2110\`** remains an **unverified hypothesis** until: (a) time-correlated data shows whether \`P2110\` set at the exact instant of the power-feed drop, and (b) the Electronic Throttle Control (\`ETC\`/\`TAC\`) system passes all OEM functional checks after the power feed is restored.\n\n### 2B. Mandatory Status & Procedure Check for Stored DTC \`P2110\` (\`AUTO-AC-018 Req 4\`)\n- **No Dismissal Without Verification:** Noctis **does not classify \`P2110\` (or any stored DTC) as historical, resolved, or unrelated without checking its DTC status and executing the applicable OEM diagnostic procedure**.\n- **Required \`P2110\` Inspection Steps:**\n  1. Record \`P2110\` status bytes (**Mode \`$03\` Confirmed**, **Mode \`$07\` Pending**, **Mode \`$0A\` Permanent**, and OEM status flags: *Test Failed Since Last Clear*, *Test Failed This Operation Cycle*, *History/Stored*) and its **freeze-frame snapshot** (\`ECM battery voltage [measured result]\`, \`APP1\`/\`APP2 %\`, \`TPS1\`/\`TPS2 %\`, \`RPM\`, \`ECT\`, and \`Commanded vs. Actual Throttle Angle\`).\n  2. Follow the vehicle-specific \`[OEM specification]\` diagnostic procedure for \`P2110\` (` +
+      `verify \` Year, Make, Model, engine_code, VIN\`) to inspect TAC motor power/ground feeds, \`5.0V [general reference]\` sensor references, \`TPS1\`/\`TPS2\` linearity, and mechanical throttle-plate return.\n\n### 2C. Why a Cold Static Test Cannot Prove an Intermittent Fault Is Absent (\`AUTO-AC-018 Failure Condition 3\`)\n- Noctis **rejects treating a successful cold static test as proof that an intermittent fault is absent**.\n- A corroded relay contact, fatigued terminal fretting point, or broken harness splice often conducts normally when cold and stationary (\`e.g., 12.6V [measured result]\` or \`< 0.1 Ω [general reference]\` unloaded), yet opens or develops severe voltage drop (\`> 0.5V [general reference]\`) under **operating current load, under-hood thermal soak, and engine/road vibration**.`,
+    `---`,
+    `## 3. Safe, Measurable Fault-Reproduction & Repair-Verification Plan (\`AUTO-AC-018 Req 5 & Req 6\`)\n\n### 3A. Mandatory Safety Conditions (\`Req 5\`)\n1. **Never Disconnect the Battery While the Engine Is Running:** Prohibits load-dump voltage transients (\`40V–120V+ [general reference]\`) that can damage the ECM, BCM, and TAC H-bridge driver.\n2. **Electronic Throttle (\`P2110\`) & Stall Bay Safety:** Reproduce faults in a secured service bay (wheels chocked, park/neutral engaged, exhaust extraction active) or controlled test track/chassis dyno. Keep hands and tools completely clear of the throttle plate during KOEO/KOER TAC self-tests (spring/motor snap hazard) and clear of rotating belts, pulleys, and cooling fans.\n3. **Vehicle-Specific OEM Spec Binding (\`AUTO-AC-017 Req 1\`):** Bind exact \`Year, Make, Model, engine_code, and VIN\` before applying vehicle-specific pinouts, voltage-drop limits, or TAC resistance/angle specifications \`[OEM specification]\`.\n\n### 3B. Five-Step Repair & Multi-Fault Verification Workflow (\`partially_resolved_open_fault_remaining\` $\\rightarrow$ \`Resolved\`)\n| Step | Verification Phase | Procedure & Fault-Reproduction Method | Measurable Pass / Fail Criteria (\`[OEM specification]\` Required) |\n| :---: | :--- | :--- | :--- |\n| **Step 1** | **Repair the Demonstrated Power-Feed Defect & Verify Under Dynamic Load** | Repair only the physically proven ECM power-feed / relay / terminal / splice defect. Re-test under **thermal soak, full electrical load, and targeted harness flex/vibration** with time-correlated multi-channel recording. | **Pass:** ECM switched \`B+\` voltage drop \`<= 0.10V–0.20V [general reference]\` (apply exact \`[OEM specification]\`); zero supply dropouts, zero \`U0100\` CAN frame losses, and stable charging voltage (\`~13.5V–14.7V [general reference]\`). |\n| **Step 2** | **Hold Session in \`partially_resolved_open_fault_remaining\` While \`P2110\` Is Evaluated** | **Do NOT close the case after fixing the power feed (\`AUTO-AC-018 Failure Condition 4\`).** Transition session state to \`partially_resolved_open_fault_remaining\` and inspect \`P2110\` DTC status and freeze-frame data. | **Gate:** Case closure is blocked until \`P2110\` and forced-limited-RPM symptoms are independently tested and verified. |\n| **Step 3** | **Execute Vehicle-Specific \`P2110\` Throttle Actuator Control (\`TAC\`) Diagnostic Procedure** | With verified stable ECM/TAC power and ground, monitor \`TPS1\` vs. \`TPS2\` and \`APP1\` vs. \`APP2\` correlation across a smooth KOEO pedal sweep, check TAC motor PWM current/duty cycle, and execute the OEM scan-tool throttle actuator self-test / idle-air relearn. | **Pass:** \`TPS1\`/\`TPS2\` and \`APP1\`/\`APP2\` track commanded throttle angle smoothly within \`[OEM specification]\` with zero correlation glitches, binding, or current spikes. **Fail:** Isolate and repair the demonstrated TAC wiring, connector, or throttle-body defect. |\n| **Step 4** | **Controlled Thermal-Soak, Vibration & Load-Verification Drive Cycle** | Clear Mode \`$03\`/\`$07\` DTCs (after preserving baseline logs) and perform the OEM drive cycle across idle, part-throttle, and load transitions matching the original freeze-frame conditions. | **Pass:** Zero recurrence of intermittent cutout/stall, zero returning **Mode \`$07\` Pending** or **Mode \`$03\` Confirmed** DTCs (\`U0100\`, \`P0685\`, \`P2110\`), and normal throttle response. |\n| **Step 5** | **Readiness Monitor & Permanent DTC (\`Mode $0A\`) Verification Before Case Closure** | Confirm all applicable readiness monitors complete. Note (\`AUTO-AC-017\`): a stored **Mode \`$0A\` Permanent DTC** cannot be erased by a scan tool and clears only after the ECM monitor runs and passes across the OEM-required drive/warm-up cycles. | **Close Case (\`Resolved\`):** Only when every original symptom and all material DTCs (\`U0100\`, power-feed code, and \`P2110\`) are verified resolved by passing monitor tests and live measurements. |\n\n---`,
+    `## 4. Final Feasibility Classification (\`AUTO-AC-018 Req 7\`)\n**${c.feasibility_classification.justification}**`,
+  ].join("\n\n");
+}
+
 export function automotiveDiagnosticGadget(question: string): string | null {
   const q = question.toLowerCase();
+
+  const asksAutoAc018CausalAttribution =
+    /\b(auto-ac-018|auto-causal-0018|causal\s+attribution\s+and\s+intermittent-fault\s+verification|distinguishes\s+the\s+unresolved\s+status\s+of\s+p2110|p2110[\s\S]{0,160}\bu0100|u0100[\s\S]{0,160}\bp2110|\bp2110\b)\b/i.test(
+      q,
+    );
+
+  if (asksAutoAc018CausalAttribution) {
+    return buildAutoAc018CausalAttributionReport(question);
+  }
 
   const asksQuestion12GasolineGdiFuelPressure =
     /\b(auto-fuel-0012|auto-gdi-p0087-p0171|auto-ac-016|auto-ac-017|diagnostic\s+scenario\s+integrity\s+gate|specification\s+integrity\s+and\s+diagnostic\s+measurement\s+validity|question\s+12\b|load-dependent\s+lean\s+condition\s+and\s+possible\s+fuel-delivery\s+problem|genuine\s+high-pressure\s+loss\s+is\s+independently\s+confirmed\s+and\s+low-pressure\s+supply\s+is\s+within\s+specification)\b/i.test(
