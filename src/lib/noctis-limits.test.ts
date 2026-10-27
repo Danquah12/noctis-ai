@@ -2704,10 +2704,14 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
     assert.match(feasibilityBenchmarkOut, /Option C — Phased Construction/);
     assert.match(feasibilityBenchmarkOut, /NOCTIS-EXEC-100M2-3BR2BA/);
 
-    // Verify Noctis Automotive Diagnostic Intelligence Engine (NOCTIS-AUTO-001 · Blueprint v1.0 + 15 Advanced Capabilities)
+    // Verify Noctis Automotive Diagnostic Intelligence Engine (NOCTIS-AUTO-001 · Blueprint v1.0 + 15 Advanced Capabilities + Assurance Layer)
     const {
       NOCTIS_17_SUBSYSTEM_TAXONOMY,
       NOCTIS_15_ADVANCED_CAPABILITIES,
+      NOCTIS_12_ENGINEERING_CAPABILITIES,
+      NOCTIS_8_PLATFORM_BACKLOG_CAPABILITIES,
+      NOCTIS_5_MATURITY_LEVELS,
+      NOCTIS_DIAGNOSTIC_EVIDENCE_LEDGER,
       NOCTIS_5_DIGITAL_TWIN_SIMULATIONS,
       NOCTIS_8_BENCHMARK_CATEGORIES,
       NOCTIS_8_DATASET_LAYERS,
@@ -2715,11 +2719,17 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
       TEMPLATE_CASE_AUTO_START_0001,
       TEMPLATE_CASE_AUTO_MISFIRE_0001,
       verifyAutomotiveDiagnosticWorkflow,
+      runDiagnosticDataQualityCheck,
+      runSelfChallengingDiagnosisPass,
       automotiveDiagnosticGadget,
     } = await import("./noctis-automotive-engine.ts");
 
     assert.equal(NOCTIS_17_SUBSYSTEM_TAXONOMY.length, 17);
     assert.equal(NOCTIS_15_ADVANCED_CAPABILITIES.length, 15);
+    assert.equal(NOCTIS_12_ENGINEERING_CAPABILITIES.length, 12);
+    assert.equal(NOCTIS_8_PLATFORM_BACKLOG_CAPABILITIES.length, 8);
+    assert.equal(NOCTIS_5_MATURITY_LEVELS.length, 5);
+    assert.equal(NOCTIS_DIAGNOSTIC_EVIDENCE_LEDGER.length, 2);
     assert.equal(NOCTIS_5_DIGITAL_TWIN_SIMULATIONS.length, 5);
     assert.equal(NOCTIS_8_BENCHMARK_CATEGORIES.length, 8);
     assert.equal(NOCTIS_8_DATASET_LAYERS.length, 8);
@@ -2728,6 +2738,37 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
     assert.equal(TEMPLATE_CASE_AUTO_START_0001.review_status, "unverified");
     assert.equal(TEMPLATE_CASE_AUTO_MISFIRE_0001.case_id, "AUTO-MISFIRE-0001");
     assert.equal(TEMPLATE_CASE_AUTO_MISFIRE_0001.vehicle.engine_code, "REQUIRED_FOR_PRODUCTION");
+
+    // Verify 8-gate Diagnostic Data Quality Engine (DQ-01..DQ-08)
+    const dqClean = runDiagnosticDataQualityCheck();
+    assert.equal(dqClean.passedAllChecks, true);
+    assert.equal(dqClean.canProceedToBayesianReasoning, true);
+    assert.equal(dqClean.checks.length, 8);
+
+    const dqCorrupted = runDiagnosticDataQualityCheck({
+      hasMissingOrInvalidUnits: true,
+      mixesFreezeFrameWithLiveConditions: true,
+      violatesTestPreconditions: true,
+    });
+    assert.equal(dqCorrupted.passedAllChecks, false);
+    assert.equal(dqCorrupted.canProceedToBayesianReasoning, false);
+    assert.deepEqual(dqCorrupted.quarantinedFields, ["DQ-01", "DQ-03", "DQ-08"]);
+
+    // Verify Self-Challenging Diagnostic Engine (Falsification Pass)
+    const mafPrematureChallenge = runSelfChallengingDiagnosisPass({
+      scenario: "maf_lean_code_p0171",
+      upstreamChecksCompleted: false,
+    });
+    assert.equal(mafPrematureChallenge.survivesUnchallenged, false);
+    assert.equal(mafPrematureChallenge.epistemicState, "insufficient_evidence");
+    assert.match(mafPrematureChallenge.revisedAction, /CHALLENGE ENGINE HOLD: Do NOT replace the MAF sensor yet/);
+
+    const mafVerifiedChallenge = runSelfChallengingDiagnosisPass({
+      scenario: "maf_lean_code_p0171",
+      upstreamChecksCompleted: true,
+    });
+    assert.equal(mafVerifiedChallenge.survivesUnchallenged, true);
+    assert.equal(mafVerifiedChallenge.epistemicState, "confirmed_diagnosis");
 
     const autoCheck = verifyAutomotiveDiagnosticWorkflow();
     assert.equal(autoCheck.openCircuitBatteryVoltageV, 12.64);
@@ -2753,12 +2794,19 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
     assert.equal(missingUnitCheck.conclusionState, "unverified");
 
     const autoBlueprintOut = automotiveDiagnosticGadget(
-      "want to train my model to know how to do diagnosis of car issues. Noctis Automotive Diagnostic Intelligence Engine Engineering Blueprint Version 1.0",
+      "Vehicle Intelligence and Diagnostic Assurance Layer self-challenging diagnostic engine diagnostic data quality engine",
     );
     assert.ok(autoBlueprintOut);
     assert.match(autoBlueprintOut, /NOCTIS-AUTO-001/);
     assert.match(autoBlueprintOut, /CAP-AUTO-01/);
     assert.match(autoBlueprintOut, /CAP-AUTO-15/);
+    assert.match(autoBlueprintOut, /ENG-CAP-01/);
+    assert.match(autoBlueprintOut, /ENG-CAP-12/);
+    assert.match(autoBlueprintOut, /DQ-01/);
+    assert.match(autoBlueprintOut, /DQ-08/);
+    assert.match(autoBlueprintOut, /LEDGER-001/);
+    assert.match(autoBlueprintOut, /PLAT-01/);
+    assert.match(autoBlueprintOut, /Level 5/);
     assert.match(autoBlueprintOut, /SIM-01/);
     assert.match(autoBlueprintOut, /AUTO-BENCH-01/);
     assert.match(autoBlueprintOut, /AUTO-MISFIRE-0001/);
@@ -2773,5 +2821,6 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
     assert.match(p0301Out, /AUTO-MISFIRE-0001/);
   });
 });
+
 
 
