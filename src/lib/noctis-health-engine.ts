@@ -4350,7 +4350,7 @@ export function extractClinicalParametersFromText(question: string): ExtractedCl
 
   // Endemic travel / geographic exposure check (NH-TROP-004)
   const hasEndemicTravelOrResidence =
-    /\b(ghana|nigeria|kenya|uganda|tanzania|congo|cameroon|mali|senegal|west\s+africa|east\s+africa|sub-?saharan|africa|india|southeast\s+asia|latin\s+america|amazon|endemic|tropics?|returned\s+from|returning\s+from|travel(?:ed)?\s+to)\b/i.test(
+    /\b(ghana|nigeria|kenya|uganda|tanzania|congo|cameroon|mali|senegal|west\s+africa|east\s+africa|sub-?saharan|africa|india|southeast\s+asia|latin\s+america|amazon|endemic|tropics?|tropical|returned\s+from|returning\s+from|travel(?:ed)?\s+to)\b/i.test(
       q
     );
   const hasNegativeInitialSmear =
@@ -5197,6 +5197,47 @@ export function handlePhysicianDiagnosticQuery(question: string): string | null 
     );
   }
 
+  const isDengueDominantPresentation =
+    bestSyndrome.syndromeId === "SYN-01-TROPICAL-FEBRILE" &&
+    /\b(dengue|retro-?orbital|breakbone)\b/i.test(q) &&
+    !/\b(malaria|falciparum|rigors|bitter\s+taste)\b/i.test(q);
+
+  const effectiveLeadingDiagnosis = isDengueDominantPresentation
+    ? {
+        diseaseName: `Suspected Dengue Virus Infection (${
+          typeof params.illnessDay === "number"
+            ? params.illnessDay <= 7
+              ? `Illness Day ${params.illnessDay} — Acute Febrile/Critical Phase Days 1–7`
+              : `Illness Day ${params.illnessDay} — Convalescent Phase > Day 7`
+            : "Pending Phase-Matched Virologic/Serologic Confirmation"
+        })`,
+        icd10Code:
+          "ICD-10-CM: A97.0 (Dengue Without Warning Signs, Suspected) — Do NOT code A97.2 (Severe Dengue) without plasma leakage, shock, severe bleeding, or severe organ impairment",
+        snomedCtCode: "SNOMED CT: 38362002 (Dengue Fever — Suspected / Unconfirmed Differential Candidate)",
+        pathophysiology:
+          "Orthoflavivirus (DENV 1–4) infection transmitted by Aedes aegypti/albopictus causes acute viremia (Days 1–7), endothelial permeability/glycocalyx disruption at defervescence (Days 3–7), and immune-mediated thrombocytopenia.",
+        hallmarkClinicalFeatures:
+          "Acute high fever, severe retro-orbital headache, 'breakbone' myalgia/arthralgia, maculopapular/convalescent 'islands of white in a sea of red' rash, leukopenia, and thrombocytopenia.",
+        goldStandardConfirmatoryTest:
+          typeof params.illnessDay === "number" && params.illnessDay > 7
+            ? "Convalescent Phase (> Day 7, U.S. CDC Guideline): Dengue IgM Antibody ELISA (LOINC 75377-2) ± Paired Acute/Convalescent IgG or PRNT"
+            : "Acute Phase (Days 1–7, U.S. CDC Guideline): Dengue NAAT (RT-PCR) PLUS IgM Antibody, OR Dengue NS1 Antigen ELISA PLUS IgM Antibody (LOINC 75377-2; negative acute IgM does NOT rule out dengue)",
+      }
+    : bestSyndrome.syndromeId === "SYN-01-TROPICAL-FEBRILE" && !params.hasEndemicTravelOrResidence
+      ? {
+          diseaseName:
+            "Suspected Acute Bacterial Sepsis / Systemic Viral Syndrome with Thrombocytopenia (Geographic Exposure Gate Active — Malaria Pending Travel/Residence Confirmation)",
+          icd10Code:
+            "ICD-10-CM: A41.9 / R50.9 (Suspected — Unconfirmed) — Malaria (B50.9/B54) Held in Tier 2 Pending Endemic Exposure Verification (NH-TROP-004)",
+          snomedCtCode: "SNOMED CT: 91302008 / 61462000 (Suspected Differential Candidate)",
+          pathophysiology: bestSyndrome.leadingDiagnosis.pathophysiology,
+          hallmarkClinicalFeatures:
+            "Fever, chills, headache, myalgias, and thrombocytopenia. Exposure Gate (NH-TROP-004): Because endemic travel or residence is not yet documented, non-travel bacterial sepsis and viral syndromes are prioritized alongside travel-history verification before ranking malaria #1.",
+          goldStandardConfirmatoryTest:
+            "Aerobic/Anaerobic Blood Cultures × 2 (LOINC 600-7) + CBC/Platelets + Giemsa Thick & Thin Blood Smears (LOINC 32700-7) if endemic exposure is confirmed",
+        }
+      : bestSyndrome.leadingDiagnosis;
+
   const workupRows = bestSyndrome.prioritizedDiagnosticWorkup
     .map(
       (w) =>
@@ -5243,7 +5284,7 @@ export function handlePhysicianDiagnosticQuery(question: string): string | null 
     `*Diagnostic Certainty Gate: All conditions below are **suspected differential candidates**, NOT confirmed diagnoses, until definitive laboratory/imaging verification is completed.*`,
     `| Diagnostic Tier & Certainty Status | Candidate Condition & Validated Terminology | Pathophysiology & Discriminating Clinical Features | Gold-Standard Confirmatory / Rule-Out Pathway |`,
     `| :--- | :--- | :--- | :--- |`,
-    `| **Tier 1 — Leading Suspected Candidate (Unconfirmed)** | **${bestSyndrome.leadingDiagnosis.diseaseName}** (\`${bestSyndrome.leadingDiagnosis.icd10Code}\` · \`${bestSyndrome.leadingDiagnosis.snomedCtCode}\`) | **Mechanism:** ${bestSyndrome.leadingDiagnosis.pathophysiology}<br>**Clinical Features:** ${bestSyndrome.leadingDiagnosis.hallmarkClinicalFeatures} | **${bestSyndrome.leadingDiagnosis.goldStandardConfirmatoryTest}** |`,
+    `| **Tier 1 — Leading Suspected Candidate (Unconfirmed)** | **${effectiveLeadingDiagnosis.diseaseName}** (\`${effectiveLeadingDiagnosis.icd10Code}\` · \`${effectiveLeadingDiagnosis.snomedCtCode}\`) | **Mechanism:** ${effectiveLeadingDiagnosis.pathophysiology} · **Clinical Features:** ${effectiveLeadingDiagnosis.hallmarkClinicalFeatures} | **${effectiveLeadingDiagnosis.goldStandardConfirmatoryTest}** |`,
     mustNotMissRows,
     altRows,
     `---`,
