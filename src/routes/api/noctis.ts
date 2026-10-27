@@ -276,6 +276,7 @@ export const Route = createFileRoute("/api/noctis")({
         if (url.searchParams.get("training") === "autonomous-suite") {
           const {
             runAutonomousZeroTouchTrainingSuite,
+            runNoctisGlobal98DomainValidationSuite,
             NOCTIS_20_TRAINING_AREAS_CATALOG,
             NOCTIS_5_PRIORITY_PILLARS,
             NOCTIS_7_TRAINING_METHODS,
@@ -283,9 +284,39 @@ export const Route = createFileRoute("/api/noctis")({
           return Response.json(
             {
               summary: runAutonomousZeroTouchTrainingSuite(),
+              globalRoadmap98Validation: runNoctisGlobal98DomainValidationSuite(),
               priorityPillars5: NOCTIS_5_PRIORITY_PILLARS,
               trainingMethods7: NOCTIS_7_TRAINING_METHODS,
               trainingAreas20: NOCTIS_20_TRAINING_AREAS_CATALOG,
+            },
+            { headers: { "cache-control": "no-store" } }
+          );
+        }
+        if (url.searchParams.get("training") === "global-roadmap") {
+          const {
+            runNoctisGlobal98DomainValidationSuite,
+            NOCTIS_6_TRAINING_SCOPE_LEVELS,
+            NOCTIS_7_OFFICIAL_REGISTRY_MODULES,
+            NOCTIS_7_MODULAR_SPECIALIST_ENGINES,
+            NOCTIS_5_ROLLOUT_PRIORITY_WAVES,
+            NOCTIS_8_TRAINING_PACKAGE_ARTIFACTS,
+            NOCTIS_5_EVALUATION_DIMENSIONS,
+            NOCTIS_US_JURISDICTION_5_PILLARS,
+            NOCTIS_12_REGIONAL_KNOWLEDGE_PACKS,
+            NOCTIS_98_MASTER_TRAINING_DOMAINS,
+          } = await import("@/lib/noctis-autonomous-trainer");
+          return Response.json(
+            {
+              validation: runNoctisGlobal98DomainValidationSuite(),
+              scopeLevels6: NOCTIS_6_TRAINING_SCOPE_LEVELS,
+              officialRegistryModules7: NOCTIS_7_OFFICIAL_REGISTRY_MODULES,
+              modularSpecialistEngines7: NOCTIS_7_MODULAR_SPECIALIST_ENGINES,
+              rolloutPriorityWaves5: NOCTIS_5_ROLLOUT_PRIORITY_WAVES,
+              trainingPackageArtifacts8: NOCTIS_8_TRAINING_PACKAGE_ARTIFACTS,
+              evaluationDimensions5: NOCTIS_5_EVALUATION_DIMENSIONS,
+              usJurisdictionPillars5: NOCTIS_US_JURISDICTION_5_PILLARS,
+              regionalKnowledgePacks12: NOCTIS_12_REGIONAL_KNOWLEDGE_PACKS,
+              masterDomains98: NOCTIS_98_MASTER_TRAINING_DOMAINS,
             },
             { headers: { "cache-control": "no-store" } }
           );

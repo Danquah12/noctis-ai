@@ -3502,7 +3502,7 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
     assert.ok(firstDpo.rejected.length > 20);
 
     const seeds = buildAutonomous20AreaSeedPairs();
-    assert.equal(seeds.length, 21);
+    assert.equal(seeds.length, 22);
 
     // Verify natural-language roadmap query routing
     const roadmapPrompt =
@@ -3520,6 +3520,50 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
       assert.ok(res, `Expected deterministic response for ${scenario.areaId}`);
       assert.match(res, new RegExp(scenario.areaId));
     }
+  });
+
+  it("verifies NOCTIS-GLOBAL-ROADMAP-98D (98 Master Taxonomy Domains, 6 Scope Levels, U.S. Jurisdiction Engine Pillars A-E, 12 Global Regional Packs, 7 Specialist Engines & 7 Official Registry Modules NOCTIS-CORE-001..NOCTIS-ASSURE-001)", async () => {
+    const {
+      NOCTIS_6_TRAINING_SCOPE_LEVELS,
+      NOCTIS_7_OFFICIAL_REGISTRY_MODULES,
+      NOCTIS_7_MODULAR_SPECIALIST_ENGINES,
+      NOCTIS_5_ROLLOUT_PRIORITY_WAVES,
+      NOCTIS_8_TRAINING_PACKAGE_ARTIFACTS,
+      NOCTIS_5_EVALUATION_DIMENSIONS,
+      NOCTIS_US_JURISDICTION_5_PILLARS,
+      NOCTIS_12_REGIONAL_KNOWLEDGE_PACKS,
+      NOCTIS_98_MASTER_TRAINING_DOMAINS,
+      runNoctisGlobal98DomainValidationSuite,
+    } = await import("./noctis-autonomous-trainer.ts");
+    const { runFollowUpIntelligence } = await import("./noctis-response-intelligence.ts");
+
+    assert.equal(NOCTIS_6_TRAINING_SCOPE_LEVELS.length, 6);
+    assert.equal(NOCTIS_7_OFFICIAL_REGISTRY_MODULES.length, 7);
+    assert.equal(NOCTIS_7_MODULAR_SPECIALIST_ENGINES.length, 7);
+    assert.equal(NOCTIS_5_ROLLOUT_PRIORITY_WAVES.length, 5);
+    assert.equal(NOCTIS_8_TRAINING_PACKAGE_ARTIFACTS.length, 8);
+    assert.equal(NOCTIS_5_EVALUATION_DIMENSIONS.length, 5);
+    assert.equal(NOCTIS_US_JURISDICTION_5_PILLARS.length, 5);
+    assert.equal(NOCTIS_12_REGIONAL_KNOWLEDGE_PACKS.length, 12);
+    assert.equal(NOCTIS_98_MASTER_TRAINING_DOMAINS.length, 98);
+
+    const val = runNoctisGlobal98DomainValidationSuite();
+    assert.equal(val.roadmapId, "NOCTIS-GLOBAL-ROADMAP-98D");
+    assert.equal(val.preserves20AreaAutonomousEngine, true);
+    assert.equal(val.totalMasterDomains, 98);
+    assert.equal(val.verifiedMasterDomains, 98);
+    assert.equal(val.overallValidationPassRatePct, 100);
+
+    const globalPrompt =
+      "# Noctis Global Training Roadmap ... Level 1 — Core intelligence ... Level 6 — Governance and assurance ... All 98 areas are listed below ... NOCTIS-CORE-001 ... NOCTIS-GLOBAL-001 ... NOCTIS-US-001 ... NOCTIS-TECH-001 ... NOCTIS-PRO-001 ... NOCTIS-PRED-001 ... NOCTIS-ASSURE-001";
+    const globalReply = runFollowUpIntelligence([], globalPrompt);
+    assert.ok(globalReply);
+    assert.match(globalReply, /NOCTIS-GLOBAL-ROADMAP-98D/);
+    assert.match(globalReply, /98\/98 Master Domains Verified/);
+    assert.match(globalReply, /NOCTIS-CORE-001/);
+    assert.match(globalReply, /NOCTIS-ASSURE-001/);
+    assert.match(globalReply, /UNESCO Recommendation on the Ethics of AI/);
+    assert.match(globalReply, /98\. International education and credentials/);
   });
 });
 
