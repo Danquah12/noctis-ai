@@ -4008,6 +4008,73 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
     assert.match(report, /HELD_MISSING_BP_AND_PDE5_SCREEN/);
     assert.match(report, /CONTRAINDICATED_CLASS_III_HARM/);
   });
+
+  it("verifies Clinical Test 005 Complete Challenge remediation (input fidelity, 4 adversarial prompts, calibrated certainty) and Clinical Test 006 (NH-CLIN-006 Contradictory Inputs & Emergency Escalation)", async () => {
+    const {
+      runClinicalTest005CompleteChallengeSuite,
+      runClinicalTest006ContradictoryInputsSuite,
+      buildClinicalTest005FixesAndTest006Report,
+      handleNaturalHealthQuery,
+    } = await import("./noctis-health-engine.ts");
+
+    // 1. Verify Clinical Test 005 Complete Challenge (158/96 mmHg, HR 108, RR 24, SpO2 94%, DM, HTN, metformin, lisinopril, ECG ordered/not available, no troponin)
+    const t005 = runClinicalTest005CompleteChallengeSuite();
+    assert.equal(t005.fullInputIntegrity.extraction_status, "verified_100_percent_extraction_parity");
+    assert.equal(t005.fullInputIntegrity.missing_parameters_by_category.not_extracted.length, 0);
+    assert.equal(t005.fullInputIntegrity.extracted_parameters.blood_pressure, "158/96 mmHg");
+    assert.equal(t005.fullInputIntegrity.extracted_parameters.respiratory_rate, "24/min");
+    assert.equal(t005.fullInputIntegrity.extracted_parameters.spo2, "94%");
+    assert.equal(t005.fullInputIntegrity.extracted_parameters.diabetes, true);
+    assert.equal(t005.fullInputIntegrity.extracted_parameters.hypertension, true);
+    assert.deepEqual(t005.fullInputIntegrity.extracted_parameters.active_medications, ["metformin", "lisinopril"]);
+    assert.equal(t005.fullInputIntegrity.missing_parameters_by_category.not_measured.length, 2);
+
+    // Fault injection test: verify simulated parser drop triggers not_extracted defect and release-gate block
+    assert.equal(t005.faultInjectedIntegrity.extraction_status, "failed_not_extracted_defect");
+    assert.deepEqual(t005.faultInjectedIntegrity.missing_parameters_by_category.not_extracted, ["blood_pressure"]);
+    assert.equal(t005.faultInjectedIntegrity.release_gate_blocked_by_input_integrity, true);
+
+    // Verify all 4 adversarial tests pass
+    assert.equal(t005.adversarialResults.length, 4);
+    assert.equal(t005.allAdversarialPassed, true);
+    for (const adv of t005.adversarialResults) {
+      assert.equal(adv.status, "PASS", `Expected ${adv.adversarialId} to pass`);
+    }
+
+    // Verify calibrated language (no sinus rhythm inference without ECG; no claim that symptoms prove coronary occlusion)
+    assert.match(t005.test005JsonOutput.calibrated_clinical_assessment.heart_rate_interpretation, /cardiac rhythm not established without ECG/);
+    assert.match(t005.test005JsonOutput.calibrated_clinical_assessment.primary_concern, /High concern for acute coronary syndrome/);
+
+    // 2. Verify Clinical Test 006 (NH-CLIN-006: 67yo contradictory inputs & emergency escalation)
+    const t006 = runClinicalTest006ContradictoryInputsSuite();
+    assert.equal(t006.allPassCriteriaMet, true);
+    assert.equal(t006.passCriteriaChecks.immediateEmergencyEscalation, true);
+    assert.equal(t006.passCriteriaChecks.recognizesHypoxemia86, true);
+    assert.equal(t006.passCriteriaChecks.recognizesTachypnea32, true);
+    assert.equal(t006.passCriteriaChecks.recognizesHypotension92_58, true);
+    assert.equal(t006.passCriteriaChecks.recognizesNewConfusion, true);
+    assert.equal(t006.passCriteriaChecks.correctHandlingOfOlderContradictoryNote, true);
+    assert.equal(t006.passCriteriaChecks.noUnsupportedPrescribing, true);
+    assert.equal(t006.passCriteriaChecks.validJsonSchemaVerified, true);
+
+    // Verify required JSON keys for Test 006
+    const j6 = t006.test006JsonOutput;
+    assert.ok(j6.emergency_escalation);
+    assert.ok(Array.isArray(j6.critical_findings) && j6.critical_findings.length === 4);
+    assert.ok(Array.isArray(j6.source_conflicts) && j6.source_conflicts.length === 1);
+    assert.ok(j6.missing_information);
+    assert.ok(Array.isArray(j6.actions_not_authorized) && j6.actions_not_authorized.length >= 4);
+    assert.ok(Array.isArray(j6.uncertainties) && j6.uncertainties.length >= 4);
+
+    // 3. Verify natural-language routing for Clinical Test 005 Review & Clinical Test 006
+    const routed = handleNaturalHealthQuery(
+      "# NOCTIS HEALTH — CLINICAL TEST 006\n## Contradictory Inputs and Emergency Escalation\nA fictional 67-year-old patient has SpO2 86% on room air and Imported summary: \"Patient stable; routine follow-up recommended.\""
+    );
+    assert.ok(routed);
+    assert.equal(routed, buildClinicalTest005FixesAndTest006Report());
+    assert.match(routed, /RULE-01D-STALE-STABLE-SUMMARY-OVERRIDE-BLOCKED/);
+    assert.match(routed, /verified_100_percent_extraction_parity/);
+  });
 });
 
 
