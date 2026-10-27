@@ -3213,6 +3213,49 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
     assert.equal(q15ScenarioGate.passed, true);
     const q15SpecGate = runSpecificationAndMeasurementValidityGate(q15Prompt, q15Out);
     assert.equal(q15SpecGate.passed, true);
+
+    // Verify Question 12 Structured Evidence Ledger & condition-bounded low-side rule-out improvements
+    assert.match(q12Out, /3C\. Structured Evidence Ledger/);
+    assert.match(q12Out, /only for the conditions actually tested/i);
+
+    // Verify Question 16 — Intermittent Highway Stalling, Cluster Flicker, Unstable Charging Voltage, U0100, Stored P0087, Pending P0335 (AUTO-MULTIFAULT-0016)
+    const {
+      TEMPLATE_CASE_AUTO_MULTIFAULT_0016,
+      verifyQuestion16HighwayStallMultiFault,
+    } = await import("./noctis-automotive-engine.ts");
+
+    assert.equal(TEMPLATE_CASE_AUTO_MULTIFAULT_0016.case_id, "AUTO-MULTIFAULT-0016");
+    assert.equal(TEMPLATE_CASE_AUTO_MULTIFAULT_0016.alias_id, "AUTO-HIGHWAY-STALL-U0100-P0087-P0335");
+
+    const q16Eval = verifyQuestion16HighwayStallMultiFault();
+    assert.equal(q16Eval.q1Answer, "C");
+    assert.equal(q16Eval.q2Answer, "B");
+    assert.equal(q16Eval.q3Answer, "C");
+    assert.equal(q16Eval.sharedElectricalPrioritizedAsCommonCause, true);
+    assert.equal(q16Eval.independentFuelAndCkpRetainedAsCompetingHypotheses, true);
+    assert.equal(q16Eval.scanToolP0087DistinguishedFromConfirmedHydraulicLoss, true);
+    assert.equal(q16Eval.ruleOutLimitedStrictlyToTestedConditions, true);
+    assert.equal(q16Eval.structuredEvidenceLedgerIncluded, true);
+    assert.equal(q16Eval.all7BenchmarkCategoriesCovered, true);
+    assert.equal(q16Eval.feasibilityClassification, "CONDITIONALLY FEASIBLE");
+
+    const q16Prompt =
+      "Question 16: A gasoline vehicle experiences intermittent highway stalling after warm-up, instrument-cluster flicker, fluctuating charging voltage, intermittent U0100 (Lost Communication with ECM/PCM), stored P0087 (Fuel Rail/System Pressure Too Low), and pending P0335 (Crankshaft Position Sensor 'A' Circuit). Answer Q1, Q2, and Q3.";
+    const q16Out = automotiveDiagnosticGadget(q16Prompt);
+    assert.ok(q16Out);
+    assert.match(q16Out, /AUTO-MULTIFAULT-0016/);
+    assert.doesNotMatch(q16Out, /Noctis Diagnostic Response — Question 12/);
+    assert.match(q16Out, /Answer to Q1 — Root-Cause & Competing-Hypothesis Reasoning: \*\*Option C\*\*/);
+    assert.match(q16Out, /Answer to Q2 — Next-Best Safe Diagnostic Step: \*\*Option B\*\*/);
+    assert.match(q16Out, /Answer to Q3 — Updating Hypotheses & Multi-Fault Verification: \*\*Option C\*\*/);
+    assert.match(q16Out, /Structured Evidence Ledger/);
+    assert.match(q16Out, /CONDITIONALLY FEASIBLE/);
+    assert.doesNotMatch(q16Out, /noctis-dashboard/);
+
+    const q16ScenarioGate = runDiagnosticScenarioIntegrityGate(q16Prompt, q16Out);
+    assert.equal(q16ScenarioGate.passed, true);
+    const q16SpecGate = runSpecificationAndMeasurementValidityGate(q16Prompt, q16Out);
+    assert.equal(q16SpecGate.passed, true);
   });
 });
 

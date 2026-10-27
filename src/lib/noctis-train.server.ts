@@ -37,6 +37,7 @@ import {
   buildQuestion10IntermittentElectricalCkpReport,
   buildQuestion12GasolineGdiFuelPressureReport,
   buildQuestion15MisfireCompressionOilCatalystReport,
+  buildQuestion16HighwayStallMultiFaultReport,
 } from "./noctis-automotive-engine.ts";
 
 export type TrainingPair = {
@@ -315,6 +316,14 @@ const OWASP_SEED_CORPUS: TrainingPair[] = [
     model: "vibe-seed",
     hits: 30,
     at: "2026-10-26T21:55:00.000Z",
+  },
+  {
+    question: "Question 16 — Intermittent highway stalling after warm-up instrument-cluster flicker fluctuating charging voltage intermittent U0100 stored P0087 and pending P0335 AUTO-MULTIFAULT-0016",
+    answer: buildQuestion16HighwayStallMultiFaultReport("Question 16 intermittent highway stalling after warm-up instrument-cluster flicker fluctuating charging voltage U0100 stored P0087 pending P0335"),
+    domain: "engineering",
+    model: "vibe-seed",
+    hits: 30,
+    at: "2026-10-26T22:05:00.000Z",
   },
 ];
 
