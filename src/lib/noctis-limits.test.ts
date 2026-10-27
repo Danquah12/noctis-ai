@@ -3566,15 +3566,47 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
     assert.match(globalReply, /98\. International education and credentials/);
   });
 
-  it("verifies NOCTIS-PHYSICIAN-DX-001 (Physician Clinical Diagnostic & Differential Reasoning Engine across Malaria, Pneumonia + CURB-65, Appendicitis, DKA + Anion Gap/Winter's formula, and Meningitis)", async () => {
+  it("verifies NOCTIS-PHYSICIAN-DX-001 (Physician Clinical Diagnostic & Differential Reasoning Engine + 17/17 Clinical Audit & Regression Suite RESP-001..RESP-010 & NH-TROP-001..NH-TROP-007)", async () => {
     const {
       NOCTIS_PHYSICIAN_DIAGNOSTIC_ATLAS,
       extractClinicalParametersFromText,
       handleNaturalHealthQuery,
+      runRespiratoryRegressionSuiteResp001To010,
+      runTropicalFebrileRegressionSuiteNhTrop001To007,
     } = await import("./noctis-health-engine.ts");
 
     assert.equal(NOCTIS_PHYSICIAN_DIAGNOSTIC_ATLAS.length, 8);
 
+    // 1. Verify all 10 Respiratory / Pneumonia / PE Regression Checks (RESP-001..RESP-010)
+    const respChecks = runRespiratoryRegressionSuiteResp001To010();
+    assert.equal(respChecks.totalCount, 10);
+    for (const check of respChecks.tests) {
+      assert.equal(check.passed, true, `Expected ${check.testId} to pass (${check.measuredOutputSummary})`);
+    }
+    assert.equal(respChecks.allPassed, true);
+
+    // 2. Verify all 7 Tropical Febrile / Malaria Regression Checks (NH-TROP-001..NH-TROP-007)
+    const tropChecks = runTropicalFebrileRegressionSuiteNhTrop001To007();
+    assert.equal(tropChecks.totalCount, 7);
+    for (const check of tropChecks.tests) {
+      assert.equal(check.passed, true, `Expected ${check.testId} to pass (${check.measuredOutputSummary})`);
+    }
+    assert.equal(tropChecks.allPassed, true);
+
+    // 3. Verify clinical audit review prompt routes to 17/17 Clinical Audit & Regression Verification Report
+    const auditReply = handleNaturalHealthQuery(
+      "# Noctis Physician DX Review — Respiratory Infection, Pneumonia & Pulmonary Embolism\nPreliminary verdict: CONDITIONALLY FEASIBLE — REQUIRES CLINICAL CORRECTIONS BEFORE ACCEPTANCE.\nRESP-001 .. RESP-010 and NH-TROP-001 .. NH-TROP-007"
+    );
+    assert.ok(auditReply);
+    assert.match(auditReply, /17\/17 Automated Regression Tests Passing/);
+    assert.match(auditReply, /RESP-001/);
+    assert.match(auditReply, /RESP-010/);
+    assert.match(auditReply, /NH-TROP-001/);
+    assert.match(auditReply, /NH-TROP-007/);
+    assert.match(auditReply, /5-day, 10-dose Artemether-Lumefantrine/);
+    assert.match(auditReply, /Updated IDSA \/ ATS Clinical Practice Guideline on Community-Acquired Pneumonia in Adults \(Updated 2025, Published 2026\)/);
+
+    // 4. Verify meta-capability prompt
     const metaReply = handleNaturalHealthQuery(
       "LETS Noctis become a physician who is able to diagnosb human for sickness or disease"
     );
@@ -3583,14 +3615,37 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
     assert.match(metaReply, /SYN-01-TROPICAL-FEBRILE/);
     assert.match(metaReply, /SYN-04-ENDOCRINE-DKA-METABOLIC/);
 
+    // 5. Verify Tropical Febrile / Malaria case enforces NH-TROP-001..NH-TROP-007 gates
     const malariaReply = handleNaturalHealthQuery(
-      "Diagnose this patient: A 29-year-old male presents with 4 days of high cyclic fever (Temp 39.6°C), shaking chills and rigors, severe headache, body aches, bitter taste, HR 108 bpm, BP 112/70 mmHg, Hb 10.8 g/dL, and platelets 74,000/μL after returning from West Africa."
+      "Diagnose this patient: A 29-year-old male presents on Day 4 of illness with high fever (Temp 39.6°C), shaking chills and rigors, severe headache, body aches, bitter taste, HR 108 bpm, BP 112/70 mmHg, Hb 10.8 g/dL, and platelets 74,000/μL after returning from West Africa."
     );
     assert.ok(malariaReply);
-    assert.match(malariaReply, /Plasmodium falciparum Malaria/);
-    assert.match(malariaReply, /LOINC 32700-7/);
-    assert.match(malariaReply, /THROMBOCYTOPENIA/);
+    assert.match(malariaReply, /Suspected Plasmodium falciparum or Non-Falciparum Malaria/);
+    assert.match(malariaReply, /INCOMPLETE — Not calculable from available data/);
+    assert.match(malariaReply, /Possible Physiological Risk Indicator[\s\S]*?NOT definitive proof of occult shock/);
+    assert.match(malariaReply, /EXTENDED 5-day, 10-dose course/);
+    assert.match(malariaReply, /every 12–24 hours for a total of 3 sets/);
+    assert.match(malariaReply, /Do NOT perform Lumbar Puncture \(LP\) as an automatic next step/);
 
+    // 6. Verify Respiratory / Pneumonia / PE case enforces RESP-001..RESP-010 gates
+    const respCaseWithoutBun = handleNaturalHealthQuery(
+      "Diagnose this patient: A 68-year-old male presents with productive rust-colored cough, fever 39.1°C, pleuritic chest pain, dyspnea, RR 32/min, BP 88/58 mmHg, HR 118 bpm, SpO2 90%, WBC 16.4, and Lactate 2.8 mmol/L."
+    );
+    assert.ok(respCaseWithoutBun);
+    assert.match(respCaseWithoutBun, /CURB-65[\s\S]*?INCOMPLETE/);
+    assert.match(respCaseWithoutBun, /qSOFA[\s\S]*?2 documented points[\s\S]*?Mental Status \/ GCS \(not documented\)/);
+    assert.match(respCaseWithoutBun, /PSI \/ PORT`? Score[\s\S]*?NOT CALCULATED/);
+    assert.match(respCaseWithoutBun, /does NOT cancel out or reassure against systolic hypotension/);
+    assert.match(respCaseWithoutBun, /Outpatient oral regimens are CONTRAINDICATED/);
+
+    const respCaseWithBun = handleNaturalHealthQuery(
+      "Diagnose this patient: A 68-year-old male presents with productive cough, fever 39.1°C, pleuritic chest pain, dyspnea, alert and oriented (GCS 15), BUN 26 mg/dL, RR 32/min, BP 88/58 mmHg, HR 118 bpm, SpO2 90%."
+    );
+    assert.ok(respCaseWithBun);
+    assert.match(respCaseWithBun, /BUN \(Blood Urea Nitrogen\) \(Measured\):\*\* 26 mg\/dL/);
+    assert.match(respCaseWithBun, /CURB-65[\s\S]*?4 \/ 5 \(COMPLETE\)/);
+
+    // 7. Verify DKA + Anion Gap / Winter's formula
     const dkaParams = extractClinicalParametersFromText(
       "A 21-year-old patient presents with polyuria, polydipsia, Kussmaul breathing, glucose 480 mg/dL, Na 134, K 5.1, Cl 96, HCO3 9 mmol/L."
     );
