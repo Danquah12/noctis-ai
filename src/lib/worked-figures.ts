@@ -16,13 +16,18 @@ export function onlyMath(question: string) {
   }
 }
 
+const AUTOMOTIVE_DIAGNOSTIC_EXCLUSION =
+  /\b([pu bc][0-3][0-9a-f]{3}|obd-?ii|dtc|dtcs|freeze-?frame|ltft|stft|fuel\s+trims?|ckp|crankshaft\s+position|camshaft\s+position|ecm|pcm|bcm|wiring\s+diagram|spark\s+plugs?|ignition\s+coils?|alternator|crank-no-start|misfires?|auto-diag-|auto-misfire-|auto-multifault-|auto-intermittent-|noctis-auto-001)\b/i;
+
 export function resourcePlan(question: string) {
+  if (AUTOMOTIVE_DIAGNOSTIC_EXCLUSION.test(question)) return false;
   const topic = /\b(energy|power|battery|storage|generator|solar|wind|grid|water|fuel|mwh|gwh|twh|megawatt|gigawatt|\bmw\b|\bgw\b|transmission)\b/i.test(question);
   const job = /\b(feasib|surviv|outage|reliab|backup|reserve|peak|storage|battery|grid|design|siz|enough|adequa)\b/i.test(question);
   return topic && job && /\d/.test(question);
 }
 
 export function hardProblem(question: string) {
+  if (AUTOMOTIVE_DIAGNOSTIC_EXCLUSION.test(question)) return false;
   const task = /\b(calculat\w*|comput\w*|design\w*|sizing|size|simulat\w*|stress[-\s]?tests?|optimi[sz]\w*|allocat\w*|budgets?|shortfalls?|trade-?offs?|feasib\w*|deficits?)\b/i.test(question);
   const compare = /\bcompare\b/i.test(question) && /\b(cost|option|design|scenario|architectur|plan|system|budget)\b/i.test(question);
   const measured = /\d[\d,]*(?:\.\d+)?\s*(?:%|kwh|mwh|gwh|twh|kw|mw|gw|kcal|lit(?:er|re)s?|\bl\b|m3|m³|\$|billion|million|people|persons|hours?|days?)/i.test(question);

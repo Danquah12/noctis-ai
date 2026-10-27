@@ -2977,15 +2977,23 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
     assert.equal(q10Eval.partialResolutionStateUsedUntilAllFaultsVerified, "partially_resolved_open_fault_remaining");
 
     const q10Out = automotiveDiagnosticGadget(
-      "Question 10 intermittent power, charging, or ground fault as a strong common-cause hypothesis while retaining the CKP circuit as a possible separate fault P0335 U0100",
+      "Question 10 P0685 U0100 P0335 intermittent ECM power, relay-control, and ground integrity under operating conditions while preserving CKP as a competing hypothesis",
     );
     assert.ok(q10Out);
     assert.match(q10Out, /Question 1 — Best Hypothesis: \*\*Option C\*\*/);
     assert.match(q10Out, /Question 2 — Best Next Step: \*\*Option B\*\*/);
     assert.match(q10Out, /Question 3 — Multi-Fault Detection & Repair Verification: \*\*Option C\*\*/);
+    assert.match(q10Out, /P0685/);
     assert.doesNotMatch(q10Out, /noctis-dashboard/);
     assert.match(q10Out, /NEVER disconnect a battery cable while the engine is running/);
     assert.match(q10Out, /partially_resolved_open_fault_remaining/);
+
+    const { resourcePlan } = await import("./worked-figures.ts");
+    assert.equal(
+      resourcePlan("Vehicle has DTCs P0685, U0100, and P0335 with intermittent ECM power loss and battery voltage 12.4V"),
+      false,
+    );
   });
 });
+
 
