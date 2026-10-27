@@ -41,6 +41,7 @@ import {
   buildQuestion17IdleTrimMisfireCompressionReport,
   buildQuestion18TransmissionNetworkMechanicalVsElectricalReport,
   buildQuestion19ConflictingDataEvidenceIntegrityReport,
+  buildQuestion21TwoFaultTrapReport,
 } from "./noctis-automotive-engine.ts";
 
 export type TrainingPair = {
@@ -351,6 +352,14 @@ const OWASP_SEED_CORPUS: TrainingPair[] = [
     model: "vibe-seed",
     hits: 30,
     at: "2026-10-27T10:36:00.000Z",
+  },
+  {
+    question: "Question 21 — Expert Automotive Diagnostic Challenge: The Two-Fault Trap 2020 gasoline SUV 2.0L turbocharged 96,400 miles P0562 U0100 P0302 P0087 Event A Event B Event C AUTO-TRAP-0021",
+    answer: buildQuestion21TwoFaultTrapReport("Question 21 Expert Automotive Diagnostic Challenge The Two-Fault Trap 2020 gasoline SUV 2.0L turbocharged 96,400 miles P0562 U0100 P0302 P0087 Event A Event B Event C AUTO-TRAP-0021"),
+    domain: "engineering",
+    model: "vibe-seed",
+    hits: 30,
+    at: "2026-10-27T11:20:00.000Z",
   },
 ];
 

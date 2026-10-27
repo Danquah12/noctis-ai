@@ -939,19 +939,20 @@ async function composeVibeReply(
   }
   const { hydrateFromDb, lessonBlock, rememberAnswer, recallTrainedAnswer, storedRulesBlock } = await import("@/lib/noctis-train.server");
   await hydrateFromDb().catch(() => {});
+  const attached = (last?.content || "").split(/\n--- /).slice(1).join("\n").trim();
+  const fullQuestion = attached ? `${question}\n\n${attached}` : question;
   const { runFollowUpIntelligence } = await import("@/lib/noctis-response-intelligence");
-  const followUpOut = runFollowUpIntelligence(turns, question);
+  const followUpOut = runFollowUpIntelligence(turns, fullQuestion);
   if (followUpOut) {
     return { text: followUpOut };
   }
   const { runVibeGadgets } = await import("@/lib/noctis-gadgets.server");
-  const gadgetOut = await runVibeGadgets(question).catch(() => null);
+  const gadgetOut = await runVibeGadgets(fullQuestion).catch(() => null);
   if (gadgetOut) {
     return { text: gadgetOut };
   }
   const route = routeQuestion(question);
   const spoken = languageNow(question, style.language || "");
-  const attached = (last?.content || "").split(/\n--- /).slice(1).join("\n").trim();
   if (!attached && spoken.toLowerCase() === "english" && !engineeringDesign(question) && !resourcePlan(question) && !hasHardRows) {
     const trainedHit = recallTrainedAnswer(question);
     if (trainedHit && (trainedHit.score >= 0.58 || trainedHit.model === "user-taught" || trainedHit.model === "vibe-trained" || trainedHit.model === "api-trained")) {

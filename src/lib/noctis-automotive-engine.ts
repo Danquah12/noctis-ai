@@ -5013,17 +5013,17 @@ export const TEMPLATE_CASE_AUTO_TRAP_0021 = {
     q1_most_defensible_interpretation: {
       selected_option: "C" as const,
       statement:
-        "Investigate electrical interruption as one branch; treat persistent cylinder 2 misfire and fuel-pressure discrepancy as potentially independent faults requiring separate verification.",
+        "Investigate the electrical interruption as one fault branch, while treating the persistent cylinder 2 misfire and fuel-pressure discrepancy as potentially independent faults requiring separate verification.",
     },
     q2_best_next_strategy: {
       selected_option: "C" as const,
       statement:
-        "Complete electrical power/ground pinpoint tests, then investigate persistent misfire and pressure discrepancy using architecture-specific OEM procedures and independently verified measurements.",
+        "Complete electrical power-and-ground pinpoint tests, then investigate the persistent misfire and fuel-pressure discrepancy using architecture-specific OEM procedures and independently verified measurements.",
     },
     q3_post_electrical_repair_continuation: {
       selected_option: "B" as const,
       statement:
-        "Keep case open, record verified partial resolution, and continue separate misfire and fuel-pressure workflows.",
+        "Keep the case open, record the electrical repair as a verified partial resolution, and continue separate misfire and fuel-pressure diagnostic workflows.",
     },
   },
   feasibility_classification: {
