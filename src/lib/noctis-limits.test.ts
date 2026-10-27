@@ -3257,15 +3257,20 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
     const q16SpecGate = runSpecificationAndMeasurementValidityGate(q16Prompt, q16Out);
     assert.equal(q16SpecGate.passed, true);
 
-    // Verify Next-Best-Test Engine (AUTO-NBT-001), Question 17 (AUTO-MULTIFAULT-0017), and Question 18 (AUTO-TRANS-0018)
+    // Verify Next-Best-Test Engine (AUTO-NBT-001), Question 17 (AUTO-MULTIFAULT-0017), Question 18 (AUTO-TRANS-0018), AUTO-AC-019, and Question 19 (AUTO-INTEGRITY-0019)
     const {
+      AUTO_AC_019_RULE,
       QUESTION_17_NBT_CANDIDATES,
       QUESTION_18_NBT_CANDIDATES,
+      QUESTION_19_NBT_CANDIDATES,
       TEMPLATE_CASE_AUTO_MULTIFAULT_0017,
       TEMPLATE_CASE_AUTO_TRANS_0018,
+      TEMPLATE_CASE_AUTO_INTEGRITY_0019,
+      runEvidenceProvenanceAndHallucinationGate,
       runNextBestTestEngine,
       verifyQuestion17IdleTrimMisfireCompression,
       verifyQuestion18TransmissionNetworkMechanicalVsElectrical,
+      verifyQuestion19ConflictingDataEvidenceIntegrity,
     } = await import("./noctis-automotive-engine.ts");
 
     const q17Ranked = runNextBestTestEngine(QUESTION_17_NBT_CANDIDATES);
@@ -3301,34 +3306,108 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
     const q17SpecGate = runSpecificationAndMeasurementValidityGate(q17Prompt, q17Out);
     assert.equal(q17SpecGate.passed, true);
 
-    // Verify Question 18 — Intermittent Transmission Behavior, Network Communication Faults (U0101 / P0700) & Mechanical vs. Electrical Isolation
+    // Verify Question 18 — Intermittent Transmission Behavior, U0101 & P0741 (Q1: C, Q2: C, Q3: B) + Zero Invented Measurements
     const q18Ranked = runNextBestTestEngine(QUESTION_18_NBT_CANDIDATES);
     assert.equal(q18Ranked.length, 5);
     assert.equal(q18Ranked[0].testId, "NBT-Q18-01");
     assert.equal(q18Ranked[1].testId, "NBT-Q18-02");
 
     assert.equal(TEMPLATE_CASE_AUTO_TRANS_0018.case_id, "AUTO-TRANS-0018");
+    assert.equal(TEMPLATE_CASE_AUTO_TRANS_0018.alias_id, "AUTO-TCM-U0101-P0741");
     const q18Eval = verifyQuestion18TransmissionNetworkMechanicalVsElectrical();
     assert.equal(q18Eval.q1Answer, "C");
-    assert.equal(q18Eval.q2Answer, "B");
-    assert.equal(q18Eval.q3Answer, "C");
+    assert.equal(q18Eval.q2Answer, "C");
+    assert.equal(q18Eval.q3Answer, "B");
     assert.equal(q18Eval.nextBestTestEngineActive, true);
     assert.equal(q18Eval.distinguishesMechanicalTransmissionFailureFromElectricalControlFault, true);
-    assert.equal(q18Eval.explainsHydraulicLimpHomeDefaultFromTcmPowerOrCanLoss, true);
-    assert.equal(q18Eval.separatesSensorFalseSlipFromPhysicalClutchSlip, true);
+    assert.equal(q18Eval.avoidsUniversalTransmissionFailSafeAssumptions, true);
+    assert.equal(q18Eval.treatsUnqualifiedGroundDropAndConnectorWiggleAsConditionalSuspectNotConfirmed, true);
+    assert.equal(q18Eval.preservesIndependentP0741TccBranchWhileTcmOnline, true);
+    assert.equal(q18Eval.zeroInventedMeasurementsPresentedAsObserved, true);
+    assert.equal(q18Eval.verifiesCanCommunicationShiftQualityAndTccBehaviorAgainstOemCriteria, true);
     assert.equal(q18Eval.feasibilityClassification, "CONDITIONALLY FEASIBLE");
 
     const q18Prompt =
-      "Question 18: Intermittent transmission behavior, network communication faults (U0101, P0700), and distinguishing a genuine mechanical transmission failure from an electrical or control-system fault.";
+      "Question 18: Vehicle has intermittent abnormal shifts, U0101 (Lost Communication with TCM), and P0741 (Torque Converter Clutch Circuit Performance or Stuck Off). A ground voltage drop is observed and communication temporarily returns after disturbing a connector.";
     const q18Out = automotiveDiagnosticGadget(q18Prompt);
     assert.ok(q18Out);
     assert.match(q18Out, /AUTO-TRANS-0018/);
-    assert.match(q18Out, /Next-Best-Test Engine/);
-    assert.match(q18Out, /CONDITIONALLY FEASIBLE/);
+    assert.match(q18Out, /AUTO-TCM-U0101-P0741/);
+    assert.match(q18Out, /P0741/);
+    assert.match(q18Out, /Q1 \(Root-Cause & Multi-Hypothesis Separation — Option C\)/);
+    assert.match(q18Out, /Q2 \(Next-Best Safe Diagnostic Sequence — Option C\)/);
+    assert.match(q18Out, /Q3 \(Conditional Ground\/Connector Interpretation & Independent `P0741` Branch — Option B\)/);
+    assert.match(q18Out, /NOT MEASURED/);
+    assert.match(q18Out, /SPECIFICATION NOT VERIFIED/);
+    assert.doesNotMatch(q18Out, /7\.8V \[measured result\]/);
+    assert.doesNotMatch(q18Out, /220 ms \[measured result\]/);
+    assert.doesNotMatch(q18Out, /0\.85 A \[measured result\]/);
+    assert.doesNotMatch(q18Out, /88°C \[measured result\]/);
     assert.doesNotMatch(q18Out, /noctis-dashboard/);
 
     const q18ScenarioGate = runDiagnosticScenarioIntegrityGate(q18Prompt, q18Out);
     assert.equal(q18ScenarioGate.passed, true);
+    const q18SpecGate = runSpecificationAndMeasurementValidityGate(q18Prompt, q18Out);
+    assert.equal(q18SpecGate.passed, true);
+
+    // Verify Developer Gate AUTO-AC-019 — Mandatory Evidence Provenance and Hallucination Prevention Gate (All 5 Acceptance Tests)
+    assert.equal(AUTO_AC_019_RULE.gate_id, "AUTO-AC-019");
+    assert.equal(AUTO_AC_019_RULE.pass_criterion, "Zero unsupported measurements presented as observed facts");
+
+    // Acceptance Test 1 & 5 Failure Check: Rejects response that invents unprovided TCM voltage (e.g., 7.8V [measured result])
+    const hallucinatedReport = `${q18Out}\nTime-correlated scope capture at TFT = 88°C [measured result] shows TCM ignition feed dropping to 7.8V [measured result] for 220 ms [measured result] and solenoid current falling from 0.85 A [measured result] to 0.00 A [measured result].`;
+    const failedAc19Hallucination = runEvidenceProvenanceAndHallucinationGate(q18Prompt, hallucinatedReport);
+    assert.equal(failedAc19Hallucination.passed, false);
+    assert.equal(failedAc19Hallucination.status, "FAIL_HALLUCINATED_MEASUREMENT_PRESENTED_AS_OBSERVED");
+    assert.equal(failedAc19Hallucination.acceptanceTests.test1_noUnprovidedTcmVoltageReportedAsObserved, false);
+    assert.equal(failedAc19Hallucination.acceptanceTests.test5_zeroUnsupportedMeasurementsPresentedAsObservedFacts, false);
+    assert.ok(failedAc19Hallucination.hallucinatedMeasurementsDetected.length >= 1);
+
+    // Acceptance Test 1–5 Pass Check on upgraded Question 18 output
+    const passedAc19OnQ18 = runEvidenceProvenanceAndHallucinationGate(q18Prompt, q18Out);
+    assert.equal(passedAc19OnQ18.gateId, "AUTO-AC-019");
+    assert.equal(passedAc19OnQ18.passed, true);
+    assert.equal(passedAc19OnQ18.status, "PASS_EVIDENCE_PROVENANCE_VERIFIED");
+    assert.equal(passedAc19OnQ18.acceptanceTests.test1_noUnprovidedTcmVoltageReportedAsObserved, true);
+    assert.equal(passedAc19OnQ18.acceptanceTests.test2_unknownGroundDropLimitNotDeclaredConfirmedFailed, true);
+    assert.equal(passedAc19OnQ18.acceptanceTests.test3_intermittentU0101AndP0741PreserveBothElectricalAndTccBranches, true);
+    assert.equal(passedAc19OnQ18.acceptanceTests.test4_hypotheticalMeasurementsLabeledHypotheticalExampleThroughout, true);
+    assert.equal(passedAc19OnQ18.acceptanceTests.test5_zeroUnsupportedMeasurementsPresentedAsObservedFacts, true);
+    assert.equal(passedAc19OnQ18.hallucinatedMeasurementsDetected.length, 0);
+
+    // Verify Question 19 — Evidence Integrity Under Conflicting Diagnostic Data (AUTO-INTEGRITY-0019)
+    const q19Ranked = runNextBestTestEngine(QUESTION_19_NBT_CANDIDATES);
+    assert.equal(q19Ranked.length, 4);
+    assert.equal(q19Ranked[0].testId, "NBT-Q19-01");
+
+    assert.equal(TEMPLATE_CASE_AUTO_INTEGRITY_0019.case_id, "AUTO-INTEGRITY-0019");
+    const q19Eval = verifyQuestion19ConflictingDataEvidenceIntegrity();
+    assert.equal(q19Eval.q1Answer, "C");
+    assert.equal(q19Eval.q2Answer, "C");
+    assert.equal(q19Eval.q3Answer, "B");
+    assert.equal(q19Eval.nextBestTestEngineActive, true);
+    assert.equal(q19Eval.abstainsFromDefinitiveClaimUnderUnresolvedConflict, true);
+    assert.equal(q19Eval.distinguishesEcuFailSafeDefaultSubstitutionAndPidScalingFromTrueSensorSignal, true);
+    assert.equal(q19Eval.requiresPinLevelVoltageAndCalibratedPhysicalArbitration, true);
+    assert.equal(q19Eval.zeroInventedMeasurementsPresentedAsObserved, true);
+    assert.equal(q19Eval.feasibilityClassification, "CONDITIONALLY FEASIBLE");
+
+    const q19Prompt =
+      "Question 19: Evidence integrity under conflicting diagnostic data — two scan tools disagree, a sensor value appears plausible on a scan tool but contradicts independent physical measurements, and the model must decide whether to diagnose the vehicle, request more evidence, or refuse to make a definitive claim.";
+    const q19Out = automotiveDiagnosticGadget(q19Prompt);
+    assert.ok(q19Out);
+    assert.match(q19Out, /AUTO-INTEGRITY-0019/);
+    assert.match(q19Out, /AUTO-AC-019/);
+    assert.match(q19Out, /ABSTAIN/);
+    assert.match(q19Out, /NOT MEASURED/);
+    assert.match(q19Out, /SPECIFICATION NOT VERIFIED/);
+    assert.match(q19Out, /\[hypothetical example\]/);
+    assert.doesNotMatch(q19Out, /noctis-dashboard/);
+
+    const passedAc19OnQ19 = runEvidenceProvenanceAndHallucinationGate(q19Prompt, q19Out);
+    assert.equal(passedAc19OnQ19.passed, true);
+    assert.equal(passedAc19OnQ19.status, "PASS_EVIDENCE_PROVENANCE_VERIFIED");
+    assert.equal(passedAc19OnQ19.hallucinatedMeasurementsDetected.length, 0);
   });
 });
 

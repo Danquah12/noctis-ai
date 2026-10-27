@@ -40,6 +40,7 @@ import {
   buildQuestion16HighwayStallMultiFaultReport,
   buildQuestion17IdleTrimMisfireCompressionReport,
   buildQuestion18TransmissionNetworkMechanicalVsElectricalReport,
+  buildQuestion19ConflictingDataEvidenceIntegrityReport,
 } from "./noctis-automotive-engine.ts";
 
 export type TrainingPair = {
@@ -336,12 +337,20 @@ const OWASP_SEED_CORPUS: TrainingPair[] = [
     at: "2026-10-27T10:15:00.000Z",
   },
   {
-    question: "Question 18 — Intermittent transmission behavior network communication faults U0101 P0700 distinguishing a genuine mechanical transmission failure from an electrical or control-system fault AUTO-TRANS-0018",
-    answer: buildQuestion18TransmissionNetworkMechanicalVsElectricalReport("Question 18 intermittent transmission behavior U0101 P0700 genuine mechanical transmission failure vs electrical or control-system fault"),
+    question: "Question 18 — Intermittent transmission behavior network communication fault U0101 and P0741 Torque Converter Clutch Circuit Performance or Stuck Off suspect ground path AUTO-TRANS-0018 AUTO-TCM-U0101-P0741",
+    answer: buildQuestion18TransmissionNetworkMechanicalVsElectricalReport("Question 18 intermittent transmission behavior U0101 P0741 suspect ground path"),
     domain: "engineering",
     model: "vibe-seed",
     hits: 30,
-    at: "2026-10-27T10:16:00.000Z",
+    at: "2026-10-27T10:35:00.000Z",
+  },
+  {
+    question: "Question 19 — Evidence integrity under conflicting diagnostic data two scan tools disagree sensor value appears plausible on a scan tool but contradicts independent physical measurements AUTO-INTEGRITY-0019 AUTO-AC-019",
+    answer: buildQuestion19ConflictingDataEvidenceIntegrityReport("Question 19 evidence integrity under conflicting diagnostic data two scan tools disagree plausible sensor value contradicts independent physical measurements AUTO-AC-019"),
+    domain: "engineering",
+    model: "vibe-seed",
+    hits: 30,
+    at: "2026-10-27T10:36:00.000Z",
   },
 ];
 
