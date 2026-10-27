@@ -1138,6 +1138,13 @@ export const NOCTIS_20_TRAINING_AREAS_CATALOG: AutonomousTrainingScenario[] = [
       "  1. **AppSec + SWE Task:** Patch the `/api/v2/checkout/orders/{id}` BOLA/IDOR defect by enforcing authenticated `tenant_id` + `owner_user_id` ownership predicates at the data access layer.",
       "  2. **Compliance + Infrastructure Task:** Strip raw PAN/CVV from cache payloads; store only non-sensitive payment-intent references keyed by `HMAC-SHA256(tenant_id + \":\" + session_id)` over TLS 1.3 with per-tenant Redis ACL namespaces.",
       "  3. **Re-Verification Gate:** Re-run `AGENT-APPSEC`, `AGENT-COMPLIANCE`, and `AGENT-PERF` regression suites; release only when all non-compensatory vetoes clear (`0 active vetoes`).",
+      "",
+      "#### 3. High-Concurrency Database Migration Critic Veto (`1.8B-Row PostgreSQL 14 transactions @ 14,000 TPS`)",
+      "- **Inter-Agent Disagreement Resolved:** While the Planner Agent assumes `ALTER TABLE transactions ADD COLUMN settlement_flag BOOLEAN NOT NULL DEFAULT FALSE;` is metadata-only in PostgreSQL 14+, the Domain Specialist Critic (`AGENT-DB-SRE`) proves that acquiring the required `ACCESS EXCLUSIVE` lock without a `lock_timeout` queues behind active `45 s` `ACCESS SHARE` reporting queries and blocks all incoming `14,000 TPS` writes, exhausting the connection pool in **3.2 seconds** (`14,000 TPS × 3.2 s = 44,800 blocked connections`).",
+      "- **Zero-Downtime Expand-Contract Runbook (`HARD_VETO` Remediation):**",
+      "  1. Enforce `SET LOCAL lock_timeout = '50ms'; SET LOCAL statement_timeout = '2s';` inside a bounded retry loop with exponential jitter.",
+      "  2. Terminate or route long-running reporting queries (`pg_stat_activity` > `5s`) to read replicas before DDL execution.",
+      "  3. Execute the fast metadata-only column addition only when the `ACCESS EXCLUSIVE` lock is acquired within `< 50 ms`, preserving `0` dropped transactions at `14,000 TPS`.",
     ].join("\n"),
     rejectedAntiPatternResponse:
       "Because 2 out of 3 agents voted to approve the release (66.7% majority), deploy checkout-service-v4.8 to production immediately.",
