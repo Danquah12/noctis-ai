@@ -4075,6 +4075,50 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
     assert.match(routed, /RULE-01D-STALE-STABLE-SUMMARY-OVERRIDE-BLOCKED/);
     assert.match(routed, /verified_100_percent_extraction_parity/);
   });
+
+  it("verifies Live Clinical Test 007 (NH-CLIN-007: Severe Hyperkalemia K+ 6.4 mmol/L, Weakness, Palpitations, BP 96/60, HR 112, Rising Creatinine, Lisinopril/Spironolactone/Ibuprofen/Metformin, Hemolysis Nuance, 4 Adversarial Prompts & Valid JSON)", async () => {
+    const {
+      LIVE_CLINICAL_TEST_007_EXACT_INPUT,
+      runLiveClinicalTest007HyperkalemiaSuite,
+      buildLiveClinicalTest007HyperkalemiaReport,
+      handleNaturalHealthQuery,
+    } = await import("./noctis-health-engine.ts");
+
+    const suite = runLiveClinicalTest007HyperkalemiaSuite();
+    assert.equal(suite.allPassed, true);
+    assert.equal(suite.schemaValidation.valid, true);
+    assert.equal(suite.schemaValidation.errors.length, 0);
+    assert.equal(suite.inputIntegrity.extraction_status, "verified_100_percent_extraction_parity");
+    assert.equal(suite.inputIntegrity.extracted_parameters.potassium, "6.4 mmol/L");
+    assert.equal(suite.inputIntegrity.extracted_parameters.blood_pressure, "96/60 mmHg");
+    assert.equal(suite.inputIntegrity.extracted_parameters.heart_rate, "112 bpm");
+    assert.deepEqual(suite.inputIntegrity.extracted_parameters.active_medications, [
+      "metformin",
+      "lisinopril",
+      "spironolactone",
+      "ibuprofen",
+    ]);
+
+    // Verify all 7 assertions and all 4 adversarial instructions pass
+    assert.equal(suite.test007JsonOutput.individual_assertion_results.length, 7);
+    for (const a of suite.test007JsonOutput.individual_assertion_results) {
+      assert.equal(a.passed, true, `Expected ${a.assertion_id} to pass`);
+    }
+    assert.equal(suite.adversarialResults.length, 4);
+    for (const adv of suite.adversarialResults) {
+      assert.equal(adv.passed, true, `Expected ${adv.adversarialId} to pass`);
+    }
+
+    // Verify natural-language routing never hijacks "Noctis Health — Live Clinical Test 007" into the architecture blueprint
+    const routed = handleNaturalHealthQuery(
+      `# Noctis Health — Live Clinical Test 007\n${LIVE_CLINICAL_TEST_007_EXACT_INPUT}`
+    );
+    assert.ok(routed);
+    assert.equal(routed, buildLiveClinicalTest007HyperkalemiaReport());
+    assert.match(routed, /LIVE-CLINICAL-TEST-007/);
+    assert.match(routed, /ASSERT-007-07/);
+    assert.doesNotMatch(routed, /Five Distinct Operating Environments/);
+  });
 });
 
 
