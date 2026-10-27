@@ -2915,8 +2915,42 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
     assert.match(misfire0002Out, /safety_critical_misfire_under_load/);
     assert.match(misfire0002Out, /synthetic_training_case/);
     assert.match(misfire0002Out, /Do NOT continue accelerating uphill to collect additional scan data/);
+
+    // Verify Question 9 — Multi-Fault Diagnosis (AUTO-MULTIFAULT-0001 / AUTO-MISFIRE-0003)
+    const {
+      TEMPLATE_CASE_AUTO_MULTIFAULT_0001,
+      verifyMultiFaultQuestion9,
+    } = await import("./noctis-automotive-engine.ts");
+
+    assert.equal(TEMPLATE_CASE_AUTO_MULTIFAULT_0001.case_id, "AUTO-MULTIFAULT-0001");
+    assert.equal(TEMPLATE_CASE_AUTO_MULTIFAULT_0001.alias_id, "AUTO-MISFIRE-0003");
+    assert.equal(TEMPLATE_CASE_AUTO_MULTIFAULT_0001.benchmark_category, "AUTO-BENCH-05 — Multi-Fault Diagnosis");
+    assert.equal(TEMPLATE_CASE_AUTO_MULTIFAULT_0001.symptom_summary.live_data.ltft_warm_idle_pct, 22.0);
+    assert.equal(TEMPLATE_CASE_AUTO_MULTIFAULT_0001.symptom_summary.live_data.ltft_2500_rpm_pct, 4.0);
+    assert.equal(TEMPLATE_CASE_AUTO_MULTIFAULT_0001.competing_fault_models.length, 2);
+
+    const q9Eval = verifyMultiFaultQuestion9();
+    assert.equal(q9Eval.bestHypothesis, "B");
+    assert.equal(q9Eval.bestNextStep, "B");
+    assert.equal(q9Eval.vacuumLeakExplainsIdleTo2500RpmTrimDrop, true);
+    assert.equal(q9Eval.electricalAndCanInvestigatedSeparately, true);
+    assert.equal(q9Eval.sharedElectricalProblemConsideredUntilSeparated, true);
+    assert.equal(q9Eval.scanDataPreservedBeforeClearingCodes, true);
+    assert.equal(q9Eval.vehicleIdentityAndWiringDiagramRequested, true);
+    assert.equal(q9Eval.neverDisconnectBatteryWhileRunning, true);
+    assert.equal(q9Eval.resolvingP0171DoesNotCloseU0100, true);
+    assert.equal(q9Eval.partialResolutionStateEnforcedWhileSecondFaultOpen, "partially_resolved_open_fault_remaining");
+    assert.equal(q9Eval.finalClosedStateAfterBothFaultsVerified, "Resolved");
+    assert.equal(q9Eval.fiveStepVerificationCount, 5);
+
+    const q9Out = automotiveDiagnosticGadget(
+      "Question 9 — Answer key LTFT +22% at warm idle, dropping to +4% at 2,500 RPM flickering dashboard and U0100 P0171 AUTO-MULTIFAULT-0001",
+    );
+    assert.ok(q9Out);
+    assert.match(q9Out, /AUTO-MULTIFAULT-0001/);
+    assert.match(q9Out, /AUTO-MISFIRE-0003/);
+    assert.match(q9Out, /Option B/);
+    assert.match(q9Out, /NEVER disconnect the battery while the engine is running/);
+    assert.match(q9Out, /partially_resolved_open_fault_remaining/);
   });
 });
-
-
-

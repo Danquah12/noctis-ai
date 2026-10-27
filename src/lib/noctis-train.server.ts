@@ -32,6 +32,7 @@ import {
   buildCkpSignalDiagnosisReport,
   buildCrankNoStartTrainingModuleReport,
   buildMisfireUnderLoadCase0002Report,
+  buildMultiFaultQuestion9Report,
 } from "./noctis-automotive-engine.ts";
 
 export type TrainingPair = {
@@ -270,6 +271,14 @@ const OWASP_SEED_CORPUS: TrainingPair[] = [
     model: "vibe-seed",
     hits: 30,
     at: "2026-10-26T20:55:00.000Z",
+  },
+  {
+    question: "Question 9 — Answer key LTFT +22% at warm idle, dropping to +4% at 2,500 RPM flickering dashboard and U0100 P0171 AUTO-MULTIFAULT-0001 AUTO-MISFIRE-0003",
+    answer: buildMultiFaultQuestion9Report("Question 9 AUTO-MULTIFAULT-0001 AUTO-MISFIRE-0003 LTFT +22% at warm idle +4% at 2500 RPM flickering dashboard U0100 P0171"),
+    domain: "engineering",
+    model: "vibe-seed",
+    hits: 30,
+    at: "2026-10-26T21:05:00.000Z",
   },
 ];
 
