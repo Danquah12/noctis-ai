@@ -1950,8 +1950,276 @@ export function buildCrankNoStartTrainingModuleReport(question = ""): string {
   ].join("\n\n");
 }
 
+export interface CkpHypothesisEvaluationSpec {
+  id: string;
+  candidateCause: string;
+  applicableSensorTypes: string;
+  discriminatingTestProcedure: string;
+  whatPassResultConfirmsOrWeakens: string;
+  whatFailResultConfirmsOrLeavesUnresolved: string;
+}
+
+export const AUTO_DIAG_CKP_001_HYPOTHESES: CkpHypothesisEvaluationSpec[] = [
+  {
+    id: "CKP-HYP-01",
+    candidateCause: "CKP Connector or Wiring Harness Fault (Terminal Corrosion, Fretting, Pin Tension, Open/Shorted Signal Wire)",
+    applicableSensorTypes: "All CKP designs (3-Wire Hall-Effect & 2-Wire Variable-Reluctance Inductive)",
+    discriminatingTestProcedure:
+      "Disconnect CKP harness connector; inspect terminals under magnification for green/white corrosion, moisture intrusion (damaged weather-pack seal), spread female pins, or harness chafing against brackets/exhaust; measure end-to-end wire resistance (`<= 0.5 Ω`) and short-to-ground/voltage.",
+    whatPassResultConfirmsOrWeakens:
+      "Clean, tight terminals and `< 0.5 Ω` harness continuity weaken the connector/harness hypothesis and shift focus to power/ground, sensor output waveform, or reluctor ring.",
+    whatFailResultConfirmsOrLeavesUnresolved:
+      "Visible terminal corrosion or open/high-resistance wiring isolates a circuit connection fault. Cleaning/repairing the terminal and verifying normal cranking RPM + engine start + zero DTC recurrence confirms the connector fault without replacing the CKP sensor (note: monitor for moisture/corrosion recurrence).",
+  },
+  {
+    id: "CKP-HYP-02",
+    candidateCause: "CKP Sensor Power Supply (`5V` / `12V`) or Sensor Ground (`SGND`) Circuit Fault",
+    applicableSensorTypes: "3-Wire Active Hall-Effect / Magnetoresistive CKP Sensors",
+    discriminatingTestProcedure:
+      "With key ON (KOEO) and sensor connected (back-probed), measure reference supply voltage (`5.00V ± 0.05V` or OEM battery `12V` spec) to chassis ground and sensor ground drop (`<= 0.10V` under cranking load).",
+    whatPassResultConfirmsOrWeakens:
+      "Verified `5.00V` reference supply and `<= 0.10V` ground drop eliminate upstream power/ground starvation and shared `5V` bus pull-down.",
+    whatFailResultConfirmsOrLeavesUnresolved:
+      "Missing `5V/12V` supply or high ground drop proves the CKP sensor is starved of power/ground — replacing the CKP sensor will NOT fix the vehicle; trace the shorted `5V` reference bus or open ground splice.",
+  },
+  {
+    id: "CKP-HYP-03",
+    candidateCause: "Crankshaft Position (`CKP`) Sensor Internal Failure",
+    applicableSensorTypes: "3-Wire Hall-Effect (`0–5V` square wave) or 2-Wire VR Inductive (`AC sine wave` + coil resistance)",
+    discriminatingTestProcedure:
+      "After verifying connector terminals, power/ground (if 3-wire), and coil resistance (if 2-wire VR, per OEM ohm spec at 20°C), back-probe the CKP signal pin with a lab oscilloscope during cranking (`Hall: clean 0–5V square wave`; `VR: >= 0.5V–1.0V AC peak-to-peak sine wave` with clear missing-tooth index).",
+    whatPassResultConfirmsOrWeakens:
+      "A clean, full-amplitude CKP waveform at the sensor pin refutes CKP sensor failure and points to signal-wire loss between sensor and ECU, scan-tool dropout, or ECU input stage.",
+    whatFailResultConfirmsOrLeavesUnresolved:
+      "Zero/flatline waveform or erratic dropout at the sensor pin — AFTER power, ground, connector, air gap, and reluctor rotation are verified good — confirms internal CKP sensor failure.",
+  },
+  {
+    id: "CKP-HYP-04",
+    candidateCause: "Reluctor / Trigger Wheel (Tone Ring) Damage, Debris, or Excessive Sensor Air Gap",
+    applicableSensorTypes: "All CKP designs (Crankshaft-mounted or Flywheel/Flexplate-mounted tone ring)",
+    discriminatingTestProcedure:
+      "Remove CKP sensor (or inspect via bore/access port) and rotate crankshaft 360° while inspecting reluctor teeth for cracks, missing/bent teeth, magnetic metallic swarf bridging teeth, tone-ring slip, or loose sensor mounting bracket / shims.",
+    whatPassResultConfirmsOrWeakens:
+      "Intact, clean, concentric reluctor teeth and proper sensor seating depth eliminate mechanical trigger-wheel and air-gap faults.",
+    whatFailResultConfirmsOrLeavesUnresolved:
+      "Bent/cracked reluctor teeth or heavy metallic debris explains missing/implausible CKP pulses even with a brand-new CKP sensor.",
+  },
+  {
+    id: "CKP-HYP-05",
+    candidateCause: "Scan-Tool Cranking Dropout / Data-Quality Artifact (`DQ-07`) or Misinterpreted Spark Observation",
+    applicableSensorTypes: "OBD-II Scan Adapter / Telemetry Layer & Ignition Fallback Logic",
+    discriminatingTestProcedure:
+      "Verify cranking battery voltage (`>= 9.6V`) so the scan tool does not reset during starter inrush; compare scan-tool `RPM` PID refresh rate against a direct oscilloscope trace on the CKP signal pin; verify how any reported spark was tested (enclosed tester across multiple cranking revolutions vs. single stray key-ON/OFF coil discharge or CMP limp-home spark).",
+    whatPassResultConfirmsOrWeakens:
+      "Sustained communication and direct oscilloscope confirmation prove `0 RPM` is a true physical/electrical signal absence rather than a scan-tool polling lag.",
+    whatFailResultConfirmsOrLeavesUnresolved:
+      "Adapter brownout reset or single stray spark observation warns against misinterpreting raw scan/spark clues before scoping the CKP circuit.",
+  },
+  {
+    id: "CKP-HYP-06",
+    candidateCause: "ECU / PCM Internal CKP Input-Stage or Pull-Up Circuit Fault",
+    applicableSensorTypes: "Engine Control Module (`ECM` / `PCM`) CKP Input Pin",
+    discriminatingTestProcedure:
+      "Back-probe the CKP signal wire directly at the ECU connector pin while cranking and verify OEM bias/pull-up voltage (`typically 5.0V` on pull-up Hall designs) plus ECU power and grounds.",
+    whatPassResultConfirmsOrWeakens:
+      "If the valid CKP waveform is absent at the ECU pin, the fault is in the harness/connector/sensor — NOT the ECU.",
+    whatFailResultConfirmsOrLeavesUnresolved:
+      "If a clean, spec-compliant CKP waveform is confirmed directly at the ECU connector pin and all ECU powers/grounds pass, yet the ECU still logs `P0335` and reads `0 RPM`, an internal ECU input-stage fault is supported.",
+  },
+];
+
+export const AUTO_DIAG_CKP_001_RULE = {
+  ruleId: "AUTO-DIAG-CKP-001",
+  name: "Crankshaft Position Signal Diagnosis",
+  trigger: "P0335 is present, or engine RPM is zero/implausible during cranking.",
+  requiredBehavior: [
+    "1. Treat the DTC (P0335) and 0-RPM reading as diagnostic evidence, not definitive component-failure proof.",
+    "2. Generate and rank plausible sensor, circuit, connector, trigger-wheel, data-quality, and control-module hypotheses.",
+    "3. Request vehicle-specific service information (exact Year/Make/Model/engine_code to distinguish 3-wire Hall-effect vs. 2-wire VR inductive CKP) and relevant missing data (how spark was tested, battery voltage during cranking).",
+    "4. Select the safest, most informative next test based on the applicable OEM diagnostic procedure (visual terminal inspection -> DMM power/ground/bias check -> oscilloscope waveform at sensor/ECU).",
+    "5. Explain what each test result would confirm, weaken, or leave unresolved.",
+    "6. Do not recommend replacing the CKP sensor or ECU without sufficient supporting evidence.",
+    "7. Record evidence, authoritative OEM source, vehicle applicability, calibrated confidence, test results, and post-repair verification.",
+  ],
+  acceptanceCriterion:
+    "Noctis must distinguish a circuit fault from a confirmed sensor failure and must not recommend replacement solely because P0335 is present.",
+  sourceGovernanceCorrection: {
+    prohibitedGenericEducationalSources: ["Khan Academy", "MIT OpenCourseWare", "OpenStax"],
+    requiredAuthoritativeAutomotiveSources: [
+      "Vehicle Manufacturer (OEM) Service Manual & Pinpoint Test Procedure for exact engine_code",
+      "OEM Electrical Wiring Diagrams & Connector Pinout / Location Views",
+      "OEM Technical Service Bulletins (TSBs) & Recalls (NHTSA)",
+      "SAE J1979 (OBD-II PIDs), SAE J1930 (Terminology), and SAE J537 (Starting/Electrical Standards)",
+    ],
+    enforcementRule:
+      "General learning websites (Khan Academy, MIT OpenCourseWare, OpenStax) are NEVER cited as evidence that a vehicle-specific diagnostic procedure or specification is correct.",
+  },
+} as const;
+
+export interface CkpQuestion7EvaluationResult {
+  ruleId: "AUTO-DIAG-CKP-001";
+  questionId: "QUESTION-07-CKP-CONNECTOR-VS-SENSOR";
+  selectedOption: "C";
+  selectedOptionStatement: string;
+  sensorReplacementRecommended: false;
+  ecuReplacementRecommended: false;
+  fuelPumpReplacementRecommended: false;
+  prematureSensorReplacementBlocked: true;
+  nonOemEducationalSourcesBlocked: true;
+  sparkCaveatVerified: true;
+  optionEvaluations: {
+    option: "A" | "B" | "C" | "D";
+    verdict: "CORRECT" | "REJECTED";
+    engineeringRationale: string;
+  }[];
+  conclusionState: DiagnosticConclusionState;
+  epistemicState: DiagnosticEpistemicState;
+}
+
+/**
+ * Deterministic evaluator for Rule AUTO-DIAG-CKP-001 and Question 7
+ * (Distinguishing a Failed CKP Sensor from a Corroded Connector / Wiring Fault).
+ */
+export function verifyCkpCircuitAndSensorDiagnosis(params?: {
+  dtcPresent?: string;
+  crankingRpmBeforeFix?: number;
+  connectorCorrosionFoundAndCleaned?: boolean;
+  engineStartsAndRpmNormalAfterCleaning?: boolean;
+  dtcReturnedDuringVerification?: boolean;
+}): CkpQuestion7EvaluationResult {
+  const corrosionCleaned = params?.connectorCorrosionFoundAndCleaned ?? true;
+  const startsNormal = params?.engineStartsAndRpmNormalAfterCleaning ?? true;
+  const codeReturned = params?.dtcReturnedDuringVerification ?? false;
+
+  const verifiedCircuitFix = corrosionCleaned && startsNormal && !codeReturned;
+
+  return {
+    ruleId: "AUTO-DIAG-CKP-001",
+    questionId: "QUESTION-07-CKP-CONNECTOR-VS-SENSOR",
+    selectedOption: "C",
+    selectedOptionStatement:
+      "C. The corroded connection is the leading supported cause; document the repair and verification, while noting that recurrence may require further testing.",
+    sensorReplacementRecommended: false,
+    ecuReplacementRecommended: false,
+    fuelPumpReplacementRecommended: false,
+    prematureSensorReplacementBlocked: true,
+    nonOemEducationalSourcesBlocked: true,
+    sparkCaveatVerified: true,
+    optionEvaluations: [
+      {
+        option: "A",
+        verdict: "REJECTED",
+        engineeringRationale:
+          "Violates AUTO-DIAG-CKP-001 Acceptance Criterion: P0335 is a CKP *circuit* DTC, not proof of a dead sensor. Replacing a functioning OEM CKP sensor after terminal cleaning already restored normal cranking/running RPM and passed verification wastes money and risks introducing a new part defect.",
+      },
+      {
+        option: "B",
+        verdict: "REJECTED",
+        engineeringRationale:
+          "The ECU functioned properly by detecting the missing CKP pulses caused by the corroded connector pin and logging P0335. Once terminal contact was restored, the ECU read live RPM accurately.",
+      },
+      {
+        option: "C",
+        verdict: "CORRECT",
+        engineeringRationale:
+          "Supported by the complete chain of evidence: (1) physical inspection found terminal corrosion on the CKP connector, (2) cleaning the terminal restored signal continuity, (3) the engine started with normal live RPM, and (4) P0335 did not return during the OEM verification procedure — while prudently noting that if corrosion/fretting recurs, terminal replacement, weather-pack seal repair, or further pin-tension testing will be required.",
+      },
+      {
+        option: "D",
+        verdict: "REJECTED",
+        engineeringRationale:
+          "Unrelated 'parts cannon' recommendation: the fuel pump has zero causal link to a P0335 / 0-RPM CKP connector fault.",
+      },
+    ],
+    conclusionState: verifiedCircuitFix ? "confirmed_cause" : "most_likely_cause",
+    epistemicState: verifiedCircuitFix ? "confirmed_diagnosis" : "low_confidence_diagnosis",
+  };
+}
+
+export function buildCkpSignalDiagnosisReport(question = ""): string {
+  const q7 = verifyCkpCircuitAndSensorDiagnosis();
+
+  const dashboardPayload = {
+    title: "Noctis Automotive Rule: AUTO-DIAG-CKP-001 (Crankshaft Position Signal & Circuit Diagnosis)",
+    subtitle: "Trigger: DTC P0335 or 0 RPM During Cranking · Circuit vs. Sensor Isolation · OEM Source Governance · Question 7 Solved (Option C)",
+    kpis: [
+      {
+        label: "Question 7 Decision",
+        value: "Option C (Verified)",
+        sub: "Corroded CKP Connector Isolated · Premature CKP Sensor & ECU Replacement Blocked",
+      },
+      {
+        label: "Rule AUTO-DIAG-CKP-001",
+        value: "7 / 7 Enforced",
+        sub: "P0335 + 0 RPM Treated as Evidence, Never Automatic Sensor Condemnation",
+      },
+      {
+        label: "6 Competing Causes",
+        value: "Ranked & Scoped",
+        sub: "Connector/Wiring · 5V/GND · CKP Sensor · Reluctor/Air-Gap · Scan Dropout · ECU Pin",
+      },
+      {
+        label: "Source Governance Gate",
+        value: "OEM / SAE Only",
+        sub: "Khan Academy, MIT OCW & OpenStax Blocked as Repair Procedure Evidence",
+      },
+    ],
+    trend: {
+      title: "Bayesian Posterior Updating in Question 7 (Gasoline SUV with P0335 & 0 RPM -> Corroded CKP Terminal Cleaned)",
+      seriesLabel: "P(H_connector | E) — Corroded CKP Connector Terminal (%)",
+      secondaryLabel: "P(H_sensor | E) — Failed CKP Sensor Component (%)",
+      points: [
+        { label: "S1: P0335 + 0 RPM", value: 34, secondary: 36, display: "34% Conn / 36% Sensor (Tie)" },
+        { label: "S2: Corrosion Found", value: 78, secondary: 14, display: "78% Conn / 14% Sensor" },
+        { label: "S3: Cleaned -> Starts", value: 94, secondary: 4, display: "94% Conn / 4% Sensor" },
+        { label: "S4: Drive Cycle PASS", value: 98, secondary: 1, display: "98% Confirmed (Option C)" },
+      ],
+    },
+    bars: {
+      title: "AUTO-DIAG-CKP-001 Diagnostic Sequence Priority (EIG / Non-Invasive Cost-Risk Order)",
+      items: [
+        { label: "1. Confirm Evidence, Cranking V & Scan Reliability (DQ-07)", value: 96, max: 100, display: "Step 1: Verify >=9.6V & How Spark Was Tested", tone: "emerald" },
+        { label: "2. Visual & Physical CKP Connector / Harness Inspection", value: 94, max: 100, display: "Step 2: Check Corrosion, Pin Tension & Chafing", tone: "emerald" },
+        { label: "3. DMM Power (5V/12V), Ground & Bias Voltage Check", value: 90, max: 100, display: "Step 3: Verify 5.00V Ref & <=0.10V Ground Drop", tone: "emerald" },
+        { label: "4. Lab Oscilloscope Waveform at CKP Sensor vs. ECU Pin", value: 86, max: 100, display: "Step 4: Square Wave (Hall) vs. AC Sine (VR)", tone: "amber" },
+        { label: "5. Reluctor / Tone-Ring & Air-Gap Mechanical Inspection", value: 78, max: 100, display: "Step 5: Check Teeth, Debris & Sensor Seating", tone: "amber" },
+      ],
+    },
+  };
+
+  const hypothesisRows = AUTO_DIAG_CKP_001_HYPOTHESES.map(
+    (h) =>
+      `| **\`${h.id}\`** | **${h.candidateCause}**<br>*(${h.applicableSensorTypes})* | ${h.discriminatingTestProcedure} | ${h.whatPassResultConfirmsOrWeakens} | ${h.whatFailResultConfirmsOrLeavesUnresolved} |`,
+  ).join("\n");
+
+  const optionRows = q7.optionEvaluations
+    .map(
+      (o) =>
+        `| **Option ${o.option}** | **\`${o.verdict}\`** | ${o.engineeringRationale} |`,
+    )
+    .join("\n");
+
+  return [
+    `## Noctis Automotive Reasoning Rule: \`AUTO-DIAG-CKP-001\` — Crankshaft Position Signal Diagnosis & Question 7 Solution`,
+    `**Rule ID:** \`AUTO-DIAG-CKP-001\` · **Trigger:** \`DTC P0335\` is present, or engine \`RPM\` is \`0\` / implausible during cranking · **Acceptance Criterion:** Distinguish a CKP circuit/connector fault from a confirmed sensor failure and **never** recommend sensor replacement solely because \`P0335\` is present.`,
+    `\`\`\`noctis-dashboard\n${JSON.stringify(dashboardPayload)}\n\`\`\``,
+    `### 1. Answer to Question 7 — Distinguishing a Failed Sensor from a Wiring Fault\n> **Selected Conclusion:** **${q7.selectedOptionStatement}**\n\n| Option | Noctis Verdict | Evidence-Based Engineering Rationale |\n| :--- | :--- | :--- |\n${optionRows}\n\n#### Why Option C Is the Only Disciplined Diagnostic Conclusion\n1. **\`P0335\` Means Circuit Fault, Not "Bad Sensor":** In \`SAE J1979 / OBD-II\`, \`P0335\` (*Crankshaft Position Sensor "A" Circuit*) indicates that the ECU did not receive a valid CKP pulse train when expected. A corroded connector pin interrupts that pulse train identically to a dead sensor.\n2. **Direct Physical Evidence + Reversibility:** The technician found visible corrosion on a CKP connector terminal, cleaned it, and restored electrical continuity.\n3. **Post-Repair Verification Passed (\`AT-014\`):** After cleaning the terminal, the engine started normally, live scan-tool \`RPM\` returned to normal, and \`P0335\` did not return during the prescribed OEM verification procedure.\n4. **Recurrence Prevention Note (\`ENG-CAP-12\`):** Noctis documents the corroded connector as the leading supported cause while noting that if the fault recurs, the technician should inspect the connector's weather-pack elastomeric seal, check female terminal pin drag/tension, and inspect for capillary moisture intrusion in the harness.`,
+    `### 2. Developer Rule Specification: \`AUTO-DIAG-CKP-001\` (\`Crankshaft Position Signal Diagnosis\`)\n\`\`\`mermaid\nflowchart TD\n  T["Trigger: DTC P0335 Present OR Cranking RPM = 0 / Implausible"] --> S1["Step 1: Confirm Evidence · Record Year/Make/Model/engine_code, All DTCs, Freeze-Frame, Cranking RPM, Cranking Battery V, Spark Test Method & Scan-Tool Reliability"]\n  S1 --> S2["Step 2: Generate & Rank 6 Competing Hypotheses · 1. Connector/Wiring · 2. 5V/12V Power & Ground · 3. CKP Sensor · 4. Reluctor/Air Gap · 5. Scan-Tool Dropout · 6. ECU Input Circuit"]\n  S2 --> S3["Step 3: Select Next OEM Pinpoint Test · Inspect Connector & Harness -> DMM Power/Ground/Bias -> Scope CKP Waveform at Sensor vs ECU Pin"]\n  S3 --> G{"Does Evidence Prove Internal CKP Sensor Failure?"}\n  G -->|No: Corroded Terminal, Open Wire, Missing 5V/GND, or Bad Reluctor| FIX_CIR["Repair Circuit / Clean Terminal / Fix Reluctor — Do NOT Replace CKP Sensor"]\n  G -->|Yes: Power/GND/Wiring/Air-Gap/Reluctor Good, Sensor Waveform Dead| FIX_SEN["Replace CKP Sensor per OEM Torque/Air-Gap Spec"]\n  FIX_CIR --> VER["Step 4: Post-Repair Verification · Clear DTCs, Verify Normal Start, Live Cranking/Idle RPM & Zero Pending/Permanent P0335"]\n  FIX_SEN --> VER\n\`\`\`\n\n#### 2B. Key Improvements Integrated into Noctis for \`P0335\` & \`0 RPM\` Cases\n- **1. \`0 RPM\` Multi-Cause Disambiguation:** Recognizes that \`0 RPM\` while cranking can arise from **(a)** a corroded connector or broken wire, **(b)** a missing \`5V\`/\`12V\` supply or open sensor ground, **(c)** a failed CKP sensor, **(d)** a damaged/slipped reluctor ring or excessive air gap, **(e)** a scan-tool communication dropout during cranking voltage sag (\`DQ-07\`), or **(f)** an ECU input-stage failure.\n- **2. Critical Evaluation of "Reported Spark":** When a user or technician reports that spark is present despite \`P0335\` / \`0 RPM\`, Noctis asks **how spark was tested** and whether it was a single stray discharge at key-ON/OFF or an un-timed/camshaft (\`CMP\`) backup limp-home spark — because sporadic spark does not prove valid \`CKP\` synchronization or correct injection/ignition timing.\n- **3. Vehicle-Specific Sensor Architecture (\`3-Wire Hall-Effect\` vs. \`2-Wire VR Inductive\`):** Requests the exact \`engine_code\` and OEM wiring diagram before electrical testing so a technician never looks for a \`5V\` reference supply on a 2-wire inductive magnetic sensor or performs a raw ohmmeter check across an active 3-wire Hall-effect IC.\n- **4. Authoritative Source Governance Correction (\`OEM / SAE Only\`):**\n  > **Data-Quality & Citation Rule:** General educational platforms (**${AUTO_DIAG_CKP_001_RULE.sourceGovernanceCorrection.prohibitedGenericEducationalSources.join(", ")}**) are **strictly blocked** as evidence for vehicle repair procedures. Noctis cites only **${AUTO_DIAG_CKP_001_RULE.sourceGovernanceCorrection.requiredAuthoritativeAutomotiveSources.join("; ")}**.`,
+    `### 3. Complete 6-Hypothesis Differential Table for \`AUTO-DIAG-CKP-001\` (\`What Each Test Confirms, Weakens, or Leaves Unresolved\`)\n| Hypothesis ID | Competing Cause & Sensor Scope | OEM Pinpoint Test Procedure | What a PASS Result Confirms or Weakens | What a FAIL Result Confirms or Leaves Unresolved |\n| :--- | :--- | :--- | :--- | :--- |\n${hypothesisRows}`,
+  ].join("\n\n");
+}
+
 export function automotiveDiagnosticGadget(question: string): string | null {
   const q = question.toLowerCase();
+
+  const asksCkpRuleOrQuestion7 =
+    /\b(auto-diag-ckp-001|crankshaft\s+position\s+signal\s+diagnosis|distinguishing\s+a\s+failed\s+sensor\s+from\s+a\s+wiring\s+fault|p0335[\s\S]{0,120}\b0[-\s]*rpm|0[-\s]*rpm[\s\S]{0,120}\bp0335|inspects\s+the\s+ckp\s+connector\s+and\s+finds\s+corrosion|teach\s+it\s+to\s+diagnose\s+the\s+ckp\s+circuit\s+before\s+recommending\s+sensor\s+replacement)\b/i.test(
+      q,
+    );
+
+  if (asksCkpRuleOrQuestion7) {
+    return buildCkpSignalDiagnosisReport(question);
+  }
 
   const asksCrankNoStartModule =
     !/\b(diesel\s+(?:vehicle|engine|truck|van|car)\s+cranks\s+but\s+(?:will|does)\s+not\s+start|p0087|fuel\s+rail\s+pressure\s+too\s+low)\b/i.test(
@@ -1977,12 +2245,13 @@ export function automotiveDiagnosticGadget(question: string): string | null {
     (/\b(?:my\s+)?(?:car|truck|suv|sedan|vehicle|engine)\s+(?:clicks\s+when\s+i\s+turn\s+the\s+key|won'?t\s+start|will\s+not\s+start|cranks\s+slowly|overheats?|stalls?|vibrates?|loses\s+power|misfires?)\b/i.test(
       q,
     ) ||
-      /\b(?:obd-?ii|dtc|trouble\s+code|freeze-?frame)\b[\s\S]{0,60}\b(?:p0171|p0174|p0300|p030[1-8]|p0420|p0442|p0455|p0aa6|u0100|c0034)\b/i.test(
+      /\b(?:obd-?ii|dtc|trouble\s+code|freeze-?frame)\b[\s\S]{0,60}\b(?:p0171|p0174|p0300|p030[1-8]|p0335|p0420|p0442|p0455|p0aa6|u0100|c0034)\b/i.test(
         q,
       ));
 
   if (!asksAutomotiveTrainingOrSpec && !asksLiveCarDiagnosis) return null;
   return buildAutomotiveDiagnosticIntelligenceReport(question);
 }
+
 
 

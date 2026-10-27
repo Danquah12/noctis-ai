@@ -2851,6 +2851,39 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
     assert.match(crankNoStartModuleOut, /Branch F/);
     assert.match(crankNoStartModuleOut, /AUTO-CRANK-NO-START-0001/);
     assert.match(crankNoStartModuleOut, /\+\$485\.00 Saved/);
+
+    // Verify Rule AUTO-DIAG-CKP-001 (Crankshaft Position Signal Diagnosis) & Question 7
+    const {
+      AUTO_DIAG_CKP_001_RULE,
+      AUTO_DIAG_CKP_001_HYPOTHESES,
+      verifyCkpCircuitAndSensorDiagnosis,
+    } = await import("./noctis-automotive-engine.ts");
+
+    assert.equal(AUTO_DIAG_CKP_001_RULE.ruleId, "AUTO-DIAG-CKP-001");
+    assert.equal(AUTO_DIAG_CKP_001_HYPOTHESES.length, 6);
+    assert.deepEqual(AUTO_DIAG_CKP_001_RULE.sourceGovernanceCorrection.prohibitedGenericEducationalSources, [
+      "Khan Academy",
+      "MIT OpenCourseWare",
+      "OpenStax",
+    ]);
+
+    const q7Eval = verifyCkpCircuitAndSensorDiagnosis();
+    assert.equal(q7Eval.selectedOption, "C");
+    assert.equal(q7Eval.sensorReplacementRecommended, false);
+    assert.equal(q7Eval.ecuReplacementRecommended, false);
+    assert.equal(q7Eval.fuelPumpReplacementRecommended, false);
+    assert.equal(q7Eval.prematureSensorReplacementBlocked, true);
+    assert.equal(q7Eval.nonOemEducationalSourcesBlocked, true);
+    assert.equal(q7Eval.conclusionState, "confirmed_cause");
+
+    const ckpRuleOut = automotiveDiagnosticGadget(
+      "Rule ID: AUTO-DIAG-CKP-001 Question 7 — Distinguishing a Failed Sensor from a Wiring Fault A gasoline SUV has P0335 and reads 0 RPM while cranking. The technician inspects the CKP connector and finds corrosion on one terminal.",
+    );
+    assert.ok(ckpRuleOut);
+    assert.match(ckpRuleOut, /AUTO-DIAG-CKP-001/);
+    assert.match(ckpRuleOut, /Option C/);
+    assert.match(ckpRuleOut, /The corroded connection is the leading supported cause/);
+    assert.match(ckpRuleOut, /Khan Academy, MIT OpenCourseWare, OpenStax/);
   });
 });
 

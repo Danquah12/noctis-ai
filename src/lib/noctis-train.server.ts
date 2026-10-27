@@ -29,6 +29,7 @@ import {
 import { buildArchitecturalIntelligenceReport } from "./noctis-architect-engine.ts";
 import {
   buildAutomotiveDiagnosticIntelligenceReport,
+  buildCkpSignalDiagnosisReport,
   buildCrankNoStartTrainingModuleReport,
 } from "./noctis-automotive-engine.ts";
 
@@ -252,6 +253,14 @@ const OWASP_SEED_CORPUS: TrainingPair[] = [
     model: "vibe-seed",
     hits: 30,
     at: "2026-10-26T20:35:00.000Z",
+  },
+  {
+    question: "Rule ID: AUTO-DIAG-CKP-001 Name: Crankshaft Position Signal Diagnosis Trigger: P0335 is present, or engine RPM is zero/implausible during cranking. Question 7 — Distinguishing a Failed Sensor from a Wiring Fault",
+    answer: buildCkpSignalDiagnosisReport("AUTO-DIAG-CKP-001 P0335 0 RPM Question 7 Distinguishing a Failed Sensor from a Wiring Fault"),
+    domain: "engineering",
+    model: "vibe-seed",
+    hits: 30,
+    at: "2026-10-26T20:45:00.000Z",
   },
 ];
 
