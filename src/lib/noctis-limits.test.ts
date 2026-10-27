@@ -3933,4 +3933,31 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
     assert.match(report, /NH-ENG-004-ADV-08/);
     assert.match(report, /CONDITIONAL_SANDBOX_PASS_PRODUCTION_BLOCKED/);
   });
+
+  it("verifies NH-ENG-005 (Live /api/v1/health HTTP Gateway, Dynamic Clinical Text Parser, Cryptographic SHA-256 Audit Chain & Recursive JSON Schema Validator)", async () => {
+    const {
+      runNhEng005VerificationSuite,
+      executeV1HealthHttpRequest,
+      computeClinicalContentSha256,
+    } = await import("./noctis-health-engine.ts");
+
+    const suite = await runNhEng005VerificationSuite();
+    assert.equal(suite.totalCount, 6);
+    assert.equal(suite.passedCount, 6);
+    assert.equal(suite.allPassed, true);
+    for (const r of suite.results) {
+      assert.equal(r.passed, true, `Expected ${r.testId} to pass (${r.observedOutcome})`);
+    }
+
+    // Also test GET /api/v1/health?endpoint=manifest via Web Fetch Request/Response
+    const manifestReq = new Request("http://localhost/api/v1/health?endpoint=manifest", { method: "GET" });
+    const manifestRes = await executeV1HealthHttpRequest(manifestReq);
+    assert.equal(manifestRes.status, 200);
+    assert.equal(manifestRes.headers.get("X-Noctis-FHIR-Base"), "HL7 FHIR R4 (v4.0.1)");
+    assert.equal(manifestRes.headers.get("X-Noctis-US-Core-IG"), "HL7 US Core v9.0.0");
+
+    const sha = computeClinicalContentSha256("Noctis-SHA256-Deterministic-Check");
+    assert.match(sha, /^sha256:[a-f0-9]{64}$/);
+  });
 });
+
