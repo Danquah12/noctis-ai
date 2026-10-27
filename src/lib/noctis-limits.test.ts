@@ -1,4 +1,4 @@
-import assert from "node:assert/strict";
+﻿import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { hourlyGrid, optimizeOptions } from "./noctis-grid.ts";
 import { graphFromNotes, statedRules } from "./noctis-rules.ts";
@@ -4181,6 +4181,19 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
     assert.match(routed, /NH-TEST-008/);
     assert.match(routed, /REG-008-08/);
     assert.match(routed, /RULE-01E-SEPTIC-SHOCK-VITAL-SIGN-LOCK/);
+  });
+  it("Live Clinical Test 009: emergency handoff produces full structured assessment", async () => {
+    const eng = await import("./noctis-health-engine.ts");
+    const s = eng.runLiveClinicalTest009Suite();
+    assert.deepEqual(s.checks && Object.entries(s.checks).filter(([, v]) => !v), []);
+    assert.equal(s.allPassed, true);
+    const routed = eng.handleNaturalHealthQuery("Run Live Clinical Test 009");
+    assert.match(routed, /Call Emergency Services Now/);
+    assert.match(routed, /lisinopril/i);
+    assert.doesNotMatch(routed, /988|acute encephalopathy/i);
+    const generic = eng.handleNaturalHealthQuery("My father has blood pressure 80/50, heart rate 130 bpm and new confusion, takes ibuprofen and lisinopril");
+    assert.doesNotMatch(generic, /988|acute encephalopathy|chest pressure/i);
+    assert.match(generic, /Medication Safety/);
   });
 });
 
