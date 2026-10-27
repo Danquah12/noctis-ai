@@ -1504,6 +1504,13 @@ export function buildEvalDashboardHtml(report: EvalRunReport): string {
 
 export function evalBenchmarkGadget(question: string): string | null {
   const q = question.trim();
+  if (
+    /\b(noctis-arch-001|architectural\s+intelligence|architectural\s+validation\s+challenge|arch-at-\d+|arch-bench-\d+|conditioned\s+core|floor-area\s+arithmetic)\b/i.test(
+      q
+    )
+  ) {
+    return null;
+  }
   const asksEval =
     /\b(400[\s-]*question|evaluation\s+suite|evaluation\s+runner|benchmark\s+suite|benchmark\s+runner|eval\s+suite|eval:noctis|noctis\s+benchmark|run\s+(?:the\s+)?(?:400|noctis)\s+(?:eval|benchmark)|15\s+major\s+knowledge\s+divisions|5[\s-]*layer\s+training\s+architecture)\b/i.test(
       q

@@ -8,6 +8,7 @@ import { handleNaturalVerifiedExecutionQuery } from "./noctis-verified-execution
 import { handleNaturalPredictiveIntelligenceQuery } from "./noctis-predictive-intelligence.ts";
 import { automotiveDiagnosticGadget } from "./noctis-automotive-engine.ts";
 import { handleNaturalAutonomousTrainingQuery } from "./noctis-autonomous-trainer.ts";
+import { architectIntelligenceGadget } from "./noctis-architect-engine.ts";
 
 export type AdaptiveResponseMode = "Direct" | "Teaching" | "Technical" | "Audit";
 
@@ -610,6 +611,12 @@ export function runFollowUpIntelligence(
   const healthResponse = handleNaturalHealthQuery(currentQuestion, state.lastAssistantText);
   if (healthResponse) {
     return healthResponse;
+  }
+
+  // 00a-0. Noctis Architectural Intelligence Engine (NOCTIS-ARCH-001, 7-Part Validation Challenge & Audit Reconciliation ARCH-AT-01..15, Shared IFC 4.3 + buildingSMART IDS)
+  const architectResponse = architectIntelligenceGadget(currentQuestion);
+  if (architectResponse) {
+    return architectResponse;
   }
 
   // 00a. Noctis Verified Professional Execution Layer, Independent Verification Engine, Tier-2 Adversarial Suite, 20 Advanced Systems, Workbench & Capability Registry

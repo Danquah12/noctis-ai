@@ -2704,6 +2704,66 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
     assert.match(feasibilityBenchmarkOut, /Option C — Phased Construction/);
     assert.match(feasibilityBenchmarkOut, /NOCTIS-EXEC-100M2-3BR2BA/);
 
+    // Verify 8-Bedroom, 3.5-Bath Reconciliation, 15-Gate Suite (ARCH-AT-01..15) & NOCTIS ARCHITECTURAL VALIDATION CHALLENGE
+    const { runExtended15AcceptanceAndReconciliationSuite } = await import(
+      "./noctis-architect-engine.ts"
+    );
+    const extended15 = runExtended15AcceptanceAndReconciliationSuite();
+    assert.equal(extended15.length, 15);
+    assert.equal(extended15.filter((t) => t.reconciledV2Status === "PASS").length, 13);
+    assert.equal(
+      extended15.filter((t) => t.reconciledV2Status === "HOLD — EXTERNAL ARTIFACT REQUIRED").length,
+      2,
+    );
+
+    const brief8Br = parseArchitecturalBrief(
+      "Design an 8-bedroom, 3.5-bathroom residence on a 70x130 ft lot",
+    );
+    assert.equal(brief8Br.bedrooms, 8);
+    assert.equal(brief8Br.bathrooms, 3.5);
+    const spaces8Br = buildIfcSharedSpaces(brief8Br);
+    const bedroomCodes8Br = spaces8Br
+      .filter((s) => s.name.includes("Bedroom"))
+      .map((s) => s.code);
+    assert.deepEqual(bedroomCodes8Br, [
+      "RM-108",
+      "RM-201",
+      "RM-203",
+      "RM-204",
+      "RM-209",
+      "RM-210",
+      "RM-211",
+      "RM-212",
+    ]);
+    assert.ok(spaces8Br.some((s) => s.code === "RM-109" && s.areaSqFt === 48));
+    const netCond8Br = spaces8Br
+      .filter((s) => s.zone !== "Service / Exterior")
+      .reduce((acc, s) => acc + s.areaSqFt, 0);
+    assert.equal(netCond8Br, 3132);
+    assert.equal(Math.round(netCond8Br * 1.15), 3602);
+
+    const schedules8Br = buildDoorAndWindowSchedules(spaces8Br);
+    assert.ok(schedules8Br.some((d) => d.mark === "W-04H" && d.location.includes("RM-212")));
+
+    const auditChallengeOut = architectIntelligenceGadget(
+      "NOCTIS ARCHITECTURAL VALIDATION CHALLENGE: Reconcile the 40 ft × 42 ft plan arithmetic, 3,422 sq ft conditioned area, 8 bedrooms, 3.5 bathrooms, and ARCH-AT-11 through ARCH-AT-15.",
+    );
+    assert.ok(auditChallengeOut);
+    assert.match(auditChallengeOut, /1,176\.0 sq ft/);
+    assert.match(auditChallengeOut, /109\.25 m²/);
+    assert.match(auditChallengeOut, /504\.0 sq ft/);
+    assert.match(auditChallengeOut, /46\.82 m²/);
+    assert.match(auditChallengeOut, /1,680\.0 sq ft/);
+    assert.match(auditChallengeOut, /156\.08 m²/);
+    assert.match(auditChallengeOut, /3,132\.0 sq ft/);
+    assert.match(auditChallengeOut, /3,602 sq ft/);
+    assert.match(auditChallengeOut, /RM-109/);
+    assert.match(auditChallengeOut, /RM-210/);
+    assert.match(auditChallengeOut, /RM-211/);
+    assert.match(auditChallengeOut, /RM-212/);
+    assert.match(auditChallengeOut, /W-04H/);
+    assert.match(auditChallengeOut, /ARCH-AT-15/);
+
     // Verify Noctis Automotive Diagnostic Intelligence Engine (NOCTIS-AUTO-001 · Blueprint v1.0 + 15 Advanced Capabilities + Assurance Layer)
     const {
       NOCTIS_17_SUBSYSTEM_TAXONOMY,
