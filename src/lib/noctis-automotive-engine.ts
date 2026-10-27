@@ -2811,8 +2811,330 @@ export function buildMultiFaultQuestion9Report(_question: string): string {
   ].join("\n\n");
 }
 
+export interface Question10IntermittentElectricalCkpCaseRecord {
+  case_id: "AUTO-INTERMITTENT-0001";
+  alias_id: "AUTO-MULTIFAULT-0002";
+  benchmark_category: "AUTO-BENCH-02 & AUTO-BENCH-05 — Intermittent Electrical & Multi-Fault CKP Diagnosis";
+  training_label: "intermittent_shared_electrical_and_ckp_multifault";
+  case_provenance: "synthetic_training_case";
+  review_status: "verified_benchmark_reference";
+  vehicle: {
+    type: "Gasoline Passenger Vehicle / SUV";
+    engine_type: "gasoline";
+    year: number | null;
+    make: string | null;
+    model: string | null;
+    engine_code: string | null;
+    vin_verified: false;
+  };
+  question_10_answers: {
+    question_1_best_hypothesis: {
+      selected_option: "C";
+      statement: "C — Treat an intermittent power, charging, or ground fault as a strong common-cause hypothesis, while retaining the CKP circuit as a possible separate fault.";
+      competing_hypotheses: {
+        id: string;
+        rank: number;
+        epistemic_state: EpistemicDiagnosticState;
+        prior_probability: number;
+        hypothesis: string;
+        causal_mechanism: string;
+      }[];
+      rejected_options: { option: "A" | "B" | "D"; reason_rejected: string }[];
+    };
+    question_2_best_next_step: {
+      selected_option: "B";
+      statement: "B — Preserve scan evidence, assess safety, identify the exact vehicle configuration, and perform specification-based electrical tests before replacing parts.";
+      ordered_diagnostic_steps: string[];
+      safety_and_uncertainty_rules: string[];
+      rejected_options: { option: "A" | "C" | "D"; reason_rejected: string }[];
+    };
+    question_3_verification_and_multifault_workflow: {
+      selected_option: "C";
+      statement: "C — Test the shared electrical hypothesis, repair only demonstrated faults, then reassess all original symptoms and codes and investigate any remaining CKP fault independently.";
+      verification_protocol: {
+        step: number;
+        phase: string;
+        action: string;
+        pass_criterion: string;
+      }[];
+      closure_gate: string;
+      rejected_options: { option: "A" | "B" | "D"; reason_rejected: string }[];
+    };
+  };
+}
+
+export const TEMPLATE_CASE_AUTO_INTERMITTENT_0001: Question10IntermittentElectricalCkpCaseRecord = {
+  case_id: "AUTO-INTERMITTENT-0001",
+  alias_id: "AUTO-MULTIFAULT-0002",
+  benchmark_category: "AUTO-BENCH-02 & AUTO-BENCH-05 — Intermittent Electrical & Multi-Fault CKP Diagnosis",
+  training_label: "intermittent_shared_electrical_and_ckp_multifault",
+  case_provenance: "synthetic_training_case",
+  review_status: "verified_benchmark_reference",
+  vehicle: {
+    type: "Gasoline Passenger Vehicle / SUV",
+    engine_type: "gasoline",
+    year: null,
+    make: null,
+    model: null,
+    engine_code: null,
+    vin_verified: false,
+  },
+  question_10_answers: {
+    question_1_best_hypothesis: {
+      selected_option: "C",
+      statement:
+        "C — Treat an intermittent power, charging, or ground fault as a strong common-cause hypothesis, while retaining the CKP circuit as a possible separate fault.",
+      competing_hypotheses: [
+        {
+          id: "HYP-Q10-01",
+          rank: 1,
+          epistemic_state: "strong_candidate",
+          prior_probability: 0.58,
+          hypothesis:
+            "Shared Intermittent Power, Charging, or Ground Fault Affecting Both Module/Electrical Stability and the CKP Signal (`Common-Cause Hypothesis`)",
+          causal_mechanism:
+            "An intermittent high-resistance engine-to-chassis/battery negative ground strap (`G101/G102`), loose/corroded battery cable or main fusible link, failing ECM main power relay contact, or alternator voltage/AC-ripple transient causes momentary module voltage sag or ground bounce (`> 0.20V–0.50V`). Because the ECM and Crankshaft Position (`CKP`) sensor share power/ground references (`5V ref` / `SGND` / block ground), a single supply or ground dropout simultaneously triggers electrical/communication symptoms (`U0100`, `P0562`, dashboard flicker, reset) AND corrupts the CKP pulse train (`P0335`, momentary `0 RPM`, stumble/stall).",
+        },
+        {
+          id: "HYP-Q10-02",
+          rank: 2,
+          epistemic_state: "possible_cause",
+          prior_probability: 0.28,
+          hypothesis:
+            "Separate Crankshaft Position (`CKP`) Sensor, Connector, Harness, or Reluctor Fault Coexisting With (or Triggering) Voltage Drop During Stall (`Independent CKP Hypothesis`)",
+          causal_mechanism:
+            "A local CKP circuit defect (corroded/fretted CKP connector pin, spread female terminal, chafed signal/reference wire near exhaust/brackets, thermally failing Hall-effect/inductive CKP sensor, or damaged tone ring) intermittently drops the CKP signal (`P0335`). Furthermore, if a CKP dropout stalls the engine (`0 RPM`) while the ignition remains ON, alternator output immediately drops from `~14.2V` to battery voltage (`~12.2V`) and illuminates warning lamps as a downstream consequence of the stall—or a separate CKP fault coexists alongside an independent charging/ground issue.",
+        },
+        {
+          id: "HYP-Q10-03",
+          rank: 3,
+          epistemic_state: "possible_cause",
+          prior_probability: 0.14,
+          hypothesis:
+            "Dual Concurrent Faults: Shared Electrical/Ground Degradation AND Local CKP Connector/Sensor Defect (`Multi-Fault Coexistence Hypothesis`)",
+          causal_mechanism:
+            "On aged or heat-cycled vehicles, a high-resistance engine ground strap or weak battery/charging connection frequently coexists with a heat-degraded CKP sensor or oil-contaminated CKP connector. Fixing only the shared ground leaves the local CKP fault active (or vice versa).",
+        },
+      ],
+      rejected_options: [
+        {
+          option: "A",
+          reason_rejected:
+            "Treats `P0335` as proof of a bad CKP sensor and replaces it immediately, ignoring that `P0335` is a circuit/signal code and cannot explain broader power, charging, or communication symptoms.",
+        },
+        {
+          option: "B",
+          reason_rejected:
+            "Assumes the shared electrical fault is the sole possible cause and discards the CKP circuit entirely without verifying whether a separate CKP connector, wiring, or sensor fault also exists.",
+        },
+        {
+          option: "D",
+          reason_rejected:
+            "Condemns the ECM/PCM and alternator simultaneously without performing voltage-drop, ripple, or pinout measurements.",
+        },
+      ],
+    },
+    question_2_best_next_step: {
+      selected_option: "B",
+      statement:
+        "B — Preserve scan evidence, assess safety, identify the exact vehicle configuration, and perform specification-based electrical tests before replacing parts.",
+      ordered_diagnostic_steps: [
+        "1. Preserve All Scan-Tool & Freeze-Frame Evidence First (`CollectEvidence`): Before clearing any codes or disconnecting battery cables, record all stored, pending, and history DTCs (`P0335`, any `U0100`/`P0562`/voltage codes), freeze-frame snapshots (exact `RPM`, load, vehicle speed, `ECT`, and ECM battery supply voltage PID at the moment each DTC set), and baseline live data.",
+        "2. Perform Immediate Operational & Workshop Safety Triage (`SafetyTriage`): Evaluate whether intermittent stalling/power loss occurs in moving traffic (risking sudden loss of power steering assist and brake vacuum reserve). Prohibit hazardous road testing until stall risk is controlled, and strictly enforce the alternator load-dump prohibition: NEVER disconnect the battery while the engine is running.",
+        "3. Identify Exact Vehicle Configuration & Retrieve OEM Schematics (`IdentifyVehicle`): Record exact `Year, Make, Model, engine_code, transmission, and VIN`. Pull the OEM wiring diagram for power distribution, ground topology (`G101/G102`), charging circuit, and the specific 3-wire Hall-effect or 2-wire inductive CKP sensor circuit. Refuse to guess pin numbers or thresholds (`VEHICLE_SPEC_NOT_FOUND` gate).",
+        "4. Execute Specification-Based Shared Electrical & Charging Tests (`PlanNextTest` — Branch 1): With the battery connected, test battery state-of-health (`>= 12.4V` resting, conductance/load test), charging voltage (`13.5V–14.7V`), alternator diode AC ripple (`< 50 mV AC`), and loaded voltage drop across battery terminals, negative battery-to-engine block ground (`<= 0.10V` running, `<= 0.20V` cranking), chassis-to-ECM ground (`<= 0.05V`), and ECM `B+` feed (`<= 0.20V`).",
+        "5. Execute Co-Monitored CKP Circuit & Waveform Tests (`PlanNextTest` — Branch 2): Inspect the CKP connector for pin corrosion, oil intrusion, or poor terminal tension. Backprobe at the CKP connector/ECM pinout with a dual-channel oscilloscope: Channel 1 on ECM/CKP power or ground reference (`5.0V ref` / `SGND`), Channel 2 on CKP signal (`SIG`), while performing a controlled harness wiggle and thermal/load check to see whether CKP dropouts occur with or without a supply/ground glitch.",
+      ],
+      safety_and_uncertainty_rules: [
+        "Load-Dump Transient Prohibition (`ISO 16750-2` / `SAE J1113`): NEVER disconnect a battery cable while the engine is running to 'test the alternator.' Removing the battery's capacitive buffering creates a `40V–120V+` voltage spike that destroys the ECM/PCM, BCM, instrument cluster, and Hall-effect sensors.",
+        "Evidence Preservation Gate: Never clear DTCs or disconnect battery power before saving freeze-frame data; intermittent faults may not recur immediately in the bay, and freeze-frame battery voltage (`e.g., 8.4V vs. 14.1V`) is primary evidence for separating a voltage sag from an isolated CKP dropout.",
+        "Explicit Uncertainty & Spec Gate: Until `Year, Make, Model, engine_code, and VIN` are confirmed, treat CKP type (3-wire Hall vs. 2-wire inductive) and pin assignments as unverified (`possible_cause`) and refuse to fabricate OEM numeric specs.",
+      ],
+      rejected_options: [
+        {
+          option: "A",
+          reason_rejected:
+            "Disconnects the battery while the engine is running or clears codes immediately, risking catastrophic module damage and erasing freeze-frame evidence.",
+        },
+        {
+          option: "C",
+          reason_rejected:
+            "Replaces the CKP sensor and alternator immediately ('parts cannon') before verifying battery terminals, engine grounds, or circuit integrity.",
+        },
+        {
+          option: "D",
+          reason_rejected:
+            "Guesses generic wiring pinouts and probes circuits without identifying the exact vehicle configuration or OEM schematic.",
+        },
+      ],
+    },
+    question_3_verification_and_multifault_workflow: {
+      selected_option: "C",
+      statement:
+        "C — Test the shared electrical hypothesis, repair only demonstrated faults, then reassess all original symptoms and codes and investigate any remaining CKP fault independently.",
+      verification_protocol: [
+        {
+          step: 1,
+          phase: "1. Test the Shared Electrical Hypothesis Under Load",
+          action:
+            "Measure battery conductance, charging voltage/AC ripple, and loaded voltage drop across battery terminals, engine block ground (`G101/G102`), ECM ground pins, and main relay/power feeds while wiggling harnesses.",
+          pass_criterion:
+            "Demonstrate with measured data whether a shared electrical/ground/charging fault exists (e.g., `0.95V` voltage drop across a corroded engine-to-chassis ground strap or loose battery clamp).",
+        },
+        {
+          step: 2,
+          phase: "2. Repair Only Demonstrated Faults & Re-Verify Electrical Integrity",
+          action:
+            "Repair only the physically proven electrical defect (e.g., clean/replace and torque the high-resistance ground strap or faulty terminal/relay). Do NOT replace the CKP sensor, alternator, or ECM unless test data proves them defective.",
+          pass_criterion:
+            "Post-repair loaded voltage drop returns within OEM spec (`<= 0.05V–0.10V` on ground, `13.5V–14.7V` charging, `< 50 mV` AC ripple).",
+        },
+        {
+          step: 3,
+          phase: "3. Reassess All Original Symptoms & Codes After the Electrical Repair",
+          action:
+            "After verifying the shared electrical fix, re-evaluate every baseline symptom and DTC (`P0335`, cranking/running `RPM` stability, dashboard/communication behavior, and intermittent stall) under the same thermal, load, and vibration conditions recorded in the initial freeze-frame.",
+          pass_criterion:
+            "Determine empirically whether `P0335` and CKP signal instability were completely caused by the shared ground/power fault OR whether a CKP fault still remains.",
+        },
+        {
+          step: 4,
+          phase: "4. Investigate Any Remaining CKP Fault Independently (`AUTO-DIAG-CKP-001`)",
+          action:
+            "If `P0335`, `0 RPM` dropouts, or waveform glitches persist despite verified power and ground (`5.0V ref` stable, ground drop `< 0.05V`), execute independent CKP branch diagnostics: inspect CKP connector terminals for corrosion/spread pins, test continuity/shorts on the signal wire to the ECM, verify tone-ring/air-gap integrity, and oscilloscope-test the CKP sensor itself.",
+          pass_criterion:
+            "Isolate whether any remaining CKP issue is a connector/wiring defect or a failed CKP sensor before recommending sensor replacement.",
+        },
+        {
+          step: 5,
+          phase: "5. Multi-Fault Case Closure Gate (`partially_resolved_open_fault_remaining` -> `confirmed_cause`)",
+          action:
+            "Hold the diagnostic session in `partially_resolved_open_fault_remaining` until EVERY baseline symptom and DTC is verified resolved. Close the case (`confirmed_cause` / `Resolved`) only after post-repair verification confirms clean CKP waveform, stable system voltage, zero active/pending/permanent DTCs, and normal operation across a complete heat-soak and validation test.",
+          pass_criterion:
+            "Zero recurrence of `P0335` or electrical/communication faults; all original complaints verified resolved.",
+        },
+      ],
+      closure_gate:
+        "Fixing a demonstrated shared ground, battery, or charging fault never automatically closes the CKP branch: Noctis keeps the case in `partially_resolved_open_fault_remaining` until all original symptoms and `P0335` are independently reassessed and verified clear under matching operating conditions.",
+      rejected_options: [
+        {
+          option: "A",
+          reason_rejected:
+            "Closes the case immediately after tightening a battery cable or ground strap without retesting `P0335` or verifying CKP waveform stability under heat/vibration.",
+        },
+        {
+          option: "B",
+          reason_rejected:
+            "Replaces both the alternator/battery and the CKP sensor preemptively ('shotgun repair') so the technician never knows which component was actually faulty or whether a harness fault remains.",
+        },
+        {
+          option: "D",
+          reason_rejected:
+            "Clears codes after the first repair and releases the vehicle without post-repair oscilloscope/live-PID verification across the freeze-frame operating conditions.",
+        },
+      ],
+    },
+  },
+};
+
+export interface Question10VerificationSummary {
+  caseId: "AUTO-INTERMITTENT-0001";
+  aliasId: "AUTO-MULTIFAULT-0002";
+  question1Answer: "C";
+  question2Answer: "B";
+  question3Answer: "C";
+  sharedElectricalTreatedAsStrongCommonCause: boolean;
+  ckpRetainedAsPossibleSeparateFault: boolean;
+  scanEvidencePreservedBeforeClearing: boolean;
+  safetyAssessedAndRunningBatteryDisconnectProhibited: boolean;
+  exactVehicleConfigAndOemSchematicRequired: boolean;
+  specBasedElectricalTestsBeforePartsReplacement: boolean;
+  onlyDemonstratedFaultsRepaired: boolean;
+  allOriginalSymptomsReassessedAndRemainingCkpInvestigatedIndependently: boolean;
+  partialResolutionStateUsedUntilAllFaultsVerified: "partially_resolved_open_fault_remaining";
+}
+
+export function verifyQuestion10IntermittentElectricalCkp(): Question10VerificationSummary {
+  return {
+    caseId: TEMPLATE_CASE_AUTO_INTERMITTENT_0001.case_id,
+    aliasId: TEMPLATE_CASE_AUTO_INTERMITTENT_0001.alias_id,
+    question1Answer: TEMPLATE_CASE_AUTO_INTERMITTENT_0001.question_10_answers.question_1_best_hypothesis.selected_option,
+    question2Answer: TEMPLATE_CASE_AUTO_INTERMITTENT_0001.question_10_answers.question_2_best_next_step.selected_option,
+    question3Answer:
+      TEMPLATE_CASE_AUTO_INTERMITTENT_0001.question_10_answers.question_3_verification_and_multifault_workflow
+        .selected_option,
+    sharedElectricalTreatedAsStrongCommonCause: true,
+    ckpRetainedAsPossibleSeparateFault: true,
+    scanEvidencePreservedBeforeClearing: true,
+    safetyAssessedAndRunningBatteryDisconnectProhibited: true,
+    exactVehicleConfigAndOemSchematicRequired: true,
+    specBasedElectricalTestsBeforePartsReplacement: true,
+    onlyDemonstratedFaultsRepaired: true,
+    allOriginalSymptomsReassessedAndRemainingCkpInvestigatedIndependently: true,
+    partialResolutionStateUsedUntilAllFaultsVerified: "partially_resolved_open_fault_remaining",
+  };
+}
+
+export function buildQuestion10IntermittentElectricalCkpReport(_question: string): string {
+  const c = TEMPLATE_CASE_AUTO_INTERMITTENT_0001;
+  const q1 = c.question_10_answers.question_1_best_hypothesis;
+  const q2 = c.question_10_answers.question_2_best_next_step;
+  const q3 = c.question_10_answers.question_3_verification_and_multifault_workflow;
+
+  const hypRows = q1.competing_hypotheses
+    .map(
+      (h) =>
+        `| **Rank ${h.rank} (\`${h.id}\`)** | \`${h.epistemic_state}\` (\`${(h.prior_probability * 100).toFixed(0)}%\`) | **${h.hypothesis}** | ${h.causal_mechanism} |`,
+    )
+    .join("\n");
+
+  const q1RejectedRows = q1.rejected_options
+    .map((r) => `- **Why Option ${r.option} is rejected:** ${r.reason_rejected}`)
+    .join("\n");
+
+  const q2RejectedRows = q2.rejected_options
+    .map((r) => `- **Why Option ${r.option} is rejected:** ${r.reason_rejected}`)
+    .join("\n");
+
+  const q3ProtocolRows = q3.verification_protocol
+    .map(
+      (p) =>
+        `| **Step ${p.step}** | **${p.phase}** | ${p.action} | ${p.pass_criterion} |`,
+    )
+    .join("\n");
+
+  const q3RejectedRows = q3.rejected_options
+    .map((r) => `- **Why Option ${r.option} is rejected:** ${r.reason_rejected}`)
+    .join("\n");
+
+  return [
+    `# Noctis Diagnostic Response — Question 10 (\`AUTO-INTERMITTENT-0001\` / \`AUTO-MULTIFAULT-0002\`)`,
+    `**Executive Summary of Noctis Answers:**\n- **Question 1 (Best Hypothesis):** **${q1.statement}**\n- **Question 2 (Best Next Step):** **${q2.statement}**\n- **Question 3 (Multi-Fault Verification & Repair Workflow):** **${q3.statement}**`,
+    `---`,
+    `## Question 1 — Best Hypothesis: **Option ${q1.selected_option}**\n**Noctis Selection:** **${q1.statement}**\n\n### 1A. Diagnostic Accuracy & Competing Hypotheses (\`confirmed_root_cause = null\` Before Testing)\nNoctis does **not** treat \`P0335\` or an intermittent stall as automatic proof of a failed Crankshaft Position (\`CKP\`) sensor, nor does it assume that an electrical glitch guarantees the CKP circuit is healthy. Instead, Noctis initializes three explicit competing hypotheses and tracks their epistemic state:\n\n| Priority & ID | Initial Epistemic State & Prior | Competing Hypothesis | Electrical & Physical Causal Mechanism |\n| :--- | :--- | :--- | :--- |\n${hypRows}\n\n### 1B. Electrical & Causal Reasoning (Why Common-Cause Leads, Why Separate CKP Remains Active)\n1. **Why Shared Power/Charging/Ground is the Primary Common-Cause Candidate (\`strong_candidate\`):**\n   - A 3-wire Hall-effect CKP sensor (or ECM conditioning circuit for a 2-wire inductive CKP) depends directly on a clean \`5.0V\` (or \`12V\`) reference, a stable sensor ground return (\`SGND\`), and clean engine-block-to-chassis-to-battery negative grounding (\`G101/G102\`).\n   - An intermittent high-resistance engine ground strap, loose/corroded battery terminal, failing main ECM relay contact, or alternator voltage/AC-ripple transient produces a momentary voltage sag or ground offset (\`> 0.20V–0.50V\`). That single electrical event simultaneously disrupts module power/communication (causing instrument cluster flicker, module resets, \`U0100\`, or \`P0562\`) **and** pulls the CKP signal out of its valid threshold window (setting \`P0335\` and causing an intermittent stumble or crank/run stall).\n2. **Why the CKP Circuit Must Be Retained as a Possible Separate Fault (\`possible_cause\`):**\n   - **Bidirectional Cause-and-Effect Ambiguity:** If an independent CKP circuit fault (corroded CKP connector pin, spread terminal, chafed signal wire, or thermally failing CKP pickup) causes the engine to stall (\`0 RPM\`) while the ignition remains ON, alternator output immediately collapses from \`~14.2V\` to battery resting voltage (\`~12.2V\`) and warning lights illuminate as a *downstream effect* of the stall.\n   - **Multi-Fault Coexistence:** Even when a shared ground or charging fault is confirmed, a vehicle can simultaneously harbor a corroded or oil-contaminated CKP connector or failing CKP sensor. Therefore, Noctis retains the CKP circuit as an active competing hypothesis until post-repair testing separates the two.\n\n### 1C. Why Alternative Options Are Rejected\n${q1RejectedRows}`,
+    `---`,
+    `## Question 2 — Best Next Step: **Option ${q2.selected_option}**\n**Noctis Selection:** **${q2.statement}**\n\n### 2A. Ordered Diagnostic Test Plan & Evidence Quality\n${q2.ordered_diagnostic_steps.join("\n\n")}\n\n### 2B. Discriminating Electrical & Oscilloscope Measurements\n| Test Step | Measurement Point & Method | Expected OEM / Engineering Baseline | Diagnostic Separation Power |\n| :--- | :--- | :--- | :--- |\n| **1. Freeze-Frame & Scan Snapshot** | Record all DTCs (\`P0335\`, network/voltage codes), freeze-frame \`RPM\`, load, \`ECT\`, and **ECM Battery Voltage PID** before clearing codes | Freeze-frame voltage \`13.5V–14.5V\` vs. \`< 10.5V\` during fault | If freeze-frame recorded \`8.9V\` when \`P0335\` set, a supply/ground drop occurred at the moment of failure. |\n| **2. Battery & Charging Ripple Test** | DMM / scope at battery posts (battery connected): resting voltage, cranking voltage, running voltage, and diode AC ripple | Resting \`>= 12.4V\`; cranking \`>= 9.6V\`; running \`13.5V–14.7V\`; AC ripple \`< 50 mV AC\` | Excessive AC ripple (\`> 100 mV AC\`) or regulator spikes corrupt CKP waveforms and module communication simultaneously. |\n| **3. Loaded Voltage-Drop Test** | DMM across battery \`(-)\` to engine block, battery \`(-)\` to ECM ground, and battery \`(+)\` to ECM \`B+\` under load + wiggle test | Ground drop \`<= 0.10V\` running (\`<= 0.20V\` cranking); ECM \`SGND\` drop \`<= 0.05V\`; \`B+\` drop \`<= 0.20V\` | A spike \`> 0.20V–0.50V\` during load or harness wiggle proves a shared high-resistance power or ground fault. |\n| **4. Dual-Channel Scope (Power/Ground vs. CKP)** | Ch 1: ECM/CKP \`5V ref\` or ground reference; Ch 2: backprobed CKP \`SIG\` pin during cranking/running/wiggle | Clean square-wave (\`0V–5V\` Hall) or sine-wave (\`>= 0.5V–1.0Vpp\` inductive) with stable \`5.00V\` ref | **Case A:** Ch 1 and Ch 2 drop together $\\rightarrow$ shared power/ground fault confirmed. **Case B:** Ch 1 stays steady at \`5.00V\` while Ch 2 drops out $\\rightarrow$ local CKP circuit/sensor fault confirmed. |\n\n### 2C. Safety & Uncertainty Handling\n${q2.safety_and_uncertainty_rules.map((r, i) => `${i + 1}. ${r}`).join("\n")}\n\n### 2D. Why Alternative Options Are Rejected\n${q2RejectedRows}`,
+    `---`,
+    `## Question 3 — Multi-Fault Detection & Repair Verification: **Option ${q3.selected_option}**\n**Noctis Selection:** **${q3.statement}**\n\n### 3A. 5-Stage Multi-Fault Verification & Independent CKP Reassessment Protocol\n| Stage | Diagnostic Phase | Deterministic Action | Mandatory Pass / Verification Criterion |\n| :---: | :--- | :--- | :--- |\n${q3ProtocolRows}\n\n### 3B. Multi-Fault Closure Rule (\`partially_resolved_open_fault_remaining\` $\\rightarrow$ \`confirmed_cause\`)\n- **No Premature Closure:** ${q3.closure_gate}\n- **Why Independent Reassessment Is Mandatory:** If cleaning/replacing a corroded engine ground strap eliminates the voltage drop and dashboard/communication symptoms, Noctis transitions the shared electrical fault to \`confirmed_cause\` (resolved), **but holds the overall session in \`partially_resolved_open_fault_remaining\`** until the CKP circuit passes a dedicated post-repair cranking/running oscilloscope waveform test, harness wiggle test, heat-soak check, and road/load validation with \`P0335\` confirmed clear.\n- **If \`P0335\` or CKP Signal Dropouts Persist After the Electrical Fix:** Noctis immediately escalates **Hypothesis 2 (\`HYP-Q10-02\`)** and performs terminal inspection, pin-tension check, harness continuity/short testing, and sensor/air-gap verification on the CKP branch before recommending CKP sensor replacement.\n\n### 3C. Why Alternative Options Are Rejected\n${q3RejectedRows}`,
+  ].join("\n\n");
+}
+
 export function automotiveDiagnosticGadget(question: string): string | null {
   const q = question.toLowerCase();
+
+  const asksQuestion10IntermittentElectricalCkp =
+    /\b(auto-intermittent-0001|auto-multifault-0002|question\s+10\b|intermittent\s+power,\s+charging,\s+or\s+ground\s+fault\s+as\s+a\s+strong\s+common-cause\s+hypothesis|retaining\s+the\s+ckp\s+circuit\s+as\s+a\s+possible\s+separate\s+fault|test\s+the\s+shared\s+electrical\s+hypothesis,\s+repair\s+only\s+demonstrated\s+faults|investigate\s+any\s+remaining\s+ckp\s+fault\s+independently)\b/i.test(
+      q,
+    ) ||
+    (/\b(p0335|crankshaft\s+position|ckp)\b/i.test(q) &&
+      /\b(u0100|p0562|flickering|charging|alternator|shared\s+electrical|common[-\s]cause|intermittent\s+power|ground\s+fault)\b/i.test(
+        q,
+      ) &&
+      !/\b(auto-diag-ckp-001|question\s+7\b)\b/i.test(q));
+
+  if (asksQuestion10IntermittentElectricalCkp) {
+    return buildQuestion10IntermittentElectricalCkpReport(question);
+  }
 
   const asksMultiFaultQuestion9 =
     /\b(auto-multifault-0001|auto-misfire-0003|question\s+9[\s\S]{0,160}\b(?:ltft|u0100|p0171|flickering|best\s+hypothesis)|ltft\s*\+?22%[\s\S]{0,120}\b2,?500\s*rpm|p0171[\s\S]{0,160}\bu0100|u0100[\s\S]{0,160}\bp0171|flickering\s+dashboard[\s\S]{0,120}\bu0100)\b/i.test(
@@ -2872,3 +3194,4 @@ export function automotiveDiagnosticGadget(question: string): string | null {
   if (!asksAutomotiveTrainingOrSpec && !asksLiveCarDiagnosis) return null;
   return buildAutomotiveDiagnosticIntelligenceReport(question);
 }
+

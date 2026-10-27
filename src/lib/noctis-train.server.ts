@@ -33,6 +33,7 @@ import {
   buildCrankNoStartTrainingModuleReport,
   buildMisfireUnderLoadCase0002Report,
   buildMultiFaultQuestion9Report,
+  buildQuestion10IntermittentElectricalCkpReport,
 } from "./noctis-automotive-engine.ts";
 
 export type TrainingPair = {
@@ -279,6 +280,14 @@ const OWASP_SEED_CORPUS: TrainingPair[] = [
     model: "vibe-seed",
     hits: 30,
     at: "2026-10-26T21:05:00.000Z",
+  },
+  {
+    question: "Question 10 — Treat an intermittent power, charging, or ground fault as a strong common-cause hypothesis, while retaining the CKP circuit as a possible separate fault. AUTO-INTERMITTENT-0001 AUTO-MULTIFAULT-0002 P0335 U0100",
+    answer: buildQuestion10IntermittentElectricalCkpReport("Question 10 AUTO-INTERMITTENT-0001 AUTO-MULTIFAULT-0002 intermittent power charging or ground fault CKP circuit P0335"),
+    domain: "engineering",
+    model: "vibe-seed",
+    hits: 30,
+    at: "2026-10-26T21:15:00.000Z",
   },
 ];
 

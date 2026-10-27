@@ -2952,5 +2952,40 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
     assert.match(q9Out, /Option B/);
     assert.match(q9Out, /NEVER disconnect the battery while the engine is running/);
     assert.match(q9Out, /partially_resolved_open_fault_remaining/);
+
+    // Verify Question 10 — Intermittent Shared Electrical/Ground + CKP Multi-Fault Diagnosis (AUTO-INTERMITTENT-0001 / AUTO-MULTIFAULT-0002)
+    const {
+      TEMPLATE_CASE_AUTO_INTERMITTENT_0001,
+      verifyQuestion10IntermittentElectricalCkp,
+    } = await import("./noctis-automotive-engine.ts");
+
+    assert.equal(TEMPLATE_CASE_AUTO_INTERMITTENT_0001.case_id, "AUTO-INTERMITTENT-0001");
+    assert.equal(TEMPLATE_CASE_AUTO_INTERMITTENT_0001.alias_id, "AUTO-MULTIFAULT-0002");
+
+    const q10Eval = verifyQuestion10IntermittentElectricalCkp();
+    assert.equal(q10Eval.question1Answer, "C");
+    assert.equal(q10Eval.question2Answer, "B");
+    assert.equal(q10Eval.question3Answer, "C");
+    assert.equal(q10Eval.sharedElectricalTreatedAsStrongCommonCause, true);
+    assert.equal(q10Eval.ckpRetainedAsPossibleSeparateFault, true);
+    assert.equal(q10Eval.scanEvidencePreservedBeforeClearing, true);
+    assert.equal(q10Eval.safetyAssessedAndRunningBatteryDisconnectProhibited, true);
+    assert.equal(q10Eval.exactVehicleConfigAndOemSchematicRequired, true);
+    assert.equal(q10Eval.specBasedElectricalTestsBeforePartsReplacement, true);
+    assert.equal(q10Eval.onlyDemonstratedFaultsRepaired, true);
+    assert.equal(q10Eval.allOriginalSymptomsReassessedAndRemainingCkpInvestigatedIndependently, true);
+    assert.equal(q10Eval.partialResolutionStateUsedUntilAllFaultsVerified, "partially_resolved_open_fault_remaining");
+
+    const q10Out = automotiveDiagnosticGadget(
+      "Question 10 intermittent power, charging, or ground fault as a strong common-cause hypothesis while retaining the CKP circuit as a possible separate fault P0335 U0100",
+    );
+    assert.ok(q10Out);
+    assert.match(q10Out, /Question 1 — Best Hypothesis: \*\*Option C\*\*/);
+    assert.match(q10Out, /Question 2 — Best Next Step: \*\*Option B\*\*/);
+    assert.match(q10Out, /Question 3 — Multi-Fault Detection & Repair Verification: \*\*Option C\*\*/);
+    assert.doesNotMatch(q10Out, /noctis-dashboard/);
+    assert.match(q10Out, /NEVER disconnect a battery cable while the engine is running/);
+    assert.match(q10Out, /partially_resolved_open_fault_remaining/);
   });
 });
+
