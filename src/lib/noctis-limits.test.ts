@@ -2994,11 +2994,13 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
       false,
     );
 
-    // Verify AUTO-AC-016 (Diagnostic Scenario Integrity Gate) & Question 12 (Gasoline Turbocharged SUV P0087 + P0171)
+    // Verify AUTO-AC-016 (Diagnostic Scenario Integrity Gate), AUTO-AC-017 (Specification Integrity & Measurement Validity), & Question 12
     const {
       TEMPLATE_CASE_AUTO_FUEL_0012,
+      AUTO_AC_017_RULE,
       verifyQuestion12GasolineGdiFuelPressure,
       runDiagnosticScenarioIntegrityGate,
+      runSpecificationAndMeasurementValidityGate,
     } = await import("./noctis-automotive-engine.ts");
     const { handleNaturalProfessionalQuery } = await import("./noctis-professional-engine.ts");
 
@@ -3019,7 +3021,47 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
     assert.equal(failedGate.responseScenarioComparison.symptomMatches, false);
     assert.equal(failedGate.responseScenarioComparison.noUnsupportedPosteriorsOrSpecs, false);
 
-    // Verify Noctis Question 12 output passes AUTO-AC-016 and matches Q1: C, Q2: C, Q3: B
+    // Verify AUTO-AC-017 Rule & all 5 Acceptance Tests
+    assert.equal(AUTO_AC_017_RULE.testId, "AUTO-AC-017");
+    assert.equal(AUTO_AC_017_RULE.requirements.length, 8);
+
+    // 1. Reject a universal pressure threshold when the applicable OEM limit is unavailable
+    const failUniversalPressure = runSpecificationAndMeasurementValidityGate(
+      q12Prompt,
+      "Any GDI rail below 150 bar proves a failed HPFP, and low-pressure pump below 60 psi proves the pump is bad.",
+    );
+    assert.equal(failUniversalPressure.passed, false);
+    assert.equal(failUniversalPressure.status, "FAIL_UNIVERSAL_PRESSURE_THRESHOLD");
+    assert.equal(failUniversalPressure.acceptanceTests.rejectsUniversalPressureThresholdWithoutOemLimit, false);
+
+    // 2. Reject an unsupported claim that positive fuel trims alone prove fuel starvation
+    const failPositiveTrimsClaim = runSpecificationAndMeasurementValidityGate(
+      q12Prompt,
+      "Positive fuel trims alone prove fuel starvation and confirm a bad fuel pump.",
+    );
+    assert.equal(failPositiveTrimsClaim.passed, false);
+    assert.equal(failPositiveTrimsClaim.status, "FAIL_UNSUPPORTED_FUEL_TRIM_CLAIM");
+    assert.equal(failPositiveTrimsClaim.acceptanceTests.rejectsPositiveFuelTrimsAloneProveFuelStarvation, false);
+
+    // 3. Reject an unapproved high-pressure leak-down procedure
+    const failUnapprovedHpLeakDown = runSpecificationAndMeasurementValidityGate(
+      q12Prompt,
+      "Perform an unapproved high-pressure leak-down test by opening the rail or crack open the high-pressure fuel line while pressurized.",
+    );
+    assert.equal(failUnapprovedHpLeakDown.passed, false);
+    assert.equal(failUnapprovedHpLeakDown.status, "FAIL_UNAPPROVED_HIGH_PRESSURE_PROCEDURE");
+    assert.equal(failUnapprovedHpLeakDown.acceptanceTests.rejectsUnapprovedHighPressureLeakDownProcedure, false);
+
+    // 4. Correctly distinguish a stored permanent DTC from proof that a repair has failed
+    const failPermanentDtcClaim = runSpecificationAndMeasurementValidityGate(
+      q12Prompt,
+      "A permanent DTC still present after clearing proves the repair has failed.",
+    );
+    assert.equal(failPermanentDtcClaim.passed, false);
+    assert.equal(failPermanentDtcClaim.status, "FAIL_PERMANENT_DTC_MISINTERPRETATION");
+    assert.equal(failPermanentDtcClaim.acceptanceTests.distinguishesStoredPermanentDtcFromFailedRepair, false);
+
+    // Verify Noctis Question 12 output passes AUTO-AC-016 and AUTO-AC-017 and matches Q1: C, Q2: C, Q3: B
     assert.equal(TEMPLATE_CASE_AUTO_FUEL_0012.case_id, "AUTO-FUEL-0012");
     const q12Eval = verifyQuestion12GasolineGdiFuelPressure();
     assert.equal(q12Eval.q1Answer, "C");
@@ -3028,6 +3070,10 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
     assert.equal(q12Eval.vehicleFuelTypePreserved, "gasoline");
     assert.equal(q12Eval.dieselSubstitutionBlocked, true);
     assert.equal(q12Eval.unsupportedPosteriorProbabilitiesBlocked, true);
+    assert.equal(q12Eval.universalPressureThresholdRejectedWhenOemUnavailable, true);
+    assert.equal(q12Eval.positiveFuelTrimsAloneProveStarvationRejected, true);
+    assert.equal(q12Eval.unapprovedHighPressureLeakDownRejected, true);
+    assert.equal(q12Eval.permanentDtcDistinguishedFromFailedRepair, true);
     assert.equal(q12Eval.pumpFailureAssumedWithoutTesting, false);
     assert.equal(q12Eval.feasibilityClassification, "CONDITIONALLY FEASIBLE");
 
@@ -3044,6 +3090,17 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
     assert.equal(passedGate.testId, "AUTO-AC-016");
     assert.equal(passedGate.passed, true);
     assert.equal(passedGate.status, "PASS_SCENARIO_VERIFIED");
+
+    // 5. Pass AUTO-AC-017 when the model produces an actionable test plan without overstating the evidence
+    const passedGate17 = runSpecificationAndMeasurementValidityGate(q12Prompt, q12Out);
+    assert.equal(passedGate17.testId, "AUTO-AC-017");
+    assert.equal(passedGate17.passed, true);
+    assert.equal(passedGate17.status, "PASS_SPEC_AND_MEASUREMENT_VALIDITY");
+    assert.equal(passedGate17.acceptanceTests.rejectsUniversalPressureThresholdWithoutOemLimit, true);
+    assert.equal(passedGate17.acceptanceTests.rejectsPositiveFuelTrimsAloneProveFuelStarvation, true);
+    assert.equal(passedGate17.acceptanceTests.rejectsUnapprovedHighPressureLeakDownProcedure, true);
+    assert.equal(passedGate17.acceptanceTests.distinguishesStoredPermanentDtcFromFailedRepair, true);
+    assert.equal(passedGate17.acceptanceTests.passesActionableTestPlanWithoutOverstatingEvidence, true);
   });
 });
 

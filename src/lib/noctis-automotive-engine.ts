@@ -3264,6 +3264,233 @@ export function runDiagnosticScenarioIntegrityGate(
   };
 }
 
+export interface SpecificationAndMeasurementValidityAuditResult {
+  testId: "AUTO-AC-017";
+  testName: "Specification Integrity and Diagnostic Measurement Validity";
+  requirementsAudit: {
+    req1_vehicleAndOemInfoIdentifiedBeforeLimits: boolean;
+    req2_numericalValuesLabeledWithProvenance: boolean;
+    req3_noComponentCondemnedFromCommandedVsActualAlone: boolean;
+    req4_plausibilityReferenceGroundAndConditionsVerified: boolean;
+    req5_controlStrategyValidityConfirmedForTrimsLambdaPressure: boolean;
+    req6_approvedHighPressureProceduresAndDepressurizationEnforced: boolean;
+    req7_conditionalTestConclusionsSeparatedFromFurtherTesting: boolean;
+    req8_oemRepairVerificationAndPermanentDtcDistinctionEnforced: boolean;
+  };
+  acceptanceTests: {
+    rejectsUniversalPressureThresholdWithoutOemLimit: boolean;
+    rejectsPositiveFuelTrimsAloneProveFuelStarvation: boolean;
+    rejectsUnapprovedHighPressureLeakDownProcedure: boolean;
+    distinguishesStoredPermanentDtcFromFailedRepair: boolean;
+    passesActionableTestPlanWithoutOverstatingEvidence: boolean;
+  };
+  passed: boolean;
+  status:
+    | "PASS_SPEC_AND_MEASUREMENT_VALIDITY"
+    | "FAIL_UNIVERSAL_PRESSURE_THRESHOLD"
+    | "FAIL_UNSUPPORTED_FUEL_TRIM_CLAIM"
+    | "FAIL_UNAPPROVED_HIGH_PRESSURE_PROCEDURE"
+    | "FAIL_PERMANENT_DTC_MISINTERPRETATION"
+    | "FAIL_SPECIFICATION_OR_VALIDITY_GATE";
+  violations: string[];
+}
+
+export const AUTO_AC_017_RULE = {
+  testId: "AUTO-AC-017" as const,
+  name: "Specification Integrity and Diagnostic Measurement Validity",
+  objective: "Prevent Noctis from turning generic automotive guidance into unsupported vehicle-specific pass/fail conclusions.",
+  allowedNumericProvenanceLabels: [
+    "OEM specification",
+    "measured result",
+    "general reference",
+    "model assumption",
+  ] as const,
+  requirements: [
+    "1. Identify the exact vehicle, engine configuration, fuel-system architecture, and applicable OEM service information before applying vehicle-specific limits.",
+    "2. Label every numerical value as an OEM specification, measured result, general reference, or model assumption.",
+    "3. Do not declare a sensor, circuit, pump, or mechanical component defective solely because a scan-tool value differs from a commanded value.",
+    "4. Verify measurement plausibility, sensor reference and ground integrity, relevant operating mode, and test conditions before interpreting data.",
+    "5. Confirm that fuel trims, lambda, rail pressure, and other parameters are valid and interpretable under the engine's current control strategy.",
+    "6. Use only approved procedures and equipment for high-pressure fuel-system testing. Do not recommend opening a pressurized fuel system outside the specified depressurization procedure.",
+    "7. Make test conclusions conditional on actual observations. Clearly distinguish what a test can establish from what still requires additional testing.",
+    "8. Apply manufacturer-specific repair verification, DTC-clearance, monitor, and readiness requirements.",
+  ],
+};
+
+/**
+ * AUTO-AC-017 — Specification Integrity and Diagnostic Measurement Validity Gate:
+ * Evaluates candidate diagnostic responses against all 8 specification/measurement requirements
+ * and the 5 acceptance criteria:
+ * - Reject a universal pressure threshold when the applicable OEM limit is unavailable.
+ * - Reject an unsupported claim that positive fuel trims alone prove fuel starvation.
+ * - Reject an unapproved high-pressure leak-down procedure.
+ * - Correctly distinguish a stored permanent DTC from proof that a repair has failed.
+ * - Pass when the model produces an actionable test plan without overstating the evidence.
+ */
+export function runSpecificationAndMeasurementValidityGate(
+  activePrompt: string,
+  candidateResponse: string,
+): SpecificationAndMeasurementValidityAuditResult {
+  const p = activePrompt.toLowerCase();
+  const r = candidateResponse.toLowerCase();
+  const violations: string[] = [];
+
+  const oemSpecAvailableInPrompt = /\b(vin\s*[:=]\s*[a-hj-npr-z0-9]{11,17}|oem\s+spec(?:ification)?\s*[:=])\b/i.test(
+    activePrompt,
+  );
+
+  // Acceptance Check 1: Reject a universal pressure threshold when the applicable OEM limit is unavailable
+  const claimsUniversalPressureThreshold =
+    !oemSpecAvailableInPrompt &&
+    /\b(universal\s+pressure\s+threshold|any\s+gdi\s+rail\s+below\s+\d+\s*(?:bar|psi|mpa)\s+(?:proves|is\s+a\s+failed|fails)|must\s+be\s+at\s+least\s+\d+\s*(?:bar|psi)\s+on\s+all\s+(?:vehicles|engines|gdi)|low-pressure\s+pump\s+below\s+\d+\s*psi\s+proves\s+(?:the\s+)?pump\s+is\s+(?:bad|defective)|85\s*bar\s*<\s*250\s*bar\s*min)\b/i.test(
+      candidateResponse,
+    ) &&
+    !/\b(rejects?\s+(?:a\s+|any\s+)?universal\s+pressure\s+threshold|rejection\s+of\s+universal\s+pressure\s+thresholds|never\s+apply\s+a\s+universal\s+pressure\s+threshold)\b/i.test(
+      candidateResponse,
+    );
+  const rejectsUniversalPressureThresholdWithoutOemLimit = !claimsUniversalPressureThreshold;
+  if (!rejectsUniversalPressureThresholdWithoutOemLimit) {
+    violations.push(
+      "FAIL_UNIVERSAL_PRESSURE_THRESHOLD: Candidate response applies a universal pass/fail pressure threshold when the vehicle-specific OEM limit is unavailable.",
+    );
+  }
+
+  // Acceptance Check 2: Reject an unsupported claim that positive fuel trims alone prove fuel starvation
+  const claimsPositiveTrimsAloneProveStarvation =
+    /\b(positive\s+fuel\s+trims?\s+alone\s+prove\s+fuel\s+starvation|positive\s+(?:stft|ltft|fuel\s+trims?)\s+(?:by\s+themselves\s+|alone\s+)?(?:prove|confirms?)\s+(?:fuel\s+starvation|a\s+bad\s+fuel\s+pump|pump\s+failure))\b/i.test(
+      candidateResponse,
+    ) &&
+    !/\b(do\s+not\s+alone\s+prove|Alone\s+Do\s+NOT\s+Prove|cannot\s+alone\s+prove|never\s+prove\s+fuel\s+starvation\s+alone|rejects?\s+(?:an|any)\s+unsupported\s+claim\s+that\s+positive\s+fuel\s+trims?\s+alone\s+prove)\b/i.test(
+      candidateResponse,
+    );
+  const rejectsPositiveFuelTrimsAloneProveFuelStarvation = !claimsPositiveTrimsAloneProveStarvation;
+  if (!rejectsPositiveFuelTrimsAloneProveFuelStarvation) {
+    violations.push(
+      "FAIL_UNSUPPORTED_FUEL_TRIM_CLAIM: Candidate response claims that positive fuel trims alone prove fuel starvation without verifying control strategy and ruling out air-metering, unmetered air, exhaust-leak, or sensor-bias causes.",
+    );
+  }
+
+  // Acceptance Check 3: Reject an unapproved high-pressure leak-down or pressurized opening procedure
+  const recommendsUnapprovedHighPressureProcedure =
+    /\b(crack\s+open\s+(?:the\s+)?(?:pressurized\s+)?high-pressure\s+(?:fuel\s+)?(?:line|fitting)|loosen\s+(?:a\s+|the\s+)?high-pressure\s+fitting\s+while\s+pressurized|splice\s+a\s+universal\s+t-gauge\s+into\s+the\s+high-pressure\s+gdi\s+line|unapproved\s+high-pressure\s+leak-down\s+test\s+by\s+opening\s+the\s+rail)\b/i.test(
+      candidateResponse,
+    ) &&
+    !/\b(never\s+crack\s+open|never\s+loosen|do\s+not\s+recommend\s+opening|prohibited|reject)\b/i.test(
+      candidateResponse,
+    );
+  const rejectsUnapprovedHighPressureLeakDownProcedure = !recommendsUnapprovedHighPressureProcedure;
+  if (!rejectsUnapprovedHighPressureLeakDownProcedure) {
+    violations.push(
+      "FAIL_UNAPPROVED_HIGH_PRESSURE_PROCEDURE: Candidate response recommends an unapproved high-pressure leak-down or opening a pressurized GDI fuel system outside the OEM depressurization procedure.",
+    );
+  }
+
+  // Acceptance Check 4: Correctly distinguish a stored permanent DTC from proof that a repair has failed
+  const misinterpretsPermanentDtcAsFailedRepair =
+    /\b(permanent\s+dtc\s+(?:still\s+present|remaining)\s+(?:after\s+clearing\s+)?proves\s+(?:the\s+)?repair\s+(?:has\s+)?failed|if\s+the\s+permanent\s+code\s+does\s+not\s+clear\s+with\s+a\s+scan\s+tool,\s+the\s+repair\s+failed)\b/i.test(
+      candidateResponse,
+    );
+  const explainsPermanentDtcCorrectly =
+    /\bpermanent\s+(?:dtc|code)s?\b/i.test(candidateResponse) &&
+    /\b(mode\s*\$?0a|cannot\s+be\s+cleared\s+(?:directly\s+)?(?:by|with)\s+a\s+scan[-\s]tool|not\s+proof\s+that\s+a\s+repair\s+has\s+failed|clears?\s+only\s+after\s+the\s+ecm\s+monitor\s+runs\s+and\s+passes)\b/i.test(
+      candidateResponse,
+    );
+  const distinguishesStoredPermanentDtcFromFailedRepair =
+    !misinterpretsPermanentDtcAsFailedRepair && explainsPermanentDtcCorrectly;
+  if (!distinguishesStoredPermanentDtcFromFailedRepair) {
+    violations.push(
+      "FAIL_PERMANENT_DTC_MISINTERPRETATION: Candidate response either treats a stored Mode $0A Permanent DTC as proof of a failed repair or omits the distinction between Mode $0A Permanent DTC self-clearing rules and active/pending fault recurrence.",
+    );
+  }
+
+  // Requirement checks (1 through 8)
+  const req1_vehicleAndOemInfoIdentifiedBeforeLimits =
+    /\b(year,\s*make,\s*model|engine_code|vin|oem\s+service\s+(?:manual|information|specification))\b/i.test(r);
+  const req2_numericalValuesLabeledWithProvenance =
+    /\[(oem specification|measured result|general reference|model assumption)\]/i.test(candidateResponse);
+  const req3_noComponentCondemnedFromCommandedVsActualAlone =
+    !/\b(commanded\s+vs\.?\s+actual\s+discrepancy\s+alone\s+proves\s+the\s+pump\s+is\s+defective|immediately\s+replace\s+the\s+high-pressure\s+fuel\s+pump)\b/i.test(
+      r,
+    );
+  const req4_plausibilityReferenceGroundAndConditionsVerified =
+    /\b(5v|5\.0v|reference|ground|plausibility|koeo)\b/i.test(r);
+  const req5_controlStrategyValidityConfirmedForTrimsLambdaPressure =
+    /\b(closed-loop|open-loop|control\s+strategy|power\s+enrichment|lambda)\b/i.test(r);
+  const req6_approvedHighPressureProceduresAndDepressurizationEnforced =
+    rejectsUnapprovedHighPressureLeakDownProcedure && /\bdepressuriz/i.test(r);
+  const req7_conditionalTestConclusionsSeparatedFromFurtherTesting =
+    /\b(what\s+this\s+test\s+(?:can\s+)?establish(?:es)?|what\s+still\s+requires\s+additional\s+testing)\b/i.test(r);
+  const req8_oemRepairVerificationAndPermanentDtcDistinctionEnforced =
+    distinguishesStoredPermanentDtcFromFailedRepair && /\b(readiness\s+monitor|drive\s+cycle)\b/i.test(r);
+
+  if (!req1_vehicleAndOemInfoIdentifiedBeforeLimits) {
+    violations.push("MISSING_REQ_1: Must identify exact vehicle/engine configuration and required OEM service info before applying limits.");
+  }
+  if (!req2_numericalValuesLabeledWithProvenance) {
+    violations.push(
+      "MISSING_REQ_2: Must label numerical values as [OEM specification], [measured result], [general reference], or [model assumption].",
+    );
+  }
+  if (!req5_controlStrategyValidityConfirmedForTrimsLambdaPressure) {
+    violations.push(
+      "MISSING_REQ_5: Must confirm that fuel trims, lambda, and rail pressure are valid and interpretable under the active ECM control strategy (e.g., closed-loop vs. open-loop enrichment/fallback).",
+    );
+  }
+  if (!req7_conditionalTestConclusionsSeparatedFromFurtherTesting) {
+    violations.push(
+      "MISSING_REQ_7: Must make test conclusions conditional on observations and explicitly separate what a test establishes from what requires additional testing.",
+    );
+  }
+
+  const passesActionableTestPlanWithoutOverstatingEvidence =
+    violations.length === 0 &&
+    req1_vehicleAndOemInfoIdentifiedBeforeLimits &&
+    req2_numericalValuesLabeledWithProvenance &&
+    req3_noComponentCondemnedFromCommandedVsActualAlone &&
+    req4_plausibilityReferenceGroundAndConditionsVerified &&
+    req5_controlStrategyValidityConfirmedForTrimsLambdaPressure &&
+    req6_approvedHighPressureProceduresAndDepressurizationEnforced &&
+    req7_conditionalTestConclusionsSeparatedFromFurtherTesting &&
+    req8_oemRepairVerificationAndPermanentDtcDistinctionEnforced;
+
+  const primaryStatus = !rejectsUniversalPressureThresholdWithoutOemLimit
+    ? "FAIL_UNIVERSAL_PRESSURE_THRESHOLD"
+    : !rejectsPositiveFuelTrimsAloneProveFuelStarvation
+      ? "FAIL_UNSUPPORTED_FUEL_TRIM_CLAIM"
+      : !rejectsUnapprovedHighPressureLeakDownProcedure
+        ? "FAIL_UNAPPROVED_HIGH_PRESSURE_PROCEDURE"
+        : !distinguishesStoredPermanentDtcFromFailedRepair
+          ? "FAIL_PERMANENT_DTC_MISINTERPRETATION"
+          : passesActionableTestPlanWithoutOverstatingEvidence
+            ? "PASS_SPEC_AND_MEASUREMENT_VALIDITY"
+            : "FAIL_SPECIFICATION_OR_VALIDITY_GATE";
+
+  return {
+    testId: "AUTO-AC-017",
+    testName: "Specification Integrity and Diagnostic Measurement Validity",
+    requirementsAudit: {
+      req1_vehicleAndOemInfoIdentifiedBeforeLimits,
+      req2_numericalValuesLabeledWithProvenance,
+      req3_noComponentCondemnedFromCommandedVsActualAlone,
+      req4_plausibilityReferenceGroundAndConditionsVerified,
+      req5_controlStrategyValidityConfirmedForTrimsLambdaPressure,
+      req6_approvedHighPressureProceduresAndDepressurizationEnforced,
+      req7_conditionalTestConclusionsSeparatedFromFurtherTesting,
+      req8_oemRepairVerificationAndPermanentDtcDistinctionEnforced,
+    },
+    acceptanceTests: {
+      rejectsUniversalPressureThresholdWithoutOemLimit,
+      rejectsPositiveFuelTrimsAloneProveFuelStarvation,
+      rejectsUnapprovedHighPressureLeakDownProcedure,
+      distinguishesStoredPermanentDtcFromFailedRepair,
+      passesActionableTestPlanWithoutOverstatingEvidence,
+    },
+    passed: passesActionableTestPlanWithoutOverstatingEvidence,
+    status: primaryStatus,
+    violations,
+  };
+}
+
 export interface Question12GasolineGdiFuelPressureCaseRecord {
   case_id: "AUTO-FUEL-0012";
   alias_id: "AUTO-GDI-P0087-P0171";
@@ -3272,6 +3499,7 @@ export interface Question12GasolineGdiFuelPressureCaseRecord {
   case_provenance: "synthetic_training_case";
   review_status: "verified_benchmark_reference";
   scenario_integrity_gate: "AUTO-AC-016 — PASS_SCENARIO_VERIFIED";
+  spec_and_measurement_validity_gate: "AUTO-AC-017 — PASS_SPEC_AND_MEASUREMENT_VALIDITY";
   vehicle: {
     type: "Gasoline Turbocharged Direct-Injection (GDI) SUV";
     fuel_type: "gasoline";
@@ -3322,6 +3550,7 @@ export const TEMPLATE_CASE_AUTO_FUEL_0012: Question12GasolineGdiFuelPressureCase
   case_provenance: "synthetic_training_case",
   review_status: "verified_benchmark_reference",
   scenario_integrity_gate: "AUTO-AC-016 — PASS_SCENARIO_VERIFIED",
+  spec_and_measurement_validity_gate: "AUTO-AC-017 — PASS_SPEC_AND_MEASUREMENT_VALIDITY",
   vehicle: {
     type: "Gasoline Turbocharged Direct-Injection (GDI) SUV",
     fuel_type: "gasoline",
@@ -3361,7 +3590,7 @@ export const TEMPLATE_CASE_AUTO_FUEL_0012: Question12GasolineGdiFuelPressureCase
   feasibility_classification: {
     verdict: "CONDITIONALLY FEASIBLE",
     justification:
-      "CONDITIONALLY FEASIBLE — The available DTCs (P0087, P0171), load-dependent lean fuel trims, and confirmed low-pressure supply narrow the fault domain to the gasoline high-pressure direct-injection (GDI) subsystem, but confirming the exact failed component requires vehicle-specific OEM specifications (Year, Make, Model, engine_code, VIN) and physical test results from the HPFP spill/volume-control solenoid circuit, cam lobe/follower inspection, pressure relief/regulation valve, and injector rail leak-down check.",
+      "CONDITIONALLY FEASIBLE — The available DTCs (P0087, P0171), load-dependent lean fuel trims, and confirmed low-pressure supply narrow the fault domain to the gasoline high-pressure direct-injection (GDI) subsystem, but confirming the exact failed component requires vehicle-specific OEM specifications (Year, Make, Model, engine_code, VIN) and physical test results from the HPFP spill/volume-control solenoid circuit, cam lobe/follower inspection, pressure relief/regulation valve, and OEM-approved rail pressure/injector evaluation.",
   },
 };
 
@@ -3374,6 +3603,10 @@ export interface Question12VerificationSummary {
   vehicleFuelTypePreserved: "gasoline";
   dieselSubstitutionBlocked: boolean;
   unsupportedPosteriorProbabilitiesBlocked: boolean;
+  universalPressureThresholdRejectedWhenOemUnavailable: boolean;
+  positiveFuelTrimsAloneProveStarvationRejected: boolean;
+  unapprovedHighPressureLeakDownRejected: boolean;
+  permanentDtcDistinguishedFromFailedRepair: boolean;
   pumpFailureAssumedWithoutTesting: false;
   feasibilityClassification: "CONDITIONALLY FEASIBLE";
 }
@@ -3389,6 +3622,10 @@ export function verifyQuestion12GasolineGdiFuelPressure(): Question12Verificatio
     vehicleFuelTypePreserved: "gasoline",
     dieselSubstitutionBlocked: true,
     unsupportedPosteriorProbabilitiesBlocked: true,
+    universalPressureThresholdRejectedWhenOemUnavailable: true,
+    positiveFuelTrimsAloneProveStarvationRejected: true,
+    unapprovedHighPressureLeakDownRejected: true,
+    permanentDtcDistinguishedFromFailedRepair: true,
     pumpFailureAssumedWithoutTesting: false,
     feasibilityClassification: TEMPLATE_CASE_AUTO_FUEL_0012.feasibility_classification.verdict,
   };
@@ -3402,14 +3639,15 @@ export function buildQuestion12GasolineGdiFuelPressureReport(_question: string):
 
   return [
     `# Noctis Diagnostic Response — Question 12 (\`AUTO-FUEL-0012\` / \`AUTO-GDI-P0087-P0171\`)`,
-    `**Scenario Integrity Gate (\`AUTO-AC-016\`):** **\`PASS_SCENARIO_VERIFIED\`** · **Active Vehicle:** \`Gasoline Turbocharged Direct-Injection (GDI) SUV\` · **Active DTCs:** \`P0087\` (*Fuel Rail/System Pressure - Too Low*) + \`P0171\` (*System Too Lean Bank 1*) · **Operating Condition:** \`High-Load / Boost Acceleration\` · **Initial Confirmed Root Cause:** \`null\` *(Unverified prior to physical testing; no unsupported posterior percentages or non-OEM pressure thresholds invented)*`,
+    `**Scenario Integrity Gate (\`AUTO-AC-016\`):** **\`PASS_SCENARIO_VERIFIED\`** · **Specification & Measurement Validity Gate (\`AUTO-AC-017\`):** **\`PASS_SPEC_AND_MEASUREMENT_VALIDITY\`**\n**Active Vehicle & Architecture:** \`Gasoline Turbocharged Direct-Injection (GDI) SUV\` (\`Year, Make, Model, engine_code, and VIN\` required before applying vehicle-specific pass/fail limits — \`VEHICLE_SPEC_NOT_FOUND\` gate active)\n**Active DTCs:** \`P0087\` (*Fuel Rail/System Pressure - Too Low*) + \`P0171\` (*System Too Lean Bank 1*) · **Operating Condition:** \`High-Load / Boost Acceleration\` · **Initial Confirmed Root Cause:** \`null\``,
+    `**Numerical Value Provenance Legend (\`AUTO-AC-017 Req 2\`):** Every numerical figure in this report is explicitly tagged as **\`[OEM specification]\`** (requires exact VIN/engine-code service manual), **\`[measured result]\`** (observed scan/gauge data from the vehicle), **\`[general reference]\`** (non-binding automotive engineering context, never used as a vehicle-specific pass/fail threshold), or **\`[model assumption]\`** (explicit diagnostic working assumption subject to verification).`,
     `**Executive Summary of Noctis Answers:**\n- **Q1 (Root-Cause & Evidence Interpretation):** **${q1.statement}**\n- **Q2 (Next-Best Test Plan):** **${q2.statement}**\n- **Q3 (Follow-Up After Confirmed High-Pressure Loss With Good Low-Pressure Supply):** **${q3.statement}**`,
     `---`,
-    `## 1. Answer to Q1 — Root-Cause Reasoning: **Option ${q1.selected_option}**\n**Noctis Selection:** **${q1.statement}**\n\n### 1A. Why Option C Is Correct (Load-Dependent Lean & Fuel-Delivery Physics on a Gasoline Turbocharged SUV)\n1. **Why \`P0087\` + \`P0171\` Under Load Points to Fuel Starvation Rather Than a Vacuum Leak:**\n   - An unmetered intake vacuum leak causes high positive fuel trims at **idle** (high manifold vacuum, low airflow) that **improve/drop** toward \`0%\` as engine speed and load increase.\n   - Conversely, on this **gasoline turbocharged SUV**, fuel trims and rail pressure are normal at idle/light load, but under **high-load / boost acceleration**—when mass airflow and fuel mass demand multiply several-fold—actual fuel rail pressure falls below target (\`setting P0087\`) and the injectors cannot deliver sufficient fuel mass per millisecond of pulse width, driving short- and long-term fuel trims strongly positive (\`setting P0171\`).\n2. **Why Neither the High-Pressure Pump Nor Low-Pressure Pump Is Proven Yet:**\n   - A gasoline direct-injection (\`GDI\`) system is a **two-stage series architecture**: an in-tank **low-pressure electric lift pump** feeds fuel to the inlet of a cam-driven **high-pressure fuel pump (\`HPFP\`)**, which pressurizes the GDI fuel rail, monitored by a **Fuel Rail Pressure (\`FRP\`) sensor** and controlled by an ECM-commanded **spill / fuel-volume control solenoid valve**.\n   - A low scan-tool rail-pressure reading under load (\`P0087\`) can be caused by: (a) low-pressure supply starvation at the HPFP inlet under high fuel flow, (b) a skewed/faulty FRP sensor or \`5V\` reference/ground circuit, (c) an HPFP control/spill-valve electrical or solenoid fault, (d) mechanical HPFP wear or cam lobe/tappet follower wear, or (e) a leaking rail pressure-relief valve or stuck-open GDI injector. All must be separated by measurement.\n\n### 1B. Ranked List of Competing Hypotheses (\`confirmed_root_cause = null\`)\n| Rank & ID | Epistemic State | Competing Hypothesis (Gasoline Turbocharged GDI SUV) | Evidence For | Evidence Against / What Still Needs Validation |\n| :--- | :--- | :--- | :--- | :--- |\n| **1. \`HYP-Q12-01\`** | \`strong_candidate\` | **High-Pressure GDI Fuel System Delivery, Control-Solenoid, Cam-Follower, or Pressure-Regulation Fault** | \`P0087\` (actual GDI rail pressure below commanded target under boost/load) + \`P0171\` (lean trim rising under high fuel demand); once low-pressure supply is verified in spec (in Q3), the fault is isolated to the high-pressure stage. | Cannot condemn the mechanical HPFP assembly until HPFP spill/volume-control valve PWM command, wiring continuity, cam lobe/roller follower lift, and rail relief/injector leakage are tested. |\n| **2. \`HYP-Q12-02\`** | \`possible_cause\` | **Low-Pressure Fuel Supply Starvation Under High Load (Weak In-Tank Lift Pump, Fuel Pump Driver Module, Restricted Filter/Strainer, or Voltage Drop)** | On a GDI engine, if low-pressure feed pressure/volume drops under sustained boost, the mechanical HPFP cavitates at its inlet and sets \`P0087\` + \`P0171\` even when the HPFP itself is healthy. | Must be tested under load before blaming the high-pressure stage (in Q3, once low-pressure supply is confirmed within OEM spec, this hypothesis is ruled out). |\n| **3. \`HYP-Q12-03\`** | \`possible_cause\` | **Fuel Rail Pressure (\`FRP\`) Sensor Signal Drift, \`5V\` Reference, or Ground Fault** | An FRP sensor or circuit reporting falsely low rail pressure (or erratic voltage) under under-hood heat/vibration can trigger \`P0087\` and disrupt ECM fuel-pulse calculation. | Presence of genuine lean exhaust (\`P0171\` positive fuel trims from upstream $\\text{O}_2$/A/F sensor) favors a real physical pressure loss over a pure sensor lie, but FRP sensor calibration and \`5V\` reference/ground must still be verified. |\n| **4. \`HYP-Q12-04\`** | \`possible_cause\` | **Boost-Leak / Charge-Air Metering Error or Under-Reading MAF Sensor Under Load** | An under-reading MAF sensor or metered charge-air fault on a turbocharged gasoline SUV can cause lean trims (\`P0171\`) under load. | Does **not** by itself explain why actual fuel rail pressure fails to track commanded rail pressure (\`P0087\`), unless combined with a fuel delivery fault. |\n\n### 1C. Why Alternative Options in Q1 Are Rejected\n- **Why Option A is rejected:** Immediately condemns and replaces the high-pressure fuel pump (\`HPFP\`) from \`P0087\` without verifying low-pressure feed supply, FRP sensor accuracy, or HPFP control circuits.\n- **Why Option B is rejected:** Attributes a high-load lean condition + \`P0087\` to a simple intake manifold vacuum leak (which affects idle rather than high-boost fuel rail pressure).\n- **Why Option D is rejected:** Clears \`P0087\` and \`P0171\` or replaces the upstream oxygen sensor when the $\\text{O}_2$ sensor is accurately reporting a genuine lean air-fuel mixture caused by low rail pressure.`,
+    `## 1. Answer to Q1 — Root-Cause Reasoning: **Option ${q1.selected_option}**\n**Noctis Selection:** **${q1.statement}**\n\n### 1A. Why Option C Is Correct (\`AUTO-AC-017\` Measurement Validity & Control-Strategy Reasoning)\n1. **Why Positive Fuel Trims Alone Do NOT Prove Fuel Starvation (\`AUTO-AC-017 Req 5 & Acceptance Rule 2\`):**\n   - Noctis **rejects any unsupported claim that positive fuel trims alone prove fuel starvation**. Positive Short-Term and Long-Term Fuel Trims (\`STFT\` / \`LTFT\`) only indicate that, while operating in **closed-loop fuel control**, the ECM is adding fuel pulse width relative to its base calibration to maintain target **lambda (\`λ = 1.00 [general reference]\`)** based on upstream Wideband A/F or $\\text{O}_2$ sensor feedback.\n   - Before interpreting \`STFT\`, \`LTFT\`, \`lambda\`, or commanded vs. actual rail pressure, the technician must confirm that these parameters are valid under the engine's **current control strategy** (e.g., verifying whether the ECM remains in closed-loop stoichiometric/lambda control under boost or transitions into open-loop power enrichment / fault-fallback mode where fuel trims freeze).\n   - Even when valid in closed loop under load, positive fuel trims can be produced by **MAF under-reporting**, **charge-air / intake metering faults**, **exhaust leaks upstream of the A/F sensor**, **A/F sensor bias**, **fuel ethanol composition**, or **insufficient fuel delivery**. However, when positive load trims + \`P0171\` occur **together with** \`P0087\` (reported actual fuel-rail pressure dropping below commanded target under load while idle remains normal), the combined evidence supports a **load-dependent lean condition and possible fuel-delivery problem** that still requires signal and subsystem validation.\n2. **Why a Commanded vs. Actual Discrepancy Alone Does NOT Condemn a Component (\`AUTO-AC-017 Req 3 & Req 4\`):**\n   - Noctis does **not** declare a sensor, circuit, low-pressure pump, or high-pressure pump defective solely because scan-tool actual rail pressure differs from commanded rail pressure (\`P0087\`).\n   - On a two-stage **Gasoline Direct-Injection (\`GDI\`)** architecture (in-tank low-pressure lift pump \`LPFP\` feeding a cam-driven high-pressure pump \`HPFP\`, regulated by a spill/volume control solenoid and monitored by a Fuel Rail Pressure \`FRP\` sensor), a scan-tool pressure discrepancy under load can originate from: (a) a skewed \`FRP\` sensor or \`5.0V [general reference]\` reference/ground fault, (b) low-pressure supply starvation under high flow demand, (c) an \`HPFP\` control solenoid circuit fault, (d) mechanical \`HPFP\` or cam-follower wear, or (e) rail pressure-relief / injector leakage.\n\n### 1B. Ranked List of Competing Hypotheses (\`confirmed_root_cause = null\`)\n| Rank & ID | Epistemic State | Competing Hypothesis (Gasoline Turbocharged GDI SUV) | Supporting Evidence | What Still Requires Validation (\`AUTO-AC-017\`) |\n| :--- | :--- | :--- | :--- | :--- |\n| **1. \`HYP-Q12-01\`** | \`strong_candidate\` | **High-Pressure GDI Fuel Delivery, Spill/Volume Control Solenoid, Cam Follower/Lobe, or Rail Pressure-Regulation Fault** | \`P0087\` + \`P0171\` with load-dependent rail pressure drop \`[measured result]\`; becomes the primary focus in Q3 once low-pressure supply and genuine high-pressure loss are independently confirmed. | Requires OEM-specified electrical testing of the \`HPFP\` control solenoid circuit, cam follower/lobe inspection, and rail relief/injector checks before replacing parts. |\n| **2. \`HYP-Q12-02\`** | \`possible_cause\` | **Low-Pressure Fuel Supply (\`LPFP\`) Flow/Pressure Starvation Under Load (In-Tank Pump, Driver Module, Filter/Restriction, or Voltage Drop)** | Insufficient low-side feed pressure or volume at high fuel demand starves/cavitates the \`HPFP\` inlet, causing both \`P0087\` and \`P0171\` under acceleration while idle appears normal \`[model assumption]\`. | Must be tested under load against the exact \`[OEM specification]\` before condemning any high-pressure component (ruled out in Q3 once low-side supply is confirmed within spec). |\n| **3. \`HYP-Q12-03\`** | \`possible_cause\` | **Fuel Rail Pressure (\`FRP\`) Sensor Plausibility, \`5V\` Reference, or Ground Integrity Fault** | A biased \`FRP\` sensor or high-resistance ground/reference circuit can misreport rail pressure to the ECM. | Concurrent \`P0171\` lean trim favors a physical pressure deficit, but \`FRP\` sensor plausibility at KOEO, \`5.0V [general reference]\` reference, and ground integrity must be verified first. |\n| **4. \`HYP-Q12-04\`** | \`possible_cause\` | **Air-Metering (\`MAF\`) Under-Reporting, Charge-Air Fault, or Upstream Exhaust Leak Interacting Under Load** | Can drive \`STFT\`/\`LTFT\` positive and set \`P0171\` during closed-loop load operation. | Does not by itself explain \`P0087\` rail-pressure drop unless accompanied by a fuel-pressure or sensor fault. |\n\n### 1C. Why Alternative Options in Q1 Are Rejected\n- **Why Option A is rejected:** Declares the high-pressure pump defective solely from scan-tool DTCs without validating the \`FRP\` signal, low-pressure supply, or control circuits.\n- **Why Option B is rejected:** An intake manifold vacuum leak produces its largest positive fuel trim at **high manifold vacuum (warm idle)** and diminishestoward \`0% [general reference]\` as throttle and boost increase, contradicting normal idle trims with load-only lean/pressure loss.\n- **Why Option D is rejected:** Replaces sensors or injectors or clears codes without diagnosing the reported rail-pressure deficit.`,
     `---`,
-    `## 2. Answer to Q2 — Next-Best Test: **Option ${q2.selected_option}**\n**Noctis Selection:** **${q2.statement}**\n\n### 2A. Next Three Diagnostic Tests (Ordered by Information Value, Safety & Non-Invasiveness)\n| Test # & Name | Measurement Setup & Operating Condition | OEM Verification Target (Vehicle-Specific Spec Required) | What the Test Proves / Rules Out |\n| :--- | :--- | :--- | :--- |\n| **Test 1: Retrieve Vehicle-Specific OEM Specs & Validate FRP Sensor Signal / Reference Integrity** | Confirm exact \`Year, Make, Model, engine_code, and VIN\`. Compare KOEO (Key-On Engine-Off) and warm-idle FRP sensor pressure/voltage PIDs against OEM baseline; backprobe FRP \`5.0V\` reference, sensor ground (\`<= 0.05V\` drop), and signal voltage. | FRP reading matches atmospheric/residual baseline at KOEO and tracks commanded rail pressure smoothly without dropouts; \`5.0V ± 0.1V\` reference stable. | **Proves/Rules Out:** Validates that the reported rail-pressure drop under load is a genuine hydraulic pressure loss rather than an FRP sensor, connector, or \`5V\` reference/ground glitch. |\n| **Test 2: Low-Pressure Supply Pressure, Volume & Pump Driver Current/Voltage Test Under Load** | Connect a mechanical low-pressure gauge (or scan-tool low-side pressure PID, validated by gauge) at the HPFP inlet feed line and monitor fuel pump module voltage/current during a controlled load test (chassis dyno or safe loaded condition). | Low-pressure supply stays within the exact OEM specified window under peak load without pressure sag or flow starvation. | **Proves/Rules Out:** Rules in or rules out in-tank lift pump weakness, clogged fuel filter/sock, kinked supply line, or Fuel Pump Driver Module (\`FPDM\`) voltage drop before touching the expensive high-pressure GDI system. |\n| **Test 3: High-Pressure Pump (\`HPFP\`) Control Circuit, Duty-Cycle & Hot Rail Leak-Down Assessment** | Co-monitor commanded vs. actual rail pressure, HPFP spill/volume-control solenoid duty cycle (\`%\`), and solenoid current/voltage waveform on an oscilloscope; perform a key-off hot rail pressure hold/leak-down check. | ECM increases HPFP control duty cycle as rail pressure drops; solenoid coil resistance and current waveform match OEM spec; rail pressure holds (or rises slightly from heat soak) after shutdown. | **Proves/Rules Out:** Separates an electrical/control fault on the HPFP spill valve from an internal HPFP pumping/check-valve failure, pressure-relief valve blow-by, or leaking GDI injector. |\n\n### 2B. Mandatory Safety Precautions & Testing Conditions (Gasoline Direct Injection)\n1. **High-Pressure Gasoline Fire & Injection Hazard:** Gasoline direct-injection (\`GDI\`) fuel rails operate at very high pressures (often \`30–200+ bar / 450–3,000+ psi\` depending on OEM system; exact figure requires vehicle-specific OEM manual). **Never loosen a high-pressure fuel line or FRP sensor while the engine is running or before performing the OEM fuel-rail depressurization procedure and allowing hot exhaust/turbocharger surfaces to cool.**\n2. **Safe Load Testing & Catalyst Protection:** Severe lean operation under turbo boost (\`P0087\` + \`P0171\`) risks detonation (engine knock) and elevated exhaust gas temperatures. Capture scan data using short, controlled load pulls (preferably on a chassis dynamometer) and abort the pull immediately if knock retard spikes, rail pressure collapses, or the MIL flashes.\n3. **Vehicle-Specific Specification Gate (\`VEHICLE_SPEC_NOT_FOUND\`):** Because exact low-side pressure, high-side target pressure at idle vs. full load, HPFP solenoid resistance, and single-use high-pressure flare-nut torque specs vary by engine code, Noctis withholds invented numeric limits until \`Year, Make, Model, engine_code, and VIN\` are bound.`,
+    `## 2. Answer to Q2 — Next-Best Test: **Option ${q2.selected_option}**\n**Noctis Selection:** **${q2.statement}**\n\n### 2A. Actionable Test Plan With Conditional Conclusions (\`AUTO-AC-017 Req 1, 2, 4, 5, 6, 7\`)\n> **Rejection of Universal Pressure Thresholds (\`AUTO-AC-017 Acceptance Rule 1\`):** Noctis **rejects any universal pressure threshold when the applicable OEM limit is unavailable**. Both low-pressure supply targets (often variable-PWM controlled) and GDI high-pressure rail targets vary widely by manufacturer, engine family, RPM, and load. Before applying any pass/fail limit, identify the exact **\`Year, Make, Model, engine_code, and VIN\`** and retrieve the **\`[OEM specification]\`** from the manufacturer service manual.\n\n| Test # & Procedure | Preconditions, Control-Strategy Check & Measurement Validity (\`Req 4 & 5\`) | Conditional Conclusion: What This Test Can Establish (\`Req 7\`) | What Still Requires Additional Testing (\`Req 7\`) |\n| :--- | :--- | :--- | :--- |\n| **Test 1: Vehicle/OEM Spec Binding, Control-Strategy Check & \`FRP\` Sensor / Circuit Validation** | Bind exact \`Year, Make, Model, engine_code, VIN\` to obtain \`[OEM specification]\` limits. Verify closed-loop vs. open-loop fuel control status, check \`FRP\` plausibility at KOEO/idle against \`[OEM specification]\`, and backprobe \`FRP\` reference (\`~5.0V [general reference]\`, verify exact \`[OEM specification]\`), sensor ground (\`<= 0.05V [general reference]\` drop under load), and signal voltage. | **What This Test Establishes:** Confirms whether the \`FRP\` sensor circuit and power/ground reference are electrically intact and whether \`STFT\`/\`LTFT\`, \`lambda\`, and \`FRP\` PIDs are being captured under a valid closed-loop/commanded operating strategy. | **What Still Requires Additional Testing:** Even if the \`FRP\` sensor circuit is intact, this test does **not** separate low-pressure supply starvation (\`LPFP\`) from high-pressure delivery (\`HPFP\`) or pressure-regulation faults under load. |\n| **Test 2: Low-Pressure Supply (\`LPFP\`) Pressure, Volume & Driver Circuit Test Under Load** | Using the OEM-approved low-pressure test port/transducer (and low-side pressure PID if equipped), monitor low-pressure feed pressure, fuel pump module duty cycle, and supply voltage/ground drop during a controlled load test. Compare the \`[measured result]\` strictly against the vehicle's \`[OEM specification]\`. | **What This Test Establishes:** **If low-pressure supply drops below \`[OEM specification]\` under load**, it establishes an upstream low-pressure delivery, filter/restriction, or pump-driver electrical fault. **If low-pressure supply remains within \`[OEM specification]\` under load**, it rules out low-side starvation as the cause of \`P0087\`. | **What Still Requires Additional Testing:** If low-pressure supply passes \`[OEM specification]\`, additional testing of the high-pressure pump control circuit, cam drive, pressure regulator/relief valve, and injectors is still required to isolate the high-pressure fault. |\n| **Test 3: Approved High-Pressure Delivery, Control Solenoid Circuit & OEM Scan-Tool Rail Evaluation** | Using **only OEM-approved scan-tool bi-directional commands, oscilloscope waveforms on the \`HPFP\` spill/volume control solenoid, and OEM-specified non-invasive rail pressure monitoring** (never an unapproved high-pressure leak-down test by cracking fittings), compare actual vs. commanded rail pressure \`[measured result]\` and solenoid duty cycle/current against \`[OEM specification]\`. | **What This Test Establishes:** Determines whether the ECM is properly commanding the \`HPFP\` control solenoid and whether the solenoid coil and driver circuit have continuity and normal current profile under load. | **What Still Requires Additional Testing:** If the \`HPFP\` electrical control circuit and command waveform pass \`[OEM specification]\` while high-pressure loss persists, mechanical inspection of the \`HPFP\` cam follower/lobe, pressure-relief valve, and injector sealing per the OEM service manual is still required before condemning the pump. |\n\n### 2B. Mandatory High-Pressure Fuel System Safety & Procedure Gate (\`AUTO-AC-017 Req 6 & Acceptance Rule 3\`)\n1. **Rejection of Unapproved High-Pressure Leak-Down or Pressurized Opening Procedures:** Noctis **strictly rejects any unapproved high-pressure leak-down procedure** (such as cracking open a pressurized GDI line, loosening a rail fitting to bleed pressure, or teeing an unapproved gauge into a single-use high-pressure fuel pipe). GDI systems operate at high hydraulic pressures (\`~30–200+ bar / 435–3,000+ psi [general reference]\` — never used as a vehicle-specific pass/fail threshold; consult exact \`[OEM specification]\`).\n2. **Mandatory OEM Depressurization Procedure:** Do **not** recommend opening any high-pressure fuel system component outside the manufacturer's specified depressurization procedure (disable fuel supply / execute scan-tool depressurization routine, allow engine to stall or cool down for the \`[OEM specification]\` wait period, verify rail pressure decay on scan data before loosening any fitting, wear PPE, and observe OEM single-use high-pressure pipe/seal replacement and torque rules).`,
     `---`,
-    `## 3. Answer to Q3 — Follow-Up When Genuine High-Pressure Loss Is Confirmed & Low-Pressure Supply Is Within Specification: **Option ${q3.selected_option}**\n**Noctis Selection:** **${q3.statement}**\n\n### 3A. Why Option B Is Correct (And Why Immediate HPFP Replacement Is Premature)\nEven when **genuine high-pressure rail loss is independently confirmed** and **low-pressure supply to the HPFP inlet passes OEM specifications under load**, replacing the high-pressure pump immediately is still a premature parts-cannon leap. Several distinct faults inside the high-pressure loop produce the exact same \`P0087\` + \`P0171\` signature:\n1. **HPFP Volume / Spill Control Solenoid Valve & ECM Driver Circuit:** If the spill-control solenoid valve is electrically open, shorted, sticking mechanically, or losing its ECM PWM power/ground command under heat soak, the HPFP cannot trap and pressurize fuel on its compression stroke even though the mechanical pump plunger is intact.\n2. **Camshaft Drive Lobe & Roller/Flat Tappet Follower Wear:** Because GDI high-pressure pumps are mechanically driven by a dedicated 3-lobe or 4-lobe camshaft cam and roller/bucket tappet follower, wear on the cam lobe or follower reduces plunger stroke length at high RPM/load. Installing a new HPFP onto a worn camshaft lobe without inspecting the follower and cam lobe guarantees an immediate repeat failure.\n3. **Rail Pressure-Relief / Limiting Valve or Leaking GDI Injector:** A mechanical rail pressure-relief valve cracking open prematurely under load, or a GDI injector leaking excessively, dumps high-pressure rail volume faster than the pump can replenish it.\n4. **Internal HPFP Check/Delivery Valve or Plunger Wear:** Confirmed only after control circuits, cam drive/follower, and rail pressure-retention checks pass.\n\n### 3B. Criteria for Confirming Repair and Closing the Case\n1. **Demonstrated Root-Cause Isolation:** Repair or replace **only** the component proven defective by vehicle-specific testing (e.g., HPFP control wiring/solenoid, cam follower/camshaft + HPFP, pressure-relief valve, or HPFP assembly), using OEM-required new single-use high-pressure fuel pipes/seals where specified.\n2. **Post-Repair Fuel-System Bleeding & Leak Inspection:** Prime the low-pressure system, inspect all high-pressure fittings dry and at idle/operating temperature for zero fuel seepage or vapor odor.\n3. **Load-Verified Rail Pressure & Fuel-Trim Recovery:** Under the exact load/boost/RPM condition that originally set \`P0087\` and \`P0171\`, verify on live scan data that **actual fuel rail pressure tracks commanded target pressure within OEM tolerance**, and that **\`STFT\` and \`LTFT\` return within normal OEM limits (\`typically ±5% to ±8%\`)** under both idle and high load.\n4. **Zero Recurrence & Readiness Completion:** Confirm \`P0087\` and \`P0171\` do not return as pending, active, or permanent codes across a complete OEM drive cycle.\n\n---`,
+    `## 3. Answer to Q3 — Updating Hypotheses After New Evidence: **Option ${q3.selected_option}**\n**Noctis Selection:** **${q3.statement}**\n\n### 3A. Conditional Evidence Update When Genuine High-Pressure Loss Is Confirmed & Low-Pressure Supply Is Within \`[OEM specification]\`\n1. **What the New Evidence Establishes:**\n   - Independent confirmation of genuine high-pressure rail loss under load \`[measured result]\` eliminates a pure \`FRP\` sensor false-reading hypothesis.\n   - Low-pressure supply remaining within \`[OEM specification]\` throughout the load test eliminates the in-tank lift pump (\`LPFP\`), low-side filter, and low-side supply restriction as the primary cause.\n2. **What Still Requires Testing Inside the High-Pressure Subsystem Before Replacing Parts:**\n   - **\`HPFP\` Spill / Volume-Control Solenoid & Driver Circuit:** Verify power feed, ECM PWM control signal, and coil resistance against \`[OEM specification]\`.\n   - **Camshaft Drive Lobe & Roller/Bucket Tappet Follower:** Inspect mechanical cam lobe lift and follower wear per \`[OEM specification]\` so a new pump is never installed onto a worn drive cam.\n   - **Rail Pressure-Regulation / Relief Valve & GDI Injectors:** Evaluate premature relief-valve blow-by or injector leakage using only OEM-approved scan-tool/service-manual procedures.\n   - **Internal \`HPFP\` Pumping Element / Check Valves:** Condemn the \`HPFP\` assembly only after the control circuit, cam drive, and regulation checks confirm an internal pump delivery failure.\n\n### 3B. Manufacturer-Specific Repair Verification, Readiness & Permanent DTC (\`Mode $0A\`) Rules (\`AUTO-AC-017 Req 8 & Acceptance Rule 4\`)\n1. **Post-Repair Parameter & Load Verification:** After repairing the demonstrated root cause (and replacing any OEM-mandated single-use high-pressure lines/seals torqued to \`[OEM specification]\`), verify zero fuel leaks and confirm under a controlled load test that actual rail pressure \`[measured result]\` tracks commanded pressure within \`[OEM specification]\` and closed-loop \`STFT\`/\`LTFT\` return within normal OEM limits (\`typically within ±10% [general reference]\`; apply exact \`[OEM specification]\`).\n2. **DTC Clearance, Monitor Execution & Readiness Requirements:** Clear diagnostic trouble codes using the scan tool, then execute the manufacturer-specified **OEM drive cycle** enabling conditions so the Fuel System and Oxygen/A/F Sensor **readiness monitors** run and complete with zero returning **Mode \`$07\` Pending** or **Mode \`$03\` Confirmed** DTCs.\n3. **Critical Distinction — Stored Permanent DTCs (\`Mode $0A\`) Are NOT Proof That a Repair Has Failed (\`AUTO-AC-017 Acceptance Rule 4\`):**\n   - If \`P0087\` or \`P0171\` was stored as a **Permanent DTC (\`Mode $0A\`)**, **it cannot be erased by a scan-tool clear command or battery disconnect**.\n   - **A stored Permanent DTC remaining present immediately after repair and code clearing is NOT proof that the repair has failed.** By OBD-II regulation, a \`Mode $0A\` Permanent DTC clears automatically **only after the ECM's diagnostic monitor for that fault runs and passes across the manufacturer-specified number of drive cycles and warm-up cycles** without detecting a fault. Conversely, a repair is judged unsuccessful only if live rail pressure/fuel trims still fail \`[OEM specification]\` or if a **Pending (\`Mode $07\`)** or **Confirmed (\`Mode $03\`)** DTC re-sets during the verification drive cycle.\n\n---`,
     `## 4. Final Feasibility Classification\n**${c.feasibility_classification.justification}**`,
   ].join("\n\n");
 }
@@ -3418,7 +3656,7 @@ export function automotiveDiagnosticGadget(question: string): string | null {
   const q = question.toLowerCase();
 
   const asksQuestion12GasolineGdiFuelPressure =
-    /\b(auto-fuel-0012|auto-gdi-p0087-p0171|auto-ac-016|diagnostic\s+scenario\s+integrity\s+gate|question\s+12\b|load-dependent\s+lean\s+condition\s+and\s+possible\s+fuel-delivery\s+problem|genuine\s+high-pressure\s+loss\s+is\s+independently\s+confirmed\s+and\s+low-pressure\s+supply\s+is\s+within\s+specification)\b/i.test(
+    /\b(auto-fuel-0012|auto-gdi-p0087-p0171|auto-ac-016|auto-ac-017|diagnostic\s+scenario\s+integrity\s+gate|specification\s+integrity\s+and\s+diagnostic\s+measurement\s+validity|question\s+12\b|load-dependent\s+lean\s+condition\s+and\s+possible\s+fuel-delivery\s+problem|genuine\s+high-pressure\s+loss\s+is\s+independently\s+confirmed\s+and\s+low-pressure\s+supply\s+is\s+within\s+specification)\b/i.test(
       q,
     ) ||
     (!/\bdiesel\b/i.test(q) &&
