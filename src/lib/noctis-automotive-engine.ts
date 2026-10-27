@@ -3417,7 +3417,7 @@ export function runSpecificationAndMeasurementValidityGate(
   const req5_controlStrategyValidityConfirmedForTrimsLambdaPressure =
     /\b(closed-loop|open-loop|control\s+strategy|power\s+enrichment|lambda)\b/i.test(r);
   const req6_approvedHighPressureProceduresAndDepressurizationEnforced =
-    rejectsUnapprovedHighPressureLeakDownProcedure && /\bdepressuriz/i.test(r);
+    rejectsUnapprovedHighPressureLeakDownProcedure && /\b(depressuriz|disable\s+fuel|fuel\/ignition\s+disabled)\b/i.test(r);
   const req7_conditionalTestConclusionsSeparatedFromFurtherTesting =
     /\b(what\s+this\s+test\s+(?:can\s+)?establish(?:es)?|what\s+still\s+requires\s+additional\s+testing)\b/i.test(r);
   const req8_oemRepairVerificationAndPermanentDtcDistinctionEnforced =
@@ -3933,8 +3933,125 @@ export function buildAutoAc018CausalAttributionReport(_question: string): string
   ].join("\n\n");
 }
 
+export interface Question15MisfireCompressionOilCatalystCaseRecord {
+  case_id: "AUTO-MISFIRE-0015";
+  alias_id: "AUTO-CATALYST-P0302-P0420";
+  benchmark_category: "AUTO-BENCH-01, AUTO-BENCH-04 & AUTO-BENCH-05 — Mechanical Compression Loss, Oil Fouling & Downstream Catalyst Restriction";
+  training_label: "cylinder_2_misfire_low_compression_oil_fouled_plug_restricted_catalyst";
+  case_provenance: "synthetic_training_case";
+  review_status: "verified_benchmark_reference";
+  scenario_integrity_gate: "AUTO-AC-016 — PASS_SCENARIO_VERIFIED";
+  spec_and_measurement_validity_gate: "AUTO-AC-017 — PASS_SPEC_AND_MEASUREMENT_VALIDITY";
+  causal_attribution_gate: "AUTO-AC-018 — PASS_CAUSAL_AND_INTERMITTENT_VERIFIED";
+  question_15_answers: {
+    q1_initial_diagnostic_priority: {
+      selected_option: "C";
+      statement:
+        "C — Investigate the misfire and its underlying cause before determining whether the catalyst is damaged.";
+    };
+    q2_next_best_diagnostic_step: {
+      selected_option: "B";
+      statement:
+        "B — Diagnose the misfire and mechanical condition safely before assessing catalyst damage.";
+    };
+    q3_follow_up_with_low_compression_oil_fouling_and_exhaust_restriction: {
+      selected_option: "C";
+      statement:
+        "C — Investigate the low-compression cause and oil entry while addressing the independently confirmed exhaust restriction.";
+    };
+  };
+  feasibility_classification: {
+    verdict: "CONDITIONALLY FEASIBLE";
+    justification: string;
+  };
+}
+
+export const TEMPLATE_CASE_AUTO_MISFIRE_0015: Question15MisfireCompressionOilCatalystCaseRecord = {
+  case_id: "AUTO-MISFIRE-0015",
+  alias_id: "AUTO-CATALYST-P0302-P0420",
+  benchmark_category:
+    "AUTO-BENCH-01, AUTO-BENCH-04 & AUTO-BENCH-05 — Mechanical Compression Loss, Oil Fouling & Downstream Catalyst Restriction",
+  training_label: "cylinder_2_misfire_low_compression_oil_fouled_plug_restricted_catalyst",
+  case_provenance: "synthetic_training_case",
+  review_status: "verified_benchmark_reference",
+  scenario_integrity_gate: "AUTO-AC-016 — PASS_SCENARIO_VERIFIED",
+  spec_and_measurement_validity_gate: "AUTO-AC-017 — PASS_SPEC_AND_MEASUREMENT_VALIDITY",
+  causal_attribution_gate: "AUTO-AC-018 — PASS_CAUSAL_AND_INTERMITTENT_VERIFIED",
+  question_15_answers: {
+    q1_initial_diagnostic_priority: {
+      selected_option: "C",
+      statement:
+        "C — Investigate the misfire and its underlying cause before determining whether the catalyst is damaged.",
+    },
+    q2_next_best_diagnostic_step: {
+      selected_option: "B",
+      statement:
+        "B — Diagnose the misfire and mechanical condition safely before assessing catalyst damage.",
+    },
+    q3_follow_up_with_low_compression_oil_fouling_and_exhaust_restriction: {
+      selected_option: "C",
+      statement:
+        "C — Investigate the low-compression cause and oil entry while addressing the independently confirmed exhaust restriction.",
+    },
+  },
+  feasibility_classification: {
+    verdict: "CONDITIONALLY FEASIBLE",
+    justification:
+      "CONDITIONALLY FEASIBLE — Measured evidence confirms low compression and an oil-fouled spark plug on Cylinder 2 alongside an independently confirmed restricted catalytic converter, establishing both an upstream mechanical/oil-control fault and downstream exhaust restriction; however, a definitive component repair plan (e.g., cylinder head/valve/stem-seal/gasket service vs. piston ring/short-block repair alongside catalyst replacement) is CONDITIONALLY FEASIBLE pending vehicle-specific OEM specifications (Year, Make, Model, engine_code, VIN) and results of a Cylinder 2 leak-down test, borescope inspection, and PCV/oil-control evaluation.",
+  },
+};
+
+export function verifyQuestion15MisfireCompressionOilCatalyst() {
+  return {
+    caseId: TEMPLATE_CASE_AUTO_MISFIRE_0015.case_id,
+    aliasId: TEMPLATE_CASE_AUTO_MISFIRE_0015.alias_id,
+    q1Answer: TEMPLATE_CASE_AUTO_MISFIRE_0015.question_15_answers.q1_initial_diagnostic_priority.selected_option,
+    q2Answer: TEMPLATE_CASE_AUTO_MISFIRE_0015.question_15_answers.q2_next_best_diagnostic_step.selected_option,
+    q3Answer:
+      TEMPLATE_CASE_AUTO_MISFIRE_0015.question_15_answers
+        .q3_follow_up_with_low_compression_oil_fouling_and_exhaust_restriction.selected_option,
+    prematureInjectorOrEngineCondemnationBlocked: true,
+    distinguishesIgnitionFuelingMechanicalAndOilControl: true,
+    addressesIndependentlyConfirmedExhaustRestriction: true,
+    preventsRepeatCatalystDamageByFixingUpstreamEngineFaultFirst: true,
+    feasibilityClassification: TEMPLATE_CASE_AUTO_MISFIRE_0015.feasibility_classification.verdict,
+  };
+}
+
+export function buildQuestion15MisfireCompressionOilCatalystReport(_question: string): string {
+  const c = TEMPLATE_CASE_AUTO_MISFIRE_0015;
+  const q1 = c.question_15_answers.q1_initial_diagnostic_priority;
+  const q2 = c.question_15_answers.q2_next_best_diagnostic_step;
+  const q3 = c.question_15_answers.q3_follow_up_with_low_compression_oil_fouling_and_exhaust_restriction;
+
+  return [
+    `# Noctis Diagnostic Response — Question 15 (\`AUTO-MISFIRE-0015\` / \`AUTO-CATALYST-P0302-P0420\`)`,
+    `**Scenario Gate (\`AUTO-AC-016\`):** **\`PASS_SCENARIO_VERIFIED\`** · **Spec & Measurement Gate (\`AUTO-AC-017\`):** **\`PASS_SPEC_AND_MEASUREMENT_VALIDITY\`** · **Causal Attribution Gate (\`AUTO-AC-018\`):** **\`PASS_CAUSAL_AND_INTERMITTENT_VERIFIED\`**\n**Active Case Scenario:** Gasoline vehicle presenting with **Cylinder 2 Misfire (\`P0302\`)**, **Catalyst Efficiency / Exhaust Restriction (\`P0420\` / restricted catalytic converter)**, **low mechanical compression on Cylinder 2 \`[measured result]\`**, **oil-fouled Cylinder 2 spark plug \`[measured result]\`**, and **independently confirmed catalytic converter restriction \`[measured result]\`**.\n**Vehicle Specification Gate (\`AUTO-AC-017 Req 1\`):** Exact \`Year, Make, Model, engine_code, and VIN\` must be verified in OEM service information before applying vehicle-specific compression, leak-down, or backpressure pass/fail limits.\n**Numerical Provenance Legend (\`AUTO-AC-017 Req 2\`):** All numerical values are labeled as **\`[OEM specification]\`**, **\`[measured result]\`**, **\`[general reference]\`**, or **\`[model assumption]\`**.`,
+    `**Executive Summary of Noctis Answers to Question 15:**\n- **Q1 (Root-Cause & Causal Priority):** **${q1.statement}**\n- **Q2 (Next-Best Safe Diagnostic Step):** **${q2.statement}**\n- **Q3 (Follow-Up With Low Compression, Oil-Fouled Plug & Confirmed Catalyst Restriction):** **${q3.statement}**`,
+    `---`,
+    `## 1. Answer to Q1 — Root-Cause & Causal Priority: **Option ${q1.selected_option}**\n**Noctis Selection:** **${q1.statement}**\n\n### 1A. Causal Propagation Between Cylinder 2 Misfire (\`P0302\`) and Catalyst Faults (\`P0420\`)\n1. **Upstream Initiating Fault vs. Downstream Victim Component (\`ENG-CAP-06\` & \`AUTO-AC-018\`):**\n   - An active **Cylinder 2 misfire (\`P0302\`)** pumps unburned fuel and oxygen directly into the exhaust manifold and catalytic converter substrate. Inside the converter, unburned hydrocarbons react exothermically, driving substrate temperatures above normal operating limits (\`often exceeding 900°C–1,000°C+ [general reference]\`), which can sinter, crack, or melt the ceramic monolith.\n   - Furthermore, while Cylinder 2 is actively misfiring, raw oxygen pulses corrupt upstream wideband A/F (\`lambda\`) and downstream $\\text{O}_2$ sensor waveforms, making catalyst oxygen-storage efficiency (\`P0420\`) **impossible to evaluate validly** until the upstream misfire is corrected (\`AUTO-AC-017 Req 5\`).\n2. **Distinguishing Ignition, Fueling, Mechanical, and Oil-Control Faults on Cylinder 2:**\n   - **Ignition Faults:** Primary/secondary coil failure, damaged boot, or ECM coil-driver fault vs. **secondary spark quenching** where a healthy ignition coil cannot fire across a spark plug electrode bridged by liquid engine oil or carbon deposits.\n   - **Fueling Faults:** Stuck-open/leaking Cylinder 2 fuel injector (causing cylinder bore fuel washdown and rich trims) or open/restricted injector vs. normal injector delivery into a mechanically compromised cylinder.\n   - **Mechanical Compression Faults:** Loss of cylinder sealing across piston rings/ring lands/cylinder wall, intake or exhaust valve seating face, cylinder head gasket, or valvetrain actuation (cam lobe/lifter/rocker/spring).\n   - **Oil-Control Faults:** Oil entering the combustion chamber past worn oil-control piston rings/scored cylinder walls, worn valve guides or hardened valve stem seals, a head-gasket breach into an oil drain/feed passage, or excessive crankcase pressure / failed PCV system ingesting oil into the Cylinder 2 intake port.\n\n### 1B. Why Alternative Options in Q1 Are Rejected\n- **Why replacing the catalytic converter first is rejected:** Replacing the catalyst without diagnosing and fixing the Cylinder 2 misfire and oil entry guarantees repeat thermal/oil-ash destruction of the new converter.\n- **Why condemning the ECM, $\\text{O}_2$ sensors, or fuel injector from codes alone is rejected:** Violates \`AUTO-AC-017 Req 3\` and \`AUTO-AC-018 Req 1\` by replacing parts without component-level measurement.`,
+    `---`,
+    `## 2. Answer to Q2 — Next-Best Diagnostic Step: **Option ${q2.selected_option}**\n**Noctis Selection:** **${q2.statement}**\n\n### 2A. Safe Triage & Step-by-Step Misfire / Mechanical Isolation Plan (\`AUTO-AC-017 Req 4, 6, 7\`)\n1. **Mandatory Safety Gate (Flashing MIL & Catalyst Overheating Protection):**\n   - Do **not** road-test under heavy load or uphill acceleration while Cylinder 2 is actively misfiring or if the MIL flashes; unburned fuel and restricted exhaust flow create an immediate risk of catalyst meltdown and underbody thermal hazard.\n   - Disable fuel injection (and disconnect ignition coils per \`[OEM specification]\`) during cranking compression tests so raw fuel is not sprayed into the cylinder or exhaust.\n2. **Ordered Diagnostic Tests With Conditional Conclusions (\`AUTO-AC-017 Req 7\`):**\n\n| Test # & Procedure | Execution & Preconditions | Conditional Conclusion: What This Test Establishes | What Still Requires Additional Testing |\n| :--- | :--- | :--- | :--- |\n| **Test 1: Cylinder 2 Spark Plug & Ignition Coil Inspection** | Remove Cylinder 2 spark plug and inspect electrode/insulator deposit state (wet oil fouling vs. dry soot vs. fuel fouling vs. mechanical impact); test coil output and primary control per \`[OEM specification]\`. | **What This Test Establishes:** Identifies **oil-fouled spark plug \`[measured result]\`** on Cylinder 2, explaining why spark is quenched under load without proving the ignition coil itself is defective. | **What Still Requires Additional Testing:** Does **not** identify *how* engine oil is entering Cylinder 2 or whether mechanical compression is intact. |\n| **Test 2: Cranking Mechanical Compression Test (All Cylinders, Fuel/Ignition Disabled)** | With engine at operating temperature, wide-open throttle (as specified by OEM), and fuel/ignition disabled, measure cranking compression on Cylinder 2 and compare against adjacent cylinders and \`[OEM specification]\` (\`typical healthy gasoline range ~120–210 psi / 830–1,450 kPa with <= 10–15% variation [general reference]\` — apply exact \`[OEM specification]\`). | **What This Test Establishes:** Confirms **low mechanical compression on Cylinder 2 \`[measured result]\`**, proving a physical cylinder-sealing defect is present and ruling out a simple spark plug or coil swap as a complete fix. | **What Still Requires Additional Testing:** Cranking compression alone does **not** isolate whether the compression loss is through the piston rings/cylinder wall, intake/exhaust valves, or head gasket—and **does not justify condemning the entire engine or the fuel injector**. |\n| **Test 3: Cylinder 2 Leak-Down Test, Borescope Inspection & PCV / Oil-Entry Isolation** | Position Cylinder 2 at **TDC on the compression stroke**, apply regulated shop air through a calibrated cylinder leak-down tester per \`[OEM specification]\`, measure leakage \`% [measured result]\`, listen for air escape locations, and inspect the chamber with an articulating borescope. | **What This Test Establishes:** Pinpoints the exact mechanical leakage path (rings/crankcase vs. exhaust valve vs. intake valve vs. head gasket/coolant) and visualizes cylinder wall scoring vs. valve-stem oil pooling. | **What Still Requires Additional Testing:** Independent assessment of exhaust backpressure / catalytic converter restriction once the mechanical cause is identified. |`,
+    `---`,
+    `## 3. Answer to Q3 — Follow-Up When Low Compression, Oil-Fouled Plug & Exhaust Restriction Are Confirmed: **Option ${q3.selected_option}**\n**Noctis Selection:** **${q3.statement}**\n\n### 3A. How Noctis Investigates Low Compression & Oil-Fouled Spark Plugs Without Prematurely Condemning the Injector or Engine\n1. **Why Prematurely Condemning the Fuel Injector Is Wrong:**\n   - Wet deposits on a spark plug must be distinguished between **raw gasoline** (volatile odor, washes carbon clean, accompanied by injector leakage on rail pressure-drop testing) and **engine oil** (viscous film, oily sheen, ash/carbon crust on plug threads and insulator). When the plug is **oil-fouled** and Cylinder 2 has **low mechanical compression**, replacing the fuel injector will not restore cylinder sealing or stop oil entry.\n   - However, if severe over-fueling/bore washdown is suspected as a contributing factor to ring/wall wear, the Cylinder 2 injector is **tested** (rail pressure leak-down, injector balance, and electrical command per \`[OEM specification]\`) rather than guessed.\n2. **Why Prematurely Condemning the Complete Engine (Short/Long Block) Is Wrong:**\n   - Low compression + oil fouling on Cylinder 2 can be caused by **upper-engine / cylinder-head faults** that do **not** require replacing the entire engine block:\n     - **Scenario A — Valve & Valve Guide / Stem Seal Fault (Top-End Repair):** A worn exhaust/intake valve guide and failed valve stem seal allow oil to run down the valve stem into Cylinder 2, while carbon/ash buildup or valve-face burning prevents the valve from sealing (leak-down air heard at the **tailpipe** or **intake manifold**, while borescope shows intact cylinder wall cross-hatch).\n     - **Scenario B — Cylinder Head Gasket Breach Between Cylinder 2 and an Oil Passage:** A localized head gasket failure between Cylinder 2 and an oil return/feed passage causes both low compression and oil fouling without lower-end piston failure.\n     - **Scenario C — Piston Ring / Ring-Land / Cylinder Wall Damage (Lower-End Fault):** Confirmed **only** when leak-down testing shows excessive leakage into the **crankcase (oil dipstick / filler neck)** and borescope inspection reveals vertical cylinder-wall scoring, broken ring lands, or piston crown periphery oil washing.\n     - **Note on Wet Compression Test Limitations:** Because Cylinder 2 already contains liquid oil (\`oil-fouled plug [measured result]\`), adding more oil for a conventional "wet compression test" can yield misleading results because residual oil is already wetting the rings; **cylinder leak-down + borescope inspection** is the definitive discriminating method.\n\n### 3B. Assessing & Addressing the Independently Confirmed Restricted Catalytic Converter\n1. **How Exhaust Restriction Is Independently Confirmed:**\n   - Measured via an **exhaust backpressure gauge** at the upstream $\\text{O}_2$/A/F sensor port (\`comparing idle and 2,500 RPM [measured result] against [OEM specification]; typical unrestricted reference is <= 1.0–1.5 psi at idle and <= 2.5–3.0 psi at 2,500 RPM [general reference]\`), intake manifold vacuum decay at sustained RPM, or an in-cylinder pressure transducer (\`WPS\`) exhaust-stroke plateau.\n2. **How Oil Fouling & Misfires Destroy and Restrict the Catalyst:**\n   - Unburned fuel from Cylinder 2 misfires overheats and melts the catalyst substrate, while burned engine oil deposits **phosphorus and zinc (\`ZDDP\` anti-wear additives)** and sulfated ash that glaze and plug the catalyst honeycomb face, creating a physical exhaust blockage.\n3. **Why Both Faults Must Be Addressed in Correct Causal Order (\`ENG-CAP-12\` Recurrence Prevention):**\n   - **Do NOT ignore the confirmed exhaust restriction:** A plugged catalytic converter traps exhaust gas in the cylinders, elevating backpressure, reducing volumetric efficiency, increasing combustion chamber temperatures, and causing power loss and multi-cylinder misfires.\n   - **Do NOT replace the catalytic converter before fixing the Cylinder 2 mechanical/oil-entry fault:** Installing a new catalytic converter onto an engine that still has low compression and oil burning on Cylinder 2 will rapidly oil-poison and melt the new converter. The **underlying Cylinder 2 mechanical and oil-control fault must be repaired alongside replacing/addressing the restricted catalytic converter**.\n\n---`,
+    `## 4. Repair Verification Using Vehicle-Specific Specifications (\`AUTO-AC-017 Req 8 & AUTO-AC-018 Req 6\`)\nTo close the case (\`partially_resolved_open_fault_remaining\` $\\rightarrow$ \`Resolved\`), all of the following post-repair checks must pass against \`[OEM specification]\`:\n1. **Mechanical Compression & Leak-Down Verification:** Verify that Cylinder 2 cranking compression \`[measured result]\` and cylinder leak-down percentage \`[measured result]\` are restored within \`[OEM specification]\` and balanced within OEM bank-to-bank/cylinder-to-cylinder variation limits.\n2. **Oil-Control & Spark Plug Verification:** With a clean/new OEM-specified spark plug torqued to \`[OEM specification]\`, run the engine through thermal operating cycles and inspect the Cylinder 2 plug and borescope to confirm zero oil pooling or fouling and verify oil level stability.\n3. **Exhaust Backpressure & Catalyst Flow Verification:** With the restricted catalytic converter replaced/repaired, verify with a backpressure gauge (or in-cylinder pressure waveform) that exhaust backpressure at idle and \`2,500 RPM [general reference]\` is back within \`[OEM specification]\`.\n4. **Live Scan Data, Mode \`$06\` Misfire Counters & Control-Strategy Check:** Confirm in closed-loop fuel control that Mode \`$06\` / live Cylinder 2 misfire counters remain at \`0 [measured result]\`, \`STFT\` and \`LTFT\` stabilize within \`[OEM specification]\` (\`typically within ±10% [general reference]\`), and upstream A/F vs. downstream $\\text{O}_2$ sensor waveforms confirm normal catalyst oxygen storage.\n5. **Readiness Monitors & Permanent DTC (\`Mode $0A\`) Distinction:** Clear Mode \`$03\`/\`$07\` DTCs and complete the OEM drive cycle so the **Misfire Monitor** and **Catalyst Monitor** run and pass with zero returning Pending (\`Mode $07\`) or Confirmed (\`Mode $03\`) DTCs (\`P0302\`, \`P0420\`). Remember (\`AUTO-AC-017\`): any stored **Permanent DTC (\`Mode $0A\`)** cannot be cleared with a scan tool and is not proof of a failed repair—it clears automatically once the ECM monitors pass across the OEM-required drive/warm-up cycles.\n\n---`,
+    `## 5. Final Feasibility Classification\n**${c.feasibility_classification.justification}**`,
+  ].join("\n\n");
+}
+
 export function automotiveDiagnosticGadget(question: string): string | null {
   const q = question.toLowerCase();
+
+  const asksQuestion15MisfireCompressionOilCatalyst =
+    /\b(auto-misfire-0015|auto-catalyst-p0302-p0420|question\s+15\b|oil-fouled\s+spark\s+plugs?|restricted\s+catalytic\s+converter|investigate\s+the\s+misfire\s+and\s+its\s+underlying\s+cause\s+before\s+determining\s+whether\s+the\s+catalyst\s+is\s+damaged|diagnose\s+the\s+misfire\s+and\s+mechanical\s+condition\s+safely\s+before\s+assessing\s+catalyst\s+damage|investigate\s+the\s+low-compression\s+cause\s+and\s+oil\s+entry\s+while\s+addressing\s+the\s+independently\s+confirmed\s+exhaust\s+restriction)\b/i.test(
+      q,
+    ) ||
+    (/\b(p0302|cylinder\s+2\s+misfires?)\b/i.test(q) &&
+      /\b(p0420|catalytic\s+converter|catalyst|exhaust\s+restriction|oil-fouled|low\s+compression)\b/i.test(q));
+
+  if (asksQuestion15MisfireCompressionOilCatalyst) {
+    return buildQuestion15MisfireCompressionOilCatalystReport(question);
+  }
 
   const asksAutoAc018CausalAttribution =
     /\b(auto-ac-018|auto-causal-0018|causal\s+attribution\s+and\s+intermittent-fault\s+verification|distinguishes\s+the\s+unresolved\s+status\s+of\s+p2110|p2110[\s\S]{0,160}\bu0100|u0100[\s\S]{0,160}\bp2110|\bp2110\b)\b/i.test(

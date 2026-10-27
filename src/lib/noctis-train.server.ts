@@ -36,6 +36,7 @@ import {
   buildMultiFaultQuestion9Report,
   buildQuestion10IntermittentElectricalCkpReport,
   buildQuestion12GasolineGdiFuelPressureReport,
+  buildQuestion15MisfireCompressionOilCatalystReport,
 } from "./noctis-automotive-engine.ts";
 
 export type TrainingPair = {
@@ -306,6 +307,14 @@ const OWASP_SEED_CORPUS: TrainingPair[] = [
     model: "vibe-seed",
     hits: 30,
     at: "2026-10-26T21:45:00.000Z",
+  },
+  {
+    question: "Question 15 — Cylinder 2 misfires P0302 low compression oil-fouled spark plugs and restricted catalytic converter P0420 AUTO-MISFIRE-0015",
+    answer: buildQuestion15MisfireCompressionOilCatalystReport("Question 15 cylinder 2 misfires low compression oil-fouled spark plugs restricted catalytic converter P0302 P0420"),
+    domain: "engineering",
+    model: "vibe-seed",
+    hits: 30,
+    at: "2026-10-26T21:55:00.000Z",
   },
 ];
 

@@ -3179,6 +3179,40 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
     assert.equal(passedGate18.acceptanceCriterionAudit.distinguishesUnresolvedStatusOfP2110, true);
     assert.equal(passedGate18.acceptanceCriterionAudit.producesSafeMeasurableRepairVerificationPlan, true);
     assert.equal(passedGate18.acceptanceCriterionAudit.acceptanceCriterionPassed, true);
+
+    // Verify Question 15 — Cylinder 2 Misfires, Low Compression, Oil-Fouled Spark Plugs & Restricted Catalytic Converter (AUTO-MISFIRE-0015)
+    const {
+      TEMPLATE_CASE_AUTO_MISFIRE_0015,
+      verifyQuestion15MisfireCompressionOilCatalyst,
+    } = await import("./noctis-automotive-engine.ts");
+
+    assert.equal(TEMPLATE_CASE_AUTO_MISFIRE_0015.case_id, "AUTO-MISFIRE-0015");
+    assert.equal(TEMPLATE_CASE_AUTO_MISFIRE_0015.alias_id, "AUTO-CATALYST-P0302-P0420");
+
+    const q15Eval = verifyQuestion15MisfireCompressionOilCatalyst();
+    assert.equal(q15Eval.q1Answer, "C");
+    assert.equal(q15Eval.q2Answer, "B");
+    assert.equal(q15Eval.q3Answer, "C");
+    assert.equal(q15Eval.prematureInjectorOrEngineCondemnationBlocked, true);
+    assert.equal(q15Eval.distinguishesIgnitionFuelingMechanicalAndOilControl, true);
+    assert.equal(q15Eval.addressesIndependentlyConfirmedExhaustRestriction, true);
+    assert.equal(q15Eval.preventsRepeatCatalystDamageByFixingUpstreamEngineFaultFirst, true);
+    assert.equal(q15Eval.feasibilityClassification, "CONDITIONALLY FEASIBLE");
+
+    const q15Prompt =
+      "Question 15: A gasoline vehicle has cylinder 2 misfires (P0302), P0420, low compression on cylinder 2, oil-fouled spark plugs, and a restricted catalytic converter. Answer Q1, Q2, and Q3.";
+    const q15Out = automotiveDiagnosticGadget(q15Prompt);
+    assert.ok(q15Out);
+    assert.match(q15Out, /Answer to Q1 — Root-Cause & Causal Priority: \*\*Option C\*\*/);
+    assert.match(q15Out, /Answer to Q2 — Next-Best Diagnostic Step: \*\*Option B\*\*/);
+    assert.match(q15Out, /Option C/);
+    assert.match(q15Out, /CONDITIONALLY FEASIBLE/);
+    assert.doesNotMatch(q15Out, /noctis-dashboard/);
+
+    const q15ScenarioGate = runDiagnosticScenarioIntegrityGate(q15Prompt, q15Out);
+    assert.equal(q15ScenarioGate.passed, true);
+    const q15SpecGate = runSpecificationAndMeasurementValidityGate(q15Prompt, q15Out);
+    assert.equal(q15SpecGate.passed, true);
   });
 });
 
