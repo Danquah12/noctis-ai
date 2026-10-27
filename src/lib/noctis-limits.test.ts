@@ -3257,20 +3257,23 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
     const q16SpecGate = runSpecificationAndMeasurementValidityGate(q16Prompt, q16Out);
     assert.equal(q16SpecGate.passed, true);
 
-    // Verify Next-Best-Test Engine (AUTO-NBT-001), Question 17 (AUTO-MULTIFAULT-0017), Question 18 (AUTO-TRANS-0018), AUTO-AC-019, and Question 19 (AUTO-INTEGRITY-0019)
+    // Verify Next-Best-Test Engine (AUTO-NBT-001), Question 17 (AUTO-MULTIFAULT-0017), Question 18 (AUTO-TRANS-0018), AUTO-AC-019, Question 19 (AUTO-INTEGRITY-0019), and Question 21 (AUTO-TRAP-0021)
     const {
       AUTO_AC_019_RULE,
       QUESTION_17_NBT_CANDIDATES,
       QUESTION_18_NBT_CANDIDATES,
       QUESTION_19_NBT_CANDIDATES,
+      QUESTION_21_NBT_CANDIDATES,
       TEMPLATE_CASE_AUTO_MULTIFAULT_0017,
       TEMPLATE_CASE_AUTO_TRANS_0018,
       TEMPLATE_CASE_AUTO_INTEGRITY_0019,
+      TEMPLATE_CASE_AUTO_TRAP_0021,
       runEvidenceProvenanceAndHallucinationGate,
       runNextBestTestEngine,
       verifyQuestion17IdleTrimMisfireCompression,
       verifyQuestion18TransmissionNetworkMechanicalVsElectrical,
       verifyQuestion19ConflictingDataEvidenceIntegrity,
+      verifyQuestion21TwoFaultTrap,
     } = await import("./noctis-automotive-engine.ts");
 
     const q17Ranked = runNextBestTestEngine(QUESTION_17_NBT_CANDIDATES);
@@ -3419,6 +3422,47 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
     assert.equal(passedAc19OnQ19.passed, true);
     assert.equal(passedAc19OnQ19.status, "PASS_EVIDENCE_PROVENANCE_VERIFIED");
     assert.equal(passedAc19OnQ19.hallucinatedMeasurementsDetected.length, 0);
+
+    // Verify Question 21 — The Two-Fault Trap (AUTO-TRAP-0021 / AUTO-MULTI-P0562-U0100-P0302-P0087)
+    const q21Ranked = runNextBestTestEngine(QUESTION_21_NBT_CANDIDATES);
+    assert.equal(q21Ranked.length, 4);
+    assert.equal(q21Ranked[0].testId, "NBT-Q21-01");
+
+    assert.equal(TEMPLATE_CASE_AUTO_TRAP_0021.case_id, "AUTO-TRAP-0021");
+    assert.equal(TEMPLATE_CASE_AUTO_TRAP_0021.alias_id, "AUTO-MULTI-P0562-U0100-P0302-P0087");
+    const q21Eval = verifyQuestion21TwoFaultTrap();
+    assert.equal(q21Eval.q1Answer, "C");
+    assert.equal(q21Eval.q2Answer, "C");
+    assert.equal(q21Eval.q3Answer, "B");
+    assert.equal(q21Eval.nextBestTestEngineActive, true);
+    assert.equal(q21Eval.separatesElectricalBranchFromPersistentMisfireAndFuelPressureBranches, true);
+    assert.equal(q21Eval.recognizesCoilSwapRulesOutCylinder2IgnitionCoilOnly, true);
+    assert.equal(q21Eval.requiresFrpSensorAndLowPressureSupplyCheckBeforeCondemningHpfp, true);
+    assert.equal(q21Eval.enforcesPartialResolutionStateWhenP0302AndP0087Persist, true);
+    assert.equal(q21Eval.zeroInventedMeasurementsPresentedAsObserved, true);
+    assert.equal(q21Eval.separatePassFailVerificationForAllThreeBranches, true);
+    assert.equal(q21Eval.feasibilityClassification, "CONDITIONALLY FEASIBLE");
+
+    const q21Prompt =
+      "Q21 — Expert Automotive Diagnostic Challenge: The Two-Fault Trap\nVehicle: 2020 gasoline SUV, 2.0L turbocharged engine, automatic transmission, 96,400 miles. Symptoms: intermittent stall after 35–45 minutes, occasional cluster flicker, power loss under acceleration, severe misfire on other occasions, temporary recovery after restart.\nInitial evidence: P0562 stored, U0100 intermittent, P0302 stored, P0087 pending. Charging voltage fluctuates according to reports, but no numerical readings captured during failure. Fuel pressure not measured during stall. CKP waveform not captured. ECM power and grounds not tested under load. Exact engine code, OEM wiring diagram and vehicle-specific limits are unverified.\nControlled tests:\nEvent A: Brief ECM supply-voltage interruption recorded; cluster flickers and ECM communication is lost around the same time; defective component not isolated.\nEvent B: After electrical supply stabilization, cylinder 2 still misfires under load. Misfire counter rises on cylinder 2. Swapping its ignition coil with cylinder 3 does not move the misfire. Spark plug, injector and compression are not conclusively evaluated.\nEvent C: During a separate warm loaded test, scan tool reports actual fuel-rail pressure below commanded pressure. Sensor accuracy is not independently verified; low-pressure supply, high-pressure pump and pressure-control operation are not isolated. Electrical supply is stable during this test. The events have not been proven to share one cause.";
+    const q21Out = automotiveDiagnosticGadget(q21Prompt);
+    assert.ok(q21Out);
+    assert.match(q21Out, /AUTO-TRAP-0021/);
+    assert.match(q21Out, /AUTO-MULTI-P0562-U0100-P0302-P0087/);
+    assert.doesNotMatch(q21Out, /Noctis Diagnostic Response — Question 16/);
+    assert.match(q21Out, /Q1 Answer: \*\*Option C\*\*/);
+    assert.match(q21Out, /Q2 Answer: \*\*Option C\*\*/);
+    assert.match(q21Out, /Q3 Answer: \*\*Option B\*\*/);
+    assert.match(q21Out, /NOT MEASURED/);
+    assert.match(q21Out, /SPECIFICATION NOT VERIFIED/);
+    assert.match(q21Out, /\[hypothetical example\]/);
+    assert.match(q21Out, /CONDITIONALLY FEASIBLE/);
+    assert.doesNotMatch(q21Out, /noctis-dashboard/);
+
+    const passedAc19OnQ21 = runEvidenceProvenanceAndHallucinationGate(q21Prompt, q21Out);
+    assert.equal(passedAc19OnQ21.passed, true);
+    assert.equal(passedAc19OnQ21.status, "PASS_EVIDENCE_PROVENANCE_VERIFIED");
+    assert.equal(passedAc19OnQ21.hallucinatedMeasurementsDetected.length, 0);
   });
 });
 
