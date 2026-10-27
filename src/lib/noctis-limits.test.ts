@@ -4119,7 +4119,71 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
     assert.match(routed, /ASSERT-007-07/);
     assert.doesNotMatch(routed, /Five Distinct Operating Environments/);
   });
+
+  it("verifies Live Clinical Test 008 (NH-TEST-008: P0 Emergency Scenario Misrouting & Stale Data Contamination Remediation, BP 88/54, HR 124, RR 28, Fever 38.7C, New Confusion, 3-Month-Old Creatinine 1.1 & Normal Potassium 4.3, Medication Reconciliation, 4 Adversarial Prompts & 8/8 Release-Blocking Regression Checks)", async () => {
+    const {
+      LIVE_CLINICAL_TEST_008_EXACT_INPUT,
+      classifyLaboratoryValueAgainstReferenceRange,
+      runLiveClinicalTest008Suite,
+      buildLiveClinicalTest008Report,
+      handleNaturalHealthQuery,
+    } = await import("./noctis-health-engine.ts");
+
+    const suite = runLiveClinicalTest008Suite();
+    assert.equal(suite.allPassed, true);
+    assert.equal(suite.schemaValidation.valid, true);
+    assert.equal(suite.schemaValidation.errors.length, 0);
+    assert.equal(suite.safetyGateway.urgency, "IMMEDIATE_EMERGENCY_ESCALATION");
+    assert.ok(suite.safetyGateway.auditTrail.rulesTriggered.includes("RULE-01E-SEPTIC-SHOCK-VITAL-SIGN-LOCK"));
+    assert.ok(suite.safetyGateway.auditTrail.rulesTriggered.includes("RULE-01D-STALE-STABLE-SUMMARY-OVERRIDE-BLOCKED"));
+
+    // Verify extracted current vitals and qSOFA 3/3 + Shock Index 1.41
+    assert.equal(suite.extracted.sbpMmHg, 88);
+    assert.equal(suite.extracted.dbpMmHg, 54);
+    assert.equal(suite.extracted.mapMmHg, 65.3);
+    assert.equal(suite.extracted.heartRateBpm, 124);
+    assert.equal(suite.extracted.shockIndex, 1.41);
+    assert.equal(suite.extracted.respRateMin, 28);
+    assert.equal(suite.extracted.tempC, 38.7);
+    assert.equal(suite.extracted.mentalStatusAbnormal, true);
+    assert.equal(suite.extracted.qSofaScore, 3);
+    assert.equal(suite.extracted.qSofaStatus, "CALCULATED_COMPLETE");
+
+    // Verify Potassium 4.3 mmol/L is NORMAL (never elevated) and Creatinine 1.1 mg/dL is NORMAL at historical baseline
+    const k43 = classifyLaboratoryValueAgainstReferenceRange("serum_potassium_mmol_l", 4.3);
+    assert.equal(k43.classification, "NORMAL");
+    assert.equal(k43.isElevated, false);
+    const scr11 = classifyLaboratoryValueAgainstReferenceRange("serum_creatinine_mg_dl", 1.1);
+    assert.equal(scr11.classification, "NORMAL");
+    assert.equal(scr11.isElevated, false);
+
+    // Verify Branch #6 zero fallback contamination when given only creatinine 1.1 and potassium 4.3
+    assert.equal(suite.branch6ZeroContaminationVerified, true);
+
+    // Verify all 8 mandatory release-blocking regression checks pass
+    assert.equal(suite.regressionChecks.length, 8);
+    for (const r of suite.regressionChecks) {
+      assert.equal(r.passed, true, `Expected ${r.regressionId} to pass (${r.measuredResult})`);
+    }
+
+    // Verify all 4 adversarial instructions pass
+    assert.equal(suite.adversarialResults.length, 4);
+    for (const adv of suite.adversarialResults) {
+      assert.equal(adv.passed, true, `Expected ${adv.adversarialId} to pass`);
+    }
+
+    // Verify natural-language routing for NH-TEST-008
+    const routed = handleNaturalHealthQuery(
+      `# NOCTIS HEALTH — P0 DEFECT: EMERGENCY SCENARIO MISROUTING AND STALE DATA CONTAMINATION\nDefect ID: NH-TEST-008\n${LIVE_CLINICAL_TEST_008_EXACT_INPUT}`
+    );
+    assert.ok(routed);
+    assert.equal(routed, buildLiveClinicalTest008Report());
+    assert.match(routed, /NH-TEST-008/);
+    assert.match(routed, /REG-008-08/);
+    assert.match(routed, /RULE-01E-SEPTIC-SHOCK-VITAL-SIGN-LOCK/);
+  });
 });
+
 
 
 
