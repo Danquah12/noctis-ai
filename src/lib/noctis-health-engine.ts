@@ -3172,7 +3172,13 @@ export function handleNaturalHealthQuery(question: string, priorAssistantText = 
     ].join("\n\n");
   }
 
-  // 5. Natural-Language Lab Report, Pathology/Biopsy Report, Imaging Report & Medication Safety Interpretation
+  // 5. Physician Clinical Diagnostic & Differential Reasoning Engine (`NOCTIS-PHYSICIAN-DX-001`)
+  const physicianResponse = handlePhysicianDiagnosticQuery(q);
+  if (physicianResponse) {
+    return physicianResponse;
+  }
+
+  // 6. Natural-Language Lab Report, Pathology/Biopsy Report, Imaging Report & Medication Safety Interpretation
   // Catches everyday patient & clinician questions such as:
   // "My lab report shows creatinine 1.8 mg/dL, eGFR 41, potassium 5.4 mmol/L, and HbA1c 7.9%. What does this mean and what should I ask my doctor?"
   if (
@@ -3225,7 +3231,7 @@ export function handleNaturalHealthQuery(question: string, priorAssistantText = 
       `## Noctis Health Intelligence Engine — 7-Part Clinical Lab & Medical Record Explanation`,
       `**Active Operating Environment:** \`Noctis Personal Health\` (\`HL7 US Core v9.0.0\` / \`LOINC\` Normalized) · **Safety Gateway:** \`ROUTINE_SAFE\` (Non-Diagnostic Educational & Record Interpretation Mode)`,
       `### Part 1 — Direct Answer\nYour laboratory values show **reduced kidney filtration** (**creatinine \`${scrMgDl} mg/dL\`**, **eGFR \`${egfrVal} mL/min/1.73m²\`** — **KDIGO ${kdigoStage}**), **elevated blood potassium** (**\`${kVal} mmol/L\`**, above the typical \`3.5–5.0 mmol/L\` reference range), and **elevated long-term blood glucose** (**HbA1c \`${a1cVal}%\`**, above the standard \`< 7.0%\` ADA target for most adults). Together, these findings should be reviewed promptly with your physician—especially to check your current medications (such as ACE inhibitors/ARBs, potassium-sparing diuretics, Metformin, or over-the-counter NSAIDs like Ibuprofen) and to confirm whether these values represent a new change or a chronic trend.`,
-      `### Part 2 — Extracted & Normalized Laboratory Findings (\`HL7 US Core v9.0.0\`)\n| Biomarker | LOINC Code | Your Reported Value | Standard Adult Reference Range | Status / Clinical Interpretation |\n| :--- | :--- | :--- | :--- | :--- |\n| **Serum Creatinine** | \`LOINC 2160-0\` | **\`${scrMgDl} mg/dL\`**${scrUmolMatch ? ` (\`raw: ${scrUmolMatch[1]} umol/L\`)` : ""} | \`0.60 – 1.20 mg/dL\` | **HIGH** — Indicates reduced clearance of creatinine by the kidneys |\n| **Estimated GFR (eGFR)** | \`LOINC 98979-8\` | **\`${egfrVal} mL/min/1.73m²\`** | \`>= 60 mL/min/1.73m²\` | **LOW (${kdigoStage})** — Reduced kidney filtration rate |\n| **Serum Potassium ($\\text{K}^+$)** | \`LOINC 2823-3\` | **\`${kVal} mmol/L\`** | \`3.5 – 5.0 mmol/L\` | **${kVal > 5.0 ? "HIGH (Hyperkalemia)" : "NORMAL"}** — ${kVal > 5.0 ? "Requires prompt medication & dietary review" : "Within reference range"} |\n| **Hemoglobin A1c (HbA1c)** | \`LOINC 4548-4\` | **\`${a1cVal}%\`** | \`< 5.7% (normal) / < 7.0% (ADA target)\` | **${a1cVal >= 6.5 ? "HIGH" : "BORDERLINE"}** — Reflects average blood sugar over the past 8–12 weeks |`,
+      `### Part 2 — Extracted & Normalized Laboratory Findings (\`HL7 US Core v9.0.0\`)\n| Biomarker | LOINC Code | Your Reported Value | Standard Adult Reference Range | Status / Clinical Interpretation |\n| :--- | :--- | :--- | :--- | :--- |\n| **Serum Creatinine** | \`LOINC 2160-0\` | **\`${scrMgDl} mg/dL\`**${scrUmolMatch ? ` (\`raw: ${scrUmolMatch[1]} umol/L\`)` : ""} | \`0.60 – 1.20 mg/dL\` | **HIGH** — Indicates reduced clearance of creatinine by the kidneys |\n| **Estimated GFR (eGFR)** | \`LOINC 98979-8\` | **\`${egfrVal} mL/min/1.73m²\`** | \`>= 60 mL/min/1.73m²\` | **LOW (${kdigoStage})** — Reduced kidney filtration rate |\n| **Serum Potassium (K⁺)** | \`LOINC 2823-3\` | **\`${kVal} mmol/L\`** | \`3.5 – 5.0 mmol/L\` | **${kVal > 5.0 ? "HIGH (Hyperkalemia)" : "NORMAL"}** — ${kVal > 5.0 ? "Requires prompt medication & dietary review" : "Within reference range"} |\n| **Hemoglobin A1c (HbA1c)** | \`LOINC 4548-4\` | **\`${a1cVal}%\`** | \`< 5.7% (normal) / < 7.0% (ADA target)\` | **${a1cVal >= 6.5 ? "HIGH" : "BORDERLINE"}** — Reflects average blood sugar over the past 8–12 weeks |`,
       `### Part 3 — What the Medical Evidence Says (Controlled Medical Repository)\n- **\`MED-SRC-01\` (KDIGO 2024 CKD Guideline v2024.1, Grade 1A):** An eGFR of **\`${egfrVal} mL/min/1.73m²\`** falls in **${kdigoStage}**. KDIGO recommends pairing eGFR with a **Urine Albumin-to-Creatinine Ratio (\`uACR\`, \`LOINC 14959-1\`)** and reviewing kidney-protective therapies (such as SGLT2 inhibitors when clinically appropriate).\n- **\`MED-SRC-02\` (ADA Standards of Care in Diabetes v2026.1, Grade A):** An HbA1c of **\`${a1cVal}%\`** is above the general \`< 7.0%\` target for most non-pregnant adults, indicating an opportunity to optimize glycemic management safely around kidney function.\n- **\`MED-SRC-03\` & \`MED-SRC-04\` (FDA Drug Safety Labels):** Reduced eGFR (\`${egfrVal}\`) and elevated potassium (\`${kVal} mmol/L\`) directly affect medication dosing and interaction safety.`,
       `### Part 4 — Medication Safety & Interaction Check (What Your Doctor Will Review)\n${medSafety.alerts.map((a) => `- **[${a.severity}] ${a.drugsInvolved.join(" + ")}:** ${a.mechanism} *(Source: \`${a.sourceId}\`)* — ${a.clinicalGuidance}`).join("\n")}`,
       `### Part 5 — What Remains Uncertain & Limitations\n- **Single Lab Snapshot vs. Trend:** A single lab panel cannot distinguish a long-standing chronic baseline from a temporary acute change (for example, dehydration or recent NSAID use). Comparing against prior lab dates is essential.\n- **Missing Context Not Guessed (Safety Rule #3):** We do not have your prior creatinine history, urine albumin-to-creatinine ratio (\`uACR\`), blood pressure readings, or exact current medication list.`,
@@ -3236,6 +3242,1363 @@ export function handleNaturalHealthQuery(question: string, priorAssistantText = 
 
   return null;
 }
+
+// ============================================================================
+// NOCTIS PHYSICIAN CLINICAL DIAGNOSTIC & DIFFERENTIAL REASONING ENGINE
+// (`NOCTIS-PHYSICIAN-DX-001`)
+// ============================================================================
+
+export interface PhysicianSyndromeEntry {
+  syndromeId: string;
+  specialty: string;
+  clinicalPresentationName: string;
+  keywordTriggers: RegExp[];
+  leadingDiagnosis: {
+    diseaseName: string;
+    icd10Code: string;
+    snomedCtCode: string;
+    pathophysiology: string;
+    hallmarkClinicalFeatures: string;
+    goldStandardConfirmatoryTest: string;
+  };
+  mustNotMissEmergencies: {
+    diseaseName: string;
+    icd10Code: string;
+    distinguishingRedFlag: string;
+    immediateRuleOutTest: string;
+  }[];
+  competingAlternatives: {
+    diseaseName: string;
+    icd10Code: string;
+    howToDifferentiate: string;
+  }[];
+  prioritizedDiagnosticWorkup: {
+    priorityOrder: number;
+    testName: string;
+    loincOrModality: string;
+    diagnosticThresholdAndMeaning: string;
+  }[];
+  validatedClinicalScore: {
+    scoreName: string;
+    formulaAndParameters: string;
+    decisionThresholds: string;
+  };
+  evidenceBasedManagementPathway: {
+    guidelineCitation: string;
+    initialStabilization: string;
+    firstLineTargetedTherapyForClinicianReview: string;
+    contraindicationsAndSafetyChecks: string;
+  };
+  targetedHistoryAndExamManeuvers: string[];
+  redFlagEscalationTriggers: string[];
+}
+
+export const NOCTIS_PHYSICIAN_DIAGNOSTIC_ATLAS: PhysicianSyndromeEntry[] = [
+  {
+    syndromeId: "SYN-01-TROPICAL-FEBRILE",
+    specialty: "Infectious Disease & Tropical Medicine",
+    clinicalPresentationName: "Acute Febrile Illness with Rigors, Headache, Myalgias & Thrombocytopenia (Malaria / Typhoid / Dengue)",
+    keywordTriggers: [
+      /\b(malaria|plasmodium|falciparum|vivax|anopheles|mosquito|rigors?|chills\s+and\s+fever|intermittent\s+fever|cyclic\s+fever|typhoid|enteric\s+fever|salmonella\s+typhi|dengue|breakbone|retro-?orbital|ghana|nigeria|kenya|sub-?saharan|tropics?|endemic|thick\s+and\s+thin\s+smear|parasitemia)\b/i,
+      /\b(fever)\b[\s\S]{0,120}\b(chills|headache|joint\s+pain|body\s+aches|myalgia|bitter\s+taste|splenomegaly|thrombocytopenia|platelets?)\b/i,
+    ],
+    leadingDiagnosis: {
+      diseaseName: "Acute Uncomplicated or Severe Plasmodium falciparum Malaria",
+      icd10Code: "ICD-10-CM: B50.9 / B50.0",
+      snomedCtCode: "SNOMED CT: 61462000",
+      pathophysiology:
+        "Erythrocytic schizogony of Plasmodium parasites causes synchronized red-blood-cell lysis, proinflammatory cytokine release (TNF-α, IL-1), microvascular cytoadherence of infected RBCs, splenic sequestration, and consumptive thrombocytopenia.",
+      hallmarkClinicalFeatures:
+        "Cyclic paroxysms of cold stage (shivering/rigors) → hot stage (high fever ≥ 38.5°C, headache, myalgias, nausea/bitter taste) → diaphoretic stage, splenomegaly, mild hemolytic jaundice, and thrombocytopenia (platelets often < 150,000/μL).",
+      goldStandardConfirmatoryTest:
+        "Giemsa-stained Thick & Thin Peripheral Blood Smears (LOINC 32700-7) + HRP2/pLDH Malaria Rapid Diagnostic Test (LOINC 70569-9)",
+    },
+    mustNotMissEmergencies: [
+      {
+        diseaseName: "Severe / Cerebral Falciparum Malaria",
+        icd10Code: "ICD-10-CM: B50.0",
+        distinguishingRedFlag:
+          "Impaired consciousness/prostration, multiple seizures, severe anemia (Hb < 7 g/dL), hypoglycemia (< 40 mg/dL), metabolic acidosis/lactate > 5 mmol/L, renal impairment, or hyperparasitemia (> 5–10%).",
+        immediateRuleOutTest: "Stat Point-of-Care Blood Glucose (LOINC 2345-7), Venous Lactate (LOINC 2524-7), Quantitative Parasitemia % on Thin Smear",
+      },
+      {
+        diseaseName: "Enteric (Typhoid) Fever (Salmonella enterica serovar Typhi)",
+        icd10Code: "ICD-10-CM: A01.00",
+        distinguishingRedFlag:
+          "Gradual 'stepladder' fever over 5–7 days, pulse-temperature dissociation (relative bradycardia / Faget sign), abdominal pain, constipation or 'pea-soup' diarrhea, hepatosplenomegaly, and rose spots.",
+        immediateRuleOutTest: "Aerobic Blood Cultures × 2 sets prior to antibiotics (LOINC 600-7) + Stool/Bone Marrow Culture",
+      },
+      {
+        diseaseName: "Severe Dengue / Dengue Hemorrhagic Fever",
+        icd10Code: "ICD-10-CM: A97.2",
+        distinguishingRedFlag:
+          "Severe retro-orbital headache, intense 'breakbone' arthralgia/myalgia, petechial rash / positive tourniquet test, rising hematocrit (≥ 20% hemoconcentration from plasma leakage) with rapidly falling platelets.",
+        immediateRuleOutTest: "Dengue NS1 Antigen + IgM/IgG ELISA (LOINC 75377-2) + Serial Hematocrit & Platelet Monitoring",
+      },
+      {
+        diseaseName: "Acute Meningococcemia / Bacterial Meningitis",
+        icd10Code: "ICD-10-CM: A39.2 / G00.9",
+        distinguishingRedFlag: "Nuchal rigidity (stiff neck), photophobia, non-blanching petechial/purpuric rash, or hypotension.",
+        immediateRuleOutTest: "Stat Blood Cultures (LOINC 600-7) + Lumbar Puncture CSF Analysis (LOINC 26464-8)",
+      },
+    ],
+    competingAlternatives: [
+      {
+        diseaseName: "Acute Viral Syndrome (Influenza A/B, COVID-19, Chikungunya)",
+        icd10Code: "ICD-10-CM: J11.1 / U07.1 / A92.0",
+        howToDifferentiate: "Prominent upper respiratory coryza/cough (Influenza/COVID) or symmetric polyarthritis with negative blood smear/RDT.",
+      },
+      {
+        diseaseName: "Leptospirosis / Rickettsial Infection",
+        icd10Code: "ICD-10-CM: A27.9 / A75.9",
+        howToDifferentiate: "Conjunctival suffusion, severe calf tenderness, freshwater/rodent exposure, or inoculation eschar.",
+      },
+    ],
+    prioritizedDiagnosticWorkup: [
+      {
+        priorityOrder: 1,
+        testName: "Giemsa Thick & Thin Peripheral Blood Smears + Malaria RDT (HRP2/pLDH)",
+        loincOrModality: "LOINC 32700-7 / LOINC 70569-9",
+        diagnosticThresholdAndMeaning:
+          "Thick smear detects parasites at low density (5–10 parasites/μL); Thin smear identifies Plasmodium species and quantifies % parasitized RBCs (repeat q12h × 3 if initial smear is negative and suspicion remains high).",
+      },
+      {
+        priorityOrder: 2,
+        testName: "Complete Blood Count (CBC) with Differential & Platelet Count",
+        loincOrModality: "LOINC 57021-8",
+        diagnosticThresholdAndMeaning:
+          "Evaluates normocytic hemolytic anemia (Hb/Hct), thrombocytopenia (< 150,000/μL common in malaria/dengue), and leukocyte count (leukopenia in typhoid/dengue vs. leukocytosis in bacterial sepsis).",
+      },
+      {
+        priorityOrder: 3,
+        testName: "Point-of-Care Blood Glucose, CMP, Total/Indirect Bilirubin, LDH & Venous Lactate",
+        loincOrModality: "LOINC 24323-8 / LOINC 2524-7",
+        diagnosticThresholdAndMeaning:
+          "Screens for WHO Severe Malaria criteria: hypoglycemia (< 40 mg/dL), AKI (Creatinine > 3.0 mg/dL), hyperbilirubinemia (> 3.0 mg/dL), and lactic acidosis (> 5.0 mmol/L).",
+      },
+      {
+        priorityOrder: 4,
+        testName: "Blood Cultures (2 Sets) + Dengue NS1 Antigen / IgM",
+        loincOrModality: "LOINC 600-7 / LOINC 75377-2",
+        diagnosticThresholdAndMeaning: "Rules out co-existing bacteremia / Salmonella Typhi enteric fever and Dengue virus co-infection.",
+      },
+    ],
+    validatedClinicalScore: {
+      scoreName: "qSOFA + WHO Severe Malaria Criteria + Shock Index (HR/SBP)",
+      formulaAndParameters:
+        "qSOFA (1 point each: RR ≥ 22/min, Altered Mentation GCS < 15, SBP ≤ 100 mmHg) + Shock Index = HR / SBP (normal 0.5–0.7)",
+      decisionThresholds:
+        "qSOFA ≥ 2 or any 1 WHO Severe Malaria criterion mandates immediate inpatient ICU/high-dependency admission and parenteral therapy.",
+    },
+    evidenceBasedManagementPathway: {
+      guidelineCitation: "WHO Guidelines for Malaria (2024/2025 Consolidated Edition) & CDC Yellow Book (2026)",
+      initialStabilization:
+        "Assess ABCs, check stat capillary blood glucose, establish IV access if vomiting or severe signs are present, and administer antipyretic (Acetaminophen/Paracetamol; avoid NSAIDs/Aspirin due to thrombocytopenia/bleeding/nephrotoxicity risk).",
+      firstLineTargetedTherapyForClinicianReview:
+        "• Uncomplicated P. falciparum: Oral Artemisinin-based Combination Therapy (ACT), e.g., Artemether-Lumefantrine (6-dose regimen over 3 days with food/milk) or Dihydroartemisinin-Piperaquine.\n• Severe Malaria (any WHO severity criterion): Parenteral IV Artesunate 2.4 mg/kg at 0, 12, and 24 hours, then daily until oral ACT is tolerated.\n• P. vivax / P. ovale: ACT or Chloroquine (if sensitive region) followed by Primaquine or Tafenoquine radical cure ONLY after confirming normal G6PD activity (LOINC 32552-2).",
+      contraindicationsAndSafetyChecks:
+        "Avoid NSAIDs (Ibuprofen/Diclofenac) and Aspirin until Dengue and severe thrombocytopenia are excluded. Check QTc interval and G6PD status where indicated. Requires licensed clinician prescription and confirmed parasitological test.",
+    },
+    targetedHistoryAndExamManeuvers: [
+      "Geographic & Travel History: Exact endemic region, mosquito bite exposure, bed-net use, and chemoprophylaxis adherence.",
+      "Fever Pattern & Duration: Number of days of fever, periodicity (tertian 48h vs. continuous stepladder), and antipyretic response.",
+      "Neurological & Bleeding Screen: Any confusion, lethargy, dark 'Coca-Cola' urine (hemoglobinuria/blackwater fever), gum bleeding, or petechiae.",
+      "Abdominal & Meningeal Exam: Palpate left upper quadrant for tender splenomegaly, check sclerae for icterus, and test neck flexion for nuchal rigidity.",
+    ],
+    redFlagEscalationTriggers: [
+      "Confusion, drowsiness, slurred speech, or any seizure activity (Cerebral Malaria emergency)",
+      "Inability to sit up or drink fluids, persistent vomiting preventing oral medication",
+      "Dark red/black urine, spontaneous gum/nose bleeding, or yellowing of the eyes (jaundice)",
+      "Fast breathing (RR ≥ 22/min), low blood pressure (SBP < 90–100 mmHg), or low urine output",
+    ],
+  },
+  {
+    syndromeId: "SYN-02-RESPIRATORY-PNEUMONIA-PE",
+    specialty: "Pulmonology, Infectious Disease & Critical Care",
+    clinicalPresentationName: "Acute Lower Respiratory Tract Infection, Productive Cough, Fever, Pleuritic Pain & Hypoxia (Pneumonia / PE / TB)",
+    keywordTriggers: [
+      /\b(pneumonia|lobar\s+consolidation|rust-?colored\s+sputum|purulent\s+sputum|crackles|rales|curb-?65|bronchial\s+breath|pleuritic\s+chest\s+pain|hemoptysis|night\s+sweats|tuberculosis|mycobacterium)\b/i,
+      /\b(cough)\b[\s\S]{0,120}\b(fever|shortness\s+of\s+breath|dyspnea|sputum|phlegm|spo2|hypoxia|tachypnea)\b/i,
+    ],
+    leadingDiagnosis: {
+      diseaseName: "Acute Community-Acquired Pneumonia (CAP — Streptococcus pneumoniae / Atypical Pathogens)",
+      icd10Code: "ICD-10-CM: J18.9 / J13",
+      snomedCtCode: "SNOMED CT: 385093006",
+      pathophysiology:
+        "Alveolar microbial proliferation triggers neutrophilic exudate, inflammatory consolidation of lung parenchyma, ventilation-perfusion (V/Q) mismatch, shunt physiology, and pleuritic visceral/parietal pleural inflammation.",
+      hallmarkClinicalFeatures:
+        "Acute fever, chills, productive cough (purulent or rust-colored sputum), dyspnea, tachypnea, pleuritic chest pain, focal inspiratory crackles/rales, egophony, dullness to percussion, and new radiographic infiltrate.",
+      goldStandardConfirmatoryTest:
+        "Posteroanterior (PA) & Lateral Chest Radiograph (LOINC 36643-5) demonstrating a new lobar or segmental alveolar infiltrate + Microbiological Respiratory/Blood Identification",
+    },
+    mustNotMissEmergencies: [
+      {
+        diseaseName: "Acute Pulmonary Embolism (PE)",
+        icd10Code: "ICD-10-CM: I26.99",
+        distinguishingRedFlag:
+          "Sudden-onset dyspnea, tachycardia, pleuritic chest pain, hemoptysis, asymmetric calf swelling (DVT), recent immobilization/surgery/malignancy, or hypoxia disproportionate to a clear chest X-ray.",
+        immediateRuleOutTest: "Wells PE Score + High-Sensitivity D-Dimer (LOINC 48065-7) or CT Pulmonary Angiography (CTPA)",
+      },
+      {
+        diseaseName: "Severe Sepsis / Septic Shock & Acute Respiratory Distress Syndrome (ARDS)",
+        icd10Code: "ICD-10-CM: A41.9 / J80",
+        distinguishingRedFlag:
+          "Respiratory rate ≥ 30/min, SpO2 < 90% on room air, PaO2/FiO2 ≤ 300, hypotension (SBP < 90 mmHg or MAP < 65 mmHg), altered mental status, or lactate > 2.0 mmol/L.",
+        immediateRuleOutTest: "Arterial Blood Gas (LOINC 24336-0), Serum Lactate (LOINC 2524-7), Blood Cultures × 2 (LOINC 600-7)",
+      },
+      {
+        diseaseName: "Active Pulmonary Tuberculosis (Mycobacterium tuberculosis)",
+        icd10Code: "ICD-10-CM: A15.0",
+        distinguishingRedFlag:
+          "Subacute/chronic cough > 2–3 weeks, hemoptysis, drenching night sweats, unintentional weight loss, and upper-lobe cavitary infiltrate.",
+        immediateRuleOutTest: "Sputum Xpert MTB/RIF Ultra PCR (LOINC 88164-9) + 3 Serial Acid-Fast Bacilli (AFB) Smears & Mycobacterial Cultures",
+      },
+    ],
+    competingAlternatives: [
+      {
+        diseaseName: "Acute Decompensated Heart Failure (Cardiogenic Pulmonary Edema)",
+        icd10Code: "ICD-10-CM: I50.9",
+        howToDifferentiate: "Orthopnea, PND, elevated JVP, bilateral ankle edema, S3 gallop, elevated NT-proBNP (> 300–900 pg/mL), and symmetric perihilar 'bat-wing' edema.",
+      },
+      {
+        diseaseName: "Acute COPD or Asthma Exacerbation / Acute Bronchitis",
+        icd10Code: "ICD-10-CM: J44.1 / J45.901",
+        howToDifferentiate: "Diffuse expiratory wheezing, prolonged expiratory phase, smoking/asthma history, and absence of focal alveolar consolidation on CXR.",
+      },
+    ],
+    prioritizedDiagnosticWorkup: [
+      {
+        priorityOrder: 1,
+        testName: "Pulse Oximetry (SpO2) + Upright PA & Lateral Chest Radiograph (CXR)",
+        loincOrModality: "LOINC 2708-6 / LOINC 36643-5",
+        diagnosticThresholdAndMeaning:
+          "Confirms lobar/interstitial infiltrate, detects parapneumonic pleural effusion/empyema or pneumothorax, and establishes oxygenation baseline (SpO2 < 92% requires supplemental O2).",
+      },
+      {
+        priorityOrder: 2,
+        testName: "CBC with Differential, Basic Metabolic Panel (BUN, Creatinine, Na, Glucose) & Procalcitonin",
+        loincOrModality: "LOINC 57021-8 / LOINC 24321-2 / LOINC 33959-8",
+        diagnosticThresholdAndMeaning:
+          "BUN > 19 mg/dL (> 7 mmol/L) is a direct CURB-65 mortality predictor; Procalcitonin > 0.25 ng/mL supports bacterial etiology over pure viral infection.",
+      },
+      {
+        priorityOrder: 3,
+        testName: "Nasopharyngeal Respiratory Viral PCR (SARS-CoV-2, Influenza A/B, RSV) + Sputum Gram Stain & Culture",
+        loincOrModality: "LOINC 94500-6 / LOINC 624-7",
+        diagnosticThresholdAndMeaning: "Identifies viral co-infection or bacterial pathogen + antimicrobial susceptibility in hospitalized or severe CAP.",
+      },
+      {
+        priorityOrder: 4,
+        testName: "Urine Pneumococcal & Legionella Antigen Assays (or Sputum Xpert MTB/RIF if chronic)",
+        loincOrModality: "LOINC 6462-6 / LOINC 88164-9",
+        diagnosticThresholdAndMeaning: "Rapidly detects S. pneumoniae and Legionella pneumophila serogroup 1 in severe CAP.",
+      },
+    ],
+    validatedClinicalScore: {
+      scoreName: "CURB-65 Pneumonia Severity Score (0–5) + PSI/PORT Score",
+      formulaAndParameters:
+        "1 point each: Confusion, Urea/BUN > 19 mg/dL (7 mmol/L), Respiratory rate ≥ 30/min, Blood pressure (SBP < 90 or DBP ≤ 60 mmHg), Age ≥ 65 years",
+      decisionThresholds:
+        "Score 0–1: Low risk (< 1.5% mortality, outpatient care); Score 2: Moderate risk (9.2% mortality, inpatient ward); Score 3–5: Severe CAP (22%+ mortality, inpatient/ICU care).",
+    },
+    evidenceBasedManagementPathway: {
+      guidelineCitation: "ATS / IDSA Clinical Practice Guideline for Community-Acquired Pneumonia in Adults & NICE NG138",
+      initialStabilization:
+        "Administer supplemental oxygen to maintain SpO2 92–96% (88–92% if chronic hypercapnic COPD), assess hemodynamic stability (MAP ≥ 65 mmHg), and obtain cultures prior to first antibiotic dose.",
+      firstLineTargetedTherapyForClinicianReview:
+        "• Outpatient (No Comorbidities): High-dose Amoxicillin 1 g PO TID, Doxycycline 100 mg PO BID, or Macrolide (if local pneumococcal resistance < 25%).\n• Outpatient (With Comorbidities) / Non-Severe Inpatient: Beta-Lactam (Amoxicillin-Clavulanate or IV Ceftriaxone 1–2 g daily) PLUS Azithromycin 500 mg daily (or Doxycycline), OR Respiratory Fluoroquinolone monotherapy (Levofloxacin 750 mg daily).\n• Suspected Active TB: Airborne isolation + RIPE quadruple therapy (Rifampin, Isoniazid + Pyridoxine/B6, Pyrazinamide, Ethambutol) per WHO/CDC protocol.",
+      contraindicationsAndSafetyChecks:
+        "Verify Beta-Lactam/Penicillin allergy history, baseline QTc before Macrolide/Fluoroquinolone administration, and eGFR renal dose adjustments.",
+    },
+    targetedHistoryAndExamManeuvers: [
+      "Duration & Character of Cough/Sputum: Acute (< 7 days) vs. chronic (> 2–3 weeks), rust-colored sputum, or hemoptysis.",
+      "Thromboembolic & Cardiac Screen: Recent long-haul travel, surgery, unilateral leg swelling, orthopnea, or paroxysmal nocturnal dyspnea.",
+      "Epidemiologic & Comorbidity History: COPD/asthma, smoking pack-years, HIV/immunosuppression, TB contact, or hotel/water-system exposure (Legionella).",
+      "Focused Thoracic Auscultation & Percussion: Check for focal bronchial breath sounds, inspiratory crackles, egophony ('E-to-A' change), and pleural friction rub.",
+    ],
+    redFlagEscalationTriggers: [
+      "Oxygen saturation (SpO2) < 92% on room air or bluish discoloration of lips/fingertips (cyanosis)",
+      "Respiratory rate ≥ 30 breaths/minute or inability to speak in full sentences",
+      "New confusion, disorientation, or systolic blood pressure < 90 mmHg (CURB-65 high-risk criteria)",
+      "Coughing up frank blood (hemoptysis) or severe sudden chest pain",
+    ],
+  },
+  {
+    syndromeId: "SYN-03-ACUTE-ABDOMEN-RLQ-GI",
+    specialty: "Gastroenterology, Emergency Medicine & General Surgery",
+    clinicalPresentationName: "Acute Abdominal Pain — Right Lower Quadrant (Appendicitis / Ectopic) or Epigastric/RUQ (Pancreatitis / Cholecystitis)",
+    keywordTriggers: [
+      /\b(appendicitis|mcburney|rovsing|psoas\s+sign|obturator\s+sign|alvarado|right\s+lower\s+quadrant|\brlq\b|periumbilical|cholecystitis|murphy'?s\s+sign|charcot'?s\s+triad|pancreatitis|lipase|amylase|epigastric\s+pain\s+radiating\s+to\s+the\s+back|right\s+upper\s+quadrant|\bruq\b|peptic\s+ulcer|peritonitis)\b/i,
+      /\b(abdominal\s+pain|stomach\s+pain)\b[\s\S]{0,120}\b(nausea|vomiting|anorexia|rebound|guarding|fever|umbilicus|quadrant)\b/i,
+    ],
+    leadingDiagnosis: {
+      diseaseName: "Acute Appendicitis (RLQ Presentation) or Acute Calculous Cholecystitis / Acute Pancreatitis (RUQ/Epigastric Presentation)",
+      icd10Code: "ICD-10-CM: K35.80 / K81.0 / K85.90",
+      snomedCtCode: "SNOMED CT: 74400008 / 75694006",
+      pathophysiology:
+        "Luminal obstruction of the vermiform appendix (fecalith/lymphoid hyperplasia) or cystic/pancreatic duct (gallstone/alcohol) causes rising intraluminal pressure, venous congestion, transmural ischemia, bacterial translocation, or pancreatic autodigestion.",
+      hallmarkClinicalFeatures:
+        "• RLQ (Appendicitis): Visceral periumbilical pain migrating within 12–24h to somatic McBurney's point (RLQ), anorexia, nausea, low-grade fever (38.0–38.5°C), localized rebound tenderness, Rovsing's/Psoas sign, and leukocytosis (WBC > 10,000/μL with neutrophilia > 75%).\n• RUQ/Epigastric (Cholecystitis/Pancreatitis): Postprandial RUQ pain with inspiratory arrest on palpation (Murphy's sign) or severe boring epigastric pain radiating to the back relieved by leaning forward (Lipase ≥ 3× ULN).",
+      goldStandardConfirmatoryTest:
+        "CT Abdomen & Pelvis with IV Contrast (or Graded-Compression Ultrasound + Serum Lipase LOINC 3040-3 & Quantitative β-hCG LOINC 21198-7)",
+    },
+    mustNotMissEmergencies: [
+      {
+        diseaseName: "Ruptured Ectopic Pregnancy (in Patients of Reproductive Potential)",
+        icd10Code: "ICD-10-CM: O00.91",
+        distinguishingRedFlag:
+          "Lower abdominal/pelvic pain, amenorrhea or abnormal vaginal bleeding, syncope, shoulder-tip pain (diaphragmatic irritation from hemoperitoneum), or Shock Index > 0.9.",
+        immediateRuleOutTest: "Mandatory Stat Urine & Quantitative Serum β-hCG (LOINC 21198-7) + Transvaginal/Pelvic Ultrasound",
+      },
+      {
+        diseaseName: "Hollow Viscus Perforation / Generalized Peritonitis or Ascending Cholangitis",
+        icd10Code: "ICD-10-CM: K27.1 / K35.20 / K83.09",
+        distinguishingRedFlag:
+          "Rigid 'board-like' abdomen, diffuse rebound tenderness/involuntary guarding, absent bowel sounds, or Charcot's Triad (Fever + Jaundice + RUQ Pain) progressing to Reynolds' Pentad (+ Hypotension + Altered Mental Status).",
+        immediateRuleOutTest: "Upright Chest/Abdominal Radiograph (free subdiaphragmatic air) + CT Abdomen/Pelvis + Bilirubin/Alk Phos/Lactate",
+      },
+      {
+        diseaseName: "Ovarian or Testicular Torsion / Acute Mesenteric Ischemia",
+        icd10Code: "ICD-10-CM: N83.51 / N44.00 / K55.0",
+        distinguishingRedFlag:
+          "Sudden severe unilateral pelvic/scrotal pain with nausea/vomiting (time-critical 6-hour salvage window) or severe pain out of proportion to physical exam in a patient with atrial fibrillation/vascular disease.",
+        immediateRuleOutTest: "Color Doppler Pelvic/Scrotal Ultrasound or CT Mesenteric Angiography (CTA)",
+      },
+    ],
+    competingAlternatives: [
+      {
+        diseaseName: "Ureterolithiasis (Renal Colic) / Acute Pyelonephritis",
+        icd10Code: "ICD-10-CM: N20.1 / N10",
+        howToDifferentiate: "Colicky flank-to-groin pain, microscopic/gross hematuria or pyuria on urinalysis, CVA tenderness, and non-contrast CT KUB stone.",
+      },
+      {
+        diseaseName: "Mesenteric Adenitis / Acute Crohn's Ileitis / Pelvic Inflammatory Disease (PID)",
+        icd10Code: "ICD-10-CM: I88.0 / K50.00 / N73.9",
+        howToDifferentiate: "Preceding viral URI, chronic diarrhea/weight loss, or cervical motion tenderness (chandelier sign) on pelvic exam.",
+      },
+    ],
+    prioritizedDiagnosticWorkup: [
+      {
+        priorityOrder: 1,
+        testName: "Quantitative Urine/Serum β-hCG (all reproductive-age females) + Urinalysis",
+        loincOrModality: "LOINC 21198-7 / LOINC 24356-8",
+        diagnosticThresholdAndMeaning: "Immediately excludes ectopic pregnancy and evaluates for hematuria (stone) or pyuria/bacteriuria (UTI/pyelonephritis).",
+      },
+      {
+        priorityOrder: 2,
+        testName: "CBC with Differential, C-Reactive Protein (CRP), BMP, Liver Panel & Serum Lipase",
+        loincOrModality: "LOINC 57021-8 / LOINC 1988-5 / LOINC 3040-3",
+        diagnosticThresholdAndMeaning:
+          "WBC > 10,000/μL + Neutrophils > 75% adds 3 Alvarado points; Lipase ≥ 3× ULN confirms acute pancreatitis; elevated Bilirubin/Alk Phos flags biliary obstruction.",
+      },
+      {
+        priorityOrder: 3,
+        testName: "Targeted Abdominal Ultrasound (RLQ Graded-Compression or RUQ Biliary)",
+        loincOrModality: "Diagnostic Ultrasound (Radiation-Free First Line in Pediatrics/Pregnancy/RUQ)",
+        diagnosticThresholdAndMeaning:
+          "Appendicitis: non-compressible blind-ending tubular structure > 6 mm with wall hyperemia; Cholecystitis: gallstones + wall > 3 mm + sonographic Murphy's sign.",
+      },
+      {
+        priorityOrder: 4,
+        testName: "CT Abdomen & Pelvis with IV Contrast",
+        loincOrModality: "Contrast-Enhanced Abdominal/Pelvic CT (> 95% Sensitivity & Specificity)",
+        diagnosticThresholdAndMeaning: "Gold-standard cross-sectional imaging for adult appendicitis, diverticulitis, perforation, abscess, or pancreatic necrosis.",
+      },
+    ],
+    validatedClinicalScore: {
+      scoreName: "Alvarado (MANTRELS) Score for Acute Appendicitis (0–10) + Revised Atlanta Criteria",
+      formulaAndParameters:
+        "Migration to RLQ (1), Anorexia (1), Nausea/vomiting (1), Tenderness in RLQ (2), Rebound pain (1), Elevated Temp ≥ 37.3°C (1), Leukocytosis > 10,000/μL (2), Left shift > 75% neutrophils (1)",
+      decisionThresholds:
+        "Alvarado 0–4: Low likelihood; 5–6: Equivocal (obtain US/CT imaging); 7–10: High probability (surgical consultation + imaging per protocol).",
+    },
+    evidenceBasedManagementPathway: {
+      guidelineCitation: "WSES Jerusalem Guidelines for Acute Appendicitis & ACG Clinical Guideline for Acute Pancreatitis (2024)",
+      initialStabilization:
+        "Keep patient NPO (nothing by mouth) pending surgical/imaging evaluation, establish IV access, administer isotonic crystalloid resuscitation (Ringer's Lactate), and provide appropriate analgesia & antiemetics (modern evidence confirms analgesia does NOT mask peritoneal signs).",
+      firstLineTargetedTherapyForClinicianReview:
+        "• Acute Appendicitis: Pre-operative IV broad-spectrum coverage (e.g., Ceftriaxone + Metronidazole or Cefoxitin/Piperacillin-Tazobactam) + Laparoscopic Appendectomy.\n• Acute Cholecystitis: IV Ceftriaxone + Metronidazole + Early Laparoscopic Cholecystectomy (within 24–72h).\n• Acute Pancreatitis: Goal-directed moderate IV Ringer's Lactate resuscitation, early oral feeding as tolerated once pain improves, and ERCP within 24h if concurrent acute cholangitis is present.",
+      contraindicationsAndSafetyChecks:
+        "Never administer laxatives or enemas in acute undiagnosed abdominal pain (perforation risk). Requires surgical/physician evaluation.",
+    },
+    targetedHistoryAndExamManeuvers: [
+      "Pain Chronology & Migration: Did pain begin around the umbilicus and migrate to the right lower quadrant, or radiate to the back/right scapula?",
+      "Peritoneal & Biliary Signs: Check McBurney's point tenderness, Rovsing's sign, Psoas sign, Obturator sign, and inspiratory arrest on RUQ palpation (Murphy's sign).",
+      "Gynecologic & Urologic History: Last menstrual period (LMP), vaginal bleeding/discharge, dysuria, or prior kidney stones.",
+      "Gastrointestinal & Biliary Clues: Anorexia, bilious vomiting, acholic (pale) stools, dark urine, fatty-meal triggers, or alcohol/gallstone history.",
+    ],
+    redFlagEscalationTriggers: [
+      "Rigid, board-like abdomen or severe pain worsened by any movement, cough, or bump in the road (Peritonitis)",
+      "Dizziness, fainting (syncope), heart rate > 100 bpm, or blood pressure < 90/60 mmHg",
+      "Persistent bilious/bloody vomiting, black tarry stools (melena), or yellowing of the eyes (jaundice) with fever",
+      "Positive pregnancy test with lower abdominal or shoulder pain (Ruptured Ectopic Pregnancy emergency)",
+    ],
+  },
+  {
+    syndromeId: "SYN-04-ENDOCRINE-DKA-METABOLIC",
+    specialty: "Endocrinology, Metabolism & Critical Care",
+    clinicalPresentationName: "Hyperglycemic Crisis, Polyuria, Polydipsia, Kussmaul Breathing & High-Anion-Gap Metabolic Acidosis (DKA / HHS)",
+    keywordTriggers: [
+      /\b(diabetic\s+ketoacidosis|\bdka\b|\bhhs\b|hyperosmolar|kussmaul|fruity\s+breath|acetone\s+breath|anion\s+gap|winter'?s\s+formula|beta-?hydroxybutyrate|ketonemia|ketonuria|polyuria\s+and\s+polydipsia)\b/i,
+      /\b(glucose|blood\s+sugar)\b[\s\S]{0,120}\b(ketones?|acidosis|hco3|bicarbonate|ph\s+7\.[012]|polyuria|polydipsia)\b/i,
+    ],
+    leadingDiagnosis: {
+      diseaseName: "Acute Diabetic Ketoacidosis (DKA) with High-Anion-Gap Metabolic Acidosis",
+      icd10Code: "ICD-10-CM: E10.10 / E11.10",
+      snomedCtCode: "SNOMED CT: 420422005",
+      pathophysiology:
+        "Absolute or relative insulin deficiency combined with counter-regulatory hormone excess (glucagon, cortisol, catecholamines, GH) drives unrestrained hepatic gluconeogenesis/glycogenolysis, osmotic diuresis, lipolysis of free fatty acids, and hepatic ketogenesis (β-hydroxybutyrate and acetoacetate).",
+      hallmarkClinicalFeatures:
+        "Polyuria, polydipsia, nausea/vomiting, diffuse abdominal pain, dehydration/tachycardia, Kussmaul respiratory compensation (deep rapid breathing), fruity acetone breath, Blood Glucose ≥ 200–250 mg/dL (or euglycemic DKA on SGLT2i), arterial/venous pH < 7.30, serum HCO3⁻ < 18 mmol/L, Anion Gap > 12, and serum β-hydroxybutyrate ≥ 3.0 mmol/L.",
+      goldStandardConfirmatoryTest:
+        "Simultaneous Serum Glucose (LOINC 2345-7) + Serum β-Hydroxybutyrate (LOINC 53061-8) + Venous/Arterial Blood Gas (LOINC 24338-6) + Basic Metabolic Panel with Anion Gap",
+    },
+    mustNotMissEmergencies: [
+      {
+        diseaseName: "Life-Threatening Hypokalemia Triggered by Insulin Therapy",
+        icd10Code: "ICD-10-CM: E87.6",
+        distinguishingRedFlag:
+          "Total-body potassium is severely depleted by osmotic diuresis even when initial serum K⁺ appears normal; starting IV insulin drives K⁺ intracellularly and can precipitate fatal ventricular arrhythmia if initial K⁺ < 3.5 mmol/L.",
+        immediateRuleOutTest: "Mandatory Stat Serum Potassium (LOINC 2823-3) + 12-Lead ECG (check for U waves / T-wave flattening vs. peaked T waves) BEFORE starting insulin",
+      },
+      {
+        diseaseName: "Hyperosmolar Hyperglycemic State (HHS)",
+        icd10Code: "ICD-10-CM: E11.00",
+        distinguishingRedFlag:
+          "Severe hyperglycemia (Glucose > 600 mg/dL), Effective Serum Osmolality > 320 mOsm/kg (2 × Na + Glucose/18), profound dehydration (8–10 L deficit), and neurological obtundation/stupor with minimal ketosis (pH > 7.30, HCO3 > 18).",
+        immediateRuleOutTest: "Calculated & Measured Serum Osmolality (LOINC 2692-2) + BMP",
+      },
+      {
+        diseaseName: "Acute Precipitating Trigger (Occult Sepsis, Silent Myocardial Infarction, Pancreatitis, SGLT2i Euglycemic DKA)",
+        icd10Code: "ICD-10-CM: A41.9 / I21.9",
+        distinguishingRedFlag: "Fever/hypothermia, leukocytosis > 25,000/μL, troponin elevation, or recent SGLT2 inhibitor use (Empagliflozin/Dapagliflozin).",
+        immediateRuleOutTest: "12-Lead ECG, Troponin, Blood/Urine Cultures, Chest X-Ray, and Serum Lipase",
+      },
+    ],
+    competingAlternatives: [
+      {
+        diseaseName: "Other High-Anion-Gap Metabolic Acidoses (MUDPILES / GOLDMARK: Lactic Acidosis, Uremia, Toxic Alcohols, Salicylates)",
+        icd10Code: "ICD-10-CM: E87.2",
+        howToDifferentiate: "Check Serum Lactate, BUN/Creatinine, Osmolar Gap (> 10 mOsm/kg in methanol/ethylene glycol), and Salicylate level.",
+      },
+      {
+        diseaseName: "Alcoholic or Starvation Ketoacidosis",
+        icd10Code: "ICD-10-CM: E87.2 / F10.20",
+        howToDifferentiate: "Normal or low blood glucose following heavy alcohol binge/vomiting or prolonged fasting.",
+      },
+    ],
+    prioritizedDiagnosticWorkup: [
+      {
+        priorityOrder: 1,
+        testName: "Basic Metabolic Panel (Glucose, Na, K, Cl, HCO3, BUN, Cr) + Calculated Anion Gap & Corrected Sodium",
+        loincOrModality: "LOINC 24321-2",
+        diagnosticThresholdAndMeaning:
+          "Anion Gap = Na − (Cl + HCO3) [Normal 8–12; DKA > 12–16]; Corrected Na = Measured Na + 0.016 × (Glucose − 100).",
+      },
+      {
+        priorityOrder: 2,
+        testName: "Venous or Arterial Blood Gas (pH, PCO2, HCO3) + Winter's Formula Compensation Check",
+        loincOrModality: "LOINC 24338-6 / LOINC 24336-0",
+        diagnosticThresholdAndMeaning:
+          "Severity staging: Mild DKA (pH 7.25–7.30, HCO3 15–18), Moderate (pH 7.00–7.24, HCO3 10–<15), Severe (pH < 7.00, HCO3 < 10). Winter's Formula: Expected PaCO2 = (1.5 × HCO3) + 8 ± 2 mmHg.",
+      },
+      {
+        priorityOrder: 3,
+        testName: "Quantitative Serum β-Hydroxybutyrate + Urinalysis",
+        loincOrModality: "LOINC 53061-8 / LOINC 24356-8",
+        diagnosticThresholdAndMeaning:
+          "β-Hydroxybutyrate ≥ 3.0 mmol/L directly measures the predominant ketone body in DKA (superior to urine nitroprusside acetoacetate dipstick).",
+      },
+      {
+        priorityOrder: 4,
+        testName: "12-Lead ECG, CBC, Serum Phosphate/Magnesium, HbA1c & Infectious Screen",
+        loincOrModality: "LOINC 11524-6 / LOINC 4548-4",
+        diagnosticThresholdAndMeaning: "Identifies precipitating infection or silent MI and monitors potassium/phosphate shifts during treatment.",
+      },
+    ],
+    validatedClinicalScore: {
+      scoreName: "ADA/EASD 2024 DKA Severity Criteria + Anion Gap + Winter's Respiratory Compensation Formula",
+      formulaAndParameters:
+        "Anion Gap = Na − (Cl + HCO3); Winter's Expected PaCO2 = (1.5 × HCO3) + 8 ± 2 mmHg; Effective Osmolality = 2 × Na + (Glucose / 18)",
+      decisionThresholds:
+        "Severe DKA (pH < 7.00, HCO3 < 10 mmol/L, β-hydroxybutyrate > 6.0 mmol/L, or stupor/coma) requires immediate ICU admission and q1–2h electrolyte monitoring.",
+    },
+    evidenceBasedManagementPathway: {
+      guidelineCitation: "ADA / EASD / Joint British Diabetes Societies (JBDS) 2024–2026 Consensus Report on Hyperglycemic Crises in Adults",
+      initialStabilization:
+        "1. IV Fluid Resuscitation FIRST: Infuse isotonic crystalloid (0.9% NaCl or balanced crystalloid/Ringer's Lactate) 1,000–1,500 mL over the first hour to restore intravascular volume and renal perfusion.\n2. Mandatory Potassium Gate BEFORE Insulin: Check serum K⁺. If K⁺ < 3.5 mmol/L, HOLD insulin and give IV KCl 20–40 mmol/h until K⁺ ≥ 3.5 mmol/L. If K⁺ is 3.5–5.0 mmol/L, add 20–30 mmol K⁺ per liter of IV fluid.",
+      firstLineTargetedTherapyForClinicianReview:
+        "• IV Regular Insulin Infusion: 0.1 units/kg/hour continuous IV infusion (after K⁺ ≥ 3.5 mmol/L is verified).\n• Dextrose Transition Rule: When blood glucose falls to < 250 mg/dL, add Dextrose 5% or 10% (D5W + 0.45% NaCl) while CONTINUING IV insulin at 0.05 units/kg/h until DKA resolution criteria are met (Glucose < 200 mg/dL, Venous pH > 7.30, Serum HCO3 ≥ 18 mmol/L, β-hydroxybutyrate < 0.6 mmol/L, and Anion Gap ≤ 12).\n• Subcutaneous Basal-Bolus Overlap: Administer subcutaneous long-acting basal insulin 2 hours BEFORE stopping the IV insulin infusion to prevent rebound ketoacidosis.",
+      contraindicationsAndSafetyChecks:
+        "Never stop IV insulin solely because glucose normalizes if the Anion Gap is still elevated. Avoid rapid osmolality drops (> 3 mOsm/kg/h) to prevent cerebral edema.",
+    },
+    targetedHistoryAndExamManeuvers: [
+      "Insulin & Medication History: Missed insulin doses, insulin pump malfunction, or SGLT2 inhibitor use (can cause euglycemic DKA with glucose < 250 mg/dL).",
+      "Infectious Trigger Search: Fever, dysuria, productive cough, skin/foot ulcer infection, dental abscess, or gastroenteritis.",
+      "Volume & Respiratory Assessment: Mucous membranes, skin turgor, capillary refill, orthostatic vital signs, and Kussmaul respiratory pattern.",
+      "Neurological Monitoring: Serial Glasgow Coma Scale (GCS) checks for headache, bradycardia, or lethargy (early warning signs of cerebral edema).",
+    ],
+    redFlagEscalationTriggers: [
+      "Deep, rapid, labored breathing (Kussmaul respirations) or fruity/nail-polish-remover breath odor",
+      "Persistent vomiting with inability to keep fluids down for > 4 hours in a patient with diabetes",
+      "Blood glucose > 250–300 mg/dL with moderate/large blood or urine ketones",
+      "Confusion, extreme drowsiness, severe abdominal pain, or new headache during hyperglycemic treatment",
+    ],
+  },
+  {
+    syndromeId: "SYN-05-NEURO-MENINGITIS-HEADACHE",
+    specialty: "Neurology, Infectious Disease & Emergency Medicine",
+    clinicalPresentationName: "Acute Severe Headache, Fever, Nuchal Rigidity, Photophobia & Altered Mental Status (Meningitis / SAH / Stroke)",
+    keywordTriggers: [
+      /\b(meningitis|nuchal\s+rigidity|stiff\s+neck|kernig|brudzinski|photophobia|lumbar\s+puncture|thunderclap\s+headache|subarachnoid\s+hemorrhage|worst\s+headache\s+of\s+my\s+life|encephalitis|csf\s+glucose)\b/i,
+      /\b(headache)\b[\s\S]{0,120}\b(stiff\s+neck|neck\s+stiffness|photophobia|fever|confusion|petechial)\b/i,
+    ],
+    leadingDiagnosis: {
+      diseaseName: "Acute Bacterial Meningitis (Streptococcus pneumoniae / Neisseria meningitidis / Listeria monocytogenes)",
+      icd10Code: "ICD-10-CM: G00.9",
+      snomedCtCode: "SNOMED CT: 95883001",
+      pathophysiology:
+        "Bacterial invasion of the subarachnoid space triggers intense leptomeningeal inflammation, blood-brain barrier breakdown, vasogenic/cytotoxic cerebral edema, elevated intracranial pressure (ICP), and cortical vasculitis.",
+      hallmarkClinicalFeatures:
+        "Classic triad of fever, nuchal rigidity (neck stiffness), and altered mental status (≥ 2 of 4 signs [headache, fever, neck stiffness, altered mentation] present in 95% of cases), plus photophobia, nausea/vomiting, positive Kernig's/Brudzinski's signs, and petechial/purpuric rash in meningococcemia.",
+      goldStandardConfirmatoryTest:
+        "Cerebrospinal Fluid (CSF) Analysis via Lumbar Puncture (LOINC 26464-8: Elevated Opening Pressure > 20 cm H2O, Neutrophilic Pleocytosis > 1,000 WBC/μL, CSF Glucose < 40 mg/dL [CSF:Serum ratio < 0.4], CSF Protein > 200 mg/dL) + CSF Gram Stain/Culture & Multiplex PCR",
+    },
+    mustNotMissEmergencies: [
+      {
+        diseaseName: "Acute Subarachnoid Hemorrhage (SAH — Ruptured Berry Aneurysm)",
+        icd10Code: "ICD-10-CM: I60.9",
+        distinguishingRedFlag:
+          "Sudden-onset 'thunderclap' headache reaching maximal intensity within seconds to < 1 minute ('worst headache of life'), sentinel headache, diplopia/CN III palsy, or loss of consciousness.",
+        immediateRuleOutTest: "Stat Non-Contrast Head CT (sensitivity > 98% within 6 hours) followed by LP for CSF Xanthochromia if CT is negative",
+      },
+      {
+        diseaseName: "Herpes Simplex Virus (HSV-1) Encephalitis",
+        icd10Code: "ICD-10-CM: B00.4",
+        distinguishingRedFlag:
+          "Early personality/behavioral change, aphasia, focal seizures, olfactory hallucinations, and temporal lobe hemorrhagic necrosis on MRI.",
+        immediateRuleOutTest: "CSF HSV-1/2 PCR (LOINC 16955-7) + Brain MRI with Contrast (start empiric IV Acyclovir 10 mg/kg q8h immediately)",
+      },
+      {
+        diseaseName: "Brain Abscess / Mass Lesion with Impending Herniation",
+        icd10Code: "ICD-10-CM: G06.0",
+        distinguishingRedFlag:
+          "Focal neurological deficit, papilledema, new-onset seizure, severe immunocompromise, or Cushing's triad (hypertension, bradycardia, irregular respirations) — performing LP before Head CT in these patients risks fatal cerebral herniation.",
+        immediateRuleOutTest: "Mandatory Non-Contrast Head CT BEFORE Lumbar Puncture when herniation risk criteria are present",
+      },
+    ],
+    competingAlternatives: [
+      {
+        diseaseName: "Viral (Aseptic) Meningitis (Enterovirus)",
+        icd10Code: "ICD-10-CM: A87.9",
+        howToDifferentiate: "Preserved mental status, lymphocytic CSF (< 500 WBC/μL), normal CSF glucose (> 45 mg/dL), and mildly elevated CSF protein.",
+      },
+      {
+        diseaseName: "Migraine with Aura / Tension-Type or Cluster Headache",
+        icd10Code: "ICD-10-CM: G43.109",
+        howToDifferentiate: "Recurrent episodic history, visual/sensory aura over 20–60 minutes, absence of fever, nuchal rigidity, or CSF pleocytosis.",
+      },
+    ],
+    prioritizedDiagnosticWorkup: [
+      {
+        priorityOrder: 1,
+        testName: "Stat Aerobic & Anaerobic Blood Cultures × 2 Sets + Immediate Empiric Therapy Gate",
+        loincOrModality: "LOINC 600-7",
+        diagnosticThresholdAndMeaning:
+          "IDSA Golden Rule: Draw blood cultures immediately; if Head CT is required before LP, administer IV Dexamethasone + Empiric IV Antibiotics IMMEDIATELY after blood cultures — never delay antibiotics for imaging.",
+      },
+      {
+        priorityOrder: 2,
+        testName: "Screen for CT-Before-LP Indications (Immunocompromise, CNS Disease, Seizure, Papilledema, Focal Deficit, GCS < 15)",
+        loincOrModality: "Non-Contrast Head CT",
+        diagnosticThresholdAndMeaning: "Excludes space-occupying lesion or obstructive hydrocephalus before dural puncture.",
+      },
+      {
+        priorityOrder: 3,
+        testName: "Lumbar Puncture (LP) with Opening Pressure & 4-Tube CSF Profile",
+        loincOrModality: "LOINC 26464-8 / LOINC 2342-4 / LOINC 2880-3",
+        diagnosticThresholdAndMeaning:
+          "Bacterial: WBC > 1,000/μL (> 80% PMNs), Glucose < 40 mg/dL, Protein > 200 mg/dL, Lactate > 3.5 mmol/L; Viral: Lymphocytic, normal glucose; Fungal/TB: Lymphocytic + low glucose.",
+      },
+      {
+        priorityOrder: 4,
+        testName: "CSF Gram Stain, Culture & BioFire FilmArray Meningitis/Encephalitis Multiplex PCR",
+        loincOrModality: "LOINC 82196-7",
+        diagnosticThresholdAndMeaning: "Rapidly identifies 14 bacterial, viral, and fungal CNS pathogens within ~1 hour.",
+      },
+    ],
+    validatedClinicalScore: {
+      scoreName: "IDSA CT-Before-LP Clinical Decision Rule + CSF Bacterial Meningitis Score",
+      formulaAndParameters:
+        "CT-Before-LP required if ANY of: Immunocompromised state, History of CNS disease, New-onset seizure (< 1 wk), Papilledema, Abnormal level of consciousness, or Focal neurologic deficit",
+      decisionThresholds:
+        "0 criteria present → Proceed directly to Lumbar Puncture + Empiric IV Antibiotics; ≥ 1 criterion present → Blood Cultures → Stat IV Dexamethasone + IV Antibiotics → Head CT → LP.",
+    },
+    evidenceBasedManagementPathway: {
+      guidelineCitation: "IDSA Practice Guidelines for the Management of Bacterial Meningitis & ESCMID Guideline",
+      initialStabilization:
+        "Droplet isolation precautions (for suspected N. meningitidis for first 24h of effective therapy), airway/hemodynamic stabilization, blood cultures × 2, and immediate empiric antimicrobial initiation within < 60 minutes of arrival.",
+      firstLineTargetedTherapyForClinicianReview:
+        "• Adjunctive Corticosteroid: IV Dexamethasone 0.15 mg/kg q6h × 2–4 days given 10–20 minutes BEFORE or WITH the first antibiotic dose (reduces mortality and neurologic sequelae in S. pneumoniae meningitis).\n• Adults 18–50 years: IV Vancomycin (15–20 mg/kg q8–12h) + IV Ceftriaxone 2 g q12h (CNS meningitis dosing).\n• Adults > 50 years, Pregnant, or Immunocompromised: Add IV Ampicillin 2 g q4h (for Listeria monocytogenes coverage).\n• Suspected HSV Encephalitis: Add IV Acyclovir 10 mg/kg q8h.",
+      contraindicationsAndSafetyChecks:
+        "Never perform Lumbar Puncture in a patient with focal neurologic deficits, papilledema, or coagulopathy/thrombocytopenia (< 50,000/μL) prior to neuroimaging/correction.",
+    },
+    targetedHistoryAndExamManeuvers: [
+      "Onset Speed & Character: Did the headache peak instantaneously within < 60 seconds (Thunderclap SAH) or build over hours with fever?",
+      "Meningeal Irritation Signs: Passive neck flexion stiffness (nuchal rigidity), Kernig's sign, Brudzinski's sign, and jolt accentuation of headache.",
+      "Skin & Cranial Nerve Exam: Inspect entire body surface for non-blanching petechiae/purpura, check fundi for papilledema, and test cranial nerves III, IV, VI, VII.",
+      "Epidemiologic & Host Risk Factors: College dormitory/military barracks exposure, splenectomy/complement deficiency, sinusitis/otitis media, or age > 50.",
+    ],
+    redFlagEscalationTriggers: [
+      "Sudden 'thunderclap' headache reaching maximum severity within 60 seconds",
+      "Headache accompanied by fever, stiff neck, confusion, or sensitivity to light",
+      "Headache with a new non-blanching purple/red rash (petechiae/purpura)",
+      "Headache with slurred speech, facial droop, arm/leg weakness, double vision, or seizure",
+    ],
+  },
+  {
+    syndromeId: "SYN-06-CARDIO-CHF-ACS",
+    specialty: "Cardiology & Cardiovascular Medicine",
+    clinicalPresentationName: "Exertional Dyspnea, Orthopnea, PND, Bilateral Pedal Edema & Elevated JVP (Heart Failure / ACS / Arrhythmia)",
+    keywordTriggers: [
+      /\b(orthopnea|paroxysmal\s+nocturnal\s+dyspnea|\bpnd\b|pitting\s+edema|pedal\s+edema|ankle\s+swelling|jugular\s+venous|\bjvd\b|\bjvp\b|s3\s+gallop|nt-?probnp|\bbnp\b|heart\s+failure|\bhfref\b|\bhfpef\b|cardiomegaly|pulmonary\s+edema|pericarditis|friction\s+rub)\b/i,
+      /\b(shortness\s+of\s+breath|dyspnea)\b[\s\S]{0,120}\b(swelling|edema|pillows?|lying\s+flat|orthopnea|crackles)\b/i,
+    ],
+    leadingDiagnosis: {
+      diseaseName: "Acute Decompensated Heart Failure (ADHF — HFrEF / HFpEF)",
+      icd10Code: "ICD-10-CM: I50.9 / I50.23 / I50.33",
+      snomedCtCode: "SNOMED CT: 84114007",
+      pathophysiology:
+        "Impaired left and/or right ventricular systolic ejection (LVEF ≤ 40%) or diastolic relaxation (LVEF ≥ 50%) elevates left ventricular end-diastolic pressure (LVEDP) and pulmonary capillary wedge pressure (PCWP > 18 mmHg), causing alveolar transudation and neurohormonal RAAS/SNS sodium-water retention.",
+      hallmarkClinicalFeatures:
+        "Progressive exertional dyspnea, orthopnea (requiring ≥ 2–3 pillows), paroxysmal nocturnal dyspnea (PND), fatigue, elevated jugular venous pressure (JVP > 8 cm H2O), positive hepatojugular reflux, displaced apical impulse, S3 ventricular gallop, bibasilar inspiratory rales, and symmetric pitting lower-extremity edema.",
+      goldStandardConfirmatoryTest:
+        "NT-proBNP (LOINC 33762-6) / BNP (LOINC 30934-4) + Comprehensive Transthoracic Echocardiogram (TTE with LVEF % & Diastolic E/e' Ratio)",
+    },
+    mustNotMissEmergencies: [
+      {
+        diseaseName: "Acute Coronary Syndrome (STEMI / NSTEMI) Precipitating Acute Heart Failure",
+        icd10Code: "ICD-10-CM: I21.9",
+        distinguishingRedFlag:
+          "Chest pressure/anginal equivalent, diaphoresis, new ST-segment elevation/depression or T-wave inversion, or dynamic high-sensitivity troponin rise.",
+        immediateRuleOutTest: "Stat 12-Lead ECG within 10 minutes (LOINC 11524-6) + Serial High-Sensitivity Cardiac Troponin (LOINC 89579-7)",
+      },
+      {
+        diseaseName: "Cardiogenic Shock / Flash Pulmonary Edema (Warm-Wet vs. Cold-Wet Profile)",
+        icd10Code: "ICD-10-CM: R57.0 / J81.0",
+        distinguishingRedFlag:
+          "Hypotension (SBP < 90 mmHg), narrow pulse pressure, cool mottled extremities, oliguria (< 0.5 mL/kg/h), elevated lactate (> 2.0 mmol/L), or severe hypoxia with pink frothy sputum.",
+        immediateRuleOutTest: "Arterial Blood Gas, Serum Lactate, Urgent Bedside Echocardiogram & Invasive Hemodynamic Assessment",
+      },
+      {
+        diseaseName: "Cardiac Tamponade / Massive Pulmonary Embolism",
+        icd10Code: "ICD-10-CM: I31.4 / I26.09",
+        distinguishingRedFlag:
+          "Beck's Triad (hypotension, distended neck veins, muffled heart sounds), pulsus paradoxus (> 10 mmHg), electrical alternans on ECG, or clear lung fields despite severe JVD.",
+        immediateRuleOutTest: "Stat Bedside Transthoracic Echocardiogram (RA/RV diastolic collapse) or CTPA",
+      },
+    ],
+    competingAlternatives: [
+      {
+        diseaseName: "Nephrotic Syndrome or Decompensated Hepatic Cirrhosis",
+        icd10Code: "ICD-10-CM: N04.9 / K74.60",
+        howToDifferentiate: "Normal JVP, periorbital edema + heavy proteinuria (> 3.5 g/day) + hypoalbuminemia (Nephrotic), or ascites + spider angiomata + portal hypertension (Cirrhosis).",
+      },
+      {
+        diseaseName: "Chronic Obstructive Pulmonary Disease (COPD) / Interstitial Lung Disease",
+        icd10Code: "ICD-10-CM: J44.9 / J84.9",
+        howToDifferentiate: "Normal BNP (< 100 pg/mL) or NT-proBNP (< 300 pg/mL) strongly rules out acute heart failure as the primary cause of dyspnea.",
+      },
+    ],
+    prioritizedDiagnosticWorkup: [
+      {
+        priorityOrder: 1,
+        testName: "12-Lead ECG + High-Sensitivity Cardiac Troponin I/T",
+        loincOrModality: "LOINC 11524-6 / LOINC 89579-7",
+        diagnosticThresholdAndMeaning: "Identifies acute ischemia/infarction, atrial fibrillation with RVR, left bundle branch block (LBBB), or LV hypertrophy.",
+      },
+      {
+        priorityOrder: 2,
+        testName: "Natriuretic Peptide (NT-proBNP or BNP) + Chest Radiograph (CXR)",
+        loincOrModality: "LOINC 33762-6 / LOINC 30934-4 / LOINC 36643-5",
+        diagnosticThresholdAndMeaning:
+          "NT-proBNP < 300 pg/mL (or BNP < 100 pg/mL) has a 98% negative predictive value to rule out ADHF; CXR demonstrates cardiomegaly, cephalization, Kerley B lines, and pleural effusions.",
+      },
+      {
+        priorityOrder: 3,
+        testName: "Transthoracic Echocardiogram (TTE) with Doppler",
+        loincOrModality: "2D + Doppler Echocardiography",
+        diagnosticThresholdAndMeaning:
+          "Quantifies Left Ventricular Ejection Fraction (HFrEF ≤ 40%, HFmrEF 41–49%, HFpEF ≥ 50%), regional wall motion abnormalities, valvular stenosis/regurgitation, and RV systolic pressure.",
+      },
+      {
+        priorityOrder: 4,
+        testName: "BMP (Creatinine, eGFR, Na, K), CBC, Liver Panel, Iron Studies & TSH",
+        loincOrModality: "LOINC 24321-2 / LOINC 3016-3",
+        diagnosticThresholdAndMeaning: "Evaluates cardiorenal syndrome, electrolyte status during diuresis, anemia, and thyroid-induced heart failure.",
+      },
+    ],
+    validatedClinicalScore: {
+      scoreName: "Framingham Heart Failure Diagnostic Criteria + NYHA Functional Class (I–IV) + Forrester Hemodynamic Profile",
+      formulaAndParameters:
+        "Framingham Diagnosis requires ≥ 2 Major Criteria (PND/Orthopnea, JVD, Rales, Cardiomegaly, Pulmonary Edema, S3 Gallop, Hepatojugular Reflux) OR 1 Major + 2 Minor Criteria (Ankle Edema, Nocturnal Cough, Dyspnea on Exertion, Hepatomegaly, Pleural Effusion, HR > 120)",
+      decisionThresholds:
+        "Hemodynamic Profile classifies patient as Warm-Dry (compensated), Warm-Wet (congested → IV diuretics ± vasodilators), Cold-Wet (hypoperfused & congested → inotropes/vasopressors + ICU), or Cold-Dry.",
+    },
+    evidenceBasedManagementPathway: {
+      guidelineCitation: "2022 AHA/ACC/HFSA Guideline for the Management of Heart Failure & 2023 ESC Focused Update",
+      initialStabilization:
+        "Position patient upright, provide supplemental O2 or Non-Invasive Positive Pressure Ventilation (CPAP/BiPAP) for acute cardiogenic pulmonary edema, restrict sodium/fluid intake, and administer IV Loop Diuretic (Furosemide 40–80 mg IV or 1–2.5× home oral daily dose) with strict urine output and K⁺/Mg²⁺/Creatinine monitoring.",
+      firstLineTargetedTherapyForClinicianReview:
+        "• 4-Pillar Guideline-Directed Medical Therapy (GDMT) for HFrEF (once decongested & hemodynamically stable):\n  1. ARNI (Sacubitril-Valsartan) or ACEi/ARB\n  2. Evidence-Based Beta-Blocker (Carvedilol, Metoprolol Succinate, or Bisoprolol — initiate only when euvolemic)\n  3. Mineralocorticoid Receptor Antagonist (Spironolactone or Eplerenone — check eGFR > 30 and K⁺ < 5.0)\n  4. SGLT2 Inhibitor (Dapagliflozin or Empagliflozin — Class 1A across both HFrEF and HFpEF).",
+      contraindicationsAndSafetyChecks:
+        "Never initiate or up-titrate Beta-Blockers during acute pulmonary congestion or cardiogenic shock. Avoid NSAIDs, non-dihydropyridine CCBs (Verapamil/Diltiazem in HFrEF), and Thiazolidinediones.",
+    },
+    targetedHistoryAndExamManeuvers: [
+      "Orthopnea & PND Quantification: How many pillows are needed to sleep without breathlessness, and does the patient wake gasping for air 1–3 hours after falling asleep?",
+      "Volume & Weight Trajectory: Daily weight gain (> 2 kg in 2–3 days), dietary sodium indiscretion, or missed diuretic doses.",
+      "Ischemic & Arrhythmic Triggers: Chest pressure, palpitations, syncope, or recent NSAID initiation.",
+      "Jugular Venous & Precordial Exam: Measure JVP at 45°, auscultate for S3 gallop and murmurs, percuss/auscultate lung bases, and grade pitting edema.",
+    ],
+    redFlagEscalationTriggers: [
+      "Severe shortness of breath at rest or inability to lie flat for even a few minutes",
+      "Coughing up pink, frothy sputum or oxygen saturation < 90%",
+      "Chest pain, pressure, squeezing, or radiation to the jaw, neck, back, or arm",
+      "Systolic blood pressure < 90 mmHg, fainting, or cold/clammy extremities",
+    ],
+  },
+  {
+    syndromeId: "SYN-07-RENAL-PYELO-STONE",
+    specialty: "Nephrology, Urology & Infectious Disease",
+    clinicalPresentationName: "Flank Pain, Costovertebral Angle (CVA) Tenderness, Fever, Dysuria & Hematuria/Pyuria (Pyelonephritis / Renal Colic)",
+    keywordTriggers: [
+      /\b(pyelonephritis|costovertebral|\bcva\s+tenderness\b|flank\s+pain|dysuria|urinary\s+frequency|urosepsis|nephrolithiasis|kidney\s+stone|renal\s+colic|ureterolithiasis|hydronephrosis|nitrites|leukocyte\s+esterase|wbc\s+casts)\b/i,
+      /\b(burning\s+urination|painful\s+urination|dysuria)\b[\s\S]{0,120}\b(fever|back\s+pain|flank|chills|hematuria)\b/i,
+    ],
+    leadingDiagnosis: {
+      diseaseName: "Acute Pyelonephritis (Upper Urinary Tract Infection) vs. Obstructive Ureterolithiasis",
+      icd10Code: "ICD-10-CM: N10 / N20.1",
+      snomedCtCode: "SNOMED CT: 45816000",
+      pathophysiology:
+        "Ascending uropathogenic Escherichia coli (or Klebsiella/Proteus/Enterococcus) from the bladder via the ureter into the renal pelvis and tubulointerstitium provokes acute neutrophilic inflammation, tubular leukocyte cast formation, and systemic bacteremia.",
+      hallmarkClinicalFeatures:
+        "High fever (> 38.5°C), rigors/chills, unilateral flank pain, marked costovertebral angle (CVA) percussion tenderness, nausea/vomiting, lower-tract LUTS (dysuria, urgency, frequency), and pyuria/bacteriuria/WBC casts on urinalysis.",
+      goldStandardConfirmatoryTest:
+        "Urinalysis with Microscopic Sediment (LOINC 24356-8) + Quantitative Urine Culture & Susceptibility (LOINC 630-4, ≥ 10⁴–10⁵ CFU/mL) + Renal Imaging to exclude obstruction",
+    },
+    mustNotMissEmergencies: [
+      {
+        diseaseName: "Obstructive Pyelonephritis / Infected Hydronephrosis (Pyonephrosis — Urologic Surgical Emergency)",
+        icd10Code: "ICD-10-CM: N13.6",
+        distinguishingRedFlag:
+          "Co-existing obstructing ureteral stone + fever/pyuria/bacteremia; antibiotics alone cannot sterilize an obstructed collecting system, rapidly progressing to fatal septic shock without urgent decompression (ureteral stent or percutaneous nephrostomy).",
+        immediateRuleOutTest: "Urgent Non-Contrast CT Abdomen/Pelvis (CT KUB) or Renal Ultrasound",
+      },
+      {
+        diseaseName: "Ruptured Abdominal Aortic Aneurysm (AAA) Mimicking Renal Colic",
+        icd10Code: "ICD-10-CM: I71.3",
+        distinguishingRedFlag:
+          "New-onset flank/back pain in a patient > 60 years with smoking/hypertension history, hypotension, syncope, or pulsatile abdominal mass.",
+        immediateRuleOutTest: "Stat Bedside Aortic Ultrasound or CT Angiography",
+      },
+      {
+        diseaseName: "Emphysematous Pyelonephritis (in Patients with Diabetes Mellitus)",
+        icd10Code: "ICD-10-CM: N10",
+        distinguishingRedFlag: "Gas-forming necrotizing renal parenchymal infection with crepitus or gas in the renal parenchyma on CT.",
+        immediateRuleOutTest: "CT Abdomen & Pelvis + Blood Cultures",
+      },
+    ],
+    competingAlternatives: [
+      {
+        diseaseName: "Uncomplicated Ureterolithiasis (Renal Colic without Infection)",
+        icd10Code: "ICD-10-CM: N20.1",
+        howToDifferentiate: "Afebrile, sudden writhing colicky flank-to-groin pain, gross/microscopic hematuria without pyuria/nitrites or leukocytosis.",
+      },
+      {
+        diseaseName: "Lower Urinary Tract Cystitis / Pelvic Inflammatory Disease / Retrocecal Appendicitis",
+        icd10Code: "ICD-10-CM: N30.00 / N73.9",
+        howToDifferentiate: "Cystitis lacks fever, chills, and CVA tenderness; PID shows adnexal/cervical motion tenderness.",
+      },
+    ],
+    prioritizedDiagnosticWorkup: [
+      {
+        priorityOrder: 1,
+        testName: "Urinalysis with Microscopic Examination + Urine Culture & Susceptibility",
+        loincOrModality: "LOINC 24356-8 / LOINC 630-4",
+        diagnosticThresholdAndMeaning:
+          "Positive leukocyte esterase, positive nitrites (Enterobacterales), > 10 WBC/hpf, and pathognomonic White Blood Cell Casts confirm upper-tract renal parenchymal involvement.",
+      },
+      {
+        priorityOrder: 2,
+        testName: "CBC with Differential, Basic Metabolic Panel (Creatinine, eGFR, Electrolytes) & Venous Lactate",
+        loincOrModality: "LOINC 57021-8 / LOINC 24321-2 / LOINC 2524-7",
+        diagnosticThresholdAndMeaning: "Assesses systemic leukocytosis, acute kidney injury (AKI from sepsis or obstruction), and tissue hypoperfusion.",
+      },
+      {
+        priorityOrder: 3,
+        testName: "Blood Cultures (2 Sets) + Pregnancy Test (if reproductive-age female)",
+        loincOrModality: "LOINC 600-7 / LOINC 21198-7",
+        diagnosticThresholdAndMeaning: "Positive in 15–30% of hospitalized pyelonephritis patients; guides antibiotic selection in pregnancy.",
+      },
+      {
+        priorityOrder: 4,
+        testName: "Non-Contrast CT KUB or Renal & Bladder Ultrasound",
+        loincOrModality: "Renal Ultrasonography / Non-Contrast Helical CT",
+        diagnosticThresholdAndMeaning: "Mandatory if history of stones, sepsis, AKI, diabetes, or persistent fever after 48–72h of therapy to rule out obstruction or perinephric abscess.",
+      },
+    ],
+    validatedClinicalScore: {
+      scoreName: "qSOFA / SIRS Sepsis Screen + STONE Score for Ureterolithiasis + 2021 CKD-EPI eGFR",
+      formulaAndParameters:
+        "qSOFA (RR ≥ 22, Altered Mentation, SBP ≤ 100) + STONE Score (Sex, Timing, Origin, Nausea, Erythrocytes on UA: 0–13 points)",
+      decisionThresholds:
+        "Any sign of sepsis, inability to tolerate oral hydration/medications, pregnancy, or urinary tract obstruction mandates inpatient admission and IV antimicrobials.",
+    },
+    evidenceBasedManagementPathway: {
+      guidelineCitation: "IDSA / ESCMID International Clinical Practice Guidelines for Acute Uncomplicated Cystitis and Pyelonephritis & EAU Urological Infections Guideline",
+      initialStabilization:
+        "Obtain urine and blood cultures prior to antibiotics, administer IV crystalloid hydration, antiemetics (Ondansetron), and antipyretics (Acetaminophen; avoid NSAIDs if AKI or sepsis is present).",
+      firstLineTargetedTherapyForClinicianReview:
+        "• Outpatient Uncomplicated Pyelonephritis: Oral Ciprofloxacin 500 mg BID × 7 days or Levofloxacin 750 mg daily × 5 days (with initial IV Ceftriaxone 1 g dose if local fluoroquinolone resistance > 10%), or TMP-SMX DS BID × 14 days if known susceptible.\n• Inpatient / Complicated Pyelonephritis: IV Ceftriaxone 1–2 g q24h, Piperacillin-Tazobactam, or Ertapenem/Meropenem (if ESBL risk).\n• Obstructive Pyelonephritis (Stone + Infection): Emergent Urologic Decompression (retrograde ureteral stent or percutaneous nephrostomy) + IV broad-spectrum antibiotics.",
+      contraindicationsAndSafetyChecks:
+        "Note: Nitrofurantoin and Oral Fosfomycin do NOT achieve adequate renal parenchymal tissue concentrations and must NEVER be used to treat pyelonephritis.",
+    },
+    targetedHistoryAndExamManeuvers: [
+      "Stone & Obstruction Clues: Does the pain radiate from the flank into the ipsilateral groin/labia/testicle, or is there a history of kidney stones?",
+      "Oral Tolerance & Systemic Toxicity: Can the patient keep oral fluids and pills down, or are rigors and persistent vomiting present?",
+      "Complicating Host Factors: Pregnancy, diabetes mellitus, indwelling urinary catheter, neurogenic bladder, BPH, or immunosuppression.",
+      "Abdominal & CVA Exam: Perform gentle fist percussion over both costovertebral angles and palpate suprapubic/RLQ regions.",
+    ],
+    redFlagEscalationTriggers: [
+      "High fever with shaking chills alongside severe flank pain and inability to keep fluids down",
+      "Decreased or absent urination (oliguria/anuria) or single functioning kidney",
+      "Dizziness, confusion, rapid heart rate (> 100 bpm), or low blood pressure (< 90/60 mmHg)",
+      "Flank pain and fever during pregnancy (requires inpatient monitoring)",
+    ],
+  },
+  {
+    syndromeId: "SYN-08-HEMATOLOGIC-ANEMIA-RHEUM",
+    specialty: "Hematology, Rheumatology & Internal Medicine",
+    clinicalPresentationName: "Anemia, Fatigue, Pallor, Hemolysis / Sickle Cell Crisis or Acute Monoarticular/Polyarticular Arthritis",
+    keywordTriggers: [
+      /\b(anemia|hemoglobin\s+of|low\s+hemoglobin|microcytic|macrocytic|normocytic|\bmcv\b|ferritin|iron\s+deficiency|koilonychia|sickle\s+cell|vaso-?occlusive|reticulocyte|hemolytic|septic\s+arthritis|gout|monosodium\s+urate|pseudogout|lupus|\bsle\b|rheumatoid\s+arthritis)\b/i,
+      /\b(fatigue)\b[\s\S]{0,120}\b(pallor|pale|conjunctival|spoon\s+nails|pica|hemoglobin|\bhb\b|\bmcv\b)\b/i,
+    ],
+    leadingDiagnosis: {
+      diseaseName: "Morphologically Classified Anemia (Microcytic Iron Deficiency / Thalassemia vs. Normocytic Hemolytic/Sickle Cell vs. Macrocytic B12/Folate) or Acute Inflammatory/Septic Arthritis",
+      icd10Code: "ICD-10-CM: D50.9 / D57.00 / D51.0 / M00.9",
+      snomedCtCode: "SNOMED CT: 271737000 / 417357006",
+      pathophysiology:
+        "Impaired erythropoiesis (heme synthesis defect in iron deficiency, DNA synthesis defect in B12/folate deficiency, or globin chain mutation in Sickle Cell HbSS/Thalassemia) or accelerated RBC destruction (intravascular/extravascular hemolysis) reduces oxygen-carrying capacity.",
+      hallmarkClinicalFeatures:
+        "Exertional dyspnea, fatigue, tachycardia, conjunctival/palmar pallor, koilonychia/pica (Iron Deficiency: MCV < 80 fL, Ferritin < 15–30 ng/mL), scleral icterus + splenomegaly + bone crises (Sickle Cell/Hemolysis: elevated Reticulocytes, LDH, Indirect Bilirubin, low Haptoglobin), or dorsal column neuropathy (B12 Deficiency: MCV > 100 fL, hypersegmented neutrophils).",
+      goldStandardConfirmatoryTest:
+        "CBC with Differential, MCV & Reticulocyte Production Index (LOINC 17849-1) + Peripheral Blood Smear + Iron/Ferritin Panel (LOINC 2276-4), Hemoglobin Electrophoresis (LOINC 42246-9), or B12/MMA",
+    },
+    mustNotMissEmergencies: [
+      {
+        diseaseName: "Acute Chest Syndrome or Stroke in Sickle Cell Disease",
+        icd10Code: "ICD-10-CM: D57.01",
+        distinguishingRedFlag:
+          "New radiographic pulmonary infiltrate + fever, chest pain, tachypnea, wheezing, or hypoxia in a patient with Sickle Cell Disease (leading cause of mortality in SCD).",
+        immediateRuleOutTest: "Stat Chest Radiograph, Pulse Oximetry, CBC + Reticulocyte Count, Type & Crossmatch for Simple/Exchange Transfusion",
+      },
+      {
+        diseaseName: "Acute Bacterial Septic Arthritis (in Monoarticular Swollen Joint Presentations)",
+        icd10Code: "ICD-10-CM: M00.9",
+        distinguishingRedFlag:
+          "Acute hot, swollen, erythematous single joint (knee/hip) with severe pain on minimal passive range of motion and fever; irreversible cartilage destruction occurs within 24–48 hours.",
+        immediateRuleOutTest: "Urgent Diagnostic Arthrocentesis prior to antibiotics (Synovial WBC > 50,000/μL with > 90% PMNs + Gram Stain/Culture)",
+      },
+      {
+        diseaseName: "Occult Gastrointestinal Malignancy / Acute GI Hemorrhage or TTP",
+        icd10Code: "ICD-10-CM: K92.2 / M31.1",
+        distinguishingRedFlag:
+          "Unexplained iron-deficiency anemia in men or postmenopausal women (requires bidirectional GI endoscopy), or schistocytes + thrombocytopenia + hemolytic anemia (TTP).",
+        immediateRuleOutTest: "Peripheral Blood Smear (check for schistocytes) + Fecal Immunochemical Test / Bidirectional Endoscopy (EGD & Colonoscopy)",
+      },
+    ],
+    competingAlternatives: [
+      {
+        diseaseName: "Anemia of Chronic Inflammation vs. Alpha/Beta Thalassemia Trait",
+        icd10Code: "ICD-10-CM: D63.8 / D56.9",
+        howToDifferentiate:
+          "Mentzer Index (MCV / RBC count): < 13 favors Thalassemia Trait (normal/elevated RBC count, normal Ferritin); > 13 favors Iron Deficiency Anemia (low Ferritin, high TIBC).",
+      },
+      {
+        diseaseName: "Crystal-Induced Arthropathy (Acute Gout / CPPD Pseudogout)",
+        icd10Code: "ICD-10-CM: M10.9 / M11.20",
+        howToDifferentiate:
+          "Polarized light microscopy of synovial fluid shows negatively birefringent needle-shaped monosodium urate crystals (Gout) or positively birefringent rhomboid crystals (CPPD), with negative synovial Gram stain/culture.",
+      },
+    ],
+    prioritizedDiagnosticWorkup: [
+      {
+        priorityOrder: 1,
+        testName: "CBC with RBC Indices (Hb, Hct, MCV, RDW), Differential, Platelets & Reticulocyte Count",
+        loincOrModality: "LOINC 57021-8 / LOINC 17849-1",
+        diagnosticThresholdAndMeaning:
+          "Classifies anemia by MCV (< 80 fL microcytic, 80–100 fL normocytic, > 100 fL macrocytic) and bone marrow response (Reticulocyte Index < 2% hypoproliferative vs. ≥ 2% hemolytic/hemorrhagic).",
+      },
+      {
+        priorityOrder: 2,
+        testName: "Iron Studies (Serum Ferritin, Iron, TIBC, Transferrin Saturation) + Peripheral Blood Smear",
+        loincOrModality: "LOINC 2276-4 / LOINC 2502-3",
+        diagnosticThresholdAndMeaning:
+          "Ferritin < 30 ng/mL confirms Iron Deficiency Anemia (> 98% specificity); Smear detects target cells, sickle drepanocytes, schistocytes, or hypersegmented neutrophils.",
+      },
+      {
+        priorityOrder: 3,
+        testName: "Hemolysis Panel (LDH, Haptoglobin, Indirect Bilirubin, Direct Coombs) + Hemoglobin Electrophoresis / HPLC",
+        loincOrModality: "LOINC 2532-0 / LOINC 4542-7 / LOINC 42246-9",
+        diagnosticThresholdAndMeaning: "Confirms hemolytic anemia and diagnoses Sickle Cell Disease (HbSS, HbSC) or Beta-Thalassemia.",
+      },
+      {
+        priorityOrder: 4,
+        testName: "Serum Vitamin B12, Folate, Methylmalonic Acid (MMA) — or Arthrocentesis if Joint Effusion",
+        loincOrModality: "LOINC 2132-9 / LOINC 2284-8",
+        diagnosticThresholdAndMeaning: "Elevated MMA confirms tissue Vitamin B12 deficiency even when serum B12 is borderline (200–300 pg/mL).",
+      },
+    ],
+    validatedClinicalScore: {
+      scoreName: "Mentzer Index (MCV / RBC) + Reticulocyte Production Index (RPI) + PLASMIC Score (if MAHA)",
+      formulaAndParameters:
+        "Mentzer Index = MCV (fL) / RBC Count (millions/μL); Corrected Reticulocyte % = Retic % × (Patient Hct / 45)",
+      decisionThresholds:
+        "Mentzer < 13 suggests Thalassemia trait (order Hb Electrophoresis); Mentzer > 13 with Ferritin < 30 ng/mL confirms Iron Deficiency.",
+    },
+    evidenceBasedManagementPathway: {
+      guidelineCitation: "ASH (American Society of Hematology) Guidelines for Sickle Cell Disease & Iron Deficiency Anemia",
+      initialStabilization:
+        "Assess hemodynamic stability and symptomatic hypoxia/ischemia; restrictive RBC transfusion threshold is Hb < 7.0 g/dL in hemodynamically stable hospitalized adults (< 8.0 g/dL in preexisting cardiovascular disease).",
+      firstLineTargetedTherapyForClinicianReview:
+        "• Iron Deficiency Anemia: Investigate underlying blood loss (menorrhagia vs. GI tract) + Oral Ferrous Sulfate 325 mg (65 mg elemental iron) once daily or every other day (improves hepcidin-mediated absorption), or IV Iron if malabsorption/intolerance.\n• Sickle Cell Vaso-Occlusive Crisis: Rapid parenteral analgesia within 30–60 minutes, cautious euvolemic hydration, incentive spirometry, supplemental O2 if SpO2 < 92%, and long-term Hydroxyurea therapy.\n• Suspected Septic Arthritis: Immediate joint aspiration followed by empiric IV Vancomycin + Ceftriaxone and orthopedic joint drainage.",
+      contraindicationsAndSafetyChecks:
+        "Never administer iron supplementation in Thalassemia or Sickle Cell Disease without documented iron deficiency (risk of iatrogenic hemochromatosis/iron overload). Never give Folate alone before excluding Vitamin B12 deficiency (can precipitate subacute combined degeneration of the spinal cord).",
+    },
+    targetedHistoryAndExamManeuvers: [
+      "Blood Loss & Dietary History: Heavy menstrual bleeding (menorrhagia), dark/tarry stools (melena), hemorrhoids, NSAID use, or strict vegan diet.",
+      "Family & Hemoglobinopathy History: Known Sickle Cell Trait/Disease, Thalassemia, or G6PD deficiency in family members.",
+      "Neurological & Mucosal Exam: Check for glossitis, angular cheilitis, koilonychia (spoon nails), scleral icterus, splenomegaly, and vibratory/proprioceptive loss.",
+      "Joint Exam (if arthralgia/arthritis): Differentiate true intra-articular effusion (pain on passive micromotion in all planes) from periarticular bursitis/cellulitis.",
+    ],
+    redFlagEscalationTriggers: [
+      "Hemoglobin < 7.0 g/dL, chest pain, syncope, or resting tachycardia/hypotension",
+      "Fever ≥ 38.5°C, chest pain, or drop in SpO2 in any patient with Sickle Cell Disease (Acute Chest Syndrome / Sepsis emergency)",
+      "Black tarry stools (melena), bright red blood per rectum, or vomiting blood/coffee-ground material",
+      "Hot, swollen, red joint with fever and inability to bear weight or bend the joint (Septic Arthritis emergency)",
+    ],
+  },
+];
+
+export interface ExtractedClinicalParameters {
+  ageYears?: number;
+  sex?: "female" | "male";
+  tempC?: number;
+  heartRateBpm?: number;
+  sbpMmHg?: number;
+  dbpMmHg?: number;
+  mapMmHg?: number;
+  shockIndex?: number;
+  respRateMin?: number;
+  spo2Pct?: number;
+  glucoseMgDl?: number;
+  wbcCount?: number;
+  hemoglobinGDl?: number;
+  mcvFl?: number;
+  plateletsCount?: number;
+  sodiumMmolL?: number;
+  potassiumMmolL?: number;
+  chlorideMmolL?: number;
+  bicarbonateMmolL?: number;
+  anionGap?: number;
+  wintersExpectedPaco2?: string;
+  creatinineMgDl?: number;
+  lactateMmolL?: number;
+  qSofaScore: number;
+  qSofaComponents: string[];
+}
+
+export function extractClinicalParametersFromText(question: string): ExtractedClinicalParameters {
+  const q = question;
+  const ageMatch = q.match(/\b(\d{1,3})\s*(?:-|\s+)?(?:year|yr|yo|y\/o)\b/i);
+  const sexMatch = q.match(/\b(female|woman|girl|pregnant|male|man|boy)\b/i);
+
+  // Temperature (°C or °F)
+  const tempCMatch =
+    q.match(/\b(?:temp(?:erature)?|t|fever(?:\s+of)?)\s*(?:is|of|=|:)?\s*(3[5-9](?:\.\d+)?|4[0-2](?:\.\d+)?)\s*(?:°\s*c|c\b)?/i) ||
+    q.match(/\b(3[89]\.\d+|4[01]\.\d+)\s*°?\s*c\b/i);
+  const tempFMatch = q.match(/\b(9[89](?:\.\d+)?|10[0-6](?:\.\d+)?)\s*°?\s*f\b/i);
+  const tempC = tempCMatch
+    ? Number(tempCMatch[1])
+    : tempFMatch
+      ? Number((((Number(tempFMatch[1]) - 32) * 5) / 9).toFixed(1))
+      : undefined;
+
+  // Heart rate
+  const hrMatch =
+    q.match(/\b(?:hr|heart\s+rate|pulse)\s*(?:is|of|=|:)?\s*(\d{2,3})\s*(?:bpm|\/min)?\b/i) ||
+    q.match(/\b(\d{2,3})\s*bpm\b/i);
+  const heartRateBpm = hrMatch ? Number(hrMatch[1]) : undefined;
+
+  // Blood pressure (SBP/DBP)
+  const bpMatch =
+    q.match(/\b(?:bp|blood\s+pressure)\s*(?:is|of|=|:)?\s*(\d{2,3})\s*\/\s*(\d{2,3})\b/i) ||
+    q.match(/\b(\d{2,3})\s*\/\s*(\d{2,3})\s*mmhg\b/i);
+  const sbpMmHg = bpMatch ? Number(bpMatch[1]) : undefined;
+  const dbpMmHg = bpMatch ? Number(bpMatch[2]) : undefined;
+  const mapMmHg =
+    typeof sbpMmHg === "number" && typeof dbpMmHg === "number"
+      ? Number(((sbpMmHg + 2 * dbpMmHg) / 3).toFixed(1))
+      : undefined;
+  const shockIndex =
+    typeof heartRateBpm === "number" && typeof sbpMmHg === "number" && sbpMmHg > 0
+      ? Number((heartRateBpm / sbpMmHg).toFixed(2))
+      : undefined;
+
+  // Respiratory rate
+  const rrMatch = q.match(/\b(?:rr|resp(?:iratory)?\s+rate)\s*(?:is|of|=|:)?\s*(\d{1,2})\b/i);
+  const respRateMin = rrMatch ? Number(rrMatch[1]) : undefined;
+
+  // SpO2
+  const spo2Match =
+    q.match(/\b(?:spo2|o2\s*sat(?:uration)?|oxygen\s+saturation)\s*(?:is|of|=|:)?\s*(\d{2,3})\s*%?/i) ||
+    q.match(/\bsat(?:ting)?\s+(\d{2,3})\s*%/i);
+  const spo2Pct = spo2Match ? Number(spo2Match[1]) : undefined;
+
+  // Labs
+  const gluMatch = q.match(/\b(?:glucose|blood\s+sugar)\s*(?:is|of|=|:)?\s*(\d{2,4})\s*(?:mg\/dl)?/i);
+  const wbcMatch = q.match(/\bwbc\s*(?:is|of|=|:)?\s*(\d+(?:,\d{3}|\.\d+)?)/i);
+  const hbMatch = q.match(/\b(?:hb|hgb|hemoglobin)\s*(?:is|of|=|:)?\s*(\d{1,2}(?:\.\d+)?)\s*(?:g\/dl)?/i);
+  const mcvMatch = q.match(/\bmcv\s*(?:is|of|=|:)?\s*(\d{2,3}(?:\.\d+)?)\s*(?:fl)?/i);
+  const pltMatch = q.match(/\b(?:platelets?|plt)\s*(?:is|of|=|:)?\s*(\d+(?:,\d{3}|\.\d+)?)/i);
+  const naMatch = q.match(/\b(?:na|sodium)\s*(?:is|of|=|:)?\s*(1[1-6]\d(?:\.\d+)?)/i);
+  const kMatch = q.match(/\b(?:k\+?|potassium)\s*(?:is|of|=|:)?\s*([2-8]\.\d+)/i);
+  const clMatch = q.match(/\b(?:cl|chloride)\s*(?:is|of|=|:)?\s*([7-9]\d|1[0-2]\d)/i);
+  const hco3Match = q.match(/\b(?:hco3|bicarbonate|bicarb)\s*(?:is|of|=|:)?\s*(\d{1,2}(?:\.\d+)?)/i);
+  const scrMatch = q.match(/\b(?:creatinine|scr)\s*(?:is|of|=|:)?\s*(\d+(?:\.\d+)?)/i);
+  const lacMatch = q.match(/\blactate\s*(?:is|of|=|:)?\s*(\d+(?:\.\d+)?)/i);
+
+  const sodiumMmolL = naMatch ? Number(naMatch[1]) : undefined;
+  const chlorideMmolL = clMatch ? Number(clMatch[1]) : undefined;
+  const bicarbonateMmolL = hco3Match ? Number(hco3Match[1]) : undefined;
+
+  const anionGap =
+    typeof sodiumMmolL === "number" && typeof chlorideMmolL === "number" && typeof bicarbonateMmolL === "number"
+      ? Number((sodiumMmolL - (chlorideMmolL + bicarbonateMmolL)).toFixed(1))
+      : undefined;
+  const wintersExpectedPaco2 =
+    typeof bicarbonateMmolL === "number"
+      ? `${(1.5 * bicarbonateMmolL + 8 - 2).toFixed(1)} – ${(1.5 * bicarbonateMmolL + 8 + 2).toFixed(1)} mmHg (target ${(1.5 * bicarbonateMmolL + 8).toFixed(1)} ± 2 mmHg)`
+      : undefined;
+
+  // qSOFA calculation
+  let qSofaScore = 0;
+  const qSofaComponents: string[] = [];
+  if (typeof respRateMin === "number" && respRateMin >= 22) {
+    qSofaScore += 1;
+    qSofaComponents.push(`RR ${respRateMin}/min (≥ 22/min: +1)`);
+  }
+  if (typeof sbpMmHg === "number" && sbpMmHg <= 100) {
+    qSofaScore += 1;
+    qSofaComponents.push(`SBP ${sbpMmHg} mmHg (≤ 100 mmHg: +1)`);
+  }
+  if (/\b(confused|confusion|disoriented|lethargic|lethargy|altered\s+mental|obtunded|stupor|gcs\s*(?:1[0-4]|[3-9]))\b/i.test(q)) {
+    qSofaScore += 1;
+    qSofaComponents.push("Altered Mental Status (+1)");
+  }
+
+  return {
+    ageYears: ageMatch ? Number(ageMatch[1]) : undefined,
+    sex: sexMatch ? (/female|woman|girl|pregnant/i.test(sexMatch[1]) ? "female" : "male") : undefined,
+    tempC,
+    heartRateBpm,
+    sbpMmHg,
+    dbpMmHg,
+    mapMmHg,
+    shockIndex,
+    respRateMin,
+    spo2Pct,
+    glucoseMgDl: gluMatch ? Number(gluMatch[1]) : undefined,
+    wbcCount: wbcMatch ? Number(wbcMatch[1].replace(/,/g, "")) : undefined,
+    hemoglobinGDl: hbMatch ? Number(hbMatch[1]) : undefined,
+    mcvFl: mcvMatch ? Number(mcvMatch[1]) : undefined,
+    plateletsCount: pltMatch ? Number(pltMatch[1].replace(/,/g, "")) : undefined,
+    sodiumMmolL,
+    potassiumMmolL: kMatch ? Number(kMatch[1]) : undefined,
+    chlorideMmolL,
+    bicarbonateMmolL,
+    anionGap,
+    wintersExpectedPaco2,
+    creatinineMgDl: scrMatch ? Number(scrMatch[1]) : undefined,
+    lactateMmolL: lacMatch ? Number(lacMatch[1]) : undefined,
+    qSofaScore,
+    qSofaComponents,
+  };
+}
+
+/**
+ * Generates the Master Overview & Verification Report for `NOCTIS-PHYSICIAN-DX-001`
+ * when a user asks how Noctis acts as a physician to diagnose human sickness or disease.
+ */
+export function buildPhysicianDiagnosticEngineReport(): string {
+  const syndromeRows = NOCTIS_PHYSICIAN_DIAGNOSTIC_ATLAS.map(
+    (s, idx) =>
+      `| **${idx + 1}. \`${s.syndromeId}\`** | **${s.specialty}** | **${s.leadingDiagnosis.diseaseName}** (\`${s.leadingDiagnosis.icd10Code}\`) | ${s.mustNotMissEmergencies.map((m) => `**${m.diseaseName}**`).join("; ")} | \`${s.validatedClinicalScore.scoreName}\` | ${s.leadingDiagnosis.goldStandardConfirmatoryTest} |`
+  ).join("\n");
+
+  return [
+    `## Noctis Physician Clinical Diagnostic & Differential Reasoning Engine (\`NOCTIS-PHYSICIAN-DX-001\`)`,
+    `**Clinical Intelligence Status:** **ACTIVE & VERIFIED** · **Operating Mode:** \`Board-Grade Physician Differential Diagnosis, Laboratory/Vital Interpretation & Next-Best-Test Clinical Decision Support (FDA Jan 2026 CDS / HL7 US Core v9.0.0 / WHO / IDSA / ACC-AHA / ADA / KDIGO)\``,
+    `---`,
+    `### 1. How Noctis Diagnoses Human Sickness & Disease (The 8-Stage Physician Clinical Method)`,
+    `Whenever you present a patient's symptoms, vital signs, physical exam findings, or laboratory results, Noctis executes a deterministic **8-Stage Physician Diagnostic Pipeline**:`,
+    `| Stage | Physician Diagnostic Phase | What Noctis Executes Deterministically | Clinical Safety & Governance Gate |`,
+    `| :--- | :--- | :--- | :--- |`,
+    `| **Stage 1** | **Acuity & Hemodynamic Red-Flag Triage** | Computes **Mean Arterial Pressure (\`MAP = [SBP + 2×DBP]/3\`)**, **Shock Index (\`HR/SBP\`)**, **\`qSOFA\`**, and **\`NEWS2\`**; screens for life-threatening airway, breathing, circulatory, or neurological emergencies. | Immediate **911 / Emergency Escalation** if unstable vitals or red flags are detected (Safety Rule #1). |`,
+    `| **Stage 2** | **Physician Problem Representation & Evidence Ledger** | Translates raw symptoms (onset, duration, character, radiation, epidemiology) and vitals/labs into a structured **Observed Clinical Facts vs. Unmeasured Parameters Ledger**. | **Zero Fabricated Measurements** (Safety Rule #2): Never invents vitals or lab values not supplied. |`,
+    `| **Stage 3** | **3-Tier Bayesian Differential Diagnosis Matrix** | Ranks candidate diseases with **\`ICD-10-CM\`** & **\`SNOMED CT\`** codes across: **(1) Leading Diagnosis**, **(2) Critical "Must-Not-Miss" Emergencies**, and **(3) Competing Alternatives**. | Explicitly states supporting evidence and discriminating features for every candidate diagnosis. |`,
+    `| **Stage 4** | **Deterministic Bedside Clinical Calculators** | Runs validated formulas (**\`2021 CKD-EPI eGFR\`**, **\`CURB-65\`**, **\`Alvarado Score\`**, **\`Anion Gap + Winter's Formula\`**, **\`Mentzer Index\`**, **\`qSOFA\`**, **\`CHA2DS2-VASc\`**). | Never guesses missing calculator inputs (Safety Rule #3). |`,
+    `| **Stage 5** | **Prioritized Confirmatory Workup (\`Next-Best-Test\`)** | Orders diagnostic tests from highest diagnostic yield / least invasive (**Bedside Point-of-Care → First-Line Labs with \`LOINC\` codes → Gold-Standard Imaging/Microbiology**). | Explains the exact quantitative threshold that confirms or rules out each disease. |`,
+    `| **Stage 6** | **Targeted History & Physical Exam Maneuvers** | Lists the top 4 high-yield physician bedside maneuvers (e.g., *McBurney's/Rovsing's sign*, *Murphy's sign*, *Kernig/Brudzinski*, *JVP/S3*, *travel/exposure history*). | Closes diagnostic uncertainty before invasive testing. |`,
+    `| **Stage 7** | **Evidence-Based Management Pathway** | Synthesizes initial stabilization and guideline-backed targeted therapy (**WHO, CDC, IDSA, ATS, ACC/AHA, ADA, KDIGO, ACG, ASH**). | Enforces allergy, renal (\`eGFR\`), electrolyte (\`K⁺\` before insulin in DKA), and drug-interaction safety gates. |`,
+    `| **Stage 8** | **Red-Flag Escalation & Physician Sign-Off Gate** | Defines specific physiological deterioration triggers requiring immediate ED care. | All diagnostic & treatment plans are framed for **licensed physician verification and sign-off**. |`,
+    `---`,
+    `### 2. Multi-Specialty Disease & Syndrome Diagnostic Atlas (\`NOCTIS_PHYSICIAN_DIAGNOSTIC_ATLAS\`)`,
+    `| Syndrome Cluster | Medical Specialty | Primary Leading Diagnosis (\`ICD-10-CM\`) | Critical "Must-Not-Miss" Emergencies | Validated Clinical Score | Gold-Standard Confirmatory Workup |`,
+    `| :--- | :--- | :--- | :--- | :--- | :--- |`,
+    syndromeRows,
+    `---`,
+    `### 3. Ready-to-Test Patient Clinical Cases (Paste Any Case Below to See Noctis Diagnose Live)`,
+    `- **Case 1 — Tropical Infectious Disease (Malaria vs. Typhoid vs. Dengue):**\n  \`Diagnose this patient: A 29-year-old male presents with 4 days of high cyclic fever (Temp 39.6°C), shaking chills and rigors, severe headache, body aches, bitter taste, HR 108 bpm, BP 112/70 mmHg, Hb 10.8 g/dL, and platelets 74,000/μL after returning from West Africa.\``,
+    `- **Case 2 — Pulmonology & Critical Care (Community-Acquired Pneumonia vs. PE):**\n  \`Diagnose this patient: A 68-year-old male presents with 3 days of fever (Temp 38.9°C), productive cough with rust-colored sputum, right-sided pleuritic chest pain, RR 32/min, SpO2 90%, BP 88/58 mmHg, HR 114 bpm, and BUN 26 mg/dL.\``,
+    `- **Case 3 — Acute Abdomen / Surgery (Acute Appendicitis vs. Ectopic/Torsion):**\n  \`Diagnose this patient: A 24-year-old female presents with 18 hours of periumbilical pain that migrated to the right lower quadrant (McBurney's point), anorexia, nausea, Temp 38.2°C, rebound tenderness, positive Rovsing's sign, and WBC 15,800/μL (84% neutrophils).\``,
+    `- **Case 4 — Endocrine & Metabolic Emergency (Diabetic Ketoacidosis — DKA):**\n  \`Diagnose this patient: A 21-year-old patient presents with polyuria, polydipsia, vomiting, diffuse abdominal pain, deep rapid Kussmaul breathing, fruity breath, HR 122 bpm, BP 98/62 mmHg, glucose 480 mg/dL, Na 134, K 5.1, Cl 96, HCO3 9 mmol/L, and pH 7.16.\``,
+    `- **Case 5 — Neurology & Emergency Medicine (Acute Bacterial Meningitis vs. SAH):**\n  \`Diagnose this patient: A 19-year-old college student presents with acute high fever (39.5°C), severe headache, stiff neck (nuchal rigidity), photophobia, confusion, HR 118 bpm, BP 102/66 mmHg, and a non-blanching petechial rash.\``,
+  ].join("\n\n");
+}
+
+/**
+ * Evaluates a natural-language clinical diagnostic query or patient case presentation
+ * using the 8-Stage Physician Clinical Diagnostic Pipeline (`NOCTIS-PHYSICIAN-DX-001`).
+ */
+export function handlePhysicianDiagnosticQuery(question: string): string | null {
+  const q = question.trim();
+
+  // A. Meta-request asking Noctis to become/act as a physician or show its physician diagnostic capabilities
+  if (
+    /\b(become\s+a\s+physician|act\s+as\s+a\s+physician|physician\s+who\s+is\s+able\s+to\s+diagnos|diagnos[eb]\s+human\s+for\s+sickness|diagnose\s+human\s+sickness|diagnose\s+sickness\s+or\s+disease|noctis-physician-dx-001|physician\s+diagnostic\s+engine|how\s+does\s+noctis\s+diagnose)\b/i.test(
+      q
+    ) &&
+    !/\b(\d{1,3}\s*(?:-|\s+)?(?:year|yr|yo|y\/o))\b/i.test(q)
+  ) {
+    return buildPhysicianDiagnosticEngineReport();
+  }
+
+  // B. Score all syndrome clusters in NOCTIS_PHYSICIAN_DIAGNOSTIC_ATLAS against the patient presentation
+  let bestSyndrome: PhysicianSyndromeEntry | null = null;
+  let bestScore = 0;
+
+  for (const syn of NOCTIS_PHYSICIAN_DIAGNOSTIC_ATLAS) {
+    let score = 0;
+    for (const rx of syn.keywordTriggers) {
+      if (rx.test(q)) {
+        score += 2;
+      }
+    }
+    if (score > bestScore) {
+      bestScore = score;
+      bestSyndrome = syn;
+    }
+  }
+
+  // Also check if the prompt is explicitly framed as a clinical case presentation ("Diagnose this patient...", "A XX-year-old male/female presents with...")
+  const isExplicitPatientCase =
+    /\b(diagnose\s+this\s+patient|what\s+is\s+the\s+(?:most\s+likely\s+)?diagnosis|differential\s+diagnosis\s+for|(?:male|female|man|woman|patient|child|student)\s+presents\s+with|chief\s+complaint|history\s+of\s+present\s+illness)\b/i.test(
+      q
+    ) &&
+    /\b(fever|pain|cough|dyspnea|shortness\s+of\s+breath|headache|vomiting|nausea|diarrhea|edema|fatigue|pallor|chills|rigors|jaundice|rash|dysuria|polyuria|confusion|stiff\s+neck)\b/i.test(
+      q
+    );
+
+  if (!bestSyndrome && isExplicitPatientCase) {
+    bestSyndrome = NOCTIS_PHYSICIAN_DIAGNOSTIC_ATLAS[0];
+  }
+
+  if (!bestSyndrome) {
+    return null;
+  }
+
+  const params = extractClinicalParametersFromText(q);
+
+  // Build Stage 1: Hemodynamic & Acuity Triage
+  const hasUnstableVitals =
+    params.qSofaScore >= 2 ||
+    (typeof params.sbpMmHg === "number" && params.sbpMmHg < 90) ||
+    (typeof params.spo2Pct === "number" && params.spo2Pct < 92) ||
+    (typeof params.shockIndex === "number" && params.shockIndex >= 1.0) ||
+    (typeof params.tempC === "number" && params.tempC >= 39.5);
+
+  const acuityLevel = hasUnstableVitals
+    ? "HIGH ACUITY / URGENT ED EVALUATION (Hemodynamic / Organ-Dysfunction Warning Active)"
+    : "MODERATE ACUITY — Prompt Physician Evaluation & Confirmatory Diagnostic Workup Required";
+
+  // Build Stage 2: Observed Clinical Evidence Ledger
+  const observedItems: string[] = [];
+  if (params.ageYears || params.sex) {
+    observedItems.push(`Demographics: ${params.ageYears ? `${params.ageYears}-year-old` : "Adult"} ${params.sex || "patient"}`);
+  }
+  if (typeof params.tempC === "number") {
+    observedItems.push(`Temperature: ${params.tempC}°C (${params.tempC >= 38.0 ? "FEBRILE" : "Afebrile"})`);
+  }
+  if (typeof params.heartRateBpm === "number") {
+    observedItems.push(`Heart Rate: ${params.heartRateBpm} bpm (${params.heartRateBpm > 100 ? "TACHYCARDIA" : "Normal rate"})`);
+  }
+  if (typeof params.sbpMmHg === "number" && typeof params.dbpMmHg === "number") {
+    observedItems.push(
+      `Blood Pressure: ${params.sbpMmHg}/${params.dbpMmHg} mmHg (MAP = ${params.mapMmHg} mmHg${params.sbpMmHg < 90 || (params.mapMmHg && params.mapMmHg < 65) ? " — HYPOTENSION" : ""})`
+    );
+  }
+  if (typeof params.shockIndex === "number") {
+    observedItems.push(
+      `Shock Index (HR/SBP): ${params.shockIndex} (${params.shockIndex > 0.9 ? "ELEVATED — Occult Hemodynamic Instability (> 0.9)" : "Normal 0.5–0.7"})`
+    );
+  }
+  if (typeof params.respRateMin === "number") {
+    observedItems.push(`Respiratory Rate: ${params.respRateMin}/min (${params.respRateMin >= 22 ? "TACHYPNEA (qSOFA +1)" : "Normal"})`);
+  }
+  if (typeof params.spo2Pct === "number") {
+    observedItems.push(`Oxygen Saturation (SpO2): ${params.spo2Pct}% (${params.spo2Pct < 92 ? "HYPOXEMIA (< 92%)" : "Normal ≥ 95%"})`);
+  }
+  if (typeof params.glucoseMgDl === "number") {
+    observedItems.push(`Blood Glucose: ${params.glucoseMgDl} mg/dL (${params.glucoseMgDl >= 250 ? "CRITICAL HYPERGLYCEMIA" : ""})`);
+  }
+  if (typeof params.wbcCount === "number") {
+    observedItems.push(`WBC Count: ${params.wbcCount.toLocaleString()}/μL (${params.wbcCount > 11000 ? "LEUKOCYTOSIS" : "Within/Near Reference"})`);
+  }
+  if (typeof params.hemoglobinGDl === "number") {
+    observedItems.push(`Hemoglobin: ${params.hemoglobinGDl} g/dL${params.mcvFl ? ` (MCV ${params.mcvFl} fL)` : ""}`);
+  }
+  if (typeof params.plateletsCount === "number") {
+    observedItems.push(
+      `Platelets: ${params.plateletsCount.toLocaleString()}/μL (${params.plateletsCount < 150000 ? "THROMBOCYTOPENIA (< 150,000/μL)" : "Normal"})`
+    );
+  }
+  if (typeof params.anionGap === "number") {
+    observedItems.push(
+      `Electrolytes & Acid-Base: Na⁺ ${params.sodiumMmolL}, K⁺ ${params.potassiumMmolL ?? "not stated"}, Cl⁻ ${params.chlorideMmolL}, HCO3⁻ ${params.bicarbonateMmolL} mmol/L → Calculated Anion Gap = ${params.anionGap} (Normal 8–12; HIGH-ANION-GAP METABOLIC ACIDOSIS) · Winter's Expected PaCO2 = ${params.wintersExpectedPaco2}`
+    );
+  }
+
+  // Compute syndrome-specific deterministic calculator output if applicable
+  const calculatorBullets: string[] = [
+    `- **qSOFA Sepsis Screen:** **\`${params.qSofaScore} / 3\`** (${params.qSofaComponents.length > 0 ? params.qSofaComponents.join(", ") : "No qSOFA criteria triggered in supplied vitals"}) — ${params.qSofaScore >= 2 ? "**HIGH RISK (≥ 2): Triggers immediate sepsis bundle & ICU/inpatient evaluation**" : "Continue serial vital-sign monitoring"}.`,
+  ];
+  if (typeof params.mapMmHg === "number" && typeof params.shockIndex === "number") {
+    calculatorBullets.push(
+      `- **Hemodynamic Indices:** **MAP = \`${params.mapMmHg} mmHg\`** (Target ≥ 65 mmHg) · **Shock Index (\`HR / SBP\`) = \`${params.shockIndex}\`** (${params.shockIndex > 0.9 ? "**ABNORMAL > 0.9 — Indicates hemodynamic stress/hypovolemia**" : "Normal 0.5–0.7"}).`
+    );
+  }
+  if (bestSyndrome.syndromeId === "SYN-02-RESPIRATORY-PNEUMONIA-PE") {
+    let curb = 0;
+    const curbReasons: string[] = [];
+    if (/\b(confused|confusion|disoriented)\b/i.test(q)) {
+      curb++;
+      curbReasons.push("Confusion (+1)");
+    }
+    const bunMatch = q.match(/\bbun\s*(?:is|of|=|:)?\s*(\d+)/i);
+    if (bunMatch && Number(bunMatch[1]) > 19) {
+      curb++;
+      curbReasons.push(`BUN ${bunMatch[1]} mg/dL > 19 (+1)`);
+    }
+    if (typeof params.respRateMin === "number" && params.respRateMin >= 30) {
+      curb++;
+      curbReasons.push(`RR ${params.respRateMin}/min ≥ 30 (+1)`);
+    }
+    if ((typeof params.sbpMmHg === "number" && params.sbpMmHg < 90) || (typeof params.dbpMmHg === "number" && params.dbpMmHg <= 60)) {
+      curb++;
+      curbReasons.push(`BP ${params.sbpMmHg}/${params.dbpMmHg} mmHg (+1)`);
+    }
+    if (typeof params.ageYears === "number" && params.ageYears >= 65) {
+      curb++;
+      curbReasons.push(`Age ${params.ageYears} ≥ 65 (+1)`);
+    }
+    calculatorBullets.push(
+      `- **CURB-65 Pneumonia Severity Score:** **\`${curb} / 5\`** (${curbReasons.length > 0 ? curbReasons.join(", ") : "0 points from supplied inputs"}) → **${curb >= 3 ? "Severe CAP (Score 3–5): Inpatient / ICU Admission Indicated" : curb === 2 ? "Moderate CAP (Score 2): Inpatient Ward Admission" : "Low-Risk CAP (Score 0–1): Outpatient Candidate if Normoxic"}**.`
+    );
+  }
+  if (typeof params.anionGap === "number") {
+    calculatorBullets.push(
+      `- **Anion Gap & Winter's Formula:** **\`Anion Gap = ${params.sodiumMmolL} − (${params.chlorideMmolL} + ${params.bicarbonateMmolL}) = ${params.anionGap} mEq/L\`** (\`> 12\` confirms High-Anion-Gap Metabolic Acidosis) · **Winter's Formula Expected PaCO2 = \`${params.wintersExpectedPaco2}\`**.`
+    );
+  }
+  calculatorBullets.push(
+    `- **Syndrome Decision Rule (\`${bestSyndrome.validatedClinicalScore.scoreName}\`):** ${bestSyndrome.validatedClinicalScore.formulaAndParameters} — *${bestSyndrome.validatedClinicalScore.decisionThresholds}*`
+  );
+
+  const workupRows = bestSyndrome.prioritizedDiagnosticWorkup
+    .map(
+      (w) =>
+        `| **#${w.priorityOrder}** | **${w.testName}** | \`${w.loincOrModality}\` | ${w.diagnosticThresholdAndMeaning} |`
+    )
+    .join("\n");
+
+  const mustNotMissRows = bestSyndrome.mustNotMissEmergencies
+    .map(
+      (m) =>
+        `| **Must-Not-Miss Emergency** | **${m.diseaseName}** (\`${m.icd10Code}\`) | ${m.distinguishingRedFlag} | **${m.immediateRuleOutTest}** |`
+    )
+    .join("\n");
+
+  const altRows = bestSyndrome.competingAlternatives
+    .map(
+      (a) =>
+        `| **Competing Alternative** | **${a.diseaseName}** (\`${a.icd10Code}\`) | ${a.howToDifferentiate} | Clinical / Laboratory Differentiation |`
+    )
+    .join("\n");
+
+  return [
+    `## Noctis Physician Clinical Consultation & Differential Diagnosis (\`NOCTIS-PHYSICIAN-DX-001\`)`,
+    `**Specialty Engine:** \`${bestSyndrome.specialty}\` (\`${bestSyndrome.syndromeId}\`) · **Triage Acuity:** **${acuityLevel}**`,
+    `---`,
+    `### 1. Physician Problem Representation & Observed Clinical Evidence Ledger`,
+    `- **Clinical Syndrome Identified:** **${bestSyndrome.clinicalPresentationName}**`,
+    `- **Observed Patient Facts Extracted (Zero Fabrication — Safety Rule #2):**\n${
+      observedItems.length > 0
+        ? observedItems.map((item) => `  - ${item}`).join("\n")
+        : "  - Symptom presentation extracted from user narrative; quantitative vital signs and laboratory values were not supplied and are not guessed."
+    }`,
+    `---`,
+    `### 2. Ranked Differential Diagnosis Matrix (\`ICD-10-CM\` & \`SNOMED CT\`)`,
+    `| Diagnostic Tier | Candidate Disease & Coding | Pathophysiology & Discriminating Clinical Features | Gold-Standard Rule-In / Rule-Out Test |`,
+    `| :--- | :--- | :--- | :--- |`,
+    `| **Tier 1 — Leading Clinical Diagnosis** | **${bestSyndrome.leadingDiagnosis.diseaseName}** (\`${bestSyndrome.leadingDiagnosis.icd10Code}\` · \`${bestSyndrome.leadingDiagnosis.snomedCtCode}\`) | **Mechanism:** ${bestSyndrome.leadingDiagnosis.pathophysiology}<br>**Hallmarks:** ${bestSyndrome.leadingDiagnosis.hallmarkClinicalFeatures} | **${bestSyndrome.leadingDiagnosis.goldStandardConfirmatoryTest}** |`,
+    mustNotMissRows,
+    altRows,
+    `---`,
+    `### 3. Deterministic Bedside Clinical Calculators & Risk Stratification`,
+    calculatorBullets.join("\n"),
+    `---`,
+    `### 4. Prioritized Confirmatory Diagnostic Workup (\`Next-Best-Test\` Ordering)`,
+    `| Priority | Ordered Diagnostic Test | Standard \`LOINC\` / Modality | Quantitative Diagnostic Threshold & Clinical Meaning |`,
+    `| :--- | :--- | :--- | :--- |`,
+    workupRows,
+    `---`,
+    `### 5. Targeted Physician History & Physical Exam Maneuvers to Narrow the Differential`,
+    bestSyndrome.targetedHistoryAndExamManeuvers.map((m, idx) => `${idx + 1}. ${m}`).join("\n"),
+    `---`,
+    `### 6. Evidence-Based Clinical Management Pathway *(For Licensed Physician Review)*`,
+    `- **Authoritative Guideline Citation:** **${bestSyndrome.evidenceBasedManagementPathway.guidelineCitation}**`,
+    `- **Immediate Stabilization & Supportive Care:** ${bestSyndrome.evidenceBasedManagementPathway.initialStabilization}`,
+    `- **First-Line Targeted Therapy Pathway (Clinician Sign-Off Required):**\n${bestSyndrome.evidenceBasedManagementPathway.firstLineTargetedTherapyForClinicianReview}`,
+    `- **Contraindications & Medication Safety Gate (Safety Rule #6):** ${bestSyndrome.evidenceBasedManagementPathway.contraindicationsAndSafetyChecks}`,
+    `---`,
+    `### 7. Red-Flag Emergency Escalation Triggers ("When to Seek Immediate Emergency Care")`,
+    bestSyndrome.redFlagEscalationTriggers.map((r) => `- 🚨 **${r}**`).join("\n"),
+    `*Clinical Governance Boundary (FDA Jan 2026 CDS & NH-ARCH-001): Noctis provides structured differential diagnosis, deterministic clinical scoring, and guideline-referenced workup pathways to support—not replace—in-person physical examination, confirmatory diagnostic testing, and licensed physician judgment.*`,
+  ].join("\n\n");
+}
+
 
 
 

@@ -3565,6 +3565,45 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
     assert.match(globalReply, /UNESCO Recommendation on the Ethics of AI/);
     assert.match(globalReply, /98\. International education and credentials/);
   });
+
+  it("verifies NOCTIS-PHYSICIAN-DX-001 (Physician Clinical Diagnostic & Differential Reasoning Engine across Malaria, Pneumonia + CURB-65, Appendicitis, DKA + Anion Gap/Winter's formula, and Meningitis)", async () => {
+    const {
+      NOCTIS_PHYSICIAN_DIAGNOSTIC_ATLAS,
+      extractClinicalParametersFromText,
+      handleNaturalHealthQuery,
+    } = await import("./noctis-health-engine.ts");
+
+    assert.equal(NOCTIS_PHYSICIAN_DIAGNOSTIC_ATLAS.length, 8);
+
+    const metaReply = handleNaturalHealthQuery(
+      "LETS Noctis become a physician who is able to diagnosb human for sickness or disease"
+    );
+    assert.ok(metaReply);
+    assert.match(metaReply, /NOCTIS-PHYSICIAN-DX-001/);
+    assert.match(metaReply, /SYN-01-TROPICAL-FEBRILE/);
+    assert.match(metaReply, /SYN-04-ENDOCRINE-DKA-METABOLIC/);
+
+    const malariaReply = handleNaturalHealthQuery(
+      "Diagnose this patient: A 29-year-old male presents with 4 days of high cyclic fever (Temp 39.6°C), shaking chills and rigors, severe headache, body aches, bitter taste, HR 108 bpm, BP 112/70 mmHg, Hb 10.8 g/dL, and platelets 74,000/μL after returning from West Africa."
+    );
+    assert.ok(malariaReply);
+    assert.match(malariaReply, /Plasmodium falciparum Malaria/);
+    assert.match(malariaReply, /LOINC 32700-7/);
+    assert.match(malariaReply, /THROMBOCYTOPENIA/);
+
+    const dkaParams = extractClinicalParametersFromText(
+      "A 21-year-old patient presents with polyuria, polydipsia, Kussmaul breathing, glucose 480 mg/dL, Na 134, K 5.1, Cl 96, HCO3 9 mmol/L."
+    );
+    assert.equal(dkaParams.anionGap, 29);
+    assert.match(dkaParams.wintersExpectedPaco2 || "", /19\.5 – 23\.5 mmHg/);
+
+    const dkaReply = handleNaturalHealthQuery(
+      "Diagnose this patient: A 21-year-old patient presents with polyuria, polydipsia, vomiting, diffuse abdominal pain, deep rapid Kussmaul breathing, fruity breath, HR 122 bpm, BP 98/62 mmHg, glucose 480 mg/dL, Na 134, K 5.1, Cl 96, HCO3 9 mmol/L, and pH 7.16."
+    );
+    assert.ok(dkaReply);
+    assert.match(dkaReply, /Diabetic Ketoacidosis \(DKA\)/);
+    assert.match(dkaReply, /Anion Gap = 134 − \(96 \+ 9\) = 29 mEq\/L/);
+  });
 });
 
 
