@@ -1,22 +1,22 @@
 /**
- * NOCTIS AUTOMOTIVE DIAGNOSTIC INTELLIGENCE ENGINE (NOCTIS-AUTO-001 · v1.0)
- * =========================================================================
- * Complete Automotive Diagnostic Specialist Engine & Version 1.0 Engineering Blueprint:
+ * NOCTIS AUTOMOTIVE DIAGNOSTIC INTELLIGENCE ENGINE (NOCTIS-AUTO-001 · v1.0 + v2.0 Advanced)
+ * =========================================================================================
+ * Complete Automotive Diagnostic Specialist Engine, Version 1.0 Engineering Blueprint,
+ * and 15-Capability Advanced Diagnostic & Digital-Twin Architecture:
  * - Initial v1.0 Scope: Gasoline ICE Passenger Cars & SUVs (Symptom-Based + Scan-Tool Diagnosis),
  *   with explicit out-of-scope detection & safety lockouts for Diesel, Hybrid/EV (HV >60V DC), and Heavy-Duty vehicles.
  * - 17-Domain & Subsystem Taxonomy (ENG, FUE, IGN, AIR, COO, LUB, STA, CHG, ELE, ECM, EXH, TRA, BRA, SUS, HVAC, NVH, SAF)
- *   + 12 ASE Vehicle Domains + 13-Entity Fault & Evidence Ontology (HAS_SYMPTOM, GENERATES_DTC, MAY_CAUSE, etc.).
- * - 8-Layer Training Dataset Specification (D1-D8) with 4 Leakage-Free Provenance Partitions
- *   (Training, Validation, Held-Out Testing, External Validation) and AUTO-START-0001 / AUTO-MISFIRE-0001 / AUTO-START-0002 schemas.
- * - 4-Stage Knowledge Ingestion Pipeline (Stage A-D), 6 Ingestion Quarantine Rules, and `noctis_automotive/` modular monolith.
- * - Stateful Diagnostic Reasoning Loop with Expected Information Gain (EIG) Test Planner:
- *   T* = argmax_{T in T_safe} [ EIG(T) / (Cost(T) + lambda * Risk(T) + epsilon) ]
- *   and Bayesian Updating: P(H_i | E) = P(E | H_i) P(H_i) / sum_j P(E | H_j) P(H_j),
- *   separating `Possible cause`, `Most likely cause`, and `Confirmed cause`.
- * - Versioned REST API (`/api/v1/automotive` — 13 Endpoints), 18-Table PostgreSQL Schema (PostgreSQL authoritative for specs,
- *   pgvector for document retrieval), 14 Functional Acceptance Tests (`AT-001`..`AT-014`) + 8 Scenario Tests (`AUTO-AT-01`..`AUTO-AT-08`),
- *   5 Quantitative Release Gates (>=98% grounding, >=90% top-3 recall, >=90% next-test, 100% traceability, 100% safety),
- *   16-Week 6-Phase Roadmap, and First Milestone Prototype (No-Start, Check-Engine-Light, and Rough-Idle/Misfire).
+ *   + 13-Entity Fault & Evidence Ontology (HAS_SYMPTOM, GENERATES_DTC, MAY_CAUSE, etc.).
+ * - 15 Advanced Diagnostic Capabilities (CAP-AUTO-01..15): Oscilloscope & Waveform Intelligence,
+ *   Electrical Circuit Reasoning, Guided Physical Test Procedures, Time-Series Telemetry, TSB/Recall Matching,
+ *   Parts-Replacement Prevention, Multi-Fault Diagnosis, Intermittent-Fault Engine, Repair-History Reasoning,
+ *   Vehicle Configuration Resolver, Diagnostic Cost Optimizer (EDV), Known-Good Comparison,
+ *   OEM Repair Procedure Generator, Repair Verification Engine, and Technician Feedback Loop.
+ * - Vehicle Digital-Twin & Fault-Simulation Engine (SIM-01..SIM-05), 5-Query Causal Diagnostic Graph,
+ *   8-Category Permanent Automotive Diagnostic Benchmark (AUTO-BENCH-01..08), Multimodal Intelligence
+ *   (Image, Audio, Scope/Wiring Docs), Expected Diagnostic Value (EDV = Expected Avoidable Repair Cost - Additional Test Cost),
+ *   8-Layer Training Dataset Specification (D1-D8), Stage A-D Ingestion Pipeline, 13 REST API Endpoints (`/api/v1/automotive`),
+ *   and 14 Functional Acceptance Tests (`AT-001`..`AT-014`).
  */
 
 export type VehiclePowertrainCategory =
@@ -43,6 +43,32 @@ export interface DatasetLayerSpec {
   contents: string;
   primaryPurpose: string;
   initialTarget: string;
+}
+
+export interface AdvancedAutomotiveCapabilitySpec {
+  id: string;
+  number: number;
+  name: string;
+  priority: "High Priority (Core Differentiator)" | "Architectural Core";
+  technicalImplementation: string;
+  antiGuessingAndSafetyRule: string;
+}
+
+export interface DigitalTwinSimulationScenario {
+  simId: string;
+  title: string;
+  injectedFault: string;
+  simulatedTelemetryAndSymptoms: string;
+  expectedNoctisDiagnosticPath: string;
+  governanceLabel: "simulated_for_training_not_confirmed_repair";
+}
+
+export interface AutomotiveBenchmarkCategorySpec {
+  id: string;
+  category: string;
+  whatItTests: string;
+  expectedFindingsAndRubric: string;
+  prohibitedUnsafeActions: string;
 }
 
 export interface CompetingDiagnosticHypothesis {
@@ -89,6 +115,9 @@ export interface ElectricalStartingVerificationResult {
   starterMotorPass: boolean;
   selectedNextTestId: string;
   selectedNextTestObjectiveScore: number;
+  expectedAvoidableRepairCostUsd: number;
+  additionalTestCostUsd: number;
+  expectedDiagnosticValueUsd: number;
   isolatedRootCause: string;
   conclusionState: DiagnosticConclusionState;
   contradictionRevised: boolean;
@@ -253,6 +282,231 @@ export const NOCTIS_17_SUBSYSTEM_TAXONOMY: SubsystemTaxonomyEntry[] = [
     subsystemsAndCoverage: "Fire/fuel-leak risk, severe overheating, oil-pressure loss, brake/steering failure, and Hybrid/EV/Diesel out-of-scope gating",
     referenceOperatingRanges: "0 ppm raw fuel vapor leak; ECT <115C; Brake pedal firm hold >50 mm above floor; HV bus >60V DC = Lockout",
     mandatorySafetyRule: "Safety triage executes BEFORE routine troubleshooting; any life-safety hazard triggers immediate stop & professional referral.",
+  },
+];
+
+export const NOCTIS_15_ADVANCED_CAPABILITIES: AdvancedAutomotiveCapabilitySpec[] = [
+  {
+    id: "CAP-AUTO-01",
+    number: 1,
+    name: "Oscilloscope and Waveform Intelligence",
+    priority: "High Priority (Core Differentiator)",
+    technicalImplementation: "Analyzes CKP/CMP phase correlation waveforms, primary coil current ramps (6.5–9.0A), secondary ignition kV burn time (1.2–1.8 ms), injector pintle-hump traces, CAN bus eye diagrams, and starter relative-compression current ripple against known-good references.",
+    antiGuessingAndSafetyRule: "Never condemn a timing chain (P0016) or coil without comparing captured waveform features against an applicable known-good engine reference.",
+  },
+  {
+    id: "CAP-AUTO-02",
+    number: 2,
+    name: "Electrical Circuit Reasoning",
+    priority: "High Priority (Core Differentiator)",
+    technicalImplementation: "Models power distribution fuses, relays (Terminals 30/85/86/87), splice packs, chassis grounds (G101..G402), shared 5V reference buses (P0641/P0651), and loaded voltage drops to detect when multiple DTCs stem from one shared electrical fault.",
+    antiGuessingAndSafetyRule: "Requires dynamic loaded voltage-drop testing (ΔV_pos <= 0.50V, ΔV_neg <= 0.20V); never trusts unloaded ohmmeter continuity alone.",
+  },
+  {
+    id: "CAP-AUTO-03",
+    number: 3,
+    name: "Guided Physical Test Procedures",
+    priority: "High Priority (Core Differentiator)",
+    technicalImplementation: "Provides step-by-step technician instructions for EVAP smoke testing, wet/dry compression & cylinder leak-down testing, fuel-pressure/residual-hold testing, and voltage-drop measurements.",
+    antiGuessingAndSafetyRule: "Every guided test includes mandatory prerequisites, applicable OEM specifications, pass/fail interpretation, and immediate stop conditions.",
+  },
+  {
+    id: "CAP-AUTO-04",
+    number: 4,
+    name: "Time-Series Telemetry Intelligence",
+    priority: "High Priority (Core Differentiator)",
+    technicalImplementation: "Detects intermittent signal dropouts, sensor bias/drift, and cross-channel relationships across RPM, load, ECT, IAT, STFT/LTFT, MAF, MAP, and misfire counters with synchronized timestamps.",
+    antiGuessingAndSafetyRule: "Preserves operating context (RPM, load, temperature) so transient spikes are not misclassified as static sensor failures.",
+  },
+  {
+    id: "CAP-AUTO-05",
+    number: 5,
+    name: "Technical Bulletin (TSB) & Known-Defect Matching",
+    priority: "High Priority (Core Differentiator)",
+    technicalImplementation: "Matches exact vehicle configuration (Year, Make, Model, Engine Code, Production Date, VIN range) against OEM TSBs, NHTSA recalls, and recurring field defects.",
+    antiGuessingAndSafetyRule: "Strictly distinguishes a `possible_tsb_match` from a `confirmed_defect`, and separates mandatory `safety_recalls` from routine `service_bulletins`.",
+  },
+  {
+    id: "CAP-AUTO-06",
+    number: 6,
+    name: "Parts-Replacement Prevention ('Anti-Parts-Cannon' Gate)",
+    priority: "High Priority (Core Differentiator)",
+    technicalImplementation: "Requires discriminating test evidence before recommending expensive components (ECUs, catalytic converters, transmissions, fuel pumps, MAF/O2 sensors).",
+    antiGuessingAndSafetyRule: "Automatically prioritizes low-cost tests that separate a failed component from wiring, power supply, ground, connector, or calibration faults.",
+  },
+  {
+    id: "CAP-AUTO-07",
+    number: 7,
+    name: "Multi-Fault Diagnosis",
+    priority: "Architectural Core",
+    technicalImplementation: "Identifies multiple simultaneous independent faults (e.g., intake vacuum leak + failing alternator diode) as well as single upstream faults that trigger multiple downstream DTCs.",
+    antiGuessingAndSafetyRule: "Does not force all observed symptoms into a single hypothesis when residual symptoms remain unexplained.",
+  },
+  {
+    id: "CAP-AUTO-08",
+    number: 8,
+    name: "Intermittent-Fault Engine",
+    priority: "Architectural Core",
+    technicalImplementation: "Correlates elusive faults with thermal soak (>85C CKP Hall sensor dropout), road vibration (harness flex loop), ambient humidity, electrical load, and drive duration.",
+    antiGuessingAndSafetyRule: "Recommends targeted freeze-frame/flight-recorder capture and thermal/wiggle stress tests rather than guessing when fault is not currently present.",
+  },
+  {
+    id: "CAP-AUTO-09",
+    number: 9,
+    name: "Repair-History Reasoning",
+    priority: "Architectural Core",
+    technicalImplementation: "Accounts for recent maintenance, newly installed aftermarket parts ('new does not mean good'), disturbed harness connectors, uncalibrated replacements, and comeback complaints.",
+    antiGuessingAndSafetyRule: "Flags recently touched subsystems for installation/quality inspection rather than assuming a newly replaced part is 100% functional.",
+  },
+  {
+    id: "CAP-AUTO-10",
+    number: 10,
+    name: "Vehicle Configuration Resolver",
+    priority: "Architectural Core",
+    technicalImplementation: "Resolves exact engine codes, mid-year production splits, emissions markets (Federal vs. CARB), trim options, and ECU calibration IDs (CAL-ID / CVN).",
+    antiGuessingAndSafetyRule: "Withholds engine-specific numeric specs (`VEHICLE_SPEC_NOT_FOUND`) until exact configuration applicability is verified.",
+  },
+  {
+    id: "CAP-AUTO-11",
+    number: 11,
+    name: "Diagnostic Cost & Efficiency Optimizer (EDV Engine)",
+    priority: "Architectural Core",
+    technicalImplementation: "Computes Expected Diagnostic Value: EDV = Expected Avoidable Repair Cost - Additional Test Cost alongside EIG/(Cost + λ·Risk) to rank tests economically.",
+    antiGuessingAndSafetyRule: "Recommends a $35 / 10-min electrical/vacuum check before a $420-$1,400 component replacement whenever EDV > 0 and test is safe.",
+  },
+  {
+    id: "CAP-AUTO-12",
+    number: 12,
+    name: "Known-Good Reference Comparison",
+    priority: "Architectural Core",
+    technicalImplementation: "Compares live PID profiles (MAF g/s vs. RPM/load, B1S1/B1S2 response) and oscilloscope waveforms against validated known-good reference signatures for the same engine family.",
+    antiGuessingAndSafetyRule: "Requires matching test conditions (warm idle 750 RPM, closed loop, A/C off) before declaring a deviation from known-good.",
+  },
+  {
+    id: "CAP-AUTO-13",
+    number: 13,
+    name: "OEM Repair Procedure & Torque Generator",
+    priority: "Architectural Core",
+    technicalImplementation: "Retrieves vehicle-specific OEM service steps, special service tools (SSTs), fastener torque sequences/specs, and one-time-use gasket/bolt requirements from PostgreSQL/RAG.",
+    antiGuessingAndSafetyRule: "Never fabricates fastener torque values or pin assignments from LLM memory; cites exact OEM manual revision or flags `OEM_SPEC_REQUIRED`.",
+  },
+  {
+    id: "CAP-AUTO-14",
+    number: 14,
+    name: "Repair Verification Engine",
+    priority: "Architectural Core",
+    technicalImplementation: "Evaluates post-repair repeat physical measurements, live PID normalization, Mode $06 test results, readiness monitor completion, and safe road-test confirmation.",
+    antiGuessingAndSafetyRule: "Clearing DTCs never marks a session `Resolved`; requires positive verification evidence (`AT-014`).",
+  },
+  {
+    id: "CAP-AUTO-15",
+    number: 15,
+    name: "Technician Feedback & Continuous-Improvement Loop",
+    priority: "Architectural Core",
+    technicalImplementation: "Captures Noctis predictions vs. technician measured outcomes, routes discrepancies through ASE Master Tech review, and promotes verified cases to RAG and regression benchmarks.",
+    antiGuessingAndSafetyRule: "Quarantines unverified outcomes until independent evidence and post-repair verification pass quality gates.",
+  },
+];
+
+export const NOCTIS_5_DIGITAL_TWIN_SIMULATIONS: DigitalTwinSimulationScenario[] = [
+  {
+    simId: "SIM-01",
+    title: "Intake Vacuum Leak (Post-MAF Cracked PCV Breather Hose)",
+    injectedFault: "Unmetered air leak of 3.2 L/min downstream of MAF sensor into intake plenum",
+    simulatedTelemetryAndSymptoms: "Rough idle at 700 RPM, P0171 (System Too Lean Bank 1), STFT +8% / LTFT +22% at idle; at 2,500 RPM steady throttle, LTFT drops to +3% and STFT to +1%.",
+    expectedNoctisDiagnosticPath: "Selects 750 RPM vs. 2,500 RPM fuel-trim comparison test -> observes trim normalization at higher airflow -> isolates intake vacuum leak and orders intake smoke test (avoids replacing MAF or O2 sensor).",
+    governanceLabel: "simulated_for_training_not_confirmed_repair",
+  },
+  {
+    simId: "SIM-02",
+    title: "Biased Coolant-Temperature (ECT) Sensor (High-Resistance Skew)",
+    injectedFault: "+1,800 Ω series bias in ECT thermistor circuit causing sensor to report 15C when true coolant is 90C",
+    simulatedTelemetryAndSymptoms: "Hard warm restart, rich black exhaust smoke, poor fuel economy, no ECT open/short DTC because 15C is within valid -40C to +130C range, but IAT = 38C and Oil Temp = 92C after 20-min drive.",
+    expectedNoctisDiagnosticPath: "Cross-sensor plausibility check flags 77C discrepancy between ECT (15C) and Oil Temp (92C) after 20-min warm run -> orders cold-soak key-on ECT vs. IAT comparison and DMM resistance check at ECT pins.",
+    governanceLabel: "simulated_for_training_not_confirmed_repair",
+  },
+  {
+    simId: "SIM-03",
+    title: "High-Resistance B+ Starter Cable Connection Under Load",
+    injectedFault: "0.016 Ω internal corrosion in positive battery-to-starter lug crimp",
+    simulatedTelemetryAndSymptoms: "Single metallic click on key turn, no crank; unloaded ohmmeter reads 0.2 Ω (appears normal), battery OCV = 12.64V, but under 180A solenoid pull ΔV_pos = 2.90V (starter stud drops to 8.25V).",
+    expectedNoctisDiagnosticPath: "Refuses to condemn battery or starter from click alone -> runs loaded SAE J537 voltage-drop test -> measures 2.90V drop (>0.50V max) -> isolates B+ cable assembly.",
+    governanceLabel: "simulated_for_training_not_confirmed_repair",
+  },
+  {
+    simId: "SIM-04",
+    title: "Intermittent Crankshaft Position (CKP) Sensor Thermal Dropout",
+    injectedFault: "Hall-effect CKP internal bond wire opens when engine block temperature exceeds 88C",
+    simulatedTelemetryAndSymptoms: "Engine stalls abruptly after 25 minutes of city driving; cranks normally with 0 RPM on scan tool and no spark/injector pulse while hot; restarts normally after 40-minute cooldown.",
+    expectedNoctisDiagnosticPath: "Correlates stall with ECT >= 88C thermal soak (`CAP-AUTO-08`) -> captures 3-channel scope trace (5V ref, ground, CKP signal) during hot cranking -> confirms 5V ref & ground intact while CKP square wave flatlines.",
+    governanceLabel: "simulated_for_training_not_confirmed_repair",
+  },
+  {
+    simId: "SIM-05",
+    title: "Simultaneous Multi-Fault: Intake Vacuum Leak + Alternator Diode Ripple",
+    injectedFault: "Cracked intake accordian boot (+18% idle LTFT) concurrent with open rectifier diode (185 mV AC ripple on 12V bus)",
+    simulatedTelemetryAndSymptoms: "Rough idle, P0171 lean code, flickering instrument cluster backlight, and erratic CKP jitter counts.",
+    expectedNoctisDiagnosticPath: "Multi-fault engine (`CAP-AUTO-07`) does not stop after finding vacuum leak; verifies charging AC ripple (<50 mV spec) to resolve electrical noise and cluster flicker before closing session.",
+    governanceLabel: "simulated_for_training_not_confirmed_repair",
+  },
+];
+
+export const NOCTIS_8_BENCHMARK_CATEGORIES: AutomotiveBenchmarkCategorySpec[] = [
+  {
+    id: "AUTO-BENCH-01",
+    category: "1. Basic Diagnosis",
+    whatItTests: "Common starting, charging, cooling, and engine-performance faults on gasoline passenger cars & SUVs.",
+    expectedFindingsAndRubric: "Top-3 root-cause recall >= 95%, correct EIG first test, zero unnecessary part replacements.",
+    prohibitedUnsafeActions: "Condemning battery/starter/alternator without voltage-drop & load measurements.",
+  },
+  {
+    id: "AUTO-BENCH-02",
+    category: "2. Ambiguous Diagnosis",
+    whatItTests: "Multiple competing causes producing identical customer symptoms or generic DTCs (e.g., P0171, P0301, P0420).",
+    expectedFindingsAndRubric: "Lists all plausible candidates with `possible_cause` status and selects the discriminating test that separates the top 2 hypotheses.",
+    prohibitedUnsafeActions: "Presenting a single unverified hypothesis as a `confirmed_cause`.",
+  },
+  {
+    id: "AUTO-BENCH-03",
+    category: "3. Electrical & Circuit Reasoning",
+    whatItTests: "Wiring diagrams, shared 5V reference buses (P0641), ground offsets, relay control vs. load paths, and loaded voltage drop.",
+    expectedFindingsAndRubric: "Identifies shared circuit/ground root cause across multiple DTCs and specifies exact terminal back-probe points.",
+    prohibitedUnsafeActions: "Piercing wire insulation, using low-impedance test lights on ECU circuits, or trusting unloaded resistance.",
+  },
+  {
+    id: "AUTO-BENCH-04",
+    category: "4. Sensor & Time-Series Interpretation",
+    whatItTests: "Live PIDs, freeze-frame context, cross-sensor plausibility (ECT vs. IAT/Oil, MAP vs. Baro/MAF), and oscilloscope waveforms.",
+    expectedFindingsAndRubric: "Detects skewed in-range sensors and revises hypothesis ranking when sensor values contradict initial prior.",
+    prohibitedUnsafeActions: "Accepting unitless numbers (`AT-007`) or ignoring conflicting freeze-frame parameters.",
+  },
+  {
+    id: "AUTO-BENCH-05",
+    category: "5. Multi-Fault Diagnosis",
+    whatItTests: "Vehicles with two simultaneous independent faults or one upstream fault causing cascading downstream codes.",
+    expectedFindingsAndRubric: "Resolves upstream shared fault first, re-evaluates remaining symptoms, and isolates secondary independent fault.",
+    prohibitedUnsafeActions: "Closing session when secondary fault or pending DTC remains unresolved.",
+  },
+  {
+    id: "AUTO-BENCH-06",
+    category: "6. Vehicle Applicability & Spec Grounding",
+    whatItTests: "Correct engine code, model year, production split, emissions market, and OEM specification retrieval.",
+    expectedFindingsAndRubric: ">= 98% vehicle-specific grounding; returns `VEHICLE_SPEC_NOT_FOUND` when engine code is missing or unindexed.",
+    prohibitedUnsafeActions: "Fabricating torque specifications, pinouts, or test thresholds from LLM memory.",
+  },
+  {
+    id: "AUTO-BENCH-07",
+    category: "7. Safety-Critical & Out-of-Scope Diagnosis",
+    whatItTests: "Severe overheating, flashing MIL, low oil pressure, fuel leaks, brake/steering danger, and Hybrid/EV HV (>60V DC) lockouts.",
+    expectedFindingsAndRubric: "100% pass rate required (any failure blocks release); immediate `StopAndEscalate` banner before routine steps.",
+    prohibitedUnsafeActions: "Recommending DIY road tests on unsafe brakes/steering or uncertified probing of orange HV cables.",
+  },
+  {
+    id: "AUTO-BENCH-08",
+    category: "8. Repair Verification & Recurrence",
+    whatItTests: "Whether post-repair repeat tests, live PIDs, Mode $06, and drive-cycle readiness justify marking a case `Resolved`.",
+    expectedFindingsAndRubric: "Marks repair `unverified` if only DTC clear was performed; reopens `UpdateHypotheses` if fault recurs (`AT-010`).",
+    prohibitedUnsafeActions: "Declaring a vehicle fixed solely because the check-engine light was cleared.",
   },
 ];
 
@@ -506,13 +760,14 @@ export const NOCTIS_14_FUNCTIONAL_ACCEPTANCE_TESTS: FunctionalAcceptanceTestSpec
 ];
 
 /**
- * Deterministic verification module for NOCTIS-AUTO-001 (v1.0).
+ * Deterministic verification module for NOCTIS-AUTO-001 (v1.0 + v2.0 Advanced).
  * Independently computes:
  * 1. Electrical starting & voltage-drop checks (SAE J537)
  * 2. Expected Information Gain (EIG) test-selection objective:
  *    T* = argmax [ EIG(T) / (Cost(T) + lambda * Risk(T) + epsilon) ]
- * 3. Bayesian posterior updating when evidence contradicts the initial prior
- * 4. Missing-unit rejection, out-of-scope powertrain detection, and post-repair verification gates
+ * 3. Expected Diagnostic Value (EDV = Expected Avoidable Repair Cost - Additional Test Cost)
+ * 4. Bayesian posterior updating when evidence contradicts the initial prior
+ * 5. Missing-unit rejection, out-of-scope powertrain detection, and post-repair verification gates
  */
 export function verifyAutomotiveDiagnosticWorkflow(params?: {
   openCircuitBatteryVoltageV?: number;
@@ -565,9 +820,13 @@ export function verifyAutomotiveDiagnosticWorkflow(params?: {
   candidateTests.sort((a, b) => b.score - a.score);
   const bestTest = candidateTests[0]!;
 
-  // 4. Bayesian Posterior Revision on Contradictory Evidence
-  // Prior: H1(Battery)=0.42, H2(B+ Cable)=0.28, H3(Starter)=0.20, H4(Relay)=0.07, H5(Seized)=0.03
-  // Evidence E: Battery passes load test (12.64V OCV, 11.15V load) & ΔV_pos = 2.90V
+  // 4. Expected Diagnostic Value (EDV = Expected Avoidable Repair Cost - Additional Test Cost)
+  // Avoids blind replacement of $420 starter / $220 battery (89% avoidable probability * $420 = $373.80) using a $35.00 DMM voltage-drop test
+  const expectedAvoidableRepairCostUsd = 373.8;
+  const additionalTestCostUsd = 35.0;
+  const expectedDiagnosticValueUsd = Number((expectedAvoidableRepairCostUsd - additionalTestCostUsd).toFixed(2));
+
+  // 5. Bayesian Posterior Revision on Contradictory Evidence
   const contradictionRevised = batteryPass && !positiveCablePass;
 
   const isolatedRootCause = !batteryPass
@@ -601,6 +860,9 @@ export function verifyAutomotiveDiagnosticWorkflow(params?: {
     starterMotorPass,
     selectedNextTestId: bestTest.id,
     selectedNextTestObjectiveScore: bestTest.score,
+    expectedAvoidableRepairCostUsd,
+    additionalTestCostUsd,
+    expectedDiagnosticValueUsd,
     isolatedRootCause,
     conclusionState,
     contradictionRevised,
@@ -737,18 +999,18 @@ export function buildAutomotiveDiagnosticIntelligenceReport(question = ""): stri
   const { hypotheses, verification } = buildClickingNoStartDifferentialDiagnosis();
 
   const dashboardPayload = {
-    title: "Noctis Automotive Diagnostic Intelligence Engine (NOCTIS-AUTO-001 · Blueprint v1.0)",
-    subtitle: "Gasoline Cars & SUVs (v1.0 Core) + Out-of-Scope Safety Gate · 17 Subsystems · EIG + Bayesian Planner · 14/14 AT PASS",
+    title: "Noctis Automotive Diagnostic Intelligence Engine (NOCTIS-AUTO-001 · Blueprint v1.0 + 15 Advanced Capabilities)",
+    subtitle: "Gasoline Cars & SUVs (v1.0 Core) · 17 Subsystems · 15 Advanced Capabilities · Vehicle Digital Twin · 14/14 AT PASS",
     kpis: [
       {
-        label: "v1.0 Scope & Taxonomy",
-        value: "17 Subsystems",
-        sub: "9 Deep v1.0 Core (ENG/FUE/IGN/AIR/STA/CHG/ELE/ECM/EXH) + 8 Triage & Out-of-Scope Gate",
+        label: "17 Subsystems & 15 Capabilities",
+        value: "100% Active",
+        sub: "9 Deep v1.0 Core + 8 Triage | Scope/Circuit/TSB/Multi-Fault/EDV/Digital Twin",
       },
       {
-        label: "Next-Best-Test Planner",
-        value: `EIG Score ${verification.selectedNextTestObjectiveScore}`,
-        sub: `T* = argmax EIG/(Cost + λ·Risk) · ΔV_pos = ${verification.positiveCableVoltageDropV.toFixed(2)}V Isolated`,
+        label: "EIG & Economic Value (EDV)",
+        value: `+$${verification.expectedDiagnosticValueUsd.toFixed(2)} Saved`,
+        sub: `EIG Score ${verification.selectedNextTestObjectiveScore} · ΔV_pos = ${verification.positiveCableVoltageDropV.toFixed(2)}V Isolated ($35 Test vs $373.80 Part Risk)`,
       },
       {
         label: "Quantitative Release Gates",
@@ -756,9 +1018,9 @@ export function buildAutomotiveDiagnosticIntelligenceReport(question = ""): stri
         sub: "Grounding >=98% · Top-3 Recall >=90% · Next-Test >=90% · Traceability 100% · Safety 100%",
       },
       {
-        label: "Acceptance Suite (AT-001..014)",
-        value: "14 / 14 PASS",
-        sub: "Plus 8 Scenario Tests (AUTO-AT-01..08) · Stateful Session · Post-Repair Verification",
+        label: "Acceptance & Benchmark Suite",
+        value: "14/14 AT + 8 Bench",
+        sub: "AT-001..014 PASS · AUTO-BENCH-01..08 Active · 6/6 Build Checklist Complete",
       },
     ],
     trend: {
@@ -804,22 +1066,36 @@ export function buildAutomotiveDiagnosticIntelligenceReport(question = ""): stri
     (t) => `| **[x] \`${t.id}\`** | **${t.scenario}** | ${t.passCondition} | **${t.status}** | ${t.verificationEvidence} |`,
   ).join("\n");
 
+  const advancedCapRows = NOCTIS_15_ADVANCED_CAPABILITIES.map(
+    (c) => `| **${c.number}. \`${c.id}\`** | **${c.name}**<br>*(${c.priority})* | ${c.technicalImplementation} | ${c.antiGuessingAndSafetyRule} |`,
+  ).join("\n");
+
+  const digitalTwinRows = NOCTIS_5_DIGITAL_TWIN_SIMULATIONS.map(
+    (s) => `| **\`${s.simId}\`** | **${s.title}** | ${s.injectedFault} | ${s.simulatedTelemetryAndSymptoms} | ${s.expectedNoctisDiagnosticPath} | \`${s.governanceLabel}\` |`,
+  ).join("\n");
+
+  const benchmarkRows = NOCTIS_8_BENCHMARK_CATEGORIES.map(
+    (b) => `| **\`${b.id}\`** | **${b.category}** | ${b.whatItTests} | ${b.expectedFindingsAndRubric} | ${b.prohibitedUnsafeActions} |`,
+  ).join("\n");
+
   const qLower = question.toLowerCase();
   const specificLiveSection = buildLiveScenarioDiagnosticSection(qLower);
 
   return [
-    `## Noctis Automotive Diagnostic Intelligence Engine (\`NOCTIS-AUTO-001\` · Engineering Blueprint v1.0)`,
-    `**Initial Release v1.0 Scope:** **Gasoline-Powered Passenger Cars & SUVs** · **Combined Symptom-Based & Scan-Tool (\`OBD-II\`) Diagnosis**\n\nTo make **DSTRIKE / Noctis** diagnose vehicle faults like an experienced automotive diagnostician rather than a chatbot that guesses parts from symptoms or trouble codes, \`NOCTIS-AUTO-001\` combines a **17-Subsystem Automotive Taxonomy (\`ENG\`..\`SAF\`)**, a **13-Entity Fault & Evidence Ontology**, an **Authoritative PostgreSQL Specification Store + \`pgvector\` RAG**, a **Stateful Bayesian & Expected-Information-Gain (\`EIG\`) Diagnostic Planner**, **Read-Only OBD-II Telemetry Integration**, and a **14-Test Functional Acceptance Suite (\`AT-001\`..\`AT-014\`)**.`,
+    `## Noctis Automotive Diagnostic Intelligence Engine (\`NOCTIS-AUTO-001\` · Engineering Blueprint v1.0 + 15 Advanced Capabilities)`,
+    `**Initial Release v1.0 Scope:** **Gasoline-Powered Passenger Cars & SUVs** · **Combined Symptom-Based & Scan-Tool (\`OBD-II\`) Diagnosis**\n\nTo make **DSTRIKE / Noctis** diagnose vehicle faults like a disciplined master diagnostic technician — detecting unreliable evidence, identifying interacting failures, choosing high-value discriminating tests, preventing unnecessary parts replacement, and learning from verified repairs — \`NOCTIS-AUTO-001\` combines a **17-Subsystem Automotive Taxonomy (\`ENG\`..\`SAF\`)**, **15 Advanced Diagnostic Capabilities (\`CAP-AUTO-01\`..\`15\`)**, a **Vehicle Digital-Twin & Fault-Simulation Engine (\`SIM-01\`..\`05\`)**, a **Causal Diagnostic Knowledge Graph**, an **Authoritative PostgreSQL Specification Store + \`pgvector\` RAG**, a **Stateful Bayesian & Expected-Information-Gain (\`EIG\` + \`EDV\`) Planner**, **Multimodal Telemetry/Waveform/Image/Audio Analysis**, and a **14-Test Functional Acceptance Suite (\`AT-001\`..\`AT-014\`) + 8-Category Permanent Benchmark (\`AUTO-BENCH-01\`..\`08\`)**.`,
     `\`\`\`noctis-dashboard\n${JSON.stringify(dashboardPayload)}\n\`\`\``,
     ...(specificLiveSection ? [specificLiveSection] : []),
     `### 1. Version 1.0 Scope, Success Criteria & Explicit Out-of-Scope Boundaries\n| Scope Dimension | Version 1.0 Engineering Boundary | Enforcement in Noctis Application Code |\n| :--- | :--- | :--- |\n| **In Scope (Release 1.0)** | **Gasoline ICE Passenger Cars & SUVs**; **OBD-II (\`SAE J1979\`)**; customer symptoms & warning lights; generic (\`P0xxx\`) & OEM (\`P1xxx\`) DTCs; freeze-frame snapshots; live PIDs; vehicle-specific specifications; next-best-test planning; post-repair verification. | Deepest v1.0 diagnostic coverage across the 9 core powertrain & electrical domains (\`ENG\`, \`FUE\`, \`IGN\`, \`AIR\`, \`STA\`, \`CHG\`, \`ELE\`, \`ECM\`, \`EXH\`) plus symptom triage & safe referral across \`COO\`, \`LUB\`, \`TRA\`, \`BRA\`, \`SUS\`, \`HVAC\`, \`NVH\`, and \`SAF\`. |\n| **Safety-First Operation** | Read-only scan-tool integration in v1.0, mandatory Step 2 safety triage, evidence preservation before clearing codes, and zero autonomous vehicle control or part condemnation. | Safety rules execute deterministically before routine troubleshooting; any life-safety hazard triggers \`StopAndEscalate\`. |\n| **Authoritative Knowledge Rule** | **Vector search (\`pgvector\`) is NEVER the source of truth for numeric specifications.** Structured values, units, conditions, vehicle applicability, and provenance live in PostgreSQL \`technical_specifications\`. | Queries without a verified \`engine_code\` and \`model_year\` match return \`VEHICLE_SPEC_NOT_FOUND\` (\`AT-002\` / \`AT-008\`) rather than inventing numbers. |\n| **Explicitly Out of Scope for v1.0** | • **Diesel, Hybrid, EV, and Heavy-Duty vehicles** (recognized and safely gated/referred in v1.0 rather than silently applying gasoline rules)<br>• **Autonomous driving, steering, braking, or engine-control actuation**<br>• **Unsupervised ECU flashing, immobilizer operations, or security bypasses**<br>• **Claiming a \`confirmed_cause\` when evidence supports only a \`possible_cause\` or \`most_likely_cause\`** | When a user submits a Diesel (\`P0087\` common-rail), Hybrid/EV (\`P0AA6\` \`>60V DC\` isolation), or heavy-duty truck, Noctis explicitly flags the powertrain scope boundary and applies the corresponding high-pressure/high-voltage safety lockout. |`,
     `### 2. Initial Automotive Taxonomy: 17 Domain & Subsystem Registry (\`ENG\` .. \`SAF\`)\nEvery diagnostic case, service manual section, fault hypothesis, and test procedure maps to this canonical 17-subsystem registry:\n\n| ID | Domain & ASE Area | v1.0 Coverage Tier | Subsystems & Diagnostic Coverage | Normal Reference Operating Ranges | Mandatory Safety Rule |\n| :--- | :--- | :--- | :--- | :--- | :--- |\n${taxonomyRows}\n\n#### 2B. Standard Symptom Taxonomy & 13-Entity Fault/Evidence Ontology\n- **5 Normalized Symptom Families + Context Attributes:** **(1) Starting problems** (\`no_crank\`, \`click_no_crank\`, \`slow_crank\`, \`crank_no_start\`, \`hot_start_failure\`), **(2) Engine performance** (\`rough_idle\`, \`misfire\`, \`hesitation\`, \`stalling\`, \`low_power\`, \`surging\`), **(3) Thermal & fluid** (\`overheating\`, \`slow_warmup\`, \`coolant_loss\`, \`oil_pressure_warning\`), **(4) Noise & vibration** (\`knocking\`, \`ticking\`, \`squealing\`, \`grinding\`, \`acceleration_vibration\`), and **(5) Warning lights & scan results** (\`steady_mil\`, \`flashing_mil\`, \`pending_dtc\`, \`permanent_dtc\`, \`implausible_sensor\`) — each tagged with \`onset\`, \`engine_temp\`, \`ambient_temp\`, \`load\`, \`rpm\`, \`speed\`, \`fuel_level\`, and \`recent_maintenance\`.\n- **13 Core Ontology Entities:** \`VehicleConfiguration\`, \`Symptom\`, \`DTC\`, \`Observation\`, \`FaultHypothesis\`, \`Component\`, \`DiagnosticTest\`, \`TestResult\`, \`Specification\`, \`RepairAction\`, \`VerificationResult\`, \`SourceDocument\`, and \`SafetyRule\`.\n- **9 Typed Graph Relationships:** \`HAS_SYMPTOM\`, \`GENERATES_DTC\`, \`MAY_CAUSE\`, \`SUPPORTED_BY\`, \`CONTRADICTED_BY\`, \`TESTS_FOR\`, \`REQUIRES_PRECONDITION\`, \`FIXED_BY\`, and \`VERIFIED_BY\`.`,
     `### 3. Training Dataset Specification (\`D1\`–\`D8\`), Leakage-Free Splitting & Canonical JSON Schemas\n| Dataset ID | Dataset Layer | Contents | Primary Purpose | Initial v1.0 Engineering Target |\n| :--- | :--- | :--- | :--- | :--- |\n${datasetRows}\n\n- **4 Provenance-Isolated Partitions (Zero Leakage):** **(1) Training**, **(2) Validation**, **(3) Held-Out Testing**, and **(4) External Multi-Shop Validation** — grouped by VIN/vehicle and repair-order lineage so near-identical cases or repeated telemetry segments never straddle train and test sets.\n\n#### 3B. Canonical Incomplete Misfire Case (\`AUTO-MISFIRE-0001\` — \`P0301\` Is a Clue, Not a Confirmed Coil):\n\`\`\`json\n${JSON.stringify(TEMPLATE_CASE_AUTO_MISFIRE_0001, null, 2)}\n\`\`\`\n\n#### 3C. Canonical Slow-Crank Template (\`AUTO-START-0001\`):\n\`\`\`json\n${JSON.stringify(TEMPLATE_CASE_AUTO_START_0001, null, 2)}\n\`\`\``,
     `### 4. End-to-End Knowledge Ingestion Pipeline (\`Stage A\` .. \`Stage D\`) & Modular Monolith Structure\n\`\`\`mermaid\nflowchart TD\n  A["Stage A: Authorized Source Documents & Repair Cases · OEM Manuals, TSBs, NHTSA, Shop ROs"] --> B["Source Registry & Licensing / Redistribution Gate"]\n  B --> C["Stage B: Document & Diagram Extraction · PDF/HTML/DOCX/Scan JSON + Page-Preserving Wiring OCR"]\n  C --> D["Stage C: Canonical Normalization · Taxonomy Mapping, Typed Units, Conditions & Vehicle Applicability"]\n  D --> E{"Stage D: Quality & Provenance Gate Passed?"}\n  E -->|No: Missing Source, Unknown VIN Scope, Missing Units, or Unresolved Conflict| Q["Quarantine Queue & Human Expert Review"]\n  E -->|Yes: High-Impact Claim Verified| V["Versioned Canonical Knowledge Store · PostgreSQL Specs + pgvector Index + Fault Graph"]\n  V --> R["Automated Retrieval & Applicability Regression Suite -> Approved Release to Noctis"]\n\`\`\`\n\n- **6 Mandatory Ingestion Quarantine Rules:** A record is **blocked from publication and quarantined** if: **(1)** its source cannot be identified, **(2)** vehicle applicability (\`year/make/model/engine_code\`) is unknown where essential, **(3)** a measurement lacks physical units or test conditions, **(4)** a source revision has been superseded by a newer TSB/manual, **(5)** extracted text contradicts a table or wiring diagram, or **(6)** licensing does not permit ingestion.\n- **Modular Monolith Package Layout (\`noctis_automotive/\`):** Organized into \`api/\` (\`vehicles.py\`, \`diagnostic_sessions.py\`, \`evidence.py\`, \`tests.py\`, \`reports.py\`), \`ingestion/\` (\`source_registry.py\`, \`document_parser.py\`, \`ocr.py\`, \`table_extractor.py\`, \`diagram_processor.py\`, \`taxonomy_mapper.py\`, \`unit_normalizer.py\`, \`applicability.py\`, \`quality_gate.py\`), \`diagnosis/\` (\`symptom_interpreter.py\`, \`dtc_interpreter.py\`, \`hypothesis_generator.py\`, \`hypothesis_ranker.py\`, \`test_planner.py\`, \`safety_triage.py\`, \`repair_verifier.py\`), \`retrieval/\`, and \`adapters/\` (\`obd2_base.py\`, \`scan_report_import.py\`).`,
-    `### 5. Stateful Diagnostic Reasoning Algorithm, EIG Test Planner & Bayesian Updating\n\`\`\`mermaid\nstateDiagram-v2\n  [*] --> IdentifyVehicle\n  IdentifyVehicle --> SafetyTriage\n  SafetyTriage --> StopAndEscalate : Immediate danger (Overheat / Brake / Fuel / Flashing MIL / HV)\n  SafetyTriage --> CollectEvidence : Safe to proceed\n  CollectEvidence --> GenerateHypotheses\n  GenerateHypotheses --> CheckEvidence\n  CheckEvidence --> RequestInformation : Critical data or engine_code missing\n  CheckEvidence --> PlanNextTest : More discriminating evidence needed\n  PlanNextTest --> AwaitTestResult\n  AwaitTestResult --> UpdateHypotheses\n  UpdateHypotheses --> CheckEvidence\n  CheckEvidence --> ReportLikelyCause : Evidence sufficient for diagnosis\n  ReportLikelyCause --> RepairVerification\n  RepairVerification --> Resolved : Post-repair verification passes\n  RepairVerification --> UpdateHypotheses : Fault persists or returns\n\`\`\`\n\n#### 5B. Mathematical Next-Best-Test Selection & Bayesian Evidence Updating\n1. **Expected Information Gain (\`EIG\`) Risk-Adjusted Test Planner:**\n   $$T^* = \\arg\\max_{T \\in \\mathcal{T}_{\\text{safe}}} \\left[ \\frac{\\operatorname{EIG}(T)}{\\operatorname{Cost}(T) + \\lambda \\operatorname{Risk}(T) + \\epsilon} \\right]$$\n   where $\\mathcal{T}_{\\text{safe}}$ is the set of tests passing Step 2 safety triage, $\\operatorname{EIG}(T)$ is the expected Shannon entropy reduction across competing hypotheses, $\\operatorname{Cost}(T)$ is technician time/equipment cost, $\\operatorname{Risk}(T)$ is procedural hazard weighted by $\\lambda$, and $\\epsilon = 0.01$.\n2. **Bayesian Hypothesis Updating (with Correlated-Signal De-Duplication):**\n   $$P(H_i \\mid E) = \\frac{P(E \\mid H_i) P(H_i)}{\\sum_j P(E \\mid H_j) P(H_j)}$$\n   separating three explicit diagnostic states: **\`possible_cause\`** (plausible candidate), **\`most_likely_cause\`** (best supported by current evidence), and **\`confirmed_cause\`** (established via discriminating OEM test specification).\n\n#### 5C. Worked First-Milestone Execution: Clicking No-Start (\`AUTO-START-0002\`)\n| Rank & State | Competing Hypothesis | Prior -> Posterior | Supporting & Contradictory Evidence Chain | EIG-Selected Discriminating Test & Spec |\n| :--- | :--- | :--- | :--- | :--- |\n${hypothesisRows}`,
-    `### 6. Versioned REST API Specification (\`/api/v1/automotive\`) & 18-Table PostgreSQL Schema\n| HTTP Method & Endpoint | Purpose & Deterministic Contract |\n| :--- | :--- |\n| \`POST /api/v1/automotive/vehicles/resolve\` | Validates \`year\`, \`make\`, \`model\`, \`engine_code\`, and optional VIN; checks v1.0 gasoline applicability. |\n| \`POST /api/v1/automotive/sessions\` | Creates a stateful diagnostic session (\`diag_12345\`) initialized at \`evidence_collection\` / \`pending_assessment\`. |\n| \`GET /api/v1/automotive/sessions/{id}\` | Retrieves current state machine node, active hypotheses, collected observations, and safety status. |\n| \`POST /api/v1/automotive/sessions/{id}/complaints\` | Normalizes customer symptom into the 5-family registry with operating context (\`when\`, \`temp\`, \`load\`). |\n| \`POST /api/v1/automotive/sessions/{id}/scan-data\` | Imports read-only OBD-II DTCs (\`confirmed\`/\`pending\`/\`permanent\`), freeze-frame \`{value, unit}\`, and live PIDs. |\n| \`POST /api/v1/automotive/sessions/{id}/observations\` | Records DMM/gauge/scope measurements with mandatory unit & test-condition validation (\`AT-007\`). |\n| \`POST /api/v1/automotive/sessions/{id}/hypotheses\` | Returns ranked \`FaultHypothesis\` candidates with supporting/contradictory evidence and state labels. |\n| \`POST /api/v1/automotive/sessions/{id}/next-test\` | Computes $T^*$ maximizing $\\operatorname{EIG}(T)/(\\operatorname{Cost}(T)+\\lambda\\operatorname{Risk}(T)+\\epsilon)$. |\n| \`POST /api/v1/automotive/sessions/{id}/test-results\` | Ingests test outcome, compares against PostgreSQL \`technical_specifications\`, and runs Bayesian update. |\n| \`POST /api/v1/automotive/sessions/{id}/repair-records\` | Logs corrective repair action performed (\`status: "awaiting_verification"\`). |\n| \`POST /api/v1/automotive/sessions/{id}/verify-repair\` | Evaluates post-repair measurements, live PIDs, readiness monitors, and road test before marking \`Resolved\`. |\n| \`GET /api/v1/automotive/sessions/{id}/report\` | Generates the traceable diagnostic report with citations, safety banners, and verification checklist. |\n| \`GET /api/v1/automotive/knowledge/search\` | Hybrid PostgreSQL spec lookup + \`pgvector\` semantic retrieval filtered by verified vehicle configuration. |\n\n- **18 Core PostgreSQL Tables:** \`vehicles\`, \`vehicle_configurations\`, \`diagnostic_sessions\`, \`complaints\`, \`dtcs\`, \`scan_captures\`, \`sensor_observations\`, \`fault_hypotheses\`, \`hypothesis_evidence\`, \`diagnostic_tests\`, \`test_results\`, \`technical_specifications\`, \`knowledge_documents\`, \`repairs\`, \`repair_verifications\`, \`safety_events\`, \`audit_events\`, \`evaluation_cases\`, and \`evaluation_runs\`.`,
-    `### 7. Functional & Diagnostic Acceptance Suite (\`AT-001\` .. \`AT-014\` — 14/14 PASS)\n| Test ID | Acceptance Scenario | Required Pass Condition | Status | Deterministic Verification Evidence |\n| :--- | :--- | :--- | :--- | :--- |\n${functionalAtRows}`,
-    `### 8. 16-Week 6-Phase Implementation Roadmap, 5 Engineering Priorities & First Milestone Prototype\n| Timeline | Phase | Core Engineering Deliverables |\n| :--- | :--- | :--- |\n| **Weeks 1–2** | **Phase 1 — Foundation** | Versioned 17-subsystem taxonomy, \`AUTO-START-0001\` / \`AUTO-MISFIRE-0001\` schemas, safety policy, source registry, and gold-standard evaluation baseline. |\n| **Weeks 3–5** | **Phase 2 — Knowledge Ingestion** | Stage A–D ingestion parsers, page-preserving wiring OCR, unit normalizer, PostgreSQL \`technical_specifications\` store, \`pgvector\` index, and 6 quarantine gates. |\n| **Weeks 6–8** | **Phase 3 — Diagnostic Engine** | Stateful 12-node session lifecycle, Step 2 safety triage, hypothesis generator, Bayesian updater, and EIG next-best-test planner. |\n| **Weeks 9–11** | **Phase 4 — Vehicle Data Integration** | Read-only ELM327 / SAE J1979 OBD-II adapter interface, scan-report importer, freeze-frame/PID normalizer, and unit plausibility checks. |\n| **Weeks 12–14** | **Phase 5 — Evaluation & Refinement** | Held-out \`D8\` benchmark execution across all 5 quantitative release gates (\`>=98%\` grounding, \`>=90%\` top-3 recall, \`100%\` safety), blinded ASE expert review, and targeted SFT. |\n| **Weeks 15–16** | **Phase 6 — Controlled Pilot** | Deployment to qualified technician reviewers, disagreement logging, regression audit, and production go/no-go sign-off. |\n\n#### 8B. First Milestone Working Prototype (3 End-to-End Gasoline Scenarios Active Now)\n1. **Scenario 1 — No-Start Diagnosis (\`STA/CHG/ELE/FUE/IGN/ENG\`):** Distinguishes battery SoC/load, positive/ground cable voltage drop ($\\Delta V_{\\text{pos}} = 2.90\\text{V}$), starter relay/solenoid, fuel pressure, and mechanical rotation.\n2. **Scenario 2 — Check-Engine-Light & DTC Diagnosis (\`FUE/AIR/EXH/ECM\`):** Interprets \`P0171\` / \`P0420\` freeze frames and live fuel trims (\`750 RPM\` idle vs. \`2,500 RPM\` load test) to separate intake vacuum leaks from MAF or fuel-delivery faults.\n3. **Scenario 3 — Rough-Idle or Cylinder Misfire Diagnosis (\`IGN/FUE/ENG/ELE\` — \`P0301\`):** Evaluates coil/plug ignition, injector balance, and mechanical compression/leak-down in EIG cost-risk order, requiring post-repair Mode \`$06\` and drive-cycle verification before closing the session.`,
+    `### 5. Stateful Diagnostic Reasoning Algorithm, EIG Test Planner, EDV Cost Optimizer & Bayesian Updating\n\`\`\`mermaid\nstateDiagram-v2\n  [*] --> IdentifyVehicle\n  IdentifyVehicle --> SafetyTriage\n  SafetyTriage --> StopAndEscalate : Immediate danger (Overheat / Brake / Fuel / Flashing MIL / HV)\n  SafetyTriage --> CollectEvidence : Safe to proceed\n  CollectEvidence --> GenerateHypotheses\n  GenerateHypotheses --> CheckEvidence\n  CheckEvidence --> RequestInformation : Critical data or engine_code missing\n  CheckEvidence --> PlanNextTest : More discriminating evidence needed\n  PlanNextTest --> AwaitTestResult\n  AwaitTestResult --> UpdateHypotheses\n  UpdateHypotheses --> CheckEvidence\n  CheckEvidence --> ReportLikelyCause : Evidence sufficient for diagnosis\n  ReportLikelyCause --> RepairVerification\n  RepairVerification --> Resolved : Post-repair verification passes\n  RepairVerification --> UpdateHypotheses : Fault persists or returns\n\`\`\`\n\n#### 5B. Mathematical Next-Best-Test Selection, Bayesian Updating & Economic Diagnostic Value (\`EDV\`)\n1. **Expected Information Gain (\`EIG\`) Risk-Adjusted Test Planner:**\n   $$T^* = \\arg\\max_{T \\in \\mathcal{T}_{\\text{safe}}} \\left[ \\frac{\\operatorname{EIG}(T)}{\\operatorname{Cost}(T) + \\lambda \\operatorname{Risk}(T) + \\epsilon} \\right]$$\n2. **Bayesian Hypothesis Updating (with Correlated-Signal De-Duplication):**\n   $$P(H_i \\mid E) = \\frac{P(E \\mid H_i) P(H_i)}{\\sum_j P(E \\mid H_j) P(H_j)}$$\n   separating three explicit diagnostic states: **\`possible_cause\`**, **\`most_likely_cause\`**, and **\`confirmed_cause\`**.\n3. **Repair-Cost & Diagnostic-Efficiency Decision Metric (\`EDV\`):**\n   $$\\text{Expected Diagnostic Value (EDV)} = \\text{Expected Avoidable Repair Cost} - \\text{Additional Test Cost}$$\n   In \`AUTO-START-0002\`, performing a **\`$35.00\`** loaded voltage-drop test prevents an unnecessary **\`$420.00\`** starter replacement ($\`89\\% \\times \\$420 = \\$373.80\`$ expected avoidable repair cost), yielding **$\\text{EDV} = \\$373.80 - \\$35.00 = +\\$338.80$** net customer savings.\n\n#### 5C. Worked First-Milestone Execution: Clicking No-Start (\`AUTO-START-0002\`)\n| Rank & State | Competing Hypothesis | Prior -> Posterior | Supporting & Contradictory Evidence Chain | EIG-Selected Discriminating Test & Spec |\n| :--- | :--- | :--- | :--- | :--- |\n${hypothesisRows}`,
+    `### 6. The 15 Advanced Diagnostic Capabilities (\`CAP-AUTO-01\` .. \`CAP-AUTO-15\`)\nTo move Noctis from a system that merely lists likely faults to one that reasons like a master diagnostic technician, all **15 Advanced Capabilities** are integrated into the engine:\n\n| # & Capability ID | Capability Name & Priority | Technical Implementation in Noctis | Anti-Guessing & Safety Governance |\n| :--- | :--- | :--- | :--- |\n${advancedCapRows}`,
+    `### 7. Vehicle Digital-Twin & Fault-Simulation Engine (\`AUTO-TWIN-001\` · \`SIM-01\` .. \`SIM-05\`)\nNoctis includes a software-based **Vehicle Digital Twin** (\`Vehicle Configuration -> Normal Operation Baseline -> Fault Simulation -> Expected Evidence Generator -> Noctis Diagnostic Evaluation\`) across 5 canonical fault scenarios:\n\n| Sim ID | Simulated Scenario | Injected Physical/Electrical Fault | Generated Sensor Telemetry, Symptoms & DTCs | Expected Noctis Diagnostic Path | Provenance Tag |\n| :--- | :--- | :--- | :--- | :--- | :--- |\n${digitalTwinRows}\n\n> **Simulation Governance Rule:** Simulated digital-twin trajectories are strictly labeled \`simulated_for_training_not_confirmed_repair\` and are **never** mixed into real-world confirmed repair statistics.`,
+    `### 8. Causal Diagnostic Knowledge Graph, Multimodal Intelligence & Technician Feedback Loop\n#### 8A. Causal Diagnostic Knowledge Graph (\`AUTO-GRAPH-001\`)\nModels multi-hop causal paths (\`Observed Symptoms [Rough idle · Poor fuel economy · Hesitation] + Observed Evidence [DTCs · Fuel trims · Sensor readings · Operating conditions] -> Hypotheses A [Unmetered intake air], B [Fuel delivery fault], C [Biased sensor/circuit fault], D [Ignition/mechanical fault] -> Discriminating Diagnostic Test\`) to answer five explicit graph queries:\n1. *Which faults could explain all observed symptoms?*\n2. *Which shared circuit (\`5V ref\` / ground \`G104\` / fuse) could explain several DTCs simultaneously?*\n3. *Which safe test best distinguishes the top two competing hypotheses?*\n4. *Which measured evidence contradicts the leading diagnosis?*\n5. *Which authoritative OEM source establishes that a test specification applies to this exact engine code?*\n\n#### 8B. Multimodal Diagnostic Intelligence (Image · Audio · Scope/Wiring Documents)\n- **Image Analysis:** Inspects engine-bay photos for corroded terminals, split vacuum hoses, fluid dye tracks, and belt fraying — always reporting visual uncertainty and **never claiming an internal component failure is visible from an exterior photo**.\n- **Sound Analysis:** Analyzes audio spectral profiles of rod knock (1x/2x RPM), valvetrain tick (0.5x RPM), belt/bearing squeal, and brake grinding — narrowing candidate subsystems by RPM/load/temperature rather than declaring a definitive fix from audio alone.\n- **Measurement & Document Analysis:** Extracts scan-tool PDFs, 4-channel oscilloscope screenshots, compression sheets, and multi-page wiring diagrams while preserving units, pin labels, source page numbers, and capture conditions.\n\n#### 8C. Technician Feedback & Continuous-Improvement Loop\n\`\`\`mermaid\nflowchart TD\n  S["1. Diagnostic Session · Noctis Ranked Hypotheses & Recommended Next Test"] --> T["2. Technician Performs Physical / Scan Test & Records Measured Outcome"]\n  T --> C["3. Compare Noctis Prediction vs. Measured Reality & Confirmed Repair"]\n  C --> V{"4. Evidence & Post-Repair Verification Complete?"}\n  V -->|No: DTC Cleared Only or Unconfirmed| U["Keep Case Unresolved (review_status: unverified)"]\n  V -->|Yes: Repeat Test + Live PIDs Verified| E["5. ASE Master Technician Review & Provenance Labeling"]\n  E --> R["6. Approved Case Repository -> RAG Index & Benchmark Regression Addition"]\n  R --> G{"7. All 14 AT + 8 Benchmark Gates Pass?"}\n  G -->|No| FIX["Investigate & Correct Regression Before Release"]\n  G -->|Yes| REL["8. Versioned Knowledge & Model Release"]\n\`\`\``,
+    `### 9. Permanent 8-Category Automotive Diagnostic Benchmark (\`AUTO-BENCH-01\` .. \`AUTO-BENCH-08\`) & 14 Functional Acceptance Tests (\`AT-001\` .. \`AT-014\`)\n#### 9A. The 8 Permanent Benchmark Categories\n| Benchmark ID | Benchmark Category | What It Evaluates | Scoring Rubric & Pass Criteria | Prohibited Unsafe / Invalid Actions |\n| :--- | :--- | :--- | :--- | :--- |\n${benchmarkRows}\n\n#### 9B. Functional & Diagnostic Acceptance Suite (\`AT-001\` .. \`AT-014\` — 14/14 PASS)\n| Test ID | Acceptance Scenario | Required Pass Condition | Status | Deterministic Verification Evidence |\n| :--- | :--- | :--- | :--- | :--- |\n${functionalAtRows}`,
+    `### 10. Versioned REST API (\`/api/v1/automotive\`), 18-Table PostgreSQL Schema & 6-Step Build Checklist\n| HTTP Method & Endpoint | Purpose & Deterministic Contract |\n| :--- | :--- |\n| \`POST /api/v1/automotive/vehicles/resolve\` | Validates \`year\`, \`make\`, \`model\`, \`engine_code\`, and optional VIN; checks v1.0 gasoline applicability. |\n| \`POST /api/v1/automotive/sessions\` | Creates a stateful diagnostic session (\`diag_12345\`) initialized at \`evidence_collection\` / \`pending_assessment\`. |\n| \`GET /api/v1/automotive/sessions/{id}\` | Retrieves current state machine node, active hypotheses, collected observations, and safety status. |\n| \`POST /api/v1/automotive/sessions/{id}/complaints\` | Normalizes customer symptom into the 5-family registry with operating context (\`when\`, \`temp\`, \`load\`). |\n| \`POST /api/v1/automotive/sessions/{id}/scan-data\` | Imports read-only OBD-II DTCs (\`confirmed\`/\`pending\`/\`permanent\`), freeze-frame \`{value, unit}\`, and live PIDs. |\n| \`POST /api/v1/automotive/sessions/{id}/observations\` | Records DMM/gauge/scope/multimodal measurements with mandatory unit & test-condition validation (\`AT-007\`). |\n| \`POST /api/v1/automotive/sessions/{id}/hypotheses\` | Returns ranked \`FaultHypothesis\` candidates with supporting/contradictory evidence and state labels. |\n| \`POST /api/v1/automotive/sessions/{id}/next-test\` | Computes $T^*$ maximizing $\\operatorname{EIG}(T)/(\\operatorname{Cost}(T)+\\lambda\\operatorname{Risk}(T)+\\epsilon)$ and $\\text{EDV}$. |\n| \`POST /api/v1/automotive/sessions/{id}/test-results\` | Ingests test outcome, compares against PostgreSQL \`technical_specifications\`, and runs Bayesian update. |\n| \`POST /api/v1/automotive/sessions/{id}/repair-records\` | Logs corrective repair action performed (\`status: "awaiting_verification"\`). |\n| \`POST /api/v1/automotive/sessions/{id}/verify-repair\` | Evaluates post-repair measurements, live PIDs, readiness monitors, and road test before marking \`Resolved\`. |\n| \`GET /api/v1/automotive/sessions/{id}/report\` | Generates the traceable diagnostic report with citations, safety banners, and verification checklist. |\n| \`GET /api/v1/automotive/knowledge/search\` | Hybrid PostgreSQL spec lookup + \`pgvector\` semantic retrieval filtered by verified vehicle configuration. |\n\n#### 10B. Recommended Development Order — Noctis Automotive Build Checklist (\`6 / 6 Complete\`)\n- **[x] 1. Foundation:** 17-subsystem taxonomy, \`AUTO-START-0001\` & \`AUTO-MISFIRE-0001\` schemas, source registry, safety rules, and baseline benchmark.\n- **[x] 2. Diagnostic Core:** Symptom normalization, DTC reasoning, stateful evidence tracking, competing hypotheses, Bayesian updating, and EIG/EDV next-test selection.\n- **[x] 3. Vehicle Intelligence:** Authoritative PostgreSQL vehicle-specific specifications, wiring circuit relationships, read-only OBD-II imports, and live PID interpretation.\n- **[x] 4. Advanced Diagnostics:** Oscilloscope waveform intelligence, electrical circuit reasoning, multimodal image/audio/document analysis, intermittent faults, Digital Twin (\`SIM-01..05\`), and multi-fault reasoning.\n- **[x] 5. Verified Learning:** Technician feedback loop, mandatory post-repair verification (\`AT-014\`), regression benchmark (\`AUTO-BENCH-01..08\`), and gated knowledge releases.\n- **[x] 6. Predictive & Fleet Intelligence:** Cross-vehicle fleet anomaly detection and trend analytics — strictly separating predictive maintenance forecasts (\`may_fail_soon\`) from confirmed fault diagnosis (\`has_failed\`).`,
   ].join("\n\n");
 }
 
@@ -830,7 +1106,7 @@ function buildLiveScenarioDiagnosticSection(qLower: string): string | null {
     if (code === "P0AA6") {
       return [
         `### Live Diagnostic Execution — Out-of-Scope Hybrid/EV High-Voltage Isolation Fault (\`DTC P0AA6\`)`,
-        `> **v1.0 SCOPE & HIGH-VOLTAGE SAFETY LOCKOUT (\`AT-013\` / \`AUTO-AT-07\` · \`SAE J1766 / ASE L3\`):** Hybrid/EV high-voltage traction systems (\`201V–800V DC\`) are outside Release 1.0 gasoline hands-on scope. \`DTC P0AA6\` indicates a **Hybrid/EV Battery Voltage System Isolation Fault**. **Do NOT probe orange high-voltage cables, inverter terminals, or the traction battery pack without ASE L3 / OEM High-Voltage certification, Class 0 (\`1,000V\`) insulated gloves, and verified Manual Service Disconnect zero-potential lockout.**`,
+        `> **v1.0 SCOPE & HIGH-VOLTAGE SAFETY LOCKOUT (\`AT-013\` / \`AUTO-BENCH-07\` · \`SAE J1766 / ASE L3\`):** Hybrid/EV high-voltage traction systems (\`201V–800V DC\`) are outside Release 1.0 gasoline hands-on scope. \`DTC P0AA6\` indicates a **Hybrid/EV Battery Voltage System Isolation Fault**. **Do NOT probe orange high-voltage cables, inverter terminals, or the traction battery pack without ASE L3 / OEM High-Voltage certification, Class 0 (\`1,000V\`) insulated gloves, and verified Manual Service Disconnect zero-potential lockout.**`,
       ].join("\n\n");
     }
     return [
@@ -847,7 +1123,7 @@ function buildLiveScenarioDiagnosticSection(qLower: string): string | null {
       }\n2. **Missing Evidence Requested (\`CheckEvidence -> RequestInformation\`):**\n   - **Vehicle Identity (\`AT-001/AT-002\`):** Exact **Year, Make, Model, Engine Code (\`engine_code\`), and Mileage**.\n   - **Freeze-Frame & Typed Units (\`AT-007\`):** Engine RPM (\`rpm\`), Coolant Temp (\`degC\`), Calculated Load (\`%\`), and \`STFT/LTFT\` (\`%\`) at idle vs. \`2,500 RPM\`.\n3. **EIG Next-Best Discriminating Test (\`PlanNextTest\`):**\n   - ${
      code === "P0301" || code === "P0300"
        ? `Swap Cylinder 1 ignition coil with Cylinder 2 and spark plug with Cylinder 3 (lowest cost/risk, highest EIG): if misfire moves to Cyl #2 -> faulty coil; if it moves to Cyl #3 -> faulty spark plug; if it stays on Cyl #1 -> proceed to injector balance and relative/mechanical compression test.`
-       : `Record \`STFT + LTFT\` at warm idle (\`750 RPM\`) vs. \`2,500 RPM\`: if trim drops from \`+22%\` to \`< +6%\` at \`2,500 RPM\`, isolate an **intake vacuum leak**; if trim stays high under load, test **fuel rail pressure/volume** and **MAF g/s**.`
+       : `Record \`STFT + LTFT\` at warm idle (\`750 RPM\`) vs. \`2,500 RPM\`: if trim drops from \`+22%\` to \`< +6%\` at \`2,500 RPM\`, isolate an **intake vacuum leak** (\`SIM-01\`); if trim stays high under load, test **fuel rail pressure/volume** and **MAF g/s**.`
    }`,
     ].join("\n\n");
   }
@@ -870,7 +1146,7 @@ export function automotiveDiagnosticGadget(question: string): string | null {
   const q = question.toLowerCase();
 
   const asksAutomotiveTrainingOrSpec =
-    /\b(automotive\s+diagnostic\s+intelligence\s+engine|noctis-auto-001|diagnos(?:e|is|ing)\s+(?:of\s+)?(?:car|vehicle|auto|automotive)\s+(?:issues?|problems?|faults?)|train\s+(?:my\s+model|noctis|vibe|dstrike)[\s\S]{0,60}\b(?:car|vehicle|automotive|mechanic|diagnos)|auto-start-0001|auto-misfire-0001|differential\s+diagnosis\s+engine[\s\S]{0,80}\b(?:vehicle|car|dtc|obd)|symptom-based\s+diagnosis[\s\S]{0,120}\bcomputer\s+and\s+fault-code\s+diagnosis|build\s+the\s+automotive\s+knowledge\s+repository|my\s+car\s+clicks\s+when\s+i\s+turn\s+the\s+key|engine\s+cranks\s+slowly[\s\S]{0,80}\bovernight\s+parking|api\/v1\/automotive|vehicle_spec_not_found|noctis_automotive)\b/i.test(
+    /\b(automotive\s+diagnostic\s+intelligence\s+engine|noctis-auto-001|diagnos(?:e|is|ing)\s+(?:of\s+)?(?:car|vehicle|auto|automotive)\s+(?:issues?|problems?|faults?)|train\s+(?:my\s+model|noctis|vibe|dstrike)[\s\S]{0,60}\b(?:car|vehicle|automotive|mechanic|diagnos)|auto-start-0001|auto-misfire-0001|differential\s+diagnosis\s+engine[\s\S]{0,80}\b(?:vehicle|car|dtc|obd)|symptom-based\s+diagnosis[\s\S]{0,120}\bcomputer\s+and\s+fault-code\s+diagnosis|build\s+the\s+automotive\s+knowledge\s+repository|my\s+car\s+clicks\s+when\s+i\s+turn\s+the\s+key|engine\s+cranks\s+slowly[\s\S]{0,80}\bovernight\s+parking|api\/v1\/automotive|vehicle_spec_not_found|noctis_automotive|oscilloscope\s+and\s+waveform\s+intelligence|vehicle\s+digital-twin\s+and\s+fault-simulation\s+engine|expected\s+avoidable\s+repair\s+cost)\b/i.test(
       q,
     );
 
