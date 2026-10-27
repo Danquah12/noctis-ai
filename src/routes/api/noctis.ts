@@ -273,6 +273,34 @@ export const Route = createFileRoute("/api/noctis")({
             { headers: { "cache-control": "no-store" } }
           );
         }
+        if (url.searchParams.get("training") === "autonomous-suite") {
+          const {
+            runAutonomousZeroTouchTrainingSuite,
+            NOCTIS_20_TRAINING_AREAS_CATALOG,
+            NOCTIS_5_PRIORITY_PILLARS,
+            NOCTIS_7_TRAINING_METHODS,
+          } = await import("@/lib/noctis-autonomous-trainer");
+          return Response.json(
+            {
+              summary: runAutonomousZeroTouchTrainingSuite(),
+              priorityPillars5: NOCTIS_5_PRIORITY_PILLARS,
+              trainingMethods7: NOCTIS_7_TRAINING_METHODS,
+              trainingAreas20: NOCTIS_20_TRAINING_AREAS_CATALOG,
+            },
+            { headers: { "cache-control": "no-store" } }
+          );
+        }
+        if (url.searchParams.get("training") === "dpo-jsonl") {
+          const { exportAutonomousDpoJsonl } = await import("@/lib/noctis-autonomous-trainer");
+          const dpoJsonl = exportAutonomousDpoJsonl();
+          return new Response(dpoJsonl, {
+            headers: {
+              "content-type": "application/x-ndjson; charset=utf-8",
+              "content-disposition": 'attachment; filename="noctis-20-area-dpo-preferences.jsonl"',
+              "cache-control": "no-store",
+            },
+          });
+        }
         const { trainingStatus, exportTrainingJsonl } = await import("@/lib/noctis-train.server");
         if (url.searchParams.get("export") === "jsonl") {
           const jsonl = await exportTrainingJsonl();
@@ -358,9 +386,19 @@ export const Route = createFileRoute("/api/noctis")({
             raw_text?: string;
             domain?: string;
           };
+          auto_train_20_areas?: {
+            commit_to_memory?: boolean;
+          };
           construction_boq?: Record<string, unknown>;
           diesel_diagnostics?: Record<string, unknown>;
         } | null;
+        if (body?.auto_train_20_areas && typeof body.auto_train_20_areas === "object") {
+          const { executeZeroTouchAutonomous20AreaTraining } = await import("@/lib/noctis-train.server");
+          const res = await executeZeroTouchAutonomous20AreaTraining({
+            commitToMemory: body.auto_train_20_areas.commit_to_memory !== false,
+          });
+          return Response.json(res, { headers: { "cache-control": "no-store" } });
+        }
         if (body?.auto_ingest_spec && typeof body.auto_ingest_spec === "object") {
           const { trainNoctisFromRawDocument } = await import("@/lib/noctis-train.server");
           const res = await trainNoctisFromRawDocument({

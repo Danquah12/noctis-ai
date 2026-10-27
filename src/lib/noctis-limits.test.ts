@@ -3464,7 +3464,65 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
     assert.equal(passedAc19OnQ21.status, "PASS_EVIDENCE_PROVENANCE_VERIFIED");
     assert.equal(passedAc19OnQ21.hallucinatedMeasurementsDetected.length, 0);
   });
+
+  it("verifies NOCTIS-AUTO-TRAIN-20D (20 Training Areas, 5 Priority Pillars, 7 Training Methods, DPO JSONL export & Zero-Touch Autonomous Curriculum)", async () => {
+    const {
+      NOCTIS_20_TRAINING_AREAS_CATALOG,
+      NOCTIS_5_PRIORITY_PILLARS,
+      NOCTIS_7_TRAINING_METHODS,
+      runAutonomousZeroTouchTrainingSuite,
+      exportAutonomousDpoJsonl,
+      handleNaturalAutonomousTrainingQuery,
+      buildAutonomous20AreaSeedPairs,
+    } = await import("./noctis-autonomous-trainer.ts");
+    const { runFollowUpIntelligence } = await import("./noctis-response-intelligence.ts");
+
+    assert.equal(NOCTIS_20_TRAINING_AREAS_CATALOG.length, 20);
+    assert.equal(NOCTIS_5_PRIORITY_PILLARS.length, 5);
+    assert.equal(NOCTIS_7_TRAINING_METHODS.length, 7);
+
+    const summary = runAutonomousZeroTouchTrainingSuite();
+    assert.equal(summary.suiteId, "NOCTIS-AUTO-TRAIN-20D");
+    assert.equal(summary.totalAreasCovered, 20);
+    assert.equal(summary.core6AreasPassed, 6);
+    assert.equal(summary.differentiating14AreasPassed, 14);
+    assert.equal(summary.totalScenariosVerified, 20);
+    assert.equal(summary.overallPassRatePct, 100);
+    assert.equal(summary.averageRubricScore, 100);
+
+    const dpoLines = exportAutonomousDpoJsonl().trim().split("\n");
+    assert.equal(dpoLines.length, 20);
+    const firstDpo = JSON.parse(dpoLines[0]!) as {
+      area_id: string;
+      chosen: string;
+      rejected: string;
+    };
+    assert.equal(firstDpo.area_id, "TRAIN-AREA-01");
+    assert.ok(firstDpo.chosen.length > 200);
+    assert.ok(firstDpo.rejected.length > 20);
+
+    const seeds = buildAutonomous20AreaSeedPairs();
+    assert.equal(seeds.length, 21);
+
+    // Verify natural-language roadmap query routing
+    const roadmapPrompt =
+      "how do we automate training dstrike on all these without a human intervention with you providing all the scenarios that will get dstrike perfectly train to answer all questions within these areas: 1. The highest-value areas to train an AI model ... Priority 1 — Verified Professional Intelligence ... Priority 2 — Cross-Domain Reasoning ... Build my training roadmap";
+    const roadmapReply = runFollowUpIntelligence([], roadmapPrompt);
+    assert.ok(roadmapReply);
+    assert.match(roadmapReply, /NOCTIS-AUTO-TRAIN-20D/);
+    assert.match(roadmapReply, /20\/20 Areas Verified/);
+    assert.match(roadmapReply, /NIST AI RMF 1\.0/);
+    assert.match(roadmapReply, /Canadian Centre for Cyber Security/);
+
+    // Verify each of the 20 individual area scenarios resolves deterministically
+    for (const scenario of NOCTIS_20_TRAINING_AREAS_CATALOG) {
+      const res = handleNaturalAutonomousTrainingQuery(scenario.syntheticPrompt);
+      assert.ok(res, `Expected deterministic response for ${scenario.areaId}`);
+      assert.match(res, new RegExp(scenario.areaId));
+    }
+  });
 });
+
 
 
 

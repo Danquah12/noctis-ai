@@ -7,6 +7,7 @@ import { handleNaturalProfessionalQuery } from "./noctis-professional-engine.ts"
 import { handleNaturalVerifiedExecutionQuery } from "./noctis-verified-execution.ts";
 import { handleNaturalPredictiveIntelligenceQuery } from "./noctis-predictive-intelligence.ts";
 import { automotiveDiagnosticGadget } from "./noctis-automotive-engine.ts";
+import { handleNaturalAutonomousTrainingQuery } from "./noctis-autonomous-trainer.ts";
 
 export type AdaptiveResponseMode = "Direct" | "Teaching" | "Technical" | "Audit";
 
@@ -598,6 +599,12 @@ export function runFollowUpIntelligence(
   currentQuestion: string
 ): string | null {
   const state = extractConversationState(turns, currentQuestion);
+
+  // 00-0. Noctis Zero-Human-Intervention 20-Area Autonomous Training & Curriculum Engine (NOCTIS-AUTO-TRAIN-20D)
+  const autonomousTrainingResponse = handleNaturalAutonomousTrainingQuery(currentQuestion);
+  if (autonomousTrainingResponse) {
+    return autonomousTrainingResponse;
+  }
 
   // 00. Noctis Health Intelligence Engine (18 Health Engines, Emergency/988 Safety Gateway, FHIR v5.0.0, Calculators, 7-Part Medical Response & Follow-Up Continuity)
   const healthResponse = handleNaturalHealthQuery(currentQuestion, state.lastAssistantText);
