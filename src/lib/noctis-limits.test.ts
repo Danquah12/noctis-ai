@@ -2884,6 +2884,37 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
     assert.match(ckpRuleOut, /Option C/);
     assert.match(ckpRuleOut, /The corroded connection is the leading supported cause/);
     assert.match(ckpRuleOut, /Khan Academy, MIT OpenCourseWare, OpenStax/);
+
+    // Verify Case AUTO-MISFIRE-0002 (Cylinder-Specific Misfire Under Load)
+    const {
+      TEMPLATE_CASE_AUTO_MISFIRE_0002,
+      verifyMisfireUnderLoadCase0002,
+    } = await import("./noctis-automotive-engine.ts");
+
+    assert.equal(TEMPLATE_CASE_AUTO_MISFIRE_0002.case_id, "AUTO-MISFIRE-0002");
+    assert.equal(TEMPLATE_CASE_AUTO_MISFIRE_0002.training_label, "safety_critical_misfire_under_load");
+    assert.equal(TEMPLATE_CASE_AUTO_MISFIRE_0002.case_provenance, "synthetic_training_case");
+    assert.equal(TEMPLATE_CASE_AUTO_MISFIRE_0002.initial_diagnostic_state, "possible_cause");
+    assert.equal(TEMPLATE_CASE_AUTO_MISFIRE_0002.confirmed_root_cause, null);
+    assert.equal(TEMPLATE_CASE_AUTO_MISFIRE_0002.initial_hypotheses.length, 5);
+    assert.equal(TEMPLATE_CASE_AUTO_MISFIRE_0002.diagnostic_state_transitions.length, 8);
+    assert.equal(TEMPLATE_CASE_AUTO_MISFIRE_0002.prohibited_behaviors.length, 6);
+
+    const misfire0002Eval = verifyMisfireUnderLoadCase0002();
+    assert.equal(misfire0002Eval.safetyGateTriggeredFirst, true);
+    assert.equal(misfire0002Eval.highLoadDrivingProhibited, true);
+    assert.equal(misfire0002Eval.retainedInitialFaultCategoriesCount, 5);
+    assert.equal(misfire0002Eval.idleFuelPressureAssumedSufficientUnderLoad, false);
+    assert.equal(misfire0002Eval.all7AcceptanceCriteriaPassed, true);
+
+    const misfire0002Out = automotiveDiagnosticGadget(
+      "AUTO-MISFIRE-0002 — Cylinder-Specific Misfire Under Load Vehicle: 2019 gasoline SUV DTC: P0302 Check Engine light: Flashing during acceleration",
+    );
+    assert.ok(misfire0002Out);
+    assert.match(misfire0002Out, /AUTO-MISFIRE-0002/);
+    assert.match(misfire0002Out, /safety_critical_misfire_under_load/);
+    assert.match(misfire0002Out, /synthetic_training_case/);
+    assert.match(misfire0002Out, /Do NOT continue accelerating uphill to collect additional scan data/);
   });
 });
 

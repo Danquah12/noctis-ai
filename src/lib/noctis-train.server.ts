@@ -31,6 +31,7 @@ import {
   buildAutomotiveDiagnosticIntelligenceReport,
   buildCkpSignalDiagnosisReport,
   buildCrankNoStartTrainingModuleReport,
+  buildMisfireUnderLoadCase0002Report,
 } from "./noctis-automotive-engine.ts";
 
 export type TrainingPair = {
@@ -261,6 +262,14 @@ const OWASP_SEED_CORPUS: TrainingPair[] = [
     model: "vibe-seed",
     hits: 30,
     at: "2026-10-26T20:45:00.000Z",
+  },
+  {
+    question: "AUTO-MISFIRE-0002 — Cylinder-Specific Misfire Under Load Vehicle: 2019 gasoline SUV Complaint: Runs smoothly at idle; shakes and loses power during uphill acceleration DTC: P0302 Check Engine light: Flashing during acceleration",
+    answer: buildMisfireUnderLoadCase0002Report("AUTO-MISFIRE-0002 Cylinder-Specific Misfire Under Load P0302 Flashing during acceleration"),
+    domain: "engineering",
+    model: "vibe-seed",
+    hits: 30,
+    at: "2026-10-26T20:55:00.000Z",
   },
 ];
 

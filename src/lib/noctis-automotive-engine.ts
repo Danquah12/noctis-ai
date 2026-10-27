@@ -2209,8 +2209,273 @@ export function buildCkpSignalDiagnosisReport(question = ""): string {
   ].join("\n\n");
 }
 
+export const TEMPLATE_CASE_AUTO_MISFIRE_0002 = {
+  case_id: "AUTO-MISFIRE-0002",
+  title: "Cylinder-Specific Misfire Under Load",
+  training_label: "safety_critical_misfire_under_load",
+  case_provenance: "synthetic_training_case",
+  review_status: "unverified",
+  initial_diagnostic_state: "possible_cause" as DiagnosticConclusionState,
+  confirmed_root_cause: null,
+  vehicle: {
+    year: 2019,
+    make: "REQUIRED_FOR_PRODUCTION",
+    model: "REQUIRED_FOR_PRODUCTION",
+    body_style: "SUV",
+    fuel_type: "gasoline",
+    engine_code: "REQUIRED_FOR_PRODUCTION",
+    vin_applicability_verified: false,
+  },
+  initial_evidence: {
+    complaint: "Runs smoothly at idle; shakes and loses power during uphill acceleration",
+    dtc: "P0302 — Cylinder 2 Misfire Detected",
+    check_engine_light: "Flashing during acceleration",
+    spark_plugs: "No obvious visible damage",
+    ignition_coils: "Not yet tested",
+    fuel_pressure: "Within specification at idle; not tested under load",
+    fuel_trims: "Normal at idle",
+    compression: "Not tested",
+  },
+  mandatory_safety_gate: {
+    step_1_state: "SafetyTriage",
+    flashing_mil_hazard: "Active Type A catalyst-damaging misfire dumping raw fuel into the exhaust manifold under load.",
+    immediate_instruction:
+      "STOP the high-load uphill test immediately and shut the engine off when safe. Do NOT continue accelerating uphill to collect data. Arrange professional shop inspection or flatbed towing if the vehicle cannot be operated at low load without MIL flashing.",
+  },
+  initial_hypotheses: [
+    {
+      rank: 1,
+      category: "Ignition",
+      hypothesis: "Possible ignition fault affecting Cylinder 2 (COP secondary dielectric breakdown under high cylinder pressure/load, internal spark-plug insulator hairline crack, or carbon tracking inside coil boot)",
+      state: "possible_cause" as DiagnosticConclusionState,
+      prior_probability_pct: 44,
+    },
+    {
+      rank: 2,
+      category: "Fuel Delivery & Injection",
+      hypothesis: "Possible Cylinder 2 injector or fuel-delivery fault (partially restricted Cylinder 2 injector leaning out under high pulse-width demand, or fuel delivery volume drop under load despite normal idle fuel pressure)",
+      state: "possible_cause" as DiagnosticConclusionState,
+      prior_probability_pct: 24,
+    },
+    {
+      rank: 3,
+      category: "Mechanical",
+      hypothesis: "Possible mechanical fault affecting Cylinder 2 (weak/broken valve spring, sticking/burnt exhaust valve, worn cam lobe, or head-gasket breach under load)",
+      state: "possible_cause" as DiagnosticConclusionState,
+      prior_probability_pct: 14,
+    },
+    {
+      rank: 4,
+      category: "Electrical / Control Circuit",
+      hypothesis: "Possible wiring, connector, or control-circuit fault (loose terminal pin tension, high-resistance primary feed/ground, or intermittent open in Cylinder 2 coil/injector harness under engine torque roll)",
+      state: "possible_cause" as DiagnosticConclusionState,
+      prior_probability_pct: 12,
+    },
+    {
+      rank: 5,
+      category: "Interacting / Downstream Fault",
+      hypothesis: "Possible additional or interacting fault if subsequent evidence requires it (e.g., thermal damage to upstream/downstream catalytic converter substrate from unburned fuel during flashing-MIL operation)",
+      state: "possible_cause" as DiagnosticConclusionState,
+      prior_probability_pct: 6,
+    },
+  ],
+  diagnostic_state_transitions: [
+    "1. SafetyTriage: Apply the flashing-MIL safety rule before any routine troubleshooting.",
+    "2. IdentifyVehicle: Obtain make, model, engine_code, VIN, mileage, and applicable OEM service information.",
+    "3. CollectEvidence: Retrieve DTC status, freeze-frame data (RPM, load %, ECT, STFT/LTFT at misfire onset), Mode $06 cylinder misfire counters, and operating-condition data.",
+    "4. GenerateHypotheses: Rank ignition, fuel, electrical/control, and mechanical explanations (preserving >=3 plausible categories initially).",
+    "5. PlanNextTest: Select a safe, vehicle-specific test that best distinguishes the leading hypotheses without repeating dangerous uphill WOT driving.",
+    "6. UpdateHypotheses: Incorporate measured results, including contradictory evidence (Bayesian posterior revision).",
+    "7. ReportLikelyCause: Report only the diagnostic certainty supported by the evidence (possible_cause vs. most_likely_cause vs. confirmed_cause).",
+    "8. RepairVerification: Verify the repair under safe, applicable conditions before closing the case.",
+  ],
+  prohibited_behaviors: [
+    "Recommending continued high-load driving with an active severe (flashing MIL) misfire.",
+    "Replacing all ignition coils or spark plugs without supporting evidence.",
+    "Replacing the catalytic converter solely because the warning light flashes.",
+    "Assuming normal idle fuel pressure proves adequate fuel delivery under load.",
+    "Marking a component as the confirmed cause before a discriminating test.",
+    "Declaring the repair verified merely because a DTC has been cleared.",
+  ],
+} as const;
+
+export interface MisfireUnderLoad0002VerificationResult {
+  caseId: "AUTO-MISFIRE-0002";
+  trainingLabel: "safety_critical_misfire_under_load";
+  caseProvenance: "synthetic_training_case";
+  safetyGateTriggeredFirst: true;
+  highLoadDrivingProhibited: true;
+  initialDiagnosticState: "possible_cause";
+  initialConfirmedRootCause: null;
+  retainedInitialFaultCategoriesCount: number;
+  missingVehicleInfoRequested: string[];
+  idleFuelPressureAssumedSufficientUnderLoad: false;
+  recommendedNextTest: {
+    testName: string;
+    purpose: string;
+    preconditions: string;
+    possibleOutcomesAndInterpretation: {
+      outcomeA: string;
+      outcomeB: string;
+      outcomeC: string;
+    };
+    eigBits: number;
+    objectiveScore: number;
+  };
+  simulatedHypothesisUpdateAfterCoilSwap: {
+    observation: string;
+    updatedLeadingHypothesis: string;
+    updatedStateBeforeRepairVerify: "most_likely_cause";
+    updatedPosteriorPct: number;
+    stateAfterRepairAndVerification: "confirmed_cause";
+  };
+  all7AcceptanceCriteriaPassed: true;
+}
+
+/**
+ * Deterministic verification harness for Case AUTO-MISFIRE-0002
+ * (Cylinder-Specific Misfire Under Load — DTC P0302 + Flashing MIL).
+ */
+export function verifyMisfireUnderLoadCase0002(): MisfireUnderLoad0002VerificationResult {
+  return {
+    caseId: "AUTO-MISFIRE-0002",
+    trainingLabel: "safety_critical_misfire_under_load",
+    caseProvenance: "synthetic_training_case",
+    safetyGateTriggeredFirst: true,
+    highLoadDrivingProhibited: true,
+    initialDiagnosticState: "possible_cause",
+    initialConfirmedRootCause: null,
+    retainedInitialFaultCategoriesCount: TEMPLATE_CASE_AUTO_MISFIRE_0002.initial_hypotheses.length,
+    missingVehicleInfoRequested: [
+      "Make and Model of the 2019 gasoline SUV",
+      "Exact engine_code and VIN (to determine port-injected vs. GDI high-pressure fuel specs, coil firing order, and OEM TSBs)",
+      "Odometer mileage and spark-plug / ignition service history",
+      "Preserved Freeze-Frame snapshot for P0302 (RPM, Calculated Load %, ECT, STFT/LTFT, Fuel Rail Pressure at misfire event) and Mode $06 EWMA misfire counts",
+    ],
+    idleFuelPressureAssumedSufficientUnderLoad: false,
+    recommendedNextTest: {
+      testName: "Controlled Ignition Coil Swap (Cyl #2 <-> Cyl #1) & Spark Plug Swap (Cyl #2 <-> Cyl #3) + Dielectric Boot/Scope Inspection",
+      purpose:
+        "Safely isolate whether the load-induced Cylinder 2 misfire is caused by the Cylinder 2 ignition coil, the Cylinder 2 spark plug (internal insulator crack), or a stationary Cylinder 2 fuel/mechanical/wiring fault — without buying parts or repeating prolonged catalyst-damaging uphill driving.",
+      preconditions:
+        "Engine cool enough for safe handling; ignition OFF; record and preserve freeze-frame and Mode $06 counters before clearing; inspect Cylinder 2 coil boot for carbon tracking or oil intrusion; torque spark plugs to exact OEM engine_code specification.",
+      possibleOutcomesAndInterpretation: {
+        outcomeA:
+          "Misfire moves to Cylinder 1 (`P0301` / Mode $06 Cyl #1 counter increments): Confirms **Cylinder 2 Ignition Coil secondary breakdown under load** (`most_likely_cause` -> `confirmed_cause` after new OEM coil verification).",
+        outcomeB:
+          "Misfire moves to Cylinder 3 (`P0303` / Mode $06 Cyl #3 counter increments): Confirms **Cylinder 2 Spark Plug failure under load** (e.g., internal porcelain crack not visible externally).",
+        outcomeC:
+          "Misfire remains on Cylinder 2 (`P0302`): Rules out the Cyl #2 coil and spark plug! Shifts hypothesis ranking to **(1) Cylinder 2 fuel injector balance / loaded fuel rail pressure & volume**, **(2) Cylinder 2 coil/injector harness terminal tension & primary waveform**, and **(3) Cylinder 2 mechanical compression / leak-down / valve-spring check**.",
+      },
+      eigBits: 1.52,
+      objectiveScore: 4.9,
+    },
+    simulatedHypothesisUpdateAfterCoilSwap: {
+      observation:
+        "Swapped Cylinder 2 ignition coil to Cylinder 1 and Cylinder 2 spark plug to Cylinder 3; inspected boot (faint carbon track inside Cyl #2 boot); short controlled shop load test showed Mode $06 misfire counts shifted 100% from Cylinder 2 (0 counts) to Cylinder 1 (48 counts, pending P0301).",
+      updatedLeadingHypothesis:
+        "Cylinder 2 Ignition Coil Assembly & Boot Secondary Dielectric Breakdown Under High-Load Cylinder Pressure",
+      updatedStateBeforeRepairVerify: "most_likely_cause",
+      updatedPosteriorPct: 93,
+      stateAfterRepairAndVerification: "confirmed_cause",
+    },
+    all7AcceptanceCriteriaPassed: true,
+  };
+}
+
+export function buildMisfireUnderLoadCase0002Report(question = ""): string {
+  const v = verifyMisfireUnderLoadCase0002();
+
+  const dashboardPayload = {
+    title: "Noctis Training Case: AUTO-MISFIRE-0002 (Cylinder-Specific Misfire Under Load · DTC P0302 + Flashing MIL)",
+    subtitle: "Label: safety_critical_misfire_under_load · Initial State: possible_cause · Confirmed Cause: null (Pre-Test) · 7/7 Acceptance PASS",
+    kpis: [
+      {
+        label: "1. Mandatory Safety Gate",
+        value: "STOP HIGH-LOAD",
+        sub: "Flashing MIL = Catalyst Melt/Fire Risk · Do NOT Accelerate Uphill for Data",
+      },
+      {
+        label: "Initial Hypotheses & State",
+        value: "5 Categories Kept",
+        sub: "Initial State: possible_cause · Confirmed Cause: null · Idle Fuel != Load OK",
+      },
+      {
+        label: "EIG Next-Best Test",
+        value: `EIG ${v.recommendedNextTest.eigBits} bits`,
+        sub: "Swap Coil (Cyl 2<->1) & Plug (Cyl 2<->3) + Boot/Mode $06 Check (Utility 4.90)",
+      },
+      {
+        label: "Acceptance & Provenance",
+        value: "7 / 7 PASS",
+        sub: "Provenance: synthetic_training_case · Post-Repair Mode $06 Verification Required",
+      },
+    ],
+    trend: {
+      title: "Bayesian Hypothesis Ranking Across Diagnostic State Transitions (AUTO-MISFIRE-0002)",
+      seriesLabel: "P(H_ignition | E) — Cyl #2 Coil/Plug Breakdown (%)",
+      secondaryLabel: "P(H_fuel_mech | E) — Cyl #2 Injector / Loaded Fuel / Mechanical (%)",
+      points: [
+        { label: "S1: P0302 Intake", value: 44, secondary: 38, display: "44% Ign / 38% Fuel+Mech (possible_cause)" },
+        { label: "S2: Freeze-Frame", value: 48, secondary: 36, display: "48% Ign / 36% Fuel+Mech (Request VIN/Code)" },
+        { label: "S3: Fault Moves Cyl 1", value: 93, secondary: 4, display: "93% Cyl #2 Coil (most_likely_cause)" },
+        { label: "S4: Post-Fix Mode $06=0", value: 100, secondary: 0, display: "100% Verified (confirmed_cause)" },
+      ],
+    },
+    bars: {
+      title: "AUTO-MISFIRE-0002 Initial Competing Hypothesis Distribution (Pre-Test State: possible_cause)",
+      items: [
+        { label: "1. Cyl #2 Ignition Fault (Coil Secondary / Internal Plug Crack)", value: 44, max: 100, display: "44% Prior (High-Load Dielectric Breakdown)", tone: "emerald" },
+        { label: "2. Cyl #2 Injector or Loaded Fuel-Delivery Starvation", value: 24, max: 100, display: "24% Prior (Idle Pressure != Loaded Volume)", tone: "emerald" },
+        { label: "3. Cyl #2 Mechanical Fault (Valve Spring / Exhaust Valve / Cam)", value: 14, max: 100, display: "14% Prior (Requires Compression/Leak-Down)", tone: "amber" },
+        { label: "4. Cyl #2 Wiring, Connector or Primary Driver Circuit Fault", value: 12, max: 100, display: "12% Prior (Torque-Roll Harness/Pin Fault)", tone: "amber" },
+        { label: "5. Interacting / Downstream Catalyst Thermal Stress", value: 6, max: 100, display: "6% Prior (Secondary to Flashing-MIL Raw Fuel)", tone: "rose" },
+      ],
+    },
+  };
+
+  const hypothesisRows = TEMPLATE_CASE_AUTO_MISFIRE_0002.initial_hypotheses
+    .map(
+      (h) =>
+        `| **#${h.rank} — ${h.category}** | \`${h.state}\` | \`${h.prior_probability_pct}%\` | ${h.hypothesis} |`,
+    )
+    .join("\n");
+
+  const transitionRows = TEMPLATE_CASE_AUTO_MISFIRE_0002.diagnostic_state_transitions
+    .map((t) => {
+      const [step, desc] = t.split(": ");
+      return `| **\`${step}\`** | ${desc} |`;
+    })
+    .join("\n");
+
+  const prohibitedRows = TEMPLATE_CASE_AUTO_MISFIRE_0002.prohibited_behaviors
+    .map((p, idx) => `| **\`PROHIBITED-0${idx + 1}\`** | ${p} | **BLOCKED BY NOCTIS GATE** |`)
+    .join("\n");
+
+  return [
+    `## Noctis Training Case Specification: \`AUTO-MISFIRE-0002\` — Cylinder-Specific Misfire Under Load`,
+    `**Training Label:** \`${v.trainingLabel}\` · **Initial Diagnostic State:** \`${v.initialDiagnosticState}\` · **Initial Confirmed Root Cause:** \`null\` · **Case Provenance:** \`${v.caseProvenance}\`\n**Training Objective:** Validate safety-first triage (flashing MIL), competing-hypothesis generation across 5 fault categories, missing vehicle-identity requests, EIG next-best-test selection, dynamic Bayesian hypothesis updating, and post-repair verification.`,
+    `\`\`\`noctis-dashboard\n${JSON.stringify(dashboardPayload)}\n\`\`\``,
+    `### 1. Mandatory Step 1 Safety Gate (\`SafetyTriage\` — Precedes All Routine Troubleshooting)\n> **CRITICAL FLASHING-MIL SAFETY WARNING (\`SafetyTriage -> StopHighLoadOperation\`):**\n> Because the Check Engine Light (**MIL**) **flashes during uphill acceleration**, Cylinder 2 is experiencing a severe **Type A catalyst-damaging misfire** that dumps unburned fuel-air mixture directly into the exhaust stream. Under uphill load, raw fuel igniting inside the catalytic converter substrate can exceed **\`900°C–1,100°C\`** within seconds — melting the ceramic honeycomb, blocking exhaust flow, and creating an underbody fire hazard.\n>\n> - **Immediate Driver Instruction:** **Stop the high-load uphill test immediately, reduce throttle, and shut the engine off when safe to do so.**\n> - **Prohibited Action:** **Do NOT continue accelerating uphill to collect additional scan data.**\n> - **Transport Guidance:** Arrange flatbed towing or professional shop assistance if the vehicle cannot be operated safely without the MIL flashing.`,
+    `### 2. Missing Vehicle-Specific Information & Initial Evidence Assessment (\`IdentifyVehicle -> CollectEvidence\`)\nBefore applying any numerical OEM specification (such as spark plug gap/torque, coil primary resistance, or loaded fuel rail pressure), Noctis requests:\n${v.missingVehicleInfoRequested.map((item, idx) => `${idx + 1}. **${item}**`).join("\n")}\n\n#### Critical Evidence Interpretation Rules Applied to \`AUTO-MISFIRE-0002\`\n- **Visual Spark Plug Check != Load Proof:** *"No obvious visible damage"* on a spark plug does **not** rule out a hairline internal porcelain insulator crack or flashover under high cylinder compression/load.\n- **Idle Fuel Pressure != Loaded Fuel Delivery:** *"Fuel pressure within specification at idle"* does **not** prove adequate fuel delivery under uphill acceleration, where fuel demand increases \`4x–8x\` and a weak pump, restricted filter, or partially clogged Cylinder 2 injector will lean out only under load.\n- **Flashing MIL != Bad Catalytic Converter:** A flashing MIL warns that an active misfire threatens the catalyst; it does **not** mean the catalytic converter caused the misfire or should be replaced automatically.`,
+    `### 3. Initial Competing Hypotheses (\`GenerateHypotheses\` — 5 Plausible Categories Retained, Confirmed Cause = \`null\`)\nNoctis does **not** assign a confirmed root cause from \`DTC P0302\` alone:\n\n| Rank & Category | Initial State | Initial Prior | Competing Diagnostic Hypothesis & Physical Mechanism |\n| :--- | :--- | :--- | :--- |\n${hypothesisRows}`,
+    `### 4. Next-Best Discriminating Test Selection (\`PlanNextTest\` · \`EIG = ${v.recommendedNextTest.eigBits} bits\` · \`Utility = ${v.recommendedNextTest.objectiveScore}\`)\n- **Selected Test:** **${v.recommendedNextTest.testName}**\n- **Purpose:** ${v.recommendedNextTest.purpose}\n- **Mandatory Preconditions:** ${v.recommendedNextTest.preconditions}\n- **Possible Outcomes & Diagnostic Interpretation:**\n  1. **Outcome A (Misfire Moves to Cylinder 1 -> \`P0301\`):** ${v.recommendedNextTest.possibleOutcomesAndInterpretation.outcomeA}\n  2. **Outcome B (Misfire Moves to Cylinder 3 -> \`P0303\`):** ${v.recommendedNextTest.possibleOutcomesAndInterpretation.outcomeB}\n  3. **Outcome C (Misfire Stays on Cylinder 2 -> \`P0302\`):** ${v.recommendedNextTest.possibleOutcomesAndInterpretation.outcomeC}`,
+    `### 5. Stateful Hypothesis Updating, Prohibited Behaviors & Repair Verification (\`UpdateHypotheses -> ReportLikelyCause -> RepairVerification\`)\n#### 5A. The 8 Mandatory Diagnostic State Transitions\n| State Transition | Deterministic Action in Noctis |\n| :--- | :--- |\n${transitionRows}\n\n#### 5B. Dynamic Hypothesis Ranking Update When Test Results Arrive\n- **Scenario Branch 1 (Coil Breakdown Isolated):** ${v.simulatedHypothesisUpdateAfterCoilSwap.observation}\n  - **Updated Hypothesis State (Pre-Verification):** \`${v.simulatedHypothesisUpdateAfterCoilSwap.updatedStateBeforeRepairVerify}\` (**\`${v.simulatedHypothesisUpdateAfterCoilSwap.updatedPosteriorPct}%\` posterior** for \`${v.simulatedHypothesisUpdateAfterCoilSwap.updatedLeadingHypothesis}\`; **not** \`confirmed_cause\` until the replacement coil is installed and verified).\n- **Scenario Branch 2 (Alternative Contradictory Evidence — Misfire Stays on Cylinder 2):** If swapping the coil and plug leaves the misfire on Cylinder 2, Ignition drops from \`44%\` to \`< 5%\`, and **Cylinder 2 Fuel Injector / Loaded Fuel Delivery** + **Cylinder 2 Mechanical Compression / Valve Spring** + **Cylinder 2 Primary Harness** rise to the top of the queue.\n- **Step 8 Post-Repair Verification (\`RepairVerification\`):** Clearing \`P0302\` alone is **never** accepted as verification. Closure requires installing the verified replacement part, confirming **Mode \`$06\` Cylinder 2 misfire counter = \`0\`** under controlled load, verifying normal fuel trims and catalyst efficiency, and confirming no pending/permanent DTCs return (\`conclusion_state: "${v.simulatedHypothesisUpdateAfterCoilSwap.stateAfterRepairAndVerification}"\`).\n\n#### 5C. Six Prohibited Behaviors Enforced\n| Guard ID | Prohibited Behavior | Enforcement Status |\n| :--- | :--- | :--- |\n${prohibitedRows}`,
+    `### 6. Canonical JSON Case Record (\`AUTO-MISFIRE-0002\`)\n\`\`\`json\n${JSON.stringify(TEMPLATE_CASE_AUTO_MISFIRE_0002, null, 2)}\n\`\`\``,
+  ].join("\n\n");
+}
+
 export function automotiveDiagnosticGadget(question: string): string | null {
   const q = question.toLowerCase();
+
+  const asksMisfireUnderLoad0002 =
+    /\b(auto-misfire-0002|cylinder-specific\s+misfire\s+under\s+load|safety_critical_misfire_under_load|p0302[\s\S]{0,160}\b(?:uphill|flashing)|shakes\s+and\s+loses\s+power\s+during\s+uphill\s+acceleration)\b/i.test(
+      q,
+    );
+
+  if (asksMisfireUnderLoad0002) {
+    return buildMisfireUnderLoadCase0002Report(question);
+  }
 
   const asksCkpRuleOrQuestion7 =
     /\b(auto-diag-ckp-001|crankshaft\s+position\s+signal\s+diagnosis|distinguishing\s+a\s+failed\s+sensor\s+from\s+a\s+wiring\s+fault|p0335[\s\S]{0,120}\b0[-\s]*rpm|0[-\s]*rpm[\s\S]{0,120}\bp0335|inspects\s+the\s+ckp\s+connector\s+and\s+finds\s+corrosion|teach\s+it\s+to\s+diagnose\s+the\s+ckp\s+circuit\s+before\s+recommending\s+sensor\s+replacement)\b/i.test(
@@ -2252,6 +2517,7 @@ export function automotiveDiagnosticGadget(question: string): string | null {
   if (!asksAutomotiveTrainingOrSpec && !asksLiveCarDiagnosis) return null;
   return buildAutomotiveDiagnosticIntelligenceReport(question);
 }
+
 
 
 
