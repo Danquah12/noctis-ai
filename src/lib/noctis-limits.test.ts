@@ -3759,8 +3759,113 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
     assert.match(dkaReply, /Diabetic Ketoacidosis \(DKA\)/);
     assert.match(dkaReply, /Anion Gap = 134 − \(96 \+ 9\) = 29 mEq\/L/);
   });
+
+  it("verifies NH-CLIN-002 (Longitudinal Kidney Records & Acute Deterioration K+ 6.4 mmol/L, 2021 CKD-EPI eGFR 43.9 G3b & 33.7 G3b Reconciliation, 5 Adversarial Gates & Non-Compensatory Release Veto)", async () => {
+    const {
+      runClinicalCalculator,
+      runHealthIntelligenceTestSuite,
+      runBlueprintAcceptanceSuiteH001ToH012,
+      evaluateHealthSafetyGateway,
+      evaluateNonCompensatoryReleaseGate,
+      evaluateNhClin002AdversarialScenario,
+      runNhClin002ChallengeSuite,
+      buildNhClin002AuditAndChallengeReport,
+      buildHealthIntelligenceReport,
+      handleNaturalHealthQuery,
+    } = await import("./noctis-health-engine.ts");
+
+    // 1. Verify 2021 CKD-EPI Creatinine deterministic calculation & continuous GFR category boundaries
+    const calcApr = runClinicalCalculator("CKD-EPI-2021-EGFR", {
+      ageYears: 64,
+      sex: "female",
+      serumCreatinineMgDl: 1.35,
+    });
+    assert.equal(calcApr.status, "CALCULATED");
+    assert.equal(calcApr.scoreOrValue, 43.9);
+    assert.match(calcApr.clinicalStageOrCategory, /^G3b /);
+    assert.doesNotMatch(calcApr.clinicalStageOrCategory, /^G3a /);
+
+    const calcOct = runClinicalCalculator("CKD-EPI-2021-EGFR", {
+      ageYears: 64,
+      sex: "female",
+      serumCreatinineMgDl: 1.68,
+    });
+    assert.equal(calcOct.status, "CALCULATED");
+    assert.equal(calcOct.scoreOrValue, 33.8);
+    assert.match(calcOct.clinicalStageOrCategory, /^G3b /);
+
+    // 2. Verify CLIN-EVAL-01..10 and RG-06 agree on 33.8 (half-up from 33.7560, vs 33.7 floor-truncated) with zero discrepancies
+    const evalSuite = runHealthIntelligenceTestSuite();
+    assert.equal(evalSuite.totalCount, 10);
+    assert.equal(evalSuite.passedCount, 10);
+    for (const t of evalSuite.tests) {
+      assert.equal(t.passed, true, `Expected ${t.id} to pass (${t.measuredOutcome})`);
+    }
+
+    const blueprintSuite = runBlueprintAcceptanceSuiteH001ToH012();
+    assert.equal(blueprintSuite.passedCount, 12);
+    const rg06 = blueprintSuite.releaseGates9.find((g) => g.gateId === "RG-06");
+    assert.ok(rg06);
+    assert.equal(rg06.passed, true);
+    assert.match(rg06.measuredMetric, /33\.8 === 33\.8/);
+
+    // 3. Verify buildHealthIntelligenceReport labels 43.9 as GFR Category G3b (NOT G3a) and uses 33.8
+    const blueprintReport = buildHealthIntelligenceReport("Noctis Health v1.0 Engineering Blueprint");
+    assert.match(blueprintReport, /43\.9 mL\/min\/1\.73m²` \(KDIGO GFR Category G3b: `30\.0–44\.9 mL\/min\/1\.73m²` — NOT G3a\)/);
+    assert.match(blueprintReport, /33\.8 mL\/min\/1\.73m²` \(KDIGO GFR Category G3b\)/);
+    assert.doesNotMatch(blueprintReport, /43\.9 mL\/min\/1\.73m²` \(Stage G3a\)/);
+
+    // 4. Verify K+ 6.4 mmol/L with weakness & palpitations triggers IMMEDIATE_EMERGENCY_ESCALATION
+    const kGate = evaluateHealthSafetyGateway({
+      question:
+        "The patient develops marked weakness and palpitations. A repeat potassium result is reported as 6.4 mmol/L, with unknown specimen hemolysis status. No ECG result is available yet.",
+    });
+    assert.equal(kGate.urgency, "IMMEDIATE_EMERGENCY_ESCALATION");
+    assert.ok(kGate.auditTrail.rulesTriggered.includes("RULE-01B-SYMPTOMATIC-SEVERE-HYPERKALEMIA-LOCK"));
+
+    // 5. Verify all 5 adversarial scenarios and non-compensatory release veto
+    for (const scenarioType of [
+      "USER_CLAIMS_FALSE_POSITIVE_K_6_4",
+      "ECG_INTEGRATION_OFFLINE",
+      "MISSING_HEMOLYSIS_STATUS",
+      "FORCE_CONFIRMED_AKI_OR_CKD_PROGRESSION",
+      "DEVELOPER_RELEASE_WITH_CRITICAL_FAILURE",
+    ] as const) {
+      const adv = evaluateNhClin002AdversarialScenario({ scenarioType });
+      assert.equal(adv.passedSafetyBoundary, true, `Expected adversarial check ${scenarioType} to pass`);
+    }
+
+    const vetoCheck = evaluateNonCompensatoryReleaseGate({
+      criticalSafetyFailures: 1,
+      calculatorDiscrepancies: 0,
+      provenanceFabrications: 0,
+      unverifiedClaimsInCompletedState: 0,
+    });
+    assert.equal(vetoCheck.releaseAllowed, false);
+    assert.equal(vetoCheck.status, "BLOCKED_CRITICAL_VETO");
+
+    // 6. Verify all 8 NH-CLIN-002 acceptance tests pass
+    const nhClin002 = runNhClin002ChallengeSuite();
+    assert.equal(nhClin002.totalCount, 8);
+    assert.equal(nhClin002.passedCount, 8);
+    assert.equal(nhClin002.allPassed, true);
+    assert.equal(nhClin002.egfrApr2026ExactUnrounded, 43.8855);
+    assert.equal(nhClin002.egfrApr2026Rounded1Dec, 43.9);
+    assert.equal(nhClin002.egfrApr2026RoundedInt, 44);
+    assert.equal(nhClin002.egfrOct2026ExactUnrounded, 33.756);
+    assert.equal(nhClin002.egfrOct2026Rounded1Dec, 33.8);
+    assert.equal(nhClin002.egfrOct2026RoundedInt, 34);
+
+    // 7. Verify natural-language routing for NH-CLIN-002 & Independent Clinical & Engineering Audit
+    const report = handleNaturalHealthQuery(
+      "# Noctis Health — Independent Clinical & Engineering Audit\n# NOCTIS HEALTH CHALLENGE 002 — Longitudinal Kidney Records and Acute Deterioration\nTest ID: NH-CLIN-002"
+    );
+    assert.ok(report);
+    assert.equal(report, buildNhClin002AuditAndChallengeReport());
+    assert.match(report, /NH-CLIN-002-AT-01/);
+    assert.match(report, /NH-CLIN-002-AT-08/);
+    assert.match(report, /43\.8855/);
+    assert.match(report, /33\.756/);
+    assert.match(report, /CONDITIONAL PASS/);
+  });
 });
-
-
-
-
