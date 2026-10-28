@@ -406,16 +406,27 @@ function plainAnswer(raw: string) {
         return "";
       }
       if (inCodeFence) return line;
+      if (/^-{3,}$/.test(t)) return "────────────────────────────────────────";
       if (!t.startsWith("|") || !t.endsWith("|")) {
         return line
           .replace(/^\s*#{1,6}\s+/, "")
-          .replace(/\*\*/g, "")
+          .replace(/^\s*>\s?/, "  ")
+          .replace(/\*\*\*(.+?)\*\*\*/g, "$1")
+          .replace(/\*\*(.+?)\*\*/g, "$1")
+          .replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, "$1")
           .replace(/`([^`]+)`/g, "$1");
       }
       const cells = t
         .slice(1, -1)
         .split("|")
-        .map((c) => c.replace(/\*\*/g, "").replace(/`/g, "").trim())
+        .map((c) =>
+          c
+            .replace(/\*\*\*(.+?)\*\*\*/g, "$1")
+            .replace(/\*\*(.+?)\*\*/g, "$1")
+            .replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, "$1")
+            .replace(/`([^`]+)`/g, "$1")
+            .trim()
+        )
         .filter(Boolean);
       if (!cells.length || cells.every((c) => /^:?-{2,}:?$/.test(c))) return "";
       if (/^(day|date|world city|city|location|region|metric|engine name|option|scenario|check|test id|#)$/i.test(cells[0] ?? "")) return "";
@@ -2174,11 +2185,12 @@ function linkHtml(href: string, label: string) {
 }
 
 function inlineHtml(value: string) {
-  const escaped = escapeHtml(value)
-    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    .replace(/`([^`]+)`/g, "<code class=\"rounded bg-white/10 px-1\">$1</code>");
   const held: string[] = [];
-  const parked = escaped
+  const escaped = escapeHtml(value).replace(/`([^`]+)`/g, (_m, code) => {
+    held.push(`<code class="rounded bg-[#e4b86a]/15 px-1.5 py-0.5 font-mono text-[13px] text-[#e4b86a]">${code}</code>`);
+    return `\u0000${held.length - 1}\u0000`;
+  });
+  const linked = escaped
     .replace(/\[([^\]<]+)\]\((https?:\/\/[^\s)<]+)\)/g, (_match, label, href) => {
       held.push(linkHtml(href, label));
       return `\u0000${held.length - 1}\u0000`;
@@ -2189,7 +2201,11 @@ function inlineHtml(value: string) {
       held.push(linkHtml(href, href));
       return `\u0000${held.length - 1}\u0000${tail}`;
     });
-  return parked.replace(/\u0000(\d+)\u0000/g, (_match, index) => held[Number(index)] ?? "");
+  const styled = linked
+    .replace(/\*\*\*(.+?)\*\*\*/g, "<strong class=\"font-semibold text-white\"><em class=\"italic text-amber-100\">$1</em></strong>")
+    .replace(/\*\*(.+?)\*\*/g, "<strong class=\"font-semibold text-white\">$1</strong>")
+    .replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, "<em class=\"italic text-amber-100/95\">$1</em>");
+  return styled.replace(/\u0000(\d+)\u0000/g, (_match, index) => held[Number(index)] ?? "");
 }
 
 function tableCells(line: string) {
@@ -2210,6 +2226,7 @@ function renderBlocks(source: string) {
       return <CodeBlock key={index} body={body} lang={lang} />;
     }
     const normalized = part
+      .replace(/(^|\n)\s*-{3,}\s*(\n|$)/g, "\n\n---\n\n")
       .replace(/\n(#{1,4}\s+)/g, "\n\n$1")
       .replace(/(^|\n)(#{1,4}\s+[^\n]+)\n(?!\n)/g, "$1$2\n\n")
       .replace(/(^|\n)(?!\|)([^\n]+)\n(\|[^\n]+\|)/g, "$1$2\n\n$3")
@@ -2219,15 +2236,19 @@ function renderBlocks(source: string) {
       .map((paragraph) => paragraph.trim())
       .filter(Boolean)
       .map((paragraph, p) => {
-        const lines = paragraph.split("\n").map((line) => line.trim()).filter(Boolean);
+        const rawLines = paragraph.split("\n").filter((line) => line.trim().length > 0);
+        const lines = rawLines.map((line) => line.trim());
+        if (lines.length === 1 && /^-{3,}$/.test(lines[0])) {
+          return <hr key={`${index}-${p}`} className="my-4 border-t border-[#e4b86a]/25" />;
+        }
         if (lines.length >= 2 && lines.every((line) => line.startsWith("|"))) {
           const rows = lines.filter((line) => !isTableRule(line)).map(tableCells).filter((row) => row.length > 1);
           const [head, ...body] = rows;
           if (head) {
             return (
-              <div key={`${index}-${p}`} className="my-2 overflow-x-auto rounded-xl border border-white/10 bg-black/30 p-2">
+              <div key={`${index}-${p}`} className="my-2.5 overflow-x-auto rounded-xl border border-white/10 bg-black/30 p-2.5">
                 <div className="mb-1.5 flex items-center justify-between px-1">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">Forecast · Data Table</span>
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">Structured Reference Table</span>
                   <button
                     type="button"
                     onClick={() => downloadTableCsv(head, body)}
@@ -2242,7 +2263,7 @@ function renderBlocks(source: string) {
                       {head.map((cell, hIdx) => (
                         <th
                           key={`${cell}-${hIdx}`}
-                          className="border-b border-[#e4b86a]/30 px-2 py-2 font-semibold text-[#e4b86a]"
+                          className="border-b border-[#e4b86a]/30 px-2.5 py-2 font-semibold text-[#e4b86a]"
                           dangerouslySetInnerHTML={{ __html: inlineHtml(cell) }}
                         />
                       ))}
@@ -2250,9 +2271,9 @@ function renderBlocks(source: string) {
                   </thead>
                   <tbody>
                     {body.map((row, rowIndex) => (
-                      <tr key={rowIndex}>
+                      <tr key={rowIndex} className="hover:bg-white/[0.02]">
                         {row.map((cell, cellIndex) => (
-                          <td key={cellIndex} className="border-b border-white/10 px-2 py-2 align-top" dangerouslySetInnerHTML={{ __html: inlineHtml(cell) }} />
+                          <td key={cellIndex} className="border-b border-white/10 px-2.5 py-2 align-top leading-relaxed" dangerouslySetInnerHTML={{ __html: inlineHtml(cell) }} />
                         ))}
                       </tr>
                     ))}
@@ -2263,11 +2284,31 @@ function renderBlocks(source: string) {
           }
         }
         if (lines.length === 1 && /^#{1,4}\s+/.test(lines[0])) {
+          const level = (lines[0].match(/^(#{1,4})\s+/)?.[1] || "#").length;
+          const headingHtml = inlineHtml(lines[0].replace(/^#{1,4}\s+/, ""));
+          if (level === 1) {
+            return (
+              <h2
+                key={`${index}-${p}`}
+                className="mt-1 mb-2 rounded-2xl border border-[#e4b86a]/35 bg-gradient-to-r from-[#e4b86a]/15 via-[#e4b86a]/5 to-transparent px-4 py-2.5 text-lg font-bold tracking-tight text-[#e4b86a] sm:text-xl"
+                dangerouslySetInnerHTML={{ __html: headingHtml }}
+              />
+            );
+          }
+          if (level === 2) {
+            return (
+              <h3
+                key={`${index}-${p}`}
+                className="mt-5 mb-2 border-b border-[#e4b86a]/25 pb-1.5 text-base font-bold tracking-tight text-[#e4b86a] sm:text-lg"
+                dangerouslySetInnerHTML={{ __html: headingHtml }}
+              />
+            );
+          }
           return (
-            <h3
+            <h4
               key={`${index}-${p}`}
-              className="text-xl font-semibold tracking-tight text-white"
-              dangerouslySetInnerHTML={{ __html: inlineHtml(lines[0].replace(/^#{1,4}\s+/, "")) }}
+              className="mt-3.5 mb-1.5 text-[15px] font-semibold tracking-tight text-amber-100 sm:text-base"
+              dangerouslySetInnerHTML={{ __html: headingHtml }}
             />
           );
         }
@@ -2280,20 +2321,79 @@ function renderBlocks(source: string) {
             </a>
           );
         }
-        const bullets = lines.length > 0 && lines.every((line) => /^[-*]\s+/.test(line));
-        const numbered = lines.length > 1 && lines.every((line) => /^\d+[.)]\s+/.test(line));
-        if (bullets || numbered) {
-          const List = bullets ? "ul" : "ol";
+        // Pure Blockquote (e.g., Scripture Reading or Spoken Manuscript Opening)
+        if (lines.length > 0 && lines.every((line) => line.startsWith(">"))) {
           return (
-            <List key={`${index}-${p}`} className={bullets ? "list-disc space-y-1 pl-5" : "list-decimal space-y-1 pl-5"}>
-              {lines.map((line) => {
-                const item = line.replace(/^[-*]\s+/, "").replace(/^\d+[.)]\s+/, "").replace(/\s*\(correct\)/i, "");
-                return <li key={item} dangerouslySetInnerHTML={{ __html: inlineHtml(item) }} />;
+            <blockquote
+              key={`${index}-${p}`}
+              className="my-2.5 space-y-1.5 rounded-r-2xl border-l-4 border-[#e4b86a] bg-[#e4b86a]/[0.07] px-4 py-3 text-[14.5px] leading-relaxed text-zinc-100"
+            >
+              {lines.map((line, lIdx) => {
+                const quoteLine = line.replace(/^>\s?/, "");
+                return <p key={lIdx} dangerouslySetInnerHTML={{ __html: inlineHtml(quoteLine) }} />;
+              })}
+            </blockquote>
+          );
+        }
+        // Pure simple top-level bullet or numbered list
+        const allTopBullets = rawLines.length > 0 && rawLines.every((line) => /^[-*]\s+/.test(line));
+        const allTopNumbered = rawLines.length > 1 && rawLines.every((line) => /^\d+[.)]\s+/.test(line));
+        if (allTopBullets || allTopNumbered) {
+          const List = allTopBullets ? "ul" : "ol";
+          return (
+            <List key={`${index}-${p}`} className={allTopBullets ? "list-disc space-y-1.5 pl-5" : "list-decimal space-y-1.5 pl-5"}>
+              {rawLines.map((line, lIdx) => {
+                const item = line.trim().replace(/^[-*]\s+/, "").replace(/^\d+[.)]\s+/, "").replace(/\s*\(correct\)/i, "");
+                return <li key={lIdx} className="leading-relaxed" dangerouslySetInnerHTML={{ __html: inlineHtml(item) }} />;
               })}
             </List>
           );
         }
-        return <p key={`${index}-${p}`} className="whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: inlineHtml(paragraph) }} />;
+        // Mixed / nested structured block (contains bullets, numbered items, sub-bullets, or inline blockquotes)
+        const hasStructuredLines = rawLines.some((line) => /^\s*(?:[-*]|\d+[.)]|>)\s+/.test(line));
+        if (hasStructuredLines) {
+          return (
+            <div key={`${index}-${p}`} className="space-y-1.5">
+              {rawLines.map((rawLine, lIdx) => {
+                const leadingSpaces = (rawLine.match(/^(\s*)/)?.[1] || "").length;
+                const trimmed = rawLine.trim();
+                if (trimmed.startsWith(">")) {
+                  const quoteText = trimmed.replace(/^>\s?/, "");
+                  return (
+                    <blockquote
+                      key={lIdx}
+                      className="my-2 ml-3 rounded-r-xl border-l-4 border-[#e4b86a] bg-[#e4b86a]/[0.07] px-3.5 py-2.5 text-[14.5px] leading-relaxed text-zinc-100"
+                      dangerouslySetInnerHTML={{ __html: inlineHtml(quoteText) }}
+                    />
+                  );
+                }
+                const numMatch = trimmed.match(/^(\d+)[.)]\s+([\s\S]+)$/);
+                if (numMatch) {
+                  const indentClass = leadingSpaces >= 4 ? "ml-8" : leadingSpaces >= 2 ? "ml-4" : "";
+                  return (
+                    <div key={lIdx} className={cn("flex items-start gap-2 leading-relaxed", indentClass)}>
+                      <span className="mt-0.5 shrink-0 font-mono text-xs font-bold text-[#e4b86a]">{numMatch[1]}.</span>
+                      <span className="min-w-0 flex-1" dangerouslySetInnerHTML={{ __html: inlineHtml(numMatch[2].replace(/\s*\(correct\)/i, "")) }} />
+                    </div>
+                  );
+                }
+                const bulMatch = trimmed.match(/^[-*]\s+([\s\S]+)$/);
+                if (bulMatch) {
+                  const indentClass = leadingSpaces >= 4 ? "ml-8 text-[14px] text-zinc-200" : leadingSpaces >= 2 ? "ml-4 text-[14.5px] text-zinc-200" : "text-[15px] text-zinc-100";
+                  const marker = leadingSpaces >= 2 ? "◦" : "•";
+                  return (
+                    <div key={lIdx} className={cn("flex items-start gap-2 leading-relaxed", indentClass)}>
+                      <span className="shrink-0 font-bold text-[#e4b86a]">{marker}</span>
+                      <span className="min-w-0 flex-1" dangerouslySetInnerHTML={{ __html: inlineHtml(bulMatch[1].replace(/\s*\(correct\)/i, "")) }} />
+                    </div>
+                  );
+                }
+                return <p key={lIdx} className="leading-relaxed" dangerouslySetInnerHTML={{ __html: inlineHtml(trimmed) }} />;
+              })}
+            </div>
+          );
+        }
+        return <p key={`${index}-${p}`} className="whitespace-pre-wrap leading-relaxed" dangerouslySetInnerHTML={{ __html: inlineHtml(paragraph) }} />;
       });
   });
 }
