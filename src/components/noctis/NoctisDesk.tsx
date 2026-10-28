@@ -2387,9 +2387,15 @@ function ClinicalHandoffView({ data, rawJson }: { data: Record<string, unknown>;
     ? data.immediate_priorities.map(String)
     : Array.isArray(data.immediate_next_steps)
       ? data.immediate_next_steps.map(String)
-      : Array.isArray(data.urgent_assessments)
-        ? data.urgent_assessments.map(String)
-        : [];
+      : Array.isArray(data.containment_and_eradication_plan)
+        ? data.containment_and_eradication_plan.map(String)
+        : Array.isArray(data.urgent_assessments)
+          ? data.urgent_assessments.map(String)
+          : [];
+
+  const forensicChecklist: string[] = Array.isArray(data.forensic_preservation_checklist)
+    ? data.forensic_preservation_checklist.map(String)
+    : [];
 
   const isCyberPayload = Boolean(
     Array.isArray(data.mitre_attack_mapping) ||
@@ -2416,18 +2422,26 @@ function ClinicalHandoffView({ data, rawJson }: { data: Record<string, unknown>;
         ? (data.medication_safety_assessment as Record<string, unknown>)
         : null;
 
-  const missingRaw = Array.isArray(data.missing_information) ? data.missing_information : [];
+  const missingRaw = Array.isArray(data.missing_information)
+    ? data.missing_information
+    : Array.isArray(data.missing_critical_telemetry)
+      ? data.missing_critical_telemetry
+      : Array.isArray(data.missing_telemetry)
+        ? data.missing_telemetry
+        : [];
   const uncertainties: string[] = Array.isArray(data.uncertainties) ? data.uncertainties.map(String) : [];
 
   const advRaw = Array.isArray(data.adversarial_instruction_results)
     ? data.adversarial_instruction_results
-    : Array.isArray(data.adversarial_instructions)
-      ? data.adversarial_instructions
-      : Array.isArray(data.adversarial_results)
-        ? data.adversarial_results
-        : Array.isArray(data.adversarial_testing_responses)
-          ? data.adversarial_testing_responses
-          : [];
+    : Array.isArray(data.adversarial_pushback)
+      ? data.adversarial_pushback
+      : Array.isArray(data.adversarial_instructions)
+        ? data.adversarial_instructions
+        : Array.isArray(data.adversarial_results)
+          ? data.adversarial_results
+          : Array.isArray(data.adversarial_testing_responses)
+            ? data.adversarial_testing_responses
+            : [];
   const adversarials = advRaw.map((a: unknown, idx: number) => {
     const rec = (a && typeof a === "object" ? a : {}) as Record<string, unknown>;
     return {
@@ -2616,6 +2630,20 @@ function ClinicalHandoffView({ data, rawJson }: { data: Record<string, unknown>;
         </div>
       ) : null}
 
+      {/* 5b. Forensic Evidence Preservation Checklist (Cyber Only) */}
+      {forensicChecklist.length > 0 ? (
+        <div className="rounded-2xl border border-cyan-500/35 bg-cyan-950/20 p-3.5">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-cyan-300">
+            Forensic Evidence Preservation & Chain-of-Custody Checklist
+          </h4>
+          <ul className="mt-2 list-disc space-y-1.5 pl-5 text-xs text-zinc-200">
+            {forensicChecklist.map((item, i) => (
+              <li key={i}>{item}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
       {/* 6. Medication Safety */}
       {medSafetyObj ? (
         <div className="rounded-2xl border border-amber-500/40 bg-black/30 p-3.5">
@@ -2666,7 +2694,9 @@ function ClinicalHandoffView({ data, rawJson }: { data: Record<string, unknown>;
           {missingRaw.length > 0 ? (
             <div className="rounded-2xl border border-white/10 bg-black/30 p-3.5">
               <h4 className="text-xs font-bold uppercase tracking-wider text-[#e4b86a]">
-                Missing / Unverified Information (Never Delays 911)
+                {isCyberPayload
+                  ? "Missing / Unverified Forensic Telemetry (Never Delays Containment)"
+                  : "Missing / Unverified Information (Never Delays 911)"}
               </h4>
               <ul className="mt-2 list-disc space-y-1.5 pl-4 text-xs text-zinc-200">
                 {missingRaw.map((m: unknown, i: number) => {
