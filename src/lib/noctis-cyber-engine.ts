@@ -131,7 +131,7 @@ export function isCyberSecurityOrSocQuery(question: string): boolean {
 
 export function extractCyberIncidentTelemetry(question: string): ExtractedCyberTelemetry {
   const q = (question || "").trim();
-  const advStartIdx = q.search(/\badversarial\s+instructions?\b/i);
+  const advStartIdx = q.search(/\b(?:adversarial[_\s]+(?:prompt[_\s]+injections?|instructions?|tests?|inputs?)|ADV-1\s*[:.)])/i);
   const qCtx = advStartIdx >= 0 ? q.slice(0, advStartIdx) : q;
 
   const testIdMatch =
@@ -648,7 +648,7 @@ export function extractCyberIncidentTelemetry(question: string): ExtractedCyberT
 
 export function parseCyberAdversarialInstructions(question: string): string[] {
   const q = question || "";
-  const idx = q.search(/\badversarial\s+instructions?\b/i);
+  const idx = q.search(/\b(?:adversarial[_\s]+(?:prompt[_\s]+injections?|instructions?|tests?|inputs?)|ADV-1\s*[:.)])/i);
   if (idx < 0) return [];
   const block = q.slice(idx);
   const items: string[] = [];
@@ -657,7 +657,7 @@ export function parseCyberAdversarialInstructions(question: string): string[] {
     if (/^(?:#{1,6}\s+|\*\*[A-Z]\.\s+|Return\s+ONLY|Provide\s+a\s+concise|Required\s+output|Acceptance\s+criteria)/i.test(trimmed) && items.length > 0) {
       break;
     }
-    const m = trimmed.match(/^(?:ADV-?\d+|\d+)[.):\s-]+["“]?(.+?)["”]?\s*$/i);
+    const m = trimmed.match(/^(?:[-*•]\s*)?(?:ADV-?\d+|\d+)[.):\s-]+["“]?(.+?)["”]?\s*$/i);
     if (m && m[1]) {
       items.push(m[1].replace(/^["“]|["”]$/g, "").trim());
     }
@@ -751,10 +751,11 @@ function parseCyberRequestedJsonContract(question: string): { keys: string[] } |
   }
 
   // 2. Check bulleted or numbered list of keys after "REQUIRED OUTPUT" / "exact keys" / "valid JSON"
-  const outputSectionIdx = q.search(/\b(?:required\s+output|return\s+only\s+valid\s+json|exact\s+keys|following\s+keys|top-level\s+keys)\b/i);
+  const explicitOutputIdx = q.search(/\b(?:required\s+output(?:\s+keys)?|exact\s+keys|following\s+keys|top-level\s+keys)\b/i);
+  const outputSectionIdx = explicitOutputIdx >= 0 ? explicitOutputIdx : q.search(/\breturn\s+only\s+valid\s+json\b/i);
   if (outputSectionIdx >= 0) {
     const tail = q.slice(outputSectionIdx);
-    const bulletKeys = [...tail.matchAll(/^(?:\s*[-*•]|\s*\d+\.)\s*`?([a-z][a-z0-9_]{2,50})`?\b/gim)].map((m) => m[1]);
+    const bulletKeys = [...tail.matchAll(/^(?:[ \t]*[-*•]|[ \t]*\d+\.)[ \t]*`?([a-z][a-z0-9_]{2,50})`?[ \t]*(?:$|\r|[:—(-])/gm)].map((m) => m[1]);
     if (bulletKeys.length >= 3) {
       return { keys: [...new Set(bulletKeys)] };
     }
