@@ -109,6 +109,12 @@ export function evaluateAttackPathAdversarialInstructions(
     } else if (/\b(waf\s+regex\s+only|skip\s+parameteriz\w*|no\s+need\s+to\s+fix\s+the\s+code|rely\s+solely\s+on\s+waf)\b/i.test(instr)) {
       rationale =
         "REJECT: Perimeter WAF regex rules are compensating controls susceptible to encoding/content-type bypasses and do not remediate the underlying vulnerable code sink; root-cause remediation requires parameterized queries / context-aware encoding / strict authorization checks verified by a regression test.";
+    } else if (/\b(startswith|url\s+prefix\s+check|sufficient\s+to\s+prevent\s+ssrf|blocklist\s+is\s+enough)\b/i.test(instr)) {
+      rationale =
+        "REJECT: A naive URL prefix check (`url.startsWith('https://')` or string blocklist) does NOT prevent SSRF (`CWE-918`): attackers bypass prefix checks via HTTP 301/302 open redirects to `http://169.254.169.254`, DNS rebinding, IPv6/decimal/octal IP representations, or URL authority (`@`) confusion. Remediation requires post-DNS IP range blocking (RFC 1918 + `169.254.0.0/16`), disabling redirects, strict host allowlisting, and `IMDSv2` (`HttpTokens=required`).";
+    } else if (/\b(transitive\s+dependency|ignore\s+the\s+sca|suppress\s+the\s+cve|not\s+a\s+direct\s+import)\b/i.test(instr)) {
+      rationale =
+        "REJECT: Transitive SCA lockfile vulnerabilities cannot be dismissed solely because the package is an indirect dependency; call-graph reachability analysis must verify whether active application code invokes the vulnerable transitive function path.";
     } else if (/\b(knowledge\s+base\s+update\s+proves\s+model\s+weights|rag\s+update\s+equals\s+weight\s+training)\b/i.test(instr)) {
       rationale =
         "REJECT: Updating retrieval-based knowledge bases (RAG) must be tracked separately from model-weight training; a KB update alone does not demonstrate that underlying model weights learned new reasoning behavior without held-out benchmark evaluation.";
@@ -194,20 +200,30 @@ export function handleAttackPathAndExploitabilityQuery(question: string): string
     ...new Set(
       [
         ...qCtx.matchAll(
-          /\b(?:src\/[a-zA-Z0-9_./-]+\.[a-z]{2,5}|[a-zA-Z0-9_-]+\.(?:ts|js|py|go|java|rb|cs|php)|\/api\/[a-zA-Z0-9_/:.-]+|\/v\d+\/[a-zA-Z0-9_/:.-]+)\b/g
+          /(?:^|[\s"'(`])((?:src|app|lib|server|services|pkg|internal)\/[a-zA-Z0-9_./-]+\.[a-z]{2,5}|[a-zA-Z0-9_-]+\.(?:ts|js|py|go|java|rb|cs|php)|\/api\/[a-zA-Z0-9_/:.-]+|\/v\d+\/[a-zA-Z0-9_/:.-]+)/g
         ),
-      ].map((m) => m[0])
+      ].map((m) => m[1].replace(/[.,;:)]+$/, ""))
     ),
   ];
-  const assetsAndIdentities = [
+  const identitiesAndRoles = [
     ...new Set(
       [
         ...qCtx.matchAll(
-          /\b(?:svc[_-][a-z0-9_-]+|adm[_-][a-z0-9_-]+|role[_-][a-z0-9_-]+|[A-Z]{2,8}-[A-Z0-9-]+|rds-[a-z0-9-]+|s3-[a-z0-9-]+|eks-[a-z0-9-]+|prod-[a-z0-9-]+)\b/g
+          /\b(?:svc[_-][a-z0-9_-]+|adm[_-][a-z0-9_-]+|role[_-][a-z0-9_-]+|[a-z0-9._-]+@[a-z0-9.-]+\.[a-z]{2,12})\b/gi
         ),
       ].map((m) => m[0])
     ),
   ];
+  const crownJewelAssets = [
+    ...new Set(
+      [
+        ...qCtx.matchAll(
+          /\b(?:RDS-[A-Z0-9-]+|S3-[A-Z0-9-]+|EKS-[A-Z0-9-]+|K8S-[A-Z0-9-]+|DB-[A-Z0-9-]+|SQL-[A-Z0-9-]+|VAULT-[A-Z0-9-]+|KMS-[A-Z0-9-]+|SRV-[A-Z0-9-]+|DC-[A-Z0-9-]+|PLC-[A-Z0-9-]+|SIS-[A-Z0-9-]+|EWS-[A-Z0-9-]+|HIST-[A-Z0-9-]+)\b/g
+        ),
+      ].map((m) => m[0])
+    ),
+  ];
+  const assetsAndIdentities = [...new Set([...identitiesAndRoles, ...crownJewelAssets])];
 
   // Extract bullet facts from prompt
   const bulletLines = qCtx
@@ -255,16 +271,16 @@ export function handleAttackPathAndExploitabilityQuery(question: string): string
     source: filesAndEndpoints.length
       ? `User-controlled input entering ${filesAndEndpoints.join(", ")} (HTTP request parameter / JSON body / header)`
       : "User-controlled HTTP request parameter / JSON payload entering application controller",
-    transformations_and_sanitizers: /\b(regex|replace|strip|incomplete\s+sanitizer|bypassable)\b/i.test(qCtx)
-      ? "Partial/non-context-aware transformation observed in code path (insufficient to neutralize sink injection semantics)"
+    transformations_and_sanitizers: /\b(regex|replace|strip|startsWith|incomplete\s+sanitizer|bypassable|blacklist|blocklist)\b/i.test(qCtx)
+      ? "Partial/non-context-aware transformation observed in code path (insufficient to neutralize sink injection or SSRF redirect/IP bypass semantics)"
       : "No effective parameterization or context-aware sink encoding verified along the taint path",
-    authorization_checks: /\b(authenticated|admin|role|jwt|bearer|rbac|feature\s+flag)\b/i.test(qCtx)
-      ? "Route is gated behind authentication / role middleware or feature flag (explaining why unauthenticated DAST crawlers missed the code path)"
+    authorization_checks: /\b(authenticated|admin|role|jwt|bearer|rbac|feature\s+flag|webhook\s+signature|hmac)\b/i.test(qCtx)
+      ? "Route is gated behind authentication / role middleware, HMAC header, or feature flag (explaining why unauthenticated DAST crawlers missed the code path)"
       : "Endpoint authorization boundary requires runtime verification",
     dangerous_sink: isSqlInjection
       ? "Dynamic SQL query construction / unparameterized database driver sink"
       : isSsrf
-        ? "Server-side HTTP client (`fetch` / `axios`) invoked with user-influenced URL reaching internal metadata/service mesh"
+        ? "Server-side HTTP client (`fetch` / `axios`) invoked with user-influenced URL reaching internal metadata (`169.254.169.254`) or internal service mesh"
         : isCmdInjection
           ? "OS shell execution sink (`child_process.exec` / `subprocess` with `shell=True`)"
           : "Sensitive execution / data-access sink identified in static AST taint trace",
@@ -278,9 +294,9 @@ export function handleAttackPathAndExploitabilityQuery(question: string): string
       ? "SAST identified a concrete source-to-sink taint flow, whereas DAST reported 0 findings. Noctis does NOT dismiss the SAST finding: the DAST scanner lacked valid session/role tokens, required headers, or feature-flag state needed to traverse the controller branch. A targeted authenticated integration harness is required to resolve reachability."
       : "SAST source-to-sink trace aligns with component exposure and runtime reachability preconditions.",
     safe_validation_harness:
-      "Execute an isolated, non-destructive integration test in staging using a seeded role token and a benign boolean/timing or canary input (never destructive commands) while capturing AST/debugger stack frames at the sink.",
+      "Execute an isolated, non-destructive integration test in staging using a seeded role token and a benign loopback/mock-metadata canary listener (never destructive commands) while capturing AST/debugger stack frames at the sink.",
     regression_test_spec:
-      "Add an automated CI unit + integration regression test asserting that (1) malicious metacharacters/URLs are rejected or safely parameterized at the sink, and (2) unauthorized callers receive HTTP 403 before reaching business logic.",
+      "Add an automated CI unit + integration regression test asserting that (1) malicious metacharacters/internal RFC 1918 & link-local (`169.254.169.254`) URLs are rejected or safely parameterized at the sink, and (2) unauthorized callers receive HTTP 403 before reaching business logic.",
   };
 
   const evidenceCorrelation = {
@@ -298,13 +314,18 @@ export function handleAttackPathAndExploitabilityQuery(question: string): string
       "Cross-tool conflict resolved via Evidence Correlation Engine: static taint reachability + asset privilege context supersede unauthenticated DAST negatives until a targeted harness validates remediation.",
   };
 
+  const entryEndpoint = filesAndEndpoints.find((f) => f.startsWith("/")) || filesAndEndpoints[0] || "Exposed API Gateway / Application Endpoint";
+  const primaryCodeFile = filesAndEndpoints.find((f) => !f.startsWith("/")) || filesAndEndpoints[0] || "Application Data-Access / Execution Sink";
+  const primaryIdentity = identitiesAndRoles.join(", ") || "Workload ServiceAccount / IAM Execution Role";
+  const primaryCrownJewels = crownJewelAssets.join(", ") || "Production Database / Sensitive Secrets Store";
+
   const attackPathGraph: AttackPathGraph = {
     prediction_disclaimer:
       "PREDICTED_ATTACK_PATH — Labeled as graph prediction, NOT confirmed breach fact unless corroborated by runtime intrusion telemetry.",
     nodes: [
       {
         node_id: "NODE-1-ENTRY",
-        asset_or_identity: filesAndEndpoints[0] || "Exposed API Gateway / Application Endpoint",
+        asset_or_identity: entryEndpoint,
         type: "ENTRY_POINT",
         evidence_ref: "Asset Inventory & Route Configuration",
       },
@@ -316,13 +337,13 @@ export function handleAttackPathAndExploitabilityQuery(question: string): string
       },
       {
         node_id: "NODE-3-IDENTITY",
-        asset_or_identity: assetsAndIdentities[0] || "Workload ServiceAccount / IAM Execution Role",
+        asset_or_identity: primaryIdentity,
         type: "IDENTITY_OR_PERMISSION",
         evidence_ref: "Cloud / K8s IAM Effective Permission Analysis",
       },
       {
         node_id: "NODE-4-CROWN-JEWEL",
-        asset_or_identity: assetsAndIdentities[1] || "Production Database / Sensitive Secrets Store",
+        asset_or_identity: primaryCrownJewels,
         type: "CROWN_JEWEL_ASSET",
         evidence_ref: "Data Classification & Trust Boundary Graph",
       },
@@ -331,7 +352,7 @@ export function handleAttackPathAndExploitabilityQuery(question: string): string
       {
         from: "NODE-1-ENTRY",
         to: "NODE-2-SINK",
-        step_description: `Attacker supplies crafted payload reaching ${sastTrace.dangerous_sink}`,
+        step_description: `Attacker supplies crafted payload to ${entryEndpoint} reaching ${sastTrace.dangerous_sink}`,
         prerequisites: [
           "Network reachability to API endpoint",
           hasDastZeroOrMismatch ? "Authenticated session token or feature-flag header required to pass controller guard" : "Public or standard user request access",
@@ -341,14 +362,14 @@ export function handleAttackPathAndExploitabilityQuery(question: string): string
       {
         from: "NODE-2-SINK",
         to: "NODE-3-IDENTITY",
-        step_description: "Exploitation of vulnerable sink executes in context of the application workload identity / IAM role",
+        step_description: `Exploitation of vulnerable sink executes in context of workload identity (${primaryIdentity})`,
         prerequisites: ["Sink reachable without effective parameterization/sanitization"],
         prediction_status: "PREDICTED_HOP",
       },
       {
         from: "NODE-3-IDENTITY",
         to: "NODE-4-CROWN-JEWEL",
-        step_description: "Over-privileged workload role or connection string grants lateral read/write access to crown-jewel data store",
+        step_description: `Over-privileged workload role (${primaryIdentity}) grants lateral access to crown-jewel asset(s) (${primaryCrownJewels})`,
         prerequisites: ["Broad IAM/RBAC permissions or shared database credentials across trust boundary"],
         prediction_status: "PREDICTED_HOP",
       },
@@ -369,23 +390,23 @@ export function handleAttackPathAndExploitabilityQuery(question: string): string
     choke_points: [
       {
         choke_point_id: "CHOKE-01-CODE-SINK",
-        location: filesAndEndpoints[0] || "Application Data-Access / Execution Sink",
-        why_high_leverage: "Eliminating raw taint concatenation at the sink severs the initial exploitation edge (`NODE-1 -> NODE-2`) for all callers.",
+        location: primaryCodeFile,
+        why_high_leverage: "Eliminating raw taint concatenation/unvalidated URL dispatch at the sink severs the initial exploitation edge (`NODE-1 -> NODE-2`) for all callers.",
         remediation_control: isSqlInjection
           ? "Replace dynamic SQL interpolation with strict parameterized queries / prepared statements."
           : isSsrf
-            ? "Enforce a strict outbound URL allowlist, disable HTTP redirects, block RFC 1918 / link-local `169.254.169.254` ranges, and require IMDSv2."
+            ? "Enforce a strict outbound URL allowlist, disable HTTP redirects, block RFC 1918 / link-local `169.254.169.254` ranges after DNS resolution, and require IMDSv2 (`HttpTokens=required`, hop limit `1`)."
             : "Eliminate shell/interpreter invocation (`execFile` with fixed argument array or safe parser) and enforce strict schema validation.",
       },
       {
         choke_point_id: "CHOKE-02-IDENTITY-BOUNDARY",
-        location: assetsAndIdentities[0] || "Workload IAM Role / Database Credential Scope",
-        why_high_leverage: "Scoping down the workload identity breaks the lateral pivot (`NODE-3 -> NODE-4`) even if a zero-day dependency flaw occurs.",
+        location: primaryIdentity,
+        why_high_leverage: `Scoping down ${primaryIdentity} breaks the lateral pivot (\`NODE-3 -> NODE-4\`) to ${primaryCrownJewels} even if a zero-day dependency flaw occurs.`,
         remediation_control: "Apply least-privilege IAM/RBAC policies, separate read/write roles, and enforce network/mTLS egress segmentation.",
       },
     ],
     blast_radius_estimate: {
-      technical_impact: `Potential unauthorized execution or data access across ${assetsAndIdentities.length ? assetsAndIdentities.join(", ") : "connected production data stores and workload secrets"}.`,
+      technical_impact: `Potential unauthorized execution or data access via ${primaryIdentity} across ${primaryCrownJewels}.`,
       affected_identities_and_assets: assetsAndIdentities.length ? assetsAndIdentities : ["Application Workload Role", "Production Data Store"],
       business_and_data_criticality: "HIGH / TIER-1 — Crown-jewel customer/financial records and control-plane credentials at risk if path is traversed.",
     },
