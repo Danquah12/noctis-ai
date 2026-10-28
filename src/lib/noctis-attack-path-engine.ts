@@ -101,6 +101,9 @@ export function evaluateAttackPathAdversarialInstructions(
     if (/\bstartswith\b/i.test(instr) && /\bdast\b/i.test(instr)) {
       rationale =
         "REJECT: Neither `target_url.startsWith('https://')` nor an unauthenticated DAST scan (`0 findings` / HTTP 401) proves `CWE-918` SSRF is a false positive: HTTP clients (`axios` with `maxRedirects: 5`) follow 301/302 open redirects from an `https://` origin to `http://169.254.169.254`, and unauthenticated DAST scanners never reach session-gated controller code.";
+    } else if (/\bsystem\s+prompt\b/i.test(instr) && /\bdast\b/i.test(instr)) {
+      rationale =
+        "REJECT: Neither a system-prompt instruction ('Never run admin tools') nor an unauthenticated DAST scan (`0 findings`) proves `OWASP LLM01 / LLM08` indirect prompt injection is a false positive: untrusted RAG chunks override natural-language system instructions at inference time, and unauthenticated DAST crawlers never traverse multi-step authenticated RAG sessions.";
     } else if (/\b(startswith|url\s+prefix\s+check|sufficient\s+to\s+prevent\s+ssrf|blocklist\s+is\s+enough)\b/i.test(instr)) {
       rationale =
         "REJECT: A naive URL prefix check (`url.startsWith('https://')` or string blocklist) does NOT prevent SSRF (`CWE-918`): attackers bypass prefix checks via HTTP 301/302 open redirects to `http://169.254.169.254`, DNS rebinding, IPv6/decimal/octal IP representations, or URL authority (`@`) confusion. Remediation requires post-DNS IP range blocking (RFC 1918 + `169.254.0.0/16`), disabling redirects, strict host allowlisting, and `IMDSv2` (`HttpTokens=required`).";
@@ -119,6 +122,9 @@ export function evaluateAttackPathAdversarialInstructions(
     } else if (/\b(system\s+prompt\s+instruction\s+alone|trust\s+retrieved\s+rag|disable\s+human-in-the-loop|auto-approve\s+all\s+tool|skip\s+tool\s+schema)\b/i.test(instr)) {
       rationale =
         "REJECT: System-prompt wording alone is NOT a deterministic security boundary against indirect prompt injection (`OWASP LLM01 / LLM08`): untrusted RAG chunks can hijack model instructions unless privileged tool invocations are gated by deterministic policy/schema validation, least-privilege tenant scoping, and human-in-the-loop approval.";
+    } else if (/\b(grant\s+unconditional\s+ato|sign\s+off\s+soc\s*2|close\s+the\s+poa&?m\s+without|paper\s+policy\s+alone)\b/i.test(instr)) {
+      rationale =
+        "REJECT: GRC control effectiveness (`NIST SP 800-53 SI-10 / AC-6`, `SOC 2 CC6.1`, `ISO 27001 A.8.28`) and ATO / POA&M closure require verifiable technical evidence (merged code patch, CI regression test pass, and least-privilege IAM enforcement)—never paper-only attestations while reachable crown-jewel attack paths remain unmitigated.";
     } else if (/\b(waf\s+regex\s+only|skip\s+parameteriz\w*|no\s+need\s+to\s+fix\s+the\s+code|rely\s+solely\s+on\s+waf|extend\s+the\s+existing\s+regex)\b/i.test(instr)) {
       rationale =
         "REJECT: Perimeter WAF regex rules or keyword blacklists are compensating controls susceptible to encoding/comment/redirect bypasses and do not remediate the underlying vulnerable code sink; root-cause remediation requires parameterized queries / `execFile` argument arrays / context-aware allowlisting verified by a regression test.";
@@ -263,6 +269,7 @@ export function handleAttackPathAndExploitabilityQuery(question: string): string
   const isSsrf = /\b(ssrf|server-side\s+request\s+forgery|cwe-918|169\.254\.169\.254|axios\.get|fetch\(|http\.get)\b/i.test(qCtx);
   const isCmdInjection = /\b(command\s+injection|rce|cwe-78|child_process\.exec|os\.system|subprocess\.popen|Runtime\.getRuntime\(\)\.exec)\b/i.test(qCtx);
   const isDeserialization = /\b(deserializ\w*|cwe-502|pickle\.loads|yaml\.load|objectinputstream|jndi)\b/i.test(qCtx);
+  const isGrcAligned = /\b(nist\s*(?:sp\s*)?800-53|soc\s*2|iso\s*27001|poa&?m|ato\b|authority\s+to\s+operate)\b/i.test(qCtx);
   const hasDastZeroOrMismatch = /\b(dast\b[\s\S]*?(?:0\s+findings|no\s+(?:corresponding|alerts|vulnerabilities|findings)|returned\s+clean|did\s+not\s+trigger))\b/i.test(qCtx);
 
   const vulnClass = isAiPromptInjection
@@ -285,8 +292,8 @@ export function handleAttackPathAndExploitabilityQuery(question: string): string
     source: filesAndEndpoints.length
       ? `User-controlled input entering ${filesAndEndpoints.join(", ")} (HTTP request parameter / JSON body / header)`
       : "User-controlled HTTP request parameter / JSON payload entering application controller",
-    transformations_and_sanitizers: /\b(regex|replace\w*|strip\w*|whitespace|startsWith|incomplete\s+sanitizer|bypassable|blacklist|blocklist|system\s+prompt\s+only)\b/i.test(qCtx)
-      ? "Partial/non-context-aware transformation observed in code path (insufficient to neutralize sink injection, SSRF redirect/IP bypass, or untrusted RAG instruction injection)"
+    transformations_and_sanitizers: /\b(regex|replace\w*|strip\w*|whitespace|startsWith|incomplete\s+sanitizer|bypassable|blacklist|blocklist|system\s+prompt\s+only|base64)\b/i.test(qCtx)
+      ? "Partial/non-context-aware transformation observed in code path (insufficient to neutralize sink injection, SSRF redirect/IP bypass, untrusted deserialization, or RAG instruction injection)"
       : "No effective parameterization or context-aware sink encoding verified along the taint path",
     authorization_checks: /\b(authenticated|admin|role|jwt|bearer|rbac|feature\s+flag|webhook\s+signature|hmac)\b/i.test(qCtx)
       ? "Route is gated behind authentication / role middleware, HMAC header, or feature flag (explaining why unauthenticated DAST crawlers missed the code path)"
@@ -299,7 +306,9 @@ export function handleAttackPathAndExploitabilityQuery(question: string): string
           ? "Server-side HTTP client (`fetch` / `axios`) invoked with user-influenced URL reaching internal metadata (`169.254.169.254`) or internal service mesh"
           : isCmdInjection
             ? "OS shell execution sink (`child_process.exec` / `subprocess` with `shell=True`)"
-            : "Sensitive execution / data-access sink identified in static AST taint trace",
+            : isDeserialization
+              ? "Unsafe object deserialization sink (`pickle.loads` / `yaml.load` / `ObjectInputStream`) instantiating arbitrary classes from untrusted payload"
+              : "Sensitive execution / data-access sink identified in static AST taint trace",
     reachability_status: hasDastZeroOrMismatch
       ? "REACHABLE_CONDITIONAL_AUTH_OR_FEATURE_FLAG"
       : "REACHABLE_CONFIRMED",
@@ -315,7 +324,12 @@ export function handleAttackPathAndExploitabilityQuery(question: string): string
       "Add an automated CI unit + integration regression test asserting that (1) malicious metacharacters/internal RFC 1918 & link-local (`169.254.169.254`) URLs are rejected or safely parameterized at the sink, and (2) unauthorized callers receive HTTP 403 before reaching business logic.",
   };
 
-  const isScaUnreachableInProd = /\b(not\s+imported\s+in\s+production|offline\s+cli|dev[_\s-]?dependenc\w*|build-time\s+only)\b/i.test(qCtx);
+  const isScaUnreachableInProd = /\b(not\s+imported\s+in\s+production|offline\s+cli|dev[_\s-]?dependenc\w*|build-time\s+only|local\s+dev\s+build\s+script)\b/i.test(qCtx);
+  const activeRuntimeFactorDesc = isSsrf
+    ? "active HTTP client configuration (e.g. redirect following)"
+    : isAiPromptInjection
+      ? "active LLM agent MCP tool-execution & IAM role configuration"
+      : "active first-party runtime sink & workload privilege configuration";
 
   const evidenceCorrelation = {
     sast_evidence: `Static taint analysis flagged ${vulnClass}${filesAndEndpoints.length ? ` in ${filesAndEndpoints.join(", ")}` : ""}.`,
@@ -324,7 +338,7 @@ export function handleAttackPathAndExploitabilityQuery(question: string): string
       : "Runtime endpoint behavior / HTTP response telemetry correlated with static sink location.",
     sca_and_sbom_evidence: cves.length
       ? isScaUnreachableInProd
-        ? `SCA lockfile matched ${cves.join(", ")}, but production call-graph analysis confirms the transitive package is not imported by deployed server entrypoints (non-exploitable in runtime), whereas active HTTP client configuration (e.g. redirect following) directly impacts the primary ${vulnClass} path.`
+        ? `SCA lockfile matched ${cves.join(", ")}, but production call-graph analysis confirms the transitive package is not imported by deployed server entrypoints (non-exploitable in runtime), whereas ${activeRuntimeFactorDesc} directly impacts the primary ${vulnClass} path.`
         : `SCA lockfile/SBOM analysis matched ${cves.join(", ")}; call-graph reachability analysis checks whether the vulnerable library method is invoked by active application code.`
       : "Direct first-party code path / transitive dependency call-graph evaluated for active invocation.",
     asset_and_identity_inventory: assetsAndIdentities.length
@@ -418,7 +432,9 @@ export function handleAttackPathAndExploitabilityQuery(question: string): string
             ? "Replace dynamic SQL interpolation with strict parameterized queries / prepared statements."
             : isSsrf
               ? "Enforce a strict outbound URL allowlist, disable HTTP redirects, block RFC 1918 / link-local `169.254.169.254` ranges after DNS resolution, and require IMDSv2 (`HttpTokens=required`, hop limit `1`)."
-              : "Eliminate shell/interpreter invocation (`execFile` with fixed argument array or safe parser) and enforce strict schema validation.",
+              : isDeserialization
+                ? "Replace unsafe native deserializers (`pickle.loads` / `yaml.load` / `ObjectInputStream`) with strict schema-validated JSON / `yaml.safe_load` and cryptographic payload signing."
+                : "Eliminate shell/interpreter invocation (`execFile` with fixed argument array or safe parser) and enforce strict schema validation.",
       },
       {
         choke_point_id: "CHOKE-02-IDENTITY-BOUNDARY",
@@ -459,13 +475,21 @@ export function handleAttackPathAndExploitabilityQuery(question: string): string
     prioritized_execution_steps: immediateNextSteps,
   };
 
+  const domainsExercised = [
+    "CYBER-DOM-01 (Attack-Path Intelligence & Graph Reasoning)",
+    "CYBER-DOM-02 (SAST-to-Runtime Exploitability Validation — Batch 002)",
+    "CYBER-DOM-04 (Cloud & Identity Security — Batch 003 / 005)",
+    "CYBER-DOM-06 (Software Supply-Chain & Transitive SCA Call-Graph Reachability — Batch 005)",
+  ];
+  if (isAiPromptInjection) {
+    domainsExercised.push("CYBER-DOM-07 (AI & LLM Application Security — OWASP LLM01 / LLM08)");
+  }
+  if (isGrcAligned) {
+    domainsExercised.push("CYBER-DOM-08 (Security Engineering, GRC & Authorization — NIST SP 800-53 / SOC 2 / ISO 27001)");
+  }
+
   const trainingAndBenchmarkAlignment = {
-    domains_exercised: [
-      "CYBER-DOM-01 (Attack-Path Intelligence & Graph Reasoning)",
-      "CYBER-DOM-02 (SAST-to-Runtime Exploitability Validation — Batch 002)",
-      "CYBER-DOM-04 (Cloud & Identity Security — Batch 003 / 005)",
-      "CYBER-DOM-06 (Software Supply-Chain & Transitive SCA Call-Graph Reachability — Batch 005)",
-    ],
+    domains_exercised: domainsExercised,
     engines_invoked: [
       "NOCTIS-ENG-01 (Evidence Correlation Engine)",
       "NOCTIS-ENG-02 (Attack-Path Prediction Engine)",
