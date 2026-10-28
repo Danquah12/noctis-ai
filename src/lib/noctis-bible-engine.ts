@@ -1225,7 +1225,14 @@ export function buildDynamicBibleQueryResponse(question: string): string {
   const passageMatch = q.match(
     /\b((?:[1-3]\s*)?(?:Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|Samuel|Kings|Chronicles|Ezra|Nehemiah|Esther|Job|Psalms?|Proverbs|Ecclesiastes|Song\s+of\s+(?:Solomon|Songs)|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi|Matthew|Mark|Luke|John|Acts|Romans|Corinthians|Galatians|Ephesians|Philippians|Colossians|Thessalonians|Timothy|Titus|Philemon|Hebrews|James|Peter|Jude|Revelation)(?:\s+\d+(?::\d+(?:[–-]\d+)?)?)?)\b/i
   );
-  const targetPassage = passageMatch ? passageMatch[1].trim() : "Selected Scripture Passage / Theme";
+  const targetPassage = passageMatch
+    ? passageMatch[1]
+        .trim()
+        .replace(/\s+/g, " ")
+        .replace(/\b([a-z])([a-z]*)\b/gi, (m, first: string, rest: string) =>
+          m.toLowerCase() === "of" ? "of" : first.toUpperCase() + rest.toLowerCase()
+        )
+    : "Selected Scripture Passage / Theme";
   const durMatch = q.match(/(\d+)\s*(?:-\s*)?minute/i);
   const isSermonMode = /\b(prepare\s+a\s+.*sermon|sermon\s+on|sermon\s+outline|preach\s+on|sermon\s+manuscript|sermon\s+for)\b/i.test(q);
   const isStudyMode = /\b(bible\s+study|sunday\s+school|lesson\s+plan|classroom|discussion\s+questions.*quiz|teach\s+a\s+class)\b/i.test(q);

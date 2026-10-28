@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ClipboardEvent } from "react";
 import { Link } from "@tanstack/react-router";
-import { Brain, Calendar, ChevronDown, ChevronLeft, Code2, Copy, CornerDownLeft, FileText, GraduationCap, Image, Library, Mail, Menu, Mic, MoreHorizontal, Pencil, Phone, PhoneOff, Plus, RotateCcw, Search, Square, SquarePen, Trash2, Video, Volume2, VolumeX, Wrench, X } from "lucide-react";
+import { Brain, Calendar, ChevronDown, ChevronLeft, Code2, Copy, CornerDownLeft, FileText, GraduationCap, Image, Library, Mail, Menu, Mic, MoreHorizontal, Pencil, Phone, PhoneOff, Plus, Printer, RotateCcw, Search, Square, SquarePen, Trash2, Video, Volume2, VolumeX, Wrench, X } from "lucide-react";
 import { askNoctis, drawVibe, hearVibe, sayVibe, trainVibe } from "@/lib/noctis-api";
 import { bringImagineFile, bringPortrait, readImagine, startImagine } from "@/lib/imagine-api";
 import { KnowledgeMap } from "@/components/learn/KnowledgeMap";
@@ -1641,25 +1641,252 @@ function downloadTableCsv(head: string[], body: string[][]) {
   window.setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 
-function downloadWordReport(question: string, markdown: string) {
-  const cleanMd = markdown.split(/\n\s*Claim standing:/i)[0] || markdown;
-  const htmlBody = cleanMd
+function formatInlinePrintHtml(text: string): string {
+  const held: string[] = [];
+  const escaped = text
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/^### (.+)$/gm, "<h3>$1</h3>")
-    .replace(/^## (.+)$/gm, "<h2>$1</h2>")
+    .replace(/`([^`]+)`/g, (_m, code) => {
+      held.push(`<code>${code}</code>`);
+      return `\u0000${held.length - 1}\u0000`;
+    });
+  const styled = escaped
+    .replace(/\*\*\*(.+?)\*\*\*/g, "<strong><em>$1</em></strong>")
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    .replace(/\n\n/g, "<p></p>");
-  const docHtml = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-  <head><meta charset='utf-8'><title>Noctis Technical Report</title>
-  <style>body{font-family:Calibri,Arial,sans-serif;line-height:1.5;color:#111}h1,h2,h3{color:#0f172a}code,pre{font-family:Consolas,monospace;background:#f1f5f9;padding:4px}</style>
-  </head><body>
-  <h1>Noctis Executive & Technical Report</h1>
-  <p><strong>Request:</strong> ${question.replace(/[<>&]/g, "")}</p>
-  <hr/>
-  <div>${htmlBody}</div>
-  </body></html>`;
+    .replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, "<em>$1</em>");
+  return styled.replace(/\u0000(\d+)\u0000/g, (_m, idx) => held[Number(idx)] ?? "");
+}
+
+function markdownToPrintableHtml(question: string, markdown: string): string {
+  const cleanMd = (markdown.split(/\n\s*Claim standing:/i)[0] || markdown)
+    .replace(/```noctis-dashboard[\s\S]*?```/gi, "")
+    .trim();
+
+  const normalized = cleanMd
+    .replace(/(^|\n)\s*-{3,}\s*(\n|$)/g, "\n\n---\n\n")
+    .replace(/\n(#{1,4}\s+)/g, "\n\n$1")
+    .replace(/(^|\n)(#{1,4}\s+[^\n]+)\n(?!\n)/g, "$1$2\n\n")
+    .replace(/(^|\n)(?!\|)([^\n]+)\n(\|[^\n]+\|)/g, "$1$2\n\n$3")
+    .replace(/(\|[^\n]+\|)\n(?!\|)([^\n]+)/g, "$1\n\n$2");
+
+  const blocks = normalized
+    .split(/\n{2,}/)
+    .map((b) => b.trim())
+    .filter(Boolean);
+
+  const htmlBlocks = blocks.map((block) => {
+    const rawLines = block.split("\n").filter((l) => l.trim().length > 0);
+    const lines = rawLines.map((l) => l.trim());
+    if (lines.length === 1 && /^-{3,}$/.test(lines[0])) {
+      return "<hr />";
+    }
+    if (lines.length === 1 && /^#{1,4}\s+/.test(lines[0])) {
+      const level = Math.min(4, (lines[0].match(/^(#{1,4})\s+/)?.[1] || "#").length);
+      const tag = level === 1 ? "h1" : level === 2 ? "h2" : "h3";
+      return `<${tag}>${formatInlinePrintHtml(lines[0].replace(/^#{1,4}\s+/, ""))}</${tag}>`;
+    }
+    if (lines.length >= 2 && lines.every((l) => l.startsWith("|"))) {
+      const rows = lines
+        .filter((l) => !isTableRule(l))
+        .map(tableCells)
+        .filter((r) => r.length > 1);
+      const [head, ...body] = rows;
+      if (head) {
+        const ths = head.map((c) => `<th>${formatInlinePrintHtml(c)}</th>`).join("");
+        const trs = body
+          .map((r) => `<tr>${r.map((c) => `<td>${formatInlinePrintHtml(c)}</td>`).join("")}</tr>`)
+          .join("");
+        return `<table><thead><tr>${ths}</tr></thead><tbody>${trs}</tbody></table>`;
+      }
+    }
+    if (lines.length > 0 && lines.every((l) => l.startsWith(">"))) {
+      const inner = lines.map((l) => `<p>${formatInlinePrintHtml(l.replace(/^>\s?/, ""))}</p>`).join("");
+      return `<blockquote>${inner}</blockquote>`;
+    }
+    const hasListOrQuote = rawLines.some((l) => /^\s*(?:[-*]|\d+[.)]|>)\s+/.test(l));
+    if (hasListOrQuote) {
+      const items = rawLines
+        .map((rawLine) => {
+          const indent = (rawLine.match(/^(\s*)/)?.[1] || "").length;
+          const t = rawLine.trim();
+          if (t.startsWith(">")) {
+            return `<blockquote><p>${formatInlinePrintHtml(t.replace(/^>\s?/, ""))}</p></blockquote>`;
+          }
+          const numMatch = t.match(/^(\d+)[.)]\s+([\s\S]+)$/);
+          if (numMatch) {
+            const pad = indent >= 2 ? ' style="margin-left:20px"' : "";
+            return `<div class="list-row"${pad}><span class="list-num">${numMatch[1]}.</span><span>${formatInlinePrintHtml(numMatch[2])}</span></div>`;
+          }
+          const bulMatch = t.match(/^[-*]\s+([\s\S]+)$/);
+          if (bulMatch) {
+            const pad = indent >= 2 ? ' style="margin-left:20px"' : "";
+            const dot = indent >= 2 ? "◦" : "•";
+            return `<div class="list-row"${pad}><span class="list-dot">${dot}</span><span>${formatInlinePrintHtml(bulMatch[1])}</span></div>`;
+          }
+          return `<p>${formatInlinePrintHtml(t)}</p>`;
+        })
+        .join("");
+      return `<div class="list-group">${items}</div>`;
+    }
+    return `<p>${formatInlinePrintHtml(block)}</p>`;
+  });
+
+  const safeQuestion = question.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const dateStr = new Date().toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+
+  return `<!DOCTYPE html>
+<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head>
+  <meta charset="utf-8" />
+  <title>Noctis Intelligence Report</title>
+  <style>
+    @page { margin: 18mm 16mm; }
+    body {
+      font-family: Georgia, "Times New Roman", Calibri, serif;
+      font-size: 11.5pt;
+      line-height: 1.58;
+      color: #111827;
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 16px 20px;
+    }
+    .doc-banner {
+      border-bottom: 2px solid #b4832c;
+      padding-bottom: 10px;
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      font-family: system-ui, -apple-system, Segoe UI, Arial, sans-serif;
+    }
+    .doc-brand {
+      font-size: 10pt;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #8a6116;
+    }
+    .doc-meta {
+      font-size: 9.5pt;
+      color: #4b5563;
+    }
+    .doc-request {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 8px 12px;
+      margin-bottom: 18px;
+      font-family: system-ui, -apple-system, Segoe UI, Arial, sans-serif;
+      font-size: 10pt;
+      color: #334155;
+    }
+    h1 {
+      font-family: system-ui, -apple-system, Segoe UI, Arial, sans-serif;
+      font-size: 16pt;
+      font-weight: 700;
+      color: #0f172a;
+      background: #fef9ee;
+      border-left: 4px solid #b4832c;
+      padding: 8px 12px;
+      margin: 14px 0 12px;
+    }
+    h2 {
+      font-family: system-ui, -apple-system, Segoe UI, Arial, sans-serif;
+      font-size: 13pt;
+      font-weight: 700;
+      color: #7c5813;
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 4px;
+      margin: 18px 0 8px;
+      page-break-after: avoid;
+    }
+    h3 {
+      font-family: system-ui, -apple-system, Segoe UI, Arial, sans-serif;
+      font-size: 11.5pt;
+      font-weight: 700;
+      color: #1e293b;
+      margin: 14px 0 6px;
+      page-break-after: avoid;
+    }
+    p { margin: 6px 0; }
+    hr {
+      border: 0;
+      border-top: 1px solid #d1d5db;
+      margin: 16px 0;
+    }
+    blockquote {
+      margin: 10px 0;
+      padding: 10px 14px;
+      border-left: 4px solid #b4832c;
+      background: #fffbeb;
+      color: #1f2937;
+      border-radius: 0 8px 8px 0;
+      page-break-inside: avoid;
+    }
+    blockquote p { margin: 4px 0; }
+    code {
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 10pt;
+      background: #f3f4f6;
+      border: 1px solid #e5e7eb;
+      border-radius: 4px;
+      padding: 1px 5px;
+      color: #7c2d12;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      font-size: 10pt;
+      page-break-inside: avoid;
+    }
+    th {
+      background: #fef3c7;
+      color: #78350f;
+      font-family: system-ui, -apple-system, Segoe UI, Arial, sans-serif;
+      font-weight: 700;
+      text-align: left;
+      padding: 7px 9px;
+      border: 1px solid #d1d5db;
+    }
+    td {
+      padding: 7px 9px;
+      border: 1px solid #e5e7eb;
+      vertical-align: top;
+    }
+    .list-group { margin: 8px 0; }
+    .list-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin: 4px 0;
+    }
+    .list-num, .list-dot {
+      font-weight: 700;
+      color: #8a6116;
+      min-width: 16px;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="doc-banner">
+    <span class="doc-brand">Noctis Intelligence Platform · dstrike.app/noctis</span>
+    <span class="doc-meta">${dateStr}</span>
+  </div>
+  <div class="doc-request"><strong>Prompt / Topic:</strong> ${safeQuestion}</div>
+  <div>${htmlBlocks.join("\n")}</div>
+</body>
+</html>`;
+}
+
+function downloadWordReport(question: string, markdown: string) {
+  const docHtml = markdownToPrintableHtml(question, markdown);
   const blob = new Blob([docHtml], { type: "application/msword;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -1668,6 +1895,52 @@ function downloadWordReport(question: string, markdown: string) {
   link.click();
   window.setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
+
+function printAnswerReport(question: string, markdown: string) {
+  if (typeof window === "undefined" || typeof document === "undefined") return;
+  const printHtml = markdownToPrintableHtml(question, markdown);
+  const iframe = document.createElement("iframe");
+  iframe.style.position = "fixed";
+  iframe.style.right = "0";
+  iframe.style.bottom = "0";
+  iframe.style.width = "0";
+  iframe.style.height = "0";
+  iframe.style.border = "0";
+  iframe.setAttribute("aria-hidden", "true");
+  document.body.appendChild(iframe);
+
+  const cleanup = () => {
+    window.setTimeout(() => {
+      try {
+        iframe.remove();
+      } catch {
+        /* ignore cleanup errors */
+      }
+    }, 1500);
+  };
+
+  const doc = iframe.contentWindow?.document;
+  if (!doc || !iframe.contentWindow) {
+    cleanup();
+    window.print();
+    return;
+  }
+  doc.open();
+  doc.write(printHtml);
+  doc.close();
+
+  window.setTimeout(() => {
+    try {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+    } catch {
+      window.print();
+    } finally {
+      cleanup();
+    }
+  }, 180);
+}
+
 
 function CodeBlock({ body, lang = "" }: { body: string; lang?: string }) {
   const [done, setDone] = useState(false);
@@ -5253,6 +5526,14 @@ export function NoctisDesk() {
                           >
                             <FileText className="size-3.5" />
                             Report (.doc)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => printAnswerReport(asked || "Noctis Analysis", turn.content)}
+                            className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs text-zinc-400 hover:bg-white/10 hover:text-zinc-100"
+                          >
+                            <Printer className="size-3.5" />
+                            Print
                           </button>
                           {last ? (
                             <button type="button" disabled={busy} onClick={again} className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs text-zinc-400 hover:bg-white/10 hover:text-zinc-100 disabled:opacity-40">
