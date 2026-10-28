@@ -1,4 +1,4 @@
-﻿import test from "node:test";
+import test from "node:test";
 import assert from "node:assert/strict";
 import { handleNaturalCareerQuery } from "./noctis-career-query.ts";
 
@@ -21,6 +21,9 @@ const cases: Array<[string, string]> = [
   ["What careers are good for someone who likes working with animals?", "Careers to explore"],
   ["How do I become a cashier in Kenya?", "How to become"],
   ["Jobs for pilots abroad", "Working in a region"],
+  ["Will my nursing degree be recognised in Canada?", "Moving your credentials"],
+  ["Are there scholarships for becoming a dentist?", "Funding, scholarships & apprenticeships"],
+  ["Paid apprenticeships for plumber", "Funding, scholarships & apprenticeships"],
 ];
 
 test("career scenario questions route to the right answer", () => {

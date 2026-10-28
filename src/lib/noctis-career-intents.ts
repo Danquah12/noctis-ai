@@ -9,14 +9,14 @@ import { CAREER_REGIONS, type CareerRegion } from "./noctis-career-regions-data.
 import { ENCLAVE_TEMPLATES, candidatePhrases, getPathway, norm, type PathwayRecord } from "./noctis-career-pathways.ts";
 
 const CAREER_CUE =
-  /\b(career|careers|job|jobs|profession|salary|salaries|wage|wages|pay|paid|earn|earning|earnings|income|become|becoming|work as|working as|training|train|licen[cs]e|licen[cs]ing|certif\w*|degree|diploma|qualif\w*|resume|cv|cover letter|interview|apprentice\w*|hire|hiring|requirements?|day in the life|switch|transition|compare|difference between|good career|worth it|prospects?|demand|outlook|skills?|promot\w*|make|makes|abroad|overseas|does an? [a-z ]{2,30} do|what does)\b/;
+  /\b(career|careers|job|jobs|profession|salary|salaries|wage|wages|pay|paid|earn|earning|earnings|income|become|becoming|work as|working as|training|train|licen[cs]e|licen[cs]ing|certif\w*|degree|diploma|qualif\w*|resume|cv|cover letter|interview|apprentice\w*|hire|hiring|requirements?|day in the life|switch|transition|compare|difference between|good career|worth it|prospects?|demand|outlook|scholarships?|grants?|funding|recogni\w*|equivalen\w*|transfer\w*|foreign|skills?|promot\w*|make|makes|abroad|overseas|does an? [a-z ]{2,30} do|what does)\b/;
 const PLATFORM = /\b(connectln|connectin|platform|post a job|resume prep|verification queue|noctis api|this app|the app)\b/;
 
 // ───────── profession detection inside free text ─────────
 export interface TextHit { profession_id: string; title: string; score: number; pos: number }
 
 export function findProfessionsInText(text: string, max = 2): TextHit[] {
-  const t = ` ${norm(text)} `;
+  const t = ` ${norm(text)} `.replace(/ nursing /g, " nurse ").replace(/ plumbing /g, " plumber ").replace(/ teaching /g, " teacher ").replace(/ carpentry /g, " carpenter ").replace(/ nursing\b/g, " nurse");
   const hits: TextHit[] = [];
   for (const p of CAREER_PROFESSIONS) {
     let best = 0;
@@ -69,7 +69,7 @@ const REGION_ALIASES: Record<string, string[]> = {
 };
 
 export function detectRegion(text: string): CareerRegion | null {
-  const t = ` ${norm(text)} `;
+  const t = ` ${norm(text)} `.replace(/ nursing /g, " nurse ").replace(/ plumbing /g, " plumber ").replace(/ teaching /g, " teacher ").replace(/ carpentry /g, " carpenter ").replace(/ nursing\b/g, " nurse");
   let best: { r: CareerRegion; len: number } | null = null;
   for (const r of CAREER_REGIONS) {
     const names = [norm(r.name), ...(REGION_ALIASES[r.code] || [])];
@@ -327,6 +327,42 @@ function renderTrain(r: PathwayRecord, region: CareerRegion | null): string {
   ].join("\n") + foot(r, region, FOLLOW(r));
 }
 
+function renderTransfer(r: PathwayRecord, region: CareerRegion | null): string {
+  return [
+    head("Moving your credentials", r),
+    "Noctis does not hold a verified database of which countries recognise which qualifications, so it won't say whether yours is accepted. Recognition is decided by each country's regulator and often by each state, province or employer.",
+    "",
+    "## 🌐 How to find out and move forward",
+    "- **Find the regulator** for this field in the destination (licensing board, professional body or labour ministry) and ask for their *foreign qualification* or *credential assessment* process.",
+    "- **Get your documents ready:** certificates, transcripts, syllabus or hours of training, work references and proof of good standing, with certified translations if required.",
+    "- **Expect one or more of:** a credential equivalence assessment, an exam or practical test, a bridging or top-up course, supervised practice, or a language test.",
+    "- **Use official sources:** the destination government's immigration and skills-recognition pages; avoid anyone who guarantees recognition or a visa for a fee.",
+    "- **Regulated vs unregulated:** licensed fields (health, law, engineering, many trades) need formal recognition; others rely on employer assessment of skills and experience.",
+    "",
+    "## 📌 Credentials commonly asked about in this field",
+    ...r.credentials.map((c) => `- ${c}`),
+  ].join("\n") + foot(r, region, FOLLOW(r));
+}
+
+function renderFunding(r: PathwayRecord, region: CareerRegion | null): string {
+  return [
+    head("Funding, scholarships & apprenticeships", r),
+    "Noctis does not hold a verified, current list of scholarships or grants, so none are named here — availability and eligibility change often and differ by country.",
+    "",
+    "## 🎯 Where funding usually comes from",
+    "- **Paid apprenticeships and trainee roles:** you earn while you train; ask employers, unions and trade associations directly.",
+    "- **Government workforce or labour-ministry programmes:** many countries fund skills training for job-seekers, young people and career-changers.",
+    "- **Scholarships and grants:** from training providers, professional bodies, foundations and employers.",
+    "- **Student loans, payment plans and employer tuition assistance** where available.",
+    "- **NGO and community programmes** for under-served groups, women, youth and refugees.",
+    "",
+    "## 🛡️ Stay safe",
+    "- Never pay to \"guarantee\" a scholarship or placement. Check that a programme is registered or recognised before paying.",
+    "- Confirm what is covered (tuition, exam fees, tools) and what happens if you do not finish.",
+    "",
+    `**Route here:** ${r.route_type}  ·  **Typical timeline:** ${r.timeline}`,
+  ].join("\n") + foot(r, region, FOLLOW(r));
+}
 function renderRegionJobs(r: PathwayRecord, region: CareerRegion | null): string {
   return [head("Working in a region", r), `> ${r.summary}`, "", region ? "" : "Open **Jobs → Region** and choose any of the 190+ regions to see roles and hubs."].join("\n") + foot(r, region, FOLLOW(r));
 }
@@ -428,13 +464,15 @@ function suggestCareers(text: string, region: CareerRegion | null): string | nul
 }
 
 // ───────── router ─────────
-type Intent = "requirements" | "timeline" | "cost" | "salary" | "noexp" | "skills" | "day" | "progress" | "related" | "resume" | "interview" | "outlook" | "train" | "regionjobs";
+type Intent = "requirements" | "timeline" | "cost" | "salary" | "noexp" | "skills" | "day" | "progress" | "related" | "resume" | "interview" | "outlook" | "train" | "regionjobs" | "transfer" | "funding";
 const INTENTS: Array<[Intent, RegExp]> = [
   ["interview", /\binterview/],
   ["resume", /\b(resume|cv|cover letter)\b/],
+  ["funding", /\b(scholarships?|grants?|funding|funded|financial aid|bursar\w*|paid apprenticeships?|sponsor\w*|student loans?|free (training|courses?))\b/],
   ["salary", /\b(salary|salaries|wage|wages|pay|paid|earn|earning|earnings|income|how much (does|do|can|will|would)\b.*\b(make|earn)|make per)\b/],
   ["cost", /\b(cost|costs|afford|expensive|tuition|fees?|price|how much (does|do|is|will)\b.*\b(train|course|school|licen[cs]e|certif))/],
   ["timeline", /\b(how long|how many (years|months|weeks)|duration|fastest|quickest|shortest way)\b/],
+  ["transfer", /\b(recogni[sz]e\w*|recognition|equivalen\w*|transfer\w*|foreign (credentials?|qualifications?|degrees?|licen[cs]es?)|(overseas|international|foreign|abroad) (credentials?|qualifications?|degrees?|licen[cs]es?|trained|educated)|work (abroad|overseas)|licen[cs]e (in|from) another (country|state))\b/],
   ["noexp", /\b(no experience|without (a |any )?(degree|experience|diploma|college|university|schooling)|from scratch|beginner|late in life|too old|at age \d{2}|over \d{2}|free (training|courses)|self taught|no degree|zero experience)\b/],
   ["requirements", /\b(requirements?|qualif\w*|licen[cs]e|licen[cs]ing|certif\w*|degree|diploma|credentials?|prerequisites?|eligib\w*|do i need|what do i need|need to (be|have|get))\b/],
   ["progress", /\b(promotion|advance|advancement|career growth|progress|next level|career ladder|move up|grow in|promot\w*|get promoted)\b/],
@@ -481,6 +519,8 @@ export function handleCareerScenario(question: string): string | null {
         case "day": return renderDay(r, region);
         case "train": return renderTrain(r, region);
         case "outlook": return renderOutlook(r, region);
+        case "transfer": return renderTransfer(r, region);
+        case "funding": return renderFunding(r, region);
         case "regionjobs": return renderRegionJobs(r, region);
       }
     }
