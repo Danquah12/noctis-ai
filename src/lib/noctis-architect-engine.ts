@@ -28,6 +28,7 @@ import {
   NOCTIS_40_ARCHITECT_BENCHMARKS,
   buildArchitect40BenchmarkSection,
   detectRequestedBenchmarkTests,
+  isClinicalOrMedicalPrompt,
   matchesAnyArchitect40BenchmarkPrompt,
 } from "./noctis-architect-benchmarks.ts";
 import {
@@ -39,6 +40,7 @@ export {
   NOCTIS_40_ARCHITECT_BENCHMARKS,
   buildArchitect40BenchmarkSection,
   detectRequestedBenchmarkTests,
+  isClinicalOrMedicalPrompt,
   matchesAnyArchitect40BenchmarkPrompt,
   buildRealtorShowcaseAndWhiteFloorPlanSvg,
   buildResidentialDesignFeasibilityReportSection,
@@ -2506,6 +2508,12 @@ export function buildArchitecturalIntelligenceReport(question = ""): string {
 
 export function architectIntelligenceGadget(question: string): string | null {
   const q = question.toLowerCase();
+  if (
+    isClinicalOrMedicalPrompt(question) &&
+    !/\b(noctis\s+architectural\s+validation\s+challenge|noctis\s+architectural\s+intelligence\s+engine|arch-at-1[1-5])\b/i.test(q)
+  ) {
+    return null;
+  }
   const asksArchitectTraining =
     matchesAnyArchitect40BenchmarkPrompt(question) ||
     /\b(design\s+houses?\s+like\s+(?:a\s+|an\s+)?(?:professional\s+)?architect|architectural\s+intelligence\s+(?:system|engine)|noctis\s+architect|noctis-arch-001|noctis\s+architectural\s+validation\s+challenge|architectural\s+validation\s+challenge|mandatory\s+geometry,\s*schedule\s+and\s+evidence\s+reconciliation|arch-at-1[1-5]|floor-area\s+arithmetic\s+is\s+inconsistent|residential\s+design\s+feasibility\s+report|dstrike\.architect|impossible\s+or\s+conflicting\s+requirements|train\s+(?:dstrike|noctis|vibe)[\s\S]{0,40}\barchitect|become\s+an\s+architect|client\s+brief\s+agent|architectural\s+orchestrator|floor\s+plan\s+agent|3d\s*\/\s*bim\s+agent|code\s+compliance\s+agent|design\s+qa\s*(?:&|and)\s*cost\s+agent|ifcopenshell|buildingsmart\s+ids|information\s+delivery\s+specification|shared\s+building\s+data\s+model|(?:12\s*[x×]\s*12|enlarge\s+(?:a\s+|the\s+)?bedroom|resize\s+(?:a\s+|the\s+)?bedroom)[\s\S]{0,60}(?:\d+\s*[x×]\s*\d+|circulation|footprint|joist)|configure\s+noctis\s+architect|developer'?s\s+acceptance\s+tests|measurable\s+acceptance\s+test\s+suite|verified\s+design\s+loop|parametric\s+house\s+generator|design\s+verification\s+engine|architectural\s+cost\s+and\s+optimization\s+engine|architectural\s+reasoning\s+and\s+design\s+memory|validate\s+the\s+selected\s+floor\s+plan|workflow\s+noctis\s+should\s+follow\s+for\s+every\s+house|ghana\s+building\s+code\s+gs\s*1207|uganda\s+national\s+building\s+code|sheet\s+a-101|4-sheet\s+cad)\b/i.test(

@@ -737,15 +737,29 @@ export const NOCTIS_40_ARCHITECT_BENCHMARKS: ArchitectBenchmarkTestEntry[] = [
   },
 ];
 
+export function isClinicalOrMedicalPrompt(question: string): boolean {
+  return /\b(noctis\s+health|live\s+clinical\s+test|clinical\s+test|noctis[-_\s]*health|nh[-_\s]*(?:test|clin|live)|patient\s+presentation|current\s+observations|available\s+medical\s+history|blood\s+pressure|heart\s+rate|respiratory\s+rate|oxygen\s+saturation|differential_diagnos|emergency_escalation|medication_safety|ischemic\s+stroke|hemorrhagic\s+stroke|stroke-team|acute\s+coronary|myocardial\s+infarction|hyperkalemia|creatinine|troponin|outpatient\s+clinic|anticoagulant|intracranial\s+hemorrhage)\b/i.test(
+    question,
+  );
+}
+
 export function detectRequestedBenchmarkTests(question: string): number[] {
+  if (isClinicalOrMedicalPrompt(question)) return [];
   const q = question.toLowerCase();
   const matched = new Set<number>();
 
-  // Explicit "Test N" or "ARCH-BENCH-NN" mentions
-  const explicitMatches = q.matchAll(/\b(?:test|arch-bench-)\s*0*(\d{1,2})\b/gi);
+  // Explicit "ARCH-BENCH-NN" mentions always match; generic "Test N" only matches when architectural context is present
+  const hasArchContext =
+    /\b(arch-bench-|architect(?:ural|ure)?|floor[-\s]*plan|bim\b|ifc\b|building\s+code|house\s+design|residential\s+design|stair(?:case)?|roof\s+drainage|stormwater|boq\b|setback|lot\s+coverage|bedroom|bathroom|storey|story)\b/i.test(
+      q,
+    );
+  const explicitMatches = q.matchAll(/\b(arch-bench-|test\s*)0*(\d{1,2})\b/gi);
   for (const m of explicitMatches) {
-    const n = Number(m[1]);
-    if (n >= 1 && n <= 40) matched.add(n);
+    const prefix = (m[1] || "").toLowerCase();
+    const n = Number(m[2]);
+    if (n >= 1 && n <= 40 && (prefix.startsWith("arch-bench") || hasArchContext)) {
+      matched.add(n);
+    }
   }
 
   // Signature phrase matching for each of the 40 copy-paste test prompts
@@ -1031,6 +1045,7 @@ export function buildArchitect40BenchmarkSection(question: string): string {
 }
 
 export function matchesAnyArchitect40BenchmarkPrompt(question: string): boolean {
+  if (isClinicalOrMedicalPrompt(question)) return false;
   if (detectRequestedBenchmarkTests(question).length > 0) return true;
   const q = question.toLowerCase();
   return /\b(five\s+difficult\s+tests\s+that\s+separate\s+a\s+real\s+design\s+engine|advanced\s+architectural\s+test\s+suite\s+ii|three\s+system-level\s+stress\s+tests|architectural\s+evaluation\s+engine|noctis\s+must\s+not\s+grade\s+itself|how\s+to\s+score\s+noctis|requirement\s+satisfaction\s+rate[\s\S]{0,120}geometric\s+defect\s+detection\s+rate)\b/i.test(
