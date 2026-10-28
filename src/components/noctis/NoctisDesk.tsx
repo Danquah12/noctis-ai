@@ -2298,13 +2298,420 @@ function renderBlocks(source: string) {
   });
 }
 
+function tryParseClinicalHandoffJson(raw: string): Record<string, unknown> | null {
+  const trimmed = raw.trim();
+  if (!trimmed.startsWith("{") || !trimmed.endsWith("}")) return null;
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+    const rec = parsed as Record<string, unknown>;
+    if (
+      "emergency_escalation" in rec ||
+      "safety_gateway_decision" in rec ||
+      "differential_diagnosis" in rec ||
+      "differential_diagnoses" in rec ||
+      "observed_findings" in rec ||
+      "verified_facts" in rec
+    ) {
+      return rec;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function ClinicalHandoffView({ data, rawJson }: { data: Record<string, unknown>; rawJson: string }) {
+  const [jsonCopied, setJsonCopied] = useState(false);
+
+  const escObj =
+    data.emergency_escalation && typeof data.emergency_escalation === "object" && !Array.isArray(data.emergency_escalation)
+      ? (data.emergency_escalation as Record<string, unknown>)
+      : null;
+  const gatewayStr = typeof data.safety_gateway_decision === "string" ? data.safety_gateway_decision : "";
+  const testId = typeof data.test_id === "string" && data.test_id !== "not_provided" ? data.test_id : "";
+
+  const headlineAction =
+    (escObj && typeof escObj.action === "string" && escObj.action) ||
+    (escObj && typeof escObj.instruction === "string" && escObj.instruction) ||
+    gatewayStr ||
+    "IMMEDIATE EMERGENCY ESCALATION — Call 911 / Activate Emergency Response";
+
+  const disposition = escObj && typeof escObj.immediate_disposition === "string" ? escObj.immediate_disposition : "";
+  const suspectedCondition = escObj && typeof escObj.suspected_condition === "string" ? escObj.suspected_condition : "";
+  const whyTimeSensitive = escObj && typeof escObj.why_time_sensitive === "string" ? escObj.why_time_sensitive : "";
+  const diagnosticSufficiency = escObj && typeof escObj.diagnostic_sufficiency === "string" ? escObj.diagnostic_sufficiency : "";
+  const bpPrecaution = escObj && typeof escObj.blood_pressure_precaution === "string" ? escObj.blood_pressure_precaution : "";
+  const onsetPolicy = escObj && typeof escObj.onset_time_policy === "string" ? escObj.onset_time_policy : "";
+  const spo2TempNote = escObj && typeof escObj.normal_spo2_and_temperature_note === "string" ? escObj.normal_spo2_and_temperature_note : "";
+  const warningBanner = escObj && typeof escObj.warning === "string" ? escObj.warning : "";
+
+  const observedList: string[] = Array.isArray(data.observed_findings)
+    ? data.observed_findings.map(String)
+    : Array.isArray(data.verified_facts)
+      ? data.verified_facts.map(String)
+      : [];
+  const symptomsList: string[] = Array.isArray(data.reported_symptoms) ? data.reported_symptoms.map(String) : [];
+  const historyList: string[] = Array.isArray(data.reported_history)
+    ? data.reported_history.map(String)
+    : Array.isArray(data.relevant_history)
+      ? data.relevant_history.map(String)
+      : [];
+
+  const immediateRisks: { risk: string; basis: string; status?: string }[] = Array.isArray(data.immediate_risks)
+    ? (data.immediate_risks as Record<string, unknown>[]).map((r) => ({
+        risk: String(r.risk ?? ""),
+        basis: String(r.basis ?? ""),
+        status: typeof r.status === "string" ? r.status : undefined,
+      }))
+    : [];
+
+  const diffRaw = Array.isArray(data.differential_diagnoses)
+    ? data.differential_diagnoses
+    : Array.isArray(data.differential_diagnosis)
+      ? data.differential_diagnosis
+      : [];
+  const differentials: { condition: string; status: string; basis: string }[] = diffRaw.map((d: unknown) => {
+    if (d && typeof d === "object") {
+      const rec = d as Record<string, unknown>;
+      return {
+        condition: String(rec.condition ?? ""),
+        status: String(rec.status ?? "unconfirmed"),
+        basis: String(rec.basis ?? ""),
+      };
+    }
+    return { condition: String(d), status: "unconfirmed", basis: "" };
+  });
+
+  const priorities: string[] = Array.isArray(data.immediate_priorities)
+    ? data.immediate_priorities.map(String)
+    : Array.isArray(data.urgent_assessments)
+      ? data.urgent_assessments.map(String)
+      : [];
+
+  const medSafetyObj =
+    data.medication_safety && typeof data.medication_safety === "object" && !Array.isArray(data.medication_safety)
+      ? (data.medication_safety as Record<string, unknown>)
+      : data.medication_safety_assessment &&
+          typeof data.medication_safety_assessment === "object" &&
+          !Array.isArray(data.medication_safety_assessment)
+        ? (data.medication_safety_assessment as Record<string, unknown>)
+        : null;
+
+  const missingRaw = Array.isArray(data.missing_information) ? data.missing_information : [];
+  const uncertainties: string[] = Array.isArray(data.uncertainties) ? data.uncertainties.map(String) : [];
+
+  const advRaw = Array.isArray(data.adversarial_instruction_results)
+    ? data.adversarial_instruction_results
+    : Array.isArray(data.adversarial_results)
+      ? data.adversarial_results
+      : Array.isArray(data.adversarial_testing_responses)
+        ? data.adversarial_testing_responses
+        : [];
+  const adversarials = advRaw.map((a: unknown, idx: number) => {
+    const rec = (a && typeof a === "object" ? a : {}) as Record<string, unknown>;
+    return {
+      id: String(rec.id ?? `ADV-${idx + 1}`),
+      instruction: String(rec.instruction ?? ""),
+      decision: String(rec.decision ?? rec.status ?? "REJECTED"),
+      rationale: String(rec.rationale ?? rec.safety_reasoning ?? ""),
+    };
+  });
+
+  const releaseFailures = Array.isArray(data.release_blocking_failures) ? data.release_blocking_failures : [];
+
+  return (
+    <div className="space-y-4 text-sm leading-relaxed text-zinc-100">
+      {/* 1. Red Emergency Escalation Header Banner */}
+      <div className="rounded-2xl border-2 border-red-500/80 bg-red-950/60 p-4 shadow-lg">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="inline-flex items-center gap-2 rounded-full bg-red-600 px-3 py-1 text-xs font-bold uppercase tracking-wider text-white">
+            🚨 Immediate Emergency Escalation (Call 911)
+          </span>
+          {testId ? (
+            <span className="rounded-full border border-red-400/40 bg-black/40 px-2.5 py-0.5 font-mono text-xs text-red-200">
+              {testId}
+            </span>
+          ) : null}
+        </div>
+        <p className="mt-3 text-base font-bold text-white">{headlineAction}</p>
+        {disposition ? <p className="mt-1.5 text-sm text-red-100">{disposition}</p> : null}
+        {warningBanner && warningBanner !== headlineAction ? (
+          <p className="mt-2 rounded-xl bg-black/40 px-3 py-2 text-xs font-medium text-amber-200">{warningBanner}</p>
+        ) : null}
+        {(suspectedCondition || whyTimeSensitive || diagnosticSufficiency || bpPrecaution || onsetPolicy || spo2TempNote) ? (
+          <div className="mt-3 grid gap-2 border-t border-red-500/30 pt-3 text-xs text-zinc-200 sm:grid-cols-2">
+            {suspectedCondition ? (
+              <div className="rounded-xl bg-black/30 p-2.5">
+                <p className="font-semibold uppercase tracking-wider text-red-300">Suspected Condition</p>
+                <p className="mt-1">{suspectedCondition}</p>
+              </div>
+            ) : null}
+            {whyTimeSensitive ? (
+              <div className="rounded-xl bg-black/30 p-2.5">
+                <p className="font-semibold uppercase tracking-wider text-red-300">Why Time-Critical</p>
+                <p className="mt-1">{whyTimeSensitive}</p>
+              </div>
+            ) : null}
+            {diagnosticSufficiency ? (
+              <div className="rounded-xl bg-black/30 p-2.5">
+                <p className="font-semibold uppercase tracking-wider text-amber-300">Diagnostic Sufficiency</p>
+                <p className="mt-1">{diagnosticSufficiency}</p>
+              </div>
+            ) : null}
+            {bpPrecaution ? (
+              <div className="rounded-xl bg-black/30 p-2.5">
+                <p className="font-semibold uppercase tracking-wider text-amber-300">Blood Pressure Precaution</p>
+                <p className="mt-1">{bpPrecaution}</p>
+              </div>
+            ) : null}
+            {onsetPolicy ? (
+              <div className="rounded-xl bg-black/30 p-2.5">
+                <p className="font-semibold uppercase tracking-wider text-emerald-300">Onset / Last-Known-Well Policy</p>
+                <p className="mt-1">{onsetPolicy}</p>
+              </div>
+            ) : null}
+            {spo2TempNote ? (
+              <div className="rounded-xl bg-black/30 p-2.5">
+                <p className="font-semibold uppercase tracking-wider text-emerald-300">Normal Vitals Note</p>
+                <p className="mt-1">{spo2TempNote}</p>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+
+      {/* 2. Observed Findings & Reported Medical History */}
+      {(observedList.length > 0 || historyList.length > 0 || symptomsList.length > 0) ? (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="rounded-2xl border border-white/10 bg-black/30 p-3.5">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-[#e4b86a]">
+              Observed Findings & Extracted Facts
+            </h4>
+            <ul className="mt-2 list-disc space-y-1 pl-4 text-xs text-zinc-200">
+              {observedList.map((item, i) => (
+                <li key={i}>{item}</li>
+              ))}
+              {!observedList.length &&
+                symptomsList.map((s, i) => <li key={i}>Reported symptom: {s}</li>)}
+            </ul>
+          </div>
+          {historyList.length > 0 ? (
+            <div className="rounded-2xl border border-white/10 bg-black/30 p-3.5">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[#e4b86a]">
+                Reported History & Baseline Status
+              </h4>
+              <ul className="mt-2 list-disc space-y-1 pl-4 text-xs text-zinc-200">
+                {historyList.map((item, i) => (
+                  <li key={i}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {/* 3. Immediate Clinical Risks */}
+      {immediateRisks.length > 0 ? (
+        <div className="rounded-2xl border border-amber-500/40 bg-amber-950/25 p-3.5">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-amber-300">
+            Immediate Clinical Risks (Unconfirmed Urgent Concerns)
+          </h4>
+          <div className="mt-2 space-y-2">
+            {immediateRisks.map((r, i) => (
+              <div key={i} className="rounded-xl bg-black/30 p-2.5 text-xs">
+                <p className="font-semibold text-amber-100">{r.risk}</p>
+                {r.basis && r.basis !== r.risk ? <p className="mt-1 text-zinc-300">{r.basis}</p> : null}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {/* 4. Differential Diagnosis */}
+      {differentials.length > 0 ? (
+        <div className="rounded-2xl border border-white/10 bg-black/30 p-3.5">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-[#e4b86a]">
+            Differential Diagnosis (Possibilities to Evaluate — None Confirmed)
+          </h4>
+          <div className="mt-2.5 space-y-2">
+            {differentials.map((d, i) => (
+              <div key={i} className="rounded-xl border border-white/10 bg-white/[0.03] p-2.5 text-xs">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-semibold text-white">{d.condition}</span>
+                  <span className="rounded-full bg-[#e4b86a]/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#e4b86a]">
+                    {d.status.replace(/_/g, " ")}
+                  </span>
+                </div>
+                {d.basis ? <p className="mt-1 text-zinc-300">{d.basis}</p> : null}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {/* 5. Immediate Priorities */}
+      {priorities.length > 0 ? (
+        <div className="rounded-2xl border border-emerald-500/30 bg-emerald-950/20 p-3.5">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-300">
+            Immediate Clinical Priorities (Parallel With EMS Transfer)
+          </h4>
+          <ol className="mt-2 list-decimal space-y-1.5 pl-5 text-xs text-zinc-200">
+            {priorities.map((p, i) => (
+              <li key={i}>{p}</li>
+            ))}
+          </ol>
+        </div>
+      ) : null}
+
+      {/* 6. Medication Safety */}
+      {medSafetyObj ? (
+        <div className="rounded-2xl border border-amber-500/40 bg-black/30 p-3.5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-amber-300">
+              Medication Safety & Contraindication Guardrails
+            </h4>
+            <span className="rounded-full bg-red-500/20 px-2.5 py-0.5 text-[10px] font-bold uppercase text-red-300">
+              Autonomous Prescribing: {String(medSafetyObj.autonomous_prescribing ?? "BLOCKED").toUpperCase()}
+            </span>
+          </div>
+          <div className="mt-2 space-y-2 text-xs text-zinc-200">
+            {typeof medSafetyObj.antihypertensive_and_blood_pressure_safety === "string" ? (
+              <p>
+                <strong className="text-amber-200">Blood Pressure & Antihypertensives: </strong>
+                {medSafetyObj.antihypertensive_and_blood_pressure_safety}
+              </p>
+            ) : null}
+            {typeof medSafetyObj.aspirin_and_antithrombotic_safety === "string" ? (
+              <p>
+                <strong className="text-amber-200">Aspirin & Antithrombotics: </strong>
+                {medSafetyObj.aspirin_and_antithrombotic_safety}
+              </p>
+            ) : null}
+            {typeof medSafetyObj.anticoagulant_and_allergy_reconciliation === "string" ? (
+              <p>
+                <strong className="text-amber-200">Reconciliation: </strong>
+                {medSafetyObj.anticoagulant_and_allergy_reconciliation}
+              </p>
+            ) : null}
+            {Array.isArray(medSafetyObj.decisions_requiring_emergency_clinician_assessment) ? (
+              <div>
+                <p className="font-semibold text-amber-200">Decisions Requiring Emergency Clinician Assessment:</p>
+                <ul className="mt-1 list-disc space-y-1 pl-4">
+                  {(medSafetyObj.decisions_requiring_emergency_clinician_assessment as unknown[]).map((item, i) => (
+                    <li key={i}>{String(item)}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {/* 7. Missing Information & Uncertainties */}
+      {(missingRaw.length > 0 || uncertainties.length > 0) ? (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {missingRaw.length > 0 ? (
+            <div className="rounded-2xl border border-white/10 bg-black/30 p-3.5">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[#e4b86a]">
+                Missing / Unverified Information (Never Delays 911)
+              </h4>
+              <ul className="mt-2 list-disc space-y-1.5 pl-4 text-xs text-zinc-200">
+                {missingRaw.map((m: unknown, i: number) => {
+                  if (typeof m === "string") return <li key={i}>{m}</li>;
+                  if (m && typeof m === "object") {
+                    const rec = m as Record<string, unknown>;
+                    return (
+                      <li key={i}>
+                        <span className="font-semibold text-white">{String(rec.item ?? "")}</span>
+                        {rec.why ? <span className="text-zinc-400"> — {String(rec.why)}</span> : null}
+                      </li>
+                    );
+                  }
+                  return <li key={i}>{String(m)}</li>;
+                })}
+              </ul>
+            </div>
+          ) : null}
+          {uncertainties.length > 0 ? (
+            <div className="rounded-2xl border border-white/10 bg-black/30 p-3.5">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[#e4b86a]">
+                Diagnostic Uncertainties & Safety Boundaries
+              </h4>
+              <ul className="mt-2 list-disc space-y-1.5 pl-4 text-xs text-zinc-200">
+                {uncertainties.map((u, i) => (
+                  <li key={i}>{u}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {/* 8. Adversarial Safety Gate Evaluation */}
+      {adversarials.length > 0 ? (
+        <div className="rounded-2xl border border-white/10 bg-black/30 p-3.5">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-[#e4b86a]">
+            Adversarial Safety Gate Evaluation ({adversarials.length}/{adversarials.length} Unsafe Prompts Rejected)
+          </h4>
+          <div className="mt-2.5 space-y-2">
+            {adversarials.map((a, i) => (
+              <div key={i} className="rounded-xl border border-red-500/25 bg-red-950/20 p-2.5 text-xs">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-semibold text-zinc-100">
+                    {a.id}: &ldquo;{a.instruction}&rdquo;
+                  </span>
+                  <span className="rounded-full bg-red-600/80 px-2.5 py-0.5 text-[10px] font-bold uppercase text-white">
+                    {a.decision}
+                  </span>
+                </div>
+                <p className="mt-1 text-zinc-300">{a.rationale}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {/* 9. Validation Status + Machine-Readable JSON Drawer */}
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-emerald-500/30 bg-emerald-950/20 px-3.5 py-2.5 text-xs">
+        <span className="font-semibold text-emerald-300">
+          ✓ Clinical Safety & Schema Gate: {releaseFailures.length === 0 ? "PASS (0 Release-Blocking Failures)" : `${releaseFailures.length} Blocking Issue(s)`}
+        </span>
+        <button
+          type="button"
+          onClick={() => {
+            void navigator.clipboard.writeText(rawJson).then(() => {
+              setJsonCopied(true);
+              window.setTimeout(() => setJsonCopied(false), 2000);
+            });
+          }}
+          className="inline-flex items-center gap-1.5 rounded-full bg-[#e4b86a] px-3 py-1 text-xs font-semibold text-[#1a1408] hover:opacity-90"
+        >
+          <Copy className="size-3" />
+          {jsonCopied ? "Copied Raw JSON ✓" : "Copy Raw JSON"}
+        </button>
+      </div>
+
+      <details className="rounded-2xl border border-white/10 bg-black/40 px-3.5 py-2.5 text-xs text-zinc-300">
+        <summary className="cursor-pointer font-semibold uppercase tracking-wider text-zinc-400">
+          View Machine-Validated JSON Payload
+        </summary>
+        <pre className="mt-2.5 overflow-x-auto rounded-xl bg-black/60 p-3 font-mono text-[11px] leading-relaxed text-zinc-200">
+          {rawJson}
+        </pre>
+      </details>
+    </div>
+  );
+}
+
 function AnswerBody({ text }: { text: string }) {
   const cut = text.search(/\n\s*Claim standing:/i);
   const lesson = (cut >= 0 ? text.slice(0, cut) : text).trim();
   const stamp = cut >= 0 ? text.slice(cut).trim() : "";
+  const clinicalJson = tryParseClinicalHandoffJson(lesson);
   return (
     <div className="space-y-3">
-      {renderBlocks(lesson)}
+      {clinicalJson ? <ClinicalHandoffView data={clinicalJson} rawJson={lesson} /> : renderBlocks(lesson)}
       {stamp ? (
         <details className="rounded-2xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-400">
           <summary className="cursor-pointer text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">Sources and check</summary>
