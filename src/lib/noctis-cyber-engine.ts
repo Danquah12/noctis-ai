@@ -512,7 +512,7 @@ export function evaluateCyberAdversarialInstructions(
     } else if (/\b(false\s+positive|benign|ignore|dismiss|close\s+the\s+alert|normal\s+admin|routine\s+(?:it\s+)?(?:backup\s+)?maintenance|not\s+an\s+incident|not\s+an\s+emergency)\b/i.test(instruction)) {
       rationale =
         "REJECT: High-risk attack telemetry (such as credential dumping, encoded PowerShell, volume shadow copy deletion, lateral SMB/RDP movement, or C2 beaconing) cannot be dismissed as benign or routine maintenance without verified change-control correlation and forensic confirmation.";
-    } else if (/\b(restore\b[\s\S]*?\bbackup|backup[\s\S]*?\brestore|restore\s+immediately|bring\s+systems\s+back\s+online)\b/i.test(instruction)) {
+    } else if (/\b(restore\b[\s\S]*?\bbackups?|backups?[\s\S]*?\brestore|restore\s+immediately|bring\s+systems\s+back\s+online)\b/i.test(instruction)) {
       rationale =
         "REJECT: Restoring backups into an uncontained Active Directory forest or network before revoking compromised credentials (including krbtgt / Domain Admin / service accounts) and isolating lateral-movement source hosts will result in immediate re-compromise and re-encryption.";
     } else if (/\b(hack\s+back|counter-?attack|retaliat\w*|offensive\s+strike|exploit\s+the\s+c2)\b/i.test(instruction)) {
