@@ -738,4 +738,51 @@ Return ONLY valid JSON with these exact keys:
     assert.equal(parsed.adversarial_pushback.length, 1);
     assert.equal(parsed.adversarial_pushback[0].decision, "REJECTED");
   });
+
+  it("handles Noctis Bible Intelligence Engine (NOCTIS-BIBLE-001) from Genesis to Revelation, Batch 001/002, 10 Acceptance Tests, Sermon/Bible Study/Discussion modes, and the Template Library", async () => {
+    const { runFollowUpIntelligence } = await import("./noctis-response-intelligence");
+
+    // 1. Full Genesis-to-Revelation Master Blueprint + Batch 001/002 + Template Library
+    const bibleBlueprintPrompt = `Build the Noctis Bible Intelligence Engine from Genesis to Revelation with 12 training domains, authoritative sources (BibleProject, STEP Bible, SBL), BIBLE-GEN-001 training record, 10 acceptance tests, Training Batch 001, Training Batch 002 (Sermon Preparation, Bible Study Classroom, Interactive Discussion), and the Bible Content Template Library.`;
+    const blueprintOut = runFollowUpIntelligence([], bibleBlueprintPrompt)!;
+    assert.ok(blueprintOut);
+    assert.match(blueprintOut, /NOCTIS-BIBLE-001/);
+    assert.match(blueprintOut, /BIBLE-GEN-001/);
+    assert.match(blueprintOut, /BIBLE-AT-01/);
+    assert.match(blueprintOut, /BIBLE-AT-10/);
+    assert.match(blueprintOut, /NOCTIS-BIBLE-TEMPLATES-001/);
+    assert.match(blueprintOut, /SPECIFICATION CREATED/);
+
+    // 2. Prison Ministry Sermon on Ephesians 2:1-10
+    const sermonPrompt = `Prepare a 35-minute sermon on Ephesians 2:1-10 for a prison congregation. Explain the passage in context, provide three main points, supporting Scriptures, practical applications, an introduction, and a conclusion.`;
+    const sermonOut = runFollowUpIntelligence([], sermonPrompt)!;
+    assert.ok(sermonOut);
+    assert.match(sermonOut, /Ephesians 2:1–10/);
+    assert.match(sermonOut, /poiēma/);
+    assert.match(sermonOut, /Hermeneutical Integrity Gate/i);
+
+    // 3. 45-Minute Bible Study on the Life of Joseph
+    const studyPrompt = `Prepare a 45-minute Bible study on the life of Joseph, including Genesis references, learning objectives, ten discussion questions, suggested answers, and a short quiz.`;
+    const studyOut = runFollowUpIntelligence([], studyPrompt)!;
+    assert.ok(studyOut);
+    assert.match(studyOut, /Genesis 39/);
+    assert.match(studyOut, /Genesis 50:20/);
+    assert.match(studyOut, /Five-Question Classroom Comprehension Quiz/);
+
+    // 4. Interactive Discussion on Joseph's Suffering
+    const discussPrompt = `If God had a plan for Joseph, why did Joseph have to suffer?`;
+    const discussOut = runFollowUpIntelligence([], discussPrompt)!;
+    assert.ok(discussOut);
+    assert.match(discussOut, /Psalm 105:17–19/);
+    assert.match(discussOut, /Follow-Up Questions to Deepen the Group Discussion/);
+
+    // 5. Intelligent Genre-Aware Template Selection (Psalm 23 Poetic Sermon vs. Romans 8 Epistle Study)
+    const psalmSermonOut = runFollowUpIntelligence([], `Prepare a 30-minute sermon on Psalm 23 for a Sunday congregation.`)!;
+    assert.match(psalmSermonOut, /BIBLE-TPL-SERMON-001/);
+    assert.match(psalmSermonOut, /Poetic_Wisdom/);
+
+    const romansStudyOut = runFollowUpIntelligence([], `Create a 45-minute Bible study lesson plan on Romans 8.`)!;
+    assert.match(romansStudyOut, /BIBLE-TPL-STUDY-001/);
+    assert.match(romansStudyOut, /Epistle_Doctrinal/);
+  });
 });

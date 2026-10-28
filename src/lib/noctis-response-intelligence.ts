@@ -12,6 +12,7 @@ import { handleNaturalAutonomousTrainingQuery } from "./noctis-autonomous-traine
 import { architectIntelligenceGadget } from "./noctis-architect-engine.ts";
 import { handleNaturalCyberSecurityQuery } from "./noctis-cyber-engine.ts";
 import { handleNaturalInvestmentQuery } from "./noctis-investment-engine.ts";
+import { handleNaturalBibleQuery } from "./noctis-bible-engine.ts";
 
 export type AdaptiveResponseMode = "Direct" | "Teaching" | "Technical" | "Audit";
 
@@ -1072,6 +1073,12 @@ export function runFollowUpIntelligence(
   const investmentResponse = handleNaturalInvestmentQuery(currentQuestion);
   if (investmentResponse) {
     return adaptSpecialistEngineOutput(currentQuestion, investmentResponse, "NOCTIS-INVEST-001");
+  }
+
+  // 00a-0c. Noctis Bible Intelligence Engine (NOCTIS-BIBLE-001, Genesis to Revelation, 12 Domains, 10 Acceptance Tests, Batch 001/002, Sermon/Bible Study/Discussion & Template Library)
+  const bibleResponse = handleNaturalBibleQuery(currentQuestion);
+  if (bibleResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, bibleResponse, "NOCTIS-BIBLE-001");
   }
 
   // 00a. Noctis Verified Professional Execution Layer, Independent Verification Engine, Tier-2 Adversarial Suite, 20 Advanced Systems, Workbench & Capability Registry
