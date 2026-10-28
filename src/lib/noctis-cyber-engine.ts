@@ -261,6 +261,15 @@ export function extractCyberIncidentTelemetry(question: string): ExtractedCyberT
       evidence_in_prompt: `Public-facing web/VPN/perimeter gateway exploitation${cves.length ? ` (${cves.join(", ")})` : ""} referenced in encounter.`,
     });
   }
+  if (/\b(web\s*shell|w3wp\.exe|php-cgi|aspx\s+shell)\b/i.test(qCtx)) {
+    mitreTechniques.push({
+      technique_id: "T1505.003",
+      name: "Server Software Component: Web Shell (`w3wp.exe` child shell)",
+      tactic: "Persistence (TA0003)",
+      status: "observed_indicator",
+      evidence_in_prompt: "Web shell deployment or web server worker (`w3wp.exe`) spawning child shell observed.",
+    });
+  }
   if (/\b(powershell|encodedcommand|-enc\b|iex\b|downloadstring|cmd\.exe|wscript|cscript)\b/i.test(qCtx)) {
     mitreTechniques.push({
       technique_id: "T1059.001",
@@ -316,12 +325,17 @@ export function extractCyberIncidentTelemetry(question: string): ExtractedCyberT
     });
   }
   if (isLateralMovement) {
+    const isWinRm = /\b(winrm|5985|5986)\b/i.test(qCtx);
     mitreTechniques.push({
-      technique_id: "T1021.002 / T1021.001",
-      name: "Remote Services: SMB/Windows Admin Shares or RDP",
+      technique_id: isWinRm ? "T1021.006 / T1021.002" : "T1021.002 / T1021.001",
+      name: isWinRm
+        ? "Remote Services: Windows Remote Management (WinRM) / SMB Admin Shares"
+        : "Remote Services: SMB/Windows Admin Shares or RDP",
       tactic: "Lateral Movement (TA0008)",
       status: "observed_indicator",
-      evidence_in_prompt: "East-west lateral movement via SMB admin shares, PsExec/WMI, or RDP reported.",
+      evidence_in_prompt: isWinRm
+        ? "East-west lateral movement via WinRM (port 5985/5986) or SMB admin shares reported."
+        : "East-west lateral movement via SMB admin shares, PsExec/WMI, or RDP reported.",
     });
   }
   if (isCloudOrIdentityAttack || accountsMentioned.length > 0) {
@@ -568,6 +582,9 @@ export function evaluateCyberAdversarialInstructions(
     } else if (/\b(restore\b[\s\S]*?\bbackups?|backups?[\s\S]*?\brestore|restore\s+immediately|bring\s+systems\s+back\s+online)\b/i.test(instruction)) {
       rationale =
         "REJECT: Restoring backups into an uncontained Active Directory forest or network before revoking compromised credentials (including krbtgt / Domain Admin / service accounts) and isolating lateral-movement source hosts will result in immediate re-compromise and re-encryption.";
+    } else if (/\b(rotate\b[\s\S]*?\bkrbtgt|krbtgt\s+password\s+once)\b/i.test(instruction)) {
+      rationale =
+        "REJECT: Rotating the Active Directory `krbtgt` password before isolating compromised hosts and evicting attacker persistence from Domain Controllers allows the adversary to immediately capture the new hash via DCSync; additionally, a single `krbtgt` rotation leaves previous Golden Tickets valid because Active Directory trusts both the current and N-1 `krbtgt` hashes (`krbtgt` must be rotated twice ONLY after full AD containment and eviction).";
     } else if (/\b(hack\s+back|counter-?attack|retaliat\w*|offensive\s+strike|exploit\s+the\s+c2)\b/i.test(instruction)) {
       rationale =
         "REJECT: Unauthorized offensive retaliation ('hack-back') against external C2 IP addresses is illegal (e.g., CFAA), risks striking innocent third-party compromised infrastructure, and violates defensive DFIR boundaries.";
@@ -769,6 +786,8 @@ export function handleNaturalCyberSecurityQuery(question: string): string | null
     },
   ];
 
+  const dcAssetLabel = t.affectedAssets.find((a) => /^DC/i.test(a)) || "Domain Controller";
+
   const immediateRisks = [
     ...(t.isRansomwareOrShadowDelete
       ? [
@@ -800,8 +819,8 @@ export function handleNaturalCyberSecurityQuery(question: string): string | null
     ...(t.isCredentialAccessOrAdCompromise
       ? [
           {
-            risk: "Active Directory forest dominance and privileged credential compromise (`lsass.exe` dump / `DC-CORP-01` access)",
-            basis: `LSASS memory dumping combined with privileged lateral authentication${t.accountsMentioned.length ? ` (${t.accountsMentioned.join(", ")})` : ""} to a Domain Controller creates immediate risk of NTDS.dit/krbtgt extraction and Golden Ticket persistence.`,
+            risk: `Active Directory forest dominance and privileged credential compromise (\`lsass.exe\` dump / \`${dcAssetLabel}\` access)`,
+            basis: `LSASS memory dumping combined with privileged lateral authentication${t.accountsMentioned.length ? ` (${t.accountsMentioned.join(", ")})` : ""} to ${dcAssetLabel} creates immediate risk of NTDS.dit/krbtgt extraction and Golden Ticket persistence.`,
             status: "unconfirmed_urgent_concern",
           },
         ]
