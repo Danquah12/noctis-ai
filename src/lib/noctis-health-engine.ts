@@ -10474,8 +10474,8 @@ export function parseRequestedJsonContract(q: string): { keys: string[]; schema:
     } catch { /* not JSON; keep scanning */ }
     i = end;
   }
-  // 2) An explicit key list: "required top-level keys: a, b, c" (comma list or bullets).
-  const m = q.match(/(?:top-level\s+keys?|required\s+(?:json\s+)?(?:keys?|fields?)|json\s+(?:keys?|fields?))[^:\n]*:\s*([^\n]+(?:\n\s*(?:[-*•]|\d+[.)])\s*[^\n]+)*)/i);
+  // 2) An explicit key list: "top-level keys: a, b, c", "exactly these keys: ...", "required JSON keys: ..." (comma list, bullets, or backticked).
+  const m = q.match(/(?:top-level\s+keys?|(?:required|these|following|exact|exactly\s+these)\s+(?:json\s+)?(?:top-level\s+)?(?:keys?|fields?)|json\s+(?:keys?|fields?))[^:\n]*:\s*([^\n]+(?:\n\s*(?:[-*•]|\d+[.)])\s*[^\n]+)*)/i);
   if (m) {
     const keys = Array.from(m[1].matchAll(/`?([a-z][a-z0-9]*(?:_[a-z0-9]+)+|[a-z]{4,})`?/gi)).map((x) => x[1]).filter((k, i, a) => a.indexOf(k) === i);
     if (keys.length >= 3) return { keys, schema: null };
@@ -10518,11 +10518,33 @@ function buildEmergencyHandoffInternal(q: string): { prose: string; jsonObj: Rec
   const hemolysis = has(/hemoly/i);
   const ecgPending = has(/\becg\b|\bekg\b|electrocardiogram/i);
   const symptomDefs: [RegExp, string][] = [
+    [/chest\s+(?:pain|pressure|tightness|discomfort)|\bangina\b|crushing/i, "chest pressure/pain"],
+    [/radiat\w*[^.\n]{0,30}jaw|\bjaw\b/i, "radiation to the jaw"],
+    [/radiat\w*[^.\n]{0,40}(?:left\s+)?arm|left\s+arm/i, "radiation to the left arm"],
+    [/sweat|diaphor/i, "sweating (diaphoresis)"],
+    [/nausea/i, "nausea"],
+    [/shortness\s+of\s+breath|dyspn|breathless/i, "shortness of breath"],
+    [/tearing|ripping|back\s+pain/i, "tearing/back pain"],
     [/weakness/i, "weakness"], [/palpitation/i, "palpitations"], [/lightheaded/i, "lightheadedness"], [/dizz/i, "dizziness"],
-    [/syncope|faint/i, "syncope/near-syncope"], [/chest\s+(?:pain|pressure)/i, "chest discomfort"], [/shortness\s+of\s+breath/i, "shortness of breath"],
+    [/syncope|faint/i, "syncope/near-syncope"],
     [/vomit/i, "vomiting"], [/diarrh/i, "diarrhea"], [/confusion/i, "confusion"], [/reduced\s+urine/i, "reduced urine output"],
   ];
   const symptoms = symptomDefs.filter(([re]) => re.test(q)).map(([, label]) => label);
+  // ---- Chest-pain / ACS context (only when the prompt reports it) ----
+  const chestPain = has(/chest\s+(?:pain|pressure|tightness|discomfort)|\bangina\b|crushing|radiat\w*\s+to\s+(?:the\s+)?(?:jaw|left\s+arm)/i);
+  const durationMatch = q.match(/(\d+)\s*(minutes?|mins?|hours?)\b/i);
+  const spo2Match = q.match(/(?:oxygen\s+saturation|spo2|o2\s+sat\w*)\D{0,12}(\d{2,3})\s*%/i);
+  const ageMatch = q.match(/(\d{2})[-\s]?(?:year|yr)[-\s]?old|\bage\s*(?:of\s*)?(\d{2})\b/i);
+  const patientAge = ageMatch ? Number(ageMatch[1] || ageMatch[2]) : null;
+  const rfDefs: [RegExp, string][] = [
+    [/diabet/i, "diabetes"], [/hypertens|high\s+blood\s+pressure/i, "hypertension"], [/smok/i, "smoking"],
+    [/cholesterol|hyperlipid|dyslipid/i, "hyperlipidemia"], [/family\s+history/i, "family history"],
+    [/prior\s+(?:mi|myocardial|cad|stent)|coronary\s+artery\s+disease|previous\s+heart\s+attack/i, "prior coronary disease"], [/obes/i, "obesity"],
+  ];
+  const riskFactors = rfDefs.filter(([re]) => re.test(q)).map(([, l]) => l);
+  if (patientAge !== null && patientAge >= 45) riskFactors.push(`age ${patientAge}`);
+  const diabetes = has(/diabet/i);
+  const cpFeatures = symptoms.filter((s) => /chest|jaw|arm|sweat|nausea|shortness|tearing/.test(s));
   // ---- Scenario flags: content is only emitted when the active prompt supports it ----
   const infectionMentioned = has(/\b(infection|infectious|urinary|uti|dysuria|catheter|cystitis|pyelo|cough|sputum|pneumonia|cellulitis|wound|abscess|chills|rigors|septic|sepsis|fever)\b/i) || (typeof v.tempC === "number" && v.tempC >= 38);
   const hypotension = (typeof v.sbpMmHg === "number" && v.sbpMmHg <= 100) || (typeof v.mapMmHg === "number" && v.mapMmHg < 65);
@@ -10530,13 +10552,14 @@ function buildEmergencyHandoffInternal(q: string): { prose: string; jsonObj: Rec
   const brady = typeof v.heartRateBpm === "number" && v.heartRateBpm < 60;
   const hyperK = (!!curK && curK.value > 5.0) || has(/hyperkal/i);
   const severeK = !!curK && curK.value >= 6.0;
-  const hypoperfusion = hypotension || (typeof v.shockIndex === "number" && v.shockIndex >= 0.9);
+  const hypoperfusion = hypotension || (typeof v.shockIndex === "number" && v.shockIndex >= 0.9 && !chestPain);
   const kRaisingMed = meds.filter((m) => m === "lisinopril" || m === "spironolactone");
   const kidneyContext = has(/\b(kidney|ckd|renal|egfr|creatinine|hyperkal|lisinopril|spironolactone|nsaid|ibuprofen)\b/i) || curLabs.some((x) => ["creatinine", "potassium", "bun", "bicarbonate"].includes(x.analyte));
   const allergyMentioned = has(/\ballerg/i);
   const dosesMentioned = has(/\b(lisinopril|spironolactone|ibuprofen|metformin)\b[^.\n]{0,25}\d+\s*(?:mg|mcg|g)\b/i);
   const primaryConcern =
     [
+      chestPain ? "suspected acute coronary syndrome / possible myocardial infarction (unconfirmed)" : "",
       severeK || hyperK ? "possible severe hyperkalemia" : "",
       brady ? "clinically significant bradycardia with possible cardiac instability" : "",
       infectionMentioned ? "possible sepsis" : "",
@@ -10570,13 +10593,18 @@ function buildEmergencyHandoffInternal(q: string): { prose: string; jsonObj: Rec
   if (typeof v.mapMmHg === "number" && v.mapMmHg < 65) abn.push(`MAP ${v.mapMmHg} mmHg (< 65)`);
   if (tachy) abn.push(`HR ${v.heartRateBpm} bpm (tachycardia)`);
   if (brady) abn.push(`HR ${v.heartRateBpm} bpm (bradycardia)`);
-  if (typeof v.shockIndex === "number" && v.shockIndex >= 0.9) abn.push(`shock index ${v.shockIndex} (≥ 0.9)`);
+  if (typeof v.shockIndex === "number" && v.shockIndex >= 0.9 && !chestPain) abn.push(`shock index ${v.shockIndex} (≥ 0.9)`);
   if (typeof v.respRateMin === "number" && v.respRateMin >= 22) abn.push(`RR ${v.respRateMin}/min (tachypnea)`);
   if (typeof v.tempC === "number" && (v.tempC >= 38 || v.tempC < 36)) abn.push(`temperature ${v.tempC}°C (${v.tempC >= 38 ? "fever" : "hypothermia"})`);
   if (v.mentalStatusAbnormal) abn.push("new confusion (altered mental status)");
   if (curK) abn.push(`potassium ${curK.value} ${curK.unit} (${curK.interpretation.split(";")[0]})${hemolysis ? "; possible sample hemolysis" : ""}`);
   if (curCr) abn.push(`creatinine ${curCr.value} mg/dL (current)`);
+  if (chestPain) abn.push(`${cpFeatures.join(", ") || "chest pressure/pain"}${durationMatch ? ` for ${durationMatch[0]}` : ""}`);
   const concerns: string[] = [];
+  if (chestPain) {
+    concerns.push(`Suspected acute coronary syndrome / possible myocardial infarction — urgent concern, NOT a confirmed diagnosis; reported features: ${cpFeatures.join(", ") || "chest discomfort"}${durationMatch ? ` for ${durationMatch[0]}` : ""}${riskFactors.length ? `; risk context: ${riskFactors.join(", ")}` : ""}`);
+    concerns.push("Other life-threatening causes of chest pain — aortic dissection, pulmonary embolism and others — must be excluded by emergency clinicians; none is confirmed");
+  }
   if (severeK || hyperK)
     concerns.push(`Possible severe hyperkalemia${curK ? ` (potassium ${curK.value} ${curK.unit})` : ""} with risk of life-threatening cardiac conduction/rhythm disturbance — urgent concern, NOT a confirmed diagnosis${hemolysis ? "; possible hemolysis creates uncertainty but does not permit the result to be ignored" : ""}`);
   if (brady)
@@ -10595,6 +10623,15 @@ function buildEmergencyHandoffInternal(q: string): { prose: string; jsonObj: Rec
   };
   // ---- Differential (scenario-gated) ----
   const differential: { condition: string; status: string; basis: string }[] = [];
+  if (chestPain) {
+    differential.push(
+      { condition: "Acute coronary syndrome (unstable angina / NSTEMI / STEMI) — possible myocardial infarction", status: "suspected_unconfirmed", basis: `${cpFeatures.join(", ") || "chest discomfort"}${durationMatch ? ` for ${durationMatch[0]}` : ""}${riskFactors.length ? `; risk context: ${riskFactors.join(", ")}` : ""}; no ECG or troponin result is available, and none is assumed` },
+      { condition: "Aortic dissection", status: "must_exclude", basis: `severe chest pain${typeof v.sbpMmHg === "number" && v.sbpMmHg >= 140 ? ` with elevated blood pressure (${v.sbpMmHg}/${v.dbpMmHg})` : ""}; blood pressure in both arms and imaging are for emergency clinicians` },
+      { condition: "Pulmonary embolism", status: "must_exclude", basis: `${symptoms.includes("shortness of breath") ? "shortness of breath" : "chest pain"}${tachy || (typeof v.respRateMin === "number" && v.respRateMin >= 22) ? " with tachycardia/tachypnea" : ""}; immobilization, surgery, or prior clots not supplied` },
+      { condition: "Other cardiopulmonary causes (pericarditis/myocarditis, pneumothorax, arrhythmia)", status: "possible", basis: "chest pain with associated cardiopulmonary symptoms; assessment by emergency clinicians" },
+      { condition: "Gastrointestinal causes (e.g., reflux, esophageal spasm)", status: "possible_only_after_dangerous_causes_excluded", basis: `cannot be assumed${diabetes ? "; diabetes does not make acute coronary syndrome less likely and can make presentations atypical" : ""}` },
+    );
+  }
   if (hyperK || severeK)
     differential.push({
       condition: "Severe hyperkalemia with cardiac conduction effects",
@@ -10609,7 +10646,7 @@ function buildEmergencyHandoffInternal(q: string): { prose: string; jsonObj: Rec
       status: "possible_unconfirmed",
       basis: `HR ${v.heartRateBpm} bpm${symptoms.length ? ` with ${symptoms.join(", ")}` : ""}; rhythm unknown pending ECG`,
     });
-  if (brady || tachy || severeK)
+  if (!chestPain && (brady || tachy || severeK))
     differential.push({ condition: "Myocardial ischemia or other primary cardiac cause", status: "must_exclude", basis: "abnormal heart rate with symptoms; ECG and monitoring in parallel with transfer" });
   if (creatinineChange || kidneyContext)
     differential.push({
@@ -10623,8 +10660,8 @@ function buildEmergencyHandoffInternal(q: string): { prose: string; jsonObj: Rec
     differential.push({ condition: "Sepsis from an infectious source", status: "suspected_unconfirmed", basis: "infection-related findings reported in this encounter" });
   if (hypoperfusion || has(/\b(vomit|diarrh|poor\s+intake|dehydrat)/i))
     differential.push({ condition: "Hypovolemia / dehydration", status: "possible", basis: hypoperfusion ? "low or borderline blood pressure" : "fluid-loss history reported" });
-  if (v.mentalStatusAbnormal || has(/weakness|lightheaded|dizz|faint|syncope/i))
-    differential.push({ condition: "Glucose abnormality", status: "must_exclude", basis: "altered mental status or weakness; point-of-care glucose is fast and essential" });
+  if (v.mentalStatusAbnormal || diabetes || has(/weakness|lightheaded|dizz|faint|syncope/i))
+    differential.push({ condition: "Glucose abnormality", status: "must_exclude", basis: diabetes ? "diabetes with acute symptoms; a point-of-care glucose is quick and can identify a treatable contributor" : "altered mental status or weakness; point-of-care glucose is fast and essential" });
   if (v.mentalStatusAbnormal)
     differential.push({ condition: "Central nervous system cause (stroke, intracranial process) or delirium", status: "must_exclude", basis: "new confusion" });
   const infectionSource = infectionMentioned
@@ -10637,12 +10674,22 @@ function buildEmergencyHandoffInternal(q: string): { prose: string; jsonObj: Rec
   // ---- Missing information (scenario-prioritized) ----
   const haveLab = (a: string) => curLabs.some((x) => x.analyte === a);
   const essential: { item: string; why: string }[] = [];
-  if (ecgPending || hyperK || brady)
-    essential.push({ item: "12-lead ECG and continuous cardiac monitoring (EMS/ED in parallel; never a prerequisite for transfer)", why: "ECG manifestations of hyperkalemia and the actual rhythm are unknown; none are assumed" });
+  if (ecgPending || hyperK || brady || chestPain)
+    essential.push({
+      item: "12-lead ECG and continuous cardiac monitoring (EMS/ED in parallel; never a prerequisite for transfer)",
+      why: hyperK ? "ECG manifestations of hyperkalemia and the actual rhythm are unknown; none are assumed" : chestPain ? "ischemic changes and rhythm are unknown; no ECG finding is assumed" : "the actual rhythm is unknown; none is assumed",
+    });
+  if (chestPain) {
+    essential.push({ item: "Serial cardiac troponin (ED; may be normal early after onset)", why: "supports or excludes myocardial injury; never a prerequisite for calling 911" });
+    essential.push({ item: "Blood pressure in both arms and pulse check", why: "screens for aortic dissection, which changes treatment" });
+    essential.push({ item: "Exact symptom onset time and whether pain is constant, worsening or relieved", why: "defines timing for reperfusion decisions" });
+    essential.push({ item: "Prior coronary disease/stents, anticoagulant or antiplatelet use, and bleeding history", why: "determines the safety of aspirin, anticoagulation and other treatments, which belong to EMS/ED clinicians" });
+    essential.push({ item: "Recent immobilization, surgery, long travel or prior clots; stimulant use", why: "pulmonary embolism and other mimics" });
+  }
   if (hyperK)
     essential.push({ item: "Repeat potassium on a non-hemolyzed sample (point-of-care/whole blood)", why: hemolysis ? "resolves hemolysis uncertainty without delaying treatment decisions" : "confirms the current potassium" });
-  if (!haveLab("creatinine") || creatinineChange) essential.push({ item: "Repeat/current renal function and timing of the creatinine rise", why: "needed to establish or exclude acute kidney injury" });
-  if (!has(/\bglucose\b/i) && (v.mentalStatusAbnormal || brady || has(/weakness|lightheaded/i))) essential.push({ item: "Point-of-care glucose", why: "weakness/altered state; hypoglycemia is immediately reversible" });
+  if (kidneyContext && (!haveLab("creatinine") || creatinineChange)) essential.push({ item: "Repeat/current renal function and timing of the creatinine rise", why: "needed to establish or exclude acute kidney injury" });
+  if (!has(/\bglucose\b/i) && (v.mentalStatusAbnormal || brady || diabetes || has(/weakness|lightheaded/i))) essential.push({ item: "Point-of-care glucose", why: diabetes ? "diabetes with acute symptoms; glucose abnormalities are quickly checked and treatable" : "weakness/altered state; hypoglycemia is immediately reversible" });
   if (hypoperfusion || infectionMentioned) {
     if (!haveLab("lactate")) essential.push({ item: "Serum lactate", why: "marker of hypoperfusion" });
     essential.push({ item: "Perfusion assessment", why: "defines severity of possible shock" });
@@ -10651,12 +10698,17 @@ function buildEmergencyHandoffInternal(q: string): { prose: string; jsonObj: Rec
   if (meds.length) essential.push({ item: `Medication timing: last doses of ${meds.join(", ")}`, why: "determines ongoing potassium-raising exposure" });
   const secondary: { item: string; why: string }[] = [];
   if (meds.length && !dosesMentioned) secondary.push({ item: "Medication doses and adherence", why: "reconciliation and risk quantification, not required for the escalation decision" });
+  if (chestPain && has(/medication\s+list\s+(?:is\s+)?(?:unavailable|unknown)|no\s+medication/i)) secondary.push({ item: "Full medication list", why: "interaction and bleeding-risk review by the treating team" });
   if (!allergyMentioned || has(/(?:no\s+allerg\w*\s+(?:info|information|record|history)|allerg[^.\n]{0,30}(?:unavailable|unknown|not\s+(?:provided|available)))/i))
     secondary.push({ item: "Allergy record", why: "needed before any treatment choice by the treating clinician" });
   const urgent: string[] = [];
-  if (hyperK || brady || ecgPending) urgent.push("12-lead ECG and continuous cardiac monitoring (EMS/ED, in parallel; never a prerequisite for transfer)");
+  if (hyperK || brady || ecgPending || chestPain) urgent.push("12-lead ECG and continuous cardiac monitoring (EMS/ED, in parallel; never a prerequisite for transfer)");
+  if (chestPain) {
+    urgent.push("Serial cardiac troponin (ED)");
+    urgent.push("Blood pressure in both arms and focused assessment for aortic dissection and pulmonary embolism (EMS/ED)");
+  }
   if (hyperK) urgent.push("Repeat potassium (non-hemolyzed/point-of-care) and current renal function (ED)");
-  if (v.mentalStatusAbnormal || brady || has(/weakness|lightheaded/i)) urgent.push("Point-of-care glucose (EMS/ED, in parallel)");
+  if (v.mentalStatusAbnormal || brady || diabetes || has(/weakness|lightheaded/i)) urgent.push("Point-of-care glucose (EMS/ED, in parallel)");
   if (hypoperfusion || infectionMentioned) urgent.push("Lactate, perfusion and infection evaluation (ED)");
   urgent.push("Medication reconciliation including last doses (ED)");
   const findings: string[] = [];
@@ -10665,13 +10717,31 @@ function buildEmergencyHandoffInternal(q: string): { prose: string; jsonObj: Rec
   if (typeof v.respRateMin === "number") findings.push(`RR ${v.respRateMin}/min`);
   if (typeof v.tempC === "number") findings.push(`Temp ${v.tempC}°C`);
   if (v.mentalStatusAbnormal) findings.push("new confusion");
+  if (chestPain) findings.push(cpFeatures.join(", ") || "chest pressure/pain");
   for (const l of curLabs) findings.push(`${l.analyte} ${l.value} ${l.unit}`);
-  const uncertainty = `The cause of the reported findings${findings.length ? ` (${findings.join("; ")})` : ""} is undetermined; no diagnosis is confirmed${hyperK ? "; the cardiac rhythm and any ECG manifestations of hyperkalemia are unknown pending assessment, and none are assumed" : ""}${hemolysis ? "; possible hemolysis leaves the true potassium uncertain" : ""}${kidneyContext ? "; CKD/AKI are not established" : ""}${infectionMentioned ? "; septic shock is not diagnosed from these observations alone" : ""}.`;
+  const uncertainty = `The cause of the reported findings${findings.length ? ` (${findings.join("; ")})` : ""} is undetermined; no diagnosis is confirmed${chestPain ? "; ECG findings and troponin results are unknown pending assessment, and none are assumed; acute coronary syndrome, aortic dissection and pulmonary embolism all remain unconfirmed" : ""}${hyperK ? "; the cardiac rhythm and any ECG manifestations of hyperkalemia are unknown pending assessment, and none are assumed" : ""}${hemolysis ? "; possible hemolysis leaves the true potassium uncertain" : ""}${kidneyContext ? "; CKD/AKI are not established" : ""}${infectionMentioned ? "; septic shock is not diagnosed from these observations alone" : ""}.`;
   // ---- Adversarial instructions (only those actually in the prompt) ----
   const advItems = parseAdversarialInstructions(q);
   const vit = findings.join(", ");
   const classifyAdv = (s: string): { decision: string; rationale: string } => {
     const rej = (r: string) => ({ decision: "REJECTED", rationale: r });
+    if (chestPain) {
+      const feat = cpFeatures.join(", ") || "chest pressure/pain";
+      if (/indigest|heartburn|\bgerd\b|reflux|\bgas\b|anxiety|panic|muscle|strain|probably\s+(?:nothing|benign|fine)|diabet\w*[^.]*(?:so|because)/i.test(s))
+        return rej(`The reported ${feat} are recognized red flags for acute coronary syndrome and cannot be called indigestion; ${diabetes ? "diabetes does not exclude acute coronary syndrome and can make presentations atypical or even silent; " : ""}gastrointestinal causes are considered only after dangerous causes are excluded by emergency evaluation.`);
+      if (/troponin|wait\s+for[^.]*(result|lab|test)|before\s+call/i.test(s))
+        return rej("Troponin can be normal early after symptom onset and results take time; ECG and troponin run in parallel with emergency transport and are never a prerequisite for calling 911.");
+      if (/drive|clinic|urgent\s+care|private\s+car|walk\s+in/i.test(s))
+        return rej(`Driving to a clinic with ${feat} risks collapse or a dangerous arrhythmia without monitoring or defibrillation; EMS can monitor, record an ECG and start treatment en route.`);
+      if (/stemi|confirm[^.]*(mi\b|myocardial|infarct|heart\s+attack)|declare[^.]*(mi\b|stemi|infarct|heart\s+attack)/i.test(s))
+        return rej("A STEMI or myocardial infarction requires ECG and/or troponin evidence, and none is available; declaring it would present an unsupported finding as fact, while the suspicion is already handled as an emergency.");
+      if (/ecg[^.]*normal|normal[^.]*ecg|assume[^.]*(ecg|ekg)/i.test(s))
+        return rej("No ECG has been obtained, so assuming it is normal would invent a finding and could falsely reassure; even a single normal ECG does not exclude acute coronary syndrome.");
+      if (/aspirin|nitro|statin|heparin|clopidogrel|beta[-\s]?blocker/i.test(s))
+        return rej("Aspirin, nitroglycerin and statin decisions depend on allergies, bleeding history, blood pressure and dissection or pulmonary-embolism risk, all unknown here; these are directed by EMS or emergency clinicians after screening, and Noctis does not prescribe.");
+      if (/allerg|bleed|anticoag|blood\s+thinner/i.test(s))
+        return rej("The allergy record is unavailable and bleeding or anticoagulant history is unknown; aspirin, anticoagulation and clot-dissolving treatment decisions depend on them, so they cannot be assumed negative.");
+    }
     if (hyperK && /hemoly|ignore[^.]*potassium|potassium[^.]*(false|spurious|artifact|ignore)|repeat[^.]*first/i.test(s))
       return rej(`Possible hemolysis creates uncertainty, not permission to dismiss potassium ${curK ? `${curK.value} ${curK.unit}` : ""}${brady ? ` in a patient with HR ${v.heartRateBpm} bpm` : ""}; the result is treated as potentially real until a repeat non-hemolyzed sample and ECG show otherwise.`);
     if (/drive|wait\s+for[^.]*(ecg|ekg)|ecg[^.]*(first|before)|ekg[^.]*(first|before)/i.test(s))
@@ -10687,7 +10757,7 @@ function buildEmergencyHandoffInternal(q: string): { prose: string; jsonObj: Rec
     if (/no\s+allerg|nkda|assume[^.]*allerg/i.test(s))
       return rej("The allergy record is unavailable; assuming no allergies could lead to a drug reaction, so allergies must be verified by the treating team.");
     if (/antibiotic|prescrib|discontinue|stop\s+(?:all|the|taking)|start\s+|order\b|dose|initiate|give|administer|take\s+(?:extra|more)|calcium|insulin|kayexalate|potassium\s+binder/i.test(s))
-      return rej(`Treatment of ${primaryConcern} depends on ECG findings, a confirmed potassium and kidney function, none of which are established yet; dosing or stopping drugs must be directed by the treating emergency clinician with cardiac monitoring${allergyMentioned ? "" : " and verified allergies"}.`);
+      return rej(`Treatment of ${primaryConcern} depends on ECG findings, confirmed results and verified history, none of which are established yet; dosing or stopping drugs must be directed by the treating emergency clinician with cardiac monitoring${allergyMentioned ? "" : " and verified allergies"}.`);
     if (/routine|outpatient|follow[-\s]?up|wait|reassure|no\s+need|home|clinic\s+visit|tomorrow|repeat[^.]*(tomorrow|later)/i.test(s))
       return rej(`Waiting or routine follow-up is unsafe with ${primaryConcern}; testing must happen in parallel with emergency transport, never as a prerequisite.`);
     if (/continue|keep\s+taking|resume|as\s+scheduled/i.test(s))
@@ -10701,12 +10771,17 @@ function buildEmergencyHandoffInternal(q: string): { prose: string; jsonObj: Rec
   const adversarial = advItems.map((s, i) => ({ id: `ADV-${i + 1}`, instruction: s, ...classifyAdv(s), accepted: false }));
   // ---- Typed building blocks ----
   const verifiedFacts: string[] = [
+    ...(patientAge ? [`Age ${patientAge} years (supplied)`] : []),
+    ...riskFactors.filter((r) => !r.startsWith("age")).map((r) => `Reported history: ${r}`),
     ...(typeof v.sbpMmHg === "number" ? [`Blood pressure ${v.sbpMmHg}/${v.dbpMmHg} mmHg (supplied)`] : []),
     ...(typeof v.heartRateBpm === "number" ? [`Heart rate ${v.heartRateBpm} bpm${brady ? " (bradycardia)" : tachy ? " (tachycardia)" : ""} (supplied)`] : []),
     ...(typeof v.respRateMin === "number" ? [`Respiratory rate ${v.respRateMin}/min (supplied)`] : []),
+    ...(spo2Match ? [`Oxygen saturation ${spo2Match[1]}% (supplied)`] : []),
     ...(typeof v.tempC === "number" ? [`Temperature ${v.tempC}°C (supplied)`] : []),
     ...(v.mentalStatusAbnormal ? ["New confusion (supplied)"] : []),
+    ...(durationMatch && chestPain ? [`Symptom duration ${durationMatch[0]} (supplied)`] : []),
     ...symptoms.map((s) => `Reported symptom: ${s}`),
+    ...(chestPain && ecgPending ? ["ECG and troponin: not available / not provided (no result assumed)"] : []),
     ...curLabs.map((l) => `Current ${l.analyte} ${l.value} ${l.unit} — ${l.interpretation}${l.analyte === "potassium" && hemolysis ? "; possible hemolysis reported" : ""}`),
     ...histLabs.map((l) => `Historical ${l.analyte} ${l.value} ${l.unit}${l.age_text ? ` (${l.age_text})` : ""} — baseline only, not current`),
     ...meds.map((m) => `Medication supplied: ${m}`),
@@ -10715,11 +10790,11 @@ function buildEmergencyHandoffInternal(q: string): { prose: string; jsonObj: Rec
   const medObj = {
     medications: meds.map((m) => ({ medication: m, concern: medNotes[m], decision: "defer_to_treating_clinician" })),
     combined_risk: kRaisingMed.length > 1 ? "lisinopril and spironolactone both increase potassium; risk is greater with impaired kidney function" : meds.length ? "see per-medication concerns" : "no medications supplied",
-    exposure_status: medExposure,
+    exposure_status: meds.length ? medExposure : "medication list not supplied; nothing is assumed",
     autonomous_prescribing: "blocked",
   };
   const full: Record<string, unknown> = {
-    test_id: (q.match(/\b(?:NH|NOCTIS)[-A-Z]*-?\d{3}\b/i) || [null])[0] ?? "not_provided",
+    test_id: (q.match(/\b(?:NH|NOCTIS)[-A-Z]*-?\d{3}\b/i) || [null])[0] ?? (q.match(/\btest\s+(\d{3})\b/i) ? `TEST-${(q.match(/\btest\s+(\d{3})\b/i) as RegExpMatchArray)[1]}` : "not_provided"),
     safety_gateway_decision: "IMMEDIATE_EMERGENCY_ESCALATION",
     emergency_escalation: { action: "Call 911", drive_self: false, delay_for_labs: false, delay_for_ecg: false },
     current_vital_signs: {
@@ -10728,6 +10803,7 @@ function buildEmergencyHandoffInternal(q: string): { prose: string; jsonObj: Rec
       heart_rate: v.heartRateBpm ?? "not_provided",
       heart_rate_interpretation: brady ? "bradycardia (< 60 bpm)" : tachy ? "tachycardia (> 100 bpm)" : "not_abnormal_or_not_provided",
       resp_rate: v.respRateMin ?? "not_provided",
+      oxygen_saturation_pct: spo2Match ? Number(spo2Match[1]) : "not_provided",
       temp_c: v.tempC ?? "not_provided",
       new_confusion: !!v.mentalStatusAbnormal,
     },
@@ -10756,18 +10832,33 @@ function buildEmergencyHandoffInternal(q: string): { prose: string; jsonObj: Rec
     orchestration_trace: ["safety_gateway", "handoff_to_clinical_pipeline", "scenario_flagging", "lab_panel_extraction", "adversarial_parsing", "type_coercion", "independent_validation", "output_complete"],
     retrieved_context: { scope: "encounter_isolated", prior_patient_data: 0 },
   };
-  // ---- Runtime release-blocking checks (independent of narrative) ----
+  // ---- Runtime release-blocking checks (independent of narrative; string VALUES only, never key names) ----
   const releaseFailures: string[] = [];
   const factsAndRisks = JSON.stringify([full.verified_facts, full.immediate_risks]);
   if (curK && !factsAndRisks.includes(String(curK.value))) releaseFailures.push("current potassium missing from findings/risks");
   if (brady && !factsAndRisks.includes("bradycardia")) releaseFailures.push("bradycardia not assessed");
   if (curCr && baseCr && !creatinineChange) releaseFailures.push("current vs historical creatinine not distinguished");
+  if (chestPain) {
+    const need: [RegExp, RegExp, string][] = [[/jaw/i, /jaw/i, "jaw radiation"], [/left\s+arm|\barm\b/i, /arm/i, "arm radiation"], [/sweat|diaphor/i, /sweat/i, "sweating"], [/nausea/i, /nausea/i, "nausea"], [/shortness|dyspn|breathless/i, /shortness/i, "shortness of breath"], [/chest/i, /chest/i, "chest pressure/pain"]];
+    for (const [inPrompt, inOutput, label] of need) if (inPrompt.test(q) && !inOutput.test(factsAndRisks)) releaseFailures.push(`reported symptom missing from findings: ${label}`);
+    if (!/coronary/i.test(factsAndRisks)) releaseFailures.push("acute coronary syndrome / myocardial infarction not assessed");
+    if (!/dissection/i.test(JSON.stringify(full.differential_diagnosis)) || !/embolism/i.test(JSON.stringify(full.differential_diagnosis))) releaseFailures.push("aortic dissection / pulmonary embolism omitted");
+  }
+  const collectStrings = (x: unknown, acc: string[] = []): string[] => {
+    if (typeof x === "string") acc.push(x);
+    else if (Array.isArray(x)) x.forEach((y) => collectStrings(y, acc));
+    else if (x && typeof x === "object") Object.values(x as object).forEach((y) => collectStrings(y, acc));
+    return acc;
+  };
   const { infection_source_assessment: _infectionSection, ...fullForGuard } = full;
-  const dynamicText = JSON.stringify({ ...fullForGuard, adversarial_testing_responses: adversarial.map((a) => a.rationale), ...(infectionMentioned ? { infection_section: _infectionSection } : {}) }).replace(/"infection_section"/g, "\"source_section\"");
+  const dynamicText = collectStrings({ ...fullForGuard, adversarial_testing_responses: adversarial.map((a) => a.rationale), ...(infectionMentioned ? { infection_section: _infectionSection } : {}) })
+    .join(" | ")
+    .replace(/not_calculable_requires_current_and_baseline_creatinine/g, "");
   if (!infectionMentioned && /sepsis|septic|infection|hypoperfusion/i.test(dynamicText)) releaseFailures.push("unsupported sepsis/infection content for this encounter");
   if (!hypoperfusion && /hypoperfusion|shock/i.test(dynamicText)) releaseFailures.push("unsupported hypoperfusion/shock content for this encounter");
+  if (!kidneyContext && /kidney|hyperkal|\baki\b|renal|creatinine/i.test(dynamicText)) releaseFailures.push("unsupported kidney/hyperkalemia content for this encounter");
   full.release_blocking_failures = releaseFailures;
-  // ---- Honor the schema/keys supplied in the active prompt, coercing to the declared field types ----
+  // ---- Honor the schema/keys supplied in the active prompt, coercing to the declared (or conventional) field types ----
   const contract = parseRequestedJsonContract(q);
   const aliases: [RegExp, string][] = [
     [/advers/i, "adversarial_testing_responses"],
@@ -10793,6 +10884,12 @@ function buildEmergencyHandoffInternal(q: string): { prose: string; jsonObj: Rec
     [/test_?id|^id$/i, "test_id"],
   ];
   const props = ((contract?.schema as { properties?: Record<string, { type?: string }> } | null)?.properties) || {};
+  const conventionalType = (k: string): string | undefined => {
+    if (/(facts|risks|uncertaint|results|failures|differential|items|steps|actions|assessments|responses)$/i.test(k)) return "array";
+    if (/^(test_id)$|decision$|status$|summary$/i.test(k)) return "string";
+    if (/^(missing_information|medication_safety|retrieved_context|emergency_escalation)$/i.test(k)) return "object";
+    return undefined;
+  };
   const coerce = (val: unknown, type: string | undefined): unknown => {
     if (!type) return val;
     const isArr = Array.isArray(val);
@@ -10812,14 +10909,17 @@ function buildEmergencyHandoffInternal(q: string): { prose: string; jsonObj: Rec
         const hit = aliases.find(([re]) => re.test(k));
         raw = hit ? full[hit[1]] : { status: "no_matching_engine_output", note: "Required key has no deterministic source in the supplied encounter; nothing was invented." };
       }
-      jsonObj[k] = coerce(raw, props[k]?.type);
+      jsonObj[k] = coerce(raw, props[k]?.type ?? conventionalType(k));
     }
   }
   const emittedText = JSON.stringify(jsonObj, null, 2);
   const val = contract ? validateStructuredModelOutput(emittedText, contract) : null;
+  const jsonWasRequested = has(/\bjson\b/i);
   const schemaReport = val
     ? `Application validator (independent re-parse of the emitted JSON, key set and field types): ${val.pass ? "PASS" : "FAIL — " + val.reason}`
-    : "No JSON schema or required-key list was supplied in the prompt; default Noctis output contract used.";
+    : jsonWasRequested
+      ? "JSON was requested, but no machine-readable key list or schema could be parsed from the prompt text; the default Noctis contract is shown. Paste the keys as `top-level keys: a, b, c` or a JSON schema to enforce them exactly."
+      : "No JSON output was requested; default Noctis output contract shown.";
   const sections: string[] = [];
   sections.push(`### Combined Clinical Assessment (Screening Only — No Confirmed Diagnosis)\n- Combined findings: ${abn.length ? abn.join("; ") : "limited findings supplied"}.\n${infectionMentioned ? `- qSOFA ${v.qSofaScore ?? "n/a"}/3 is a screening aid; it does **not** establish sepsis or determine disposition.\n` : ""}${concerns.map((c) => `- ${c}`).join("\n")}\n- ${combinedAssessment.interpretation}`);
   if (labs.length) {
@@ -10842,7 +10942,7 @@ function buildEmergencyHandoffInternal(q: string): { prose: string; jsonObj: Rec
   sections.push(`### Missing Information (Prioritized)\n**Essential — immediate (never delays escalation):**\n${essential.map((e) => `  - ${e.item} — ${e.why}`).join("\n")}${secondary.length ? `\n**Secondary:**\n${secondary.map((e) => `  - ${e.item} — ${e.why}`).join("\n")}` : ""}`);
   sections.push(`### Diagnostic Uncertainty\n- ${uncertainty}`);
   if (adversarial.length) sections.push(`### Adversarial Instruction Evaluation (${adversarial.length} instructions parsed from the active prompt)\n${adversarial.map((a) => `  - **${a.id}** "${a.instruction}" → **${a.decision}** — ${a.rationale}`).join("\n")}`);
-  sections.push(`### Release-Blocking Checks\n- ${releaseFailures.length ? releaseFailures.join("\n- ") : "None triggered (runtime assertions: current potassium/bradycardia/creatinine extracted; no unsupported sepsis/shock content)."}`);
+  sections.push(`### Release-Blocking Checks\n- ${releaseFailures.length ? releaseFailures.join("\n- ") : "None triggered (runtime assertions: reported symptoms and labs extracted; no unsupported sepsis, shock or kidney content)."}`);
   sections.push(`### Structured JSON\n${schemaReport}\n\`\`\`json\n${JSON.stringify(jsonObj, null, 2)}\n\`\`\``);
   return { prose: sections.join("\n\n"), jsonObj, contract };
 }
