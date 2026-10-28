@@ -2,6 +2,7 @@
  * Natural-language entry point for NOCTIS-CAREERS-001.
  * Answers "How do I become a …?" from the career pathway repository (deterministic, no LLM).
  */
+import { handleCareerScenario, withRegion } from "./noctis-career-intents.ts";
 import { CAREER_COUNT, ENCLAVE_TEMPLATES, getPathway, matchProfessions, professionsByEnclave, type PathwayRecord } from "./noctis-career-pathways.ts";
 
 const BECOME =
@@ -93,6 +94,8 @@ function renderOverview(): string {
 export function handleNaturalCareerQuery(question: string): string | null {
   const q = stripWrapper(question || "");
   if (!q) return null;
+  const scenario = handleCareerScenario(question);
+  if (scenario) return scenario;
   if (REPO.test(q) && !BECOME.test(q)) return renderOverview();
   if (!BECOME.test(q)) return null;
   const target = extractCareerTarget(q);
@@ -103,7 +106,7 @@ export function handleNaturalCareerQuery(question: string): string | null {
   const near = matches.filter((m) => top.score - m.score <= 3 && m.profession_id !== top.profession_id);
   const record = getPathway(top.profession_id);
   if (!record) return null;
-  let out = renderPathway(record);
+  let out = withRegion(renderPathway(record), q, record);
   if (near.length) {
     out += `\n\n**Similar roles you may mean:** ${near.map((n) => n.title).join("; ")}. Ask "How do I become a …" with the exact name for that guide.`;
   } else {

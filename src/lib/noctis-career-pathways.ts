@@ -565,7 +565,7 @@ const STARTING_IDS = new Set([
   "trade_school_student", "apprentice", "college_student", "stars_retiree_freelancer_newcomer",
 ]);
 
-function cleanTitle(t: string): string {
+export function cleanTitle(t: string): string {
   return t.replace(/\s*\(.*?\)\s*/g, " ").replace(/\s+/g, " ").trim();
 }
 
@@ -641,7 +641,7 @@ export const CAREER_COUNT = CAREER_PROFESSIONS.length;
 // ───────────────────────── matching ─────────────────────────
 const STOP = new Set(["a", "an", "the", "to", "be", "become", "becoming", "how", "do", "i", "can", "what", "does", "it", "take", "of", "in", "as", "for", "my", "me", "path", "career", "job", "work", "working", "steps", "way", "get", "start", "starting", "into", "required", "requirements", "need", "become", "is", "are", "and", "or", "licensed", "certified", "professional"]);
 
-function norm(s: string): string {
+export function norm(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
 }
 function stem(w: string): string {
@@ -651,7 +651,7 @@ function tokens(s: string): string[] {
   return norm(s).split(" ").filter((w) => w && !STOP.has(w)).map(stem).filter(Boolean);
 }
 
-function candidatePhrases(p: CareerProfessionRow): string[] {
+export function candidatePhrases(p: CareerProfessionRow): string[] {
   const ov = OVERRIDES[p.id];
   const list = [p.id.replace(/_/g, " "), cleanTitle(p.title), ...subRoles(p.title)];
   if (ov?.aliases) list.push(...ov.aliases);
