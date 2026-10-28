@@ -384,6 +384,27 @@ export const Route = createFileRoute("/api/noctis")({
         return Response.json(status, { headers: { "cache-control": "no-store" } });
       },
       POST: async ({ request }) => {
+        const requiredKey = process.env.NOCTIS_API_KEY;
+        if (requiredKey) {
+          const site = request.headers.get("sec-fetch-site");
+          const origin = request.headers.get("origin");
+          const host = request.headers.get("host");
+          let sameOrigin = site === "same-origin";
+          if (!sameOrigin && origin && host) {
+            try {
+              sameOrigin = new URL(origin).host === host;
+            } catch {
+              sameOrigin = false;
+            }
+          }
+          const supplied = request.headers.get("x-noctis-key") || "";
+          if (!sameOrigin && supplied !== requiredKey) {
+            return Response.json(
+              { error: "Unauthorized. Send a valid x-noctis-key header." },
+              { status: 401, headers: { "cache-control": "no-store" } }
+            );
+          }
+        }
         const body = (await request.json().catch(() => null)) as {
           turns?: Turn[];
           train?: { question?: unknown; answer?: unknown } | { question?: unknown; answer?: unknown }[];
