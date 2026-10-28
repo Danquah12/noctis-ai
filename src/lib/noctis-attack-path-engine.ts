@@ -75,6 +75,8 @@ export function isAttackPathOrExploitabilityQuery(question: string): boolean {
   const q = (question || "").trim();
   if (!q) return false;
   if (/\b(?:NOCTIS-CYBER-VULN-001|VULN-0\d\d|VULN-EVAL)\b/i.test(q)) return false;
+  if (/"finding_id"\s*:/.test(q) && /"source_type"\s*:/.test(q)) return false;
+  if (/\bNOCTIS-CYBER-LIVE-\d+/i.test(q)) return false;
 
   if (
     /\b(attack[-_\s]+path\s+(?:exploitation|intelligence|prediction|graph)|sast-to-(?:runtime|exploitability)|exploitability\s+(?:validation|confidence\s+engine)|evidence\s+correlation\s+engine|vulnerability\s+deduplication\s+engine|remediation\s+intelligence\s+engine|control\s+effectiveness\s+engine|batch\s+00[2345]|noctis-cyber-batch00[2345]|noctis-cyber-apx-\d+|sast\b[\s\S]{0,240}\bdast\b|\bdast\b[\s\S]{0,240}\bsast\b|source-to-sink|choke\s+points?\b[\s\S]{0,120}\bblast[-_\s]+radius)\b/i.test(
@@ -82,6 +84,27 @@ export function isAttackPathOrExploitabilityQuery(question: string): boolean {
     )
   ) {
     return true;
+  }
+
+  // Broad AppSec / API Security / Cloud IAM / Code Vulnerability & Attack-Path scenario detection
+  // (Excludes active live DFIR/EDR host-containment incidents which belong to NOCTIS-CYBER-IR-001)
+  const isLiveEdrOrDfirIncident =
+    /\b(vssadmin|lsass\.exe|procdump|event\s+id\s+(?:4624|4662|4688|4697|7045|1102)|wevtutil\s+cl|falco|nsenter\s+--target|xmrig|modbus\s+tcp|s7comm|aitm\b|impossible[-_\s]+travel|ransomware\s+detonation|memory\s+dump\s+before\s+reboot)\b/i.test(
+      q
+    );
+
+  if (!isLiveEdrOrDfirIncident) {
+    const hasVulnOrWeaknessClass =
+      /\b(cwe-\d+|owasp\s+(?:api\d+|llm\d+|top\s+10)|sql\s+injection|sqli\b|ssrf\b|server-side\s+request\s+forgery|command\s+injection|insecure\s+deserialization|bola\b|idor\b|insecure\s+direct\s+object|broken\s+object\s+level|broken\s+authentication|jwt\s+(?:forgery|bypass|none\s+algorithm|algorithm\s+confusion|secret)|path\s+traversal|directory\s+traversal|lfi\b|arbitrary\s+file\s+(?:read|write|upload)|xss\b|cross-site\s+scripting|csrf\b|cross-site\s+request\s+forgery|xxe\b|xml\s+external\s+entity|ssti\b|template\s+injection|prototype\s+pollution|mass\s+assignment|race\s+condition|toctou\b|graphql\s+(?:introspection|batching|depth)|open\s+redirect|cors\s+misconfiguration|iam:passrole|sts:assumerole|privilege\s+escalation\s+path|indirect\s+prompt\s+injection|rag\s+poisoning)\b/i.test(
+        q
+      );
+    const hasCodeOrArchitectureContext =
+      /\b(\/api\/[a-z0-9_/-]+|\/v\d+\/[a-z0-9_/-]+|src\/[a-z0-9_./-]+|[a-z0-9_-]+\.(?:ts|js|py|go|java|rb|cs|php)|endpoint|controller|middleware|route\b|query\s+parameter|request\s+body|json\s+payload|jwt|bearer\s+token|iam\s+role|serviceaccount|blast\s+radius|attack\s+path|choke\s+point|sink\b|taint\b|sanitizer|how\s+can\s+an\s+attacker|how\s+to\s+remediate|how\s+do\s+we\s+fix)\b/i.test(
+        q
+      );
+    if (hasVulnOrWeaknessClass && hasCodeOrArchitectureContext) {
+      return true;
+    }
   }
 
   return false;
@@ -128,6 +151,12 @@ export function evaluateAttackPathAdversarialInstructions(
     } else if (/\b(waf\s+regex\s+only|skip\s+parameteriz\w*|no\s+need\s+to\s+fix\s+the\s+code|rely\s+solely\s+on\s+waf|extend\s+the\s+existing\s+regex)\b/i.test(instr)) {
       rationale =
         "REJECT: Perimeter WAF regex rules or keyword blacklists are compensating controls susceptible to encoding/comment/redirect bypasses and do not remediate the underlying vulnerable code sink; root-cause remediation requires parameterized queries / `execFile` argument arrays / context-aware allowlisting verified by a regression test.";
+    } else if (/\b(uuid|unpredictable\s+id|obscurity|frontend\s+(?:check|hide|validation)\s+only|client-side\s+check)\b/i.test(instr)) {
+      rationale =
+        "REJECT: Relying on client-side UI checks or resource ID obscurity (such as UUIDs) does NOT remediate Broken Object Level Authorization (`BOLA / IDOR`, `CWE-639`) or Broken Authentication; server-side controllers must enforce explicit tenant/owner authorization on every request.";
+    } else if (/\b(jwt\.decode|skip\s+signature|accept\s+alg\s+none|hardcode\s+secret)\b/i.test(instr)) {
+      rationale =
+        "REJECT: Using `jwt.decode()` without cryptographic signature verification (`jwt.verify()`), allowing `alg: none`, or using weak/hardcoded signing keys enables trivial token forgery (`CWE-347`) and full account takeover.";
     } else if (/\b(knowledge\s+base\s+update\s+proves\s+model\s+weights|rag\s+update\s+equals\s+weight\s+training)\b/i.test(instr)) {
       rationale =
         "REJECT: Updating retrieval-based knowledge bases (RAG) must be tracked separately from model-weight training; a KB update alone does not demonstrate that underlying model weights learned new reasoning behavior without held-out benchmark evaluation.";
@@ -194,7 +223,7 @@ export function handleAttackPathAndExploitabilityQuery(question: string): string
   const qCtx = advStartIdx >= 0 ? q.slice(0, advStartIdx) : q;
 
   const testIdMatch = q.match(
-    /\b(NOCTIS-CYBER-(?:BATCH00[2345]|APX|LIVE)-\d{3}(?:-R\d+)?|BATCH-00[2345]-TEST-\d{3})\b/i
+    /\b(NOCTIS-CYBER-(?:BATCH00[2345]|APX|LIVE)-\d{3}(?:-R\d+)?|BATCH-00[2345]-TEST-\d{3}|APX-\d{3}|SCENARIO-\d{3})\b/i
   );
   const testId = testIdMatch ? testIdMatch[1].toUpperCase() : "NOCTIS-CYBER-APX-002";
 
@@ -214,20 +243,24 @@ export function handleAttackPathAndExploitabilityQuery(question: string): string
     ...new Set(
       [
         ...qCtx.matchAll(
-          /(?:^|[\s"'(`])((?:src|app|lib|server|services|pkg|internal)\/[a-zA-Z0-9_./-]+\.[a-z]{2,5}|[a-zA-Z0-9_-]+\.(?:ts|js|py|go|java|rb|cs|php)|\/api\/[a-zA-Z0-9_/:.-]+|\/v\d+\/[a-zA-Z0-9_/:.-]+)/g
+          /(?:^|[\s"'(`])((?:src|app|lib|server|services|pkg|internal|controllers|routes|handlers|workers)\/[a-zA-Z0-9_./-]+\.[a-z]{2,5}|[a-zA-Z0-9_-]+\.(?:ts|js|py|go|java|rb|cs|php|rs|kt)|\/(?:api|v\d+|graphql|webhooks?|admin|auth|users|orders|tenants|billing|internal)\/[a-zA-Z0-9_/:.{}-]*|\/graphql\b)/g
         ),
       ].map((m) => m[1].replace(/[.,;:)]+$/, ""))
     ),
   ];
+
   const identitiesAndRoles = [
     ...new Set(
       [
         ...qCtx.matchAll(
-          /\b(?:svc[_-][a-z0-9_-]+|adm[_-][a-z0-9_-]+|role[_-][a-z0-9_-]+|[a-z0-9._-]+@[a-z0-9.-]+\.[a-z]{2,12})\b/gi
+          /\b(?:svc[_-][a-z0-9_-]+|adm[_-][a-z0-9_-]+|role[_-][a-z0-9_-]+|[a-z0-9_-]+[_-]role\b|[a-z0-9_-]+[_-]admin\b|[a-z0-9._-]+@[a-z0-9.-]+\.[a-z]{2,12})\b/gi
         ),
-      ].map((m) => m[0])
+      ]
+        .map((m) => m[0])
+        .filter((r) => !/^(?:iam_role|user_role|admin_role|target_role)$/i.test(r))
     ),
   ];
+
   const crownJewelAssets = [
     ...new Set(
       [
@@ -237,14 +270,42 @@ export function handleAttackPathAndExploitabilityQuery(question: string): string
       ].map((m) => m[0])
     ),
   ];
+
+  // Fallback for natural-language crown-jewel assets when no uppercase asset IDs exist
+  if (crownJewelAssets.length === 0) {
+    const naturalAssets = [
+      ...qCtx.matchAll(
+        /\b((?:postgres(?:ql)?|mysql|mongodb|dynamodb|redis|rds|snowflake|bigquery)\s+(?:database|cluster|instance|table)|(?:users|customers|payments|invoices|tenants|credentials|secrets)\s+table|aws\s+secrets\s+manager|hashicorp\s+vault|production\s+s3\s+bucket|kms\s+master\s+key)\b/gi
+      ),
+    ].map((m) => m[1].trim());
+    for (const na of naturalAssets) {
+      if (!crownJewelAssets.includes(na)) crownJewelAssets.push(na);
+    }
+  }
+
   const assetsAndIdentities = [...new Set([...identitiesAndRoles, ...crownJewelAssets])];
 
-  // Extract bullet facts from prompt
-  const bulletLines = qCtx
+  // Extract bullet facts from prompt, with prose-sentence fallback when no '- * •' bullets are used
+  let bulletLines = qCtx
     .split(/\r?\n/)
     .map((l) => l.trim())
     .filter((l) => /^[-*•]\s+/.test(l))
     .map((l) => l.replace(/^[-*•]\s+/, "").trim());
+
+  if (bulletLines.length === 0) {
+    bulletLines = qCtx
+      .split(/\r?\n|(?<=[.!])\s+(?=[A-Z0-9])/)
+      .map((s) => s.replace(/^\d+[.)]\s*/, "").trim())
+      .filter(
+        (s) =>
+          s.length >= 20 &&
+          s.length <= 500 &&
+          !/^(?:return\s+only|required\s+output|adversarial|evaluate\s+and\s+respond|scenario\s*:|context\s*:|questions?\s*:)/i.test(s) &&
+          !s.endsWith(":") &&
+          !s.endsWith("?")
+      )
+      .slice(0, 8);
+  }
 
   const verifiedFacts: string[] = [];
   const missingFromPrompt: string[] = [];
@@ -260,15 +321,28 @@ export function handleAttackPathAndExploitabilityQuery(question: string): string
   if (filesAndEndpoints.length) verifiedFacts.push(`Code paths / API endpoints identified: ${filesAndEndpoints.join(", ")}`);
   if (assetsAndIdentities.length) verifiedFacts.push(`Assets, services & identities identified: ${assetsAndIdentities.join(", ")}`);
 
-  // Determine vulnerability class & sink from prompt
+  // Comprehensive 18-class vulnerability & architecture taxonomy
   const isAiPromptInjection =
     /\b(indirect\s+prompt\s+injection|rag\s+(?:retrieval|poisoning|chunk)|excessive\s+agency|llm01|llm07|llm08|mcp\s+tool|agent\s+tool|tool[-_\s]+call\s+sink)\b/i.test(
       qCtx
     );
-  const isSqlInjection = /\b(sql\s+injection|sqli|cwe-89|raw\s+sql|string\s+concatenation|db\.query| prisma\.\$queryrawunsafe|executequery)\b/i.test(qCtx);
-  const isSsrf = /\b(ssrf|server-side\s+request\s+forgery|cwe-918|169\.254\.169\.254|axios\.get|fetch\(|http\.get)\b/i.test(qCtx);
-  const isCmdInjection = /\b(command\s+injection|rce|cwe-78|child_process\.exec|os\.system|subprocess\.popen|Runtime\.getRuntime\(\)\.exec)\b/i.test(qCtx);
+  const isSqlInjection = /\b(sql\s+injection|sqli\b|cwe-89|raw\s+sql|string\s+concatenation|db\.query|prisma\.\$queryrawunsafe|executequery)\b/i.test(qCtx);
+  const isSsrf = /\b(ssrf\b|server-side\s+request\s+forgery|cwe-918|169\.254\.169\.254|axios\.get|fetch\(|http\.get)\b/i.test(qCtx);
+  const isCmdInjection = /\b(command\s+injection|rce\b|cwe-78|child_process\.exec|os\.system|subprocess\.popen|Runtime\.getRuntime\(\)\.exec)\b/i.test(qCtx);
   const isDeserialization = /\b(deserializ\w*|cwe-502|pickle\.loads|yaml\.load|objectinputstream|jndi)\b/i.test(qCtx);
+  const isBolaOrIdor = /\b(bola\b|idor\b|broken\s+object\s+level|insecure\s+direct\s+object|cwe-639|cwe-284|api1:2023|missing\s+tenant\s+check|tenant_id|organization_id|user_id\s+from\s+req\.params)\b/i.test(qCtx);
+  const isBrokenAuthOrJwt = /\b(jwt\.decode|alg\s*:\s*["']?none|algorithm\s+confusion|cwe-287|cwe-347|broken\s+authentication|unverified\s+jwt|session\s+fixation|oauth\s+redirect_uri)\b/i.test(qCtx);
+  const isPathTraversal = /\b(path\s+traversal|directory\s+traversal|lfi\b|cwe-22|cwe-73|\.\.\/|fs\.readfile\w*|sendfile|arbitrary\s+file\s+(?:read|write|download))\b/i.test(qCtx);
+  const isXss = /\b(cross-site\s+scripting|xss\b|cwe-79|dangerouslysetinnerhtml|innerhtml|document\.write)\b/i.test(qCtx);
+  const isXxe = /\b(xxe\b|xml\s+external\s+entity|cwe-611|libxml|documentbuilderfactory|resolve_entities)\b/i.test(qCtx);
+  const isSsti = /\b(ssti\b|server-side\s+template\s+injection|cwe-1336|render_template_string|jinja2|handlebars|ejs\.render)\b/i.test(qCtx);
+  const isPrototypePollutionOrMassAssign = /\b(prototype\s+pollution|mass\s+assignment|cwe-1321|cwe-915|__proto__|constructor\.prototype|object\.assign|lodash\.merge)\b/i.test(qCtx);
+  const isRaceCondition = /\b(race\s+condition|toctou\b|cwe-362|double[-_\s]+spend|concurrent\s+withdrawal|missing\s+row\s+lock|select\s+for\s+update)\b/i.test(qCtx);
+  const isGraphqlOrApiAbuse = /\b(graphql\s+(?:introspection|batching|depth)|cwe-400|api4:2023|unbounded\s+pagination|rate\s+limit\s+bypass)\b/i.test(qCtx);
+  const isCloudIamOrStorage = /\b(iam:passrole|sts:assumerole|public\s+s3|s3\s+bucket\s+policy|cwe-732|wildcard\s+iam|cluster-admin\s+binding)\b/i.test(qCtx);
+  const isHardcodedSecretOrCrypto = /\b(hardcoded\s+(?:secret|api\s+key|password|private\s+key)|cwe-798|cwe-327|md5\s+password|ecb\s+mode)\b/i.test(qCtx);
+  const isOpenRedirectOrCors = /\b(open\s+redirect|cwe-601|cwe-942|access-control-allow-origin\s*:\s*\*|reflect\w*\s+origin)\b/i.test(qCtx);
+
   const isGrcAligned = /\b(nist\s*(?:sp\s*)?800-53|soc\s*2|iso\s*27001|poa&?m|ato\b|authority\s+to\s+operate)\b/i.test(qCtx);
   const hasDastZeroOrMismatch = /\b(dast\b[\s\S]*?(?:0\s+findings|no\s+(?:corresponding|alerts|vulnerabilities|findings)|returned\s+clean|did\s+not\s+trigger))\b/i.test(qCtx);
 
@@ -282,9 +356,87 @@ export function handleAttackPathAndExploitabilityQuery(question: string): string
           ? "OS Command Injection (CWE-78)"
           : isDeserialization
             ? "Insecure Deserialization (CWE-502)"
-            : cwes.length
-              ? `Application / Dependency Weakness (${cwes.join(", ")})`
-              : "Source-to-Sink Taint Flow & Multi-Hop Attack Path";
+            : isBolaOrIdor
+              ? "Broken Object Level Authorization / BOLA / IDOR (OWASP API1:2023 / CWE-639)"
+              : isBrokenAuthOrJwt
+                ? "Broken Authentication / JWT Verification Bypass (CWE-287 / CWE-347)"
+                : isPathTraversal
+                  ? "Path Traversal / Arbitrary File Access (CWE-22)"
+                  : isXss
+                    ? "Cross-Site Scripting / XSS (CWE-79)"
+                    : isXxe
+                      ? "XML External Entity / XXE Injection (CWE-611)"
+                      : isSsti
+                        ? "Server-Side Template Injection / SSTI (CWE-1336)"
+                        : isPrototypePollutionOrMassAssign
+                          ? "Prototype Pollution / Mass Assignment (CWE-1321 / CWE-915)"
+                          : isRaceCondition
+                            ? "Race Condition / TOCTOU Concurrency Flaw (CWE-362)"
+                            : isGraphqlOrApiAbuse
+                              ? "GraphQL / API Resource & Batching Abuse (OWASP API4:2023 / CWE-400)"
+                              : isCloudIamOrStorage
+                                ? "Cloud IAM Privilege Escalation & Resource Policy Misconfiguration (CWE-284 / CWE-732)"
+                                : isHardcodedSecretOrCrypto
+                                  ? "Hardcoded Cryptographic Secret / Weak Cryptography (CWE-798 / CWE-327)"
+                                  : isOpenRedirectOrCors
+                                    ? "Open Redirect / Permissive CORS Trust Misconfiguration (CWE-601 / CWE-942)"
+                                    : cwes.length
+                                      ? `Application / Dependency Weakness (${cwes.join(", ")})`
+                                      : "Source-to-Sink Taint Flow & Multi-Hop Attack Path";
+
+  const dangerousSinkDesc = isAiPromptInjection
+    ? "Privileged LLM agent / MCP tool-execution dispatcher invoking state-mutating or data-exfiltration tools from untrusted RAG context without deterministic policy/human-in-the-loop gate"
+    : isSqlInjection
+      ? "Dynamic SQL query construction / unparameterized database driver sink"
+      : isSsrf
+        ? "Server-side HTTP client (`fetch` / `axios`) invoked with user-influenced URL reaching internal metadata (`169.254.169.254`) or internal service mesh"
+        : isCmdInjection
+          ? "OS shell execution sink (`child_process.exec` / `subprocess` with `shell=True`)"
+          : isDeserialization
+            ? "Unsafe object deserialization sink (`pickle.loads` / `yaml.load` / `ObjectInputStream`) instantiating arbitrary classes from untrusted payload"
+            : isBolaOrIdor
+              ? "Database/object lookup sink querying records solely by user-supplied resource ID without scoping to the authenticated caller's `tenant_id` / `owner_id`"
+              : isBrokenAuthOrJwt
+                ? "Authentication middleware accepting unverified JWT payloads (`jwt.decode` / `alg: none` / unvalidated `kid` or `redirect_uri`) and minting privileged session context"
+                : isPathTraversal
+                  ? "Filesystem read/write sink (`fs.readFile` / `path.join` / `sendFile`) invoked with unsanitized `../` user path segments"
+                  : isXss
+                    ? "Unescaped DOM / HTML rendering sink (`dangerouslySetInnerHTML` / `innerHTML` / unencoded template output)"
+                    : isXxe
+                      ? "XML parser sink configured with external entity resolution (`resolve_entities=True` / DTD processing enabled)"
+                      : isSsti
+                        ? "Server-side template engine compiling raw user input directly into template source (`render_template_string` / `ejs.render`)"
+                        : isPrototypePollutionOrMassAssign
+                          ? "Recursive object merge / ORM model assignment sink (`lodash.merge` / `Object.assign` / `Model.update(req.body)`) mutating privileged attributes or `Object.prototype`"
+                          : isRaceCondition
+                            ? "Non-atomic check-then-act state transition sink executing concurrent balance/inventory updates without pessimistic row locking (`SELECT ... FOR UPDATE`) or idempotency keys"
+                            : "Sensitive execution / data-access sink identified in static AST taint trace";
+
+  const chokePoint1Remediation = isAiPromptInjection
+    ? "Enforce strict data/instruction separation for untrusted RAG inputs, bind MCP/agent tool calls to deterministic JSON schema + capability allowlists, and require human-in-the-loop approval for state-mutating or external egress actions."
+    : isSqlInjection
+      ? "Replace dynamic SQL interpolation with strict parameterized queries / prepared statements."
+      : isSsrf
+        ? "Enforce a strict outbound URL allowlist, disable HTTP redirects, block RFC 1918 / link-local `169.254.169.254` ranges after DNS resolution, and require IMDSv2 (`HttpTokens=required`, hop limit `1`)."
+        : isDeserialization
+          ? "Replace unsafe native deserializers (`pickle.loads` / `yaml.load` / `ObjectInputStream`) with strict schema-validated JSON / `yaml.safe_load` and cryptographic payload signing."
+          : isBolaOrIdor
+            ? "Enforce server-side object-level authorization on every query (`WHERE id = $1 AND tenant_id = $2`) using the authenticated session's tenant/user identity rather than request parameters."
+            : isBrokenAuthOrJwt
+              ? "Replace `jwt.decode()` with `jwt.verify(token, key, { algorithms: ['RS256'] })`, reject `alg: none`, validate `iss`/`aud`/`exp`, and store signing keys in HSM/KMS."
+              : isPathTraversal
+                ? "Canonicalize paths via `path.resolve()`, enforce a strict prefix check (`resolvedPath.startsWith(SAFE_BASE_DIR + path.sep)`), and map user input to an allowlisted file ID."
+                : isXss
+                  ? "Apply context-aware output encoding, sanitize HTML with DOMPurify, eliminate `dangerouslySetInnerHTML`, and enforce a strict nonce-based Content-Security-Policy (CSP)."
+                  : isXxe
+                    ? "Disable DTDs and external entity resolution (`disallow-doctype-decl`, `resolve_entities=False`) in all XML parsers."
+                    : isSsti
+                      ? "Never concatenate user input into template strings; pass untrusted values strictly as sandboxed template context variables."
+                      : isPrototypePollutionOrMassAssign
+                        ? "Enforce strict DTO allowlist schemas (Zod / Joi), strip `__proto__`/`constructor`/`prototype` keys, and use `Object.create(null)`."
+                        : isRaceCondition
+                          ? "Wrap check-and-mutate operations in a serializable database transaction with row-level locking (`SELECT ... FOR UPDATE`) or atomic conditional updates (`UPDATE ... WHERE balance >= $1`)."
+                          : "Eliminate shell/interpreter invocation (`execFile` with fixed argument array or safe parser) and enforce strict schema validation.";
 
   const sastTrace: SastToRuntimeTrace = {
     finding_id: `${testId}-SAST-01`,
@@ -292,23 +444,13 @@ export function handleAttackPathAndExploitabilityQuery(question: string): string
     source: filesAndEndpoints.length
       ? `User-controlled input entering ${filesAndEndpoints.join(", ")} (HTTP request parameter / JSON body / header)`
       : "User-controlled HTTP request parameter / JSON payload entering application controller",
-    transformations_and_sanitizers: /\b(regex|replace\w*|strip\w*|whitespace|startsWith|incomplete\s+sanitizer|bypassable|blacklist|blocklist|system\s+prompt\s+only|base64)\b/i.test(qCtx)
-      ? "Partial/non-context-aware transformation observed in code path (insufficient to neutralize sink injection, SSRF redirect/IP bypass, untrusted deserialization, or RAG instruction injection)"
-      : "No effective parameterization or context-aware sink encoding verified along the taint path",
+    transformations_and_sanitizers: /\b(regex|replace\w*|strip\w*|whitespace|startsWith|incomplete\s+sanitizer|bypassable|blacklist|blocklist|system\s+prompt\s+only|base64|jwt\.decode|uuid)\b/i.test(qCtx)
+      ? "Partial/non-context-aware transformation observed in code path (insufficient to neutralize sink injection, SSRF redirect/IP bypass, untrusted deserialization, auth/BOLA bypass, or RAG instruction injection)"
+      : "No effective parameterization, tenant-scoped authorization, or context-aware sink encoding verified along the taint path",
     authorization_checks: /\b(authenticated|admin|role|jwt|bearer|rbac|feature\s+flag|webhook\s+signature|hmac)\b/i.test(qCtx)
       ? "Route is gated behind authentication / role middleware, HMAC header, or feature flag (explaining why unauthenticated DAST crawlers missed the code path)"
       : "Endpoint authorization boundary requires runtime verification",
-    dangerous_sink: isAiPromptInjection
-      ? "Privileged LLM agent / MCP tool-execution dispatcher invoking state-mutating or data-exfiltration tools from untrusted RAG context without deterministic policy/human-in-the-loop gate"
-      : isSqlInjection
-        ? "Dynamic SQL query construction / unparameterized database driver sink"
-        : isSsrf
-          ? "Server-side HTTP client (`fetch` / `axios`) invoked with user-influenced URL reaching internal metadata (`169.254.169.254`) or internal service mesh"
-          : isCmdInjection
-            ? "OS shell execution sink (`child_process.exec` / `subprocess` with `shell=True`)"
-            : isDeserialization
-              ? "Unsafe object deserialization sink (`pickle.loads` / `yaml.load` / `ObjectInputStream`) instantiating arbitrary classes from untrusted payload"
-              : "Sensitive execution / data-access sink identified in static AST taint trace",
+    dangerous_sink: dangerousSinkDesc,
     reachability_status: hasDastZeroOrMismatch
       ? "REACHABLE_CONDITIONAL_AUTH_OR_FEATURE_FLAG"
       : "REACHABLE_CONFIRMED",
@@ -321,7 +463,7 @@ export function handleAttackPathAndExploitabilityQuery(question: string): string
     safe_validation_harness:
       "Execute an isolated, non-destructive integration test in staging using a seeded role token and a benign loopback/mock-metadata canary listener (never destructive commands) while capturing AST/debugger stack frames at the sink.",
     regression_test_spec:
-      "Add an automated CI unit + integration regression test asserting that (1) malicious metacharacters/internal RFC 1918 & link-local (`169.254.169.254`) URLs are rejected or safely parameterized at the sink, and (2) unauthorized callers receive HTTP 403 before reaching business logic.",
+      "Add an automated CI unit + integration regression test asserting that (1) malicious metacharacters/internal RFC 1918 & link-local (`169.254.169.254`) URLs or cross-tenant IDs are rejected or safely parameterized at the sink, and (2) unauthorized callers receive HTTP 403 before reaching business logic.",
   };
 
   const isScaUnreachableInProd = /\b(not\s+imported\s+in\s+production|offline\s+cli|dev[_\s-]?dependenc\w*|build-time\s+only|local\s+dev\s+build\s+script)\b/i.test(qCtx);
@@ -425,16 +567,8 @@ export function handleAttackPathAndExploitabilityQuery(question: string): string
       {
         choke_point_id: "CHOKE-01-CODE-SINK",
         location: primaryCodeFile,
-        why_high_leverage: "Eliminating raw taint concatenation/unvalidated URL dispatch at the sink severs the initial exploitation edge (`NODE-1 -> NODE-2`) for all callers.",
-        remediation_control: isAiPromptInjection
-          ? "Enforce strict data/instruction separation for untrusted RAG inputs, bind MCP/agent tool calls to deterministic JSON schema + capability allowlists, and require human-in-the-loop approval for state-mutating or external egress actions."
-          : isSqlInjection
-            ? "Replace dynamic SQL interpolation with strict parameterized queries / prepared statements."
-            : isSsrf
-              ? "Enforce a strict outbound URL allowlist, disable HTTP redirects, block RFC 1918 / link-local `169.254.169.254` ranges after DNS resolution, and require IMDSv2 (`HttpTokens=required`, hop limit `1`)."
-              : isDeserialization
-                ? "Replace unsafe native deserializers (`pickle.loads` / `yaml.load` / `ObjectInputStream`) with strict schema-validated JSON / `yaml.safe_load` and cryptographic payload signing."
-                : "Eliminate shell/interpreter invocation (`execFile` with fixed argument array or safe parser) and enforce strict schema validation.",
+        why_high_leverage: "Eliminating raw taint concatenation, missing tenant/auth verification, or unvalidated dispatch at the sink severs the initial exploitation edge (`NODE-1 -> NODE-2`) for all callers.",
+        remediation_control: chokePoint1Remediation,
       },
       {
         choke_point_id: "CHOKE-02-IDENTITY-BOUNDARY",
@@ -455,12 +589,35 @@ export function handleAttackPathAndExploitabilityQuery(question: string): string
   const adversarialPushback = evaluateAttackPathAdversarialInstructions(advItems, wantsAcceptOrRejectLiteral);
 
   const immediateNextSteps = [
-    `Execute safe, non-destructive staging test harness for ${sastTrace.finding_id} (${vulnClass}) using authenticated role context to resolve the SAST/DAST coverage discrepancy`,
+    `Execute safe, non-destructive staging test harness for ${sastTrace.finding_id} (${vulnClass}) using authenticated role context to resolve any SAST/DAST coverage discrepancy`,
     `Patch primary choke point CHOKE-01 (${attackPathGraph.choke_points[0].location}): ${attackPathGraph.choke_points[0].remediation_control}`,
     `Harden identity choke point CHOKE-02 (${attackPathGraph.choke_points[1].location}): ${attackPathGraph.choke_points[1].remediation_control}`,
     "Add automated CI regression test verifying both sink parameterization/sanitization and authorization enforcement",
     "Audit SIEM/application logs for any historical requests matching the source-to-sink exploit pattern before closing the finding",
   ];
+
+  // Extract any direct user questions from the prompt and answer them specifically
+  const explicitQuestions = [...qCtx.matchAll(/\b((?:What|How|Why|When|Where|Which|Who|Can|Could|Should|Would|Is|Are|Do|Does|Did|Will)\b[^.!?\n]{8,240}\?|[A-Z][^.!?\n]{12,240}\?)/g)]
+    .map((m) => m[1].trim())
+    .filter((qStr, i, arr) => arr.indexOf(qStr) === i)
+    .slice(0, 6);
+
+  const questionsAnswered = explicitQuestions.map((qStr) => {
+    let answer = `For ${vulnClass} in ${primaryCodeFile} (${entryEndpoint}): remediate CHOKE-01 (${chokePoint1Remediation}) and scope down ${primaryIdentity} to protect ${primaryCrownJewels}.`;
+    if (/\b(dast|false\s+positive|why\s+did\s+dast|discrepancy)\b/i.test(qStr)) {
+      answer = sastTrace.sast_vs_dast_discrepancy_resolution;
+    } else if (/\b(attack\s+path|blast\s+radius|lateral|reach|impact|crown[-_\s]+jewel)\b/i.test(qStr)) {
+      answer = `Predicted path (${attackPathGraph.prediction_disclaimer}): ${entryEndpoint} -> ${primaryCodeFile} (${vulnClass}) -> ${primaryIdentity} -> ${primaryCrownJewels}.`;
+    } else if (/\b(remediat\w*|fix|patch|mitigat\w*|choke\s+point|prevent|secure)\b/i.test(qStr)) {
+      answer = `Primary code fix (${primaryCodeFile}): ${chokePoint1Remediation} Secondary identity fix (${primaryIdentity}): apply least-privilege IAM/RBAC scoping and regression testing.`;
+    } else if (/\b(validate|reproduce|harness|test|regression)\b/i.test(qStr)) {
+      answer = `${sastTrace.safe_validation_harness} Regression spec: ${sastTrace.regression_test_spec}`;
+    }
+    return {
+      question: qStr,
+      answer,
+    };
+  });
 
   const chokePointsAndBlastRadius = {
     choke_points: attackPathGraph.choke_points,
@@ -523,6 +680,7 @@ export function handleAttackPathAndExploitabilityQuery(question: string): string
     remediation_and_regression_plan: remediationAndRegressionPlan,
     training_and_benchmark_alignment: trainingAndBenchmarkAlignment,
     blast_radius_estimate: attackPathGraph.blast_radius_estimate,
+    questions_answered: questionsAnswered,
     missing_critical_evidence:
       missingFromPrompt.length > 0
         ? missingFromPrompt
@@ -565,6 +723,8 @@ export function handleAttackPathAndExploitabilityQuery(question: string): string
         out[k] = fullObj.choke_points_and_remediation;
       } else if (/train|benchmark/i.test(k)) {
         out[k] = fullObj.training_and_benchmark_alignment;
+      } else if (/question|answer/i.test(k)) {
+        out[k] = fullObj.questions_answered;
       } else if (/missing|gap|telemetry/i.test(k)) {
         out[k] = fullObj.missing_critical_evidence;
       } else if (/advers/i.test(k)) {
@@ -585,8 +745,11 @@ export function handleAttackPathAndExploitabilityQuery(question: string): string
     `### 1. Cross-Tool Evidence Correlation (SAST + DAST + SCA + Asset Inventory)\n- **SAST:** ${evidenceCorrelation.sast_evidence}\n- **DAST:** ${evidenceCorrelation.dast_evidence}\n- **SCA / SBOM:** ${evidenceCorrelation.sca_and_sbom_evidence}\n- **Asset & Identity Context:** ${evidenceCorrelation.asset_and_identity_inventory}\n- **Correlation Verdict:** ${evidenceCorrelation.conflict_resolution_verdict}`,
     `### 2. SAST-to-Runtime Exploitability Trace (\`${sastTrace.finding_id}\`)\n- **Vulnerability Class:** ${sastTrace.vulnerability_class}\n- **Taint Source:** ${sastTrace.source}\n- **Transformations / Sanitizers:** ${sastTrace.transformations_and_sanitizers}\n- **Authorization Checks:** ${sastTrace.authorization_checks}\n- **Dangerous Sink:** ${sastTrace.dangerous_sink}\n- **Reachability Status:** \`${sastTrace.reachability_status}\`\n- **SAST vs. DAST Discrepancy Analysis:** ${sastTrace.sast_vs_dast_discrepancy_resolution}\n- **Safe Validation Harness:** ${sastTrace.safe_validation_harness}\n- **Regression Test Spec:** ${sastTrace.regression_test_spec}`,
     `### 3. Evidence-Backed Attack-Path Graph & Choke Points\n${attackPathGraph.edges.map((e, i) => `${i + 1}. **\`${e.from}\` → \`${e.to}\`** (\`${e.prediction_status}\`): ${e.step_description} *(Prerequisites: ${e.prerequisites.join("; ")})*`).join("\n")}\n\n**High-Leverage Choke Points:**\n${attackPathGraph.choke_points.map((c) => `- **\`${c.choke_point_id}\` (${c.location}):** ${c.why_high_leverage} → **Fix:** ${c.remediation_control}`).join("\n")}`,
+    questionsAnswered.length > 0
+      ? `### 4. Direct Scenario Questions Answered\n${questionsAnswered.map((qa, i) => `${i + 1}. **Q: ${qa.question}**\n   - **A:** ${qa.answer}`).join("\n")}`
+      : "",
     adversarialPushback.length > 0
-      ? `### 4. Adversarial Pushback Gate (${adversarialPushback.length}/${adversarialPushback.length} Rejected)\n${adversarialPushback.map((a) => `- **${a.id}** ("${a.instruction}") → **\`${a.decision}\`** — ${a.rationale}`).join("\n")}`
+      ? `### ${questionsAnswered.length > 0 ? "5" : "4"}. Adversarial Pushback Gate (${adversarialPushback.length}/${adversarialPushback.length} Rejected)\n${adversarialPushback.map((a) => `- **${a.id}** ("${a.instruction}") → **\`${a.decision}\`** — ${a.rationale}`).join("\n")}`
       : "",
   ]
     .filter(Boolean)

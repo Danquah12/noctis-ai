@@ -1206,7 +1206,7 @@ export function handleNaturalCyberSecurityQuery(question: string): string | null
   ];
 
   // Extract any direct questions asked by the user in the scenario
-  const explicitQuestions = [...question.matchAll(/(?:^|\n|\.\s+)([A-Z][^?\n]{10,240}\?)/g)]
+  const explicitQuestions = [...question.matchAll(/\b((?:What|How|Why|When|Where|Which|Who|Can|Could|Should|Would|Is|Are|Do|Does|Did|Will)\b[^.!?\n]{8,240}\?|[A-Z][^.!?\n]{12,240}\?)/g)]
     .map((m) => m[1].trim())
     .filter((qStr, i, arr) => arr.indexOf(qStr) === i)
     .slice(0, 6);
