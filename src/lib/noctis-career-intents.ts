@@ -449,7 +449,7 @@ const INTENTS: Array<[Intent, RegExp]> = [
 export function handleCareerScenario(question: string): string | null {
   const raw = (/Question:\s*([\s\S]*)$/i.exec(question) || [null, question])[1] as string;
   const q = norm(raw);
-  if (!q || PLATFORM.test(q)) return null;
+  if (!q || raw.length > 280 || PLATFORM.test(q)) return null;
   const region = detectRegion(raw);
   const profs = findProfessionsInText(raw, 2);
   const hasCue = CAREER_CUE.test(q);
