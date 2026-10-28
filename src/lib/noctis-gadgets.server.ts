@@ -11,6 +11,7 @@ import { webSecurityAcademyLabsGadget } from "../scripts/vulnerabilityScriptMap.
 import { architectIntelligenceGadget } from "./noctis-architect-engine.ts";
 import { automotiveDiagnosticGadget } from "./noctis-automotive-engine.ts";
 import { handleNaturalCyberSecurityQuery } from "./noctis-cyber-engine.ts";
+import { sastIntelligenceGadget } from "./noctis-sast-engine.ts";
 
 function decodeBase64Url(segment: string): string {
   const normalized = segment.replace(/-/g, "+").replace(/_/g, "/");
@@ -1848,6 +1849,7 @@ export async function runVibeGadgets(question: string): Promise<string | null> {
     return null;
   }
   const syncHit =
+    sastIntelligenceGadget(question) ||
     evalBenchmarkGadget(question) ||
     webSecurityAcademyLabsGadget(question) ||
     architectIntelligenceGadget(question) ||

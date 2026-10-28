@@ -48,6 +48,7 @@ import {
   buildAutonomous20AreaSeedPairs,
   runAutonomousZeroTouchTrainingSuite,
 } from "./noctis-autonomous-trainer.ts";
+import { buildNoctisSastTrainingPairs } from "./noctis-sast-engine.ts";
 
 export type TrainingPair = {
   id?: string;
@@ -62,6 +63,7 @@ export type TrainingPair = {
 const FILE = path.join(process.cwd(), "data", "vibe-training.json");
 
 const OWASP_SEED_CORPUS: TrainingPair[] = [
+  ...buildNoctisSastTrainingPairs(),
   ...OWASP_2025_SPECS.map((spec) => ({
     question: `Write Python, Java, and C defensive verification scripts for OWASP ${spec.id} ${spec.title}`,
     answer: renderSpecBlock(spec, ["python", "java", "c"]),

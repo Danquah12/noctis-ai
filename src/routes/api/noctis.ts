@@ -16,11 +16,41 @@ function cleanImages(value: unknown) {
   return images;
 }
 
+const CORS_HEADERS = {
+  "cache-control": "no-store",
+  "access-control-allow-origin": "*",
+  "access-control-allow-methods": "GET, POST, OPTIONS",
+  "access-control-allow-headers": "Content-Type, Authorization",
+};
+
 export const Route = createFileRoute("/api/noctis")({
   server: {
     handlers: {
+      OPTIONS: async () => new Response(null, { status: 204, headers: CORS_HEADERS }),
       GET: async ({ request }) => {
         const url = new URL(request.url);
+        if (url.searchParams.get("sast")) {
+          const mode = url.searchParams.get("sast") || "repository";
+          const {
+            getSastRepositoryOverviewPayload,
+            buildCompleteSastKnowledgeReport,
+            XTRIKE_SAST_CORE_RULES,
+            XTRIKE_SAST_BENCHMARK_SUMMARY,
+          } = await import("@/lib/noctis-sast-engine");
+          if (mode === "rules") {
+            return Response.json({ rules: XTRIKE_SAST_CORE_RULES }, { headers: CORS_HEADERS });
+          }
+          if (mode === "benchmarks") {
+            return Response.json(XTRIKE_SAST_BENCHMARK_SUMMARY, { headers: CORS_HEADERS });
+          }
+          if (mode === "report") {
+            return Response.json(
+              { markdown: buildCompleteSastKnowledgeReport(url.searchParams.get("q") || "What is SAST and the XTRIKE SAST Platform?") },
+              { headers: CORS_HEADERS }
+            );
+          }
+          return Response.json(getSastRepositoryOverviewPayload(), { headers: CORS_HEADERS });
+        }
         if (url.searchParams.get("pde") === "health") {
           const { noctisPde } = await import("@/lib/noctis-pde");
           return Response.json(noctisPde.getHealth(), { headers: { "cache-control": "no-store" } });
@@ -711,9 +741,9 @@ export const Route = createFileRoute("/api/noctis")({
             language: typeof body?.language === "string" ? body.language : "English",
             context: typeof body?.context === "string" ? body.context : "",
           });
-          return Response.json(reply, { headers: { "cache-control": "no-store" } });
+          return Response.json(reply, { headers: CORS_HEADERS });
         } catch {
-          return Response.json({ error: "Noctis could not finish that answer." }, { headers: { "cache-control": "no-store" } });
+          return Response.json({ error: "Noctis could not finish that answer." }, { headers: CORS_HEADERS });
         }
       },
     },
