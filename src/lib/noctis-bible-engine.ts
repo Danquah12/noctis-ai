@@ -751,6 +751,412 @@ export function buildBibleTemplateLibrarySection(): string {
 }
 
 /**
+ * Complete, ready-to-preach Poetic/Psalm Expository Sermon (or Bible Study Lesson) on Psalm 23:1–6.
+ */
+export function buildPsalm23SermonOrStudy(
+  durationMinutes = 30,
+  mode: "sermon" | "study" | "discussion" = "sermon",
+  tpl: BibleTemplateSelection = selectBibleTemplate("Prepare a sermon on Psalm 23", "Psalm 23")
+): string {
+  const p1Mins = Math.max(6, Math.round((durationMinutes - 8) * 0.35));
+  const p2Mins = Math.max(7, Math.round((durationMinutes - 8) * 0.4));
+  const p3Mins = Math.max(5, durationMinutes - 8 - p1Mins - p2Mins);
+
+  return [
+    `# Noctis Bible Intelligence Engine — ${mode === "study" ? "Bible Study Classroom Package" : "Complete Sermon Preparation Package"} (\`NOCTIS-BIBLE-001\`)`,
+    `- **Selected Template:** \`${tpl.templateId}\` (${tpl.templateName} · \`v${tpl.version}\`)`,
+    `- **Template Category:** \`${tpl.categoryCode}\``,
+    `- **Target Passage / Topic:** \`Psalm 23:1–6\` (Detected Genre: \`${tpl.detectedGenre}\` — Hebrew Lyric Psalm of Trust)`,
+    `- **Genre Adaptation Applied:** ${tpl.genreAdaptationRule}`,
+    `- **Estimated Duration:** **${durationMinutes} Minutes** (Ready-to-Preach Manuscript & Teaching Package — Minimal Additional Prep Required)`,
+    `- **Hermeneutical Integrity Gate:** Explicitly separates **(1) What \`Psalm 23:1–6\` states in its original Hebrew poetic and historical context** from **(2) Canonical fulfillment across Scripture** and **(3) Labeled contemporary pastoral illustrations and applications**.`,
+    ``,
+    `---`,
+    ``,
+    `## 1. Verbatim Scripture Text (\`Psalm 23:1–6\`, KJV Public Domain)`,
+    `> **Superscription:** *A Psalm of David (\`מִזְמוֹר לְדָוִד\`, Mizmor le-Dawid).*`,
+    `> **\`23:1\`** *"The LORD is my shepherd; I shall not want."*`,
+    `> **\`23:2\`** *"He maketh me to lie down in green pastures: he leadeth me beside the still waters."*`,
+    `> **\`23:3\`** *"He restoreth my soul: he leadeth me in the paths of righteousness for his name's sake."*`,
+    `> **\`23:4\`** *"Yea, though I walk through the valley of the shadow of death, I will fear no evil: for thou art with me; thy rod and thy staff they comfort me."*`,
+    `> **\`23:5\`** *"Thou preparest a table before me in the presence of mine enemies: thou anointest my head with oil; my cup runneth over."*`,
+    `> **\`23:6\`** *"Surely goodness and mercy shall follow me all the days of my life: and I will dwell in the house of the LORD for ever."*`,
+    ``,
+    `---`,
+    ``,
+    `## 2. Historical, Literary & Original-Language Context (\`BIBLE-DOM-03\`, \`BIBLE-DOM-05\`)`,
+    `- **Authorial & Historical Setting (What the Text & Canon Supply):**`,
+    `  - Attributed in the Hebrew superscription to **David** (\`מִזְמוֹר לְדָוִד\`), who tended his father Jesse's sheep in the rugged Judean hills around Bethlehem (\`1 Samuel 16:11\`; \`17:34–37\`) before being anointed shepherd-king over Israel (\`2 Samuel 5:2\`; \`Psalm 78:70–72\`) and later hunted through the wilderness by Saul (\`1 Samuel 22–24\`) and Absalom (\`2 Samuel 15–17\`).`,
+    `  - In the Ancient Near East, kingship was regularly described under the metaphor of a shepherd, yet human kings repeatedly exploited the flock (\`Ezekiel 34:1–10\`). David confesses that even the king of Israel is first a sheep under the personal care of **YHWH**.`,
+    `- **Poetic Structure & The Crucial Pronoun Shift in \`Verse 4\`:**`,
+    `  - \`Psalm 23\` unfolds across **two governing metaphors** corresponding to the annual cycle of Judean pastoral life and royal hospitality:`,
+    `    1. **Stanza I (\`vv. 1–4\`) — YHWH the Shepherd:** Moves from green spring pastures and quiet waters (\`vv. 1–3\`) through the dark limestone ravines (\`v. 4\`) toward the summer highlands.`,
+    `    2. **Stanza II (\`vv. 5–6\`) — YHWH the Royal Covenant Host:** Welcomes the weary traveler into the Lord's banquet tent in full view of enemies (\`v. 5\`) and into the permanent dwelling of the LORD's house (\`v. 6\`).`,
+    `  - **Exegetical Turning Point:** In \`vv. 1–3\`, David speaks **about** God in the **third person** (*"He maketh me... He leadeth me... He restoreth"*). The moment David steps into \`v. 4\` (*"the valley of the shadow of death"*), the Hebrew grammar shifts to the **second person** (*"for **Thou** art with me; **Thy** rod and **Thy** staff"*). In the green pastures we often speak *about* God; in the dark valley we speak *directly to* God because the Shepherd walks beside us.`,
+    `- **Original-Language Hebrew Lexical Notes (\`STEP Bible\` / \`BDB\` / \`HALOT\`):**`,
+    `  1. **\`יְהוָה רֹעִי\` (*YHWH Ro'i*, \`v. 1\`):** The personal covenant name **YHWH** (\`Exodus 3:14–15\`, the self-existent *"I AM"* who keeps covenant) joined to the Qal active participle of \`רָעָה\` (*ra'ah*, to pasture, tend, feed, companion) with the first-person singular suffix (*"my Shepherd"*).`,
+    `  2. **\`לֹא אֶחְסָר\` (*lo' echsar*, \`v. 1\`):** Imperfect of \`חָסֵר\` (*chaser*, to lack, be devoid of, or suffer deficiency). This is the thematic thesis of the entire Psalm: not that a believer has every luxury, but that under YHWH's care we never lack what is necessary for life and godliness (cf. \`Deuteronomy 2:7\`; \`Nehemiah 9:21\`).`,
+    `  3. **\`נְאוֹת דֶּשֶׁא\` (*ne'ot deshe'*, \`v. 2\`) & \`מֵי מְנֻחוֹת\` (*mei menuchot*, \`v. 2\`):** *"Pastures of tender fresh grass"* and *"waters of rest/quietness"* (contrasted with rushing wadis that terrify and drown fleece-heavy sheep).`,
+    `  4. **\`נַפְשִׁי יְשׁוֹבֵב\` (*nafshi yeshovev*, \`v. 3\`):** Polel imperfect of \`שׁוּב\` (*shuv*, to turn back, bring back, restore vitality) with \`נֶפֶשׁ\` (*nephesh*, whole life/breath/soul). Physically, it describes bringing back a straying or ”cast” sheep (one turned on its back unable to right itself); spiritually, it describes renewing a fainting or wandering heart (\`Psalm 19:7\`).`,
+    `  5. **\`גֵּיא צַלְמָוֶת\` (*gei tsalmawet*, \`v. 4\`):** A narrow gorge/ravine (*gei*) of *tsalmawet*—either a compound of \`צֵל\` (*tsel*, shadow) + \`מָוֶת\` (*mawet*, death) or an intensive vocalization meaning *"deepest, impenetrable gloom."* It encompasses every season of mortal danger, grief, depression, and dying itself.`,
+    `  6. **\`שִׁבְטְךָ וּמִשְׁעַנְתֶּךָ\` (*shivtekha u-mish'antekha*, \`v. 4\`):** The **rod** (*shevet*) was a heavy oak club worn at the belt to defend the flock against wolves, lions, and bandits; the **staff** (*mish'enet*) was a long curved crook used to guide sheep along precipices and lift them out of crevices. Together they represent **divine protection** and **divine correction/guidance**.`,
+    `  7. **\`טוֹב וָחֶסֶד יִרְדְּפוּנִי\` (*tov va-chesed yirdefuni*, \`v. 6\`):** The verb \`רָדַף\` (*radaf*) means **"to pursue, chase, or hunt down"** (the exact verb used when Pharaoh's chariots pursued Israel in \`Exodus 14:8\` and when Saul hunted David in \`1 Samuel 23:25\`). Here David reverses the image: instead of enemies hunting him down, God's **goodness** (*tov*) and **covenant loyalty/steadfast love** (*ḥesed*) actively hound and pursue him every day of his life.`,
+    ``,
+    `---`,
+    ``,
+    `## 3. Complete ${durationMinutes}-Minute Expository Sermon Manuscript & Outline`,
+    `- **Sermon Title:** *"The Shepherd in the Valley and the Host at the Table: Why God's Flock Never Walks Alone"*`,
+    `- **Central Biblical Proposition (Big Idea):** *Because the covenant LORD Himself is your Shepherd and Royal Host, you lack no true provision in the pastures, you face no solitary darkness in the valley, and you are actively pursued by His covenant love all the way to the Father's house.*`,
+    ``,
+    `### Introduction (5 Minutes)`,
+    `- **Spoken Manuscript Opening:**`,
+    `  > *"Church family, there is a reason \`Psalm 23\` has been whispered in hospital rooms, recited beside open graves, memorized by children in Sunday school, and prayed by soldiers and prisoners for three thousand years. Six short verses—only 55 words in the original Hebrew—yet they answer the three deepest anxieties of every human heart: **Will I have enough for today? Will I survive the dark valley tomorrow? And where will I belong when my days on earth are done?**"*`,
+    `  > *"Notice how David begins in \`verse 1\`: not 'The LORD is **a** shepherd,' and not merely 'The LORD is the world's shepherd,' but '**The LORD (\`YHWH\`) is MY shepherd; I shall not want.**' Before David was ever a king in a palace, he knew what it meant to sleep on cold Judean stones with a sling in his hand and a flock of helpless sheep depending on his vigilance. Sheep have no fangs, no claws, no camouflage, and no sense of direction. Left to themselves, they overgraze ruined ground, drink from polluted ruts, and wander off ledges. Simply put: **the quality of a sheep's life is determined entirely by the character of its shepherd.** And today, \`Psalm 23\` walks us through three movements of the Shepherd's care: His **Provision in the Pastures (\`vv. 1–3\`)**, His **Presence in the Dark Valley (\`v. 4\`)**, and His **Pursuit to the Father's House (\`vv. 5–6\`)**."*`,
+    ``,
+    `### Main Point I — The Shepherd's Provision & Restoration in the Pastures (\`Psalm 23:1–3\` · ${p1Mins} Minutes)`,
+    `- **1. Explicit Textual Exposition (What the Text States):**`,
+    `  - **Identity Before Inventory (\`v. 1\`):** David anchors *"I shall not want (\`lo' echsar\`)"* directly in the covenant name \`YHWH\`. Because the Creator who spoke to Moses from the burning bush (\`Exodus 3:14\`) has made Himself David's Shepherd, lack cannot have the final word.`,
+    `  - **Rest and Refreshment (\`v. 2\`):** *"He maketh me to lie down in green pastures: he leadeth me beside the still waters (\`mei menuchot\`)."* In the Judean wilderness, green grass is sparse—consisting of tufts of tender herbage nourished by overnight dew on rocky slopes. A shepherd must know where the grass grows and must lead the flock to quiet waters before the midday heat. Sheep will not lie down unless four conditions are met: they are free from fear of predators, free from friction within the flock, free from pests, and free from hunger. It is the **Shepherd** who creates those conditions.`,
+    `  - **Soul-Restoration & Right Paths (\`v. 3\`):** *"He restoreth my soul (\`nafshi yeshovev\`): he leadeth me in the paths of righteousness (\`ma'gelei-tsedeq\`) for his name's sake."* The Hebrew \`ma'gelei-tsedeq\` refers to well-worn wagon tracks or sicheren mountain trails that actually lead to the high pasture—as opposed to false sheep-paths that dead-end at a cliff. And notice God's ultimate motive: **"for His name's sake"**—His own reputation and covenant faithfulness are staked on getting His sheep safely home.`,
+    `- **2. \`[Preacher's Illustration — Explicitly Labeled]\`:**`,
+    `  - *Shepherd veteran Phillip Keller notes that a "cast sheep"—a heavy ewe that rolls onto its back in a hollow—cannot stand up on its own. Its center of gravity shifts, gases build up in the rumen, circulation cuts off to the legs, and within hours it will die unless the shepherd notices one missing from the count, searches the hillside, rolls the sheep upright, and massages its legs until strength returns. That is the exact picture behind \`נַפְשִׁי יְשׁוֹבֵב\` ("He restoreth my soul").*`,
+    `- **3. \`[Pastoral Application — Explicitly Labeled]\`:**`,
+    `  - **Spoken Application:** *"Some of you walked into this sanctuary today spiritually 'cast'—exhausted by financial pressure, caregiving fatigue, or quiet guilt over a path you took this past month. Hear \`verse 3\`: your Shepherd does not despise a cast sheep. He comes looking for you, sets you back on your feet, and leads you onto right paths—not because you earned a flawless record, but **for His name's sake**."*`,
+    ``,
+    `### Main Point II — The Shepherd's Presence & Protection in the Dark Valley (\`Psalm 23:4\` · ${p2Mins} Minutes)`,
+    `- **1. Explicit Textual Exposition (What the Text States):**`,
+    `  - **The Valley Is ON the Right Path (\`v. 4a\`):** Notice the connection between \`verse 3\` and \`verse 4\`: the Shepherd leads us in *"paths of righteousness"* (\`v. 3\`), and the very next sentence is *"Yea, though I walk through the valley of the shadow of death (\`gei tsalmawet\`)"* (\`v. 4\`). Being in a dark valley is **not** proof that you took a wrong turn or that God abandoned you; in Judean geography, the low canyon wadi is the only route from the winter lowlands to the high summer tablelands.`,
+    `  - **Preposition of Hope ("Through"):** David says *"though I walk **through** (\`בְּגֵיא\`) the valley"*—not *"though I pitch my tent and die in the valley."* And notice the pace: *"I **walk**"*—not panic-stricken flight, because the Shepherd sets the pace.`,
+    `  - **The Grammar of Intimacy ("Thou Art With Me" · \`v. 4b\`):** Point out to the congregation how David stops saying *"He"* and starts saying *"Thou"*: ***"I will fear no evil: for THOU art with me; THY rod and THY staff they comfort me."*** Evil is real in the valley—David does not deny the predators or the shadows—but fear is disarmed by the **personal presence** of the Shepherd (\`עִמָּדִי\`, *'immadi*, "with me") armed with His defensive club (*shevet*) and guiding staff (*mish'enet*).`,
+    `- **2. Canonical Trajectory & Christological Fulfillment (\`BIBLE-DOM-06\`, \`BIBLE-DOM-07\`):**`,
+    `  - **Prophetic Promise (\`Ezekiel 34:11–16, 23\`):** When Israel's unfaithful rulers fleeced the flock, YHWH declared: *"Behold, I, even I, will both search my sheep, and seek them out... and I will set up one shepherd over them, even my servant David."*`,
+    `  - **New Testament Fulfillment (\`John 10:11, 14, 27–28\`; \`Hebrews 13:20\`; \`1 Peter 2:25\`):** In \`John 10:11\`, Jesus steps forward and says in Greek (\`Ἐγώ εἰμι ὁ ποιμὴν ὁ καλός\`): ***"I am the good shepherd: the good shepherd giveth his life for the sheep."*** Why does the shadow of death have no ultimate terror for the Christian? Because on the cross at Calvary, the Good Shepherd walked into the valley of **actual death**—taking the blow of judgment Himself—and rose again as *"that great shepherd of the sheep, through the blood of the everlasting covenant"* (\`Hebrews 13:20\`).`,
+    `- **3. \`[Preacher's Illustration — Explicitly Labeled]\`:**`,
+    `  - *A shadow can look gigantic against a canyon wall, but a shadow has no teeth. The shadow of a sword cannot cut you; the shadow of a serpent cannot poison you; and where there is a shadow, there must be a Light shining behind it. Because Jesus Christ conquered death, death for the believer has been reduced to a shadow on the way home.*`,
+    `- **4. \`[Pastoral Application — Explicitly Labeled]\`:**`,
+    `  - **Spoken Application:** *"If you are walking through the valley of a medical diagnosis, a broken marriage, bereavement, or a season of deep depression today: stop talking merely **about** God from a distance and turn to Him in the second person—'Lord, **You** are with me right here.' Let both His rod (His sovereign protection) and His staff (His gentle correction through Scripture and the church) steady your steps this week."*`,
+    ``,
+    `### Main Point III — The Royal Host's Table & Unending Pursuit of Covenant Love (\`Psalm 23:5–6\` · ${p3Mins} Minutes)`,
+    `- **1. Explicit Textual Exposition (What the Text States):**`,
+    `  - **A Banquet in the Presence of Enemies (\`v. 5\`):** *"Thou preparest a table before me in the presence of mine enemies: thou anointest my head with oil; my cup runneth over."* Whether viewed as the shepherd clearing flat high-country mesas (*shulchan*) of poisonous plants while predators watch helplessly from the rocks, or as an Ancient Near Eastern royal host welcoming a guest into his tent under the sacred law of hospitality (where no enemy outside dare touch the guest once anointed with fragrant oil and handed an overflowing cup), the meaning is unmistakable: **God does not wait until all our enemies and trials vanish before He feeds us with joy.** He spreads the feast *in their very presence*.`,
+    `  - **Hounded by Goodness and *Ḥesed* (\`v. 6a\`):** *"Surely goodness (\`tov\`) and mercy (\`chesed\`) shall follow (\`yirdefuni\` — actively pursue/chase) me all the days of my life."* Every single day—bright days, ordinary days, and valley days—God's goodness and covenant loyalty are on your trail.`,
+    `  - **Home Forever (\`v. 6b\`):** *"And I will dwell in the house of the LORD for ever (\`לְאֹרֶךְ יָמִים\`, for length of days / unendingly)."* What begins with a Shepherd in the field ends with a child at home in the Father's house—culminating in \`Revelation 7:17\`: *"For the Lamb which is in the midst of the throne shall feed [shepherd] them, and shall lead them unto living fountains of waters: and God shall wipe away all tears from their eyes."*`,
+    `- **2. \`[Pastoral Application — Explicitly Labeled]\`:**`,
+    `  - **Spoken Application:** *"Look back over your life: the very fact that you are still here, still hearing God's Word, is proof that His goodness and \`ḥesed\` have been pursuing you even when you ran from Him. Come to His table today—receive His pardon, forgive those who have wronged you, and walk out of these doors knowing you know where you are going to live forever."*`,
+    ``,
+    `### Conclusion & Closing Prayer (3 Minutes)`,
+    `- **Spoken Conclusion:**`,
+    `  > *"Beneath us: green pastures. Beside us: still waters. With us in the valley: the Good Shepherd who laid down His life for the sheep. Before us: a prepared table and an overflowing cup. Behind us: goodness and covenant mercy in hot pursuit. And ahead of us: the house of the LORD forever. Can we say it together with personal faith today? **'The LORD is MY shepherd; I shall not want.'**"*`,
+    `- **Closing Prayer:**`,
+    `  > *"Covenant LORD, our Shepherd and our Host: we thank You that You did not leave us to wander as sheep without a shepherd. Thank You, Lord Jesus, that as the Good Shepherd You entered the valley of death at the cross and rose victorious so that no shadow can separate us from Your love. Restore every cast and weary soul in this room today; lead us in paths of righteousness for Your name's sake; comfort the grieving with Your rod and Your staff; and bring us at last to dwell in Your house forever. In the name of Jesus our Good Shepherd, Amen."*`,
+    ``,
+    `---`,
+    ``,
+    `## 4. Bulletin / Small-Group Follow-Up Study Guide (5 Discussion Questions & Teacher Answers)`,
+    `1. **Observation (\`v. 1\`):** Why does David begin with *"The LORD (\`YHWH\`) is my shepherd"* before saying *"I shall not want"*?`,
+    `   - *Suggested Answer:* Because our sufficiency depends on the identity and covenant faithfulness of the Shepherd (\`YHWH\`), not on our own resources or circumstances.`,
+    `2. **Context & Lexical Insight (\`v. 3\`):** What does the Hebrew phrase \`נַפְשִׁי יְשׁוֹבֵב\` (*"He restoreth my soul"*) mean both in shepherding life and in spiritual life?`,
+    `   - *Suggested Answer:* It means to bring back a straying or overturned ("cast") sheep to safety and vitality; spiritually, God revives the weary and brings back the wandering heart (\`Psalm 19:7\`).`,
+    `3. **Literary Structure (\`vv. 3–4\`):** What changes in the pronouns between \`verses 1–3\` and \`verse 4\`, and why is that significant when we suffer?`,
+    `   - *Suggested Answer:* David shifts from 3rd-person *"He"* (\`vv. 1–3\`) to 2nd-person *"Thou art with me"* (\`v. 4\`), showing that suffering moves the believer from talking *about* God to intimate communion *with* God.`,
+    `4. **Canonical Cross-Reference (\`Ezekiel 34:11–16\`; \`John 10:11\`):** How does Jesus fulfill \`Psalm 23\` in \`John 10:11–18\`?`,
+    `   - *Suggested Answer:* Jesus declares *"I am the good shepherd"* who willingly lays down His life for the sheep and takes it up again, securing eternal life so none can snatch them from His hand (\`John 10:28\`).`,
+    `5. **Personal Application (\`v. 6\`):** How does knowing that God's goodness and *ḥesed* actively **pursue** (\`yirdefuni\`) you change the way you face anxiety this week?`,
+    `   - *Suggested Answer:* Instead of feeling hunted by fear, regret, or enemies, the believer can rest in God's proactive, covenantal care every day of life.`,
+  ].join("\n");
+}
+
+/**
+ * Complete, ready-to-teach Epistle Bible Study Lesson Plan (or Sermon) on Romans 8:1–39.
+ */
+export function buildRomans8StudyOrSermon(
+  durationMinutes = 45,
+  mode: "sermon" | "study" | "discussion" = "study",
+  tpl: BibleTemplateSelection = selectBibleTemplate("Create a 45-minute Bible study lesson plan on Romans 8", "Romans 8")
+): string {
+  return [
+    `# Noctis Bible Intelligence Engine — ${mode === "sermon" ? "Complete Sermon Preparation Package" : "Complete Bible Study Classroom Package"} (\`NOCTIS-BIBLE-001\`)`,
+    `- **Selected Template:** \`${tpl.templateId}\` (${tpl.templateName} · \`v${tpl.version}\`)`,
+    `- **Template Category:** \`${tpl.categoryCode}\``,
+    `- **Study Topic / Passage:** \`Romans 8:1–39\` (Detected Genre: \`${tpl.detectedGenre}\` — Pauline Doctrinal & Pastoral Epistle)`,
+    `- **Genre Adaptation Applied:** ${tpl.genreAdaptationRule}`,
+    `- **Session Duration:** **${durationMinutes} Minutes** (Ready-to-Teach Classroom Lesson Plan & Facilitator Guide)`,
+    `- **Hermeneutical Integrity Gate:** Explicitly separates **(1) Paul's explicit Koine Greek argument in \`Romans 8\`** from **(2) Fair comparison of Christian traditions on debated verses (\`vv. 29–30\`)** and **(3) Contemporary group application**.`,
+    ``,
+    `---`,
+    ``,
+    `## 1. Verbatim Key Scripture Anchors (\`Romans 8\`, KJV Public Domain)`,
+    `> **\`8:1–2\`** *"There is therefore now no condemnation to them which are in Christ Jesus, who walk not after the flesh, but after the Spirit. For the law of the Spirit of life in Christ Jesus hath made me free from the law of sin and death."*`,
+    `> **\`8:14–16\`** *"For as many as are led by the Spirit of God, they are the sons of God. For ye have not received the spirit of bondage again to fear; but ye have received the Spirit of adoption, whereby we cry, Abba, Father. The Spirit itself beareth witness with our spirit, that we are the children of God."*`,
+    `> **\`8:28\`** *"And we know that all things work together for good to them that love God, to them who are the called according to his purpose."*`,
+    `> **\`8:31–32\`** *"What shall we then say to these things? If God be for us, who can be against us? He that spared not his own Son, but delivered him up for us all, how shall he not with him also freely give us all things?"*`,
+    `> **\`8:38–39\`** *"For I am persuaded, that neither death, nor life, nor angels, nor principalities, nor powers, nor things present, nor things to come, Nor height, nor depth, nor any other creature, shall be able to separate us from the love of God, which is in Christ Jesus our Lord."*`,
+    ``,
+    `---`,
+    ``,
+    `## 2. Historical, Literary & Koine Greek Lexical Notes (\`BIBLE-DOM-05\`, \`BIBLE-DOM-08\`)`,
+    `- **Authorial & Historical Setting:** Written by the Apostle Paul from Corinth (c. AD 57) to the mixed Jewish-Gentile house churches in Rome (\`Romans 1:7\`; \`16:1–23\`). \`Romans 8\` forms the climax of Paul's exposition of justification, sanctification, and assurance (\`Romans 1–8\`), bridging the groaning under indwelling sin in \`Romans 7:7–25\` to God's faithfulness to Israel and the nations in \`Romans 9–11\`.`,
+    `- **Structural Frame:** The chapter begins with **\`Οὐδὲν ἄρα νῦν κατάκριμα\` ("No condemnation now," \`v. 1\`)** and ends with **\`οὐδὲν δυνήσεται ἡμᾶς χωρίσαι\` ("No separation ever," \`vv. 38–39\`)**, propelled by **19 occurrences of \`Πνεῦμα\` (*Pneuma*, the Holy Spirit)**—more than any other chapter in the New Testament.`,
+    `- **Key Koine Greek Terms (\`STEP Bible\` / \`BDAG\`):**`,
+    `  1. **\`κατάκριμα\` (*katakrima*, \`v. 1\`):** Judicial sentence of guilt and resulting penal servitude. Because God condemned sin in the flesh of His own Son (\`v. 3\`), there is zero judicial sentence remaining against those united to Christ Jesus.`,
+    `  2. **\`υἱοθεσία\` (*huiothesia*, \`vv. 15, 23\`):** Full legal adoption as adult sons and heirs under Greco-Roman law, granting the intimate Aramaic-Greek family cry **\`Ἀββᾶ ὁ πατήρ\` (*Abba, Father*)**—the exact address Jesus used in Gethsemane (\`Mark 14:36\`).`,
+    `  3. **\`συνεργεῖ\` (*synergei*, \`v. 28\`):** Works together / co-operates toward a telos. Crucially, \`v. 29\` defines what *"the good (\`τὸ ἀγαθόν\`)"* is: **not** material comfort or absence of trouble, but being **conformed to the image of God's Son (\`συμμόρφους τῆς εἰκόνος τοῦ υἱοῦ αὐτοῦ\`)**.`,
+    `  4. **\`ὑπερνικῶμεν\` (*hypernikōmen*, \`v. 37\`):** Compound of \`ὑπέρ\` (above/beyond) + \`νικάω\` (conquer)—*"we are more than conquerors / super-victors through Him who loved us,"* not by escaping tribulation (\`v. 35\`), but because tribulation cannot sever us from Christ's love.`,
+    ``,
+    `---`,
+    ``,
+    `## 3. Four-Movement Epistle Breakdown & Classroom Pacing (${durationMinutes} Minutes)`,
+    `- **Segment 1 — Opening Hook & Context (5 mins):** Ask learners: *"What is the difference between knowing your sins are forgiven on paper and actually living free from shame and fear of the future?"*`,
+    `- **Segment 2 — Four-Part Textual Walkthrough (15 mins):**`,
+    `  - **Movement I (\`vv. 1–11\`): Life in the Spirit vs. the Flesh.** What the Law could not do because it was weakened by the flesh, God accomplished by sending His own Son in the likeness of sinful flesh and as a sin offering (\`περὶ ἁμαρτίας\`, \`v. 3\`), so that the Spirit who raised Jesus from the dead now indwells believers (\`v. 11\`).`,
+    `  - **Movement II (\`vv. 12–17\`): Adoption as Sons and Joint-Heirs.** The Spirit does not put believers back under cringing slavish fear (\`πνεῦμα δουλείας\`), but bears witness that we are God's children and joint-heirs with Christ—sharing both His sufferings and His coming glory (\`v. 17\`).`,
+    `  - **Movement III (\`vv. 18–30\`): Three Groanings & The Golden Chain of Redemption.** Creation groans (\`v. 22\`), believers groan awaiting the redemption of our bodies (\`v. 23\`), and the Spirit Himself intercedes with groanings too deep for words (\`v. 26\`). In \`vv. 29–30\`, Paul links five aorist verbs: *foreknew (\`προέγνω\`) $\\rightarrow$ predestined (\`προώρισεν\`) $\\rightarrow$ called (\`ἐκάλεσεν\`) $\\rightarrow$ justified (\`ἐδικαίωσεν\`) $\\rightarrow$ glorified (\`ἐδόξασεν\`)*.`,
+    `    - **Interpretive Traditions Note (\`BIBLE-DOM-09\`):**`,
+    `      - *Reformed / Augustinian Tradition:* Reads \`προέγνω\` (*foreknew*) covenantally ("whom He set His electing love upon beforehand," cf. \`Amos 3:2\`) and views the five verbs as an unbreakable chain of sovereign monergistic grace for the elect.`,
+    `      - *Wesleyan / Arminian Tradition:* Reads \`προέγνω\` as God's omniscient foreknowledge of who would respond in faith to prevenient grace, emphasizing corporate destiny in Christ and conditional perseverance.`,
+    `      - *Catholic & Orthodox Traditions:* Emphasize the synergy of divine grace and human participation in baptismal incorporation and *theosis*/conformity to Christ (\`v. 29\`), warning against both presumption and despair.`,
+    `  - **Movement IV (\`vv. 31–39\`): Five Unanswerable Courtroom Questions & No Separation.** Who can be against us (\`v. 31\`)? Who will fail to receive all things with Christ (\`v. 32\`)? Who shall bring a charge against God's elect (\`v. 33\`)? Who is to condemn (\`v. 34\`)? Who shall separate us from the love of Christ (\`v. 35\`)? Answer: **Nothing in all creation (\`vv. 38–39\`)!**`,
+    ``,
+    `---`,
+    ``,
+    `## 4. Ten Structured Discussion Questions with Teacher Answer Keys (15 Minutes)`,
+    `1. **Observation (\`v. 1\`):** What word connects \`Romans 8:1\` to \`Romans 1–7\`, and what judicial verdict does Paul announce?`,
+    `   - *Teacher Key:* *"Therefore (\`ἄρα\`)"* connects back to justification by faith in Christ (\`Romans 3–5\`) and deliverance from the wretched struggle of \`Romans 7:24–25\`; the verdict is *"no condemnation (\`κατάκριμα\`)"* now for those in Christ Jesus.`,
+    `2. **Context (\`vv. 3–4\`):** Why couldn't the Mosaic Law free us from sin and death, and how did God solve that problem?`,
+    `   - *Teacher Key:* The Law was holy (\`7:12\`) but powerless to transform human flesh (\`σάρξ\`). God sent His own Son in the likeness of sinful flesh and for sin, condemning sin in the flesh so the righteous requirement of the Law is fulfilled in us who walk by the Spirit.`,
+    `3. **Contrast (\`vv. 5–8\`):** How does Paul contrast the mindset of the flesh (\`φρόνημα τῆς σαρκός\`) with the mindset of the Spirit (\`φρόνημα τοῦ πνεύματος\`)?`,
+    `   - *Teacher Key:* The mindset of the flesh is hostility toward God and leads to death, whereas the mindset of the Spirit is life and peace (\`v. 6\`).`,
+    `4. **Adoption (\`vv. 14–17\`):** Why is Paul's combination of the Aramaic \`Abba\` and Greek \`ho Patēr\` significant in a mixed Jewish-Gentile church?`,
+    `   - *Teacher Key:* It echoes Jesus' own intimate prayer in \`Mark 14:36\` and unites Jewish and Gentile believers as one adopted family with full inheritance rights.`,
+    `5. **Suffering & Glory (\`vv. 17–25\`):** How does \`Romans 8:18–25\` Guard against the "prosperity gospel" idea that Spirit-filled Christians won't suffer?`,
+    `   - *Teacher Key:* Paul explicitly states that heirs suffer *with* Christ (\`v. 17\`), that creation is still subject to futility (\`vv. 20–22\`), and that believers ourselves groan inwardly while waiting in hope for bodily resurrection (\`v. 23\`).`,
+    `6. **Prayer (\`vv. 26–27\`):** What comfort does \`Romans 8:26–27\` give when a believer is too exhausted or grief-stricken to know what to pray for?`,
+    `   - *Teacher Key:* The Holy Spirit helps our weakness (\`ἀσθενείᾳ\`) and intercedes for the saints according to the will of God even when our prayers are wordless groans.`,
+    `7. **Misquoted Verse Check (\`vv. 28–29\`):** How does reading \`Romans 8:28\` together with \`verse 29\` prevent misusing \`v. 28\` as a shallow cliché?`,
+    `   - *Teacher Key:* \`Verse 28\` does not say every event is good in itself, nor that "good" means earthly wealth; \`verse 29\` defines the ultimate good as being conformed to the image of God's Son.`,
+    `8. **Cross-Reference (\`v. 32\` & \`Genesis 22\`):** Which Old Testament story does Paul allude to in \`Romans 8:32\` (*"He that spared not his own Son"*), and what is his argument from the greater to the lesser?`,
+    `   - *Teacher Key:* Paul echoes the Greek Septuagint (\`LXX\`) of \`Genesis 22:12, 16\` (Abraham not sparing Isaac). If God already gave the supreme gift—His own Son—He will certainly supply everything else needed to bring us home.`,
+    `9. **Christ's Intercession (\`v. 34\`):** Notice that in \`v. 26\` the Spirit intercedes inside us, and in \`v. 34\` the risen Christ intercedes at God's right hand. How does this double intercession anchor Christian assurance?`,
+    `   - *Teacher Key:* Believers have an Advocate in heaven (\`Romans 8:34\`; \`1 John 2:1\`) and an Intercessor within (\`Romans 8:26\`), leaving no room for any accuser (\`vv. 33–34\`).`,
+    `10. **Personal Application (\`vv. 35–39\`):** Looking at Paul's list in \`vv. 35, 38–39\`, which fear or pressure in your life right now needs to hear that nothing in creation can separate you from the love of God in Christ Jesus?`,
+    `    - *Teacher Key:* Open pastoral sharing—inviting participants to name present anxieties (*"things present"*) or future worries (*"things to come"*) and place them under Christ's finished work.`,
+    ``,
+    `---`,
+    ``,
+    `## 5. Five-Question Comprehension Quiz & Answer Key (5 Minutes)`,
+    `1. **Q1:** How many times does Paul refer to the Spirit (\`Πνεῦμα\`) in \`Romans 8\`, and what two "No's" bracket the chapter (\`v. 1\` and \`vv. 38–39\`)?`,
+    `   - **Answer:** **19 times**; bracketed by **"No condemnation" (\`v. 1\`)** and **"No separation" (\`vv. 38–39\`)**.`,
+    `2. **Q2:** What Greek legal term in \`Romans 8:15, 23\` describes God making believers His sons and heirs?`,
+    `   - **Answer:** **\`υἱοθεσία\` (*huiothesia*, adoption as sons/heirs)**.`,
+    `3. **Q3:** What are the **three groanings** in \`Romans 8:19–27\`?`,
+    `   - **Answer:** (1) The groaning of **creation** (\`vv. 19–22\`), (2) the groaning of **believers** awaiting bodily redemption (\`v. 23\`), and (3) the groaning/intercession of the **Holy Spirit** in prayer (\`vv. 26–27\`).`,
+    `4. **Q4:** According to \`Romans 8:29\`, what is the specific *"good"* toward which God works all things in \`v. 28\`?`,
+    `   - **Answer:** Being **conformed to the image of His Son** (\`συμμόρφους τῆς εἰκόνος τοῦ υἱοῦ αὐτοῦ\`).`,
+    `5. **Q5:** What Old Testament text does Paul quote in \`Romans 8:36\` (*"For thy sake we are killed all the day long; we are accounted as sheep for the slaughter"*) to show that suffering has always accompanied God's faithful people?`,
+    `   - **Answer:** **\`Psalm 44:22\`**.`,
+    ``,
+    `---`,
+    ``,
+    `## 6. Closing Prayer & 7-Day Take-Home Reading Plan (5 Minutes)`,
+    `- **Take-Home Reading:** Day 1: \`Romans 8:1–11\` · Day 2: \`Romans 8:12–17\` · Day 3: \`Romans 8:18–25\` · Day 4: \`Romans 8:26–30\` · Day 5: \`Romans 8:31–39\` · Day 6: \`Psalm 44\` & \`Genesis 22:1–18\` · Day 7: \`John 14:15–27\` & \`Galatians 4:1–7\`.`,
+    `- **Closing Prayer:** *"Abba, Father, thank You that because Your Son bore our condemnation on the cross, there is now no condemnation for those who are in Christ Jesus, and nothing in all creation will ever separate us from Your love. Fill us afresh with Your Holy Spirit this week as we walk in freedom, hope, and love. In Jesus' name, Amen."*`,
+  ].join("\n");
+}
+
+interface CanonicalBookExegeticalProfile {
+  divisionTitle: string;
+  historicalContext: string;
+  anchorVerseCitation: string;
+  anchorVerseTextKjv: string;
+  lexicalNotes: string[];
+  point1Title: string;
+  point1Exposition: string;
+  point2Title: string;
+  point2Exposition: string;
+  point3Title: string;
+  point3Exposition: string;
+  crossReferences: string;
+  traditionsNote: string;
+}
+
+/**
+ * Resolves a substantive, passage-grounded exegetical profile for any book or passage
+ * across the 7 Canonical Divisions (Genesis to Revelation) so no dynamic sermon or study
+ * ever outputs empty placeholder descriptions.
+ */
+function getCanonicalBookProfile(targetPassage: string, genre: BibleTemplateSelection["detectedGenre"]): CanonicalBookExegeticalProfile {
+  const p = targetPassage.toLowerCase();
+
+  if (/\b(john\s*3|john\s*1|john\s*10|john\s*14|john\s*15|john\s*20|matthew|mark|luke|john|acts)\b/i.test(p) || genre === "Gospel_Parable") {
+    return {
+      divisionTitle: "Division 5 — The Gospels & Acts (The Person, Ministry, Death & Resurrection of Jesus the Messiah)",
+      historicalContext:
+        "Set in First-Century Second Temple Judea and Galilee under Roman occupation (and expanding from Jerusalem to Rome in Acts), where Messianic expectations of kingdom restoration meet their fulfillment in Jesus of Nazareth's incarnation, miracles, parables, crucifixion under Pontius Pilate, bodily resurrection, and Pentecost outpouring of the Holy Spirit.",
+      anchorVerseCitation: /\b(john\s*3)\b/i.test(p) ? "John 3:16–17" : "Luke 24:44–47 / John 20:31",
+      anchorVerseTextKjv: /\b(john\s*3)\b/i.test(p)
+        ? '"For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. For God sent not his Son into the world to condemn the world; but that the world through him might be saved." (John 3:16–17, KJV)'
+        : '"But these are written, that ye might believe that Jesus is the Christ, the Son of God; and that believing ye might have life through his name." (John 20:31, KJV)',
+      lexicalNotes: [
+        "`εὐαγγέλιον` (*euangelion*): Royal good news / proclamation of God's saving reign breaking into history through Jesus the Messiah (`Mark 1:14–15`; `Isaiah 52:7`).",
+        "`βασιλεία τοῦ Θεοῦ` (*basileia tou Theou*): The Kingdom/Reign of God—already inaugurated in Jesus' ministry, cross, and resurrection, and awaiting its final consummation at His parousia.",
+        "`πιστεύω` (*pisteuō*): Active, self-committing trust and allegiance in the crucified and risen Christ (`John 1:12`; `3:16`; `20:31`).",
+      ],
+      point1Title: "The Historical & Messianic Revelation of Jesus in the Text",
+      point1Exposition: `Examines the immediate narrative setting, interlocutors (disciples, crowds, or religious leaders), and explicit claims of \`${targetPassage}\`, demonstrating how Jesus' words and deeds disclose the character and saving rule of the Father.`,
+      point2Title: "The Cross, Resurrection & Old Testament Fulfillment",
+      point2Exposition: `Traces how \`${targetPassage}\` fulfills the Law of Moses, the Prophets, and the Psalms (\`Luke 24:27, 44\`), centering on Christ's substitutionary atonement (\`Mark 10:45\`) and victorious resurrection.`,
+      point3Title: "Discipleship, Witness & Spirit-Empowered Practice",
+      point3Exposition: `Draws out the call of \`${targetPassage}\` to repentance, faith, costly cross-bearing discipleship (\`Luke 9:23\`), love for neighbor, and witness to the nations (\`Matthew 28:18–20\`; \`Acts 1:8\`).`,
+      crossReferences: "`Isaiah 52:7–53:12` -> `Mark 10:45` -> `Luke 24:25–27, 44–47` -> `John 3:14–17; 20:30–31` -> `Acts 2:22–36`",
+      traditionsNote: "Protestant, Catholic, and Eastern Orthodox traditions unite around the Nicene confession of Christ's full deity and full humanity (`homoousios` with the Father, Chalcedon AD 451), while offering complementary liturgical, sacramental, and evangelical emphases on how believers participate in Christ's life.",
+    };
+  }
+
+  if (/\b(genesis|exodus|leviticus|numbers|deuteronomy)\b/i.test(p)) {
+    return {
+      divisionTitle: "Division 1 — The Beginning / Torah (Genesis to Deuteronomy)",
+      historicalContext:
+        "Set against the Ancient Near Eastern backdrop of creation, the patriarchal migrations from Mesopotamia to Canaan, Israel's deliverance from Egyptian bondage in the Exodus, the Sinai covenant and tabernacle worship, and Moses' covenant renewal on the plains of Moab.",
+      anchorVerseCitation: "Genesis 12:1–3 / Exodus 19:5–6 / Deuteronomy 6:4–5",
+      anchorVerseTextKjv:
+        '"Hear, O Israel: The LORD our God is one LORD: And thou shalt love the LORD thy God with all thine heart, and with all thy soul, and with all thy might." (Deuteronomy 6:4–5, KJV)',
+      lexicalNotes: [
+        "`בְּרִית` (*berit*): Binding covenant relationship initiated by YHWH's grace (`Genesis 15:18`; `Exodus 24:7–8`).",
+        "`תּוֹרָה` (*torah*): Divine instruction/teaching guiding a redeemed people in holiness (`Exodus 20:1–2`; `Leviticus 19:2`).",
+        "`כָּפַר` (*kafar*): To make atonement, cover, or cleanse the sanctuary and covenant community through sacrificial blood (`Leviticus 16:30`; `17:11`).",
+      ],
+      point1Title: "The Covenantal & Historical Foundation in the Torah Text",
+      point1Exposition: `Unpacks what \`${targetPassage}\` explicitly narrates or commands within the unfolding storyline from Creation and Fall (\`Genesis 1–11\`) through the Patriarchal promises (\`Genesis 12–50\`) and Exodus redemption (\`Exodus–Deuteronomy\`).`,
+      point2Title: "The Character of YHWH: Holiness, Mercy & Redemptive Promise",
+      point2Exposition: `Demonstrates how \`${targetPassage}\` reveals YHWH as the self-existent Creator and Redeemer (\`Exodus 34:6–7\`) whose covenant promises point forward to the ultimate Seed and Prophet like Moses (\`Genesis 3:15\`; \`22:18\`; \`Deuteronomy 18:15\`; \`Hebrews 9:11–14\`).`,
+      point3Title: "Whole-Hearted Covenant Fidelity & Neighbor Love Today",
+      point3Exposition: `Applies the enduring moral and theological wisdom of \`${targetPassage}\` (distinguishing fulfilled ceremonial/civil provisions from abiding moral instruction, cf. \`Matthew 5:17\`; \`Romans 13:8–10\`) to worship, integrity, and care for the vulnerable.`,
+      crossReferences: "`Genesis 12:1–3` -> `Exodus 19:4–6; 34:6–7` -> `Deuteronomy 6:4–9; 18:15` -> `Matthew 5:17` -> `Galatians 3:7–14` -> `Hebrews 9:11–15`",
+      traditionsNote: "Christian traditions affirm that the Moral Law reflects God's unchanging character while ceremonial sacrifices find their once-for-all fulfillment in Christ (`Hebrews 10:1–14`); traditions vary smoothly on the pedagogical and covenantal continuity between Sinai and the New Covenant.",
+    };
+  }
+
+  if (/\b(joshua|judges|ruth|samuel|kings|chronicles|ezra|nehemiah|esther)\b/i.test(p)) {
+    return {
+      divisionTitle: "Division 2 — Israel's Covenant History (Joshua to Esther)",
+      historicalContext:
+        "Spans Israel's settlement in Canaan, the turbulent era of the Judges, the rise of the united monarchy under Saul, David, and Solomon, the divided kingdoms of Israel (North, exiled 722 BC) and Judah (South, exiled 586 BC), and the post-exilic restoration under Zerubbabel, Ezra, and Nehemiah.",
+      anchorVerseCitation: "2 Samuel 7:12–16 / Ruth 2:12",
+      anchorVerseTextKjv:
+        '"And thine house and thy kingdom shall be established for ever before thee: thy throne shall be established for ever." (2 Samuel 7:16, KJV)',
+      lexicalNotes: [
+        "`גֹּאֵל` (*go'el*): Kinsman-redeemer who rescues family members from poverty, debt, or lineage extinction (`Ruth 3:9`; `4:14`).",
+        "`מָשִׁיחַ` (*mashiach*): Anointed one—the Davidic king consecrated by the Spirit of YHWH (`1 Samuel 16:13`; `2 Samuel 7:12–16`).",
+        "`שׁוּב` (*shuv*): Covenant repentance—turning back to the LORD with the whole heart (`1 Kings 8:47–48`; `2 Chronicles 7:14`).",
+      ],
+      point1Title: "Narrative Observation: Human Frailty Meets Divine Providence",
+      point1Exposition: `Examines the historical scenes, characters, and narrative tension of \`${targetPassage}\`, noting how descriptive biblical narratives record human failures honestly without endorsing every human action.`,
+      point2Title: "The Davidic Covenant & Redemptive-Historical Trajectory",
+      point2Exposition: `Traces how \`${targetPassage}\` advances God's unbreakable promise to preserve a remnant and raise up the righteous Son of David (\`2 Samuel 7:12–16\`; \`Luke 1:32–33\`) whose kingdom will never fail.`,
+      point3Title: "Faithful Courage, Repentance & Integrity in Public and Private Life",
+      point3Exposition: `Translates the lessons of \`${targetPassage}\` into concrete guidance for leadership humility, prayerful dependence on God in crisis, and faithfulness when culture drifts.`,
+      crossReferences: "`Deuteronomy 28` -> `Ruth 4:13–22` -> `2 Samuel 7:8–16` -> `1 Kings 8:22–53` -> `Nehemiah 8:1–10` -> `Matthew 1:1–17`",
+      traditionsNote: "All major Christian traditions read Israel's historical books both as real history under Deuteronomic/Chronicler theology and as typological preparation for Christ the true Prophet, Priest, and Davidic King.",
+    };
+  }
+
+  if (/\b(job|psalms?|proverbs|ecclesiastes|song\s+of)\b/i.test(p) || genre === "Poetic_Wisdom") {
+    return {
+      divisionTitle: "Division 3 — Wisdom & Hebrew Poetry (Job to Song of Solomon)",
+      historicalContext:
+        "Israel's sanctuary hymnal (Psalms) and wisdom literature (Job, Proverbs, Ecclesiastes, Song of Solomon), teaching God's people how to pray with raw honesty in lament and praise, and how to walk in skill for godly living (`chokmah`) under the fear of the LORD.",
+      anchorVerseCitation: "Proverbs 1:7 / Psalm 1:1–3",
+      anchorVerseTextKjv:
+        '"The fear of the LORD is the beginning of knowledge: but fools despise wisdom and instruction." (Proverbs 1:7, KJV)',
+      lexicalNotes: [
+        "`יִרְאַת יְהוָה` (*yir'at YHWH*): The fear of the LORD—reverent awe, trust, and submission toward the Creator (`Proverbs 1:7`; `9:10`; `Job 28:28`).",
+        "`חָכְמָה` (*chokmah*): Practical, moral, and covenantal skill for living rightly in God's ordered world (`Proverbs 3:13–19`).",
+        "`הֶבֶל` (*hevel*): Vapor, breath, or fleeting enigma—the futility of life lived 'under the sun' apart from reverence for God (`Ecclesiastes 1:2`; `12:13–14`).",
+      ],
+      point1Title: "Poetic Structure, Parallelism & the Cry of the Text",
+      point1Exposition: `Analyzes the Hebrew parallelism, imagery, and emotional honesty of \`${targetPassage}\`, carefully distinguishing general proverbs (truisms of wise living) from unconditional covenant promises.`,
+      point2Title: "Christ the Wisdom of God and Singer of the Psalms",
+      point2Exposition: `Connects \`${targetPassage}\` to Jesus Christ, in whom are hidden all the treasures of wisdom and knowledge (\`1 Corinthians 1:24, 30\`; \`Colossians 2:3\`) and who prayed the Psalms from the cradle to the cross (\`Luke 24:44\`).`,
+      point3Title: "Practicing the Fear of the LORD in Speech, Suffering & Worship",
+      point3Exposition: `Guides believers in bringing honest lament, grateful praise, and disciplined daily choices under the lordship of Christ.`,
+      crossReferences: "`Psalm 1:1–6; 22:1–31; 119:105` -> `Proverbs 1:7; 3:5–6` -> `Job 19:25–27; 42:1–6` -> `1 Corinthians 1:24, 30` -> `Colossians 2:3`",
+      traditionsNote: "Across Protestant, Catholic, and Orthodox worship, the Psalter and Wisdom books form the daily prayer book of the Church, read both in their historical-poetic sense and in their Christological fulfillment.",
+    };
+  }
+
+  if (/\b(isaiah|jeremiah|lamentations|ezekiel|daniel|hosea|joel|amos|obadiah|jonah|micah|nahum|habakkuk|zephaniah|haggai|zechariah|malachi)\b/i.test(p)) {
+    return {
+      divisionTitle: "Division 4 — The Major & Minor Prophets (Isaiah to Malachi)",
+      historicalContext:
+        "Prophetic oracles delivered during the Assyrian, Babylonian, and Persian periods (8th to 5th centuries BC), prosecuting Israel and Judah for covenant idolatry and social injustice (`Micah 6:8`) while announcing the New Covenant (`Jeremiah 31:31–34`), the Suffering Servant (`Isaiah 52:13–53:12`), and the outpouring of the Spirit (`Joel 2:28–32`).",
+      anchorVerseCitation: "Isaiah 53:5 / Micah 6:8 / Jeremiah 31:33",
+      anchorVerseTextKjv:
+        '"But he was wounded for our transgressions, he was bruised for our iniquities: the chastisement of our peace was upon him; and with his stripes we are healed." (Isaiah 53:5, KJV)',
+      lexicalNotes: [
+        "`נָבִיא` (*navi'*): Spokesperson/herald called into YHWH's council to proclaim His covenant lawsuit (*riv*) and promise of restoration (`Jeremiah 1:5–9`).",
+        "`מִשְׁפָּט וּצְדָקָה` (*mishpat u-tsedaqah*): Justice and righteousness—rectifying oppression and living in right covenant relationship (`Amos 5:24`; `Micah 6:8`).",
+        "`בְּרִית חֲדָשָׁה` (*berit chadashah*): The New Covenant promised in `Jeremiah 31:31–34`, accompanied by a new heart and new Spirit (`Ezekiel 36:26–27`).",
+      ],
+      point1Title: "The Prophetic Indictment & Historical Crisis in the Text",
+      point1Exposition: `Situates \`${targetPassage}\` in its eighth-, seventh-, or sixth-century BC geopolitical and spiritual crisis, identifying what YHWH confronts in the worship and public ethics of the people.`,
+      point2Title: "Near Historical Horizon & Messianic / New Covenant Fulfillment",
+      point2Exposition: `Distinguishes the prophet's immediate historical horizon (Assyrian/Babylonian exile and return) from the ultimate Messianic fulfillment in Jesus' first and second comings (\`Isaiah 53\`; \`Jeremiah 31:31–34\`; \`Luke 4:18–21\`; \`1 Peter 1:10–12\`).`,
+      point3Title: "Walking Humbly with God in Justice, Mercy & Watchful Hope",
+      point3Exposition: `Applies the prophetic summons of \`${targetPassage}\` to authentic repentance, compassion for the marginalized, and unshakeable hope in God's sovereign rule over the nations.`,
+      crossReferences: "`Isaiah 9:6–7; 52:13–53:12` -> `Jeremiah 31:31–34` -> `Ezekiel 36:25–27` -> `Micah 6:8` -> `Habakkuk 2:4` -> `Luke 4:16–21` -> `Hebrews 8:6–13`",
+      traditionsNote: "Christian interpreters share the apostolic conviction that the Prophets testify to Christ's sufferings and subsequent glories (`1 Peter 1:11`), while discussing how near-historical and eschatological horizons telescope together.",
+    };
+  }
+
+  if (/\b(revelation)\b/i.test(p) || genre === "Apocalyptic_Prophetic") {
+    return {
+      divisionTitle: "Division 7 — Revelation & the Consummation of All Things",
+      historicalContext:
+        "Written by John from exile on Patmos (late 1st century AD under Roman imperial cult pressure, or prior to AD 70 in early-date views) to the seven churches of Asia Minor (`Revelation 1:4, 11`), unveiling the enthroned Lamb (`Revelation 5`) who conquers the beast, judges Babylon, and brings down the New Jerusalem (`Revelation 21–22`).",
+      anchorVerseCitation: "Revelation 1:17–18 / Revelation 21:3–5",
+      anchorVerseTextKjv:
+        '"And God shall wipe away all tears from their eyes; and there shall be no more death, neither sorrow, nor crying, neither shall there be any more pain: for the former things are passed away." (Revelation 21:4, KJV)',
+      lexicalNotes: [
+        "`ἀποκάλυψις` (*apokalypsis*, `Revelation 1:1`): Unveiling/disclosure of Jesus Christ— pulling back the curtain to show earthly suffering from the perspective of God's throne room (`Revelation 4–5`).",
+        "`Ἀρνίον` (*Arnion*, occurs 28 times): The slain yet standing Lamb (`Revelation 5:6`) who conquers through His sacrificial blood (`Revelation 12:11`).",
+        "`ὑπομονή` (*hypomonē*, `Revelation 13:10`; `14:12`): Steadfast patient endurance of the saints who refuse to compromise with idolatrous power.",
+      ],
+      point1Title: "Apocalyptic Imagery & the Message to the Suffering Churches",
+      point1Exposition: `Unpacks the Old Testament background (\`Daniel\`, \`Ezekiel\`, \`Isaiah\`, \`Zechariah\`) and symbolic vision of \`${targetPassage}\`, asking first what comfort and warning it delivered to persecuted first-century believers.`,
+      point2Title: "The Victory of the Slain Lamb & the Four Major Interpretive Frameworks",
+      point2Exposition: `Presents the central christological message of \`${targetPassage}\` while fairly comparing **Preterist**, **Historicist**, **Futurist**, and **Idealist** readings (and **Premillennial**, **Amillennial**, and **Postmillennial** views) without dogmatism on secondary timelines.`,
+      point3Title: "Faithful Witness, Worship & Perseverance Until Christ Returns",
+      point3Exposition: `Calls the contemporary church to reject cultural idolatry, worship the Lamb alone, and live in the light of the New Creation (\`Revelation 21:1–5\`; \`22:20\`).`,
+      crossReferences: "`Genesis 2:9; 3:15` -> `Daniel 7:13–14` -> `Ezekiel 47:1–12` -> `Revelation 5:5–10; 12:11; 21:1–5; 22:1–5, 20`",
+      traditionsNote: "Historic Christianity unites around the ecumenical creeds: Christ will return bodily in glory to judge the living and the dead, and His kingdom shall have no end—even where traditions hold differing millennial or symbolic reading grids.",
+    };
+  }
+
+  // Default: Division 6 — Pauline & General Epistles (Romans to Jude)
+  return {
+    divisionTitle: "Division 6 — The Pauline & General Epistles (Romans to Jude)",
+    historicalContext:
+      "Apostolic letters written between c. AD 48 and the late 1st century to establish young congregations across the Mediterranean world in sound doctrine, Christ-centered unity, holy living, and resilient hope amid false teaching and social pressure.",
+    anchorVerseCitation: "Colossians 1:15–20 / Philippians 2:5–11 / Hebrews 12:1–2",
+    anchorVerseTextKjv:
+      '"Looking unto Jesus the author and finisher of our faith; who for the joy that was set before him endured the cross, despising the shame, and is set down at the right hand of the throne of God." (Hebrews 12:2, KJV)',
+    lexicalNotes: [
+      "`χάρις` (*charis*): God's unmerited saving favor and transforming power in Christ (`Ephesians 2:8`; `Titus 2:11–12`).",
+      "`κοινωνία` (*koinōnia*): Spirit-created fellowship, partnership, and mutual sharing in the body of Christ (`Philippians 1:5`; `1 John 1:3`).",
+      "`ἁγιασμός` (*hagiasmos*): Sanctification—progressive transformation into Christlikeness empowered by the Spirit (`1 Thessalonians 4:3`; `Hebrews 12:14`).",
+    ],
+    point1Title: "The Apostolic Indicative: What God Has Done in Christ (`Doctrine`)",
+    point1Exposition: `Traces the logical flow, connecting conjunctions (*therefore, for, because*), and doctrinal foundation of \`${targetPassage}\` in its surrounding chapter context.`,
+    point2Title: "Union with Christ & Canonical Harmony Across the Testaments",
+    point2Exposition: `Shows how \`${targetPassage}\` grounds Christian identity in Christ's death, resurrection, and exaltation while harmonizing Old Testament promises with New Testament fulfillment.`,
+    point3Title: "The Apostolic Imperative: How the Church Lives It Out (`Practice`)",
+    point3Exposition: `Applies the ethical exhortations of \`${targetPassage}\` to humility, unity in the local church, family and workplace integrity, and steadfast hope.`,
+    crossReferences: "`Romans 5:1–11; 12:1–2` -> `Galatians 2:20` -> `Ephesians 2:1–10; 4:1–6` -> `Philippians 2:5–11` -> `Hebrews 12:1–2` -> `James 2:14–26`",
+    traditionsNote: "Protestant, Catholic, and Orthodox readers affirm together that salvation is rooted entirely in the grace of God through the death and resurrection of Jesus Christ and bears the fruit of love and good works (`Ephesians 2:8–10`; `James 2:17`).",
+  };
+}
+
+/**
  * Generates a structured Sermon, Bible Study Lesson, or Exegetical / Discussion response
  * for any arbitrary biblical passage, book, topic, or question from Genesis to Revelation.
  */
@@ -818,54 +1224,101 @@ export function buildDynamicBibleQueryResponse(question: string): string {
   );
   const targetPassage = passageMatch ? passageMatch[1].trim() : "Selected Scripture Passage / Theme";
   const durMatch = q.match(/(\d+)\s*(?:-\s*)?minute/i);
-  const durationMins = durMatch ? parseInt(durMatch[1], 10) : 35;
+  const isSermonMode = /\b(prepare\s+a\s+.*sermon|sermon\s+on|sermon\s+outline|preach\s+on|sermon\s+manuscript|sermon\s+for)\b/i.test(q);
+  const isStudyMode = /\b(bible\s+study|sunday\s+school|lesson\s+plan|classroom|discussion\s+questions.*quiz|teach\s+a\s+class)\b/i.test(q);
+  const durationMins = durMatch ? parseInt(durMatch[1], 10) : isStudyMode ? 45 : 30;
   const tpl = selectBibleTemplate(q, targetPassage);
 
-  // 3. Dynamic Sermon Preparation Mode (Using Intelligent Template Selection)
-  if (/\b(prepare\s+a\s+.*sermon|sermon\s+on|sermon\s+outline|preach\s+on|sermon\s+manuscript)\b/i.test(q)) {
+  // 2b. Dedicated Full Expository Sermon / Bible Study for Psalm 23
+  if (/\bpsalms?\s*23\b/i.test(q)) {
+    return buildPsalm23SermonOrStudy(durationMins, isStudyMode ? "study" : "sermon", tpl);
+  }
+
+  // 2c. Dedicated Full Bible Study / Expository Sermon for Romans 8
+  if (/\bromans\s*8\b/i.test(q)) {
+    return buildRomans8StudyOrSermon(durationMins, isSermonMode ? "sermon" : "study", tpl);
+  }
+
+  const profile = getCanonicalBookProfile(targetPassage, tpl.detectedGenre);
+  const p1Mins = Math.max(6, Math.round((durationMins - 10) * 0.35));
+  const p2Mins = Math.max(6, Math.round((durationMins - 10) * 0.35));
+  const p3Mins = Math.max(5, durationMins - 10 - p1Mins - p2Mins);
+
+  // 3. Dynamic Sermon Preparation Mode (Full Expository Package with Canonical Profile)
+  if (isSermonMode) {
     return [
-      `# Noctis Bible Intelligence Engine — Sermon Preparation Package (\`NOCTIS-BIBLE-001\`)`,
+      `# Noctis Bible Intelligence Engine — Complete Sermon Preparation Package (\`NOCTIS-BIBLE-001\`)`,
       `- **Selected Template:** \`${tpl.templateId}\` (${tpl.templateName} · \`v${tpl.version}\`)`,
       `- **Template Category:** \`${tpl.categoryCode}\``,
       `- **Target Passage / Topic:** \`${targetPassage}\` (Detected Genre: \`${tpl.detectedGenre}\`)`,
+      `- **Canonical Division:** ${profile.divisionTitle}`,
       `- **Genre Adaptation Applied:** ${tpl.genreAdaptationRule}`,
       `- **Estimated Speaking Duration:** **${durationMins} Minutes**`,
       `- **Hermeneutical Integrity Gate:** Explicitly separates **(1) What \`${targetPassage}\` states in its original historical/literary context** from **(2) The preacher's contemporary pastoral illustrations and applications**.`,
       ``,
-      `## 1. Historical, Literary & Canonical Context`,
-      `- **Authorial & Historical Setting:** Places \`${targetPassage}\` within its canonical division, covenantal epoch, original audience setting, and surrounding chapter argument so no verse is isolated from its context.`,
-      `- **Original-Language & Lexical Notes (\`BIBLE-DOM-05\`):** Identifies key Hebrew/Aramaic (\`OT\`) or Koine Greek (\`NT\`) terms, verb tenses, and structural markers that shape the passage's central claim.`,
+      `## 1. Verbatim Anchor Scripture & Historical-Literary Context`,
+      `- **Key Canonical Anchor (\`${profile.anchorVerseCitation}\`, KJV Public Domain):**`,
+      `  > ${profile.anchorVerseTextKjv}`,
+      `- **Authorial & Historical Setting:** ${profile.historicalContext}`,
+      `- **Original-Language & Lexical Notes (\`BIBLE-DOM-05\`):**`,
+      ...profile.lexicalNotes.map((note, idx) => `  ${idx + 1}. ${note}`),
       ``,
-      `## 2. Expository Sermon Outline & Manuscript Structure`,
-      `- **Introduction (5 mins):** Connects the human need of the congregation to the historical crisis/question addressed in \`${targetPassage}\` and states the **Central Biblical Proposition**.`,
-      `- **Main Point I — The Textual Foundation & Problem Addressed (${Math.round((durationMins - 10) * 0.35)} mins):**`,
-      `  - *Textual Exposition:* Unpacks the opening movement of \`${targetPassage}\`, distinguishing explicit textual observations from theological inference.`,
-      `  - *Pastoral Application (Labeled):* Bridges the ancient text to the congregation's daily walk without altering the text's meaning.`,
-      `- **Main Point II — The Theological & Christological Center (${Math.round((durationMins - 10) * 0.35)} mins):**`,
-      `  - *Textual & Canonical Exposition:* Traces how \`${targetPassage}\` connects across the canon (direct quotations, covenantal promises, and fulfillment in Christ).`,
-      `  - *Pastoral Application (Labeled):* Calls listeners to faith, repentance, and reliance on God's grace.`,
-      `- **Main Point III — Obedient Response & Community Practice (${Math.round((durationMins - 10) * 0.3)} mins):**`,
-      `  - *Textual Exposition:* Highlights the ethical, worship, or communal imperative of the passage.`,
-      `  - *Pastoral Application (Labeled):* Concrete action steps for family, church, workplace, or prison/community ministry.`,
-      `- **Conclusion & Closing Prayer (5 mins):** Summarizes the three movements and closes in Scripture-grounded prayer.`,
+      `## 2. Expository Sermon Outline & Manuscript Structure (${durationMins} Minutes)`,
+      `- **Introduction (5 mins):**`,
+      `  - Connects the congregation's present spiritual need to the historical setting of \`${targetPassage}\` and states the **Central Biblical Proposition**: *God reveals His saving truth and covenant faithfulness in \`${targetPassage}\` to anchor our faith in Christ and transform our daily walk.*`,
+      `- **Main Point I — ${profile.point1Title} (${p1Mins} mins):**`,
+      `  - *Explicit Textual Exposition:* ${profile.point1Exposition}`,
+      `  - *\`[Pastoral Application — Explicitly Labeled]\`:* Invites listeners to examine their lives in light of what \`${targetPassage}\` explicitly teaches rather than cultural assumptions.`,
+      `- **Main Point II — ${profile.point2Title} (${p2Mins} mins):**`,
+      `  - *Textual & Canonical Exposition:* ${profile.point2Exposition}`,
+      `  - *Verified Cross-Reference Chain:* ${profile.crossReferences}`,
+      `  - *Christian Traditions Note (\`BIBLE-DOM-09\`):* ${profile.traditionsNote}`,
+      `  - *\`[Pastoral Application — Explicitly Labeled]\`:* Calls the congregation to rest in Christ's finished work and covenant promises.`,
+      `- **Main Point III — ${profile.point3Title} (${p3Mins} mins):**`,
+      `  - *Textual Exposition:* ${profile.point3Exposition}`,
+      `  - *\`[Pastoral Application — Explicitly Labeled]\`:* Concrete steps for family, church fellowship, workplace integrity, and mercy ministry this week.`,
+      `- **Conclusion & Closing Prayer (5 mins):**`,
+      `  - Summarizes the three movements of \`${targetPassage}\` and closes in Scripture-grounded prayer: *"Lord God of the Scriptures, write the truth of \`${targetPassage}\` upon our hearts by Your Holy Spirit, conform us to Your Son Jesus Christ, and make us faithful witnesses of Your grace this week. In Jesus' name, Amen."*`,
     ].join("\n");
   }
 
-  // 4. Dynamic Bible Study Classroom Mode (Using Intelligent Template Selection)
-  if (/\b(bible\s+study|sunday\s+school|lesson\s+plan|classroom|discussion\s+questions.*quiz)\b/i.test(q)) {
+  // 4. Dynamic Bible Study Classroom Mode (Full Classroom Package with Canonical Profile)
+  if (isStudyMode) {
     return [
-      `# Noctis Bible Intelligence Engine — Bible Study Classroom Package (\`NOCTIS-BIBLE-001\`)`,
+      `# Noctis Bible Intelligence Engine — Complete Bible Study Classroom Package (\`NOCTIS-BIBLE-001\`)`,
       `- **Selected Template:** \`${tpl.templateId}\` (${tpl.templateName} · \`v${tpl.version}\`)`,
       `- **Template Category:** \`${tpl.categoryCode}\``,
       `- **Study Topic / Passage:** \`${targetPassage}\` (Detected Genre: \`${tpl.detectedGenre}\`)`,
+      `- **Canonical Division:** ${profile.divisionTitle}`,
       `- **Genre Adaptation Applied:** ${tpl.genreAdaptationRule}`,
       `- **Session Duration:** **${durationMins} Minutes**`,
-      `- **Learning Objectives:**`,
-      `  1. Observe what \`${targetPassage}\` states explicitly in its literary and historical context.`,
-      `  2. Trace key cross-references across the Old and New Testaments.`,
-      `  3. Compare major Christian interpretive perspectives fairly where the text is debated.`,
-      `  4. Formulate responsible personal and communal applications distinguishable from the ancient text itself.`,
-      `- **Classroom Structure:** Includes (1) Opening Icebreaker (5 mins), (2) Contextual Scripture Reading & Original-Language Notes (12 mins), (3) Structured Open-Ended Discussion Questions with Teacher Answer Keys (18 mins), (4) Comprehension Quiz & Review (5 mins), and (5) Take-Home Reading Plan (5 mins).`,
+      ``,
+      `## 1. Anchor Text & Historical-Lexical Foundation (12 Minutes)`,
+      `- **Key Canonical Anchor (\`${profile.anchorVerseCitation}\`, KJV Public Domain):**`,
+      `  > ${profile.anchorVerseTextKjv}`,
+      `- **Historical & Literary Setting:** ${profile.historicalContext}`,
+      `- **Original-Language Key Terms (\`BIBLE-DOM-05\`):**`,
+      ...profile.lexicalNotes.map((note, idx) => `  ${idx + 1}. ${note}`),
+      ``,
+      `## 2. Three-Movement Teaching Walkthrough (13 Minutes)`,
+      `1. **${profile.point1Title}:** ${profile.point1Exposition}`,
+      `2. **${profile.point2Title}:** ${profile.point2Exposition} (*Cross-References:* ${profile.crossReferences})`,
+      `3. **${profile.point3Title}:** ${profile.point3Exposition}`,
+      `- **Christian Traditions Note (\`BIBLE-DOM-09\`):** ${profile.traditionsNote}`,
+      ``,
+      `## 3. Structured Discussion Questions with Teacher Answer Keys (15 Minutes)`,
+      `1. **Observation:** What does \`${targetPassage}\` explicitly state about God's character and human responsibility in its opening verses?`,
+      `   - *Teacher Key:* Directs students to the explicit subjects, verbs, and promises in the text before jumping to modern application.`,
+      `2. **Historical Context:** How does understanding the historical setting (${profile.divisionTitle}) sharpen our reading of \`${targetPassage}\`?`,
+      `   - *Teacher Key:* Prevents anachronism by reading the passage in light of its covenantal epoch and original audience.`,
+      `3. **Canonical Cross-Reference:** How do the linked passages (${profile.crossReferences}) illuminate \`${targetPassage}\`?`,
+      `   - *Teacher Key:* Shows the unity of Scripture from Old Testament promise to New Testament fulfillment in Christ.`,
+      `4. **Personal & Community Application:** What is one specific attitude, habit, or relationship where \`${targetPassage}\` calls our group to obey God this week?`,
+      `   - *Teacher Key:* Encourages concrete, humble action steps grounded in God's grace.`,
+      ``,
+      `## 4. Comprehension Review & Closing Prayer (5 Minutes)`,
+      `- **Review Check:** Ask learners to state in one sentence (a) what \`${targetPassage}\` meant to its original audience, (b) how it points to Christ, and (c) how they will practice it this week.`,
+      `- **Closing Prayer:** *"Father, thank You for Your living and active Word in \`${targetPassage}\`. Help us not to be hearers only, but doers who walk in faith, hope, and love through Jesus Christ our Lord, Amen."*`,
     ].join("\n");
   }
 
@@ -873,12 +1326,21 @@ export function buildDynamicBibleQueryResponse(question: string): string {
   return [
     `# Noctis Bible Intelligence Engine Assessment (\`NOCTIS-BIBLE-001\`)`,
     `- **Selected Template:** \`${tpl.templateId}\` (${tpl.templateName} · \`v${tpl.version}\`)`,
-    `- **Scope & Passage Focus:** \`${targetPassage}\` (Detected Genre: \`${tpl.detectedGenre}\` · Evaluated under \`BIBLE-DOM-01..12\`)`,
+    `- **Scope & Passage Focus:** \`${targetPassage}\` (Detected Genre: \`${tpl.detectedGenre}\` · ${profile.divisionTitle})`,
     `- **Genre Adaptation Applied:** ${tpl.genreAdaptationRule}`,
-    `- **1. Explicit Textual Observation:** Identifies the exact claims, narrative sequence, and grammatical structure of the passage in verified public-domain base translations (\`KJV\` / \`WEB\`) without fabricating quotations.`,
-    `- **2. Historical, Literary & Original-Language Context:** Grounds the passage in its Ancient Near Eastern or Second Temple / Greco-Roman setting and examines key Hebrew, Aramaic, or Koine Greek terms (\`STEP Bible\` / \`SBL\` lexical standards).`,
-    `- **3. Canonical Cross-References & Christian Traditions:** Traces verified links across Genesis to Revelation (distinguishing direct quotations, allusions, typology, and disputed connections) and represents Protestant, Catholic, and Orthodox interpretations fairly.`,
-    `- **4. Practical Application & Discussion Follow-Up:** Separates timeless theological principles and contemporary pastoral application from the explicit historical text, and invites further Scripture-grounded study.`,
+    `- **1. Explicit Textual Observation (\`KJV\` Public-Domain Anchor — \`${profile.anchorVerseCitation}\`):**`,
+    `  > ${profile.anchorVerseTextKjv}`,
+    `  - ${profile.point1Exposition}`,
+    `- **2. Historical, Literary & Original-Language Context:**`,
+    `  - ${profile.historicalContext}`,
+    ...profile.lexicalNotes.map((note) => `  - ${note}`),
+    `- **3. Canonical Cross-References & Christian Traditions:**`,
+    `  - ${profile.point2Exposition}`,
+    `  - *Cross-References:* ${profile.crossReferences}`,
+    `  - *Traditions Overview:* ${profile.traditionsNote}`,
+    `- **4. Practical Application & Interactive Follow-Up:**`,
+    `  - ${profile.point3Exposition}`,
+    `  - *Follow-Up Reflection Question:* Where do you see the tension or promise of \`${targetPassage}\` most clearly in your own walk with God right now?`,
   ].join("\n");
 }
 
@@ -914,9 +1376,15 @@ export function handleNaturalBibleQuery(question: string): string | null {
     return buildBibleEngineMasterBlueprint();
   }
 
-  // 2. Specific Acceptance Tests, Templates, Sermons, Bible Studies, or Biblical Exegesis Queries
+  // 2. Specific Acceptance Tests, Templates, Sermons, Bible Studies, or Biblical Exegesis Queries across all 66 Books
+  const hasBookWithChapterOrStudyContext =
+    /\b(?:[1-3]\s*)?(?:Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|Samuel|Kings|Chronicles|Ezra|Nehemiah|Esther|Job|Psalms?|Proverbs|Ecclesiastes|Song\s+of\s+(?:Solomon|Songs)|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi|Matthew|Mark|Luke|John|Acts|Romans|Corinthians|Galatians|Ephesians|Philippians|Colossians|Thessalonians|Timothy|Titus|Philemon|Hebrews|James|Peter|Jude|Revelation)\s+\d+/i.test(
+      q
+    );
+
   const isBiblicalQuery =
-    /\b(bible\s+study|sermon\s+on|prepare\s+a\s+.*sermon|sermon\s+templates?|bible\s+study\s+templates?|discussion\s+templates?|ephesians\s*2\s*:\s*1|psalm\s*23|romans\s*8|genesis\s*[1-6]|revelation\s*2[02]|isaiah\s*7\s*:\s*14|matthew\s*27\s*:\s*3|acts\s*1\s*:\s*18|romans\s*4|galatians\s*3|mark\s*1\s+and\s+john\s*1|hebrew\s+term\s+hesed|tree\s+of\s+life.*revelation|covenant\s+with\s+abraham|judas'?s?\s+death|life\s+of\s+joseph|why\s+did\s+joseph\s+have\s+to\s+suffer|nephilim|premillennial|amillennial|postmillennial|deuterocanonical|koine\s+greek|old\s+testament|new\s+testament|scripture)\b/i.test(
+    hasBookWithChapterOrStudyContext ||
+    /\b(bible\s+study|sunday\s+school|sermon\s+on|prepare\s+a\s+.*sermon|preach\s+on|sermon\s+templates?|bible\s+study\s+templates?|discussion\s+templates?|ephesians\s*2\s*:\s*1|psalms?\s*23|romans\s*8|genesis\s*[1-6]|revelation\s*2[02]|isaiah\s*7\s*:\s*14|matthew\s*27\s*:\s*3|acts\s*1\s*:\s*18|romans\s*4|galatians\s*3|mark\s*1\s+and\s+john\s*1|hebrew\s+term\s+hesed|tree\s+of\s+life.*revelation|covenant\s+with\s+abraham|judas'?s?\s+death|life\s+of\s+joseph|why\s+did\s+joseph\s+have\s+to\s+suffer|nephilim|premillennial|amillennial|postmillennial|deuterocanonical|koine\s+greek|old\s+testament|new\s+testament|scripture)\b/i.test(
       q
     );
 
@@ -926,4 +1394,5 @@ export function handleNaturalBibleQuery(question: string): string | null {
 
   return null;
 }
+
 

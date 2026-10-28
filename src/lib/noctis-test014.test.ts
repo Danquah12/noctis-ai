@@ -776,13 +776,25 @@ Return ONLY valid JSON with these exact keys:
     assert.match(discussOut, /Psalm 105:17–19/);
     assert.match(discussOut, /Follow-Up Questions to Deepen the Group Discussion/);
 
-    // 5. Intelligent Genre-Aware Template Selection (Psalm 23 Poetic Sermon vs. Romans 8 Epistle Study)
+    // 5. Intelligent Genre-Aware Template Selection + Full Ready-to-Preach / Ready-to-Teach Exposition
     const psalmSermonOut = runFollowUpIntelligence([], `Prepare a 30-minute sermon on Psalm 23 for a Sunday congregation.`)!;
     assert.match(psalmSermonOut, /BIBLE-TPL-SERMON-001/);
     assert.match(psalmSermonOut, /Poetic_Wisdom/);
+    assert.match(psalmSermonOut, /The LORD is my shepherd; I shall not want/);
+    assert.match(psalmSermonOut, /YHWH Ro'i/);
+    assert.match(psalmSermonOut, /tsalmawet/);
+    assert.match(psalmSermonOut, /John 10:11/);
 
     const romansStudyOut = runFollowUpIntelligence([], `Create a 45-minute Bible study lesson plan on Romans 8.`)!;
     assert.match(romansStudyOut, /BIBLE-TPL-STUDY-001/);
     assert.match(romansStudyOut, /Epistle_Doctrinal/);
+    assert.match(romansStudyOut, /katakrima/);
+    assert.match(romansStudyOut, /huiothesia/);
+    assert.match(romansStudyOut, /Ten Structured Discussion Questions/);
+
+    const johnSermonOut = runFollowUpIntelligence([], `Prepare a 30-minute sermon on John 3:16 for a Sunday service.`)!;
+    assert.match(johnSermonOut, /BIBLE-TPL-SERMON-001/);
+    assert.match(johnSermonOut, /For God so loved the world/);
+    assert.match(johnSermonOut, /euangelion/);
   });
 });
