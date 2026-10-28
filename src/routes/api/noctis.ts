@@ -80,6 +80,22 @@ export const Route = createFileRoute("/api/noctis")({
           const { runRicDisputedClaimBenchmark } = await import("@/lib/noctis-ric");
           return Response.json(runRicDisputedClaimBenchmark(), { headers: { "cache-control": "no-store" } });
         }
+        if (url.searchParams.get("vuln")) {
+          const mode = url.searchParams.get("vuln");
+          const { VULN_SPEC, SOURCE_REGISTRY, SOURCE_INGESTION_RULES } = await import("@/lib/noctis-vuln-engine");
+          const { runEvaluation, lessonsWithScenarios, EVAL_SCENARIOS, auditDatasetSeparation } = await import("@/lib/noctis-vuln-eval");
+          const headers = { "cache-control": "no-store" };
+          if (mode === "spec") return Response.json(VULN_SPEC, { headers });
+          if (mode === "lessons") return Response.json({ lessons: lessonsWithScenarios() }, { headers });
+          if (mode === "sources") return Response.json({ sources: SOURCE_REGISTRY, ingestionRules: SOURCE_INGESTION_RULES }, { headers });
+          if (mode === "scenarios") return Response.json({ scenarios: EVAL_SCENARIOS, separation: auditDatasetSeparation() }, { headers });
+          if (mode === "suite") {
+            const datasets = url.searchParams.get("dataset");
+            const only = datasets === "training" || datasets === "development" || datasets === "heldout" ? ([datasets] as ("training" | "development" | "heldout")[]) : undefined;
+            return Response.json(runEvaluation({ datasets: only }), { headers });
+          }
+          return Response.json({ error: "vuln must be spec|lessons|sources|scenarios|suite" }, { status: 400, headers });
+        }
         if (url.searchParams.get("frontier") === "suite") {
           const { runFrontierPillarsTestSuite } = await import("@/lib/noctis-frontier-pillars");
           return Response.json(runFrontierPillarsTestSuite(), { headers: { "cache-control": "no-store" } });

@@ -1,5 +1,10 @@
 import { createHash } from "node:crypto";
 import { isClinicalOrMedicalPrompt } from "./noctis-architect-benchmarks.ts";
+import { handleNaturalVulnQuery } from "./noctis-vuln-query.ts";
+import {
+  handleAttackPathAndExploitabilityQuery,
+  isAttackPathOrExploitabilityQuery,
+} from "./noctis-attack-path-engine.ts";
 
 export type CyberIncidentUrgency =
   | "P0_CRITICAL_CONTAINMENT"
@@ -108,6 +113,8 @@ export function isCyberSecurityOrSocQuery(question: string): boolean {
     );
 
   if (hasIncidentOrSocTerms) return true;
+
+  if (isAttackPathOrExploitabilityQuery(q)) return true;
 
   // Explicit requests to train or run the Noctis Cyber Security Engine
   if (
@@ -799,6 +806,10 @@ function parseCyberRequestedJsonContract(question: string): { keys: string[] } |
 }
 
 export function handleNaturalCyberSecurityQuery(question: string): string | null {
+  const vulnAnswer = handleNaturalVulnQuery(question);
+  if (vulnAnswer) return vulnAnswer;
+  const apxAnswer = handleAttackPathAndExploitabilityQuery(question);
+  if (apxAnswer) return apxAnswer;
   if (!isCyberSecurityOrSocQuery(question)) return null;
 
   const t = extractCyberIncidentTelemetry(question);
