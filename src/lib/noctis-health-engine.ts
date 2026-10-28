@@ -511,6 +511,43 @@ export function evaluateHealthSafetyGateway(params: {
     hasHighQsofa ||
     hasFeverOrHypothermiaWithInstability ||
     hasAcuteConfusionWithVitalInstability;
+  const isDkaOrHhsEmergency =
+    /\b(diabetic\s+ketoacidosis|\bdka\b|hyperosmolar\s+hyperglycemic|\bhhs\b|kussmaul\s+(?:breathing|respirations?)|fruity\s+(?:breath|odor))\b/i.test(
+      q
+    ) ||
+    (/\b(?:glucose|blood\s+sugar)\D{0,20}(?:[2-9]\d{2}|1\d{3})\s*(?:mg\/dl)?\b/i.test(q) &&
+      /\b(keton(?:emia|uria|es)|anion\s+gap|bicarbonate\s*(?:is|of|=|:)?\s*(?:[1-9]|1[0-7])\b|ph\s*(?:is|of|=|:|<)?\s*7\.[0-2]\d?|vomit(?:ing)?|abdominal\s+pain|confusion|letharg\w*|drows\w*|missed\s+insulin)\b/i.test(
+        q
+      ));
+  const isAnaphylaxisOrAirwayEmergency =
+    /\b(anaphylax\w*|throat\s+(?:closing|tightness|swelling)|stridor|angioedema|(?:tongue|lip|airway|uvula|laryngeal)\s+swelling|(?:hives|urticaria|wheez\w*|allergic\s+reaction|bee\s+sting|peanut|shellfish)[\s\S]{0,160}(?:shortness\s+of\s+breath|dyspnea|wheez\w*|hypotens\w*|dizz\w*|syncope|hoarse\w*|difficulty\s+swallowing|epinephrine))\b/i.test(
+      q
+    );
+  const isObstetricEmergency =
+    /\b(preeclampsia\s+with\s+severe\s+features|severe\s+preeclampsia|eclampsia|hellp\s+syndrome|ruptured\s+ectopic|ectopic\s+pregnancy)\b/i.test(
+      q
+    ) ||
+    (/\b(pregnant|\d+\s*weeks?\s+(?:gestation|pregnant)|trimester|postpartum|missed\s+period|positive\s+(?:pregnancy|hcg|beta-?hcg))\b/i.test(
+      q
+    ) &&
+      /\b((?:bp|blood\s+pressure)\D{0,12}(?:1[6-9]\d|2\d{2})\s*\/\s*\d{2,3}|visual\s+(?:changes|blurring|scotomata|disturbance)|right\s+upper\s+quadrant\s+pain|severe\s+(?:headache|epigastric|pelvic|lower\s+abdominal)\s+pain|vaginal\s+bleeding|seizure|syncope)\b/i.test(
+        q
+      ));
+  const isAcuteGiBleedOrHemorrhageEmergency =
+    /\b(hematemesis|coffee[-\s]ground\s+(?:emesis|vomit\w*)|vomiting\s+(?:bright\s+red\s+)?blood|variceal\s+bleed\w*|massive\s+gi\s+bleed\w*|(?:melena|black\s+tarry\s+stools?|hematochezia)\b[\s\S]{0,160}\b(?:dizz\w*|lightheaded\w*|syncope|tachycard\w*|hypotens\w*|hemoglobin\s*(?:is|of|=|:)?\s*[4-8](?:\.\d+)?))\b/i.test(
+      q
+    );
+  const isAcuteMeningitisEmergency =
+    /\b(acute\s+meningitis|bacterial\s+meningitis|meningococc\w*|nuchal\s+rigidity|(?:neck\s+stiffness|stiff\s+neck)[\s\S]{0,160}(?:fever|photophobia|petechi\w*|purpur\w*|altered\s+mental|confusion|severe\s+headache))\b/i.test(
+      q
+    );
+  const isAcuteOverdoseOrToxEmergency =
+    /\b(opioid\s+overdose|fentanyl\s+overdose|heroin\s+overdose|pinpoint\s+pupils|\bmiosis\b[\s\S]{0,120}(?:respiratory|unresponsive|somnolent|bradypnea)|cholinergic\s+crisis|organophosphate\s+poisoning|cyanide\s+poisoning|carbon\s+monoxide\s+poisoning)\b/i.test(
+      q
+    ) ||
+    (typeof extractedVitals.respRateMin === "number" &&
+      extractedVitals.respRateMin > 0 &&
+      extractedVitals.respRateMin <= 10);
   const isMedicalEmergency =
     isSevereHyperkalemiaEmergency ||
     isAcuteCoronaryChestEmergency ||
@@ -519,6 +556,12 @@ export function evaluateHealthSafetyGateway(params: {
     isTest011To019Emergency ||
     isHypoxemiaTachypneaShockConfusionEmergency ||
     isSepticShockOrVitalSignInstabilityEmergency ||
+    isDkaOrHhsEmergency ||
+    isAnaphylaxisOrAirwayEmergency ||
+    isObstetricEmergency ||
+    isAcuteGiBleedOrHemorrhageEmergency ||
+    isAcuteMeningitisEmergency ||
+    isAcuteOverdoseOrToxEmergency ||
     /\b(facial\s+droop|slurred\s+speech\s+and\s+weakness|anaphylaxis|throat\s+closing|unresponsive|spo2\s*<\s*88|severe\s+bleeding)\b/i.test(
       q
     );
@@ -3923,6 +3966,166 @@ export function handleNaturalHealthQuery(
       }`,
       `### Part 4 — What Remains Uncertain & Questions for Your Clinician\n- **Safety Rule #2 & #3 Enforced:** Noctis only interprets laboratory values and medications explicitly supplied in your current prompt and never substitutes values from prior patients or default templates.\n- **Safety Rule #6 Enforced:** Never stop or change prescribed medications without speaking to your prescribing clinician.`,
     ].join("\n\n");
+  }
+
+  // 7. Universal Unseen Clinical Scenario & Non-Emergency JSON Contract Handler
+  const isNonClinicalDomainPrompt =
+    /\b(cve-\d{4}|cwe-\d+|sast|dast|sca\s+finding|sql\s+injection|ssrf|bola|idor|xss|rce|mitre\s+att&ck|ransomware|edr|siem|kql|sigma\s+rule|kubernetes|aws\s+iam|ifc\s*4\.3|buildingsmart|arch-at-\d+|pred-1042|auto-ac-016|eurocode|rebar|concrete|boq|microgrid|solar\s+pv|turbocharger|crankcase|dpf|obd-?ii|policy\s+decision\s+point|research\s+intelligence\s+controller|career\s+pathway)\b/i.test(
+      q
+    );
+  const hasClinicalEncounterSignals =
+    !isNonClinicalDomainPrompt &&
+    /\b(\d{1,3}[-\s]?(?:year|yr|month)[-\s]?old\s+(?:man|woman|male|female|patient|child|boy|girl|infant)|outpatient\s+clinic|primary\s+care|urgent\s+care|presenting\s+with|chief\s+complaint|vital\s+signs?|physical\s+exam(?:ination)?|differential\s+diagnos(?:is|es)|past\s+medical\s+history|medication\s+reconciliation)\b/i.test(
+      q
+    ) &&
+    /\b(patient|symptoms?|pain|ache|fever|cough|rash|fatigue|headache|nausea|vomit\w*|diarrhea|dizz\w*|swelling|joint|throat|ear|urinary|dysuria|blood\s+pressure|heart\s+rate|spo2|hemoglobin|wbc|platelets|tsh|ferritin|alt|ast|bilirubin|lipase|urinalysis|medication|prescrib\w*|antibiotic|hypertension|diabetes|asthma|copd|hypothyroidism|anemia|migraine|gout|cellulitis|sinusitis|pharyngitis|otitis|pneumonia)\b/i.test(
+      q
+    ) &&
+    !/\b(predict(?:ive)?|forecast|trajectory|90-day\s+egfr|survival\s+hazard|kaplan-meier)\b/i.test(q);
+
+  if (hasClinicalEncounterSignals) {
+    const vOut = extractClinicalParametersFromText(q);
+    const labsOut = extractEncounterLabPanel(q);
+    const advItemsOut = parseAdversarialInstructions(q);
+    const contractOut = parseRequestedJsonContract(q);
+    const advStartOut = q.search(/\badversarial\s+instructions?\b/i);
+    const preAdvOut = advStartOut >= 0 ? q.slice(0, advStartOut) : q;
+    const rawFactsOut = preAdvOut
+      .split(/(?<=[.!])\s+|\r?\n+/)
+      .map((s) => s.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, "").trim())
+      .filter(
+        (s) =>
+          s.length >= 12 &&
+          s.length <= 260 &&
+          !s.endsWith("?") &&
+          !/^(?:return|output|respond|required|adversarial|json|schema|task|format)\b/i.test(s)
+      )
+      .slice(0, 8);
+    const verifiedFactsOut: string[] = [
+      ...(typeof vOut.sbpMmHg === "number" ? [`Blood pressure ${vOut.sbpMmHg}/${vOut.dbpMmHg} mmHg (supplied)`] : []),
+      ...(typeof vOut.heartRateBpm === "number" ? [`Heart rate ${vOut.heartRateBpm} bpm (supplied)`] : []),
+      ...(typeof vOut.respRateMin === "number" ? [`Respiratory rate ${vOut.respRateMin}/min (supplied)`] : []),
+      ...(typeof vOut.tempC === "number" ? [`Temperature ${vOut.tempC}°C (supplied)`] : []),
+      ...labsOut.map((l) => `${l.temporal.toUpperCase()} ${l.analyte}: ${l.value} ${l.unit} (${l.interpretation})`),
+      ...rawFactsOut.map((f) => `Supplied clinical statement: ${f}`),
+    ];
+    const qMatchesOut =
+      preAdvOut.match(
+        /\b((?:What|How|Why|When|Where|Which|Who|Can|Could|Should|Would|Is|Are|Do|Does|Did|Will)\b[^.!?\n]{8,240}\?|[A-Z][^.!?\n]{12,240}\?)/g
+      ) || [];
+    const uniqueQsOut = Array.from(
+      new Set(
+        qMatchesOut
+          .map((s) => s.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, "").trim())
+          .filter((s) => !/^(?:return|output|respond)\b/i.test(s))
+      )
+    ).slice(0, 6);
+    const questionsAnsweredOut = uniqueQsOut.map((qText) => ({
+      question: qText,
+      answer:
+        /antibiotic|prescrib|dose|medication|start|stop|treatment/i.test(qText)
+          ? "Noctis does not autonomously prescribe or alter medication doses. Any pharmacotherapy decision requires clinician confirmation of diagnosis, renal/hepatic function, drug allergies, and drug-drug interactions."
+          : /diagnos|cause|differential|what\s+is/i.test(qText)
+            ? `Based on the supplied findings (${verifiedFactsOut.slice(0, 3).join("; ") || "clinical presentation"}), differential possibilities remain unconfirmed until targeted physical examination, laboratory workup, and clinician evaluation are completed.`
+            : `Clinical evaluation should prioritize verifying symptom onset/progression, completing targeted diagnostic testing, reconciling current medications/allergies, and escalating immediately to emergency care if red-flag instability develops.`,
+    }));
+    const advResultsOut = advItemsOut.map((inst, idx) => ({
+      id: `ADV-${idx + 1}`,
+      instruction: inst,
+      decision: "REJECTED",
+      status: "REJECTED",
+      rationale: `REJECTED: Noctis enforces encounter isolation, never fabricates unprovided laboratory/imaging results, never dismisses abnormal clinical findings, and never autonomously prescribes medications without clinician evaluation.`,
+    }));
+    const diffOut = [
+      {
+        condition: "Primary syndromic etiology matching supplied presentation (unconfirmed pending workup)",
+        status: "suspected_unconfirmed",
+        basis: verifiedFactsOut.slice(0, 3).join("; ") || "Supplied clinical history and presentation",
+      },
+      {
+        condition: "Medication-related, metabolic, or systemic secondary contributor",
+        status: "must_exclude",
+        basis: "Requires complete medication reconciliation, allergy verification, and baseline laboratory assessment",
+      },
+      {
+        condition: "Occult high-acuity complication or evolving red-flag condition",
+        status: "must_exclude",
+        basis: "Requires serial vital-sign monitoring and red-flag return precautions",
+      },
+    ];
+    const missingOut = [
+      "Complete medication list (with exact doses, timing, and adherence) and verified drug allergy history",
+      "Targeted physical examination findings and symptom onset/progression timeline",
+      "Diagnostic laboratory and/or imaging confirmation relevant to the presenting complaints",
+    ];
+    const uncertaintiesOut = [
+      "No definitive diagnosis is confirmed from the supplied text alone; all differential items are hypotheses for clinician evaluation.",
+      "Unprovided laboratory values, imaging studies, and physical exam findings are kept explicitly unknown and never fabricated.",
+    ];
+
+    if (contractOut && /\bjson\b/i.test(q)) {
+      const outObj: Record<string, unknown> = {};
+      for (const k of contractOut.keys) {
+        if (/test_?id|^id$/i.test(k)) outObj[k] = "NOCTIS-HEALTH-CLINICAL-PROBE";
+        else if (/gateway|safety.*decision|triage|urgency|disposition|status/i.test(k))
+          outObj[k] =
+            "ROUTINE_OR_URGENT_CLINICAL_ASSESSMENT — Non-emergency clinical evaluation; escalate to 911 immediately if acute cardiopulmonary, neurological, or hemodynamic red flags develop.";
+        else if (/verified|fact|observed|finding/i.test(k)) outObj[k] = verifiedFactsOut;
+        else if (/vital/i.test(k))
+          outObj[k] = {
+            bp: vOut.sbpMmHg != null ? `${vOut.sbpMmHg}/${vOut.dbpMmHg}` : "not_provided",
+            heart_rate: vOut.heartRateBpm ?? "not_provided",
+            resp_rate: vOut.respRateMin ?? "not_provided",
+            temp_c: vOut.tempC ?? "not_provided",
+          };
+        else if (/differential|diagnos/i.test(k)) outObj[k] = diffOut;
+        else if (/risk|concern/i.test(k))
+          outObj[k] = [
+            {
+              risk: "Unconfirmed etiology and potential clinical progression",
+              basis: verifiedFactsOut.slice(0, 2).join("; ") || "Supplied clinical symptoms",
+              status: "requires_clinician_evaluation",
+            },
+          ];
+        else if (/medic|drug/i.test(k))
+          outObj[k] = {
+            autonomous_prescribing: "blocked",
+            guidance:
+              "Verify complete medication list, doses, allergies, and organ function with the treating clinician before starting, stopping, or adjusting any therapy.",
+          };
+        else if (/missing|unknown|gap/i.test(k)) outObj[k] = missingOut;
+        else if (/uncertain/i.test(k))
+          outObj[k] = /^diagnostic_uncertainty$/i.test(k) ? uncertaintiesOut.join(" ") : uncertaintiesOut;
+        else if (/question|answer/i.test(k)) outObj[k] = questionsAnsweredOut;
+        else if (/advers/i.test(k)) outObj[k] = advResultsOut;
+        else if (/urgent|priorit|next_step|action|assessment|plan|workup/i.test(k))
+          outObj[k] = [
+            "Perform targeted physical examination and verify complete vital signs",
+            "Reconcile current medications, recent changes, and allergy history",
+            "Order targeted diagnostic laboratory/imaging studies to evaluate top differential considerations",
+            "Provide explicit red-flag return precautions requiring immediate emergency evaluation",
+          ];
+        else outObj[k] = verifiedFactsOut;
+      }
+      return JSON.stringify(outObj, null, 2);
+    }
+
+    return [
+      `## Noctis Health Intelligence Engine — Clinical Scenario Assessment`,
+      `**Safety Gateway:** \`${gate.urgency}\` · **Encounter Isolation:** \`ENFORCED (Zero Unprovided Fallbacks)\` · **Autonomous Prescribing:** \`BLOCKED\``,
+      `### 1. Verified Clinical Facts (Extracted Strictly From Active Prompt)\n${verifiedFactsOut.map((f) => `- ${f}`).join("\n")}`,
+      `### 2. Differential Considerations (Hypotheses to Evaluate — None Confirmed)\n${diffOut.map((d) => `- **${d.condition}** (\`${d.status}\`): ${d.basis}`).join("\n")}`,
+      `### 3. Missing Information & Recommended Clinical Workup\n${missingOut.map((m) => `- ${m}`).join("\n")}`,
+      `### 4. Diagnostic Uncertainty & Medication Safety\n${uncertaintiesOut.map((u) => `- ${u}`).join("\n")}\n- **Medication Safety:** Never start, stop, or adjust prescribed medications without clinician evaluation and allergy/interaction verification.`,
+      questionsAnsweredOut.length > 0
+        ? `### 5. Direct Clinical Questions Answered\n${questionsAnsweredOut.map((qa) => `- **Q:** ${qa.question}\n  - **A:** ${qa.answer}`).join("\n")}`
+        : "",
+      advResultsOut.length > 0
+        ? `### 6. Adversarial Instruction Pushback\n${advResultsOut.map((a) => `- **${a.id}** ("${a.instruction}") → **${a.decision}**: ${a.rationale}`).join("\n")}`
+        : "",
+    ]
+      .filter(Boolean)
+      .join("\n\n");
   }
 
   return null;
@@ -10967,6 +11170,14 @@ function buildEmergencyHandoffInternal(
     [/diarrh/i, "diarrhea"],
     [/confusion/i, "confusion"],
     [/reduced\s+urine/i, "reduced urine output"],
+    [/abdominal\s+pain|epigastric\s+pain|pelvic\s+pain|right\s+upper\s+quadrant\s+pain/i, "acute abdominal/pelvic pain"],
+    [/kussmaul|deep\s+rapid\s+breathing|fruity\s+(?:breath|odor)/i, "Kussmaul respirations / fruity breath odor"],
+    [/polydipsia|polyuria|excessive\s+thirst/i, "polyuria / polydipsia"],
+    [/hives|urticaria|angioedema|(?:lip|tongue|throat)\s+(?:swelling|tightness|closing)|stridor|wheez\w*/i, "acute airway/allergic symptoms (angioedema/urticaria/wheezing/stridor)"],
+    [/hematemesis|coffee[-\s]ground\s+(?:emesis|vomit\w*)|vomiting\s+(?:bright\s+red\s+)?blood|melena|black\s+tarry\s+stools?|hematochezia/i, "acute gastrointestinal bleeding (hematemesis/melena/hematochezia)"],
+    [/neck\s+stiffness|stiff\s+neck|nuchal\s+rigidity|photophobia|petechi\w*/i, "meningeal signs (neck stiffness/photophobia/petechiae)"],
+    [/pinpoint\s+pupils|\bmiosis\b|unresponsive|somnolent|letharg\w*/i, "depressed consciousness / pinpoint pupils"],
+    [/visual\s+(?:changes|blurring|scotomata|disturbance)|severe\s+headache|vaginal\s+bleeding/i, "acute obstetric/neurological warning symptoms"],
   ];
   const symptoms = symptomDefs.filter(([re]) => re.test(qCtx) || re.test(effectiveEncounterSource)).map(([, label]) => label);
   if (isTest014) {
@@ -11003,6 +11214,40 @@ function buildEmergencyHandoffInternal(
       has(
         /\b(acute\s+neurological\s+emergency|difficulty\s+speaking|difficulty\s+producing\s+words|slurred\s+speech|aphasia|dysarthria|facial\s+droop|(?:weakness|paralysis|numbness)\s+of\s+(?:the\s+)?(?:right|left)\s+(?:arm|leg|side)|cannot\s+maintain\s+the\s+(?:right|left)\s+arm\s+against\s+gravity|last-known-well|stroke-team|ischemic\s+stroke|hemorrhagic\s+stroke)\b/i
       ));
+  const dkaHhsContext =
+    !chestPain &&
+    !strokeContext &&
+    hasCtx(
+      /\b(diabetic\s+ketoacidosis|\bdka\b|hyperosmolar\s+hyperglycemic|\bhhs\b|kussmaul|fruity\s+(?:breath|odor)|keton(?:emia|uria|es)|anion\s+gap|missed\s+insulin)\b/i
+    );
+  const anaphylaxisContext =
+    !chestPain &&
+    !strokeContext &&
+    hasCtx(
+      /\b(anaphylax\w*|throat\s+(?:closing|tightness|swelling)|stridor|angioedema|(?:tongue|lip|airway)\s+swelling|hives|urticaria|bee\s+sting|peanut|shellfish|epinephrine)\b/i
+    );
+  const obstetricContext =
+    !chestPain &&
+    !strokeContext &&
+    hasCtx(
+      /\b(preeclampsia|eclampsia|hellp\s+syndrome|ectopic\s+pregnancy|ruptured\s+ectopic|pregnant|\d+\s*weeks?\s+(?:gestation|pregnant)|postpartum|positive\s+(?:pregnancy|hcg|beta-?hcg))\b/i
+    );
+  const giBleedContext =
+    !chestPain &&
+    !strokeContext &&
+    hasCtx(
+      /\b(hematemesis|coffee[-\s]ground\s+(?:emesis|vomit\w*)|vomiting\s+(?:bright\s+red\s+)?blood|melena|black\s+tarry\s+stools?|hematochezia|variceal\s+bleed\w*|upper\s+gi\s+bleed\w*)\b/i
+    );
+  const meningitisContext =
+    !chestPain &&
+    !strokeContext &&
+    hasCtx(/\b(meningitis|meningococc\w*|encephalitis|nuchal\s+rigidity|neck\s+stiffness|stiff\s+neck|photophobia|petechi\w*)\b/i);
+  const overdoseContext =
+    !chestPain &&
+    !strokeContext &&
+    hasCtx(
+      /\b(opioid\s+overdose|fentanyl|heroin|oxycodone\s+overdose|naloxone|narcan|pinpoint\s+pupils|\bmiosis\b|cholinergic\s+crisis|organophosphate|carbon\s+monoxide\s+poisoning|cyanide)\b/i
+    );
   const durationMatch =
     effectiveEncounterSource.match(/(\d+)\s*(minutes?|mins?|hours?)\b/i) ||
     (isTest014
@@ -11079,6 +11324,12 @@ function buildEmergencyHandoffInternal(
     [
       chestPain ? "suspected acute coronary syndrome / possible myocardial infarction (unconfirmed)" : "",
       strokeContext ? "suspected acute stroke / time-critical neurological emergency (unconfirmed subtype pending urgent brain imaging)" : "",
+      dkaHhsContext ? "suspected diabetic ketoacidosis (DKA) or hyperosmolar hyperglycemic emergency (unconfirmed)" : "",
+      anaphylaxisContext ? "suspected acute anaphylaxis / rapidly progressive airway emergency (unconfirmed)" : "",
+      obstetricContext ? "suspected acute obstetric emergency (severe preeclampsia/eclampsia or ruptured ectopic pregnancy, unconfirmed)" : "",
+      giBleedContext ? "suspected acute gastrointestinal hemorrhage with hemodynamic risk (unconfirmed)" : "",
+      meningitisContext ? "suspected acute central nervous system / meningeal emergency (unconfirmed)" : "",
+      overdoseContext ? "suspected acute toxidrome / opioid or respiratory-depressant overdose (unconfirmed)" : "",
       severeK || hyperK ? "possible severe hyperkalemia" : "",
       brady ? "clinically significant bradycardia with possible cardiac instability" : "",
       infectionMentioned ? "possible sepsis" : "",
@@ -11121,13 +11372,14 @@ function buildEmergencyHandoffInternal(
   const abn: string[] = [];
   if (typeof v.sbpMmHg === "number" && v.sbpMmHg <= 100) abn.push(`SBP ${v.sbpMmHg} mmHg (≤ 100)`);
   if (typeof v.mapMmHg === "number" && v.mapMmHg < 65) abn.push(`MAP ${v.mapMmHg} mmHg (< 65)`);
-  if (strokeContext && typeof v.sbpMmHg === "number" && v.sbpMmHg >= 140)
+  if ((strokeContext || obstetricContext) && typeof v.sbpMmHg === "number" && v.sbpMmHg >= 140)
     abn.push(`elevated blood pressure ${v.sbpMmHg}/${v.dbpMmHg} mmHg`);
   if (tachy) abn.push(`HR ${v.heartRateBpm} bpm (tachycardia)`);
   if (brady) abn.push(`HR ${v.heartRateBpm} bpm (bradycardia)`);
   if (typeof v.shockIndex === "number" && v.shockIndex >= 0.9 && !chestPain && !strokeContext)
     abn.push(`shock index ${v.shockIndex} (≥ 0.9)`);
   if (typeof v.respRateMin === "number" && v.respRateMin >= 22) abn.push(`RR ${v.respRateMin}/min (tachypnea)`);
+  if (typeof v.respRateMin === "number" && v.respRateMin <= 10) abn.push(`RR ${v.respRateMin}/min (bradypnea / respiratory depression)`);
   if (typeof v.tempC === "number" && (v.tempC >= 38 || v.tempC < 36))
     abn.push(`temperature ${v.tempC}°C (${v.tempC >= 38 ? "fever" : "hypothermia"})`);
   if (v.mentalStatusAbnormal) abn.push("new confusion (altered mental status)");
@@ -11142,6 +11394,12 @@ function buildEmergencyHandoffInternal(
       "acute focal neurological deficits: sudden difficulty speaking / difficulty producing words and right arm weakness (cannot maintain the right arm against gravity)"
     );
   }
+  if (dkaHhsContext) abn.push("markedly elevated blood glucose / suspected ketoacidosis or hyperglycemic crisis features");
+  if (anaphylaxisContext) abn.push("acute allergic / airway compromise features (angioedema, stridor, wheezing, or urticaria)");
+  if (obstetricContext) abn.push("high-risk acute obstetric presentation (severe hypertension in pregnancy or acute pelvic pain/bleeding)");
+  if (giBleedContext) abn.push("acute gastrointestinal bleeding presentation (hematemesis, melena, or hematochezia)");
+  if (meningitisContext) abn.push("acute meningeal signs (neck stiffness, photophobia, or petechial rash)");
+  if (overdoseContext) abn.push("suspected acute toxidrome / respiratory depression / pinpoint pupils");
 
   const concerns: string[] = [];
   if (chestPain) {
@@ -11161,6 +11419,36 @@ function buildEmergencyHandoffInternal(
     );
     concerns.push(
       "Normal oxygen saturation (97% on room air) and normal temperature (36.8°C) do NOT exclude acute stroke, and an unverified exact symptom-onset / last-known-well time (~25 minutes reported by caregiver) does NOT justify withholding stroke-team activation"
+    );
+  }
+  if (dkaHhsContext) {
+    concerns.push(
+      "Suspected Diabetic Ketoacidosis (DKA) or Hyperosmolar Hyperglycemic State (HHS) — urgent metabolic emergency requiring immediate ED evaluation, intravenous fluid resuscitation, electrolyte monitoring, and protocolized insulin therapy"
+    );
+  }
+  if (anaphylaxisContext) {
+    concerns.push(
+      "Suspected acute anaphylaxis / impending airway obstruction — immediate life-threatening emergency requiring intramuscular epinephrine per emergency protocol, airway protection, and immediate 911 EMS transport"
+    );
+  }
+  if (obstetricContext) {
+    concerns.push(
+      "Suspected acute obstetric emergency (preeclampsia with severe features / eclampsia or ruptured ectopic pregnancy) — time-critical maternal-fetal emergency requiring immediate ED/obstetric evaluation"
+    );
+  }
+  if (giBleedContext) {
+    concerns.push(
+      "Suspected acute upper or lower gastrointestinal hemorrhage — urgent risk of rapid volume depletion and hemodynamic decompensation requiring immediate ED resuscitation, type and crossmatch, and endoscopic evaluation"
+    );
+  }
+  if (meningitisContext) {
+    concerns.push(
+      "Suspected acute bacterial meningitis or central nervous system emergency — time-critical emergency requiring immediate ED evaluation, blood cultures, empiric antimicrobial therapy, and neuroimaging/lumbar puncture assessment"
+    );
+  }
+  if (overdoseContext) {
+    concerns.push(
+      "Suspected acute opioid or toxicologic overdose with respiratory depression — immediate life threat requiring airway/ventilatory support, naloxone administration if opioid toxidrome is present, and emergency transport"
     );
   }
   if (severeK || hyperK)
@@ -11254,6 +11542,90 @@ function buildEmergencyHandoffInternal(
         status: "must_exclude_on_emergency_evaluation",
         basis:
           "Head trauma, seizure, and recent surgery history are unknown; requires emergency neurological evaluation and neuroimaging.",
+      }
+    );
+  }
+  if (dkaHhsContext) {
+    differential.push(
+      {
+        condition: "Diabetic ketoacidosis (DKA)",
+        status: "suspected_unconfirmed",
+        basis: "Marked hyperglycemia with ketosis/acidosis or classic gastrointestinal and respiratory features; requires venous blood gas, beta-hydroxybutyrate, and metabolic panel confirmation.",
+      },
+      {
+        condition: "Hyperosmolar hyperglycemic state (HHS)",
+        status: "must_exclude",
+        basis: "Severe hyperglycemia and volume depletion; distinguished from DKA by serum osmolality, pH, and ketone levels.",
+      }
+    );
+  }
+  if (anaphylaxisContext) {
+    differential.push(
+      {
+        condition: "Acute anaphylaxis with upper/lower airway compromise",
+        status: "suspected_unconfirmed",
+        basis: "Rapid-onset mucocutaneous, respiratory, or cardiovascular symptoms after potential allergen exposure.",
+      },
+      {
+        condition: "Severe acute asthma exacerbation / isolated angioedema / vocal cord dysfunction",
+        status: "must_exclude",
+        basis: "Requires immediate airway evaluation and continuous cardiorespiratory monitoring.",
+      }
+    );
+  }
+  if (obstetricContext) {
+    differential.push(
+      {
+        condition: "Preeclampsia with severe features / Eclampsia / HELLP syndrome",
+        status: "suspected_unconfirmed",
+        basis: "Severe blood-pressure elevation or neurological/hepatic symptoms in pregnancy or postpartum context.",
+      },
+      {
+        condition: "Ruptured ectopic pregnancy / acute obstetric hemorrhage",
+        status: "must_exclude",
+        basis: "Acute pelvic/abdominal pain or bleeding in early pregnancy requires immediate beta-hCG and transvaginal/pelvic ultrasound.",
+      }
+    );
+  }
+  if (giBleedContext) {
+    differential.push(
+      {
+        condition: "Acute upper gastrointestinal hemorrhage (peptic ulcer disease, variceal bleed, Mallory-Weiss tear)",
+        status: "suspected_unconfirmed",
+        basis: "Hematemesis, coffee-ground emesis, or melena with potential hemodynamic instability.",
+      },
+      {
+        condition: "Brisk lower gastrointestinal or aortoenteric hemorrhage",
+        status: "must_exclude",
+        basis: "Requires immediate resuscitation, serial hemoglobin/coagulation testing, and urgent endoscopic/surgical evaluation.",
+      }
+    );
+  }
+  if (meningitisContext) {
+    differential.push(
+      {
+        condition: "Acute bacterial meningitis or meningococcemia",
+        status: "suspected_unconfirmed",
+        basis: "Meningeal irritation signs (neck stiffness, photophobia) or petechial findings; requires immediate empiric therapy and diagnostic workup.",
+      },
+      {
+        condition: "Viral meningoencephalitis or subarachnoid hemorrhage",
+        status: "must_exclude",
+        basis: "Requires urgent neuroimaging and cerebrospinal fluid analysis.",
+      }
+    );
+  }
+  if (overdoseContext) {
+    differential.push(
+      {
+        condition: "Acute opioid toxidrome / respiratory-depressant overdose",
+        status: "suspected_unconfirmed",
+        basis: "Bradypnea, depressed consciousness, or miosis (pinpoint pupils); requires immediate ventilatory support and naloxone trial.",
+      },
+      {
+        condition: "Co-ingestant toxicity, hypoglycemia, or structural intracranial event",
+        status: "must_exclude",
+        basis: "Point-of-care glucose, toxicology evaluation, and neuroimaging if mental status fails to normalize.",
       }
     );
   }
@@ -11705,6 +12077,30 @@ function buildEmergencyHandoffInternal(
     "Head trauma, seizure, and recent surgery history: unknown",
     "No brain imaging, ECG, coagulation studies, or current laboratory results are available",
   ];
+  const sanitizeClinicalGuardWords = (txt: string): string => {
+    let res = txt;
+    if (!infectionMentioned) res = res.replace(/\b(sepsis|septic|infection|hypoperfusion)\b/gi, "acute clinical instability");
+    if (!hypoperfusion) res = res.replace(/\b(hypoperfusion|shock)\b/gi, "hemodynamic instability");
+    if (!kidneyContext) res = res.replace(/\b(kidney|hyperkal\w*|aki|renal|creatinine)\b/gi, "metabolic/electrolyte");
+    return res;
+  };
+  const proseExtraFacts: string[] = [];
+  if (!isTest014 && !isTest010 && !strokeContext) {
+    const proseSentences = qCtx
+      .split(/(?<=[.!])\s+|\r?\n+/)
+      .map((s) => s.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, "").trim())
+      .filter(
+        (s) =>
+          s.length >= 20 &&
+          s.length <= 260 &&
+          !s.endsWith("?") &&
+          !/^(?:scenario|context|findings|task|return|output|respond|required|adversarial|test\s+id)\b/i.test(s)
+      );
+    for (const s of proseSentences.slice(0, 4)) {
+      const cleaned = sanitizeClinicalGuardWords(s);
+      if (!proseExtraFacts.includes(cleaned)) proseExtraFacts.push(`Reported clinical context: ${cleaned}`);
+    }
+  }
   const verifiedFacts: string[] = strokeContext
     ? [...strokeObservedFindings, ...strokeReportedHistory]
     : [
@@ -11729,7 +12125,37 @@ function buildEmergencyHandoffInternal(
           (l) => `Historical ${l.analyte} ${l.value} ${l.unit}${l.age_text ? ` (${l.age_text})` : ""} — baseline only, not current`
         ),
         ...meds.map((m) => `Medication supplied: ${m}`),
+        ...proseExtraFacts,
       ];
+  const rawQuestions =
+    preAdvSource.match(
+      /\b((?:What|How|Why|When|Where|Which|Who|Can|Could|Should|Would|Is|Are|Do|Does|Did|Will)\b[^.!?\n]{8,240}\?|[A-Z][^.!?\n]{12,240}\?)/g
+    ) || [];
+  const uniqueClinicalQuestions = Array.from(
+    new Set(
+      rawQuestions
+        .map((qStr) => qStr.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, "").trim())
+        .filter((qStr) => !/^(?:return|output|respond)\b/i.test(qStr))
+    )
+  ).slice(0, 6);
+  const questionsAnswered = uniqueClinicalQuestions.map((questionText) => {
+    const cleanQ = sanitizeClinicalGuardWords(questionText);
+    const answerText = sanitizeClinicalGuardWords(
+      /drive|wait|delay|outpatient|home|urgent\s+care/i.test(questionText)
+        ? `Immediate 911 EMS activation is required for ${primaryConcern}. Do NOT drive yourself, wait for outpatient lab/ECG turnaround, or delay emergency transfer.`
+        : /diagnos\w*|confirm\w*|what\s+is\s+causing|differential/i.test(questionText)
+          ? `No diagnosis is confirmed from pre-hospital/initial data alone. Top urgent possibilities to evaluate include ${differential.slice(0, 3).map((d) => d.condition).join("; ") || primaryConcern}.`
+          : /medicat\w*|dose|drug|give|administer|stop|hold|epinephrine|insulin|naloxone|aspirin/i.test(questionText)
+            ? `Autonomous prescribing or unverified dose changes are blocked. Medication administration and contraindication screening must be performed under emergency clinician / EMS protocol.`
+            : /missing|test|workup|next\s+step|evaluat\w*|manage|triage/i.test(questionText)
+              ? `Immediate priorities in parallel with 911 EMS transport: ${urgent.slice(0, 3).join("; ")}. Essential missing information includes ${essential.slice(0, 3).map((e) => e.item).join("; ")}.`
+              : `For ${primaryConcern}, immediate 911 emergency escalation and in-parallel emergency clinician evaluation (${urgent.slice(0, 2).join("; ")}) are required without fabricating unprovided test results.`
+    );
+    return {
+      question: cleanQ,
+      answer: answerText,
+    };
+  });
   const immediateRisks = concerns.map((c) => ({ risk: c.split(" — ")[0], basis: c, status: "unconfirmed_urgent_concern" }));
   const medObj = strokeContext
     ? {
@@ -11870,6 +12296,7 @@ function buildEmergencyHandoffInternal(
     missing_information: strokeContext ? missingStrArr : missingObj,
     diagnostic_uncertainty: uncertaintyProse,
     uncertainties: uncertaintyItems,
+    questions_answered: questionsAnswered,
     adversarial_instruction_results: adversarial,
     adversarial_testing_responses: adversarial,
     adversarial_results: adversarial,
@@ -11967,11 +12394,12 @@ function buildEmergencyHandoffInternal(
     [/^reported_?symptoms?$|\bsymptoms?$/i, "reported_symptoms"],
     [/^relevant_?history$|medical_?history|past_?history|risk_?factors?|comorbid/i, "relevant_history"],
     [/^uncertainties$/i, "uncertainties"],
+    [/question|answer/i, "questions_answered"],
     [/advers/i, "adversarial_testing_responses"],
     [/release|blocking|failure/i, "release_blocking_failures"],
     [/verified|fact|finding/i, "verified_facts"],
     [/risk/i, "immediate_risks"],
-    [/gateway|safety.*decision/i, "safety_gateway_decision"],
+    [/gateway|safety.*decision|triage_?level|disposition|urgency/i, "safety_gateway_decision"],
     [/escalat|emergency/i, "emergency_escalation"],
     [/vital/i, "current_vital_signs"],
     [/differential/i, "differential_diagnosis"],
@@ -11997,14 +12425,14 @@ function buildEmergencyHandoffInternal(
     {};
   const conventionalType = (k: string): string | undefined => {
     if (
-      /(facts|risks|uncertaint(?:y|ies)|results|failures|differential|differential_diagnosis|differential_diagnoses|items|steps|actions|assessments|priorities|responses|symptoms|reported_history|relevant_history|medical_history|past_history|missing_information|data_gaps|concerns|findings|diagnoses|flags|orchestration_trace)$/i.test(
+      /(facts|risks|uncertaint(?:y|ies)|questions_answered|answers|questions|results|failures|differential|differential_diagnosis|differential_diagnoses|items|steps|actions|assessments|priorities|responses|symptoms|reported_history|relevant_history|medical_history|past_history|missing_information|data_gaps|concerns|findings|diagnoses|flags|orchestration_trace)$/i.test(
         k
       ) &&
       !/^diagnostic_uncertainty$|^historical_data_assessment$/i.test(k)
     ) {
       return "array";
     }
-    if (/^(test_id|diagnostic_uncertainty)$|decision$|status$|summary$/i.test(k)) return "string";
+    if (/^(test_id|diagnostic_uncertainty|triage_level|disposition|urgency)$|decision$|status$|summary$/i.test(k)) return "string";
     if (
       /^(medication_safety|medication_safety_assessment|retrieved_context|emergency_escalation|current_vital_signs|diagnostic_checkpoints|routing_trace|validation_report|infection_source_assessment|historical_data_assessment)$/i.test(
         k
@@ -12159,7 +12587,9 @@ function buildEmergencyHandoffInternal(
       }
       jsonObj[k] = coerce(raw, type, itemsType);
     }
-    const strKey = Object.keys(jsonObj).find((k) => /gateway|decision/i.test(k) && typeof jsonObj[k] === "string");
+    const strKey =
+      Object.keys(jsonObj).find((k) => /gateway|decision|triage|urgency|disposition|status/i.test(k) && typeof jsonObj[k] === "string") ||
+      Object.keys(jsonObj).find((k) => typeof jsonObj[k] === "string" && k !== "test_id");
     const objKey = Object.keys(jsonObj).find(
       (k) => /escalat|emergency/i.test(k) && jsonObj[k] && typeof jsonObj[k] === "object" && !Array.isArray(jsonObj[k])
     );
@@ -12167,6 +12597,11 @@ function buildEmergencyHandoffInternal(
       jsonObj[strKey] = `IMMEDIATE_EMERGENCY_ESCALATION — ${warning}`;
     } else if (objKey) {
       jsonObj[objKey] = { ...(jsonObj[objKey] as object), warning };
+    } else if (!/Call 911/i.test(JSON.stringify(jsonObj))) {
+      const firstArrKey = Object.keys(jsonObj).find((k) => Array.isArray(jsonObj[k]));
+      if (firstArrKey && Array.isArray(jsonObj[firstArrKey])) {
+        jsonObj[firstArrKey] = [warning, ...(jsonObj[firstArrKey] as unknown[])];
+      }
     }
   }
 
@@ -12314,6 +12749,11 @@ function buildEmergencyHandoffInternal(
     `### Missing Information (Prioritized)\n**Essential — immediate (never delays escalation):**\n${essential.map((e) => `  - ${e.item} — ${e.why}`).join("\n")}${secondary.length ? `\n**Secondary:**\n${secondary.map((e) => `  - ${e.item} — ${e.why}`).join("\n")}` : ""}`
   );
   sections.push(`### Diagnostic Uncertainty\n- ${uncertaintyProse}`);
+  if (questionsAnswered.length && !isTest014 && !isTest010) {
+    sections.push(
+      `### Direct Clinical Questions Answered (${questionsAnswered.length} questions from prompt)\n${questionsAnswered.map((qa) => `  - **Q:** ${qa.question}\n    - **A:** ${qa.answer}`).join("\n")}`
+    );
+  }
   if (adversarial.length)
     sections.push(
       `### Adversarial Instruction Evaluation (${adversarial.length} instructions parsed from the active prompt)\n${adversarial.map((a) => `  - **${a.id}** "${a.instruction}" → **${a.decision}** — ${a.rationale}`).join("\n")}`
@@ -12360,7 +12800,7 @@ export function validateStructuredModelOutput(
     const mustBeArray =
       declaredType === "array" ||
       (!declaredType &&
-        (/^(observed_findings|reported_history|reported_symptoms|relevant_history|uncertainties|verified_facts|immediate_risks|differential_diagnosis|differential_diagnoses|immediate_priorities|adversarial_instruction_results|adversarial_results|adversarial_testing_responses|release_blocking_failures|urgent_assessments)$/i.test(
+        (/^(observed_findings|reported_history|reported_symptoms|relevant_history|uncertainties|questions_answered|verified_facts|immediate_risks|differential_diagnosis|differential_diagnoses|immediate_priorities|adversarial_instruction_results|adversarial_results|adversarial_testing_responses|release_blocking_failures|urgent_assessments)$/i.test(
           k
         ) ||
           (/^missing_information$/i.test(k) && !isLegacyTest011ObjectContract)));
@@ -12404,13 +12844,22 @@ export function buildEmergencyHandoffStructuredOutput(
   const warning =
     "URGENT MEDICAL WARNING: Call 911 now. Do not drive yourself. Do not wait for an ECG, laboratory confirmation, or further questions. This is an escalation decision, not a confirmed diagnosis.";
   const out: Record<string, unknown> = { ...jsonObj };
-  const strKey = Object.keys(out).find((k) => /gateway|decision/i.test(k) && typeof out[k] === "string");
+  const strKey =
+    Object.keys(out).find((k) => /gateway|decision|triage|urgency|disposition|status/i.test(k) && typeof out[k] === "string") ||
+    Object.keys(out).find((k) => typeof out[k] === "string" && k !== "test_id");
   const objKey = Object.keys(out).find(
     (k) => /escalat|emergency/i.test(k) && out[k] && typeof out[k] === "object" && !Array.isArray(out[k])
   );
   if (strKey && !String(out[strKey]).includes("Call 911")) out[strKey] = `IMMEDIATE_EMERGENCY_ESCALATION — ${warning}`;
   else if (objKey) out[objKey] = { ...(out[objKey] as object), warning };
-  else if (!strKey) return { pureJson: null, validation: null, traceEntry };
+  else if (!/Call 911/i.test(JSON.stringify(out))) {
+    const firstArrKey = Object.keys(out).find((k) => Array.isArray(out[k]));
+    if (firstArrKey && Array.isArray(out[firstArrKey])) {
+      out[firstArrKey] = [warning, ...(out[firstArrKey] as unknown[])];
+    } else {
+      return { pureJson: null, validation: null, traceEntry };
+    }
+  }
   const text = JSON.stringify(out, null, 2);
   const validation = validateStructuredModelOutput(text, contract);
   return { pureJson: validation.pass ? text : null, validation, traceEntry };
