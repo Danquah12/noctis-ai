@@ -3,10 +3,10 @@ import assert from "node:assert/strict";
 import { aliasClashes, allPathways, CAREER_COUNT, getPathway, matchProfessions, validatePathway } from "./noctis-career-pathways.ts";
 import { handleNaturalCareerQuery, isCareerPathwayQuery } from "./noctis-career-query.ts";
 
-test("repository covers all 396 professions with complete records", () => {
-  assert.equal(CAREER_COUNT, 396);
+test("repository covers all 467 professions with complete records", () => {
+  assert.equal(CAREER_COUNT, 467);
   const all = allPathways();
-  assert.equal(all.length, 396);
+  assert.equal(all.length, 467);
   const bad: string[] = [];
   for (const r of all) {
     if (r.starting_point) continue;

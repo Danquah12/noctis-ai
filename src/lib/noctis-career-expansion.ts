@@ -3760,5 +3760,1430 @@ export const EXPANSION_OVERRIDES: Record<string, { route?: string; timeline?: st
    "casual worker",
    "odd jobs"
   ]
+ },
+ "elevator_mechanic": {
+  "timeline": "4-5 years",
+  "credentials": [
+   "Elevator mechanic apprenticeship",
+   "Local elevator licence where required",
+   "Safety and fall-protection training"
+  ],
+  "aliases": [
+   "elevator mechanic",
+   "escalator mechanic",
+   "lift engineer",
+   "lift technician"
+  ],
+  "keywords": [
+   "elevator mechanic",
+   "escalator mechanic",
+   "lift engineer",
+   "lift technician"
+  ]
+ },
+ "wind_turbine_technician": {
+  "timeline": "6-24 months",
+  "credentials": [
+   "Wind technician training programme",
+   "Working-at-heights and rescue certificate",
+   "Basic electrical safety training"
+  ],
+  "aliases": [
+   "wind turbine technician",
+   "wind technician",
+   "turbine technician"
+  ],
+  "keywords": [
+   "wind turbine technician",
+   "wind technician",
+   "turbine technician"
+  ]
+ },
+ "boilermaker_welder": {
+  "timeline": "3-5 years",
+  "credentials": [
+   "Boilermaker apprenticeship",
+   "Welding qualification",
+   "Safety certificates for confined space and heights"
+  ],
+  "aliases": [
+   "boilermaker",
+   "pressure vessel fabricator",
+   "boiler fitter"
+  ],
+  "keywords": [
+   "boilermaker",
+   "pressure vessel fabricator",
+   "boiler fitter"
+  ]
+ },
+ "millwright_technician": {
+  "timeline": "3-4 years",
+  "credentials": [
+   "Millwright apprenticeship",
+   "Rigging and safety training",
+   "Local trade certificate where required"
+  ],
+  "aliases": [
+   "millwright",
+   "industrial mechanic",
+   "machinery mechanic"
+  ],
+  "keywords": [
+   "millwright",
+   "industrial mechanic",
+   "machinery mechanic"
+  ]
+ },
+ "scaffolder_rigger": {
+  "timeline": "3-12 months",
+  "credentials": [
+   "Scaffolding certificate",
+   "Rigging and signalling training",
+   "Working-at-heights training"
+  ],
+  "aliases": [
+   "scaffolder",
+   "scaffold erector",
+   "rigger",
+   "construction rigger"
+  ],
+  "keywords": [
+   "scaffolder",
+   "scaffold erector",
+   "rigger",
+   "construction rigger"
+  ]
+ },
+ "pest_control_technician": {
+  "timeline": "1-6 months",
+  "credentials": [
+   "Pesticide applicator licence where required",
+   "Safety training",
+   "Company certification"
+  ],
+  "aliases": [
+   "pest control",
+   "exterminator",
+   "pest technician"
+  ],
+  "keywords": [
+   "pest control",
+   "exterminator",
+   "pest technician"
+  ]
+ },
+ "respiratory_therapist": {
+  "timeline": "2-4 years",
+  "credentials": [
+   "Accredited respiratory therapy programme",
+   "National or local licence",
+   "CPR and advanced life support"
+  ],
+  "aliases": [
+   "respiratory therapist",
+   "respiratory technician",
+   "ventilator technician"
+  ],
+  "keywords": [
+   "respiratory therapist",
+   "respiratory technician",
+   "ventilator technician"
+  ]
+ },
+ "prosthetist_orthotist": {
+  "timeline": "4-6 years",
+  "credentials": [
+   "Accredited prosthetics and orthotics programme",
+   "Clinical residency",
+   "Professional certification where required"
+  ],
+  "aliases": [
+   "prosthetist",
+   "orthotist",
+   "prosthetics technician"
+  ],
+  "keywords": [
+   "prosthetist",
+   "orthotist",
+   "prosthetics technician"
+  ]
+ },
+ "community_health_worker": {
+  "timeline": "1-6 months",
+  "credentials": [
+   "Community health worker training",
+   "First aid certificate",
+   "Local health ministry registration where required"
+  ],
+  "aliases": [
+   "community health worker",
+   "health volunteer",
+   "village health worker"
+  ],
+  "keywords": [
+   "community health worker",
+   "health volunteer",
+   "village health worker"
+  ]
+ },
+ "phlebotomist_blood": {
+  "timeline": "1-6 months",
+  "credentials": [
+   "Phlebotomy training course",
+   "Certification where required",
+   "CPR certification"
+  ],
+  "aliases": [
+   "phlebotomist",
+   "blood collector",
+   "phlebotomy technician"
+  ],
+  "keywords": [
+   "phlebotomist",
+   "blood collector",
+   "phlebotomy technician"
+  ]
+ },
+ "sterile_processing_tech": {
+  "timeline": "3-12 months",
+  "credentials": [
+   "Sterile processing certificate",
+   "Infection-control training",
+   "Hospital onboarding"
+  ],
+  "aliases": [
+   "sterile processing",
+   "central sterile technician",
+   "instrument technician"
+  ],
+  "keywords": [
+   "sterile processing",
+   "central sterile technician",
+   "instrument technician"
+  ]
+ },
+ "art_music_therapist": {
+  "timeline": "2-4 years",
+  "credentials": [
+   "Master's in a creative arts therapy",
+   "Supervised clinical hours",
+   "Registration where required"
+  ],
+  "aliases": [
+   "art therapist",
+   "music therapist",
+   "creative arts therapist"
+  ],
+  "keywords": [
+   "art therapist",
+   "music therapist",
+   "creative arts therapist"
+  ]
+ },
+ "veterinary_technician": {
+  "timeline": "1-3 years",
+  "credentials": [
+   "Veterinary technician programme",
+   "Registration where required",
+   "Animal-handling safety training"
+  ],
+  "aliases": [
+   "veterinary technician",
+   "vet technician",
+   "vet nurse",
+   "animal health assistant"
+  ],
+  "keywords": [
+   "veterinary technician",
+   "vet technician",
+   "vet nurse",
+   "animal health assistant"
+  ]
+ },
+ "animal_trainer_handler": {
+  "timeline": "3-24 months",
+  "credentials": [
+   "Animal training course or apprenticeship",
+   "Welfare and first aid training",
+   "Business licence where required"
+  ],
+  "aliases": [
+   "animal trainer",
+   "dog trainer",
+   "animal handler"
+  ],
+  "keywords": [
+   "animal trainer",
+   "dog trainer",
+   "animal handler"
+  ]
+ },
+ "aquaculture_farmer": {
+  "timeline": "6-24 months",
+  "credentials": [
+   "Aquaculture training course",
+   "Farm permit or licence where required",
+   "Food-safety training"
+  ],
+  "aliases": [
+   "fish farmer",
+   "aquaculture farmer",
+   "aquaculture technician"
+  ],
+  "keywords": [
+   "fish farmer",
+   "aquaculture farmer",
+   "aquaculture technician"
+  ]
+ },
+ "forest_ranger_conservation": {
+  "timeline": "6-36 months",
+  "credentials": [
+   "Forestry or conservation diploma",
+   "First aid and field safety",
+   "Government ranger entry process"
+  ],
+  "aliases": [
+   "forest ranger",
+   "park ranger",
+   "conservation officer",
+   "game ranger"
+  ],
+  "keywords": [
+   "forest ranger",
+   "park ranger",
+   "conservation officer",
+   "game ranger"
+  ]
+ },
+ "wildlife_guide_safari": {
+  "timeline": "6-24 months",
+  "credentials": [
+   "Guide certification",
+   "Wilderness first aid",
+   "Local guiding licence"
+  ],
+  "aliases": [
+   "safari guide",
+   "wildlife guide",
+   "nature guide",
+   "tour guide"
+  ],
+  "keywords": [
+   "safari guide",
+   "wildlife guide",
+   "nature guide",
+   "tour guide"
+  ]
+ },
+ "soil_scientist_agronomist": {
+  "timeline": "3-6 years",
+  "credentials": [
+   "Degree in agronomy or soil science",
+   "Field internship",
+   "Professional registration where available"
+  ],
+  "aliases": [
+   "soil scientist",
+   "agronomist",
+   "crop advisor"
+  ],
+  "keywords": [
+   "soil scientist",
+   "agronomist",
+   "crop advisor"
+  ]
+ },
+ "carbon_credit_auditor": {
+  "timeline": "1-4 years",
+  "credentials": [
+   "Degree or sustainability certificate",
+   "Accredited verifier training",
+   "Conflict-of-interest rules"
+  ],
+  "aliases": [
+   "carbon auditor",
+   "sustainability auditor",
+   "carbon credit verifier",
+   "esg analyst"
+  ],
+  "keywords": [
+   "carbon auditor",
+   "sustainability auditor",
+   "carbon credit verifier",
+   "esg analyst"
+  ]
+ },
+ "ai_trainer_data_annotator": {
+  "timeline": "1-3 months",
+  "credentials": [
+   "Language or domain skills",
+   "Annotation platform training",
+   "Confidentiality agreement"
+  ],
+  "aliases": [
+   "data annotator",
+   "data labeler",
+   "ai trainer",
+   "prompt engineer"
+  ],
+  "keywords": [
+   "data annotator",
+   "data labeler",
+   "ai trainer",
+   "prompt engineer"
+  ]
+ },
+ "drone_pilot_mapper": {
+  "timeline": "1-6 months",
+  "credentials": [
+   "Remote pilot certificate or local drone licence",
+   "Insurance and registration",
+   "Airspace authorisation where required"
+  ],
+  "aliases": [
+   "drone pilot",
+   "drone operator",
+   "uav pilot",
+   "aerial mapper"
+  ],
+  "keywords": [
+   "drone pilot",
+   "drone operator",
+   "uav pilot",
+   "aerial mapper"
+  ]
+ },
+ "battery_storage_technician": {
+  "timeline": "3-18 months",
+  "credentials": [
+   "Electrical qualification",
+   "Manufacturer certification",
+   "High-voltage safety training"
+  ],
+  "aliases": [
+   "battery technician",
+   "energy storage technician",
+   "battery installer"
+  ],
+  "keywords": [
+   "battery technician",
+   "energy storage technician",
+   "battery installer"
+  ]
+ },
+ "robotics_technician": {
+  "timeline": "1-3 years",
+  "credentials": [
+   "Technical diploma in automation or mechatronics",
+   "Manufacturer robot training",
+   "Electrical safety training"
+  ],
+  "aliases": [
+   "robotics technician",
+   "automation technician",
+   "mechatronics technician"
+  ],
+  "keywords": [
+   "robotics technician",
+   "automation technician",
+   "mechatronics technician"
+  ]
+ },
+ "additive_manufacturing_tech": {
+  "timeline": "3-18 months",
+  "credentials": [
+   "Additive manufacturing certificate",
+   "CAD training",
+   "Workshop safety training"
+  ],
+  "aliases": [
+   "3d printing technician",
+   "additive manufacturing technician",
+   "3d printer operator"
+  ],
+  "keywords": [
+   "3d printing technician",
+   "additive manufacturing technician",
+   "3d printer operator"
+  ]
+ },
+ "quantum_lab_technician": {
+  "timeline": "1-3 years",
+  "credentials": [
+   "Technical diploma or science degree",
+   "Laboratory safety training",
+   "Instrument-specific training"
+  ],
+  "aliases": [
+   "physics lab technician",
+   "cryogenic technician",
+   "quantum technician"
+  ],
+  "keywords": [
+   "physics lab technician",
+   "cryogenic technician",
+   "quantum technician"
+  ]
+ },
+ "market_trader_stallholder": {
+  "timeline": "1-3 months",
+  "credentials": [
+   "Market stall permit",
+   "Basic bookkeeping skills",
+   "Business registration where required"
+  ],
+  "aliases": [
+   "market trader",
+   "stallholder",
+   "market vendor",
+   "petty trader"
+  ],
+  "keywords": [
+   "market trader",
+   "stallholder",
+   "market vendor",
+   "petty trader"
+  ]
+ },
+ "borehole_driller": {
+  "timeline": "6-36 months",
+  "credentials": [
+   "Drilling apprenticeship",
+   "Water well contractor licence where required",
+   "Safety and equipment training"
+  ],
+  "aliases": [
+   "borehole driller",
+   "well driller",
+   "water systems technician",
+   "water well driller"
+  ],
+  "keywords": [
+   "borehole driller",
+   "well driller",
+   "water systems technician",
+   "water well driller"
+  ]
+ },
+ "translator_interpreter": {
+  "timeline": "1-4 years",
+  "credentials": [
+   "Translation or interpreting qualification",
+   "Professional certification where available",
+   "Subject-area specialism"
+  ],
+  "aliases": [
+   "translator",
+   "interpreter",
+   "language interpreter",
+   "conference interpreter"
+  ],
+  "keywords": [
+   "translator",
+   "interpreter",
+   "language interpreter",
+   "conference interpreter"
+  ]
+ },
+ "sign_language_interpreter": {
+  "timeline": "2-4 years",
+  "credentials": [
+   "Interpreter training programme",
+   "Certification or registration where required",
+   "Ethics training"
+  ],
+  "aliases": [
+   "sign language interpreter",
+   "asl interpreter",
+   "deaf interpreter"
+  ],
+  "keywords": [
+   "sign language interpreter",
+   "asl interpreter",
+   "deaf interpreter"
+  ]
+ },
+ "subtitler_captioner": {
+  "timeline": "1-6 months",
+  "credentials": [
+   "Language fluency",
+   "Captioning software training",
+   "Sample portfolio"
+  ],
+  "aliases": [
+   "subtitler",
+   "captioner",
+   "closed captioner"
+  ],
+  "keywords": [
+   "subtitler",
+   "captioner",
+   "closed captioner"
+  ]
+ },
+ "esports_coach_analyst": {
+  "timeline": "6-24 months",
+  "credentials": [
+   "Competitive experience",
+   "Coaching portfolio",
+   "Safeguarding awareness for young players"
+  ],
+  "aliases": [
+   "esports coach",
+   "gaming coach",
+   "esports analyst"
+  ],
+  "keywords": [
+   "esports coach",
+   "gaming coach",
+   "esports analyst"
+  ]
+ },
+ "stunt_performer": {
+  "timeline": "2-5 years",
+  "credentials": [
+   "Stunt training programme",
+   "Safety and first aid certificates",
+   "Union or registry membership where relevant"
+  ],
+  "aliases": [
+   "stunt performer",
+   "stunt double",
+   "stunt coordinator"
+  ],
+  "keywords": [
+   "stunt performer",
+   "stunt double",
+   "stunt coordinator"
+  ]
+ },
+ "elder_care_companion": {
+  "timeline": "1-6 months",
+  "credentials": [
+   "Care worker training",
+   "First aid certificate",
+   "Background check"
+  ],
+  "aliases": [
+   "elder care",
+   "home carer",
+   "care companion",
+   "home support worker"
+  ],
+  "keywords": [
+   "elder care",
+   "home carer",
+   "care companion",
+   "home support worker"
+  ]
+ },
+ "special_needs_aide": {
+  "timeline": "3-24 months",
+  "credentials": [
+   "Teaching assistant training",
+   "Safeguarding certification",
+   "Background check"
+  ],
+  "aliases": [
+   "special education assistant",
+   "special needs aide",
+   "learning support assistant"
+  ],
+  "keywords": [
+   "special education assistant",
+   "special needs aide",
+   "learning support assistant"
+  ]
+ },
+ "funeral_director": {
+  "timeline": "6-24 months",
+  "credentials": [
+   "Funeral service training",
+   "Licence or registration where required",
+   "Health and safety training"
+  ],
+  "aliases": [
+   "funeral director",
+   "mortician",
+   "mortuary assistant",
+   "undertaker"
+  ],
+  "keywords": [
+   "funeral director",
+   "mortician",
+   "mortuary assistant",
+   "undertaker"
+  ]
+ },
+ "chaplain_pastoral_care": {
+  "timeline": "1-4 years",
+  "credentials": [
+   "Theological or pastoral training",
+   "Endorsement by a faith body",
+   "Safeguarding training"
+  ],
+  "aliases": [
+   "chaplain",
+   "pastoral care worker",
+   "pastoral counsellor"
+  ],
+  "keywords": [
+   "chaplain",
+   "pastoral care worker",
+   "pastoral counsellor"
+  ]
+ },
+ "refugee_support_worker": {
+  "timeline": "6-24 months",
+  "credentials": [
+   "Social care or humanitarian training",
+   "Language skills",
+   "Background check"
+  ],
+  "aliases": [
+   "refugee support",
+   "migrant caseworker",
+   "resettlement worker"
+  ],
+  "keywords": [
+   "refugee support",
+   "migrant caseworker",
+   "resettlement worker"
+  ]
+ },
+ "disaster_relief_coordinator": {
+  "timeline": "1-4 years",
+  "credentials": [
+   "Emergency management or humanitarian training",
+   "First aid and field safety",
+   "Experience volunteering in relief operations"
+  ],
+  "aliases": [
+   "disaster relief",
+   "emergency coordinator",
+   "humanitarian worker",
+   "relief coordinator"
+  ],
+  "keywords": [
+   "disaster relief",
+   "emergency coordinator",
+   "humanitarian worker",
+   "relief coordinator"
+  ]
+ },
+ "ship_pilot_harbour": {
+  "timeline": "8-15 years",
+  "credentials": [
+   "Master mariner licence",
+   "Years of sea service",
+   "Pilot authority exam"
+  ],
+  "aliases": [
+   "harbour pilot",
+   "ship pilot",
+   "marine pilot"
+  ],
+  "keywords": [
+   "harbour pilot",
+   "ship pilot",
+   "marine pilot"
+  ]
+ },
+ "marine_engineer": {
+  "timeline": "3-5 years",
+  "credentials": [
+   "Maritime academy or approved training",
+   "Sea service",
+   "Certificate of competency as required"
+  ],
+  "aliases": [
+   "marine engineer",
+   "ship engineer",
+   "engine officer"
+  ],
+  "keywords": [
+   "marine engineer",
+   "ship engineer",
+   "engine officer"
+  ]
+ },
+ "customs_broker_clearing": {
+  "timeline": "6-24 months",
+  "credentials": [
+   "Customs broker licence or exam where required",
+   "Trade compliance training",
+   "Employer or agency experience"
+  ],
+  "aliases": [
+   "customs broker",
+   "clearing agent",
+   "freight clearing",
+   "customs agent"
+  ],
+  "keywords": [
+   "customs broker",
+   "clearing agent",
+   "freight clearing",
+   "customs agent"
+  ]
+ },
+ "warehouse_automation_operator": {
+  "timeline": "1-6 months",
+  "credentials": [
+   "Warehouse safety training",
+   "Equipment operator certificate",
+   "Employer system training"
+  ],
+  "aliases": [
+   "warehouse operator",
+   "automation operator",
+   "fulfilment operator"
+  ],
+  "keywords": [
+   "warehouse operator",
+   "automation operator",
+   "fulfilment operator"
+  ]
+ },
+ "biogas_technician": {
+  "timeline": "1-6 months",
+  "credentials": [
+   "Biogas technician training",
+   "Safety certificate",
+   "Programme or manufacturer accreditation"
+  ],
+  "aliases": [
+   "biogas technician",
+   "clean cooking installer",
+   "biodigester builder"
+  ],
+  "keywords": [
+   "biogas technician",
+   "clean cooking installer",
+   "biodigester builder"
+  ]
+ },
+ "rainwater_harvesting_installer": {
+  "timeline": "1-12 months",
+  "credentials": [
+   "Plumbing or water treatment training",
+   "Local installer registration where required",
+   "Safety training"
+  ],
+  "aliases": [
+   "rainwater harvesting installer",
+   "water treatment installer",
+   "water purification technician"
+  ],
+  "keywords": [
+   "rainwater harvesting installer",
+   "water treatment installer",
+   "water purification technician"
+  ]
+ },
+ "sanitation_engineer_wash": {
+  "timeline": "1-4 years",
+  "credentials": [
+   "Public health or engineering qualification",
+   "Field placement",
+   "Humanitarian WASH training"
+  ],
+  "aliases": [
+   "wash officer",
+   "sanitation engineer",
+   "sanitation officer",
+   "hygiene promoter"
+  ],
+  "keywords": [
+   "wash officer",
+   "sanitation engineer",
+   "sanitation officer",
+   "hygiene promoter"
+  ]
+ },
+ "building_inspector_codes": {
+  "timeline": "2-5 years",
+  "credentials": [
+   "Construction or engineering background",
+   "Inspector certification",
+   "Local government appointment"
+  ],
+  "aliases": [
+   "building inspector",
+   "code enforcement officer",
+   "construction inspector"
+  ],
+  "keywords": [
+   "building inspector",
+   "code enforcement officer",
+   "construction inspector"
+  ]
+ },
+ "quantity_surveyor_estimator": {
+  "timeline": "3-5 years",
+  "credentials": [
+   "Quantity surveying or construction degree",
+   "Professional membership",
+   "Software training"
+  ],
+  "aliases": [
+   "quantity surveyor",
+   "construction estimator",
+   "cost estimator"
+  ],
+  "keywords": [
+   "quantity surveyor",
+   "construction estimator",
+   "cost estimator"
+  ]
+ },
+ "land_surveyor_geomatics": {
+  "timeline": "2-5 years",
+  "credentials": [
+   "Surveying or geomatics degree or diploma",
+   "Professional licence or registration",
+   "Supervised field experience"
+  ],
+  "aliases": [
+   "land surveyor",
+   "surveyor",
+   "geomatics technician",
+   "gis technician"
+  ],
+  "keywords": [
+   "land surveyor",
+   "surveyor",
+   "geomatics technician",
+   "gis technician"
+  ]
+ },
+ "arborist_tree_surgeon": {
+  "timeline": "1-3 years",
+  "credentials": [
+   "Arborist training",
+   "Chainsaw certificate",
+   "Aerial rescue training"
+  ],
+  "aliases": [
+   "arborist",
+   "tree surgeon",
+   "tree climber",
+   "tree surgeon"
+  ],
+  "keywords": [
+   "arborist",
+   "tree surgeon",
+   "tree climber"
+  ]
+ },
+ "yoga_pilates_instructor": {
+  "timeline": "2-12 months",
+  "credentials": [
+   "Accredited teacher training",
+   "First aid and CPR",
+   "Liability insurance"
+  ],
+  "aliases": [
+   "yoga instructor",
+   "pilates instructor",
+   "yoga teacher"
+  ],
+  "keywords": [
+   "yoga instructor",
+   "pilates instructor",
+   "yoga teacher"
+  ]
+ },
+ "massage_therapist": {
+  "timeline": "6-24 months",
+  "credentials": [
+   "Accredited massage therapy programme",
+   "Licence or registration where required",
+   "First aid"
+  ],
+  "aliases": [
+   "massage therapist",
+   "masseuse",
+   "bodywork therapist"
+  ],
+  "keywords": [
+   "massage therapist",
+   "masseuse",
+   "bodywork therapist"
+  ]
+ },
+ "pharmacy_technician": {
+  "timeline": "6-24 months",
+  "credentials": [
+   "Pharmacy technician programme",
+   "Registration where required",
+   "Background check"
+  ],
+  "aliases": [
+   "pharmacy technician",
+   "pharmacy assistant",
+   "dispensing assistant"
+  ],
+  "keywords": [
+   "pharmacy technician",
+   "pharmacy assistant",
+   "dispensing assistant"
+  ]
+ },
+ "medical_coder_biller": {
+  "timeline": "3-12 months",
+  "credentials": [
+   "Medical coding certificate",
+   "Professional certification where available",
+   "Privacy training"
+  ],
+  "aliases": [
+   "medical coder",
+   "medical biller",
+   "health information technician",
+   "medical records clerk"
+  ],
+  "keywords": [
+   "medical coder",
+   "medical biller",
+   "health information technician",
+   "medical records clerk"
+  ]
+ },
+ "medical_interpreter_health": {
+  "timeline": "6-24 months",
+  "credentials": [
+   "Healthcare interpreter training",
+   "Certification where available",
+   "Confidentiality training"
+  ],
+  "aliases": [
+   "healthcare interpreter",
+   "medical interpreter",
+   "hospital interpreter"
+  ],
+  "keywords": [
+   "healthcare interpreter",
+   "medical interpreter",
+   "hospital interpreter"
+  ]
+ },
+ "notary_commissioner": {
+  "timeline": "1-12 months",
+  "credentials": [
+   "Commission or appointment by the authority",
+   "Training or exam where required",
+   "Bond or insurance where required"
+  ],
+  "aliases": [
+   "notary public",
+   "notary",
+   "commissioner for oaths"
+  ],
+  "keywords": [
+   "notary public",
+   "notary",
+   "commissioner for oaths"
+  ]
+ },
+ "immigration_consultant": {
+  "timeline": "1-3 years",
+  "credentials": [
+   "Regulated consultant licence where required",
+   "Recognised training course",
+   "Ethics and insurance"
+  ],
+  "aliases": [
+   "immigration consultant",
+   "visa adviser",
+   "immigration adviser"
+  ],
+  "keywords": [
+   "immigration consultant",
+   "visa adviser",
+   "immigration adviser"
+  ]
+ },
+ "insurance_claims_adjuster": {
+  "timeline": "3-12 months",
+  "credentials": [
+   "Adjuster licence where required",
+   "Insurance training",
+   "Background check"
+  ],
+  "aliases": [
+   "claims adjuster",
+   "loss assessor",
+   "insurance adjuster"
+  ],
+  "keywords": [
+   "claims adjuster",
+   "loss assessor",
+   "insurance adjuster"
+  ]
+ },
+ "museum_curator_guide": {
+  "timeline": "2-6 years",
+  "credentials": [
+   "History, art or museum studies degree",
+   "Internship",
+   "Conservation training"
+  ],
+  "aliases": [
+   "museum curator",
+   "heritage guide",
+   "museum guide",
+   "curator"
+  ],
+  "keywords": [
+   "museum curator",
+   "heritage guide",
+   "museum guide",
+   "curator"
+  ]
+ },
+ "adult_literacy_instructor": {
+  "timeline": "6-24 months",
+  "credentials": [
+   "Adult education or teaching training",
+   "Subject or trade expertise",
+   "Background check"
+  ],
+  "aliases": [
+   "adult literacy",
+   "vocational instructor",
+   "adult educator",
+   "skills trainer"
+  ],
+  "keywords": [
+   "adult literacy",
+   "vocational instructor",
+   "adult educator",
+   "skills trainer"
+  ]
+ },
+ "career_counsellor_coach": {
+  "timeline": "1-3 years",
+  "credentials": [
+   "Counselling or career guidance training",
+   "Professional membership where available",
+   "Supervised practice"
+  ],
+  "aliases": [
+   "career counsellor",
+   "employment adviser",
+   "job coach",
+   "career adviser"
+  ],
+  "keywords": [
+   "career counsellor",
+   "employment adviser",
+   "job coach",
+   "career adviser"
+  ]
+ },
+ "youth_worker_mentor": {
+  "timeline": "6-24 months",
+  "credentials": [
+   "Youth work qualification or training",
+   "Safeguarding certification",
+   "Background check"
+  ],
+  "aliases": [
+   "youth worker",
+   "youth mentor",
+   "youth officer"
+  ],
+  "keywords": [
+   "youth worker",
+   "youth mentor",
+   "youth officer"
+  ]
+ },
+ "addiction_recovery_counsellor": {
+  "timeline": "2-4 years",
+  "credentials": [
+   "Counselling qualification",
+   "Licence or certification where required",
+   "Supervised practice"
+  ],
+  "aliases": [
+   "addiction counsellor",
+   "recovery counsellor",
+   "substance abuse counsellor"
+  ],
+  "keywords": [
+   "addiction counsellor",
+   "recovery counsellor",
+   "substance abuse counsellor"
+  ]
+ },
+ "cctv_alarm_installer": {
+  "timeline": "3-12 months",
+  "credentials": [
+   "Electrical or low-voltage training",
+   "Manufacturer certification",
+   "Security installer licence where required"
+  ],
+  "aliases": [
+   "cctv installer",
+   "alarm installer",
+   "security systems installer"
+  ],
+  "keywords": [
+   "cctv installer",
+   "alarm installer",
+   "security systems installer"
+  ]
+ },
+ "gis_remote_sensing_analyst": {
+  "timeline": "1-4 years",
+  "credentials": [
+   "Geography, geomatics or related degree",
+   "GIS software certification",
+   "Project portfolio"
+  ],
+  "aliases": [
+   "gis analyst",
+   "remote sensing analyst",
+   "cartographer"
+  ],
+  "keywords": [
+   "gis analyst",
+   "remote sensing analyst",
+   "cartographer"
+  ]
+ },
+ "laboratory_quality_technician": {
+  "timeline": "1-3 years",
+  "credentials": [
+   "Science diploma or degree",
+   "Laboratory safety training",
+   "Good laboratory practice training"
+  ],
+  "aliases": [
+   "quality control technician",
+   "food lab technician",
+   "qc analyst"
+  ],
+  "keywords": [
+   "quality control technician",
+   "food lab technician",
+   "qc analyst"
+  ]
+ },
+ "cybersecurity_awareness_trainer": {
+  "timeline": "6-24 months",
+  "credentials": [
+   "Security fundamentals certification",
+   "Training or teaching experience",
+   "Communication skills"
+  ],
+  "aliases": [
+   "security awareness trainer",
+   "cyber trainer",
+   "phishing trainer"
+  ],
+  "keywords": [
+   "security awareness trainer",
+   "cyber trainer",
+   "phishing trainer"
+  ]
+ },
+ "mobile_phone_repair": {
+  "timeline": "1-12 months",
+  "credentials": [
+   "Repair course or apprenticeship",
+   "Safety training for batteries",
+   "Business registration where required"
+  ],
+  "aliases": [
+   "phone repair",
+   "mobile repair technician",
+   "electronics repair"
+  ],
+  "keywords": [
+   "phone repair",
+   "mobile repair technician",
+   "electronics repair"
+  ]
+ },
+ "ecommerce_seller_dropship": {
+  "timeline": "1-6 months",
+  "credentials": [
+   "Business registration",
+   "Marketplace seller account",
+   "Tax registration where required"
+  ],
+  "aliases": [
+   "ecommerce seller",
+   "online seller",
+   "online shop owner",
+   "dropshipper"
+  ],
+  "keywords": [
+   "ecommerce seller",
+   "online seller",
+   "online shop owner",
+   "dropshipper"
+  ]
+ },
+ "customer_service_call_centre": {
+  "timeline": "1-4 weeks",
+  "credentials": [
+   "Language skills",
+   "Employer training",
+   "Background check where required"
+  ],
+  "aliases": [
+   "customer service agent",
+   "call centre agent",
+   "contact centre agent",
+   "customer support"
+  ],
+  "keywords": [
+   "customer service agent",
+   "call centre agent",
+   "contact centre agent",
+   "customer support"
+  ]
+ },
+ "laundry_drycleaning_operator": {
+  "timeline": "1-6 months",
+  "credentials": [
+   "On-the-job training",
+   "Chemical-safety training",
+   "Business registration where required"
+  ],
+  "aliases": [
+   "laundry operator",
+   "dry cleaner",
+   "laundry attendant"
+  ],
+  "keywords": [
+   "laundry operator",
+   "dry cleaner",
+   "laundry attendant"
+  ]
+ },
+ "baker_pastry_chef": {
+  "timeline": "6-36 months",
+  "credentials": [
+   "Culinary or baking training",
+   "Food-handler certificate",
+   "Health inspection compliance"
+  ],
+  "aliases": [
+   "baker",
+   "pastry chef",
+   "bread baker",
+   "cake decorator"
+  ],
+  "keywords": [
+   "baker",
+   "pastry chef",
+   "bread baker",
+   "cake decorator"
+  ]
+ },
+ "butcher_meat_cutter": {
+  "timeline": "6-24 months",
+  "credentials": [
+   "Butchery apprenticeship",
+   "Food-handler certificate",
+   "Health inspection compliance"
+  ],
+  "aliases": [
+   "butcher",
+   "meat cutter",
+   "meat processor"
+  ],
+  "keywords": [
+   "butcher",
+   "meat cutter",
+   "meat processor"
+  ]
+ },
+ "farm_mechanic_tractor": {
+  "timeline": "1-4 years",
+  "credentials": [
+   "Agricultural mechanic training",
+   "Workshop safety training",
+   "Manufacturer courses"
+  ],
+  "aliases": [
+   "farm mechanic",
+   "tractor mechanic",
+   "agricultural mechanic",
+   "agricultural machinery mechanic"
+  ],
+  "keywords": [
+   "farm mechanic",
+   "tractor mechanic",
+   "agricultural mechanic",
+   "agricultural machinery mechanic"
+  ]
+ },
+ "heavy_equipment_operator": {
+  "timeline": "1-12 months",
+  "credentials": [
+   "Equipment operator certificate",
+   "Crane licence where required",
+   "Site safety card"
+  ],
+  "aliases": [
+   "heavy equipment operator",
+   "crane operator",
+   "excavator operator",
+   "bulldozer operator"
+  ],
+  "keywords": [
+   "heavy equipment operator",
+   "crane operator",
+   "excavator operator",
+   "bulldozer operator"
+  ]
+ },
+ "mining_technician_geologist": {
+  "timeline": "1-4 years",
+  "credentials": [
+   "Mining technician or geology qualification",
+   "Mine safety certification",
+   "Medical fitness"
+  ],
+  "aliases": [
+   "mining technician",
+   "mine geologist",
+   "miner",
+   "mine surveyor"
+  ],
+  "keywords": [
+   "mining technician",
+   "mine geologist",
+   "miner",
+   "mine surveyor"
+  ]
+ },
+ "printer_signmaker": {
+  "timeline": "3-24 months",
+  "credentials": [
+   "Print or sign-making training",
+   "Machine safety training",
+   "Working-at-heights training for installation"
+  ],
+  "aliases": [
+   "print operator",
+   "sign maker",
+   "signwriter",
+   "print technician"
+  ],
+  "keywords": [
+   "print operator",
+   "sign maker",
+   "signwriter",
+   "print technician"
+  ]
  }
 };

@@ -657,6 +657,34 @@ export const CAREER_PROFESSIONS: CareerProfessionRow[] = [
   ]
  },
  {
+  "id": "elevator_mechanic",
+  "title": "Elevator & Escalator Mechanic",
+  "enclave": "trades_construction",
+  "skills": [
+   "Hoistway Installation",
+   "Controls & Traction Systems",
+   "Safety Code Inspection",
+   "Troubleshooting"
+  ],
+  "tools": [
+   "Elevator Controller Diagnostic Tool"
+  ]
+ },
+ {
+  "id": "scaffolder_rigger",
+  "title": "Scaffolder & Construction Rigger",
+  "enclave": "trades_construction",
+  "skills": [
+   "Scaffold Erection",
+   "Load Calculation",
+   "Rigging Signals",
+   "Fall Protection"
+  ],
+  "tools": [
+   "Scaffold Load & Tag Inspection Log"
+  ]
+ },
+ {
   "id": "mechanic",
   "title": "ASE Master Automotive Technician",
   "enclave": "automotive_mechanics",
@@ -1095,6 +1123,34 @@ export const CAREER_PROFESSIONS: CareerProfessionRow[] = [
   ]
  },
  {
+  "id": "farm_mechanic_tractor",
+  "title": "Agricultural Machinery Mechanic",
+  "enclave": "automotive_mechanics",
+  "skills": [
+   "Tractor Maintenance",
+   "Hydraulics",
+   "Implements",
+   "Diagnostics"
+  ],
+  "tools": [
+   "Machine Service Record"
+  ]
+ },
+ {
+  "id": "heavy_equipment_operator",
+  "title": "Heavy Equipment & Crane Operator",
+  "enclave": "automotive_mechanics",
+  "skills": [
+   "Excavator & Loader Operation",
+   "Crane Signals",
+   "Load Charts",
+   "Site Safety"
+  ],
+  "tools": [
+   "Crane Load Chart Reference"
+  ]
+ },
+ {
   "id": "farmer",
   "title": "Crop & Precision Agriculture Farmer",
   "enclave": "agriculture_natural_resources",
@@ -1444,6 +1500,90 @@ export const CAREER_PROFESSIONS: CareerProfessionRow[] = [
   ],
   "tools": [
    "Fire Line & Field Safety Log"
+  ]
+ },
+ {
+  "id": "veterinary_technician",
+  "title": "Veterinary Technician & Animal Health Assistant",
+  "enclave": "agriculture_natural_resources",
+  "skills": [
+   "Animal Handling",
+   "Basic Nursing Care",
+   "Laboratory Tests",
+   "Vaccination Support"
+  ],
+  "tools": [
+   "Animal Treatment Record"
+  ]
+ },
+ {
+  "id": "animal_trainer_handler",
+  "title": "Animal Trainer & Handler",
+  "enclave": "agriculture_natural_resources",
+  "skills": [
+   "Behaviour Training",
+   "Handling Safety",
+   "Welfare Standards",
+   "Client Coaching"
+  ],
+  "tools": [
+   "Training Session Log"
+  ]
+ },
+ {
+  "id": "aquaculture_farmer",
+  "title": "Aquaculture & Fish Farmer",
+  "enclave": "agriculture_natural_resources",
+  "skills": [
+   "Pond & Tank Management",
+   "Water Quality Testing",
+   "Feeding & Health",
+   "Harvest & Marketing"
+  ],
+  "tools": [
+   "Water Quality Log"
+  ]
+ },
+ {
+  "id": "forest_ranger_conservation",
+  "title": "Forest Ranger & Conservation Officer",
+  "enclave": "agriculture_natural_resources",
+  "skills": [
+   "Patrol & Surveillance",
+   "Wildlife Monitoring",
+   "Fire Prevention",
+   "Community Engagement"
+  ],
+  "tools": [
+   "Patrol & Incident Log"
+  ]
+ },
+ {
+  "id": "arborist_tree_surgeon",
+  "title": "Arborist & Tree Surgeon",
+  "enclave": "agriculture_natural_resources",
+  "skills": [
+   "Tree Climbing & Pruning",
+   "Chainsaw Safety",
+   "Risk Assessment",
+   "Rigging"
+  ],
+  "tools": [
+   "Tree Risk Assessment Form"
+  ]
+ },
+ {
+  "id": "mining_technician_geologist",
+  "title": "Mining Technician & Mine Geologist",
+  "enclave": "agriculture_natural_resources",
+  "skills": [
+   "Rock & Mineral Identification",
+   "Surveying",
+   "Safety Management",
+   "Sampling"
+  ],
+  "tools": [
+   "Mine Safety Inspection Log"
   ]
  },
  {
@@ -1826,6 +1966,76 @@ export const CAREER_PROFESSIONS: CareerProfessionRow[] = [
   ]
  },
  {
+  "id": "elder_care_companion",
+  "title": "Elder-Care Companion & Home Support Worker",
+  "enclave": "personal_services_wellness",
+  "skills": [
+   "Personal Care Support",
+   "Companionship",
+   "Medication Reminders",
+   "Safety & Mobility"
+  ],
+  "tools": [
+   "Daily Care Notes"
+  ]
+ },
+ {
+  "id": "funeral_director",
+  "title": "Funeral Director & Mortuary Assistant",
+  "enclave": "personal_services_wellness",
+  "skills": [
+   "Funeral Arrangements",
+   "Family Support",
+   "Legal Paperwork",
+   "Embalming Basics"
+  ],
+  "tools": [
+   "Funeral Arrangement Checklist"
+  ]
+ },
+ {
+  "id": "yoga_pilates_instructor",
+  "title": "Yoga & Pilates Instructor",
+  "enclave": "personal_services_wellness",
+  "skills": [
+   "Class Sequencing",
+   "Anatomy Basics",
+   "Safe Cueing",
+   "Studio Business"
+  ],
+  "tools": [
+   "Class Sequence Planner"
+  ]
+ },
+ {
+  "id": "massage_therapist",
+  "title": "Massage Therapist",
+  "enclave": "personal_services_wellness",
+  "skills": [
+   "Soft-Tissue Techniques",
+   "Client Assessment",
+   "Contraindications",
+   "Hygiene"
+  ],
+  "tools": [
+   "Client Intake & Treatment Notes"
+  ]
+ },
+ {
+  "id": "laundry_drycleaning_operator",
+  "title": "Laundry & Dry-Cleaning Operator",
+  "enclave": "personal_services_wellness",
+  "skills": [
+   "Fabric Care",
+   "Stain Removal",
+   "Machine Operation",
+   "Customer Service"
+  ],
+  "tools": [
+   "Garment Care Label Guide"
+  ]
+ },
+ {
   "id": "caterer",
   "title": "Executive Event Caterer & Banquet Chef",
   "enclave": "culinary_hospitality_events",
@@ -2199,6 +2409,48 @@ export const CAREER_PROFESSIONS: CareerProfessionRow[] = [
   ],
   "tools": [
    "Show Cue Sheet & Input List"
+  ]
+ },
+ {
+  "id": "wildlife_guide_safari",
+  "title": "Wildlife & Safari Guide",
+  "enclave": "culinary_hospitality_events",
+  "skills": [
+   "Species Identification",
+   "Guest Safety",
+   "Navigation & Tracking",
+   "Storytelling"
+  ],
+  "tools": [
+   "Field Species Checklist"
+  ]
+ },
+ {
+  "id": "baker_pastry_chef",
+  "title": "Baker & Pastry Chef",
+  "enclave": "culinary_hospitality_events",
+  "skills": [
+   "Dough & Fermentation",
+   "Pastry Techniques",
+   "Food Safety",
+   "Costing"
+  ],
+  "tools": [
+   "Baker's Percentage Sheet"
+  ]
+ },
+ {
+  "id": "butcher_meat_cutter",
+  "title": "Butcher & Meat Cutter",
+  "enclave": "culinary_hospitality_events",
+  "skills": [
+   "Cutting & Trimming",
+   "Food Safety",
+   "Knife Skills",
+   "Customer Service"
+  ],
+  "tools": [
+   "Cut Yield Calculator"
   ]
  },
  {
@@ -2673,6 +2925,76 @@ export const CAREER_PROFESSIONS: CareerProfessionRow[] = [
   ]
  },
  {
+  "id": "market_trader_stallholder",
+  "title": "Market Trader & Stallholder",
+  "enclave": "commerce_small_business",
+  "skills": [
+   "Sourcing Goods",
+   "Pricing & Negotiation",
+   "Stock Control",
+   "Customer Relations"
+  ],
+  "tools": [
+   "Stock & Cash Book"
+  ]
+ },
+ {
+  "id": "customs_broker_clearing",
+  "title": "Customs Broker & Clearing Agent",
+  "enclave": "commerce_small_business",
+  "skills": [
+   "Tariff Classification",
+   "Customs Documentation",
+   "Duties & Valuation",
+   "Compliance"
+  ],
+  "tools": [
+   "Tariff Classification Reference"
+  ]
+ },
+ {
+  "id": "warehouse_automation_operator",
+  "title": "Warehouse Automation & Robotics Operator",
+  "enclave": "commerce_small_business",
+  "skills": [
+   "Automated System Monitoring",
+   "Inventory Accuracy",
+   "Safety Procedures",
+   "Basic Troubleshooting"
+  ],
+  "tools": [
+   "Warehouse Exception Log"
+  ]
+ },
+ {
+  "id": "ecommerce_seller_dropship",
+  "title": "E-commerce Seller & Online Shop Owner",
+  "enclave": "commerce_small_business",
+  "skills": [
+   "Product Sourcing",
+   "Listing & Photography",
+   "Order Fulfilment",
+   "Customer Service"
+  ],
+  "tools": [
+   "Inventory & Order Tracker"
+  ]
+ },
+ {
+  "id": "customer_service_call_centre",
+  "title": "Customer Service & Call Centre Agent",
+  "enclave": "commerce_small_business",
+  "skills": [
+   "Active Listening",
+   "Problem Solving",
+   "CRM Tools",
+   "De-escalation"
+  ],
+  "tools": [
+   "Call Handling Script"
+  ]
+ },
+ {
   "id": "musician",
   "title": "Professional Musician, Songwriter & Producer",
   "enclave": "creative_media_arts",
@@ -3035,6 +3357,62 @@ export const CAREER_PROFESSIONS: CareerProfessionRow[] = [
   ]
  },
  {
+  "id": "subtitler_captioner",
+  "title": "Subtitler & Closed Captioner",
+  "enclave": "creative_media_arts",
+  "skills": [
+   "Timing & Synchronisation",
+   "Style Guides",
+   "Speech Recognition Correction",
+   "Quality Checking"
+  ],
+  "tools": [
+   "Subtitle Style Guide"
+  ]
+ },
+ {
+  "id": "esports_coach_analyst",
+  "title": "Esports Coach & Analyst",
+  "enclave": "creative_media_arts",
+  "skills": [
+   "Game Analysis",
+   "Team Communication",
+   "Scrim Planning",
+   "Performance Review"
+  ],
+  "tools": [
+   "Scrim Review Template"
+  ]
+ },
+ {
+  "id": "stunt_performer",
+  "title": "Stunt Performer & Coordinator",
+  "enclave": "creative_media_arts",
+  "skills": [
+   "Fight Choreography",
+   "Falls & Fire Safety",
+   "Driving Skills",
+   "Risk Assessment"
+  ],
+  "tools": [
+   "Stunt Safety Plan"
+  ]
+ },
+ {
+  "id": "printer_signmaker",
+  "title": "Print Operator & Sign Maker",
+  "enclave": "creative_media_arts",
+  "skills": [
+   "Print Setup",
+   "Colour Management",
+   "Finishing",
+   "Installation"
+  ],
+  "tools": [
+   "Print Job Ticket"
+  ]
+ },
+ {
   "id": "pharmacist",
   "title": "Doctor of Pharmacy & Clinical Pharmacist (PharmD, BCPS)",
   "enclave": "healthcare_medicine",
@@ -3115,7 +3493,7 @@ export const CAREER_PROFESSIONS: CareerProfessionRow[] = [
  },
  {
   "id": "registered_nurse",
-  "title": "Registered Nurse — Inpatient & Med-Surg (BSN, RN)",
+  "title": "Registered Nurse â€” Inpatient & Med-Surg (BSN, RN)",
   "enclave": "healthcare_medicine",
   "skills": [
    "IV Therapy & Central Lines",
@@ -3764,6 +4142,104 @@ export const CAREER_PROFESSIONS: CareerProfessionRow[] = [
   ]
  },
  {
+  "id": "prosthetist_orthotist",
+  "title": "Prosthetist & Orthotist",
+  "enclave": "healthcare_medicine",
+  "skills": [
+   "Limb & Brace Design",
+   "Casting & Fabrication",
+   "Gait Analysis",
+   "Patient Fitting"
+  ],
+  "tools": [
+   "Prosthetic Socket Fit Checklist"
+  ]
+ },
+ {
+  "id": "phlebotomist_blood",
+  "title": "Phlebotomist & Blood Collection Technician",
+  "enclave": "healthcare_medicine",
+  "skills": [
+   "Venipuncture",
+   "Specimen Handling",
+   "Infection Control",
+   "Patient Identification"
+  ],
+  "tools": [
+   "Specimen Labelling Checklist"
+  ]
+ },
+ {
+  "id": "sterile_processing_tech",
+  "title": "Sterile Processing Technician",
+  "enclave": "healthcare_medicine",
+  "skills": [
+   "Instrument Decontamination",
+   "Sterilisation Cycles",
+   "Surgical Tray Assembly",
+   "Quality Records"
+  ],
+  "tools": [
+   "Sterilisation Cycle Log"
+  ]
+ },
+ {
+  "id": "art_music_therapist",
+  "title": "Art & Music Therapist",
+  "enclave": "healthcare_medicine",
+  "skills": [
+   "Therapeutic Relationship",
+   "Session Design",
+   "Assessment",
+   "Ethics & Confidentiality"
+  ],
+  "tools": [
+   "Therapy Session Plan Template"
+  ]
+ },
+ {
+  "id": "medical_coder_biller",
+  "title": "Medical Coder & Health Information Technician",
+  "enclave": "healthcare_medicine",
+  "skills": [
+   "Diagnosis & Procedure Coding",
+   "Privacy Rules",
+   "Billing Workflows",
+   "Audit Support"
+  ],
+  "tools": [
+   "Code Lookup Reference"
+  ]
+ },
+ {
+  "id": "medical_interpreter_health",
+  "title": "Healthcare Interpreter",
+  "enclave": "healthcare_medicine",
+  "skills": [
+   "Medical Terminology",
+   "Interpreting Ethics",
+   "Cultural Mediation",
+   "Confidentiality"
+  ],
+  "tools": [
+   "Medical Terminology Glossary"
+  ]
+ },
+ {
+  "id": "addiction_recovery_counsellor",
+  "title": "Addiction & Recovery Counsellor",
+  "enclave": "healthcare_medicine",
+  "skills": [
+   "Motivational Interviewing",
+   "Relapse Prevention",
+   "Group Counselling",
+   "Ethics"
+  ],
+  "tools": [
+   "Recovery Plan Template"
+  ]
+ },
+ {
   "id": "tutor",
   "title": "Academic & STEM Learning Specialist",
   "enclave": "education_workforce",
@@ -4064,6 +4540,76 @@ export const CAREER_PROFESSIONS: CareerProfessionRow[] = [
   ],
   "tools": [
    "PE Lesson & Fitness Test Tracker"
+  ]
+ },
+ {
+  "id": "special_needs_aide",
+  "title": "Special Education Teaching Assistant",
+  "enclave": "education_workforce",
+  "skills": [
+   "Individual Support Plans",
+   "Behaviour Support",
+   "Assistive Technology",
+   "Teacher Collaboration"
+  ],
+  "tools": [
+   "Support Plan Tracker"
+  ]
+ },
+ {
+  "id": "chaplain_pastoral_care",
+  "title": "Chaplain & Pastoral Care Worker",
+  "enclave": "education_workforce",
+  "skills": [
+   "Pastoral Counselling",
+   "Crisis Support",
+   "Interfaith Awareness",
+   "Confidentiality"
+  ],
+  "tools": [
+   "Pastoral Visit Log"
+  ]
+ },
+ {
+  "id": "museum_curator_guide",
+  "title": "Museum Curator & Heritage Guide",
+  "enclave": "education_workforce",
+  "skills": [
+   "Collections Care",
+   "Exhibition Design",
+   "Research",
+   "Visitor Engagement"
+  ],
+  "tools": [
+   "Collection Condition Report"
+  ]
+ },
+ {
+  "id": "adult_literacy_instructor",
+  "title": "Adult Literacy & Vocational Instructor",
+  "enclave": "education_workforce",
+  "skills": [
+   "Curriculum Design",
+   "Literacy Methods",
+   "Assessment",
+   "Learner Support"
+  ],
+  "tools": [
+   "Learner Progress Tracker"
+  ]
+ },
+ {
+  "id": "career_counsellor_coach",
+  "title": "Career Counsellor & Employment Adviser",
+  "enclave": "education_workforce",
+  "skills": [
+   "Career Assessment",
+   "Job Search Coaching",
+   "Labour Market Information",
+   "Counselling Ethics"
+  ],
+  "tools": [
+   "Career Action Plan Template"
   ]
  },
  {
@@ -4389,6 +4935,48 @@ export const CAREER_PROFESSIONS: CareerProfessionRow[] = [
   ]
  },
  {
+  "id": "refugee_support_worker",
+  "title": "Refugee & Migrant Support Worker",
+  "enclave": "community_civic_security",
+  "skills": [
+   "Case Management",
+   "Cultural Mediation",
+   "Resettlement Support",
+   "Trauma Awareness"
+  ],
+  "tools": [
+   "Case Notes Template"
+  ]
+ },
+ {
+  "id": "disaster_relief_coordinator",
+  "title": "Disaster Relief & Emergency Response Coordinator",
+  "enclave": "community_civic_security",
+  "skills": [
+   "Needs Assessment",
+   "Logistics & Supply",
+   "Shelter & Sanitation",
+   "Incident Coordination"
+  ],
+  "tools": [
+   "Relief Distribution Tracker"
+  ]
+ },
+ {
+  "id": "youth_worker_mentor",
+  "title": "Youth Worker & Mentor",
+  "enclave": "community_civic_security",
+  "skills": [
+   "Youth Engagement",
+   "Group Facilitation",
+   "Safeguarding",
+   "Referral Pathways"
+  ],
+  "tools": [
+   "Youth Programme Plan"
+  ]
+ },
+ {
   "id": "red_team_operator",
   "title": "Principal Red Team Operator & Exploit Developer",
   "enclave": "tech_cybersecurity",
@@ -4446,6 +5034,20 @@ export const CAREER_PROFESSIONS: CareerProfessionRow[] = [
   ],
   "tools": [
    "SIEM Alert Triage & Incident Log"
+  ]
+ },
+ {
+  "id": "cybersecurity_awareness_trainer",
+  "title": "Cybersecurity Awareness Trainer",
+  "enclave": "tech_cybersecurity",
+  "skills": [
+   "Phishing Simulation",
+   "Training Design",
+   "Policy Basics",
+   "Metrics"
+  ],
+  "tools": [
+   "Awareness Campaign Plan"
   ]
  },
  {
@@ -4635,6 +5237,20 @@ export const CAREER_PROFESSIONS: CareerProfessionRow[] = [
   ]
  },
  {
+  "id": "ai_trainer_data_annotator",
+  "title": "AI Trainer & Data Annotator",
+  "enclave": "tech_software",
+  "skills": [
+   "Data Labelling",
+   "Quality Review",
+   "Guideline Interpretation",
+   "Tool Proficiency"
+  ],
+  "tools": [
+   "Annotation Guidelines Checklist"
+  ]
+ },
+ {
   "id": "trial_litigation_lawyer",
   "title": "Trial Lawyer & Civil/Commercial Litigation Attorney (JD / Esq.)",
   "enclave": "law_gov_defense",
@@ -4706,7 +5322,7 @@ export const CAREER_PROFESSIONS: CareerProfessionRow[] = [
   "skills": [
    "USCIS / EOIR Immigration Filings",
    "Family Law & Child Custody",
-   "42 U.S.C. § 1983 Civil Rights",
+   "42 U.S.C. Â§ 1983 Civil Rights",
    "Equitable Asset Division",
    "Appellate Habeas Corpus"
   ],
@@ -4844,6 +5460,48 @@ export const CAREER_PROFESSIONS: CareerProfessionRow[] = [
   ],
   "tools": [
    "Cable & Briefing Tracker"
+  ]
+ },
+ {
+  "id": "building_inspector_codes",
+  "title": "Building Inspector & Code Enforcement Officer",
+  "enclave": "law_gov_defense",
+  "skills": [
+   "Code Interpretation",
+   "Site Inspection",
+   "Report Writing",
+   "Enforcement Procedures"
+  ],
+  "tools": [
+   "Inspection Report Template"
+  ]
+ },
+ {
+  "id": "notary_commissioner",
+  "title": "Notary & Commissioner for Oaths",
+  "enclave": "law_gov_defense",
+  "skills": [
+   "Document Verification",
+   "Witnessing Signatures",
+   "Record Keeping",
+   "Fraud Awareness"
+  ],
+  "tools": [
+   "Notarial Register"
+  ]
+ },
+ {
+  "id": "immigration_consultant",
+  "title": "Immigration Consultant & Visa Adviser",
+  "enclave": "law_gov_defense",
+  "skills": [
+   "Visa Categories",
+   "Application Preparation",
+   "Client Counselling",
+   "Compliance"
+  ],
+  "tools": [
+   "Application Checklist"
   ]
  },
  {
@@ -5002,6 +5660,34 @@ export const CAREER_PROFESSIONS: CareerProfessionRow[] = [
   ],
   "tools": [
    "Group Contribution & Payout Ledger"
+  ]
+ },
+ {
+  "id": "quantity_surveyor_estimator",
+  "title": "Quantity Surveyor & Construction Estimator",
+  "enclave": "finance_accounting",
+  "skills": [
+   "Quantity Takeoff",
+   "Cost Estimating",
+   "Contracts",
+   "Valuation"
+  ],
+  "tools": [
+   "Bill of Quantities Template"
+  ]
+ },
+ {
+  "id": "insurance_claims_adjuster",
+  "title": "Insurance Claims Adjuster & Loss Assessor",
+  "enclave": "finance_accounting",
+  "skills": [
+   "Claims Investigation",
+   "Damage Estimation",
+   "Policy Interpretation",
+   "Settlement Negotiation"
+  ],
+  "tools": [
+   "Claim Assessment Template"
   ]
  },
  {
@@ -5294,6 +5980,62 @@ export const CAREER_PROFESSIONS: CareerProfessionRow[] = [
   ]
  },
  {
+  "id": "boilermaker_welder",
+  "title": "Boilermaker & Pressure-Vessel Fabricator",
+  "enclave": "manufacturing_industrial",
+  "skills": [
+   "Pressure Vessel Fabrication",
+   "Welding & Rigging",
+   "Blueprint Reading",
+   "Boiler Repair"
+  ],
+  "tools": [
+   "Pressure Vessel Layout Calculator"
+  ]
+ },
+ {
+  "id": "millwright_technician",
+  "title": "Millwright & Industrial Machinery Mechanic",
+  "enclave": "manufacturing_industrial",
+  "skills": [
+   "Machine Alignment",
+   "Rigging & Installation",
+   "Bearings & Drives",
+   "Preventive Maintenance"
+  ],
+  "tools": [
+   "Shaft Alignment Tool"
+  ]
+ },
+ {
+  "id": "robotics_technician",
+  "title": "Robotics & Automation Technician",
+  "enclave": "manufacturing_industrial",
+  "skills": [
+   "Robot Programming",
+   "Sensors & Actuators",
+   "PLC Basics",
+   "Preventive Maintenance"
+  ],
+  "tools": [
+   "Robot Cell Maintenance Log"
+  ]
+ },
+ {
+  "id": "additive_manufacturing_tech",
+  "title": "3D-Printing & Additive Manufacturing Technician",
+  "enclave": "manufacturing_industrial",
+  "skills": [
+   "Printer Operation",
+   "CAD Basics",
+   "Materials & Post-Processing",
+   "Quality Inspection"
+  ],
+  "tools": [
+   "Print Job Parameters Log"
+  ]
+ },
+ {
   "id": "solar_pv_microgrid_technician",
   "title": "NABCEP Solar PV Technician, Rooftop/Utility Installer & Solar Inverter Specialist",
   "enclave": "energy_utilities_environment",
@@ -5499,6 +6241,118 @@ export const CAREER_PROFESSIONS: CareerProfessionRow[] = [
   ]
  },
  {
+  "id": "wind_turbine_technician",
+  "title": "Wind Turbine Technician",
+  "enclave": "energy_utilities_environment",
+  "skills": [
+   "Turbine Mechanics",
+   "Hydraulics & Electrical Faults",
+   "Climbing & Rescue",
+   "Preventive Maintenance"
+  ],
+  "tools": [
+   "Turbine Maintenance Checklist"
+  ]
+ },
+ {
+  "id": "pest_control_technician",
+  "title": "Pest Control Technician",
+  "enclave": "energy_utilities_environment",
+  "skills": [
+   "Pest Identification",
+   "Integrated Pest Management",
+   "Safe Chemical Handling",
+   "Inspection Reports"
+  ],
+  "tools": [
+   "Pest Inspection & Treatment Log"
+  ]
+ },
+ {
+  "id": "carbon_credit_auditor",
+  "title": "Carbon Credit & Sustainability Auditor",
+  "enclave": "energy_utilities_environment",
+  "skills": [
+   "Emissions Accounting",
+   "Project Verification",
+   "Standards & Methodologies",
+   "Report Writing"
+  ],
+  "tools": [
+   "Emissions Inventory Template"
+  ]
+ },
+ {
+  "id": "battery_storage_technician",
+  "title": "Battery Storage Technician",
+  "enclave": "energy_utilities_environment",
+  "skills": [
+   "Battery Installation",
+   "Safety & Thermal Management",
+   "Monitoring Systems",
+   "Fault Finding"
+  ],
+  "tools": [
+   "Battery Health Log"
+  ]
+ },
+ {
+  "id": "borehole_driller",
+  "title": "Borehole Driller & Water Systems Technician",
+  "enclave": "energy_utilities_environment",
+  "skills": [
+   "Drilling Operations",
+   "Pump Installation",
+   "Water Testing",
+   "Site Safety"
+  ],
+  "tools": [
+   "Borehole Log Sheet"
+  ]
+ },
+ {
+  "id": "biogas_technician",
+  "title": "Biogas & Clean Cooking Technician",
+  "enclave": "energy_utilities_environment",
+  "skills": [
+   "Digester Construction",
+   "Gas Safety",
+   "Appliance Installation",
+   "Maintenance Training"
+  ],
+  "tools": [
+   "Digester Maintenance Log"
+  ]
+ },
+ {
+  "id": "rainwater_harvesting_installer",
+  "title": "Rainwater Harvesting & Water Treatment Installer",
+  "enclave": "energy_utilities_environment",
+  "skills": [
+   "System Sizing",
+   "Filtration & Disinfection",
+   "Plumbing Connections",
+   "Water Quality Testing"
+  ],
+  "tools": [
+   "Water Quality Test Log"
+  ]
+ },
+ {
+  "id": "sanitation_engineer_wash",
+  "title": "Water, Sanitation & Hygiene (WASH) Officer",
+  "enclave": "energy_utilities_environment",
+  "skills": [
+   "Sanitation Design",
+   "Community Mobilisation",
+   "Water Testing",
+   "Monitoring & Evaluation"
+  ],
+  "tools": [
+   "WASH Survey Form"
+  ]
+ },
+ {
   "id": "biotech_pharma_microbiology_tech",
   "title": "Biotechnology, cGMP Pharmaceutical & Microbiology Lab Technician",
   "enclave": "science_laboratory_research",
@@ -5570,6 +6424,76 @@ export const CAREER_PROFESSIONS: CareerProfessionRow[] = [
   ],
   "tools": [
    "Forecast Model & Observation Log"
+  ]
+ },
+ {
+  "id": "soil_scientist_agronomist",
+  "title": "Soil Scientist & Agronomist",
+  "enclave": "science_laboratory_research",
+  "skills": [
+   "Soil Sampling",
+   "Nutrient Analysis",
+   "Crop Advisory",
+   "Sustainable Land Use"
+  ],
+  "tools": [
+   "Soil Test Interpretation Sheet"
+  ]
+ },
+ {
+  "id": "quantum_lab_technician",
+  "title": "Laboratory Technician in Advanced Physics",
+  "enclave": "science_laboratory_research",
+  "skills": [
+   "Cryogenics Basics",
+   "Instrument Calibration",
+   "Lab Safety",
+   "Data Logging"
+  ],
+  "tools": [
+   "Instrument Calibration Log"
+  ]
+ },
+ {
+  "id": "land_surveyor_geomatics",
+  "title": "Land Surveyor & Geomatics Technician",
+  "enclave": "science_laboratory_research",
+  "skills": [
+   "Total Station & GNSS",
+   "Boundary Surveys",
+   "CAD & GIS",
+   "Legal Descriptions"
+  ],
+  "tools": [
+   "Survey Field Book"
+  ]
+ },
+ {
+  "id": "gis_remote_sensing_analyst",
+  "title": "GIS & Remote Sensing Analyst",
+  "enclave": "science_laboratory_research",
+  "skills": [
+   "Spatial Analysis",
+   "Satellite Imagery",
+   "Cartography",
+   "Data Management"
+  ],
+  "tools": [
+   "GIS Layer Catalogue"
+  ]
+ },
+ {
+  "id": "laboratory_quality_technician",
+  "title": "Food & Quality Control Laboratory Technician",
+  "enclave": "science_laboratory_research",
+  "skills": [
+   "Sampling",
+   "Microbiology Basics",
+   "Instrument Use",
+   "Quality Records"
+  ],
+  "tools": [
+   "Lab Test Record"
   ]
  },
  {
@@ -5717,6 +6641,48 @@ export const CAREER_PROFESSIONS: CareerProfessionRow[] = [
   ]
  },
  {
+  "id": "drone_pilot_mapper",
+  "title": "Drone Pilot & Aerial Mapping Specialist",
+  "enclave": "aviation_aerospace_maritime",
+  "skills": [
+   "Flight Planning",
+   "Photogrammetry",
+   "Airspace Rules",
+   "Equipment Maintenance"
+  ],
+  "tools": [
+   "Flight Planning Checklist"
+  ]
+ },
+ {
+  "id": "ship_pilot_harbour",
+  "title": "Harbour Pilot & Ship Pilot",
+  "enclave": "aviation_aerospace_maritime",
+  "skills": [
+   "Ship Handling",
+   "Local Harbour Knowledge",
+   "Navigation Rules",
+   "Bridge Communication"
+  ],
+  "tools": [
+   "Pilotage Passage Plan"
+  ]
+ },
+ {
+  "id": "marine_engineer",
+  "title": "Marine Engineer",
+  "enclave": "aviation_aerospace_maritime",
+  "skills": [
+   "Engine Room Operations",
+   "Propulsion & Auxiliary Systems",
+   "Maintenance Planning",
+   "Safety Systems"
+  ],
+  "tools": [
+   "Engine Room Watch Log"
+  ]
+ },
+ {
   "id": "directv_satellite_broadband_av_tech",
   "title": "DirecTV / Satellite Dish Technician, Starlink/VSAT Installer, Cable Broadband & Pro-AV Specialist",
   "enclave": "telecom_digital_infrastructure",
@@ -5804,6 +6770,34 @@ export const CAREER_PROFESSIONS: CareerProfessionRow[] = [
   ],
   "tools": [
    "Install Ticket & Signal Log"
+  ]
+ },
+ {
+  "id": "cctv_alarm_installer",
+  "title": "CCTV & Alarm Systems Installer",
+  "enclave": "telecom_digital_infrastructure",
+  "skills": [
+   "Camera Installation",
+   "Alarm Wiring",
+   "Network Basics",
+   "Client Training"
+  ],
+  "tools": [
+   "Camera Placement Plan"
+  ]
+ },
+ {
+  "id": "mobile_phone_repair",
+  "title": "Mobile Phone & Electronics Repair Technician",
+  "enclave": "telecom_digital_infrastructure",
+  "skills": [
+   "Screen & Battery Replacement",
+   "Board Diagnostics",
+   "Data Safety",
+   "Customer Service"
+  ],
+  "tools": [
+   "Repair Ticket Log"
   ]
  }
 ];
