@@ -10913,7 +10913,14 @@ function buildEmergencyHandoffInternal(q: string): { prose: string; jsonObj: Rec
   ];
   const arrayOverride = (k: string): unknown[] | undefined =>
     /missing|data_gap|unknown/i.test(k) ? missingArr
-    : /uncertaint/i.test(k) ? [uncertainty]
+    : /uncertaint/i.test(k) ? [
+        ...(chestPain ? ["ECG findings are unavailable; none are assumed.", "Troponin results are unavailable; none are assumed.", "Acute coronary syndrome, aortic dissection and pulmonary embolism are all unconfirmed."] : []),
+        ...(hyperK ? ["The cardiac rhythm and any ECG manifestations of hyperkalemia are unknown; none are assumed."] : []),
+        ...(hemolysis ? ["Possible hemolysis leaves the true potassium uncertain."] : []),
+        ...(kidneyContext ? ["CKD/AKI are not established."] : []),
+        ...(infectionMentioned ? ["Septic shock is not diagnosed from these observations alone."] : []),
+        "The cause of the reported findings is not yet confirmed; no diagnosis is established.",
+      ]
     : /symptom/i.test(k) ? symptoms
     : /relevant_?history|medical_?history|past_?history|risk_?factor|comorbid|history$/i.test(k) ? [...riskFactors]
     : undefined;
