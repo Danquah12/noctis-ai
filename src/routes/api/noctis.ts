@@ -80,6 +80,18 @@ export const Route = createFileRoute("/api/noctis")({
           const { runRicDisputedClaimBenchmark } = await import("@/lib/noctis-ric");
           return Response.json(runRicDisputedClaimBenchmark(), { headers: { "cache-control": "no-store" } });
         }
+        if (url.searchParams.get("careers")) {
+          const mode = url.searchParams.get("careers") || "";
+          const { allPathways, getPathway, matchProfessions, validatePathway, CAREER_COUNT } = await import("@/lib/noctis-career-pathways");
+          const { renderPathway } = await import("@/lib/noctis-career-query");
+          const headers = { "cache-control": "no-store" };
+          if (mode === "list") return Response.json({ count: CAREER_COUNT, professions: allPathways().map((r) => ({ id: r.profession_id, title: r.title, enclave: r.enclave_id, route: r.route_type })) }, { headers });
+          if (mode === "audit") { const bad = allPathways().filter((r) => !r.starting_point).map((r) => ({ id: r.profession_id, errors: validatePathway(r) })).filter((x) => x.errors.length); return Response.json({ count: CAREER_COUNT, incomplete: bad }, { headers }); }
+          if (mode === "search") return Response.json({ matches: matchProfessions(url.searchParams.get("q") || "", 8) }, { headers });
+          const rec = getPathway(mode);
+          if (rec) return Response.json({ record: rec, markdown: renderPathway(rec) }, { headers });
+          return Response.json({ error: "careers must be list|audit|search&q=|<profession_id>" }, { status: 404, headers });
+        }
         if (url.searchParams.get("vuln")) {
           const mode = url.searchParams.get("vuln");
           const { VULN_SPEC, SOURCE_REGISTRY, SOURCE_INGESTION_RULES } = await import("@/lib/noctis-vuln-engine");

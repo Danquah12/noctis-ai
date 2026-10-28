@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { isClinicalOrMedicalPrompt } from "./noctis-architect-benchmarks.ts";
 import { handleNaturalVulnQuery } from "./noctis-vuln-query.ts";
+import { handleNaturalCareerQuery } from "./noctis-career-query.ts";
 import {
   handleAttackPathAndExploitabilityQuery,
   isAttackPathOrExploitabilityQuery,
@@ -806,6 +807,8 @@ function parseCyberRequestedJsonContract(question: string): { keys: string[] } |
 }
 
 export function handleNaturalCyberSecurityQuery(question: string): string | null {
+  const careerAnswer = handleNaturalCareerQuery(question);
+  if (careerAnswer) return careerAnswer;
   const apxAnswer = handleAttackPathAndExploitabilityQuery(question);
   if (apxAnswer) return apxAnswer;
   const vulnAnswer = handleNaturalVulnQuery(question);
