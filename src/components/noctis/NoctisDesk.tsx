@@ -2385,8 +2385,26 @@ function ClinicalHandoffView({ data, rawJson }: { data: Record<string, unknown>;
 
   const priorities: string[] = Array.isArray(data.immediate_priorities)
     ? data.immediate_priorities.map(String)
-    : Array.isArray(data.urgent_assessments)
-      ? data.urgent_assessments.map(String)
+    : Array.isArray(data.immediate_next_steps)
+      ? data.immediate_next_steps.map(String)
+      : Array.isArray(data.urgent_assessments)
+        ? data.urgent_assessments.map(String)
+        : [];
+
+  const isCyberPayload = Boolean(
+    Array.isArray(data.mitre_attack_mapping) ||
+      /CYBER|SOC|DFIR/i.test(testId) ||
+      /SOC|CSIRT|CONTAINMENT|P0_CRITICAL/i.test(gatewayStr)
+  );
+
+  const mitreList: { technique_id: string; name: string; tactic: string; evidence_in_prompt: string }[] =
+    Array.isArray(data.mitre_attack_mapping)
+      ? (data.mitre_attack_mapping as Record<string, unknown>[]).map((m) => ({
+          technique_id: String(m.technique_id ?? ""),
+          name: String(m.name ?? ""),
+          tactic: String(m.tactic ?? ""),
+          evidence_in_prompt: String(m.evidence_in_prompt ?? ""),
+        }))
       : [];
 
   const medSafetyObj =
@@ -2403,11 +2421,13 @@ function ClinicalHandoffView({ data, rawJson }: { data: Record<string, unknown>;
 
   const advRaw = Array.isArray(data.adversarial_instruction_results)
     ? data.adversarial_instruction_results
-    : Array.isArray(data.adversarial_results)
-      ? data.adversarial_results
-      : Array.isArray(data.adversarial_testing_responses)
-        ? data.adversarial_testing_responses
-        : [];
+    : Array.isArray(data.adversarial_instructions)
+      ? data.adversarial_instructions
+      : Array.isArray(data.adversarial_results)
+        ? data.adversarial_results
+        : Array.isArray(data.adversarial_testing_responses)
+          ? data.adversarial_testing_responses
+          : [];
   const adversarials = advRaw.map((a: unknown, idx: number) => {
     const rec = (a && typeof a === "object" ? a : {}) as Record<string, unknown>;
     return {
@@ -2426,7 +2446,9 @@ function ClinicalHandoffView({ data, rawJson }: { data: Record<string, unknown>;
       <div className="rounded-2xl border-2 border-red-500/80 bg-red-950/60 p-4 shadow-lg">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="inline-flex items-center gap-2 rounded-full bg-red-600 px-3 py-1 text-xs font-bold uppercase tracking-wider text-white">
-            🚨 Immediate Emergency Escalation (Call 911)
+            {isCyberPayload
+              ? "🚨 Immediate Cyber Containment Directive (SOC / CSIRT)"
+              : "🚨 Immediate Emergency Escalation (Call 911)"}
           </span>
           {testId ? (
             <span className="rounded-full border border-red-400/40 bg-black/40 px-2.5 py-0.5 font-mono text-xs text-red-200">
@@ -2481,12 +2503,12 @@ function ClinicalHandoffView({ data, rawJson }: { data: Record<string, unknown>;
         ) : null}
       </div>
 
-      {/* 2. Observed Findings & Reported Medical History */}
+      {/* 2. Observed Findings & Reported History */}
       {(observedList.length > 0 || historyList.length > 0 || symptomsList.length > 0) ? (
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="rounded-2xl border border-white/10 bg-black/30 p-3.5">
             <h4 className="text-xs font-bold uppercase tracking-wider text-[#e4b86a]">
-              Observed Findings & Extracted Facts
+              {isCyberPayload ? "Verified Telemetry & Extracted IOCs" : "Observed Findings & Extracted Facts"}
             </h4>
             <ul className="mt-2 list-disc space-y-1 pl-4 text-xs text-zinc-200">
               {observedList.map((item, i) => (
@@ -2499,7 +2521,7 @@ function ClinicalHandoffView({ data, rawJson }: { data: Record<string, unknown>;
           {historyList.length > 0 ? (
             <div className="rounded-2xl border border-white/10 bg-black/30 p-3.5">
               <h4 className="text-xs font-bold uppercase tracking-wider text-[#e4b86a]">
-                Reported History & Baseline Status
+                {isCyberPayload ? "Environment & Architecture Context" : "Reported History & Baseline Status"}
               </h4>
               <ul className="mt-2 list-disc space-y-1 pl-4 text-xs text-zinc-200">
                 {historyList.map((item, i) => (
@@ -2511,11 +2533,37 @@ function ClinicalHandoffView({ data, rawJson }: { data: Record<string, unknown>;
         </div>
       ) : null}
 
-      {/* 3. Immediate Clinical Risks */}
+      {/* 2b. MITRE ATT&CK Mappings (Cyber Only) */}
+      {mitreList.length > 0 ? (
+        <div className="rounded-2xl border border-sky-500/35 bg-sky-950/20 p-3.5">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-sky-300">
+            MITRE ATT&CK® Enterprise v16 Technique Mapping (Observed Telemetry)
+          </h4>
+          <div className="mt-2 space-y-2">
+            {mitreList.map((m, i) => (
+              <div key={i} className="rounded-xl bg-black/30 p-2.5 text-xs">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-mono font-bold text-sky-200">
+                    {m.technique_id} — {m.name}
+                  </span>
+                  <span className="rounded-full bg-sky-500/20 px-2 py-0.5 text-[10px] font-semibold text-sky-300">
+                    {m.tactic}
+                  </span>
+                </div>
+                <p className="mt-1 text-zinc-300">{m.evidence_in_prompt}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {/* 3. Immediate Risks */}
       {immediateRisks.length > 0 ? (
         <div className="rounded-2xl border border-amber-500/40 bg-amber-950/25 p-3.5">
           <h4 className="text-xs font-bold uppercase tracking-wider text-amber-300">
-            Immediate Clinical Risks (Unconfirmed Urgent Concerns)
+            {isCyberPayload
+              ? "Immediate Cyber & Operational Risks (Unconfirmed Urgent Concerns)"
+              : "Immediate Clinical Risks (Unconfirmed Urgent Concerns)"}
           </h4>
           <div className="mt-2 space-y-2">
             {immediateRisks.map((r, i) => (
@@ -2528,11 +2576,13 @@ function ClinicalHandoffView({ data, rawJson }: { data: Record<string, unknown>;
         </div>
       ) : null}
 
-      {/* 4. Differential Diagnosis */}
+      {/* 4. Differential Diagnosis / Competing Threat Hypotheses */}
       {differentials.length > 0 ? (
         <div className="rounded-2xl border border-white/10 bg-black/30 p-3.5">
           <h4 className="text-xs font-bold uppercase tracking-wider text-[#e4b86a]">
-            Differential Diagnosis (Possibilities to Evaluate — None Confirmed)
+            {isCyberPayload
+              ? "Competing Threat Hypotheses (Possibilities to Evaluate — Unconfirmed Attribution)"
+              : "Differential Diagnosis (Possibilities to Evaluate — None Confirmed)"}
           </h4>
           <div className="mt-2.5 space-y-2">
             {differentials.map((d, i) => (
@@ -2554,7 +2604,9 @@ function ClinicalHandoffView({ data, rawJson }: { data: Record<string, unknown>;
       {priorities.length > 0 ? (
         <div className="rounded-2xl border border-emerald-500/30 bg-emerald-950/20 p-3.5">
           <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-300">
-            Immediate Clinical Priorities (Parallel With EMS Transfer)
+            {isCyberPayload
+              ? "Immediate Containment, Forensic Preservation & Eradication Sequence"
+              : "Immediate Clinical Priorities (Parallel With EMS Transfer)"}
           </h4>
           <ol className="mt-2 list-decimal space-y-1.5 pl-5 text-xs text-zinc-200">
             {priorities.map((p, i) => (

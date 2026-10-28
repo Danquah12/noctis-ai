@@ -9,6 +9,7 @@ import { handleNaturalPredictiveIntelligenceQuery } from "./noctis-predictive-in
 import { automotiveDiagnosticGadget } from "./noctis-automotive-engine.ts";
 import { handleNaturalAutonomousTrainingQuery } from "./noctis-autonomous-trainer.ts";
 import { architectIntelligenceGadget } from "./noctis-architect-engine.ts";
+import { handleNaturalCyberSecurityQuery } from "./noctis-cyber-engine.ts";
 
 export type AdaptiveResponseMode = "Direct" | "Teaching" | "Technical" | "Audit";
 
@@ -651,6 +652,12 @@ export function runFollowUpIntelligence(
   const professionalResponse = handleNaturalProfessionalQuery(currentQuestion);
   if (professionalResponse) {
     return professionalResponse;
+  }
+
+  // 00c. Noctis Cyber Security, Incident Response, SOC Triage & Threat Hunting Intelligence Engine (NOCTIS-CYBER-IR-001)
+  const cyberSecurityResponse = handleNaturalCyberSecurityQuery(currentQuestion);
+  if (cyberSecurityResponse) {
+    return cyberSecurityResponse;
   }
 
   // 0. Zero Trust Policy Decision Engine (PDE / PDP / PEP / /v1/authorization/decisions / 10-Test Matrix)
