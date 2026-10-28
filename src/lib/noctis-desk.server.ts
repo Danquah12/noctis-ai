@@ -874,6 +874,31 @@ function toChatMessage(turn: VibeTurn): ChatMessage {
   };
 }
 
+/**
+ * Translates a deterministic career-pathway answer into the user's language with the AI model.
+ * Structure, numbers, emoji and backticked job-search keywords are preserved; any failure falls back to the English original.
+ */
+async function translateCareerAnswer(english: string, language: string): Promise<string> {
+  try {
+    const { modelChat } = await import("@/lib/video-mind.server");
+    const result = await modelChat(
+      [
+        {
+          role: "system",
+          content: `You are a careful translator. Translate the markdown answer into ${language}. Rules: keep the exact markdown structure, headings, bullets, tables and emoji; keep text inside backticks exactly as written (job-search keywords stay in English); keep numbers, acronyms, URLs and proper names unchanged; do not add, remove or soften any fact, warning or disclaimer; do not add commentary. Output only the translated markdown.`,
+        },
+        { role: "user", content: english.slice(0, 12000) },
+      ],
+      { temperature: 0, maxTokens: 3000 },
+    );
+    if ("text" in result && result.text.trim().startsWith("#") && result.text.length > english.length * 0.4) {
+      return `${result.text.trim()}\n\n_🌐 Translated automatically from English (${language}); verify requirements locally._`;
+    }
+  } catch {
+    // fall through to English
+  }
+  return english;
+}
 export async function vibeReply(
   turns: VibeTurn[],
   keyOverride = "",
@@ -944,6 +969,10 @@ async function composeVibeReply(
   const { runFollowUpIntelligence } = await import("@/lib/noctis-response-intelligence");
   const followUpOut = runFollowUpIntelligence(turns, fullQuestion);
   if (followUpOut) {
+    const careerLang = languageNow(question, style.language || "");
+    if (followUpOut.startsWith("# 🧭") && !/^(english|en([-_][a-z]+)?)$/i.test(careerLang.trim())) {
+      return { text: await translateCareerAnswer(followUpOut, careerLang) };
+    }
     return { text: followUpOut };
   }
   const { runVibeGadgets } = await import("@/lib/noctis-gadgets.server");
