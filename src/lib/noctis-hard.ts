@@ -4793,7 +4793,7 @@ export function scenarioText(turns: { role: string; content: string }[], latest:
   if (!follow) return latest;
   const earlier = turns
     .filter((turn) => turn.role === "user")
-    .map((turn) => turn.content.replace(/---[\s\S]*$/g, "").trim())
+    .map((turn) => turn.content.replace(/\n--- [^\n]+ ---\n[\s\S]*$/g, "").trim())
     .filter((text) => text && text !== latest);
   let best = "";
   let bestScore = 0;

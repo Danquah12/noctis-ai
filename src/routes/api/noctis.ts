@@ -102,6 +102,21 @@ export const Route = createFileRoute("/api/noctis")({
             { headers: { "cache-control": "no-store" } }
           );
         }
+        if (url.searchParams.get("health") === "trace") {
+          const { getRecentHealthExecutionTraces } = await import("@/lib/noctis-health-engine");
+          return Response.json(
+            {
+              traces: getRecentHealthExecutionTraces(),
+            },
+            { headers: { "cache-control": "no-store" } }
+          );
+        }
+        if (url.searchParams.get("health") === "test-014-r2") {
+          const { runTest014R2AcceptanceGate } = await import("@/lib/noctis-health-engine");
+          return Response.json(runTest014R2AcceptanceGate(), {
+            headers: { "cache-control": "no-store" },
+          });
+        }
         if (url.searchParams.get("health") === "nh-arch-001") {
           const {
             NH_ARCH_001_DEPLOYMENT_ZONES,

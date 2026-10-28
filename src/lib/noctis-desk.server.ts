@@ -881,7 +881,7 @@ export async function vibeReply(
 ): Promise<{ text: string } | { error: string }> {
   const kept = retainSources(turns);
   const last = [...kept].reverse().find((turn) => turn.role === "user");
-  const latest = (last?.content || "").replace(/\n---\s+[^\n]+\n[\s\S]*$/g, "").replace(/\[Image:[^\]]*\]/g, "").trim();
+  const latest = (last?.content || "").replace(/\n--- [^\n]+ ---\n[\s\S]*$/g, "").replace(/\[Image:[^\]]*\]/g, "").trim();
   const scenario = scenarioText(kept, latest);
   if (scenario.length > 400) {
     console.info(JSON.stringify({ vibeTask: true, turns: kept.length, scenarioChars: scenario.length, inputs: extractInputs(scenario).length, titled: /STRESS TEST/i.test(scenario) }));
@@ -889,7 +889,7 @@ export async function vibeReply(
   const report = retrievalReport(kept, latest);
   if (report) return { text: report };
   const reply = await composeVibeReply(kept, keyOverride, style);
-  if (!("text" in reply) || reply.text.includes("Independent check") || reply.text.startsWith("## Vibe ")) return reply;
+  if (!("text" in reply) || reply.text.includes("Independent check") || reply.text.startsWith("## Vibe ") || (reply.text.trim().startsWith("{") && reply.text.trim().endsWith("}"))) return reply;
   const { attachHard } = await import("@/lib/noctis-hard");
   return { text: attachHard(scenario, reply.text) };
 }
@@ -901,7 +901,7 @@ async function composeVibeReply(
 ): Promise<{ text: string } | { error: string }> {
   const skill = noctisSkill(style.skill || "talk");
   const last = [...turns].reverse().find((turn) => turn.role === "user");
-  const question = (last?.content || "").replace(/\n---\s+[^\n]+\n[\s\S]*$/g, "").replace(/\[Image:[^\]]*\]/g, "").trim();
+  const question = (last?.content || "").replace(/\n--- [^\n]+ ---\n[\s\S]*$/g, "").replace(/\[Image:[^\]]*\]/g, "").trim();
   const scenario = scenarioText(turns, question);
   const { hardRows } = await import("@/lib/noctis-hard");
   const hasHardRows = hardRows(scenario).filter((r) => r.quantity > 0).length >= 2;
@@ -939,8 +939,8 @@ async function composeVibeReply(
   }
   const { hydrateFromDb, lessonBlock, rememberAnswer, recallTrainedAnswer, storedRulesBlock } = await import("@/lib/noctis-train.server");
   await hydrateFromDb().catch(() => {});
-  const attached = (last?.content || "").split(/\n--- /).slice(1).join("\n").trim();
-  const fullQuestion = attached ? `${question}\n\n${attached}` : question;
+  const attached = (last?.content || "").split(/\n--- [^\n]+ ---\n/).slice(1).join("\n").trim();
+  const fullQuestion = (last?.content || "").replace(/\[Image:[^\]]*\]/g, "").trim();
   const { runFollowUpIntelligence } = await import("@/lib/noctis-response-intelligence");
   const followUpOut = runFollowUpIntelligence(turns, fullQuestion);
   if (followUpOut) {

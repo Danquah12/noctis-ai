@@ -1349,7 +1349,7 @@ export async function vibeNativeComplete(
     .replace(/^Job:[^\n]*\nQuestion:\s*/i, "")
     .replace(/^Question:\s*/i, "")
     .replace(/\n\nTeach, instruct, and answer entirely in[^\n]*$/i, "")
-    .replace(/\n---\s+[^\n]+\n[\s\S]*$/g, "")
+    .replace(/\n--- [^\n]+ ---\n[\s\S]*$/g, "")
     .replace(/\[Image:[^\]]*\]/g, "")
     .trim();
 
