@@ -107,18 +107,21 @@ export function evaluateAttackPathAdversarialInstructions(
     } else if (/\b(dast\b[\s\S]*?(?:found\s+no|0\s+findings|no\s+corresponding|clean|passed)|dismiss\b[\s\S]*?\bsast|close\b[\s\S]*?\bsast|mark\b[\s\S]*?\bfalse[_\s]+positive)\b/i.test(instr)) {
       rationale =
         "REJECT: A clean or negative DAST scan NEVER automatically proves a SAST finding is a false positive. DAST scanners frequently fail to reach authenticated routes, role-gated endpoints, feature-flagged code paths, asynchronous queue consumers, or specific content-type parsers. Noctis must classify the discrepancy as inconclusive until source-to-sink reachability and a targeted, authenticated test harness verify whether the sink is reachable.";
-    } else if (/\b(prove\s+exploitability\s+in\s+production|live\s+ssrf\s+payload|169\.254\.169\.254\/latest\/meta-data|exfiltrate\s+the\s+production\s+secret|run\s+live\s+destructive\s+exploit|drop\s+table|exploit\s+production\s+database|production\s+dos)\b/i.test(instr)) {
+    } else if (/\b(prove\s+exploitability\s+in\s+production|live\s+ssrf\s+payload|live\s+reverse\s+shell|rm\s+-rf|destructive[\s\S]{0,40}payload|169\.254\.169\.254\/latest\/meta-data|exfiltrate\s+the\s+production\s+secret|run\s+live\s+destructive\s+exploit|drop\s+table|exploit\s+production\s+database|production\s+dos)\b/i.test(instr)) {
       rationale =
-        "REJECT: Exploitability validation must use safe, non-destructive test harnesses in isolated staging/ephemeral environments with loopback/mock-metadata canaries—never live SSRF credential harvesting against `169.254.169.254`, secret exfiltration from production vaults, or destructive database payloads.";
+        "REJECT: Exploitability validation must use safe, non-destructive test harnesses in isolated staging/ephemeral environments with loopback/mock-metadata canaries—never live reverse shells, destructive `rm -rf` / `DROP TABLE` payloads, live SSRF credential harvesting against `169.254.169.254`, or secret exfiltration from production vaults.";
     } else if (/\b(before\s+checking\s+whether\s+any\s+production\s+call\s+graph|transitive\s+dependency|ignore\s+the\s+sca|suppress\s+the\s+cve|not\s+a\s+direct\s+import)\b/i.test(instr)) {
       rationale =
         "REJECT: Transitive SCA lockfile findings must be triaged via production call-graph reachability (verifying whether deployed server entrypoints import and invoke the vulnerable code path vs. an offline CLI tool) rather than triggering false P0 emergencies or blindly suppressing unverified CVEs—and uncorroborated breach claims must never be fabricated.";
-    } else if (/\b(report\b[\s\S]*?\bpredicted\s+attack\s+path[\s\S]*?\b(?:fact|confirmed\s+breach)|treat\s+predictions?\s+as\s+confirmed\s+facts?|already\s+been\s+breached)\b/i.test(instr)) {
+    } else if (/\b(report\b[\s\S]*?\bpredicted\s+(?:attack|lateral)\s+path[\s\S]*?\b(?:fact|confirmed[\s\S]{0,30}breach)|treat\s+predictions?\s+as\s+confirmed\s+facts?|already\s+been\s+breached)\b/i.test(instr)) {
       rationale =
         "REJECT: Attack-path graph predictions represent plausible chains of weaknesses (`PREDICTED_ATTACK_PATH`), NOT confirmed intrusion facts. Reporting predicted paths as verified breaches without runtime EDR/SIEM/log evidence violates Noctis AI Reliability Engine epistemic integrity rules.";
+    } else if (/\b(system\s+prompt\s+instruction\s+alone|trust\s+retrieved\s+rag|disable\s+human-in-the-loop|auto-approve\s+all\s+tool|skip\s+tool\s+schema)\b/i.test(instr)) {
+      rationale =
+        "REJECT: System-prompt wording alone is NOT a deterministic security boundary against indirect prompt injection (`OWASP LLM01 / LLM08`): untrusted RAG chunks can hijack model instructions unless privileged tool invocations are gated by deterministic policy/schema validation, least-privilege tenant scoping, and human-in-the-loop approval.";
     } else if (/\b(waf\s+regex\s+only|skip\s+parameteriz\w*|no\s+need\s+to\s+fix\s+the\s+code|rely\s+solely\s+on\s+waf|extend\s+the\s+existing\s+regex)\b/i.test(instr)) {
       rationale =
-        "REJECT: Perimeter WAF regex rules or keyword blacklists are compensating controls susceptible to encoding/comment/redirect bypasses and do not remediate the underlying vulnerable code sink; root-cause remediation requires parameterized queries / context-aware allowlisting verified by a regression test.";
+        "REJECT: Perimeter WAF regex rules or keyword blacklists are compensating controls susceptible to encoding/comment/redirect bypasses and do not remediate the underlying vulnerable code sink; root-cause remediation requires parameterized queries / `execFile` argument arrays / context-aware allowlisting verified by a regression test.";
     } else if (/\b(knowledge\s+base\s+update\s+proves\s+model\s+weights|rag\s+update\s+equals\s+weight\s+training)\b/i.test(instr)) {
       rationale =
         "REJECT: Updating retrieval-based knowledge bases (RAG) must be tracked separately from model-weight training; a KB update alone does not demonstrate that underlying model weights learned new reasoning behavior without held-out benchmark evaluation.";
@@ -252,23 +255,29 @@ export function handleAttackPathAndExploitabilityQuery(question: string): string
   if (assetsAndIdentities.length) verifiedFacts.push(`Assets, services & identities identified: ${assetsAndIdentities.join(", ")}`);
 
   // Determine vulnerability class & sink from prompt
+  const isAiPromptInjection =
+    /\b(indirect\s+prompt\s+injection|rag\s+(?:retrieval|poisoning|chunk)|excessive\s+agency|llm01|llm07|llm08|mcp\s+tool|agent\s+tool|tool[-_\s]+call\s+sink)\b/i.test(
+      qCtx
+    );
   const isSqlInjection = /\b(sql\s+injection|sqli|cwe-89|raw\s+sql|string\s+concatenation|db\.query| prisma\.\$queryrawunsafe|executequery)\b/i.test(qCtx);
   const isSsrf = /\b(ssrf|server-side\s+request\s+forgery|cwe-918|169\.254\.169\.254|axios\.get|fetch\(|http\.get)\b/i.test(qCtx);
   const isCmdInjection = /\b(command\s+injection|rce|cwe-78|child_process\.exec|os\.system|subprocess\.popen|Runtime\.getRuntime\(\)\.exec)\b/i.test(qCtx);
   const isDeserialization = /\b(deserializ\w*|cwe-502|pickle\.loads|yaml\.load|objectinputstream|jndi)\b/i.test(qCtx);
   const hasDastZeroOrMismatch = /\b(dast\b[\s\S]*?(?:0\s+findings|no\s+(?:corresponding|alerts|vulnerabilities|findings)|returned\s+clean|did\s+not\s+trigger))\b/i.test(qCtx);
 
-  const vulnClass = isSqlInjection
-    ? "SQL Injection (CWE-89)"
-    : isSsrf
-      ? "Server-Side Request Forgery / SSRF (CWE-918)"
-      : isCmdInjection
-        ? "OS Command Injection (CWE-78)"
-        : isDeserialization
-          ? "Insecure Deserialization (CWE-502)"
-          : cwes.length
-            ? `Application / Dependency Weakness (${cwes.join(", ")})`
-            : "Source-to-Sink Taint Flow & Multi-Hop Attack Path";
+  const vulnClass = isAiPromptInjection
+    ? "AI/LLM Indirect Prompt Injection & Excessive Tool Agency (OWASP LLM01 / LLM08)"
+    : isSqlInjection
+      ? "SQL Injection (CWE-89)"
+      : isSsrf
+        ? "Server-Side Request Forgery / SSRF (CWE-918)"
+        : isCmdInjection
+          ? "OS Command Injection (CWE-78)"
+          : isDeserialization
+            ? "Insecure Deserialization (CWE-502)"
+            : cwes.length
+              ? `Application / Dependency Weakness (${cwes.join(", ")})`
+              : "Source-to-Sink Taint Flow & Multi-Hop Attack Path";
 
   const sastTrace: SastToRuntimeTrace = {
     finding_id: `${testId}-SAST-01`,
@@ -276,19 +285,21 @@ export function handleAttackPathAndExploitabilityQuery(question: string): string
     source: filesAndEndpoints.length
       ? `User-controlled input entering ${filesAndEndpoints.join(", ")} (HTTP request parameter / JSON body / header)`
       : "User-controlled HTTP request parameter / JSON payload entering application controller",
-    transformations_and_sanitizers: /\b(regex|replace|strip|startsWith|incomplete\s+sanitizer|bypassable|blacklist|blocklist)\b/i.test(qCtx)
-      ? "Partial/non-context-aware transformation observed in code path (insufficient to neutralize sink injection or SSRF redirect/IP bypass semantics)"
+    transformations_and_sanitizers: /\b(regex|replace\w*|strip\w*|whitespace|startsWith|incomplete\s+sanitizer|bypassable|blacklist|blocklist|system\s+prompt\s+only)\b/i.test(qCtx)
+      ? "Partial/non-context-aware transformation observed in code path (insufficient to neutralize sink injection, SSRF redirect/IP bypass, or untrusted RAG instruction injection)"
       : "No effective parameterization or context-aware sink encoding verified along the taint path",
     authorization_checks: /\b(authenticated|admin|role|jwt|bearer|rbac|feature\s+flag|webhook\s+signature|hmac)\b/i.test(qCtx)
       ? "Route is gated behind authentication / role middleware, HMAC header, or feature flag (explaining why unauthenticated DAST crawlers missed the code path)"
       : "Endpoint authorization boundary requires runtime verification",
-    dangerous_sink: isSqlInjection
-      ? "Dynamic SQL query construction / unparameterized database driver sink"
-      : isSsrf
-        ? "Server-side HTTP client (`fetch` / `axios`) invoked with user-influenced URL reaching internal metadata (`169.254.169.254`) or internal service mesh"
-        : isCmdInjection
-          ? "OS shell execution sink (`child_process.exec` / `subprocess` with `shell=True`)"
-          : "Sensitive execution / data-access sink identified in static AST taint trace",
+    dangerous_sink: isAiPromptInjection
+      ? "Privileged LLM agent / MCP tool-execution dispatcher invoking state-mutating or data-exfiltration tools from untrusted RAG context without deterministic policy/human-in-the-loop gate"
+      : isSqlInjection
+        ? "Dynamic SQL query construction / unparameterized database driver sink"
+        : isSsrf
+          ? "Server-side HTTP client (`fetch` / `axios`) invoked with user-influenced URL reaching internal metadata (`169.254.169.254`) or internal service mesh"
+          : isCmdInjection
+            ? "OS shell execution sink (`child_process.exec` / `subprocess` with `shell=True`)"
+            : "Sensitive execution / data-access sink identified in static AST taint trace",
     reachability_status: hasDastZeroOrMismatch
       ? "REACHABLE_CONDITIONAL_AUTH_OR_FEATURE_FLAG"
       : "REACHABLE_CONFIRMED",
@@ -401,11 +412,13 @@ export function handleAttackPathAndExploitabilityQuery(question: string): string
         choke_point_id: "CHOKE-01-CODE-SINK",
         location: primaryCodeFile,
         why_high_leverage: "Eliminating raw taint concatenation/unvalidated URL dispatch at the sink severs the initial exploitation edge (`NODE-1 -> NODE-2`) for all callers.",
-        remediation_control: isSqlInjection
-          ? "Replace dynamic SQL interpolation with strict parameterized queries / prepared statements."
-          : isSsrf
-            ? "Enforce a strict outbound URL allowlist, disable HTTP redirects, block RFC 1918 / link-local `169.254.169.254` ranges after DNS resolution, and require IMDSv2 (`HttpTokens=required`, hop limit `1`)."
-            : "Eliminate shell/interpreter invocation (`execFile` with fixed argument array or safe parser) and enforce strict schema validation.",
+        remediation_control: isAiPromptInjection
+          ? "Enforce strict data/instruction separation for untrusted RAG inputs, bind MCP/agent tool calls to deterministic JSON schema + capability allowlists, and require human-in-the-loop approval for state-mutating or external egress actions."
+          : isSqlInjection
+            ? "Replace dynamic SQL interpolation with strict parameterized queries / prepared statements."
+            : isSsrf
+              ? "Enforce a strict outbound URL allowlist, disable HTTP redirects, block RFC 1918 / link-local `169.254.169.254` ranges after DNS resolution, and require IMDSv2 (`HttpTokens=required`, hop limit `1`)."
+              : "Eliminate shell/interpreter invocation (`execFile` with fixed argument array or safe parser) and enforce strict schema validation.",
       },
       {
         choke_point_id: "CHOKE-02-IDENTITY-BOUNDARY",
