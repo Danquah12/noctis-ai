@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Noctis Health Intelligence Engine (NHIE)
  *
  * Implements the complete Healthcare & Clinical Architecture across Sections 1–9:
@@ -10508,7 +10508,15 @@ export function parseAdversarialInstructions(q: string): string[] {
 function buildEmergencyHandoffInternal(q: string): { prose: string; jsonObj: Record<string, unknown>; contract: ReturnType<typeof parseRequestedJsonContract> } {
   const v = extractClinicalParametersFromText(q);
   const has = (re: RegExp) => re.test(q);
-  const meds = ["lisinopril", "spironolactone", "ibuprofen", "metformin"].filter((m) => has(new RegExp(`\\b${m}\\b`, "i")));
+  // Clinical context only: drop the adversarial section and instruction/format lines so their wording cannot create clinical scenarios (e.g. AKI).
+  const advSet = new Set(parseAdversarialInstructions(q).map((s) => s.trim()));
+  const qCtx = q.split(/\r?\n/).filter((line) => {
+    const t = line.replace(/^\s*(?:\d+[.)]|[-*•])\s+/, "").replace(/^["“]|["”]$/g, "").trim();
+    if (advSet.has(t) || /adversarial/i.test(line)) return false;
+    return !/^\s*(?:return|output|required|respond|json|schema|do not|must|never|acceptance|mandatory|format|task)\b/i.test(line);
+  }).join("\n");
+  const hasCtx = (re: RegExp) => re.test(qCtx);
+  const meds = ["lisinopril", "spironolactone", "ibuprofen", "metformin"].filter((m) => hasCtx(new RegExp(`\\b${m}\\b`, "i")));
   const labs = extractEncounterLabPanel(q);
   const curLabs = labs.filter((x) => x.temporal === "current");
   const histLabs = labs.filter((x) => x.temporal === "historical");
@@ -10550,11 +10558,11 @@ function buildEmergencyHandoffInternal(q: string): { prose: string; jsonObj: Rec
   const hypotension = (typeof v.sbpMmHg === "number" && v.sbpMmHg <= 100) || (typeof v.mapMmHg === "number" && v.mapMmHg < 65);
   const tachy = typeof v.heartRateBpm === "number" && v.heartRateBpm > 100;
   const brady = typeof v.heartRateBpm === "number" && v.heartRateBpm < 60;
-  const hyperK = (!!curK && curK.value > 5.0) || has(/hyperkal/i);
+  const hyperK = (!!curK && curK.value > 5.0) || hasCtx(/hyperkal/i);
   const severeK = !!curK && curK.value >= 6.0;
   const hypoperfusion = hypotension || (typeof v.shockIndex === "number" && v.shockIndex >= 0.9 && !chestPain);
   const kRaisingMed = meds.filter((m) => m === "lisinopril" || m === "spironolactone");
-  const kidneyContext = has(/\b(kidney|ckd|renal|egfr|creatinine|hyperkal|lisinopril|spironolactone|nsaid|ibuprofen)\b/i) || curLabs.some((x) => ["creatinine", "potassium", "bun", "bicarbonate"].includes(x.analyte));
+  const kidneyContext = hasCtx(/\b(kidney|ckd|renal|egfr|creatinine|hyperkal|lisinopril|spironolactone|nsaid|ibuprofen)\b/i) || curLabs.some((x) => ["creatinine", "potassium", "bun", "bicarbonate"].includes(x.analyte));
   const allergyMentioned = has(/\ballerg/i);
   const dosesMentioned = has(/\b(lisinopril|spironolactone|ibuprofen|metformin)\b[^.\n]{0,25}\d+\s*(?:mg|mcg|g)\b/i);
   const primaryConcern =
@@ -10727,18 +10735,18 @@ function buildEmergencyHandoffInternal(q: string): { prose: string; jsonObj: Rec
     const rej = (r: string) => ({ decision: "REJECTED", rationale: r });
     if (chestPain) {
       const feat = cpFeatures.join(", ") || "chest pressure/pain";
+      if (/aspirin|nitro|statin|heparin|clopidogrel|beta[-\s]?blocker|contraindicat|\bprescrib|\bgive\b|\badminister/i.test(s))
+        return rej("Aspirin, nitroglycerin and statin decisions depend on allergies, bleeding history, blood pressure (nitroglycerin can be dangerous with low pressure) and aortic-dissection or pulmonary-embolism risk, all unknown here; contraindications must be screened by EMS or emergency clinicians, and Noctis does not prescribe or skip that screening.");
       if (/indigest|heartburn|\bgerd\b|reflux|\bgas\b|anxiety|panic|muscle|strain|probably\s+(?:nothing|benign|fine)|diabet\w*[^.]*(?:so|because)/i.test(s))
         return rej(`The reported ${feat} are recognized red flags for acute coronary syndrome and cannot be called indigestion; ${diabetes ? "diabetes does not exclude acute coronary syndrome and can make presentations atypical or even silent; " : ""}gastrointestinal causes are considered only after dangerous causes are excluded by emergency evaluation.`);
       if (/troponin|wait\s+for[^.]*(result|lab|test)|before\s+call/i.test(s))
         return rej("Troponin can be normal early after symptom onset and results take time; ECG and troponin run in parallel with emergency transport and are never a prerequisite for calling 911.");
-      if (/drive|clinic|urgent\s+care|private\s+car|walk\s+in/i.test(s))
+      if (/\bdrive\b|\bdriving\b|\bdrives\b|\bclinic\b|urgent\s+care|private\s+car|walk\s+in/i.test(s))
         return rej(`Driving to a clinic with ${feat} risks collapse or a dangerous arrhythmia without monitoring or defibrillation; EMS can monitor, record an ECG and start treatment en route.`);
       if (/stemi|confirm[^.]*(mi\b|myocardial|infarct|heart\s+attack)|declare[^.]*(mi\b|stemi|infarct|heart\s+attack)/i.test(s))
         return rej("A STEMI or myocardial infarction requires ECG and/or troponin evidence, and none is available; declaring it would present an unsupported finding as fact, while the suspicion is already handled as an emergency.");
       if (/ecg[^.]*normal|normal[^.]*ecg|assume[^.]*(ecg|ekg)/i.test(s))
         return rej("No ECG has been obtained, so assuming it is normal would invent a finding and could falsely reassure; even a single normal ECG does not exclude acute coronary syndrome.");
-      if (/aspirin|nitro|statin|heparin|clopidogrel|beta[-\s]?blocker/i.test(s))
-        return rej("Aspirin, nitroglycerin and statin decisions depend on allergies, bleeding history, blood pressure and dissection or pulmonary-embolism risk, all unknown here; these are directed by EMS or emergency clinicians after screening, and Noctis does not prescribe.");
       if (/allerg|bleed|anticoag|blood\s+thinner/i.test(s))
         return rej("The allergy record is unavailable and bleeding or anticoagulant history is unknown; aspirin, anticoagulation and clot-dissolving treatment decisions depend on them, so they cannot be assumed negative.");
     }
@@ -10885,9 +10893,9 @@ function buildEmergencyHandoffInternal(q: string): { prose: string; jsonObj: Rec
   ];
   const props = ((contract?.schema as { properties?: Record<string, { type?: string }> } | null)?.properties) || {};
   const conventionalType = (k: string): string | undefined => {
-    if (/(facts|risks|uncertaint|results|failures|differential|items|steps|actions|assessments|responses)$/i.test(k)) return "array";
+    if (/(facts|risks|uncertaint(?:y|ies)|results|failures|differential|items|steps|actions|assessments|responses|symptoms|history|information|gaps|concerns|findings|diagnoses|flags)$/i.test(k)) return "array";
     if (/^(test_id)$|decision$|status$|summary$/i.test(k)) return "string";
-    if (/^(missing_information|medication_safety|retrieved_context|emergency_escalation)$/i.test(k)) return "object";
+    if (/^(medication_safety|retrieved_context|emergency_escalation)$/i.test(k)) return "object";
     return undefined;
   };
   const coerce = (val: unknown, type: string | undefined): unknown => {
@@ -10899,6 +10907,16 @@ function buildEmergencyHandoffInternal(q: string): { prose: string; jsonObj: Rec
     if (type === "string") return typeof val === "string" ? val : isArr ? (val as unknown[]).map((x) => (typeof x === "string" ? x : JSON.stringify(x))).join("; ") : JSON.stringify(val);
     return val;
   };
+  const missingArr = [
+    ...essential.map((e) => ({ priority: "essential_immediate", item: e.item, why: e.why })),
+    ...secondary.map((e) => ({ priority: "secondary", item: e.item, why: e.why })),
+  ];
+  const arrayOverride = (k: string): unknown[] | undefined =>
+    /missing|data_gap|unknown/i.test(k) ? missingArr
+    : /uncertaint/i.test(k) ? [uncertainty]
+    : /symptom/i.test(k) ? symptoms
+    : /relevant_?history|medical_?history|past_?history|risk_?factor|comorbid|history$/i.test(k) ? [...riskFactors]
+    : undefined;
   let jsonObj: Record<string, unknown> = full;
   if (contract) {
     jsonObj = {};
@@ -10909,7 +10927,10 @@ function buildEmergencyHandoffInternal(q: string): { prose: string; jsonObj: Rec
         const hit = aliases.find(([re]) => re.test(k));
         raw = hit ? full[hit[1]] : { status: "no_matching_engine_output", note: "Required key has no deterministic source in the supplied encounter; nothing was invented." };
       }
-      jsonObj[k] = coerce(raw, props[k]?.type ?? conventionalType(k));
+      let type = props[k]?.type ?? conventionalType(k);
+      const ov = arrayOverride(k);
+      if (ov !== undefined && type !== "object" && type !== "string") { raw = ov; type = "array"; }
+      jsonObj[k] = coerce(raw, type);
     }
   }
   const emittedText = JSON.stringify(jsonObj, null, 2);
