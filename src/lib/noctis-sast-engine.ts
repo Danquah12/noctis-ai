@@ -212,9 +212,21 @@ export const XTRIKE_SAST_REPOSITORY_FILES: SastRepoFileEntry[] = [
     keyExports: ["EvidencePanel"],
   },
   {
+    path: "app/cyber-monitoring/page.tsx",
+    layer: "App Route",
+    summary: "Cyber KPI, Antivirus Telemetry, 710-Host Fleet Honeycomb Monitor & OMD 2.5.0p17 Site Provisioning Console (100% XTRIKE branded).",
+    keyExports: ["CyberMonitoringPage"],
+  },
+  {
+    path: "lib/cyber-monitoring-data.ts",
+    layer: "Data & Benchmarks",
+    summary: "Cyber Vulnerability KPIs (16.8K open vulns, 6.4K CVEs, 1.3K remediations), Antivirus KPIs (213 detections, 32 prevented, 1,765 OS hosts), 710-Host Fleet Monitor (15,808 services, Top Alerters), and OMD 2.5.0p17 package catalog (Ubuntu/Debian/SLES/RHEL).",
+    keyExports: ["CYBER_VULN_KPI_SUMMARY", "ANTIVIRUS_PERFORMANCE_KPIS", "XTRIKE_FLEET_OVERVIEW", "XTRIKE_DISTRO_ACCORDION_GROUPS", "XTRIKE_OMD_RUNTIME_SPEC", "buildCyberMonitoringNoctisSummary"],
+  },
+  {
     path: "data/benchmark-repos.ts",
     layer: "Data & Benchmarks",
-    summary: "Catalog of 82 integrated SAST & DAST vulnerable repositories (OWASP Benchmark, WebGoat, Juice Shop, DVWA, NodeGoat, PyGoat, RailsGoat, crAPI, CloudGoat, PortSwigger Labs, Semgrep, CodeQL, etc.) with authentic multi-language seed files.",
+    summary: "Catalog of 82 integrated SAST & DAST vulnerable repositories (OWASP Benchmark, WebGoat, Juice Shop, DVWA, NodeGoat, PyGoat, RailsGoat, crAPI, CloudGoat, PortSwigger Labs, Semgrep, CodeQL, XTRIKE OMD Monitoring, etc.) with authentic multi-language seed files.",
     keyExports: ["BENCHMARK_REPOS", "BENCHMARK_CATEGORIES"],
   },
 ];
@@ -443,6 +455,31 @@ export function buildCompleteSastKnowledgeReport(question = ""): string {
     ].join("\n\n");
   }
 
+  // Specific query about Cyber KPIs, Antivirus KPIs, 710-Host Fleet Monitor, or OMD 2.5.0p17 installer
+  if (
+    /cyber\s*kpi|16\.8k|6\.4k|antivirus|hunting\s*leads|710\s*hosts|15,?808|top\s*alerters|honeycomb|omd|2\.5\.0p17|resolute_amd64|wget\s+https|apt\s+install|create\s+monitoring|start\s+monitoring/i.test(
+      q
+    )
+  ) {
+    return [
+      `## Noctis — XTRIKE Cyber KPI, Fleet Monitor & OMD \`2.5.0p17\` Telemetry (\`/cyber-monitoring\`)`,
+      `### 1. Cyber Security Vulnerability KPI Summary`,
+      `- **Open Vulnerabilities:** \`16.8K\` (\`+12.3%\`) · **Open CVEs:** \`6.4K\` (\`-6.2%\`) · **Open Remediations:** \`1.3K\` (\`+12.3%\`)`,
+      `- **Open Risk Instances:** Critical \`1.4K\`, High \`6.0K\`, Medium \`7.1K\`, Low \`1.3K\`, Info \`265\``,
+      `- **Open Deployment Instances:** AWS Production (\`3.4K\`), Fargate Demo (\`3.3K\`), Ozone Demo Dev (\`2.8K\`), Development (\`2.6K\`), Product Manage (\`2.5K\`), CIS Benchmark (\`1.2K\`), ExposureNotifica (\`843\`), Production Data (\`314\`)`,
+      `### 2. Antivirus & Endpoint Detection KPIs`,
+      `- **Detections:** \`213\` (\`+64%\`) · **Attacks Prevented:** \`32\` (\`+14%\`) · **Hunting Leads:** \`26\` · **Remedied Detections:** \`73\` (\`-23%\`) · **Current Score:** \`53/100\``,
+      `- **Monitored Hosts by OS (\`1,765\` Total):** Windows (\`468\`), Linux x86 (\`406\`), Lumos X64 (\`320\`), MacOS (\`249\`), Chrome OS (\`122\`), iOS (\`100\`), Android (\`100\`)`,
+      `### 3. XTRIKE Live Fleet Monitor (\`710\` Hosts · \`15,808\` Services)`,
+      `- **Host States:** \`709 UP\`, \`0 DOWN\`, \`1 UNREACH\` · **Service States:** \`14,839 OK\`, \`691 WARN\`, \`67 UNKNOWN\`, \`210 CRIT\``,
+      `- **Top Alerters (Last 7 Days):** \`xtrike.app\`, \`node eks i-0d7cb370c8eea26c9...\`, \`play.xtrike.app\`, \`ideas.xtrike.app\`, \`docs.xtrike.app\`, \`forum.xtrike.app\``,
+      `### 4. XTRIKE OMD \`2.5.0p17\` Package Download & Site Provisioning`,
+      `- **Ubuntu 26.04 (Resolute) Community Edition:**\n  - \`wget https://05-sast-platform.vercel.app/api/xtrike-package?pkg=xtrike-monitoring-community-2.5.0p17_0.resolute_amd64.deb\`\n  - \`sudo apt install ./xtrike-monitoring-community-2.5.0p17_0.resolute_amd64.deb\`\n  - **SHA-256:** \`3da7fe4b86a9e606b6a55bfba08a3b42fc4ac4e72df742989e89f9ef7c0e3282\``,
+      `- **Ubuntu 26.04 (Resolute) Ultimate Edition:**\n  - \`wget https://05-sast-platform.vercel.app/api/xtrike-package?pkg=xtrike-monitoring-ultimate-2.5.0p17_0.resolute_amd64.deb\`\n  - \`sudo apt install ./xtrike-monitoring-ultimate-2.5.0p17_0.resolute_amd64.deb\`\n  - **SHA-256:** \`26e50d4d55a4a11c06688dca78e3a8e29610fdd4f0da6a72596309cbad126adb\``,
+      `- **Verify & Provision OMD Site (\`monitoring\`):**\n  \`\`\`bash\n  omd version\n  # OMD - Open Monitoring Distribution Version 2.5.0p17.ultimate\n  sudo omd create monitoring\n  sudo omd start monitoring\n  # Starting mkeventd...OK | liveproxyd...OK | mknotifyd...OK | rrdcached...OK | cmc...OK | apache...OK | dcd...OK | redis...OK | Initializing Crontab...OK\n  \`\`\``,
+    ].join("\n\n");
+  }
+
   const dashboardPayload = {
     title: "XTRIKE SAST Platform (Platform 05) — Repository & Engine Telemetry",
     subtitle: "Connected to Noctis Brain (https://dstrike.app/noctis) · 4 AST Engines · 401 Plugins · 82 Benchmark Repos",
@@ -504,7 +541,7 @@ export function sastIntelligenceGadget(question: string): string | null {
   if (!q) return null;
 
   const isSastQuery =
-    /\b(what\s+is\s+sast|how\s+does\s+sast\s+work|explain\s+sast|xtrike\s+sast|05-sast-platform|sast\s+platform|sast\s+desk|sast\s+repo|sast\s+repository|sast\s+engine|sast\s+plugin|plg-046|plg-054|codei-py-exec|codei-java-compiler|blindscript\.java|sqlinjectionlesson5a|taint\s+graph|canonical\s+proof\s+state|proof\s+engine|xtrike\s+xql|xtrike\s+deepflow|xtrike\s+structsca|sast\s+vs\s+dast|static\s+application\s+security\s+testing)\b/i.test(
+    /\b(what\s+is\s+sast|how\s+does\s+sast\s+work|explain\s+sast|xtrike\s+sast|05-sast-platform|sast\s+platform|sast\s+desk|sast\s+repo|sast\s+repository|sast\s+engine|sast\s+plugin|plg-046|plg-054|codei-py-exec|codei-java-compiler|blindscript\.java|sqlinjectionlesson5a|taint\s+graph|canonical\s+proof\s+state|proof\s+engine|xtrike\s+xql|xtrike\s+deepflow|xtrike\s+structsca|sast\s+vs\s+dast|static\s+application\s+security\s+testing|cyber\s*kpi|16\.8k|710\s*hosts|15,?808|top\s*alerters|omd\s+version|omd\s+create|omd\s+start|2\.5\.0p17|resolute_amd64)\b/i.test(
       q
     );
 
