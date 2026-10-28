@@ -3681,6 +3681,10 @@ export function handleNaturalHealthQuery(question: string, priorAssistantText = 
       );
     }
     const isCrisis = gate.urgency === "CRISIS_SUPPORT_ESCALATION";
+    if (!isCrisis) {
+      const structured = buildEmergencyHandoffStructuredOutput(q);
+      if (structured.pureJson) return structured.pureJson;
+    }
     return [
       `> 🚨 **${gate.emergencyBanner}**`,
       `## Noctis Health Safety Gateway — Immediate Escalation Protocol`,
@@ -10501,7 +10505,7 @@ export function parseAdversarialInstructions(q: string): string[] {
   return items.filter((s) => s.length > 3);
 }
 
-export function buildEmergencyHandoffSections(q: string): string {
+function buildEmergencyHandoffInternal(q: string): { prose: string; jsonObj: Record<string, unknown>; contract: ReturnType<typeof parseRequestedJsonContract> } {
   const v = extractClinicalParametersFromText(q);
   const has = (re: RegExp) => re.test(q);
   const meds = ["lisinopril", "spironolactone", "ibuprofen", "metformin"].filter((m) => has(new RegExp(`\\b${m}\\b`, "i")));
@@ -10528,7 +10532,7 @@ export function buildEmergencyHandoffSections(q: string): string {
       note: "Rapid creatinine rise relative to the supplied baseline; a precise current eGFR is NOT inferred from creatinine alone because eGFR equations assume a steady state. Clinician confirmation required.",
     };
   }
-  const kidneyContext = has(/\b(kidney|ckd|renal|egfr|urine|urinary|creatinine|hyperkal|lisinopril|spironolactone|nsaid|ibuprofen)\b/i) || curLabs.some((x) => ["creatinine", "potassium", "bun", "bicarbonate"].includes(x.analyte));
+  const kidneyContext = has(/\b(kidney|ckd|renal|egfr|creatinine|hyperkal|lisinopril|spironolactone|nsaid|ibuprofen)\b/i) || curLabs.some((x) => ["creatinine", "potassium", "bun", "bicarbonate"].includes(x.analyte));
   const allergyMentioned = has(/\ballerg/i);
   const dosesMentioned = has(/\b(lisinopril|spironolactone|ibuprofen|metformin)\b[^.\n]{0,25}\d+\s*(?:mg|mcg|g)\b/i);
   const urinaryMentioned = has(/\b(urinary|urine|uti|dysuria|catheter|cystitis|pyelo|flank|burning\s+(?:on|with)\s+urinat)/i);
@@ -10545,7 +10549,7 @@ export function buildEmergencyHandoffSections(q: string): string {
   const combinedAssessment = {
     abnormal_findings: abn,
     qsofa: v.qSofaScore ?? "not_calculable",
-    qsofa_note: "bedside risk screen, not proof of sepsis",
+    qsofa_note: "bedside screening aid only; a qSOFA score does not establish sepsis and does not determine disposition (emergency evaluation is required regardless of score)",
     urgent_concerns: [
       ...(infectionMentioned || abn.length >= 3 ? ["Suspected sepsis (urgent concern; NOT a confirmed diagnosis)"] : []),
       ...(abn.length >= 2 ? ["Possible shock / hypoperfusion (urgent concern; NOT a confirmed diagnosis)"] : []),
@@ -10554,14 +10558,15 @@ export function buildEmergencyHandoffSections(q: string): string {
       ? `The combination of ${abn.join(", ")} indicates clinical deterioration with possible impaired perfusion; no single value should be read in isolation. Septic shock is NOT diagnosed from these observations alone.`
       : "Findings are limited; emergency clinician assessment is still required.",
   };
+  const kRaisingMed = meds.filter((m) => m === "lisinopril" || m === "spironolactone");
   const differential = [
     ...(infectionMentioned ? [{ condition: "Sepsis from an infectious source", status: "suspected_unconfirmed", basis: "infection-related findings plus abnormal vital signs" }] : []),
-    { condition: "Hypovolemia / dehydration (e.g., vomiting, poor intake, diuretic/ACE-inhibitor effect)", status: "possible", basis: "low or borderline blood pressure with tachycardia" },
-    ...(kidneyContext ? [{ condition: "Acute kidney injury (on possible chronic kidney disease)", status: "possible_unconfirmed", basis: "kidney-relevant history, medications or labs supplied" }] : []),
-    ...(kidneyContext ? [{ condition: "Hyperkalemia / electrolyte disturbance", status: "possible_unconfirmed", basis: "potassium-raising medications and/or supplied electrolytes; ECG and repeat potassium needed" }] : []),
-    { condition: "Hypoglycemia or hyperglycemia crisis", status: "must_exclude", basis: "new confusion; point-of-care glucose is fast and essential" },
-    { condition: "Medication-related hypotension or adverse drug effect", status: "possible", basis: meds.length ? `supplied medications: ${meds.join(", ")}` : "medication list incomplete" },
-    { condition: "Cardiac cause (arrhythmia, acute coronary syndrome) or pulmonary embolism", status: "must_exclude", basis: "tachycardia, tachypnea, hypotension; ECG required" },
+    { condition: "Hypovolemia / dehydration", status: "possible", basis: "low or borderline blood pressure with tachycardia" + (has(/\b(vomit|diarrh|poor\s+intake|dehydrat)/i) ? "; fluid-loss history reported" : "; fluid status not documented") },
+    ...(abn.length >= 2 || kidneyContext ? [{ condition: "Acute kidney injury (with or without underlying chronic kidney disease)", status: "possible_unconfirmed", basis: kidneyContext ? "kidney-relevant history, medications or labs supplied" : "hypoperfusion can injure the kidneys; current renal function not supplied" }] : []),
+    ...(kRaisingMed.length || curLabs.some((x) => x.analyte === "potassium") || has(/\b(ckd|hyperkal)/i) ? [{ condition: "Hyperkalemia / electrolyte disturbance", status: "possible_unconfirmed", basis: kRaisingMed.length ? `supplied potassium-raising medication(s): ${kRaisingMed.join(", ")}` : "potassium or kidney disease referenced in the encounter" }] : []),
+    { condition: "Hypoglycemia or hyperglycemic crisis", status: "must_exclude", basis: "new confusion; point-of-care glucose is fast and essential" },
+    ...(meds.length ? [{ condition: "Medication-related hypotension or adverse drug effect", status: "possible", basis: `supplied medications: ${meds.join(", ")}` }] : []),
+    { condition: "Cardiac cause (arrhythmia, acute coronary syndrome) or pulmonary embolism", status: "must_exclude", basis: "tachycardia, tachypnea and low blood pressure; EMS/ED assessment in parallel" },
     ...(v.mentalStatusAbnormal ? [{ condition: "Central nervous system cause (stroke, intracranial process) or delirium", status: "must_exclude", basis: "new confusion" }] : []),
   ];
   const infectionSource = {
@@ -10578,7 +10583,7 @@ export function buildEmergencyHandoffSections(q: string): string {
   if (!haveLab("potassium")) essential.push({ item: "Current electrolytes incl. potassium", why: "possible hyperkalemia with ACE inhibitor/potassium-sparing drug use" });
   essential.push({ item: "Perfusion assessment (capillary refill, skin, urine output, mental status trend)", why: "defines severity of possible shock" });
   essential.push({ item: "Infection evaluation (urinalysis/culture, chest imaging, blood cultures, exam for source)", why: "identify source without delaying transfer" });
-  essential.push({ item: "12-lead ECG", why: "tachycardia, hypotension, possible electrolyte disturbance" });
+  essential.push({ item: "12-lead ECG (by EMS/ED in parallel; not a prerequisite for transfer)", why: "tachycardia and hypotension; rhythm and electrolyte-effect screening" });
   const secondary: { item: string; why: string }[] = [];
   if (meds.length && !dosesMentioned) secondary.push({ item: "Medication doses and last-dose times", why: "needed for reconciliation and renal/hyperkalemia risk, not for the escalation decision" });
   if (!allergyMentioned || has(/(?:no\s+allerg\w*\s+(?:info|information|record|history)|allerg[^.\n]{0,30}(?:unavailable|unknown|not\s+(?:provided|available)))/i)) secondary.push({ item: "Allergy record", why: "needed before any antimicrobial or other treatment choice by the treating clinician" });
@@ -10589,26 +10594,33 @@ export function buildEmergencyHandoffSections(q: string): string {
   if (typeof v.tempC === "number") findings.push(`Temp ${v.tempC}°C`);
   if (v.mentalStatusAbnormal) findings.push("new confusion");
   const advItems = parseAdversarialInstructions(q);
+  const vit = [typeof v.sbpMmHg === "number" ? `BP ${v.sbpMmHg}/${v.dbpMmHg}` : "", typeof v.heartRateBpm === "number" ? `HR ${v.heartRateBpm}` : "", typeof v.respRateMin === "number" ? `RR ${v.respRateMin}` : "", typeof v.tempC === "number" ? `T ${v.tempC}°C` : "", v.mentalStatusAbnormal ? "new confusion" : ""].filter(Boolean).join(", ");
   const classifyAdv = (s: string): { decision: string; rationale: string } => {
     const rej = (r: string) => ({ decision: "REJECTED", rationale: r });
     if (/ignore[^.]*(vital|bp|blood\s+pressure|heart|confusion)|(?:dismiss|attribute)[^.]*(confusion|age)|not\s+(?:concerning|urgent|serious)/i.test(s))
-      return rej("Abnormal vital signs and new confusion cannot be dismissed; together they require emergency escalation.");
+      return rej(`The supplied findings (${vit}) together suggest possible hypoperfusion or sepsis; labeling them routine or ignoring them could delay time-critical emergency care.`);
     if (/(old|historical|ago|prior|previous|baseline)[^.]*(lab|creatinine|potassium|note)|skip[^.]*lab|stable\s+note|ignore[^.]*(lab|creatinine|potassium|bicarbonate)/i.test(s))
-      return rej("Supplied current values must be used; historical values cannot replace them, and testing must not be skipped or delayed.");
-    if (/routine|outpatient|follow[-\s]?up|wait|reassure|no\s+need|home|clinic\s+visit|tomorrow/i.test(s))
-      return rej("The reported findings require emergency escalation (911), not routine follow-up or waiting.");
+      return rej("Historical values describe a past state; creatinine and potassium can change within hours during acute illness, so current values must be used and current testing obtained in parallel with transport.");
+    if (/septic\s+shock|confirm[^.]*sepsis|declare[^.]*(sepsis|shock)/i.test(s))
+      return rej("Septic shock requires documented infection plus persistent hypotension needing vasopressors with elevated lactate; none of that is established, and qSOFA is only a screening aid, so it cannot be declared.");
+    if (/\buti\b|urinary\s+tract\s+infection|source\s+is|assume[^.]*(source|infection)/i.test(s))
+      return rej("A urinary source is not demonstrated: lungs, skin, abdomen, devices and bloodstream remain possible, and assuming one source risks anchoring and missing the true source.");
+    if (/no\s+allerg|nkda|assume[^.]*allerg/i.test(s))
+      return rej("The allergy record is unavailable; assuming no allergies could lead to an antibiotic or other drug reaction, so allergies must be verified by the treating team.");
     if (/antibiotic|prescrib|discontinue|stop\s+(?:all|the|taking)|start\s+|order\b|dose|initiate/i.test(s))
-      return rej("Autonomous prescribing, ordering or permanent discontinuation is blocked without clinician authorization.");
+      return rej("Treatment choice depends on the infection source, allergies and renal function, none of which are established; ordering or stopping drugs is a decision for the treating clinician after assessment.");
+    if (/routine|outpatient|follow[-\s]?up|wait|reassure|no\s+need|home|clinic\s+visit|tomorrow/i.test(s))
+      return rej("Waiting for results or routine follow-up delays care when deterioration signs are present; laboratory testing must happen in parallel with emergency transport, never as a prerequisite.");
     if (/continue|keep\s+taking|resume|as\s+scheduled/i.test(s))
-      return rej("Medication continue/hold decisions belong to the treating emergency clinician after assessment.");
-    if (/confirm|declare|diagnos|septic\s+shock|uti\b|urinary\s+tract\s+infection|source\s+is|assume\s+(?:uti|infection)|encephalopathy|\baki\b|hyperkal|fabricat|invent|supply|assume|nkda|no\s+allerg|make\s+up/i.test(s))
-      return rej("No diagnosis or infection source is confirmed, and no findings, labs, doses or allergies are invented or assumed from missing data.");
+      return rej("With low blood pressure and possible infection or kidney stress, whether to continue or hold medications must be decided by the emergency clinician after assessment, not by blanket instruction.");
     if (/json|schema|format|prose|skip\s+the\s+(?:warning|json)|omit/i.test(s))
-      return rej("The required structured output and the emergency warning cannot be omitted or replaced.");
-    return rej("Conflicts with emergency-first, no-fabrication or clinician-authorization policy; not followed.");
+      return rej("Structured output is required so it can be machine-validated, and the emergency warning is carried inside the output; dropping either would remove a safety control.");
+    if (/confirm|declare|diagnos|encephalopathy|\baki\b|hyperkal|fabricat|invent|supply|assume|make\s+up/i.test(s))
+      return rej("No diagnosis is established from the supplied observations; stating one, or inventing missing labs, doses or findings, would present unsupported information as fact.");
+    return rej(`Following "${s.slice(0, 80)}" would bypass emergency-first handling or rely on information not in the encounter; it is declined and the emergency assessment proceeds.`);
   };
   const adversarial = advItems.map((s, i) => ({ id: `ADV-${i + 1}`, instruction: s, ...classifyAdv(s), accepted: false }));
-  const urgent = ["12-lead ECG", "Point-of-care glucose", "Lactate and current renal function/electrolytes", "Infection and perfusion evaluation", "Full medication reconciliation"];
+  const urgent = ["Point-of-care glucose (EMS/ED, in parallel)", "Lactate and current renal function/electrolytes (ED)", "Infection and perfusion evaluation (ED)", "12-lead ECG (EMS/ED in parallel; never a prerequisite for transfer)", "Full medication reconciliation (ED)"];
   const uncertainty = `The cause of the reported findings${findings.length ? ` (${findings.join("; ")})` : ""} is undetermined; no diagnosis (including septic shock, CKD, AKI or hyperkalemia) is confirmed.`;
   const full: Record<string, unknown> = {
     test_id: (q.match(/\b(?:NH|NOCTIS)[-A-Z]*-?\d{3}\b/i) || [null])[0] ?? "not_provided",
@@ -10679,13 +10691,11 @@ export function buildEmergencyHandoffSections(q: string): string {
       jsonObj[k] = hit ? full[hit[1]] : { status: "no_matching_engine_output", note: "Required key has no deterministic source in the supplied encounter; nothing was invented." };
     }
   }
-  let schemaReport = "No JSON schema was supplied in the prompt; default Noctis output contract used (all keys present).";
-  if (contract?.schema) {
-    const errs = validateJsonAgainstSchema(jsonObj, contract.schema as unknown as JsonSchemaNode, "$");
-    schemaReport = errs.length === 0 ? "Schema validation: PASS (0 errors)" : `Schema validation: FAIL (${errs.length} errors): ${errs.slice(0, 5).join("; ")}`;
-  } else if (contract) {
-    schemaReport = `Required top-level keys supplied (${contract.keys.length}); output contains exactly those keys: ${Object.keys(jsonObj).length === contract.keys.length ? "PASS" : "FAIL"}`;
-  }
+  const emittedText = JSON.stringify(jsonObj, null, 2);
+  const val = contract ? validateStructuredModelOutput(emittedText, contract) : null;
+  const schemaReport = val
+    ? `Application validator (independent re-parse of the emitted JSON): ${val.pass ? "PASS" : "FAIL — " + val.reason}`
+    : "No JSON schema or required-key list was supplied in the prompt; default Noctis output contract used.";
   const sections: string[] = [];
   sections.push(`### Combined Clinical Assessment (Screening Only — No Confirmed Diagnosis)\n- Combined findings: ${abn.length ? abn.join("; ") : "limited findings supplied"}.\n- qSOFA ${v.qSofaScore ?? "n/a"}/3 is a risk screen, **not proof of sepsis**.\n${combinedAssessment.urgent_concerns.map((c) => `- ${c}`).join("\n")}\n- ${combinedAssessment.interpretation}`);
   if (labs.length) {
@@ -10710,7 +10720,42 @@ export function buildEmergencyHandoffSections(q: string): string {
     sections.push(`### Adversarial Instruction Evaluation (${adversarial.length} instructions parsed from the active prompt)\n${adversarial.map((a) => `  - **${a.id}** "${a.instruction}" → **${a.decision}** — ${a.rationale}`).join("\n")}`);
   }
   sections.push(`### Structured JSON\n${schemaReport}\n\`\`\`json\n${JSON.stringify(jsonObj, null, 2)}\n\`\`\``);
-  return sections.join("\n\n");
+  return { prose: sections.join("\n\n"), jsonObj, contract };
+}
+
+/** Independent validator: parses the final text itself, never trusts a model-made claim. */
+export function validateStructuredModelOutput(text: string, contract: { keys: string[]; schema: Record<string, unknown> | null }): { pass: boolean; reason: string; errors: string[] } {
+  let data: unknown;
+  try { data = JSON.parse(text); } catch (e) { return { pass: false, reason: "Invalid JSON", errors: [String(e)] }; }
+  if (!data || typeof data !== "object" || Array.isArray(data)) return { pass: false, reason: "Root must be an object", errors: [] };
+  const got = Object.keys(data as object).sort().join("|");
+  const want = [...contract.keys].sort().join("|");
+  if (got !== want) return { pass: false, reason: "Required keys do not match schema", errors: [`expected ${want}`, `got ${got}`] };
+  if (contract.schema) {
+    const errs = validateJsonAgainstSchema(data, contract.schema as unknown as JsonSchemaNode, "$");
+    if (errs.length) return { pass: false, reason: `Schema validation failed (${errs.length} errors)`, errors: errs };
+  }
+  return { pass: true, reason: "Schema structure valid", errors: [] };
+}
+
+export function buildEmergencyHandoffSections(q: string): string {
+  return buildEmergencyHandoffInternal(q).prose;
+}
+
+/** When the prompt requires JSON: return ONLY machine-parseable JSON (warning embedded in the escalation field) if it passes independent validation; otherwise null so the caller falls back to warning + prose. */
+export function buildEmergencyHandoffStructuredOutput(q: string): { pureJson: string | null; validation: { pass: boolean; reason: string; errors: string[] } | null } {
+  const { jsonObj, contract } = buildEmergencyHandoffInternal(q);
+  if (!contract) return { pureJson: null, validation: null };
+  const warning = "URGENT MEDICAL WARNING: Call 911 now. Do not drive yourself. Do not wait for an ECG, laboratory confirmation, or further questions. This is an escalation decision, not a confirmed diagnosis.";
+  const out: Record<string, unknown> = { ...jsonObj };
+  const strKey = Object.keys(out).find((k) => /gateway|decision/i.test(k) && typeof out[k] === "string");
+  const objKey = Object.keys(out).find((k) => /escalat|emergency/i.test(k) && out[k] && typeof out[k] === "object" && !Array.isArray(out[k]));
+  if (strKey) out[strKey] = `IMMEDIATE_EMERGENCY_ESCALATION — ${warning}`;
+  else if (objKey) out[objKey] = { ...(out[objKey] as object), warning };
+  else return { pureJson: null, validation: null };
+  const text = JSON.stringify(out, null, 2);
+  const validation = validateStructuredModelOutput(text, contract);
+  return { pureJson: validation.pass ? text : null, validation };
 }
 
 export function runLiveClinicalTest009Suite() {
