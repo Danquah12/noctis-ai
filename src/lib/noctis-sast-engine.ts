@@ -214,19 +214,19 @@ export const XTRIKE_SAST_REPOSITORY_FILES: SastRepoFileEntry[] = [
   {
     path: "app/cyber-monitoring/page.tsx",
     layer: "App Route",
-    summary: "Cyber KPI, Antivirus Telemetry, 710-Host Fleet Honeycomb Monitor & OMD 2.5.0p17 Site Provisioning Console (100% XTRIKE branded).",
+    summary: "Editorial XTRIKE SAST Posture Ledger, Code-to-Runtime Sink Sensors, 710-Repository Mesh Topology & xtrike-sast-cli v4.2.0 Provisioning Desk.",
     keyExports: ["CyberMonitoringPage"],
   },
   {
     path: "lib/cyber-monitoring-data.ts",
     layer: "Data & Benchmarks",
-    summary: "Cyber Vulnerability KPIs (16.8K open vulns, 6.4K CVEs, 1.3K remediations), Antivirus KPIs (213 detections, 32 prevented, 1,765 OS hosts), 710-Host Fleet Monitor (15,808 services, Top Alerters), and OMD 2.5.0p17 package catalog (Ubuntu/Debian/SLES/RHEL).",
-    keyExports: ["CYBER_VULN_KPI_SUMMARY", "ANTIVIRUS_PERFORMANCE_KPIS", "XTRIKE_FLEET_OVERVIEW", "XTRIKE_DISTRO_ACCORDION_GROUPS", "XTRIKE_OMD_RUNTIME_SPEC", "buildCyberMonitoringNoctisSummary"],
+    summary: "XTRIKE SAST Posture KPIs (16.8K Open SAST Findings, 6.4K Reachable SCA CVEs, 1.3K Verified AST Fixes), Code-to-Runtime Sink Sensors (213 Sink Triggers, 32 Halted, 84/100 Gate Score, 1,765 Nodes), 710-Repo Mesh (15,808 Policy Gates), and xtrike-sast-cli v4.2.0 package catalog.",
+    keyExports: ["CYBER_VULN_KPI_SUMMARY", "ANTIVIRUS_PERFORMANCE_KPIS", "XTRIKE_FLEET_OVERVIEW", "XTRIKE_DISTRO_ACCORDION_GROUPS", "XTRIKE_CLI_RUNTIME_SPEC", "buildCyberMonitoringNoctisSummary"],
   },
   {
     path: "data/benchmark-repos.ts",
     layer: "Data & Benchmarks",
-    summary: "Catalog of 82 integrated SAST & DAST vulnerable repositories (OWASP Benchmark, WebGoat, Juice Shop, DVWA, NodeGoat, PyGoat, RailsGoat, crAPI, CloudGoat, PortSwigger Labs, Semgrep, CodeQL, XTRIKE OMD Monitoring, etc.) with authentic multi-language seed files.",
+    summary: "Catalog of 82 integrated SAST & DAST vulnerable repositories (OWASP Benchmark, WebGoat, Juice Shop, DVWA, NodeGoat, PyGoat, RailsGoat, crAPI, CloudGoat, PortSwigger Labs, Semgrep, CodeQL, XTRIKE Telemetry & Sensor Agent Suite, etc.) with authentic multi-language seed files.",
     keyExports: ["BENCHMARK_REPOS", "BENCHMARK_CATEGORIES"],
   },
 ];
@@ -455,28 +455,28 @@ export function buildCompleteSastKnowledgeReport(question = ""): string {
     ].join("\n\n");
   }
 
-  // Specific query about Cyber KPIs, Antivirus KPIs, 710-Host Fleet Monitor, or OMD 2.5.0p17 installer
+  // Specific query about XTRIKE SAST Posture KPIs, Sink Sensors, 710-Repo Mesh, or xtrike-sast-cli v4.2.0 installer
   if (
-    /cyber\s*kpi|16\.8k|6\.4k|antivirus|hunting\s*leads|710\s*hosts|15,?808|top\s*alerters|honeycomb|omd|2\.5\.0p17|resolute_amd64|wget\s+https|apt\s+install|create\s+monitoring|start\s+monitoring/i.test(
+    /posture|cyber\s*kpi|cyber\s*monitor|16\.8k|6\.4k|1\.3k|sink\s*sensor|sink\s*trigger|213\s*active|84\/100|1,?765\s*nodes|710\s*repo|710\s*node|710\s*host|15,?808|release-gate|payment-settlement-core|identity-oauth-gateway|graphql-mobile-bff|order-fulfillment-api|dynamic-rule-compiler|webhook-event-broker|xtrike-sast-cli|4\.2\.0|ptes-nist-800-115|daemon\s+start/i.test(
       q
     )
   ) {
     return [
-      `## Noctis — XTRIKE Cyber KPI, Fleet Monitor & OMD \`2.5.0p17\` Telemetry (\`/cyber-monitoring\`)`,
-      `### 1. Cyber Security Vulnerability KPI Summary`,
-      `- **Open Vulnerabilities:** \`16.8K\` (\`+12.3%\`) · **Open CVEs:** \`6.4K\` (\`-6.2%\`) · **Open Remediations:** \`1.3K\` (\`+12.3%\`)`,
-      `- **Open Risk Instances:** Critical \`1.4K\`, High \`6.0K\`, Medium \`7.1K\`, Low \`1.3K\`, Info \`265\``,
-      `- **Open Deployment Instances:** AWS Production (\`3.4K\`), Fargate Demo (\`3.3K\`), Ozone Demo Dev (\`2.8K\`), Development (\`2.6K\`), Product Manage (\`2.5K\`), CIS Benchmark (\`1.2K\`), ExposureNotifica (\`843\`), Production Data (\`314\`)`,
-      `### 2. Antivirus & Endpoint Detection KPIs`,
-      `- **Detections:** \`213\` (\`+64%\`) · **Attacks Prevented:** \`32\` (\`+14%\`) · **Hunting Leads:** \`26\` · **Remedied Detections:** \`73\` (\`-23%\`) · **Current Score:** \`53/100\``,
-      `- **Monitored Hosts by OS (\`1,765\` Total):** Windows (\`468\`), Linux x86 (\`406\`), Lumos X64 (\`320\`), MacOS (\`249\`), Chrome OS (\`122\`), iOS (\`100\`), Android (\`100\`)`,
-      `### 3. XTRIKE Live Fleet Monitor (\`710\` Hosts · \`15,808\` Services)`,
-      `- **Host States:** \`709 UP\`, \`0 DOWN\`, \`1 UNREACH\` · **Service States:** \`14,839 OK\`, \`691 WARN\`, \`67 UNKNOWN\`, \`210 CRIT\``,
-      `- **Top Alerters (Last 7 Days):** \`xtrike.app\`, \`node eks i-0d7cb370c8eea26c9...\`, \`play.xtrike.app\`, \`ideas.xtrike.app\`, \`docs.xtrike.app\`, \`forum.xtrike.app\``,
-      `### 4. XTRIKE OMD \`2.5.0p17\` Package Download & Site Provisioning`,
-      `- **Ubuntu 26.04 (Resolute) Community Edition:**\n  - \`wget https://05-sast-platform.vercel.app/api/xtrike-package?pkg=xtrike-monitoring-community-2.5.0p17_0.resolute_amd64.deb\`\n  - \`sudo apt install ./xtrike-monitoring-community-2.5.0p17_0.resolute_amd64.deb\`\n  - **SHA-256:** \`3da7fe4b86a9e606b6a55bfba08a3b42fc4ac4e72df742989e89f9ef7c0e3282\``,
-      `- **Ubuntu 26.04 (Resolute) Ultimate Edition:**\n  - \`wget https://05-sast-platform.vercel.app/api/xtrike-package?pkg=xtrike-monitoring-ultimate-2.5.0p17_0.resolute_amd64.deb\`\n  - \`sudo apt install ./xtrike-monitoring-ultimate-2.5.0p17_0.resolute_amd64.deb\`\n  - **SHA-256:** \`26e50d4d55a4a11c06688dca78e3a8e29610fdd4f0da6a72596309cbad126adb\``,
-      `- **Verify & Provision OMD Site (\`monitoring\`):**\n  \`\`\`bash\n  omd version\n  # OMD - Open Monitoring Distribution Version 2.5.0p17.ultimate\n  sudo omd create monitoring\n  sudo omd start monitoring\n  # Starting mkeventd...OK | liveproxyd...OK | mknotifyd...OK | rrdcached...OK | cmc...OK | apache...OK | dcd...OK | redis...OK | Initializing Crontab...OK\n  \`\`\``,
+      `## Noctis — XTRIKE SAST Posture Ledger, Sink Sensors, 710-Repo Mesh & CLI (\`/cyber-monitoring\`)`,
+      `### 1. Ledger 01 — SAST & Reachable CVE Posture Summary`,
+      `- **Open SAST Findings:** \`16.8K\` (\`+12.3%\` across 82 repositories & 4 AST engines: \`XQL\`, \`DeepFlow\`, \`StructSCA\`, \`AST-Query\`)`,
+      `- **Reachable SCA CVEs:** \`6.4K\` (\`-6.2%\` verified call-graph reachability) · **Verified AST Fixes:** \`1.3K\` (\`+18.4%\` passed post-fix retest suite)`,
+      `- **5 Canonical Proof States Breakdown:** Critical \`1.4K\` (\`PROVEN_EXPLOITABLE / DATAFLOW_CONFIRMED\`), High \`6.0K\` (\`DATAFLOW_CONFIRMED\`), Medium \`7.1K\` (\`DETECTED_STATIC\`), Low \`1.3K\` (\`NEEDS_MANUAL_VALIDATION\`), Guarded \`265\` (\`MITIGATED_BY_GUARD\`)`,
+      `- **Findings by Service Tier:** Payment & Ledger Core (\`3.4K · CWE-89\`), Identity & OAuth Gateway (\`3.3K · CWE-347\`), GraphQL & Mobile BFF (\`2.8K · CWE-918\`), Order Fulfillment API (\`2.6K · CWE-502\`), Dynamic Rule Compiler (\`2.5K · CWE-94\`), Terraform & EKS IaC (\`1.2K · CWE-798\`), Webhook & Event Broker (\`843 · CWE-78\`), AI-BOM & RAG Pipeline (\`314 · CWE-22\`)`,
+      `### 2. Ledger 02 — Code-to-Runtime Sink Sensors & Build Runner Fleet`,
+      `- **Sensor KPIs:** Active Sink Triggers \`213\` (\`+18%\`) · Exploit Probes Halted \`32\` (\`+14%\`) · Unauth Taint Routes \`26\` (\`-11%\`) · Manual Proof Queue \`26\` · AST Diffs Verified \`73\` (\`+29%\`) · Release Gate Score \`84/100\` (\`+6 pts\`)`,
+      `- **Instrumented Build & Runtime Fleet (\`1,765\` Total Nodes):** Linux x86_64 (\`468\`), Kubernetes / EKS Pods (\`406\`), GitHub Actions / GitLab CI Runners (\`320\`), macOS IDE Workstations (\`249\`), Windows Server / .NET (\`122\`), ARM64 Graviton (\`100\`), Serverless & Edge Functions (\`100\`)`,
+      `### 3. Ledger 03 — XTRIKE Repository & Microservice Mesh (\`710\` Nodes · \`15,808\` Policy Gates)`,
+      `- **Mesh State:** \`709 Online\`, \`0 Offline\`, \`1 Quarantined\` · **Policy Gates:** \`14,839 Passing\`, \`691 Warning\`, \`67 Needs Triage\`, \`210 Release-Blocking\` · **24h Taint Trace Events:** \`1,001\``,
+      `- **Priority Release-Gate Violators:** \`payment-settlement-core\` (\`CWE-89 SQLi · 116 gates\`), \`identity-oauth-gateway\` (\`CWE-347 JWT · 97 gates\`), \`graphql-mobile-bff\` (\`CWE-918 SSRF · 85 gates\`), \`order-fulfillment-api\` (\`CWE-502 Deser · 68 gates\`), \`dynamic-rule-compiler\` (\`CWE-94 CodeGen · 58 gates\`), \`webhook-event-broker\` (\`CWE-78 CmdInj · 48 gates\`)`,
+      `### 4. Ledger 04 — \`xtrike-sast-cli v4.2.0-enterprise\` Installation & Engine Startup`,
+      `- **Ubuntu / Debian APT:**\n  - \`curl -fsSL https://05-sast-platform.vercel.app/api/xtrike-package?pkg=xtrike-sast-cli_4.2.0_amd64.deb -o xtrike-sast-cli_4.2.0_amd64.deb\`\n  - \`sudo apt install ./xtrike-sast-cli_4.2.0_amd64.deb\`\n  - **SHA-256:** \`3da7fe4b86a9e606b6a55bfba08a3b42fc4ac4e72df742989e89f9ef7c0e3282\``,
+      `- **Initialize PTES / NIST 800-115 Profile & Start All 4 AST Engines:**\n  \`\`\`bash\n  xtrike-sast --version\n  xtrike-sast init --profile ptes-nist-800-115\n  xtrike-sast daemon start --engines xql,deepflow,structsca,ast-query\n  # Starting xtrike-xql-parser...[OK] | xtrike-deepflow-ssa...[OK] | xtrike-structsca-7k...[OK] | xtrike-ast-dispatcher...[OK] | xtrike-proof-sandbox...[OK] | xtrike-mcp-bridge...[OK] | xtrike-noctis-sync...[OK]\n  \`\`\``,
     ].join("\n\n");
   }
 
@@ -541,7 +541,7 @@ export function sastIntelligenceGadget(question: string): string | null {
   if (!q) return null;
 
   const isSastQuery =
-    /\b(what\s+is\s+sast|how\s+does\s+sast\s+work|explain\s+sast|xtrike\s+sast|05-sast-platform|sast\s+platform|sast\s+desk|sast\s+repo|sast\s+repository|sast\s+engine|sast\s+plugin|plg-046|plg-054|codei-py-exec|codei-java-compiler|blindscript\.java|sqlinjectionlesson5a|taint\s+graph|canonical\s+proof\s+state|proof\s+engine|xtrike\s+xql|xtrike\s+deepflow|xtrike\s+structsca|sast\s+vs\s+dast|static\s+application\s+security\s+testing|cyber\s*kpi|16\.8k|710\s*hosts|15,?808|top\s*alerters|omd\s+version|omd\s+create|omd\s+start|2\.5\.0p17|resolute_amd64)\b/i.test(
+    /\b(what\s+is\s+sast|how\s+does\s+sast\s+work|explain\s+sast|xtrike\s+sast|05-sast-platform|sast\s+platform|sast\s+desk|sast\s+repo|sast\s+repository|sast\s+engine|sast\s+plugin|plg-046|plg-054|codei-py-exec|codei-java-compiler|blindscript\.java|sqlinjectionlesson5a|taint\s+graph|canonical\s+proof\s+state|proof\s+engine|xtrike\s+xql|xtrike\s+deepflow|xtrike\s+structsca|sast\s+vs\s+dast|static\s+application\s+security\s+testing|posture\s*kpi|posture\s*ledger|cyber\s*kpi|cyber\s*monitor|16\.8k|6\.4k|sink\s*sensor|sink\s*trigger|710\s*repo|710\s*node|15,?808|xtrike-sast-cli|4\.2\.0|ptes-nist-800-115)\b/i.test(
       q
     );
 
