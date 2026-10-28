@@ -11,6 +11,7 @@ import { automotiveDiagnosticGadget } from "./noctis-automotive-engine.ts";
 import { handleNaturalAutonomousTrainingQuery } from "./noctis-autonomous-trainer.ts";
 import { architectIntelligenceGadget } from "./noctis-architect-engine.ts";
 import { handleNaturalCyberSecurityQuery } from "./noctis-cyber-engine.ts";
+import { handleNaturalInvestmentQuery } from "./noctis-investment-engine.ts";
 
 export type AdaptiveResponseMode = "Direct" | "Teaching" | "Technical" | "Audit";
 
@@ -981,6 +982,12 @@ export function runFollowUpIntelligence(
   const architectResponse = architectIntelligenceGadget(currentQuestion);
   if (architectResponse) {
     return adaptSpecialistEngineOutput(currentQuestion, architectResponse, "NOCTIS-ARCH-001");
+  }
+
+  // 00a-0b. Noctis Research & Investment Intelligence Engine (NOCTIS-INVEST-001, Main Street & Wall Street, 12 Specialist Engines, Batch 001 & Working-Capital/Valuation/Risk Solver)
+  const investmentResponse = handleNaturalInvestmentQuery(currentQuestion);
+  if (investmentResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, investmentResponse, "NOCTIS-INVEST-001");
   }
 
   // 00a. Noctis Verified Professional Execution Layer, Independent Verification Engine, Tier-2 Adversarial Suite, 20 Advanced Systems, Workbench & Capability Registry
