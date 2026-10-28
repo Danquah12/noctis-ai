@@ -40,3 +40,14 @@ test("non-career questions are not hijacked", () => {
     assert.equal(handleNaturalCareerQuery(q), null, q);
   }
 });
+
+test("pay answers use official US wage data only for the US", () => {
+  const us = handleNaturalCareerQuery("How much does an electrician make?")!;
+  assert.match(us, /United States wage data/);
+  assert.match(us, /Bureau of Labor Statistics/);
+  const ca = handleNaturalCareerQuery("How much does a registered nurse make in Canada?")!;
+  assert.doesNotMatch(ca, /United States wage data/);
+  assert.doesNotMatch(ca, /\\\$\\d/);
+  const none = handleNaturalCareerQuery("How much does a dialysis technician make?")!;
+  assert.doesNotMatch(none, /\\\$\\d/);
+});

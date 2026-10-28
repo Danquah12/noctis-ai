@@ -5,6 +5,8 @@
  * No pay figures, fees or contacts are invented; where verified data is not held the answer says so and points to sources.
  */
 import { CAREER_PROFESSIONS } from "./noctis-career-professions-data.ts";
+import { SOC_MAP } from "./noctis-career-soc-map.ts";
+import { OEWS } from "./noctis-career-wages-data.ts";
 import { CAREER_REGIONS, type CareerRegion } from "./noctis-career-regions-data.ts";
 import { ENCLAVE_TEMPLATES, candidatePhrases, getPathway, norm, type PathwayRecord } from "./noctis-career-pathways.ts";
 
@@ -155,11 +157,42 @@ function renderCost(r: PathwayRecord, region: CareerRegion | null): string {
   ].join("\n") + foot(r, region, FOLLOW(r));
 }
 
+function usd(n?: number): string {
+  return typeof n === "number" ? `$${Math.round(n).toLocaleString("en-US")}` : "n/a";
+}
+
+function wageBlock(r: PathwayRecord, region: CareerRegion | null): string[] {
+  const m = SOC_MAP[r.profession_id];
+  const w = m ? OEWS[m[0]] : undefined;
+  if (region && region.code !== "US") {
+    return [
+      `Noctis has no verified pay data for ${region.name}, so it won't quote numbers there. Official US figures exist but do not apply outside the United States.`,
+      "",
+    ];
+  }
+  if (!m || !w) {
+    return [
+      "Noctis does not hold verified salary data for this role, so it won't quote numbers it can't stand behind. Pay varies by country, city, employer, experience, licence level and overtime or self-employment.",
+      "",
+    ];
+  }
+  const bits = [`**Median:** ${usd(w.median)}/year`];
+  if (w.p10 != null && w.p90 != null) bits.push(`**Typical range:** ${usd(w.p10)} (lowest 10%) to ${usd(w.p90)} (top 10%)`);
+  if (w.employment != null) bits.push(`**US jobs:** about ${w.employment.toLocaleString("en-US")}`);
+  return [
+    "## 💵 United States wage data (official)",
+    bits.join("  ·  "),
+    `_Source: US Bureau of Labor Statistics, Occupational Employment and Wage Statistics, national estimates (data year ${w.year}), occupation: “${m[1]}” (SOC ${m[0].slice(0, 2)}-${m[0].slice(2)}). This is the closest US occupation, not an exact match; figures are for the US only._`,
+    "",
+    "Pay in other countries differs a lot; ask for a region (for example “in Canada”) to see local guidance.",
+    "",
+  ];
+}
+
 function renderSalary(r: PathwayRecord, region: CareerRegion | null): string {
   return [
     head("Pay & earnings", r),
-    "Noctis does not hold verified salary data, so it won't quote numbers it can't stand behind. Pay for this role varies by country, city, employer, experience, licence level and overtime or self-employment.",
-    "",
+    ...wageBlock(r, region),
     "## 📊 Where to find reliable figures",
     "- Your national statistics or labour-ministry occupational pay surveys (US: BLS Occupational Outlook Handbook and O*NET OnLine).",
     "- Union or professional-association pay scales.",
