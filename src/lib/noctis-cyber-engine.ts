@@ -806,10 +806,10 @@ function parseCyberRequestedJsonContract(question: string): { keys: string[] } |
 }
 
 export function handleNaturalCyberSecurityQuery(question: string): string | null {
-  const vulnAnswer = handleNaturalVulnQuery(question);
-  if (vulnAnswer) return vulnAnswer;
   const apxAnswer = handleAttackPathAndExploitabilityQuery(question);
   if (apxAnswer) return apxAnswer;
+  const vulnAnswer = handleNaturalVulnQuery(question);
+  if (vulnAnswer) return vulnAnswer;
   if (!isCyberSecurityOrSocQuery(question)) return null;
 
   const t = extractCyberIncidentTelemetry(question);
