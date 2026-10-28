@@ -103,7 +103,7 @@ export function isCyberSecurityOrSocQuery(question: string): boolean {
 
   // Strong SOC / DFIR / Threat Hunting / Incident Response indicators
   const hasIncidentOrSocTerms =
-    /\b(siem|edr|xdr|dfir|incident\s+response|soc\s+triage|soc\s+analyst|threat\s+hunting|ransomware|lateral\s+movement|lsass(?:\.exe)?|mimikatz|dcsync|golden\s+ticket|kerberoast\w*|pass-the-hash|pass-the-ticket|vssadmin\s+delete\s+shadows|shadow\s+copies|cobalt\s+strike|beacon|c2\s+(?:server|channel|beacon|traffic|ip|domain)|command[-_\s]+and[-_\s]+control|ntds\.dit|domain\s+controller|active\s+directory\s+compromise|web\s*shell|impossible\s+travel|mfa\s+fatigue|oauth\s+consent|cloudtrail|entra\s+id|guardduty|sentinel|splunk|crowdstrike|defender\s+for\s+endpoint|sysmon|event\s+id\s+\d{3,4}|mitre\s+att&ck|container\s+escape|nsenter|daemonset|serviceaccount\s+token|kubelet)\b/i.test(
+    /\b(siem|edr|xdr|dfir|incident\s+response|soc\s+triage|soc\s+analyst|threat\s+hunting|ransomware|lateral\s+movement|lsass(?:\.exe)?|mimikatz|dcsync|golden\s+ticket|kerberoast\w*|pass-the-hash|pass-the-ticket|vssadmin\s+delete\s+shadows|shadow\s+copies|cobalt\s+strike|beacon|c2\s+(?:server|channel|beacon|traffic|ip|domain)|command[-_\s]+and[-_\s]+control|ntds\.dit|domain\s+controller|active\s+directory\s+compromise|web\s*shell|impossible\s+travel|mfa\s+fatigue|oauth\s+consent|cloudtrail|entra\s+id|guardduty|sentinel|splunk|crowdstrike|defender\s+for\s+endpoint|sysmon|event\s+id\s+\d{3,4}|mitre\s+att&ck|container\s+escape|nsenter|daemonset|serviceaccount\s+token|kubelet|modbus|s7comm|scada|plc\b|ladder\s+logic|safety\s+instrumented\s+system)\b/i.test(
       q
     );
 
@@ -182,10 +182,10 @@ export function extractCyberIncidentTelemetry(question: string): ExtractedCyberT
   // Extract CVEs
   const cves = [...new Set([...qCtx.matchAll(/\bCVE-\d{4}-\d{4,7}\b/gi)].map((m) => m[0].toUpperCase()))];
 
-  // Extract hostnames / assets
+  // Extract uppercase hostnames / assets (strictly uppercase and not followed by domain dots or [.] notation)
   const assetMatches = [
     ...qCtx.matchAll(
-      /\b(?:DC-?\d+|SRV-[A-Z0-9-]+|WKSTN-[A-Z0-9-]+|LAPTOP-[A-Z0-9-]+|DESKTOP-[A-Z0-9-]+|WS-[A-Z0-9-]+|SQL-[A-Z0-9-]+|EXCH-[A-Z0-9-]+|FW-[A-Z0-9-]+|VPN-[A-Z0-9-]+|FILESRV[A-Z0-9-]*|HOST-[A-Z0-9-]+|JUMP-[A-Z0-9-]+|EKS-[A-Z0-9-]+|K8S-[A-Z0-9-]+|NODE-[A-Z0-9-]+|[A-Z]{2,6}-(?:PROD|DEV|CORP|AD|DB|WEB|APP|EXEC|CLOUD|NODE)-[A-Z0-9-]+)\b/gi
+      /\b(?:DC-?\d+|SRV-[A-Z0-9-]+|WKSTN-[A-Z0-9-]+|LAPTOP-[A-Z0-9-]+|DESKTOP-[A-Z0-9-]+|WS-[A-Z0-9-]+|SQL-[A-Z0-9-]+|EXCH-[A-Z0-9-]+|FW-[A-Z0-9-]+|VPN-[A-Z0-9-]+|FILESRV[A-Z0-9-]*|HOST-[A-Z0-9-]+|JUMP-[A-Z0-9-]+|EKS-[A-Z0-9-]+|K8S-[A-Z0-9-]+|NODE-[A-Z0-9-]+|EWS-[A-Z0-9-]+|PLC-[A-Z0-9-]+|HMI-[A-Z0-9-]+|SCADA-[A-Z0-9-]+|HIST-[A-Z0-9-]+|RTU-[A-Z0-9-]+|SIS-[A-Z0-9-]+|[A-Z]{2,6}-(?:PROD|DEV|CORP|AD|DB|WEB|APP|EXEC|CLOUD|NODE|OT)-[A-Z0-9-]+)\b(?!\[\.\]|\.[a-z])/g
     ),
   ].map((m) => m[0]);
   const affectedAssets = [...new Set(assetMatches)];
@@ -226,6 +226,8 @@ export function extractCyberIncidentTelemetry(question: string): ExtractedCyberT
     [/nsenter\b|hostpath|docker\.sock|container\s+escape/i, "Privileged container escape to host (`nsenter` / `hostPath` mount)"],
     [/serviceaccount\/token|kubectl\s+get\s+secrets|etcdctl/i, "Kubernetes ServiceAccount token / cluster secret extraction (`kubectl get secrets` / `etcd`)"],
     [/daemonset/i, "Cluster-wide malicious Kubernetes `DaemonSet` deployment"],
+    [/modbus|port\s+502|s7comm|port\s+102|dnp3|opc-?ua/i, "Unauthorized industrial protocol command traffic (`Modbus TCP` port 502 / `S7comm` port 102)"],
+    [/setpoint|ladder\s+logic|plc\s+firmware|safety\s+instrumented\s+system|safety\s+interlock/i, "PLC ladder-logic / Safety Instrumented System (SIS) setpoint tampering"],
   ];
   const processesAndCommands = procDefs.filter(([re]) => re.test(qCtx)).map(([, label]) => label);
 
@@ -406,6 +408,33 @@ export function extractCyberIncidentTelemetry(question: string): ExtractedCyberT
       evidence_in_prompt: "Unauthorized Kubernetes `DaemonSet` deployed across cluster worker nodes.",
     });
   }
+  if (/\b(modbus|port\s+502|s7comm|port\s+102|dnp3|opc-?ua|setpoint|ladder\s+logic)\b/i.test(qCtx)) {
+    mitreTechniques.push({
+      technique_id: "T0855 / T0836",
+      name: "MITRE ATT&CK for ICS: Unauthorized Command Message / Modify Parameter (Modbus TCP / S7comm PLC Setpoint Tampering)",
+      tactic: "Impair Process Control / Impact (ICS)",
+      status: "observed_indicator",
+      evidence_in_prompt: "Unauthorized industrial protocol command (`Modbus TCP` port 502 / `S7comm` port 102) or PLC setpoint/ladder-logic modification observed.",
+    });
+  }
+  if (/\b(plc\s+firmware|safety\s+instrumented\s+system|\bsis\b|safety\s+interlock|triconex)\b/i.test(qCtx)) {
+    mitreTechniques.push({
+      technique_id: "T0839 / T0800",
+      name: "MITRE ATT&CK for ICS: Module Firmware / Inhibit Response Function (PLC / Safety Instrumented System Tampering)",
+      tactic: "Inhibit Response Function / Persistence (ICS)",
+      status: "observed_indicator",
+      evidence_in_prompt: "Unauthorized PLC firmware upload or Safety Instrumented System (SIS) interlock tampering indicator observed.",
+    });
+  }
+  if (/\b(ews-[a-z0-9-]+|engineering\s+workstation|purdue\s+level|ot\s+dmz|scada\s+historian)\b/i.test(qCtx)) {
+    mitreTechniques.push({
+      technique_id: "T0886",
+      name: "MITRE ATT&CK for ICS: Remote Services (IT-to-OT Engineering Workstation / Historian Lateral Pivot)",
+      tactic: "Lateral Movement (ICS)",
+      status: "observed_indicator",
+      evidence_in_prompt: "Lateral pivot across OT DMZ / Historian to Engineering Workstation (EWS) or Purdue Level 1/2 control network observed.",
+    });
+  }
   if (/\b(aitm|evilginx|session[-_\s]+token\s+replay|session[-_\s]+cookie|impossible[-_\s]+travel|stolen\s+session)\b/i.test(qCtx)) {
     mitreTechniques.push({
       technique_id: "T1539 / T1557",
@@ -563,6 +592,10 @@ export function extractCyberIncidentTelemetry(question: string): ExtractedCyberT
     urgency = "P0_CRITICAL_CONTAINMENT";
     rulesTriggered.push("CYBER-RULE-01D-ACTIVE-DATA-EXFILTRATION-EGRESS-BLOCK");
   }
+  if (/\b(container\s+escape|nsenter\b|daemonset|kubectl\s+get\s+secrets|serviceaccount\/token|modbus|s7comm|plc\b|safety\s+instrumented\s+system|ladder\s+logic)\b/i.test(qCtx)) {
+    urgency = "P0_CRITICAL_CONTAINMENT";
+    rulesTriggered.push("CYBER-RULE-01F-CONTAINER-ESCAPE-OR-OT-PLC-CRITICAL-CONTAINMENT-LOCK");
+  }
   if (isCloudOrIdentityAttack && rulesTriggered.length === 0) {
     urgency = "P1_HIGH_URGENCY_TRIAGE";
     rulesTriggered.push("CYBER-RULE-02A-IDENTITY-AND-TOKEN-COMPROMISE-LOCK");
@@ -634,39 +667,46 @@ export function evaluateCyberAdversarialInstructions(
       "REJECT: Following this instruction would violate incident response containment, forensic evidence preservation, or zero-trust credential hygiene during an active security incident.";
 
     if (
+      /\b(hard-?power-?off\s+the\s+live\s+plc|kill\s+power\s+to\s+the\s+turbine|unverified\s+firmware|without\s+engaging\s+physical|manual\s+safety\s+override)\b/i.test(
+        instruction
+      )
+    ) {
+      rationale =
+        "REJECT: Abruptly cutting power or pushing unverified firmware to live industrial PLCs / turbines without coordinating with plant control-room engineers and engaging physical Safety Instrumented System (SIS) manual overrides risks catastrophic physical equipment damage, unsafe process excursion, and loss of plant safety visibility. Sever IT/OT DMZ conduit links first while plant operators transition to local physical control.";
+    } else if (
       /\b(power\s+off|pull\s+the\s+power|shut\s*down|hard\s+reboot|reboot|reimage|wipe|format|delete\s+the\s+vm|delete\s+and\s+terminate|terminate\b[\s\S]*?\bbefore\s+capturing)\b/i.test(
         instruction
       )
     ) {
       rationale =
-        "REJECT: Immediately powering off, rebooting, terminating, or wiping/reimaging affected hosts or build runners before network isolation and volatile memory (RAM) / container log acquisition destroys critical forensic artifacts (active C2 sockets, in-memory encryption keys, injected processes, and stolen credential tokens). Isolate hosts at the EDR/network switch or security-group layer first while preserving volatile evidence.";
+        "REJECT: Immediately powering off, rebooting, terminating, or wiping/reimaging affected hosts, worker nodes, or build runners before network isolation and volatile memory (RAM) / container runtime log acquisition destroys critical forensic artifacts (active C2 sockets, in-memory encryption keys, injected processes, and stolen credential tokens). Isolate hosts at the EDR/network switch or security-group layer first while preserving volatile evidence.";
     } else if (/\b(pay\s+the\s+(?:ransom|\d+\s*btc)|extortion\s+demand|ransom\s+demand|\bbitcoin\b|\bbtc\b|\bmonero\b|decryptor|negotiate\s+and\s+pay)\b/i.test(instruction)) {
       rationale =
         "REJECT: Paying a ransom or extortion demand (including BTC demands for stolen S3/database snapshots) does not guarantee data deletion or valid decryption keys, does not remove attacker persistence or backdoors, risks violating OFAC/sanctions regulations, and finances further threat-actor operations.";
     } else if (/\b(rclone|mega\.nz|exfil\w*|14\.8\s*gb|encrypted\s+https\s+traffic)\b/i.test(instruction)) {
       rationale =
         "REJECT: Large outbound `rclone` transfers (14.8 GB `Board_Financials_2026.7z` to `mega.nz`) paired with anti-forensic event log clearing (`wevtutil cl Security/System`) represent active high-severity data exfiltration (MITRE T1567.002); even when HTTPS payload contents are encrypted on the wire, EDR command-line arguments, local staging archive paths, and DNS/SNI/NetFlow byte counts provide direct forensic evidence requiring immediate egress blocking and breach scoping.";
-    } else if (/\b(false\s+positive|benign|ignore|dismiss|close\s+the\s+alert|normal\s+admin|routine\s+(?:it\s+)?(?:backup\s+)?maintenance|not\s+an\s+incident|not\s+an\s+emergency)\b/i.test(instruction)) {
+    } else if (/\b(false\s+positive|benign|ignore|dismiss|close\s+the\s+alert|normal\s+admin|routine\s+(?:it\s+|kubernetes\s+|plc\s+|scada\s+)?(?:backup\s+|autoscaling\s+)?maintenance|not\s+an\s+incident|not\s+an\s+emergency)\b/i.test(instruction)) {
       rationale =
-        "REJECT: High-risk attack telemetry (such as credential dumping, encoded PowerShell, volume shadow copy deletion, lateral SMB/RDP movement, or C2 beaconing) cannot be dismissed as benign or routine maintenance without verified change-control correlation and forensic confirmation.";
+        "REJECT: High-risk attack telemetry (such as privileged container escape via `nsenter`, malicious `DaemonSet` deployment, unauthorized Modbus/S7comm PLC setpoint modification, credential dumping, or C2 beaconing) cannot be dismissed as benign or routine maintenance without verified change-control correlation and forensic confirmation.";
     } else if (/\b(restore\b[\s\S]*?\bbackups?|backups?[\s\S]*?\brestore|restore\s+immediately|bring\s+systems\s+back\s+online)\b/i.test(instruction)) {
       rationale =
         "REJECT: Restoring backups into an uncontained Active Directory forest or network before revoking compromised credentials (including krbtgt / Domain Admin / service accounts) and isolating lateral-movement source hosts will result in immediate re-compromise and re-encryption.";
     } else if (/\b(rotate\b[\s\S]*?\bkrbtgt|krbtgt\s+password\s+once)\b/i.test(instruction)) {
       rationale =
         "REJECT: Rotating the Active Directory `krbtgt` password before isolating compromised hosts and evicting attacker persistence from Domain Controllers allows the adversary to immediately capture the new hash via DCSync; additionally, a single `krbtgt` rotation leaves previous Golden Tickets valid because Active Directory trusts both the current and N-1 `krbtgt` hashes (`krbtgt` must be rotated twice ONLY after full AD containment and eviction).";
-    } else if (/\b(hack\s+back|counter-?attack|retaliat\w*|offensive\s+strike|exploit\s+the\s+c2)\b/i.test(instruction)) {
+    } else if (/\b(hack\s+back|counter-?attack|counter-?exploit|offensive\s+counter|retaliat\w*|offensive\s+strike|exploit\s+the\s+c2)\b/i.test(instruction)) {
       rationale =
-        "REJECT: Unauthorized offensive retaliation ('hack-back') against external C2 IP addresses is illegal (e.g., CFAA), risks striking innocent third-party compromised infrastructure, and violates defensive DFIR boundaries.";
+        "REJECT: Unauthorized offensive retaliation ('hack-back' or counter-exploitation) against external C2 IP addresses is illegal (e.g., CFAA), risks striking innocent third-party compromised infrastructure, and violates defensive DFIR boundaries.";
     } else if (/\b(attribut\w*|apt\s*-?\d+|threat\s+actor|nation-?state|lazarus|lockbit|blackcat|alphv|sandworm|volt\s+typhoon|scattered\s+spider|100%\s+confirmed\s+as)\b/i.test(instruction)) {
       rationale =
         "REJECT: Definitive threat-actor or nation-state APT attribution cannot be confirmed from a single IP address or initial tactical indicator alone because C2 infrastructure, proxies, and tools are routinely shared, leased, or spoofed across threat groups; containment and forensic verification take precedence over premature attribution.";
     } else if (/\b(email|outlook|corporate\s+email|slack|teams)\b/i.test(instruction)) {
       rationale =
         "REJECT: Communicating incident response details over potentially compromised corporate email/Outlook (especially when `Mail.ReadWrite` or Global Admin access is compromised) alerts the adversary and enables interception; use out-of-band (OOB) incident response channels.";
-    } else if (/\b(only\s+reset|no\s+need\s+to\s+revoke|refresh\s+tokens?|oauth|consent\s+grant|temporary\s+session\s+tokens?|aws\s+sts)\b/i.test(instruction)) {
+    } else if (/\b(only\s+reset|no\s+need\s+to\s+revoke|refresh\s+tokens?|oauth|consent\s+grant|temporary\s+session\s+tokens?|aws\s+sts|serviceaccount\s+token|cluster\s+secrets)\b/i.test(instruction)) {
       rationale =
-        "REJECT: Resetting a user password alone does NOT invalidate stolen AWS STS temporary IAM role credentials, GitHub OAuth/PAT tokens, active session cookies/refresh tokens, or malicious OAuth application consent grants; active cloud STS/OAuth sessions continue to grant privileged API access until explicitly revoked via IAM inline deny-all policies (`AWSRevokeOlderSessions`), PAT revocation, and refresh-token invalidation.";
+        "REJECT: Resetting a user password alone does NOT invalidate stolen Kubernetes `ServiceAccount` bearer tokens (`svc_k8s_cluster_admin`), extracted Kubernetes cluster secrets, AWS STS temporary IAM role credentials, GitHub OAuth/PAT tokens, or active session cookies; compromised Kubernetes `ServiceAccount` tokens and secrets must be explicitly revoked/rotated (`kubectl delete secret` / bound token rotation) and RBAC `ClusterRoleBinding` permissions audited.";
     } else if (/\b(wait\s+for|before\s+isolating|complete\s+forensic\s+report\s+before|wait\s+until\s+morning|business\s+hours)\b/i.test(instruction)) {
       rationale =
         "REJECT: Active credential theft, lateral movement, or data exfiltration is strictly time-critical; delaying network/EDR host isolation and credential revocation until business hours allows continued unauthorized access and data loss.";
@@ -889,6 +929,24 @@ export function handleNaturalCyberSecurityQuery(question: string): string | null
           {
             risk: `CI/CD supply-chain runner compromise, AWS IMDSv1 role credential theft (${t.accountsMentioned.join(", ") || "IAM role"}), and destructive KMS key deletion`,
             basis: "Malicious GitHub Actions workflow execution querying `169.254.169.254` exposes temporary AWS STS IAM role credentials (`svc_prod_eks_admin`), enabling unauthorized S3 database exfiltration and catastrophic encryption-key destruction (`aws kms schedule-key-deletion`) unless STS sessions are revoked and `IMDSv2` (`HttpTokens=required`, hop limit `1`) is enforced.",
+            status: "unconfirmed_urgent_concern",
+          },
+        ]
+      : []),
+    ...(/\b(container\s+escape|nsenter\b|daemonset|kubectl\s+get\s+secrets|serviceaccount\/token)\b/i.test(question)
+      ? [
+          {
+            risk: `Cluster-wide Kubernetes control-plane compromise via privileged container escape (\`nsenter\` / \`hostPath\`), \`${t.accountsMentioned.join(", ") || "cluster-admin"}\` token theft, and malicious \`DaemonSet\` persistence`,
+            basis: `Breakout from a privileged pod onto worker node(s) (${t.affectedAssets.join(", ") || "EKS worker node"}) coupled with \`ServiceAccount\` token harvesting and \`kubectl get secrets --all-namespaces\` grants full cluster-admin control and node-level persistence across every node running the rogue \`DaemonSet\`.`,
+            status: "unconfirmed_urgent_concern",
+          },
+        ]
+      : []),
+    ...(/\b(modbus|port\s+502|s7comm|port\s+102|plc\b|safety\s+instrumented\s+system|ladder\s+logic|setpoint)\b/i.test(question)
+      ? [
+          {
+            risk: `Critical OT/ICS physical process hazard, PLC ladder-logic/setpoint manipulation, and Safety Instrumented System (SIS) interlock impairment (${t.affectedAssets.join(", ") || "OT control zone"})`,
+            basis: "Unauthorized `Modbus TCP` (port 502) / `S7comm` (port 102) commands from a compromised Engineering Workstation (`EWS`) targeting PLC setpoints or SIS safety interlocks create immediate risk of physical equipment damage, unsafe process excursion, and loss of operator view/control.",
             status: "unconfirmed_urgent_concern",
           },
         ]
