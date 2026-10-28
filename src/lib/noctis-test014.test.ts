@@ -389,7 +389,8 @@ Return ONLY a valid JSON object with these top-level keys:
     assert.deepEqual(j.release_blocking_failures, []);
   });
 
-  it("executes NOCTIS-CYBER-LIVE-002 (Cloud Identity AiTM Token Replay, OAuth Consent Persistence & Rclone Exfiltration) with bulleted JSON contract keys", () => {
+  it("executes NOCTIS-CYBER-LIVE-002 (Cloud Identity AiTM Token Replay, OAuth Consent Persistence & Rclone Exfiltration) with bulleted JSON contract keys", async () => {
+    const { handleNaturalCyberSecurityQuery } = await import("./noctis-cyber-engine");
     const CYBER_TEST_002 = `TEST ID: NOCTIS-CYBER-LIVE-002
 
 SCENARIO:
