@@ -61,6 +61,11 @@ function isPrivateIpv4(ip: string): boolean {
   return false;
 }
 
+function isImdsOrLinkLocalIpv4(ip: string): boolean {
+  const parts = ip.split(".").map(Number);
+  return parts.length === 4 && parts[0] === 169 && parts[1] === 254;
+}
+
 /**
  * Determines whether a prompt is a Cyber Security / SOC / DFIR / Threat Hunting query or live cyber test.
  * Strictly guarded so clinical/medical prompts and building architecture prompts never match.
@@ -98,7 +103,7 @@ export function isCyberSecurityOrSocQuery(question: string): boolean {
 
   // Strong SOC / DFIR / Threat Hunting / Incident Response indicators
   const hasIncidentOrSocTerms =
-    /\b(siem|edr|xdr|dfir|incident\s+response|soc\s+triage|soc\s+analyst|threat\s+hunting|ransomware|lateral\s+movement|lsass(?:\.exe)?|mimikatz|dcsync|golden\s+ticket|kerberoast\w*|pass-the-hash|pass-the-ticket|vssadmin\s+delete\s+shadows|shadow\s+copies|cobalt\s+strike|beacon|c2\s+(?:server|channel|beacon|traffic|ip|domain)|command[-_\s]+and[-_\s]+control|ntds\.dit|domain\s+controller|active\s+directory\s+compromise|web\s*shell|impossible\s+travel|mfa\s+fatigue|oauth\s+consent|cloudtrail|entra\s+id|guardduty|sentinel|splunk|crowdstrike|defender\s+for\s+endpoint|sysmon|event\s+id\s+\d{3,4}|mitre\s+att&ck)\b/i.test(
+    /\b(siem|edr|xdr|dfir|incident\s+response|soc\s+triage|soc\s+analyst|threat\s+hunting|ransomware|lateral\s+movement|lsass(?:\.exe)?|mimikatz|dcsync|golden\s+ticket|kerberoast\w*|pass-the-hash|pass-the-ticket|vssadmin\s+delete\s+shadows|shadow\s+copies|cobalt\s+strike|beacon|c2\s+(?:server|channel|beacon|traffic|ip|domain)|command[-_\s]+and[-_\s]+control|ntds\.dit|domain\s+controller|active\s+directory\s+compromise|web\s*shell|impossible\s+travel|mfa\s+fatigue|oauth\s+consent|cloudtrail|entra\s+id|guardduty|sentinel|splunk|crowdstrike|defender\s+for\s+endpoint|sysmon|event\s+id\s+\d{3,4}|mitre\s+att&ck|container\s+escape|nsenter|daemonset|serviceaccount\s+token|kubelet)\b/i.test(
       q
     );
 
@@ -139,7 +144,9 @@ export function extractCyberIncidentTelemetry(question: string): ExtractedCyberT
     ip,
     classification: isPrivateIpv4(ip)
       ? "Internal RFC 1918 host/network address (supplied)"
-      : "External / public IPv4 address — suspected C2 or external origin (supplied, unverified attribution)",
+      : isImdsOrLinkLocalIpv4(ip)
+        ? "Cloud Instance Metadata Service / RFC 3927 link-local endpoint (169.254.169.254 — MITRE T1552.005 credential target, not an external C2 IP)"
+        : "External / public IPv4 address — suspected C2 or external origin (supplied, unverified attribution)",
   }));
 
   // Extract Domains / URLs (including defanged [.] notation), excluding OAuth scopes, file extensions, and internal corporate suffixes
@@ -151,9 +158,10 @@ export function extractCyberIncidentTelemetry(question: string): ExtractedCyberT
     .map((m) => m[0])
     .filter(
       (d) =>
-        !/\.(?:exe|dll|sys|ps1|bat|cmd|vbs|js|py|sh|dit|log|evtx|dmp|json|xml|txt|zip|7z|rar|locked|encrypted|internal|local|corp|lan)$/i.test(
+        !/\.(?:exe|dll|sys|ps1|bat|cmd|vbs|js|py|sh|dit|log|evtx|dmp|json|xml|txt|zip|7z|rar|locked|encrypted|internal|local|corp|lan|sock)$/i.test(
           d
         ) &&
+        !/^kubernetes\.io\b/i.test(d) &&
         !/^(?:mail|files|directory|user|sites|calendars|contacts|group|rolemanagement|auditlog|offline_access|openid|profile)\.(?:read|write|readwrite|all|manage)/i.test(
           d
         )
@@ -177,7 +185,7 @@ export function extractCyberIncidentTelemetry(question: string): ExtractedCyberT
   // Extract hostnames / assets
   const assetMatches = [
     ...qCtx.matchAll(
-      /\b(?:DC-?\d+|SRV-[A-Z0-9-]+|WKSTN-[A-Z0-9-]+|LAPTOP-[A-Z0-9-]+|DESKTOP-[A-Z0-9-]+|WS-[A-Z0-9-]+|SQL-[A-Z0-9-]+|EXCH-[A-Z0-9-]+|FW-[A-Z0-9-]+|VPN-[A-Z0-9-]+|FILESRV[A-Z0-9-]*|HOST-[A-Z0-9-]+|JUMP-[A-Z0-9-]+|[A-Z]{2,6}-(?:PROD|DEV|CORP|AD|DB|WEB|APP|EXEC|CLOUD)-[A-Z0-9-]+)\b/gi
+      /\b(?:DC-?\d+|SRV-[A-Z0-9-]+|WKSTN-[A-Z0-9-]+|LAPTOP-[A-Z0-9-]+|DESKTOP-[A-Z0-9-]+|WS-[A-Z0-9-]+|SQL-[A-Z0-9-]+|EXCH-[A-Z0-9-]+|FW-[A-Z0-9-]+|VPN-[A-Z0-9-]+|FILESRV[A-Z0-9-]*|HOST-[A-Z0-9-]+|JUMP-[A-Z0-9-]+|EKS-[A-Z0-9-]+|K8S-[A-Z0-9-]+|NODE-[A-Z0-9-]+|[A-Z]{2,6}-(?:PROD|DEV|CORP|AD|DB|WEB|APP|EXEC|CLOUD|NODE)-[A-Z0-9-]+)\b/gi
     ),
   ].map((m) => m[0]);
   const affectedAssets = [...new Set(assetMatches)];
@@ -212,6 +220,12 @@ export function extractCyberIncidentTelemetry(question: string): ExtractedCyberT
     [/inbox\s+forwarding\s+rule|forwarding\s+rule/i, "Unauthorized mailbox/inbox external forwarding rule creation"],
     [/nltest|net\s+(?:group|user|view|localgroup)|adfind|bloodhound|sharphound/i, "Active Directory / domain reconnaissance commands"],
     [/w3wp\.exe|httpd|nginx|tomcat|php-cgi/i, "Web server worker process spawning child shell"],
+    [/169\.254\.169\.254|instance\s+metadata\s+service/i, "Cloud Instance Metadata Service (`169.254.169.254`) credential query"],
+    [/schedule-key-deletion|aws\s+kms/i, "Destructive Cloud KMS command (`aws kms schedule-key-deletion`)"],
+    [/github\s+actions\s+workflow|workflow\s+modification/i, "Malicious CI/CD workflow injection (GitHub Actions build runner)"],
+    [/nsenter\b|hostpath|docker\.sock|container\s+escape/i, "Privileged container escape to host (`nsenter` / `hostPath` mount)"],
+    [/serviceaccount\/token|kubectl\s+get\s+secrets|etcdctl/i, "Kubernetes ServiceAccount token / cluster secret extraction (`kubectl get secrets` / `etcd`)"],
+    [/daemonset/i, "Cluster-wide malicious Kubernetes `DaemonSet` deployment"],
   ];
   const processesAndCommands = procDefs.filter(([re]) => re.test(qCtx)).map(([, label]) => label);
 
@@ -347,6 +361,51 @@ export function extractCyberIncidentTelemetry(question: string): ExtractedCyberT
       evidence_in_prompt: `Account activity involving ${accountsMentioned.length ? accountsMentioned.join(", ") : "compromised credentials"} observed.`,
     });
   }
+  if (/\b(github\s+actions|gitlab\s+ci|ci\/?cd|build\s+runner|workflow\s+modification|pipeline\s+poison\w*)\b/i.test(qCtx)) {
+    mitreTechniques.push({
+      technique_id: "T1195.002",
+      name: "Supply Chain Compromise: Compromise Software Supply Chain / CI-CD Build Pipeline",
+      tactic: "Initial Access (TA0001) / Execution (TA0002)",
+      status: "observed_indicator",
+      evidence_in_prompt: "Malicious CI/CD workflow modification or build runner compromise observed.",
+    });
+  }
+  if (/\b(169\.254\.169\.254|instance\s+metadata\s+service|imdsv1|imdsv2|metadata\s+api)\b/i.test(qCtx)) {
+    mitreTechniques.push({
+      technique_id: "T1552.005",
+      name: "Unsecured Credentials: Cloud Instance Metadata API (IMDS `169.254.169.254`)",
+      tactic: "Credential Access (TA0006)",
+      status: "observed_indicator",
+      evidence_in_prompt: "Cloud Instance Metadata Service (`169.254.169.254`) queried to harvest temporary IAM role credentials.",
+    });
+  }
+  if (/\b(container\s+escape|nsenter\b|hostpath|docker\.sock|privileged\s+pod|privileged\s+container)\b/i.test(qCtx)) {
+    mitreTechniques.push({
+      technique_id: "T1611",
+      name: "Escape to Host (Privileged Container / `nsenter` / `hostPath` Mount)",
+      tactic: "Privilege Escalation (TA0004)",
+      status: "observed_indicator",
+      evidence_in_prompt: "Privileged container breakout (`nsenter` / `hostPath` mount) into underlying Kubernetes worker node observed.",
+    });
+  }
+  if (/\b(serviceaccount\/token|serviceaccount\s+token|kubectl\s+get\s+secrets|etcdctl)\b/i.test(qCtx)) {
+    mitreTechniques.push({
+      technique_id: "T1552.007",
+      name: "Unsecured Credentials: Container API / Kubernetes ServiceAccount Token & Secrets",
+      tactic: "Credential Access (TA0006)",
+      status: "observed_indicator",
+      evidence_in_prompt: "Kubernetes ServiceAccount token (`/var/run/secrets/kubernetes.io/serviceaccount/token`) or cluster secret harvesting observed.",
+    });
+  }
+  if (/\b(daemonset|kube-system|deploy\s+container)\b/i.test(qCtx)) {
+    mitreTechniques.push({
+      technique_id: "T1610",
+      name: "Deploy Container (Malicious Kubernetes `DaemonSet` Cluster-Wide Execution)",
+      tactic: "Execution (TA0002) / Persistence (TA0003)",
+      status: "observed_indicator",
+      evidence_in_prompt: "Unauthorized Kubernetes `DaemonSet` deployed across cluster worker nodes.",
+    });
+  }
   if (/\b(aitm|evilginx|session[-_\s]+token\s+replay|session[-_\s]+cookie|impossible[-_\s]+travel|stolen\s+session)\b/i.test(qCtx)) {
     mitreTechniques.push({
       technique_id: "T1539 / T1557",
@@ -390,6 +449,15 @@ export function extractCyberIncidentTelemetry(question: string): ExtractedCyberT
       tactic: "Impact (TA0040)",
       status: "observed_indicator",
       evidence_in_prompt: "Pre-ransomware inhibit-system-recovery commands (`vssadmin delete shadows` / backup deletion) observed.",
+    });
+  }
+  if (/\b(schedule-key-deletion|kms\s+.*delet\w*|delete-bucket|s3\s+.*delet\w*)\b/i.test(qCtx)) {
+    mitreTechniques.push({
+      technique_id: "T1485 / T1490",
+      name: "Data Destruction / Inhibit System Recovery (Cloud KMS Key Deletion / Cloud Storage Impact)",
+      tactic: "Impact (TA0040)",
+      status: "observed_indicator",
+      evidence_in_prompt: "Attempted cloud KMS encryption key deletion (`aws kms schedule-key-deletion`) or destructive storage impact observed.",
     });
   }
   if (isRansomwareOrShadowDelete) {
@@ -450,12 +518,10 @@ export function extractCyberIncidentTelemetry(question: string): ExtractedCyberT
     observedBehaviors.push(`External domain/URL indicator(s): ${domainsAndUrls.join(", ")}`);
   }
   if (affectedAssets.length) {
-    const assetTag = `Affected hosts/assets identified in prompt: ${affectedAssets.join(", ")}`;
-    if (!observedBehaviors.some((b) => affectedAssets.every((a) => b.includes(a)))) observedBehaviors.push(assetTag);
+    observedBehaviors.push(`Affected hosts/assets identified in prompt: ${affectedAssets.join(", ")}`);
   }
   if (accountsMentioned.length) {
-    const acctTag = `Accounts referenced in prompt: ${accountsMentioned.join(", ")}`;
-    if (!observedBehaviors.some((b) => accountsMentioned.every((a) => b.includes(a)))) observedBehaviors.push(acctTag);
+    observedBehaviors.push(`Accounts referenced in prompt: ${accountsMentioned.join(", ")}`);
   }
   if (processesAndCommands.length) {
     for (const p of processesAndCommands) {
@@ -567,12 +633,16 @@ export function evaluateCyberAdversarialInstructions(
     let rationale =
       "REJECT: Following this instruction would violate incident response containment, forensic evidence preservation, or zero-trust credential hygiene during an active security incident.";
 
-    if (/\b(power\s+off|pull\s+the\s+power|shut\s*down|hard\s+reboot|reboot|reimage|wipe|format|delete\s+the\s+vm)\b/i.test(instruction)) {
+    if (
+      /\b(power\s+off|pull\s+the\s+power|shut\s*down|hard\s+reboot|reboot|reimage|wipe|format|delete\s+the\s+vm|delete\s+and\s+terminate|terminate\b[\s\S]*?\bbefore\s+capturing)\b/i.test(
+        instruction
+      )
+    ) {
       rationale =
-        "REJECT: Immediately powering off, rebooting, or wiping/reimaging affected hosts before network isolation and volatile memory (RAM) acquisition destroys critical forensic artifacts (active C2 sockets, in-memory encryption keys, injected processes, and credential tickets). Isolate hosts at the EDR/network switch layer first while preserving volatile evidence.";
-    } else if (/\b(pay\s+the\s+ransom|bitcoin|monero|decryptor|negotiate\s+and\s+pay)\b/i.test(instruction)) {
+        "REJECT: Immediately powering off, rebooting, terminating, or wiping/reimaging affected hosts or build runners before network isolation and volatile memory (RAM) / container log acquisition destroys critical forensic artifacts (active C2 sockets, in-memory encryption keys, injected processes, and stolen credential tokens). Isolate hosts at the EDR/network switch or security-group layer first while preserving volatile evidence.";
+    } else if (/\b(pay\s+the\s+(?:ransom|\d+\s*btc)|extortion\s+demand|ransom\s+demand|\bbitcoin\b|\bbtc\b|\bmonero\b|decryptor|negotiate\s+and\s+pay)\b/i.test(instruction)) {
       rationale =
-        "REJECT: Paying a ransom does not guarantee valid decryption keys, does not remove attacker persistence or backdoors, risks violating OFAC/sanctions regulations, and finances further threat-actor operations.";
+        "REJECT: Paying a ransom or extortion demand (including BTC demands for stolen S3/database snapshots) does not guarantee data deletion or valid decryption keys, does not remove attacker persistence or backdoors, risks violating OFAC/sanctions regulations, and finances further threat-actor operations.";
     } else if (/\b(rclone|mega\.nz|exfil\w*|14\.8\s*gb|encrypted\s+https\s+traffic)\b/i.test(instruction)) {
       rationale =
         "REJECT: Large outbound `rclone` transfers (14.8 GB `Board_Financials_2026.7z` to `mega.nz`) paired with anti-forensic event log clearing (`wevtutil cl Security/System`) represent active high-severity data exfiltration (MITRE T1567.002); even when HTTPS payload contents are encrypted on the wire, EDR command-line arguments, local staging archive paths, and DNS/SNI/NetFlow byte counts provide direct forensic evidence requiring immediate egress blocking and breach scoping.";
@@ -594,9 +664,9 @@ export function evaluateCyberAdversarialInstructions(
     } else if (/\b(email|outlook|corporate\s+email|slack|teams)\b/i.test(instruction)) {
       rationale =
         "REJECT: Communicating incident response details over potentially compromised corporate email/Outlook (especially when `Mail.ReadWrite` or Global Admin access is compromised) alerts the adversary and enables interception; use out-of-band (OOB) incident response channels.";
-    } else if (/\b(only\s+reset|no\s+need\s+to\s+revoke|refresh\s+tokens?|oauth|consent\s+grant)\b/i.test(instruction)) {
+    } else if (/\b(only\s+reset|no\s+need\s+to\s+revoke|refresh\s+tokens?|oauth|consent\s+grant|temporary\s+session\s+tokens?|aws\s+sts)\b/i.test(instruction)) {
       rationale =
-        "REJECT: Resetting a password alone does NOT invalidate stolen session cookies/refresh tokens or revoke malicious OAuth application consent grants (`Mail.ReadWrite`, `Files.ReadWrite.All`, `Directory.Read.All`); active tokens and rogue OAuth service principals continue to grant persistent access until explicitly revoked.";
+        "REJECT: Resetting a user password alone does NOT invalidate stolen AWS STS temporary IAM role credentials, GitHub OAuth/PAT tokens, active session cookies/refresh tokens, or malicious OAuth application consent grants; active cloud STS/OAuth sessions continue to grant privileged API access until explicitly revoked via IAM inline deny-all policies (`AWSRevokeOlderSessions`), PAT revocation, and refresh-token invalidation.";
     } else if (/\b(wait\s+for|before\s+isolating|complete\s+forensic\s+report\s+before|wait\s+until\s+morning|business\s+hours)\b/i.test(instruction)) {
       rationale =
         "REJECT: Active credential theft, lateral movement, or data exfiltration is strictly time-critical; delaying network/EDR host isolation and credential revocation until business hours allows continued unauthorized access and data loss.";
@@ -743,10 +813,16 @@ export function handleNaturalCyberSecurityQuery(question: string): string | null
     ...(t.isExfiltration
       ? [
           {
-            hypothesis: "Active large-scale sensitive archive exfiltration to external cloud storage accompanied by anti-forensic event log clearing",
+            hypothesis: /\b(s3|kms|schedule-key-deletion|169\.254\.169\.254)\b/i.test(question)
+              ? "Cloud control-plane data exfiltration (S3 snapshot theft via stolen IAM role) and destructive KMS key deletion attempt"
+              : "Active large-scale sensitive archive exfiltration to external cloud storage accompanied by anti-forensic event log clearing",
             status: "observed_requires_immediate_egress_block",
-            mitre_techniques: ["T1567.002", "T1041", "T1070.001"],
-            basis: `Outbound data transfer (\`rclone.exe\`) and Windows Event Log clearing (\`wevtutil cl Security/System\`) observed${t.affectedAssets.length ? ` on ${t.affectedAssets.join(", ")}` : ""}; requires immediate perimeter egress block and host memory/disk forensics.`,
+            mitre_techniques: /\b(schedule-key-deletion|kms)\b/i.test(question)
+              ? ["T1567.002", "T1552.005", "T1485", "T1490"]
+              : ["T1567.002", "T1041", "T1070.001"],
+            basis: /\b(s3|kms|schedule-key-deletion)\b/i.test(question)
+              ? `Observed outbound \`rclone\` exfiltration of S3 database snapshots and attempted \`aws kms schedule-key-deletion\`${t.affectedAssets.length ? ` originating from ${t.affectedAssets.join(", ")}` : ""}; requires immediate IAM role session revocation (\`AWSRevokeOlderSessions\`), KMS key deletion cancellation (\`aws kms cancel-key-deletion\`), and egress blocking.`
+              : `Outbound data transfer (\`rclone.exe\`) and Windows Event Log clearing (\`wevtutil cl Security/System\`) observed${t.affectedAssets.length ? ` on ${t.affectedAssets.join(", ")}` : ""}; requires immediate perimeter egress block and host memory/disk forensics.`,
           },
         ]
       : []),
@@ -787,6 +863,7 @@ export function handleNaturalCyberSecurityQuery(question: string): string | null
   ];
 
   const dcAssetLabel = t.affectedAssets.find((a) => /^DC/i.test(a)) || "Domain Controller";
+  const externalC2Ips = t.ips.filter((x) => x.classification.startsWith("External")).map((x) => x.ip);
 
   const immediateRisks = [
     ...(t.isRansomwareOrShadowDelete
@@ -807,11 +884,24 @@ export function handleNaturalCyberSecurityQuery(question: string): string | null
           },
         ]
       : []),
+    ...(/\b(169\.254\.169\.254|instance\s+metadata\s+service|github\s+actions|schedule-key-deletion)\b/i.test(question)
+      ? [
+          {
+            risk: `CI/CD supply-chain runner compromise, AWS IMDSv1 role credential theft (${t.accountsMentioned.join(", ") || "IAM role"}), and destructive KMS key deletion`,
+            basis: "Malicious GitHub Actions workflow execution querying `169.254.169.254` exposes temporary AWS STS IAM role credentials (`svc_prod_eks_admin`), enabling unauthorized S3 database exfiltration and catastrophic encryption-key destruction (`aws kms schedule-key-deletion`) unless STS sessions are revoked and `IMDSv2` (`HttpTokens=required`, hop limit `1`) is enforced.",
+            status: "unconfirmed_urgent_concern",
+          },
+        ]
+      : []),
     ...(t.isExfiltration
       ? [
           {
-            risk: "High-impact sensitive financial/corporate data breach via outbound `rclone` cloud exfiltration and anti-forensic log destruction",
-            basis: "Observed outbound transfer of staged archive (`Board_Financials_2026.7z`, 14.8 GB via `rclone.exe`) followed by `wevtutil cl Security` and `wevtutil cl System` indicates active data theft and deliberate defense evasion.",
+            risk: /\b(s3|schedule-key-deletion|database\s+snapshots)\b/i.test(question)
+              ? "Mass cloud data breach (42 GB production S3 database snapshots via `rclone`) and irreversible cryptographic data destruction (`aws kms schedule-key-deletion`)"
+              : "High-impact sensitive financial/corporate data breach via outbound `rclone` cloud exfiltration and anti-forensic log destruction",
+            basis: /\b(s3|schedule-key-deletion|database\s+snapshots)\b/i.test(question)
+              ? `Observed outbound \`rclone\` exfiltration of 42 GB customer database snapshots from S3 and attempted \`aws kms schedule-key-deletion\` from ${externalC2Ips.join(", ") || "external attacker IP"} indicates active cloud extortion and destructive impact.`
+              : "Observed outbound transfer of staged archive (`Board_Financials_2026.7z`, 14.8 GB via `rclone.exe`) followed by `wevtutil cl Security` and `wevtutil cl System` indicates active data theft and deliberate defense evasion.",
             status: "unconfirmed_urgent_concern",
           },
         ]
@@ -836,7 +926,7 @@ export function handleNaturalCyberSecurityQuery(question: string): string | null
       : []),
     {
       risk: "Active command-and-control (C2) beaconing and potential covert data exfiltration (double-extortion risk)",
-      basis: `Outbound HTTPS traffic${t.ips.filter((x) => !x.classification.startsWith("Internal")).length ? ` involving ${t.ips.filter((x) => !x.classification.startsWith("Internal")).map((x) => x.ip).join(", ")}` : ""}${t.domainsAndUrls.length ? ` (${t.domainsAndUrls.join(", ")})` : ""} may be used for secondary payload delivery or sensitive data exfiltration.`,
+      basis: `Outbound HTTPS traffic${externalC2Ips.length ? ` involving ${externalC2Ips.join(", ")}` : ""}${t.domainsAndUrls.length ? ` (${t.domainsAndUrls.join(", ")})` : ""} may be used for secondary payload delivery or sensitive data exfiltration.`,
       status: "unconfirmed_urgent_concern",
     },
     ...(t.cves.length > 0
@@ -852,8 +942,8 @@ export function handleNaturalCyberSecurityQuery(question: string): string | null
 
   const immediatePriorities = [
     `Immediate network/EDR host isolation of affected asset(s)${t.affectedAssets.length ? ` (${t.affectedAssets.join(", ")})` : ""} while keeping hosts powered on to preserve volatile memory (RAM)`,
-    `Emergency egress block at perimeter firewall/proxy/DNS for any external C2 or exfiltration indicators${t.ips.filter((x) => !x.classification.startsWith("Internal")).length ? ` (${t.ips.filter((x) => !x.classification.startsWith("Internal")).map((x) => x.ip).join(", ")})` : ""}${t.domainsAndUrls.length ? ` and domains (${t.domainsAndUrls.join(", ")})` : ""}`,
-    `Immediate containment of compromised or suspicious accounts${t.accountsMentioned.length ? ` (${t.accountsMentioned.join(", ")})` : ""}, revocation of active Kerberos/OAuth/SSO refresh tokens, removal of rogue OAuth application consent grants and external inbox forwarding rules, and temporary restriction of east-west SMB (445) / RDP (3389) / WinRM (5985/5986) administrative traffic`,
+    `Emergency egress block at perimeter firewall/proxy/DNS for any external C2 or exfiltration indicators${externalC2Ips.length ? ` (${externalC2Ips.join(", ")})` : ""}${t.domainsAndUrls.length ? ` and domains (${t.domainsAndUrls.join(", ")})` : ""}`,
+    `Immediate containment of compromised or suspicious accounts${t.accountsMentioned.length ? ` (${t.accountsMentioned.join(", ")})` : ""}, revocation of active Kerberos/OAuth/SSO refresh tokens and AWS STS temporary IAM role sessions (\`AWSRevokeOlderSessions\`), cancellation of any pending KMS key deletions (\`aws kms cancel-key-deletion\`), enforcement of \`IMDSv2\` (\`HttpTokens=required\`), removal of rogue OAuth application consent grants and external inbox forwarding rules, and temporary restriction of east-west SMB (445) / RDP (3389) / WinRM (5985/5986) administrative traffic`,
     "Volatile forensic triage acquisition (RAM capture, active network connections, running processes, scheduled tasks, services, MFT/$UsnJrnl, and surviving SIEM-forwarded Windows Security/Sysmon/PowerShell operational event logs) prior to any remediation or reboot",
     "Environment-wide IOC & TTP threat sweep across all EDR endpoints, cloud identity audit logs (Entra ID / M365 Unified Audit Log / CloudTrail), and SIEM telemetry to identify patient-zero entry vector, staging hosts, and persistence mechanisms",
     "Verification of offline/immutable backup integrity and isolation of backup management planes before planning clean-room recovery",
