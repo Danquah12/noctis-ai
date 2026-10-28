@@ -3,6 +3,7 @@ import { buildDeepResearchReport } from "./noctis-deep-research.ts";
 import { buildFrontierUnifiedArchitectureReport } from "./noctis-frontier-pillars.ts";
 import { buildRicIntelligenceReport } from "./noctis-ric.ts";
 import { handleNaturalHealthQuery } from "./noctis-health-engine.ts";
+import { handleNaturalCareerQuery } from "./noctis-career-query.ts";
 import { handleNaturalProfessionalQuery } from "./noctis-professional-engine.ts";
 import { handleNaturalVerifiedExecutionQuery } from "./noctis-verified-execution.ts";
 import { handleNaturalPredictiveIntelligenceQuery } from "./noctis-predictive-intelligence.ts";
@@ -606,6 +607,12 @@ export function runFollowUpIntelligence(
   const autonomousTrainingResponse = handleNaturalAutonomousTrainingQuery(currentQuestion);
   if (autonomousTrainingResponse) {
     return autonomousTrainingResponse;
+  }
+
+  // 00-1. Career pathway repository (NOCTIS-CAREERS-001): careers such as nurse/dentist must not be mistaken for clinical cases.
+  if (!/\b(patient|symptoms?|diagnos\w*|dosage|dose|\d+\s?mg|lab results?|egfr|creatinine|fhir|chest pain|fever)\b/i.test(currentQuestion)) {
+    const careerResponse = handleNaturalCareerQuery(currentQuestion);
+    if (careerResponse) return careerResponse;
   }
 
   // 00. Noctis Health Intelligence Engine (18 Health Engines, Emergency/988 Safety Gateway, FHIR v5.0.0, Calculators, 7-Part Medical Response & Follow-Up Continuity)
