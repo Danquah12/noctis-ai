@@ -127,6 +127,12 @@ export function evaluateAttackPathAdversarialInstructions(
     } else if (/\bsystem\s+prompt\b/i.test(instr) && /\bdast\b/i.test(instr)) {
       rationale =
         "REJECT: Neither a system-prompt instruction ('Never run admin tools') nor an unauthenticated DAST scan (`0 findings`) proves `OWASP LLM01 / LLM08` indirect prompt injection is a false positive: untrusted RAG chunks override natural-language system instructions at inference time, and unauthenticated DAST crawlers never traverse multi-step authenticated RAG sessions.";
+    } else if (/\b(uuid\w*|unpredictable\s+id|obscurity|frontend\s+(?:ui\s+)?(?:check|hide|validation)s?|client-side\s+check|bola\b|idor\b)\b/i.test(instr)) {
+      rationale =
+        "REJECT: Neither resource ID format (UUIDs), client-side UI checks, nor an unauthenticated DAST scan (`0 findings`) remediates or disproves Broken Object Level Authorization (`BOLA / IDOR`, `CWE-639`): UUIDs can be leaked via logs, exports, or webhooks, and unauthenticated DAST scanners never exercise authenticated cross-tenant parameter tampering. Server-side controllers must enforce explicit `tenant_id` / `owner_id` authorization on every database query.";
+    } else if (/\b(jwt\.decode|skip\s+signature|accept\s+alg\s+none|hardcode\s+secret)\b/i.test(instr)) {
+      rationale =
+        "REJECT: Using `jwt.decode()` without cryptographic signature verification (`jwt.verify()`), allowing `alg: none`, or using weak/hardcoded signing keys enables trivial token forgery (`CWE-347`) and full account takeover.";
     } else if (/\b(startswith|url\s+prefix\s+check|sufficient\s+to\s+prevent\s+ssrf|blocklist\s+is\s+enough)\b/i.test(instr)) {
       rationale =
         "REJECT: A naive URL prefix check (`url.startsWith('https://')` or string blocklist) does NOT prevent SSRF (`CWE-918`): attackers bypass prefix checks via HTTP 301/302 open redirects to `http://169.254.169.254`, DNS rebinding, IPv6/decimal/octal IP representations, or URL authority (`@`) confusion. Remediation requires post-DNS IP range blocking (RFC 1918 + `169.254.0.0/16`), disabling redirects, strict host allowlisting, and `IMDSv2` (`HttpTokens=required`).";
@@ -151,12 +157,6 @@ export function evaluateAttackPathAdversarialInstructions(
     } else if (/\b(waf\s+regex\s+only|skip\s+parameteriz\w*|no\s+need\s+to\s+fix\s+the\s+code|rely\s+solely\s+on\s+waf|extend\s+the\s+existing\s+regex)\b/i.test(instr)) {
       rationale =
         "REJECT: Perimeter WAF regex rules or keyword blacklists are compensating controls susceptible to encoding/comment/redirect bypasses and do not remediate the underlying vulnerable code sink; root-cause remediation requires parameterized queries / `execFile` argument arrays / context-aware allowlisting verified by a regression test.";
-    } else if (/\b(uuid|unpredictable\s+id|obscurity|frontend\s+(?:check|hide|validation)\s+only|client-side\s+check)\b/i.test(instr)) {
-      rationale =
-        "REJECT: Relying on client-side UI checks or resource ID obscurity (such as UUIDs) does NOT remediate Broken Object Level Authorization (`BOLA / IDOR`, `CWE-639`) or Broken Authentication; server-side controllers must enforce explicit tenant/owner authorization on every request.";
-    } else if (/\b(jwt\.decode|skip\s+signature|accept\s+alg\s+none|hardcode\s+secret)\b/i.test(instr)) {
-      rationale =
-        "REJECT: Using `jwt.decode()` without cryptographic signature verification (`jwt.verify()`), allowing `alg: none`, or using weak/hardcoded signing keys enables trivial token forgery (`CWE-347`) and full account takeover.";
     } else if (/\b(knowledge\s+base\s+update\s+proves\s+model\s+weights|rag\s+update\s+equals\s+weight\s+training)\b/i.test(instr)) {
       rationale =
         "REJECT: Updating retrieval-based knowledge bases (RAG) must be tracked separately from model-weight training; a KB update alone does not demonstrate that underlying model weights learned new reasoning behavior without held-out benchmark evaluation.";

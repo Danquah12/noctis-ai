@@ -275,7 +275,7 @@ export function extractCyberIncidentTelemetry(question: string): ExtractedCyberT
       qCtx
     );
   const isExfiltration =
-    /\b(exfiltrat\w*|outbound\s+transfer|transferring\s+\d+(?:\.\d+)?\s*(?:gb|mb|tb)\s+outbound|large\s+(?:upload|outbound|data\s+transfer)|rclone|mega\.nz|mega-exfil|staging\s+archive|data\s+theft|dns\s+tunnel\w*)\b/i.test(
+    /\b(exfiltrat\w*|outbound\s+transfer|transferring\s+(?:\d+(?:\.\d+)?\s*(?:gb|mb|tb)|it|data|files?|archive|dump)\s+outbound|large\s+(?:upload|outbound|data\s+transfer)|rclone|mega\.nz|mega-exfil|staging\s+archive|pg_dump|mysqldump|mongodump|database\s+dump|data\s+theft|dns\s+tunnel\w*)\b/i.test(
       qCtx
     );
   const isCloudOrIdentityAttack =
