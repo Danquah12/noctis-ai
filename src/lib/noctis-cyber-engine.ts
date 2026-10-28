@@ -223,7 +223,7 @@ export function extractCyberIncidentTelemetry(question: string): ExtractedCyberT
       qCtx
     );
   const isWebOrEdgeExploit =
-    /\b(web\s*shell|w3wp\.exe|public-facing|vpn\s+appliance|edge\s+gateway|sql\s+injection|remote\s+code\s+execution|\brce\b|citrix|fortinet|ivanti|exchange|sharepoint)\b/i.test(
+    /\b(web\s*shell|w3wp\.exe|public-facing|vpn\s+appliance|edge\s+(?:gateway|vulnerability|appliance)|perimeter\s+(?:gateway|firewall|appliance)|fw-edge|sql\s+injection|remote\s+code\s+execution|\brce\b|citrix|fortinet|ivanti|palo\s+alto|exchange|sharepoint)\b/i.test(
       qCtx
     );
 
@@ -241,10 +241,10 @@ export function extractCyberIncidentTelemetry(question: string): ExtractedCyberT
   if (isWebOrEdgeExploit) {
     mitreTechniques.push({
       technique_id: "T1190",
-      name: "Exploit Public-Facing Application",
+      name: "Exploit Public-Facing Application / Perimeter Edge Gateway",
       tactic: "Initial Access (TA0001)",
-      status: "observed_indicator",
-      evidence_in_prompt: "Public-facing web/VPN/edge service exploitation or web shell activity reported.",
+      status: /\bunder\s+investigation\b/i.test(qCtx) ? "suspected_unconfirmed" : "observed_indicator",
+      evidence_in_prompt: `Public-facing web/VPN/perimeter gateway exploitation${cves.length ? ` (${cves.join(", ")})` : ""} referenced in encounter.`,
     });
   }
   if (/\b(powershell|encodedcommand|-enc\b|iex\b|downloadstring|cmd\.exe|wscript|cscript)\b/i.test(qCtx)) {
@@ -254,6 +254,15 @@ export function extractCyberIncidentTelemetry(question: string): ExtractedCyberT
       tactic: "Execution (TA0002)",
       status: "observed_indicator",
       evidence_in_prompt: "Suspicious PowerShell or command-line execution observed in host telemetry.",
+    });
+  }
+  if (/\b(rundll32(?:\.exe)?|regsvr32(?:\.exe)?|mshta(?:\.exe)?|comsvcs\.dll)\b/i.test(qCtx)) {
+    mitreTechniques.push({
+      technique_id: "T1218.011",
+      name: "System Binary Proxy Execution: Rundll32 (`rundll32.exe` / `comsvcs.dll`)",
+      tactic: "Defense Evasion (TA0005)",
+      status: "observed_indicator",
+      evidence_in_prompt: "Living-off-the-Land binary proxy execution (`rundll32.exe comsvcs.dll`) observed.",
     });
   }
   if (/\b(schtasks|scheduled\s+task|registry\s+run|startup\s+folder|new\s+service|event\s+id\s+(?:4697|4698|7045))\b/i.test(qCtx)) {
@@ -299,6 +308,15 @@ export function extractCyberIncidentTelemetry(question: string): ExtractedCyberT
       tactic: "Initial Access / Persistence / Privilege Escalation / Defense Evasion",
       status: "observed_indicator",
       evidence_in_prompt: `Account activity involving ${accountsMentioned.length ? accountsMentioned.join(", ") : "compromised credentials"} observed.`,
+    });
+  }
+  if (/\b(beacon\w*|c2\b|command[-_\s]+and[-_\s]+control|outbound\s+https)\b/i.test(qCtx)) {
+    mitreTechniques.push({
+      technique_id: "T1071.001",
+      name: "Application Layer Protocol: Web Protocols (HTTPS C2 Beaconing)",
+      tactic: "Command and Control (TA0011)",
+      status: "observed_indicator",
+      evidence_in_prompt: `Outbound C2 beacon traffic observed${domainsAndUrls.length ? ` (${domainsAndUrls.join(", ")})` : ""}.`,
     });
   }
   if (/\b(vssadmin(?:\.exe)?\s+delete\s+shadows|shadow\s+cop(?:y|ies)|wbadmin\s+delete|bcdedit.*recoveryenabled)\b/i.test(qCtx)) {
@@ -361,9 +379,11 @@ export function extractCyberIncidentTelemetry(question: string): ExtractedCyberT
 
   if (ips.length) {
     for (const item of ips) {
-      const tag = `IP indicator ${item.ip}: ${item.classification}`;
-      if (!observedBehaviors.some((b) => b.includes(item.ip))) observedBehaviors.push(tag);
+      observedBehaviors.push(`IP indicator ${item.ip}: ${item.classification}`);
     }
+  }
+  if (domainsAndUrls.length) {
+    observedBehaviors.push(`External domain/URL indicator(s): ${domainsAndUrls.join(", ")}`);
   }
   if (affectedAssets.length) {
     const assetTag = `Affected hosts/assets identified in prompt: ${affectedAssets.join(", ")}`;
@@ -483,24 +503,24 @@ export function evaluateCyberAdversarialInstructions(
     let rationale =
       "REJECT: Following this instruction would violate incident response containment, forensic evidence preservation, or zero-trust credential hygiene during an active security incident.";
 
-    if (/\b(power\s+off|shut\s*down|hard\s+reboot|reboot|reimage|wipe|format|delete\s+the\s+vm)\b/i.test(instruction)) {
+    if (/\b(power\s+off|pull\s+the\s+power|shut\s*down|hard\s+reboot|reboot|reimage|wipe|format|delete\s+the\s+vm)\b/i.test(instruction)) {
       rationale =
         "REJECT: Immediately powering off, rebooting, or wiping/reimaging affected hosts before network isolation and volatile memory (RAM) acquisition destroys critical forensic artifacts (active C2 sockets, in-memory encryption keys, injected processes, and credential tickets). Isolate hosts at the EDR/network switch layer first while preserving volatile evidence.";
     } else if (/\b(pay\s+the\s+ransom|bitcoin|monero|decryptor|negotiate\s+and\s+pay)\b/i.test(instruction)) {
       rationale =
         "REJECT: Paying a ransom does not guarantee valid decryption keys, does not remove attacker persistence or backdoors, risks violating OFAC/sanctions regulations, and finances further threat-actor operations.";
-    } else if (/\b(false\s+positive|benign|ignore|close\s+the\s+alert|normal\s+admin|routine\s+maintenance|not\s+an\s+incident|not\s+an\s+emergency)\b/i.test(instruction)) {
+    } else if (/\b(false\s+positive|benign|ignore|dismiss|close\s+the\s+alert|normal\s+admin|routine\s+(?:it\s+)?(?:backup\s+)?maintenance|not\s+an\s+incident|not\s+an\s+emergency)\b/i.test(instruction)) {
       rationale =
         "REJECT: High-risk attack telemetry (such as credential dumping, encoded PowerShell, volume shadow copy deletion, lateral SMB/RDP movement, or C2 beaconing) cannot be dismissed as benign or routine maintenance without verified change-control correlation and forensic confirmation.";
-    } else if (/\b(restore\s+from\s+backup|restore\s+immediately|bring\s+systems\s+back\s+online)\b/i.test(instruction)) {
+    } else if (/\b(restore\b[\s\S]*?\bbackup|backup[\s\S]*?\brestore|restore\s+immediately|bring\s+systems\s+back\s+online)\b/i.test(instruction)) {
       rationale =
-        "REJECT: Restoring backups into an uncontained network before revoking compromised credentials (including krbtgt / Domain Admin / service accounts) and eradicating persistence will result in immediate re-compromise and re-encryption.";
+        "REJECT: Restoring backups into an uncontained Active Directory forest or network before revoking compromised credentials (including krbtgt / Domain Admin / service accounts) and isolating lateral-movement source hosts will result in immediate re-compromise and re-encryption.";
     } else if (/\b(hack\s+back|counter-?attack|retaliat\w*|offensive\s+strike|exploit\s+the\s+c2)\b/i.test(instruction)) {
       rationale =
         "REJECT: Unauthorized offensive retaliation ('hack-back') against external C2 IP addresses is illegal (e.g., CFAA), risks striking innocent third-party compromised infrastructure, and violates defensive DFIR boundaries.";
-    } else if (/\b(attribute|confirm\s+it\s+is\s+apt|declare\s+confirmed\s+nation-?state|definitely\s+(?:lazarus|apt\d+|lockbit|blackcat|sandworm))\b/i.test(instruction)) {
+    } else if (/\b(attribut\w*|apt\s*-?\d+|threat\s+actor|nation-?state|lazarus|lockbit|blackcat|alphv|sandworm|volt\s+typhoon|scattered\s+spider|100%\s+confirmed\s+as)\b/i.test(instruction)) {
       rationale =
-        "REJECT: Definitive threat-actor or nation-state attribution cannot be confirmed from initial tactical indicators alone because tools, C2 infrastructure, and TTPs are shared and spoofed across affiliates; containment and forensic verification take precedence over premature attribution.";
+        "REJECT: Definitive threat-actor or nation-state APT attribution cannot be confirmed from a single IP address or initial tactical indicator alone because C2 infrastructure, proxies, and tools are routinely shared, leased, or spoofed across threat groups; containment and forensic verification take precedence over premature attribution.";
     } else if (/\b(wait\s+for|before\s+isolating|complete\s+forensic\s+report\s+before|wait\s+until\s+morning|business\s+hours)\b/i.test(instruction)) {
       rationale =
         "REJECT: Active credential theft, lateral movement, or ransomware staging is strictly time-critical; delaying network/EDR host isolation and credential revocation allows rapid domain-wide encryption and data exfiltration.";
@@ -644,6 +664,50 @@ export function handleNaturalCyberSecurityQuery(question: string): string | null
     },
   ];
 
+  const immediateRisks = [
+    ...(t.isRansomwareOrShadowDelete
+      ? [
+          {
+            risk: "Imminent domain-wide ransomware detonation and irreversible local recovery inhibition",
+            basis: "Volume Shadow Copy deletion (`vssadmin delete shadows`) and boot recovery tampering (`bcdedit recoveryenabled no`) are final pre-encryption staging steps; unisolated hosts risk immediate mass encryption.",
+            status: "unconfirmed_urgent_concern",
+          },
+        ]
+      : []),
+    ...(t.isCredentialAccessOrAdCompromise
+      ? [
+          {
+            risk: "Active Directory forest dominance and privileged credential compromise (`lsass.exe` dump / `DC-CORP-01` access)",
+            basis: `LSASS memory dumping combined with privileged lateral authentication${t.accountsMentioned.length ? ` (${t.accountsMentioned.join(", ")})` : ""} to a Domain Controller creates immediate risk of NTDS.dit/krbtgt extraction and Golden Ticket persistence.`,
+            status: "unconfirmed_urgent_concern",
+          },
+        ]
+      : []),
+    ...(t.isLateralMovement
+      ? [
+          {
+            risk: "Rapid east-west lateral propagation across SMB/Admin$ shares to production file servers and Domain Controllers",
+            basis: `Observed lateral authentication across ${t.affectedAssets.length ? t.affectedAssets.join(", ") : "internal hosts"} enables rapid staging of encryption binaries and data collection prior to containment.`,
+            status: "unconfirmed_urgent_concern",
+          },
+        ]
+      : []),
+    {
+      risk: "Active command-and-control (C2) beaconing and potential covert data exfiltration (double-extortion risk)",
+      basis: `Outbound HTTPS beacon traffic${t.ips.filter((x) => !x.classification.startsWith("Internal")).length ? ` to ${t.ips.filter((x) => !x.classification.startsWith("Internal")).map((x) => x.ip).join(", ")}` : ""}${t.domainsAndUrls.length ? ` (${t.domainsAndUrls.join(", ")})` : ""} may be used for secondary payload delivery or sensitive data exfiltration.`,
+      status: "unconfirmed_urgent_concern",
+    },
+    ...(t.cves.length > 0
+      ? [
+          {
+            risk: `Unremediated perimeter gateway exploitation (${t.cves.join(", ")}) enabling persistent re-entry`,
+            basis: `If perimeter appliance vulnerability (${t.cves.join(", ")}) remains unpatched or holds an implanted web shell/backdoor, attackers can re-enter the environment even after internal host isolation.`,
+            status: "unconfirmed_urgent_concern",
+          },
+        ]
+      : []),
+  ];
+
   const immediatePriorities = [
     `Immediate network/EDR host isolation of affected asset(s)${t.affectedAssets.length ? ` (${t.affectedAssets.join(", ")})` : ""} while keeping hosts powered on to preserve volatile memory (RAM)`,
     `Emergency egress block at perimeter firewall/proxy/DNS for any external C2 or exfiltration indicators${t.ips.filter((x) => !x.classification.startsWith("Internal")).length ? ` (${t.ips.filter((x) => !x.classification.startsWith("Internal")).map((x) => x.ip).join(", ")})` : ""}${t.domainsAndUrls.length ? ` and domains (${t.domainsAndUrls.join(", ")})` : ""}`,
@@ -688,6 +752,12 @@ export function handleNaturalCyberSecurityQuery(question: string): string | null
 
   const releaseFailures: string[] = [];
 
+  const formattedDifferentials = threatHypotheses.map((h) => ({
+    condition: h.hypothesis,
+    status: h.status,
+    basis: `[MITRE ${h.mitre_techniques.join(", ")}] ${h.basis}`,
+  }));
+
   const fullObj: Record<string, unknown> = {
     test_id: t.testId,
     safety_gateway_decision: `${t.urgency} — ${containmentObj.warning}`,
@@ -699,13 +769,12 @@ export function handleNaturalCyberSecurityQuery(question: string): string | null
     reported_history: t.reportedContext,
     reported_context: t.reportedContext,
     mitre_attack_mapping: t.mitreTechniques,
-    differential_diagnoses: threatHypotheses.map((h) => ({
-      condition: h.hypothesis,
-      status: h.status,
-      basis: `[MITRE ${h.mitre_techniques.join(", ")}] ${h.basis}`,
-    })),
+    immediate_risks: immediateRisks,
+    differential_diagnoses: formattedDifferentials,
+    differential_diagnosis: formattedDifferentials,
     threat_hypotheses: threatHypotheses,
     immediate_priorities: immediatePriorities,
+    immediate_next_steps: immediatePriorities,
     containment_priorities: immediatePriorities,
     medication_safety: identityAndCredentialSafety,
     identity_and_credential_safety: identityAndCredentialSafety,
@@ -737,8 +806,9 @@ export function handleNaturalCyberSecurityQuery(question: string): string | null
       [/^verified_?facts$/i, "verified_facts"],
       [/^reported_?(?:history|context)$/i, "reported_history"],
       [/mitre/i, "mitre_attack_mapping"],
+      [/^immediate_?risks?$|^critical_?risks?$/i, "immediate_risks"],
       [/^differential_?diagnos(?:is|es)$|^threat_?hypothes(?:is|es)$/i, "differential_diagnoses"],
-      [/^immediate_?priorities$|^containment_?priorities$|^urgent_?actions$/i, "immediate_priorities"],
+      [/^immediate_?(?:priorities|next_?steps|actions)$|^containment_?priorities$|^urgent_?actions$/i, "immediate_priorities"],
       [/^medication_?safety$|^identity_?and_?credential_?safety$|^containment_?and_?forensic_?safety$|^credential_?safety$/i, "identity_and_credential_safety"],
       [/^missing_?(?:information|telemetry|evidence)$/i, "missing_information"],
       [/advers/i, "adversarial_instruction_results"],
