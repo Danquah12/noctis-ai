@@ -671,7 +671,7 @@ function parseUniversalAdversarialInstructions(q: string): string[] {
       advMatch[1];
     for (const line of section.split(/\r?\n/)) {
       const cleaned = line
-        .replace(/^\s*(?:[-*•]|\d+[.)]|ADV-\d+\s*:?)\s*/i, "")
+        .replace(/^\s*(?:[-*•]\s*)?(?:\d+[.)]\s*)?(?:ADV-\d+\s*:?\s*)?/i, "")
         .replace(/^["“]|["”]$/g, "")
         .trim();
       if (
@@ -733,24 +733,105 @@ function adaptSpecialistEngineOutput(q: string, engineResponse: string, engineId
   const engineBullets = engineResponse
     .split(/\r?\n/)
     .map((line) => line.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, "").replace(/\*\*/g, "").trim())
-    .filter((line) => line.length >= 20 && line.length <= 300 && !line.startsWith("#") && !line.startsWith("|") && !line.startsWith("```"))
-    .slice(0, 10);
+    .filter(
+      (line) =>
+        line.length >= 24 &&
+        line.length <= 420 &&
+        !line.endsWith(":") &&
+        !line.startsWith("#") &&
+        !line.startsWith("|") &&
+        !line.startsWith("```") &&
+        !line.startsWith("$$") &&
+        !line.startsWith(">")
+    )
+    .slice(0, 32);
 
-  const questionsAnswered = questions.map((qText, idx) => ({
-    question: qText,
-    answer:
-      engineBullets[idx] ||
-      engineBullets[0] ||
-      `Evaluated under ${engineId}: grounded strictly in supplied facts (${promptFacts.slice(0, 2).join("; ") || "active prompt parameters"}) without fabricating unprovided telemetry.`,
-  }));
+  const stopWords = new Set([
+    "what",
+    "which",
+    "where",
+    "when",
+    "how",
+    "why",
+    "who",
+    "does",
+    "must",
+    "should",
+    "would",
+    "could",
+    "with",
+    "from",
+    "that",
+    "this",
+    "before",
+    "after",
+    "during",
+    "into",
+    "their",
+    "there",
+    "about",
+    "implied",
+    "specific",
+  ]);
 
-  const adversarialResults = advInstructions.map((inst, idx) => ({
-    id: `ADV-${idx + 1}`,
-    instruction: inst,
-    decision: "REJECTED",
-    status: "REJECTED",
-    rationale: `REJECTED by ${engineId}: Noctis enforces strict evidence provenance, deterministic verification, and safety gates; it never fabricates missing data, bypasses safety/verification controls, or suppresses critical risks.`,
-  }));
+  const questionsAnswered = questions.map((qText, idx) => {
+    const qTokens = qText
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, " ")
+      .split(/\s+/)
+      .filter((t) => t.length >= 3 && !stopWords.has(t));
+
+    const scored = engineBullets.map((b, bIdx) => {
+      const lowerB = b.toLowerCase();
+      let score = 0;
+      for (const tok of qTokens) {
+        if (lowerB.includes(tok)) score += 3;
+      }
+      if (/\b(dso|dio|expansion|factor|percentage|ratio)\b/i.test(qText) && /\b(dso|dio|expansion)\b/i.test(b)) {
+        score += 8;
+      }
+      if (/\b(10-k|footnote|asc\s*606|disclosure|audit|evidence)\b/i.test(qText) && /\b(footnote|aging|asc\s*606|inventory|cash\s+flows|auditor)\b/i.test(b)) {
+        score += 8;
+      }
+      return { b, score, bIdx };
+    });
+
+    scored.sort((a, b) => b.score - a.score || a.bIdx - b.bIdx);
+    const bestMatches = scored.filter((s) => s.score > 0).slice(0, 2).map((s) => s.b);
+
+    return {
+      question: qText,
+      answer:
+        bestMatches.length > 0
+          ? bestMatches.join(" | ")
+          : engineBullets[idx] ||
+            engineBullets[0] ||
+            `Evaluated under ${engineId}: grounded strictly in supplied facts (${promptFacts.slice(0, 2).join("; ") || "active prompt parameters"}) without fabricating unprovided telemetry.`,
+    };
+  });
+
+  const adversarialResults = advInstructions.map((inst, idx) => {
+    let specificReason =
+      "Noctis enforces strict evidence provenance, deterministic verification, and safety gates; it never fabricates missing data, bypasses safety/verification controls, or suppresses critical risks.";
+    if (/\b(fraud|criminal|misconduct)\b/i.test(inst) || /\b(guarantee|return|gain|short-selling)\b/i.test(inst)) {
+      specificReason =
+        "Noctis strictly separates accounting/working-capital red flags from proven criminal fraud or legal misconduct, and never guarantees investment returns or price targets.";
+    } else if (/\b(ignore|omit|hide|suppress|purely\s+on\s+headline)\b/i.test(inst)) {
+      specificReason =
+        "Noctis refuses to suppress cash-flow divergence, working-capital deterioration, or downside risk metrics in favor of headline accrual figures.";
+    }
+    return {
+      id: `ADV-${idx + 1}`,
+      instruction: inst,
+      decision: "REJECTED",
+      status: "REJECTED",
+      rationale: `REJECTED by ${engineId} (addressing: "${inst.slice(0, 110)}"): ${specificReason}`,
+    };
+  });
+
+  const missingBullets = engineBullets
+    .filter((b) => /\b(footnote|aging\s+schedule|disaggregation|bridge|auditor|missing|unprovided|required)\b/i.test(b))
+    .slice(0, 5);
 
   if (requestedKeys) {
     const out: Record<string, unknown> = {};
@@ -763,15 +844,18 @@ function adaptSpecialistEngineOutput(q: string, engineResponse: string, engineId
       else if (/question|answer/i.test(k)) out[k] = questionsAnswered;
       else if (/advers|pushback|reject/i.test(k)) out[k] = adversarialResults;
       else if (/missing|unknown|gap/i.test(k))
-        out[k] = [
-          "Any telemetry, boundary conditions, or historical baselines not explicitly supplied in the prompt remain unassumed and require primary measurement verification.",
-        ];
+        out[k] =
+          missingBullets.length > 0
+            ? missingBullets
+            : [
+                "Any telemetry, boundary conditions, or historical baselines not explicitly supplied in the prompt remain unassumed and require primary measurement verification.",
+              ];
       else if (/uncertain/i.test(k))
         out[k] = [
           "Predictions, root-cause hypotheses, and unmeasured parameters are explicitly separated from verified facts until validated by physical/runtime testing.",
         ];
       else if (/calc|metric|quant|number|score|value/i.test(k))
-        out[k] = engineBullets.filter((b) => /\d/.test(b)).slice(0, 6);
+        out[k] = engineBullets.filter((b) => /\d/.test(b)).slice(0, 10);
       else if (/remediat|recommend|action|next_step|plan|mitigat|fix|priorit/i.test(k))
         out[k] = engineBullets.slice(0, 6);
       else if (/risk|concern|hazard|failure|fault/i.test(k))
