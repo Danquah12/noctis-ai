@@ -10468,7 +10468,10 @@ export function extractEncounterLabPanel(q: string): EncounterLabValue[] {
   const ageRe = /\b((?:\d+|one|two|three|four|five|six|a)\s+(?:day|week|month|year)s?\s+ago)\b/i;
   const out: EncounterLabValue[] = [];
   for (const d of defs) {
-    const re = new RegExp(`(?:${d.re})\\s*(?:level|result)?\\s*(?:[:=]|of|is|was)?\\s*(\\d+(?:\\.\\d+)?)\\s*(mg/dL|mmol/L|mEq/L)?`, "gi");
+    const re = new RegExp(
+      `(?:${d.re})\\s*(?:level|result)?\\s*(?:\\(?\\s*(?:from\\s+|recorded\\s+)?(?:\\d+|one|two|three|four|five|six|a)\\s+(?:day|week|month|year)s?\\s+ago\\s*\\)?\\s*)?(?:[:=]|of|is|was)?\\s*(\\d+(?:\\.\\d+)?)(?!\\s*(?:day|week|month|year|hour|min|minute)s?\\b)\\s*(mg/dL|mmol/L|mEq/L)?`,
+      "gi"
+    );
     let m: RegExpExecArray | null;
     while ((m = re.exec(q))) {
       const before = q.slice(0, m.index);
@@ -10477,10 +10480,11 @@ export function extractEncounterLabPanel(q: string): EncounterLabValue[] {
       let lastHist = -1;
       let lastCur = -1;
       let h: RegExpExecArray | null;
+      const segAndMatch = seg + " " + m[0];
       histRe.lastIndex = 0;
-      while ((h = histRe.exec(seg))) lastHist = h.index;
+      while ((h = histRe.exec(segAndMatch))) lastHist = h.index;
       curRe.lastIndex = 0;
-      while ((h = curRe.exec(seg))) lastCur = h.index;
+      while ((h = curRe.exec(segAndMatch))) lastCur = h.index;
       const tail = q.slice(m.index + m[0].length).split(/[,;\n]|\.\s/)[0] || "";
       const trailHist = /\b(ago|baseline|previous|prior)\b/i.test(tail);
       const temporal: "current" | "historical" = trailHist || lastHist > lastCur ? "historical" : "current";
@@ -10490,7 +10494,7 @@ export function extractEncounterLabPanel(q: string): EncounterLabValue[] {
         value: Number(m[1]),
         unit: m[2] || d.unit,
         temporal,
-        age_text: temporal === "historical" && ageMatch ? ageMatch[1] : null,
+        age_text: temporal === "historical" && ageMatch ? ageMatch[1].replace(/\s+/g, " ") : null,
         interpretation: interpretLabAnalyte(d.analyte, Number(m[1])),
       });
     }
