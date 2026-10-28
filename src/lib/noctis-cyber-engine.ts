@@ -310,6 +310,24 @@ export function extractCyberIncidentTelemetry(question: string): ExtractedCyberT
       evidence_in_prompt: `Account activity involving ${accountsMentioned.length ? accountsMentioned.join(", ") : "compromised credentials"} observed.`,
     });
   }
+  if (/\b(aitm|evilginx|session[-_\s]+token\s+replay|session[-_\s]+cookie|impossible[-_\s]+travel|stolen\s+session)\b/i.test(qCtx)) {
+    mitreTechniques.push({
+      technique_id: "T1539 / T1557",
+      name: "Steal Web Session Cookie / Adversary-in-the-Middle (AiTM Token Replay)",
+      tactic: "Credential Access (TA0006)",
+      status: "observed_indicator",
+      evidence_in_prompt: "AiTM session token replay or impossible-travel session hijacking telemetry observed.",
+    });
+  }
+  if (/\b(oauth|consent\s+grant|app(?:lication)?\s+registration|mail\.readwrite|files\.readwrite\.all|directory\.read\.all|service\s+principal)\b/i.test(qCtx)) {
+    mitreTechniques.push({
+      technique_id: "T1528 / T1098",
+      name: "Steal Application Access Token / Account Manipulation (OAuth Application Consent Persistence)",
+      tactic: "Persistence / Credential Access (TA0003 / TA0006)",
+      status: "observed_indicator",
+      evidence_in_prompt: "OAuth application consent grant or high-privilege cloud API permission registration observed.",
+    });
+  }
   if (/\b(beacon\w*|c2\b|command[-_\s]+and[-_\s]+control|outbound\s+https)\b/i.test(qCtx)) {
     mitreTechniques.push({
       technique_id: "T1071.001",
@@ -339,11 +357,11 @@ export function extractCyberIncidentTelemetry(question: string): ExtractedCyberT
   }
   if (isExfiltration) {
     mitreTechniques.push({
-      technique_id: "T1041 / T1567",
-      name: "Exfiltration Over C2 Channel or Exfiltration to Cloud Storage",
+      technique_id: "T1041 / T1567.002",
+      name: "Exfiltration Over C2 Channel or Exfiltration to Cloud Storage (Rclone / Mega / S3)",
       tactic: "Exfiltration (TA0010)",
       status: "observed_indicator",
-      evidence_in_prompt: "Anomalous outbound data transfer or staging archive activity reported.",
+      evidence_in_prompt: "Anomalous outbound data transfer, rclone cloud sync, or staging archive activity reported.",
     });
   }
   if (mitreTechniques.length === 0) {
@@ -521,12 +539,15 @@ export function evaluateCyberAdversarialInstructions(
     } else if (/\b(attribut\w*|apt\s*-?\d+|threat\s+actor|nation-?state|lazarus|lockbit|blackcat|alphv|sandworm|volt\s+typhoon|scattered\s+spider|100%\s+confirmed\s+as)\b/i.test(instruction)) {
       rationale =
         "REJECT: Definitive threat-actor or nation-state APT attribution cannot be confirmed from a single IP address or initial tactical indicator alone because C2 infrastructure, proxies, and tools are routinely shared, leased, or spoofed across threat groups; containment and forensic verification take precedence over premature attribution.";
+    } else if (/\b(email|outlook|corporate\s+email|slack|teams)\b/i.test(instruction)) {
+      rationale =
+        "REJECT: Communicating incident response details over potentially compromised corporate email/Outlook (especially when `Mail.ReadWrite` or Global Admin access is compromised) alerts the adversary and enables interception; use out-of-band (OOB) incident response channels.";
+    } else if (/\b(only\s+reset|no\s+need\s+to\s+revoke|refresh\s+tokens?|oauth|consent\s+grant)\b/i.test(instruction)) {
+      rationale =
+        "REJECT: Resetting a password alone does NOT invalidate stolen session cookies/refresh tokens or revoke malicious OAuth application consent grants (`Mail.ReadWrite`, `Directory.ReadWrite.All`, `RoleManagement.ReadWrite.Directory`); active tokens and rogue OAuth service principals continue to grant persistent access until explicitly revoked.";
     } else if (/\b(wait\s+for|before\s+isolating|complete\s+forensic\s+report\s+before|wait\s+until\s+morning|business\s+hours)\b/i.test(instruction)) {
       rationale =
         "REJECT: Active credential theft, lateral movement, or ransomware staging is strictly time-critical; delaying network/EDR host isolation and credential revocation allows rapid domain-wide encryption and data exfiltration.";
-    } else if (/\b(email\s+the\s+team|send\s+an\s+email|corporate\s+email|slack|teams)\b/i.test(instruction)) {
-      rationale =
-        "REJECT: Communicating incident response details over potentially compromised corporate email or identity-linked messaging can alert the adversary and trigger immediate ransomware detonation; use out-of-band (OOB) incident response channels.";
     }
 
     return {
