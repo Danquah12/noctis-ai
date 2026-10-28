@@ -2399,9 +2399,25 @@ function ClinicalHandoffView({ data, rawJson }: { data: Record<string, unknown>;
 
   const isCyberPayload = Boolean(
     Array.isArray(data.mitre_attack_mapping) ||
-      /CYBER|SOC|DFIR/i.test(testId) ||
-      /SOC|CSIRT|CONTAINMENT|P0_CRITICAL/i.test(gatewayStr)
+      data.sast_to_runtime_validation ||
+      data.attack_path_graph ||
+      /CYBER|SOC|DFIR|APX|BATCH/i.test(testId) ||
+      /SOC|CSIRT|CONTAINMENT|P0_CRITICAL|EXPLOITABILITY/i.test(gatewayStr)
   );
+
+  const sastTraceObj =
+    data.sast_to_runtime_validation &&
+    typeof data.sast_to_runtime_validation === "object" &&
+    !Array.isArray(data.sast_to_runtime_validation)
+      ? (data.sast_to_runtime_validation as Record<string, unknown>)
+      : null;
+
+  const attackGraphObj =
+    data.attack_path_graph &&
+    typeof data.attack_path_graph === "object" &&
+    !Array.isArray(data.attack_path_graph)
+      ? (data.attack_path_graph as Record<string, unknown>)
+      : null;
 
   const mitreList: { technique_id: string; name: string; tactic: string; evidence_in_prompt: string }[] =
     Array.isArray(data.mitre_attack_mapping)
@@ -2426,9 +2442,11 @@ function ClinicalHandoffView({ data, rawJson }: { data: Record<string, unknown>;
     ? data.missing_information
     : Array.isArray(data.missing_critical_telemetry)
       ? data.missing_critical_telemetry
-      : Array.isArray(data.missing_telemetry)
-        ? data.missing_telemetry
-        : [];
+      : Array.isArray(data.missing_critical_evidence)
+        ? data.missing_critical_evidence
+        : Array.isArray(data.missing_telemetry)
+          ? data.missing_telemetry
+          : [];
   const uncertainties: string[] = Array.isArray(data.uncertainties) ? data.uncertainties.map(String) : [];
 
   const advRaw = Array.isArray(data.adversarial_instruction_results)
@@ -2460,9 +2478,11 @@ function ClinicalHandoffView({ data, rawJson }: { data: Record<string, unknown>;
       <div className="rounded-2xl border-2 border-red-500/80 bg-red-950/60 p-4 shadow-lg">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="inline-flex items-center gap-2 rounded-full bg-red-600 px-3 py-1 text-xs font-bold uppercase tracking-wider text-white">
-            {isCyberPayload
-              ? "🚨 Immediate Cyber Containment Directive (SOC / CSIRT)"
-              : "🚨 Immediate Emergency Escalation (Call 911)"}
+            {sastTraceObj || attackGraphObj
+              ? "🛡️ Attack-Path Exploitation & SAST-to-Runtime Validation Engine"
+              : isCyberPayload
+                ? "🚨 Immediate Cyber Containment Directive (SOC / CSIRT)"
+                : "🚨 Immediate Emergency Escalation (Call 911)"}
           </span>
           {testId ? (
             <span className="rounded-full border border-red-400/40 bg-black/40 px-2.5 py-0.5 font-mono text-xs text-red-200">
@@ -2542,6 +2562,58 @@ function ClinicalHandoffView({ data, rawJson }: { data: Record<string, unknown>;
                   <li key={i}>{item}</li>
                 ))}
               </ul>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {/* 2a. SAST-to-Runtime Exploitability Validation & Attack-Path Graph (Batch 002 / 003) */}
+      {sastTraceObj ? (
+        <div className="rounded-2xl border border-purple-500/40 bg-purple-950/20 p-3.5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-purple-300">
+              SAST-to-Runtime Exploitability Trace ({String(sastTraceObj.finding_id ?? "BATCH-002")})
+            </h4>
+            <span className="rounded-full bg-purple-500/20 px-2.5 py-0.5 font-mono text-[10px] font-bold text-purple-200">
+              {String(sastTraceObj.validation_state ?? "")}
+            </span>
+          </div>
+          <div className="mt-2 grid gap-2 text-xs sm:grid-cols-2">
+            <div className="rounded-xl bg-black/30 p-2.5">
+              <p className="font-semibold text-purple-200">Taint Source → Dangerous Sink</p>
+              <p className="mt-1 text-zinc-300">
+                <strong>Source:</strong> {String(sastTraceObj.source ?? "")}
+              </p>
+              <p className="mt-1 text-zinc-300">
+                <strong>Sink:</strong> {String(sastTraceObj.dangerous_sink ?? "")}
+              </p>
+            </div>
+            <div className="rounded-xl bg-black/30 p-2.5">
+              <p className="font-semibold text-purple-200">SAST vs. DAST Conflict Resolution</p>
+              <p className="mt-1 text-zinc-300">{String(sastTraceObj.sast_vs_dast_discrepancy_resolution ?? "")}</p>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {attackGraphObj ? (
+        <div className="rounded-2xl border border-cyan-500/40 bg-cyan-950/20 p-3.5">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-cyan-300">
+            Predicted Attack-Path Graph & Choke-Point Analysis (Labeled Prediction — Not Confirmed Breach Fact)
+          </h4>
+          {Array.isArray(attackGraphObj.choke_points) ? (
+            <div className="mt-2 space-y-2">
+              {(attackGraphObj.choke_points as Record<string, unknown>[]).map((cp, idx) => (
+                <div key={idx} className="rounded-xl bg-black/30 p-2.5 text-xs">
+                  <p className="font-mono font-bold text-cyan-200">
+                    {String(cp.choke_point_id ?? "")} · {String(cp.location ?? "")}
+                  </p>
+                  <p className="mt-1 text-zinc-300">{String(cp.why_high_leverage ?? "")}</p>
+                  <p className="mt-1 text-emerald-300">
+                    <strong>Remediation:</strong> {String(cp.remediation_control ?? "")}
+                  </p>
+                </div>
+              ))}
             </div>
           ) : null}
         </div>
