@@ -9,6 +9,7 @@
  * No fees, phone numbers or private URLs are stored. Requirements vary by country/state — always verify locally.
  */
 import { CAREER_PROFESSIONS, type CareerProfessionRow } from "./noctis-career-professions-data.ts";
+import { EXPANSION_OVERRIDES } from "./noctis-career-expansion.ts";
 
 export interface PathwayStep { n: number; title: string; detail: string; duration?: string }
 export interface PathwayRecord {
@@ -395,7 +396,7 @@ const OVERRIDES: Record<string, Override> = {
   photographer: { aliases: ["photographer", "photography"], keywords: ["photographer", "photo assistant"] },
   actor: { aliases: ["actor", "actress"], keywords: ["actor", "voice actor"] },
   filmmaker: { aliases: ["filmmaker", "director", "videographer"], keywords: ["video editor", "production assistant", "filmmaker"] },
-  graphic_designer: { aliases: ["graphic designer", "designer", "ui designer"], keywords: ["graphic designer", "brand designer"] },
+  graphic_designer: { aliases: ["graphic designer", "designer"], keywords: ["graphic designer", "brand designer"] },
   independent_writer: { aliases: ["writer", "author", "journalist", "copywriter"], keywords: ["content writer", "copywriter", "journalist"] },
   content_creator: { aliases: ["content creator", "influencer", "youtuber"], keywords: ["content creator", "social media manager"] },
   translator_interpreter: { aliases: ["translator", "interpreter"], keywords: ["translator", "interpreter"] },
@@ -419,7 +420,7 @@ const OVERRIDES: Record<string, Override> = {
   childcare_worker: { aliases: ["childcare worker", "nanny", "daycare worker", "babysitter"], keywords: ["childcare", "nanny", "early childhood assistant"] },
   community_health_worker: { aliases: ["community health worker", "chw"], keywords: ["community health worker"] },
   herbal_medicine_practitioner: { aliases: ["herbalist", "herbal medicine practitioner", "naturopath"], route: "Accredited programme (rules vary widely by location)", keywords: ["herbalist", "wellness practitioner"] },
-  tutor: { aliases: ["tutor", "teacher", "private tutor"], keywords: ["tutor", "teaching assistant", "teacher"] },
+  tutor: { aliases: ["tutor", "private tutor"], keywords: ["tutor", "teaching assistant", "teacher"] },
   driving_instructor: { aliases: ["driving instructor", "driving teacher"], keywords: ["driving instructor"] },
   security_guard: { aliases: ["security guard", "security officer", "bouncer"], route: "Licensed guard training course", timeline: "1–3 months", keywords: ["security officer", "security guard"] },
   firefighter_search_rescue: { aliases: ["firefighter", "fire fighter", "rescue"], route: "Application → physical test → fire academy → probation", timeline: "6–18 months to hire", credentials: ["Firefighter I/II academy certification", "EMT certification (often required)", "CPAT-type physical test", "Background and medical clearance"], keywords: ["firefighter", "emt firefighter"] },
@@ -442,6 +443,8 @@ const OVERRIDES: Record<string, Override> = {
   aircraft_mechanic_avionics_atc: { aliases: ["aircraft mechanic", "a&p mechanic", "avionics technician", "air traffic controller"], keywords: ["aircraft mechanic", "avionics technician"] },
   maritime_shipbuilder_harbor_pilot: { aliases: ["seafarer", "ship builder", "harbor pilot"], keywords: ["deckhand", "shipyard worker"] },
 };
+
+for (const [k, v] of Object.entries(EXPANSION_OVERRIDES)) if (!OVERRIDES[k]) OVERRIDES[k] = v;
 
 const STARTING_POINTS: Record<string, { summary: string; steps: Array<[string, string, string?]>; keywords: string[]; aliases: string[] }> = {
   school_leaver: {
@@ -711,4 +714,19 @@ export function validatePathway(r: PathwayRecord): string[] {
   if (!r.progression.length) errs.push("no progression");
   if (!r.entry_level_roles.length) errs.push("no entry roles");
   return errs;
+}
+
+/** Returns exact-alias collisions between different professions (they would make routing ambiguous). */
+export function aliasClashes(): string[] {
+  const owner = new Map<string, string>();
+  const out: string[] = [];
+  for (const p of CAREER_PROFESSIONS) {
+    const list = [...(OVERRIDES[p.id]?.aliases || []), ...(STARTING_POINTS[p.id]?.aliases || [])].map(norm);
+    for (const a of list) {
+      const prev = owner.get(a);
+      if (prev && prev !== p.id) out.push(a + ": " + prev + " vs " + p.id);
+      owner.set(a, p.id);
+    }
+  }
+  return out;
 }

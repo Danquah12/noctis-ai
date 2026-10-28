@@ -419,6 +419,244 @@ export const CAREER_PROFESSIONS: CareerProfessionRow[] = [
   ]
  },
  {
+  "id": "tile_flooring_installer",
+  "title": "Tile Setter, Flooring & Hardwood Installer",
+  "enclave": "trades_construction",
+  "skills": [
+   "Tile Layout & Thin-Set",
+   "Hardwood & Laminate Install",
+   "Subfloor Leveling",
+   "Grout & Waterproofing"
+  ],
+  "tools": [
+   "Tile Layout & Grout Estimator"
+  ]
+ },
+ {
+  "id": "glazier_glass_installer",
+  "title": "Glazier, Window & Glass Installer",
+  "enclave": "trades_construction",
+  "skills": [
+   "Glass Cutting & Setting",
+   "Storefront & Curtain Wall",
+   "Window Installation",
+   "Sealants & Weatherproofing"
+  ],
+  "tools": [
+   "Glass Takeoff & Glazing Planner"
+  ]
+ },
+ {
+  "id": "insulation_installer",
+  "title": "Insulation & Weatherization Installer",
+  "enclave": "trades_construction",
+  "skills": [
+   "Spray Foam & Batt Install",
+   "Air Sealing",
+   "Blower-Door Basics",
+   "Moisture Control"
+  ],
+  "tools": [
+   "Insulation R-Value & Coverage Calculator"
+  ]
+ },
+ {
+  "id": "concrete_finisher_mason_laborer",
+  "title": "Concrete Finisher, Formwork & Masonry Laborer",
+  "enclave": "trades_construction",
+  "skills": [
+   "Concrete Pouring & Finishing",
+   "Formwork & Rebar Tying",
+   "Screeding & Troweling",
+   "Curing & Joint Cutting"
+  ],
+  "tools": [
+   "Concrete Yield & Slab Cure Calculator"
+  ]
+ },
+ {
+  "id": "ironworker_rebar",
+  "title": "Ironworker, Rebar Setter & Structural Steel Erector",
+  "enclave": "trades_construction",
+  "skills": [
+   "Structural Steel Erection",
+   "Rebar Placement",
+   "Rigging & Signalling",
+   "Bolting & Welding Basics"
+  ],
+  "tools": [
+   "Rebar Schedule & Steel Erection Planner"
+  ]
+ },
+ {
+  "id": "sheet_metal_worker",
+  "title": "Sheet Metal Worker, Ductwork & Metal Roofing Fabricator",
+  "enclave": "trades_construction",
+  "skills": [
+   "Duct Fabrication",
+   "Metal Roofing & Flashing",
+   "Blueprint Layout",
+   "Shears, Brakes & Welding"
+  ],
+  "tools": [
+   "Duct Sizing & Sheet Layout Calculator"
+  ]
+ },
+ {
+  "id": "fence_gutter_siding_installer",
+  "title": "Fence, Gutter & Siding Installer",
+  "enclave": "trades_construction",
+  "skills": [
+   "Fence Layout & Post Setting",
+   "Seamless Gutter Install",
+   "Vinyl & Fibre-Cement Siding",
+   "Estimating & Customer Service"
+  ],
+  "tools": [
+   "Linear-Foot Estimator & Quote Builder"
+  ]
+ },
+ {
+  "id": "demolition_worker",
+  "title": "Demolition & Deconstruction Worker",
+  "enclave": "trades_construction",
+  "skills": [
+   "Selective Demolition",
+   "Hazmat Awareness (Asbestos/Lead)",
+   "Equipment Safety",
+   "Debris Recycling"
+  ],
+  "tools": [
+   "Demolition Sequencing & Waste Log"
+  ]
+ },
+ {
+  "id": "road_paving_crew",
+  "title": "Road Construction & Paving Crew Member",
+  "enclave": "trades_construction",
+  "skills": [
+   "Asphalt Paving & Rolling",
+   "Traffic Control & Flagging",
+   "Grading",
+   "Site Safety"
+  ],
+  "tools": [
+   "Paving Tonnage & Traffic-Control Plan"
+  ]
+ },
+ {
+  "id": "handyman_property_maintenance",
+  "title": "Handyman & Home Repair Technician",
+  "enclave": "trades_construction",
+  "skills": [
+   "General Repairs",
+   "Basic Plumbing & Electrical Fixes",
+   "Drywall Patching & Painting",
+   "Quoting & Scheduling"
+  ],
+  "tools": [
+   "Job Quote & Parts Tracker"
+  ]
+ },
+ {
+  "id": "appliance_repair_tech",
+  "title": "Appliance Repair Technician",
+  "enclave": "trades_construction",
+  "skills": [
+   "Fault Diagnosis",
+   "Refrigeration Basics",
+   "Washer/Dryer/Oven Repair",
+   "Parts Sourcing"
+  ],
+  "tools": [
+   "Appliance Model & Fault-Code Lookup"
+  ]
+ },
+ {
+  "id": "blacksmith_farrier",
+  "title": "Blacksmith, Farrier & Metal Artisan",
+  "enclave": "trades_construction",
+  "skills": [
+   "Forge Work",
+   "Hot & Cold Forming",
+   "Hoof Care & Shoeing",
+   "Tool Making"
+  ],
+  "tools": [
+   "Forge Project & Material Log"
+  ]
+ },
+ {
+  "id": "chimney_sweep_fireplace_tech",
+  "title": "Chimney Sweep & Fireplace Technician",
+  "enclave": "trades_construction",
+  "skills": [
+   "Chimney Cleaning",
+   "Flue Inspection",
+   "Liner Repair",
+   "Fire Safety"
+  ],
+  "tools": [
+   "Chimney Inspection Report Builder"
+  ]
+ },
+ {
+  "id": "stone_carver_monument_mason",
+  "title": "Stone Carver & Monument Mason",
+  "enclave": "trades_construction",
+  "skills": [
+   "Stone Carving & Lettering",
+   "Masonry Restoration",
+   "Sandblasting",
+   "Installation"
+  ],
+  "tools": [
+   "Stone Layout & Inscription Planner"
+  ]
+ },
+ {
+  "id": "general_laborer",
+  "title": "General Laborer & Construction Helper",
+  "enclave": "trades_construction",
+  "skills": [
+   "Site Cleanup",
+   "Material Handling",
+   "Tool Use & Safety",
+   "Teamwork"
+  ],
+  "tools": [
+   "Daily Task & Safety Checklist"
+  ]
+ },
+ {
+  "id": "architect_interior_designer",
+  "title": "Architect & Interior Designer",
+  "enclave": "trades_construction",
+  "skills": [
+   "Space Planning",
+   "CAD/BIM",
+   "Building Codes",
+   "Client Presentation"
+  ],
+  "tools": [
+   "Floor Plan & Material Schedule"
+  ]
+ },
+ {
+  "id": "day_laborer_casual_worker",
+  "title": "Day Laborer & Casual Worker",
+  "enclave": "trades_construction",
+  "skills": [
+   "Manual Tasks",
+   "Reliability",
+   "Tool Use",
+   "Safety Basics"
+  ],
+  "tools": [
+   "Daily Work & Pay Log"
+  ]
+ },
+ {
   "id": "mechanic",
   "title": "ASE Master Automotive Technician",
   "enclave": "automotive_mechanics",
@@ -619,6 +857,244 @@ export const CAREER_PROFESSIONS: CareerProfessionRow[] = [
   ]
  },
  {
+  "id": "motorcycle_mechanic",
+  "title": "Motorcycle & Small-Engine Mechanic",
+  "enclave": "automotive_mechanics",
+  "skills": [
+   "Engine Diagnostics",
+   "Chain, Brake & Suspension Service",
+   "Carburetor & EFI Tuning",
+   "Safety Inspection"
+  ],
+  "tools": [
+   "Motorcycle Service Checklist & Torque Spec Book"
+  ]
+ },
+ {
+  "id": "tire_technician",
+  "title": "Tire Technician & Wheel Alignment Specialist",
+  "enclave": "automotive_mechanics",
+  "skills": [
+   "Tire Mounting & Balancing",
+   "Wheel Alignment",
+   "TPMS Service",
+   "Puncture Repair"
+  ],
+  "tools": [
+   "Tire Size & Alignment Spec Lookup"
+  ]
+ },
+ {
+  "id": "auto_glass_installer",
+  "title": "Auto Glass Installer",
+  "enclave": "automotive_mechanics",
+  "skills": [
+   "Windshield Replacement",
+   "Chip Repair",
+   "ADAS Recalibration Basics",
+   "Adhesive Cure Safety"
+  ],
+  "tools": [
+   "Windshield Adhesive Cure & Calibration Log"
+  ]
+ },
+ {
+  "id": "car_detailer_car_wash",
+  "title": "Car Detailer & Car-Wash Attendant",
+  "enclave": "automotive_mechanics",
+  "skills": [
+   "Interior & Exterior Detailing",
+   "Paint Correction",
+   "Ceramic Coating",
+   "Customer Service"
+  ],
+  "tools": [
+   "Detail Package Pricing & Checklist"
+  ]
+ },
+ {
+  "id": "tow_truck_operator",
+  "title": "Tow-Truck & Roadside Assistance Operator",
+  "enclave": "automotive_mechanics",
+  "skills": [
+   "Vehicle Recovery & Loading",
+   "Roadside Repairs",
+   "Safe Towing",
+   "Dispatch Coordination"
+  ],
+  "tools": [
+   "Tow Dispatch & Incident Photo Log"
+  ]
+ },
+ {
+  "id": "bus_driver",
+  "title": "Bus & Coach Driver",
+  "enclave": "automotive_mechanics",
+  "skills": [
+   "Passenger Safety",
+   "Route Navigation",
+   "Fare Handling",
+   "Defensive Driving"
+  ],
+  "tools": [
+   "Route Schedule & Pre-Trip Inspection Log"
+  ]
+ },
+ {
+  "id": "school_bus_driver",
+  "title": "School Bus Driver",
+  "enclave": "automotive_mechanics",
+  "skills": [
+   "Student Safety",
+   "Pre-Trip Inspection",
+   "Route Management",
+   "Emergency Procedures"
+  ],
+  "tools": [
+   "School Bus Route & Safety Checklist"
+  ]
+ },
+ {
+  "id": "tuk_tuk_boda_rider",
+  "title": "Motorcycle-Taxi (Boda-Boda), Tuk-Tuk & Rickshaw Operator",
+  "enclave": "automotive_mechanics",
+  "skills": [
+   "Safe Riding",
+   "Passenger Service",
+   "Vehicle Upkeep",
+   "Route Knowledge & Fares"
+  ],
+  "tools": [
+   "Trip Earnings & Maintenance Ledger"
+  ]
+ },
+ {
+  "id": "forklift_operator",
+  "title": "Forklift & Material-Handling Equipment Operator",
+  "enclave": "automotive_mechanics",
+  "skills": [
+   "Forklift Operation",
+   "Pallet Racking",
+   "Load Safety",
+   "Inventory Scanning"
+  ],
+  "tools": [
+   "Forklift Pre-Use Inspection & Load Chart"
+  ]
+ },
+ {
+  "id": "train_conductor_rail_operator",
+  "title": "Train Conductor & Rail Operator",
+  "enclave": "automotive_mechanics",
+  "skills": [
+   "Signalling Rules",
+   "Train Handling",
+   "Passenger or Freight Safety",
+   "Dispatch Communication"
+  ],
+  "tools": [
+   "Rail Operating Rules & Trip Log"
+  ]
+ },
+ {
+  "id": "moving_worker_removals",
+  "title": "Mover, Removals & Furniture Delivery Crew",
+  "enclave": "automotive_mechanics",
+  "skills": [
+   "Safe Lifting",
+   "Packing & Wrapping",
+   "Furniture Assembly",
+   "Customer Service"
+  ],
+  "tools": [
+   "Move Inventory & Quote Sheet"
+  ]
+ },
+ {
+  "id": "parking_attendant_valet",
+  "title": "Parking Attendant & Valet",
+  "enclave": "automotive_mechanics",
+  "skills": [
+   "Customer Service",
+   "Safe Vehicle Handling",
+   "Payment Handling",
+   "Traffic Flow"
+  ],
+  "tools": [
+   "Valet Ticket & Cash Log"
+  ]
+ },
+ {
+  "id": "mobile_mechanic_roadside",
+  "title": "Mobile Mechanic & Roadside Repair Technician",
+  "enclave": "automotive_mechanics",
+  "skills": [
+   "On-Site Diagnostics",
+   "Battery & Starter Replacement",
+   "Brake & Fluid Service",
+   "Customer Communication"
+  ],
+  "tools": [
+   "Mobile Job Ticket & Parts Van Inventory"
+  ]
+ },
+ {
+  "id": "chauffeur_executive_driver",
+  "title": "Chauffeur & Executive Driver",
+  "enclave": "automotive_mechanics",
+  "skills": [
+   "Defensive & Executive Driving",
+   "Route Planning",
+   "Client Discretion",
+   "Vehicle Care"
+  ],
+  "tools": [
+   "Booking & Mileage Log"
+  ]
+ },
+ {
+  "id": "market_porter_load_carrier",
+  "title": "Market Porter & Load Carrier",
+  "enclave": "automotive_mechanics",
+  "skills": [
+   "Safe Lifting",
+   "Route Knowledge",
+   "Customer Trust",
+   "Pricing"
+  ],
+  "tools": [
+   "Daily Jobs & Earnings Ledger"
+  ]
+ },
+ {
+  "id": "water_vendor_delivery",
+  "title": "Water Vendor & Bulk-Delivery Operator",
+  "enclave": "automotive_mechanics",
+  "skills": [
+   "Water Quality Handling",
+   "Delivery Routing",
+   "Customer Billing",
+   "Vehicle Maintenance"
+  ],
+  "tools": [
+   "Delivery Route & Water-Quality Log"
+  ]
+ },
+ {
+  "id": "bicycle_courier_delivery_rider",
+  "title": "Bicycle Courier & Delivery-App Rider",
+  "enclave": "automotive_mechanics",
+  "skills": [
+   "Navigation",
+   "Time Management",
+   "Customer Service",
+   "Safe Riding"
+  ],
+  "tools": [
+   "Delivery Earnings & Bike Maintenance Log"
+  ]
+ },
+ {
   "id": "farmer",
   "title": "Crop & Precision Agriculture Farmer",
   "enclave": "agriculture_natural_resources",
@@ -786,6 +1262,188 @@ export const CAREER_PROFESSIONS: CareerProfessionRow[] = [
   ],
   "tools": [
    "Wildlife Biodiversity & Vet Triage Tracker"
+  ]
+ },
+ {
+  "id": "poultry_farmer",
+  "title": "Poultry & Egg Farmer",
+  "enclave": "agriculture_natural_resources",
+  "skills": [
+   "Flock Management",
+   "Feed & Biosecurity",
+   "Egg Handling",
+   "Disease Prevention"
+  ],
+  "tools": [
+   "Flock Health & Egg Production Log"
+  ]
+ },
+ {
+  "id": "cash_crop_farmer",
+  "title": "Coffee, Cocoa, Tea & Cash-Crop Farmer",
+  "enclave": "agriculture_natural_resources",
+  "skills": [
+   "Crop Husbandry",
+   "Pruning & Pest Control",
+   "Harvest & Post-Harvest Handling",
+   "Certification & Cooperatives"
+  ],
+  "tools": [
+   "Plantation Yield & Harvest Calendar"
+  ]
+ },
+ {
+  "id": "shepherd_goat_herder",
+  "title": "Shepherd, Goat & Sheep Herder",
+  "enclave": "agriculture_natural_resources",
+  "skills": [
+   "Flock Handling",
+   "Pasture Management",
+   "Lambing/Kidding",
+   "Animal Health Basics"
+  ],
+  "tools": [
+   "Herd Count & Pasture Rotation Log"
+  ]
+ },
+ {
+  "id": "horticulturist_nursery_grower",
+  "title": "Horticulturist & Plant Nursery Grower",
+  "enclave": "agriculture_natural_resources",
+  "skills": [
+   "Plant Propagation",
+   "Greenhouse Management",
+   "Integrated Pest Management",
+   "Plant Sales"
+  ],
+  "tools": [
+   "Greenhouse Climate & Crop Planner"
+  ]
+ },
+ {
+  "id": "vineyard_orchard_worker",
+  "title": "Vineyard & Orchard Worker",
+  "enclave": "agriculture_natural_resources",
+  "skills": [
+   "Pruning & Training",
+   "Harvest",
+   "Spray Application Safety",
+   "Irrigation"
+  ],
+  "tools": [
+   "Orchard Block & Harvest Log"
+  ]
+ },
+ {
+  "id": "sawmill_operator",
+  "title": "Sawmill & Timber Processing Operator",
+  "enclave": "agriculture_natural_resources",
+  "skills": [
+   "Log Scaling & Cutting",
+   "Saw Maintenance",
+   "Lumber Grading",
+   "Machine Safety"
+  ],
+  "tools": [
+   "Log Yield & Lumber Grade Tally"
+  ]
+ },
+ {
+  "id": "charcoal_firewood_producer",
+  "title": "Charcoal & Firewood Producer",
+  "enclave": "agriculture_natural_resources",
+  "skills": [
+   "Wood Harvesting",
+   "Kiln Operation",
+   "Sustainable Sourcing",
+   "Packaging & Sales"
+  ],
+  "tools": [
+   "Production Batch & Sales Ledger"
+  ]
+ },
+ {
+  "id": "irrigation_technician",
+  "title": "Irrigation Installer & Water-Management Technician",
+  "enclave": "agriculture_natural_resources",
+  "skills": [
+   "System Design",
+   "Drip & Sprinkler Install",
+   "Pump Maintenance",
+   "Water Budgeting"
+  ],
+  "tools": [
+   "Irrigation Zone & Flow Calculator"
+  ]
+ },
+ {
+  "id": "gardener_groundskeeper",
+  "title": "Gardener & Groundskeeper",
+  "enclave": "agriculture_natural_resources",
+  "skills": [
+   "Lawn & Plant Care",
+   "Pruning",
+   "Equipment Use",
+   "Seasonal Planning"
+  ],
+  "tools": [
+   "Grounds Maintenance Schedule"
+  ]
+ },
+ {
+  "id": "greenkeeper_turf_manager",
+  "title": "Golf Greenkeeper & Turf Manager",
+  "enclave": "agriculture_natural_resources",
+  "skills": [
+   "Turf Science",
+   "Mowing & Aeration",
+   "Irrigation Scheduling",
+   "Pest & Disease Control"
+  ],
+  "tools": [
+   "Turf Condition & Inputs Log"
+  ]
+ },
+ {
+  "id": "pig_farmer",
+  "title": "Pig & Pork Farmer",
+  "enclave": "agriculture_natural_resources",
+  "skills": [
+   "Herd Management",
+   "Feed Conversion",
+   "Biosecurity",
+   "Farrowing"
+  ],
+  "tools": [
+   "Herd Performance & Biosecurity Log"
+  ]
+ },
+ {
+  "id": "fish_processor_seafood_worker",
+  "title": "Fish Processor & Seafood Worker",
+  "enclave": "agriculture_natural_resources",
+  "skills": [
+   "Filleting & Cutting",
+   "Cold Chain",
+   "Food Safety (HACCP)",
+   "Packing"
+  ],
+  "tools": [
+   "Catch Intake & HACCP Log"
+  ]
+ },
+ {
+  "id": "forest_fire_hunter_trapper",
+  "title": "Wildland Firefighter, Hunter & Trapper",
+  "enclave": "agriculture_natural_resources",
+  "skills": [
+   "Wildfire Suppression",
+   "Land Navigation",
+   "Wildlife Management",
+   "Field Safety"
+  ],
+  "tools": [
+   "Fire Line & Field Safety Log"
   ]
  },
  {
@@ -1000,6 +1658,174 @@ export const CAREER_PROFESSIONS: CareerProfessionRow[] = [
   ]
  },
  {
+  "id": "makeup_artist",
+  "title": "Makeup Artist & Beauty Consultant",
+  "enclave": "personal_services_wellness",
+  "skills": [
+   "Skin Prep & Colour Theory",
+   "Bridal & Editorial Makeup",
+   "Hygiene & Sanitation",
+   "Client Consultation"
+  ],
+  "tools": [
+   "Client Look Book & Kit Hygiene Log"
+  ]
+ },
+ {
+  "id": "hair_braider_weaver",
+  "title": "Hair Braider & Weave Specialist",
+  "enclave": "personal_services_wellness",
+  "skills": [
+   "Braiding & Twisting",
+   "Weave & Extension Install",
+   "Scalp Care",
+   "Client Booking"
+  ],
+  "tools": [
+   "Braid Style Pricing & Booking Calendar"
+  ]
+ },
+ {
+  "id": "loctician_natural_hair",
+  "title": "Loctician & Natural-Hair Specialist",
+  "enclave": "personal_services_wellness",
+  "skills": [
+   "Loc Installation & Maintenance",
+   "Scalp Treatment",
+   "Natural Hair Styling",
+   "Client Education"
+  ],
+  "tools": [
+   "Loc Maintenance Schedule & Client Notes"
+  ]
+ },
+ {
+  "id": "wig_maker_hair_replacement",
+  "title": "Wig Maker & Hair Replacement Specialist",
+  "enclave": "personal_services_wellness",
+  "skills": [
+   "Wig Construction",
+   "Ventilating",
+   "Colour Matching",
+   "Fitting & Care"
+  ],
+  "tools": [
+   "Wig Pattern & Fit Record"
+  ]
+ },
+ {
+  "id": "henna_artist",
+  "title": "Henna & Body-Art Artist",
+  "enclave": "personal_services_wellness",
+  "skills": [
+   "Henna Design",
+   "Skin Safety",
+   "Event Booking",
+   "Pattern Layout"
+  ],
+  "tools": [
+   "Design Portfolio & Booking Sheet"
+  ]
+ },
+ {
+  "id": "lash_brow_technician",
+  "title": "Eyelash & Eyebrow Technician",
+  "enclave": "personal_services_wellness",
+  "skills": [
+   "Lash Extensions",
+   "Brow Lamination & Shaping",
+   "Allergy Patch Testing",
+   "Hygiene"
+  ],
+  "tools": [
+   "Client Patch-Test & Appointment Log"
+  ]
+ },
+ {
+  "id": "life_coach_career_coach",
+  "title": "Life, Career & Wellness Coach",
+  "enclave": "personal_services_wellness",
+  "skills": [
+   "Active Listening",
+   "Goal Setting",
+   "Accountability Frameworks",
+   "Client Programmes"
+  ],
+  "tools": [
+   "Client Session & Goal Tracker"
+  ]
+ },
+ {
+  "id": "dog_walker_pet_sitter",
+  "title": "Dog Walker & Pet Sitter",
+  "enclave": "personal_services_wellness",
+  "skills": [
+   "Animal Handling",
+   "Pet First Aid",
+   "Scheduling",
+   "Client Trust"
+  ],
+  "tools": [
+   "Pet Visit Log & Client Notes"
+  ]
+ },
+ {
+  "id": "house_sitter_caretaker",
+  "title": "House Sitter & Property Caretaker",
+  "enclave": "personal_services_wellness",
+  "skills": [
+   "Security Awareness",
+   "Plant & Pet Care",
+   "Property Checks",
+   "Reliability"
+  ],
+  "tools": [
+   "Home-Sitting Checklist & Key Log"
+  ]
+ },
+ {
+  "id": "wedding_officiant",
+  "title": "Wedding Officiant & Celebrant",
+  "enclave": "personal_services_wellness",
+  "skills": [
+   "Ceremony Writing",
+   "Public Speaking",
+   "Legal Paperwork",
+   "Client Consultation"
+  ],
+  "tools": [
+   "Ceremony Script & Licence Tracker"
+  ]
+ },
+ {
+  "id": "personal_stylist_image_consultant",
+  "title": "Personal Stylist & Image Consultant",
+  "enclave": "personal_services_wellness",
+  "skills": [
+   "Wardrobe Audits",
+   "Colour & Body Analysis",
+   "Shopping Consultations",
+   "Client Branding"
+  ],
+  "tools": [
+   "Client Wardrobe & Lookbook Planner"
+  ]
+ },
+ {
+  "id": "professional_athlete",
+  "title": "Professional Athlete & Sports Performer",
+  "enclave": "personal_services_wellness",
+  "skills": [
+   "Training & Conditioning",
+   "Skill Mastery",
+   "Recovery",
+   "Contracts & Branding"
+  ],
+  "tools": [
+   "Training Load & Recovery Log"
+  ]
+ },
+ {
   "id": "caterer",
   "title": "Executive Event Caterer & Banquet Chef",
   "enclave": "culinary_hospitality_events",
@@ -1208,6 +2034,174 @@ export const CAREER_PROFESSIONS: CareerProfessionRow[] = [
   ]
  },
  {
+  "id": "window_cleaner_pressure_washer",
+  "title": "Window Cleaner & Pressure-Washing Specialist",
+  "enclave": "culinary_hospitality_events",
+  "skills": [
+   "Window & Facade Cleaning",
+   "Pressure Washing",
+   "Working at Heights",
+   "Pricing & Route Planning"
+  ],
+  "tools": [
+   "Cleaning Quote & Route Planner"
+  ]
+ },
+ {
+  "id": "chef_cook",
+  "title": "Chef, Line Cook & Kitchen Professional",
+  "enclave": "culinary_hospitality_events",
+  "skills": [
+   "Knife Skills",
+   "Station Cooking",
+   "Menu Costing",
+   "Food Safety (HACCP)"
+  ],
+  "tools": [
+   "Recipe Costing & Prep List"
+  ]
+ },
+ {
+  "id": "bartender_mixologist",
+  "title": "Bartender & Mixologist",
+  "enclave": "culinary_hospitality_events",
+  "skills": [
+   "Cocktail Preparation",
+   "Responsible Alcohol Service",
+   "Cash Handling",
+   "Customer Service"
+  ],
+  "tools": [
+   "Cocktail Spec & Inventory Sheet"
+  ]
+ },
+ {
+  "id": "barista",
+  "title": "Barista & Coffee-Shop Professional",
+  "enclave": "culinary_hospitality_events",
+  "skills": [
+   "Espresso Extraction",
+   "Milk Texturing",
+   "Customer Service",
+   "Cafe Hygiene"
+  ],
+  "tools": [
+   "Espresso Dial-In & Daily Cafe Log"
+  ]
+ },
+ {
+  "id": "food_truck_operator",
+  "title": "Food-Truck & Mobile Kitchen Operator",
+  "enclave": "culinary_hospitality_events",
+  "skills": [
+   "Menu Development",
+   "Food Safety",
+   "Permits & Locations",
+   "Costing & Pricing"
+  ],
+  "tools": [
+   "Truck Route, Permit & Daily Sales Log"
+  ]
+ },
+ {
+  "id": "hotel_front_desk_concierge",
+  "title": "Hotel Front-Desk Agent & Concierge",
+  "enclave": "culinary_hospitality_events",
+  "skills": [
+   "Guest Check-In",
+   "Reservations Systems (PMS)",
+   "Problem Solving",
+   "Local Knowledge"
+  ],
+  "tools": [
+   "Reservation & Guest-Request Board"
+  ]
+ },
+ {
+  "id": "housekeeper_room_attendant",
+  "title": "Hotel Housekeeper & Room Attendant",
+  "enclave": "culinary_hospitality_events",
+  "skills": [
+   "Room Turnover",
+   "Linen Handling",
+   "Sanitation",
+   "Inventory"
+  ],
+  "tools": [
+   "Room Status & Supply Checklist"
+  ]
+ },
+ {
+  "id": "kitchen_porter_dishwasher",
+  "title": "Kitchen Porter, Dishwasher & Prep Assistant",
+  "enclave": "culinary_hospitality_events",
+  "skills": [
+   "Dish Machine Operation",
+   "Prep Support",
+   "Sanitation",
+   "Teamwork"
+  ],
+  "tools": [
+   "Cleaning & Prep Checklist"
+  ]
+ },
+ {
+  "id": "dj_mc_entertainer",
+  "title": "DJ, MC & Event Entertainer",
+  "enclave": "culinary_hospitality_events",
+  "skills": [
+   "Mixing & Beatmatching",
+   "Crowd Reading",
+   "Sound Equipment Setup",
+   "Event Hosting"
+  ],
+  "tools": [
+   "Set List & Event Rider Planner"
+  ]
+ },
+ {
+  "id": "event_decorator_florist",
+  "title": "Event Decorator & Floral Designer",
+  "enclave": "culinary_hospitality_events",
+  "skills": [
+   "Floral Design",
+   "Venue Styling",
+   "Budgeting",
+   "Setup & Teardown"
+  ],
+  "tools": [
+   "Event Mood Board & Supply Planner"
+  ]
+ },
+ {
+  "id": "hotel_restaurant_manager",
+  "title": "Hotel & Restaurant Manager",
+  "enclave": "culinary_hospitality_events",
+  "skills": [
+   "Operations Management",
+   "Staff Scheduling",
+   "Cost Control",
+   "Guest Experience"
+  ],
+  "tools": [
+   "Daily Ops & Labour-Cost Dashboard"
+  ]
+ },
+ {
+  "id": "stage_manager_sound_engineer",
+  "title": "Stage Manager, Sound & Lighting Engineer",
+  "enclave": "culinary_hospitality_events",
+  "skills": [
+   "Cue Calling",
+   "Sound Mixing",
+   "Lighting Design",
+   "Safety & Rigging Awareness"
+  ],
+  "tools": [
+   "Show Cue Sheet & Input List"
+  ]
+ },
+ {
   "id": "realtor",
   "title": "Licensed Realtor & Real Estate Broker",
   "enclave": "commerce_small_business",
@@ -1312,6 +2306,370 @@ export const CAREER_PROFESSIONS: CareerProfessionRow[] = [
   ],
   "tools": [
    "Planogram Conversion & RMA Returns Triage Desk"
+  ]
+ },
+ {
+  "id": "car_rental_sales_consultant",
+  "title": "Car Rental Agent & Auto Sales Consultant",
+  "enclave": "commerce_small_business",
+  "skills": [
+   "Customer Needs Assessment",
+   "Vehicle Knowledge",
+   "Contracts & Financing Basics",
+   "Negotiation"
+  ],
+  "tools": [
+   "Vehicle Inventory & Deal Desk"
+  ]
+ },
+ {
+  "id": "cashier_retail_associate",
+  "title": "Cashier & Retail Sales Associate",
+  "enclave": "commerce_small_business",
+  "skills": [
+   "POS Operation",
+   "Customer Service",
+   "Stock Replenishment",
+   "Loss Prevention"
+  ],
+  "tools": [
+   "POS Cash-Up & Stock Count Sheet"
+  ]
+ },
+ {
+  "id": "sales_representative",
+  "title": "Sales Representative & Business Development Rep",
+  "enclave": "commerce_small_business",
+  "skills": [
+   "Prospecting",
+   "Product Demos",
+   "Negotiation",
+   "CRM Management"
+  ],
+  "tools": [
+   "Pipeline & CRM Activity Tracker"
+  ]
+ },
+ {
+  "id": "import_export_trader",
+  "title": "Import/Export Trader & Customs-Savvy Merchant",
+  "enclave": "commerce_small_business",
+  "skills": [
+   "Sourcing & Negotiation",
+   "Customs & Tariffs",
+   "Shipping & Incoterms",
+   "Foreign-Exchange Basics"
+  ],
+  "tools": [
+   "Landed-Cost & Shipment Tracker"
+  ]
+ },
+ {
+  "id": "mobile_money_agent",
+  "title": "Mobile-Money & Payment Agent",
+  "enclave": "commerce_small_business",
+  "skills": [
+   "Cash-In/Cash-Out",
+   "KYC & Fraud Awareness",
+   "Float Management",
+   "Customer Service"
+  ],
+  "tools": [
+   "Float & Daily Transaction Ledger"
+  ]
+ },
+ {
+  "id": "wholesaler_distributor",
+  "title": "Wholesaler & Distribution Business Owner",
+  "enclave": "commerce_small_business",
+  "skills": [
+   "Supplier Negotiation",
+   "Inventory Management",
+   "Route Sales",
+   "Credit Control"
+  ],
+  "tools": [
+   "Inventory, Orders & Credit Ledger"
+  ]
+ },
+ {
+  "id": "travel_agent",
+  "title": "Travel Agent & Tour Consultant",
+  "enclave": "commerce_small_business",
+  "skills": [
+   "Itinerary Planning",
+   "Booking Systems (GDS)",
+   "Supplier Relations",
+   "Customer Service"
+  ],
+  "tools": [
+   "Itinerary & Booking Tracker"
+  ]
+ },
+ {
+  "id": "direct_sales_seller",
+  "title": "Direct-Sales Consultant & Network Marketer",
+  "enclave": "commerce_small_business",
+  "skills": [
+   "Product Knowledge",
+   "Social Selling",
+   "Customer Follow-Up",
+   "Compliance"
+  ],
+  "tools": [
+   "Customer List & Order Tracker"
+  ]
+ },
+ {
+  "id": "virtual_assistant_freelancer",
+  "title": "Virtual Assistant & Remote Administrator",
+  "enclave": "commerce_small_business",
+  "skills": [
+   "Email & Calendar Management",
+   "Document Preparation",
+   "CRM & Tools",
+   "Client Communication"
+  ],
+  "tools": [
+   "Client Task & Invoice Tracker"
+  ]
+ },
+ {
+  "id": "call_center_agent",
+  "title": "Call-Center & Customer-Support Agent",
+  "enclave": "commerce_small_business",
+  "skills": [
+   "Active Listening",
+   "Ticketing Systems",
+   "De-escalation",
+   "Product Knowledge"
+  ],
+  "tools": [
+   "Support Ticket & CSAT Dashboard"
+  ]
+ },
+ {
+  "id": "property_manager_leasing",
+  "title": "Property Manager & Leasing Agent",
+  "enclave": "commerce_small_business",
+  "skills": [
+   "Tenant Screening",
+   "Lease Administration",
+   "Maintenance Coordination",
+   "Rent Collection"
+  ],
+  "tools": [
+   "Rent Roll & Maintenance Request Tracker"
+  ]
+ },
+ {
+  "id": "short_term_rental_host",
+  "title": "Short-Term Rental & Guesthouse Host",
+  "enclave": "commerce_small_business",
+  "skills": [
+   "Listing Optimisation",
+   "Guest Communication",
+   "Cleaning Turnover",
+   "Local Compliance"
+  ],
+  "tools": [
+   "Booking Calendar & Cleaning Schedule"
+  ]
+ },
+ {
+  "id": "receptionist_front_office",
+  "title": "Receptionist & Front-Office Coordinator",
+  "enclave": "commerce_small_business",
+  "skills": [
+   "Greeting & Phones",
+   "Scheduling",
+   "Records",
+   "Professional Communication"
+  ],
+  "tools": [
+   "Visitor Log & Call Routing Sheet"
+  ]
+ },
+ {
+  "id": "administrative_assistant",
+  "title": "Administrative Assistant & Office Manager",
+  "enclave": "commerce_small_business",
+  "skills": [
+   "Calendar & Travel",
+   "Document Preparation",
+   "Records Management",
+   "Office Software"
+  ],
+  "tools": [
+   "Task, Calendar & Filing Tracker"
+  ]
+ },
+ {
+  "id": "store_retail_manager",
+  "title": "Store & Retail Manager",
+  "enclave": "commerce_small_business",
+  "skills": [
+   "Team Scheduling",
+   "Inventory & Merchandising",
+   "Sales Targets",
+   "Customer Experience"
+  ],
+  "tools": [
+   "Store KPI & Rota Dashboard"
+  ]
+ },
+ {
+  "id": "boutique_small_retail_owner",
+  "title": "Boutique & Specialty Shop Owner",
+  "enclave": "commerce_small_business",
+  "skills": [
+   "Buying & Merchandising",
+   "Pricing",
+   "Social Media Selling",
+   "Bookkeeping"
+  ],
+  "tools": [
+   "Buying Plan & Margin Tracker"
+  ]
+ },
+ {
+  "id": "auctioneer_pawnbroker",
+  "title": "Auctioneer, Appraiser & Pawnbroker",
+  "enclave": "commerce_small_business",
+  "skills": [
+   "Valuation",
+   "Bidding Procedure",
+   "Authentication",
+   "Compliance & Record-Keeping"
+  ],
+  "tools": [
+   "Lot Catalogue & Appraisal Log"
+  ]
+ },
+ {
+  "id": "project_manager",
+  "title": "Project Manager & Programme Coordinator",
+  "enclave": "commerce_small_business",
+  "skills": [
+   "Scoping & Scheduling",
+   "Risk Management",
+   "Stakeholder Communication",
+   "Budget Tracking"
+  ],
+  "tools": [
+   "Gantt Plan & Risk Register"
+  ]
+ },
+ {
+  "id": "hr_specialist_recruiter",
+  "title": "Human Resources Specialist & Recruiter",
+  "enclave": "commerce_small_business",
+  "skills": [
+   "Recruiting & Interviewing",
+   "Employment Law Basics",
+   "Onboarding",
+   "Employee Relations"
+  ],
+  "tools": [
+   "Applicant Pipeline & Onboarding Tracker"
+  ]
+ },
+ {
+  "id": "marketing_manager",
+  "title": "Marketing, Brand & Communications Manager",
+  "enclave": "commerce_small_business",
+  "skills": [
+   "Campaign Planning",
+   "Analytics",
+   "Content Strategy",
+   "Budget Management"
+  ],
+  "tools": [
+   "Campaign Calendar & Metrics Dashboard"
+  ]
+ },
+ {
+  "id": "operations_supply_chain_manager",
+  "title": "Operations & Supply-Chain Manager",
+  "enclave": "commerce_small_business",
+  "skills": [
+   "Demand Planning",
+   "Procurement",
+   "Logistics Coordination",
+   "Lean/Process Improvement"
+  ],
+  "tools": [
+   "S&OP Plan & KPI Dashboard"
+  ]
+ },
+ {
+  "id": "entrepreneur_founder",
+  "title": "Entrepreneur, Founder & Startup Operator",
+  "enclave": "commerce_small_business",
+  "skills": [
+   "Opportunity Validation",
+   "Fundraising & Budgeting",
+   "Sales & Marketing",
+   "Team Building"
+  ],
+  "tools": [
+   "Business Model Canvas & Cash-Flow Forecast"
+  ]
+ },
+ {
+  "id": "business_analyst_product_manager",
+  "title": "Business Analyst & Product Manager",
+  "enclave": "commerce_small_business",
+  "skills": [
+   "Requirements Gathering",
+   "Data Analysis",
+   "Roadmapping",
+   "Stakeholder Management"
+  ],
+  "tools": [
+   "Backlog & Requirements Board"
+  ]
+ },
+ {
+  "id": "management_consultant",
+  "title": "Management Consultant & Independent Advisor",
+  "enclave": "commerce_small_business",
+  "skills": [
+   "Problem Structuring",
+   "Analysis & Modelling",
+   "Client Presentations",
+   "Industry Expertise"
+  ],
+  "tools": [
+   "Engagement Plan & Deliverable Tracker"
+  ]
+ },
+ {
+  "id": "cyber_cafe_telecom_shop_operator",
+  "title": "Cyber-Café, Telecom Shop & Airtime Reseller",
+  "enclave": "commerce_small_business",
+  "skills": [
+   "Customer Service",
+   "Device & Airtime Sales",
+   "Basic Troubleshooting",
+   "Cash Management"
+  ],
+  "tools": [
+   "Daily Sales & Airtime Float Ledger"
+  ]
+ },
+ {
+  "id": "errand_runner_personal_shopper",
+  "title": "Errand Runner & Personal Shopper",
+  "enclave": "commerce_small_business",
+  "skills": [
+   "Time Management",
+   "Shopping & Delivery",
+   "Customer Communication",
+   "Payment Handling"
+  ],
+  "tools": [
+   "Errand Log & Receipt Tracker"
   ]
  },
  {
@@ -1506,6 +2864,174 @@ export const CAREER_PROFESSIONS: CareerProfessionRow[] = [
   ],
   "tools": [
    "Inharmonicity Temperament & Archival Matting Sizer"
+  ]
+ },
+ {
+  "id": "fashion_designer",
+  "title": "Fashion Designer & Garment Brand Founder",
+  "enclave": "creative_media_arts",
+  "skills": [
+   "Sketching & Pattern Making",
+   "Fabric Sourcing",
+   "Fit & Production",
+   "Brand Building"
+  ],
+  "tools": [
+   "Collection Planner & Tech-Pack Builder"
+  ]
+ },
+ {
+  "id": "animator_cartoonist",
+  "title": "Animator, Illustrator & Cartoonist",
+  "enclave": "creative_media_arts",
+  "skills": [
+   "Character Design",
+   "2D/3D Animation",
+   "Storyboarding",
+   "Digital Illustration"
+  ],
+  "tools": [
+   "Storyboard & Animation Timeline"
+  ]
+ },
+ {
+  "id": "podcaster_audio_producer",
+  "title": "Podcaster & Audio Producer",
+  "enclave": "creative_media_arts",
+  "skills": [
+   "Interviewing",
+   "Audio Editing & Mixing",
+   "Show Planning",
+   "Audience Growth"
+  ],
+  "tools": [
+   "Episode Plan & Audio Edit Checklist"
+  ]
+ },
+ {
+  "id": "voice_actor_narrator",
+  "title": "Voice Actor & Audiobook Narrator",
+  "enclave": "creative_media_arts",
+  "skills": [
+   "Vocal Control",
+   "Script Interpretation",
+   "Home Studio Recording",
+   "Auditioning"
+  ],
+  "tools": [
+   "Audition Tracker & Home-Studio Checklist"
+  ]
+ },
+ {
+  "id": "potter_ceramicist",
+  "title": "Potter, Ceramicist & Glass Artist",
+  "enclave": "creative_media_arts",
+  "skills": [
+   "Wheel Throwing & Handbuilding",
+   "Glazing & Firing",
+   "Kiln Safety",
+   "Selling & Markets"
+  ],
+  "tools": [
+   "Kiln Firing & Glaze Log"
+  ]
+ },
+ {
+  "id": "wood_carver_sculptor",
+  "title": "Wood Carver & Sculptor",
+  "enclave": "creative_media_arts",
+  "skills": [
+   "Carving & Relief",
+   "Finishing",
+   "Design",
+   "Commissions & Sales"
+  ],
+  "tools": [
+   "Commission & Material Planner"
+  ]
+ },
+ {
+  "id": "jeweler_goldsmith",
+  "title": "Jeweler, Goldsmith & Gem Setter",
+  "enclave": "creative_media_arts",
+  "skills": [
+   "Soldering & Casting",
+   "Stone Setting",
+   "CAD Jewelry Design",
+   "Appraisal Basics"
+  ],
+  "tools": [
+   "Bench Job Ticket & Metal Weight Log"
+  ]
+ },
+ {
+  "id": "calligrapher_lettering_artist",
+  "title": "Calligrapher, Sign Painter & Lettering Artist",
+  "enclave": "creative_media_arts",
+  "skills": [
+   "Calligraphy",
+   "Layout & Spacing",
+   "Brush & Pen Techniques",
+   "Commissions"
+  ],
+  "tools": [
+   "Lettering Layout & Commission Sheet"
+  ]
+ },
+ {
+  "id": "comedian_stand_up",
+  "title": "Stand-Up Comedian & Humorist",
+  "enclave": "creative_media_arts",
+  "skills": [
+   "Joke Writing",
+   "Stage Presence",
+   "Audience Management",
+   "Booking"
+  ],
+  "tools": [
+   "Set-List & Open-Mic Tracker"
+  ]
+ },
+ {
+  "id": "poet_spoken_word",
+  "title": "Poet, Spoken-Word Artist & Lyricist",
+  "enclave": "creative_media_arts",
+  "skills": [
+   "Writing & Editing",
+   "Performance",
+   "Publishing & Submissions",
+   "Audience Building"
+  ],
+  "tools": [
+   "Poem Drafts & Submission Tracker"
+  ]
+ },
+ {
+  "id": "video_editor_motion_designer",
+  "title": "Video Editor & Motion Designer",
+  "enclave": "creative_media_arts",
+  "skills": [
+   "Editing & Colour",
+   "Motion Graphics",
+   "Storytelling",
+   "Delivery Specs"
+  ],
+  "tools": [
+   "Edit Timeline & Export Checklist"
+  ]
+ },
+ {
+  "id": "fashion_model",
+  "title": "Fashion & Commercial Model",
+  "enclave": "creative_media_arts",
+  "skills": [
+   "Posing & Camera Presence",
+   "Portfolio Building",
+   "Agency Relations",
+   "Professional Conduct"
+  ],
+  "tools": [
+   "Booking Calendar & Portfolio Tracker"
   ]
  },
  {
@@ -2000,6 +3526,244 @@ export const CAREER_PROFESSIONS: CareerProfessionRow[] = [
   ]
  },
  {
+  "id": "optometrist_optician",
+  "title": "Optometrist & Dispensing Optician",
+  "enclave": "healthcare_medicine",
+  "skills": [
+   "Eye Exams & Refraction",
+   "Contact Lens Fitting",
+   "Frame & Lens Dispensing",
+   "Ocular Disease Screening"
+  ],
+  "tools": [
+   "Refraction Chart & Prescription Log"
+  ]
+ },
+ {
+  "id": "audiologist_hearing_specialist",
+  "title": "Audiologist & Hearing-Aid Specialist",
+  "enclave": "healthcare_medicine",
+  "skills": [
+   "Hearing Tests",
+   "Hearing-Aid Fitting",
+   "Tinnitus & Balance Care",
+   "Counselling"
+  ],
+  "tools": [
+   "Audiogram & Hearing-Aid Fitting Log"
+  ]
+ },
+ {
+  "id": "speech_language_pathologist",
+  "title": "Speech-Language Pathologist & Therapist",
+  "enclave": "healthcare_medicine",
+  "skills": [
+   "Speech & Language Assessment",
+   "Swallowing Therapy",
+   "Therapy Planning",
+   "Family Coaching"
+  ],
+  "tools": [
+   "Therapy Goal & Progress Tracker"
+  ]
+ },
+ {
+  "id": "psychologist_counselor",
+  "title": "Psychologist, Counselor & Therapist",
+  "enclave": "healthcare_medicine",
+  "skills": [
+   "Clinical Interviewing",
+   "Evidence-Based Therapy",
+   "Assessment",
+   "Ethics & Confidentiality"
+  ],
+  "tools": [
+   "Session Notes & Treatment Plan Tracker"
+  ]
+ },
+ {
+  "id": "social_worker",
+  "title": "Social Worker & Case Manager",
+  "enclave": "healthcare_medicine",
+  "skills": [
+   "Case Assessment",
+   "Crisis Intervention",
+   "Resource Navigation",
+   "Documentation"
+  ],
+  "tools": [
+   "Case Notes & Resource Directory"
+  ]
+ },
+ {
+  "id": "chiropractor",
+  "title": "Chiropractor",
+  "enclave": "healthcare_medicine",
+  "skills": [
+   "Spinal Assessment",
+   "Manipulation Techniques",
+   "Rehab Exercises",
+   "Patient Education"
+  ],
+  "tools": [
+   "Treatment Plan & Outcome Tracker"
+  ]
+ },
+ {
+  "id": "podiatrist",
+  "title": "Podiatrist & Foot-Care Specialist",
+  "enclave": "healthcare_medicine",
+  "skills": [
+   "Foot & Ankle Examination",
+   "Wound Care",
+   "Orthotics",
+   "Minor Procedures"
+  ],
+  "tools": [
+   "Foot Exam & Orthotic Prescription Log"
+  ]
+ },
+ {
+  "id": "acupuncturist_tcm_practitioner",
+  "title": "Acupuncturist & Traditional-Medicine Practitioner",
+  "enclave": "healthcare_medicine",
+  "skills": [
+   "Acupuncture Technique",
+   "Diagnosis & Point Selection",
+   "Needle Safety",
+   "Patient Care Plans"
+  ],
+  "tools": [
+   "Treatment Point & Herb Record"
+  ]
+ },
+ {
+  "id": "dietitian_nutritionist",
+  "title": "Dietitian & Nutritionist",
+  "enclave": "healthcare_medicine",
+  "skills": [
+   "Nutrition Assessment",
+   "Meal Planning",
+   "Medical Nutrition Therapy",
+   "Counselling"
+  ],
+  "tools": [
+   "Meal Plan & Nutrient Calculator"
+  ]
+ },
+ {
+  "id": "sonographer_ultrasound_tech",
+  "title": "Diagnostic Medical Sonographer",
+  "enclave": "healthcare_medicine",
+  "skills": [
+   "Ultrasound Scanning",
+   "Image Optimisation",
+   "Patient Care",
+   "Reporting"
+  ],
+  "tools": [
+   "Scan Protocol & Image Quality Checklist"
+  ]
+ },
+ {
+  "id": "hospital_porter_orderly",
+  "title": "Hospital Porter, Orderly & Patient Transporter",
+  "enclave": "healthcare_medicine",
+  "skills": [
+   "Safe Patient Transport",
+   "Infection Control",
+   "Teamwork",
+   "Communication"
+  ],
+  "tools": [
+   "Transport Request & Safety Log"
+  ]
+ },
+ {
+  "id": "dialysis_technician",
+  "title": "Dialysis Technician",
+  "enclave": "healthcare_medicine",
+  "skills": [
+   "Hemodialysis Setup",
+   "Patient Monitoring",
+   "Sterile Technique",
+   "Equipment Maintenance"
+  ],
+  "tools": [
+   "Dialysis Session & Water-Quality Log"
+  ]
+ },
+ {
+  "id": "midwife_doula",
+  "title": "Midwife & Birth Doula",
+  "enclave": "healthcare_medicine",
+  "skills": [
+   "Antenatal Care",
+   "Labour Support",
+   "Newborn Care",
+   "Emergency Recognition"
+  ],
+  "tools": [
+   "Birth Plan & Antenatal Record"
+  ]
+ },
+ {
+  "id": "traditional_birth_attendant_chw",
+  "title": "Traditional Birth Attendant & Community Health Volunteer",
+  "enclave": "healthcare_medicine",
+  "skills": [
+   "Safe Delivery Practices",
+   "Referral Pathways",
+   "Health Education",
+   "Hygiene"
+  ],
+  "tools": [
+   "Referral & Visit Log"
+  ]
+ },
+ {
+  "id": "public_health_inspector",
+  "title": "Public-Health & Environmental Health Inspector",
+  "enclave": "healthcare_medicine",
+  "skills": [
+   "Food & Premises Inspection",
+   "Outbreak Investigation",
+   "Regulations & Enforcement",
+   "Reporting"
+  ],
+  "tools": [
+   "Inspection Checklist & Violation Log"
+  ]
+ },
+ {
+  "id": "occupational_health_safety_officer",
+  "title": "Health & Safety (HSE) Officer",
+  "enclave": "healthcare_medicine",
+  "skills": [
+   "Risk Assessment",
+   "Incident Investigation",
+   "Safety Training",
+   "Regulatory Compliance"
+  ],
+  "tools": [
+   "Hazard Register & Inspection Log"
+  ]
+ },
+ {
+  "id": "dental_lab_technician",
+  "title": "Dental Laboratory Technician",
+  "enclave": "healthcare_medicine",
+  "skills": [
+   "Crown & Bridge Fabrication",
+   "Digital CAD/CAM",
+   "Dentures",
+   "Shade Matching"
+  ],
+  "tools": [
+   "Dental Case Ticket & Shade Guide"
+  ]
+ },
+ {
   "id": "tutor",
   "title": "Academic & STEM Learning Specialist",
   "enclave": "education_workforce",
@@ -2160,6 +3924,146 @@ export const CAREER_PROFESSIONS: CareerProfessionRow[] = [
   ],
   "tools": [
    "STARs Competency Equivalence & Prior Learning Vault"
+  ]
+ },
+ {
+  "id": "k12_teacher",
+  "title": "School Teacher (Primary & Secondary)",
+  "enclave": "education_workforce",
+  "skills": [
+   "Lesson Planning",
+   "Classroom Management",
+   "Assessment",
+   "Differentiated Instruction"
+  ],
+  "tools": [
+   "Lesson Plan & Gradebook"
+  ]
+ },
+ {
+  "id": "early_childhood_educator",
+  "title": "Early-Childhood Educator & Preschool Teacher",
+  "enclave": "education_workforce",
+  "skills": [
+   "Play-Based Learning",
+   "Child Development",
+   "Safeguarding",
+   "Parent Communication"
+  ],
+  "tools": [
+   "Developmental Milestone Tracker"
+  ]
+ },
+ {
+  "id": "teaching_assistant_paraeducator",
+  "title": "Teaching Assistant & Paraeducator",
+  "enclave": "education_workforce",
+  "skills": [
+   "Student Support",
+   "Behaviour Management",
+   "Literacy & Numeracy Support",
+   "Collaboration"
+  ],
+  "tools": [
+   "Student Support Log"
+  ]
+ },
+ {
+  "id": "special_education_teacher",
+  "title": "Special-Education Teacher & Learning-Support Specialist",
+  "enclave": "education_workforce",
+  "skills": [
+   "IEP Development",
+   "Differentiated Instruction",
+   "Assistive Technology",
+   "Behaviour Support"
+  ],
+  "tools": [
+   "IEP Goal & Accommodation Tracker"
+  ]
+ },
+ {
+  "id": "university_lecturer_professor",
+  "title": "University Lecturer & Professor",
+  "enclave": "education_workforce",
+  "skills": [
+   "Subject Expertise",
+   "Curriculum Design",
+   "Research & Publishing",
+   "Mentoring"
+  ],
+  "tools": [
+   "Syllabus & Research Tracker"
+  ]
+ },
+ {
+  "id": "librarian_information_specialist",
+  "title": "Librarian & Information Specialist",
+  "enclave": "education_workforce",
+  "skills": [
+   "Cataloguing",
+   "Research Assistance",
+   "Digital Resources",
+   "Community Programmes"
+  ],
+  "tools": [
+   "Catalogue & Circulation System"
+  ]
+ },
+ {
+  "id": "music_teacher_instructor",
+  "title": "Music Teacher & Instrument Instructor",
+  "enclave": "education_workforce",
+  "skills": [
+   "Instrument Technique",
+   "Music Theory",
+   "Lesson Planning",
+   "Performance Coaching"
+  ],
+  "tools": [
+   "Lesson Plan & Student Progress Log"
+  ]
+ },
+ {
+  "id": "language_teacher_esl",
+  "title": "Language Teacher & ESL/TEFL Instructor",
+  "enclave": "education_workforce",
+  "skills": [
+   "Grammar & Pronunciation",
+   "Lesson Design",
+   "Assessment",
+   "Cultural Fluency"
+  ],
+  "tools": [
+   "Lesson Plan & Learner Progress Chart"
+  ]
+ },
+ {
+  "id": "school_counselor_career_advisor",
+  "title": "School Counselor & Career Advisor",
+  "enclave": "education_workforce",
+  "skills": [
+   "Student Counselling",
+   "Career Assessment",
+   "Crisis Response",
+   "College & Job Planning"
+  ],
+  "tools": [
+   "Student Plan & Referral Tracker"
+  ]
+ },
+ {
+  "id": "pe_sports_teacher",
+  "title": "Physical-Education Teacher & Sports Coach",
+  "enclave": "education_workforce",
+  "skills": [
+   "Lesson Planning",
+   "Fitness Assessment",
+   "Team Sports Coaching",
+   "Safety"
+  ],
+  "tools": [
+   "PE Lesson & Fitness Test Tracker"
   ]
  },
  {
@@ -2359,6 +4263,132 @@ export const CAREER_PROFESSIONS: CareerProfessionRow[] = [
   ]
  },
  {
+  "id": "police_officer",
+  "title": "Police Officer & Law-Enforcement Officer",
+  "enclave": "community_civic_security",
+  "skills": [
+   "Patrol & Response",
+   "De-escalation",
+   "Report Writing",
+   "Legal Procedure"
+  ],
+  "tools": [
+   "Incident Report & Case Notes"
+  ]
+ },
+ {
+  "id": "correctional_officer",
+  "title": "Correctional Officer & Detention Officer",
+  "enclave": "community_civic_security",
+  "skills": [
+   "Supervision & Security",
+   "De-escalation",
+   "Report Writing",
+   "Rules & Procedures"
+  ],
+  "tools": [
+   "Post Log & Incident Report"
+  ]
+ },
+ {
+  "id": "customs_border_immigration_officer",
+  "title": "Customs, Border & Immigration Officer",
+  "enclave": "community_civic_security",
+  "skills": [
+   "Document Verification",
+   "Inspection",
+   "Regulations",
+   "Interviewing"
+  ],
+  "tools": [
+   "Inspection & Declaration Log"
+  ]
+ },
+ {
+  "id": "probation_parole_officer",
+  "title": "Probation & Parole Officer",
+  "enclave": "community_civic_security",
+  "skills": [
+   "Case Management",
+   "Risk Assessment",
+   "Motivational Interviewing",
+   "Court Reporting"
+  ],
+  "tools": [
+   "Caseload & Compliance Tracker"
+  ]
+ },
+ {
+  "id": "lifeguard_pool_attendant",
+  "title": "Lifeguard & Pool Attendant",
+  "enclave": "community_civic_security",
+  "skills": [
+   "Water Rescue",
+   "First Aid/CPR",
+   "Surveillance",
+   "Pool Chemistry Basics"
+  ],
+  "tools": [
+   "Pool Safety & Incident Log"
+  ]
+ },
+ {
+  "id": "active_duty_soldier",
+  "title": "Soldier, Sailor, Airman & Armed-Forces Member",
+  "enclave": "community_civic_security",
+  "skills": [
+   "Discipline & Teamwork",
+   "Technical Specialty (MOS)",
+   "Physical Fitness",
+   "Leadership"
+  ],
+  "tools": [
+   "Training Qualification & Readiness Log"
+  ]
+ },
+ {
+  "id": "traffic_warden_crossing_guard",
+  "title": "Traffic Warden & School Crossing Guard",
+  "enclave": "community_civic_security",
+  "skills": [
+   "Traffic Control",
+   "Public Interaction",
+   "Safety Procedures",
+   "Reporting"
+  ],
+  "tools": [
+   "Shift & Incident Log"
+  ]
+ },
+ {
+  "id": "janitor_caretaker",
+  "title": "Janitor, Building Caretaker & Facilities Attendant",
+  "enclave": "community_civic_security",
+  "skills": [
+   "Cleaning Chemicals Safety",
+   "Minor Repairs",
+   "Waste Handling",
+   "Security Checks"
+  ],
+  "tools": [
+   "Facility Task & Supply Checklist"
+  ]
+ },
+ {
+  "id": "fire_safety_inspector",
+  "title": "Fire Inspector & Fire-Safety Officer",
+  "enclave": "community_civic_security",
+  "skills": [
+   "Code Inspection",
+   "Fire-Safety Training",
+   "Plan Review",
+   "Investigation Basics"
+  ],
+  "tools": [
+   "Inspection & Code-Violation Log"
+  ]
+ },
+ {
   "id": "red_team_operator",
   "title": "Principal Red Team Operator & Exploit Developer",
   "enclave": "tech_cybersecurity",
@@ -2405,6 +4435,20 @@ export const CAREER_PROFESSIONS: CareerProfessionRow[] = [
   ]
  },
  {
+  "id": "soc_analyst_cybersecurity_analyst",
+  "title": "SOC Analyst & Cybersecurity Analyst",
+  "enclave": "tech_cybersecurity",
+  "skills": [
+   "Log Analysis & SIEM",
+   "Incident Triage",
+   "Threat Intelligence",
+   "Networking & Endpoint Security"
+  ],
+  "tools": [
+   "SIEM Alert Triage & Incident Log"
+  ]
+ },
+ {
   "id": "software_engineer",
   "title": "Staff Software Engineer / Full-Stack Architect",
   "enclave": "tech_software",
@@ -2448,6 +4492,146 @@ export const CAREER_PROFESSIONS: CareerProfessionRow[] = [
   ],
   "tools": [
    "Multi-Agent Webhook Canvas & RLHF Eval Rubric"
+  ]
+ },
+ {
+  "id": "it_support_help_desk",
+  "title": "IT Support Specialist & Help-Desk Technician",
+  "enclave": "tech_software",
+  "skills": [
+   "Troubleshooting",
+   "Operating Systems",
+   "Ticketing Tools",
+   "Customer Communication"
+  ],
+  "tools": [
+   "Support Ticket & Asset Inventory"
+  ]
+ },
+ {
+  "id": "network_administrator",
+  "title": "Network & Systems Administrator",
+  "enclave": "tech_software",
+  "skills": [
+   "Routing & Switching",
+   "Windows/Linux Administration",
+   "Monitoring",
+   "Backup & Recovery"
+  ],
+  "tools": [
+   "Network Diagram & Monitoring Dashboard"
+  ]
+ },
+ {
+  "id": "data_analyst",
+  "title": "Data Analyst & Business Intelligence Specialist",
+  "enclave": "tech_software",
+  "skills": [
+   "SQL",
+   "Spreadsheets & BI Tools",
+   "Statistics",
+   "Data Storytelling"
+  ],
+  "tools": [
+   "Dashboard & Query Library"
+  ]
+ },
+ {
+  "id": "web_designer_ux_designer",
+  "title": "Web Designer & UX/UI Designer",
+  "enclave": "tech_software",
+  "skills": [
+   "Wireframing & Prototyping",
+   "Visual Design",
+   "User Research",
+   "HTML/CSS Basics"
+  ],
+  "tools": [
+   "Design System & Prototype Board"
+  ]
+ },
+ {
+  "id": "qa_software_tester",
+  "title": "QA Engineer & Software Tester",
+  "enclave": "tech_software",
+  "skills": [
+   "Test Case Design",
+   "Automation",
+   "Bug Reporting",
+   "CI/CD Basics"
+  ],
+  "tools": [
+   "Test Plan & Defect Tracker"
+  ]
+ },
+ {
+  "id": "game_developer",
+  "title": "Game Developer & Game Designer",
+  "enclave": "tech_software",
+  "skills": [
+   "Game Engines (Unity/Unreal)",
+   "Programming",
+   "Level & Systems Design",
+   "Playtesting"
+  ],
+  "tools": [
+   "Game Design Doc & Build Tracker"
+  ]
+ },
+ {
+  "id": "digital_marketer_seo",
+  "title": "Digital Marketer, SEO & Social-Media Manager",
+  "enclave": "tech_software",
+  "skills": [
+   "SEO & Content",
+   "Paid Ads",
+   "Analytics",
+   "Social Media Management"
+  ],
+  "tools": [
+   "Campaign & Analytics Dashboard"
+  ]
+ },
+ {
+  "id": "devops_cloud_engineer",
+  "title": "DevOps & Cloud Engineer",
+  "enclave": "tech_software",
+  "skills": [
+   "Cloud Platforms (AWS/Azure/GCP)",
+   "CI/CD",
+   "Infrastructure as Code",
+   "Monitoring"
+  ],
+  "tools": [
+   "Pipeline & Infrastructure Dashboard"
+  ]
+ },
+ {
+  "id": "ml_engineer_data_scientist",
+  "title": "Machine-Learning Engineer & Data Scientist",
+  "enclave": "tech_software",
+  "skills": [
+   "Python & Statistics",
+   "Model Training & Evaluation",
+   "Data Pipelines",
+   "MLOps"
+  ],
+  "tools": [
+   "Experiment & Model Evaluation Log"
+  ]
+ },
+ {
+  "id": "mobile_app_developer",
+  "title": "Mobile App Developer",
+  "enclave": "tech_software",
+  "skills": [
+   "Swift/Kotlin or Cross-Platform",
+   "API Integration",
+   "UI Development",
+   "App Store Release"
+  ],
+  "tools": [
+   "App Release & Crash Dashboard"
   ]
  },
  {
@@ -2607,6 +4791,62 @@ export const CAREER_PROFESSIONS: CareerProfessionRow[] = [
   ]
  },
  {
+  "id": "civil_servant_government_clerk",
+  "title": "Civil Servant & Government Administrator",
+  "enclave": "law_gov_defense",
+  "skills": [
+   "Policy Implementation",
+   "Records & Compliance",
+   "Citizen Service",
+   "Budgeting"
+  ],
+  "tools": [
+   "Case File & Public-Service Tracker"
+  ]
+ },
+ {
+  "id": "postal_worker_mail_carrier",
+  "title": "Postal Worker & Mail Carrier",
+  "enclave": "law_gov_defense",
+  "skills": [
+   "Sorting & Routing",
+   "Delivery Safety",
+   "Customer Service",
+   "Scanning Systems"
+  ],
+  "tools": [
+   "Route Sheet & Delivery Scan Log"
+  ]
+ },
+ {
+  "id": "policy_analyst_city_planner",
+  "title": "Policy Analyst & Urban/City Planner",
+  "enclave": "law_gov_defense",
+  "skills": [
+   "Policy Research",
+   "Data Analysis",
+   "Stakeholder Engagement",
+   "Report Writing"
+  ],
+  "tools": [
+   "Policy Brief & Land-Use Map"
+  ]
+ },
+ {
+  "id": "diplomat_foreign_service",
+  "title": "Diplomat & Foreign-Service Officer",
+  "enclave": "law_gov_defense",
+  "skills": [
+   "Negotiation",
+   "Languages",
+   "Reporting",
+   "Cross-Cultural Communication"
+  ],
+  "tools": [
+   "Cable & Briefing Tracker"
+  ]
+ },
+ {
   "id": "cpa_accountant",
   "title": "Certified Public Accountant (CPA) / Controller",
   "enclave": "finance_accounting",
@@ -2650,6 +4890,118 @@ export const CAREER_PROFESSIONS: CareerProfessionRow[] = [
   ],
   "tools": [
    "Xactimate Property Loss & Loan Underwriting Desk"
+  ]
+ },
+ {
+  "id": "insurance_agent",
+  "title": "Insurance Agent & Broker",
+  "enclave": "finance_accounting",
+  "skills": [
+   "Needs Analysis",
+   "Policy Knowledge",
+   "Compliance & Disclosures",
+   "Client Retention"
+  ],
+  "tools": [
+   "Quote & Policy Renewal Tracker"
+  ]
+ },
+ {
+  "id": "bank_teller_banker",
+  "title": "Bank Teller & Customer Banker",
+  "enclave": "finance_accounting",
+  "skills": [
+   "Transaction Processing",
+   "Cash Handling",
+   "KYC/AML Basics",
+   "Cross-Selling"
+  ],
+  "tools": [
+   "Teller Balance & KYC Checklist"
+  ]
+ },
+ {
+  "id": "loan_officer_mortgage",
+  "title": "Loan Officer, Mortgage Originator & Credit Analyst",
+  "enclave": "finance_accounting",
+  "skills": [
+   "Credit Analysis",
+   "Underwriting Basics",
+   "Compliance",
+   "Client Advisory"
+  ],
+  "tools": [
+   "Loan Application & Ratio Calculator"
+  ]
+ },
+ {
+  "id": "financial_advisor_planner",
+  "title": "Financial Advisor & Wealth Planner",
+  "enclave": "finance_accounting",
+  "skills": [
+   "Needs Analysis",
+   "Investment Planning",
+   "Retirement & Tax Basics",
+   "Compliance"
+  ],
+  "tools": [
+   "Client Plan & Portfolio Projection"
+  ]
+ },
+ {
+  "id": "stockbroker_trader",
+  "title": "Stockbroker, Securities Trader & Market Analyst",
+  "enclave": "finance_accounting",
+  "skills": [
+   "Market Analysis",
+   "Order Execution",
+   "Risk Management",
+   "Regulation"
+  ],
+  "tools": [
+   "Trade Journal & Risk Dashboard"
+  ]
+ },
+ {
+  "id": "auditor_compliance",
+  "title": "Internal & External Auditor, Compliance Specialist",
+  "enclave": "finance_accounting",
+  "skills": [
+   "Audit Planning",
+   "Controls Testing",
+   "Regulatory Standards",
+   "Reporting"
+  ],
+  "tools": [
+   "Audit Workpaper & Findings Tracker"
+  ]
+ },
+ {
+  "id": "tax_revenue_officer",
+  "title": "Tax Officer & Revenue Authority Agent",
+  "enclave": "finance_accounting",
+  "skills": [
+   "Tax Law",
+   "Assessments",
+   "Taxpayer Service",
+   "Audit Techniques"
+  ],
+  "tools": [
+   "Taxpayer Case & Assessment Log"
+  ]
+ },
+ {
+  "id": "susu_chit_fund_collector",
+  "title": "Susu, Chit-Fund & Community Savings Collector",
+  "enclave": "finance_accounting",
+  "skills": [
+   "Savings Group Management",
+   "Record Keeping",
+   "Trust & Ethics",
+   "Mobile Collection"
+  ],
+  "tools": [
+   "Group Contribution & Payout Ledger"
   ]
  },
  {
@@ -2760,6 +5112,188 @@ export const CAREER_PROFESSIONS: CareerProfessionRow[] = [
   ]
  },
  {
+  "id": "cobbler_shoe_repairer",
+  "title": "Cobbler & Shoe Repair Specialist",
+  "enclave": "manufacturing_industrial",
+  "skills": [
+   "Sole & Heel Replacement",
+   "Leather Stitching",
+   "Dyeing & Finishing",
+   "Customer Service"
+  ],
+  "tools": [
+   "Repair Ticket & Materials Log"
+  ]
+ },
+ {
+  "id": "weaver_textile_artisan",
+  "title": "Weaver, Dyer & Textile Artisan",
+  "enclave": "manufacturing_industrial",
+  "skills": [
+   "Loom Weaving",
+   "Natural Dyeing",
+   "Pattern Design",
+   "Craft Sales"
+  ],
+  "tools": [
+   "Pattern Draft & Dye Recipe Log"
+  ]
+ },
+ {
+  "id": "sewing_machine_operator",
+  "title": "Sewing-Machine Operator & Garment Production Worker",
+  "enclave": "manufacturing_industrial",
+  "skills": [
+   "Industrial Sewing",
+   "Pattern Reading",
+   "Quality Checks",
+   "Production Speed"
+  ],
+  "tools": [
+   "Production Bundle & Piece-Rate Tally"
+  ]
+ },
+ {
+  "id": "block_brick_maker",
+  "title": "Block, Brick & Paving-Stone Maker",
+  "enclave": "manufacturing_industrial",
+  "skills": [
+   "Mixing & Moulding",
+   "Curing",
+   "Quality Testing",
+   "Equipment Use"
+  ],
+  "tools": [
+   "Batch Mix & Curing Log"
+  ]
+ },
+ {
+  "id": "print_shop_operator",
+  "title": "Print-Shop Operator & Screen Printer",
+  "enclave": "manufacturing_industrial",
+  "skills": [
+   "Digital & Screen Printing",
+   "Colour Management",
+   "Finishing & Binding",
+   "Customer Service"
+  ],
+  "tools": [
+   "Print Job Ticket & Colour Profile Log"
+  ]
+ },
+ {
+  "id": "quality_inspector",
+  "title": "Quality Inspector & QC Technician",
+  "enclave": "manufacturing_industrial",
+  "skills": [
+   "Measurement & Gauging",
+   "Inspection Standards",
+   "Documentation",
+   "Root-Cause Basics"
+  ],
+  "tools": [
+   "Inspection Checklist & Defect Log"
+  ]
+ },
+ {
+  "id": "packer_assembly_worker",
+  "title": "Production, Packing & Assembly Line Worker",
+  "enclave": "manufacturing_industrial",
+  "skills": [
+   "Assembly Tasks",
+   "Quality Checks",
+   "Safe Lifting",
+   "Line Teamwork"
+  ],
+  "tools": [
+   "Line Output & Shift Handover Sheet"
+  ]
+ },
+ {
+  "id": "foundry_steel_worker",
+  "title": "Foundry & Steel-Mill Worker",
+  "enclave": "manufacturing_industrial",
+  "skills": [
+   "Molding & Casting",
+   "Furnace Safety",
+   "Material Handling",
+   "PPE & Heat Safety"
+  ],
+  "tools": [
+   "Pour Log & Furnace Safety Checklist"
+  ]
+ },
+ {
+  "id": "food_processing_bottling_operator",
+  "title": "Food-Processing & Bottling Plant Operator",
+  "enclave": "manufacturing_industrial",
+  "skills": [
+   "Line Operation",
+   "Food Safety (HACCP/GMP)",
+   "Sanitation",
+   "Quality Sampling"
+  ],
+  "tools": [
+   "Batch Record & Sanitation Log"
+  ]
+ },
+ {
+  "id": "civil_engineer",
+  "title": "Civil & Structural Engineer",
+  "enclave": "manufacturing_industrial",
+  "skills": [
+   "Structural Analysis",
+   "CAD/Civil Software",
+   "Codes & Standards",
+   "Project Management"
+  ],
+  "tools": [
+   "Load Calc & Drawing Set"
+  ]
+ },
+ {
+  "id": "mechanical_engineer",
+  "title": "Mechanical Engineer",
+  "enclave": "manufacturing_industrial",
+  "skills": [
+   "CAD & Simulation",
+   "Thermodynamics & Mechanics",
+   "Prototyping",
+   "Manufacturing Processes"
+  ],
+  "tools": [
+   "CAD Model & Tolerance Stack-Up"
+  ]
+ },
+ {
+  "id": "electrical_electronics_engineer",
+  "title": "Electrical & Electronics Engineer",
+  "enclave": "manufacturing_industrial",
+  "skills": [
+   "Circuit Design",
+   "Power Systems",
+   "Embedded Systems",
+   "Testing & Compliance"
+  ],
+  "tools": [
+   "Schematic & Test Bench Log"
+  ]
+ },
+ {
+  "id": "industrial_process_engineer",
+  "title": "Industrial, Process & Chemical Engineer",
+  "enclave": "manufacturing_industrial",
+  "skills": [
+   "Process Optimisation",
+   "Lean & Six Sigma",
+   "Safety & Controls",
+   "Plant Design"
+  ],
+  "tools": [
+   "Process Flow & Yield Dashboard"
+  ]
+ },
+ {
   "id": "solar_pv_microgrid_technician",
   "title": "NABCEP Solar PV Technician, Rooftop/Utility Installer & Solar Inverter Specialist",
   "enclave": "energy_utilities_environment",
@@ -2853,6 +5387,118 @@ export const CAREER_PROFESSIONS: CareerProfessionRow[] = [
   ]
  },
  {
+  "id": "septic_drain_technician",
+  "title": "Septic, Drain & Sewer Cleaning Technician",
+  "enclave": "energy_utilities_environment",
+  "skills": [
+   "Septic Pumping",
+   "Drain Jetting",
+   "Camera Inspection",
+   "Waste Disposal Compliance"
+  ],
+  "tools": [
+   "Service Route & Inspection Log"
+  ]
+ },
+ {
+  "id": "power_lineman",
+  "title": "Power Lineman & Line Technician",
+  "enclave": "energy_utilities_environment",
+  "skills": [
+   "Pole Climbing",
+   "Energised-Line Work",
+   "Rigging",
+   "Storm Response"
+  ],
+  "tools": [
+   "Line Work Order & Safety Log"
+  ]
+ },
+ {
+  "id": "meter_reader_utility_field_rep",
+  "title": "Meter Reader & Utility Field Representative",
+  "enclave": "energy_utilities_environment",
+  "skills": [
+   "Meter Reading",
+   "Customer Service",
+   "Safety & Access",
+   "Route Management"
+  ],
+  "tools": [
+   "Route & Meter-Read Log"
+  ]
+ },
+ {
+  "id": "gas_station_attendant",
+  "title": "Fuel-Station Attendant & Forecourt Worker",
+  "enclave": "energy_utilities_environment",
+  "skills": [
+   "Fuel Dispensing Safety",
+   "Cash Handling",
+   "Customer Service",
+   "Inventory"
+  ],
+  "tools": [
+   "Forecourt Shift & Fuel-Stock Log"
+  ]
+ },
+ {
+  "id": "generator_technician",
+  "title": "Generator & Backup-Power Technician",
+  "enclave": "energy_utilities_environment",
+  "skills": [
+   "Generator Servicing",
+   "Transfer Switches",
+   "Diesel Engine Basics",
+   "Load Testing"
+  ],
+  "tools": [
+   "Generator Service & Load-Test Log"
+  ]
+ },
+ {
+  "id": "oil_rig_roughneck",
+  "title": "Oil-Rig Roughneck & Drilling Crew Member",
+  "enclave": "energy_utilities_environment",
+  "skills": [
+   "Drill-Floor Operations",
+   "Pipe Handling",
+   "Well Control Awareness",
+   "Offshore Safety"
+  ],
+  "tools": [
+   "Drill-Floor Crew & Safety Log"
+  ]
+ },
+ {
+  "id": "pipeline_operator",
+  "title": "Pipeline Operator & Gas-Distribution Technician",
+  "enclave": "energy_utilities_environment",
+  "skills": [
+   "Pipeline Monitoring (SCADA)",
+   "Leak Detection",
+   "Valve Operation",
+   "Integrity & Safety"
+  ],
+  "tools": [
+   "Pipeline Patrol & Leak-Survey Log"
+  ]
+ },
+ {
+  "id": "recycling_scrap_collector",
+  "title": "Recycler, Scrap Collector & Waste-Pickers' Cooperative Member",
+  "enclave": "energy_utilities_environment",
+  "skills": [
+   "Material Sorting",
+   "Scrap Pricing",
+   "Safety & Handling",
+   "Cooperative Sales"
+  ],
+  "tools": [
+   "Scrap Weight & Price Ledger"
+  ]
+ },
+ {
   "id": "biotech_pharma_microbiology_tech",
   "title": "Biotechnology, cGMP Pharmaceutical & Microbiology Lab Technician",
   "enclave": "science_laboratory_research",
@@ -2896,6 +5542,34 @@ export const CAREER_PROFESSIONS: CareerProfessionRow[] = [
   ],
   "tools": [
    "Stratigraphic Harris Matrix & Artifact Conservation Log"
+  ]
+ },
+ {
+  "id": "environmental_scientist",
+  "title": "Environmental Scientist & Conservation Specialist",
+  "enclave": "science_laboratory_research",
+  "skills": [
+   "Field Sampling",
+   "Data Analysis",
+   "Environmental Regulations",
+   "Reporting"
+  ],
+  "tools": [
+   "Sample Chain-of-Custody & Data Log"
+  ]
+ },
+ {
+  "id": "meteorologist_weather_forecaster",
+  "title": "Meteorologist & Weather Forecaster",
+  "enclave": "science_laboratory_research",
+  "skills": [
+   "Atmospheric Science",
+   "Forecast Models",
+   "Data Visualisation",
+   "Communication"
+  ],
+  "tools": [
+   "Forecast Model & Observation Log"
   ]
  },
  {
@@ -2959,6 +5633,90 @@ export const CAREER_PROFESSIONS: CareerProfessionRow[] = [
   ]
  },
  {
+  "id": "boat_builder_marine_technician",
+  "title": "Boat Builder & Marine Technician",
+  "enclave": "aviation_aerospace_maritime",
+  "skills": [
+   "Fibreglass & Wood Hull Work",
+   "Outboard/Inboard Engine Service",
+   "Marine Electrical",
+   "Rigging"
+  ],
+  "tools": [
+   "Marine Service & Hull Repair Log"
+  ]
+ },
+ {
+  "id": "commercial_pilot",
+  "title": "Commercial Pilot & Flight Crew",
+  "enclave": "aviation_aerospace_maritime",
+  "skills": [
+   "Flight Planning",
+   "Instrument Flying",
+   "Crew Resource Management",
+   "Aviation Regulations"
+  ],
+  "tools": [
+   "Flight Log & Weather Briefing"
+  ]
+ },
+ {
+  "id": "flight_attendant_cabin_crew",
+  "title": "Flight Attendant & Cabin Crew",
+  "enclave": "aviation_aerospace_maritime",
+  "skills": [
+   "Passenger Safety",
+   "First Aid & Emergency Procedures",
+   "Customer Service",
+   "Teamwork"
+  ],
+  "tools": [
+   "Cabin Safety Checklist & Service Log"
+  ]
+ },
+ {
+  "id": "airport_ground_baggage_handler",
+  "title": "Airport Ground Crew & Baggage Handler",
+  "enclave": "aviation_aerospace_maritime",
+  "skills": [
+   "Baggage Handling",
+   "Aircraft Marshalling",
+   "Ground Safety",
+   "Load Control"
+  ],
+  "tools": [
+   "Ramp Safety & Load Sheet"
+  ]
+ },
+ {
+  "id": "port_stevedore_dockworker",
+  "title": "Port Stevedore, Dockworker & Crane Operator",
+  "enclave": "aviation_aerospace_maritime",
+  "skills": [
+   "Cargo Securing",
+   "Crane/Forklift Operation",
+   "Container Handling",
+   "Port Safety"
+  ],
+  "tools": [
+   "Container Tally & Lift Plan"
+  ]
+ },
+ {
+  "id": "ferry_boat_operator",
+  "title": "Ferry, Canoe & Small-Boat Operator",
+  "enclave": "aviation_aerospace_maritime",
+  "skills": [
+   "Navigation Rules",
+   "Passenger Safety",
+   "Vessel Maintenance",
+   "Weather Awareness"
+  ],
+  "tools": [
+   "Trip Manifest & Vessel Safety Log"
+  ]
+ },
+ {
   "id": "directv_satellite_broadband_av_tech",
   "title": "DirecTV / Satellite Dish Technician, Starlink/VSAT Installer, Cable Broadband & Pro-AV Specialist",
   "enclave": "telecom_digital_infrastructure",
@@ -3018,6 +5776,34 @@ export const CAREER_PROFESSIONS: CareerProfessionRow[] = [
   ],
   "tools": [
    "Point-Cloud BIM Deviation & Scope 1-3 Carbon Ledger"
+  ]
+ },
+ {
+  "id": "phone_computer_repair_tech",
+  "title": "Phone, Laptop & Electronics Repair Technician",
+  "enclave": "telecom_digital_infrastructure",
+  "skills": [
+   "Screen & Battery Replacement",
+   "Board-Level Diagnostics",
+   "Data Recovery",
+   "Customer Intake"
+  ],
+  "tools": [
+   "Repair Ticket & Parts Inventory Log"
+  ]
+ },
+ {
+  "id": "isp_network_installer",
+  "title": "ISP Network Installer & Wireless Internet Technician",
+  "enclave": "telecom_digital_infrastructure",
+  "skills": [
+   "Wireless Link Alignment",
+   "Cabling & Termination",
+   "Router Configuration",
+   "Customer Service"
+  ],
+  "tools": [
+   "Install Ticket & Signal Log"
   ]
  }
 ];

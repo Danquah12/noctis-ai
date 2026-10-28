@@ -1,12 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { allPathways, CAREER_COUNT, getPathway, matchProfessions, validatePathway } from "./noctis-career-pathways.ts";
+import { aliasClashes, allPathways, CAREER_COUNT, getPathway, matchProfessions, validatePathway } from "./noctis-career-pathways.ts";
 import { handleNaturalCareerQuery, isCareerPathwayQuery } from "./noctis-career-query.ts";
 
-test("repository covers all 197 professions with complete records", () => {
-  assert.equal(CAREER_COUNT, 197);
+test("repository covers all 396 professions with complete records", () => {
+  assert.equal(CAREER_COUNT, 396);
   const all = allPathways();
-  assert.equal(all.length, 197);
+  assert.equal(all.length, 396);
   const bad: string[] = [];
   for (const r of all) {
     if (r.starting_point) continue;
@@ -76,4 +76,30 @@ test("starting-point profiles get transition guidance", () => {
   const out = handleNaturalCareerQuery("How do I become a career changer?");
   assert.ok(out);
   assert.match(out!, /transferable skills/i);
+});
+
+test('exact aliases are unique across professions', () => {
+  assert.deepEqual(aliasClashes(), []);
+});
+
+test('expansion professions route correctly', () => {
+  const cases: Array<[string, RegExp]> = [
+    ['How do I become a police officer?', /Police Officer/],
+    ['How do I become a teacher?', /School Teacher/],
+    ['how to become a chef', /Chef/],
+    ['What does it take to be a pilot?', /Pilot/],
+    ['How can I become a bartender', /Bartender/],
+    ['How do I become a boda boda rider', /Boda/],
+    ['Path to becoming a mechanical engineer', /Mechanical Engineer/],
+    ['How do I become a bank teller?', /Bank Teller/],
+    ['How do I become a makeup artist', /Makeup Artist/],
+    ['I want to become a data analyst', /Data Analyst/],
+    ['How do I become a cashier', /Cashier/],
+    ['How do I become a lifeguard', /Lifeguard/],
+  ];
+  for (const [q, re] of cases) {
+    const out = handleNaturalCareerQuery(q);
+    assert.ok(out, q);
+    assert.match(out!.split('\n')[0], re, q);
+  }
 });
