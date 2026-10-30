@@ -4229,8 +4229,175 @@ export function NoctisDesk() {
     setVoiceReply("");
   }
 
+  const [pluginQuery, setPluginQuery] = useState("");
+  const [activePlugin, setActivePlugin] = useState<
+    | ""
+    | "create_image"
+    | "web_search"
+    | "deep_research"
+    | "presentations"
+    | "pdf"
+    | "documents"
+    | "spreadsheets"
+    | "bible"
+    | "investment"
+    | "cyber_sast"
+    | "clinical"
+  >("");
+  const [libraryPickerOpen, setLibraryPickerOpen] = useState(false);
+  const [libraryFilter, setLibraryFilter] = useState("");
+  const [browserTabOpen, setBrowserTabOpen] = useState(false);
+  const [browserTabInput, setBrowserTabInput] = useState("");
+  const [attachedTabs, setAttachedTabs] = useState<Array<{ id: string; url: string; note?: string }>>([]);
+  const [sketchOpen, setSketchOpen] = useState(false);
+  const [sketchColor, setSketchColor] = useState("#10b981");
+  const [sketchSize, setSketchSize] = useState(4);
+  const sketchCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const sketchDrawingRef = useRef(false);
+  const [templateCreatorOpen, setTemplateCreatorOpen] = useState(false);
+  const [tplName, setTplName] = useState("");
+  const [tplCategory, setTplCategory] = useState("Personal Skill");
+  const [tplStructure, setTplStructure] = useState("");
+  const [tplNotice, setTplNotice] = useState("");
+  const [savedTemplates, setSavedTemplates] = useState<Array<{ id: string; name: string; category: string; structure: string }>>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = window.localStorage.getItem("noctis-personal-templates");
+      const parsed = raw ? (JSON.parse(raw) as unknown) : [];
+      return Array.isArray(parsed) ? (parsed as Array<{ id: string; name: string; category: string; structure: string }>) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  function initSketchCanvas() {
+    window.setTimeout(() => {
+      const c = sketchCanvasRef.current;
+      if (!c) return;
+      const ctx = c.getContext("2d");
+      if (!ctx) return;
+      ctx.fillStyle = "#141414";
+      ctx.fillRect(0, 0, c.width, c.height);
+    }, 30);
+  }
+
+  function startSketchStroke(e: React.PointerEvent<HTMLCanvasElement>) {
+    const c = sketchCanvasRef.current;
+    if (!c) return;
+    const rect = c.getBoundingClientRect();
+    const scaleX = c.width / rect.width;
+    const scaleY = c.height / rect.height;
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
+    const ctx = c.getContext("2d");
+    if (!ctx) return;
+    sketchDrawingRef.current = true;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.strokeStyle = sketchColor;
+    ctx.lineWidth = sketchSize;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+  }
+
+  function moveSketchStroke(e: React.PointerEvent<HTMLCanvasElement>) {
+    if (!sketchDrawingRef.current) return;
+    const c = sketchCanvasRef.current;
+    if (!c) return;
+    const rect = c.getBoundingClientRect();
+    const scaleX = c.width / rect.width;
+    const scaleY = c.height / rect.height;
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
+    const ctx = c.getContext("2d");
+    if (!ctx) return;
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  }
+
+  function endSketchStroke() {
+    sketchDrawingRef.current = false;
+  }
+
+  function clearSketchCanvas() {
+    const c = sketchCanvasRef.current;
+    if (!c) return;
+    const ctx = c.getContext("2d");
+    if (!ctx) return;
+    ctx.fillStyle = "#141414";
+    ctx.fillRect(0, 0, c.width, c.height);
+  }
+
+  function attachSketchImage() {
+    const c = sketchCanvasRef.current;
+    if (!c) return;
+    const dataUrl = c.toDataURL("image/png");
+    setUploads((rows) => [
+      ...rows,
+      {
+        id: `sketch-${Date.now()}`,
+        name: `noctis-sketch-${rows.length + 1}.png`,
+        kind: "image",
+        dataUrl,
+      },
+    ]);
+    setSketchOpen(false);
+  }
+
+  function savePersonalTemplate() {
+    if (!tplName.trim() || !tplStructure.trim()) return;
+    const entry = {
+      id: `tpl-${Date.now()}`,
+      name: tplName.trim(),
+      category: tplCategory,
+      structure: tplStructure.trim(),
+    };
+    const next = [entry, ...savedTemplates.filter((t) => t.name.toLowerCase() !== entry.name.toLowerCase())].slice(0, 24);
+    setSavedTemplates(next);
+    try {
+      window.localStorage.setItem("noctis-personal-templates", JSON.stringify(next));
+    } catch {
+      /* ignore localStorage quota errors */
+    }
+    setTplNotice("Saving reusable template to Noctis Personal Skills...");
+    void trainVibe({
+      data: {
+        action: "train",
+        question: `Use reusable template: ${entry.name} (${entry.category})`,
+        answer: entry.structure,
+      },
+    }).then(() => {
+      setTplNotice(`Saved "${entry.name}" as a reusable personal skill!`);
+      setTplName("");
+      setTplStructure("");
+    });
+  }
+
   async function send(preset?: string, skillOverride?: NoctisSkillId | "") {
-    const text = (preset ?? draft).trim();
+    const rawText = (preset ?? draft).trim();
+    const pluginPrefix =
+      preset !== undefined
+        ? ""
+        : activePlugin === "deep_research" && rawText && !/deep\s+research/i.test(rawText)
+          ? `[Noctis Deep Research Report Request] Provide an exhaustive, evidence-backed deep research report with executive summary, primary findings, methodology, quantitative tables, risk analysis, and verified sources for: `
+          : activePlugin === "web_search" && rawText && !/web\s+search/i.test(rawText)
+            ? `[Noctis Real-Time Web & News Search] Search and synthesize current facts, news, and verified context for: `
+            : activePlugin === "presentations" && rawText
+              ? `[Noctis Presentation Slide Deck Builder] Create a complete, structured multi-slide presentation deck (Slide Title, Key Visual/Bullets, Data Table, and Speaker Notes for each slide) on: `
+              : activePlugin === "pdf" && rawText
+                ? `[Noctis PDF Intelligence — Read, Create & Verify] Produce a print-ready, verifiable PDF-grade report with structured headings, tables, and claim verification for: `
+                : activePlugin === "documents" && rawText
+                  ? `[Noctis Professional Document Studio] Draft a complete, publication-ready professional document with executive formatting, sections, and tables for: `
+                  : activePlugin === "spreadsheets" && rawText
+                    ? `[Noctis Spreadsheet & Financial Data Modeler] Build structured markdown spreadsheet tables, formulas, column definitions, and summary metrics for: `
+                    : "";
+    const tabContext =
+      attachedTabs.length > 0
+        ? `\n\n--- Attached Browser Tabs & Web Context ---\n${attachedTabs
+            .map((t, idx) => `Tab ${idx + 1}: ${t.url}${t.note ? ` — ${t.note}` : ""}`)
+            .join("\n")}`
+        : "";
+    const text = `${pluginPrefix}${rawText}${tabContext}`.trim();
     const row = live.current;
     if (!row) {
       if (text) pendingAsk.current = text;
@@ -4316,9 +4483,10 @@ export function NoctisDesk() {
     ].slice(0, 2);
     pendingPicture.current = "";
     const turns = [...row.turns, { role: "user" as const, content, ...(images.length ? { images } : {}) }];
-    const title = row.title === "New chat" ? (text || asked).slice(0, 48) : row.title;
+    const title = row.title === "New chat" ? (rawText || text || asked).slice(0, 48) : row.title;
     setDraft("");
     setUploads([]);
+    setAttachedTabs([]);
     dropClip();
     if (skillOverride !== undefined) setSkill(skillOverride);
     if (box.current) box.current.style.height = "auto";
@@ -4497,6 +4665,297 @@ export function NoctisDesk() {
   const [trainA, setTrainA] = useState("");
   const [trainNotice, setTrainNotice] = useState("");
 
+  const COMPOSER_PLUGINS = [
+    {
+      id: "upload_files",
+      title: "Add photos & files",
+      subtitle: "Upload from computer",
+      icon: (
+        <svg viewBox="0 0 24 24" className="size-5 shrink-0 text-zinc-300" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+          <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+        </svg>
+      ),
+      action: () => {
+        setAddOpen(false);
+        chooseFile("file");
+      },
+    },
+    {
+      id: "library_files",
+      title: "Add from library",
+      subtitle: "Browse and search your files",
+      icon: (
+        <svg viewBox="0 0 24 24" className="size-5 shrink-0 text-zinc-300" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z" />
+        </svg>
+      ),
+      action: () => {
+        setAddOpen(false);
+        setLibraryPickerOpen(true);
+        setBrowserTabOpen(false);
+        setSketchOpen(false);
+        setTemplateCreatorOpen(false);
+      },
+    },
+    {
+      id: "create_image",
+      title: "Create image",
+      subtitle: "Visualize anything",
+      icon: (
+        <svg viewBox="0 0 24 24" className="size-5 shrink-0" fill="none">
+          <rect x="3" y="3" width="18" height="18" rx="4" fill="#38bdf8" />
+          <circle cx="8.5" cy="8.5" r="2" fill="#fef08a" />
+          <path d="M3 16.5 8.5 12l4.5 3.5 3.5-2.5L21 17v0a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4v-.5Z" fill="#22c55e" />
+        </svg>
+      ),
+      action: () => {
+        setAddOpen(false);
+        setSkill("draw");
+        setActivePlugin("create_image");
+        box.current?.focus();
+      },
+    },
+    {
+      id: "browser_tabs",
+      title: "Add browser tabs",
+      subtitle: "Attach live URL or ask about your browser tab",
+      icon: (
+        <svg viewBox="0 0 24 24" className="size-5 shrink-0" fill="none">
+          <rect x="2.5" y="4" width="19" height="15" rx="3" fill="#e2e8f0" stroke="#64748b" strokeWidth="1.2" />
+          <path d="M2.5 7.5h19" stroke="#0ea5e9" strokeWidth="3" />
+          <path d="m13 12 5 2-2 1.2 1.5 2.3-1.3.8-1.5-2.3-1.2 1.5V12Z" fill="#0284c7" />
+        </svg>
+      ),
+      action: () => {
+        setAddOpen(false);
+        setBrowserTabOpen(true);
+        setLibraryPickerOpen(false);
+        setSketchOpen(false);
+        setTemplateCreatorOpen(false);
+      },
+    },
+    {
+      id: "web_search",
+      title: "Web search",
+      subtitle: "Find real-time news and info",
+      icon: (
+        <svg viewBox="0 0 24 24" className="size-5 shrink-0 text-[#38bdf8]" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M3.6 9h16.8M3.6 15h16.8" />
+          <path d="M11.5 3a17 17 0 0 0 0 18M12.5 3a17 17 0 0 1 0 18" />
+        </svg>
+      ),
+      action: () => {
+        setAddOpen(false);
+        setSkill("news");
+        setActivePlugin("web_search");
+        box.current?.focus();
+      },
+    },
+    {
+      id: "deep_research",
+      title: "Deep research",
+      subtitle: "Get a detailed report",
+      icon: (
+        <svg viewBox="0 0 24 24" className="size-5 shrink-0 text-[#3b82f6]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="m3 11 14-5 2 5-14 5-2-5Z" fill="#3b82f6" fillOpacity="0.25" />
+          <path d="M11 13.5 7.5 21M11 13.5 15.5 21M11 13.5v7.5" />
+        </svg>
+      ),
+      action: () => {
+        setAddOpen(false);
+        setSkill("evidence");
+        setActivePlugin("deep_research");
+        box.current?.focus();
+      },
+    },
+    {
+      id: "sketch",
+      title: "Sketch",
+      subtitle: "Draw and attach an image",
+      icon: (
+        <svg viewBox="0 0 24 24" className="size-5 shrink-0 text-[#10b981]" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 17c2.5-6 5-10 6.5-10s1.5 10 3.5 10 4-7 6-9" />
+        </svg>
+      ),
+      action: () => {
+        setAddOpen(false);
+        setSketchOpen(true);
+        setLibraryPickerOpen(false);
+        setBrowserTabOpen(false);
+        setTemplateCreatorOpen(false);
+        initSketchCanvas();
+      },
+    },
+    {
+      id: "thinking",
+      title: "Thinking",
+      subtitle: "For detailed answers",
+      icon: <Brain className="size-5 shrink-0 text-zinc-100" />,
+      action: () => {
+        setAddOpen(false);
+        setThink((on) => !on);
+        box.current?.focus();
+      },
+    },
+    {
+      id: "template_creator",
+      title: "Template Creator",
+      subtitle: "Create reusable templates saved as personal skills",
+      icon: (
+        <span className="grid size-5 shrink-0 place-items-center rounded-md bg-zinc-950 ring-1 ring-white/20">
+          <svg viewBox="0 0 16 16" className="size-3.5 text-zinc-100" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <circle cx="5" cy="5" r="1.8" />
+            <circle cx="11" cy="5" r="1.8" />
+            <circle cx="5" cy="11" r="1.8" />
+            <circle cx="11" cy="11" r="1.8" />
+          </svg>
+        </span>
+      ),
+      action: () => {
+        setAddOpen(false);
+        setTemplateCreatorOpen(true);
+        setLibraryPickerOpen(false);
+        setBrowserTabOpen(false);
+        setSketchOpen(false);
+      },
+    },
+    {
+      id: "presentations",
+      title: "Presentations",
+      subtitle: "Create and edit presentations",
+      icon: (
+        <span className="grid size-5 shrink-0 place-items-center rounded-md bg-[#f59e0b] text-white shadow-xs">
+          <svg viewBox="0 0 16 16" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="1.6">
+            <rect x="2.5" y="3" width="11" height="8" rx="1.2" />
+            <path d="M8 11v2.5M5.5 13.5h5" />
+          </svg>
+        </span>
+      ),
+      action: () => {
+        setAddOpen(false);
+        setActivePlugin("presentations");
+        box.current?.focus();
+      },
+    },
+    {
+      id: "pdf",
+      title: "PDF",
+      subtitle: "Read, create, and verify PDFs",
+      icon: (
+        <span className="grid size-5 shrink-0 place-items-center rounded-md bg-[#ef4444] text-[8px] font-extrabold tracking-tighter text-white shadow-xs">
+          PDF
+        </span>
+      ),
+      action: () => {
+        setAddOpen(false);
+        setActivePlugin("pdf");
+        box.current?.focus();
+      },
+    },
+    {
+      id: "documents",
+      title: "Documents",
+      subtitle: "Create and edit documents",
+      icon: (
+        <span className="grid size-5 shrink-0 place-items-center rounded-md bg-[#2563eb] text-white shadow-xs">
+          <FileText className="size-3.5" />
+        </span>
+      ),
+      action: () => {
+        setAddOpen(false);
+        setActivePlugin("documents");
+        box.current?.focus();
+      },
+    },
+    {
+      id: "spreadsheets",
+      title: "Spreadsheets",
+      subtitle: "Create and edit spreadsheets",
+      icon: (
+        <span className="grid size-5 shrink-0 place-items-center rounded-md bg-[#16a34a] text-white shadow-xs">
+          <svg viewBox="0 0 16 16" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <rect x="2" y="2.5" width="12" height="11" rx="1.2" />
+            <path d="M2 6.5h12M2 10h12M6.5 2.5v11" />
+          </svg>
+        </span>
+      ),
+      action: () => {
+        setAddOpen(false);
+        setActivePlugin("spreadsheets");
+        box.current?.focus();
+      },
+    },
+    {
+      id: "bible_engine",
+      title: "Bible Intelligence",
+      subtitle: "Genesis to Revelation sermons, Bible studies & exegesis",
+      icon: (
+        <span className="grid size-5 shrink-0 place-items-center rounded-md bg-[#e4b86a] text-[10px] font-bold text-[#1a1408] shadow-xs">
+          ✝
+        </span>
+      ),
+      action: () => {
+        setAddOpen(false);
+        setActivePlugin("bible");
+        if (!draft.trim()) setDraft("Prepare a 30-minute expository sermon on Psalm 23");
+        box.current?.focus();
+      },
+    },
+    {
+      id: "investment_engine",
+      title: "Investment & Finance",
+      subtitle: "Main Street & Wall Street financial analysis and memos",
+      icon: (
+        <span className="grid size-5 shrink-0 place-items-center rounded-md bg-[#10b981] text-[10px] font-bold text-[#052e16] shadow-xs">
+          $
+        </span>
+      ),
+      action: () => {
+        setAddOpen(false);
+        setActivePlugin("investment");
+        if (!draft.trim()) setDraft("Execute the Noctis Research & Investment Intelligence Engine (NOCTIS-INVEST-001)");
+        box.current?.focus();
+      },
+    },
+    {
+      id: "cyber_sast_engine",
+      title: "XTRIKE SAST & Cyber DFIR",
+      subtitle: "401 SAST rules, attack-path graphs & incident response",
+      icon: (
+        <span className="grid size-5 shrink-0 place-items-center rounded-md bg-[#8b5cf6] text-[10px] font-bold text-white shadow-xs">
+          ⚡
+        </span>
+      ),
+      action: () => {
+        setAddOpen(false);
+        setActivePlugin("cyber_sast");
+        if (!draft.trim()) setDraft("Show the complete XTRIKE SAST scanner architecture, 401 rules, and 82 benchmark repositories");
+        box.current?.focus();
+      },
+    },
+  ] as const;
+
+  const filteredPlugins = COMPOSER_PLUGINS.filter((item) => {
+    const q = pluginQuery.trim().toLowerCase();
+    if (!q) return true;
+    return item.title.toLowerCase().includes(q) || item.subtitle.toLowerCase().includes(q);
+  });
+
+  const activePluginLabel: Record<string, string> = {
+    create_image: "Create image",
+    web_search: "Web search",
+    deep_research: "Deep research",
+    presentations: "Presentations",
+    pdf: "PDF",
+    documents: "Documents",
+    spreadsheets: "Spreadsheets",
+    bible: "Bible Intelligence",
+    investment: "Investment & Finance",
+    cyber_sast: "XTRIKE SAST & Cyber",
+    clinical: "Clinical Intelligence",
+  };
+
   const composer = (
     <form
       className="relative w-full"
@@ -4506,7 +4965,273 @@ export function NoctisDesk() {
       }}
     >
       {addOpen ? (
-        <button type="button" aria-label="Close add menu" className="fixed inset-0 z-40 cursor-default" onClick={() => setAddOpen(false)} />
+        <button
+          type="button"
+          aria-label="Close add menu"
+          className="fixed inset-0 z-40 cursor-default"
+          onClick={() => {
+            setAddOpen(false);
+            setPluginQuery("");
+          }}
+        />
+      ) : null}
+      {libraryPickerOpen ? (
+        <div className="mb-3 rounded-3xl border border-white/15 bg-[#1e1e1e] p-4 shadow-2xl">
+          <div className="mb-2.5 flex items-center justify-between gap-2">
+            <div>
+              <p className="text-sm font-semibold text-zinc-100">Add from Noctis Library & Saved Skills</p>
+              <p className="text-xs text-zinc-400">Browse and search verified library packs, saved templates, or upload from computer</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setLibraryPickerOpen(false);
+                  chooseFile("file");
+                }}
+                className="rounded-full bg-[#e4b86a] px-3 py-1 text-xs font-semibold text-[#1a1408]"
+              >
+                + Upload File
+              </button>
+              <button type="button" onClick={() => setLibraryPickerOpen(false)} className="grid size-7 place-items-center rounded-full text-zinc-400 hover:bg-white/10 hover:text-white">
+                <X className="size-4" />
+              </button>
+            </div>
+          </div>
+          <input
+            value={libraryFilter}
+            onChange={(e) => setLibraryFilter(e.target.value)}
+            placeholder="Browse and search your library files & saved templates..."
+            className="mb-2.5 h-9 w-full rounded-xl border border-white/10 bg-[#2a2a2a] px-3 text-sm text-zinc-100 outline-none placeholder:text-zinc-500"
+          />
+          <div className="max-h-52 space-y-1 overflow-y-auto pr-1">
+            {savedTemplates
+              .filter((t) => !libraryFilter.trim() || t.name.toLowerCase().includes(libraryFilter.toLowerCase()) || t.category.toLowerCase().includes(libraryFilter.toLowerCase()))
+              .map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => {
+                    setDraft(t.structure);
+                    setLibraryPickerOpen(false);
+                    box.current?.focus();
+                  }}
+                  className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left hover:bg-white/10"
+                >
+                  <div>
+                    <span className="text-sm font-medium text-[#e4b86a]">{t.name}</span>
+                    <span className="ml-2 text-xs text-zinc-400">({t.category})</span>
+                  </div>
+                  <span className="text-xs text-zinc-400">Use template →</span>
+                </button>
+              ))}
+            {LIBRARY_DESKS.filter(
+              (row) =>
+                !libraryFilter.trim() ||
+                row.label.toLowerCase().includes(libraryFilter.toLowerCase()) ||
+                row.line.toLowerCase().includes(libraryFilter.toLowerCase()),
+            ).map((row) => (
+              <button
+                key={row.label}
+                type="button"
+                onClick={() => {
+                  setLibraryPickerOpen(false);
+                  void send(row.ask, row.skill);
+                }}
+                className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left hover:bg-white/10"
+              >
+                <div className="min-w-0">
+                  <span className="text-sm font-medium text-zinc-100">{row.label}</span>
+                  <span className="ml-2.5 text-xs text-zinc-400">{row.line}</span>
+                </div>
+                <span className="shrink-0 text-xs text-[#e4b86a]">Load →</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+      {browserTabOpen ? (
+        <div className="mb-3 rounded-3xl border border-white/15 bg-[#1e1e1e] p-3.5 shadow-2xl">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-xs font-semibold text-zinc-100">Add Browser Tab / Web Page Context</span>
+            <button type="button" onClick={() => setBrowserTabOpen(false)} className="text-zinc-400 hover:text-white">
+              <X className="size-4" />
+            </button>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              value={browserTabInput}
+              onChange={(e) => setBrowserTabInput(e.target.value)}
+              placeholder="Paste tab URL or page title/snippet (e.g. https://dstrike.app/noctis)..."
+              className="h-9 min-w-[220px] flex-1 rounded-xl border border-white/10 bg-[#2a2a2a] px-3 text-sm text-zinc-100 outline-none placeholder:text-zinc-500"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                const val = browserTabInput.trim() || (typeof window !== "undefined" ? `${document.title || "Current Tab"} (${window.location.href})` : "");
+                if (!val) return;
+                setAttachedTabs((prev) => [...prev, { id: `tab-${Date.now()}`, url: val }]);
+                setBrowserTabInput("");
+                setBrowserTabOpen(false);
+              }}
+              className="h-9 rounded-full bg-[#e4b86a] px-4 text-xs font-semibold text-[#1a1408]"
+            >
+              {browserTabInput.trim() ? "Attach Tab" : "Attach Current Page"}
+            </button>
+          </div>
+        </div>
+      ) : null}
+      {sketchOpen ? (
+        <div className="mb-3 rounded-3xl border border-white/15 bg-[#1e1e1e] p-4 shadow-2xl">
+          <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-zinc-100">Sketch — Draw & Attach an Image</span>
+              <div className="flex items-center gap-1.5 pl-2">
+                {["#10b981", "#e4b86a", "#3b82f6", "#ef4444", "#ffffff", "#a855f7"].map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    aria-label={`Color ${c}`}
+                    onClick={() => setSketchColor(c)}
+                    className={cn("size-5 rounded-full border", sketchColor === c ? "scale-110 border-white ring-2 ring-[#e4b86a]" : "border-white/20")}
+                    style={{ backgroundColor: c }}
+                  />
+                ))}
+              </div>
+              <select
+                value={sketchSize}
+                onChange={(e) => setSketchSize(Number(e.target.value))}
+                className="ml-2 rounded-lg bg-[#2a2a2a] px-2 py-1 text-xs text-zinc-200"
+              >
+                <option value={2}>Fine (2px)</option>
+                <option value={4}>Medium (4px)</option>
+                <option value={8}>Bold (8px)</option>
+                <option value={14}>Marker (14px)</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={clearSketchCanvas} className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-zinc-200 hover:bg-white/20">
+                Clear
+              </button>
+              <button type="button" onClick={attachSketchImage} className="rounded-full bg-[#10b981] px-3.5 py-1 text-xs font-semibold text-[#052e16] hover:opacity-90">
+                Attach Sketch
+              </button>
+              <button type="button" onClick={() => setSketchOpen(false)} className="grid size-7 place-items-center rounded-full text-zinc-400 hover:bg-white/10 hover:text-white">
+                <X className="size-4" />
+              </button>
+            </div>
+          </div>
+          <canvas
+            ref={sketchCanvasRef}
+            width={680}
+            height={240}
+            onPointerDown={startSketchStroke}
+            onPointerMove={moveSketchStroke}
+            onPointerUp={endSketchStroke}
+            onPointerLeave={endSketchStroke}
+            className="h-48 w-full cursor-crosshair touch-none rounded-2xl border border-white/10 bg-[#141414]"
+          />
+        </div>
+      ) : null}
+      {templateCreatorOpen ? (
+        <div className="mb-3 rounded-3xl border border-[#e4b86a]/40 bg-[#1e1e1e] p-4 shadow-2xl">
+          <div className="mb-2.5 flex items-center justify-between gap-2">
+            <div>
+              <p className="text-sm font-semibold text-zinc-100">Template Creator — Personal Skills</p>
+              <p className="text-xs text-zinc-400">Create reusable templates saved permanently as personal skills</p>
+            </div>
+            <button type="button" onClick={() => setTemplateCreatorOpen(false)} className="grid size-7 place-items-center rounded-full text-zinc-400 hover:bg-white/10 hover:text-white">
+              <X className="size-4" />
+            </button>
+          </div>
+          <div className="mb-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <input
+              value={tplName}
+              onChange={(e) => setTplName(e.target.value)}
+              placeholder="Template name (e.g., Sunday Expository Sermon)"
+              className="h-9 rounded-xl border border-white/10 bg-[#2a2a2a] px-3 text-sm text-zinc-100 outline-none placeholder:text-zinc-500 sm:col-span-2"
+            />
+            <select
+              value={tplCategory}
+              onChange={(e) => setTplCategory(e.target.value)}
+              className="h-9 rounded-xl border border-white/10 bg-[#2a2a2a] px-3 text-sm text-zinc-100 outline-none"
+            >
+              <option value="Personal Skill">Personal Skill</option>
+              <option value="Sermon & Bible Study">Sermon & Bible Study</option>
+              <option value="Investment & Finance Memo">Investment & Finance Memo</option>
+              <option value="Cyber & SAST Audit">Cyber & SAST Audit</option>
+              <option value="Executive Presentation">Executive Presentation</option>
+              <option value="Document / Report">Document / Report</option>
+            </select>
+          </div>
+          <textarea
+            value={tplStructure}
+            onChange={(e) => setTplStructure(e.target.value)}
+            rows={3}
+            placeholder="Write the reusable template structure or prompt instructions..."
+            className="mb-2 w-full resize-none rounded-xl border border-white/10 bg-[#2a2a2a] px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-500"
+          />
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-1.5">
+              {[
+                {
+                  label: "+ Expository Sermon",
+                  name: "Expository Sermon Package",
+                  cat: "Sermon & Bible Study",
+                  body: "Prepare a 30-minute expository sermon on [Passage] including Verbatim KJV Text, Hebrew/Greek Lexical Table, 3 Main Points with Full Preaching Manuscript, Cross-References, and Practical Applications.",
+                },
+                {
+                  label: "+ Investment Memo",
+                  name: "Wall Street & Main Street Memo",
+                  cat: "Investment & Finance Memo",
+                  body: "Prepare a complete Institutional & Main Street Investment Decision Memo on [Company / Asset] with unit economics, cash-flow vs accrual verification, bull/base/bear scenarios, and key risks.",
+                },
+                {
+                  label: "+ SAST Security Audit",
+                  name: "XTRIKE SAST & Attack-Path Audit",
+                  cat: "Cyber & SAST Audit",
+                  body: "Audit [Target / Finding] using XTRIKE SAST-to-Runtime Exploitability Validation, CWE/MITRE mapping, blast-radius scoring, and concrete code remediation.",
+                },
+              ].map((preset) => (
+                <button
+                  key={preset.label}
+                  type="button"
+                  onClick={() => {
+                    setTplName(preset.name);
+                    setTplCategory(preset.cat);
+                    setTplStructure(preset.body);
+                  }}
+                  className="rounded-full bg-white/10 px-2.5 py-1 text-[11px] text-zinc-300 hover:bg-white/15"
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              {tplNotice ? <span className="text-xs text-[#e4b86a]">{tplNotice}</span> : null}
+              <button
+                type="button"
+                disabled={!tplStructure.trim()}
+                onClick={() => {
+                  setDraft(tplStructure.trim());
+                  setTemplateCreatorOpen(false);
+                  box.current?.focus();
+                }}
+                className="rounded-full bg-white/10 px-3 py-1.5 text-xs font-medium text-zinc-100 hover:bg-white/20 disabled:opacity-40"
+              >
+                Insert in Box
+              </button>
+              <button
+                type="button"
+                disabled={!tplName.trim() || !tplStructure.trim()}
+                onClick={savePersonalTemplate}
+                className="rounded-full bg-[#e4b86a] px-4 py-1.5 text-xs font-semibold text-[#1a1408] disabled:opacity-40"
+              >
+                Save Personal Skill
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
       {trainOpen ? (
         <div className="mb-3 rounded-2xl border border-[#e4b86a]/40 bg-[#1e1e1e] p-3.5 shadow-2xl">
@@ -4634,7 +5359,7 @@ export function NoctisDesk() {
             : null}
         </div>
       ) : null}
-      {uploads.length ? (
+      {uploads.length || attachedTabs.length ? (
         <div className="mb-2 flex flex-wrap gap-2 px-2">
           {uploads.map((file) => (
             <span key={file.id} className="inline-flex max-w-full items-center gap-2 rounded-2xl bg-[#2f2f2f] py-1 pl-1 pr-2 text-xs text-zinc-200">
@@ -4654,6 +5379,19 @@ export function NoctisDesk() {
               </button>
             </span>
           ))}
+          {attachedTabs.map((tab) => (
+            <span key={tab.id} className="inline-flex max-w-full items-center gap-2 rounded-2xl border border-[#38bdf8]/30 bg-[#1e293b] px-2.5 py-1 text-xs text-sky-200">
+              <span className="max-w-48 truncate">🌐 {tab.url}</span>
+              <button
+                type="button"
+                aria-label={`Remove tab ${tab.url}`}
+                onClick={() => setAttachedTabs((rows) => rows.filter((row) => row.id !== tab.id))}
+                className="grid size-5 place-items-center rounded-full text-sky-300 hover:text-white"
+              >
+                <X className="size-3.5" />
+              </button>
+            </span>
+          ))}
         </div>
       ) : null}
       {uploads.some((file) => file.kind === "text") ? (
@@ -4663,6 +5401,74 @@ export function NoctisDesk() {
               {job}
             </button>
           ))}
+        </div>
+      ) : null}
+      {activePlugin === "pdf" || activePlugin === "documents" || activePlugin === "spreadsheets" || activePlugin === "presentations" ? (
+        <div className="mb-2 flex flex-wrap items-center gap-1.5 px-2">
+          {activePlugin === "pdf" ? (
+            <>
+              <button type="button" onClick={() => chooseFile("file")} className="rounded-full bg-[#ef4444]/20 px-3 py-1 text-xs font-medium text-red-200 hover:bg-[#ef4444]/30">
+                Upload PDF to Read / Verify
+              </button>
+              <button type="button" onClick={() => setDraft("Create a verifiable executive PDF report on ")} className="rounded-full bg-[#2f2f2f] px-3 py-1 text-xs text-zinc-200 hover:bg-white/10">
+                Create PDF Report
+              </button>
+              {thread?.turns.some((t) => t.role === "assistant") ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const lastAssistant = [...(thread?.turns || [])].reverse().find((t) => t.role === "assistant");
+                    if (lastAssistant) printAnswerReport(thread?.title || "Noctis PDF Report", lastAssistant.content);
+                  }}
+                  className="rounded-full bg-[#e4b86a]/20 px-3 py-1 text-xs font-medium text-[#e4b86a] hover:bg-[#e4b86a]/30"
+                >
+                  Save Last Reply as PDF
+                </button>
+              ) : null}
+            </>
+          ) : null}
+          {activePlugin === "documents" ? (
+            <>
+              <button type="button" onClick={() => chooseFile("file")} className="rounded-full bg-[#2563eb]/20 px-3 py-1 text-xs font-medium text-blue-200 hover:bg-[#2563eb]/30">
+                Upload Document (.docx / .rtf / .txt)
+              </button>
+              <button type="button" onClick={() => setDraft("Draft a complete professional document and specification for ")} className="rounded-full bg-[#2f2f2f] px-3 py-1 text-xs text-zinc-200 hover:bg-white/10">
+                Draft New Document
+              </button>
+              {thread?.turns.some((t) => t.role === "assistant") ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const lastAssistant = [...(thread?.turns || [])].reverse().find((t) => t.role === "assistant");
+                    if (lastAssistant) downloadWordReport(thread?.title || "Noctis Document", lastAssistant.content);
+                  }}
+                  className="rounded-full bg-[#e4b86a]/20 px-3 py-1 text-xs font-medium text-[#e4b86a] hover:bg-[#e4b86a]/30"
+                >
+                  Export Last Reply (.doc)
+                </button>
+              ) : null}
+            </>
+          ) : null}
+          {activePlugin === "spreadsheets" ? (
+            <>
+              <button type="button" onClick={() => chooseFile("file")} className="rounded-full bg-[#16a34a]/20 px-3 py-1 text-xs font-medium text-emerald-200 hover:bg-[#16a34a]/30">
+                Upload Spreadsheet (.csv / .tsv)
+              </button>
+              <button type="button" onClick={() => setDraft("Create a structured financial and operational spreadsheet table with formulas for ")} className="rounded-full bg-[#2f2f2f] px-3 py-1 text-xs text-zinc-200 hover:bg-white/10">
+                Create Spreadsheet Model
+              </button>
+            </>
+          ) : null}
+          {activePlugin === "presentations" ? (
+            <>
+              <button type="button" onClick={() => setDraft("Create a 10-slide executive presentation deck with slide titles, bullet points, visual cues, and speaker notes on ")} className="rounded-full bg-[#f59e0b]/20 px-3 py-1 text-xs font-medium text-amber-200 hover:bg-[#f59e0b]/30">
+                10-Slide Executive Deck
+              </button>
+              <button type="button" onClick={() => setDraft("Create a teaching & training presentation slide deck on ")} className="rounded-full bg-[#2f2f2f] px-3 py-1 text-xs text-zinc-200 hover:bg-white/10">
+                Training / Teaching Deck
+              </button>
+            </>
+          ) : null}
         </div>
       ) : null}
       {recording || transcribing || clip ? (
@@ -4683,46 +5489,104 @@ export function NoctisDesk() {
           )}
         </div>
       ) : null}
-      <div className="flex min-w-0 items-center gap-1 rounded-[28px] bg-[#2a2a2a] py-1.5 pr-1.5 pl-1.5 ring-1 ring-white/10">
+      {addOpen ? (
+        <div className="absolute bottom-[calc(100%+0.6rem)] left-0 right-0 z-50 overflow-hidden rounded-[26px] border border-white/12 bg-[#1f1f1f] shadow-[0_24px_60px_rgba(0,0,0,0.65)]">
+          <div className="max-h-[340px] space-y-0.5 overflow-y-auto p-2">
+            {filteredPlugins.length ? (
+              filteredPlugins.map((itemRow) => (
+                <button
+                  key={itemRow.id}
+                  type="button"
+                  onClick={itemRow.action}
+                  className={cn(
+                    "flex w-full items-center gap-3.5 rounded-2xl px-3.5 py-2.5 text-left transition hover:bg-white/10",
+                    (itemRow.id === "thinking" && think) || (activePlugin && itemRow.id === activePlugin) ? "bg-white/10" : "",
+                  )}
+                >
+                  {itemRow.icon}
+                  <div className=" flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
+                    <span className="text-[14px] font-medium text-zinc-100">{itemRow.title}</span>
+                    <span className="truncate text-[13px] text-zinc-400">{itemRow.subtitle}</span>
+                  </div>
+                  {(itemRow.id === "thinking" && think) || (activePlugin && itemRow.id === activePlugin) ? (
+                    <span className="rounded-full bg-[#e4b86a]/20 px-2 py-0.5 text-[11px] font-semibold text-[#e4b86a]">Active</span>
+                  ) : null}
+                </button>
+              ))
+            ) : (
+              <p className="px-4 py-3 text-sm text-zinc-400">No matching Noctis plugins found.</p>
+            )}
+          </div>
+          <div className="border-t border-white/10 bg-[#181818] px-4 py-2.5">
+            <input
+              value={pluginQuery}
+              onChange={(e) => setPluginQuery(e.target.value)}
+              placeholder="Type to search plugins"
+              className="w-full bg-transparent text-sm text-zinc-100 outline-none placeholder:text-zinc-500"
+            />
+          </div>
+        </div>
+      ) : null}
+      <div className="flex min-w-0 items-center gap-1.5 rounded-[28px] bg-[#2a2a2a] py-1.5 pr-2 pl-2 ring-1 ring-white/12 shadow-[0_8px_30px_rgba(0,0,0,0.28)]">
         <button
           type="button"
-          aria-label="Add a photo or file"
+          aria-label="Open Noctis tools and plugins"
           aria-expanded={addOpen}
-          onClick={() => setAddOpen((open) => !open)}
-          className="relative z-50 grid size-10 shrink-0 place-items-center rounded-full text-zinc-200 hover:bg-white/10"
+          onClick={() => {
+            setAddOpen((open) => !open);
+            setPluginQuery("");
+          }}
+          className={cn(
+            "relative z-50 grid size-10 shrink-0 place-items-center rounded-full transition",
+            addOpen ? "bg-white/15 text-[#e4b86a]" : "text-zinc-200 hover:bg-white/10",
+          )}
         >
-          <Plus className="size-5" />
+          <Plus className={cn("size-5 transition-transform duration-150", addOpen && "rotate-45")} />
         </button>
-        {addOpen ? (
-          <div className="absolute bottom-14 left-0 z-50 w-44 overflow-hidden rounded-2xl bg-[#2f2f2f] p-1 shadow-2xl ring-1 ring-white/10">
-            <button type="button" onClick={() => chooseFile("image")} className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm text-zinc-100 hover:bg-white/10">
-              <Image className="size-4" /> Photo
-            </button>
-            <button type="button" onClick={() => chooseFile("file")} className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm text-zinc-100 hover:bg-white/10">
-              <FileText className="size-4" /> File
-            </button>
-          </div>
+        {activePlugin ? (
+          <button
+            type="button"
+            onClick={() => setActivePlugin("")}
+            className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#e4b86a]/15 px-2.5 py-1 text-xs font-medium text-[#e4b86a] hover:bg-[#e4b86a]/25"
+          >
+            {activePluginLabel[activePlugin] || activePlugin}
+            <X className="size-3" />
+          </button>
         ) : null}
         <textarea
           ref={box}
           value={draft}
           rows={1}
           placeholder={
-            imagine
-              ? "Describe the picture or the video"
-              : skill === "draw"
-              ? "Describe the picture"
-              : skill === "film"
-                ? "Ask about this video"
-                : skill === "evidence"
-                  ? "What should be checked?"
-                  : skill === "quiz"
-                    ? "Quiz me on this"
-                    : skill
-                      ? noctisSkill(skill).example
-                      : voiceOn
-                        ? "Listening"
-                        : "Ask anything"
+            activePlugin === "create_image"
+              ? "Ask Noctis — Visualize anything"
+              : activePlugin === "web_search"
+                ? "Ask Noctis — Find real-time news and info"
+                : activePlugin === "deep_research"
+                  ? "Ask Noctis — Get a detailed research report"
+                  : activePlugin === "presentations"
+                    ? "Ask Noctis — Create and edit presentations"
+                    : activePlugin === "pdf"
+                      ? "Ask Noctis — Read, create, and verify PDFs"
+                      : activePlugin === "documents"
+                        ? "Ask Noctis — Create and edit documents"
+                        : activePlugin === "spreadsheets"
+                          ? "Ask Noctis — Create and edit spreadsheets"
+                          : imagine
+                            ? "Describe the picture or the video"
+                            : skill === "draw"
+                              ? "Describe the picture"
+                              : skill === "film"
+                                ? "Ask about this video"
+                                : skill === "evidence"
+                                  ? "What should be checked?"
+                                  : skill === "quiz"
+                                    ? "Quiz me on this"
+                                    : skill
+                                      ? noctisSkill(skill).example
+                                      : voiceOn
+                                        ? "Listening"
+                                        : "Ask Noctis"
           }
           onPaste={pasteImage}
           onChange={(event) => {
@@ -4736,78 +5600,70 @@ export function NoctisDesk() {
               void send();
             }
           }}
-          className="max-h-40 min-h-9 flex-1 resize-none bg-transparent px-1 py-2 text-[15px] leading-5 text-zinc-100 outline-none placeholder:text-zinc-500"
+          className="max-h-40 min-h-9 flex-1 resize-none bg-transparent px-1.5 py-2 text-[15px] leading-5 text-zinc-100 outline-none placeholder:text-zinc-400"
         />
         {code ? (
-          <button type="button" onClick={() => setCode(false)} className="mb-1 hidden shrink-0 items-center gap-1 rounded-full px-2 py-1 text-xs text-[#e4b86a] sm:inline-flex">
+          <button type="button" onClick={() => setCode(false)} className="hidden shrink-0 items-center gap-1 rounded-full px-2 py-1 text-xs text-[#e4b86a] sm:inline-flex">
             <Code2 className="size-3.5" /> Code
           </button>
         ) : null}
         {imagine ? (
-          <button type="button" onClick={() => setImagine(false)} className="mb-1 inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-xs text-[#e4b86a]">
+          <button type="button" onClick={() => setImagine(false)} className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-xs text-[#e4b86a]">
             Imagine
             <X className="size-3" />
           </button>
         ) : null}
         {skill ? (
-          <button type="button" onClick={() => setSkill("")} className="mb-1 inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-xs text-[#e4b86a]">
+          <button type="button" onClick={() => setSkill("")} className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-xs text-[#e4b86a]">
             {skillName(skill)}
             <X className="size-3" />
           </button>
         ) : null}
-        <select
-          aria-label="Noctis speaks"
-          value={speaks}
-          onChange={(event) => setSpeaks(event.target.value)}
-          className="mb-0.5 h-8 max-w-24 shrink-0 rounded-full bg-transparent px-1 text-xs text-zinc-300"
-        >
-          {VIBE_SPEAKS.map((name) => (
-            <option key={name} value={name}>{name}</option>
-          ))}
-        </select>
-        {speaks === "Other" ? (
-          <input
-            value={otherSpeak}
-            onChange={(event) => setOtherSpeak(event.target.value)}
-            maxLength={40}
-            aria-label="Language"
-            placeholder="Language"
-            className="mb-0.5 h-8 w-24 shrink-0 rounded-full bg-transparent px-2 text-xs text-zinc-100 outline-none placeholder:text-zinc-500"
-          />
-        ) : null}
         <button
           type="button"
-          aria-label={recording ? "Stop recording" : "Record"}
+          onClick={() => setThink((on) => !on)}
+          aria-pressed={think}
+          className={cn(
+            "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3 text-[13px] font-medium transition",
+            think ? "bg-[#e4b86a]/20 text-[#e4b86a] ring-1 ring-[#e4b86a]/40" : "text-zinc-300 hover:bg-white/10 hover:text-zinc-100",
+          )}
+        >
+          <Brain className="size-4" />
+          <span>Think</span>
+        </button>
+        <button
+          type="button"
+          aria-label={recording ? "Stop recording" : "Record voice"}
           onClick={toggleRecord}
-          className={cn("grid size-10 shrink-0 place-items-center rounded-full", recording ? "bg-[#b42318] text-white" : "text-zinc-200 hover:bg-white/10")}
+          className={cn("grid size-10 shrink-0 place-items-center rounded-full transition", recording ? "bg-[#b42318] text-white" : "text-zinc-200 hover:bg-white/10")}
         >
           <Mic className="size-5" />
         </button>
-        <button
-          type="button"
-          aria-label={callOpen ? "Close call" : "Call someone"}
-          onClick={openCall}
-          className={cn("grid size-10 shrink-0 place-items-center rounded-full", voiceOn || callOpen ? "bg-[#e4b86a] text-[#1a1408]" : "text-zinc-200 hover:bg-white/10")}
-        >
-          <Phone className="size-5" />
-        </button>
         {busy ? (
-          <button type="button" aria-label="Stop" onClick={stop} className="mb-0.5 inline-flex h-10 shrink-0 items-center gap-1 rounded-full bg-white px-3 text-sm font-semibold text-black">
+          <button type="button" aria-label="Stop" onClick={stop} className="inline-flex h-10 shrink-0 items-center gap-1 rounded-full bg-white px-3 text-sm font-semibold text-black">
             <Square className="size-3.5 fill-current" />
             Stop
           </button>
-        ) : (
+        ) : draft.trim() || uploads.length || attachedTabs.length || skill || imagine || activePlugin ? (
           <button
             type="submit"
-            disabled={!draft.trim() && !uploads.length && !skill && !imagine}
-            aria-label="Enter"
-            className={cn(
-              "mb-0.5 inline-flex h-10 shrink-0 items-center gap-1 rounded-full px-3 text-sm font-semibold",
-              draft.trim() || uploads.length || skill || imagine ? "bg-[#e4b86a] text-[#1a1408]" : "bg-[#e4b86a]/35 text-[#1a1408]/70",
-            )}
+            aria-label="Send to Noctis"
+            className="inline-flex h-10 shrink-0 items-center gap-1 rounded-full bg-[#e4b86a] px-3.5 text-sm font-semibold text-[#1a1408] hover:opacity-95"
           >
             <CornerDownLeft className="size-4" />
             Enter
+          </button>
+        ) : (
+          <button
+            type="button"
+            aria-label={voiceOn ? "Close Noctis voice" : "Start Noctis live voice"}
+            onClick={() => void toggleVoice()}
+            title="Start Noctis Voice"
+            className="grid size-10 shrink-0 place-items-center rounded-full bg-[#2563eb] text-white shadow-sm transition hover:bg-[#1d4ed8]"
+          >
+            <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+              <path d="M8 9v6M12 6v12M16 9v6M4 11v2M20 11v2" />
+            </svg>
           </button>
         )}
       </div>
@@ -4837,9 +5693,17 @@ export function NoctisDesk() {
           <GraduationCap className="size-3.5" />
           Train Studio
         </button>
-        <button type="button" onClick={() => setThink((on) => !on)} className={cn("inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[13px]", think ? "bg-white/10 text-[#e4b86a]" : "text-zinc-400")}>
-          <Brain className="size-3.5" />
-          Think
+        <button
+          type="button"
+          onClick={() => {
+            setTemplateCreatorOpen((open) => !open);
+            setGadgetsOpen(false);
+            setTrainOpen(false);
+          }}
+          className={cn("inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[13px]", templateCreatorOpen ? "bg-[#e4b86a]/20 text-[#e4b86a]" : "text-zinc-400 hover:text-zinc-200")}
+        >
+          <FileText className="size-3.5" />
+          Templates
         </button>
         <button type="button" onClick={() => {
           const next = skill === "draw" ? "" : "draw";
@@ -4885,6 +5749,34 @@ export function NoctisDesk() {
         >
           <Mic className="size-3.5" />
           Speech
+        </button>
+        <select
+          aria-label="Noctis speaks"
+          value={speaks}
+          onChange={(event) => setSpeaks(event.target.value)}
+          className="ml-auto h-7 max-w-24 shrink-0 rounded-full bg-transparent px-1 text-xs text-zinc-400"
+        >
+          {VIBE_SPEAKS.map((name) => (
+            <option key={name} value={name}>{name}</option>
+          ))}
+        </select>
+        {speaks === "Other" ? (
+          <input
+            value={otherSpeak}
+            onChange={(event) => setOtherSpeak(event.target.value)}
+            maxLength={40}
+            aria-label="Language"
+            placeholder="Language"
+            className="h-7 w-24 shrink-0 rounded-full bg-transparent px-2 text-xs text-zinc-100 outline-none placeholder:text-zinc-500"
+          />
+        ) : null}
+        <button
+          type="button"
+          aria-label={callOpen ? "Close call" : "Call someone"}
+          onClick={openCall}
+          className={cn("grid size-8 shrink-0 place-items-center rounded-full", voiceOn || callOpen ? "bg-[#e4b86a] text-[#1a1408]" : "text-zinc-400 hover:bg-white/10 hover:text-zinc-100")}
+        >
+          <Phone className="size-4" />
         </button>
       </div>
     </form>
