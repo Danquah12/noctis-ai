@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ClipboardEvent } from "react";
 import { Link } from "@tanstack/react-router";
-import { Brain, Calendar, ChevronDown, ChevronLeft, Code2, Copy, CornerDownLeft, FileText, GraduationCap, Image, Library, Mail, Menu, Mic, MoreHorizontal, PanelRight, PanelRightOpen, Pencil, Phone, PhoneOff, Plus, Printer, RotateCcw, Search, Square, SquarePen, Trash2, Video, Volume2, VolumeX, Wrench, X } from "lucide-react";
+import { ArrowUp, Brain, Calendar, ChevronDown, ChevronLeft, Code2, Copy, CornerDownLeft, FileText, GraduationCap, Image, Library, Mail, Menu, Mic, MoreHorizontal, PanelRight, PanelRightOpen, Pencil, Phone, PhoneOff, Plus, Printer, RotateCcw, Search, Square, SquarePen, Trash2, Video, Volume2, VolumeX, Wrench, X } from "lucide-react";
 import { askNoctis, drawVibe, hearVibe, sayVibe, trainVibe } from "@/lib/noctis-api";
 import { bringImagineFile, bringPortrait, readImagine, startImagine } from "@/lib/imagine-api";
 import { KnowledgeMap } from "@/components/learn/KnowledgeMap";
@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils";
 import { NoctisCall } from "@/components/noctis/NoctisCall";
 import { NoctisCanvas } from "@/components/noctis/NoctisCanvas";
 import { NoctisCodeInterpreter } from "@/components/noctis/NoctisCodeInterpreter";
+import { NoctisThinkingAccordion, CitationBadge } from "@/components/noctis/NoctisThinkingAccordion";
+import { NoctisMemoryModal, getNoctisPersonalizedContext } from "@/components/noctis/NoctisMemoryModal";
 import { studyOpenCall, studySend } from "@/lib/study-group-api";
 import { sendMeetInvite } from "@/lib/meet-mail";
 import { CANVASES, useTheme } from "@/lib/theme";
@@ -3219,11 +3221,22 @@ function ClinicalHandoffView({ data, rawJson }: { data: Record<string, unknown>;
 
 function AnswerBody({ text }: { text: string }) {
   const cut = text.search(/\n\s*Claim standing:/i);
-  const lesson = (cut >= 0 ? text.slice(0, cut) : text).trim();
+  let lesson = (cut >= 0 ? text.slice(0, cut) : text).trim();
   const stamp = cut >= 0 ? text.slice(cut).trim() : "";
+
+  let rawThought = "";
+  const thinkMatch = lesson.match(/<think>([\s\S]*?)<\/think>/i);
+  if (thinkMatch) {
+    rawThought = thinkMatch[1].trim();
+    lesson = lesson.replace(/<think>[\s\S]*?<\/think>/i, "").trim();
+  }
+
   const clinicalJson = tryParseClinicalHandoffJson(lesson);
   return (
     <div className="space-y-3">
+      {rawThought ? (
+        <NoctisThinkingAccordion rawThought={rawThought} durationSeconds={3} />
+      ) : null}
       {clinicalJson ? <ClinicalHandoffView data={clinicalJson} rawJson={lesson} /> : renderBlocks(lesson)}
       {stamp ? (
         <details className="rounded-2xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-400">
@@ -3277,6 +3290,7 @@ export function NoctisDesk() {
   const [canvasContent, setCanvasContent] = useState("");
   const [canvasFullscreen, setCanvasFullscreen] = useState(false);
   const [canvasRevising, setCanvasRevising] = useState(false);
+  const [memoryModalOpen, setMemoryModalOpen] = useState(false);
 
   function openInCanvas(title: string, text: string) {
     const clean = (text.split(/\n\s*Claim standing:/i)[0] || text).trim();
@@ -3655,7 +3669,7 @@ export function NoctisDesk() {
               return [formatContext(readNoctisContext(
                 threads.filter((row) => row.title !== "New chat").map((row) => row.title),
                 place,
-              )), savedRules(person)].filter(Boolean).join("\n");
+              )), savedRules(person), getNoctisPersonalizedContext()].filter(Boolean).join("\n\n");
             } catch {
               return savedRules(person);
             }
@@ -4911,6 +4925,34 @@ export function NoctisDesk() {
       },
     },
     {
+      id: "canvas_workspace",
+      title: "Canvas Workspace",
+      subtitle: "Side-by-side co-editing, coding & smart revisions",
+      icon: (
+        <span className="grid size-5 shrink-0 place-items-center rounded-md bg-[#e4b86a] text-[#1a1408] shadow-xs">
+          <PanelRightOpen className="size-3.5" />
+        </span>
+      ),
+      action: () => {
+        setAddOpen(false);
+        setCanvasOpen((prev) => !prev);
+      },
+    },
+    {
+      id: "personal_memory",
+      title: "Personal Memory",
+      subtitle: "Custom instructions & persistent memory bank",
+      icon: (
+        <span className="grid size-5 shrink-0 place-items-center rounded-md bg-[#8b5cf6] text-white shadow-xs">
+          <Brain className="size-3.5" />
+        </span>
+      ),
+      action: () => {
+        setAddOpen(false);
+        setMemoryModalOpen(true);
+      },
+    },
+    {
       id: "bible_engine",
       title: "Bible Intelligence",
       subtitle: "Genesis to Revelation sermons, Bible studies & exegesis",
@@ -5514,8 +5556,8 @@ export function NoctisDesk() {
         </div>
       ) : null}
       {addOpen ? (
-        <div className="absolute bottom-[calc(100%+0.6rem)] left-0 right-0 z-50 overflow-hidden rounded-[26px] border border-white/12 bg-[#1f1f1f] shadow-[0_24px_60px_rgba(0,0,0,0.65)]">
-          <div className="max-h-[340px] space-y-0.5 overflow-y-auto p-2">
+        <div className="absolute bottom-[calc(100%+10px)] left-0 z-50 w-[450px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-[24px] border border-white/12 bg-[#212121]/98 backdrop-blur-2xl shadow-[0_24px_60px_rgba(0,0,0,0.75)] animate-in fade-in slide-in-from-bottom-2 duration-150">
+          <div className="max-h-[380px] space-y-0.5 overflow-y-auto p-1.5 scrollbar-thin scrollbar-thumb-white/15">
             {filteredPlugins.length ? (
               filteredPlugins.map((itemRow) => (
                 <button
@@ -5523,7 +5565,7 @@ export function NoctisDesk() {
                   type="button"
                   onClick={itemRow.action}
                   className={cn(
-                    "flex w-full items-center gap-3.5 rounded-2xl px-3.5 py-2.5 text-left transition hover:bg-white/10",
+                    "flex w-full items-center gap-3.5 rounded-2xl px-3.5 py-2.5 text-left transition hover:bg-white/[0.08]",
                     (itemRow.id === "thinking" && think) || (activePlugin && itemRow.id === activePlugin) ? "bg-white/10" : "",
                   )}
                 >
@@ -5672,10 +5714,9 @@ export function NoctisDesk() {
           <button
             type="submit"
             aria-label="Send to Noctis"
-            className="inline-flex h-10 shrink-0 items-center gap-1 rounded-full bg-[#e4b86a] px-3.5 text-sm font-semibold text-[#1a1408] hover:opacity-95"
+            className="grid size-9 shrink-0 place-items-center rounded-full bg-white text-black transition hover:opacity-90 shadow-sm"
           >
-            <CornerDownLeft className="size-4" />
-            Enter
+            <ArrowUp className="size-5 stroke-[2.5]" />
           </button>
         ) : (
           <button
@@ -6234,6 +6275,18 @@ export function NoctisDesk() {
               <PanelRight className="size-3.5" />
               Canvas
               {canvasContent ? <span className="size-1.5 rounded-full bg-[#e4b86a]" /> : null}
+            </button>
+            <button
+              type="button"
+              onClick={() => setMemoryModalOpen(true)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-zinc-400 hover:text-zinc-200",
+                memoryModalOpen ? "bg-[#3a3a3a] text-[#e4b86a]" : ""
+              )}
+              title="Personal Memory & Custom Instructions"
+            >
+              <Brain className="size-3.5" />
+              Memory
             </button>
           </div>
           <button
