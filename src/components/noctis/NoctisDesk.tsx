@@ -23,6 +23,14 @@ import { getActiveCustomAgent, getActiveCustomAgentContext, type NoctisCustomAge
 import { NoctisMemoryModal, getNoctisPersonalizedContext } from "@/components/noctis/NoctisMemoryModal";
 import { studyOpenCall, studySend } from "@/lib/study-group-api";
 import { sendMeetInvite } from "@/lib/meet-mail";
+import {
+  speakBrowserVoice,
+  cleanVoiceText,
+  listenBrowserSpeech,
+  createAudioLevelAnalyzer,
+  isSpeechRecognitionSupported,
+  type VoicePersona,
+} from "@/lib/noctis-voice";
 import { CANVASES, useTheme } from "@/lib/theme";
 import { useFeedStore } from "@/lib/feed-store";
 import { learningBoard } from "@/lib/learning-board";
@@ -301,11 +309,9 @@ function userFace(turn: Turn) {
   return { said: lead === "Look at what I uploaded." ? "" : lead, files, shots };
 }
 
-function sayAloud(text: string) {
+function sayAloud(text: string): boolean {
   if (typeof window === "undefined" || !window.speechSynthesis) return false;
-  window.speechSynthesis.cancel();
-  const utter = new SpeechSynthesisUtterance(text.replace(/[#*`]/g, " ").replace(/\s+/g, " ").slice(0, 1500));
-  window.speechSynthesis.speak(utter);
+  void speakBrowserVoice(text);
   return true;
 }
 
@@ -3414,6 +3420,11 @@ export function NoctisDesk() {
   const [voicePhase, setVoicePhase] = useState<"listen" | "think" | "speak" | "idle">("idle");
   const [voiceSaid, setVoiceSaid] = useState("");
   const [voiceReply, setVoiceReply] = useState("");
+  const [voicePersona, setVoicePersona] = useState<VoicePersona>("alloy");
+  const [voiceAudioLevel, setVoiceAudioLevel] = useState(0);
+  const [voiceMuted, setVoiceMuted] = useState(false);
+  const voiceMutedRef = useRef(false);
+  voiceMutedRef.current = voiceMuted;
   const [recording, setRecording] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
   const [recSeconds, setRecSeconds] = useState(0);
@@ -3871,11 +3882,15 @@ export function NoctisDesk() {
     run.current += 1;
     voiceRef.current = false;
     player.current?.pause();
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
     try {
       source.current?.stop();
     } catch {
       /* already finished */
     }
+    setVoiceAudioLevel(0);
     setVoiceOn(false);
     setVoicePhase("idle");
     setVoiceSaid("");
@@ -3919,6 +3934,7 @@ export function NoctisDesk() {
             analyser.getByteTimeDomainData(data);
             let peak = 0;
             for (const sample of data) peak = Math.max(peak, Math.abs(sample - 128));
+            setVoiceAudioLevel(Math.min(1.0, peak / 64));
             if (peak > 10) {
               heard = true;
               quiet = 0;
@@ -3926,6 +3942,7 @@ export function NoctisDesk() {
             const done = !voiceRef.current || (heard && quiet > 1100) || Date.now() - started > (heard ? 20000 : 8000);
             if (!done) return;
             window.clearInterval(timer);
+            setVoiceAudioLevel(0);
             rec.onstop = () => {
               stream.getTracks().forEach((track) => track.stop());
               void ctx.close();
@@ -4230,62 +4247,119 @@ export function NoctisDesk() {
     setError("");
     let local = current;
     while (voiceRef.current) {
+      if (voiceMutedRef.current) {
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        continue;
+      }
       setVoicePhase("listen");
       setVoiceReply("");
-      const heard = await recordOnce();
-      if (!voiceRef.current) break;
-      if (heard.error) {
-        setError(heard.error);
-        break;
-      }
-      if (!heard.blob) continue;
-      setVoicePhase("think");
-      const dataUrl = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
-        reader.onerror = () => resolve("");
-        reader.readAsDataURL(heard.blob!);
-      });
+
       let said = "";
-      let failure = "";
-      try {
-        const result = await hearVibe({ data: { audio: dataUrl } });
-        const picked = pickAnswer(result);
-        said = picked.answer;
-        failure = picked.failure;
-      } catch {
-        failure = "Noctis could not hear that.";
+
+      // 1. Primary STT: Real-time client-side Speech Recognition with interim streaming
+      if (isSpeechRecognitionSupported()) {
+        let stream: MediaStream | null = null;
+        let analyzer: { stop: () => void } | null = null;
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          analyzer = createAudioLevelAnalyzer(stream, (lvl) => {
+            if (voiceRef.current && !voiceMutedRef.current) setVoiceAudioLevel(lvl);
+          });
+        } catch {
+          /* microphone permission handled by browser */
+        }
+
+        try {
+          const speechResult = await listenBrowserSpeech({
+            onInterim: (interim) => {
+              if (voiceRef.current) setVoiceSaid(interim);
+            },
+            timeoutMs: 25000,
+          });
+          said = speechResult.text.trim();
+        } catch {
+          /* fallback to recordOnce */
+        } finally {
+          if (analyzer) analyzer.stop();
+          if (stream) stream.getTracks().forEach((t) => t.stop());
+          setVoiceAudioLevel(0);
+        }
       }
+
+      // 2. Secondary STT: Fallback to MediaRecorder + Whisper AI if SpeechRecognition was unavailable or silent
+      if (!said && voiceRef.current && !voiceMutedRef.current) {
+        const heard = await recordOnce();
+        if (!voiceRef.current) break;
+        if (heard.error) {
+          setError(heard.error);
+          break;
+        }
+        if (heard.blob) {
+          setVoicePhase("think");
+          const dataUrl = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
+            reader.onerror = () => resolve("");
+            reader.readAsDataURL(heard.blob!);
+          });
+          try {
+            const result = await hearVibe({ data: { audio: dataUrl } });
+            const picked = pickAnswer(result);
+            said = picked.answer;
+          } catch {
+            /* ignore network hiccups */
+          }
+        }
+      }
+
       if (!voiceRef.current) break;
       if (!said) {
-        setError(failure || "Noctis did not hear any words.");
-        break;
+        // Smooth idle pause before listening again if nothing was spoken
+        await new Promise((resolve) => setTimeout(resolve, 350));
+        continue;
       }
+
       setVoiceSaid(said);
+      setVoicePhase("think");
+      setVoiceAudioLevel(0);
+
       const turns = [...local.turns, { role: "user" as const, content: said }];
       const title = local.title === "New chat" ? said.slice(0, 48) : local.title;
       const answer = await reply(local.id, turns, title, skill === "draw" ? "talk" : skill || skillFromWords(said));
       if (!voiceRef.current || !answer) break;
+
       local = { ...local, title, turns: [...turns, { role: "assistant", content: answer }] };
-      setVoiceReply(answer.split(/Evidence status:/i)[0].replace(/[#*`]/g, " ").trim());
+      const spokenSummary = cleanVoiceText(answer, 280);
+      setVoiceReply(spokenSummary || answer.slice(0, 280));
       setVoicePhase("speak");
+
       try {
-        const spoken = await sayVibe({ data: { text: answer } });
-        const audio = spoken && typeof spoken === "object" && "audio" in spoken && typeof spoken.audio === "string"
-          ? spoken.audio
-          : spoken && typeof spoken === "object" && "result" in spoken && spoken.result && typeof spoken.result === "object" && "audio" in spoken.result && typeof spoken.result.audio === "string"
-            ? spoken.result.audio
-            : "";
-        if (audio) await playUrl(audio);
-        else if (!sayAloud(answer)) setError("Noctis could not speak that answer.");
+        if (voicePersona === "natural") {
+          await speakBrowserVoice(answer, voicePersona);
+        } else {
+          const spoken = await sayVibe({ data: { text: cleanVoiceText(answer, 1600), voice: voicePersona } });
+          const audio = spoken && typeof spoken === "object" && "audio" in spoken && typeof spoken.audio === "string"
+            ? spoken.audio
+            : spoken && typeof spoken === "object" && "result" in spoken && spoken.result && typeof spoken.result === "object" && "audio" in spoken.result && typeof spoken.result.audio === "string"
+              ? spoken.result.audio
+              : "";
+          if (audio) {
+            await playUrl(audio);
+          } else {
+            await speakBrowserVoice(answer, voicePersona);
+          }
+        }
       } catch {
-        if (!sayAloud(answer)) setError("Noctis could not speak that answer.");
+        await speakBrowserVoice(answer, voicePersona);
       }
     }
     voiceRef.current = false;
     setVoiceOn(false);
     setVoicePhase("idle");
     setVoiceSaid("");
+    setVoiceReply("");
+    setVoiceAudioLevel(0);
+  }
     setVoiceReply("");
   }
 
@@ -6260,27 +6334,50 @@ export function NoctisDesk() {
           </div>
         ) : null}
         {voiceOn ? (
-          <div className="fixed inset-0 z-50 flex flex-col bg-[#121212] text-zinc-100">
-            <div className="flex h-16 items-center justify-between px-5">
-              <p className="text-sm font-medium tracking-tight">Noctis</p>
-              <p className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#1a1a1a] px-3 py-1 text-xs text-zinc-300">
-                <span className={cn("size-1.5 rounded-full", voicePhase === "listen" ? "bg-[#e4b86a]" : "bg-zinc-500")} />
-                {voicePhase === "listen" ? "Recording" : voicePhase === "speak" ? "Speaking" : "Transcribing"}
-              </p>
+          <div className="fixed inset-0 z-50 flex flex-col bg-[#0b0b0b]/95 text-zinc-100 backdrop-blur-2xl">
+            <div className="flex h-16 items-center justify-between px-6 border-b border-white/10">
+              <div className="flex items-center gap-3">
+                <span className="font-semibold tracking-tight text-base text-zinc-100">Noctis Live Voice</span>
+                <span className="rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 text-[11px] font-semibold">
+                  Dual-Engine Full Duplex
+                </span>
+              </div>
+              <div className="flex items-center gap-3">
+                <p className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#1a1a1a] px-3 py-1 text-xs text-zinc-300">
+                  <span className={cn("size-2 rounded-full", voicePhase === "listen" ? "bg-[#e4b86a] animate-pulse" : voicePhase === "speak" ? "bg-sky-400 animate-ping" : "bg-purple-400 animate-spin")} />
+                  {voicePhase === "listen" ? "Listening" : voicePhase === "speak" ? "Speaking" : "Processing"}
+                </p>
+                <button
+                  type="button"
+                  onClick={stop}
+                  aria-label="Close voice mode"
+                  className="rounded-full p-2 text-zinc-400 hover:text-white hover:bg-white/10 transition"
+                >
+                  <X className="size-5" />
+                </button>
+              </div>
             </div>
-            <div className="flex flex-1 flex-col items-center justify-center px-5 py-8">
+            <div className="flex flex-1 flex-col items-center justify-center px-4 py-6 overflow-y-auto">
               <NoctisVoiceVisualizer
-                phase={voicePhase === "listen" ? "listen" : voicePhase === "speak" ? "speak" : "transcribe"}
+                phase={voicePhase}
                 spokenText={voiceSaid}
                 responseText={voiceReply}
-                onInterrupt={stop}
+                audioLevel={voiceAudioLevel}
+                persona={voicePersona}
+                onPersonaChange={setVoicePersona}
+                isMuted={voiceMuted}
+                onToggleMute={() => setVoiceMuted(!voiceMuted)}
+                onInterrupt={() => {
+                  player.current?.pause();
+                  try { source.current?.stop(); } catch {}
+                  if (typeof window !== "undefined" && window.speechSynthesis) {
+                    window.speechSynthesis.cancel();
+                  }
+                  setVoicePhase("listen");
+                }}
+                onClose={stop}
               />
-              {error ? <p className="mx-auto mt-3 max-w-md text-center text-sm text-red-400">{error}</p> : null}
-            </div>
-            <div className="flex justify-center pb-[max(1.25rem,env(safe-area-inset-bottom))]">
-              <button type="button" aria-label="End call" onClick={stop} className="grid size-14 place-items-center rounded-full bg-[#b42318] text-white">
-                <PhoneOff className="size-5" />
-              </button>
+              {error ? <p className="mx-auto mt-3 max-w-md text-center text-sm text-rose-400">{error}</p> : null}
             </div>
           </div>
         ) : null}
