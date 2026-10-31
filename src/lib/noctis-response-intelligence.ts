@@ -13,6 +13,7 @@ import { architectIntelligenceGadget } from "./noctis-architect-engine.ts";
 import { handleNaturalCyberSecurityQuery } from "./noctis-cyber-engine.ts";
 import { handleNaturalInvestmentQuery } from "./noctis-investment-engine.ts";
 import { handleNaturalBibleQuery } from "./noctis-bible-engine.ts";
+import { runCouncilDeliberation, formatCouncilDossierMarkdown } from "./noctis-council.ts";
 
 export type AdaptiveResponseMode = "Direct" | "Teaching" | "Technical" | "Audit";
 
@@ -1042,6 +1043,33 @@ export function runFollowUpIntelligence(
 ): string | null {
   const state = extractConversationState(turns, currentQuestion);
 
+  // 00-council. Noctis Council of Engines (Multi-Agent Debate & Consensus Engine)
+  const isCouncilPrompt = /\b(?:convene\s+(?:the\s+)?council|council\s+of\s+engines|\/council|multi-agent\s+debate|council\s+deliberat\w*)\b/i.test(
+    currentQuestion
+  );
+  if (isCouncilPrompt) {
+    const topic = currentQuestion
+      .replace(
+        /^\s*(?:convene\s+(?:the\s+)?council(?:\s+of\s+engines)?(?:\s+on|\s+for|\s+about)?|\/council|please\s+convene[a-z\s]*)\s*[:—\-]?\s*/i,
+        ""
+      )
+      .trim() || currentQuestion;
+
+    let memberIds: string[] | undefined;
+    if (/ransomware|extortion|breach|exploit|cve|vssadmin|hack|threat/i.test(topic)) {
+      memberIds = ["cyber-hunter", "inv-cfo", "ethics-arbiter"];
+    } else if (/m&a|valuation|wacc|treasury|dcf|runway|burn\s+rate|ebitda/i.test(topic)) {
+      memberIds = ["inv-cfo", "cyber-hunter", "ethics-arbiter"];
+    } else if (/clinical|health|patient|diagnostic|drug|fda/i.test(topic)) {
+      memberIds = ["health-chief", "ethics-arbiter", "inv-cfo"];
+    }
+
+    const session = runCouncilDeliberation(topic, memberIds);
+    const markdown = formatCouncilDossierMarkdown(session);
+    return adaptSpecialistEngineOutput(currentQuestion, markdown, "NOCTIS-COUNCIL-001");
+  }
+
+
   // 00-0. Noctis Zero-Human-Intervention 20-Area Autonomous Training & Curriculum Engine (NOCTIS-AUTO-TRAIN-20D)
   const autonomousTrainingResponse = handleNaturalAutonomousTrainingQuery(currentQuestion);
   if (autonomousTrainingResponse) {
@@ -1111,6 +1139,7 @@ export function runFollowUpIntelligence(
   if (professionalResponse) {
     return adaptSpecialistEngineOutput(currentQuestion, professionalResponse, "NOCTIS-PROF-ENG-001");
   }
+
 
   // 00c. Noctis Cyber Security, Incident Response, SOC Triage & Threat Hunting Intelligence Engine (NOCTIS-CYBER-IR-001)
   const cyberSecurityResponse = handleNaturalCyberSecurityQuery(currentQuestion);

@@ -910,6 +910,9 @@ function parseCyberRequestedJsonContract(question: string): { keys: string[] } |
 }
 
 export function handleNaturalCyberSecurityQuery(question: string): string | null {
+  if (/\b(?:convene\s+(?:the\s+)?council|council\s+of\s+engines|\/council|council\s+debate)\b/i.test(question)) {
+    return null;
+  }
   const careerAnswer = handleNaturalCareerQuery(question);
   if (careerAnswer) return careerAnswer;
 
