@@ -10,7 +10,7 @@
  * Synthesizes a verifiable Cryptographic Merkle Root and 1-click downloadable JSON/Markdown Audit Bundle.
  */
 
-import { createHash } from "node:crypto";
+import { sha256Sync } from "./universal-crypto.ts";
 
 export type EpistemicBadgeType =
   | "DETERMINISTIC_PROOF"
@@ -53,7 +53,7 @@ export interface TruthLedgerBundle {
  * Computes a SHA-256 hash for a given string input.
  */
 export function sha256Digest(input: string): string {
-  return createHash("sha256").update(input).digest("hex");
+  return sha256Sync(input);
 }
 
 /**

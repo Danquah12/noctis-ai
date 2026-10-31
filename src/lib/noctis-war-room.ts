@@ -10,7 +10,7 @@
  * Emits an Audited Security Assurance Certificate with cryptographic SHA-256 verification.
  */
 
-import { createHash } from "node:crypto";
+import { sha256Sync } from "./universal-crypto.ts";
 
 export type WarRoomTactic =
   | "Initial Access"
@@ -421,7 +421,7 @@ ContainerLogEvents
  */
 function computeVerificationHash(scenarioId: string, timestamp: string, residualRisk: number): string {
   const payload = `${scenarioId}::${timestamp}::residual=${residualRisk}::noctis-sovereign-audit`;
-  return createHash("sha256").update(payload).digest("hex");
+  return sha256Sync(payload);
 }
 
 /**
