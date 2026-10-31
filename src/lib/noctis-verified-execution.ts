@@ -24,14 +24,14 @@
  * 3. Section 3 Tier-2 Adversarial & End-to-End Acceptance Suite (`ADV-01` through `ADV-08`)
  */
 
-import { createHash } from "node:crypto";
+import { sha256Sync } from "./universal-crypto.ts";
 import {
   runConstructionBoqEstimate,
   runMultiDomainEngineeringCalculations,
 } from "./noctis-professional-engine.ts";
 
 function sha256Short(content: string): string {
-  return `sha256:${createHash("sha256").update(content, "utf8").digest("hex").slice(0, 16)}`;
+  return `sha256:${sha256Sync(content).slice(0, 16)}`;
 }
 
 // ============================================================================

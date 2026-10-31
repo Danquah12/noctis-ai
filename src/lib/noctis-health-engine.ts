@@ -17,7 +17,7 @@
  *    Evidence Quality, Calculations, Missing Information, Fairness, Privacy/Security, Workflow Safety)
  */
 
-import { createHash } from "node:crypto";
+import { sha256Sync } from "./universal-crypto.ts";
 import { noctisPde } from "./noctis-pde.ts";
 
 export type HealthIntentCategory =
@@ -1706,7 +1706,7 @@ export interface HealthAuditChainEntry {
 const HEALTH_CRYPTO_AUDIT_LEDGER: HealthAuditChainEntry[] = [];
 
 export function computeClinicalContentSha256(content: string): string {
-  return `sha256:${createHash("sha256").update(content, "utf8").digest("hex")}`;
+  return `sha256:${sha256Sync(content)}`;
 }
 
 export function appendHealthAuditChainEvent(params: {

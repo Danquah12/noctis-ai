@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ClipboardEvent } from "react";
 import { Link } from "@tanstack/react-router";
-import { Activity, ArrowUp, Bot, Boxes, Brain, Calendar, Cpu, Fingerprint, FileLock, Lock, Network, Swords, WifiOff, ChevronDown, ChevronLeft, Code2, Copy, CornerDownLeft, FileText, GraduationCap, Image, Library, Mail, Menu, Mic, MoreHorizontal, PanelRight, PanelRightOpen, Pencil, Phone, PhoneOff, Plus, Printer, RotateCcw, Search, Square, SquarePen, Trash2, Users2, Video, Volume2, VolumeX, Wrench, X } from "lucide-react";
+import { Activity, ArrowUp, Bot, Boxes, Brain, Calendar, Cpu, Crosshair, EyeOff, Fingerprint, FileLock, Globe, Key, Lock, Network, Swords, WifiOff, ChevronDown, ChevronLeft, Code2, Copy, CornerDownLeft, FileText, GraduationCap, Image, Library, Mail, Menu, Mic, MoreHorizontal, PanelRight, PanelRightOpen, Pencil, Phone, PhoneOff, Plus, Printer, RotateCcw, Search, Square, SquarePen, Trash2, Users2, Video, Volume2, VolumeX, Wrench, X } from "lucide-react";
 import { askNoctis, drawVibe, hearVibe, sayVibe, trainVibe } from "@/lib/noctis-api";
 import { bringImagineFile, bringPortrait, readImagine, startImagine } from "@/lib/imagine-api";
 import { KnowledgeMap } from "@/components/learn/KnowledgeMap";
@@ -32,6 +32,10 @@ import { NoctisCircuitBreakerModal } from "@/components/noctis/NoctisCircuitBrea
 import { NoctisCrisisNegotiationModal } from "@/components/noctis/NoctisCrisisNegotiationModal";
 import { NoctisSteganographyModal } from "@/components/noctis/NoctisSteganographyModal";
 import { NoctisEnclaveModal } from "@/components/noctis/NoctisEnclaveModal";
+import { NoctisPqcModal } from "@/components/noctis/NoctisPqcModal";
+import { NoctisZkProofModal } from "@/components/noctis/NoctisZkProofModal";
+import { NoctisLexModal } from "@/components/noctis/NoctisLexModal";
+import { NoctisCanaryModal } from "@/components/noctis/NoctisCanaryModal";
 import { getActiveCustomAgent, getActiveCustomAgentContext, type NoctisCustomAgent } from "@/lib/noctis-custom-agents";
 import { NoctisMemoryModal, getNoctisPersonalizedContext } from "@/components/noctis/NoctisMemoryModal";
 import { studyOpenCall, studySend } from "@/lib/study-group-api";
@@ -3337,6 +3341,10 @@ export function NoctisDesk() {
   const [crisisNegotiationModalOpen, setCrisisNegotiationModalOpen] = useState(false);
   const [steganographyModalOpen, setSteganographyModalOpen] = useState(false);
   const [enclaveModalOpen, setEnclaveModalOpen] = useState(false);
+  const [pqcModalOpen, setPqcModalOpen] = useState(false);
+  const [zkProofModalOpen, setZkProofModalOpen] = useState(false);
+  const [lexModalOpen, setLexModalOpen] = useState(false);
+  const [canaryModalOpen, setCanaryModalOpen] = useState(false);
   const [activeCustomAgent, setActiveCustomAgent] = useState<NoctisCustomAgent | null>(null);
 
   useEffect(() => {
@@ -6692,6 +6700,54 @@ export function NoctisDesk() {
             </button>
             <button
               type="button"
+              onClick={() => setPqcModalOpen(true)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200 transition",
+                pqcModalOpen ? "bg-[#3a3a3a] text-indigo-400" : ""
+              )}
+              title="Post-Quantum Cryptographic Migration Sentinel & Kyber/Dilithium Key Shield"
+            >
+              <Key className="size-3.5 text-indigo-400" />
+              PQC Shield
+            </button>
+            <button
+              type="button"
+              onClick={() => setZkProofModalOpen(true)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200 transition",
+                zkProofModalOpen ? "bg-[#3a3a3a] text-teal-400" : ""
+              )}
+              title="Autonomous Zero-Knowledge Audit Proof (ZKP) Generator"
+            >
+              <EyeOff className="size-3.5 text-teal-400" />
+              ZK Proofs
+            </button>
+            <button
+              type="button"
+              onClick={() => setLexModalOpen(true)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200 transition",
+                lexModalOpen ? "bg-[#3a3a3a] text-rose-400" : ""
+              )}
+              title="Cross-Border Autonomous Conflict-of-Laws Regulatory Synthesizer"
+            >
+              <Globe className="size-3.5 text-rose-400" />
+              Lex Global
+            </button>
+            <button
+              type="button"
+              onClick={() => setCanaryModalOpen(true)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200 transition",
+                canaryModalOpen ? "bg-[#3a3a3a] text-yellow-400" : ""
+              )}
+              title="Autonomous Cyber Deception & Synthetic Honeytoken Canary Engine"
+            >
+              <Crosshair className="size-3.5 text-yellow-400" />
+              Canary Radar
+            </button>
+            <button
+              type="button"
               onClick={() => setVaultModalOpen(true)}
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200",
@@ -7167,6 +7223,30 @@ export function NoctisDesk() {
         open={enclaveModalOpen}
         onClose={() => setEnclaveModalOpen(false)}
         onOpenInCanvas={(md, title) => openInCanvas(title || "Enclave Attestation Quote", md)}
+        onInsertToChat={(text) => setDraft(text)}
+      />
+      <NoctisPqcModal
+        open={pqcModalOpen}
+        onClose={() => setPqcModalOpen(false)}
+        onOpenInCanvas={(md, title) => openInCanvas(title || "PQC Migration Audit", md)}
+        onInsertToChat={(text) => setDraft(text)}
+      />
+      <NoctisZkProofModal
+        open={zkProofModalOpen}
+        onClose={() => setZkProofModalOpen(false)}
+        onOpenInCanvas={(md, title) => openInCanvas(title || "Zero-Knowledge Proof", md)}
+        onInsertToChat={(text) => setDraft(text)}
+      />
+      <NoctisLexModal
+        open={lexModalOpen}
+        onClose={() => setLexModalOpen(false)}
+        onOpenInCanvas={(md, title) => openInCanvas(title || "Regulatory Harmonization", md)}
+        onInsertToChat={(text) => setDraft(text)}
+      />
+      <NoctisCanaryModal
+        open={canaryModalOpen}
+        onClose={() => setCanaryModalOpen(false)}
+        onOpenInCanvas={(md, title) => openInCanvas(title || "Canary Tripwire Alert", md)}
         onInsertToChat={(text) => setDraft(text)}
       />
     </div>

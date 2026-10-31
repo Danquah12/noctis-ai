@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { sha256Sync } from "./universal-crypto.ts";
 import {
   type CyberAdversarialResult,
   evaluateCyberAdversarialInstructions,
@@ -6,7 +6,7 @@ import {
 } from "./noctis-cyber-engine.ts";
 
 function sha256Hex(input: string): string {
-  return `sha256:${createHash("sha256").update(input, "utf8").digest("hex")}`;
+  return `sha256:${sha256Sync(input)}`;
 }
 
 export interface SastToRuntimeTrace {

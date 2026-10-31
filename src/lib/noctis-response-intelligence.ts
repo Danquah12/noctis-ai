@@ -26,6 +26,10 @@ import { handleNaturalCircuitBreakerQuery } from "./noctis-circuit-breaker.ts";
 import { handleNaturalCrisisNegotiationQuery } from "./noctis-crisis-negotiation.ts";
 import { handleNaturalSteganographyQuery } from "./noctis-steganography.ts";
 import { handleNaturalEnclaveQuery } from "./noctis-enclave-attestation.ts";
+import { handleNaturalPqcQuery } from "./noctis-pqc-shield.ts";
+import { handleNaturalZkProofQuery } from "./noctis-zk-proof.ts";
+import { handleNaturalLexQuery } from "./noctis-lex-synthesizer.ts";
+import { handleNaturalCanaryQuery } from "./noctis-canary-engine.ts";
 
 export type AdaptiveResponseMode = "Direct" | "Teaching" | "Technical" | "Audit";
 
@@ -1151,6 +1155,30 @@ export function runFollowUpIntelligence(
   const enclaveResponse = handleNaturalEnclaveQuery(currentQuestion);
   if (enclaveResponse) {
     return adaptSpecialistEngineOutput(currentQuestion, enclaveResponse, "NOCTIS-ENCLAVE-001");
+  }
+
+  // 00-pqc. Noctis Post-Quantum Cryptographic Migration Sentinel (NOCTIS-PQC-001)
+  const pqcResponse = handleNaturalPqcQuery(currentQuestion);
+  if (pqcResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, pqcResponse, "NOCTIS-PQC-001");
+  }
+
+  // 00-zkp. Noctis Autonomous Zero-Knowledge Audit Proof (ZKP) Generator (NOCTIS-ZKPROOF-001)
+  const zkpResponse = handleNaturalZkProofQuery(currentQuestion);
+  if (zkpResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, zkpResponse, "NOCTIS-ZKPROOF-001");
+  }
+
+  // 00-lex. Noctis Cross-Border Conflict-of-Laws Regulatory Synthesizer (NOCTIS-LEX-001)
+  const lexResponse = handleNaturalLexQuery(currentQuestion);
+  if (lexResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, lexResponse, "NOCTIS-LEX-001");
+  }
+
+  // 00-canary. Noctis Cyber Deception & Synthetic Honeytoken Canary Engine (NOCTIS-CANARY-001)
+  const canaryResponse = handleNaturalCanaryQuery(currentQuestion);
+  if (canaryResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, canaryResponse, "NOCTIS-CANARY-001");
   }
 
 

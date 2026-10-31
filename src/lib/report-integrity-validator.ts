@@ -1,4 +1,4 @@
-import { createHash } from "crypto";
+import { sha256Sync } from "./universal-crypto";
 
 export type SeverityLevel = "critical" | "high" | "medium" | "low" | "informational";
 export type ProofState = "confirmed" | "suspected" | "unreproduced" | "false_positive" | "mitigated";
@@ -322,7 +322,7 @@ export function validateReportIntegrity(report: AuditReport): ValidationResult {
     recalculatedTotals,
   });
 
-  const sha256AuditSeal = createHash("sha256").update(canonicalPayload).digest("hex");
+  const sha256AuditSeal = sha256Sync(canonicalPayload);
   const hasErrors = violations.some((v) => v.severity === "ERROR");
 
   return {

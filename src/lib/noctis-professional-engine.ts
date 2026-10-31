@@ -22,7 +22,7 @@
  * 8. 10/10 Professional Acceptance Criteria Verification Suite (`PROF-AC-01` through `PROF-AC-10`).
  */
 
-import { createHash } from "node:crypto";
+import { sha256Sync } from "./universal-crypto.ts";
 
 // ============================================================================
 // 1. AUTOMATED SPECIFICATION & TAXONOMY INGESTION ENGINE (NO MANUAL COPY-PASTE)
@@ -56,7 +56,7 @@ export function autoIngestRawSpecification(params: {
   sourceChannel?: AutoIngestedSpecRecord["sourceChannel"];
 }): AutoIngestedSpecRecord {
   const raw = params.rawText.trim();
-  const sha256 = `sha256:${createHash("sha256").update(raw).digest("hex")}`;
+  const sha256 = `sha256:${sha256Sync(raw)}`;
   const lines = raw.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
 
   const sections: { heading: string; itemCount: number; sampleItems: string[] }[] = [];
