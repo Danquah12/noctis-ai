@@ -15,6 +15,7 @@ import { handleNaturalInvestmentQuery } from "./noctis-investment-engine.ts";
 import { handleNaturalBibleQuery } from "./noctis-bible-engine.ts";
 import { runCouncilDeliberation, formatCouncilDossierMarkdown } from "./noctis-council.ts";
 import { handleNaturalDigitalTwinQuery } from "./noctis-digital-twin.ts";
+import { handleNaturalWarRoomQuery } from "./noctis-war-room.ts";
 
 export type AdaptiveResponseMode = "Direct" | "Teaching" | "Technical" | "Audit";
 
@@ -1074,6 +1075,12 @@ export function runFollowUpIntelligence(
   const twinResponse = handleNaturalDigitalTwinQuery(currentQuestion);
   if (twinResponse) {
     return adaptSpecialistEngineOutput(currentQuestion, twinResponse, "NOCTIS-TWIN-001");
+  }
+
+  // 00-warroom. Noctis Autonomous "Red vs. Blue" War Room Sandbox (NOCTIS-WAR-ROOM-001)
+  const warRoomResponse = handleNaturalWarRoomQuery(currentQuestion);
+  if (warRoomResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, warRoomResponse, "NOCTIS-WAR-ROOM-001");
   }
 
 

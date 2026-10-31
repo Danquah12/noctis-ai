@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ClipboardEvent } from "react";
 import { Link } from "@tanstack/react-router";
-import { Activity, ArrowUp, Bot, Brain, Calendar, Lock, Network, ChevronDown, ChevronLeft, Code2, Copy, CornerDownLeft, FileText, GraduationCap, Image, Library, Mail, Menu, Mic, MoreHorizontal, PanelRight, PanelRightOpen, Pencil, Phone, PhoneOff, Plus, Printer, RotateCcw, Search, Square, SquarePen, Trash2, Users2, Video, Volume2, VolumeX, Wrench, X } from "lucide-react";
+import { Activity, ArrowUp, Bot, Brain, Calendar, Lock, Network, Swords, ChevronDown, ChevronLeft, Code2, Copy, CornerDownLeft, FileText, GraduationCap, Image, Library, Mail, Menu, Mic, MoreHorizontal, PanelRight, PanelRightOpen, Pencil, Phone, PhoneOff, Plus, Printer, RotateCcw, Search, Square, SquarePen, Trash2, Users2, Video, Volume2, VolumeX, Wrench, X } from "lucide-react";
 import { askNoctis, drawVibe, hearVibe, sayVibe, trainVibe } from "@/lib/noctis-api";
 import { bringImagineFile, bringPortrait, readImagine, startImagine } from "@/lib/imagine-api";
 import { KnowledgeMap } from "@/components/learn/KnowledgeMap";
@@ -21,6 +21,7 @@ import { NoctisAgentBuilderModal } from "@/components/noctis/NoctisAgentBuilderM
 import { NoctisDataConnectorsModal } from "@/components/noctis/NoctisDataConnectorsModal";
 import { NoctisCouncilModal } from "@/components/noctis/NoctisCouncilModal";
 import { NoctisDigitalTwinModal } from "@/components/noctis/NoctisDigitalTwinModal";
+import { NoctisWarRoomModal } from "@/components/noctis/NoctisWarRoomModal";
 import { getActiveCustomAgent, getActiveCustomAgentContext, type NoctisCustomAgent } from "@/lib/noctis-custom-agents";
 import { NoctisMemoryModal, getNoctisPersonalizedContext } from "@/components/noctis/NoctisMemoryModal";
 import { studyOpenCall, studySend } from "@/lib/study-group-api";
@@ -3314,6 +3315,7 @@ export function NoctisDesk() {
   const [dataConnectorsModalOpen, setDataConnectorsModalOpen] = useState(false);
   const [councilModalOpen, setCouncilModalOpen] = useState(false);
   const [digitalTwinModalOpen, setDigitalTwinModalOpen] = useState(false);
+  const [warRoomModalOpen, setWarRoomModalOpen] = useState(false);
   const [activeCustomAgent, setActiveCustomAgent] = useState<NoctisCustomAgent | null>(null);
 
   useEffect(() => {
@@ -6523,6 +6525,18 @@ export function NoctisDesk() {
             </button>
             <button
               type="button"
+              onClick={() => setWarRoomModalOpen(true)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200 transition",
+                warRoomModalOpen ? "bg-[#3a3a3a] text-red-400" : ""
+              )}
+              title="Autonomous Red vs Blue War Room Sandbox (Sigma & KQL Engineering)"
+            >
+              <Swords className="size-3.5 text-red-400" />
+              War Room
+            </button>
+            <button
+              type="button"
               onClick={() => setVaultModalOpen(true)}
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200",
@@ -6931,6 +6945,12 @@ export function NoctisDesk() {
         open={digitalTwinModalOpen}
         onClose={() => setDigitalTwinModalOpen(false)}
         onOpenInCanvas={(md, title) => openInCanvas(title || "Digital Twin Dossier", md)}
+        onInsertToChat={(text) => setDraft(text)}
+      />
+      <NoctisWarRoomModal
+        open={warRoomModalOpen}
+        onClose={() => setWarRoomModalOpen(false)}
+        onOpenInCanvas={(md, title) => openInCanvas(title || "War Room Dossier", md)}
         onInsertToChat={(text) => setDraft(text)}
       />
     </div>

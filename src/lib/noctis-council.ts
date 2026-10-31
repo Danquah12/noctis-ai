@@ -5,7 +5,7 @@
  * Infrastructure/BIM (BIM-STRUCT), and Ethics & Governance (ETHICS-001).
  */
 
-import { getCustomAgents } from "./noctis-custom-agents";
+import { getCustomAgents } from "./noctis-custom-agents.ts";
 
 export interface CouncilMember {
   id: string;
