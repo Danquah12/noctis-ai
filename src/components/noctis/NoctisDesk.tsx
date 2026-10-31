@@ -13,6 +13,10 @@ import { NoctisCanvas } from "@/components/noctis/NoctisCanvas";
 import { NoctisCodeInterpreter } from "@/components/noctis/NoctisCodeInterpreter";
 import { NoctisThinkingAccordion, CitationBadge } from "@/components/noctis/NoctisThinkingAccordion";
 import { NoctisVoiceVisualizer } from "@/components/noctis/NoctisVoiceVisualizer";
+import { NoctisWorkspaceExplorer, getActiveProjectContext } from "@/components/noctis/NoctisWorkspaceExplorer";
+import { NoctisDeepResearchModal } from "@/components/noctis/NoctisDeepResearchModal";
+import { NoctisModelPicker } from "@/components/noctis/NoctisModelPicker";
+import { NoctisVaultModal } from "@/components/noctis/NoctisVaultModal";
 import { NoctisMemoryModal, getNoctisPersonalizedContext } from "@/components/noctis/NoctisMemoryModal";
 import { studyOpenCall, studySend } from "@/lib/study-group-api";
 import { sendMeetInvite } from "@/lib/meet-mail";
@@ -3292,6 +3296,9 @@ export function NoctisDesk() {
   const [canvasFullscreen, setCanvasFullscreen] = useState(false);
   const [canvasRevising, setCanvasRevising] = useState(false);
   const [memoryModalOpen, setMemoryModalOpen] = useState(false);
+  const [workspaceExplorerOpen, setWorkspaceExplorerOpen] = useState(false);
+  const [deepResearchModalOpen, setDeepResearchModalOpen] = useState(false);
+  const [vaultModalOpen, setVaultModalOpen] = useState(false);
 
   function openInCanvas(title: string, text: string) {
     const clean = (text.split(/\n\s*Claim standing:/i)[0] || text).trim();
@@ -3670,7 +3677,7 @@ export function NoctisDesk() {
               return [formatContext(readNoctisContext(
                 threads.filter((row) => row.title !== "New chat").map((row) => row.title),
                 place,
-              )), savedRules(person), getNoctisPersonalizedContext()].filter(Boolean).join("\n\n");
+              )), savedRules(person), getNoctisPersonalizedContext(), getActiveProjectContext()].filter(Boolean).join("\n\n");
             } catch {
               return savedRules(person);
             }
@@ -4803,9 +4810,7 @@ export function NoctisDesk() {
       ),
       action: () => {
         setAddOpen(false);
-        setSkill("evidence");
-        setActivePlugin("deep_research");
-        box.current?.focus();
+        setDeepResearchModalOpen(true);
       },
     },
     {
@@ -4983,6 +4988,34 @@ export function NoctisDesk() {
         setActivePlugin("investment");
         if (!draft.trim()) setDraft("Execute the Noctis Research & Investment Intelligence Engine (NOCTIS-INVEST-001)");
         box.current?.focus();
+      },
+    },
+    {
+      id: "project_workspace",
+      title: "Project Workspace",
+      subtitle: "Multi-file project knowledge base & file tree explorer",
+      icon: (
+        <span className="grid size-5 shrink-0 place-items-center rounded-md bg-[#3b82f6] text-white shadow-xs">
+          <Library className="size-3.5" />
+        </span>
+      ),
+      action: () => {
+        setAddOpen(false);
+        setWorkspaceExplorerOpen(true);
+      },
+    },
+    {
+      id: "encrypted_vault",
+      title: "Encrypted Backup Vault",
+      subtitle: "AES-256 encrypted .noctis portable backup & restore",
+      icon: (
+        <span className="grid size-5 shrink-0 place-items-center rounded-md bg-purple-600 text-white shadow-xs">
+          🔒
+        </span>
+      ),
+      action: () => {
+        setAddOpen(false);
+        setVaultModalOpen(true);
       },
     },
     {
@@ -6242,7 +6275,9 @@ export function NoctisDesk() {
           >
             <Menu className="size-5" />
           </button>
-          <div className="inline-flex max-w-[calc(100%-7.5rem)] rounded-full bg-[#2a2a2a] p-1 text-sm ring-1 ring-white/10">
+          <div className="flex items-center gap-2 max-w-[calc(100%-7.5rem)] overflow-x-auto no-scrollbar">
+            <NoctisModelPicker />
+            <div className="inline-flex shrink-0 rounded-full bg-[#2a2a2a] p-1 text-sm ring-1 ring-white/10">
             <button type="button" onClick={() => setDesk("chat")} className={cn("rounded-full px-3.5 py-1.5", desk === "chat" ? "bg-[#3a3a3a] text-white" : "text-zinc-400")}>
               Chat
             </button>
@@ -6284,6 +6319,31 @@ export function NoctisDesk() {
               <Brain className="size-3.5" />
               Memory
             </button>
+            <button
+              type="button"
+              onClick={() => setWorkspaceExplorerOpen(true)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200",
+                workspaceExplorerOpen ? "bg-[#3a3a3a] text-[#e4b86a]" : ""
+              )}
+              title="Project Workspace & Files"
+            >
+              <Library className="size-3.5" />
+              Projects
+            </button>
+            <button
+              type="button"
+              onClick={() => setVaultModalOpen(true)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200",
+                vaultModalOpen ? "bg-[#3a3a3a] text-purple-400" : ""
+              )}
+              title="Encrypted Vault Backup"
+            >
+              <Lock className="size-3.5" />
+              Vault
+            </button>
+          </div>
           </div>
           <button
             type="button"
@@ -6640,6 +6700,23 @@ export function NoctisDesk() {
           ) : null}
         </div>
       </div>
+      <NoctisMemoryModal open={memoryModalOpen} onClose={() => setMemoryModalOpen(false)} />
+      <NoctisWorkspaceExplorer
+        open={workspaceExplorerOpen}
+        onClose={() => setWorkspaceExplorerOpen(false)}
+        onAttachFileToChat={(file) => setDraft((cur) => cur ? `${cur}\n\n[File: ${file.name}]\n${file.content}` : `[File: ${file.name}]\n${file.content}`)}
+      />
+      <NoctisDeepResearchModal
+        open={deepResearchModalOpen}
+        onClose={() => setDeepResearchModalOpen(false)}
+        initialTopic={draft}
+        onOpenInCanvas={openInCanvas}
+        onInsertToChat={(text) => setDraft(text)}
+      />
+      <NoctisVaultModal
+        open={vaultModalOpen}
+        onClose={() => setVaultModalOpen(false)}
+      />
     </div>
   );
 }
