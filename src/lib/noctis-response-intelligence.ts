@@ -18,6 +18,7 @@ import { handleNaturalDigitalTwinQuery } from "./noctis-digital-twin.ts";
 import { handleNaturalWarRoomQuery } from "./noctis-war-room.ts";
 import { handleNaturalTruthLedgerQuery } from "./noctis-truth-ledger.ts";
 import { handleNaturalWorkSwarmQuery } from "./noctis-work-swarm.ts";
+import { handleNaturalCognitiveSandboxQuery } from "./noctis-cognitive-sandbox.ts";
 
 export type AdaptiveResponseMode = "Direct" | "Teaching" | "Technical" | "Audit";
 
@@ -1095,6 +1096,12 @@ export function runFollowUpIntelligence(
   const swarmResponse = handleNaturalWorkSwarmQuery(currentQuestion);
   if (swarmResponse) {
     return adaptSpecialistEngineOutput(currentQuestion, swarmResponse, "NOCTIS-SWARM-001");
+  }
+
+  // 00-cog. Noctis Sovereign "Self-Evolving Cognitive Sandbox" (NOCTIS-COG-001)
+  const cogResponse = handleNaturalCognitiveSandboxQuery(currentQuestion);
+  if (cogResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, cogResponse, "NOCTIS-COG-001");
   }
 
 

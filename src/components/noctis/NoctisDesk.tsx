@@ -24,6 +24,7 @@ import { NoctisDigitalTwinModal } from "@/components/noctis/NoctisDigitalTwinMod
 import { NoctisWarRoomModal } from "@/components/noctis/NoctisWarRoomModal";
 import { NoctisTruthLedgerModal } from "@/components/noctis/NoctisTruthLedgerModal";
 import { NoctisSwarmModal } from "@/components/noctis/NoctisSwarmModal";
+import { NoctisCognitiveModal } from "@/components/noctis/NoctisCognitiveModal";
 import { getActiveCustomAgent, getActiveCustomAgentContext, type NoctisCustomAgent } from "@/lib/noctis-custom-agents";
 import { NoctisMemoryModal, getNoctisPersonalizedContext } from "@/components/noctis/NoctisMemoryModal";
 import { studyOpenCall, studySend } from "@/lib/study-group-api";
@@ -3320,6 +3321,7 @@ export function NoctisDesk() {
   const [warRoomModalOpen, setWarRoomModalOpen] = useState(false);
   const [truthLedgerModalOpen, setTruthLedgerModalOpen] = useState(false);
   const [swarmModalOpen, setSwarmModalOpen] = useState(false);
+  const [cognitiveModalOpen, setCognitiveModalOpen] = useState(false);
   const [activeCustomAgent, setActiveCustomAgent] = useState<NoctisCustomAgent | null>(null);
 
   useEffect(() => {
@@ -6565,6 +6567,18 @@ export function NoctisDesk() {
             </button>
             <button
               type="button"
+              onClick={() => setCognitiveModalOpen(true)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200 transition",
+                cognitiveModalOpen ? "bg-[#3a3a3a] text-amber-400" : ""
+              )}
+              title="Sovereign Cognitive Sandbox (Zero-Drift Benchmarking & DPO Calibration)"
+            >
+              <Brain className="size-3.5 text-amber-400" />
+              Cognitive
+            </button>
+            <button
+              type="button"
               onClick={() => setVaultModalOpen(true)}
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200",
@@ -6992,6 +7006,12 @@ export function NoctisDesk() {
         open={swarmModalOpen}
         onClose={() => setSwarmModalOpen(false)}
         onOpenInCanvas={(md, title) => openInCanvas(title || "Work Swarm Dossier", md)}
+        onInsertToChat={(text) => setDraft(text)}
+      />
+      <NoctisCognitiveModal
+        open={cognitiveModalOpen}
+        onClose={() => setCognitiveModalOpen(false)}
+        onOpenInCanvas={(md, title) => openInCanvas(title || "Cognitive Benchmark Dossier", md)}
         onInsertToChat={(text) => setDraft(text)}
       />
     </div>
