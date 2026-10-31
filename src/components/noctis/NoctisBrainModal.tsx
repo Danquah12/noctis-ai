@@ -258,7 +258,7 @@ export function NoctisBrainModal({ isOpen, onClose, onConfigSaved }: NoctisBrain
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
       <div className="relative flex max-h-[92vh] w-full max-w-2xl flex-col rounded-3xl border border-white/10 bg-[#161616] text-zinc-100 shadow-2xl overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-white/10 px-6 py-4 bg-white/[0.02]">
+        <div className="flex items-center justify-between border-b border-white/10 px-4 sm:px-6 py-3 sm:py-4 bg-white/[0.02]">
           <div className="flex items-center gap-3">
             <div className="grid size-10 place-items-center rounded-2xl bg-[#e4b86a]/15 text-[#e4b86a] border border-[#e4b86a]/30">
               <Brain className="size-5" />
@@ -362,7 +362,7 @@ export function NoctisBrainModal({ isOpen, onClose, onConfigSaved }: NoctisBrain
                 value={getKeyValue(activeProvider)}
                 onChange={(e) => setKeyValue(activeProvider, e.target.value)}
                 placeholder={`Paste your ${currentProvider.name} key (${currentProvider.keyPrefix})`}
-                className="w-full rounded-xl border border-white/10 bg-black/40 px-3.5 py-2.5 text-xs text-white placeholder-zinc-500 focus:border-[#e4b86a] focus:outline-none focus:ring-1 focus:ring-[#e4b86a] font-mono pr-10"
+                className="w-full rounded-xl border border-white/10 bg-black/40 px-3.5 py-2.5 text-base sm:text-xs text-white placeholder-zinc-500 focus:border-[#e4b86a] focus:outline-none focus:ring-1 focus:ring-[#e4b86a] font-mono pr-10"
               />
               <button
                 type="button"
@@ -421,7 +421,7 @@ export function NoctisBrainModal({ isOpen, onClose, onConfigSaved }: NoctisBrain
                 value={config.customEndpoint || "http://localhost:11434/v1"}
                 onChange={(e) => setConfig((prev) => ({ ...prev, customEndpoint: e.target.value }))}
                 placeholder="http://localhost:11434/v1"
-                className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs text-white placeholder-zinc-500 font-mono focus:border-[#e4b86a] focus:outline-none"
+                className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-base sm:text-xs text-white placeholder-zinc-500 font-mono focus:border-[#e4b86a] focus:outline-none"
               />
               <p className="text-[11px] text-zinc-400">
                 Supports Ollama, vLLM, LM Studio, or any local OpenAI-compatible inference server.
@@ -454,7 +454,7 @@ export function NoctisBrainModal({ isOpen, onClose, onConfigSaved }: NoctisBrain
         </div>
 
         {/* Footer Actions */}
-        <div className="flex items-center justify-between border-t border-white/10 px-6 py-4 bg-white/[0.02]">
+        <div className="flex items-center justify-between border-t border-white/10 px-4 sm:px-6 py-3 sm:py-4 bg-white/[0.02] flex-wrap gap-2">
           <button
             type="button"
             onClick={handleTestConnection}

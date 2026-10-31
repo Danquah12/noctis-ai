@@ -297,7 +297,7 @@ export function SignedOutScreen({ quiet = false }: { quiet?: boolean }) {
           </p>
         </div>
       </section>
-      <section className="flex min-h-0 flex-1 flex-col justify-center overflow-y-auto px-4 py-4 md:px-6">
+      <section className="flex min-h-0 flex-1 flex-col justify-center overflow-y-auto px-4 py-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] md:px-6">
         <div className="mb-4 md:hidden">
           <NoctisLockup kicker="Learn · Connect · Grow" markClass="size-10" />
         </div>
@@ -317,7 +317,7 @@ export function SignedOutScreen({ quiet = false }: { quiet?: boolean }) {
                 {mode === "up" ? (
                   <input
                     name="name"
-                    className="min-h-11 w-full rounded-xl border border-[#e4ddd2] bg-white px-3 text-sm"
+                    className="min-h-11 w-full rounded-xl border border-[#e4ddd2] bg-white px-3 text-base sm:text-sm"
                     placeholder="First and last name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
@@ -330,7 +330,7 @@ export function SignedOutScreen({ quiet = false }: { quiet?: boolean }) {
                   <input
                     name="noctis_auth_email"
                     id="noctis_auth_email"
-                    className="min-h-11 w-full rounded-xl border border-[#e4ddd2] bg-white px-3 text-sm"
+                    className="min-h-11 w-full rounded-xl border border-[#e4ddd2] bg-white px-3 text-base sm:text-sm"
                     placeholder="Email"
                     type="email"
                     value={email}
@@ -348,7 +348,7 @@ export function SignedOutScreen({ quiet = false }: { quiet?: boolean }) {
                   <input
                     name="noctis_auth_password"
                     id="noctis_auth_password"
-                    className="min-h-11 w-full rounded-xl border border-[#e4ddd2] bg-white px-3 text-sm"
+                    className="min-h-11 w-full rounded-xl border border-[#e4ddd2] bg-white px-3 text-base sm:text-sm"
                     placeholder={mode === "reset" ? "New password" : "Password"}
                     type="password"
                     value={password}
@@ -362,7 +362,7 @@ export function SignedOutScreen({ quiet = false }: { quiet?: boolean }) {
                 {mode === "reset" ? (
                   <input
                     name="again"
-                    className="min-h-11 w-full rounded-xl border border-[#e4ddd2] bg-white px-3 text-sm"
+                    className="min-h-11 w-full rounded-xl border border-[#e4ddd2] bg-white px-3 text-base sm:text-sm"
                     placeholder="Repeat new password"
                     type="password"
                     value={again}
@@ -393,7 +393,7 @@ export function SignedOutScreen({ quiet = false }: { quiet?: boolean }) {
                   setErr(null);
                   setResetToken(null);
                 }}
-                className="w-full text-center text-xs font-semibold text-[#8a6428] underline-offset-4 hover:underline"
+                className="w-full py-2 text-center text-xs font-semibold text-[#8a6428] underline-offset-4 hover:underline touch-manipulation"
               >
                 {mode === "up" ? "Already registered? Sign in" : mode === "in" ? "New here? Create an account" : "Back to sign in"}
               </button>

@@ -1975,3 +1975,20 @@ body:has([role="dialog"]) .yt-fit iframe {
   }
 }
 
+/* Mobile touch and tap responsiveness: removes 300ms mobile tap delay */
+button,
+a,
+input,
+textarea,
+select {
+  touch-action: manipulation;
+}
+
+/* Mobile Safari auto-zoom prevention: all text inputs must be at least 16px on mobile viewports (< 768px) */
+@media screen and (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="file"]),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}

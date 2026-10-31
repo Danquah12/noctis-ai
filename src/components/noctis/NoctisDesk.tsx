@@ -5308,7 +5308,7 @@ export function NoctisDesk() {
             value={libraryFilter}
             onChange={(e) => setLibraryFilter(e.target.value)}
             placeholder="Browse and search your library files & saved templates..."
-            className="mb-2.5 h-9 w-full rounded-xl border border-white/10 bg-[#2a2a2a] px-3 text-sm text-zinc-100 outline-none placeholder:text-zinc-500"
+            className="mb-2.5 h-9 w-full rounded-xl border border-white/10 bg-[#2a2a2a] px-3 text-base sm:text-sm text-zinc-100 outline-none placeholder:text-zinc-500"
           />
           <div className="max-h-52 space-y-1 overflow-y-auto pr-1">
             {savedTemplates
@@ -5369,7 +5369,7 @@ export function NoctisDesk() {
               value={browserTabInput}
               onChange={(e) => setBrowserTabInput(e.target.value)}
               placeholder="Paste tab URL or page title/snippet (e.g. https://dstrike.app/noctis)..."
-              className="h-9 min-w-[220px] flex-1 rounded-xl border border-white/10 bg-[#2a2a2a] px-3 text-sm text-zinc-100 outline-none placeholder:text-zinc-500"
+              className="h-9 min-w-[220px] flex-1 rounded-xl border border-white/10 bg-[#2a2a2a] px-3 text-base sm:text-sm text-zinc-100 outline-none placeholder:text-zinc-500"
             />
             <button
               type="button"
@@ -5455,7 +5455,7 @@ export function NoctisDesk() {
               value={tplName}
               onChange={(e) => setTplName(e.target.value)}
               placeholder="Template name (e.g., Sunday Expository Sermon)"
-              className="h-9 rounded-xl border border-white/10 bg-[#2a2a2a] px-3 text-sm text-zinc-100 outline-none placeholder:text-zinc-500 sm:col-span-2"
+              className="h-9 rounded-xl border border-white/10 bg-[#2a2a2a] px-3 text-base sm:text-sm text-zinc-100 outline-none placeholder:text-zinc-500 sm:col-span-2"
             />
             <select
               value={tplCategory}
@@ -5475,7 +5475,7 @@ export function NoctisDesk() {
             onChange={(e) => setTplStructure(e.target.value)}
             rows={3}
             placeholder="Write the reusable template structure or prompt instructions..."
-            className="mb-2 w-full resize-none rounded-xl border border-white/10 bg-[#2a2a2a] px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-500"
+            className="mb-2 w-full resize-none rounded-xl border border-white/10 bg-[#2a2a2a] px-3 py-2 text-base sm:text-sm text-zinc-100 outline-none placeholder:text-zinc-500"
           />
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex flex-wrap items-center gap-1.5">
@@ -5572,14 +5572,14 @@ export function NoctisDesk() {
             value={trainQ}
             onChange={(e) => setTrainQ(e.target.value)}
             placeholder="Question or scenario (e.g., How do we validate an IDOR report?)"
-            className="mb-2 w-full rounded-xl border border-white/10 bg-[#2a2a2a] px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-500"
+            className="mb-2 w-full rounded-xl border border-white/10 bg-[#2a2a2a] px-3 py-2 text-base sm:text-sm text-zinc-100 outline-none placeholder:text-zinc-500"
           />
           <textarea
             value={trainA}
             onChange={(e) => setTrainA(e.target.value)}
             rows={3}
             placeholder="Exact answer Noctis should permanently remember in Postgres..."
-            className="mb-2 w-full resize-none rounded-xl border border-white/10 bg-[#2a2a2a] px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-500"
+            className="mb-2 w-full resize-none rounded-xl border border-white/10 bg-[#2a2a2a] px-3 py-2 text-base sm:text-sm text-zinc-100 outline-none placeholder:text-zinc-500"
           />
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs text-[#e4b86a]">{trainNotice}</span>
@@ -5828,7 +5828,7 @@ export function NoctisDesk() {
               value={pluginQuery}
               onChange={(e) => setPluginQuery(e.target.value)}
               placeholder="Type to search plugins"
-              className="w-full bg-transparent text-sm text-zinc-100 outline-none placeholder:text-zinc-500"
+              className="w-full bg-transparent text-base sm:text-sm text-zinc-100 outline-none placeholder:text-zinc-500"
             />
           </div>
         </div>
@@ -5906,7 +5906,7 @@ export function NoctisDesk() {
               void send();
             }
           }}
-          className="max-h-40 min-h-9 flex-1 resize-none bg-transparent px-1.5 py-2 text-[15px] leading-5 text-zinc-100 outline-none placeholder:text-zinc-400"
+          className="max-h-40 min-h-9 flex-1 resize-none bg-transparent px-1.5 py-2 text-base sm:text-[15px] leading-5 text-zinc-100 outline-none placeholder:text-zinc-400"
         />
         {code ? (
           <button type="button" onClick={() => setCode(false)} className="hidden shrink-0 items-center gap-1 rounded-full px-2 py-1 text-xs text-[#e4b86a] sm:inline-flex">
@@ -5949,7 +5949,7 @@ export function NoctisDesk() {
           <button
             type="submit"
             aria-label="Send to Noctis"
-            className="grid size-9 shrink-0 place-items-center rounded-full bg-white text-black transition hover:opacity-90 shadow-sm"
+            className="grid size-10 sm:size-9 shrink-0 place-items-center rounded-full bg-white text-black transition hover:opacity-90 shadow-sm touch-manipulation"
           >
             <ArrowUp className="size-5 stroke-[2.5]" />
           </button>
@@ -6179,7 +6179,7 @@ export function NoctisDesk() {
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search chats"
-              className="h-9 min-w-0 flex-1 rounded-xl bg-[#2f2f2f] px-3 text-sm text-zinc-100 outline-none placeholder:text-zinc-500"
+              className="h-9 min-w-0 flex-1 rounded-xl bg-[#2f2f2f] px-3 text-base sm:text-sm text-zinc-100 outline-none placeholder:text-zinc-500"
             />
           ) : (
             <span className="flex min-w-0 flex-1 items-center gap-2 px-1.5">
@@ -6777,7 +6777,7 @@ export function NoctisDesk() {
             className="absolute right-3 hidden items-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-zinc-400 hover:bg-white/5 hover:text-zinc-100 md:inline-flex"
           />
         </header>
-        <div className="flex h-11 shrink-0 items-center justify-between border-b border-white/10 px-4 bg-black/20 backdrop-blur-sm">
+        <div className="flex h-11 shrink-0 items-center justify-between border-b border-white/10 px-3 sm:px-4 bg-black/20 backdrop-blur-sm gap-2">
           <button
             type="button"
             onClick={leaveNoctis}
@@ -6818,7 +6818,7 @@ export function NoctisDesk() {
             </div>
           </div>
 
-          <img src="/brand/dstrike-logo.png" alt="DSTRIKE" className="h-6 w-auto max-w-[88px] shrink-0 rounded-md bg-white p-0.5 object-contain shadow-sm md:hidden" />
+          <img src="/brand/dstrike-logo.png" alt="DSTRIKE" className="h-6 w-auto max-w-[76px] sm:max-w-[88px] shrink-0 rounded-md bg-white p-0.5 object-contain shadow-sm md:hidden" />
         </div>
         {shelf === "chats" && listed.length ? (
           <div className="border-b border-white/10 px-3 py-2 md:hidden">
@@ -6933,7 +6933,7 @@ export function NoctisDesk() {
                 </>
               )}
             </div>
-            <div className="mx-auto w-full max-w-3xl shrink-0 px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            <div className="mx-auto w-full max-w-3xl shrink-0 px-3 pt-2 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)]">
               {code ? (
                 <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-[#e4b86a]/15 border border-[#e4b86a]/30 px-3 py-1 text-xs font-medium text-[#e4b86a]">
                   <Code2 className="size-3.5" />
@@ -7066,7 +7066,7 @@ export function NoctisDesk() {
                               commitEdit();
                             }}
                           >
-                            <textarea value={editDraft} onChange={(event) => setEditDraft(event.target.value)} rows={3} className="w-full resize-none bg-transparent text-[15px] outline-none" />
+                            <textarea value={editDraft} onChange={(event) => setEditDraft(event.target.value)} rows={3} className="w-full resize-none bg-transparent text-base sm:text-[15px] outline-none" />
                             <div className="mt-2 flex justify-end gap-2">
                               <button type="button" onClick={() => setEditing(null)} className="rounded-full px-3 py-1 text-xs text-zinc-400">Cancel</button>
                               <button type="submit" className="rounded-full bg-[#e4b86a] px-3 py-1 text-xs font-semibold text-[#1a1408]">Send</button>
@@ -7110,7 +7110,7 @@ export function NoctisDesk() {
                 {error ? <p className="text-sm text-red-400">{error}</p> : null}
               </div>
             </div>
-            <div className="mx-auto w-full max-w-3xl border-t border-white/10 px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            <div className="mx-auto w-full max-w-3xl border-t border-white/10 px-3 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)]">
               {routes.length ? (
                 <div className="mb-2 flex flex-wrap gap-1.5">
                   {routes.map((row) => (
