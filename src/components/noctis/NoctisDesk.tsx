@@ -4285,60 +4285,41 @@ export function NoctisDesk() {
 
       let said = "";
 
-      // 1. Primary STT: Real-time client-side Speech Recognition with interim streaming
+      // 1. Client-Side Web Speech Recognition (Zero server hops, native audio capture)
       if (isSpeechRecognitionSupported()) {
-        let stream: MediaStream | null = null;
-        let analyzer: { stop: () => void } | null = null;
-        try {
-          stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-          analyzer = createAudioLevelAnalyzer(stream, (lvl) => {
-            if (voiceRef.current && !voiceMutedRef.current) setVoiceAudioLevel(lvl);
-          });
-        } catch {
-          /* microphone permission handled by browser */
-        }
-
         try {
           const speechResult = await listenBrowserSpeech({
             onInterim: (interim) => {
-              if (voiceRef.current) setVoiceSaid(interim);
+              if (voiceRef.current) {
+                setVoiceSaid(interim);
+                // Animate fluid visualizer orb levels as words stream in
+                setVoiceAudioLevel(Math.min(0.85, 0.35 + (interim.length % 5) * 0.12));
+              }
             },
-            timeoutMs: 25000,
+            timeoutMs: 20000,
           });
+
+          if (speechResult.error) {
+            if (/not-allowed|permission|denied|audio-capture/i.test(speechResult.error)) {
+              setError("Microphone blocked: Please click the 🎤 icon in your browser address bar and select 'Allow' to enable Noctis Voice.");
+              setVoicePhase("idle");
+              voiceRef.current = false;
+              setVoiceOn(false);
+              break;
+            }
+          }
           said = speechResult.text.trim();
         } catch {
-          /* fallback to recordOnce */
+          /* continue listening cycle */
         } finally {
-          if (analyzer) analyzer.stop();
-          if (stream) stream.getTracks().forEach((t) => t.stop());
           setVoiceAudioLevel(0);
         }
-      }
-
-      // 2. Secondary STT: Fallback to MediaRecorder + Whisper AI if SpeechRecognition was unavailable or silent
-      if (!said && voiceRef.current && !voiceMutedRef.current) {
-        const heard = await recordOnce();
-        if (!voiceRef.current) break;
-        if (heard.error) {
-          setError(heard.error);
-          break;
-        }
-        if (heard.blob) {
-          setVoicePhase("think");
-          const dataUrl = await new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
-            reader.onerror = () => resolve("");
-            reader.readAsDataURL(heard.blob!);
-          });
-          try {
-            const result = await hearVibe({ data: { audio: dataUrl } });
-            const picked = pickAnswer(result);
-            said = picked.answer;
-          } catch {
-            /* ignore network hiccups */
-          }
-        }
+      } else {
+        setError("Web Speech Recognition is not supported in this browser. Please use Chrome, Edge, or Safari for live voice conversations.");
+        setVoicePhase("idle");
+        voiceRef.current = false;
+        setVoiceOn(false);
+        break;
       }
 
       if (!voiceRef.current) break;
