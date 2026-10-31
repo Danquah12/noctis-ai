@@ -84,6 +84,9 @@ export function cleanVoiceText(rawText: string, maxLength = 1200): string {
  * Executes natural speech synthesis using the browser Web Speech API.
  * Returns a Promise that resolves when speech completes or rejects on error.
  */
+// Global reference to prevent Chromium / V8 garbage collection during active speech playback
+let activeUtterance: SpeechSynthesisUtterance | null = null;
+
 export function speakBrowserVoice(
   text: string,
   persona: VoicePersona = "alloy",
@@ -96,46 +99,77 @@ export function speakBrowserVoice(
     }
 
     try {
-      window.speechSynthesis.cancel();
-      const cleaned = cleanVoiceText(text);
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
+
+      const cleaned = cleanVoiceText(text, 650);
       if (!cleaned) {
         resolve(true);
         return;
       }
 
-      const utterance = new SpeechSynthesisUtterance(cleaned);
-      utterance.rate = rate;
-      utterance.pitch = persona === "nova" ? 1.1 : persona === "onyx" ? 0.9 : 1.0;
-
-      const voices = window.speechSynthesis.getVoices();
-      if (voices.length > 0) {
-        const preferred =
-          voices.find(
-            (v) =>
-              (v.name.includes("Google") ||
-                v.name.includes("Natural") ||
-                v.name.includes("Samantha") ||
-                v.name.includes("Daniel") ||
-                v.name.includes("Karen")) &&
-              v.lang.startsWith("en")
-          ) || voices.find((v) => v.lang.startsWith("en"));
-
-        if (preferred) {
-          utterance.voice = preferred;
-        }
+      // If already speaking, cancel previous
+      if (window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
       }
 
-      utterance.onend = () => resolve(true);
-      utterance.onerror = (e) => {
-        // If aborted or cancelled, treat as resolved
-        if (e.error === "canceled" || e.error === "interrupted") {
-          resolve(true);
-        } else {
-          resolve(false);
+      const utterance = new SpeechSynthesisUtterance(cleaned);
+      activeUtterance = utterance; // Keep reference to prevent GC!
+
+      utterance.lang = "en-US";
+      utterance.rate = rate;
+      utterance.pitch = persona === "nova" ? 1.15 : persona === "onyx" ? 0.85 : 1.0;
+
+      const assignVoice = () => {
+        const voices = window.speechSynthesis.getVoices();
+        if (voices && voices.length > 0) {
+          let chosen = null;
+          if (persona === "nova") {
+            chosen = voices.find((v) => /samantha|zira|female|karen|victoria|jenny/i.test(v.name) && v.lang.startsWith("en"));
+          } else if (persona === "onyx") {
+            chosen = voices.find((v) => /david|george|male|daniel|guy|guy/i.test(v.name) && v.lang.startsWith("en"));
+          } else if (persona === "echo") {
+            chosen = voices.find((v) => /alex|mark|natural|aria/i.test(v.name) && v.lang.startsWith("en"));
+          } else {
+            chosen = voices.find((v) => /google|natural|aria|jenny/i.test(v.name) && v.lang.startsWith("en"));
+          }
+          if (!chosen) chosen = voices.find((v) => v.lang.startsWith("en"));
+          if (chosen) utterance.voice = chosen;
         }
       };
 
+      assignVoice();
+      if (!utterance.voice && window.speechSynthesis.onvoiceschanged !== undefined) {
+        window.speechSynthesis.onvoiceschanged = assignVoice;
+      }
+
+      let settled = false;
+      const done = () => {
+        if (settled) return;
+        settled = true;
+        activeUtterance = null;
+        resolve(true);
+      };
+
+      utterance.onend = done;
+      utterance.onerror = (e) => {
+        done();
+      };
+
+      // Workaround for Chrome auto-pause bug during longer utterances
+      const keepAlive = window.setInterval(() => {
+        if (!window.speechSynthesis.speaking) {
+          window.clearInterval(keepAlive);
+        } else {
+          window.speechSynthesis.resume();
+        }
+      }, 3000);
+
       window.speechSynthesis.speak(utterance);
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
     } catch {
       resolve(false);
     }

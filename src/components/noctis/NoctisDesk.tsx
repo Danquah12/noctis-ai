@@ -4363,23 +4363,10 @@ export function NoctisDesk() {
       setVoicePhase("speak");
 
       try {
-        if (voicePersona === "natural") {
-          await speakBrowserVoice(answer, voicePersona);
-        } else {
-          const spoken = await sayVibe({ data: { text: cleanVoiceText(answer, 1600), voice: voicePersona } });
-          const audio = spoken && typeof spoken === "object" && "audio" in spoken && typeof spoken.audio === "string"
-            ? spoken.audio
-            : spoken && typeof spoken === "object" && "result" in spoken && spoken.result && typeof spoken.result === "object" && "audio" in spoken.result && typeof spoken.result.audio === "string"
-              ? spoken.result.audio
-              : "";
-          if (audio) {
-            await playUrl(audio);
-          } else {
-            await speakBrowserVoice(answer, voicePersona);
-          }
-        }
-      } catch {
+        // Deliver natural spoken speech directly via native browser speech synthesis
         await speakBrowserVoice(answer, voicePersona);
+      } catch {
+        /* proceed to next turn */
       }
     }
     voiceRef.current = false;
