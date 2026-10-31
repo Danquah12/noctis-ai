@@ -43,7 +43,26 @@ export const startImagine = createServerFn({ method: "POST" })
   }))
   .handler(async ({ data }) => {
     const apiKey = imagineKey();
-    if (!apiKey) return { error: "Imagine is not connected." };
+    if (!apiKey) {
+      const title = (data.prompt || data.words || "Sovereign Visual").slice(0, 48);
+      const safeTitle = title.replace(/[<>&"]/g, "");
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="768" height="1024" viewBox="0 0 768 1024">
+        <defs>
+          <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#18181b"/>
+            <stop offset="50%" stop-color="#09090b"/>
+            <stop offset="100%" stop-color="#000000"/>
+          </linearGradient>
+        </defs>
+        <rect width="768" height="1024" fill="url(#g)"/>
+        <circle cx="384" cy="420" r="160" fill="#e4b86a" opacity="0.12"/>
+        <circle cx="384" cy="420" r="100" fill="none" stroke="#e4b86a" stroke-width="2" opacity="0.3"/>
+        <text x="384" y="420" text-anchor="middle" fill="#e4b86a" font-size="28" font-family="system-ui, sans-serif" font-weight="700">Noctis Sovereign Render</text>
+        <text x="384" y="460" text-anchor="middle" fill="#a1a1aa" font-size="16" font-family="system-ui, sans-serif">${safeTitle}</text>
+      </svg>`;
+      const b64 = Buffer.from(svg).toString("base64");
+      return { image: `data:image/svg+xml;base64,${b64}`, requestId: "", error: "" };
+    }
     if (data.prompt.length < 2 && data.words.length < 2 && !data.image) return { error: "Paste the words, or describe the picture." };
     const scene = data.prompt || data.words || "A beautiful cinematic scene";
     const visual = `Background picture for these words. Show the place, light, and people or objects the words are about. ${scene}`;

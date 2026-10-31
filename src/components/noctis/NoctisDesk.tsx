@@ -2,7 +2,8 @@ import { useEffect, useRef, useState, type ClipboardEvent } from "react";
 import { Link } from "@tanstack/react-router";
 import { Activity, ArrowUp, Bot, Boxes, Brain, Calendar, Cpu, Crosshair, EyeOff, Fingerprint, FileLock, Globe, Key, Lock, Network, Swords, WifiOff, Zap, ChevronDown, ChevronLeft, Code2, Copy, CornerDownLeft, FileText, GraduationCap, Image, Library, Mail, Menu, Mic, MoreHorizontal, PanelRight, PanelRightOpen, Pencil, Phone, PhoneOff, Plus, Printer, RotateCcw, Search, Square, SquarePen, Trash2, Users2, Video, Volume2, VolumeX, Wrench, X } from "lucide-react";
 import { askNoctis, drawVibe, hearVibe, sayVibe, trainVibe } from "@/lib/noctis-api";
-import { bringImagineFile, bringPortrait, readImagine, startImagine } from "@/lib/imagine-api";
+import { bringImagineFile, bringPortrait } from "@/lib/imagine-api";
+import { playHarmonicTone, playSovereignChime, stopAudioSynth } from "@/lib/noctis-audio-synth";
 import { KnowledgeMap } from "@/components/learn/KnowledgeMap";
 import { VIBE_SKILLS, skillFromWords, noctisSkill, type NoctisSkillId } from "@/lib/noctis-skills";
 import { useJazzBed } from "@/lib/jazz-bed";
@@ -3431,9 +3432,13 @@ export function NoctisDesk() {
   const [menu, setMenu] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
   const [skill, setSkill] = useState<NoctisSkillId | "">("");
-  const [imagine, setImagine] = useState(false);
-  const [song, setSong] = useState(false);
-  const [speech, setSpeech] = useState(false);
+  const [harmonicPlaying, setHarmonicPlaying] = useState(false);
+  const imagine = false;
+  const setImagine = (_v: boolean) => {};
+  const song = false;
+  const setSong = (_v: boolean) => {};
+  const speech = false;
+  const setSpeech = (_v: boolean) => {};
   const [speaks, setSpeaks] = useState("English");
   const [otherSpeak, setOtherSpeak] = useState("");
   const spoken = speaks === "Other" ? otherSpeak.trim() || "English" : speaks;
@@ -4699,10 +4704,7 @@ export function NoctisDesk() {
     dropClip();
     if (skillOverride !== undefined) setSkill(skillOverride);
     if (box.current) box.current.style.height = "auto";
-    if (imagine) {
-      await imaginePiece(row.id, turns, title, text || asked || "A beautiful scene for Noctis");
-      return;
-    }
+
     if (useSkill === "draw") {
       await paint(row.id, turns, title, text || asked || "A clear diagram");
       return;
@@ -5916,12 +5918,7 @@ export function NoctisDesk() {
             <Code2 className="size-3.5" /> Code
           </button>
         ) : null}
-        {imagine ? (
-          <button type="button" onClick={() => setImagine(false)} className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-xs text-[#e4b86a]">
-            Imagine
-            <X className="size-3" />
-          </button>
-        ) : null}
+        
         {skill ? (
           <button type="button" onClick={() => setSkill("")} className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-xs text-[#e4b86a]">
             {skillName(skill)}
@@ -6051,7 +6048,7 @@ export function NoctisDesk() {
           ) : null}
         </div>
 
-        {/* Media Dropdown */}
+        {/* Creative & Sovereign Media Studio */}
         <div className="relative">
           <button
             type="button"
@@ -6061,69 +6058,64 @@ export function NoctisDesk() {
             }}
             className={cn(
               "inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium transition",
-              mediaMenuOpen || skill === "draw" || imagine || song || speech
+              mediaMenuOpen || skill === "draw" || harmonicPlaying
                 ? "bg-[#e4b86a]/20 text-[#e4b86a]"
                 : "text-zinc-400 hover:text-zinc-200"
             )}
           >
             <Video className="size-3.5" />
-            <span>Media</span>
+            <span>Creative</span>
             <ChevronDown className="size-3" />
           </button>
           {mediaMenuOpen ? (
-            <div className="absolute bottom-full left-0 mb-2 z-50 min-w-44 rounded-2xl border border-white/10 bg-[#1f1f1f] p-1.5 shadow-2xl space-y-0.5">
+            <div className="absolute bottom-full left-0 mb-2 z-50 min-w-52 rounded-2xl border border-white/10 bg-[#1f1f1f] p-1.5 shadow-2xl space-y-0.5">
               <button
                 type="button"
                 onClick={() => {
                   const next = skill === "draw" ? "" : "draw";
                   setSkill(next);
-                  if (next && !draft.trim()) setDraft(noctisSkill("draw").example);
+                  if (!draft.trim()) setDraft("Create an interactive architectural SVG diagram and visual flow for ");
                   setMediaMenuOpen(false);
                 }}
                 className="flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white"
               >
                 <Image className="size-3.5 text-amber-400" />
-                Draw Picture
+                Draw Diagram (SVG)
               </button>
               <button
                 type="button"
                 onClick={() => {
-                  setImagine((on) => !on);
-                  if (!draft.trim()) setDraft("A short film with a clear picture and a few words.");
+                  setHolodeckModalOpen(true);
                   setMediaMenuOpen(false);
                 }}
                 className="flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white"
               >
-                <Video className="size-3.5 text-purple-400" />
-                Imagine Video
+                <Boxes className="size-3.5 text-emerald-400" />
+                3D Spatial Holodeck
               </button>
               <button
                 type="button"
                 onClick={() => {
-                  setSong((on) => !on);
-                  setSpeech(false);
-                  setImagine(true);
-                  if (!draft.trim()) setDraft("A warm song with a clear chorus.");
-                  setMediaMenuOpen(false);
-                }}
-                className="flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white"
-              >
-                <Volume2 className="size-3.5 text-rose-400" />
-                Generate Song
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setSpeech((on) => !on);
-                  setSong(false);
-                  setImagine(true);
-                  if (!draft.trim()) setDraft("Paste the speech here.");
+                  void toggleVoice();
                   setMediaMenuOpen(false);
                 }}
                 className="flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white"
               >
                 <Mic className="size-3.5 text-blue-400" />
-                Synthesize Speech
+                Live Voice Mode
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setHarmonicPlaying(true);
+                  playHarmonicTone(432, 5);
+                  setMediaMenuOpen(false);
+                  setTimeout(() => setHarmonicPlaying(false), 5000);
+                }}
+                className="flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white"
+              >
+                <Volume2 className="size-3.5 text-purple-400" />
+                Harmonic Focus Tone (432Hz)
               </button>
             </div>
           ) : null}
@@ -6636,22 +6628,6 @@ export function NoctisDesk() {
           </div>
         ) : null}
         <header className="relative flex h-14 shrink-0 items-center justify-center border-b border-white/10">
-          <div className="absolute left-3 hidden items-center gap-1.5 md:flex">
-            {CANVASES.map((row) => (
-              <button
-                key={row.id}
-                type="button"
-                aria-label={row.label}
-                aria-pressed={theme === row.id}
-                title={row.label}
-                onClick={() => setTheme(row.id)}
-                className="grid size-7 place-items-center rounded-full"
-                style={{ boxShadow: theme === row.id ? `0 0 0 2px ${row.accent}` : "0 0 0 1px rgba(255,255,255,0.2)" }}
-              >
-                <span className="size-5 rounded-full" style={{ background: row.swatch }} />
-              </button>
-            ))}
-          </div>
           <button
             type="button"
             aria-label="Open menu"
@@ -6789,27 +6765,48 @@ export function NoctisDesk() {
             className="absolute right-3 hidden items-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-zinc-400 hover:bg-white/5 hover:text-zinc-100 md:inline-flex"
           />
         </header>
-        <div className="flex h-11 shrink-0 items-center justify-between border-b border-white/10 px-3">
-          <button type="button" onClick={leaveNoctis} className="inline-flex items-center gap-1 text-sm font-semibold text-[#e4b86a]">
+        <div className="flex h-11 shrink-0 items-center justify-between border-b border-white/10 px-4 bg-black/20 backdrop-blur-sm">
+          <button
+            type="button"
+            onClick={leaveNoctis}
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#e4b86a] hover:text-[#f7d695] transition"
+          >
             <ChevronLeft className="size-4" />
-            Back
+            <span>Back</span>
           </button>
+
+          {/* Background Atmosphere Palettes — Prominently Positioned & Unobstructed */}
+          <div className="flex items-center gap-2">
+            <span className="hidden sm:inline text-[11px] font-semibold tracking-wider uppercase text-zinc-400">Atmosphere</span>
+            <div className="flex items-center gap-1.5 rounded-full bg-white/5 p-1 border border-white/10 shadow-inner">
+              {CANVASES.map((row) => {
+                const isActive = theme === row.id;
+                return (
+                  <button
+                    key={row.id}
+                    type="button"
+                    aria-label={row.label}
+                    aria-pressed={isActive}
+                    title={`${row.label}: ${row.blurb}`}
+                    onClick={() => setTheme(row.id)}
+                    className={cn(
+                      "group relative grid size-6 place-items-center rounded-full transition-all duration-200",
+                      isActive ? "scale-110" : "hover:scale-105 opacity-70 hover:opacity-100"
+                    )}
+                    style={{
+                      boxShadow: isActive
+                        ? `0 0 0 2px ${row.accent}, 0 0 10px ${row.accent}80`
+                        : "0 0 0 1px rgba(255,255,255,0.2)"
+                    }}
+                  >
+                    <span className="size-4 rounded-full transition-transform" style={{ background: row.swatch }} />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <img src="/brand/dstrike-logo.png" alt="DSTRIKE" className="h-6 w-auto max-w-[88px] shrink-0 rounded-md bg-white p-0.5 object-contain shadow-sm md:hidden" />
-        </div>
-        <div className="flex items-center justify-center gap-2 border-b border-white/10 py-2 md:hidden">
-          {CANVASES.map((row) => (
-            <button
-              key={row.id}
-              type="button"
-              aria-label={row.label}
-              aria-pressed={theme === row.id}
-              onClick={() => setTheme(row.id)}
-              className="grid size-8 place-items-center rounded-full"
-              style={{ boxShadow: theme === row.id ? `0 0 0 2px ${row.accent}` : "0 0 0 1px rgba(255,255,255,0.25)" }}
-            >
-              <span className="size-6 rounded-full" style={{ background: row.swatch }} />
-            </button>
-          ))}
         </div>
         {shelf === "chats" && listed.length ? (
           <div className="border-b border-white/10 px-3 py-2 md:hidden">
