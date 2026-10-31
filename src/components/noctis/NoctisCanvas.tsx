@@ -111,6 +111,68 @@ export function NoctisCanvas({
 
   const charCount = content.length;
 
+  const versions = useMemo(() => {
+    return history.map((text, idx) => ({
+      id: `v-${idx + 1}`,
+      versionNumber: idx + 1,
+      label: idx === 0 ? "Initial Draft" : idx === history.length - 1 ? "Current Live Version" : `Revision ${idx + 1}`,
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      content: text,
+    }));
+  }, [history]);
+
+  const [selectedCompareVersion, setSelectedCompareVersion] = useState<string>("v-1");
+
+  const compareContent = useMemo(() => {
+    const found = versions.find((v) => v.id === selectedCompareVersion);
+    return found ? found.content : versions[0]?.content || "";
+  }, [versions, selectedCompareVersion]);
+
+  const { diffLines, diffStats } = useMemo(() => {
+    const oldLines = compareContent.split("\n");
+    const newLines = content.split("\n");
+
+    const lines: Array<{ type: "added" | "removed" | "unchanged"; text: string }> = [];
+    let added = 0;
+    let removed = 0;
+    let unchanged = 0;
+
+    let o = 0;
+    let n = 0;
+    while (o < oldLines.length || n < newLines.length) {
+      const oldLine = oldLines[o];
+      const newLine = newLines[n];
+
+      if (oldLine === newLine) {
+        lines.push({ type: "unchanged", text: oldLine ?? "" });
+        unchanged++;
+        o++;
+        n++;
+      } else if (newLine !== undefined && (!oldLines.slice(o, o + 5).includes(newLine) || oldLine === undefined)) {
+        lines.push({ type: "added", text: newLine });
+        added++;
+        n++;
+      } else if (oldLine !== undefined && (!newLines.slice(n, n + 5).includes(oldLine) || newLine === undefined)) {
+        lines.push({ type: "removed", text: oldLine });
+        removed++;
+        o++;
+      } else {
+        if (oldLine !== undefined) {
+          lines.push({ type: "removed", text: oldLine });
+          removed++;
+          o++;
+        }
+        if (newLine !== undefined) {
+          lines.push({ type: "added", text: newLine });
+          added++;
+          n++;
+        }
+      }
+    }
+
+    return { diffLines: lines, diffStats: { added, removed, unchanged } };
+  }, [compareContent, content]);
+
   function handleUndo() {
     if (historyIndex > 0) {
       const nextIndex = historyIndex - 1;
