@@ -16,6 +16,7 @@ import { handleNaturalBibleQuery } from "./noctis-bible-engine.ts";
 import { runCouncilDeliberation, formatCouncilDossierMarkdown } from "./noctis-council.ts";
 import { handleNaturalDigitalTwinQuery } from "./noctis-digital-twin.ts";
 import { handleNaturalWarRoomQuery } from "./noctis-war-room.ts";
+import { handleNaturalTruthLedgerQuery } from "./noctis-truth-ledger.ts";
 
 export type AdaptiveResponseMode = "Direct" | "Teaching" | "Technical" | "Audit";
 
@@ -1081,6 +1082,12 @@ export function runFollowUpIntelligence(
   const warRoomResponse = handleNaturalWarRoomQuery(currentQuestion);
   if (warRoomResponse) {
     return adaptSpecialistEngineOutput(currentQuestion, warRoomResponse, "NOCTIS-WAR-ROOM-001");
+  }
+
+  // 00-ledger. Noctis Cryptographic Epistemic Truth Ledger (NOCTIS-LEDGER-001)
+  const ledgerResponse = handleNaturalTruthLedgerQuery(currentQuestion);
+  if (ledgerResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, ledgerResponse, "NOCTIS-LEDGER-001");
   }
 
 

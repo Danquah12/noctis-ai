@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ClipboardEvent } from "react";
 import { Link } from "@tanstack/react-router";
-import { Activity, ArrowUp, Bot, Brain, Calendar, Lock, Network, Swords, ChevronDown, ChevronLeft, Code2, Copy, CornerDownLeft, FileText, GraduationCap, Image, Library, Mail, Menu, Mic, MoreHorizontal, PanelRight, PanelRightOpen, Pencil, Phone, PhoneOff, Plus, Printer, RotateCcw, Search, Square, SquarePen, Trash2, Users2, Video, Volume2, VolumeX, Wrench, X } from "lucide-react";
+import { Activity, ArrowUp, Bot, Brain, Calendar, Fingerprint, Lock, Network, Swords, ChevronDown, ChevronLeft, Code2, Copy, CornerDownLeft, FileText, GraduationCap, Image, Library, Mail, Menu, Mic, MoreHorizontal, PanelRight, PanelRightOpen, Pencil, Phone, PhoneOff, Plus, Printer, RotateCcw, Search, Square, SquarePen, Trash2, Users2, Video, Volume2, VolumeX, Wrench, X } from "lucide-react";
 import { askNoctis, drawVibe, hearVibe, sayVibe, trainVibe } from "@/lib/noctis-api";
 import { bringImagineFile, bringPortrait, readImagine, startImagine } from "@/lib/imagine-api";
 import { KnowledgeMap } from "@/components/learn/KnowledgeMap";
@@ -22,6 +22,7 @@ import { NoctisDataConnectorsModal } from "@/components/noctis/NoctisDataConnect
 import { NoctisCouncilModal } from "@/components/noctis/NoctisCouncilModal";
 import { NoctisDigitalTwinModal } from "@/components/noctis/NoctisDigitalTwinModal";
 import { NoctisWarRoomModal } from "@/components/noctis/NoctisWarRoomModal";
+import { NoctisTruthLedgerModal } from "@/components/noctis/NoctisTruthLedgerModal";
 import { getActiveCustomAgent, getActiveCustomAgentContext, type NoctisCustomAgent } from "@/lib/noctis-custom-agents";
 import { NoctisMemoryModal, getNoctisPersonalizedContext } from "@/components/noctis/NoctisMemoryModal";
 import { studyOpenCall, studySend } from "@/lib/study-group-api";
@@ -3316,6 +3317,7 @@ export function NoctisDesk() {
   const [councilModalOpen, setCouncilModalOpen] = useState(false);
   const [digitalTwinModalOpen, setDigitalTwinModalOpen] = useState(false);
   const [warRoomModalOpen, setWarRoomModalOpen] = useState(false);
+  const [truthLedgerModalOpen, setTruthLedgerModalOpen] = useState(false);
   const [activeCustomAgent, setActiveCustomAgent] = useState<NoctisCustomAgent | null>(null);
 
   useEffect(() => {
@@ -6537,6 +6539,18 @@ export function NoctisDesk() {
             </button>
             <button
               type="button"
+              onClick={() => setTruthLedgerModalOpen(true)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200 transition",
+                truthLedgerModalOpen ? "bg-[#3a3a3a] text-emerald-400" : ""
+              )}
+              title="Cryptographic Epistemic Truth Ledger (Merkle Tree Proof-of-Fact)"
+            >
+              <Fingerprint className="size-3.5 text-emerald-400" />
+              Truth Ledger
+            </button>
+            <button
+              type="button"
               onClick={() => setVaultModalOpen(true)}
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200",
@@ -6952,6 +6966,13 @@ export function NoctisDesk() {
         onClose={() => setWarRoomModalOpen(false)}
         onOpenInCanvas={(md, title) => openInCanvas(title || "War Room Dossier", md)}
         onInsertToChat={(text) => setDraft(text)}
+      />
+      <NoctisTruthLedgerModal
+        open={truthLedgerModalOpen}
+        onClose={() => setTruthLedgerModalOpen(false)}
+        onOpenInCanvas={(md, title) => openInCanvas(title || "Truth Ledger", md)}
+        onInsertToChat={(text) => setDraft(text)}
+        initialText={draft}
       />
     </div>
   );
