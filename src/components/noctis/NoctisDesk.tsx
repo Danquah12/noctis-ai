@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ClipboardEvent } from "react";
 import { Link } from "@tanstack/react-router";
-import { Activity, ArrowUp, Bot, Brain, Calendar, Lock, ChevronDown, ChevronLeft, Code2, Copy, CornerDownLeft, FileText, GraduationCap, Image, Library, Mail, Menu, Mic, MoreHorizontal, PanelRight, PanelRightOpen, Pencil, Phone, PhoneOff, Plus, Printer, RotateCcw, Search, Square, SquarePen, Trash2, Video, Volume2, VolumeX, Wrench, X } from "lucide-react";
+import { Activity, ArrowUp, Bot, Brain, Calendar, Lock, ChevronDown, ChevronLeft, Code2, Copy, CornerDownLeft, FileText, GraduationCap, Image, Library, Mail, Menu, Mic, MoreHorizontal, PanelRight, PanelRightOpen, Pencil, Phone, PhoneOff, Plus, Printer, RotateCcw, Search, Square, SquarePen, Trash2, Users2, Video, Volume2, VolumeX, Wrench, X } from "lucide-react";
 import { askNoctis, drawVibe, hearVibe, sayVibe, trainVibe } from "@/lib/noctis-api";
 import { bringImagineFile, bringPortrait, readImagine, startImagine } from "@/lib/imagine-api";
 import { KnowledgeMap } from "@/components/learn/KnowledgeMap";
@@ -19,6 +19,7 @@ import { NoctisModelPicker } from "@/components/noctis/NoctisModelPicker";
 import { NoctisVaultModal } from "@/components/noctis/NoctisVaultModal";
 import { NoctisAgentBuilderModal } from "@/components/noctis/NoctisAgentBuilderModal";
 import { NoctisDataConnectorsModal } from "@/components/noctis/NoctisDataConnectorsModal";
+import { NoctisCouncilModal } from "@/components/noctis/NoctisCouncilModal";
 import { getActiveCustomAgent, getActiveCustomAgentContext, type NoctisCustomAgent } from "@/lib/noctis-custom-agents";
 import { NoctisMemoryModal, getNoctisPersonalizedContext } from "@/components/noctis/NoctisMemoryModal";
 import { studyOpenCall, studySend } from "@/lib/study-group-api";
@@ -3310,6 +3311,7 @@ export function NoctisDesk() {
   const [vaultModalOpen, setVaultModalOpen] = useState(false);
   const [agentBuilderModalOpen, setAgentBuilderModalOpen] = useState(false);
   const [dataConnectorsModalOpen, setDataConnectorsModalOpen] = useState(false);
+  const [councilModalOpen, setCouncilModalOpen] = useState(false);
   const [activeCustomAgent, setActiveCustomAgent] = useState<NoctisCustomAgent | null>(null);
 
   useEffect(() => {
@@ -4920,6 +4922,16 @@ export function NoctisDesk() {
       },
     },
     {
+      id: "council_of_engines",
+      title: "Council of engines",
+      subtitle: "Multi-agent debate & consensus",
+      icon: <Users2 className="size-5 shrink-0 text-indigo-400" />,
+      action: () => {
+        setAddOpen(false);
+        setCouncilModalOpen(true);
+      },
+    },
+    {
       id: "sketch",
       title: "Sketch",
       subtitle: "Draw and attach an image",
@@ -6490,6 +6502,18 @@ export function NoctisDesk() {
             </button>
             <button
               type="button"
+              onClick={() => setCouncilModalOpen(true)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200 transition",
+                councilModalOpen ? "bg-[#3a3a3a] text-indigo-400" : ""
+              )}
+              title="Council of Engines (Multi-Agent Debate & Consensus Studio)"
+            >
+              <Users2 className="size-3.5 text-indigo-400" />
+              Council
+            </button>
+            <button
+              type="button"
               onClick={() => setVaultModalOpen(true)}
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200",
@@ -6886,6 +6910,13 @@ export function NoctisDesk() {
         open={dataConnectorsModalOpen}
         onClose={() => setDataConnectorsModalOpen(false)}
         onInsertToChat={(text) => setDraft(text)}
+      />
+      <NoctisCouncilModal
+        open={councilModalOpen}
+        onClose={() => setCouncilModalOpen(false)}
+        onOpenInCanvas={(md, title) => openInCanvas(title || "Council Dossier", md)}
+        onInsertToChat={(text) => setDraft(text)}
+        initialTopic={draft}
       />
     </div>
   );
