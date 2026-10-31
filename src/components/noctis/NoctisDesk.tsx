@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ClipboardEvent } from "react";
 import { Link } from "@tanstack/react-router";
-import { Brain, Calendar, ChevronDown, ChevronLeft, Code2, Copy, CornerDownLeft, FileText, GraduationCap, Image, Library, Mail, Menu, Mic, MoreHorizontal, Pencil, Phone, PhoneOff, Plus, Printer, RotateCcw, Search, Square, SquarePen, Trash2, Video, Volume2, VolumeX, Wrench, X } from "lucide-react";
+import { Brain, Calendar, ChevronDown, ChevronLeft, Code2, Copy, CornerDownLeft, FileText, GraduationCap, Image, Library, Mail, Menu, Mic, MoreHorizontal, PanelRight, PanelRightOpen, Pencil, Phone, PhoneOff, Plus, Printer, RotateCcw, Search, Square, SquarePen, Trash2, Video, Volume2, VolumeX, Wrench, X } from "lucide-react";
 import { askNoctis, drawVibe, hearVibe, sayVibe, trainVibe } from "@/lib/noctis-api";
 import { bringImagineFile, bringPortrait, readImagine, startImagine } from "@/lib/imagine-api";
 import { KnowledgeMap } from "@/components/learn/KnowledgeMap";
@@ -9,6 +9,7 @@ import { useJazzBed } from "@/lib/jazz-bed";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { cn } from "@/lib/utils";
 import { NoctisCall } from "@/components/noctis/NoctisCall";
+import { NoctisCanvas } from "@/components/noctis/NoctisCanvas";
 import { studyOpenCall, studySend } from "@/lib/study-group-api";
 import { sendMeetInvite } from "@/lib/meet-mail";
 import { CANVASES, useTheme } from "@/lib/theme";
@@ -3286,6 +3287,44 @@ export function NoctisDesk() {
   const [uploads, setUploads] = useState<Upload[]>([]);
   const [desk, setDesk] = useState<"chat" | "study">("chat");
   const [studyTopic, setStudyTopic] = useState("");
+  const [canvasOpen, setCanvasOpen] = useState(false);
+  const [canvasTitle, setCanvasTitle] = useState("Noctis Artifact");
+  const [canvasContent, setCanvasContent] = useState("");
+  const [canvasFullscreen, setCanvasFullscreen] = useState(false);
+  const [canvasRevising, setCanvasRevising] = useState(false);
+
+  function openInCanvas(title: string, text: string) {
+    const clean = (text.split(/\n\s*Claim standing:/i)[0] || text).trim();
+    setCanvasTitle(title.replace(/^#+\s*/, "").slice(0, 60) || "Noctis Artifact");
+    setCanvasContent(clean || "# Noctis Artifact Workspace\n\nStart typing or click 'Canvas Tools' above to generate content.");
+    setCanvasOpen(true);
+  }
+
+  async function handleReviseArtifact(instruction: string) {
+    if (!instruction.trim() || canvasRevising) return;
+    setCanvasRevising(true);
+    try {
+      const prompt = `[Noctis Canvas Revision Request]\nYou are editing the following active artifact:\n\n---\nTitle: ${canvasTitle}\n${canvasContent}\n---\n\nUser Revision Instruction: ${instruction}\n\nReturn the revised, complete updated artifact directly without chat filler.`;
+      const res = await askNoctis({
+        data: {
+          turns: [{ role: "user", content: prompt }],
+          desk: "chat",
+          skill: "write",
+          think: false,
+          speaks: "English",
+        },
+      });
+      const picked = pickAnswer(res);
+      const updated = (picked.answer.split(/\n\s*Claim standing:/i)[0] || picked.answer).trim();
+      if (updated) {
+        setCanvasContent(updated);
+      }
+    } catch {
+      setError("Could not revise artifact in Canvas.");
+    } finally {
+      setCanvasRevising(false);
+    }
+  }
   const [think, setThink] = useState(false);
   const [filmAt, setFilmAt] = useState(0);
   const [code, setCode] = useState(false);
@@ -6193,6 +6232,24 @@ export function NoctisDesk() {
               <GraduationCap className="size-3.5" />
               Board
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (!canvasContent && !canvasOpen) {
+                  setCanvasTitle("New Artifact");
+                  setCanvasContent("# New Artifact\n\nStart typing or click 'Canvas Tools' above to generate content.");
+                }
+                setCanvasOpen((o) => !o);
+              }}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5",
+                canvasOpen ? "bg-[#3a3a3a] text-[#e4b86a]" : "text-zinc-400 hover:text-zinc-200"
+              )}
+            >
+              <PanelRight className="size-3.5" />
+              Canvas
+              {canvasContent ? <span className="size-1.5 rounded-full bg-[#e4b86a]" /> : null}
+            </button>
           </div>
           <button
             type="button"
@@ -6270,7 +6327,9 @@ export function NoctisDesk() {
             if (event.target.files?.length) void addUploads(event.target.files);
           }}
         />
-        {empty ? (
+        <div className="flex min-h-0 flex-1 overflow-hidden">
+          <div className={cn("flex flex-col min-h-0 min-w-0 transition-all duration-200", canvasOpen ? "w-full md:w-1/2 lg:w-[46%] border-r border-white/10" : "w-full")}>
+            {empty ? (
           <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
             <img src="/media/meet-loft.jpg" alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover" />
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#12151c]/55 via-[#12151c]/35 to-[#12151c]/80" />
@@ -6433,6 +6492,15 @@ export function NoctisDesk() {
                               Again
                             </button>
                           ) : null}
+                          <button
+                            type="button"
+                            onClick={() => openInCanvas(asked || "Noctis Artifact", turn.content)}
+                            className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs text-[#e4b86a] hover:bg-[#e4b86a]/15"
+                            title="Open in Side-by-Side Canvas Workspace"
+                          >
+                            <PanelRightOpen className="size-3.5" />
+                            Canvas
+                          </button>
                           <AnswerShare text={turn.content} />
                         </div>
                         </article>
@@ -6517,6 +6585,26 @@ export function NoctisDesk() {
             </div>
           </>
         )}
+          </div>
+          {canvasOpen ? (
+            <div className={cn("min-w-0 transition-all duration-200", canvasFullscreen ? "fixed inset-0 z-50 bg-[#141414]" : "hidden md:flex flex-1")}>
+              <NoctisCanvas
+                title={canvasTitle}
+                onTitleChange={setCanvasTitle}
+                content={canvasContent}
+                onContentChange={setCanvasContent}
+                onClose={() => setCanvasOpen(false)}
+                isFullscreen={canvasFullscreen}
+                onToggleFullscreen={() => setCanvasFullscreen((f) => !f)}
+                onReviseArtifact={handleReviseArtifact}
+                isRevising={canvasRevising}
+                onDownloadDoc={downloadWordReport}
+                onPrint={printAnswerReport}
+                renderPreview={(text) => <AnswerBody text={text} />}
+              />
+            </div>
+          ) : null}
+        </div>
       </div>
     </div>
   );
