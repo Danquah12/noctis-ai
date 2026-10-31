@@ -22,6 +22,10 @@ import { handleNaturalCognitiveSandboxQuery } from "./noctis-cognitive-sandbox.t
 import { handleNaturalAirGapQuery } from "./noctis-air-gap.ts";
 import { handleNaturalHolodeckQuery } from "./noctis-holodeck-3d.ts";
 import { handleNaturalRemediationQuery } from "./noctis-auto-remediation.ts";
+import { handleNaturalCircuitBreakerQuery } from "./noctis-circuit-breaker.ts";
+import { handleNaturalCrisisNegotiationQuery } from "./noctis-crisis-negotiation.ts";
+import { handleNaturalSteganographyQuery } from "./noctis-steganography.ts";
+import { handleNaturalEnclaveQuery } from "./noctis-enclave-attestation.ts";
 
 export type AdaptiveResponseMode = "Direct" | "Teaching" | "Technical" | "Audit";
 
@@ -1123,6 +1127,30 @@ export function runFollowUpIntelligence(
   const remedResponse = handleNaturalRemediationQuery(currentQuestion);
   if (remedResponse) {
     return adaptSpecialistEngineOutput(currentQuestion, remedResponse, "NOCTIS-REMED-001");
+  }
+
+  // 00-circuit. Noctis Autonomous Hallucination "Circuit Breaker" & Epistemic Kill-Switch (NOCTIS-CIRCUIT-001)
+  const circuitResponse = handleNaturalCircuitBreakerQuery(currentQuestion);
+  if (circuitResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, circuitResponse, "NOCTIS-CIRCUIT-001");
+  }
+
+  // 00-nash. Noctis Dynamic Game-Theoretic Ransomware & Crisis Negotiation Engine (NOCTIS-NASH-001)
+  const nashResponse = handleNaturalCrisisNegotiationQuery(currentQuestion);
+  if (nashResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, nashResponse, "NOCTIS-NASH-001");
+  }
+
+  // 00-stag. Noctis Sovereign Steganographic Forensic Watermark Vault (NOCTIS-STAG-001)
+  const stagResponse = handleNaturalSteganographyQuery(currentQuestion);
+  if (stagResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, stagResponse, "NOCTIS-STAG-001");
+  }
+
+  // 00-enclave. Noctis Confidential Compute Hardware Enclave Attestation (NOCTIS-ENCLAVE-001)
+  const enclaveResponse = handleNaturalEnclaveQuery(currentQuestion);
+  if (enclaveResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, enclaveResponse, "NOCTIS-ENCLAVE-001");
   }
 
 

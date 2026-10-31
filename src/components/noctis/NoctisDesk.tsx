@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ClipboardEvent } from "react";
 import { Link } from "@tanstack/react-router";
-import { Activity, ArrowUp, Bot, Boxes, Brain, Calendar, Fingerprint, Lock, Network, Swords, WifiOff, ChevronDown, ChevronLeft, Code2, Copy, CornerDownLeft, FileText, GraduationCap, Image, Library, Mail, Menu, Mic, MoreHorizontal, PanelRight, PanelRightOpen, Pencil, Phone, PhoneOff, Plus, Printer, RotateCcw, Search, Square, SquarePen, Trash2, Users2, Video, Volume2, VolumeX, Wrench, X } from "lucide-react";
+import { Activity, ArrowUp, Bot, Boxes, Brain, Calendar, Cpu, Fingerprint, FileLock, Lock, Network, Swords, WifiOff, ChevronDown, ChevronLeft, Code2, Copy, CornerDownLeft, FileText, GraduationCap, Image, Library, Mail, Menu, Mic, MoreHorizontal, PanelRight, PanelRightOpen, Pencil, Phone, PhoneOff, Plus, Printer, RotateCcw, Search, Square, SquarePen, Trash2, Users2, Video, Volume2, VolumeX, Wrench, X } from "lucide-react";
 import { askNoctis, drawVibe, hearVibe, sayVibe, trainVibe } from "@/lib/noctis-api";
 import { bringImagineFile, bringPortrait, readImagine, startImagine } from "@/lib/imagine-api";
 import { KnowledgeMap } from "@/components/learn/KnowledgeMap";
@@ -28,6 +28,10 @@ import { NoctisCognitiveModal } from "@/components/noctis/NoctisCognitiveModal";
 import { NoctisAirGapModal } from "@/components/noctis/NoctisAirGapModal";
 import { NoctisHolodeckModal } from "@/components/noctis/NoctisHolodeckModal";
 import { NoctisAutoRemediationModal } from "@/components/noctis/NoctisAutoRemediationModal";
+import { NoctisCircuitBreakerModal } from "@/components/noctis/NoctisCircuitBreakerModal";
+import { NoctisCrisisNegotiationModal } from "@/components/noctis/NoctisCrisisNegotiationModal";
+import { NoctisSteganographyModal } from "@/components/noctis/NoctisSteganographyModal";
+import { NoctisEnclaveModal } from "@/components/noctis/NoctisEnclaveModal";
 import { getActiveCustomAgent, getActiveCustomAgentContext, type NoctisCustomAgent } from "@/lib/noctis-custom-agents";
 import { NoctisMemoryModal, getNoctisPersonalizedContext } from "@/components/noctis/NoctisMemoryModal";
 import { studyOpenCall, studySend } from "@/lib/study-group-api";
@@ -3329,6 +3333,10 @@ export function NoctisDesk() {
   const [airGapModalOpen, setAirGapModalOpen] = useState(false);
   const [holodeckModalOpen, setHolodeckModalOpen] = useState(false);
   const [remediationModalOpen, setRemediationModalOpen] = useState(false);
+  const [circuitBreakerModalOpen, setCircuitBreakerModalOpen] = useState(false);
+  const [crisisNegotiationModalOpen, setCrisisNegotiationModalOpen] = useState(false);
+  const [steganographyModalOpen, setSteganographyModalOpen] = useState(false);
+  const [enclaveModalOpen, setEnclaveModalOpen] = useState(false);
   const [activeCustomAgent, setActiveCustomAgent] = useState<NoctisCustomAgent | null>(null);
 
   useEffect(() => {
@@ -6636,6 +6644,54 @@ export function NoctisDesk() {
             </button>
             <button
               type="button"
+              onClick={() => setCircuitBreakerModalOpen(true)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200 transition",
+                circuitBreakerModalOpen ? "bg-[#3a3a3a] text-red-400" : ""
+              )}
+              title="Autonomous Hallucination Circuit Breaker & Epistemic Kill-Switch"
+            >
+              <Zap className="size-3.5 text-red-400" />
+              Circuit Breaker
+            </button>
+            <button
+              type="button"
+              onClick={() => setCrisisNegotiationModalOpen(true)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200 transition",
+                crisisNegotiationModalOpen ? "bg-[#3a3a3a] text-amber-400" : ""
+              )}
+              title="Dynamic Game-Theoretic Ransomware & Crisis Negotiation Engine"
+            >
+              <Scale className="size-3.5 text-amber-400" />
+              Game Theory
+            </button>
+            <button
+              type="button"
+              onClick={() => setSteganographyModalOpen(true)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200 transition",
+                steganographyModalOpen ? "bg-[#3a3a3a] text-purple-400" : ""
+              )}
+              title="Sovereign Steganographic Forensic Watermark & Provenance Vault"
+            >
+              <FileLock className="size-3.5 text-purple-400" />
+              Watermark Vault
+            </button>
+            <button
+              type="button"
+              onClick={() => setEnclaveModalOpen(true)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200 transition",
+                enclaveModalOpen ? "bg-[#3a3a3a] text-cyan-400" : ""
+              )}
+              title="Confidential Compute Hardware Enclave Attestation Simulator"
+            >
+              <Cpu className="size-3.5 text-cyan-400" />
+              Enclave Quote
+            </button>
+            <button
+              type="button"
               onClick={() => setVaultModalOpen(true)}
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200",
@@ -7087,6 +7143,30 @@ export function NoctisDesk() {
         open={remediationModalOpen}
         onClose={() => setRemediationModalOpen(false)}
         onOpenInCanvas={(md, title) => openInCanvas(title || "Auto-Remediation Playbook", md)}
+        onInsertToChat={(text) => setDraft(text)}
+      />
+      <NoctisCircuitBreakerModal
+        open={circuitBreakerModalOpen}
+        onClose={() => setCircuitBreakerModalOpen(false)}
+        onOpenInCanvas={(md, title) => openInCanvas(title || "Circuit Breaker Audit", md)}
+        onInsertToChat={(text) => setDraft(text)}
+      />
+      <NoctisCrisisNegotiationModal
+        open={crisisNegotiationModalOpen}
+        onClose={() => setCrisisNegotiationModalOpen(false)}
+        onOpenInCanvas={(md, title) => openInCanvas(title || "Crisis Negotiation Dossier", md)}
+        onInsertToChat={(text) => setDraft(text)}
+      />
+      <NoctisSteganographyModal
+        open={steganographyModalOpen}
+        onClose={() => setSteganographyModalOpen(false)}
+        onOpenInCanvas={(md, title) => openInCanvas(title || "Forensic Provenance Dossier", md)}
+        onInsertToChat={(text) => setDraft(text)}
+      />
+      <NoctisEnclaveModal
+        open={enclaveModalOpen}
+        onClose={() => setEnclaveModalOpen(false)}
+        onOpenInCanvas={(md, title) => openInCanvas(title || "Enclave Attestation Quote", md)}
         onInsertToChat={(text) => setDraft(text)}
       />
     </div>
