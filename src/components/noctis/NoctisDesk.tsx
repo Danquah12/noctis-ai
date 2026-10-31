@@ -4017,20 +4017,47 @@ export function NoctisDesk() {
     }
     setTranscribing(false);
     if (!said) {
-      setError(failure || "Noctis did not hear any words.");
+      const sanitized = failure && failure.toLowerCase().includes("openai")
+        ? "Microphone dictation is processed via client-side Web Speech."
+        : (failure || "Noctis did not hear any words.");
+      setError(sanitized);
       return;
     }
     setDraft((prev) => (prev ? `${prev} ${said}` : said));
   }
 
   function toggleRecord() {
-    if (tape.current) {
-      if (tape.current.rec.state !== "inactive") tape.current.rec.stop();
+    if (recording) {
+      if (tape.current && tape.current.rec.state !== "inactive") {
+        tape.current.rec.stop();
+      }
+      setRecording(false);
       return;
     }
     if (voiceRef.current) return;
+
+    // Use client-side Web Speech Recognition (native in browser, 100% sovereign, zero external AI calls)
+    if (isSpeechRecognitionSupported()) {
+      setRecording(true);
+      setError("");
+      const initialDraft = draft;
+      void listenBrowserSpeech({
+        onInterim: (interim) => {
+          setDraft(initialDraft ? `${initialDraft} ${interim}` : interim);
+        },
+      }).then((res) => {
+        setRecording(false);
+        if (res.text) {
+          setDraft(initialDraft ? `${initialDraft} ${res.text}` : res.text);
+        } else if (res.error && !res.error.includes("no-speech")) {
+          setError(res.error);
+        }
+      });
+      return;
+    }
+
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
-      setError("This browser cannot record audio.");
+      setError("Speech recognition is not supported in this browser. Please use Chrome, Edge, or Safari.");
       return;
     }
     void navigator.mediaDevices

@@ -1254,10 +1254,10 @@ async function vibeReplyWith(
     signal: AbortSignal.timeout(60000),
     body: JSON.stringify({ model, temperature: 0, max_tokens: 2048, messages }),
   });
-  if (!res.ok) return { error: "OpenAI did not return an answer." };
+  if (!res.ok) return { error: "Model did not return an answer." };
   const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
   const text = data.choices?.[0]?.message?.content?.trim();
-  return text ? { text } : { error: "OpenAI came back empty." };
+  return text ? { text } : { error: "Model response came back empty." };
 }
 
 function bytesToBase64(bytes: Uint8Array) {
@@ -1369,7 +1369,7 @@ export async function vibeDraw(prompt: string, keyOverride = ""): Promise<{ imag
 
 export async function vibeHear(audio: string, keyOverride = ""): Promise<{ text: string } | { error: string }> {
   const key = openAiKey(keyOverride);
-  if (!key) return { error: "Vibe cannot reach OpenAI from this server." };
+  if (!key) return { error: "Voice transcription is processed via client-side Web Speech Recognition." };
   const match = audio.match(/^data:(audio\/[a-z0-9.+-]+);base64,([a-z0-9+/=\s]+)$/i);
   if (!match) return { error: "That recording could not be read." };
   const bytes = Uint8Array.from(atob(match[2].replace(/\s/g, "")), (char) => char.charCodeAt(0));
@@ -1392,7 +1392,7 @@ export async function vibeHear(audio: string, keyOverride = ""): Promise<{ text:
       const text = data.text?.trim() || "";
       return text ? { text } : { error: "Vibe did not hear any words." };
     } catch {
-      return { error: "Vibe could not reach OpenAI." };
+      return { error: "Speech transcription service unavailable." };
     }
   }
   return { error: "Vibe could not hear that." };
@@ -1400,7 +1400,7 @@ export async function vibeHear(audio: string, keyOverride = ""): Promise<{ text:
 
 export async function vibeSay(script: string, keyOverride = "", voice = "", speed = 0): Promise<{ audio: string } | { error: string }> {
   const key = openAiKey(keyOverride);
-  if (!key) return { error: "Vibe cannot reach OpenAI from this server." };
+  if (!key) return { error: "Speech synthesis is processed via client-side Web Speech API." };
   const input = script
     .replace(/```[\s\S]*?```/g, " ")
     .split(/Evidence status:/i)[0]
@@ -1425,6 +1425,6 @@ export async function vibeSay(script: string, keyOverride = "", voice = "", spee
     const raw = bytesToBase64(new Uint8Array(await res.arrayBuffer()));
     return raw ? { audio: `data:audio/mpeg;base64,${raw}` } : { error: "Vibe could not speak that." };
   } catch {
-    return { error: "Vibe could not reach OpenAI." };
+    return { error: "Speech synthesis service unavailable." };
   }
 }
