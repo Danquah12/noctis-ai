@@ -14,6 +14,7 @@ import { handleNaturalCyberSecurityQuery } from "./noctis-cyber-engine.ts";
 import { handleNaturalInvestmentQuery } from "./noctis-investment-engine.ts";
 import { handleNaturalBibleQuery } from "./noctis-bible-engine.ts";
 import { runCouncilDeliberation, formatCouncilDossierMarkdown } from "./noctis-council.ts";
+import { handleNaturalDigitalTwinQuery } from "./noctis-digital-twin.ts";
 
 export type AdaptiveResponseMode = "Direct" | "Teaching" | "Technical" | "Audit";
 
@@ -1067,6 +1068,12 @@ export function runFollowUpIntelligence(
     const session = runCouncilDeliberation(topic, memberIds);
     const markdown = formatCouncilDossierMarkdown(session);
     return adaptSpecialistEngineOutput(currentQuestion, markdown, "NOCTIS-COUNCIL-001");
+  }
+
+  // 00-twin. Noctis Digital Twin & Topological Attack-Graph Simulator (NOCTIS-TWIN-001)
+  const twinResponse = handleNaturalDigitalTwinQuery(currentQuestion);
+  if (twinResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, twinResponse, "NOCTIS-TWIN-001");
   }
 
 

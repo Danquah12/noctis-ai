@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ClipboardEvent } from "react";
 import { Link } from "@tanstack/react-router";
-import { Activity, ArrowUp, Bot, Brain, Calendar, Lock, ChevronDown, ChevronLeft, Code2, Copy, CornerDownLeft, FileText, GraduationCap, Image, Library, Mail, Menu, Mic, MoreHorizontal, PanelRight, PanelRightOpen, Pencil, Phone, PhoneOff, Plus, Printer, RotateCcw, Search, Square, SquarePen, Trash2, Users2, Video, Volume2, VolumeX, Wrench, X } from "lucide-react";
+import { Activity, ArrowUp, Bot, Brain, Calendar, Lock, Network, ChevronDown, ChevronLeft, Code2, Copy, CornerDownLeft, FileText, GraduationCap, Image, Library, Mail, Menu, Mic, MoreHorizontal, PanelRight, PanelRightOpen, Pencil, Phone, PhoneOff, Plus, Printer, RotateCcw, Search, Square, SquarePen, Trash2, Users2, Video, Volume2, VolumeX, Wrench, X } from "lucide-react";
 import { askNoctis, drawVibe, hearVibe, sayVibe, trainVibe } from "@/lib/noctis-api";
 import { bringImagineFile, bringPortrait, readImagine, startImagine } from "@/lib/imagine-api";
 import { KnowledgeMap } from "@/components/learn/KnowledgeMap";
@@ -20,6 +20,7 @@ import { NoctisVaultModal } from "@/components/noctis/NoctisVaultModal";
 import { NoctisAgentBuilderModal } from "@/components/noctis/NoctisAgentBuilderModal";
 import { NoctisDataConnectorsModal } from "@/components/noctis/NoctisDataConnectorsModal";
 import { NoctisCouncilModal } from "@/components/noctis/NoctisCouncilModal";
+import { NoctisDigitalTwinModal } from "@/components/noctis/NoctisDigitalTwinModal";
 import { getActiveCustomAgent, getActiveCustomAgentContext, type NoctisCustomAgent } from "@/lib/noctis-custom-agents";
 import { NoctisMemoryModal, getNoctisPersonalizedContext } from "@/components/noctis/NoctisMemoryModal";
 import { studyOpenCall, studySend } from "@/lib/study-group-api";
@@ -3312,6 +3313,7 @@ export function NoctisDesk() {
   const [agentBuilderModalOpen, setAgentBuilderModalOpen] = useState(false);
   const [dataConnectorsModalOpen, setDataConnectorsModalOpen] = useState(false);
   const [councilModalOpen, setCouncilModalOpen] = useState(false);
+  const [digitalTwinModalOpen, setDigitalTwinModalOpen] = useState(false);
   const [activeCustomAgent, setActiveCustomAgent] = useState<NoctisCustomAgent | null>(null);
 
   useEffect(() => {
@@ -6509,6 +6511,18 @@ export function NoctisDesk() {
             </button>
             <button
               type="button"
+              onClick={() => setDigitalTwinModalOpen(true)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200 transition",
+                digitalTwinModalOpen ? "bg-[#3a3a3a] text-cyan-400" : ""
+              )}
+              title="Digital Twin & Attack-Graph Simulator (System Dynamic Shock Modeling)"
+            >
+              <Network className="size-3.5 text-cyan-400" />
+              Digital Twin
+            </button>
+            <button
+              type="button"
               onClick={() => setVaultModalOpen(true)}
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200",
@@ -6912,6 +6926,12 @@ export function NoctisDesk() {
         onOpenInCanvas={(md, title) => openInCanvas(title || "Council Dossier", md)}
         onInsertToChat={(text) => setDraft(text)}
         initialTopic={draft}
+      />
+      <NoctisDigitalTwinModal
+        open={digitalTwinModalOpen}
+        onClose={() => setDigitalTwinModalOpen(false)}
+        onOpenInCanvas={(md, title) => openInCanvas(title || "Digital Twin Dossier", md)}
+        onInsertToChat={(text) => setDraft(text)}
       />
     </div>
   );
