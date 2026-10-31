@@ -1,7 +1,8 @@
 /**
  * Noctis Live Two-Way Voice Mode Engine
  * Manages streaming audio levels, real-time client SpeechRecognition (STT),
- * fallback server Whisper ingestion, and natural dual-mode speech synthesis (OpenAI TTS + Web Speech API).
+ * fallback server Whisper ingestion, and dual-mode human speech synthesis
+ * (OpenAI Studio Neural TTS + Browser Natural Human Web Speech API).
  */
 
 export type VoicePersona = "alloy" | "nova" | "onyx" | "echo" | "natural";
@@ -13,14 +14,15 @@ export interface VoicePersonaInfo {
   tone: string;
   gender: "neutral" | "female" | "male";
   accent: string;
+  description: string;
 }
 
 export const VOICE_PERSONAS: VoicePersonaInfo[] = [
-  { id: "alloy", label: "Alloy", tone: "Balanced & Versatile", gender: "neutral", accent: "#38bdf8" },
-  { id: "nova", label: "Nova", tone: "Warm, Expressive & Engaging", gender: "female", accent: "#f472b6" },
-  { id: "onyx", label: "Onyx", tone: "Deep, Calm & Authoritative", gender: "male", accent: "#a78bfa" },
-  { id: "echo", label: "Echo", tone: "Crisp, Clear & Direct", gender: "male", accent: "#34d399" },
-  { id: "natural", label: "Natural Browser", tone: "Client-side Native Voice", gender: "neutral", accent: "#e4b86a" },
+  { id: "alloy", label: "Alloy", tone: "Balanced & Versatile", gender: "neutral", accent: "#38bdf8", description: "Studio-balanced neural tone suitable for all conversational queries." },
+  { id: "nova", label: "Nova", tone: "Warm, Expressive & Engaging", gender: "female", accent: "#f472b6", description: "Warm, energetic, and expressive conversational human voice." },
+  { id: "onyx", label: "Onyx", tone: "Deep, Calm & Authoritative", gender: "male", accent: "#a78bfa", description: "Deep, resonant, and calm authoritative executive voice." },
+  { id: "echo", label: "Echo", tone: "Crisp, Clear & Direct", gender: "male", accent: "#34d399", description: "Crisp, precise, and articulate cadence with studio clarity." },
+  { id: "natural", label: "Natural Browser", tone: "Device Neural / Native", gender: "neutral", accent: "#e4b86a", description: "Online neural voice provided natively by Edge, Chrome, or Safari." },
 ];
 
 /**
@@ -51,56 +53,182 @@ export function isSpeechSynthesisSupported(): boolean {
 }
 
 /**
- * Sanitizes markdown, LaTeX math formulas, citations, and table formatting for natural spoken speech.
+ * Sanitizes markdown, LaTeX math formulas, citations, and table formatting
+ * into natural, fully intelligible spoken English without mid-sentence cutoffs.
  */
-export function cleanVoiceText(rawText: string, maxLength = 1200): string {
+export function cleanVoiceText(rawText: string, maxLength = 1800): string {
   if (!rawText) return "";
 
   let spoken = rawText;
 
-  // 1. Remove code blocks
+  // 1. Remove code blocks with clean spoken transition
   spoken = spoken.replace(/```[\s\S]*?```/g, " [Code snippet omitted for speech] ");
+  spoken = spoken.replace(/`([^`]+)`/g, "$1");
 
   // 2. Remove markdown tables
   spoken = spoken.replace(/\|[^\n]+\|\n\|[-:| ]+\|\n(?:\|[^\n]+\|\n?)+/g, " [Detailed table summary available in chat] ");
 
   // 3. Remove metadata gates and callout blocks
   spoken = spoken.replace(/>\s*\[!(?:IMPORTANT|NOTE|WARNING|TIP|CAUTION)\]/gi, " ");
-  spoken = spoken.replace(/>/g, " ");
+  spoken = spoken.replace(/^>\s*/gm, "");
 
-  // 4. Clean LaTeX math formatting ($...$ and $$...$$)
+  // 4. Units and currencies for human pronunciation (before LaTeX stripping)
+  spoken = spoken.replace(/\$(\d+(?:\.\d+)?)\s*(?:billion|B)\b/gi, "$1 billion dollars");
+  spoken = spoken.replace(/\$(\d+(?:\.\d+)?)\s*(?:million|M)\b/gi, "$1 million dollars");
+  spoken = spoken.replace(/\$(\d+(?:\.\d+)?)\s*(?:thousand|K)\b/gi, "$1 thousand dollars");
+  spoken = spoken.replace(/\$(\d[\d,]*(?:\.\d+)?)/g, "$1 dollars");
+  spoken = spoken.replace(/\b(\d+(?:\.\d+)?)\s*MWh\b/gi, "$1 megawatt hours");
+  spoken = spoken.replace(/\b(\d+(?:\.\d+)?)\s*kWh\b/gi, "$1 kilowatt hours");
+  spoken = spoken.replace(/\b(\d+(?:\.\d+)?)\s*GW\b/gi, "$1 gigawatts");
+  spoken = spoken.replace(/\b(\d+(?:\.\d+)?)\s*MW\b/gi, "$1 megawatts");
+
+  // 5. Clean LaTeX math formatting ($...$ and $$...$$)
   spoken = spoken.replace(/\$\$[\s\S]*?\$\$/g, " ");
-  spoken = spoken.replace(/\\(?:alpha|beta|gamma|delta|epsilon|theta|lambda|mu|pi|sigma|tau|phi|omega)/gi, (m) => m.slice(1));
   spoken = spoken.replace(/\\times/gi, " times ");
-  spoken = spoken.replace(/\$([^\$]+)\$/g, "$1");
+  spoken = spoken.replace(/\\pm/gi, " plus or minus ");
+  spoken = spoken.replace(/\\approx/gi, " approximately ");
+  spoken = spoken.replace(/\\neq/gi, " does not equal ");
+  spoken = spoken.replace(/\\le\b|\\leq\b/gi, " less than or equal to ");
+  spoken = spoken.replace(/\\ge\b|\\geq\b/gi, " greater than or equal to ");
+  spoken = spoken.replace(/\\sqrt\{([^}]+)\}/gi, " square root of $1 ");
+  spoken = spoken.replace(/\\frac\{([^}]+)\}\{([^}]+)\}/gi, " $1 over $2 ");
+  spoken = spoken.replace(/\\Delta/g, " delta ");
+  spoken = spoken.replace(/\\sum/g, " sum of ");
+  spoken = spoken.replace(/\\(?:alpha|beta|gamma|delta|epsilon|theta|lambda|mu|pi|sigma|tau|phi|omega)/gi, (m) => m.slice(1));
   spoken = spoken.replace(/\\text\{([^}]+)\}/g, "$1");
+  spoken = spoken.replace(/\$([^\$]+)\$/g, "$1");
+  spoken = spoken.replace(/\$/g, "");
   spoken = spoken.replace(/\\[a-zA-Z]+/g, " ");
   spoken = spoken.replace(/\\%/g, "%");
 
-  // 5. Remove audit/claim status stamps
+  // 6. Common abbreviations expanded into natural spoken English
+  spoken = spoken.replace(/\be\.g\.,?\s*/gi, "for example, ");
+  spoken = spoken.replace(/\bi\.e\.,?\s*/gi, "that is, ");
+  spoken = spoken.replace(/\betc\.\b/gi, "etcetera");
+  spoken = spoken.replace(/\bvs\.?\s*/gi, " versus ");
+  spoken = spoken.replace(/\bapprox\.\s*/gi, "approximately ");
+
+  // 7. Remove audit/claim status stamps
   spoken = spoken.split(/\b(?:Evidence status|Claim standing|Audit trail):/i)[0];
 
-  // 6. Clean markdown bold, italics, links, and headers
+  // 8. Clean markdown links, headers, bold, italics, bullets
   spoken = spoken.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
+  spoken = spoken.replace(/^#+\s+/gm, "");
+  spoken = spoken.replace(/^[*\-+]\s+/gm, "");
   spoken = spoken.replace(/[#*`_~]/g, " ");
 
-  // 7. Collapse whitespace and truncate to reasonable speech turn limit
+  // 9. Collapse whitespace
   spoken = spoken.replace(/\s+/g, " ").trim();
 
-  return spoken.slice(0, maxLength);
+  // 10. Sentence-boundary truncation: Never truncate mid-sentence or mid-word
+  if (spoken.length > maxLength) {
+    const candidate = spoken.slice(0, maxLength);
+    const lastPunctuation = Math.max(
+      candidate.lastIndexOf(". "),
+      candidate.lastIndexOf("! "),
+      candidate.lastIndexOf("? ")
+    );
+    if (lastPunctuation > maxLength * 0.5) {
+      spoken = candidate.slice(0, lastPunctuation + 1);
+    } else {
+      const lastSpace = candidate.lastIndexOf(" ");
+      spoken = (lastSpace > 0 ? candidate.slice(0, lastSpace) : candidate) + ".";
+    }
+  }
+
+  return spoken;
+}
+
+/**
+ * Intelligently scores and selects the highest-quality human/natural browser voice,
+ * strongly prioritizing neural and online voices over legacy robotic synthesizers.
+ */
+export function pickHumanBrowserVoice(
+  voices: SpeechSynthesisVoice[],
+  persona: VoicePersona = "alloy",
+  lang = "en"
+): SpeechSynthesisVoice | null {
+  if (!voices || voices.length === 0) return null;
+  const langVoices = voices.filter((v) => v.lang.toLowerCase().startsWith(lang.toLowerCase()));
+  const candidatePool = langVoices.length > 0 ? langVoices : voices;
+
+  const scoreVoice = (v: SpeechSynthesisVoice): number => {
+    let score = 0;
+    const name = v.name.toLowerCase();
+
+    // 1. Modern neural / natural online voices (Highest quality)
+    if (name.includes("natural")) score += 100;
+    if (name.includes("neural")) score += 95;
+    if (name.includes("online")) score += 90;
+    if (name.includes("enhanced") || name.includes("premium")) score += 85;
+    if (name.includes("siri")) score += 80;
+    if (name.includes("google")) score += 75;
+
+    // 2. Persona matching
+    if (persona === "nova") {
+      if (/jenny|samantha|victoria|karen|female|ava|emma|sonia/.test(name)) score += 35;
+      else if (/aria/.test(name)) score += 25;
+      if (/david|male|george|guy|mark|christopher|eric|roger/.test(name)) score -= 25;
+    } else if (persona === "onyx") {
+      if (/guy|christopher|eric|roger|steffan|alex|daniel|male|george/.test(name)) score += 35;
+      else if (/david/.test(name)) score += 10;
+      if (/female|zira|samantha|jenny|aria|victoria|ava/.test(name)) score -= 25;
+    } else if (persona === "echo") {
+      if (/aria|guy|alex|mark|natural/.test(name)) score += 25;
+    } else if (persona === "alloy") {
+      if (/aria|jenny|google|natural/.test(name)) score += 25;
+    }
+
+    // 3. Heavy penalty for legacy robotic desktop synthesizers (e.g. MS David Desktop)
+    if (name.includes("desktop") || /microsoft david|microsoft zira/.test(name)) {
+      score -= 50;
+    }
+
+    // 4. Online neural service preference
+    if (v.localService === false) score += 10;
+
+    return score;
+  };
+
+  const sorted = [...candidatePool].sort((a, b) => scoreVoice(b) - scoreVoice(a));
+  return sorted[0] || null;
+}
+
+// Global active audio and speech references
+let activeUtterance: SpeechSynthesisUtterance | null = null;
+let currentAudioElement: HTMLAudioElement | null = null;
+let keepAliveTimer: number | null = null;
+
+/**
+ * Stops all currently active audio playback (both Web Speech and HTML5 Audio).
+ */
+export function stopCurrentVoicePlayback(): void {
+  if (typeof window !== "undefined") {
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+    if (currentAudioElement) {
+      try {
+        currentAudioElement.pause();
+        currentAudioElement.currentTime = 0;
+        currentAudioElement = null;
+      } catch {}
+    }
+    if (keepAliveTimer !== null) {
+      window.clearInterval(keepAliveTimer);
+      keepAliveTimer = null;
+    }
+  }
 }
 
 /**
  * Executes natural speech synthesis using the browser Web Speech API.
- * Returns a Promise that resolves when speech completes or rejects on error.
+ * Uses intelligent voice picking for maximum human warmth and clarity.
  */
-// Global reference to prevent Chromium / V8 garbage collection during active speech playback
-let activeUtterance: SpeechSynthesisUtterance | null = null;
-
 export function speakBrowserVoice(
   text: string,
   persona: VoicePersona = "alloy",
-  rate = 1.05
+  rate = 1.0
 ): Promise<boolean> {
   return new Promise((resolve) => {
     if (!isSpeechSynthesisSupported()) {
@@ -113,38 +241,26 @@ export function speakBrowserVoice(
         window.speechSynthesis.resume();
       }
 
-      const cleaned = cleanVoiceText(text, 650);
+      const cleaned = cleanVoiceText(text, 1400);
       if (!cleaned) {
         resolve(true);
         return;
       }
 
       // If already speaking, cancel previous
-      if (window.speechSynthesis.speaking) {
-        window.speechSynthesis.cancel();
-      }
+      stopCurrentVoicePlayback();
 
       const utterance = new SpeechSynthesisUtterance(cleaned);
       activeUtterance = utterance; // Keep reference to prevent GC!
 
       utterance.lang = "en-US";
       utterance.rate = rate;
-      utterance.pitch = persona === "nova" ? 1.15 : persona === "onyx" ? 0.85 : 1.0;
+      utterance.pitch = persona === "nova" ? 1.05 : persona === "onyx" ? 0.92 : 1.0;
 
       const assignVoice = () => {
         const voices = window.speechSynthesis.getVoices();
         if (voices && voices.length > 0) {
-          let chosen = null;
-          if (persona === "nova") {
-            chosen = voices.find((v) => /samantha|zira|female|karen|victoria|jenny/i.test(v.name) && v.lang.startsWith("en"));
-          } else if (persona === "onyx") {
-            chosen = voices.find((v) => /david|george|male|daniel|guy|guy/i.test(v.name) && v.lang.startsWith("en"));
-          } else if (persona === "echo") {
-            chosen = voices.find((v) => /alex|mark|natural|aria/i.test(v.name) && v.lang.startsWith("en"));
-          } else {
-            chosen = voices.find((v) => /google|natural|aria|jenny/i.test(v.name) && v.lang.startsWith("en"));
-          }
-          if (!chosen) chosen = voices.find((v) => v.lang.startsWith("en"));
+          const chosen = pickHumanBrowserVoice(voices, persona, "en");
           if (chosen) utterance.voice = chosen;
         }
       };
@@ -159,22 +275,29 @@ export function speakBrowserVoice(
         if (settled) return;
         settled = true;
         activeUtterance = null;
+        if (keepAliveTimer !== null) {
+          window.clearInterval(keepAliveTimer);
+          keepAliveTimer = null;
+        }
         resolve(true);
       };
 
       utterance.onend = done;
-      utterance.onerror = (e) => {
+      utterance.onerror = () => {
         done();
       };
 
       // Workaround for Chrome auto-pause bug during longer utterances
-      const keepAlive = window.setInterval(() => {
+      keepAliveTimer = window.setInterval(() => {
         if (!window.speechSynthesis.speaking) {
-          window.clearInterval(keepAlive);
+          if (keepAliveTimer !== null) {
+            window.clearInterval(keepAliveTimer);
+            keepAliveTimer = null;
+          }
         } else {
           window.speechSynthesis.resume();
         }
-      }, 3000);
+      }, 2500);
 
       window.speechSynthesis.speak(utterance);
       if (window.speechSynthesis.paused) {
@@ -184,6 +307,75 @@ export function speakBrowserVoice(
       resolve(false);
     }
   });
+}
+
+/**
+ * Unified human speech synthesis engine.
+ * First attempts Studio-Quality Neural TTS (OpenAI tts-1 with human inflection & breathing)
+ * when an API key or server endpoint is configured.
+ * Seamlessly falls back to the device's highest-quality natural browser voice.
+ */
+export async function speakNoctisVoice(
+  text: string,
+  persona: VoicePersona = "alloy",
+  options?: {
+    apiKey?: string;
+    onStart?: () => void;
+    onEnd?: () => void;
+  }
+): Promise<boolean> {
+  stopCurrentVoicePlayback();
+
+  // 1. Try Studio-Quality Human Neural TTS if available (OpenAI tts-1)
+  if (persona !== "natural") {
+    try {
+      const { sayVibe } = await import("@/lib/noctis-api");
+      const cleanedForTts = cleanVoiceText(text, 1800);
+      if (cleanedForTts) {
+        const ttsVoice = persona === "onyx" || persona === "nova" || persona === "echo" ? persona : "alloy";
+        const res = await sayVibe({
+          data: {
+            text: cleanedForTts,
+            voice: ttsVoice,
+            speed: 1.0,
+            keyOverride: options?.apiKey || "",
+          },
+        });
+        const bag = res && typeof res === "object" ? (res as { audio?: unknown; result?: unknown; error?: unknown }) : {};
+        const inner = bag.result && typeof bag.result === "object" ? (bag.result as { audio?: unknown; error?: unknown }) : bag;
+        const audioUrl = typeof inner.audio === "string" ? inner.audio : "";
+        if (audioUrl && audioUrl.startsWith("data:audio/")) {
+          return await new Promise<boolean>((resolve) => {
+            try {
+              const audio = new Audio(audioUrl);
+              currentAudioElement = audio;
+              if (options?.onStart) options.onStart();
+              audio.onended = () => {
+                currentAudioElement = null;
+                if (options?.onEnd) options.onEnd();
+                resolve(true);
+              };
+              audio.onerror = () => {
+                currentAudioElement = null;
+                resolve(false);
+              };
+              audio.play().catch(() => resolve(false));
+            } catch {
+              resolve(false);
+            }
+          });
+        }
+      }
+    } catch {
+      // Fallback seamlessly to native browser speech synthesis
+    }
+  }
+
+  // 2. Fallback to Browser Natural Human Voice
+  if (options?.onStart) options.onStart();
+  const success = await speakBrowserVoice(text, persona);
+  if (options?.onEnd) options.onEnd();
+  return success;
 }
 
 /**
@@ -288,7 +480,7 @@ export function listenBrowserSpeech(options: {
 
       const safetyTimer = window.setTimeout(() => {
         finish(finalTranscript);
-      }, options.timeoutMs || 15000);
+      }, options.timeoutMs || 20000);
 
       recognition.onresult = (event: any) => {
         let interim = "";

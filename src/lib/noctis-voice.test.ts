@@ -5,6 +5,9 @@ import {
   VOICE_PERSONAS,
   isSpeechRecognitionSupported,
   isSpeechSynthesisSupported,
+  pickHumanBrowserVoice,
+  stopCurrentVoicePlayback,
+  speakNoctisVoice,
 } from "./noctis-voice.ts";
 
 describe("Noctis Voice Mode Engine", () => {
@@ -66,5 +69,53 @@ Evidence status: Audited.
     assert.ok(cleaned.includes("beta"));
     assert.ok(cleaned.includes("times"));
     assert.ok(cleaned.includes("ERP where ERP = 5.5%."));
+  });
+
+  it("pronounces units, abbreviations, and currencies for human intelligibility", () => {
+    const text = "Projected revenue is $12.5M vs. $10M last quarter (e.g. cloud sales). Energy consumption reached 450MWh with $2.4B total budget.";
+    const cleaned = cleanVoiceText(text);
+    assert.ok(cleaned.includes("12.5 million dollars"));
+    assert.ok(cleaned.includes("10 million dollars"));
+    assert.ok(cleaned.includes("versus"));
+    assert.ok(cleaned.includes("for example"));
+    assert.ok(cleaned.includes("450 megawatt hours"));
+    assert.ok(cleaned.includes("2.4 billion dollars"));
+  });
+
+  it("never truncates mid-word or mid-sentence when exceeding maxLength", () => {
+    const longText = "First sentence is completely clear. Second sentence has full context and logic. Third sentence finishes the explanation.";
+    const truncated = cleanVoiceText(longText, 50);
+    // Should end with a period and not cut off inside a word like 'sec...'
+    assert.ok(truncated.endsWith("."));
+    assert.equal(truncated, "First sentence is completely clear.");
+  });
+
+  it("intelligently selects online Natural human voices over legacy robotic synthesizers", () => {
+    const mockVoices = [
+      { name: "Microsoft David Desktop - English (United States)", lang: "en-US", localService: true },
+      { name: "Microsoft Zira Desktop - English (United States)", lang: "en-US", localService: true },
+      { name: "Microsoft Aria Online (Natural) - English (United States)", lang: "en-US", localService: false },
+      { name: "Microsoft Guy Online (Natural) - English (United States)", lang: "en-US", localService: false },
+      { name: "Microsoft Jenny Online (Natural) - English (United States)", lang: "en-US", localService: false },
+    ] as unknown as SpeechSynthesisVoice[];
+
+    const alloyPick = pickHumanBrowserVoice(mockVoices, "alloy");
+    assert.ok(alloyPick);
+    assert.ok(alloyPick.name.includes("Natural"));
+    assert.ok(!alloyPick.name.includes("Desktop"));
+
+    const novaPick = pickHumanBrowserVoice(mockVoices, "nova");
+    assert.ok(novaPick);
+    assert.ok(novaPick.name.includes("Jenny") || novaPick.name.includes("Aria"));
+
+    const onyxPick = pickHumanBrowserVoice(mockVoices, "onyx");
+    assert.ok(onyxPick);
+    assert.ok(onyxPick.name.includes("Guy"));
+  });
+
+  it("handles stopCurrentVoicePlayback and speakNoctisVoice gracefully in headless environments", async () => {
+    assert.doesNotThrow(() => stopCurrentVoicePlayback());
+    const res = await speakNoctisVoice("Hello world", "natural");
+    assert.equal(res, false);
   });
 });

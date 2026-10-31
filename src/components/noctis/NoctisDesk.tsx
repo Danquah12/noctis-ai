@@ -46,6 +46,8 @@ import { studyOpenCall, studySend } from "@/lib/study-group-api";
 import { sendMeetInvite } from "@/lib/meet-mail";
 import {
   speakBrowserVoice,
+  speakNoctisVoice,
+  stopCurrentVoicePlayback,
   cleanVoiceText,
   listenBrowserSpeech,
   createAudioLevelAnalyzer,
@@ -332,9 +334,16 @@ function userFace(turn: Turn) {
 }
 
 function sayAloud(text: string): boolean {
-  if (typeof window === "undefined" || !window.speechSynthesis) return false;
-  void speakBrowserVoice(text);
-  return true;
+  if (typeof window === "undefined") return false;
+  try {
+    const brainConfig = getBrainConfig();
+    const activeBrain = getActiveKeyAndModel(brainConfig);
+    const userOpenAiKey = activeBrain.provider === "openai" ? activeBrain.key : "";
+    void speakNoctisVoice(text, "alloy", { apiKey: userOpenAiKey });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function fresh(): Thread {
@@ -3835,10 +3844,20 @@ export function NoctisDesk() {
           brain: getActiveKeyAndModel(getBrainConfig()),
           context: (() => {
             try {
-              return [formatContext(readNoctisContext(
-                threads.filter((row) => row.title !== "New chat").map((row) => row.title),
-                place,
-              )), savedRules(person), getNoctisPersonalizedContext(), getActiveProjectContext(), getActiveCustomAgentContext()].filter(Boolean).join("\n\n");
+              const voiceContext = voiceRef.current
+                ? "VOICE MODE CONVERSATION ACTIVE: You are speaking aloud live to the user via Noctis Voice. Give complete, articulate, highly intelligible, and natural conversational answers. Formulate every sentence clearly for spoken audio — avoid raw markdown tables, ascii charts, or dense code blocks unless explicitly requested. Conclude every thought and sentence completely."
+                : "";
+              return [
+                formatContext(readNoctisContext(
+                  threads.filter((row) => row.title !== "New chat").map((row) => row.title),
+                  place,
+                )),
+                voiceContext,
+                savedRules(person),
+                getNoctisPersonalizedContext(),
+                getActiveProjectContext(),
+                getActiveCustomAgentContext(),
+              ].filter(Boolean).join("\n\n");
             } catch {
               return savedRules(person);
             }
@@ -4018,9 +4037,7 @@ export function NoctisDesk() {
     run.current += 1;
     voiceRef.current = false;
     player.current?.pause();
-    if (typeof window !== "undefined" && window.speechSynthesis) {
-      window.speechSynthesis.cancel();
-    }
+    stopCurrentVoicePlayback();
     try {
       source.current?.stop();
     } catch {
@@ -4487,13 +4504,17 @@ export function NoctisDesk() {
       if (!voiceRef.current || !answer) break;
 
       local = { ...local, title, turns: [...turns, { role: "assistant", content: answer }] };
-      const spokenSummary = cleanVoiceText(answer, 280);
-      setVoiceReply(spokenSummary || answer.slice(0, 280));
+      const spokenSummary = cleanVoiceText(answer, 400);
+      setVoiceReply(spokenSummary || answer.slice(0, 400));
       setVoicePhase("speak");
 
       try {
-        // Deliver natural spoken speech directly via native browser speech synthesis
-        await speakBrowserVoice(answer, voicePersona);
+        const brainConfig = getBrainConfig();
+        const activeBrain = getActiveKeyAndModel(brainConfig);
+        const userOpenAiKey = activeBrain.provider === "openai" ? activeBrain.key : "";
+        await speakNoctisVoice(answer, voicePersona, {
+          apiKey: userOpenAiKey,
+        });
       } catch {
         /* proceed to next turn */
       }
@@ -6705,9 +6726,7 @@ export function NoctisDesk() {
                 onInterrupt={() => {
                   player.current?.pause();
                   try { source.current?.stop(); } catch {}
-                  if (typeof window !== "undefined" && window.speechSynthesis) {
-                    window.speechSynthesis.cancel();
-                  }
+                  stopCurrentVoicePlayback();
                   setVoicePhase("listen");
                 }}
                 onClose={stop}

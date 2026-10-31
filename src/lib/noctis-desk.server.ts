@@ -59,10 +59,11 @@ function serverSecret(name: string) {
 }
 
 function openAiKey(override = "") {
+  if (override && override.trim()) return override.trim();
   if (!/^(1|true|yes)$/i.test((process.env.VIBE_ALLOW_OPENAI || "").trim())) return "";
   const baked = typeof BAKED_OPENAI_KEY === "string" ? BAKED_OPENAI_KEY.trim() : "";
   const fileKey = typeof OPENAI_KEY === "string" ? OPENAI_KEY.trim() : "";
-  return override.trim() || fileKey || baked || serverSecret("OPENAI_API_KEY");
+  return fileKey || baked || serverSecret("OPENAI_API_KEY");
 }
 
 const TEACH = `You are Vibe, the assistant inside Noctis.
@@ -1402,13 +1403,17 @@ export async function vibeHear(audio: string, keyOverride = ""): Promise<{ text:
 export async function vibeSay(script: string, keyOverride = "", voice = "", speed = 0): Promise<{ audio: string } | { error: string }> {
   const key = openAiKey(keyOverride);
   if (!key) return { error: "Speech synthesis is processed via client-side Web Speech API." };
-  const input = script
+  let input = script
     .replace(/```[\s\S]*?```/g, " ")
     .split(/Evidence status:/i)[0]
     .replace(/[#*`]/g, " ")
     .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 1800);
+    .trim();
+  if (input.length > 2000) {
+    const candidate = input.slice(0, 2000);
+    const lastPunct = Math.max(candidate.lastIndexOf(". "), candidate.lastIndexOf("! "), candidate.lastIndexOf("? "));
+    input = (lastPunct > 1000 ? candidate.slice(0, lastPunct + 1) : candidate).trim();
+  }
   if (input.length < 2) return { error: "There was nothing to say." };
   try {
     const res = await fetch("https://api.openai.com/v1/audio/speech", {

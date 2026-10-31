@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Mic, MicOff, Volume2, Sparkles, PhoneOff, Radio } from "lucide-react";
+import { Mic, MicOff, Volume2, Sparkles, PhoneOff, Radio, Info, X } from "lucide-react";
 import { VOICE_PERSONAS, type VoicePersona } from "@/lib/noctis-voice";
 
 interface NoctisVoiceVisualizerProps {
@@ -30,6 +30,7 @@ export function NoctisVoiceVisualizer({
   onClose,
 }: NoctisVoiceVisualizerProps) {
   const [pulse, setPulse] = useState(1);
+  const [showGuide, setShowGuide] = useState(false);
   const activePersona = VOICE_PERSONAS.find((p) => p.id === persona) || VOICE_PERSONAS[0];
 
   useEffect(() => {
@@ -248,6 +249,57 @@ export function NoctisVoiceVisualizer({
             <PhoneOff className="size-3.5" />
             End Call
           </button>
+        ) : null}
+      </div>
+
+      {/* Human AI Voice Info Pill & Guide */}
+      <div className="mt-3 flex flex-col items-center">
+        <button
+          type="button"
+          onClick={() => setShowGuide((prev) => !prev)}
+          className="inline-flex items-center gap-1.5 rounded-full bg-white/5 hover:bg-white/10 px-3 py-1 text-[11px] font-medium text-zinc-300 hover:text-white transition border border-white/10 touch-manipulation shadow-xs"
+        >
+          <Sparkles className="size-3 text-[#e4b86a]" />
+          <span>How to enable Studio Human Voice</span>
+          <Info className="size-3 text-zinc-400" />
+        </button>
+
+        {showGuide ? (
+          <div className="relative mt-2.5 w-full max-w-md rounded-2xl border border-white/15 bg-black/85 p-3.5 text-left text-xs backdrop-blur-md shadow-xl animate-in fade-in zoom-in-95 duration-150">
+            <div className="mb-2 flex items-center justify-between border-b border-white/10 pb-1.5">
+              <span className="font-semibold text-white flex items-center gap-1.5">
+                <Sparkles className="size-3.5 text-[#e4b86a]" />
+                Turning AI Voice into Human Voice
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowGuide(false)}
+                className="rounded p-0.5 text-zinc-400 hover:text-white"
+              >
+                <X className="size-3.5" />
+              </button>
+            </div>
+            <ul className="space-y-2 text-zinc-300 leading-normal">
+              <li className="flex items-start gap-2">
+                <span className="shrink-0 text-[#e4b86a] font-bold">1.</span>
+                <span>
+                  <strong className="text-zinc-100">Microsoft Edge / Google Chrome (Free):</strong> Edge provides Microsoft Natural Online voices (Aria, Guy, Jenny), and Chrome provides Google Neural voices. These are built-in human voices with zero configuration.
+                </span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="shrink-0 text-[#e4b86a] font-bold">2.</span>
+                <span>
+                  <strong className="text-zinc-100">Brain BYOK (OpenAI Studio TTS):</strong> Open <strong className="text-amber-300">Brain</strong> in the top header, select OpenAI, and input your API key. Noctis will speak with OpenAI’s hyper-realistic neural models (<em className="text-sky-300">tts-1</em>) with human breathing and lifelike warmth.
+                </span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="shrink-0 text-[#e4b86a] font-bold">3.</span>
+                <span>
+                  <strong className="text-zinc-100">iPhone / iPad / Mac:</strong> Go to <em>Settings &gt; Accessibility &gt; Spoken Content &gt; Voices</em> and download <em>Enhanced</em> or <em>Siri</em> for human fidelity on Safari.
+                </span>
+              </li>
+            </ul>
+          </div>
         ) : null}
       </div>
     </div>
