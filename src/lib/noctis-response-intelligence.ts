@@ -17,6 +17,7 @@ import { runCouncilDeliberation, formatCouncilDossierMarkdown } from "./noctis-c
 import { handleNaturalDigitalTwinQuery } from "./noctis-digital-twin.ts";
 import { handleNaturalWarRoomQuery } from "./noctis-war-room.ts";
 import { handleNaturalTruthLedgerQuery } from "./noctis-truth-ledger.ts";
+import { handleNaturalWorkSwarmQuery } from "./noctis-work-swarm.ts";
 
 export type AdaptiveResponseMode = "Direct" | "Teaching" | "Technical" | "Audit";
 
@@ -1088,6 +1089,12 @@ export function runFollowUpIntelligence(
   const ledgerResponse = handleNaturalTruthLedgerQuery(currentQuestion);
   if (ledgerResponse) {
     return adaptSpecialistEngineOutput(currentQuestion, ledgerResponse, "NOCTIS-LEDGER-001");
+  }
+
+  // 00-swarm. Noctis Autonomous "Work Swarm" Orchestrator (NOCTIS-SWARM-001)
+  const swarmResponse = handleNaturalWorkSwarmQuery(currentQuestion);
+  if (swarmResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, swarmResponse, "NOCTIS-SWARM-001");
   }
 
 
