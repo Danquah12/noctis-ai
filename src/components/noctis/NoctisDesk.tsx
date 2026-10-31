@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ClipboardEvent } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowUp, Brain, Calendar, Lock, ChevronDown, ChevronLeft, Code2, Copy, CornerDownLeft, FileText, GraduationCap, Image, Library, Mail, Menu, Mic, MoreHorizontal, PanelRight, PanelRightOpen, Pencil, Phone, PhoneOff, Plus, Printer, RotateCcw, Search, Square, SquarePen, Trash2, Video, Volume2, VolumeX, Wrench, X } from "lucide-react";
+import { ArrowUp, Bot, Brain, Calendar, Lock, ChevronDown, ChevronLeft, Code2, Copy, CornerDownLeft, FileText, GraduationCap, Image, Library, Mail, Menu, Mic, MoreHorizontal, PanelRight, PanelRightOpen, Pencil, Phone, PhoneOff, Plus, Printer, RotateCcw, Search, Square, SquarePen, Trash2, Video, Volume2, VolumeX, Wrench, X } from "lucide-react";
 import { askNoctis, drawVibe, hearVibe, sayVibe, trainVibe } from "@/lib/noctis-api";
 import { bringImagineFile, bringPortrait, readImagine, startImagine } from "@/lib/imagine-api";
 import { KnowledgeMap } from "@/components/learn/KnowledgeMap";
@@ -17,6 +17,8 @@ import { NoctisWorkspaceExplorer, getActiveProjectContext } from "@/components/n
 import { NoctisDeepResearchModal } from "@/components/noctis/NoctisDeepResearchModal";
 import { NoctisModelPicker } from "@/components/noctis/NoctisModelPicker";
 import { NoctisVaultModal } from "@/components/noctis/NoctisVaultModal";
+import { NoctisAgentBuilderModal } from "@/components/noctis/NoctisAgentBuilderModal";
+import { getActiveCustomAgent, getActiveCustomAgentContext, type NoctisCustomAgent } from "@/lib/noctis-custom-agents";
 import { NoctisMemoryModal, getNoctisPersonalizedContext } from "@/components/noctis/NoctisMemoryModal";
 import { studyOpenCall, studySend } from "@/lib/study-group-api";
 import { sendMeetInvite } from "@/lib/meet-mail";
@@ -3299,6 +3301,16 @@ export function NoctisDesk() {
   const [workspaceExplorerOpen, setWorkspaceExplorerOpen] = useState(false);
   const [deepResearchModalOpen, setDeepResearchModalOpen] = useState(false);
   const [vaultModalOpen, setVaultModalOpen] = useState(false);
+  const [agentBuilderModalOpen, setAgentBuilderModalOpen] = useState(false);
+  const [activeCustomAgent, setActiveCustomAgent] = useState<NoctisCustomAgent | null>(null);
+
+  useEffect(() => {
+    try {
+      setActiveCustomAgent(getActiveCustomAgent());
+    } catch {
+      /* ignore client hydration */
+    }
+  }, []);
 
   function openInCanvas(title: string, text: string) {
     const clean = (text.split(/\n\s*Claim standing:/i)[0] || text).trim();
@@ -3677,7 +3689,7 @@ export function NoctisDesk() {
               return [formatContext(readNoctisContext(
                 threads.filter((row) => row.title !== "New chat").map((row) => row.title),
                 place,
-              )), savedRules(person), getNoctisPersonalizedContext(), getActiveProjectContext()].filter(Boolean).join("\n\n");
+              )), savedRules(person), getNoctisPersonalizedContext(), getActiveProjectContext(), getActiveCustomAgentContext()].filter(Boolean).join("\n\n");
             } catch {
               return savedRules(person);
             }
@@ -4811,6 +4823,16 @@ export function NoctisDesk() {
       action: () => {
         setAddOpen(false);
         setDeepResearchModalOpen(true);
+      },
+    },
+    {
+      id: "agent_builder",
+      title: "Agent builder",
+      subtitle: "Custom specialist GPTs",
+      icon: <Bot className="size-5 shrink-0 text-[#e4b86a]" />,
+      action: () => {
+        setAddOpen(false);
+        setAgentBuilderModalOpen(true);
       },
     },
     {
@@ -6333,6 +6355,22 @@ export function NoctisDesk() {
             </button>
             <button
               type="button"
+              onClick={() => setAgentBuilderModalOpen(true)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200 transition",
+                activeCustomAgent
+                  ? "bg-[#e4b86a]/15 text-[#e4b86a] border border-[#e4b86a]/30 font-semibold"
+                  : agentBuilderModalOpen
+                  ? "bg-[#3a3a3a] text-[#e4b86a]"
+                  : ""
+              )}
+              title="Specialist Agent Builder (Noctis GPTs)"
+            >
+              <Bot className="size-3.5" />
+              {activeCustomAgent ? `${activeCustomAgent.avatarEmoji} ${activeCustomAgent.name}` : "Agents"}
+            </button>
+            <button
+              type="button"
               onClick={() => setVaultModalOpen(true)}
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200",
@@ -6716,6 +6754,14 @@ export function NoctisDesk() {
       <NoctisVaultModal
         open={vaultModalOpen}
         onClose={() => setVaultModalOpen(false)}
+      />
+      <NoctisAgentBuilderModal
+        open={agentBuilderModalOpen}
+        onClose={() => {
+          setAgentBuilderModalOpen(false);
+          setActiveCustomAgent(getActiveCustomAgent());
+        }}
+        onSelectAgent={(agent) => setActiveCustomAgent(agent)}
       />
     </div>
   );
