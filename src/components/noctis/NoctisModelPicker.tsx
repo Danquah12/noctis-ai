@@ -59,9 +59,10 @@ export const NOCTIS_MODELS: ModelOption[] = [
 interface NoctisModelPickerProps {
   currentModelId?: string;
   onModelSelect?: (modelId: string) => void;
+  onOpenBrainModal?: () => void;
 }
 
-export function NoctisModelPicker({ currentModelId, onModelSelect }: NoctisModelPickerProps) {
+export function NoctisModelPicker({ currentModelId, onModelSelect, onOpenBrainModal }: NoctisModelPickerProps) {
   const [activeModel, setActiveModel] = useState("noctis-ultra");
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
@@ -141,6 +142,24 @@ export function NoctisModelPicker({ currentModelId, onModelSelect }: NoctisModel
                   </button>
                 );
               })}
+            </div>
+            <div className="mt-1.5 border-t border-white/10 pt-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setDropdownOpen(false);
+                  if (onOpenBrainModal) onOpenBrainModal();
+                }}
+                className="flex w-full items-center justify-between gap-2 rounded-xl p-2 text-xs font-semibold text-amber-300 hover:bg-amber-400/10 transition"
+              >
+                <div className="flex items-center gap-2">
+                  <Brain className="size-3.5 text-amber-400" />
+                  <span>Configure Brain & API Keys</span>
+                </div>
+                <span className="rounded-md bg-amber-400/20 px-1.5 py-0.5 text-[9px] font-bold text-amber-300">
+                  BYOK
+                </span>
+              </button>
             </div>
           </div>
         </>

@@ -902,7 +902,7 @@ async function translateCareerAnswer(english: string, language: string): Promise
 export async function vibeReply(
   turns: VibeTurn[],
   keyOverride = "",
-  style: { desk?: "chat" | "study"; think?: boolean; code?: boolean; skill?: string; depth?: "plain" | "deep"; level?: "beginner" | "intermediate" | "advanced" | "expert"; context?: string; language?: string } = {},
+  style: { desk?: "chat" | "study"; think?: boolean; code?: boolean; skill?: string; depth?: "plain" | "deep"; level?: "beginner" | "intermediate" | "advanced" | "expert"; context?: string; language?: string; brain?: { provider?: string; apiKey?: string; model?: string; endpoint?: string } } = {},
 ): Promise<{ text: string } | { error: string }> {
   const kept = retainSources(turns);
   const last = [...kept].reverse().find((turn) => turn.role === "user");
@@ -922,7 +922,7 @@ export async function vibeReply(
 async function composeVibeReply(
   turns: VibeTurn[],
   keyOverride = "",
-  style: { desk?: "chat" | "study"; think?: boolean; code?: boolean; skill?: string; depth?: "plain" | "deep"; level?: "beginner" | "intermediate" | "advanced" | "expert"; context?: string; language?: string } = {},
+  style: { desk?: "chat" | "study"; think?: boolean; code?: boolean; skill?: string; depth?: "plain" | "deep"; level?: "beginner" | "intermediate" | "advanced" | "expert"; context?: string; language?: string; brain?: { provider?: string; apiKey?: string; model?: string; endpoint?: string } } = {},
 ): Promise<{ text: string } | { error: string }> {
   const skill = noctisSkill(style.skill || "talk");
   const last = [...turns].reverse().find((turn) => turn.role === "user");
@@ -1233,6 +1233,7 @@ async function composeVibeReply(
   const result = await modelChat(flat, {
     temperature: seeing ? 0.2 : ground || fact || precise || hasHardRows ? 0 : 0.4,
     maxTokens: seeing ? 2048 : engineeringDesign(question) || hasHardRows ? 8000 : 2048,
+    brain: style.brain,
   });
   if ("error" in result) return result;
   const sealed = await seal(result.text);

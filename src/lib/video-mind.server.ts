@@ -175,9 +175,16 @@ function geminiParts(content: ModelContent) {
   return parts.length ? parts : [{ text: "Look at the attached picture." }];
 }
 
+export interface BrainOptions {
+  provider?: string;
+  apiKey?: string;
+  model?: string;
+  endpoint?: string;
+}
+
 export async function modelChat(
   messages: { role: string; content: ModelContent }[],
-  opts: { maxTokens?: number; temperature?: number; json?: boolean } = {},
+  opts: { maxTokens?: number; temperature?: number; json?: boolean; brain?: BrainOptions } = {},
 ): Promise<{ text: string } | { error: string }> {
   const maxTokens = opts.maxTokens ?? 2048;
   const temperature = opts.temperature ?? 0.4;
@@ -189,6 +196,84 @@ export async function modelChat(
     .filter((message) => textOf(message.content).trim() || (Array.isArray(message.content) && message.content.some((part) => part.image_url?.url)));
   const system = packed.filter((message) => message.role === "system").map((message) => textOf(message.content)).join("\n\n").slice(0, 24000);
   const talk = packed.filter((message) => message.role !== "system");
+
+  // Priority 1: User-configured Client Brain (BYOK)
+  const clientBrain = opts.brain;
+  if (clientBrain?.apiKey?.trim()) {
+    const key = clientBrain.apiKey.trim();
+    const provider = clientBrain.provider || "gemini";
+    const userModel = clientBrain.model?.trim();
+
+    if (provider === "gemini") {
+      try {
+        const m = userModel || "gemini-2.0-flash";
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent?key=${encodeURIComponent(key)}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: AbortSignal.timeout(60000),
+          body: JSON.stringify({
+            systemInstruction: system ? { parts: [{ text: system }] } : undefined,
+            contents: (talk.length ? talk : packed).map((message) => ({
+              role: message.role === "assistant" ? "model" : "user",
+              parts: picture ? geminiParts(message.content) : [{ text: textOf(message.content).slice(0, 16000) }],
+            })),
+            generationConfig: { temperature, maxOutputTokens: maxTokens, ...(json && !picture ? { responseMimeType: "application/json" } : {}) },
+          }),
+        });
+        if (res.ok) {
+          const data = (await res.json());
+          const text = data.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("").trim();
+          if (text) return { text };
+        }
+      } catch {
+        /* fall through to other providers */
+      }
+    } else {
+      const endpoint =
+        provider === "groq"
+          ? "https://api.groq.com/openai/v1/chat/completions"
+          : provider === "xai"
+          ? "https://api.x.ai/v1/chat/completions"
+          : provider === "custom" && clientBrain.endpoint
+          ? (clientBrain.endpoint.endsWith("/chat/completions") ? clientBrain.endpoint : `${clientBrain.endpoint.replace(/\/+$/, "")}/chat/completions`)
+          : "https://api.openai.com/v1/chat/completions";
+
+      const model =
+        userModel ||
+        (provider === "groq"
+          ? "llama-3.3-70b-versatile"
+          : provider === "xai"
+          ? "grok-3-mini"
+          : provider === "custom"
+          ? "llama3.2"
+          : "gpt-4o-mini");
+
+      try {
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+          signal: AbortSignal.timeout(60000),
+          body: JSON.stringify({
+            model,
+            temperature,
+            max_tokens: maxTokens,
+            ...(json && !picture ? { response_format: { type: "json_object" } } : {}),
+            messages: packed.map((message) => ({
+              role: message.role === "system" ? "system" : message.role === "assistant" ? "assistant" : "user",
+              content: picture ? chatContent(message.content) : textOf(message.content).slice(0, 16000),
+            })),
+          }),
+        });
+        if (res.ok) {
+          const data = (await res.json());
+          const text = data.choices?.[0]?.message?.content?.trim();
+          if (text) return { text };
+        }
+      } catch {
+        /* fall through */
+      }
+    }
+  }
   const custom = customModelConfig();
   if (custom && packed.length) {
     try {

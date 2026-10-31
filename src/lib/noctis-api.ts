@@ -19,7 +19,7 @@ function cleanImages(value: unknown) {
 }
 
 export const askNoctis = createServerFn({ method: "POST" })
-  .validator((input: { turns?: VibeTurn[]; desk?: unknown; think?: unknown; code?: unknown; skill?: unknown; depth?: unknown; level?: unknown; context?: unknown; language?: unknown }) => {
+  .validator((input: { turns?: VibeTurn[]; desk?: unknown; think?: unknown; code?: unknown; skill?: unknown; depth?: unknown; level?: unknown; context?: unknown; language?: unknown; brain?: unknown }) => {
     const turns: VibeTurn[] = [];
     if (Array.isArray(input?.turns)) {
       for (const turn of input.turns) {
@@ -43,6 +43,12 @@ export const askNoctis = createServerFn({ method: "POST" })
       level,
       context: typeof input?.context === "string" ? input.context.slice(0, 1800) : "",
       language: typeof input?.language === "string" ? input.language.trim().slice(0, 40) : "English",
+      brain: input?.brain && typeof input.brain === "object" ? {
+        provider: typeof (input.brain as any).provider === "string" ? (input.brain as any).provider : "gemini",
+        apiKey: typeof (input.brain as any).apiKey === "string" ? (input.brain as any).apiKey.slice(0, 500) : "",
+        model: typeof (input.brain as any).model === "string" ? (input.brain as any).model.slice(0, 100) : "",
+        endpoint: typeof (input.brain as any).endpoint === "string" ? (input.brain as any).endpoint.slice(0, 500) : "",
+      } : undefined,
     };
   })
   .handler(async ({ data }) => {
@@ -80,7 +86,7 @@ export const askNoctis = createServerFn({ method: "POST" })
     } catch {
       baked = "";
     }
-    return vibeReply(data.turns, baked, { desk: data.desk, think: data.think, code: data.code, skill: data.skill, depth: data.depth, level: data.level, context: data.context, language: data.language });
+    return vibeReply(data.turns, baked, { desk: data.desk, think: data.think, code: data.code, skill: data.skill, depth: data.depth, level: data.level, context: data.context, language: data.language, brain: data.brain });
   });
 
 async function bakedKey() {
@@ -147,4 +153,33 @@ export const trainVibe = createServerFn({ method: "POST" })
     }
     const status = await trainingStatus();
     return { ok: true, status };
+  });
+
+export const testBrainConnection = createServerFn({ method: "POST" })
+  .validator((input: { provider?: unknown; apiKey?: unknown; model?: unknown; endpoint?: unknown }) => {
+    return {
+      provider: typeof input?.provider === "string" ? input.provider : "gemini",
+      apiKey: typeof input?.apiKey === "string" ? input.apiKey.trim() : "",
+      model: typeof input?.model === "string" ? input.model.trim() : "",
+      endpoint: typeof input?.endpoint === "string" ? input.endpoint.trim() : "",
+    };
+  })
+  .handler(async ({ data }) => {
+    if (!data.apiKey && data.provider !== "custom") {
+      return { ok: false, error: "Please enter an API key." };
+    }
+    const start = Date.now();
+    try {
+      const { modelChat } = await import("@/lib/video-mind.server");
+      const res = await modelChat(
+        [{ role: "user", content: "Reply with the single word: OK" }],
+        { maxTokens: 16, temperature: 0, brain: data }
+      );
+      if ("error" in res) return { ok: false, error: res.error };
+      const latencyMs = Date.now() - start;
+      return { ok: true, latencyMs, model: data.model || data.provider, reply: res.text };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Connection failed";
+      return { ok: false, error: msg };
+    }
   });

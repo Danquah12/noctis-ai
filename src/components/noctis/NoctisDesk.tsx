@@ -17,6 +17,8 @@ import { NoctisVoiceVisualizer } from "@/components/noctis/NoctisVoiceVisualizer
 import { NoctisWorkspaceExplorer, getActiveProjectContext } from "@/components/noctis/NoctisWorkspaceExplorer";
 import { NoctisDeepResearchModal } from "@/components/noctis/NoctisDeepResearchModal";
 import { NoctisModelPicker } from "@/components/noctis/NoctisModelPicker";
+import { NoctisBrainModal } from "@/components/noctis/NoctisBrainModal";
+import { getBrainConfig, getActiveKeyAndModel } from "@/lib/noctis-brain";
 import { NoctisVaultModal } from "@/components/noctis/NoctisVaultModal";
 import { NoctisAgentBuilderModal } from "@/components/noctis/NoctisAgentBuilderModal";
 import { NoctisDataConnectorsModal } from "@/components/noctis/NoctisDataConnectorsModal";
@@ -3348,6 +3350,7 @@ export function NoctisDesk() {
   const [lexModalOpen, setLexModalOpen] = useState(false);
   const [canaryModalOpen, setCanaryModalOpen] = useState(false);
   const [capabilityMatrixOpen, setCapabilityMatrixOpen] = useState(false);
+  const [brainModalOpen, setBrainModalOpen] = useState(false);
   const [suitesExpanded, setSuitesExpanded] = useState(true);
   const [studioMenuOpen, setStudioMenuOpen] = useState(false);
   const [mediaMenuOpen, setMediaMenuOpen] = useState(false);
@@ -3770,6 +3773,7 @@ export function NoctisDesk() {
               )
             : depthLock,
           language: spoken,
+          brain: getActiveKeyAndModel(getBrainConfig()),
           context: (() => {
             try {
               return [formatContext(readNoctisContext(
@@ -6637,7 +6641,7 @@ export function NoctisDesk() {
             <Menu className="size-5" />
           </button>
           <div className="flex items-center gap-2 max-w-[calc(100%-7.5rem)] overflow-x-auto no-scrollbar">
-            <NoctisModelPicker />
+            <NoctisModelPicker onOpenBrainModal={() => setBrainModalOpen(true)} />
             <div className="inline-flex shrink-0 items-center rounded-full bg-[#2a2a2a] p-1 text-sm ring-1 ring-white/10">
               <button
                 type="button"
@@ -6693,6 +6697,23 @@ export function NoctisDesk() {
                 <span>Capabilities</span>
                 <span className="rounded-full bg-amber-400/20 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">
                   16
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setBrainModalOpen(true)}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ml-0.5",
+                  brainModalOpen
+                    ? "bg-[#e4b86a] text-[#1a1408]"
+                    : "bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 hover:border-emerald-400 hover:text-white"
+                )}
+                title="Sovereign Brain & Provider Gateway: Google Gemini, Groq, OpenAI, Ollama"
+              >
+                <Brain className="size-3.5 text-emerald-400" />
+                <span>Brain</span>
+                <span className="rounded-full bg-emerald-400/20 px-1.5 py-0.5 text-[10px] font-bold text-emerald-300">
+                  BYOK
                 </span>
               </button>
             </div>
@@ -7271,6 +7292,10 @@ export function NoctisDesk() {
         open={capabilityMatrixOpen}
         onClose={() => setCapabilityMatrixOpen(false)}
         onSelectEngine={handleSelectEngine}
+      />
+      <NoctisBrainModal
+        isOpen={brainModalOpen}
+        onClose={() => setBrainModalOpen(false)}
       />
     </div>
   );
