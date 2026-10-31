@@ -693,6 +693,15 @@ export function handleNaturalInvestmentQuery(question: string): string | null {
     return buildInvestmentEngineMasterBlueprint(q);
   }
 
+  // 1a. Multi-year Quantitative SaaS Scaling & Comparison Model Probe (5-year table, R&D, Op Income, FCF, ARR plot)
+  const isMultiYearForecastOrTable =
+    /\b(5[-\s]?year|multi[-\s]?year|comparison\s+table|financial\s+table|forecast|scaling\s+from|plot\s+(?:the\s+)?trends?|trend\s+plot|saas\s+model|unit\s+economics)\b/i.test(q) &&
+    /\b(operating\s+income|ebit|r&d|free\s+cash\s+flow|fcf|arr|revenue|cloud\s+security|saas|gross\s+margin|rule\s+of\s+40)\b/i.test(q);
+
+  if (isMultiYearForecastOrTable) {
+    return buildSaaSScalingModelResponse(q);
+  }
+
   // 2. Canonical Sample Evaluation Question or Working-Capital / Earnings-Quality Divergence Probe
   const isWorkingCapitalDivergenceProbe =
     /\b(revenue\s+growth|revenue\s+grows|revenue\s+increases|revenue\s+rises)\b/i.test(q) &&
@@ -705,7 +714,7 @@ export function handleNaturalInvestmentQuery(question: string): string | null {
 
   // 3. General Wall Street or Main Street Financial & Investment Scenario Probe
   const isFinancialOrInvestmentProbe =
-    /\b(sec\s+edgar|10-k\b|10-q\b|8-k\b|xbrl\b|gaap\b|non-gaap|free\s+cash\s+flow|fcff\b|fcfe\b|wacc\b|discounted\s+cash\s+flow|\bdcf\b|ev\/ebitda|p\/e\s+multiple|earnings\s+quality|beneish|sloan\s+accrual|days\s+sales\s+outstanding|\bdso\b|days\s+inventory\s+outstanding|\bdio\b|cash\s+conversion\s+cycle|asc\s*606|channel\s+stuffing|value-at-risk|expected\s+shortfall|\bcvar\b|sharpe\s+ratio|look-ahead\s+bias|survivorship\s+bias|cfa\s+institute\s+standard|finra\b|emergency\s+reserve|debt\s+avalanche|debt\s+snowball|fdd\s+item\s*19|cap\s+rate|cash-on-cash\s+return|ponzi|investment\s+scam)\b/i.test(
+    /\b(sec\s+edgar|10-k\b|10-q\b|8-k\b|xbrl\b|gaap\b|non-gaap|free\s+cash\s+flow|fcff\b|fcfe\b|wacc\b|discounted\s+cash\s+flow|\bdcf\b|ev\/ebitda|p\/e\s+multiple|earnings\s+quality|beneish|sloan\s+accrual|days\s+sales\s+outstanding|\bdso\b|days\s+inventory\s+outstanding|\bdio\b|cash\s+conversion\s+cycle|asc\s*606|channel\s+stuffing|value-at-risk|expected\s+shortfall|\bcvar\b|sharpe\s+ratio|look-ahead\s+bias|survivorship\s+bias|cfa\s+institute\s+standard|finra\b|emergency\s+reserve|debt\s+avalanche|debt\s+snowball|fdd\s+item\s*19|cap\s+rate|cash-on-cash\s+return|ponzi|investment\s+scam|operating\s+income|r&d\s+expense|gross\s+margin|rule\s+of\s+40|scaling\s+from|saas)\b/i.test(
       q
     );
 

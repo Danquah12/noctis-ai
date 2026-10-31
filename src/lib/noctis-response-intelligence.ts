@@ -727,6 +727,13 @@ function adaptSpecialistEngineOutput(q: string, engineResponse: string, engineId
   }
 
   const requestedKeys = parseUniversalRequestedJsonKeys(q);
+
+  // If the engine response contains a rich quantitative markdown table or executable code interpreter block,
+  // preserve its structure and rendering fidelity directly unless explicit top-level JSON keys were requested.
+  if (!requestedKeys && (engineResponse.includes("|---|") || engineResponse.includes("```"))) {
+    return engineResponse;
+  }
+
   const promptFacts = extractUniversalPromptFacts(q);
   const questions = extractUniversalQuestions(q);
   const advInstructions = parseUniversalAdversarialInstructions(q);
