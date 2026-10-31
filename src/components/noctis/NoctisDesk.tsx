@@ -10,6 +10,7 @@ import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { cn } from "@/lib/utils";
 import { NoctisCall } from "@/components/noctis/NoctisCall";
 import { NoctisCanvas } from "@/components/noctis/NoctisCanvas";
+import { NoctisCodeInterpreter } from "@/components/noctis/NoctisCodeInterpreter";
 import { studyOpenCall, studySend } from "@/lib/study-group-api";
 import { sendMeetInvite } from "@/lib/meet-mail";
 import { CANVASES, useTheme } from "@/lib/theme";
@@ -2224,23 +2225,7 @@ function CodeBlock({ body, lang = "" }: { body: string; lang?: string }) {
     );
   }
 
-  return (
-    <pre className="relative my-3 overflow-x-auto rounded-2xl bg-black/80 p-3 pt-8 text-[13px] leading-relaxed text-zinc-100">
-      <button
-        type="button"
-        onClick={() => {
-          void navigator.clipboard.writeText(body).then(() => {
-            setDone(true);
-            window.setTimeout(() => setDone(false), 1200);
-          });
-        }}
-        className="absolute top-2 right-2 rounded-full px-2 py-1 text-xs text-zinc-400 hover:bg-white/10 hover:text-zinc-100"
-      >
-        {done ? "Copied" : "Copy"}
-      </button>
-      <code>{body}</code>
-    </pre>
-  );
+  return <NoctisCodeInterpreter code={body} lang={lang} />;
 }
 
 export interface NoctisDashboardPayload {
