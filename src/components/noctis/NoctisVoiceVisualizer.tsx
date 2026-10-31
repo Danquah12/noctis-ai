@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Mic, MicOff, Volume2, Sparkles, PhoneOff, Radio } from "lucide-react";
 import { VOICE_PERSONAS, type VoicePersona } from "@/lib/noctis-voice";
 

@@ -4360,8 +4360,6 @@ export function NoctisDesk() {
     setVoiceReply("");
     setVoiceAudioLevel(0);
   }
-    setVoiceReply("");
-  }
 
   const [pluginQuery, setPluginQuery] = useState("");
   const [activePlugin, setActivePlugin] = useState<
