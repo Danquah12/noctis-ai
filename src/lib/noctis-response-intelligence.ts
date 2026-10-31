@@ -19,6 +19,7 @@ import { handleNaturalWarRoomQuery } from "./noctis-war-room.ts";
 import { handleNaturalTruthLedgerQuery } from "./noctis-truth-ledger.ts";
 import { handleNaturalWorkSwarmQuery } from "./noctis-work-swarm.ts";
 import { handleNaturalCognitiveSandboxQuery } from "./noctis-cognitive-sandbox.ts";
+import { handleNaturalAirGapQuery } from "./noctis-air-gap.ts";
 
 export type AdaptiveResponseMode = "Direct" | "Teaching" | "Technical" | "Audit";
 
@@ -1102,6 +1103,12 @@ export function runFollowUpIntelligence(
   const cogResponse = handleNaturalCognitiveSandboxQuery(currentQuestion);
   if (cogResponse) {
     return adaptSpecialistEngineOutput(currentQuestion, cogResponse, "NOCTIS-COG-001");
+  }
+
+  // 00-airgap. Noctis Sovereign Local WebGPU / WASM "Air-Gap Mode" (NOCTIS-AIRGAP-001)
+  const airGapResponse = handleNaturalAirGapQuery(currentQuestion);
+  if (airGapResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, airGapResponse, "NOCTIS-AIRGAP-001");
   }
 
 
