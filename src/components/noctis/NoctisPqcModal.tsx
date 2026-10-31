@@ -239,7 +239,7 @@ export function NoctisPqcModal({
               </div>
 
               <p className="text-[11px] text-zinc-400 pt-1">
-                Mosca's Theorem: If $(\text{Retention } {dataRetentionYears}y + \text{Migration } {migrationDurationYears}y = {dataRetentionYears + migrationDurationYears}y) > (\text{Time to CRQC } {projectedY2qArrivalYear - 2026}y)$, your data is already being harvested for future decryption.
+                Mosca&apos;s Theorem: If (Retention {dataRetentionYears}y + Migration {migrationDurationYears}y = {dataRetentionYears + migrationDurationYears}y) &gt; (Time to CRQC {projectedY2qArrivalYear - 2026}y), your data is already being harvested for future decryption.
               </p>
             </div>
 
