@@ -104,7 +104,122 @@ export function parseTableOrJsonData(text: string): ParsedDataSeries | null {
     }
   }
 
+  // 3. Parse Python / JavaScript Variable Lists (e.g. years = ['Y1', 'Y2', ...], arr = [20.0, 35.0, ...])
+  try {
+    const listMatches = [...text.matchAll(/([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*\[([^\]]+)\]/g)];
+    if (listMatches.length >= 2) {
+      let labels: string[] = [];
+      const seriesList: Array<{ name: string; values: number[]; color: string }> = [];
+
+      for (const m of listMatches) {
+        const varName = m[1];
+        const rawItems = m[2]
+          .split(",")
+          .map((s) => s.trim().replace(/^['"]|['"]$/g, ""))
+          .filter(Boolean);
+        const areNumbers = rawItems.length > 0 && rawItems.every((item) => !isNaN(parseFloat(item)));
+
+        if (!areNumbers && labels.length === 0) {
+          labels = rawItems;
+        } else if (areNumbers) {
+          const nums = rawItems.map((n) => parseFloat(n) || 0);
+          const cleanName = varName.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+          seriesList.push({
+            name: cleanName,
+            values: nums,
+            color: PALETTE[seriesList.length % PALETTE.length] || "#e4b86a",
+          });
+        }
+      }
+
+      if (labels.length === 0 && seriesList.length > 0 && seriesList[0]?.values.length) {
+        labels = seriesList[0].values.map((_, i) => `Point ${i + 1}`);
+      }
+
+      if (seriesList.length > 0 && labels.length > 0) {
+        return { labels, series: seriesList };
+      }
+    }
+  } catch {
+    /* continue to fallback null */
+  }
+
   return null;
+}
+
+function transpilePythonToExecutableJs(code: string): string {
+  const lines = code.split("\n");
+  const transformed: string[] = [];
+  let inIndentedBlock = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i] ?? "";
+    const isIndented = /^\s{2,}|\t/.test(line);
+
+    if (inIndentedBlock && !isIndented && line.trim()) {
+      transformed.push("}");
+      inIndentedBlock = false;
+    }
+
+    // Convert f-strings: f'...' or f"..."
+    line = line.replace(/f([\"'])([\s\S]*?)\1/g, (_m, _quote, body) => {
+      const converted = body.replace(/\{([^}]+)\}/g, (_fm: string, inner: string) => {
+        if (inner.includes(":")) {
+          const colonIdx = inner.lastIndexOf(":");
+          const expr = inner.slice(0, colonIdx);
+          const fmt = inner.slice(colonIdx + 1);
+          const cleanExpr = expr.replace(/\[-1\]/g, ".at(-1)");
+          if (fmt.endsWith("f")) {
+            const decMatch = fmt.match(/\.(\d+)f/);
+            const dec = decMatch ? decMatch[1] : 1;
+            const padMatch = fmt.match(/^(\d+)/);
+            const pad = padMatch ? padMatch[1] : 0;
+            return `\${(Number(${cleanExpr}).toFixed(${dec})).padStart(${pad})}`;
+          }
+          const padMatch = fmt.match(/^(\d+)/);
+          if (padMatch) {
+            return `\${String(${cleanExpr}).padEnd(${padMatch[1]})}`;
+          }
+          return `\${Number(${cleanExpr}).toFixed(1)}`;
+        }
+        return `\${${inner.replace(/\[-1\]/g, ".at(-1)")}}`;
+      });
+      return `\`${converted}\``;
+    });
+
+    // String multiplication: '-' * 70
+    line = line.replace(/(['"][^'"]+['"])\s*\*\s*(\d+)/g, "$1.repeat($2)");
+
+    // for loop with zip: for y, a, ... in zip(...):
+    const zipLoopMatch = line.match(/^(\s*)for\s+([a-zA-Z0-9_,\s]+)\s+in\s+zip\(([^)]+)\):/);
+    if (zipLoopMatch) {
+      const indent = zipLoopMatch[1];
+      const vars = zipLoopMatch[2];
+      const args = zipLoopMatch[3];
+      line = `${indent}for (const [${vars}] of zip(${args})) {`;
+      inIndentedBlock = true;
+    }
+
+    // print(...) -> console.log(...)
+    line = line.replace(/\bprint\(/g, "console.log(");
+
+    // Variable assignment: arr = [...] or x = 12
+    const assignMatch = line.match(/^(\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(.+)$/);
+    if (assignMatch && !/^\s*(?:if|for|while|return|console|const|let)\b/.test(line)) {
+      const indent = assignMatch[1];
+      const varName = assignMatch[2];
+      const val = assignMatch[3];
+      line = `${indent}let ${varName} = ${val};`;
+    }
+
+    transformed.push(line);
+  }
+
+  if (inIndentedBlock) {
+    transformed.push("}");
+  }
+
+  return transformed.join("\n");
 }
 
 export function evaluateJavaScriptOrPython(code: string, lang = "javascript"): {
@@ -130,7 +245,36 @@ export function evaluateJavaScriptOrPython(code: string, lang = "javascript"): {
       const executionMs = Math.round((performance.now() - start) * 10) / 10;
       return { stdout, result: res, executionMs };
     } else {
-      // Python calculation parser / math evaluator
+      // Enhanced Python execution engine with zip, sum, f-strings, and list iteration
+      try {
+        const customConsole = {
+          log: (...args: unknown[]) => stdout.push(args.map((a) => (typeof a === "object" ? JSON.stringify(a) : String(a))).join(" ")),
+          warn: (...args: unknown[]) => stdout.push("[WARN] " + args.join(" ")),
+          error: (...args: unknown[]) => stdout.push("[ERROR] " + args.join(" ")),
+        };
+
+        const zip = (...arrays: unknown[][]) => {
+          const minLen = Math.min(...arrays.map((a) => a.length));
+          const res: unknown[][] = [];
+          for (let i = 0; i < minLen; i++) res.push(arrays.map((a) => a[i]));
+          return res;
+        };
+        const sum = (arr: number[]) => (Array.isArray(arr) ? arr.reduce((acc, v) => acc + (Number(v) || 0), 0) : 0);
+        const len = (arr: unknown[]) => (Array.isArray(arr) ? arr.length : 0);
+
+        const transpiledJs = transpilePythonToExecutableJs(code);
+        const runner = new Function("console", "zip", "sum", "len", `"use strict";\n${transpiledJs}`);
+        const res = runner(customConsole, zip, sum, len);
+        const executionMs = Math.round((performance.now() - start) * 10) / 10;
+
+        if (stdout.length > 0) {
+          return { stdout, result: res ?? null, executionMs };
+        }
+      } catch {
+        /* fallback to line-by-line math evaluation */
+      }
+
+      // Fallback line-by-line evaluator
       const pyLines = code.split("\n");
       const vars: Record<string, number> = {};
 
@@ -138,16 +282,13 @@ export function evaluateJavaScriptOrPython(code: string, lang = "javascript"): {
         const trimmed = line.trim();
         if (!trimmed || trimmed.startsWith("#")) continue;
 
-        // Print statement match: print(...)
         const printMatch = trimmed.match(/^print\((.*)\)$/);
         if (printMatch) {
           const expr = printMatch[1] ?? "";
-          // Replace known vars
           let evalExpr = expr;
           for (const [k, v] of Object.entries(vars)) {
             evalExpr = evalExpr.replace(new RegExp(`\\b${k}\\b`, "g"), String(v));
           }
-          // Evaluate clean math
           try {
             const clean = evalExpr.replace(/[^0-9+\-*/(). eE%]/g, "");
             const val = clean ? new Function(`return (${clean})`)() : evalExpr;
@@ -158,7 +299,6 @@ export function evaluateJavaScriptOrPython(code: string, lang = "javascript"): {
           continue;
         }
 
-        // Assignment match: x = 12 * 4
         const assignMatch = trimmed.match(/^([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(.+)$/);
         if (assignMatch) {
           const varName = assignMatch[1] ?? "";
