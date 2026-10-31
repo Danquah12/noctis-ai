@@ -6881,37 +6881,6 @@ export function NoctisDesk() {
             <span>Back</span>
           </button>
 
-          {/* Background Atmosphere Palettes — Shown on Desktop, Moved to Menu on Mobile */}
-          <div className="hidden md:flex shrink-0 items-center gap-1.5 sm:gap-2">
-            <span className="hidden sm:inline text-[11px] font-semibold tracking-wider uppercase text-zinc-400">Atmosphere</span>
-            <div className="flex items-center gap-1 sm:gap-1.5 rounded-full bg-white/5 p-1 border border-white/10 shadow-inner">
-              {CANVASES.map((row) => {
-                const isActive = theme === row.id;
-                return (
-                  <button
-                    key={row.id}
-                    type="button"
-                    aria-label={row.label}
-                    aria-pressed={isActive}
-                    title={`${row.label}: ${row.blurb}`}
-                    onClick={() => setTheme(row.id)}
-                    className={cn(
-                      "group relative grid size-5 sm:size-6 place-items-center rounded-full transition-all duration-200",
-                      isActive ? "scale-110" : "hover:scale-105 opacity-70 hover:opacity-100"
-                    )}
-                    style={{
-                      boxShadow: isActive
-                        ? `0 0 0 2px ${row.accent}, 0 0 10px ${row.accent}80`
-                        : "0 0 0 1px rgba(255,255,255,0.2)"
-                    }}
-                  >
-                    <span className="size-3.5 sm:size-4 rounded-full transition-transform" style={{ background: row.swatch }} />
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
           {/* Clear Previous Chat & Scaled Compact Logo for Mobile and Desktop */}
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
             <button
