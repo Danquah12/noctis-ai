@@ -36,6 +36,7 @@ import { NoctisPqcModal } from "@/components/noctis/NoctisPqcModal";
 import { NoctisZkProofModal } from "@/components/noctis/NoctisZkProofModal";
 import { NoctisLexModal } from "@/components/noctis/NoctisLexModal";
 import { NoctisCanaryModal } from "@/components/noctis/NoctisCanaryModal";
+import { NoctisCapabilityMatrixModal, type SovereignEngineKey } from "@/components/noctis/NoctisCapabilityMatrixModal";
 import { getActiveCustomAgent, getActiveCustomAgentContext, type NoctisCustomAgent } from "@/lib/noctis-custom-agents";
 import { NoctisMemoryModal, getNoctisPersonalizedContext } from "@/components/noctis/NoctisMemoryModal";
 import { studyOpenCall, studySend } from "@/lib/study-group-api";
@@ -3345,7 +3346,39 @@ export function NoctisDesk() {
   const [zkProofModalOpen, setZkProofModalOpen] = useState(false);
   const [lexModalOpen, setLexModalOpen] = useState(false);
   const [canaryModalOpen, setCanaryModalOpen] = useState(false);
+  const [capabilityMatrixOpen, setCapabilityMatrixOpen] = useState(false);
+  const [suitesExpanded, setSuitesExpanded] = useState(true);
+  const [studioMenuOpen, setStudioMenuOpen] = useState(false);
+  const [mediaMenuOpen, setMediaMenuOpen] = useState(false);
   const [activeCustomAgent, setActiveCustomAgent] = useState<NoctisCustomAgent | null>(null);
+
+  const handleSelectEngine = (key: SovereignEngineKey, samplePrompt?: string) => {
+    setCapabilityMatrixOpen(false);
+    switch (key) {
+      case "canary": setCanaryModalOpen(true); break;
+      case "war_room": setWarRoomModalOpen(true); break;
+      case "digital_twin": setDigitalTwinModalOpen(true); break;
+      case "holodeck": setHolodeckModalOpen(true); break;
+      case "auto_remediation": setAutoRemediationModalOpen(true); break;
+      case "pqc": setPqcModalOpen(true); break;
+      case "enclave": setEnclaveModalOpen(true); break;
+      case "zk_proof": setZkProofModalOpen(true); break;
+      case "steganography": setSteganographyModalOpen(true); break;
+      case "air_gap": setAirGapModalOpen(true); break;
+      case "circuit_breaker": setCircuitBreakerModalOpen(true); break;
+      case "truth_ledger": setTruthLedgerModalOpen(true); break;
+      case "work_swarm": setSwarmModalOpen(true); break;
+      case "council": setCouncilModalOpen(true); break;
+      case "cognitive_sandbox": setCognitiveModalOpen(true); break;
+      case "crisis_negotiation": setCrisisNegotiationModalOpen(true); break;
+      case "lex_synthesizer": setLexModalOpen(true); break;
+      case "live_feeds": setDataConnectorsModalOpen(true); break;
+      case "vault": setVaultModalOpen(true); break;
+    }
+    if (samplePrompt && !draft.trim()) {
+      setDraft(samplePrompt);
+    }
+  };
 
   useEffect(() => {
     try {
@@ -5942,88 +5975,169 @@ export function NoctisDesk() {
           </button>
         )}
       </div>
-      <div className="mt-2 flex w-full flex-wrap items-center gap-1">
-        <button type="button" onClick={() => setSkillsOpen((open) => !open)} className={cn("rounded-full px-3 py-1.5 text-[13px]", skillsOpen ? "bg-white/10 text-[#e4b86a]" : "text-zinc-400")}>
+      <div className="mt-2 flex w-full flex-wrap items-center gap-1.5">
+        <button
+          type="button"
+          onClick={() => setSkillsOpen((open) => !open)}
+          className={cn(
+            "rounded-full px-3 py-1.5 text-xs font-medium transition",
+            skillsOpen ? "bg-white/10 text-[#e4b86a]" : "text-zinc-400 hover:text-zinc-200"
+          )}
+        >
           Skills
         </button>
+
+        {/* Studio Dropdown */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => {
+              setStudioMenuOpen((v) => !v);
+              setMediaMenuOpen(false);
+            }}
+            className={cn(
+              "inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium transition",
+              studioMenuOpen || gadgetsOpen || trainOpen || templateCreatorOpen
+                ? "bg-[#e4b86a]/20 text-[#e4b86a]"
+                : "text-zinc-400 hover:text-zinc-200"
+            )}
+          >
+            <GraduationCap className="size-3.5" />
+            <span>Studio</span>
+            <ChevronDown className="size-3" />
+          </button>
+          {studioMenuOpen ? (
+            <div className="absolute bottom-full left-0 mb-2 z-50 min-w-48 rounded-2xl border border-white/10 bg-[#1f1f1f] p-1.5 shadow-2xl space-y-0.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setGadgetsOpen((o) => !o);
+                  setTrainOpen(false);
+                  setTemplateCreatorOpen(false);
+                  setStudioMenuOpen(false);
+                }}
+                className="flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white"
+              >
+                <Wrench className="size-3.5 text-[#e4b86a]" />
+                Gadgets & Calculations
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setTrainOpen((o) => !o);
+                  setGadgetsOpen(false);
+                  setTemplateCreatorOpen(false);
+                  setStudioMenuOpen(false);
+                }}
+                className="flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white"
+              >
+                <GraduationCap className="size-3.5 text-emerald-400" />
+                Train Studio (Memory)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setTemplateCreatorOpen((o) => !o);
+                  setGadgetsOpen(false);
+                  setTrainOpen(false);
+                  setStudioMenuOpen(false);
+                }}
+                className="flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white"
+              >
+                <FileText className="size-3.5 text-cyan-400" />
+                Skill Templates
+              </button>
+            </div>
+          ) : null}
+        </div>
+
+        {/* Media Dropdown */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => {
+              setMediaMenuOpen((v) => !v);
+              setStudioMenuOpen(false);
+            }}
+            className={cn(
+              "inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium transition",
+              mediaMenuOpen || skill === "draw" || imagine || song || speech
+                ? "bg-[#e4b86a]/20 text-[#e4b86a]"
+                : "text-zinc-400 hover:text-zinc-200"
+            )}
+          >
+            <Video className="size-3.5" />
+            <span>Media</span>
+            <ChevronDown className="size-3" />
+          </button>
+          {mediaMenuOpen ? (
+            <div className="absolute bottom-full left-0 mb-2 z-50 min-w-44 rounded-2xl border border-white/10 bg-[#1f1f1f] p-1.5 shadow-2xl space-y-0.5">
+              <button
+                type="button"
+                onClick={() => {
+                  const next = skill === "draw" ? "" : "draw";
+                  setSkill(next);
+                  if (next && !draft.trim()) setDraft(noctisSkill("draw").example);
+                  setMediaMenuOpen(false);
+                }}
+                className="flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white"
+              >
+                <Image className="size-3.5 text-amber-400" />
+                Draw Picture
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setImagine((on) => !on);
+                  if (!draft.trim()) setDraft("A short film with a clear picture and a few words.");
+                  setMediaMenuOpen(false);
+                }}
+                className="flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white"
+              >
+                <Video className="size-3.5 text-purple-400" />
+                Imagine Video
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSong((on) => !on);
+                  setSpeech(false);
+                  setImagine(true);
+                  if (!draft.trim()) setDraft("A warm song with a clear chorus.");
+                  setMediaMenuOpen(false);
+                }}
+                className="flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white"
+              >
+                <Volume2 className="size-3.5 text-rose-400" />
+                Generate Song
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSpeech((on) => !on);
+                  setSong(false);
+                  setImagine(true);
+                  if (!draft.trim()) setDraft("Paste the speech here.");
+                  setMediaMenuOpen(false);
+                }}
+                className="flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white"
+              >
+                <Mic className="size-3.5 text-blue-400" />
+                Synthesize Speech
+              </button>
+            </div>
+          ) : null}
+        </div>
+
+        {/* Quick Capabilities Launcher */}
         <button
           type="button"
-          onClick={() => {
-            setGadgetsOpen((open) => !open);
-            setTrainOpen(false);
-          }}
-          className={cn("inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[13px]", gadgetsOpen ? "bg-[#e4b86a]/20 text-[#e4b86a]" : "text-zinc-400 hover:text-zinc-200")}
+          onClick={() => setCapabilityMatrixOpen(true)}
+          className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs text-[#e4b86a] bg-[#e4b86a]/10 border border-[#e4b86a]/20 hover:bg-[#e4b86a]/20 transition"
+          title="Open Sovereign Capability Matrix"
         >
-          <Wrench className="size-3.5" />
-          Gadgets
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setTrainOpen((open) => !open);
-            setGadgetsOpen(false);
-          }}
-          className={cn("inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[13px]", trainOpen ? "bg-[#e4b86a]/20 text-[#e4b86a]" : "text-zinc-400 hover:text-zinc-200")}
-        >
-          <GraduationCap className="size-3.5" />
-          Train Studio
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setTemplateCreatorOpen((open) => !open);
-            setGadgetsOpen(false);
-            setTrainOpen(false);
-          }}
-          className={cn("inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[13px]", templateCreatorOpen ? "bg-[#e4b86a]/20 text-[#e4b86a]" : "text-zinc-400 hover:text-zinc-200")}
-        >
-          <FileText className="size-3.5" />
-          Templates
-        </button>
-        <button type="button" onClick={() => {
-          const next = skill === "draw" ? "" : "draw";
-          setSkill(next);
-          if (next && !draft.trim()) setDraft(noctisSkill("draw").example);
-        }} className={cn("inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[13px]", skill === "draw" ? "bg-white/10 text-[#e4b86a]" : "text-zinc-400")}>
-          <Image className="size-3.5" />
-          Draw
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setImagine((on) => !on);
-            if (!draft.trim()) setDraft("A short film with a clear picture and a few words.");
-          }}
-          className={cn("inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[13px]", imagine ? "bg-white/10 text-[#e4b86a]" : "text-zinc-400")}
-        >
-          <Video className="size-3.5" />
-          Imagine
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setSong((on) => !on);
-            setSpeech(false);
-            setImagine(true);
-            if (!draft.trim()) setDraft("A warm song with a clear chorus.");
-          }}
-          className={cn("inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[13px]", song ? "bg-white/10 text-[#e4b86a]" : "text-zinc-400")}
-        >
-          <Volume2 className="size-3.5" />
-          Song
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setSpeech((on) => !on);
-            setSong(false);
-            setImagine(true);
-            if (!draft.trim()) setDraft("Paste the speech here.");
-          }}
-          className={cn("inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[13px]", speech ? "bg-white/10 text-[#e4b86a]" : "text-zinc-400")}
-        >
-          <Mic className="size-3.5" />
-          Speech
+          <Cpu className="size-3" />
+          <span>⚡ Capabilities</span>
         </button>
         <select
           aria-label="Noctis speaks"
@@ -6175,8 +6289,96 @@ export function NoctisDesk() {
             ))}
           </div>
         ) : (
-          <div className="mt-3 flex flex-col border-t border-white/10 pt-3">
-            <div className="flex items-center justify-between px-3 pb-1">
+          <div className="mt-2 flex flex-col border-t border-white/10 pt-2 min-h-0 flex-1">
+            <div className="shrink-0 mb-2">
+              <div className="flex items-center justify-between px-3 py-1">
+                <button
+                  type="button"
+                  onClick={() => setSuitesExpanded((v) => !v)}
+                  className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-zinc-400 hover:text-zinc-200"
+                >
+                  <span>Sovereign Suites (16)</span>
+                  <ChevronDown className={cn("size-3 transition-transform", suitesExpanded ? "" : "-rotate-90")} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setMenu(false); setCapabilityMatrixOpen(true); }}
+                  className="text-[11px] font-medium text-[#e4b86a] hover:underline"
+                >
+                  Matrix →
+                </button>
+              </div>
+              {suitesExpanded ? (
+                <div className="space-y-0.5 max-h-40 overflow-y-auto no-scrollbar pr-1">
+                  <button
+                    type="button"
+                    onClick={() => { setMenu(false); setCanaryModalOpen(true); }}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
+                  >
+                    <Crosshair className="size-3.5 text-yellow-400 shrink-0" />
+                    <span className="truncate">Canary Deception</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setMenu(false); setWarRoomModalOpen(true); }}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
+                  >
+                    <Swords className="size-3.5 text-red-400 shrink-0" />
+                    <span className="truncate">War Room Sandbox</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setMenu(false); setDigitalTwinModalOpen(true); }}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
+                  >
+                    <Network className="size-3.5 text-cyan-400 shrink-0" />
+                    <span className="truncate">Digital Twin</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setMenu(false); setPqcModalOpen(true); }}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
+                  >
+                    <Key className="size-3.5 text-indigo-400 shrink-0" />
+                    <span className="truncate">PQC Shield (Kyber)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setMenu(false); setZkProofModalOpen(true); }}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
+                  >
+                    <EyeOff className="size-3.5 text-teal-400 shrink-0" />
+                    <span className="truncate">ZK Audit Proofs</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setMenu(false); setLexModalOpen(true); }}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
+                  >
+                    <Globe className="size-3.5 text-rose-400 shrink-0" />
+                    <span className="truncate">Lex Global Synthesizer</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setMenu(false); setAutoRemediationModalOpen(true); }}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
+                  >
+                    <Wrench className="size-3.5 text-purple-400 shrink-0" />
+                    <span className="truncate">Auto-Remediation</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setMenu(false); setCircuitBreakerModalOpen(true); }}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
+                  >
+                    <Brain className="size-3.5 text-rose-400 shrink-0" />
+                    <span className="truncate">Circuit Breaker</span>
+                  </button>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="flex items-center justify-between px-3 pb-1 border-t border-white/5 pt-2">
               <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">{shelf === "pictures" ? "Pictures" : "Recent conversations"}</p>
               {shelf === "chats" && listed.length ? (
                 <button type="button" onClick={clearHistory} className="text-xs text-zinc-500 hover:text-zinc-100">
@@ -6460,305 +6662,119 @@ export function NoctisDesk() {
           </button>
           <div className="flex items-center gap-2 max-w-[calc(100%-7.5rem)] overflow-x-auto no-scrollbar">
             <NoctisModelPicker />
-            <div className="inline-flex shrink-0 rounded-full bg-[#2a2a2a] p-1 text-sm ring-1 ring-white/10">
-            <button type="button" onClick={() => setDesk("chat")} className={cn("rounded-full px-3.5 py-1.5", desk === "chat" ? "bg-[#3a3a3a] text-white" : "text-zinc-400")}>
-              Chat
-            </button>
-            <button
-              type="button"
-              onClick={() => setDesk("study")}
-              className={cn("inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5", desk === "study" ? "bg-[#3a3a3a] text-[#e4b86a]" : "text-zinc-400")}
-            >
-              <GraduationCap className="size-3.5" />
-              Board
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                if (!canvasContent && !canvasOpen) {
-                  setCanvasTitle("New Artifact");
-                  setCanvasContent("# New Artifact\n\nStart typing or click 'Canvas Tools' above to generate content.");
-                }
-                setCanvasOpen((o) => !o);
-              }}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5",
-                canvasOpen ? "bg-[#3a3a3a] text-[#e4b86a]" : "text-zinc-400 hover:text-zinc-200"
-              )}
-            >
-              <PanelRight className="size-3.5" />
-              Canvas
-              {canvasContent ? <span className="size-1.5 rounded-full bg-[#e4b86a]" /> : null}
-            </button>
-            <button
-              type="button"
-              onClick={() => setMemoryModalOpen(true)}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-zinc-400 hover:text-zinc-200",
-                memoryModalOpen ? "bg-[#3a3a3a] text-[#e4b86a]" : ""
-              )}
-              title="Personal Memory & Custom Instructions"
-            >
-              <Brain className="size-3.5" />
-              Memory
-            </button>
-            <button
-              type="button"
-              onClick={() => setWorkspaceExplorerOpen(true)}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200",
-                workspaceExplorerOpen ? "bg-[#3a3a3a] text-[#e4b86a]" : ""
-              )}
-              title="Project Workspace & Files"
-            >
-              <Library className="size-3.5" />
-              Projects
-            </button>
-            <button
-              type="button"
-              onClick={() => setAgentBuilderModalOpen(true)}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200 transition",
-                activeCustomAgent
-                  ? "bg-[#e4b86a]/15 text-[#e4b86a] border border-[#e4b86a]/30 font-semibold"
-                  : agentBuilderModalOpen
-                  ? "bg-[#3a3a3a] text-[#e4b86a]"
-                  : ""
-              )}
-              title="Specialist Agent Builder (Noctis GPTs)"
-            >
-              <Bot className="size-3.5" />
-              {activeCustomAgent ? `${activeCustomAgent.avatarEmoji} ${activeCustomAgent.name}` : "Agents"}
-            </button>
-            <button
-              type="button"
-              onClick={() => setDataConnectorsModalOpen(true)}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200 transition",
-                dataConnectorsModalOpen ? "bg-[#3a3a3a] text-emerald-400" : ""
-              )}
-              title="Live Data Feeds & Regulatory Telemetry (SEC EDGAR, FRED Yields, CISA KEV)"
-            >
-              <Activity className="size-3.5 text-emerald-400" />
-              Live Feeds
-            </button>
-            <button
-              type="button"
-              onClick={() => setCouncilModalOpen(true)}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200 transition",
-                councilModalOpen ? "bg-[#3a3a3a] text-indigo-400" : ""
-              )}
-              title="Council of Engines (Multi-Agent Debate & Consensus Studio)"
-            >
-              <Users2 className="size-3.5 text-indigo-400" />
-              Council
-            </button>
-            <button
-              type="button"
-              onClick={() => setDigitalTwinModalOpen(true)}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200 transition",
-                digitalTwinModalOpen ? "bg-[#3a3a3a] text-cyan-400" : ""
-              )}
-              title="Digital Twin & Attack-Graph Simulator (System Dynamic Shock Modeling)"
-            >
-              <Network className="size-3.5 text-cyan-400" />
-              Digital Twin
-            </button>
-            <button
-              type="button"
-              onClick={() => setWarRoomModalOpen(true)}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200 transition",
-                warRoomModalOpen ? "bg-[#3a3a3a] text-red-400" : ""
-              )}
-              title="Autonomous Red vs Blue War Room Sandbox (Sigma & KQL Engineering)"
-            >
-              <Swords className="size-3.5 text-red-400" />
-              War Room
-            </button>
-            <button
-              type="button"
-              onClick={() => setTruthLedgerModalOpen(true)}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200 transition",
-                truthLedgerModalOpen ? "bg-[#3a3a3a] text-emerald-400" : ""
-              )}
-              title="Cryptographic Epistemic Truth Ledger (Merkle Tree Proof-of-Fact)"
-            >
-              <Fingerprint className="size-3.5 text-emerald-400" />
-              Truth Ledger
-            </button>
-            <button
-              type="button"
-              onClick={() => setSwarmModalOpen(true)}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200 transition",
-                swarmModalOpen ? "bg-[#3a3a3a] text-violet-400" : ""
-              )}
-              title="Autonomous Work Swarm Orchestrator (Concurrent 4-Stage Agent Mission)"
-            >
-              <Boxes className="size-3.5 text-violet-400" />
-              Work Swarm
-            </button>
-            <button
-              type="button"
-              onClick={() => setCognitiveModalOpen(true)}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200 transition",
-                cognitiveModalOpen ? "bg-[#3a3a3a] text-amber-400" : ""
-              )}
-              title="Sovereign Cognitive Sandbox (Zero-Drift Benchmarking & DPO Calibration)"
-            >
-              <Brain className="size-3.5 text-amber-400" />
-              Cognitive
-            </button>
-            <button
-              type="button"
-              onClick={() => setAirGapModalOpen(true)}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200 transition",
-                airGapModalOpen ? "bg-[#3a3a3a] text-emerald-400" : ""
-              )}
-              title="Sovereign Air-Gap Sentinel (Zero-Packet Egress WebGPU / WASM Local Compute)"
-            >
-              <WifiOff className="size-3.5 text-emerald-400" />
-              Air-Gap
-            </button>
-            <button
-              type="button"
-              onClick={() => setHolodeckModalOpen(true)}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200 transition",
-                holodeckModalOpen ? "bg-[#3a3a3a] text-sky-400" : ""
-              )}
-              title="Interactive 3D Spatial Systems Holodeck (WebGL Force-Directed Topology)"
-            >
-              <Boxes className="size-3.5 text-sky-400" />
-              Holodeck 3D
-            </button>
-            <button
-              type="button"
-              onClick={() => setRemediationModalOpen(true)}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200 transition",
-                remediationModalOpen ? "bg-[#3a3a3a] text-emerald-400" : ""
-              )}
-              title="Autonomous Pre-Signed Auto-Remediation & 1-Click Rollback Dispatcher"
-            >
-              <Wrench className="size-3.5 text-emerald-400" />
-              Auto-Remediate
-            </button>
-            <button
-              type="button"
-              onClick={() => setCircuitBreakerModalOpen(true)}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200 transition",
-                circuitBreakerModalOpen ? "bg-[#3a3a3a] text-red-400" : ""
-              )}
-              title="Autonomous Hallucination Circuit Breaker & Epistemic Kill-Switch"
-            >
-              <Zap className="size-3.5 text-red-400" />
-              Circuit Breaker
-            </button>
-            <button
-              type="button"
-              onClick={() => setCrisisNegotiationModalOpen(true)}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200 transition",
-                crisisNegotiationModalOpen ? "bg-[#3a3a3a] text-amber-400" : ""
-              )}
-              title="Dynamic Game-Theoretic Ransomware & Crisis Negotiation Engine"
-            >
-              <Scale className="size-3.5 text-amber-400" />
-              Game Theory
-            </button>
-            <button
-              type="button"
-              onClick={() => setSteganographyModalOpen(true)}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200 transition",
-                steganographyModalOpen ? "bg-[#3a3a3a] text-purple-400" : ""
-              )}
-              title="Sovereign Steganographic Forensic Watermark & Provenance Vault"
-            >
-              <FileLock className="size-3.5 text-purple-400" />
-              Watermark Vault
-            </button>
-            <button
-              type="button"
-              onClick={() => setEnclaveModalOpen(true)}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200 transition",
-                enclaveModalOpen ? "bg-[#3a3a3a] text-cyan-400" : ""
-              )}
-              title="Confidential Compute Hardware Enclave Attestation Simulator"
-            >
-              <Cpu className="size-3.5 text-cyan-400" />
-              Enclave Quote
-            </button>
-            <button
-              type="button"
-              onClick={() => setPqcModalOpen(true)}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200 transition",
-                pqcModalOpen ? "bg-[#3a3a3a] text-indigo-400" : ""
-              )}
-              title="Post-Quantum Cryptographic Migration Sentinel & Kyber/Dilithium Key Shield"
-            >
-              <Key className="size-3.5 text-indigo-400" />
-              PQC Shield
-            </button>
-            <button
-              type="button"
-              onClick={() => setZkProofModalOpen(true)}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200 transition",
-                zkProofModalOpen ? "bg-[#3a3a3a] text-teal-400" : ""
-              )}
-              title="Autonomous Zero-Knowledge Audit Proof (ZKP) Generator"
-            >
-              <EyeOff className="size-3.5 text-teal-400" />
-              ZK Proofs
-            </button>
-            <button
-              type="button"
-              onClick={() => setLexModalOpen(true)}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200 transition",
-                lexModalOpen ? "bg-[#3a3a3a] text-rose-400" : ""
-              )}
-              title="Cross-Border Autonomous Conflict-of-Laws Regulatory Synthesizer"
-            >
-              <Globe className="size-3.5 text-rose-400" />
-              Lex Global
-            </button>
-            <button
-              type="button"
-              onClick={() => setCanaryModalOpen(true)}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200 transition",
-                canaryModalOpen ? "bg-[#3a3a3a] text-yellow-400" : ""
-              )}
-              title="Autonomous Cyber Deception & Synthetic Honeytoken Canary Engine"
-            >
-              <Crosshair className="size-3.5 text-yellow-400" />
-              Canary Radar
-            </button>
-            <button
-              type="button"
-              onClick={() => setVaultModalOpen(true)}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200",
-                vaultModalOpen ? "bg-[#3a3a3a] text-purple-400" : ""
-              )}
-              title="Encrypted Vault Backup"
-            >
-              <Lock className="size-3.5" />
-              Vault
-            </button>
-          </div>
+            <div className="inline-flex shrink-0 items-center rounded-full bg-[#2a2a2a] p-1 text-sm ring-1 ring-white/10">
+              <button
+                type="button"
+                onClick={() => setDesk("chat")}
+                className={cn(
+                  "rounded-full px-3.5 py-1.5 transition",
+                  desk === "chat" ? "bg-[#3a3a3a] text-white" : "text-zinc-400 hover:text-zinc-200"
+                )}
+              >
+                Chat
+              </button>
+              <button
+                type="button"
+                onClick={() => setDesk("study")}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 transition",
+                  desk === "study" ? "bg-[#3a3a3a] text-[#e4b86a]" : "text-zinc-400 hover:text-zinc-200"
+                )}
+              >
+                <GraduationCap className="size-3.5" />
+                Board
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!canvasContent && !canvasOpen) {
+                    setCanvasTitle("New Artifact");
+                    setCanvasContent("# New Artifact\n\nStart typing or click 'Canvas Tools' above to generate content.");
+                  }
+                  setCanvasOpen((o) => !o);
+                }}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 transition",
+                  canvasOpen ? "bg-[#3a3a3a] text-[#e4b86a]" : "text-zinc-400 hover:text-zinc-200"
+                )}
+              >
+                <PanelRight className="size-3.5" />
+                Canvas
+                {canvasContent ? <span className="size-1.5 rounded-full bg-[#e4b86a]" /> : null}
+              </button>
+              <button
+                type="button"
+                onClick={() => setCapabilityMatrixOpen(true)}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ml-0.5",
+                  capabilityMatrixOpen
+                    ? "bg-[#e4b86a] text-[#1a1408]"
+                    : "bg-gradient-to-r from-amber-500/15 via-rose-500/15 to-cyan-500/15 border border-amber-500/30 text-amber-300 hover:border-amber-400 hover:text-white"
+                )}
+                title="Sovereign Capability Matrix: 16 Autonomous Engines"
+              >
+                <Cpu className="size-3.5 text-amber-400" />
+                <span>Capabilities</span>
+                <span className="rounded-full bg-amber-400/20 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">
+                  16
+                </span>
+              </button>
+            </div>
+
+            <div className="hidden sm:inline-flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setMemoryModalOpen(true)}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition",
+                  memoryModalOpen ? "bg-[#3a3a3a] text-[#e4b86a]" : ""
+                )}
+                title="Personal Memory & Custom Instructions"
+              >
+                <Brain className="size-3.5" />
+                Memory
+              </button>
+              <button
+                type="button"
+                onClick={() => setWorkspaceExplorerOpen(true)}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition",
+                  workspaceExplorerOpen ? "bg-[#3a3a3a] text-[#e4b86a]" : ""
+                )}
+                title="Project Workspace & Files"
+              >
+                <Library className="size-3.5" />
+                Projects
+              </button>
+              <button
+                type="button"
+                onClick={() => setAgentBuilderModalOpen(true)}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition",
+                  activeCustomAgent
+                    ? "bg-[#e4b86a]/15 text-[#e4b86a] border border-[#e4b86a]/30 font-semibold"
+                    : agentBuilderModalOpen
+                    ? "bg-[#3a3a3a] text-[#e4b86a]"
+                    : ""
+                )}
+                title="Specialist Agent Builder (Noctis GPTs)"
+              >
+                <Bot className="size-3.5" />
+                {activeCustomAgent ? `${activeCustomAgent.avatarEmoji} ${activeCustomAgent.name}` : "Agents"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setVaultModalOpen(true)}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition",
+                  vaultModalOpen ? "bg-[#3a3a3a] text-purple-400" : ""
+                )}
+                title="Encrypted Vault Backup"
+              >
+                <Lock className="size-3.5" />
+                Vault
+              </button>
+            </div>
           </div>
           <button
             type="button"
@@ -6905,11 +6921,16 @@ export function NoctisDesk() {
                       </div>
                     </div>
                   ) : null}
-                  {code ? <p className="shrink-0 text-center text-sm text-[#e4b86a]">Code — a working snippet first.</p> : null}
                 </>
               )}
             </div>
             <div className="mx-auto w-full max-w-3xl shrink-0 px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+              {code ? (
+                <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-[#e4b86a]/15 border border-[#e4b86a]/30 px-3 py-1 text-xs font-medium text-[#e4b86a]">
+                  <Code2 className="size-3.5" />
+                  <span>Code mode active: a working snippet first</span>
+                </div>
+              ) : null}
               {routes.length ? (
                 <div className="mb-2 flex flex-wrap gap-1.5">
                   {routes.map((row) => (
@@ -7248,6 +7269,11 @@ export function NoctisDesk() {
         onClose={() => setCanaryModalOpen(false)}
         onOpenInCanvas={(md, title) => openInCanvas(title || "Canary Tripwire Alert", md)}
         onInsertToChat={(text) => setDraft(text)}
+      />
+      <NoctisCapabilityMatrixModal
+        open={capabilityMatrixOpen}
+        onClose={() => setCapabilityMatrixOpen(false)}
+        onSelectEngine={handleSelectEngine}
       />
     </div>
   );
