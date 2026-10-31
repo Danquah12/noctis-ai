@@ -859,8 +859,8 @@ export function handleNaturalInvestmentQuery(question: string): string | null {
 
   // 1c. FRED Macro Benchmark & DCF Valuation Sensitivity Probe (10Y/2Y Treasury, SOFR, Bear/Base/Bull WACC)
   const isDcfMacroSensitivityProbe =
-    /\b(fred\s+benchmark|10y\s+treasury|2y\s+treasury|treasury\s+yield|yield\s+curve|sofr|discounted\s+cash\s+flow|\bdcf\b|wacc|bear\s*\/\s*base\s*\/\s*bull)\b/i.test(q) &&
-    /\b(valuation|sensitivity|cash\s+flow|wacc|rate|hurdle|terminal\s+growth)\b/i.test(q);
+    /\b(fred\s+benchmark|10y\s+treasury|2y\s+treasury|treasury\s+yield\w*|yield\s+curve|sofr|discounted\s+cash\s+flow|\bdcf\b|wacc|bear\s*\/\s*base\s*\/\s*bull|discount\s+rate\w*|hurdle\s+rate\w*|cost\s+of\s+equity|capm)\b/i.test(q) &&
+    /\b(valuation|sensitivity|cash\s+flow|wacc|rate\w*|hurdle|terminal\s+growth|tech\s+invest\w*|discount\s+rate\w*)\b/i.test(q);
 
   if (isDcfMacroSensitivityProbe) {
     return buildDcfMacroSensitivityResponse(q);

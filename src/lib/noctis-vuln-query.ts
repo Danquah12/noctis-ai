@@ -22,6 +22,7 @@ const CONCEPT_B =
 export function isVulnIntelligenceQuery(question: string): boolean {
   const q = (question || "").trim();
   if (!q) return false;
+  if (/\b(CVE-\d{4}-\d{4,7})\b/i.test(q)) return true;
   if (EXPLICIT.test(q)) return true;
   if (/"finding_id"\s*:/.test(q) && /"source_type"\s*:/.test(q)) return true;
   return CONCEPT_A.test(q) && CONCEPT_B.test(q);
@@ -225,7 +226,7 @@ export function handleNaturalVulnQuery(question: string): string | null {
 
   // 1b. Specific CVE Exploitability Assessment Probe
   const cveMatch = question.match(/\b(CVE-\d{4}-\d{4,7})\b/i);
-  if (cveMatch && /\b(exploitab\w*|forensic|mitre|att&ck|poc|mitigation|assess\w*)\b/i.test(question)) {
+  if (cveMatch) {
     return buildCveExploitabilityResponse(cveMatch[1], question);
   }
 

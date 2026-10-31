@@ -912,10 +912,19 @@ function parseCyberRequestedJsonContract(question: string): { keys: string[] } |
 export function handleNaturalCyberSecurityQuery(question: string): string | null {
   const careerAnswer = handleNaturalCareerQuery(question);
   if (careerAnswer) return careerAnswer;
+
   const apxAnswer = handleAttackPathAndExploitabilityQuery(question);
   if (apxAnswer) return apxAnswer;
-  const vulnAnswer = handleNaturalVulnQuery(question);
-  if (vulnAnswer) return vulnAnswer;
+
+  const isSocIncident =
+    /\b(?:NOCTIS-CYBER-LIVE|adversarial\s+instructions|containment_and_eradication_plan|vssadmin|lsass|krbtgt)\b/i.test(
+      question
+    );
+  if (!isSocIncident) {
+    const vulnAnswer = handleNaturalVulnQuery(question);
+    if (vulnAnswer) return vulnAnswer;
+  }
+
   if (!isCyberSecurityOrSocQuery(question)) return null;
 
   const t = extractCyberIncidentTelemetry(question);
