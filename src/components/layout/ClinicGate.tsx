@@ -153,6 +153,11 @@ export function SignedOutScreen({ quiet = false }: { quiet?: boolean }) {
     askedShare();
     const host = window.location.hostname;
     setSocial(host === "grok-sandbox.com" || host.endsWith(".grok-sandbox.com"));
+    // Guarantee that all credentials start strictly blank
+    setEmail("");
+    setPassword("");
+    setName("");
+    setAgain("");
   }, []);
 
   async function onEmail(e: FormEvent<HTMLFormElement>) {
@@ -160,8 +165,8 @@ export function SignedOutScreen({ quiet = false }: { quiet?: boolean }) {
     if (busy) return;
     const data = new FormData(e.currentTarget);
     const typedName = String(data.get("name") || name).trim();
-    const typedEmail = String(data.get("email") || email).trim().toLowerCase();
-    const typedPassword = String(data.get("password") || password);
+    const typedEmail = String(data.get("noctis_auth_email") || data.get("email") || email).trim().toLowerCase();
+    const typedPassword = String(data.get("noctis_auth_password") || data.get("password") || password);
     const typedAgain = String(data.get("again") || again);
     setName(typedName);
     setEmail(typedEmail);
@@ -308,7 +313,7 @@ export function SignedOutScreen({ quiet = false }: { quiet?: boolean }) {
             </p>
           ) : null}
           <div className="mt-6 space-y-3">
-              <form onSubmit={onEmail} noValidate className="space-y-2">
+              <form onSubmit={onEmail} noValidate autoComplete="off" className="space-y-2">
                 {mode === "up" ? (
                   <input
                     name="name"
@@ -316,29 +321,42 @@ export function SignedOutScreen({ quiet = false }: { quiet?: boolean }) {
                     placeholder="First and last name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    autoComplete="name"
+                    autoComplete="off"
+                    data-lpignore="true"
+                    data-1p-ignore="true"
                   />
                 ) : null}
                 {mode !== "reset" ? (
                   <input
-                    name="email"
+                    name="noctis_auth_email"
+                    id="noctis_auth_email"
                     className="min-h-11 w-full rounded-xl border border-[#e4ddd2] bg-white px-3 text-sm"
                     placeholder="Email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    autoComplete="email"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="none"
+                    spellCheck={false}
+                    data-lpignore="true"
+                    data-1p-ignore="true"
+                    data-form-type="other"
                   />
                 ) : null}
                 {mode !== "forgot" ? (
                   <input
-                    name="password"
+                    name="noctis_auth_password"
+                    id="noctis_auth_password"
                     className="min-h-11 w-full rounded-xl border border-[#e4ddd2] bg-white px-3 text-sm"
                     placeholder={mode === "reset" ? "New password" : "Password"}
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    autoComplete={mode === "in" ? "current-password" : "new-password"}
+                    autoComplete="new-password"
+                    data-lpignore="true"
+                    data-1p-ignore="true"
+                    data-form-type="other"
                   />
                 ) : null}
                 {mode === "reset" ? (
