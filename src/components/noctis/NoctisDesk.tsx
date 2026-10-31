@@ -6777,20 +6777,20 @@ export function NoctisDesk() {
             className="absolute right-3 hidden items-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-zinc-400 hover:bg-white/5 hover:text-zinc-100 md:inline-flex"
           />
         </header>
-        <div className="flex h-11 shrink-0 items-center justify-between border-b border-white/10 px-3 sm:px-4 bg-black/20 backdrop-blur-sm gap-2">
+        <div className="flex h-11 shrink-0 items-center justify-between border-b border-white/10 px-2.5 sm:px-4 bg-black/20 backdrop-blur-sm gap-2">
           <button
             type="button"
             onClick={leaveNoctis}
-            className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#e4b86a] hover:text-[#f7d695] transition"
+            className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-[#e4b86a] hover:text-[#f7d695] transition"
           >
-            <ChevronLeft className="size-4" />
+            <ChevronLeft className="size-4 shrink-0" />
             <span>Back</span>
           </button>
 
           {/* Background Atmosphere Palettes — Prominently Positioned & Unobstructed */}
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
             <span className="hidden sm:inline text-[11px] font-semibold tracking-wider uppercase text-zinc-400">Atmosphere</span>
-            <div className="flex items-center gap-1.5 rounded-full bg-white/5 p-1 border border-white/10 shadow-inner">
+            <div className="flex items-center gap-1 sm:gap-1.5 rounded-full bg-white/5 p-1 border border-white/10 shadow-inner">
               {CANVASES.map((row) => {
                 const isActive = theme === row.id;
                 return (
@@ -6802,7 +6802,7 @@ export function NoctisDesk() {
                     title={`${row.label}: ${row.blurb}`}
                     onClick={() => setTheme(row.id)}
                     className={cn(
-                      "group relative grid size-6 place-items-center rounded-full transition-all duration-200",
+                      "group relative grid size-5 sm:size-6 place-items-center rounded-full transition-all duration-200",
                       isActive ? "scale-110" : "hover:scale-105 opacity-70 hover:opacity-100"
                     )}
                     style={{
@@ -6811,14 +6811,31 @@ export function NoctisDesk() {
                         : "0 0 0 1px rgba(255,255,255,0.2)"
                     }}
                   >
-                    <span className="size-4 rounded-full transition-transform" style={{ background: row.swatch }} />
+                    <span className="size-3.5 sm:size-4 rounded-full transition-transform" style={{ background: row.swatch }} />
                   </button>
                 );
               })}
             </div>
           </div>
 
-          <img src="/brand/dstrike-logo.png" alt="DSTRIKE" className="h-6 w-auto max-w-[76px] sm:max-w-[88px] shrink-0 rounded-md bg-white p-0.5 object-contain shadow-sm md:hidden" />
+          {/* Clear Previous Chat & Scaled Compact Logo for Mobile and Desktop */}
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+            <button
+              type="button"
+              onClick={clearHistory}
+              title="Clear previous chat history and start fresh"
+              className="inline-flex shrink-0 items-center gap-1 sm:gap-1.5 rounded-full bg-white/10 hover:bg-rose-500/20 px-2 sm:px-2.5 py-1 text-xs font-medium text-zinc-300 hover:text-rose-200 transition border border-white/10 hover:border-rose-500/30 touch-manipulation shadow-xs"
+            >
+              <Trash2 className="size-3 sm:size-3.5 text-zinc-400" />
+              <span className="hidden sm:inline">Clear previous chat</span>
+              <span className="sm:hidden">Clear</span>
+            </button>
+            <img
+              src="/brand/dstrike-logo.png"
+              alt="DSTRIKE"
+              className="h-4 sm:h-5 w-auto max-w-[42px] sm:max-w-[54px] shrink-0 rounded bg-white/90 px-1 py-0.5 object-contain shadow-xs"
+            />
+          </div>
         </div>
         {shelf === "chats" && listed.length ? (
           <div className="border-b border-white/10 px-3 py-2 md:hidden">
