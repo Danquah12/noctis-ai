@@ -7,7 +7,6 @@ import {
   Download,
   FileText,
   GitCompare,
-  History,
   Maximize2,
   Minimize2,
   PanelRightClose,

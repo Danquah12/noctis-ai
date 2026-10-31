@@ -6,7 +6,6 @@ import {
   FolderPlus,
   FileCode,
   FileText,
-  File,
   Plus,
   Trash2,
   X,

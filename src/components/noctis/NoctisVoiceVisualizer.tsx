@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Mic, Volume2, Sparkles, AudioWaveform as Waveform } from "lucide-react";
+import { Mic, Volume2, Sparkles } from "lucide-react";
 
 interface NoctisVoiceVisualizerProps {
   phase: "listen" | "speak" | "transcribe";
