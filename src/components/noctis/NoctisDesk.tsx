@@ -12,6 +12,7 @@ import { NoctisCall } from "@/components/noctis/NoctisCall";
 import { NoctisCanvas } from "@/components/noctis/NoctisCanvas";
 import { NoctisCodeInterpreter } from "@/components/noctis/NoctisCodeInterpreter";
 import { NoctisThinkingAccordion, CitationBadge } from "@/components/noctis/NoctisThinkingAccordion";
+import { NoctisVoiceVisualizer } from "@/components/noctis/NoctisVoiceVisualizer";
 import { NoctisMemoryModal, getNoctisPersonalizedContext } from "@/components/noctis/NoctisMemoryModal";
 import { studyOpenCall, studySend } from "@/lib/study-group-api";
 import { sendMeetInvite } from "@/lib/meet-mail";
@@ -4985,6 +4986,22 @@ export function NoctisDesk() {
       },
     },
     {
+      id: "report_integrity_validator",
+      title: "Report Integrity Validator",
+      subtitle: "Independent proof-state consistency, risk total recalculation & evidence audit",
+      icon: (
+        <span className="grid size-5 shrink-0 place-items-center rounded-md bg-[#0284c7] text-[10px] font-bold text-white shadow-xs">
+          🛡️
+        </span>
+      ),
+      action: () => {
+        setAddOpen(false);
+        setActivePlugin("report_validator");
+        if (!draft.trim()) setDraft("Execute the Noctis Report Integrity Validator (NOCTIS-VALIDATOR-001) on the canonical findings");
+        box.current?.focus();
+      },
+    },
+    {
       id: "cyber_sast_engine",
       title: "XTRIKE SAST & Cyber DFIR",
       subtitle: "401 SAST rules, attack-path graphs & incident response",
@@ -6184,34 +6201,13 @@ export function NoctisDesk() {
                 {voicePhase === "listen" ? "Recording" : voicePhase === "speak" ? "Speaking" : "Transcribing"}
               </p>
             </div>
-            <div className="flex flex-1 flex-col justify-end px-5 pb-8">
-              <div className="mx-auto mb-6 flex h-6 items-end gap-1" aria-hidden="true">
-                <span className={cn("h-2 w-1 rounded-full bg-[#e4b86a]", voicePhase === "listen" ? "opacity-80" : "opacity-25")} />
-                <span className={cn("h-3.5 w-1 rounded-full bg-[#e4b86a]", voicePhase === "listen" ? "opacity-80" : "opacity-25")} />
-                <span className={cn("h-5 w-1 rounded-full bg-[#e4b86a]", voicePhase === "listen" ? "opacity-100" : "opacity-25")} />
-                <span className={cn("h-3.5 w-1 rounded-full bg-[#e4b86a]", voicePhase === "listen" ? "opacity-80" : "opacity-25")} />
-                <span className={cn("h-2 w-1 rounded-full bg-[#e4b86a]", voicePhase === "listen" ? "opacity-80" : "opacity-25")} />
-              </div>
-              <div className="mx-auto w-full max-w-md overflow-hidden rounded-3xl border border-white/10 bg-[#1c1c1c] text-left shadow-[0_20px_50px_rgba(0,0,0,0.35)]">
-                <div className="flex items-center gap-3 border-b border-white/10 px-5 py-4">
-                  <span className="grid size-10 place-items-center rounded-full bg-[#e4b86a]/15 text-[#e4b86a]">
-                    <Phone className="size-4" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-zinc-100">Noctis</p>
-                    <p className="text-xs text-zinc-500">{voicePhase === "listen" ? "Recording" : voicePhase === "speak" ? "Speaking" : "Transcribing"}</p>
-                  </div>
-                </div>
-                <div className="px-5 py-5">
-                  <p className="text-[11px] font-medium tracking-wide text-zinc-500 uppercase">You</p>
-                  <p className="mt-1.5 text-[15px] leading-6 text-zinc-100">{voiceSaid || "Speak, then pause."}</p>
-                  <div className="my-4 h-px bg-white/10" />
-                  <p className="text-[11px] font-medium tracking-wide text-zinc-500 uppercase">Noctis</p>
-                  <p className="mt-1.5 text-[15px] leading-6 text-zinc-300">
-                    {voiceReply ? voiceReply.slice(0, 360) : voicePhase === "listen" ? "The answer will appear here." : "Working on the answer."}
-                  </p>
-                </div>
-              </div>
+            <div className="flex flex-1 flex-col items-center justify-center px-5 py-8">
+              <NoctisVoiceVisualizer
+                phase={voicePhase === "listen" ? "listen" : voicePhase === "speak" ? "speak" : "transcribe"}
+                spokenText={voiceSaid}
+                responseText={voiceReply}
+                onInterrupt={stop}
+              />
               {error ? <p className="mx-auto mt-3 max-w-md text-center text-sm text-red-400">{error}</p> : null}
             </div>
             <div className="flex justify-center pb-[max(1.25rem,env(safe-area-inset-bottom))]">

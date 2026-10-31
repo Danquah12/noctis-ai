@@ -6,6 +6,8 @@ import {
   Copy,
   Download,
   FileText,
+  GitCompare,
+  History,
   Maximize2,
   Minimize2,
   PanelRightClose,
@@ -22,7 +24,7 @@ import {
 import { cn } from "@/lib/utils";
 
 export type CanvasMode = "document" | "code" | "sermon" | "spreadsheet" | "presentation";
-export type CanvasView = "preview" | "edit" | "split";
+export type CanvasView = "preview" | "edit" | "split" | "diff";
 
 export interface NoctisCanvasProps {
   title: string;
@@ -253,6 +255,17 @@ export function NoctisCanvas({
             >
               Split
             </button>
+            <button
+              type="button"
+              onClick={() => setView("diff")}
+              className={cn(
+                "rounded-full px-2.5 py-1 font-medium transition flex items-center gap-1",
+                view === "diff" ? "bg-white/15 text-white" : "text-zinc-400 hover:text-zinc-200"
+              )}
+            >
+              <GitCompare className="size-3" />
+              Diff
+            </button>
           </div>
 
           {/* Undo / Redo */}
@@ -460,6 +473,58 @@ export function NoctisCanvas({
               )}
               placeholder="Edit your artifact directly in the Canvas..."
             />
+          </div>
+        ) : null}
+
+        {/* Diff View (Visual Comparison with previous versions) */}
+        {view === "diff" ? (
+          <div className="h-full overflow-y-auto p-4 space-y-3 font-mono text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-zinc-400 font-sans text-xs">Compare against:</span>
+                <select
+                  value={selectedCompareVersion}
+                  onChange={(e) => setSelectedCompareVersion(e.target.value)}
+                  className="rounded-lg border border-white/10 bg-black/60 px-2.5 py-1 text-xs text-zinc-100 outline-none"
+                >
+                  {versions.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      v{v.versionNumber}: {v.label} ({v.timestamp})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-3 text-xs">
+                <span className="text-emerald-400 font-semibold">+{diffStats.added} added</span>
+                <span className="text-rose-400 font-semibold">-{diffStats.removed} removed</span>
+                <span className="text-zinc-500">{diffStats.unchanged} unchanged</span>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-[#0d0d0d] p-3 overflow-x-auto space-y-0.5">
+              {diffLines.length ? (
+                diffLines.map((line, idx) => (
+                  <div
+                    key={idx}
+                    className={cn(
+                      "flex items-start gap-2 px-2 py-0.5 rounded text-[12.5px] leading-relaxed",
+                      line.type === "added"
+                        ? "bg-emerald-950/40 text-emerald-300"
+                        : line.type === "removed"
+                        ? "bg-rose-950/40 text-rose-300 line-through opacity-80"
+                        : "text-zinc-400"
+                    )}
+                  >
+                    <span className="w-4 shrink-0 text-center font-bold select-none opacity-60">
+                      {line.type === "added" ? "+" : line.type === "removed" ? "-" : " "}
+                    </span>
+                    <span className="min-w-0 flex-1 whitespace-pre-wrap">{line.text || " "}</span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-zinc-500 text-center py-4">No differences detected.</p>
+              )}
+            </div>
           </div>
         ) : null}
 
