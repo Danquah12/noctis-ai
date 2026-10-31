@@ -3445,6 +3445,64 @@ export function NoctisDesk() {
   const [speaks, setSpeaks] = useState("English");
   const [otherSpeak, setOtherSpeak] = useState("");
   const spoken = speaks === "Other" ? otherSpeak.trim() || "English" : speaks;
+  // Mobile slow gentle drift for top header features (Capabilities, Brain BYOK, Canvas, Agents)
+  useEffect(() => {
+    const el = topHeaderRef.current;
+    if (!el) return;
+
+    let dir = 1;
+    const speed = 0.45; // ~27px/s smooth slow drift
+    let paused = false;
+    let pauseTimer: any = null;
+    let animId: number;
+
+    const pauseAuto = () => {
+      paused = true;
+      if (pauseTimer) clearTimeout(pauseTimer);
+      pauseTimer = setTimeout(() => {
+        paused = false;
+      }, 3500);
+    };
+
+    el.addEventListener("touchstart", pauseAuto, { passive: true });
+    el.addEventListener("pointerdown", pauseAuto, { passive: true });
+
+    let lastTime = performance.now();
+    const frame = (now: number) => {
+      const dt = Math.min(now - lastTime, 40);
+      lastTime = now;
+
+      if (!paused && typeof window !== "undefined" && window.innerWidth < 768 && el) {
+        const maxScroll = el.scrollWidth - el.clientWidth;
+        if (maxScroll > 15) {
+          el.scrollLeft += dir * (speed * (dt / 16.67));
+          if (el.scrollLeft >= maxScroll - 2) {
+            dir = -1;
+            paused = true;
+            pauseTimer = setTimeout(() => {
+              paused = false;
+            }, 3000); // Linger 3 seconds at the end so Capabilities & Brain are clearly readable
+          } else if (el.scrollLeft <= 2) {
+            dir = 1;
+            paused = true;
+            pauseTimer = setTimeout(() => {
+              paused = false;
+            }, 3000); // Linger 3 seconds at the start
+          }
+        }
+      }
+      animId = requestAnimationFrame(frame);
+    };
+
+    animId = requestAnimationFrame(frame);
+    return () => {
+      cancelAnimationFrame(animId);
+      if (pauseTimer) clearTimeout(pauseTimer);
+      el.removeEventListener("touchstart", pauseAuto);
+      el.removeEventListener("pointerdown", pauseAuto);
+    };
+  }, []);
+
   useEffect(() => {
     try {
       setStudyTopic(sessionStorage.getItem("noctis-study") || "");
@@ -3507,6 +3565,7 @@ export function NoctisDesk() {
   const [clip, setClip] = useState("");
   const scroller = useRef<HTMLDivElement>(null);
   const picker = useRef<HTMLInputElement>(null);
+  const topHeaderRef = useRef<HTMLDivElement>(null);
   const box = useRef<HTMLTextAreaElement>(null);
   const run = useRef(0);
   const pendingAsk = useRef("");
@@ -6631,7 +6690,7 @@ export function NoctisDesk() {
           >
             <Menu className="size-5" />
           </button>
-          <div className="flex items-center gap-2 max-w-[calc(100%-7.5rem)] overflow-x-auto no-scrollbar">
+          <div ref={topHeaderRef} className="flex items-center gap-2 max-w-[calc(100%-6.5rem)] sm:max-w-[calc(100%-7.5rem)] overflow-x-auto no-scrollbar scroll-smooth">
             <NoctisModelPicker onOpenBrainModal={() => setBrainModalOpen(true)} />
             <div className="inline-flex shrink-0 items-center rounded-full bg-[#2a2a2a] p-1 text-sm ring-1 ring-white/10">
               <button
@@ -6709,31 +6768,7 @@ export function NoctisDesk() {
               </button>
             </div>
 
-            <div className="hidden sm:inline-flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setMemoryModalOpen(true)}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition",
-                  memoryModalOpen ? "bg-[#3a3a3a] text-[#e4b86a]" : ""
-                )}
-                title="Personal Memory & Custom Instructions"
-              >
-                <Brain className="size-3.5" />
-                Memory
-              </button>
-              <button
-                type="button"
-                onClick={() => setWorkspaceExplorerOpen(true)}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition",
-                  workspaceExplorerOpen ? "bg-[#3a3a3a] text-[#e4b86a]" : ""
-                )}
-                title="Project Workspace & Files"
-              >
-                <Library className="size-3.5" />
-                Projects
-              </button>
+            <div className="flex items-center gap-1 shrink-0">
               <button
                 type="button"
                 onClick={() => setAgentBuilderModalOpen(true)}
@@ -6748,7 +6783,7 @@ export function NoctisDesk() {
                 title="Specialist Agent Builder (Noctis GPTs)"
               >
                 <Bot className="size-3.5" />
-                {activeCustomAgent ? `${activeCustomAgent.avatarEmoji} ${activeCustomAgent.name}` : "Agents"}
+                <span>{activeCustomAgent ? `${activeCustomAgent.avatarEmoji} ${activeCustomAgent.name}` : "Agents"}</span>
               </button>
               <button
                 type="button"
@@ -6760,7 +6795,31 @@ export function NoctisDesk() {
                 title="Encrypted Vault Backup"
               >
                 <Lock className="size-3.5" />
-                Vault
+                <span>Vault</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setMemoryModalOpen(true)}
+                className={cn(
+                  "hidden sm:inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition",
+                  memoryModalOpen ? "bg-[#3a3a3a] text-[#e4b86a]" : ""
+                )}
+                title="Personal Memory & Custom Instructions"
+              >
+                <Brain className="size-3.5" />
+                <span>Memory</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setWorkspaceExplorerOpen(true)}
+                className={cn(
+                  "hidden sm:inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition",
+                  workspaceExplorerOpen ? "bg-[#3a3a3a] text-[#e4b86a]" : ""
+                )}
+                title="Project Workspace & Files"
+              >
+                <Library className="size-3.5" />
+                <span>Projects</span>
               </button>
             </div>
           </div>
