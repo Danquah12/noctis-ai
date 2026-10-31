@@ -4656,21 +4656,7 @@ export function NoctisDesk() {
       skillOverride === "speak" ||
       skillOverride === "translate" ||
       skillOverride === "film";
-    if (
-      !leaveAlone &&
-      (useSkill === "" ||
-        useSkill === "talk" ||
-        useSkill === "tutor" ||
-        useSkill === "research" ||
-        useSkill === "make" ||
-        useSkill === "reason" ||
-        useSkill === "write" ||
-        useSkill === "quiz" ||
-        useSkill === "library" ||
-        useSkill === "agent" ||
-        useSkill === "level")
-    ) {
-      setDesk("study");
+    if (desk === "study" && !leaveAlone) {
       setSkill("research");
       useSkill = "research";
       try {
@@ -4678,6 +4664,11 @@ export function NoctisDesk() {
         setStudyTopic(text.slice(0, 140));
       } catch {
         /* the chips still use this question */
+      }
+    } else if (desk === "chat") {
+      // In Chat mode, maintain direct conversational intelligence (Gemini / Frontier Model)
+      if (!useSkill || useSkill === "research") {
+        useSkill = "talk";
       }
     }
     const extra = leaveAlone ? [] : studyAsks(text);
