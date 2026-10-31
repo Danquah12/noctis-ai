@@ -171,65 +171,79 @@ export function NoctisAgentBuilderModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
-      <div className="flex h-[90vh] w-full max-w-5xl flex-col rounded-3xl border border-white/10 bg-[#141414] text-zinc-100 shadow-2xl overflow-hidden">
+      <div className="flex max-h-[94vh] sm:h-[90vh] w-full max-w-5xl flex-col rounded-3xl border border-white/10 bg-[#141414] text-zinc-100 shadow-2xl overflow-hidden">
         {/* Header */}
-        <header className="flex h-16 shrink-0 items-center justify-between border-b border-white/10 px-6 bg-[#1a1a1a]">
-          <div className="flex items-center gap-3">
-            <div className="grid size-10 place-items-center rounded-2xl bg-gradient-to-br from-[#e4b86a]/20 to-purple-500/20 border border-[#e4b86a]/30">
-              <Bot className="size-5 text-[#e4b86a]" />
+        <header className="flex flex-col sm:flex-row sm:h-16 shrink-0 sm:items-center justify-between border-b border-white/10 px-4 sm:px-6 py-3 sm:py-0 bg-[#1a1a1a] gap-2.5 sm:gap-4">
+          <div className="flex items-center justify-between w-full sm:w-auto">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+              <div className="grid size-9 sm:size-10 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-[#e4b86a]/20 to-purple-500/20 border border-[#e4b86a]/30">
+                <Bot className="size-4.5 sm:size-5 text-[#e4b86a]" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-sm sm:text-base font-semibold tracking-tight text-white flex items-center gap-1.5 sm:gap-2 truncate">
+                  <span className="truncate">Agent Builder</span>
+                  <span className="shrink-0 rounded-full bg-gradient-to-r from-[#e4b86a]/20 to-purple-500/20 px-2 py-0.5 text-[9px] sm:text-[10px] font-bold text-[#e4b86a] border border-[#e4b86a]/30">
+                    GPTS
+                  </span>
+                </h2>
+                <p className="hidden sm:block text-xs text-zinc-400">
+                  Design, specialize, and deploy tailored AI engines with persistent knowledge and personas.
+                </p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-base font-semibold tracking-tight text-white flex items-center gap-2">
-                Specialist Agent Builder
-                <span className="rounded-full bg-gradient-to-r from-[#e4b86a]/20 to-purple-500/20 px-2.5 py-0.5 text-[10px] font-bold text-[#e4b86a] border border-[#e4b86a]/30">
-                  NOCTIS GPTS
-                </span>
-              </h2>
-              <p className="text-xs text-zinc-400">
-                Design, specialize, and deploy tailored AI engines with persistent knowledge and personas.
-              </p>
-            </div>
+
+            {/* Mobile close button on top row */}
+            <button
+              type="button"
+              onClick={onClose}
+              className="grid size-8 place-items-center rounded-full text-zinc-400 hover:bg-white/10 hover:text-white sm:hidden shrink-0"
+              aria-label="Close modal"
+            >
+              <X className="size-5" />
+            </button>
           </div>
 
-          <div className="flex items-center gap-3">
-            {/* Tabs */}
-            <div className="flex items-center rounded-full bg-white/5 p-1 border border-white/10 text-xs">
+          <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
+            {/* Tabs (Scrollable on mobile without wrapping) */}
+            <div className="flex items-center gap-1 rounded-full bg-white/5 p-1 border border-white/10 text-xs overflow-x-auto no-scrollbar shrink-0 max-w-full">
               <button
                 type="button"
                 onClick={() => setActiveTab("directory")}
                 className={cn(
-                  "rounded-full px-3 py-1 font-medium transition",
+                  "rounded-full px-2.5 sm:px-3 py-1 font-medium transition shrink-0 whitespace-nowrap",
                   activeTab === "directory" ? "bg-white/15 text-white" : "text-zinc-400 hover:text-zinc-200"
                 )}
               >
-                Agent Directory ({agents.length})
+                Directory ({agents.length})
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab("builder")}
                 className={cn(
-                  "rounded-full px-3 py-1 font-medium transition",
+                  "rounded-full px-2.5 sm:px-3 py-1 font-medium transition shrink-0 whitespace-nowrap",
                   activeTab === "builder" ? "bg-[#e4b86a] text-[#141414] font-semibold" : "text-zinc-400 hover:text-zinc-200"
                 )}
               >
-                {editingAgentId ? "Edit Agent" : "+ Create Agent"}
+                {editingAgentId ? "Edit" : "+ Create"}
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab("playground")}
                 className={cn(
-                  "rounded-full px-3 py-1 font-medium transition",
+                  "rounded-full px-2.5 sm:px-3 py-1 font-medium transition shrink-0 whitespace-nowrap",
                   activeTab === "playground" ? "bg-white/15 text-white" : "text-zinc-400 hover:text-zinc-200"
                 )}
               >
-                Test Playground
+                Playground
               </button>
             </div>
 
+            {/* Desktop close button */}
             <button
               type="button"
               onClick={onClose}
-              className="grid size-9 place-items-center rounded-full text-zinc-400 hover:bg-white/10 hover:text-white"
+              className="hidden sm:grid size-9 place-items-center rounded-full text-zinc-400 hover:bg-white/10 hover:text-white shrink-0"
+              aria-label="Close modal"
             >
               <X className="size-5" />
             </button>

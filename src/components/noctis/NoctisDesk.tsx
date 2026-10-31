@@ -6824,7 +6824,7 @@ export function NoctisDesk() {
               type="button"
               onClick={clearHistory}
               title="Clear previous chat history and start fresh"
-              className="inline-flex shrink-0 items-center gap-1 sm:gap-1.5 rounded-full bg-white/10 hover:bg-rose-500/20 px-2 sm:px-2.5 py-1 text-xs font-medium text-zinc-300 hover:text-rose-200 transition border border-white/10 hover:border-rose-500/30 touch-manipulation shadow-xs"
+              className="inline-flex shrink-0 items-center gap-1 sm:gap-1.5 rounded-full bg-white/10 hover:bg-rose-500/20 px-2.5 sm:px-3 py-1 text-xs font-medium text-zinc-300 hover:text-rose-200 transition border border-white/10 hover:border-rose-500/30 touch-manipulation shadow-xs"
             >
               <Trash2 className="size-3 sm:size-3.5 text-zinc-400" />
               <span className="hidden sm:inline">Clear previous chat</span>
@@ -6833,7 +6833,7 @@ export function NoctisDesk() {
             <img
               src="/brand/dstrike-logo.png"
               alt="DSTRIKE"
-              className="h-4 sm:h-5 w-auto max-w-[42px] sm:max-w-[54px] shrink-0 rounded bg-white/90 px-1 py-0.5 object-contain shadow-xs"
+              className="hidden md:block h-5 w-auto max-w-[54px] shrink-0 rounded bg-white/90 px-1.5 py-0.5 object-contain shadow-xs"
             />
           </div>
         </div>

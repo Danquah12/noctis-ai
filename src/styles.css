@@ -1992,3 +1992,13 @@ select {
     font-size: 16px !important;
   }
 }
+
+
+/* Safety clamp on brand logo images to prevent mobile WebKit blowout */
+img[src*="dstrike-logo"],
+img[src*="dstrike-mark"] {
+  max-height: 24px !important;
+  max-width: 72px !important;
+  width: auto !important;
+  object-fit: contain !important;
+}
