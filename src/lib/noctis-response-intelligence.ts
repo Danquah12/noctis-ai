@@ -20,6 +20,8 @@ import { handleNaturalTruthLedgerQuery } from "./noctis-truth-ledger.ts";
 import { handleNaturalWorkSwarmQuery } from "./noctis-work-swarm.ts";
 import { handleNaturalCognitiveSandboxQuery } from "./noctis-cognitive-sandbox.ts";
 import { handleNaturalAirGapQuery } from "./noctis-air-gap.ts";
+import { handleNaturalHolodeckQuery } from "./noctis-holodeck-3d.ts";
+import { handleNaturalRemediationQuery } from "./noctis-auto-remediation.ts";
 
 export type AdaptiveResponseMode = "Direct" | "Teaching" | "Technical" | "Audit";
 
@@ -1109,6 +1111,18 @@ export function runFollowUpIntelligence(
   const airGapResponse = handleNaturalAirGapQuery(currentQuestion);
   if (airGapResponse) {
     return adaptSpecialistEngineOutput(currentQuestion, airGapResponse, "NOCTIS-AIRGAP-001");
+  }
+
+  // 00-holo. Noctis Interactive 3D Spatial Systems Holodeck (NOCTIS-HOLO-001)
+  const holodeckResponse = handleNaturalHolodeckQuery(currentQuestion);
+  if (holodeckResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, holodeckResponse, "NOCTIS-HOLO-001");
+  }
+
+  // 00-remed. Noctis Pre-Signed Auto-Remediation & Rollback Dispatcher (NOCTIS-REMED-001)
+  const remedResponse = handleNaturalRemediationQuery(currentQuestion);
+  if (remedResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, remedResponse, "NOCTIS-REMED-001");
   }
 
 

@@ -26,6 +26,8 @@ import { NoctisTruthLedgerModal } from "@/components/noctis/NoctisTruthLedgerMod
 import { NoctisSwarmModal } from "@/components/noctis/NoctisSwarmModal";
 import { NoctisCognitiveModal } from "@/components/noctis/NoctisCognitiveModal";
 import { NoctisAirGapModal } from "@/components/noctis/NoctisAirGapModal";
+import { NoctisHolodeckModal } from "@/components/noctis/NoctisHolodeckModal";
+import { NoctisAutoRemediationModal } from "@/components/noctis/NoctisAutoRemediationModal";
 import { getActiveCustomAgent, getActiveCustomAgentContext, type NoctisCustomAgent } from "@/lib/noctis-custom-agents";
 import { NoctisMemoryModal, getNoctisPersonalizedContext } from "@/components/noctis/NoctisMemoryModal";
 import { studyOpenCall, studySend } from "@/lib/study-group-api";
@@ -36,6 +38,7 @@ import {
   listenBrowserSpeech,
   createAudioLevelAnalyzer,
   isSpeechRecognitionSupported,
+  isBraveBrowser,
   type VoicePersona,
 } from "@/lib/noctis-voice";
 import { CANVASES, useTheme } from "@/lib/theme";
@@ -3324,6 +3327,8 @@ export function NoctisDesk() {
   const [swarmModalOpen, setSwarmModalOpen] = useState(false);
   const [cognitiveModalOpen, setCognitiveModalOpen] = useState(false);
   const [airGapModalOpen, setAirGapModalOpen] = useState(false);
+  const [holodeckModalOpen, setHolodeckModalOpen] = useState(false);
+  const [remediationModalOpen, setRemediationModalOpen] = useState(false);
   const [activeCustomAgent, setActiveCustomAgent] = useState<NoctisCustomAgent | null>(null);
 
   useEffect(() => {
@@ -4069,7 +4074,11 @@ export function NoctisDesk() {
     }
 
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
-      setError("Speech recognition is not supported in this browser. Please use Chrome, Edge, or Safari.");
+      setError(
+        isBraveBrowser()
+          ? "Brave detected: Enable 'Use Google speech services' under brave://settings/privacy or open Noctis in Chrome/Edge."
+          : "Speech recognition is not supported in this browser. Please use Chrome, Edge, or Safari."
+      );
       return;
     }
     void navigator.mediaDevices
@@ -4319,6 +4328,13 @@ export function NoctisDesk() {
               setVoiceOn(false);
               break;
             }
+            if (/brave|privacy|shield|network|service-not-allowed/i.test(speechResult.error)) {
+              setError(speechResult.error);
+              setVoicePhase("idle");
+              voiceRef.current = false;
+              setVoiceOn(false);
+              break;
+            }
           }
           said = speechResult.text.trim();
         } catch {
@@ -4327,7 +4343,10 @@ export function NoctisDesk() {
           setVoiceAudioLevel(0);
         }
       } else {
-        setError("Web Speech Recognition is not supported in this browser. Please use Chrome, Edge, or Safari for live voice conversations.");
+        const braveMsg = isBraveBrowser()
+          ? "Brave detected: Google Speech is disabled by default in Brave shields. Enable 'Use Google speech services' under brave://settings/privacy or open in Chrome/Edge."
+          : "Web Speech Recognition is not supported in this browser. Please use Chrome, Edge, or Safari for live voice conversations.";
+        setError(braveMsg);
         setVoicePhase("idle");
         voiceRef.current = false;
         setVoiceOn(false);
@@ -6593,6 +6612,30 @@ export function NoctisDesk() {
             </button>
             <button
               type="button"
+              onClick={() => setHolodeckModalOpen(true)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200 transition",
+                holodeckModalOpen ? "bg-[#3a3a3a] text-sky-400" : ""
+              )}
+              title="Interactive 3D Spatial Systems Holodeck (WebGL Force-Directed Topology)"
+            >
+              <Boxes className="size-3.5 text-sky-400" />
+              Holodeck 3D
+            </button>
+            <button
+              type="button"
+              onClick={() => setRemediationModalOpen(true)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200 transition",
+                remediationModalOpen ? "bg-[#3a3a3a] text-emerald-400" : ""
+              )}
+              title="Autonomous Pre-Signed Auto-Remediation & 1-Click Rollback Dispatcher"
+            >
+              <Wrench className="size-3.5 text-emerald-400" />
+              Auto-Remediate
+            </button>
+            <button
+              type="button"
               onClick={() => setVaultModalOpen(true)}
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-zinc-400 hover:text-zinc-200",
@@ -7032,6 +7075,18 @@ export function NoctisDesk() {
         open={airGapModalOpen}
         onClose={() => setAirGapModalOpen(false)}
         onOpenInCanvas={(md, title) => openInCanvas(title || "Air-Gap Audit Dossier", md)}
+        onInsertToChat={(text) => setDraft(text)}
+      />
+      <NoctisHolodeckModal
+        open={holodeckModalOpen}
+        onClose={() => setHolodeckModalOpen(false)}
+        onOpenInCanvas={(md, title) => openInCanvas(title || "3D Holodeck Dossier", md)}
+        onInsertToChat={(text) => setDraft(text)}
+      />
+      <NoctisAutoRemediationModal
+        open={remediationModalOpen}
+        onClose={() => setRemediationModalOpen(false)}
+        onOpenInCanvas={(md, title) => openInCanvas(title || "Auto-Remediation Playbook", md)}
         onInsertToChat={(text) => setDraft(text)}
       />
     </div>

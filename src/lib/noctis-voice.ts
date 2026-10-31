@@ -33,6 +33,16 @@ export function isSpeechRecognitionSupported(): boolean {
 }
 
 /**
+ * Detects if the current user agent is Brave Browser.
+ * Brave disables Google Speech Services by default under its privacy shields.
+ */
+export function isBraveBrowser(): boolean {
+  if (typeof window === "undefined" || typeof navigator === "undefined") return false;
+  const nav = navigator as unknown as { brave?: { isBrave?: () => Promise<boolean> } };
+  return Boolean(nav.brave || /Brave/i.test(navigator.userAgent));
+}
+
+/**
  * Checks if Speech Synthesis (Web Speech API) is supported in the current environment.
  */
 export function isSpeechSynthesisSupported(): boolean {
@@ -300,6 +310,14 @@ export function listenBrowserSpeech(options: {
         const errType = event?.error || "unknown";
         if (errType === "no-speech") {
           finish(finalTranscript);
+        } else if (errType === "network") {
+          const brave = isBraveBrowser();
+          const msg = brave
+            ? "Brave Privacy Shield blocked speech services. To enable, toggle 'Use Google speech services' under brave://settings/privacy or switch to Chrome/Edge."
+            : "Network error in speech service. Please verify your connection or use Chrome/Edge/Safari.";
+          finish(finalTranscript, msg);
+        } else if (errType === "not-allowed" || errType === "service-not-allowed") {
+          finish(finalTranscript, "Microphone access or speech service was not allowed. Please grant microphone permissions in your address bar.");
         } else {
           finish(finalTranscript, `Speech recognition error: ${errType}`);
         }
