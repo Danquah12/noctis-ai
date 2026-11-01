@@ -209,7 +209,7 @@ export function NoctisForgeTab({ onSendToChat, onClose }: NoctisForgeTabProps) {
   const [prompt, setPrompt] = useState("");
   const [targetRepo, setTargetRepo] = useState("dstrike-core");
   const [targetScope, setTargetScope] = useState("monorepo");
-  const [activeModel, setActiveModel] = useState("Noctis Ultra (Deep Reasoning)");
+  const [activeModel, setActiveModel] = useState("Noctis Ultra (Deep Sovereign Reasoning)");
   const [building, setBuilding] = useState(false);
   const [buildLogs, setBuildLogs] = useState<string[]>([]);
   const [buildArtifact, setBuildArtifact] = useState<{ title: string; code: string; tests: string } | null>(null);
@@ -232,13 +232,13 @@ export function NoctisForgeTab({ onSendToChat, onClose }: NoctisForgeTabProps) {
 
     // Determine brain routing based on active dropdown model
     let brainConfig: { provider: string; model?: string } | undefined;
-    if (activeModel.includes("Gemini")) {
+    if (activeModel.includes("Cortex") || activeModel.includes("Gemini")) {
       brainConfig = { provider: "gemini", model: "gemini-2.0-flash" };
-    } else if (activeModel.includes("GPT-4o")) {
+    } else if (activeModel.includes("Astra") || activeModel.includes("GPT-4o")) {
       brainConfig = { provider: "openai", model: "gpt-4o" };
-    } else if (activeModel.includes("Groq") || activeModel.includes("Llama")) {
+    } else if (activeModel.includes("Velocity") || activeModel.includes("Groq") || activeModel.includes("Llama")) {
       brainConfig = { provider: "groq", model: "llama-3.3-70b-versatile" };
-    } else if (activeModel.includes("Grok")) {
+    } else if (activeModel.includes("Sentinel") || activeModel.includes("Grok")) {
       brainConfig = { provider: "xai", model: "grok-3-mini" };
     } else {
       brainConfig = { provider: "noctis" };
@@ -704,11 +704,11 @@ describe("${textToBuild} - Verification", () => {
                     onChange={(e) => setActiveModel(e.target.value)}
                     className="bg-transparent text-xs text-zinc-200 focus:outline-none cursor-pointer"
                   >
-                    <option value="Noctis Ultra (Deep Sovereign Reasoning)" className="bg-zinc-900 text-white">Noctis Ultra (Deep Reasoning)</option>
-                    <option value="Google Gemini 2.0 Flash" className="bg-zinc-900 text-white">Google Gemini 2.0 Flash</option>
-                    <option value="OpenAI GPT-4o" className="bg-zinc-900 text-white">OpenAI GPT-4o</option>
-                    <option value="Groq Llama 3.3 70B" className="bg-zinc-900 text-white">Groq Llama 3.3 70B (300 t/s)</option>
-                    <option value="xAI Grok 3" className="bg-zinc-900 text-white">xAI Grok 3</option>
+                    <option value="Noctis Ultra (Deep Sovereign Reasoning)" className="bg-zinc-900 text-white">Noctis Ultra (Deep Sovereign Reasoning)</option>
+                    <option value="Noctis Astra High (GPT-4o Architecture)" className="bg-zinc-900 text-white">Noctis Astra High (GPT-4o Architecture)</option>
+                    <option value="Noctis Cortex Flash (Gemini 2.0 Multimodal)" className="bg-zinc-900 text-white">Noctis Cortex Flash (Gemini 2.0 Multimodal)</option>
+                    <option value="Noctis Velocity 70B (Groq 300 t/s Hyper-Speed)" className="bg-zinc-900 text-white">Noctis Velocity 70B (Groq 300 t/s Hyper-Speed)</option>
+                    <option value="Noctis Sentinel Grok (xAI Autonomous Audit)" className="bg-zinc-900 text-white">Noctis Sentinel Grok (xAI Autonomous Audit)</option>
                   </select>
                 </div>
               </div>
