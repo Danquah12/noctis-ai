@@ -561,7 +561,10 @@ ${AI_CVE_ADVISORIES.map((c) => `- ${c.cveId}: ${c.title} (CVSS ${c.cvss} ${c.sev
                           )}
                         </span>
                         {probeResult.reason && (
-                          <span className="hidden sm:inline-block text-[10px] text-zinc-400 font-mono truncate max-w-xs">
+                          <span
+                            title={probeResult.reason}
+                            className="hidden md:inline-block text-[10px] text-zinc-400 font-mono truncate max-w-[180px] lg:max-w-xs"
+                          >
                             · {probeResult.reason}
                           </span>
                         )}
@@ -569,7 +572,9 @@ ${AI_CVE_ADVISORIES.map((c) => `- ${c.cveId}: ${c.title} (CVSS ${c.cvss} ${c.sev
                     )}
                   </div>
                   {probeResult && (
-                    <span className="text-[10px] font-mono text-zinc-400">{probeResult.latencyMs} ms</span>
+                    <span className="text-[10px] font-mono text-zinc-400 shrink-0 ml-3 bg-white/5 px-2 py-0.5 rounded border border-white/5">
+                      {probeResult.latencyMs} ms
+                    </span>
                   )}
                 </div>
 
