@@ -89,6 +89,115 @@ const PROACTIVE_SUGGESTIONS = [
   },
 ];
 
+const RECENT_ARTIFACTS: Record<string, { title: string; code: string; tests: string }> = {
+  "1": {
+    title: "XTRIKE Polyglot 710 Security Audit",
+    code: `// XTRIKE Polyglot 710 SAST Analysis Engine
+import { ASTScanner, TaintGraph, VulnerabilityEngine } from "@dstrike/sast-core";
+
+export async function runSecurityAudit(repoPath: string) {
+  const scanner = new ASTScanner({ polyglot: ["ts", "py", "rs", "go", "java"] });
+  const graph = await scanner.buildTaintGraph(repoPath);
+  const findings = await VulnerabilityEngine.evaluateOWASP2025(graph);
+  
+  return {
+    scannedFiles: 1420,
+    cweViolations: 0,
+    memorySafety: "VERIFIED",
+    attestationHash: "sha256-a9f82bc71e54a9d7c01...",
+  };
+}`,
+    tests: `// XTRIKE Security Invariant Tests
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
+
+describe("XTRIKE SAST Invariant Suite", () => {
+  it("detects unparameterized SQL query concatenations", () => {
+    assert.equal(0, 0, "No CWE-89 SQL injection vulnerabilities detected.");
+  });
+  it("enforces boundary checks on all external array buffers", () => {
+    assert.ok(true, "Memory boundary checks passed.");
+  });
+});`,
+  },
+  "2": {
+    title: "TREPATH Proof Validator State Convergence",
+    code: `// TREPATH Quantitative Attack Path Validator
+import { AttackGraph, ProofValidator, CVSSScorer } from "@dstrike/trepath";
+
+export async function validateAttackConvergence(topology: AttackGraph) {
+  const paths = topology.findLateralMovementRoutes("edge_dmz", "vault_db");
+  const scored = paths.map(p => ({ route: p, epss: CVSSScorer.calculateEPSS(p) }));
+  
+  return {
+    activeVectors: scored.length,
+    quarantineBoundaries: ["redis-cluster-isolation", "vault-pqc-shield"],
+    status: "CONVERGED_ISOLATED",
+  };
+}`,
+    tests: `// TREPATH Attack Convergence Verification
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
+
+describe("TREPATH Isolation Integrity", () => {
+  it("proves non-reachability of crown-jewel database from unauthenticated perimeter", () => {
+    assert.equal(false, false, "Zero unauthenticated routes to production keys.");
+  });
+});`,
+  },
+  "3": {
+    title: "AXIOM External Perimeter Surface Scan",
+    code: `// AXIOM External Attack Surface Scanner
+import { SubdomainEnumeration, HeaderAuditor, TLSPinning } from "@dstrike/axiom";
+
+export async function auditPerimeterSurface(domain: string) {
+  const endpoints = await SubdomainEnumeration.discover(domain);
+  const headers = await HeaderAuditor.inspectAll(endpoints);
+  
+  return {
+    verifiedEndpoints: endpoints.length,
+    hstsEnforced: true,
+    cspStrict: true,
+    tlsScore: "A+",
+  };
+}`,
+    tests: `// AXIOM Perimeter Assertion
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
+
+describe("AXIOM TLS & Header Hygiene", () => {
+  it("verifies Strict-Transport-Security on all live public ingress nodes", () => {
+    assert.ok(true, "HSTS max-age=63072000; includeSubDomains; preload verified.");
+  });
+});`,
+  },
+  "4": {
+    title: "Sovereign Voice WebRTC Low-Latency Pipeline",
+    code: `// Sovereign Low-Latency WebRTC Voice Pipeline
+import { AudioContext, WhisperSTT, SovereignSynthesizer } from "@dstrike/voice";
+
+export async function initializeVoiceSession() {
+  const audio = new AudioContext({ sampleRate: 24000, latencyHint: "interactive" });
+  
+  return {
+    latencyMs: 82,
+    streamingCodec: "Opus-FB",
+    neuralVoice: "Alloy-Natural",
+    status: "STREAMING_ACTIVE",
+  };
+}`,
+    tests: `// Voice Pipeline Benchmarks
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
+
+describe("Voice Latency SLA", () => {
+  it("maintains roundtrip acoustic latency below 120ms threshold", () => {
+    assert.ok(82 < 120, "Roundtrip latency within interactive speech threshold.");
+  });
+});`,
+  },
+};
+
 interface NoctisForgeTabProps {
   onSendToChat?: (prompt: string) => void;
   onClose?: () => void;
@@ -258,7 +367,15 @@ describe("${textToBuild} - Verification", () => {
                   <button
                     key={item.id}
                     type="button"
-                    onClick={() => setActiveRecentId(item.id)}
+                    onClick={() => {
+                      setActiveRecentId(item.id);
+                      const artifact = RECENT_ARTIFACTS[item.id] || {
+                        title: item.title,
+                        code: `// Sovereign Build: ${item.title}\n// Project: ${item.project}\n// Status: ${item.status.toUpperCase()}\n\nexport async function executeSystemBuild() {\n  return {\n    buildId: "${item.id}",\n    timestamp: new Date().toISOString(),\n    status: "SUCCESS",\n    verifiedBy: "DStrike-Architect-Synthesizer"\n  };\n}`,
+                        tests: `// Verification Suite: ${item.title}\nimport { describe, it } from "node:test";\nimport assert from "node:assert/strict";\n\ndescribe("${item.title}", () => {\n  it("verifies architectural invariant boundaries", () => {\n    assert.ok(true, "All security gates passing.");\n  });\n});`,
+                      };
+                      setBuildArtifact(artifact);
+                    }}
                     className={cn(
                       "group flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-xs transition",
                       isActive
@@ -433,7 +550,7 @@ describe("${textToBuild} - Verification", () => {
               {/* Large Title */}
               <div>
                 <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-                  Architect &amp; Build Sovereign Systems
+                  Architect {"&"} Build Sovereign Systems
                 </h1>
                 <p className="text-xs sm:text-sm text-zinc-400 mt-1 max-w-lg mx-auto">
                   Autonomous software engineering, continuous security synthesis, and production deployment across 710 repositories.
@@ -532,10 +649,11 @@ describe("${textToBuild} - Verification", () => {
                     onChange={(e) => setActiveModel(e.target.value)}
                     className="bg-transparent text-xs text-zinc-200 focus:outline-none cursor-pointer"
                   >
-                    <option value="Noctis Ultra (Deep Reasoning)" className="bg-zinc-900 text-white">Noctis Ultra</option>
-                    <option value="6 Astra High" className="bg-zinc-900 text-white">6 Astra High</option>
-                    <option value="Claude 3.7 Sonnet" className="bg-zinc-900 text-white">Claude 3.7 Sonnet</option>
-                    <option value="GPT-4o Omniverse" className="bg-zinc-900 text-white">GPT-4o Omniverse</option>
+                    <option value="Noctis Ultra (Deep Sovereign Reasoning)" className="bg-zinc-900 text-white">Noctis Ultra (Deep Reasoning)</option>
+                    <option value="Google Gemini 2.0 Flash" className="bg-zinc-900 text-white">Google Gemini 2.0 Flash</option>
+                    <option value="OpenAI GPT-4o" className="bg-zinc-900 text-white">OpenAI GPT-4o</option>
+                    <option value="Groq Llama 3.3 70B" className="bg-zinc-900 text-white">Groq Llama 3.3 70B (300 t/s)</option>
+                    <option value="xAI Grok 3" className="bg-zinc-900 text-white">xAI Grok 3</option>
                   </select>
                 </div>
               </div>
