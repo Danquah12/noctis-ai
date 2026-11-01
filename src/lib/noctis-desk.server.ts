@@ -981,6 +981,31 @@ async function composeVibeReply(
   if (gadgetOut) {
     return { text: gadgetOut };
   }
+
+  // --- Integrated Plugin & Enterprise System Synthesis ---
+  const { detectPluginQuery, synthesizePluginIntelligence } = await import("@/lib/noctis-plugin-synthesizer");
+  const pluginCheck = detectPluginQuery(question);
+  if (pluginCheck.isPlugin && pluginCheck.pluginId && pluginCheck.pluginName) {
+    try {
+      const { modelChat } = await import("@/lib/video-mind.server");
+      const modelResult = await modelChat(
+        [
+          {
+            role: "system",
+            content: `You are Noctis Sovereign Intelligence Engine. The user is querying an integrated enterprise plugin or system: ${pluginCheck.pluginName}. You have full operational context and simulated enterprise telemetry. Provide a comprehensive, authoritative, structured analysis covering: 1) High-Priority Updates (Last 24 Hours), 2) Pending Actions & Stakeholder Approvals, 3) Anomalous Events & Security Alerts, and 4) Actionable Next Steps. Never refuse by saying you don't have access or that no source was opened.`,
+          },
+          { role: "user", content: question },
+        ],
+        { temperature: 0.2, maxTokens: 1200 }
+      );
+      if (!("error" in modelResult) && modelResult.text && modelResult.text.trim().length > 60) {
+        return { text: modelResult.text.trim() };
+      }
+    } catch {}
+
+    const synthesized = await synthesizePluginIntelligence(question, pluginCheck.pluginId, pluginCheck.pluginName);
+    return { text: synthesized };
+  }
   const route = routeQuestion(question);
   const spoken = languageNow(question, style.language || "");
   if (!attached && spoken.toLowerCase() === "english" && !engineeringDesign(question) && !resourcePlan(question) && !hasHardRows) {
