@@ -7027,57 +7027,6 @@ export function NoctisDesk() {
               </button>
               <button
                 type="button"
-                onClick={() => setDesk("forge")}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 transition",
-                  desk === "forge" ? "bg-[#3a3a3a] text-amber-300 font-semibold" : "text-zinc-400 hover:text-zinc-200"
-                )}
-                title="Noctis Forge: Autonomous System Architect & IDE"
-              >
-                <Terminal className="size-3.5 text-amber-400" />
-                <span>Forge</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setDesk("plugins")}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 transition",
-                  desk === "plugins" ? "bg-[#3a3a3a] text-sky-300 font-semibold" : "text-zinc-400 hover:text-zinc-200"
-                )}
-                title="Plugin & Sovereign Platform Systems Directory"
-              >
-                <Layers className="size-3.5 text-sky-400" />
-                <span>Plugins</span>
-                <span className="rounded-full bg-sky-400/20 px-1.5 py-0.5 text-[10px] font-bold text-sky-300">50+</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setDesk("console")}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 transition",
-                  desk === "console" ? "bg-[#3a3a3a] text-emerald-300 font-semibold" : "text-zinc-400 hover:text-zinc-200"
-                )}
-                title="Noctis Developer Console & Gateway"
-              >
-                <Activity className="size-3.5 text-emerald-400" />
-                <span>Console</span>
-                <span className="rounded-full bg-emerald-400/20 px-1.5 py-0.5 text-[10px] font-bold text-emerald-300">Gateway</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setDesk("redteam")}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 transition",
-                  desk === "redteam" ? "bg-[#3a3a3a] text-rose-300 font-semibold" : "text-zinc-400 hover:text-zinc-200"
-                )}
-                title="AI Red Team: Adversarial Testing & LLM Vulnerability Matrix"
-              >
-                <Target className="size-3.5 text-rose-400" />
-                <span>Red Team</span>
-                <span className="rounded-full bg-rose-400/20 px-1.5 py-0.5 text-[10px] font-bold text-rose-300">Shield</span>
-              </button>
-              <button
-                type="button"
                 onClick={() => {
                   if (!canvasContent && !canvasOpen) {
                     setCanvasTitle("New Artifact");
@@ -7205,16 +7154,10 @@ export function NoctisDesk() {
           </button>
         </header>
         <div className="flex h-11 shrink-0 items-center justify-between border-b border-white/10 px-2.5 sm:px-4 bg-black/20 backdrop-blur-sm gap-2">
-          <button
-            type="button"
-            onClick={handleSignOut}
-            disabled={signingOut}
-            title="Sign out of Noctis and DStrike"
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-white/10 hover:bg-rose-500/20 px-2.5 sm:px-3 py-1 text-xs font-medium text-zinc-300 hover:text-rose-200 transition border border-white/10 hover:border-rose-500/30 touch-manipulation shadow-xs disabled:opacity-50"
-          >
-            <LogOut className="size-3 sm:size-3.5 text-zinc-400" />
-            <span>{signingOut ? "Signing out..." : "Log out"}</span>
-          </button>
+          <div className="flex items-center gap-2 text-xs text-zinc-400">
+            <span className="size-2 rounded-full bg-emerald-400" />
+            <span className="font-medium text-zinc-300">DStrike Sovereign Runtime</span>
+          </div>
 
           {/* Clear Previous Chat & Scaled Compact Logo for Mobile and Desktop */}
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
