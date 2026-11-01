@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ClipboardEvent } from "react";
 import { Link } from "@tanstack/react-router";
-import { Activity, ArrowUp, Bot, Boxes, Brain, Calendar, Cpu, Crosshair, EyeOff, Fingerprint, FileLock, Globe, Key, Lock, LogOut, Network, Swords, WifiOff, Zap, ChevronDown, ChevronLeft, Code2, Copy, CornerDownLeft, FileText, GraduationCap, Image, Library, Mail, Menu, Mic, MoreHorizontal, PanelRight, PanelRightOpen, Pencil, Phone, PhoneOff, Plus, Printer, RotateCcw, Search, Square, SquarePen, Trash2, Users2, Video, Volume2, VolumeX, Wrench, X } from "lucide-react";
+import { Activity, ArrowUp, Bot, Boxes, Brain, Calendar, Cpu, Crosshair, EyeOff, Fingerprint, FileLock, Globe, Key, Layers, Lock, LogOut, Network, Sparkles, Swords, Terminal, WifiOff, Zap, ChevronDown, ChevronLeft, Code2, Copy, CornerDownLeft, FileText, GraduationCap, Image, Library, Mail, Menu, Mic, MoreHorizontal, PanelRight, PanelRightOpen, Pencil, Phone, PhoneOff, Plus, Printer, RotateCcw, Search, Square, SquarePen, Trash2, Users2, Video, Volume2, VolumeX, Wrench, X } from "lucide-react";
 import { askNoctis, drawVibe, hearVibe, sayVibe, trainVibe } from "@/lib/noctis-api";
 import { bringImagineFile, bringPortrait } from "@/lib/imagine-api";
 import { playHarmonicTone, playSovereignChime, stopAudioSynth } from "@/lib/noctis-audio-synth";
@@ -11,6 +11,10 @@ import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { cn } from "@/lib/utils";
 import { NoctisCall } from "@/components/noctis/NoctisCall";
 import { NoctisCanvas } from "@/components/noctis/NoctisCanvas";
+import { NoctisPluginsTab } from "@/components/noctis/NoctisPluginsTab";
+import { NoctisForgeTab } from "@/components/noctis/NoctisForgeTab";
+import { NoctisShelfPluginSection } from "@/components/noctis/NoctisShelfPluginSection";
+import { DISTRIBUTED_PLUGINS, getPluginsForShelf, type DistributedPluginItem } from "@/lib/noctis-distributed-plugins";
 import { NoctisCodeInterpreter } from "@/components/noctis/NoctisCodeInterpreter";
 import { NoctisThinkingAccordion, CitationBadge } from "@/components/noctis/NoctisThinkingAccordion";
 import { NoctisVoiceVisualizer } from "@/components/noctis/NoctisVoiceVisualizer";
@@ -260,7 +264,7 @@ const LIBRARY_DESKS = [
   { label: "Papers", line: "A cited paper or report", ask: "Research ransomware attacks against hospitals.", skill: "research" as const },
 ];
 
-const TOOL_IDS = ["search", "read", "see", "watch", "tools", "research", "agent"] as const;
+const TOOL_IDS = ["search", "read", "see", "watch", "agent"] as const;
 
 function loadThreads(person?: { id?: string | null; isDevFallback?: boolean } | null): Thread[] {
   const { storage, threadsKey } = resolveSessionNamespace(person);
@@ -3316,7 +3320,7 @@ export function NoctisDesk() {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
   const [uploads, setUploads] = useState<Upload[]>([]);
-  const [desk, setDesk] = useState<"chat" | "study">("chat");
+  const [desk, setDesk] = useState<"chat" | "study" | "forge" | "plugins">("chat");
   const [studyTopic, setStudyTopic] = useState("");
   const [canvasOpen, setCanvasOpen] = useState(false);
   const [canvasTitle, setCanvasTitle] = useState("Noctis Artifact");
@@ -3424,7 +3428,7 @@ export function NoctisDesk() {
   const [think, setThink] = useState(false);
   const [filmAt, setFilmAt] = useState(0);
   const [code, setCode] = useState(false);
-  const [shelf, setShelf] = useState<"chats" | "pictures" | "library" | "tools">("chats");
+  const [shelf, setShelf] = useState<"chats" | "pictures" | "library" | "tools" | "more">("chats");
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [more, setMore] = useState(false);
@@ -3657,6 +3661,7 @@ export function NoctisDesk() {
   }, []);
 
   function openNew() {
+    setDesk("chat");
     const blank = threads.find((row) => row.title === "New chat" && row.turns.length === 0 && Boolean(row.temp) === priv);
     setDraft("");
     setError("");
@@ -4889,7 +4894,7 @@ export function NoctisDesk() {
     row.turns.flatMap((turn) => (turn.images ?? []).map((src) => ({ src, id: row.id, title: row.title }))),
   );
 
-  function openShelf(next: "chats" | "pictures" | "library" | "tools") {
+  function openShelf(next: "chats" | "pictures" | "library" | "tools" | "more") {
     setShelf(next);
     setMenu(false);
     setMore(false);
@@ -4897,7 +4902,28 @@ export function NoctisDesk() {
     setQuery("");
     if (next === "pictures") setSkill("draw");
     else if (next === "library") setSkill("library");
+    else if (next === "tools") setSkill("search");
+    else if (next === "more") setSkill("");
     else if (next === "chats") setSkill("");
+  }
+
+  function handleUsePlugin(plugin: DistributedPluginItem) {
+    if (plugin.id === "sketch_canvas") {
+      setCanvasOpen(true);
+      return;
+    }
+    if (plugin.id === "agent_builder") {
+      setAgentBuilderModalOpen(true);
+      return;
+    }
+    if (plugin.id === "sovereign_voice") {
+      setDesk("chat");
+      void startVoice();
+      return;
+    }
+    setDesk("chat");
+    setShelf("chats");
+    setDraft((prev) => (prev ? `${prev} [${plugin.name}]` : plugin.sampleAction));
   }
 
   function pickSkill(id: NoctisSkillId) {
@@ -6322,9 +6348,33 @@ export function NoctisDesk() {
           <LogOut className="size-4 shrink-0 text-zinc-400 group-hover:text-rose-300" />
           <span>{signingOut ? "Signing out..." : "Log out"}</span>
         </button>
-        <button type="button" onClick={openNew} className={item(empty && shelf === "chats")}>
+        <button type="button" onClick={openNew} className={item(empty && shelf === "chats" && desk === "chat")}>
           <SquarePen className="size-4 shrink-0" />
           New chat
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setDesk("forge");
+            setMenu(false);
+          }}
+          className={item(desk === "forge")}
+        >
+          <Terminal className="size-4 shrink-0 text-amber-400" />
+          <span>Noctis Forge</span>
+          <span className="ml-auto rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">Codex</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setDesk("plugins");
+            setMenu(false);
+          }}
+          className={item(desk === "plugins")}
+        >
+          <Layers className="size-4 shrink-0 text-sky-400" />
+          <span>Plugins & Systems</span>
+          <span className="ml-auto rounded-full bg-sky-500/20 px-1.5 py-0.5 text-[10px] font-bold text-sky-300">50+</span>
         </button>
         <button type="button" onClick={() => openShelf("pictures")} className={item(shelf === "pictures")}>
           <Image className="size-4 shrink-0" />
@@ -6338,9 +6388,20 @@ export function NoctisDesk() {
           <Wrench className="size-4 shrink-0" />
           Tools
         </button>
-        <button type="button" onClick={() => setMore((on) => !on)} className={item(more)} aria-expanded={more}>
+        <button
+          type="button"
+          onClick={() => {
+            if (shelf === "more") {
+              openShelf("chats");
+            } else {
+              openShelf("more");
+            }
+          }}
+          className={item(shelf === "more")}
+        >
           <MoreHorizontal className="size-4 shrink-0" />
-          More
+          <span>More & Business</span>
+          <span className="ml-auto rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] font-bold text-zinc-400">30+</span>
         </button>
         {more ? (
           <div className="ml-4 space-y-0.5 border-l border-white/10 pl-1">
@@ -6363,6 +6424,9 @@ export function NoctisDesk() {
         ) : null}
         {shelf === "tools" ? (
           <div className="mt-2 min-h-0 flex-1 space-y-0.5 overflow-y-auto">
+            <div className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+              Core Capabilities
+            </div>
             {TOOL_IDS.filter((id) => {
               const row = noctisSkill(id);
               const q = query.trim().toLowerCase();
@@ -6371,14 +6435,74 @@ export function NoctisDesk() {
               const row = noctisSkill(id);
               return (
                 <button key={id} type="button" onClick={() => pickSkill(id)} className={cn(item(skill === id), "items-start py-2")}>
-                  <span className="w-20 shrink-0">{row.label}</span>
+                  <span className="w-32 shrink-0 font-medium">{row.label}</span>
                   <span className="truncate text-xs font-normal text-zinc-500">{row.line}</span>
                 </button>
               );
             })}
+            <div className="mt-3 border-t border-white/5 pt-2">
+              <div className="mb-1.5 flex items-center justify-between px-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+                <span>
+                  {skill === "search"
+                    ? "Search & Data Plugins"
+                    : skill === "read"
+                    ? "Reading & Doc Plugins"
+                    : skill === "see"
+                    ? "Vision & UI Plugins"
+                    : skill === "watch"
+                    ? "Media Plugins"
+                    : skill === "agent"
+                    ? "Agent Engines"
+                    : "Security & Dev Plugins"}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDesk("plugins");
+                    setMenu(false);
+                  }}
+                  className="text-[10px] text-[#e4b86a] hover:underline"
+                >
+                  All →
+                </button>
+              </div>
+              <div className="space-y-1">
+                {getPluginsForShelf(
+                  skill === "search"
+                    ? "search"
+                    : skill === "read"
+                    ? "read"
+                    : skill === "see"
+                    ? "see"
+                    : skill === "watch"
+                    ? "watch"
+                    : skill === "agent"
+                    ? "agent"
+                    : "tools"
+                )
+                  .slice(0, 8)
+                  .map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => handleUsePlugin(p)}
+                      className="group flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs text-zinc-300 hover:bg-white/5 hover:text-white transition"
+                    >
+                      <span className={cn("grid size-5 shrink-0 place-items-center rounded text-[10px] font-bold", p.iconBg || "bg-white/10", p.iconColor || "text-zinc-200")}>
+                        {p.iconText || p.name.slice(0, 2).toUpperCase()}
+                      </span>
+                      <span className="truncate flex-1">{p.name}</span>
+                      <Plus className="size-3 text-zinc-500 opacity-0 group-hover:opacity-100 transition" />
+                    </button>
+                  ))}
+              </div>
+            </div>
           </div>
         ) : shelf === "library" ? (
           <div className="mt-2 min-h-0 flex-1 space-y-0.5 overflow-y-auto">
+            <div className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+              Reference Desks
+            </div>
             {LIBRARY_DESKS.filter((row) => {
               const q = query.trim().toLowerCase();
               return !q || row.label.toLowerCase().includes(q) || row.line.toLowerCase().includes(q);
@@ -6392,10 +6516,107 @@ export function NoctisDesk() {
                 }}
                 className={cn(item(false), "items-start py-2")}
               >
-                <span className="w-20 shrink-0">{row.label}</span>
+                <span className="w-20 shrink-0 font-medium">{row.label}</span>
                 <span className="truncate text-xs font-normal text-zinc-500">{row.line}</span>
               </button>
             ))}
+            <div className="mt-3 border-t border-white/5 pt-2">
+              <div className="mb-1.5 flex items-center justify-between px-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+                <span>Knowledge & Research</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDesk("plugins");
+                    setMenu(false);
+                  }}
+                  className="text-[10px] text-[#e4b86a] hover:underline"
+                >
+                  All →
+                </button>
+              </div>
+              <div className="space-y-1">
+                {getPluginsForShelf("library")
+                  .slice(0, 8)
+                  .map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => handleUsePlugin(p)}
+                      className="group flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs text-zinc-300 hover:bg-white/5 hover:text-white transition"
+                    >
+                      <span className={cn("grid size-5 shrink-0 place-items-center rounded text-[10px] font-bold", p.iconBg || "bg-white/10", p.iconColor || "text-zinc-200")}>
+                        {p.iconText || p.name.slice(0, 2).toUpperCase()}
+                      </span>
+                      <span className="truncate flex-1">{p.name}</span>
+                      <Plus className="size-3 text-zinc-500 opacity-0 group-hover:opacity-100 transition" />
+                    </button>
+                  ))}
+              </div>
+            </div>
+          </div>
+        ) : shelf === "pictures" ? (
+          <div className="mt-2 min-h-0 flex-1 space-y-2 overflow-y-auto">
+            <div className="flex items-center justify-between px-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+              <span>Creative Plugins</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setDesk("plugins");
+                  setMenu(false);
+                }}
+                className="text-[10px] text-[#e4b86a] hover:underline"
+              >
+                All →
+              </button>
+            </div>
+            <div className="space-y-1">
+              {getPluginsForShelf("pictures").map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => handleUsePlugin(p)}
+                  className="group flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs text-zinc-300 hover:bg-white/5 hover:text-white transition"
+                >
+                  <span className={cn("grid size-5 shrink-0 place-items-center rounded text-[10px] font-bold", p.iconBg || "bg-white/10", p.iconColor || "text-zinc-200")}>
+                    {p.iconText || p.name.slice(0, 2).toUpperCase()}
+                  </span>
+                  <span className="truncate flex-1">{p.name}</span>
+                  <Plus className="size-3 text-zinc-500 opacity-0 group-hover:opacity-100 transition" />
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : shelf === "more" ? (
+          <div className="mt-2 min-h-0 flex-1 space-y-2 overflow-y-auto">
+            <div className="flex items-center justify-between px-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+              <span>Business & Finance</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setDesk("plugins");
+                  setMenu(false);
+                }}
+                className="text-[10px] text-[#e4b86a] hover:underline"
+              >
+                All →
+              </button>
+            </div>
+            <div className="space-y-1">
+              {getPluginsForShelf("more").slice(0, 16).map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => handleUsePlugin(p)}
+                  className="group flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs text-zinc-300 hover:bg-white/5 hover:text-white transition"
+                >
+                  <span className={cn("grid size-5 shrink-0 place-items-center rounded text-[10px] font-bold", p.iconBg || "bg-white/10", p.iconColor || "text-zinc-200")}>
+                    {p.iconText || p.name.slice(0, 2).toUpperCase()}
+                  </span>
+                  <span className="truncate flex-1">{p.name}</span>
+                  <Plus className="size-3 text-zinc-500 opacity-0 group-hover:opacity-100 transition" />
+                </button>
+              ))}
+            </div>
           </div>
         ) : (
           <div className="mt-2 flex flex-col border-t border-white/10 pt-2 min-h-0 flex-1">
@@ -6777,6 +6998,31 @@ export function NoctisDesk() {
               </button>
               <button
                 type="button"
+                onClick={() => setDesk("forge")}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 transition",
+                  desk === "forge" ? "bg-[#3a3a3a] text-amber-300 font-semibold" : "text-zinc-400 hover:text-zinc-200"
+                )}
+                title="Noctis Forge (Codex): Proactive Code & System Builder"
+              >
+                <Terminal className="size-3.5 text-amber-400" />
+                <span>Forge</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDesk("plugins")}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 transition",
+                  desk === "plugins" ? "bg-[#3a3a3a] text-sky-300 font-semibold" : "text-zinc-400 hover:text-zinc-200"
+                )}
+                title="Plugin & Sovereign Platform Systems Directory"
+              >
+                <Layers className="size-3.5 text-sky-400" />
+                <span>Plugins</span>
+                <span className="rounded-full bg-sky-400/20 px-1.5 py-0.5 text-[10px] font-bold text-sky-300">50+</span>
+              </button>
+              <button
+                type="button"
                 onClick={() => {
                   if (!canvasContent && !canvasOpen) {
                     setCanvasTitle("New Artifact");
@@ -6977,57 +7223,154 @@ export function NoctisDesk() {
         />
         <div className="flex min-h-0 flex-1 overflow-hidden">
           <div className={cn("flex flex-col min-h-0 min-w-0 transition-all duration-200", canvasOpen ? "w-full md:w-1/2 lg:w-[46%] border-r border-white/10" : "w-full")}>
-            {empty ? (
+            {desk === "plugins" ? (
+              <NoctisPluginsTab
+                onSelectPlugin={(p) => {
+                  setDesk("chat");
+                  setDraft((prev) => (prev ? `${prev} [Use ${p.name}]` : `Use ${p.name}: `));
+                }}
+                onClose={() => setDesk("chat")}
+              />
+            ) : desk === "forge" ? (
+              <NoctisForgeTab
+                onSendToChat={(taskPrompt) => {
+                  setDesk("chat");
+                  void send(taskPrompt);
+                }}
+                onClose={() => setDesk("chat")}
+              />
+            ) : empty ? (
           <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
             <img src="/media/meet-loft.jpg" alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover" />
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#12151c]/55 via-[#12151c]/35 to-[#12151c]/80" />
             <div className="relative flex min-h-0 flex-1 flex-col">
             <div className="flex min-h-0 flex-1 flex-col items-center gap-3 overflow-y-auto px-4 pt-4">
               <h1 className="shrink-0 text-center font-display text-[26px] font-medium tracking-tight text-zinc-50 sm:text-[32px]">
-                {shelf === "pictures" ? "Pictures" : shelf === "library" ? "Library" : shelf === "tools" ? "Tools" : "What's on your mind?"}
+                {shelf === "pictures"
+                  ? "Pictures & Creative Studio"
+                  : shelf === "library"
+                  ? "Library & Knowledge"
+                  : shelf === "tools"
+                  ? "Tools & Developer Systems"
+                  : shelf === "more"
+                  ? "Business & Operations"
+                  : "What's on your mind?"}
               </h1>
               {shelf === "pictures" ? (
-                shots.length ? (
-                  <div className="grid w-full max-w-3xl grid-cols-2 gap-2 sm:grid-cols-3">
-                    {shots.slice(0, 12).map((shot, index) => (
-                      <button key={`${shot.id}-${index}`} type="button" onClick={() => setActive(shot.id)} className="overflow-hidden rounded-2xl bg-black">
-                        <img src={shot.src} alt="" className="aspect-square w-full object-cover" />
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="shrink-0 text-center text-sm text-zinc-400">No pictures yet. Describe one below.</p>
-                )
-              ) : shelf === "library" ? (
-                <div className="grid w-full max-w-lg gap-2 sm:grid-cols-2">
-                  {LIBRARY_DESKS.map((row) => (
-                    <button
-                      key={row.label}
-                      type="button"
-                      onClick={() => void send(row.ask, row.skill)}
-                      className="rounded-2xl bg-[#2a2a2a] px-4 py-3 text-left ring-1 ring-white/10 hover:bg-white/10"
-                    >
-                      <span className="block text-sm font-medium text-zinc-100">{row.label}</span>
-                      <span className="mt-1 block text-xs text-zinc-400">{row.line}</span>
-                    </button>
-                  ))}
+                <div className="w-full max-w-3xl space-y-4">
+                  {shots.length ? (
+                    <div className="grid w-full grid-cols-2 gap-2 sm:grid-cols-3">
+                      {shots.slice(0, 12).map((shot, index) => (
+                        <button key={`${shot.id}-${index}`} type="button" onClick={() => setActive(shot.id)} className="overflow-hidden rounded-2xl bg-black">
+                          <img src={shot.src} alt="" className="aspect-square w-full object-cover" />
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="shrink-0 text-center text-sm text-zinc-400">No pictures yet. Describe one below or launch a creative plugin.</p>
+                  )}
+                  <NoctisShelfPluginSection
+                    shelfKey="pictures"
+                    title="Creative & Visual Plugins"
+                    subtitle="Design, generative video, vector layout & creative studio tools"
+                    onUsePlugin={handleUsePlugin}
+                    onOpenAllPlugins={() => setDesk("plugins")}
+                  />
                 </div>
-              ) : shelf === "tools" ? (
-                <div className="grid w-full max-w-lg gap-2 sm:grid-cols-2">
-                  {TOOL_IDS.map((id) => {
-                    const row = noctisSkill(id);
-                    return (
+              ) : shelf === "library" ? (
+                <div className="w-full max-w-3xl space-y-4">
+                  <div className="grid w-full max-w-lg mx-auto gap-2 sm:grid-cols-2">
+                    {LIBRARY_DESKS.map((row) => (
                       <button
-                        key={id}
+                        key={row.label}
                         type="button"
-                        onClick={() => pickSkill(id)}
-                        className={cn("rounded-2xl bg-[#2a2a2a] px-4 py-3 text-left ring-1 ring-white/10 hover:bg-white/10", skill === id && "ring-[#e4b86a]")}
+                        onClick={() => void send(row.ask, row.skill)}
+                        className="rounded-2xl bg-[#2a2a2a] px-4 py-3 text-left ring-1 ring-white/10 hover:bg-white/10"
                       >
                         <span className="block text-sm font-medium text-zinc-100">{row.label}</span>
                         <span className="mt-1 block text-xs text-zinc-400">{row.line}</span>
                       </button>
-                    );
-                  })}
+                    ))}
+                  </div>
+                  <NoctisShelfPluginSection
+                    shelfKey="library"
+                    title="Knowledge & Academic Plugins"
+                    subtitle="Peer-reviewed science, literature citations, scripture & learning roadmap"
+                    onUsePlugin={handleUsePlugin}
+                    onOpenAllPlugins={() => setDesk("plugins")}
+                  />
+                </div>
+              ) : shelf === "tools" ? (
+                <div className="w-full max-w-3xl space-y-4">
+                  <div className="grid w-full max-w-xl mx-auto gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    {TOOL_IDS.map((id) => {
+                      const row = noctisSkill(id);
+                      return (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => pickSkill(id)}
+                          className={cn("rounded-2xl bg-[#2a2a2a] px-4 py-3 text-left ring-1 ring-white/10 hover:bg-white/10", skill === id && "ring-[#e4b86a] bg-white/10")}
+                        >
+                          <span className="block text-sm font-semibold text-zinc-100">{row.label}</span>
+                          <span className="mt-1 block text-xs text-zinc-400">{row.line}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <NoctisShelfPluginSection
+                    shelfKey={
+                      skill === "search"
+                        ? "search"
+                        : skill === "read"
+                        ? "read"
+                        : skill === "see"
+                        ? "see"
+                        : skill === "watch"
+                        ? "watch"
+                        : skill === "agent"
+                        ? "agent"
+                        : "tools"
+                    }
+                    title={
+                      skill === "search"
+                        ? "Search & Research Plugins"
+                        : skill === "read"
+                        ? "Reading & Document Plugins"
+                        : skill === "see"
+                        ? "Vision & UI Inspection Plugins"
+                        : skill === "watch"
+                        ? "Video & Media Plugins"
+                        : skill === "agent"
+                        ? "Autonomous Agent Engines"
+                        : "Dev & Security Plugins"
+                    }
+                    subtitle={
+                      skill === "search"
+                        ? "Deep scientific research, web intelligence, SEO & telemetry analytics"
+                        : skill === "read"
+                        ? "Cloud drive documents, notes, enterprise wikis & task databases"
+                        : skill === "see"
+                        ? "Visual layout inspection, design tokens, CAD & remote control"
+                        : skill === "watch"
+                        ? "Video optimization, algorithm signals, audio streams & media systems"
+                        : skill === "agent"
+                        ? "Autonomous multi-step execution, diagnostic clinical reasoning & financial valuation"
+                        : "SAST 710, threat modeling, vulnerability scanners & cloud developer tools"
+                    }
+                    onUsePlugin={handleUsePlugin}
+                    onOpenAllPlugins={() => setDesk("plugins")}
+                  />
+                </div>
+              ) : shelf === "more" ? (
+                <div className="w-full max-w-3xl space-y-4">
+                  <NoctisShelfPluginSection
+                    shelfKey="more"
+                    title="Business, Operations & Finance Plugins"
+                    subtitle="Email, team chat, CRM, accounting, market data, and productivity connectors"
+                    onUsePlugin={handleUsePlugin}
+                    onOpenAllPlugins={() => setDesk("plugins")}
+                  />
                 </div>
               ) : (
                 <>
