@@ -68,7 +68,7 @@ import { learningBoard } from "@/lib/learning-board";
 import { levelFromProgress, type DepthLevel } from "@/lib/depth";
 import { asksToBeTaught, teacherPlan } from "@/lib/personal-teacher";
 import { GOALS } from "@/lib/learn";
-import { NoctisRecommend, markDna, readNoctisContext } from "@/components/noctis/NoctisContext";
+import { markDna, readNoctisContext } from "@/components/noctis/NoctisContext";
 import { formatContext, markMission, routeActions } from "@/lib/noctis-os";
 import { studyAsks } from "@/lib/study-pass";
 import { leaveHall } from "@/lib/auth/client";
@@ -7453,7 +7453,6 @@ export function NoctisDesk() {
                 </div>
               ) : (
                 <>
-                  {desk === "chat" ? <NoctisRecommend quiet={voiceOn || recording} memory={threads.find((row) => row.title !== "New chat" && row.turns.length)?.title} onAsk={(ask) => void send(ask)} /> : null}
                   {desk === "study" ? (
                     <div className="w-full max-w-lg">
                       <p className="text-center text-sm text-zinc-400">Ask anything. Start with Exam for who gives the test, where you register, and what to practise.</p>
