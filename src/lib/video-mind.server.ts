@@ -249,12 +249,26 @@ export async function modelChat(
   const system = packed.filter((message) => message.role === "system").map((message) => textOf(message.content)).join("\n\n").slice(0, 24000);
   const talk = packed.filter((message) => message.role !== "system");
 
-  // Priority 1: User-configured Client Brain (BYOK)
+  // Priority 1: User-configured Client Brain (BYOK or chosen Provider)
   const clientBrain = opts.brain;
-  if (clientBrain?.apiKey?.trim()) {
-    const key = clientBrain.apiKey.trim();
-    const provider = clientBrain.provider || "gemini";
-    const userModel = clientBrain.model?.trim();
+  const clientProvider = clientBrain?.provider;
+  const clientExplicitKey = clientBrain?.apiKey?.trim();
+  const clientResolvedKey =
+    clientExplicitKey ||
+    (clientProvider === "gemini"
+      ? resolveGeminiKey()
+      : clientProvider === "openai"
+      ? resolveOpenAiKey()
+      : clientProvider === "groq"
+      ? resolveGroqKey()
+      : clientProvider === "xai"
+      ? resolveXaiKey()
+      : "");
+
+  if (clientResolvedKey && clientProvider && clientProvider !== "noctis") {
+    const key = clientResolvedKey;
+    const provider = clientProvider;
+    const userModel = clientBrain?.model?.trim();
 
     if (provider === "gemini") {
       try {
@@ -286,7 +300,7 @@ export async function modelChat(
           ? "https://api.groq.com/openai/v1/chat/completions"
           : provider === "xai"
           ? "https://api.x.ai/v1/chat/completions"
-          : provider === "custom" && clientBrain.endpoint
+          : provider === "custom" && clientBrain?.endpoint
           ? (clientBrain.endpoint.endsWith("/chat/completions") ? clientBrain.endpoint : `${clientBrain.endpoint.replace(/\/+$/, "")}/chat/completions`)
           : "https://api.openai.com/v1/chat/completions";
 
@@ -298,7 +312,7 @@ export async function modelChat(
           ? "grok-3-mini"
           : provider === "custom"
           ? "llama3.2"
-          : "gpt-4o-mini");
+          : "gpt-4o");
 
       try {
         const res = await fetch(endpoint, {

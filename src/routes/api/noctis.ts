@@ -473,6 +473,7 @@ export const Route = createFileRoute("/api/noctis")({
           think?: unknown;
           code?: unknown;
           context?: unknown;
+          brain?: { provider?: string; apiKey?: string; model?: string; endpoint?: string };
           authorization_request?: unknown;
           authorization_batch?: unknown;
           revoke_session?: { session_id?: string; actor?: string; reason?: string };
@@ -740,6 +741,7 @@ export const Route = createFileRoute("/api/noctis")({
             code: body?.code === true,
             language: typeof body?.language === "string" ? body.language : "English",
             context: typeof body?.context === "string" ? body.context : "",
+            brain: body?.brain,
           });
           return Response.json(reply, { headers: CORS_HEADERS });
         } catch {
