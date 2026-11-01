@@ -1,4 +1,5 @@
 import { COURSE_GROUPS } from "./course-catalog.ts";
+import { BOARD_EXAMS } from "./board-exams.ts";
 
 export type StudyLink = { name: string; href: string };
 export type StudyAsk = { label: string; ask: string };
@@ -66,6 +67,33 @@ const GENERAL: Pack = {
 
 export function matchStudy(question: string): Pack {
   const text = catalogContext(question);
+  const lower = text.toLowerCase();
+
+  // 1. Try matching against comprehensive BOARD_EXAMS directory first
+  const foundBoard = BOARD_EXAMS.find((b) => {
+    if (!b) return false;
+    if (b.id && lower.includes(b.id)) return true;
+    if (b.name && lower.includes(b.name.toLowerCase())) return true;
+    if (b.provider && lower.includes(b.provider.toLowerCase())) return true;
+    if (b.popularExams && b.popularExams.some((sub) => lower.includes(sub.toLowerCase()))) return true;
+    return false;
+  });
+
+  if (foundBoard) {
+    return {
+      test: new RegExp(foundBoard.id, "i"),
+      vendor: `${foundBoard.provider} (${foundBoard.name})`,
+      href: foundBoard.vendorUrl,
+      free: (foundBoard.freeResources || [
+        { name: "Official Candidate Blueprint", url: foundBoard.vendorUrl, type: "official_free", description: "Official syllabus" }
+      ]).map((r) => ({ name: r.name, href: r.url })),
+      pass: foundBoard.howToPassTTP
+        ? `Tactics: ${foundBoard.howToPassTTP.tactics} Techniques: ${foundBoard.howToPassTTP.techniques} Procedures: ${foundBoard.howToPassTTP.procedures}`
+        : "Complete 2,000+ board-style questions and master the official exam blueprint.",
+    };
+  }
+
+  // 2. Fall back to static PACKS
   return PACKS.find((pack) => pack.test.test(text)) ?? GENERAL;
 }
 
@@ -100,10 +128,31 @@ export function studyAsks(question: string): StudyAsk[] {
   return [
     {
       label: "Exam",
-      ask: `Exam sheet for ${subject}: who gives it, where I register, what it covers, and what I must practise. If length, price, or passing score is not on the vendor page, write "not on record." Do not invent a URL. Noctis does not issue this exam.\n${brief}`,
+      ask: `Provide a complete official exam blueprint for ${subject}: who issues the exam, test format, syllabus domains with percentage weights, duration, passing score benchmarks, and candidate requirements.\n${brief}`,
     },
-    { label: "Certification vendor", ask: `Who is the official vendor for ${subject}, and where do I register?\n${rule}\n${brief}` },
-    { label: "Free resources", ask: `What free resources can I use to study ${subject}?\n${rule}\n${brief}` },
-    { label: "How to pass", ask: `What do I have to practise to pass ${subject}?\n${rule}\n${brief}` },
+    {
+      label: "Certification vendor",
+      ask: `Who is the official certification vendor for ${subject}? Where do I register, what is the verified portal URL, testing delivery partners (Pearson VUE / Prometric), and credential validity?\n${rule}\n${brief}`,
+    },
+    {
+      label: "Free resources",
+      ask: `What free study resources, official candidate blueprints, open textbooks (NCBI, OpenStax), practice question banks, and video courses can I use to study ${subject}?\n${rule}\n${brief}`,
+    },
+    {
+      label: "How to pass",
+      ask: `What are the exact Tactics, Techniques, and Procedures (TTPs) to pass ${subject} on the first attempt? Detail study pacing, active recall strategies, question dissection methods, and mock exam benchmarks.\n${rule}\n${brief}`,
+    },
+    {
+      label: "Next three",
+      ask: `What are the next three logical exams, certifications, or sub-specialty credentials to pursue after ${subject} to maximize career progression and seniority? Provide the strategic rationale, prerequisites, and syllabus overlap for each.\n${rule}\n${brief}`,
+    },
+    {
+      label: "Create quiz",
+      ask: `Generate a high-yield 10-question board simulation practice quiz for ${subject} with 4-5 multiple choice options (A-E) and comprehensive rationales explaining why the correct answer is right and why each distractor is wrong.\n${rule}\n${brief}`,
+    },
+    {
+      label: "Create roadmap",
+      ask: `Create a comprehensive, week-by-week master study roadmap for ${subject} (e.g. 8-12 weeks), structured into foundation, intensive question bank application, full timed simulation, and final taper milestones with daily hour targets.\n${rule}\n${brief}`,
+    },
   ];
 }

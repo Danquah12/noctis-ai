@@ -71,6 +71,7 @@ import { GOALS } from "@/lib/learn";
 import { markDna, readNoctisContext } from "@/components/noctis/NoctisContext";
 import { formatContext, markMission, routeActions } from "@/lib/noctis-os";
 import { studyAsks } from "@/lib/study-pass";
+import { NoctisBoardExamExplorer } from "@/components/noctis/NoctisBoardExamExplorer";
 import { leaveHall } from "@/lib/auth/client";
 import { textFromDocx, textFromPdf, textFromRtf } from "@/lib/read-document";
 import { saveShareLink } from "@/lib/share-link";
@@ -6263,6 +6264,13 @@ export function NoctisDesk() {
     </form>
   );
 
+  const activeRoutes =
+    routes.length > 0
+      ? routes
+      : desk === "study"
+      ? studyAsks(studyTopic || "USMLE Step 2 CK")
+      : [];
+
   return (
     <div
       className="flex h-dvh min-h-0 text-zinc-100"
@@ -7397,15 +7405,17 @@ export function NoctisDesk() {
               ) : (
                 <>
                   {desk === "study" ? (
-                    <div className="w-full max-w-lg">
-                      <p className="text-center text-sm text-zinc-400">Ask anything. Start with Exam for who gives the test, where you register, and what to practise.</p>
-                      <div className="mt-3 flex flex-wrap justify-center gap-2">
-                        {studyAsks(studyTopic || "this subject").map((row) => (
-                          <button key={row.label} type="button" onClick={() => void send(row.ask)} className="rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold text-zinc-100">
-                            {row.label}
-                          </button>
-                        ))}
-                      </div>
+                    <div className="w-full max-w-4xl px-2 my-2">
+                      <NoctisBoardExamExplorer
+                        onSend={(prompt) => void send(prompt)}
+                        onSelectExam={(exam) => {
+                          setStudyTopic(exam.name);
+                          setRoutes(studyAsks(exam.name));
+                          try {
+                            sessionStorage.setItem("noctis-study", exam.name);
+                          } catch {}
+                        }}
+                      />
                     </div>
                   ) : null}
                 </>
@@ -7418,10 +7428,15 @@ export function NoctisDesk() {
                   <span>Code mode active: a working snippet first</span>
                 </div>
               ) : null}
-              {routes.length ? (
+              {activeRoutes.length ? (
                 <div className="mb-2 flex flex-wrap gap-1.5">
-                  {routes.map((row) => (
-                    <button key={row.label} type="button" onClick={() => void send(row.ask)} className="rounded-full bg-white/10 px-3 py-1.5 text-[11px] font-semibold text-zinc-100">
+                  {activeRoutes.map((row) => (
+                    <button
+                      key={row.label}
+                      type="button"
+                      onClick={() => void send(row.ask)}
+                      className="rounded-full bg-white/10 hover:bg-white/15 px-3.5 py-1.5 text-xs font-medium text-zinc-100 border border-white/5 hover:border-white/20 transition backdrop-blur-sm cursor-pointer shadow-xs"
+                    >
                       {row.label}
                     </button>
                   ))}
@@ -7435,7 +7450,20 @@ export function NoctisDesk() {
         ) : (
           <>
             <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto">
-              <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-6">
+              <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6">
+                {desk === "study" ? (
+                  <NoctisBoardExamExplorer
+                    compact
+                    onSend={(prompt) => void send(prompt)}
+                    onSelectExam={(exam) => {
+                      setStudyTopic(exam.name);
+                      setRoutes(studyAsks(exam.name));
+                      try {
+                        sessionStorage.setItem("noctis-study", exam.name);
+                      } catch {}
+                    }}
+                  />
+                ) : null}
                 {shelf === "pictures" ? <p className="text-center text-xs text-zinc-500">Describe the next picture below.</p> : null}
                 {shelf === "library" ? <p className="text-center text-xs text-zinc-500">Answers come from the library notes, with the source named.</p> : null}
                 {shelf === "tools" && skill ? <p className="text-center text-xs text-zinc-500">{noctisSkill(skill).line}</p> : null}
@@ -7589,10 +7617,15 @@ export function NoctisDesk() {
               </div>
             </div>
             <div className="mx-auto w-full max-w-3xl border-t border-white/10 px-3 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)]">
-              {routes.length ? (
+              {activeRoutes.length ? (
                 <div className="mb-2 flex flex-wrap gap-1.5">
-                  {routes.map((row) => (
-                    <button key={row.label} type="button" onClick={() => void send(row.ask)} className="rounded-full bg-white/10 px-3 py-1.5 text-[11px] font-semibold text-zinc-100">
+                  {activeRoutes.map((row) => (
+                    <button
+                      key={row.label}
+                      type="button"
+                      onClick={() => void send(row.ask)}
+                      className="rounded-full bg-white/10 hover:bg-white/15 px-3.5 py-1.5 text-xs font-medium text-zinc-100 border border-white/5 hover:border-white/20 transition backdrop-blur-sm cursor-pointer shadow-xs"
+                    >
                       {row.label}
                     </button>
                   ))}
