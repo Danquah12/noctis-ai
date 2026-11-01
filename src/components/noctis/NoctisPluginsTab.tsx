@@ -30,6 +30,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { NoctisPluginDetailView } from "./NoctisPluginDetailView";
 
 export interface PluginItem {
   id: string;
@@ -266,31 +267,31 @@ export const ALL_PLUGINS: PluginItem[] = [
     iconText: "1",
   },
   {
-    id: "tripsy",
-    name: "Tripsy",
-    category: "Travel",
-    description: "Plan, organize, and automate multi-city trip itineraries and bookings.",
-    iconBg: "bg-orange-500/15",
-    iconColor: "text-orange-400",
-    iconText: "🧳",
+    id: "corporate_logistics",
+    name: "Corporate Logistics & Flight",
+    category: "Business & Operations",
+    description: "Executive travel coordination, secure facility logistics, foreign currency per-diem, and travel risk advisories.",
+    iconBg: "bg-blue-600/20",
+    iconColor: "text-blue-400",
+    iconText: "✈️",
   },
   {
-    id: "sonos",
-    name: "Sonos",
-    category: "Other",
-    description: "Control your multi-room Sonos audio system and playlists with voice.",
-    iconBg: "bg-white/10",
-    iconColor: "text-white",
-    iconText: "SO",
+    id: "mattermost_airgap",
+    name: "Mattermost Air-Gapped Comms",
+    category: "Communication",
+    description: "Self-hosted, air-gapped team communications, secure incident war-rooms, and operational compliance audit trails.",
+    iconBg: "bg-indigo-600/20",
+    iconColor: "text-indigo-400",
+    iconText: "M",
   },
   {
-    id: "hevy",
-    name: "Hevy",
-    category: "Other",
-    description: "Gym workout plans, set-volume progression, and strength insights.",
-    iconBg: "bg-zinc-700",
-    iconColor: "text-white",
-    iconText: "H",
+    id: "tactical_readiness",
+    name: "Tactical Readiness & Bio-Telemetry",
+    category: "Platform Systems",
+    description: "Operational human performance, autonomic nervous balance, sleep architecture, and cognitive fatigue curves.",
+    iconBg: "bg-emerald-600/20",
+    iconColor: "text-emerald-400",
+    iconText: "⚡",
   },
   {
     id: "adobe",
@@ -331,16 +332,43 @@ export const ALL_PLUGINS: PluginItem[] = [
     iconText: "♥",
   },
   {
-    id: "tinyfish",
-    name: "TinyFish",
+    id: "datadog_apm",
+    name: "Datadog Observability & APM",
     category: "Developer Tools",
-    description: "Autonomous browser web agents for automated data extraction and tasks.",
-    iconBg: "bg-orange-500/15",
-    iconColor: "text-orange-400",
-    iconText: "🐟",
+    description: "Full-stack distributed tracing, APM service maps, log analytics, and infrastructure health alerts.",
+    iconBg: "bg-purple-600/20",
+    iconColor: "text-purple-400",
+    iconText: "DD",
+  },
+  {
+    id: "linear_app",
+    name: "Linear Enterprise",
+    category: "Developer Tools",
+    description: "High-velocity issue tracking, Git branch automation, sprint cycles, and engineering roadmap execution.",
+    iconBg: "bg-indigo-500/20",
+    iconColor: "text-indigo-400",
+    iconText: "LN",
+  },
+  {
+    id: "nvidia_enterprise",
+    name: "NVIDIA DGX & NeMo",
+    category: "Developer Tools",
+    description: "Enterprise GPU cluster orchestration, LLM fine-tuning pipelines, and TensorRT-LLM inference acceleration.",
+    iconBg: "bg-emerald-600/20",
+    iconColor: "text-emerald-400",
+    iconText: "NV",
+  },
+  {
+    id: "weights_and_biases",
+    name: "Weights & Biases (W&B)",
+    category: "Developer Tools",
+    description: "ML experiment tracking, model registry, hyperparameter sweep optimization, and artifact versioning.",
+    iconBg: "bg-amber-500/20",
+    iconColor: "text-amber-400",
+    iconText: "WB",
   },
 
-  // --- 5. Security ---
+  // --- 5. Security (Institutional & Sovereign SecOps) ---
   {
     id: "sovereign_code_guard",
     name: "Sovereign Code Guard",
@@ -351,49 +379,58 @@ export const ALL_PLUGINS: PluginItem[] = [
     iconText: "🛡️",
   },
   {
-    id: "malwarebytes",
-    name: "Malwarebytes",
+    id: "crowdstrike_falcon",
+    name: "CrowdStrike Falcon X",
     category: "Security",
-    description: "Verify URLs, domains, phone numbers, and inspect zero-day threats.",
+    description: "Real-time endpoint threat telemetry, adversary attribution, IOC correlation, and zero-day threat hunting.",
+    iconBg: "bg-red-600/20",
+    iconColor: "text-red-400",
+    iconText: "CS",
+  },
+  {
+    id: "wiz_cloud",
+    name: "Wiz Cloud Security",
+    category: "Security",
+    description: "CNAPP multi-cloud risk graphs, attack surface toxic combinations, and IAM entitlement analysis.",
     iconBg: "bg-blue-500/20",
     iconColor: "text-blue-300",
-    iconText: "M",
+    iconText: "WZ",
   },
   {
-    id: "privacyhawk",
-    name: "PrivacyHawk",
+    id: "sentinel_one",
+    name: "SentinelOne Singularity",
     category: "Security",
-    description: "Protect personal data footprint and remove public broker profiles.",
-    iconBg: "bg-red-500/20",
-    iconColor: "text-red-400",
-    iconText: "PH",
+    description: "Autonomous EDR/XDR endpoint protection, behavioral AI threat neutralization, and forensic timelines.",
+    iconBg: "bg-purple-600/20",
+    iconColor: "text-purple-400",
+    iconText: "S1",
   },
   {
-    id: "ajaxx_scrubber",
-    name: "AJAXX Data Scrubber",
+    id: "snyk_devsec",
+    name: "Snyk Developer Security",
     category: "Security",
-    description: "Scan data broker databases and automate privacy opt-out requests.",
-    iconBg: "bg-cyan-500/20",
-    iconColor: "text-cyan-400",
-    iconText: "AX",
+    description: "Container image vulnerability scanning, open-source dependency remediation, and IaC guardrails.",
+    iconBg: "bg-purple-500/20",
+    iconColor: "text-purple-300",
+    iconText: "SN",
   },
   {
-    id: "mcafee",
-    name: "McAfee",
+    id: "cloudflare_zero_trust",
+    name: "Cloudflare Zero Trust",
     category: "Security",
-    description: "Real-time scam protection, phishing domain detection, and safe browsing.",
-    iconBg: "bg-red-500/20",
-    iconColor: "text-red-400",
-    iconText: "M",
+    description: "Secure Access Service Edge (SASE), DNS security filtering, ZTNA tunnels, and DDoS mitigation.",
+    iconBg: "bg-orange-500/20",
+    iconColor: "text-orange-400",
+    iconText: "CF",
   },
   {
-    id: "soluvery",
-    name: "Soluvery",
+    id: "hashicorp_vault",
+    name: "HashiCorp Vault",
     category: "Security",
-    description: "Audit Google Drive, Dropbox, and cloud folder permissions for data leaks.",
-    iconBg: "bg-emerald-500/20",
-    iconColor: "text-emerald-400",
-    iconText: "S",
+    description: "Sovereign secrets management, dynamic credential leases, automated PKI, and zero-knowledge encryption.",
+    iconBg: "bg-zinc-800",
+    iconColor: "text-zinc-200",
+    iconText: "HV",
   },
 
   // --- 6. Productivity & Communication ---
@@ -469,8 +506,53 @@ export const ALL_PLUGINS: PluginItem[] = [
     iconColor: "text-blue-400",
     iconText: "Z",
   },
+  {
+    id: "proton_sovereign",
+    name: "ProtonMail Sovereign Privacy",
+    category: "Communication",
+    description: "Zero-access encrypted enterprise email, Swiss jurisdiction data custody, and PGP key verification.",
+    iconBg: "bg-purple-600/20",
+    iconColor: "text-purple-300",
+    iconText: "PM",
+  },
+  {
+    id: "signal_enterprise",
+    name: "Signal Private Messaging",
+    category: "Communication",
+    description: "End-to-end encrypted messaging, ephemeral disappearing directives, and zero-metadata contact verification.",
+    iconBg: "bg-blue-600/20",
+    iconColor: "text-blue-400",
+    iconText: "SG",
+  },
 
-  // --- 7. Finance & Business ---
+  // --- 7. Finance & Capital Markets (Institutional) ---
+  {
+    id: "bloomberg_terminal",
+    name: "Bloomberg Enterprise & B-PIPE",
+    category: "Finance",
+    description: "Real-time sovereign macro bond yields, FX swap curves, credit default swaps, and commodity orders.",
+    iconBg: "bg-amber-600/20",
+    iconColor: "text-amber-400",
+    iconText: "BB",
+  },
+  {
+    id: "pitchbook_venture",
+    name: "PitchBook Private Markets",
+    category: "Finance",
+    description: "Venture capital funding rounds, pre-money valuations, cap table comps, and institutional LP records.",
+    iconBg: "bg-blue-600/20",
+    iconColor: "text-blue-300",
+    iconText: "PB",
+  },
+  {
+    id: "carta_equity",
+    name: "Carta Cap Table & 409A",
+    category: "Finance",
+    description: "Automated cap table governance, 409A valuation compliance, option pool dilution, and vesting models.",
+    iconBg: "bg-emerald-600/20",
+    iconColor: "text-emerald-400",
+    iconText: "CA",
+  },
   {
     id: "stripe",
     name: "Stripe",
@@ -597,20 +679,22 @@ const CATEGORIES = [
   "Finance",
   "Business & Operations",
   "Data & Analytics",
-  "Travel",
 ] as const;
 
 interface NoctisPluginsTabProps {
   onSelectPlugin?: (plugin: PluginItem) => void;
+  onLaunchPrompt?: (prompt: string) => void;
   activePluginId?: string;
   onClose?: () => void;
 }
 
 export function NoctisPluginsTab({
   onSelectPlugin,
+  onLaunchPrompt,
   activePluginId,
   onClose,
 }: NoctisPluginsTabProps) {
+  const [selectedPluginForDetail, setSelectedPluginForDetail] = useState<PluginItem | null>(null);
   const [query, setQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [installedIds, setInstalledIds] = useState<Set<string>>(() => {
@@ -666,6 +750,36 @@ export function NoctisPluginsTab({
     }
     return map;
   }, [query, selectedCategory]);
+
+  if (selectedPluginForDetail) {
+    return (
+      <NoctisPluginDetailView
+        plugin={selectedPluginForDetail}
+        isInstalled={installedIds.has(selectedPluginForDetail.id)}
+        onToggleInstall={() => {
+          setInstalledIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(selectedPluginForDetail.id)) {
+              next.delete(selectedPluginForDetail.id);
+            } else {
+              next.add(selectedPluginForDetail.id);
+            }
+            try {
+              localStorage.setItem("noctis-installed-plugins", JSON.stringify([...next]));
+            } catch {}
+            return next;
+          });
+        }}
+        onBack={() => setSelectedPluginForDetail(null)}
+        onLaunchPrompt={(promptText) => {
+          onLaunchPrompt?.(promptText);
+        }}
+        onOpenWorkspace={() => {
+          onSelectPlugin?.(selectedPluginForDetail);
+        }}
+      />
+    );
+  }
 
   return (
     <div className="flex flex-col h-full w-full bg-[#121212] text-zinc-100 overflow-y-auto no-scrollbar">
@@ -780,7 +894,7 @@ export function NoctisPluginsTab({
                       item={item}
                       isInstalled={installedIds.has(item.id)}
                       onToggle={(e) => toggleInstall(item.id, e)}
-                      onSelect={() => onSelectPlugin?.(item)}
+                      onSelect={() => setSelectedPluginForDetail(item)}
                     />
                   ))}
                 </div>
@@ -803,7 +917,7 @@ export function NoctisPluginsTab({
                     item={item}
                     isInstalled={installedIds.has(item.id)}
                     onToggle={(e) => toggleInstall(item.id, e)}
-                    onSelect={() => onSelectPlugin?.(item)}
+                    onSelect={() => setSelectedPluginForDetail(item)}
                   />
                 ))}
               </div>

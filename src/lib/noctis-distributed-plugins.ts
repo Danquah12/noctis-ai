@@ -160,9 +160,10 @@ export const DISTRIBUTED_PLUGINS: DistributedPluginItem[] = ALL_PLUGINS.map((plu
       shelves = ["watch", "more"];
       sampleAction = "Analyze YouTube algorithm signals, video tags, and competitor growth with vidIQ for ";
       break;
+    case "mattermost_airgap":
     case "sonos":
-      shelves = ["watch", "more"];
-      sampleAction = "Manage music playback and audio zones across Sonos system: ";
+      shelves = ["more"];
+      sampleAction = "Dispatch encrypted operational directives to air-gapped mission channels in Mattermost: ";
       break;
 
     // --- Tools (Dev & Security) ---
@@ -183,21 +184,75 @@ export const DISTRIBUTED_PLUGINS: DistributedPluginItem[] = ALL_PLUGINS.map((plu
       shelves = ["tools"];
       sampleAction = "Audit repository dependencies and automated code patches with Sovereign Code Guard for ";
       break;
+    case "crowdstrike_falcon":
+      shelves = ["tools"];
+      sampleAction = "Correlate endpoint threat telemetry, adversary IOCs, and zero-day alerts in CrowdStrike Falcon for ";
+      break;
+    case "wiz_cloud":
+      shelves = ["tools"];
+      sampleAction = "Audit multi-cloud security graph, toxic risk combinations, and IAM blast radius in Wiz for ";
+      break;
+    case "sentinel_one":
+      shelves = ["tools"];
+      sampleAction = "Execute autonomous behavioral EDR threat remediation and forensic rollback in SentinelOne for ";
+      break;
+    case "snyk_devsec":
+      shelves = ["tools"];
+      sampleAction = "Scan container images and fix open-source dependency vulnerabilities in Snyk for ";
+      break;
+    case "cloudflare_zero_trust":
+      shelves = ["tools"];
+      sampleAction = "Audit zero-trust network access tunnels, DNS security policies, and edge routing in Cloudflare for ";
+      break;
+    case "hashicorp_vault":
+      shelves = ["tools"];
+      sampleAction = "Issue dynamic secret leases, rotate API keys, and audit cryptographic vaults in HashiCorp Vault for ";
+      break;
+    case "datadog_apm":
+      shelves = ["tools"];
+      sampleAction = "Inspect distributed APM trace latency, error rates, and host telemetry in Datadog for ";
+      break;
+    case "linear_app":
+      shelves = ["tools", "more"];
+      sampleAction = "Create engineering cycle issues, link Git branches, and update roadmaps in Linear for ";
+      break;
+    case "nvidia_enterprise":
+      shelves = ["tools", "agent"];
+      sampleAction = "Profile GPU cluster utilization, TensorRT-LLM acceleration, and NeMo fine-tuning for ";
+      break;
+    case "weights_and_biases":
+      shelves = ["tools", "agent"];
+      sampleAction = "Log ML loss curves, evaluate checkpoint weights, and compare hyperparameter sweeps in W&B for ";
+      break;
+    case "proton_sovereign":
+      shelves = ["more"];
+      sampleAction = "Send zero-access PGP-encrypted enterprise email via ProtonMail Sovereign for ";
+      break;
+    case "signal_enterprise":
+      shelves = ["more"];
+      sampleAction = "Dispatch ephemeral end-to-end encrypted operational directives via Signal for ";
+      break;
+    case "bloomberg_terminal":
+      shelves = ["more", "agent"];
+      sampleAction = "Query real-time sovereign bond yield curves, FX swaps, and credit default spreads via Bloomberg B-PIPE for ";
+      break;
+    case "pitchbook_venture":
+      shelves = ["more", "agent"];
+      sampleAction = "Analyze private venture capital valuations, LP commitments, and cap table funding comps in PitchBook for ";
+      break;
+    case "carta_equity":
+      shelves = ["more", "agent"];
+      sampleAction = "Simulate 409A stock option dilution, waterfall payouts, and cap table equity rounds in Carta for ";
+      break;
     case "malwarebytes":
       shelves = ["tools"];
       sampleAction = "Verify suspicious URLs, domains, and phishing payloads with Malwarebytes: ";
       break;
     case "privacyhawk":
-      shelves = ["tools"];
-      sampleAction = "Scan data brokers and enforce privacy opt-outs with PrivacyHawk for ";
-      break;
     case "ajaxx":
-      shelves = ["tools"];
-      sampleAction = "Scrub exposed credentials and leaked PII with AJAXX Data Scrubber for ";
-      break;
     case "soluvery":
       shelves = ["tools"];
-      sampleAction = "Audit shared Google Drive link permissions and access risks with Soluvery: ";
+      sampleAction = "Audit cloud permissions and data broker exposures for ";
       break;
     case "github":
       shelves = ["tools"];
@@ -212,12 +267,9 @@ export const DISTRIBUTED_PLUGINS: DistributedPluginItem[] = ALL_PLUGINS.map((plu
       sampleAction = "Deploy frontend builds, edge functions, and inspect preview domains on Vercel for ";
       break;
     case "lovable":
-      shelves = ["tools"];
-      sampleAction = "Build full-stack React and web applications with Lovable for ";
-      break;
     case "tinyfish":
       shelves = ["tools"];
-      sampleAction = "Automate browser workflows and web scraping with TinyFish for ";
+      sampleAction = "Build full-stack React and web applications with Lovable for ";
       break;
 
     // --- Agent / Autonomous Engines ---
@@ -363,37 +415,39 @@ export const DISTRIBUTED_PLUGINS: DistributedPluginItem[] = ALL_PLUGINS.map((plu
       shelves = ["more"];
       sampleAction = "Discover artisan handmade goods and curated home styles on Etsy for ";
       break;
+    case "defense_procurement":
     case "kleinanzeigen":
       shelves = ["more"];
-      sampleAction = "Search European classifieds and peer-to-peer listings on Kleinanzeigen for ";
+      sampleAction = "Query global defense procurement tenders, dual-use supply chains, and export compliance for ";
       break;
     case "zillow":
       shelves = ["more"];
-      sampleAction = "Analyze residential real estate comps, cap rates, and listings on Zillow for ";
+      sampleAction = "Analyze commercial real estate valuations, cap rates, and facility portfolios for ";
       break;
+    case "quantitative_risk":
     case "astrologic":
-      shelves = ["more"];
-      sampleAction = "Generate natal birth chart and planetary ephemeris transit interpretation for ";
+      shelves = ["more", "agent"];
+      sampleAction = "Run Monte Carlo quantitative risk simulation and asset covariance matrices for ";
       break;
+    case "decision_matrix":
     case "tarot":
-      shelves = ["more"];
-      sampleAction = "Draw a three-card Celtic cross symbolic tarot reading for ";
+      shelves = ["more", "agent"];
+      sampleAction = "Synthesize multi-criteria decision analysis (MCDA) and Pareto trade-off payoffs for ";
       break;
     case "health":
       shelves = ["more", "agent"];
-      sampleAction = "Track health biomarkers, sleep duration, and metabolic vitals for ";
+      sampleAction = "Analyze longitudinal renal biomarkers, FHIR R4 clinical records, and medication toxicity for ";
       break;
+    case "tactical_readiness":
     case "calorie_tracker":
-      shelves = ["more"];
-      sampleAction = "Log meal macronutrients, caloric density, and dietary goals for ";
-      break;
     case "hevy":
-      shelves = ["more"];
-      sampleAction = "Log gym training splits, progressive overload, and 1RM metrics in Hevy for ";
+      shelves = ["more", "agent"];
+      sampleAction = "Analyze operational biometric readiness, HRV autonomic tone, and fatigue recovery curves for ";
       break;
+    case "corporate_logistics":
     case "tripsy":
       shelves = ["more"];
-      sampleAction = "Organize travel flight confirmation codes and itinerary in Tripsy for ";
+      sampleAction = "Coordinate executive travel, secure site logistics, per-diem compliance, and geopolitical threat advisories for ";
       break;
 
     default:

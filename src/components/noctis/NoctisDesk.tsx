@@ -7227,6 +7227,10 @@ export function NoctisDesk() {
           <div className={cn("flex flex-col min-h-0 min-w-0 transition-all duration-200", canvasOpen ? "w-full md:w-1/2 lg:w-[46%] border-r border-white/10" : "w-full")}>
             {desk === "plugins" ? (
               <NoctisPluginsTab
+                onLaunchPrompt={(promptText) => {
+                  setDesk("chat");
+                  void send(promptText);
+                }}
                 onSelectPlugin={(p) => {
                   const dist = DISTRIBUTED_PLUGINS.find((dp) => dp.id === p.id) ?? {
                     ...p,
