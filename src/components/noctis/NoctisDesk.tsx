@@ -6339,59 +6339,12 @@ export function NoctisDesk() {
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => {
-            setMenu(false);
-            handleSignOut();
-          }}
-          disabled={signingOut}
-          title="Sign out of Noctis and DStrike"
-          className="mb-1 flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-zinc-300 hover:text-rose-300 hover:bg-rose-500/15 transition disabled:opacity-50 touch-manipulation"
-        >
-          <LogOut className="size-4 shrink-0 text-zinc-400 group-hover:text-rose-300" />
-          <span>{signingOut ? "Signing out..." : "Log out"}</span>
-        </button>
+
         <button type="button" onClick={openNew} className={item(empty && shelf === "chats" && desk === "chat")}>
           <SquarePen className="size-4 shrink-0" />
           New chat
         </button>
-        <button
-          type="button"
-          onClick={() => {
-            setDesk("forge");
-            setMenu(false);
-          }}
-          className={item(desk === "forge")}
-        >
-          <Terminal className="size-4 shrink-0 text-amber-400" />
-          <span>Noctis Forge</span>
-          <span className="ml-auto rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">ARCHITECT</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setDesk("console");
-            setMenu(false);
-          }}
-          className={item(desk === "console")}
-        >
-          <Activity className="size-4 shrink-0 text-emerald-400" />
-          <span>Developer Console</span>
-          <span className="ml-auto rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-bold text-emerald-300">GATEWAY</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setDesk("plugins");
-            setMenu(false);
-          }}
-          className={item(desk === "plugins")}
-        >
-          <Layers className="size-4 shrink-0 text-sky-400" />
-          <span>Plugins & Systems</span>
-          <span className="ml-auto rounded-full bg-sky-500/20 px-1.5 py-0.5 text-[10px] font-bold text-sky-300">50+</span>
-        </button>
+
         <button type="button" onClick={() => openShelf("pictures")} className={item(shelf === "pictures")}>
           <Image className="size-4 shrink-0" />
           Pictures
@@ -6656,19 +6609,7 @@ export function NoctisDesk() {
               </div>
               {suitesExpanded ? (
                 <div className="space-y-0.5 max-h-40 overflow-y-auto no-scrollbar pr-1">
-                  <button
-                    type="button"
-                    onClick={() => { setMenu(false); setDesk("redteam");
-                    }}
-                    className={cn(
-                      "flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs transition text-left",
-                      desk === "redteam" ? "bg-rose-500/20 text-rose-200 border border-rose-500/30" : "text-zinc-300 hover:bg-white/10 hover:text-white"
-                    )}
-                  >
-                    <Target className="size-3.5 text-rose-400 shrink-0" />
-                    <span className="truncate font-medium">AI Red Team & Threat Matrix</span>
-                    <span className="ml-auto rounded bg-rose-500/20 px-1.5 py-0.5 text-[9px] font-bold text-rose-300">SHIELD</span>
-                  </button>
+
                   <button
                     type="button"
                     onClick={() => { setMenu(false); setCanaryModalOpen(true); }}
@@ -7205,16 +7146,10 @@ export function NoctisDesk() {
           </button>
         </header>
         <div className="flex h-11 shrink-0 items-center justify-between border-b border-white/10 px-2.5 sm:px-4 bg-black/20 backdrop-blur-sm gap-2">
-          <button
-            type="button"
-            onClick={handleSignOut}
-            disabled={signingOut}
-            title="Sign out of Noctis and DStrike"
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-white/10 hover:bg-rose-500/20 px-2.5 sm:px-3 py-1 text-xs font-medium text-zinc-300 hover:text-rose-200 transition border border-white/10 hover:border-rose-500/30 touch-manipulation shadow-xs disabled:opacity-50"
-          >
-            <LogOut className="size-3 sm:size-3.5 text-zinc-400" />
-            <span>{signingOut ? "Signing out..." : "Log out"}</span>
-          </button>
+          <div className="flex items-center gap-2 text-xs text-zinc-400">
+            <span className="size-2 rounded-full bg-emerald-400" />
+            <span className="font-medium text-zinc-300">DStrike Sovereign Runtime</span>
+          </div>
 
           {/* Clear Previous Chat & Scaled Compact Logo for Mobile and Desktop */}
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
