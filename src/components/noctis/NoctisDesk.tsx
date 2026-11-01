@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ClipboardEvent } from "react";
 import { Link } from "@tanstack/react-router";
-import { Activity, ArrowUp, Bot, Boxes, Brain, Calendar, Cpu, Crosshair, EyeOff, Fingerprint, FileLock, Globe, Key, Lock, Network, Swords, WifiOff, Zap, ChevronDown, ChevronLeft, Code2, Copy, CornerDownLeft, FileText, GraduationCap, Image, Library, Mail, Menu, Mic, MoreHorizontal, PanelRight, PanelRightOpen, Pencil, Phone, PhoneOff, Plus, Printer, RotateCcw, Search, Square, SquarePen, Trash2, Users2, Video, Volume2, VolumeX, Wrench, X } from "lucide-react";
+import { Activity, ArrowUp, Bot, Boxes, Brain, Calendar, Cpu, Crosshair, EyeOff, Fingerprint, FileLock, Globe, Key, Lock, LogOut, Network, Swords, WifiOff, Zap, ChevronDown, ChevronLeft, Code2, Copy, CornerDownLeft, FileText, GraduationCap, Image, Library, Mail, Menu, Mic, MoreHorizontal, PanelRight, PanelRightOpen, Pencil, Phone, PhoneOff, Plus, Printer, RotateCcw, Search, Square, SquarePen, Trash2, Users2, Video, Volume2, VolumeX, Wrench, X } from "lucide-react";
 import { askNoctis, drawVibe, hearVibe, sayVibe, trainVibe } from "@/lib/noctis-api";
 import { bringImagineFile, bringPortrait } from "@/lib/imagine-api";
 import { playHarmonicTone, playSovereignChime, stopAudioSynth } from "@/lib/noctis-audio-synth";
@@ -64,7 +64,7 @@ import { GOALS } from "@/lib/learn";
 import { NoctisRecommend, markDna, readNoctisContext } from "@/components/noctis/NoctisContext";
 import { formatContext, markMission, routeActions } from "@/lib/noctis-os";
 import { studyAsks } from "@/lib/study-pass";
-import { CardsReturn } from "@/components/layout/CardsReturn";
+import { leaveHall } from "@/lib/auth/client";
 import { textFromDocx, textFromPdf, textFromRtf } from "@/lib/read-document";
 import { saveShareLink } from "@/lib/share-link";
 
@@ -364,18 +364,6 @@ async function shrinkImage(file: File) {
   return canvas.toDataURL("image/jpeg", 0.82);
 }
 
-function leaveNoctis() {
-  try {
-    const saved = sessionStorage.getItem("noctis-return") || "";
-    if (window.history.length > 1) {
-      window.history.back();
-      return;
-    }
-    window.location.assign(saved.startsWith("/") && !saved.startsWith("/noctis") ? saved : "/home");
-  } catch {
-    window.location.assign("/home");
-  }
-}
 
 function escapeHtml(value: string) {
   return value.replace(/&/g, "\u0026amp;").replace(/</g, "\u0026lt;").replace(/>/g, "\u0026gt;");
@@ -3546,6 +3534,13 @@ export function NoctisDesk() {
   const [nameDraft, setNameDraft] = useState("");
   const [priv, setPriv] = useState(false);
   const [voiceOn, setVoiceOn] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+
+  function handleSignOut() {
+    if (signingOut) return;
+    setSigningOut(true);
+    void leaveHall().catch(() => setSigningOut(false));
+  }
   const [callOpen, setCallOpen] = useState(false);
   const [routes, setRoutes] = useState<{ label: string; ask: string }[]>([]);
   const [place] = useState(() => (typeof sessionStorage === "undefined" ? "chat" : sessionStorage.getItem("vibe-place") || "chat"));
@@ -6314,7 +6309,19 @@ export function NoctisDesk() {
           </div>
         </div>
 
-        <CardsReturn onClick={() => setMenu(false)} className="mb-1 flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-[#e4b86a]" />
+        <button
+          type="button"
+          onClick={() => {
+            setMenu(false);
+            handleSignOut();
+          }}
+          disabled={signingOut}
+          title="Sign out of Noctis and DStrike"
+          className="mb-1 flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-zinc-300 hover:text-rose-300 hover:bg-rose-500/15 transition disabled:opacity-50 touch-manipulation"
+        >
+          <LogOut className="size-4 shrink-0 text-zinc-400 group-hover:text-rose-300" />
+          <span>{signingOut ? "Signing out..." : "Log out"}</span>
+        </button>
         <button type="button" onClick={openNew} className={item(empty && shelf === "chats")}>
           <SquarePen className="size-4 shrink-0" />
           New chat
@@ -6885,19 +6892,27 @@ export function NoctisDesk() {
           >
             <Phone className="size-5" />
           </button>
-          <CardsReturn
-            onClick={() => setMenu(false)}
-            className="absolute right-3 hidden items-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-zinc-400 hover:bg-white/5 hover:text-zinc-100 md:inline-flex"
-          />
+          <button
+            type="button"
+            onClick={handleSignOut}
+            disabled={signingOut}
+            title="Sign out of Noctis and DStrike"
+            className="absolute right-3 hidden items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-zinc-400 hover:bg-rose-500/20 hover:text-rose-200 transition border border-white/10 hover:border-rose-500/30 md:inline-flex disabled:opacity-50 touch-manipulation"
+          >
+            <LogOut className="size-3.5 shrink-0 text-zinc-400" />
+            <span>{signingOut ? "Signing out..." : "Log out"}</span>
+          </button>
         </header>
         <div className="flex h-11 shrink-0 items-center justify-between border-b border-white/10 px-2.5 sm:px-4 bg-black/20 backdrop-blur-sm gap-2">
           <button
             type="button"
-            onClick={leaveNoctis}
-            className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-[#e4b86a] hover:text-[#f7d695] transition"
+            onClick={handleSignOut}
+            disabled={signingOut}
+            title="Sign out of Noctis and DStrike"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-white/10 hover:bg-rose-500/20 px-2.5 sm:px-3 py-1 text-xs font-medium text-zinc-300 hover:text-rose-200 transition border border-white/10 hover:border-rose-500/30 touch-manipulation shadow-xs disabled:opacity-50"
           >
-            <ChevronLeft className="size-4 shrink-0" />
-            <span>Back</span>
+            <LogOut className="size-3 sm:size-3.5 text-zinc-400" />
+            <span>{signingOut ? "Signing out..." : "Log out"}</span>
           </button>
 
           {/* Clear Previous Chat & Scaled Compact Logo for Mobile and Desktop */}
