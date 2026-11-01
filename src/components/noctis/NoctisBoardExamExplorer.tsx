@@ -19,6 +19,7 @@ import {
   Cpu,
   Briefcase,
   TrendingUp,
+  Scale,
   X,
   Zap,
   HelpCircle,
@@ -161,6 +162,8 @@ export function NoctisBoardExamExplorer({
         return <Pill className="size-3.5 text-emerald-400" />;
       case "health_allied":
         return <Activity className="size-3.5 text-cyan-400" />;
+      case "law":
+        return <Scale className="size-3.5 text-amber-300" />;
       case "cloud":
         return <Cloud className="size-3.5 text-sky-400" />;
       case "cyber":
@@ -225,11 +228,11 @@ export function NoctisBoardExamExplorer({
             <h3 className="text-sm font-bold text-zinc-100 flex items-center gap-2">
               <span>Board & Certification Exam Directory</span>
               <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold text-emerald-300 border border-emerald-500/30">
-                220+ Verified Boards
+                235+ Verified Boards
               </span>
             </h3>
             <p className="text-[11px] text-zinc-400">
-              Doctors, Pharmacists, Nurses, Allied Health & Global Technical Certifications
+              Doctors, Nurses, Pharmacists, Law & Bar Exams, Allied Health & Technical Certifications
             </p>
           </div>
         </div>
@@ -255,7 +258,7 @@ export function NoctisBoardExamExplorer({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search 220+ certified exams (USMLE, NCLEX, NAPLEX, AWS, Cisco, CompTIA, AAPC, CCRN...)"
+            placeholder="Search 235+ certified exams (USMLE, Bar Exam, UBE, NCLEX, Patent Bar, AWS, Cisco, CompTIA, SQE...)"
             className="w-full rounded-2xl border border-white/10 bg-black/40 pl-9 pr-9 py-2 text-xs sm:text-sm text-zinc-100 placeholder-zinc-500 focus:border-[#e4b86a]/60 focus:outline-none focus:ring-1 focus:ring-[#e4b86a]/50"
           />
           {searchQuery ? (

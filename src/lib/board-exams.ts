@@ -3,6 +3,7 @@ export type ExamCategory =
   | "health_nurse"
   | "health_pharmacy"
   | "health_allied"
+  | "law"
   | "cloud"
   | "cyber"
   | "network"
@@ -71,6 +72,7 @@ export const EXAM_CATEGORIES: Array<{
   { id: "health_nurse", label: "💉 Nurses & NPs", icon: "💉", description: "NCLEX-RN, NCLEX-PN, CCRN, FNP, PMHNP, CRNA" },
   { id: "health_pharmacy", label: "💊 Pharmacists & Techs", icon: "💊", description: "NAPLEX, MPJE, BPS Specialties, PTCB" },
   { id: "health_allied", label: "🩻 Allied Health & Diagnostics", icon: "🩻", description: "ARDMS Sonography, ARRT Radiology, ASCP Lab, EMT, AAPC Coding" },
+  { id: "law", label: "⚖️ Law & Legal Practice", icon: "⚖️", description: "Bar Exams, UBE, MBE, MPRE, Patent Bar, SQE, NALA Paralegal, Compliance" },
   { id: "cloud", label: "☁️ Cloud & Infrastructure", icon: "☁️", description: "AWS, Azure, GCP, VMware, Nutanix, HashiCorp" },
   { id: "cyber", label: "🛡️ Cybersecurity", icon: "🛡️", description: "CompTIA, CrowdStrike, CISSP, CEH, Palo Alto, Fortinet, GIAC" },
   { id: "network", label: "🌐 Networking & Telco", icon: "🌐", description: "Cisco, Juniper, Aruba, Nokia, Checkpoint, Arista" },
@@ -8034,7 +8036,523 @@ export const BOARD_EXAMS: BoardExam[] = [
       { label: "How to Pass (TTPs)", prompt: "What are the key tactics, techniques, and procedures (TTPs) to pass Zscaler (ZCCA, ZCCP Zero Trust) on the first attempt?" },
       { label: "10-Q Practice Simulation", prompt: "Generate 10 realistic practice questions for Zscaler (ZCCA, ZCCP Zero Trust) by Zscaler with detailed answer rationales." }
     ]
-  }
+  },
+  // ==========================================
+  // LAW & LEGAL PRACTICE EXAMINATIONS
+  // ==========================================
+  {
+    id: "ube-bar",
+    name: "Uniform Bar Examination (UBE - MBE, MEE, MPT)",
+    provider: "National Conference of Bar Examiners (NCBE)",
+    category: "law",
+    categoryLabel: "Law & Legal Practice",
+    role: "Licensed Attorney at Law / Counselor",
+    examCount: 3,
+    description: "Standardized bar examination adopted by 40+ US jurisdictions evaluating legal reasoning, common law doctrine, and practical lawyering skills.",
+    vendorUrl: "https://www.ncbex.org/exams/ube/",
+    popularExams: ["MBE (Multistate Bar Examination)", "MEE (Multistate Essay Examination)", "MPT (Multistate Performance Test)"],
+    freeResources: [
+      {
+        name: "Official NCBE UBE Subject Matter Outlines",
+        url: "https://www.ncbex.org/exams/ube/",
+        type: "official_free",
+        description: "Official scope and subject outlines for Constitutional Law, Contracts, Evidence, Real Property, Torts, and Civil Procedure"
+      },
+      {
+        name: "Legal Information Institute (LII) - Cornell Law",
+        url: "https://www.law.cornell.edu/",
+        type: "textbook",
+        description: "Comprehensive open-access federal statutes, uniform commercial code (UCC), and legal doctrine repository"
+      },
+      {
+        name: "Oyez Supreme Court Audio & Case Database",
+        url: "https://www.oyez.org/",
+        type: "community",
+        description: "Free multimedia archive of landmark Supreme Court oral arguments and constitutional case summaries"
+      }
+    ],
+    howToPassTTP: {
+      tactics: "Target 65%+ on the MBE (50% of total score). Complete 1,500+ licensed NCBE questions. Master high-frequency MEE topics: Civ Pro, Contracts, Torts, Evidence, Real Property, and Criminal Law.",
+      techniques: "Use the IRAC method (Issue, Rule, Application, Conclusion) with clear headings. Pre-allocate 30 minutes strictly per essay. On MPT, spend 45 minutes reading the file/library and 45 minutes drafting.",
+      procedures: "Follow a strict 10-week 400-hour study regimen. Complete two full timed 200-question MBE mock exams under test conditions before test week."
+    },
+    samplePrompts: [
+      { label: "High-Yield UBE Blueprint", prompt: "Provide a comprehensive high-yield UBE study blueprint: MBE question breakdown, MEE high-frequency topics, and MPT time-management pacing." },
+      { label: "5 MBE Practice Questions", prompt: "Generate 5 challenging MBE-style practice questions spanning Federal Civil Procedure, Evidence, and Real Property with detailed rule analysis." },
+      { label: "MEE Essay IRAC Formula", prompt: "Explain the strict IRAC structural breakdown for scoring 5+ on an MEE Contracts and Sales essay question." }
+    ]
+  },
+  {
+    id: "california-bar",
+    name: "California Bar Examination (CalBar)",
+    provider: "State Bar of California",
+    category: "law",
+    categoryLabel: "Law & Legal Practice",
+    role: "California Licensed Attorney at Law",
+    examCount: 3,
+    description: "Rigorous 2-day general bar exam consisting of 5 one-hour essay questions, one 90-minute California Performance Test (CPT), and the 200-question MBE.",
+    vendorUrl: "https://www.calbar.ca.gov/Admissions/Examinations/California-Bar-Examination",
+    popularExams: ["California Written Essays (5 Questions)", "California Performance Test (CPT)", "Multistate Bar Examination (MBE)"],
+    freeResources: [
+      {
+        name: "California State Bar Past Exams & Model Answers",
+        url: "https://www.calbar.ca.gov/Admissions/Examinations/California-Bar-Examination/Past-Exams",
+        type: "official_free",
+        description: "Official published questions and benchmark model passing answers from past administrations"
+      },
+      {
+        name: "California Legislative Information & Codes",
+        url: "https://leginfo.legislature.ca.gov/",
+        type: "textbook",
+        description: "Full text of California Evidence Code, Civil Procedure, Community Property, and Penal Code"
+      }
+    ],
+    howToPassTTP: {
+      tactics: "Write at least 60 full past California bar essays under timed conditions. Memorize California-specific distinctions for Evidence (CEC vs FRE) and Civil Procedure.",
+      techniques: "Spot every minor sub-issue; California essays reward exhaustive issue-spotting and distinct rule headings. Pre-allocate 60 minutes strictly per essay.",
+      procedures: "12-week study plan with at least 500 hours total preparation. Review top-scoring benchmark model answers published by the State Bar."
+    },
+    samplePrompts: [
+      { label: "CalBar Essay Strategy", prompt: "What are the most frequent California-specific essay topics and distinctions tested on the California Bar Examination?" },
+      { label: "California Evidence CEC vs FRE", prompt: "Compare the key distinctions between the California Evidence Code (CEC) and Federal Rules of Evidence (FRE) tested on CalBar." }
+    ]
+  },
+  {
+    id: "new-york-bar",
+    name: "New York Bar Examination (NYBOLE - UBE & NYLE)",
+    provider: "New York State Board of Law Examiners",
+    category: "law",
+    categoryLabel: "Law & Legal Practice",
+    role: "New York State Licensed Attorney",
+    examCount: 3,
+    description: "Admission to the New York State Bar requiring passage of the Uniform Bar Exam (UBE), the New York Law Course (NYLC), and the New York Law Exam (NYLE).",
+    vendorUrl: "https://www.nybarexam.org/",
+    popularExams: ["Uniform Bar Examination (UBE - 266 Passing Score)", "New York Law Exam (NYLE - 50 Qs)", "New York Law Course (NYLC)"],
+    freeResources: [
+      {
+        name: "NYBOLE Course Materials & NYLE Outlines",
+        url: "https://www.nybarexam.org/nyle.html",
+        type: "official_free",
+        description: "Official comprehensive New York law course outline for NYLE preparation"
+      },
+      {
+        name: "New York State Unified Court System Law Repository",
+        url: "https://www.nycourts.gov/",
+        type: "textbook",
+        description: "New York Civil Practice Law and Rules (CPLR) and Court of Appeals case precedent"
+      }
+    ],
+    howToPassTTP: {
+      tactics: "Score >=266 on the UBE. Review the NYBOLE course materials thoroughly with indexed tabs for rapid open-book NYLE navigation.",
+      techniques: "Time management: 50 NYLE questions in 120 minutes (2.4 minutes per question). Eliminate incorrect answers based on New York statutory thresholds.",
+      procedures: "Complete the 17-hour NYLC video lectures, print and tab the 200-page NYLE outline, and take practice questions."
+    },
+    samplePrompts: [
+      { label: "NYLE Preparation Guide", prompt: "Explain the format, registration rules, and high-yield topics for the New York Law Exam (NYLE) and NYLC." },
+      { label: "NY CPLR High-Yield Rules", prompt: "Summarize the highest-yield New York Civil Practice Law and Rules (CPLR) concepts tested on the NYLE." }
+    ]
+  },
+  {
+    id: "mpre-ethics",
+    name: "MPRE (Multistate Professional Responsibility Examination)",
+    provider: "National Conference of Bar Examiners (NCBE)",
+    category: "law",
+    categoryLabel: "Law & Legal Practice",
+    role: "Ethics-Certified Legal Practitioner",
+    examCount: 1,
+    description: "Two-hour, 60-question multiple-choice ethics examination measuring familiarity with the ABA Model Rules of Professional Conduct and Code of Judicial Conduct.",
+    vendorUrl: "https://www.ncbex.org/exams/mpre/",
+    popularExams: ["Client-Lawyer Relationship", "Conflicts of Interest", "Litigation & Advocacy Ethics", "Competence & Confidentiality"],
+    freeResources: [
+      {
+        name: "ABA Model Rules of Professional Conduct",
+        url: "https://www.americanbar.org/groups/professional_responsibility/publications/model_rules_of_professional_conduct/",
+        type: "official_free",
+        description: "Complete official text of the ABA Model Rules and official comments"
+      },
+      {
+        name: "Official NCBE MPRE Subject Matter Outline",
+        url: "https://www.ncbex.org/exams/mpre/",
+        type: "official_free",
+        description: "Official scope and percentage weighting across all professional responsibility topics"
+      }
+    ],
+    howToPassTTP: {
+      tactics: "Master Conflicts of Interest (Rules 1.7 - 1.10), which accounts for over 18% of exam questions. Distinguish between mandatory withdrawal and permissive withdrawal.",
+      techniques: "Choose the answer choice that reflects the ABA Model Rule standard, not personal moral intuition or extreme punitive extremes.",
+      procedures: "Dedicate 20-30 focused study hours over 2 weeks. Complete at least 200 practice questions and review full explanations."
+    },
+    samplePrompts: [
+      { label: "MPRE High-Yield Conflicts", prompt: "Explain concurrent client conflicts (Rule 1.7) and former client conflicts (Rule 1.9) with screening requirements for the MPRE." },
+      { label: "Mandatory vs Permissive Withdrawal", prompt: "When MUST an attorney withdraw from representation vs when MAY they withdraw under ABA Model Rule 1.16?" }
+    ]
+  },
+  {
+    id: "patent-bar",
+    name: "USPTO Patent Bar (Registration Examination for Patent Practice)",
+    provider: "United States Patent and Trademark Office (USPTO)",
+    category: "law",
+    categoryLabel: "Law & Legal Practice",
+    role: "Registered Patent Attorney / Patent Agent",
+    examCount: 1,
+    description: "Specialized 100-question computer-delivered examination testing the Manual of Patent Examining Procedure (MPEP), 35 U.S.C., and 37 C.F.R.",
+    vendorUrl: "https://www.uspto.gov/learning-and-resources/patent-and-trademark-practitioners/becoming-patent-practitioner",
+    popularExams: ["35 U.S.C. 101/102/103 Patentability", "PCT International Applications", "Post-Grant Review & Reexamination", "Appeal & Interference Practice"],
+    freeResources: [
+      {
+        name: "USPTO Manual of Patent Examining Procedure (MPEP Online)",
+        url: "https://www.uspto.gov/web/offices/pac/mpep/",
+        type: "official_free",
+        description: "Complete searchable database of the MPEP used in the live electronic exam"
+      },
+      {
+        name: "USPTO General Requirements Bulletin",
+        url: "https://www.uspto.gov/",
+        type: "official_free",
+        description: "Official technical eligibility criteria (Category A, B, C degrees) and candidate handbook"
+      }
+    ],
+    howToPassTTP: {
+      tactics: "Master MPEP chapters 2100 (Patentability), 700 (Examination), 600 (Parts of Application), and 1200 (Appeals). Know 35 U.S.C. 102 AIA prior art exceptions inside-out.",
+      techniques: "Electronic MPEP search speed is paramount. Practice searching exact regulatory phrases, statutory sections, and rule numbers in 60-90 seconds.",
+      procedures: "150-200 study hours. Complete 600+ past USPTO exam questions and practice using the PDF search interface."
+    },
+    samplePrompts: [
+      { label: "AIA 35 U.S.C. 102 Framework", prompt: "Explain the America Invents Act (AIA) 35 U.S.C. 102(a)(1), 102(a)(2), and 102(b) exceptions for the Patent Bar." },
+      { label: "MPEP Chapters 2100 & 700", prompt: "Summarize the most heavily tested patent examination rules in MPEP Chapter 700 and 2100." }
+    ]
+  },
+  {
+    id: "sqe-uk",
+    name: "SQE (Solicitors Qualifying Examination - UK)",
+    provider: "Solicitors Regulation Authority (SRA)",
+    category: "law",
+    categoryLabel: "Law & Legal Practice",
+    role: "Solicitor of the Senior Courts of England and Wales",
+    examCount: 2,
+    description: "Centralized national assessment for qualifying as a solicitor in England and Wales: Functioning Legal Knowledge (SQE1) and practical legal skills (SQE2).",
+    vendorUrl: "https://sqe.sra.org.uk/",
+    popularExams: ["SQE1: FLK1 (Business Law, Dispute Resolution, Contract, Tort, Legal System)", "SQE1: FLK2 (Property Practice, Wills, Criminal Law, Solicitors Accounts)", "SQE2: Client Interviewing, Advocacy, Legal Research, Drafting"],
+    freeResources: [
+      {
+        name: "SRA Official SQE Assessment Specifications & Sample Questions",
+        url: "https://sqe.sra.org.uk/",
+        type: "official_free",
+        description: "Official candidate blueprint, FLK domain syllabus, and licensed multiple-choice sample questions"
+      },
+      {
+        name: "UK Legislation & Case Law Archive",
+        url: "https://www.legislation.gov.uk/",
+        type: "textbook",
+        description: "Official United Kingdom statutory repository and judgment database"
+      }
+    ],
+    howToPassTTP: {
+      tactics: "FLK1 and FLK2 require high-speed application of substantive English law across 360 multiple-choice questions (1.7 minutes/question).",
+      techniques: "Single best answer technique: identify the specific rule of English common law or statute before reading the distractors. Memorize Solicitors Accounts Rules.",
+      procedures: "15-20 weeks of intensive study (300-400 hours). Complete at least 2,000 FLK questions and timed mock exams."
+    },
+    samplePrompts: [
+      { label: "SQE1 FLK High-Yield Breakdown", prompt: "Break down the core legal domains tested in SQE1 FLK1 and FLK2 with passing thresholds and sample question style." },
+      { label: "SQE2 Practical Skills Mastery", prompt: "What are the assessment criteria for SQE2 client interviewing, legal drafting, and oral advocacy?" }
+    ]
+  },
+  {
+    id: "uk-barrister-bpc",
+    name: "BPC (Bar Practice Course & Centralized Bar Exams - UK)",
+    provider: "Bar Standards Board (BSB)",
+    category: "law",
+    categoryLabel: "Law & Legal Practice",
+    role: "Barrister of England and Wales / Court Advocate",
+    examCount: 2,
+    description: "Vocational bar qualification testing Civil Litigation and Evidence, Criminal Litigation and Sentencing, and Professional Ethics for court advocacy rights.",
+    vendorUrl: "https://www.barstandardsboard.org.uk/",
+    popularExams: ["BSB Civil Litigation & Dispute Resolution", "BSB Criminal Litigation, Evidence & Sentencing", "Oral Advocacy & Examination-in-Chief"],
+    freeResources: [
+      {
+        name: "Bar Standards Board Candidate Syllabi",
+        url: "https://www.barstandardsboard.org.uk/",
+        type: "official_free",
+        description: "Official centralized assessment outlines for civil litigation and criminal procedure"
+      },
+      {
+        name: "Crown Prosecution Service (CPS) Legal Guidance",
+        url: "https://www.cps.gov.uk/legal-guidance",
+        type: "textbook",
+        description: "Comprehensive guidance on criminal offenses, charging standards, and sentencing guidelines"
+      }
+    ],
+    howToPassTTP: {
+      tactics: "Master the White Book (Civil Procedure Rules) and Blackstone's Criminal Practice. Memorize strict time limits, disclosure rules, and hearsay exceptions.",
+      techniques: "In ethics scenarios, always prioritize the court's administration of justice over client instructions (Core Duty 1 overrides Core Duty 2).",
+      procedures: "Follow the structured BPC timetable, practice drafting statements of case under timed conditions, and conduct mock witness examinations."
+    },
+    samplePrompts: [
+      { label: "BSB Civil Litigation Rules", prompt: "Explain Part 36 offers, summary judgment standards, and CPR disclosure rules for the BSB Civil Litigation exam." }
+    ]
+  },
+  {
+    id: "nca-canada",
+    name: "NCA (National Committee on Accreditation - Canada)",
+    provider: "Federation of Law Societies of Canada (FLSC)",
+    category: "law",
+    categoryLabel: "Law & Legal Practice",
+    role: "Canadian Barrister & Solicitor Candidate",
+    examCount: 5,
+    description: "Mandatory accreditation examinations for internationally trained law graduates assessing 5 core Canadian substantive legal subjects.",
+    vendorUrl: "https://nca.legal/",
+    popularExams: ["Canadian Constitutional Law", "Canadian Administrative Law", "Canadian Criminal Law", "Foundations of Canadian Law", "Canadian Professional Responsibility"],
+    freeResources: [
+      {
+        name: "NCA Official Exam Syllabi & Guidelines",
+        url: "https://nca.legal/",
+        type: "official_free",
+        description: "Official reading lists, learning objectives, and candidate rules for all mandatory subjects"
+      },
+      {
+        name: "CanLII (Canadian Legal Information Institute)",
+        url: "https://www.canlii.org/",
+        type: "textbook",
+        description: "Free full-text access to Supreme Court of Canada judgments, provincial statutes, and regulations"
+      }
+    ],
+    howToPassTTP: {
+      tactics: "Exams are open-book, 3-hour essay formats. Prepare well-indexed summary notes and decision trees for rapid issue retrieval.",
+      techniques: "In Administrative Law, apply the Vavilov standard of review framework rigorously. In Constitutional Law, master the Section 1 Oakes test.",
+      procedures: "Review 3-5 years of past NCA exams, write full outline responses, and verify against CanLII precedent."
+    },
+    samplePrompts: [
+      { label: "Vavilov Standard of Review", prompt: "Explain how to apply the Supreme Court of Canada Vavilov framework for administrative reasonableness review on an NCA exam." }
+    ]
+  },
+  {
+    id: "lsat",
+    name: "LSAT (Law School Admission Test)",
+    provider: "Law School Admission Council (LSAC)",
+    category: "law",
+    categoryLabel: "Law & Legal Practice",
+    role: "Juris Doctor (JD) Law School Candidate",
+    examCount: 1,
+    description: "Premier standardized examination evaluating logical reasoning, reading comprehension, and analytical argument evaluation for law school admissions.",
+    vendorUrl: "https://www.lsac.org/lsat",
+    popularExams: ["Logical Reasoning (Flaws, Assumptions, Inferences)", "Reading Comprehension (Comparative & Single Passages)", "LSAT Writing"],
+    freeResources: [
+      {
+        name: "Khan Academy Official LSAT Prep",
+        url: "https://www.khanacademy.org/prep/lsat",
+        type: "official_free",
+        description: "Free official full-length practice tests, diagnostic tools, and step-by-step video lessons in partnership with LSAC"
+      },
+      {
+        name: "LSAC LawHub Free Practice Material",
+        url: "https://www.lsac.org/lawhub",
+        type: "practice_bank",
+        description: "Official digital testing interface with free authentic practice exams"
+      }
+    ],
+    howToPassTTP: {
+      tactics: "Target 165+ for top law schools. Identify argument flaws immediately (necessary vs sufficient confusion, correlation vs causation, scope shift).",
+      techniques: "Read actively: identify the author's main conclusion, underlying premises, and unstated assumptions before looking at options. Prephrase answers.",
+      procedures: "12-16 week study plan. Complete at least 25 full-length timed PrepTests under strict digital exam conditions."
+    },
+    samplePrompts: [
+      { label: "Logical Reasoning Flaws", prompt: "Explain the top 10 most common logical reasoning fallacies tested on the LSAT with concrete examples." },
+      { label: "Reading Comprehension Strategy", prompt: "What are the most effective strategies for breaking down difficult LSAT comparative reading passages?" }
+    ]
+  },
+  {
+    id: "nala-cp",
+    name: "NALA Certified Paralegal (CP & Advanced CP)",
+    provider: "NALA - The Paralegal Association",
+    category: "law",
+    categoryLabel: "Law & Legal Practice",
+    role: "Certified Paralegal (CP) / Advanced Certified Paralegal",
+    examCount: 2,
+    description: "Nationally accredited paralegal certification evaluating legal research, writing, civil litigation, contracts, torts, and professional ethics.",
+    vendorUrl: "https://nala.org/certification/",
+    popularExams: ["Knowledge Exam (Federal Law, Procedure, Ethics)", "Skills Exam (Written Legal Memorandum & Analysis)", "Advanced Certified Paralegal (ACP Specialties)"],
+    freeResources: [
+      {
+        name: "NALA Candidate Information Handbook",
+        url: "https://nala.org/certification/",
+        type: "official_free",
+        description: "Official blueprint, exam domains, eligibility rules, and recertification guidelines"
+      },
+      {
+        name: "Legal Information Institute (LII)",
+        url: "https://www.law.cornell.edu/",
+        type: "textbook",
+        description: "Open legal repository for federal civil procedure and evidence rules"
+      }
+    ],
+    howToPassTTP: {
+      tactics: "Pass the Knowledge Exam before taking the Skills Exam. Review the Federal Rules of Civil Procedure (FRCP) and ABA Model Rules for paralegals.",
+      techniques: "On the Skills Exam, write a concise, professional legal memorandum using standard FIRAC or IRAC format with objective legal tone.",
+      procedures: "8-12 weeks study. Complete mock practice tests and practice drafting interoffice legal memoranda within the 2-hour limit."
+    },
+    samplePrompts: [
+      { label: "NALA CP Knowledge Exam Blueprint", prompt: "What subjects and percentage weights are covered on the NALA Certified Paralegal Knowledge Exam?" }
+    ]
+  },
+  {
+    id: "aceds-ceds",
+    name: "CEDS (Certified E-Discovery Specialist)",
+    provider: "Association of Certified E-Discovery Specialists (ACEDS)",
+    category: "law",
+    categoryLabel: "Law & Legal Practice",
+    role: "E-Discovery Specialist / Legal Technology Counsel",
+    examCount: 1,
+    description: "Industry-standard certification spanning the Electronic Discovery Reference Model (EDRM), litigation holds, preservation, search analytics, and Fed. R. Civ. P.",
+    vendorUrl: "https://aceds.org/",
+    popularExams: ["EDRM Lifecycle & Litigation Holds", "Data Collection & Forensics", "Search Analytics & Technology-Assisted Review (TAR)", "Production & Privilege Logs"],
+    freeResources: [
+      {
+        name: "EDRM Official Framework & Resources",
+        url: "https://edrm.net/",
+        type: "official_free",
+        description: "Official Electronic Discovery Reference Model standards, diagram, and whitepapers"
+      },
+      {
+        name: "The Sedona Conference Publications",
+        url: "https://thesedonaconference.org/",
+        type: "textbook",
+        description: "Non-partisan legal principles on electronic document management and proportionality in discovery"
+      }
+    ],
+    howToPassTTP: {
+      tactics: "Master FRCP Rules 26(b)(1) proportionality, 37(e) spoliation sanctions, and 34 production requests. Understand native vs TIFF/PDF production formats.",
+      techniques: "Distinguish between keyword search syntax, conceptual indexing, and Technology-Assisted Review (continuous active learning).",
+      procedures: "40-60 study hours. Review the ACEDS study manual, master EDRM stage handoffs, and complete practice simulations."
+    },
+    samplePrompts: [
+      { label: "FRCP Rule 37(e) Spoliation", prompt: "Explain the requirements for spoliation sanctions under Federal Rule of Civil Procedure 37(e) for E-Discovery." }
+    ]
+  },
+  {
+    id: "ccep-compliance",
+    name: "CCEP (Certified Compliance & Ethics Professional)",
+    provider: "Compliance Certification Board (CCB & SCCE)",
+    category: "law",
+    categoryLabel: "Law & Legal Practice",
+    role: "Chief Compliance Officer / Corporate Legal Counsel",
+    examCount: 1,
+    description: "Professional certification assessing corporate compliance governance, internal investigations, DOJ evaluation metrics, and whistleblower programs.",
+    vendorUrl: "https://www.corporatecompliance.org/",
+    popularExams: ["Standards, Policies & Procedures", "Compliance Governance & Oversight", "Auditing & Monitoring", "Investigations, Remediation & Discipline"],
+    freeResources: [
+      {
+        name: "U.S. Department of Justice Evaluation of Corporate Compliance Programs",
+        url: "https://www.justice.gov/criminal-fraud/page/file/937501/dl",
+        type: "official_free",
+        description: "Official federal benchmark document for evaluating corporate compliance effectiveness"
+      },
+      {
+        name: "SCCE Candidate Handbook",
+        url: "https://www.corporatecompliance.org/",
+        type: "official_free",
+        description: "Official blueprint, exam domains, and ethics standards for compliance professionals"
+      }
+    ],
+    howToPassTTP: {
+      tactics: "Study the 7 Federal Sentencing Guidelines elements for an effective compliance program. Emphasize risk assessment and continuous auditing.",
+      techniques: "In investigation questions, ensure attorney-client privilege protection, prompt remediation, and non-retaliation policies.",
+      procedures: "50-70 hours study. Review the DOJ Criminal Division compliance evaluation criteria and complete practice questions."
+    },
+    samplePrompts: [
+      { label: "7 Elements of Effective Compliance", prompt: "Explain the 7 essential elements of an effective compliance and ethics program under the U.S. Federal Sentencing Guidelines." }
+    ]
+  },
+  {
+    id: "iapp-cipp-us",
+    name: "CIPP/US (Certified Information Privacy Professional - US Law)",
+    provider: "International Association of Privacy Professionals (IAPP)",
+    category: "law",
+    categoryLabel: "Law & Legal Practice",
+    role: "Privacy Attorney / Data Protection Officer (DPO)",
+    examCount: 1,
+    description: "Premier legal credential in US private-sector privacy law, FTC Section 5 enforcement, HIPAA, GLBA, FCRA, and state privacy statutes (CCPA/CPRA).",
+    vendorUrl: "https://iapp.org/certify/cippus/",
+    popularExams: ["U.S. Privacy Environment & FTC Enforcement", "Health & Financial Privacy (HIPAA / GLBA)", "Workplace Privacy & Surveillance", "State Comprehensive Privacy Laws (CCPA / CPRA)"],
+    freeResources: [
+      {
+        name: "IAPP CIPP/US Examination Blueprint & Body of Knowledge",
+        url: "https://iapp.org/certify/cippus/",
+        type: "official_free",
+        description: "Official domain competencies, topic percentage weightings, and candidate guide"
+      },
+      {
+        name: "FTC Privacy & Security Enforcement Actions",
+        url: "https://www.ftc.gov/news-events/topics/protecting-consumer-privacy-security",
+        type: "textbook",
+        description: "Official FTC consent decrees, Section 5 unfair/deceptive practices enforcement history"
+      }
+    ],
+    howToPassTTP: {
+      tactics: "State comprehensive privacy laws (CCPA/CPRA) and FTC Section 5 represent the highest-yield domains. Master consumer rights (opt-out of sale/share, deletion).",
+      techniques: "Differentiate between opt-in vs opt-out requirements across statutes (e.g. COPPA requires verifiable parental consent; GLBA requires opt-out notice).",
+      procedures: "60-80 hours study. Read the official IAPP textbook, memorize statutory acronyms and enforcement bodies, and complete practice exams."
+    },
+    samplePrompts: [
+      { label: "CCPA vs CPRA Key Differences", prompt: "What are the major enhancements introduced by the CPRA to California consumer privacy law (sensitive data, audit requirements)?" }
+    ]
+  },
+  {
+    id: "florida-bar",
+    name: "Florida Bar Examination",
+    provider: "Florida Board of Bar Examiners",
+    category: "law",
+    categoryLabel: "Law & Legal Practice",
+    role: "Florida Licensed Attorney at Law",
+    examCount: 2,
+    description: "Two-day examination consisting of Part A (3 Florida essay questions and 100 Florida multiple-choice questions) and Part B (the 200-question MBE).",
+    vendorUrl: "https://www.floridabarexam.org/",
+    popularExams: ["Part A: Florida Essays & Florida Multiple Choice", "Part B: Multistate Bar Examination (MBE)"],
+    freeResources: [
+      {
+        name: "Florida Board of Bar Examiners Study Guides & Past Exams",
+        url: "https://www.floridabarexam.org/",
+        type: "official_free",
+        description: "Official past exam essay questions and benchmark sample answers"
+      }
+    ],
+    howToPassTTP: {
+      tactics: "Master Florida-specific distinctions: Florida Homestead exemption, Florida Constitutional Law, Florida Civil Procedure, and Florida Rules of Professional Conduct.",
+      techniques: "Florida multiple-choice questions test precise statutory rules (e.g. Wills, Trusts, Business Entities, Florida Criminal Law). Memorize exact deadlines and execution formalities.",
+      procedures: "10-12 weeks study (400-500 hours). Write at least 40 timed Florida essays and 800+ Florida multiple-choice practice questions."
+    },
+    samplePrompts: [
+      { label: "Florida Homestead Exemption", prompt: "Explain the Florida Constitution Homestead protection against forced sale, acreage limitations, and devise restrictions." }
+    ]
+  },
+  {
+    id: "texas-bar",
+    name: "Texas Bar Examination (BLE Texas)",
+    provider: "Texas Board of Law Examiners",
+    category: "law",
+    categoryLabel: "Law & Legal Practice",
+    role: "Texas Licensed Attorney at Law",
+    examCount: 2,
+    description: "Administration of the Uniform Bar Exam (UBE) with Texas-specific Law Component (TLC) governing licensure for trial advocacy and energy practice.",
+    vendorUrl: "https://ble.texas.gov/",
+    popularExams: ["Uniform Bar Examination (UBE - 270 Passing Score)", "Texas Law Component (TLC Online Course)"],
+    freeResources: [
+      {
+        name: "Texas Board of Law Examiners Candidate Information",
+        url: "https://ble.texas.gov/",
+        type: "official_free",
+        description: "Official candidate handbook, scoring standards, and TLC requirements"
+      }
+    ],
+    howToPassTTP: {
+      tactics: "Texas requires a 270 score on the UBE. Focus heavily on MBE scoring efficiency (target >=140 scaled MBE score).",
+      techniques: "Complete the Texas Law Component (TLC) modular outline carefully. The TLC is an online course covering Texas-specific criminal, civil, oil & gas, and family law.",
+      procedures: "Follow standard UBE 10-week preparation, complete 1,500+ practice questions, and complete TLC before swearing in."
+    },
+    samplePrompts: [
+      { label: "Texas Bar Admission Requirements", prompt: "What are the passing score thresholds, character and fitness rules, and TLC requirements for admission to the State Bar of Texas?" }
+    ]
+  },
+
 ];
 
 /**
@@ -8161,6 +8679,184 @@ export function getNextThreeExams(exam: BoardExam): NextStep[] {
           provider: "Board of Pharmacy Specialties",
           role: "Advanced Oncology / Ambulatory Pharmacy Lead",
           why: "High-acuity outpatient and clinical oncology specialization managing complex biologic and immunotherapy protocols.",
+        },
+      ];
+
+
+    case "law":
+      if (exam.id === "lsat") {
+        return [
+          {
+            name: "Juris Doctor (JD) Degree & Law Review",
+            provider: "ABA-Accredited Law School",
+            role: "JD Candidate / Judicial Intern",
+            why: "Primary professional doctorate degree required for admission to the bar in almost all US jurisdictions.",
+          },
+          {
+            name: "MPRE (Multistate Professional Responsibility Exam)",
+            provider: "National Conference of Bar Examiners (NCBE)",
+            role: "Ethics-Certified Bar Candidate",
+            why: "Mandatory professional ethics prerequisite taken during 2L/3L year prior to bar admission.",
+          },
+          {
+            name: "Uniform Bar Examination (UBE / State Bar Exam)",
+            provider: "NCBE & State Board of Law Examiners",
+            role: "Licensed Attorney at Law",
+            why: "Comprehensive multi-component exam granting licensure to represent clients and appear in court.",
+          },
+        ];
+      }
+      if (exam.id === "patent-bar") {
+        return [
+          {
+            name: "State Bar Examination Licensure",
+            provider: "State Board of Law Examiners",
+            role: "Dual Licensed Patent Attorney",
+            why: "Expands patent prosecution practice to full federal litigation, IP licensing, and courtroom advocacy.",
+          },
+          {
+            name: "PTAB Oral Advocacy & Reexamination Specialist",
+            provider: "USPTO & Federal Circuit Bar Association",
+            role: "Lead PTAB Trial Counsel",
+            why: "Specialized representation in Inter Partes Review (IPR) and Post-Grant Review (PGR) proceedings.",
+          },
+          {
+            name: "U.S. Court of Appeals for the Federal Circuit (CAFC) Bar",
+            provider: "Federal Judiciary",
+            role: "Appellate Patent Litigator",
+            why: "Direct appellate practice reviewing decisions of the USPTO and federal district courts nationwide.",
+          },
+        ];
+      }
+      if (exam.id === "sqe-uk") {
+        return [
+          {
+            name: "Two Years Qualifying Work Experience (QWE)",
+            provider: "Solicitors Regulation Authority (SRA)",
+            role: "Trainee / Qualified Solicitor",
+            why: "Mandatory practice requirement across at least two legal disciplines to gain admission to the roll.",
+          },
+          {
+            name: "Higher Rights of Audience (Solicitor Advocate)",
+            provider: "SRA / Senior Courts of England and Wales",
+            role: "Solicitor Advocate (Civil & Criminal)",
+            why: "Grants equal rights of audience alongside barristers in the Crown Court, High Court, Court of Appeal, and Supreme Court.",
+          },
+          {
+            name: "Law Firm Partner & Compliance Officer (COLP/COFA)",
+            provider: "SRA Regulatory Framework",
+            role: "Partner / Compliance Officer for Legal Practice",
+            why: "Senior equity partnership and regulatory leadership directing firm governance and risk management.",
+          },
+        ];
+      }
+      return [
+        {
+          name: "Federal District & Circuit Court Bar Admission",
+          provider: "U.S. Federal Courts & Circuit Court of Appeals",
+          role: "Federal Trial & Appellate Litigator",
+          why: "Expands courtroom authority to federal civil rights, commercial disputes, and constitutional litigation.",
+        },
+        {
+          name: "State Bar Board Certification in Legal Specialty",
+          provider: "State Bar Board of Legal Specialization / ABA",
+          role: "Board-Certified Legal Specialist (Trial, Tax, IP, Criminal)",
+          why: "Recognized apex standard of competence, peer review, and ethics in a focused area of legal practice.",
+        },
+        {
+          name: "Managing Partner / General Counsel / Judiciary Appointment",
+          provider: "Judicial Nominating Commission / Corporate Board",
+          role: "Managing Partner / General Counsel / Judge",
+          why: "Transition to senior organizational governance, chief legal officer directorship, or the bench.",
+        },
+      ];
+
+
+    case "law":
+      if (exam.id === "lsat") {
+        return [
+          {
+            name: "Juris Doctor (JD) Degree & Law Review",
+            provider: "ABA-Accredited Law School",
+            role: "JD Candidate / Judicial Intern",
+            why: "Primary professional doctorate degree required for admission to the bar in almost all US jurisdictions.",
+          },
+          {
+            name: "MPRE (Multistate Professional Responsibility Exam)",
+            provider: "National Conference of Bar Examiners (NCBE)",
+            role: "Ethics-Certified Bar Candidate",
+            why: "Mandatory professional ethics prerequisite taken during 2L/3L year prior to bar admission.",
+          },
+          {
+            name: "Uniform Bar Examination (UBE / State Bar Exam)",
+            provider: "NCBE & State Board of Law Examiners",
+            role: "Licensed Attorney at Law",
+            why: "Comprehensive multi-component exam granting licensure to represent clients and appear in court.",
+          },
+        ];
+      }
+      if (exam.id === "patent-bar") {
+        return [
+          {
+            name: "State Bar Examination Licensure",
+            provider: "State Board of Law Examiners",
+            role: "Dual Licensed Patent Attorney",
+            why: "Expands patent prosecution practice to full federal litigation, IP licensing, and courtroom advocacy.",
+          },
+          {
+            name: "PTAB Oral Advocacy & Reexamination Specialist",
+            provider: "USPTO & Federal Circuit Bar Association",
+            role: "Lead PTAB Trial Counsel",
+            why: "Specialized representation in Inter Partes Review (IPR) and Post-Grant Review (PGR) proceedings.",
+          },
+          {
+            name: "U.S. Court of Appeals for the Federal Circuit (CAFC) Bar",
+            provider: "Federal Judiciary",
+            role: "Appellate Patent Litigator",
+            why: "Direct appellate practice reviewing decisions of the USPTO and federal district courts nationwide.",
+          },
+        ];
+      }
+      if (exam.id === "sqe-uk") {
+        return [
+          {
+            name: "Two Years Qualifying Work Experience (QWE)",
+            provider: "Solicitors Regulation Authority (SRA)",
+            role: "Trainee / Qualified Solicitor",
+            why: "Mandatory practice requirement across at least two legal disciplines to gain admission to the roll.",
+          },
+          {
+            name: "Higher Rights of Audience (Solicitor Advocate)",
+            provider: "SRA / Senior Courts of England and Wales",
+            role: "Solicitor Advocate (Civil & Criminal)",
+            why: "Grants equal rights of audience alongside barristers in the Crown Court, High Court, Court of Appeal, and Supreme Court.",
+          },
+          {
+            name: "Law Firm Partner & Compliance Officer (COLP/COFA)",
+            provider: "SRA Regulatory Framework",
+            role: "Partner / Compliance Officer for Legal Practice",
+            why: "Senior equity partnership and regulatory leadership directing firm governance and risk management.",
+          },
+        ];
+      }
+      return [
+        {
+          name: "Federal District & Circuit Court Bar Admission",
+          provider: "U.S. Federal Courts & Circuit Court of Appeals",
+          role: "Federal Trial & Appellate Litigator",
+          why: "Expands courtroom authority to federal civil rights, commercial disputes, and constitutional litigation.",
+        },
+        {
+          name: "State Bar Board Certification in Legal Specialty",
+          provider: "State Bar Board of Legal Specialization / ABA",
+          role: "Board-Certified Legal Specialist (Trial, Tax, IP, Criminal)",
+          why: "Recognized apex standard of competence, peer review, and ethics in a focused area of legal practice.",
+        },
+        {
+          name: "Managing Partner / General Counsel / Judiciary Appointment",
+          provider: "Judicial Nominating Commission / Corporate Board",
+          role: "Managing Partner / General Counsel / Judge",
+          why: "Transition to senior organizational governance, chief legal officer directorship, or the bench.",
         },
       ];
 
