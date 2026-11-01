@@ -178,9 +178,10 @@ export const DISTRIBUTED_PLUGINS: DistributedPluginItem[] = ALL_PLUGINS.map((plu
       shelves = ["tools"];
       sampleAction = "Run AXIOM vulnerability scan, live security headers audit, and CVE check on ";
       break;
+    case "sovereign_code_guard":
     case "codex_security":
       shelves = ["tools"];
-      sampleAction = "Audit repository dependencies and automated code patches with Codex Security for ";
+      sampleAction = "Audit repository dependencies and automated code patches with Sovereign Code Guard for ";
       break;
     case "malwarebytes":
       shelves = ["tools"];

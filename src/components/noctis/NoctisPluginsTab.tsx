@@ -342,10 +342,10 @@ export const ALL_PLUGINS: PluginItem[] = [
 
   // --- 5. Security ---
   {
-    id: "codex_security",
-    name: "Codex Security",
+    id: "sovereign_code_guard",
+    name: "Sovereign Code Guard",
     category: "Security",
-    description: "Continuous automated security scanning for your private codebases.",
+    description: "Continuous automated security scanning, dependency hardening, and CVE patches for your codebases.",
     iconBg: "bg-blue-600/20",
     iconColor: "text-blue-400",
     iconText: "🛡️",

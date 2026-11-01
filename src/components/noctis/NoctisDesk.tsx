@@ -6364,7 +6364,7 @@ export function NoctisDesk() {
         >
           <Terminal className="size-4 shrink-0 text-amber-400" />
           <span>Noctis Forge</span>
-          <span className="ml-auto rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">Codex</span>
+          <span className="ml-auto rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">ARCHITECT</span>
         </button>
         <button
           type="button"
@@ -7005,7 +7005,7 @@ export function NoctisDesk() {
                   "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 transition",
                   desk === "forge" ? "bg-[#3a3a3a] text-amber-300 font-semibold" : "text-zinc-400 hover:text-zinc-200"
                 )}
-                title="Noctis Forge (Codex): Proactive Code & System Builder"
+                title="Noctis Forge: Autonomous System Architect & IDE"
               >
                 <Terminal className="size-3.5 text-amber-400" />
                 <span>Forge</span>

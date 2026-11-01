@@ -41,51 +41,51 @@ interface BuildRecentItem {
 }
 
 const INITIAL_RECENTS: BuildRecentItem[] = [
-  { id: "1", title: "Find latest PR Miniapp", project: "Miniapp", active: true, status: "completed" },
-  { id: "2", title: "Re-authenticate GitHub PR Sitter", project: "Superapp", status: "completed" },
-  { id: "3", title: "Pull latest master Miniapp", project: "Miniapp", active: true, status: "completed" },
-  { id: "4", title: "Improve image quality Miniapp", project: "Miniapp", active: true, status: "completed" },
-  { id: "5", title: "Optimize video size iOS", project: "iOS", status: "idle" },
-  { id: "6", title: "Accessibility pass iOS", project: "iOS", status: "completed" },
-  { id: "7", title: "Fix corner radii Miniapp", project: "Miniapp", active: true, status: "completed" },
-  { id: "8", title: "Add summary panel Superapp", project: "Superapp", status: "idle" },
+  { id: "1", title: "XTRIKE Polyglot 710 Security Audit", project: "DStrike Core", active: true, status: "completed" },
+  { id: "2", title: "TREPATH Proof Validator State Convergence", project: "Security Enclaves", status: "completed" },
+  { id: "3", title: "AXIOM External Perimeter Surface Scan", project: "Security Enclaves", active: true, status: "running" },
+  { id: "4", title: "Sovereign Voice WebRTC Low-Latency Pipeline", project: "Neural Pipelines", active: true, status: "completed" },
+  { id: "5", title: "FHIR R4 Diagnostic Protocol Validation", project: "Autonomous Agents", status: "idle" },
+  { id: "6", title: "PQC Kyber-768 Lattice Cryptography Enclave", project: "Security Enclaves", status: "completed" },
+  { id: "7", title: "DCF 5-Year Capital Valuation & Sensitivity", project: "Autonomous Agents", active: true, status: "completed" },
+  { id: "8", title: "Zero-Knowledge Audit Trail Attestation", project: "DStrike Core", status: "idle" },
 ];
 
 const PROJECTS = [
-  { id: "ios", name: "iOS", icon: "📱", filesCount: 42 },
-  { id: "miniapp", name: "Miniapp", icon: "⚡", filesCount: 19 },
-  { id: "superapp", name: "Superapp", icon: "🌐", filesCount: 68 },
   { id: "dstrike", name: "DStrike Core", icon: "🛡️", filesCount: 114 },
+  { id: "enclaves", name: "Security Enclaves", icon: "🔒", filesCount: 76 },
+  { id: "neural", name: "Neural Pipelines", icon: "⚡", filesCount: 52 },
+  { id: "agents", name: "Autonomous Agents", icon: "🤖", filesCount: 38 },
 ];
 
 const PROACTIVE_SUGGESTIONS = [
-  {
-    id: "gmail",
-    icon: Mail,
-    iconColor: "text-red-400",
-    text: "Your email to Mount Lemmon lodge bounced back",
-    action: "Resend with updated recipient domain",
-  },
-  {
-    id: "slack",
-    icon: MessageSquare,
-    iconColor: "text-emerald-400",
-    text: "Reply to Ty in proactivity-eng",
-    action: "Draft status update on API gateway",
-  },
-  {
-    id: "calendar",
-    icon: Calendar,
-    iconColor: "text-blue-400",
-    text: "Prep for the upcoming review with Tibo",
-    action: "Generate briefing deck and milestone summary",
-  },
   {
     id: "xtrike",
     icon: Shield,
     iconColor: "text-amber-400",
     text: "XTRIKE SAST: 2 high-severity SQL injections detected in legacy auth",
     action: "Auto-remediate with parameterized prepared statements",
+  },
+  {
+    id: "trepath",
+    icon: Layers,
+    iconColor: "text-rose-400",
+    text: "TREPATH: Unvalidated lateral movement path targeting Redis cluster",
+    action: "Deploy cryptographic enclave isolation boundary",
+  },
+  {
+    id: "infra",
+    icon: Cpu,
+    iconColor: "text-sky-400",
+    text: "API Gateway: Inbound traffic anomaly detected on /api/v1/health",
+    action: "Inspect rate limit telemetry and engage air-gap",
+  },
+  {
+    id: "proof",
+    icon: CheckCircle2,
+    iconColor: "text-emerald-400",
+    text: "Truth Ledger: Block #24190 ready for zero-knowledge SHA-256 attestation",
+    action: "Sign and publish cryptographic audit seal",
   },
 ];
 
@@ -117,7 +117,7 @@ export function NoctisForgeTab({ onSendToChat, onClose }: NoctisForgeTabProps) {
     setBuildLogs([
       `[Forge Engine] Initializing build environment for ${targetRepo} (${targetScope})...`,
       `[Repo Mesh] Indexed 710 repositories and dependency manifests.`,
-      `[Codex Parser] Synthesizing architectural plan: "${textToBuild}"...`,
+      `[Architect Synthesizer] Synthesizing sovereign execution plan: "${textToBuild}"...`,
     ]);
 
     // Simulate real-time build streaming steps
@@ -175,7 +175,7 @@ describe("${textToBuild} - Verification", () => {
       const newItem: BuildRecentItem = {
         id: `recent-${Date.now()}`,
         title: textToBuild.slice(0, 36),
-        project: targetRepo === "dstrike-core" ? "DStrike Core" : "Miniapp",
+        project: targetRepo === "dstrike-core" ? "DStrike Core" : "Security Enclaves",
         active: true,
         status: "completed",
       };
@@ -186,7 +186,7 @@ describe("${textToBuild} - Verification", () => {
 
   return (
     <div className="flex h-full w-full bg-[#141414] text-zinc-100 overflow-hidden font-sans">
-      {/* Left Sidebar - Codex / Forge Navigation */}
+      {/* Left Sidebar - Architect / Forge Navigation */}
       <aside
         className={cn(
           "flex flex-col border-r border-white/10 bg-[#171717] transition-all duration-200 z-10 shrink-0",
@@ -433,10 +433,10 @@ describe("${textToBuild} - Verification", () => {
               {/* Large Title */}
               <div>
                 <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-                  What should we build?
+                  Architect &amp; Build Sovereign Systems
                 </h1>
-                <p className="text-xs sm:text-sm text-zinc-400 mt-1">
-                  Move faster, go further, and bring your biggest ideas to life with Noctis Forge.
+                <p className="text-xs sm:text-sm text-zinc-400 mt-1 max-w-lg mx-auto">
+                  Autonomous software engineering, continuous security synthesis, and production deployment across 710 repositories.
                 </p>
               </div>
 
@@ -480,9 +480,9 @@ describe("${textToBuild} - Verification", () => {
                   className="bg-transparent text-zinc-300 text-xs focus:outline-none cursor-pointer"
                 >
                   <option value="dstrike-core" className="bg-zinc-900 text-white">dstrike-core</option>
-                  <option value="noctis-ai" className="bg-zinc-900 text-white">noctis-ai</option>
-                  <option value="miniapp" className="bg-zinc-900 text-white">miniapp</option>
-                  <option value="superapp" className="bg-zinc-900 text-white">superapp</option>
+                  <option value="security-enclaves" className="bg-zinc-900 text-white">security-enclaves</option>
+                  <option value="neural-pipelines" className="bg-zinc-900 text-white">neural-pipelines</option>
+                  <option value="autonomous-agents" className="bg-zinc-900 text-white">autonomous-agents</option>
                 </select>
               </div>
               <span className="text-zinc-600">/</span>
