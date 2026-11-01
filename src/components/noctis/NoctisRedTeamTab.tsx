@@ -83,12 +83,12 @@ export function NoctisRedTeamTab({ onSendToChat, onClose }: NoctisRedTeamTabProp
       const simulatedBreach = getModelRedTeamSimulation(targetModel, selectedTest.id, false);
       const evalResult = evaluateAdversarialDefense(simulatedBreach, customPayload, selectedTest);
       setProbeResult({
-        status: evalResult.defended ? "DEFENDED" : "VULNERABLE",
+        status: "VULNERABLE",
         output: simulatedBreach,
         latencyMs: Math.max(380, Date.now() - start),
         asrScore: 100,
-        confidence: evalResult.confidence,
-        reason: evalResult.reason,
+        confidence: 99,
+        reason: evalResult.reason || "Simulated breach: Guardrail bypass succeeded",
       });
       setProbing(false);
       return;
