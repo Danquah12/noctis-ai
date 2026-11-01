@@ -13,6 +13,7 @@ import { NoctisCall } from "@/components/noctis/NoctisCall";
 import { NoctisCanvas } from "@/components/noctis/NoctisCanvas";
 import { NoctisPluginsTab } from "@/components/noctis/NoctisPluginsTab";
 import { NoctisForgeTab } from "@/components/noctis/NoctisForgeTab";
+import { NoctisConsoleTab } from "@/components/noctis/NoctisConsoleTab";
 import { NoctisShelfPluginSection } from "@/components/noctis/NoctisShelfPluginSection";
 import { NoctisPluginExecutorModal } from "@/components/noctis/NoctisPluginExecutorModal";
 import { DISTRIBUTED_PLUGINS, getPluginsForShelf, type DistributedPluginItem } from "@/lib/noctis-distributed-plugins";
@@ -3321,7 +3322,7 @@ export function NoctisDesk() {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
   const [uploads, setUploads] = useState<Upload[]>([]);
-  const [desk, setDesk] = useState<"chat" | "study" | "forge" | "plugins">("chat");
+  const [desk, setDesk] = useState<"chat" | "study" | "forge" | "plugins" | "console">("chat");
   const [executorPlugin, setExecutorPlugin] = useState<DistributedPluginItem | null>(null);
   const [executorOpen, setExecutorOpen] = useState(false);
   const [studyTopic, setStudyTopic] = useState("");
@@ -6369,6 +6370,18 @@ export function NoctisDesk() {
         <button
           type="button"
           onClick={() => {
+            setDesk("console");
+            setMenu(false);
+          }}
+          className={item(desk === "console")}
+        >
+          <Activity className="size-4 shrink-0 text-emerald-400" />
+          <span>Developer Console</span>
+          <span className="ml-auto rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-bold text-emerald-300">GATEWAY</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => {
             setDesk("plugins");
             setMenu(false);
           }}
@@ -7025,6 +7038,19 @@ export function NoctisDesk() {
               </button>
               <button
                 type="button"
+                onClick={() => setDesk("console")}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 transition",
+                  desk === "console" ? "bg-[#3a3a3a] text-emerald-300 font-semibold" : "text-zinc-400 hover:text-zinc-200"
+                )}
+                title="Noctis Developer Console & Gateway"
+              >
+                <Activity className="size-3.5 text-emerald-400" />
+                <span>Console</span>
+                <span className="rounded-full bg-emerald-400/20 px-1.5 py-0.5 text-[10px] font-bold text-emerald-300">Gateway</span>
+              </button>
+              <button
+                type="button"
                 onClick={() => {
                   if (!canvasContent && !canvasOpen) {
                     setCanvasTitle("New Artifact");
@@ -7238,6 +7264,14 @@ export function NoctisDesk() {
                     sampleAction: `Use ${p.name} to `,
                   };
                   handleUsePlugin(dist);
+                }}
+                onClose={() => setDesk("chat")}
+              />
+            ) : desk === "console" ? (
+              <NoctisConsoleTab
+                onSendToChat={(taskPrompt) => {
+                  setDesk("chat");
+                  void send(taskPrompt);
                 }}
                 onClose={() => setDesk("chat")}
               />
