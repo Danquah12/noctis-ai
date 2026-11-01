@@ -14,6 +14,7 @@ import { NoctisCanvas } from "@/components/noctis/NoctisCanvas";
 import { NoctisPluginsTab } from "@/components/noctis/NoctisPluginsTab";
 import { NoctisForgeTab } from "@/components/noctis/NoctisForgeTab";
 import { NoctisShelfPluginSection } from "@/components/noctis/NoctisShelfPluginSection";
+import { NoctisPluginExecutorModal } from "@/components/noctis/NoctisPluginExecutorModal";
 import { DISTRIBUTED_PLUGINS, getPluginsForShelf, type DistributedPluginItem } from "@/lib/noctis-distributed-plugins";
 import { NoctisCodeInterpreter } from "@/components/noctis/NoctisCodeInterpreter";
 import { NoctisThinkingAccordion, CitationBadge } from "@/components/noctis/NoctisThinkingAccordion";
@@ -3321,6 +3322,8 @@ export function NoctisDesk() {
   const [error, setError] = useState("");
   const [uploads, setUploads] = useState<Upload[]>([]);
   const [desk, setDesk] = useState<"chat" | "study" | "forge" | "plugins">("chat");
+  const [executorPlugin, setExecutorPlugin] = useState<DistributedPluginItem | null>(null);
+  const [executorOpen, setExecutorOpen] = useState(false);
   const [studyTopic, setStudyTopic] = useState("");
   const [canvasOpen, setCanvasOpen] = useState(false);
   const [canvasTitle, setCanvasTitle] = useState("Noctis Artifact");
@@ -4921,9 +4924,8 @@ export function NoctisDesk() {
       void startVoice();
       return;
     }
-    setDesk("chat");
-    setShelf("chats");
-    setDraft((prev) => (prev ? `${prev} [${plugin.name}]` : plugin.sampleAction));
+    setExecutorPlugin(plugin);
+    setExecutorOpen(true);
   }
 
   function pickSkill(id: NoctisSkillId) {
@@ -7226,8 +7228,12 @@ export function NoctisDesk() {
             {desk === "plugins" ? (
               <NoctisPluginsTab
                 onSelectPlugin={(p) => {
-                  setDesk("chat");
-                  setDraft((prev) => (prev ? `${prev} [Use ${p.name}]` : `Use ${p.name}: `));
+                  const dist = DISTRIBUTED_PLUGINS.find((dp) => dp.id === p.id) ?? {
+                    ...p,
+                    shelves: ["more" as const],
+                    sampleAction: `Use ${p.name} to `,
+                  };
+                  handleUsePlugin(dist);
                 }}
                 onClose={() => setDesk("chat")}
               />
@@ -7744,6 +7750,17 @@ export function NoctisDesk() {
       <NoctisBrainModal
         isOpen={brainModalOpen}
         onClose={() => setBrainModalOpen(false)}
+      />
+      <NoctisPluginExecutorModal
+        plugin={executorPlugin}
+        open={executorOpen}
+        onClose={() => setExecutorOpen(false)}
+        onExecuteInChat={(prompt) => {
+          setDesk("chat");
+          setShelf("chats");
+          void send(prompt);
+        }}
+        onOpenInCanvas={(title, md) => openInCanvas(title, md)}
       />
     </div>
   );
