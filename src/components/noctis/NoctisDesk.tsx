@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ClipboardEvent } from "react";
 import { Link } from "@tanstack/react-router";
-import { Activity, ArrowUp, Bot, Boxes, Brain, Calendar, Cpu, Crosshair, EyeOff, Fingerprint, FileLock, Globe, Key, Layers, Lock, LogOut, Network, Sparkles, Swords, Terminal, WifiOff, Zap, ChevronDown, ChevronLeft, Code2, Copy, CornerDownLeft, FileText, GraduationCap, Image, Library, Mail, Menu, Mic, MoreHorizontal, PanelRight, PanelRightOpen, Pencil, Phone, PhoneOff, Plus, Printer, RotateCcw, Search, Square, SquarePen, Trash2, Users2, Video, Volume2, VolumeX, Wrench, X } from "lucide-react";
+import { Activity, ArrowUp, Bot, Boxes, Brain, Calendar, Cpu, Crosshair, EyeOff, Fingerprint, FileLock, Globe, Key, Layers, Lock, LogOut, Network, Sparkles, Swords, Target, ShieldAlert, Terminal, WifiOff, Zap, ChevronDown, ChevronLeft, Code2, Copy, CornerDownLeft, FileText, GraduationCap, Image, Library, Mail, Menu, Mic, MoreHorizontal, PanelRight, PanelRightOpen, Pencil, Phone, PhoneOff, Plus, Printer, RotateCcw, Search, Square, SquarePen, Trash2, Users2, Video, Volume2, VolumeX, Wrench, X } from "lucide-react";
 import { askNoctis, drawVibe, hearVibe, sayVibe, trainVibe } from "@/lib/noctis-api";
 import { bringImagineFile, bringPortrait } from "@/lib/imagine-api";
 import { playHarmonicTone, playSovereignChime, stopAudioSynth } from "@/lib/noctis-audio-synth";
@@ -14,6 +14,7 @@ import { NoctisCanvas } from "@/components/noctis/NoctisCanvas";
 import { NoctisPluginsTab } from "@/components/noctis/NoctisPluginsTab";
 import { NoctisForgeTab } from "@/components/noctis/NoctisForgeTab";
 import { NoctisConsoleTab } from "@/components/noctis/NoctisConsoleTab";
+import { NoctisRedTeamTab } from "@/components/noctis/NoctisRedTeamTab";
 import { NoctisShelfPluginSection } from "@/components/noctis/NoctisShelfPluginSection";
 import { NoctisPluginExecutorModal } from "@/components/noctis/NoctisPluginExecutorModal";
 import { DISTRIBUTED_PLUGINS, getPluginsForShelf, type DistributedPluginItem } from "@/lib/noctis-distributed-plugins";
@@ -3322,7 +3323,7 @@ export function NoctisDesk() {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
   const [uploads, setUploads] = useState<Upload[]>([]);
-  const [desk, setDesk] = useState<"chat" | "study" | "forge" | "plugins" | "console">("chat");
+  const [desk, setDesk] = useState<"chat" | "study" | "forge" | "plugins" | "console" | "redteam">("chat");
   const [executorPlugin, setExecutorPlugin] = useState<DistributedPluginItem | null>(null);
   const [executorOpen, setExecutorOpen] = useState(false);
   const [studyTopic, setStudyTopic] = useState("");
@@ -6657,6 +6658,19 @@ export function NoctisDesk() {
                 <div className="space-y-0.5 max-h-40 overflow-y-auto no-scrollbar pr-1">
                   <button
                     type="button"
+                    onClick={() => { setMenu(false); setDesk("redteam");
+                    }}
+                    className={cn(
+                      "flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs transition text-left",
+                      desk === "redteam" ? "bg-rose-500/20 text-rose-200 border border-rose-500/30" : "text-zinc-300 hover:bg-white/10 hover:text-white"
+                    )}
+                  >
+                    <Target className="size-3.5 text-rose-400 shrink-0" />
+                    <span className="truncate font-medium">AI Red Team & Threat Matrix</span>
+                    <span className="ml-auto rounded bg-rose-500/20 px-1.5 py-0.5 text-[9px] font-bold text-rose-300">SHIELD</span>
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => { setMenu(false); setCanaryModalOpen(true); }}
                     className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
                   >
@@ -7051,6 +7065,19 @@ export function NoctisDesk() {
               </button>
               <button
                 type="button"
+                onClick={() => setDesk("redteam")}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 transition",
+                  desk === "redteam" ? "bg-[#3a3a3a] text-rose-300 font-semibold" : "text-zinc-400 hover:text-zinc-200"
+                )}
+                title="AI Red Team: Adversarial Testing & LLM Vulnerability Matrix"
+              >
+                <Target className="size-3.5 text-rose-400" />
+                <span>Red Team</span>
+                <span className="rounded-full bg-rose-400/20 px-1.5 py-0.5 text-[10px] font-bold text-rose-300">Shield</span>
+              </button>
+              <button
+                type="button"
                 onClick={() => {
                   if (!canvasContent && !canvasOpen) {
                     setCanvasTitle("New Artifact");
@@ -7264,6 +7291,14 @@ export function NoctisDesk() {
                     sampleAction: `Use ${p.name} to `,
                   };
                   handleUsePlugin(dist);
+                }}
+                onClose={() => setDesk("chat")}
+              />
+            ) : desk === "redteam" ? (
+              <NoctisRedTeamTab
+                onSendToChat={(taskPrompt) => {
+                  setDesk("chat");
+                  void send(taskPrompt);
                 }}
                 onClose={() => setDesk("chat")}
               />

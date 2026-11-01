@@ -24,8 +24,10 @@ import {
   BarChart3,
   Server,
   Lock,
+  ShieldAlert,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { NoctisRedTeamTab } from "./NoctisRedTeamTab";
 
 interface NoctisConsoleTabProps {
   onSendToChat?: (promptText: string) => void;
@@ -155,7 +157,7 @@ const SOVEREIGN_CATALOG = [
 ];
 
 export function NoctisConsoleTab({ onSendToChat, onClose }: NoctisConsoleTabProps) {
-  const [activeSubTab, setActiveSubTab] = useState<"overview" | "playground" | "keys" | "models" | "code">("overview");
+  const [activeSubTab, setActiveSubTab] = useState<"overview" | "playground" | "keys" | "models" | "code" | "redteam">("overview");
   const [timeRange, setTimeRange] = useState<"24h" | "7d" | "30d" | "90d">("30d");
 
   // Playground state
@@ -334,6 +336,7 @@ print(response.json().get("text"))`;
             { id: "playground", label: "Playground", icon: Terminal },
             { id: "keys", label: "API Keys", icon: Key },
             { id: "models", label: "Model Catalog", icon: Cpu },
+            { id: "redteam", label: "LLM Threat Matrix", icon: ShieldAlert },
             { id: "code", label: "Quickstart & SDK", icon: Code2 },
           ].map((tab) => {
             const Icon = tab.icon;
@@ -908,6 +911,13 @@ print(response.json().get("text"))`;
                 {codeLang === "python" && getPythonSnippet()}
               </pre>
             </div>
+          </div>
+        )}
+
+        {/* LLM Threat Matrix & AI Red Team */}
+        {activeSubTab === "redteam" && (
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            <NoctisRedTeamTab onSendToChat={onSendToChat} onClose={onClose} />
           </div>
         )}
       </div>
