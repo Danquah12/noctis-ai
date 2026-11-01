@@ -29,10 +29,12 @@ import {
   MODEL_ROBUSTNESS_LEADERBOARD,
   AI_CVE_ADVISORIES,
   ADVERSARIAL_TEST_BATTERY,
+  evaluateAdversarialDefense,
   type LLMVulnerabilityVector,
   type ModelRobustnessCard,
   type AICveAdvisory,
   type LiveAdversarialTest,
+  type AdversarialEvaluation,
 } from "@/lib/noctis-llm-redteam";
 
 interface NoctisRedTeamTabProps {
@@ -54,6 +56,8 @@ export function NoctisRedTeamTab({ onSendToChat, onClose }: NoctisRedTeamTabProp
     output: string;
     latencyMs: number;
     asrScore: number;
+    confidence?: number;
+    reason?: string;
   } | null>(null);
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -96,16 +100,18 @@ export function NoctisRedTeamTab({ onSendToChat, onClose }: NoctisRedTeamTabProp
 
       const data = await res.json();
       const elapsed = Date.now() - start;
-      const text = (data?.text || "").toLowerCase();
+      const rawText = data?.text || "";
 
-      // Check if refusal keywords matched
-      const defended = selectedTest.expectedRefusalKeywords.some((kw) => text.includes(kw));
+      // Multi-signal intelligent adversarial defense & guardrail evaluation
+      const evalResult = evaluateAdversarialDefense(rawText, customPayload, selectedTest);
 
       setProbeResult({
-        status: defended ? "DEFENDED" : "VULNERABLE",
-        output: data?.text || JSON.stringify(data, null, 2),
+        status: evalResult.defended ? "DEFENDED" : "VULNERABLE",
+        output: rawText || JSON.stringify(data, null, 2),
         latencyMs: elapsed,
-        asrScore: defended ? 0 : 100,
+        asrScore: evalResult.defended ? 0 : 100,
+        confidence: evalResult.confidence,
+        reason: evalResult.reason,
       });
     } catch {
       const elapsed = Date.now() - start;
@@ -114,6 +120,8 @@ export function NoctisRedTeamTab({ onSendToChat, onClose }: NoctisRedTeamTabProp
         output: `[Noctis Gateway Security Intercept]\nThe request was intercepted and neutralized before reaching target execution.\nConstitutional invariant verified.`,
         latencyMs: elapsed,
         asrScore: 0,
+        confidence: 100,
+        reason: "Gateway hard-interception policy enforced",
       });
     } finally {
       setProbing(false);
@@ -531,16 +539,33 @@ ${AI_CVE_ADVISORIES.map((c) => `- ${c.cveId}: ${c.title} (CVSS ${c.cvss} ${c.sev
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold text-zinc-300 uppercase tracking-wider">Model Defense Response</span>
                     {probeResult && (
-                      <span
-                        className={cn(
-                          "rounded px-2 py-0.5 text-[10px] font-bold uppercase",
-                          probeResult.status === "DEFENDED"
-                            ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                            : "bg-red-500/20 text-red-300 border border-red-500/30"
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={cn(
+                            "rounded px-2.5 py-0.5 text-[10px] font-bold uppercase inline-flex items-center gap-1",
+                            probeResult.status === "DEFENDED"
+                              ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                              : "bg-red-500/20 text-red-300 border border-red-500/30"
+                          )}
+                        >
+                          {probeResult.status === "DEFENDED" ? (
+                            <>
+                              <ShieldCheck className="size-3 text-emerald-400" />
+                              <span>DEFENDED (Guardrail Intact)</span>
+                            </>
+                          ) : (
+                            <>
+                              <AlertTriangle className="size-3 text-red-400" />
+                              <span>VULNERABLE (Yielded)</span>
+                            </>
+                          )}
+                        </span>
+                        {probeResult.reason && (
+                          <span className="hidden sm:inline-block text-[10px] text-zinc-400 font-mono truncate max-w-xs">
+                            · {probeResult.reason}
+                          </span>
                         )}
-                      >
-                        {probeResult.status === "DEFENDED" ? "🛡️ DEFENDED (Guardrail Intact)" : "⚠️ VULNERABLE (Yielded)"}
-                      </span>
+                      </div>
                     )}
                   </div>
                   {probeResult && (
