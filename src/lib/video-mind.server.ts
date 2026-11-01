@@ -6,18 +6,70 @@ import type { FilmAsk, MindSource, VideoLesson } from "@/lib/video-mind";
 
 type Turn = { role: "user" | "assistant"; content: string };
 
-function key() {
+function findEnvKeyByPrefix(prefixes: string[], standardName?: string): string {
+  if (standardName && process.env[standardName]?.trim()) {
+    return process.env[standardName]!.trim();
+  }
+  const aliases = ["keyNoctis", "Noctiskey", "Noctis", "NOCTIS_API_KEY", "VIBE_MODEL_KEY"];
+  for (const name of aliases) {
+    const val = (process.env[name] || "").trim();
+    if (val && prefixes.some((p) => val.startsWith(p))) {
+      return val;
+    }
+  }
+  for (const [, val] of Object.entries(process.env)) {
+    const v = (val || "").trim();
+    if (v && prefixes.some((p) => v.startsWith(p))) {
+      return v;
+    }
+  }
+  return "";
+}
+
+export function resolveGeminiKey(): string {
+  const direct = (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "").trim();
+  if (direct) return direct;
+  return findEnvKeyByPrefix(["AIzaSy"]);
+}
+
+export function resolveOpenAiKey(): string {
   if (/^(0|false|no)$/i.test((process.env.VIBE_ALLOW_OPENAI || "").trim())) return "";
-  return (process.env.OPENAI_API_KEY || OPENAI_KEY || "").trim();
+  const direct = (process.env.OPENAI_API_KEY || OPENAI_KEY || "").trim();
+  if (direct) return direct;
+  return findEnvKeyByPrefix(["sk-proj-", "sk-"]);
+}
+
+export function resolveGroqKey(): string {
+  const direct = (process.env.GROQ_API_KEY || process.env.VIBE_MODEL_KEY || process.env.TOGETHER_API_KEY || "").trim();
+  if (direct) return direct;
+  return findEnvKeyByPrefix(["gsk_"]);
+}
+
+export function resolveXaiKey(): string {
+  const direct = (process.env.XAI_API_KEY || "").trim();
+  if (direct) return direct;
+  return findEnvKeyByPrefix(["xai-"]);
+}
+
+function key() {
+  return resolveOpenAiKey();
 }
 
 function customModelConfig() {
   const rawUrl = (process.env.VIBE_MODEL_URL || process.env.OLLAMA_HOST || "").trim();
+  const groqKey = resolveGroqKey();
+  if (!rawUrl && groqKey) {
+    return {
+      endpoint: "https://api.groq.com/openai/v1/chat/completions",
+      apiKey: groqKey,
+      model: "llama-3.3-70b-versatile",
+    };
+  }
   if (!rawUrl) return null;
   const endpoint = rawUrl.endsWith("/chat/completions")
     ? rawUrl
     : `${rawUrl.replace(/\/+$/, "")}${rawUrl.includes("/v1") ? "/chat/completions" : "/v1/chat/completions"}`;
-  const apiKey = (process.env.VIBE_MODEL_KEY || process.env.GROQ_API_KEY || process.env.TOGETHER_API_KEY || "").trim();
+  const apiKey = (process.env.VIBE_MODEL_KEY || groqKey || process.env.TOGETHER_API_KEY || "").trim();
   const model = (process.env.VIBE_MODEL_NAME || "llama-3.3-70b-versatile").trim();
   return { endpoint, apiKey, model };
 }
@@ -62,7 +114,7 @@ async function completeOpenAI(apiKey: string, system: string, user: string, json
 }
 
 async function completeGemini(system: string, user: string, json: boolean) {
-  const apiKey = (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "").trim();
+  const apiKey = resolveGeminiKey();
   if (!apiKey) return null;
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(apiKey)}`, {
     method: "POST",
@@ -82,7 +134,7 @@ async function completeGemini(system: string, user: string, json: boolean) {
 }
 
 async function completeXai(system: string, user: string, json: boolean) {
-  const apiKey = (process.env.XAI_API_KEY || "").trim();
+  const apiKey = resolveXaiKey();
   if (!apiKey) return null;
   const res = await fetch("https://api.x.ai/v1/chat/completions", {
     method: "POST",
@@ -303,7 +355,7 @@ export async function modelChat(
       /* try next provider */
     }
   }
-  const vibeKey = (process.env.XAI_API_KEY || "").trim();
+  const vibeKey = resolveXaiKey();
   if (vibeKey && packed.length) {
     const models = picture ? ["grok-2-vision-1212", "grok-4"] : ["grok-3", "grok-3-mini"];
     for (const model of models) {
@@ -332,7 +384,7 @@ export async function modelChat(
       }
     }
   }
-  const geminiKey = (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "").trim();
+  const geminiKey = resolveGeminiKey();
   if (geminiKey && (talk.length || picture)) {
     try {
       const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(geminiKey)}`, {
@@ -383,6 +435,33 @@ export async function modelChat(
       } catch {
         /* try the next model */
       }
+    }
+  }
+  const groqKey = resolveGroqKey();
+  if (groqKey && packed.length && !picture) {
+    try {
+      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${groqKey}`, "Content-Type": "application/json" },
+        signal: AbortSignal.timeout(60000),
+        body: JSON.stringify({
+          model: "llama-3.3-70b-versatile",
+          temperature,
+          max_tokens: maxTokens,
+          ...(json ? { response_format: { type: "json_object" } } : {}),
+          messages: packed.map((message) => ({
+            role: message.role,
+            content: textOf(message.content).slice(0, 16000),
+          })),
+        }),
+      });
+      if (res.ok) {
+        const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+        const text = data.choices?.[0]?.message?.content?.trim();
+        if (text) return { text };
+      }
+    } catch {
+      /* try local native complete */
     }
   }
   try {
