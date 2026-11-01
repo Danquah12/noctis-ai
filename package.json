@@ -103,5 +103,9 @@
     "typescript": "^5.7.0",
     "typescript-eslint": "^8.56.1",
     "vite": "^8.2.0"
+  },
+  "bin": {
+    "dstrike": "./bin/dstrike.mjs",
+    "noctis": "./bin/dstrike.mjs"
   }
 }

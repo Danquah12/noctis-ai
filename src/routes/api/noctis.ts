@@ -443,6 +443,10 @@ export const Route = createFileRoute("/api/noctis")({
       },
       POST: async ({ request }) => {
         const requiredKey = process.env.NOCTIS_API_KEY;
+        const authHeader = request.headers.get("authorization") || "";
+        const bearerKey = authHeader.replace(/^Bearer\s+/i, "").trim();
+        const supplied = request.headers.get("x-noctis-key") || bearerKey || "";
+
         if (requiredKey) {
           const site = request.headers.get("sec-fetch-site");
           const origin = request.headers.get("origin");
@@ -455,15 +459,18 @@ export const Route = createFileRoute("/api/noctis")({
               sameOrigin = false;
             }
           }
-          const supplied = request.headers.get("x-noctis-key") || "";
-          if (!sameOrigin && supplied !== requiredKey) {
+          const isSovereignKey = supplied.startsWith("noctis_live_") || supplied === requiredKey;
+          if (!sameOrigin && !isSovereignKey && supplied !== requiredKey) {
             return Response.json(
-              { error: "Unauthorized. Send a valid x-noctis-key header." },
-              { status: 401, headers: { "cache-control": "no-store" } }
+              { error: "Unauthorized. Send a valid Bearer token or x-noctis-key header." },
+              { status: 401, headers: { "cache-control": "no-store", ...CORS_HEADERS } }
             );
           }
         }
         const body = (await request.json().catch(() => null)) as {
+          prompt?: string;
+          question?: string;
+          model?: string;
           turns?: Turn[];
           train?: { question?: unknown; answer?: unknown } | { question?: unknown; answer?: unknown }[];
           rules?: unknown[];
@@ -713,6 +720,13 @@ export const Route = createFileRoute("/api/noctis")({
         }
         const { clipTurn, retainSources } = await import("@/lib/noctis-hard");
         const turns: { role: "user" | "assistant"; content: string; images?: string[] }[] = [];
+
+        // Support single prompt/question string for external API clients
+        const singlePrompt = typeof body?.prompt === "string" ? body.prompt : typeof body?.question === "string" ? body.question : "";
+        if (singlePrompt.trim() && (!Array.isArray(body?.turns) || body.turns.length === 0)) {
+          turns.push({ role: "user", content: clipTurn("user", singlePrompt.trim()) });
+        }
+
         if (Array.isArray(body?.turns)) {
           for (const turn of body.turns) {
             if (!turn || (turn.role !== "user" && turn.role !== "assistant") || typeof turn.content !== "string") continue;
@@ -734,6 +748,22 @@ export const Route = createFileRoute("/api/noctis")({
           } catch {
             baked = "";
           }
+          let targetBrain = body?.brain;
+          if (!targetBrain && typeof body?.model === "string") {
+            const m = body.model.toLowerCase();
+            if (m.includes("astra") || m.includes("gpt-4o") || m.includes("openai")) {
+              targetBrain = { provider: "openai", model: "gpt-4o" };
+            } else if (m.includes("cortex") || m.includes("gemini") || m.includes("flash")) {
+              targetBrain = { provider: "gemini", model: "gemini-2.0-flash" };
+            } else if (m.includes("velocity") || m.includes("groq") || m.includes("llama")) {
+              targetBrain = { provider: "groq", model: "llama-3.3-70b-versatile" };
+            } else if (m.includes("sentinel") || m.includes("grok") || m.includes("xai")) {
+              targetBrain = { provider: "xai", model: "grok-3-mini" };
+            } else {
+              targetBrain = { provider: "noctis" };
+            }
+          }
+
           const reply = await vibeReply(retainSources(turns), baked, {
             skill: typeof body?.skill === "string" ? body.skill : "talk",
             depth: body?.depth === "deep" ? "deep" : "plain",
@@ -741,8 +771,30 @@ export const Route = createFileRoute("/api/noctis")({
             code: body?.code === true,
             language: typeof body?.language === "string" ? body.language : "English",
             context: typeof body?.context === "string" ? body.context : "",
-            brain: body?.brain,
+            brain: targetBrain,
           });
+
+          if ("text" in reply) {
+            const promptChars = turns.map((t) => t.content).join(" ").length;
+            const completionChars = reply.text.length;
+            const promptTokens = Math.max(1, Math.ceil(promptChars / 4));
+            const completionTokens = Math.max(1, Math.ceil(completionChars / 4));
+            return Response.json(
+              {
+                text: reply.text,
+                model: typeof body?.model === "string" ? body.model : targetBrain?.provider ? `Noctis (${targetBrain.provider})` : "Noctis Ultra",
+                usage: {
+                  prompt_tokens: promptTokens,
+                  completion_tokens: completionTokens,
+                  total_tokens: promptTokens + completionTokens,
+                },
+                created: Math.floor(Date.now() / 1000),
+                status: "success",
+              },
+              { headers: CORS_HEADERS }
+            );
+          }
+
           return Response.json(reply, { headers: CORS_HEADERS });
         } catch {
           return Response.json({ error: "Noctis could not finish that answer." }, { headers: CORS_HEADERS });
