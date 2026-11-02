@@ -6,19 +6,20 @@ describe("Noctis Brain Multi-Provider Config", () => {
   test("returns default config when storage is empty", () => {
     const config = getBrainConfig();
     assert.equal(config.provider, "gemini");
-    assert.equal(config.geminiModel, "gemini-2.0-flash");
+    assert.equal(config.geminiModel, "gemini-3.5-flash-lite");
     assert.equal(config.customEndpoint, "http://localhost:11434/v1");
   });
 
-  test("extracts active key and model correctly for each provider", () => {
+  test("extracts active key and model correctly for each provider and migrates legacy Gemini models", () => {
     const geminiActive = getActiveKeyAndModel({
       ...DEFAULT_BRAIN_CONFIG,
       provider: "gemini",
       geminiKey: "AIzaSyTest123",
+      geminiModel: "gemini-2.5-flash",
     });
     assert.equal(geminiActive.provider, "gemini");
     assert.equal(geminiActive.apiKey, "AIzaSyTest123");
-    assert.equal(geminiActive.model, "gemini-2.0-flash");
+    assert.equal(geminiActive.model, "gemini-3.5-flash-lite");
 
     const groqActive = getActiveKeyAndModel({
       ...DEFAULT_BRAIN_CONFIG,

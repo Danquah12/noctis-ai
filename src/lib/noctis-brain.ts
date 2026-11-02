@@ -17,7 +17,7 @@ export interface BrainConfig {
 
 export const DEFAULT_BRAIN_CONFIG: BrainConfig = {
   provider: "gemini",
-  geminiModel: "gemini-2.0-flash",
+  geminiModel: "gemini-3.5-flash-lite",
   groqModel: "llama-3.3-70b-versatile",
   openaiModel: "gpt-4o-mini",
   xaiModel: "grok-3-mini",
@@ -51,10 +51,18 @@ export function saveBrainConfig(config: BrainConfig): void {
 export function getActiveKeyAndModel(config: BrainConfig): { provider: BrainProvider; apiKey: string; model: string; endpoint?: string } {
   switch (config.provider) {
     case "gemini":
+      const requestedGemini = (config.geminiModel || "").trim();
+      const normalizedGemini =
+        requestedGemini === "gemini-2.5-flash" ||
+        requestedGemini === "gemini-2.0-flash" ||
+        requestedGemini === "gemini-flash" ||
+        !requestedGemini
+          ? "gemini-3.5-flash-lite"
+          : requestedGemini;
       return {
         provider: "gemini",
         apiKey: (config.geminiKey || "").trim(),
-        model: config.geminiModel || "gemini-2.0-flash",
+        model: normalizedGemini,
       };
     case "groq":
       return {

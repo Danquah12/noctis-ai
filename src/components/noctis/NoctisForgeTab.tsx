@@ -233,7 +233,7 @@ export function NoctisForgeTab({ onSendToChat, onClose }: NoctisForgeTabProps) {
     // Determine brain routing based on active dropdown model
     let brainConfig: { provider: string; model?: string } | undefined;
     if (activeModel.includes("Cortex") || activeModel.includes("Gemini")) {
-      brainConfig = { provider: "gemini", model: "gemini-2.0-flash" };
+      brainConfig = { provider: "gemini", model: "gemini-3.5-flash-lite" };
     } else if (activeModel.includes("Astra") || activeModel.includes("GPT-4o")) {
       brainConfig = { provider: "openai", model: "gpt-4o" };
     } else if (activeModel.includes("Velocity") || activeModel.includes("Groq") || activeModel.includes("Llama")) {

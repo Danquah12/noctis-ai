@@ -125,8 +125,8 @@ const SOVEREIGN_CATALOG = [
     category: "Multimodal & Vision",
     speed: "140 tokens/sec",
     context: "2,000,000 tokens",
-    engine: "Google Gemini 2.0 Flash",
-    highlight: "Instant vision analysis, massive document ingestion, and low-latency reasoning.",
+    engine: "Google Gemini 3.5 Flash-Lite",
+    highlight: "Instant vision analysis, massive document ingestion, and low-latency frontier reasoning.",
     badge: "Gemini Tier",
     badgeColor: "bg-sky-500/10 text-sky-400 border-sky-500/20",
   },
@@ -195,7 +195,7 @@ export function NoctisConsoleTab({ onSendToChat, onClose }: NoctisConsoleTabProp
 
     let brainConfig: { provider: string; model?: string } | undefined;
     if (playModel.includes("Cortex") || playModel.includes("Gemini")) {
-      brainConfig = { provider: "gemini", model: "gemini-2.0-flash" };
+      brainConfig = { provider: "gemini", model: "gemini-3.5-flash-lite" };
     } else if (playModel.includes("Astra") || playModel.includes("GPT-4o")) {
       brainConfig = { provider: "openai", model: "gpt-4o" };
     } else if (playModel.includes("Velocity") || playModel.includes("Groq") || playModel.includes("Llama")) {

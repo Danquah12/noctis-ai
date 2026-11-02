@@ -100,7 +100,7 @@ export function NoctisRedTeamTab({ onSendToChat, onClose }: NoctisRedTeamTabProp
     let hasApiKey = false;
 
     if (targetModel.includes("Cortex") || targetModel.includes("Gemini")) {
-      brainConfig = { provider: "gemini", model: "gemini-2.0-flash", apiKey: storedBrain.geminiKey };
+      brainConfig = { provider: "gemini", model: "gemini-3.5-flash-lite", apiKey: storedBrain.geminiKey };
       hasApiKey = Boolean(storedBrain.geminiKey?.trim());
     } else if (targetModel.includes("Astra") || targetModel.includes("GPT-4o")) {
       brainConfig = { provider: "openai", model: "gpt-4o", apiKey: storedBrain.openaiKey };

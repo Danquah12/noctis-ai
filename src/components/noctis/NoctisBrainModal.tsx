@@ -33,8 +33,10 @@ const PROVIDERS: ProviderMeta[] = [
     badge: "Recommended • Free",
     badgeColor: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
     tagline: "Multimodal frontier model with instant reasoning. Generous free tier via Google AI Studio.",
-    defaultModel: "gemini-2.0-flash",
+    defaultModel: "gemini-3.5-flash-lite",
     models: [
+      { id: "gemini-3.5-flash-lite", label: "Gemini 3.5 Flash-Lite (Recommended)", note: "Next-gen ultra-fast frontier reasoning, $0.30/1M tokens, auto-routes Dec 2026" },
+      { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash (Legacy)", note: "Redirects to gemini-3.5-flash-lite on Dec 1, 2026" },
       { id: "gemini-2.0-flash", label: "Gemini 2.0 Flash", note: "Ultra-fast, deep multimodal context, free tier" },
       { id: "gemini-1.5-pro", label: "Gemini 1.5 Pro", note: "Frontier reasoning & 2M token context" },
       { id: "gemini-1.5-flash", label: "Gemini 1.5 Flash", note: "Lightweight, highly optimized" },
@@ -170,7 +172,7 @@ export function NoctisBrainModal({ isOpen, onClose, onConfigSaved }: NoctisBrain
   function getModelValue(p: BrainProvider): string {
     switch (p) {
       case "gemini":
-        return config.geminiModel || "gemini-2.0-flash";
+        return config.geminiModel || "gemini-3.5-flash-lite";
       case "groq":
         return config.groqModel || "llama-3.3-70b-versatile";
       case "openai":

@@ -898,7 +898,7 @@ export function NoctisPatientDiagnosisModal({
                   <TrendingUp className="w-8 h-8 text-neutral-500 mx-auto" />
                   <p className="text-xs text-neutral-300">No multi-point historical lab values supplied yet.</p>
                   <p className="text-[11px] text-neutral-500 max-w-md mx-auto">
-                    Paste or upload records containing baseline and current dates (e.g. "Creatinine: baseline 1.1 -> current 2.4") to trigger automatic KDIGO AKI staging and velocity alerts.
+                    Paste or upload records containing baseline and current dates (e.g. &quot;Creatinine: baseline 1.1 &rarr; current 2.4&quot;) to trigger automatic KDIGO AKI staging and velocity alerts.
                   </p>
                 </div>
               )}

@@ -113,17 +113,62 @@ async function completeOpenAI(apiKey: string, system: string, user: string, json
   return { text };
 }
 
-async function completeGemini(system: string, user: string, json: boolean) {
+export function normalizeGeminiModel(model?: string): string {
+  if (!model) return "gemini-3.5-flash-lite";
+  const m = model.trim().toLowerCase();
+  if (
+    m === "gemini-2.5-flash" ||
+    m === "gemini-2.0-flash" ||
+    m === "gemini-flash" ||
+    m === "gemini-2-flash" ||
+    m === "gemini-35-flash-lite"
+  ) {
+    return "gemini-3.5-flash-lite";
+  }
+  return model.trim();
+}
+
+export function buildGeminiGenerationConfig(
+  model: string,
+  options: {
+    maxTokens?: number;
+    json?: boolean;
+    temperature?: number;
+    thinkingLevel?: "minimal" | "low" | "medium" | "high";
+  }
+) {
+  const is35Lite = model.includes("3.5-flash-lite") || model.includes("3.5");
+  const config: Record<string, any> = {
+    maxOutputTokens: options.maxTokens || 1800,
+  };
+  if (options.json) {
+    config.responseMimeType = "application/json";
+  }
+  if (is35Lite) {
+    // Gemini 3.5 Flash-Lite: temperature, top_p, top_k are deprecated/ignored.
+    // Uses thinkingConfig.thinkingLevel ("minimal", "low", "medium", "high") instead of numeric budget.
+    config.thinkingConfig = { thinkingLevel: options.thinkingLevel || "medium" };
+  } else {
+    if (options.temperature !== undefined) {
+      config.temperature = options.temperature;
+    }
+  }
+  return config;
+}
+
+async function completeGemini(system: string, user: string, json: boolean, requestedModel?: string) {
   const apiKey = resolveGeminiKey();
   if (!apiKey) return null;
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(apiKey)}`, {
+  const m = normalizeGeminiModel(requestedModel);
+  const genConfig = buildGeminiGenerationConfig(m, { maxTokens: 1800, json, temperature: 0.2 });
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent?key=${encodeURIComponent(apiKey)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     signal: AbortSignal.timeout(45000),
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: system }] },
       contents: [{ role: "user", parts: [{ text: user.slice(0, 14000) }] }],
-      generationConfig: { temperature: 0.2, maxOutputTokens: 1800, ...(json ? { responseMimeType: "application/json" } : {}) },
+      generationConfig: genConfig,
     }),
   });
   if (!res.ok) return { error: "Gemini did not return an answer." as const };
@@ -272,7 +317,13 @@ export async function modelChat(
 
     if (provider === "gemini") {
       try {
-        const m = userModel || "gemini-2.0-flash";
+        const m = normalizeGeminiModel(userModel);
+        const genConfig = buildGeminiGenerationConfig(m, {
+          maxTokens,
+          json: json && !picture,
+          temperature,
+          thinkingLevel: "medium",
+        });
         const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent?key=${encodeURIComponent(key)}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -283,7 +334,7 @@ export async function modelChat(
               role: message.role === "assistant" ? "model" : "user",
               parts: picture ? geminiParts(message.content) : [{ text: textOf(message.content).slice(0, 16000) }],
             })),
-            generationConfig: { temperature, maxOutputTokens: maxTokens, ...(json && !picture ? { responseMimeType: "application/json" } : {}) },
+            generationConfig: genConfig,
           }),
         });
         if (res.ok) {
@@ -401,7 +452,14 @@ export async function modelChat(
   const geminiKey = resolveGeminiKey();
   if (geminiKey && (talk.length || picture)) {
     try {
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(geminiKey)}`, {
+      const m = "gemini-3.5-flash-lite";
+      const genConfig = buildGeminiGenerationConfig(m, {
+        maxTokens,
+        json: json && !picture,
+        temperature,
+        thinkingLevel: "medium",
+      });
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent?key=${encodeURIComponent(geminiKey)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         signal: AbortSignal.timeout(60000),
@@ -411,7 +469,7 @@ export async function modelChat(
             role: message.role === "assistant" ? "model" : "user",
             parts: picture ? geminiParts(message.content) : [{ text: textOf(message.content).slice(0, 16000) }],
           })),
-          generationConfig: { temperature, maxOutputTokens: maxTokens, ...(json && !picture ? { responseMimeType: "application/json" } : {}) },
+          generationConfig: genConfig,
         }),
       });
       if (res.ok) {

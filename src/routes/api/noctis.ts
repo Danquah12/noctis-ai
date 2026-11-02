@@ -761,7 +761,7 @@ export const Route = createFileRoute("/api/noctis")({
             if (m.includes("astra") || m.includes("gpt-4o") || m.includes("openai")) {
               targetBrain = { provider: "openai", model: "gpt-4o" };
             } else if (m.includes("cortex") || m.includes("gemini") || m.includes("flash")) {
-              targetBrain = { provider: "gemini", model: "gemini-2.0-flash" };
+              targetBrain = { provider: "gemini", model: "gemini-3.5-flash-lite" };
             } else if (m.includes("velocity") || m.includes("groq") || m.includes("llama")) {
               targetBrain = { provider: "groq", model: "llama-3.3-70b-versatile" };
             } else if (m.includes("sentinel") || m.includes("grok") || m.includes("xai")) {
