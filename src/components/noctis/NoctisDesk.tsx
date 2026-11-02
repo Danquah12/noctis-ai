@@ -7000,7 +7000,7 @@ export function NoctisDesk() {
             </div>
           </div>
         ) : null}
-        <header className="relative flex h-14 shrink-0 items-center justify-center border-b border-white/10">
+        <header className="relative z-30 flex h-14 shrink-0 items-center justify-center border-b border-white/10">
           <button
             type="button"
             aria-label="Open menu"

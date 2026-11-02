@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Sparkles,
   Brain,
@@ -435,6 +435,8 @@ export function NoctisModelPicker({
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [filterTab, setFilterTab] = useState<"all" | "models" | "workspaces" | "suites">("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [coords, setCoords] = useState<{ top: number; left: number }>({ top: 56, left: 16 });
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -444,6 +446,39 @@ export function NoctisModelPicker({
       }
     }
   }, []);
+
+  const updatePosition = () => {
+    if (buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      const isSm = typeof window !== "undefined" && window.innerWidth >= 640;
+      const width = isSm ? 384 : 320;
+      const left = Math.max(12, Math.min(rect.left, (window.innerWidth || 400) - width - 12));
+      setCoords({
+        top: Math.round(rect.bottom + 8),
+        left: Math.round(left),
+      });
+    }
+  };
+
+  const toggleDropdown = () => {
+    if (!dropdownOpen) {
+      updatePosition();
+      setDropdownOpen(true);
+    } else {
+      setDropdownOpen(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!dropdownOpen) return;
+    const handleReposition = () => updatePosition();
+    window.addEventListener("resize", handleReposition);
+    window.addEventListener("scroll", handleReposition, true);
+    return () => {
+      window.removeEventListener("resize", handleReposition);
+      window.removeEventListener("scroll", handleReposition, true);
+    };
+  }, [dropdownOpen]);
 
   const selected = NOCTIS_MODELS.find((m) => m.id === (currentModelId || activeModel)) || NOCTIS_MODELS[0];
   const Icon = selected.icon;
@@ -495,8 +530,9 @@ export function NoctisModelPicker({
   return (
     <div className="relative inline-block text-left">
       <button
+        ref={buttonRef}
         type="button"
-        onClick={() => setDropdownOpen((prev) => !prev)}
+        onClick={toggleDropdown}
         className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-[#252525] px-3 py-1 text-xs font-semibold text-zinc-200 transition hover:bg-white/10 hover:text-white"
         aria-expanded={dropdownOpen}
         title="Select Intelligence Engine, Sovereign Workspace or Suite"
@@ -511,11 +547,20 @@ export function NoctisModelPicker({
 
       {dropdownOpen && (
         <>
+          {/* Global fixed backdrop to catch outside clicks */}
           <div
-            className="fixed inset-0 z-40"
+            className="fixed inset-0 z-[9998] bg-black/20"
             onClick={() => setDropdownOpen(false)}
           />
-          <div className="absolute top-[calc(100%+6px)] left-0 z-50 w-80 sm:w-96 overflow-hidden rounded-2xl border border-white/12 bg-[#1b1b1b] p-2.5 shadow-[0_20px_50px_rgba(0,0,0,0.75)] backdrop-blur-2xl">
+
+          {/* Floating dropdown with fixed viewport positioning breaking out of overflow-x/overflow-y clipping */}
+          <div
+            style={{
+              top: `${coords.top}px`,
+              left: `${coords.left}px`,
+            }}
+            className="fixed z-[9999] w-80 sm:w-96 overflow-hidden rounded-2xl border border-white/15 bg-[#1b1b1b]/98 p-2.5 shadow-[0_25px_60px_rgba(0,0,0,0.9)] backdrop-blur-3xl ring-1 ring-white/10"
+          >
             {/* Header with Title and Search Input */}
             <div className="pb-2 border-b border-white/10 space-y-2">
               <div className="flex items-center justify-between">
@@ -536,7 +581,7 @@ export function NoctisModelPicker({
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Filter models, workspaces, and suites..."
-                  className="w-full rounded-xl border border-white/10 bg-black/40 pl-8 pr-7 py-1.5 text-xs text-zinc-100 placeholder-zinc-500 focus:border-[#e4b86a]/60 focus:outline-none"
+                  className="w-full rounded-xl border border-white/10 bg-black/50 pl-8 pr-7 py-1.5 text-xs text-zinc-100 placeholder-zinc-500 focus:border-[#e4b86a]/60 focus:outline-none"
                   autoFocus
                 />
                 {searchQuery ? (
