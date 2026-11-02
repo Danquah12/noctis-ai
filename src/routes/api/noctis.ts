@@ -191,6 +191,24 @@ export const Route = createFileRoute("/api/noctis")({
             { headers: CORS_HEADERS }
           );
         }
+        if (url.searchParams.get("excellence_rag")) {
+          const mode = url.searchParams.get("excellence_rag");
+          const {
+            CLINICAL_EVIDENCE_VAULT,
+            retrieveAuthoritativeEvidence,
+            compareGenericVsNoctisExcellence,
+          } = await import("@/lib/noctis-excellence-rag-engine");
+          if (mode === "vault") {
+            return Response.json({ vault: CLINICAL_EVIDENCE_VAULT }, { headers: CORS_HEADERS });
+          }
+          if (mode === "compare") {
+            const q = url.searchParams.get("q") || "Patient with acute chest pressure and sweating";
+            return Response.json(compareGenericVsNoctisExcellence(q), { headers: CORS_HEADERS });
+          }
+          const q = url.searchParams.get("q") || "diabetes management in chronic kidney disease";
+          const retrieved = retrieveAuthoritativeEvidence(q, { topK: 3 });
+          return Response.json({ query: q, evidence: retrieved }, { headers: CORS_HEADERS });
+        }
         if (url.searchParams.get("health") === "suite") {
           const {
             runHealthIntelligenceTestSuite,
