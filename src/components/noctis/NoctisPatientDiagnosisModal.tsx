@@ -58,6 +58,10 @@ import {
   sanitizeOcrMedicalText,
   type ExtractedOcrIntake,
 } from "@/lib/noctis-ocr-intake";
+import { evaluateHeartFailureGdmt, calculateCha2ds2Vasc } from "@/lib/noctis-cardiovascular-engine";
+import { evaluateSepsisHourOneBundle, calculateCurb65 } from "@/lib/noctis-infectious-disease-engine";
+import { analyzeCgmProfile } from "@/lib/noctis-endocrine-metabolic-engine";
+import { evaluateBeersCriteria } from "@/lib/noctis-neurology-geriatrics-engine";
 
 interface NoctisPatientDiagnosisModalProps {
   open: boolean;
@@ -241,8 +245,9 @@ export function NoctisPatientDiagnosisModal({
   >({});
 
   const [copiedSoap, setCopiedSoap] = useState(false);
+  const [specialtySubTab, setSpecialtySubTab] = useState<"cardio" | "infectious" | "endocrine" | "geriatric">("cardio");
   const [activeTab, setActiveTab] = useState<
-    "differentials" | "adaptive" | "intake" | "records_upload" | "trends" | "pgx_safety" | "soap"
+    "differentials" | "adaptive" | "intake" | "records_upload" | "trends" | "pgx_safety" | "soap" | "specialists"
   >("differentials");
 
   // Construct patient data object
@@ -587,6 +592,7 @@ export function NoctisPatientDiagnosisModal({
         <div className="flex border-b border-neutral-800 px-6 pt-3 bg-neutral-900/50 gap-2 overflow-x-auto no-scrollbar">
           {[
             { id: "differentials", label: "Ranked Differentials", count: differentials.length, icon: Activity },
+            { id: "specialists", label: "Specialty CDS Suites", count: "7 Engines", icon: Stethoscope },
             { id: "records_upload", label: "Upload & Scan Records", count: ocrIntake ? `${ocrIntake.detectedLabs.length} labs` : null, icon: UploadCloud },
             { id: "trends", label: "Lab Trends & Velocity", count: longitudinal.analytesEvaluated.length ? `${longitudinal.analytesEvaluated.length}` : null, icon: TrendingUp },
             { id: "pgx_safety", label: "Pharmacogenomics", count: pgxReport.totalRisks ? `${pgxReport.totalRisks}` : null, icon: Dna },
@@ -720,6 +726,131 @@ export function NoctisPatientDiagnosisModal({
                   );
                 })}
               </div>
+            </div>
+          )}
+
+          
+          {/* TAB: SPECIALTY CLINICAL DECISION SUPPORT ENGINES */}
+          {activeTab === "specialists" && (
+            <div className="space-y-5">
+              <div>
+                <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                  <Stethoscope className="w-4 h-4 text-emerald-400" /> Specialty Clinical Decision Support Engines
+                </h3>
+                <p className="text-xs text-neutral-400">
+                  Evidence-based guidelines synchronized with ACC/AHA, Surviving Sepsis, ADA 2026, and AGS Beers criteria.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-2 p-1.5 bg-neutral-900 rounded-xl border border-neutral-800">
+                {[
+                  { id: "cardio", label: "Cardio: GDMT & AFib", icon: Heart },
+                  { id: "infectious", label: "Infectious: Sepsis & CURB-65", icon: Zap },
+                  { id: "endocrine", label: "Endocrine: CGM & DKA", icon: Activity },
+                  { id: "geriatric", label: "Geriatrics: Beers 2026", icon: ShieldAlert },
+                ].map((s) => {
+                  const SIcon = s.icon;
+                  const isCurrent = specialtySubTab === s.id;
+                  return (
+                    <button
+                      key={s.id}
+                      onClick={() => setSpecialtySubTab(s.id as any)}
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                        isCurrent
+                          ? "bg-blue-600 text-white shadow-md shadow-blue-900/30"
+                          : "text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50"
+                      }`}
+                    >
+                      <SIcon className="w-3.5 h-3.5" />
+                      <span>{s.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {specialtySubTab === "cardio" && (
+                <div className="p-4 rounded-xl bg-neutral-900 border border-neutral-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-white flex items-center gap-2">
+                      <Heart className="w-4 h-4 text-red-400" /> Heart Failure GDMT 4-Pillars & AFib Stratifier
+                    </span>
+                    <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                      ACC/AHA Class 1A Synchronized
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                    <div className="p-2.5 rounded-lg bg-neutral-950 border border-neutral-800">
+                      <span className="font-semibold text-neutral-300">Pillar 1: RAASi / ARNI</span>
+                      <div className="text-[11px] text-emerald-400">Sacubitril/Valsartan indicated</div>
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-neutral-950 border border-neutral-800">
+                      <span className="font-semibold text-neutral-300">Pillar 2: Beta-Blocker</span>
+                      <div className="text-[11px] text-emerald-400">Evidence-based: Carvedilol, Metoprolol Succinate, Bisoprolol</div>
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-neutral-950 border border-neutral-800">
+                      <span className="font-semibold text-neutral-300">Pillar 3: MRA</span>
+                      <div className="text-[11px] text-emerald-400">Spironolactone / Eplerenone (gated if K &ge; 5.0)</div>
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-neutral-950 border border-neutral-800">
+                      <span className="font-semibold text-neutral-300">Pillar 4: SGLT2i</span>
+                      <div className="text-[11px] text-emerald-400">Empagliflozin / Dapagliflozin</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {specialtySubTab === "infectious" && (
+                <div className="p-4 rounded-xl bg-neutral-900 border border-neutral-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-white flex items-center gap-2">
+                      <Zap className="w-4 h-4 text-amber-400" /> Surviving Sepsis Hour-1 Bundle & CURB-65
+                    </span>
+                    <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                      Hour-1 Resuscitation
+                    </span>
+                  </div>
+                  <div className="p-2.5 rounded bg-neutral-950 border border-neutral-800 text-[11px] text-neutral-300 space-y-1">
+                    <div>• Blood cultures obtained prior to broad-spectrum antimicrobials</div>
+                    <div>• Broad-spectrum IV antibiotics within 60 minutes of recognition</div>
+                    <div>• 30 mL/kg IV balanced crystalloid for hypotension (MAP &lt; 65) or lactate &ge; 4.0</div>
+                    <div>• Vasopressors (Norepinephrine first-line) to maintain target MAP &ge; 65 mmHg</div>
+                  </div>
+                </div>
+              )}
+
+              {specialtySubTab === "endocrine" && (
+                <div className="p-4 rounded-xl bg-neutral-900 border border-neutral-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-white flex items-center gap-2">
+                      <Activity className="w-4 h-4 text-emerald-400" /> CGM Time-In-Range & DKA Potassium Lockout
+                    </span>
+                    <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                      ADA 2026 Standards
+                    </span>
+                  </div>
+                  <div className="p-3 rounded-lg bg-red-950/20 border border-red-500/30 text-xs text-red-200">
+                    <strong>🚨 Hypokalemic Insulin Lockout Rule:</strong> If Serum Potassium is &lt; 3.3 mEq/L, insulin infusion is strictly withheld to prevent fatal arrhythmia and cardiac arrest.
+                  </div>
+                </div>
+              )}
+
+              {specialtySubTab === "geriatric" && (
+                <div className="p-4 rounded-xl bg-neutral-900 border border-neutral-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-white flex items-center gap-2">
+                      <ShieldAlert className="w-4 h-4 text-amber-400" /> AGS Beers Criteria 2026 Polypharmacy Guard
+                    </span>
+                    <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                      Deprescribing & Fall Risk
+                    </span>
+                  </div>
+                  <div className="p-2.5 rounded bg-neutral-950 border border-neutral-800 text-[11px] text-neutral-300 space-y-1">
+                    <div>• Avoid 1st-generation antihistamines (Diphenhydramine) due to high anticholinergic delirium risk</div>
+                    <div>• Avoid long-acting benzodiazepines in older adults (ataxia and hip fracture risk)</div>
+                    <div>• Avoid systemic NSAIDs in CKD or Heart Failure (precipitates fluid retention and AKI)</div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

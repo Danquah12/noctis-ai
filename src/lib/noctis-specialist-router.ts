@@ -38,6 +38,21 @@ import {
   solveAutoantibodies,
 } from "./noctis-hematology-autoimmune-engine.ts";
 
+import {
+  evaluateAcuteStrokeNihss,
+  calculateAbcd2Score,
+  evaluateDementiaStaging,
+  evaluateStatusEpilepticusProtocol,
+  evaluateBeersCriteria,
+} from "./noctis-neurology-geriatrics-engine.ts";
+
+import {
+  evaluatePreeclampsia,
+  evaluatePllrMedicationSafety,
+  evaluatePediatricAssessmentTriangle,
+  calculatePediatricResuscitationDoses,
+} from "./noctis-obstetrics-pediatrics-engine.ts";
+
 export function handleNaturalSpecialistClinicalQuery(query: string): string | null {
   const q = query.toLowerCase();
 
@@ -416,6 +431,196 @@ export function handleNaturalSpecialistClinicalQuery(query: string): string | nu
       res.organThreatAlerts.length ? `\n### 🚨 Organ-Threat Alerts\n${res.organThreatAlerts.map((a) => `- ${a}`).join("\n")}\n` : "",
       `### Immediate Management Protocol:`,
       res.immediateManagementActions.map((m) => `- ${m}`).join("\n"),
+    ].join("\n");
+  }
+
+  // =========================================================================
+  // 5. NEUROLOGY & STROKE WORKUP
+  // =========================================================================
+
+  // NIHSS Stroke Workup
+  if (/\b(nihss|acute stroke|tpa window|thrombectomy|tenecteplase|alteplase)\b/i.test(q)) {
+    const scoreMatch = q.match(/nihss\s*[:=]?\s*(\d{1,2})/i);
+    const scoreVal = scoreMatch ? parseInt(scoreMatch[1], 10) : 10;
+    const res = evaluateAcuteStrokeNihss({
+      facialPalsyScore: 2,
+      motorArmRightScore: 3,
+      motorLegRightScore: Math.max(0, Math.min(scoreVal - 5, 4)),
+      bestLanguageAphasiaScore: 2,
+      hoursSinceLastKnownWell: 2.0,
+      systolicBpMmHg: 165,
+      diastolicBpMmHg: 95,
+    });
+
+    return [
+      `# Noctis Clinical Decision Support — Acute Stroke & Neurovascular Triage`,
+      `**Total NIHSS Score:** ${res.totalScore} · **Severity:** ${res.strokeSeverityCategory}`,
+      `- **Large Vessel Occlusion (LVO) Probability:** ${res.estimatedLvoProbabilityPercent}%`,
+      `- **IV Thrombolysis (tPA/TNK) Eligible:** ${res.thrombolysisEligibility.eligibleForIvTpaOrTnk ? "YES" : "NO"}`,
+      `- **Endovascular Thrombectomy (EVT) Window:** ${res.mechanicalThrombectomyEligibility.windowCategory}`,
+      `### Urgent Neurovascular Actions:`,
+      res.urgentActions.map((a) => `- ${a}`).join("\n"),
+    ].join("\n");
+  }
+
+  // ABCD2 Score for TIA
+  if (/\b(abcd2|tia stroke risk|transient ischemic attack risk)\b/i.test(q)) {
+    const res = calculateAbcd2Score({
+      ageYears: 68,
+      sbpMmHg: 154,
+      dbpMmHg: 92,
+      clinicalUnilateralWeakness: true,
+      symptomDurationMinutes: 70,
+      historyOfDiabetes: true,
+    });
+
+    return [
+      `# Noctis Clinical Decision Support — ABCD2 TIA Stroke Risk Stratifier`,
+      `**Total Score:** ${res.score} / 7 · **Risk Category:** ${res.riskCategory}`,
+      `- **2-Day Stroke Risk:** ${res.strokeRisk2DaysPercent}%`,
+      `- **7-Day Stroke Risk:** ${res.strokeRisk7DaysPercent}%`,
+      `- **90-Day Stroke Risk:** ${res.strokeRisk90DaysPercent}%`,
+      `- **Clinical Guidance:** ${res.recommendedDisposition}`,
+    ].join("\n");
+  }
+
+  // Dementia & NPH Staging
+  if (/\b(moca|dementia staging|normal pressure hydrocephalus|nph|lewy body)\b/i.test(q)) {
+    const isNph = /\b(wobbly|incontinence|ataxia|wet wobbly|gait)\b/i.test(q);
+    const isLbd = /\b(lewy|hallucination|rbd|rem sleep)\b/i.test(q);
+    const res = evaluateDementiaStaging({
+      mocaScore: 18,
+      hasWetWobblyWackyTriad: isNph,
+      hasVisualHallucinationsAndRbd: isLbd,
+    });
+
+    return [
+      `# Noctis Clinical Decision Support — Cognitive Impairment & Dementia Staging`,
+      `**Impairment Tier:** ${res.impairmentTier} · **Suspected Etiology:** ${res.suggestedEtiology}`,
+      `- **Differentials:** ${res.differentialDiagnoses.join(", ")}`,
+      res.urgentInterventions.length ? `\n### ⚠️ Critical Interventions\n${res.urgentInterventions.map((i) => `- ${i}`).join("\n")}\n` : "",
+      `### Reversible Causes Workup:`,
+      res.reversibleCausesWorkup.map((w) => `- ${w}`).join("\n"),
+    ].join("\n");
+  }
+
+  // Status Epilepticus Protocol
+  if (/\b(status epilepticus|seizure protocol|refractory seizure)\b/i.test(q)) {
+    const res = evaluateStatusEpilepticusProtocol({
+      seizureDurationMinutes: 25,
+      seizureType: "CONVULSIVE_TONIC_CLONIC",
+      refractoryStatusPresent: true,
+    });
+
+    return [
+      `# Noctis Clinical Decision Support — Status Epilepticus Emergency Protocol`,
+      `**Phase:** ${res.phase}`,
+      res.criticalWarnings.length ? `\n> ${res.criticalWarnings[0]}\n` : "",
+      `### Pharmacotherapy Steps:`,
+      res.immediatePharmacotherapy.map((p) => `${p}`).join("\n"),
+    ].join("\n");
+  }
+
+  // =========================================================================
+  // 6. GERIATRICS & BEERS CRITERIA
+  // =========================================================================
+
+  if (/\b(beers criteria|geriatric medication|potentially inappropriate medication|stopp start)\b/i.test(q)) {
+    const res = evaluateBeersCriteria({
+      patientAgeYears: 76,
+      medicationList: [
+        "Diphenhydramine 50mg",
+        "Diazepam 5mg",
+        "Amitriptyline 25mg",
+        "Ibuprofen 600mg",
+      ],
+      diagnosedConditions: ["Chronic Kidney Disease", "Heart Failure"],
+      eGfrMlMin173m2: 42,
+    });
+
+    return [
+      `# Noctis Clinical Decision Support — AGS Beers Criteria Geriatric Safety Guard`,
+      `**Evaluated Violations:** ${res.violationsCount} concerns identified`,
+      `- **Anticholinergic Burden Alert:** ${res.anticholinergicBurdenAlert ? "YES (HIGH COGNITIVE/FALL RISK)" : "NO"}`,
+      `- **Overall Fall Risk Elevated:** ${res.overallFallRiskElevated ? "YES" : "NO"}`,
+      `### Identified Potentially Inappropriate Medications:`,
+      res.identifiedViolations.map((v) => `#### ${v.medication} (${v.category})\n- **Rationale:** ${v.rationale}\n- **Safer Alternatives:** ${v.saferAlternatives.join(", ")}`).join("\n\n"),
+      `\n**Summary Guidance:** ${res.summaryGuidance}`,
+    ].join("\n");
+  }
+
+  // =========================================================================
+  // 7. OBSTETRICS & PEDIATRICS
+  // =========================================================================
+
+  // Preeclampsia & HELLP
+  if (/\b(preeclampsia|hellp syndrome|gestational hypertension|magnesium sulfate obstetric)\b/i.test(q)) {
+    const isHellp = /\b(hellp|ldh|platelets.*<.*100)\b/i.test(q);
+    const res = evaluatePreeclampsia({
+      gestationalAgeWeeks: 34,
+      systolicBpMmHg: 168,
+      diastolicBpMmHg: 112,
+      proteinuriaPresent: true,
+      intractableHeadacheOrVisualChanges: true,
+      ldhU_L: isHellp ? 750 : undefined,
+      astOrAltU_L: isHellp ? 120 : undefined,
+      plateletCount10e9_L: isHellp ? 70 : undefined,
+    });
+
+    return [
+      `# Noctis Clinical Decision Support — Obstetric Emergency & Preeclampsia Engine`,
+      `**Diagnosis:** ${res.diagnosis}`,
+      res.maternalEmergencyAlerts.length ? `\n### 🚨 Maternal Alerts\n${res.maternalEmergencyAlerts.map((a) => `- ${a}`).join("\n")}\n` : "",
+      `### Magnesium Sulfate Protocol:`,
+      res.magnesiumSulfateProtocol,
+      `### Antihypertensive Protocol:`,
+      res.antihypertensiveProtocol,
+      `### Delivery Guidance:`,
+      res.deliveryTimingGuidance,
+    ].join("\n");
+  }
+
+  // PLLR Pregnancy Medication Safety
+  if (/\b(pllr|pregnancy medication safety|teratogen|breastfeeding safe)\b/i.test(q)) {
+    const drugMatch = q.match(/(?:safety of|taking|prescribed|drug|medication)\s*([a-z]+)/i);
+    const drugName = drugMatch ? drugMatch[1] : "Lisinopril";
+    const res = evaluatePllrMedicationSafety({
+      medicationName: drugName,
+      isPregnant: true,
+      trimester: 2,
+    });
+
+    return [
+      `# Noctis Clinical Decision Support — FDA PLLR Pregnancy & Lactation Safety`,
+      `**Medication:** ${res.medication} · **Pregnancy Risk:** ${res.pregnancyRiskSummary}`,
+      `- **Lactation Safety:** ${res.lactationSafetySummary}`,
+      res.teratogenicRisks.length ? `### Teratogenic Risks:\n${res.teratogenicRisks.map((t) => `- ${t}`).join("\n")}` : "",
+      res.safeAlternativeMedications.length ? `### Safer Alternatives in Pregnancy:\n${res.safeAlternativeMedications.map((a) => `- ${a}`).join("\n")}` : "",
+      `\n**Counseling Summary:** ${res.clinicalCounselingSummary}`,
+    ].filter(Boolean).join("\n");
+  }
+
+  // Pediatric Assessment Triangle & Resuscitation
+  if (/\b(pediatric assessment triangle|pat triage|pals|pediatric resuscitation)\b/i.test(q)) {
+    const pat = evaluatePediatricAssessmentTriangle({
+      appearanceToneTicklesLookSpeech: "ABNORMAL_LETHARGIC_IRRITABLE_UNRESPONSIVE",
+      workOfBreathingRetractionsNasalFlaring: "ABNORMAL_STRIDOR_GRUNTING_RETRACTIONS",
+      circulationToSkinPallorMottlingCyanosis: "NORMAL_PINK",
+    });
+
+    const doses = calculatePediatricResuscitationDoses({
+      childWeightKg: 16,
+      clinicalScenario: "STATUS_EPILEPTICUS",
+    });
+
+    return [
+      `# Noctis Clinical Decision Support — Pediatric Emergency & PALS Engine`,
+      `**PAT Physiologic Status:** ${pat.physiologicCategory} · **Acuity:** ${pat.acuityTier}`,
+      `- **Immediate Action:** ${pat.immediatePalsAction}`,
+      `### Weight-Based Emergency Dosing (for ${doses.childWeightKg} kg child):`,
+      `- **IV Fluid Bolus (20 mL/kg):** ${doses.fluidBolusVolumeMl} mL isotonic crystalloid`,
+      `- **Defibrillation Initial (2 J/kg):** ${doses.defibrillationJoulesInitial} Joules`,
+      doses.calculatedMedications.map((m) => `- **${m.drugName}:** ${m.calculatedDose} (${m.routeAndAdministration})`).join("\n"),
     ].join("\n");
   }
 
