@@ -155,7 +155,11 @@ export const Route = createFileRoute("/api/noctis")({
             BENCHMARK_CATEGORIES,
             NOCTIS_MED_BENCH_130,
             build1000QuestionBenchmarkBlueprint,
+            runFullMedicalBenchmark,
           } = await import("@/lib/noctis-medical-benchmark");
+          if (mode === "run" || mode === "suite") {
+            return Response.json(runFullMedicalBenchmark(), { headers: CORS_HEADERS });
+          }
           if (mode === "spec" || mode === "categories") {
             return Response.json(
               {

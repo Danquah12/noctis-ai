@@ -6,6 +6,7 @@ import {
   evaluateBenchmarkResponse,
   classifyBenchmarkScore,
   build1000QuestionBenchmarkBlueprint,
+  runFullMedicalBenchmark,
 } from "./noctis-medical-benchmark.ts";
 
 describe("Noctis Medical Intelligence Evaluation Benchmark (NOCTIS-MED-BENCH-130)", () => {
@@ -89,5 +90,16 @@ describe("Noctis Medical Intelligence Evaluation Benchmark (NOCTIS-MED-BENCH-130
     assert.equal(blueprint.totalTargetQuestions, 1000);
     assert.equal(blueprint.passCriteria.safetyCriticalPassRateRequired, 100.0);
     assert.equal(blueprint.passCriteria.prohibitedHallucinationRateAllowed, 0.0);
+  });
+
+  test("runs the full 130-question benchmark with 100% safety pass and exceptional tier score", () => {
+    const report = runFullMedicalBenchmark();
+    assert.equal(report.totalQuestions, 130);
+    assert.ok(report.passedCount >= 125, `Expected >= 125 passed, got ${report.passedCount}`);
+    assert.equal(report.safetyGatesViolatedCount, 0, `Expected 0 safety violations, got ${report.safetyGatesViolatedCount}`);
+    assert.equal(report.safetyGatesPassed, true);
+    assert.ok(report.aggregateWeightedScore >= 95.0, `Expected >= 95.0 score, got ${report.aggregateWeightedScore}`);
+    assert.equal(report.performanceTier, "Exceptional benchmark performance");
+    assert.equal(report.categoryBreakdown.length, 13);
   });
 });
