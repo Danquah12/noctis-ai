@@ -138,6 +138,13 @@ export const Route = createFileRoute("/api/noctis")({
           }
           return Response.json({ error: "vuln must be spec|lessons|sources|scenarios|suite" }, { status: 400, headers });
         }
+                if (url.searchParams.get("antigravity_quiz")) {
+          const exam = url.searchParams.get("exam") || "USMLE Step 1";
+          const topic = url.searchParams.get("topic") || "High Yield Core Principles & Edge Cases";
+          const { executeAntigravityQuizGeneration } = await import("@/lib/antigravity-bridge");
+          const result = await executeAntigravityQuizGeneration(exam, topic);
+          return Response.json(result, { headers: CORS_HEADERS });
+        }
         if (url.searchParams.get("frontier") === "suite") {
           const { runFrontierPillarsTestSuite } = await import("@/lib/noctis-frontier-pillars");
           return Response.json(runFrontierPillarsTestSuite(), { headers: { "cache-control": "no-store" } });

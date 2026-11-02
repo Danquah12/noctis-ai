@@ -30,7 +30,10 @@ import {
   Compass,
   Calendar,
   CheckSquare,
-  ListOrdered
+  ListOrdered,
+  Loader2,
+  AlertCircle,
+  Check
 } from "lucide-react";
 import {
   BoardExam,
@@ -79,6 +82,39 @@ export function NoctisBoardExamExplorer({
   const [autoPlay, setAutoPlay] = useState<boolean>(true);
   const [isCollapsed, setIsCollapsed] = useState<boolean>(compact);
   const stageTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Live Antigravity AI Quiz State
+  const [liveQuiz, setLiveQuiz] = useState<{
+    exam: string;
+    domain: string;
+    vignette: string;
+    question: string;
+    options: { A: string; B: string; C: string; D: string };
+    correct_answer: "A" | "B" | "C" | "D";
+    high_yield_pearl: string;
+    tactics_and_technique: string;
+  } | null>(null);
+  const [liveQuizLoading, setLiveQuizLoading] = useState(false);
+  const [selectedOption, setSelectedOption] = useState<string | null>(null);
+  const [showExplanation, setShowExplanation] = useState(false);
+
+  const fetchLiveAntigravityQuiz = async (examName: string, topic?: string) => {
+    setLiveQuizLoading(true);
+    setSelectedOption(null);
+    setShowExplanation(false);
+    try {
+      const url = `/api/noctis?antigravity_quiz=1&exam=${encodeURIComponent(examName)}${topic ? `&topic=${encodeURIComponent(topic)}` : ""}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data?.quiz) {
+        setLiveQuiz(data.quiz);
+      }
+    } catch (err) {
+      console.error("Failed to load live Antigravity quiz:", err);
+    } finally {
+      setLiveQuizLoading(false);
+    }
+  };
 
   // Sync external selectedExamId
   useEffect(() => {
@@ -631,44 +667,178 @@ export function NoctisBoardExamExplorer({
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-teal-400 flex items-center gap-1.5">
                     <CheckSquare className="size-4" />
-                    <span>Create Quiz: High-Yield 10-Question Board Simulation</span>
+                    <span>Create Quiz: High-Yield Board Simulation & Live AI Vignette</span>
                   </h4>
-                  <span className="text-[10px] text-teal-300 font-mono">10 Questions + Rationales</span>
+                  <span className="rounded-full bg-teal-500/20 px-2.5 py-0.5 text-[10px] font-bold text-teal-300 border border-teal-500/30">
+                    ⚡ Powered by Antigravity Python Engine
+                  </span>
                 </div>
 
-                <div className="rounded-xl bg-teal-500/10 border border-teal-500/25 p-3.5 space-y-2.5">
-                  <p className="text-xs text-zinc-200 leading-relaxed">
-                    Generate an interactive 10-question high-yield board simulation quiz tailored to <span className="font-bold text-teal-300">{activeExam.name}</span>.
-                    Includes realistic scenario vignettes, tricky distractors, and step-by-step diagnostic/technical rationales for both correct and incorrect options.
-                  </p>
+                {/* Live Vignette Interactive Card */}
+                {liveQuiz ? (
+                  <div className="rounded-2xl border border-teal-500/30 bg-[#16201e]/90 p-4 space-y-3 shadow-lg animate-fadeIn">
+                    <div className="flex items-center justify-between border-b border-teal-500/20 pb-2.5">
+                      <div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-teal-400 font-mono">
+                          {liveQuiz.exam} • {liveQuiz.domain}
+                        </span>
+                        <h5 className="text-xs font-bold text-zinc-100 mt-0.5">Live Clinical / Technical Case Scenario</h5>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => fetchLiveAntigravityQuiz(activeExam.name)}
+                        disabled={liveQuizLoading}
+                        className="inline-flex items-center gap-1 rounded-lg bg-teal-500/20 hover:bg-teal-500/30 text-teal-300 border border-teal-500/30 px-2.5 py-1 text-[11px] font-semibold transition"
+                      >
+                        {liveQuizLoading ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />}
+                        <span>New Vignette</span>
+                      </button>
+                    </div>
 
-                  <div className="flex flex-wrap items-center gap-2 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => handleResearchExamInChat(
-                        `Generate a high-yield 10-question board simulation practice quiz for ${activeExam.name} by ${activeExam.provider}.\n` +
-                        `Format:\n` +
-                        `- 10 scenario-based clinical/technical multiple choice questions with 4-5 options (A-E).\n` +
-                        `- Provide detailed explanations for why the correct option is right and why each incorrect option is wrong.\n` +
-                        `- Include a high-yield exam takeaway pearl for each question.`
-                      )}
-                      className="inline-flex items-center gap-2 rounded-xl bg-teal-500 hover:bg-teal-400 px-4 py-2 text-xs font-bold text-black transition shadow-sm"
-                    >
-                      <Sparkles className="size-3.5" />
-                      <span>Launch 10-Question Quiz in Chat ⚡</span>
-                    </button>
+                    {/* Vignette narrative */}
+                    <div className="rounded-xl bg-black/40 border border-white/5 p-3 text-xs text-zinc-200 leading-relaxed font-sans whitespace-pre-line">
+                      {liveQuiz.vignette}
+                    </div>
 
-                    <button
-                      type="button"
-                      onClick={() => handleResearchExamInChat(
-                        `Generate 5 difficult rapid-fire board review questions for ${activeExam.name} testing the highest failure-rate topics and tricky trap answers.`
-                      )}
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-white/10 hover:bg-white/15 px-3 py-2 text-xs font-semibold text-zinc-200 transition"
-                    >
-                      <span>5 Rapid-Fire Trap Questions</span>
-                    </button>
+                    {/* Stem question */}
+                    <p className="text-xs font-bold text-teal-200 pt-1">
+                      {liveQuiz.question}
+                    </p>
+
+                    {/* Options A, B, C, D */}
+                    <div className="grid grid-cols-1 gap-2 pt-1">
+                      {(["A", "B", "C", "D"] as const).map((key) => {
+                        const optText = liveQuiz.options[key];
+                        if (!optText) return null;
+                        const isChosen = selectedOption === key;
+                        const isCorrect = key === liveQuiz.correct_answer;
+                        let btnStyle = "border-white/10 bg-white/5 hover:bg-white/10 text-zinc-200";
+
+                        if (selectedOption) {
+                          if (isCorrect) {
+                            btnStyle = "border-emerald-500/60 bg-emerald-500/20 text-emerald-100 font-medium";
+                          } else if (isChosen) {
+                            btnStyle = "border-rose-500/60 bg-rose-500/20 text-rose-100";
+                          } else {
+                            btnStyle = "border-white/5 bg-black/20 text-zinc-500 opacity-60";
+                          }
+                        }
+
+                        return (
+                          <button
+                            key={key}
+                            type="button"
+                            onClick={() => {
+                              setSelectedOption(key);
+                              setShowExplanation(true);
+                            }}
+                            className={`flex items-start gap-2.5 text-left rounded-xl border p-2.5 text-xs transition ${btnStyle}`}
+                          >
+                            <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-white/10 text-[11px] font-bold">
+                              {key}
+                            </span>
+                            <span className="flex-1 leading-snug">{optText}</span>
+                            {selectedOption && isCorrect && (
+                              <Check className="size-4 text-emerald-400 shrink-0 mt-0.5" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Explanations & Pearls */}
+                    {showExplanation && (
+                      <div className="space-y-2 pt-2 animate-fadeIn">
+                        {/* Result notification */}
+                        <div className={`flex items-center gap-2 p-2.5 rounded-xl border text-xs font-semibold ${
+                          selectedOption === liveQuiz.correct_answer
+                            ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-300"
+                            : "bg-rose-500/15 border-rose-500/30 text-rose-300"
+                        }`}>
+                          {selectedOption === liveQuiz.correct_answer ? (
+                            <span>✓ Correct! Answer is Option {liveQuiz.correct_answer}.</span>
+                          ) : (
+                            <span>✗ Incorrect. Correct option is {liveQuiz.correct_answer}.</span>
+                          )}
+                        </div>
+
+                        {/* High-Yield Pearl */}
+                        <div className="rounded-xl bg-amber-500/10 border border-amber-500/25 p-3 text-xs">
+                          <p className="font-bold text-amber-300 flex items-center gap-1.5 mb-1">
+                            <Sparkles className="size-3.5" />
+                            <span>High-Yield Board Pearl</span>
+                          </p>
+                          <p className="text-zinc-200 leading-relaxed text-[11px]">
+                            {liveQuiz.high_yield_pearl}
+                          </p>
+                        </div>
+
+                        {/* Tactics & Technique */}
+                        <div className="rounded-xl bg-sky-500/10 border border-sky-500/25 p-3 text-xs">
+                          <p className="font-bold text-sky-300 flex items-center gap-1.5 mb-1">
+                            <Zap className="size-3.5" />
+                            <span>Solving Tactics & Procedures (TTP)</span>
+                          </p>
+                          <p className="text-zinc-200 leading-relaxed text-[11px] whitespace-pre-line">
+                            {liveQuiz.tactics_and_technique}
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
+                ) : (
+                  <div className="rounded-xl bg-teal-500/10 border border-teal-500/25 p-3.5 space-y-2.5">
+                    <p className="text-xs text-zinc-200 leading-relaxed">
+                      Generate an interactive high-yield board simulation quiz tailored to <span className="font-bold text-teal-300">{activeExam.name}</span>.
+                      Uses your authenticated local Antigravity Python runtime to generate live case vignettes, distractors, and diagnostic pearls.
+                    </p>
+
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => fetchLiveAntigravityQuiz(activeExam.name)}
+                        disabled={liveQuizLoading}
+                        className="inline-flex items-center gap-2 rounded-xl bg-teal-500 hover:bg-teal-400 px-4 py-2 text-xs font-bold text-black transition shadow-sm disabled:opacity-50"
+                      >
+                        {liveQuizLoading ? (
+                          <>
+                            <Loader2 className="size-3.5 animate-spin" />
+                            <span>Spawning Local Antigravity Engine...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="size-3.5" />
+                            <span>Generate Live Case Vignette (Local AI) ⚡</span>
+                          </>
+                        )}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleResearchExamInChat(
+                          `Generate a high-yield 10-question board simulation practice quiz for ${activeExam.name} by ${activeExam.provider}.\n` +
+                          `Format:\n` +
+                          `- 10 scenario-based clinical/technical multiple choice questions with 4-5 options (A-E).\n` +
+                          `- Provide detailed explanations for why the correct option is right and why each incorrect option is wrong.\n` +
+                          `- Include a high-yield exam takeaway pearl for each question.`
+                        )}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-white/10 hover:bg-white/15 px-3 py-2 text-xs font-semibold text-zinc-200 transition"
+                      >
+                        <span>Launch 10-Question Quiz in Chat</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleResearchExamInChat(
+                          `Generate 5 difficult rapid-fire board review questions for ${activeExam.name} testing the highest failure-rate topics and tricky trap answers.`
+                        )}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-white/10 hover:bg-white/15 px-3 py-2 text-xs font-semibold text-zinc-200 transition"
+                      >
+                        <span>5 Rapid-Fire Trap Questions</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
