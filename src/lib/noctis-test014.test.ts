@@ -390,7 +390,7 @@ Return ONLY a valid JSON object with these top-level keys:
   });
 
   it("executes NOCTIS-CYBER-LIVE-002 (Cloud Identity AiTM Token Replay, OAuth Consent Persistence & Rclone Exfiltration) with bulleted JSON contract keys", async () => {
-    const { handleNaturalCyberSecurityQuery } = await import("./noctis-cyber-engine");
+    const { handleNaturalCyberSecurityQuery } = await import("./noctis-cyber-engine.ts");
     const CYBER_TEST_002 = `TEST ID: NOCTIS-CYBER-LIVE-002
 
 SCENARIO:
@@ -452,7 +452,7 @@ Return ONLY valid JSON with these exact keys:
   });
 
   it("executes NOCTIS-CYBER-APX-002 (Batch 002 SAST-to-Runtime Exploitability Validation & Batch 003 Attack-Path Graph Engine)", async () => {
-    const { handleNaturalCyberSecurityQuery } = await import("./noctis-cyber-engine");
+    const { handleNaturalCyberSecurityQuery } = await import("./noctis-cyber-engine.ts");
     const APX_TEST_001 = `NOCTIS-CYBER-APX-001 — BATCH 002 SAST-TO-RUNTIME EXPLOITABILITY & ATTACK-PATH GRAPH VALIDATION
 Correlate the following multi-tool findings and construct an evidence-backed attack path:
 - SAST flagged CWE-89 (SQL Injection) in src/api/billing/invoice-export.ts on endpoint /api/v2/billing/export where query parameter filter_clause is concatenated into a raw SQL query after a partial regex filter.
@@ -544,7 +544,7 @@ Required Output Keys:
   });
 
   it("answers unseen prose AppSec (BOLA/IDOR) and Linux DFIR (xmrig/pg_dump) scenario questions without training leakage", async () => {
-    const { handleNaturalCyberSecurityQuery } = await import("./noctis-cyber-engine");
+    const { handleNaturalCyberSecurityQuery } = await import("./noctis-cyber-engine.ts");
 
     // 1. Unseen prose AppSec BOLA/IDOR scenario with natural-language questions (no bullet points)
     const unseenAppSecProse = `Our security review found a Broken Object Level Authorization (BOLA / IDOR, CWE-639) flaw in src/controllers/invoice-controller.ts on endpoint /api/v1/tenants/invoices. The controller reads invoice_id from req.params and queries the postgresql database under role svc_invoice_reader without verifying that the authenticated user's tenant_id owns the requested record. An unauthenticated DAST scan reported 0 findings because the endpoint requires a bearer token. How can an attacker exploit this attack path and what is the blast radius? How do we remediate the choke point and write a regression test?
@@ -598,7 +598,7 @@ Return ONLY valid JSON with these exact keys:
   });
 
   it("answers unseen clinical emergencies, specialist engineering probes, and unseen cross-domain probes with custom JSON keys and questions", async () => {
-    const { runFollowUpIntelligence } = await import("./noctis-response-intelligence");
+    const { runFollowUpIntelligence } = await import("./noctis-response-intelligence.ts");
 
     // 1. Unseen prose clinical emergency (Anaphylaxis / Airway Compromise) with custom JSON keys
     const unseenAnaphylaxisProbe = `A 29-year-old woman develops diffuse hives, lip and tongue swelling, hoarse voice, stridor, and shortness of breath 10 minutes after eating a restaurant meal containing peanuts. Blood pressure is 86/52 mmHg, heart rate 128 bpm, respiratory rate 28/min, and SpO2 89% on room air. Should she drive herself to urgent care or call 911 immediately? What are the top differential diagnoses and immediate priorities?
@@ -690,7 +690,7 @@ Return ONLY valid JSON with these exact keys:
   });
 
   it("handles Noctis Research & Investment Intelligence Engine (NOCTIS-INVEST-001), Batch 001 specification, and working-capital divergence probes", async () => {
-    const { runFollowUpIntelligence } = await import("./noctis-response-intelligence");
+    const { runFollowUpIntelligence } = await import("./noctis-response-intelligence.ts");
     // 1. Full Architecture + Batch 001 Specification Request
     const blueprintPrompt = `The next engine I will like to build is research and investment for main street and wall street: Noctis Research & Investment Intelligence Engine. Build the 12 specialist engines, authoritative sources (SEC EDGAR, FRED, FINRA, CFA Institute), 5-level curriculum, 100-scenario evaluation suite, and Batch 001 (Financial Research & Fundamental Company Analysis).`;
     const blueprintOut = runFollowUpIntelligence([], blueprintPrompt)!;
@@ -740,7 +740,7 @@ Return ONLY valid JSON with these exact keys:
   });
 
   it("handles Noctis Bible Intelligence Engine (NOCTIS-BIBLE-001) from Genesis to Revelation, Batch 001/002, 10 Acceptance Tests, Sermon/Bible Study/Discussion modes, and the Template Library", async () => {
-    const { runFollowUpIntelligence } = await import("./noctis-response-intelligence");
+    const { runFollowUpIntelligence } = await import("./noctis-response-intelligence.ts");
 
     // 1. Full Genesis-to-Revelation Master Blueprint + Batch 001/002 + Template Library
     const bibleBlueprintPrompt = `Build the Noctis Bible Intelligence Engine from Genesis to Revelation with 12 training domains, authoritative sources (BibleProject, STEP Bible, SBL), BIBLE-GEN-001 training record, 10 acceptance tests, Training Batch 001, Training Batch 002 (Sermon Preparation, Bible Study Classroom, Interactive Discussion), and the Bible Content Template Library.`;

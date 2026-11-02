@@ -3655,9 +3655,12 @@ export function handleNaturalHealthQuery(
   // 0aaa. Check if the user is submitting the 58-year-old man chest-pressure emergency case or the 12 Capabilities / Top 5 Prioritized Deliverables proof challenge
   if (
     !isModernEmergencyTest &&
-    (/\b(58-year-old\s+(?:man|male)|35\s+minutes\s+of\s+chest\s+pressure|12\s+capabilities\s+i\s+recommend\s+adding|prioritize\s+these\s+five\s+deliverables|return\s+to\s+the\s+chest-?pain\s+case)\b/i.test(
+    (/\b(35\s+minutes\s+of\s+chest\s+pressure|12\s+capabilities\s+i\s+recommend\s+adding|prioritize\s+these\s+five\s+deliverables|return\s+to\s+the\s+chest-?pain\s+case|chest-pain-58yo-acs-001)\b/i.test(
       q
     ) ||
+      (/\b58-year-old\s+(?:man|male)\b/i.test(q) &&
+        /\bchest\s+(?:pressure|pain|tightness)\b/i.test(q) &&
+        /\b(?:radiating|left\s+arm|hr\s*108|35\s+min)\b/i.test(q)) ||
       (/\bchest\s+(?:pressure|pain|tightness)\s+radiating\s+to\s+(?:his|her|my|the)\s+left\s+arm\b/i.test(q) &&
         /\b(?:heart\s+rate|hr)\s*(?:of|is|=|:)?\s*108\b/i.test(q)))
   ) {

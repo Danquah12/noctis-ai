@@ -10,7 +10,8 @@ import { handleNaturalPredictiveIntelligenceQuery } from "./noctis-predictive-in
 import { automotiveDiagnosticGadget } from "./noctis-automotive-engine.ts";
 import { handleNaturalAutonomousTrainingQuery } from "./noctis-autonomous-trainer.ts";
 import { architectIntelligenceGadget } from "./noctis-architect-engine.ts";
-import { handleNaturalCyberSecurityQuery } from "./noctis-cyber-engine.ts";
+import { handleNaturalCyberSecurityQuery, isCyberSecurityOrSocQuery } from "./noctis-cyber-engine.ts";
+import { isAttackPathOrExploitabilityQuery } from "./noctis-attack-path-engine.ts";
 import { handleNaturalInvestmentQuery } from "./noctis-investment-engine.ts";
 import { handleNaturalBibleQuery } from "./noctis-bible-engine.ts";
 import { runCouncilDeliberation, formatCouncilDossierMarkdown } from "./noctis-council.ts";
@@ -732,7 +733,8 @@ function extractUniversalPromptFacts(q: string): string[] {
         s.length >= 12 &&
         s.length <= 280 &&
         !s.endsWith("?") &&
-        !/^(?:scenario|context|findings|task|return|output|respond|required|adversarial|json|schema)\s*:?$/i.test(s)
+        !/^(?:scenario|context|findings|task|return|output|respond|required|adversarial|json|schema)\s*:?$/i.test(s) &&
+        !/^(?:calculate|explain|write|provide|identify|determine|assess|list|summarize|evaluate|what|how|why|when|where|which|who|can|could|should|would)\b/i.test(s)
     )
     .slice(0, 10);
 }
@@ -915,6 +917,9 @@ function adaptSpecialistEngineOutput(q: string, engineResponse: string, engineId
 }
 
 function handleUniversalUnseenProbeQuery(q: string): string | null {
+  if (isAttackPathOrExploitabilityQuery(q) || isCyberSecurityOrSocQuery(q)) {
+    return null;
+  }
   const requestedKeys = parseUniversalRequestedJsonKeys(q);
   const advInstructions = parseUniversalAdversarialInstructions(q);
   const questions = extractUniversalQuestions(q);

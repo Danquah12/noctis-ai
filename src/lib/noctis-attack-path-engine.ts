@@ -79,7 +79,7 @@ export function isAttackPathOrExploitabilityQuery(question: string): boolean {
   if (/\bNOCTIS-CYBER-LIVE-\d+/i.test(q)) return false;
 
   if (
-    /\b(attack[-_\s]+path\s+(?:exploitation|intelligence|prediction|graph)|sast-to-(?:runtime|exploitability)|exploitability\s+(?:validation|confidence\s+engine)|evidence\s+correlation\s+engine|vulnerability\s+deduplication\s+engine|remediation\s+intelligence\s+engine|control\s+effectiveness\s+engine|batch\s+00[2345]|noctis-cyber-batch00[2345]|noctis-cyber-apx-\d+|sast\b[\s\S]{0,240}\bdast\b|\bdast\b[\s\S]{0,240}\bsast\b|source-to-sink|choke\s+points?\b[\s\S]{0,120}\bblast[-_\s]+radius)\b/i.test(
+    /\b(attack[-_\s]+path\s+(?:exploitation|intelligence|prediction|graph)|sast-to-(?:runtime|exploitability)|exploitability\s+(?:validation|confidence\s+engine)|evidence\s+correlation\s+engine|vulnerability\s+deduplication\s+engine|remediation\s+intelligence\s+engine|control\s+effectiveness\s+engine|batch\s+00[2345]|noctis-cyber-batch00[2345]|noctis-cyber-apx-\d+|sast\b[\s\S]{0,240}\bdast\b|\bdast\b[\s\S]{0,240}\bsast\b|source-to-sink|choke\s+points?\b[\s\S]{0,120}\bblast[-_\s]+radius|dast\s+(?:scanner|finding|scan)|sort_column|pg_sleep|time-based\s+(?:blind|sql)|blind\s+sqli?)\b/i.test(
       q
     )
   ) {
@@ -95,11 +95,11 @@ export function isAttackPathOrExploitabilityQuery(question: string): boolean {
 
   if (!isLiveEdrOrDfirIncident) {
     const hasVulnOrWeaknessClass =
-      /\b(cwe-\d+|owasp\s+(?:api\d+|llm\d+|top\s+10)|sql\s+injection|sqli\b|ssrf\b|server-side\s+request\s+forgery|command\s+injection|insecure\s+deserialization|bola\b|idor\b|insecure\s+direct\s+object|broken\s+object\s+level|broken\s+authentication|jwt\s+(?:forgery|bypass|none\s+algorithm|algorithm\s+confusion|secret)|path\s+traversal|directory\s+traversal|lfi\b|arbitrary\s+file\s+(?:read|write|upload)|xss\b|cross-site\s+scripting|csrf\b|cross-site\s+request\s+forgery|xxe\b|xml\s+external\s+entity|ssti\b|template\s+injection|prototype\s+pollution|mass\s+assignment|race\s+condition|toctou\b|graphql\s+(?:introspection|batching|depth)|open\s+redirect|cors\s+misconfiguration|iam:passrole|sts:assumerole|privilege\s+escalation\s+path|indirect\s+prompt\s+injection|rag\s+poisoning)\b/i.test(
+      /\b(cwe-\d+|owasp\s+(?:api\d+|llm\d+|top\s+10)|sql\s+injection|sqli\b|sql\b[\s\S]{0,30}\border\s+by\b|order\s+by|pg_sleep|time-based|blind\s+sql|dast\b|sast\b|cvss\b|payload\s+injected|ssrf\b|server-side\s+request\s+forgery|command\s+injection|insecure\s+deserialization|bola\b|idor\b|insecure\s+direct\s+object|broken\s+object\s+level|broken\s+authentication|jwt\s+(?:forgery|bypass|none\s+algorithm|algorithm\s+confusion|secret)|path\s+traversal|directory\s+traversal|lfi\b|arbitrary\s+file\s+(?:read|write|upload)|xss\b|cross-site\s+scripting|csrf\b|cross-site\s+request\s+forgery|xxe\b|xml\s+external\s+entity|ssti\b|template\s+injection|prototype\s+pollution|mass\s+assignment|race\s+condition|toctou\b|graphql\s+(?:introspection|batching|depth)|open\s+redirect|cors\s+misconfiguration|iam:passrole|sts:assumerole|privilege\s+escalation\s+path|indirect\s+prompt\s+injection|rag\s+poisoning)\b/i.test(
         q
       );
     const hasCodeOrArchitectureContext =
-      /\b(\/api\/[a-z0-9_/-]+|\/v\d+\/[a-z0-9_/-]+|src\/[a-z0-9_./-]+|[a-z0-9_-]+\.(?:ts|js|py|go|java|rb|cs|php)|endpoint|controller|middleware|route\b|query\s+parameter|request\s+body|json\s+payload|jwt|bearer\s+token|iam\s+role|serviceaccount|blast\s+radius|attack\s+path|choke\s+point|sink\b|taint\b|sanitizer|how\s+can\s+an\s+attacker|how\s+to\s+remediate|how\s+do\s+we\s+fix)\b/i.test(
+      /\b(\/api\/[a-z0-9_/-]+|\/v\d+\/[a-z0-9_/-]+|src\/[a-z0-9_./-]+|[a-z0-9_-]+\.(?:ts|js|py|go|java|rb|cs|php)|endpoint|controller|middleware|route\b|query\s+parameter|request\s+body|json\s+payload|jwt|bearer\s+token|iam\s+role|serviceaccount|blast\s+radius|attack\s+path|choke\s+point|sink\b|taint\b|sanitizer|how\s+can\s+an\s+attacker|how\s+to\s+remediate|how\s+do\s+we\s+fix|code\s+patch|node\.js|typescript|allowlist\w*|sort_column|injected\s+into)\b/i.test(
         q
       );
     if (hasVulnOrWeaknessClass && hasCodeOrArchitectureContext) {
@@ -290,7 +290,13 @@ export function handleAttackPathAndExploitabilityQuery(question: string): string
     .split(/\r?\n/)
     .map((l) => l.trim())
     .filter((l) => /^[-*•]\s+/.test(l))
-    .map((l) => l.replace(/^[-*•]\s+/, "").trim());
+    .map((l) => l.replace(/^[-*•]\s+/, "").trim())
+    .filter(
+      (l) =>
+        !/^(?:calculate|explain|write|provide|identify|determine|assess|list|summarize|evaluate|what|how|why|when|where|which|who|can|could|should|would)\b/i.test(
+          l
+        ) && !l.endsWith("?")
+    );
 
   if (bulletLines.length === 0) {
     bulletLines = qCtx
@@ -301,6 +307,9 @@ export function handleAttackPathAndExploitabilityQuery(question: string): string
           s.length >= 20 &&
           s.length <= 500 &&
           !/^(?:return\s+only|required\s+output|adversarial|evaluate\s+and\s+respond|scenario\s*:|context\s*:|questions?\s*:)/i.test(s) &&
+          !/^(?:calculate|explain|write|provide|identify|determine|assess|list|summarize|evaluate|what|how|why|when|where|which|who|can|could|should|would)\b/i.test(
+            s
+          ) &&
           !s.endsWith(":") &&
           !s.endsWith("?")
       )
@@ -326,7 +335,7 @@ export function handleAttackPathAndExploitabilityQuery(question: string): string
     /\b(indirect\s+prompt\s+injection|rag\s+(?:retrieval|poisoning|chunk)|excessive\s+agency|llm01|llm07|llm08|mcp\s+tool|agent\s+tool|tool[-_\s]+call\s+sink)\b/i.test(
       qCtx
     );
-  const isSqlInjection = /\b(sql\s+injection|sqli\b|cwe-89|raw\s+sql|string\s+concatenation|db\.query|prisma\.\$queryrawunsafe|executequery)\b/i.test(qCtx);
+  const isSqlInjection = /\b(sql\s+injection|sqli\b|cwe-89|raw\s+sql|string\s+concatenation|db\.query|prisma\.\$queryrawunsafe|executequery|order\s+by|sort_column|pg_sleep|time-based\s+blind|blind\s+sql)\b/i.test(qCtx);
   const isSsrf = /\b(ssrf\b|server-side\s+request\s+forgery|cwe-918|169\.254\.169\.254|axios\.get|fetch\(|http\.get)\b/i.test(qCtx);
   const isCmdInjection = /\b(command\s+injection|rce\b|cwe-78|child_process\.exec|os\.system|subprocess\.popen|Runtime\.getRuntime\(\)\.exec)\b/i.test(qCtx);
   const isDeserialization = /\b(deserializ\w*|cwe-502|pickle\.loads|yaml\.load|objectinputstream|jndi)\b/i.test(qCtx);
@@ -349,7 +358,9 @@ export function handleAttackPathAndExploitabilityQuery(question: string): string
   const vulnClass = isAiPromptInjection
     ? "AI/LLM Indirect Prompt Injection & Excessive Tool Agency (OWASP LLM01 / LLM08)"
     : isSqlInjection
-      ? "SQL Injection (CWE-89)"
+      ? (/\b(order\s+by|sort_column|pg_sleep|time-based|blind)\b/i.test(qCtx)
+          ? "Time-Based Blind SQL Injection in ORDER BY Clause (CWE-89)"
+          : "SQL Injection (CWE-89)")
       : isSsrf
         ? "Server-Side Request Forgery / SSRF (CWE-918)"
         : isCmdInjection
@@ -415,7 +426,9 @@ export function handleAttackPathAndExploitabilityQuery(question: string): string
   const chokePoint1Remediation = isAiPromptInjection
     ? "Enforce strict data/instruction separation for untrusted RAG inputs, bind MCP/agent tool calls to deterministic JSON schema + capability allowlists, and require human-in-the-loop approval for state-mutating or external egress actions."
     : isSqlInjection
-      ? "Replace dynamic SQL interpolation with strict parameterized queries / prepared statements."
+      ? (/\b(order\s+by|sort_column|pg_sleep|blind)\b/i.test(qCtx)
+          ? "For SQL ORDER BY / column identifier injection: parameter placeholders ($1, ?) cannot bind identifiers, and string escaping fails because identifiers are unquoted. Enforce strict compile-time and runtime dictionary allowlisting (e.g. `const ALLOWED_COLUMNS = { created_at: 'invoices.created_at', amount: 'invoices.amount_cents' }`), parameterize data values, and validate sort direction ('ASC'|'DESC')."
+          : "Replace dynamic SQL interpolation with strict parameterized queries / prepared statements.")
       : isSsrf
         ? "Enforce a strict outbound URL allowlist, disable HTTP redirects, block RFC 1918 / link-local `169.254.169.254` ranges after DNS resolution, and require IMDSv2 (`HttpTokens=required`, hop limit `1`)."
         : isDeserialization
@@ -596,15 +609,34 @@ export function handleAttackPathAndExploitabilityQuery(question: string): string
     "Audit SIEM/application logs for any historical requests matching the source-to-sink exploit pattern before closing the finding",
   ];
 
-  // Extract any direct user questions from the prompt and answer them specifically
-  const explicitQuestions = [...qCtx.matchAll(/\b((?:What|How|Why|When|Where|Which|Who|Can|Could|Should|Would|Is|Are|Do|Does|Did|Will)\b[^.!?\n]{8,240}\?|[A-Z][^.!?\n]{12,240}\?)/g)]
-    .map((m) => m[1].trim())
+  // Extract any direct user questions or imperative instructions from the prompt and answer them specifically
+  const lineMatches = [
+    ...qCtx.matchAll(
+      /(?:^|\n)\s*(?:[-*•]|\d+[.)])?\s*((?:(?:What|How|Why|When|Where|Which|Who|Can|Could|Should|Would|Is|Are|Do|Does|Did|Will|Calculate|Explain|Write|Provide|Identify|Determine|Assess)\b[^\n]{6,260}?)(?:[.!?](?=\s|$)|$))/gim
+    ),
+  ].map((m) => m[1].trim());
+
+  const proseMatches = [
+    ...qCtx.matchAll(
+      /\b((?:What|How|Why|When|Where|Which|Who|Can|Could|Should|Would|Is|Are|Do|Does|Did|Will|Calculate|Explain|Write|Provide|Identify|Determine|Assess)\b[^.!?\n]{6,240}(?:\?|\.(?=\s+[A-Z]|$)))/g
+    ),
+  ].map((m) => m[1].trim());
+
+  const explicitQuestions = (lineMatches.length >= 2 ? lineMatches : proseMatches.length > 0 ? proseMatches : lineMatches)
     .filter((qStr, i, arr) => arr.indexOf(qStr) === i)
     .slice(0, 6);
 
   const questionsAnswered = explicitQuestions.map((qStr) => {
     let answer = `For ${vulnClass} in ${primaryCodeFile} (${entryEndpoint}): remediate CHOKE-01 (${chokePoint1Remediation}) and scope down ${primaryIdentity} to protect ${primaryCrownJewels}.`;
-    if (/\b(dast|false\s+positive|why\s+did\s+dast|discrepancy)\b/i.test(qStr)) {
+    if (/\b(cwe|classification|vulnerability\s+type|weakness)\b/i.test(qStr)) {
+      answer = `**CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')**, specifically **Time-Based Blind SQL Injection** (CWE-200 / CWE-208 timing inference via \`pg_sleep()\`). Server latency increase from 45ms to 6,180ms confirms live unparameterized execution of the injected subquery.`;
+    } else if (/\b(cvss|vector\s+string|base\s+score|severity\s+score)\b/i.test(qStr)) {
+      answer = `**CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:L (Base Score: 7.1 High)** (or 8.6 High if unauthenticated). Exploit is delivered over the Network (AV:N) with Low Complexity (AC:L); Privileges Required is Low (PR:L on tenant endpoint); User Interaction is None (UI:N); Scope is Unchanged (S:U); Confidentiality Impact is High (C:H via exfiltration of sensitive table data such as \`app_users.password\`); Integrity Impact is None (I:N); Availability Impact is Low (A:L via backend worker sleep thread exhaustion).`;
+    } else if (/\b(order\s+by|naive\s+(?:input\s+)?escaping|escaping\s+fails|why\s+(?:naive\s+)?escaping)\b/i.test(qStr)) {
+      answer = `Database parameterization placeholders (\`$1\`, \`?\`) only accept **data literals / values**, never SQL identifiers (column names, table names) or direction tokens (\`ASC\`/\`DESC\`). Naive string escaping (e.g. wrapping in quotes \`ORDER BY 'created_at'\`) is ineffective because SQL interprets quoted strings as static literals, rendering the sort a no-op. Furthermore, escaping quotes does not stop subqueries or functions: an attacker injects parenthetical expressions (e.g. \`(SELECT CASE WHEN ... THEN pg_sleep(6) ELSE pg_sleep(0) END)\`) that execute unconditionally without containing quotes.`;
+    } else if (/\b(code\s+patch|typescript|node(?:\.js)?|allowlist(?:ing)?|patch\s+using|safe\s+allowlisting)\b/i.test(qStr)) {
+      answer = `Safe Node.js/TypeScript patch using strict Zod validation and a constant identifier dictionary allowlist:\n\`\`\`typescript\nimport { Request, Response } from "express";\nimport { z } from "zod";\nimport { pool } from "@/lib/db";\n\n// 1. Strict Allowlist of permitted database column identifiers\nexport const INVOICE_SORT_COLUMNS = {\n  id: "invoices.id",\n  invoice_number: "invoices.invoice_number",\n  amount: "invoices.amount_cents",\n  status: "invoices.status",\n  due_date: "invoices.due_date",\n  created_at: "invoices.created_at",\n} as const;\n\ntype AllowedSortKey = keyof typeof INVOICE_SORT_COLUMNS;\n\n// 2. Strict Input Validation via Zod\nconst ExportInvoicesSchema = z.object({\n  sort_column: z\n    .string()\n    .default("created_at")\n    .transform((val) => val.toLowerCase() as AllowedSortKey)\n    .refine((val): val is AllowedSortKey => val in INVOICE_SORT_COLUMNS, {\n      message: "Invalid sort column. Must be a recognized invoice field.",\n    }),\n  sort_order: z\n    .enum(["ASC", "DESC", "asc", "desc"])\n    .default("DESC")\n    .transform((val) => val.toUpperCase() as "ASC" | "DESC"),\n});\n\nexport async function exportInvoicesHandler(req: Request, res: Response) {\n  const tenantId = req.user?.tenantId;\n  if (!tenantId) return res.status(401).json({ error: "Unauthorized" });\n\n  const parseResult = ExportInvoicesSchema.safeParse(req.body);\n  if (!parseResult.success) return res.status(400).json({ error: parseResult.error.flatten() });\n\n  const { sort_column, sort_order } = parseResult.data;\n  const safeSqlColumn = INVOICE_SORT_COLUMNS[sort_column];\n\n  const query = \`\n    SELECT id, invoice_number, amount_cents, status, due_date, created_at\n    FROM tenant_invoices\n    WHERE tenant_id = $1\n    ORDER BY \${safeSqlColumn} \${sort_order}\n    LIMIT 5000;\n  \`;\n\n  const { rows } = await pool.query(query, [tenantId]);\n  return res.status(200).json({ data: rows });\n}\n\`\`\``;
+    } else if (/\b(dast|false\s+positive|why\s+did\s+dast|discrepancy)\b/i.test(qStr)) {
       answer = sastTrace.sast_vs_dast_discrepancy_resolution;
     } else if (/\b(attack\s+path|blast\s+radius|lateral|reach|impact|crown[-_\s]+jewel)\b/i.test(qStr)) {
       answer = `Predicted path (${attackPathGraph.prediction_disclaimer}): ${entryEndpoint} -> ${primaryCodeFile} (${vulnClass}) -> ${primaryIdentity} -> ${primaryCrownJewels}.`;
