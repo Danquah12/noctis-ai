@@ -5,25 +5,452 @@
  * (OpenAI Studio Neural TTS + Browser Natural Human Web Speech API).
  */
 
-export type VoicePersona = "alloy" | "nova" | "onyx" | "echo" | "natural";
+export type VoicePersona =
+  // American English (OpenAI Advanced Voice 2024-2026 + Core)
+  | "maple"
+  | "bubbie"
+  | "spruce"
+  | "breeze"
+  | "juniper"
+  | "cove"
+  | "sol"
+  | "alloy"
+  | "nova"
+  | "onyx"
+  | "echo"
+  | "natural"
+  // Brazilian Portuguese
+  | "rio"
+  | "viola"
+  // British English
+  | "arbor"
+  | "vale"
+  // French
+  | "rivage"
+  | "aube"
+  // German
+  | "miko"
+  | "sonna"
+  // Hindi
+  | "neer"
+  | "leher"
+  // Japanese
+  | "rindo"
+  | "himari"
+  // Korean
+  | "haetsal"
+  | "hanul"
+  // Mexican Spanish
+  | "arrullo"
+  | "tinta";
+
 export type VoicePhase = "idle" | "listen" | "think" | "speak";
 
 export interface VoicePersonaInfo {
   id: VoicePersona;
   label: string;
+  language: string;
+  languageCode: string;
   tone: string;
   gender: "neutral" | "female" | "male";
   accent: string;
   description: string;
+  samplePhrase: string;
+}
+
+export interface VoiceLanguageGroup {
+  language: string;
+  languageCode: string;
+  voices: VoicePersonaInfo[];
 }
 
 export const VOICE_PERSONAS: VoicePersonaInfo[] = [
-  { id: "alloy", label: "Alloy", tone: "Balanced & Versatile", gender: "neutral", accent: "#38bdf8", description: "Studio-balanced neural tone suitable for all conversational queries." },
-  { id: "nova", label: "Nova", tone: "Warm, Expressive & Engaging", gender: "female", accent: "#f472b6", description: "Warm, energetic, and expressive conversational human voice." },
-  { id: "onyx", label: "Onyx", tone: "Deep, Calm & Authoritative", gender: "male", accent: "#a78bfa", description: "Deep, resonant, and calm authoritative executive voice." },
-  { id: "echo", label: "Echo", tone: "Crisp, Clear & Direct", gender: "male", accent: "#34d399", description: "Crisp, precise, and articulate cadence with studio clarity." },
-  { id: "natural", label: "Natural Browser", tone: "Device Neural / Native", gender: "neutral", accent: "#e4b86a", description: "Online neural voice provided natively by Edge, Chrome, or Safari." },
+  // American English
+  {
+    id: "maple",
+    label: "Maple",
+    language: "American English",
+    languageCode: "en-US",
+    tone: "Cheerful, bright & friendly",
+    gender: "female",
+    accent: "#38bdf8",
+    description: "Warm, energetic, and expressive conversational tone.",
+    samplePhrase: "Hello! I'm Noctis. How can I help you today?",
+  },
+  {
+    id: "bubbie",
+    label: "Bubbie",
+    language: "American English",
+    languageCode: "en-US",
+    tone: "Comforting & familiar",
+    gender: "neutral",
+    accent: "#fbbf24",
+    description: "Warm, supportive, and soothing cadence.",
+    samplePhrase: "Hi there! I'm here to support you with whatever you need.",
+  },
+  {
+    id: "spruce",
+    label: "Spruce",
+    language: "American English",
+    languageCode: "en-US",
+    tone: "Calm & grounded",
+    gender: "male",
+    accent: "#34d399",
+    description: "Steady, reassuring, and articulate conversational tone.",
+    samplePhrase: "Good day. Let's work through your questions step by step.",
+  },
+  {
+    id: "breeze",
+    label: "Breeze",
+    language: "American English",
+    languageCode: "en-US",
+    tone: "Animated & earnest",
+    gender: "female",
+    accent: "#60a5fa",
+    description: "Light, animated, and friendly conversational presence.",
+    samplePhrase: "Hi! I'm ready whenever you are. What would you like to explore?",
+  },
+  {
+    id: "juniper",
+    label: "Juniper",
+    language: "American English",
+    languageCode: "en-US",
+    tone: "Open & upbeat",
+    gender: "female",
+    accent: "#ec4899",
+    description: "Engaging, crisp, and dynamic voice.",
+    samplePhrase: "Hello! Let's dive in and find exactly what you're looking for.",
+  },
+  {
+    id: "cove",
+    label: "Cove",
+    language: "American English",
+    languageCode: "en-US",
+    tone: "Composed & direct",
+    gender: "male",
+    accent: "#818cf8",
+    description: "Smooth, focused, and articulate cadence.",
+    samplePhrase: "Hello. I'm ready to review your data and clinical questions.",
+  },
+  {
+    id: "sol",
+    label: "Sol",
+    language: "American English",
+    languageCode: "en-US",
+    tone: "Radiant & relaxed",
+    gender: "neutral",
+    accent: "#f59e0b",
+    description: "Relaxed, clear, and reassuring tone.",
+    samplePhrase: "Hey there! Ready to assist you with your tasks today.",
+  },
+  {
+    id: "alloy",
+    label: "Alloy",
+    language: "American English",
+    languageCode: "en-US",
+    tone: "Balanced & Versatile",
+    gender: "neutral",
+    accent: "#38bdf8",
+    description: "Studio-balanced neural tone suitable for all conversational queries.",
+    samplePhrase: "Hello. I am Noctis, your analytical and clinical assistant.",
+  },
+  {
+    id: "nova",
+    label: "Nova",
+    language: "American English",
+    languageCode: "en-US",
+    tone: "Warm, Expressive & Engaging",
+    gender: "female",
+    accent: "#f472b6",
+    description: "Warm, energetic, and expressive conversational human voice.",
+    samplePhrase: "Hi! How can I assist you with your research or workflow today?",
+  },
+  {
+    id: "onyx",
+    label: "Onyx",
+    language: "American English",
+    languageCode: "en-US",
+    tone: "Deep, Calm & Authoritative",
+    gender: "male",
+    accent: "#a78bfa",
+    description: "Deep, resonant, and calm authoritative executive voice.",
+    samplePhrase: "Welcome. Let's analyze your clinical evidence and findings.",
+  },
+  {
+    id: "echo",
+    label: "Echo",
+    language: "American English",
+    languageCode: "en-US",
+    tone: "Crisp, Clear & Direct",
+    gender: "male",
+    accent: "#34d399",
+    description: "Crisp, precise, and articulate cadence with studio clarity.",
+    samplePhrase: "Hello. Systems are active and ready for your query.",
+  },
+  {
+    id: "natural",
+    label: "Natural Browser",
+    language: "American English",
+    languageCode: "en-US",
+    tone: "Device Neural / Native",
+    gender: "neutral",
+    accent: "#e4b86a",
+    description: "Online neural voice provided natively by Edge, Chrome, or Safari.",
+    samplePhrase: "Hello! Using your device's native high-definition speech synthesizer.",
+  },
+
+  // Brazilian Portuguese
+  {
+    id: "rio",
+    label: "Rio",
+    language: "Brazilian Portuguese",
+    languageCode: "pt-BR",
+    tone: "Lyrical & vibrant",
+    gender: "male",
+    accent: "#10b981",
+    description: "Natural, rhythmic, and engaging Brazilian Portuguese cadence.",
+    samplePhrase: "Olá! Eu sou Noctis, seu assistente inteligente. Como posso ajudar você hoje?",
+  },
+  {
+    id: "viola",
+    label: "Viola",
+    language: "Brazilian Portuguese",
+    languageCode: "pt-BR",
+    tone: "Melodic & warm",
+    gender: "female",
+    accent: "#f43f5e",
+    description: "Warm, expressive, and melodic Brazilian Portuguese voice.",
+    samplePhrase: "Olá! Tudo bem? Estou pronta para ajudar em suas consultas e pesquisas.",
+  },
+
+  // British English
+  {
+    id: "arbor",
+    label: "Arbor",
+    language: "British English",
+    languageCode: "en-GB",
+    tone: "Refined & scholarly",
+    gender: "male",
+    accent: "#0ea5e9",
+    description: "Measured, eloquent, and sophisticated British articulation.",
+    samplePhrase: "Good day. I am Noctis, your clinical decision support assistant. How may I be of service?",
+  },
+  {
+    id: "vale",
+    label: "Vale",
+    language: "British English",
+    languageCode: "en-GB",
+    tone: "Crisp & poised",
+    gender: "female",
+    accent: "#8b5cf6",
+    description: "Clear, poised, and articulate modern British cadence.",
+    samplePhrase: "Hello. I am ready to review your clinical cases and guidelines whenever you wish.",
+  },
+
+  // French
+  {
+    id: "rivage",
+    label: "Rivage",
+    language: "French",
+    languageCode: "fr-FR",
+    tone: "Smooth & sophisticated",
+    gender: "male",
+    accent: "#3b82f6",
+    description: "Gentle, cultured, and fluent French speech with natural prosody.",
+    samplePhrase: "Bonjour. Je suis Noctis, votre assistant clinique. Comment puis-je vous aider aujourd'hui ?",
+  },
+  {
+    id: "aube",
+    label: "Aube",
+    language: "French",
+    languageCode: "fr-FR",
+    tone: "Bright & elegant",
+    gender: "female",
+    accent: "#f472b6",
+    description: "Luminous, articulate, and engaging French voice.",
+    samplePhrase: "Bonjour ! Je suis prête à vous accompagner dans vos analyses médicales et techniques.",
+  },
+
+  // German
+  {
+    id: "miko",
+    label: "Miko",
+    language: "German",
+    languageCode: "de-DE",
+    tone: "Structured & direct",
+    gender: "male",
+    accent: "#6366f1",
+    description: "Crisp, structured, and precise German pronunciation.",
+    samplePhrase: "Guten Tag. Ich bin Noctis, Ihr klinischer Assistent. Wie kann ich Sie unterstützen?",
+  },
+  {
+    id: "sonna",
+    label: "Sonna",
+    language: "German",
+    languageCode: "de-DE",
+    tone: "Friendly & balanced",
+    gender: "female",
+    accent: "#14b8a6",
+    description: "Clear, natural, and welcoming German cadence.",
+    samplePhrase: "Hallo! Ich stehe Ihnen gerne für Ihre medizinischen Fragen und Analysen zur Seite.",
+  },
+
+  // Hindi
+  {
+    id: "neer",
+    label: "Neer",
+    language: "Hindi",
+    languageCode: "hi-IN",
+    tone: "Calm & harmonious",
+    gender: "male",
+    accent: "#f97316",
+    description: "Deep, resonant, and balanced Hindi/Indo-English voice.",
+    samplePhrase: "नमस्ते। मैं नोक्टिस हूँ, आपका सहायक। आज मैं आपकी क्या मदद कर सकता हूँ?",
+  },
+  {
+    id: "leher",
+    label: "Leher",
+    language: "Hindi",
+    languageCode: "hi-IN",
+    tone: "Fluid & gentle",
+    gender: "female",
+    accent: "#ec4899",
+    description: "Flowing, warm, and natural Hindi articulation.",
+    samplePhrase: "नमस्ते! नोक्टिस में आपका स्वागत है। आप मुझसे कोई भी प्रश्न पूछ सकते हैं।",
+  },
+
+  // Japanese
+  {
+    id: "rindo",
+    label: "Rindō",
+    language: "Japanese",
+    languageCode: "ja-JP",
+    tone: "Steady & polite",
+    gender: "male",
+    accent: "#06b6d4",
+    description: "Polite, focused, and steady Japanese pitch-accent.",
+    samplePhrase: "こんにちは。ノクティスです。臨床および分析アシスタントとしてサポートいたします。",
+  },
+  {
+    id: "himari",
+    label: "Himari",
+    language: "Japanese",
+    languageCode: "ja-JP",
+    tone: "Warm & gentle",
+    gender: "female",
+    accent: "#fb7185",
+    description: "Warm, respectful, and articulate Japanese voice.",
+    samplePhrase: "こんにちは！ノクティスへようこそ。どのようなご用件でしょうか？",
+  },
+
+  // Korean
+  {
+    id: "haetsal",
+    label: "Haetsal",
+    language: "Korean",
+    languageCode: "ko-KR",
+    tone: "Sunny & clear",
+    gender: "female",
+    accent: "#eab308",
+    description: "Bright, polite, and warm Korean honorific cadence.",
+    samplePhrase: "안녕하세요! 노크티스입니다. 임상 지원과 연구 분석을 도와드릴게요.",
+  },
+  {
+    id: "hanul",
+    label: "Hanul",
+    language: "Korean",
+    languageCode: "ko-KR",
+    tone: "Open & resonant",
+    gender: "male",
+    accent: "#3b82f6",
+    description: "Calm, steady, and trustworthy Korean voice.",
+    samplePhrase: "안녕하십니까. 노크티스 임상 지능 시스템입니다. 무엇을 확인하시겠습니까?",
+  },
+
+  // Mexican Spanish
+  {
+    id: "arrullo",
+    label: "Arrullo",
+    language: "Mexican Spanish",
+    languageCode: "es-MX",
+    tone: "Soothing & warm",
+    gender: "female",
+    accent: "#e11d48",
+    description: "Warm, empathetic, and melodic Mexican Spanish cadence.",
+    samplePhrase: "¡Hola! Soy Noctis, tu asistente clínico. ¿En qué te puedo apoyar el día de hoy?",
+  },
+  {
+    id: "tinta",
+    label: "Tinta",
+    language: "Mexican Spanish",
+    languageCode: "es-MX",
+    tone: "Dynamic & clear",
+    gender: "male",
+    accent: "#059669",
+    description: "Crisp, dynamic, and grounded Latin American Spanish voice.",
+    samplePhrase: "¡Hola! Todo listo para revisar tus consultas y datos médicos cuando gustes.",
+  },
 ];
+
+/**
+ * Standard categorized language groups matching the mobile & web voice selection interface.
+ */
+export const VOICE_LANGUAGE_GROUPS: VoiceLanguageGroup[] = [
+  {
+    language: "American English",
+    languageCode: "en-US",
+    voices: VOICE_PERSONAS.filter((v) => v.language === "American English" && !["alloy", "nova", "onyx", "echo", "natural"].includes(v.id)),
+  },
+  {
+    language: "Brazilian Portuguese",
+    languageCode: "pt-BR",
+    voices: VOICE_PERSONAS.filter((v) => v.language === "Brazilian Portuguese"),
+  },
+  {
+    language: "British English",
+    languageCode: "en-GB",
+    voices: VOICE_PERSONAS.filter((v) => v.language === "British English"),
+  },
+  {
+    language: "French",
+    languageCode: "fr-FR",
+    voices: VOICE_PERSONAS.filter((v) => v.language === "French"),
+  },
+  {
+    language: "German",
+    languageCode: "de-DE",
+    voices: VOICE_PERSONAS.filter((v) => v.language === "German"),
+  },
+  {
+    language: "Hindi",
+    languageCode: "hi-IN",
+    voices: VOICE_PERSONAS.filter((v) => v.language === "Hindi"),
+  },
+  {
+    language: "Japanese",
+    languageCode: "ja-JP",
+    voices: VOICE_PERSONAS.filter((v) => v.language === "Japanese"),
+  },
+  {
+    language: "Korean",
+    languageCode: "ko-KR",
+    voices: VOICE_PERSONAS.filter((v) => v.language === "Korean"),
+  },
+  {
+    language: "Mexican Spanish",
+    languageCode: "es-MX",
+    voices: VOICE_PERSONAS.filter((v) => v.language === "Mexican Spanish"),
+  },
+];
+
+/**
+ * Retrieves full persona metadata with safe fallback to Maple.
+ */
+export function getVoicePersona(id: string): VoicePersonaInfo {
+  const match = VOICE_PERSONAS.find((p) => p.id === id);
+  if (match) return match;
+  return VOICE_PERSONAS[0]; // Maple is index 0
+}
 
 /**
  * Checks if Speech Recognition (Web Speech API) is supported in the current environment.
@@ -145,12 +572,15 @@ export function cleanVoiceText(rawText: string, maxLength = 1800): string {
  */
 export function pickHumanBrowserVoice(
   voices: SpeechSynthesisVoice[],
-  persona: VoicePersona = "alloy",
+  persona: VoicePersona = "maple",
   lang = "en"
 ): SpeechSynthesisVoice | null {
   if (!voices || voices.length === 0) return null;
-  const langVoices = voices.filter((v) => v.lang.toLowerCase().startsWith(lang.toLowerCase()));
+  const targetLang = (lang || "en").toLowerCase();
+  const langVoices = voices.filter((v) => v.lang.toLowerCase().startsWith(targetLang.slice(0, 2)));
   const candidatePool = langVoices.length > 0 ? langVoices : voices;
+
+  const info = getVoicePersona(persona);
 
   const scoreVoice = (v: SpeechSynthesisVoice): number => {
     let score = 0;
@@ -164,19 +594,23 @@ export function pickHumanBrowserVoice(
     if (name.includes("siri")) score += 80;
     if (name.includes("google")) score += 75;
 
-    // 2. Persona matching
-    if (persona === "nova") {
-      if (/jenny|samantha|victoria|karen|female|ava|emma|sonia/.test(name)) score += 35;
-      else if (/aria/.test(name)) score += 25;
-      if (/david|male|george|guy|mark|christopher|eric|roger/.test(name)) score -= 25;
-    } else if (persona === "onyx") {
-      if (/guy|christopher|eric|roger|steffan|alex|daniel|male|george/.test(name)) score += 35;
-      else if (/david/.test(name)) score += 10;
-      if (/female|zira|samantha|jenny|aria|victoria|ava/.test(name)) score -= 25;
-    } else if (persona === "echo") {
-      if (/aria|guy|alex|mark|natural/.test(name)) score += 25;
-    } else if (persona === "alloy") {
-      if (/aria|jenny|google|natural/.test(name)) score += 25;
+    // 2. Gender & Persona matching
+    const isFemaleVoice = /female|woman|girl|jenny|samantha|aria|victoria|ava|emma|sonia|dalia|paulina|sabina|luciana|leticia|francisca|denise|celine|katja|marlena|swara|kalpana|himari|kyoko|nanami|ayumi|haruka|sunhi|yuna|libby|hazel/.test(name);
+    const isMaleVoice = /male|man|boy|guy|david|george|mark|christopher|eric|roger|steffan|alex|daniel|jorge|raul|alvaro|antonio|felipe|henri|thomas|mathieu|conrad|bernd|stefan|neer|madhur|hemant|rindo|otoya|keita|hanul|injoon|bongjin|oliver|ryan/.test(name);
+
+    if (info.gender === "female") {
+      if (isFemaleVoice) score += 40;
+      if (isMaleVoice) score -= 30;
+    } else if (info.gender === "male") {
+      if (isMaleVoice) score += 40;
+      if (isFemaleVoice) score -= 30;
+    }
+
+    // Specific persona name affinities
+    if (persona === "nova" || persona === "maple" || persona === "breeze") {
+      if (/jenny|samantha|victoria|karen|female|ava|emma|sonia|aria/.test(name)) score += 20;
+    } else if (persona === "onyx" || persona === "spruce" || persona === "cove") {
+      if (/guy|christopher|eric|roger|steffan|alex|daniel|male|george|david/.test(name)) score += 20;
     }
 
     // 3. Heavy penalty for legacy robotic desktop synthesizers (e.g. MS David Desktop)
@@ -223,12 +657,13 @@ export function stopCurrentVoicePlayback(): void {
 
 /**
  * Executes natural speech synthesis using the browser Web Speech API.
- * Uses intelligent voice picking for maximum human warmth and clarity.
+ * Uses intelligent voice picking for maximum human warmth, language fidelity, and clarity.
  */
 export function speakBrowserVoice(
   text: string,
-  persona: VoicePersona = "alloy",
-  rate = 1.0
+  persona: VoicePersona = "maple",
+  rate = 1.0,
+  langCode?: string
 ): Promise<boolean> {
   return new Promise((resolve) => {
     if (!isSpeechSynthesisSupported()) {
@@ -253,14 +688,16 @@ export function speakBrowserVoice(
       const utterance = new SpeechSynthesisUtterance(cleaned);
       activeUtterance = utterance; // Keep reference to prevent GC!
 
-      utterance.lang = "en-US";
+      const info = getVoicePersona(persona);
+      const effectiveLang = langCode || info.languageCode || "en-US";
+      utterance.lang = effectiveLang;
       utterance.rate = rate;
-      utterance.pitch = persona === "nova" ? 1.05 : persona === "onyx" ? 0.92 : 1.0;
+      utterance.pitch = info.gender === "female" ? 1.05 : info.gender === "male" ? 0.94 : 1.0;
 
       const assignVoice = () => {
         const voices = window.speechSynthesis.getVoices();
         if (voices && voices.length > 0) {
-          const chosen = pickHumanBrowserVoice(voices, persona, "en");
+          const chosen = pickHumanBrowserVoice(voices, persona, effectiveLang);
           if (chosen) utterance.voice = chosen;
         }
       };
@@ -317,14 +754,17 @@ export function speakBrowserVoice(
  */
 export async function speakNoctisVoice(
   text: string,
-  persona: VoicePersona = "alloy",
+  persona: VoicePersona = "maple",
   options?: {
     apiKey?: string;
+    langCode?: string;
     onStart?: () => void;
     onEnd?: () => void;
   }
 ): Promise<boolean> {
   stopCurrentVoicePlayback();
+
+  const info = getVoicePersona(persona);
 
   // 1. Try Studio-Quality Human Neural TTS if available (OpenAI tts-1)
   if (persona !== "natural") {
@@ -332,7 +772,16 @@ export async function speakNoctisVoice(
       const { sayVibe } = await import("@/lib/noctis-api");
       const cleanedForTts = cleanVoiceText(text, 1800);
       if (cleanedForTts) {
-        const ttsVoice = persona === "onyx" || persona === "nova" || persona === "echo" ? persona : "alloy";
+        // Map modern personas to closest OpenAI TTS voices if legacy endpoint only accepts alloy/nova/onyx/echo/shimmer/fable
+        let ttsVoice = "alloy";
+        if (["onyx", "spruce", "cove", "arbor", "rivage", "miko", "neer", "rindo", "hanul", "tinta"].includes(persona)) {
+          ttsVoice = "onyx";
+        } else if (["nova", "maple", "breeze", "juniper", "viola", "vale", "aube", "sonna", "leher", "himari", "haetsal", "arrullo"].includes(persona)) {
+          ttsVoice = "nova";
+        } else if (persona === "echo") {
+          ttsVoice = "echo";
+        }
+
         const res = await sayVibe({
           data: {
             text: cleanedForTts,
@@ -373,9 +822,30 @@ export async function speakNoctisVoice(
 
   // 2. Fallback to Browser Natural Human Voice
   if (options?.onStart) options.onStart();
-  const success = await speakBrowserVoice(text, persona);
+  const success = await speakBrowserVoice(text, persona, 1.0, options?.langCode || info.languageCode);
   if (options?.onEnd) options.onEnd();
   return success;
+}
+
+/**
+ * Plays an audio preview sample for a specified voice persona in its native language.
+ * Used by the "Choose your voice" modal for real-time auditory evaluation before starting voice mode.
+ */
+export async function previewVoiceSample(
+  persona: VoicePersona,
+  options?: {
+    apiKey?: string;
+    onStart?: () => void;
+    onEnd?: () => void;
+  }
+): Promise<boolean> {
+  const info = getVoicePersona(persona);
+  return speakNoctisVoice(info.samplePhrase, persona, {
+    apiKey: options?.apiKey,
+    langCode: info.languageCode,
+    onStart: options?.onStart,
+    onEnd: options?.onEnd,
+  });
 }
 
 /**

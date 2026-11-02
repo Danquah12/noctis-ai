@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Mic, MicOff, Volume2, Sparkles, PhoneOff, Radio, Info, X } from "lucide-react";
+import { Mic, MicOff, Volume2, Sparkles, PhoneOff, Radio, Info, X, SlidersHorizontal } from "lucide-react";
 import { VOICE_PERSONAS, type VoicePersona } from "@/lib/noctis-voice";
+import { NoctisVoiceSelectorModal } from "./NoctisVoiceSelectorModal";
 
 interface NoctisVoiceVisualizerProps {
   phase: "listen" | "speak" | "transcribe" | "idle";
@@ -23,7 +24,7 @@ export function NoctisVoiceVisualizer({
   responseText,
   onInterrupt,
   audioLevel = 0,
-  persona = "alloy",
+  persona = "maple",
   onPersonaChange,
   isMuted = false,
   onToggleMute,
@@ -31,6 +32,7 @@ export function NoctisVoiceVisualizer({
 }: NoctisVoiceVisualizerProps) {
   const [pulse, setPulse] = useState(1);
   const [showGuide, setShowGuide] = useState(false);
+  const [showVoiceModal, setShowVoiceModal] = useState(false);
   const activePersona = VOICE_PERSONAS.find((p) => p.id === persona) || VOICE_PERSONAS[0];
 
   useEffect(() => {
@@ -152,11 +154,16 @@ export function NoctisVoiceVisualizer({
             {isMuted ? "Mic Muted" : phase === "listen" ? "Listening..." : phase === "speak" ? "Noctis Speaking" : "Processing Thought"}
           </span>
 
-          {/* Persona indicator pill */}
-          <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-1 text-xs font-medium text-zinc-300">
+          {/* Persona indicator pill - click opens full Choose Your Voice modal */}
+          <button
+            type="button"
+            onClick={() => setShowVoiceModal(true)}
+            className="inline-flex items-center gap-1.5 rounded-full bg-white/10 hover:bg-white/15 px-3 py-1 text-xs font-medium text-zinc-300 hover:text-white transition cursor-pointer border border-transparent hover:border-white/20 shadow-xs active:scale-95"
+            title="Click to choose your voice"
+          >
             <Radio className="size-3 text-[#e4b86a]" />
-            {activePersona.label}
-          </span>
+            <span>Voice: <strong className="text-white">{activePersona.label}</strong> ({activePersona.language})</span>
+          </button>
         </div>
 
         <p className="text-[12px] text-zinc-400">
@@ -205,23 +212,15 @@ export function NoctisVoiceVisualizer({
       {/* Voice Persona Selector & Quick Controls */}
       <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
         {onPersonaChange ? (
-          <div className="flex items-center gap-1 rounded-full border border-white/10 bg-[#181818] p-1">
-            {VOICE_PERSONAS.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => onPersonaChange(p.id)}
-                className={`rounded-full px-2.5 py-1 text-xs font-medium transition ${
-                  persona === p.id
-                    ? "bg-white text-black shadow-sm"
-                    : "text-zinc-400 hover:text-zinc-200 hover:bg-white/5"
-                }`}
-                title={p.tone}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
+          <button
+            type="button"
+            onClick={() => setShowVoiceModal(true)}
+            className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/40 bg-sky-500/10 hover:bg-sky-500/20 px-3.5 py-1.5 text-xs font-semibold text-sky-300 shadow-sm transition active:scale-95 cursor-pointer"
+            title="Open Choose your voice modal"
+          >
+            <SlidersHorizontal className="size-3.5" />
+            <span>Choose your voice ({activePersona.label})</span>
+          </button>
         ) : null}
 
         {onToggleMute ? (
@@ -302,6 +301,20 @@ export function NoctisVoiceVisualizer({
           </div>
         ) : null}
       </div>
+
+      {/* Full "Choose your voice" Modal with audio sample previews */}
+      <NoctisVoiceSelectorModal
+        isOpen={showVoiceModal}
+        currentPersona={persona}
+        onSelectPersona={(p) => {
+          if (onPersonaChange) onPersonaChange(p);
+        }}
+        onClose={() => setShowVoiceModal(false)}
+        onStartVoice={(p) => {
+          if (onPersonaChange) onPersonaChange(p);
+          setShowVoiceModal(false);
+        }}
+      />
     </div>
   );
 }
