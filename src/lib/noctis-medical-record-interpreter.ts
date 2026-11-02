@@ -1038,9 +1038,13 @@ export function handleNaturalMedicalRecordInterpretationQuery(query: string): st
 
   // Check if this query is a medical document upload, lab report, doctor's note, pathology, or prognosis
   const isMedicalDocumentOrUpload =
-    /\b(interpret\s+this\s+(?:medical|doctor|lab|biopsy|pathology|radiology|report|results?|document|note)|upload(?:ed)?\s+(?:a\s+)?(?:lab|medical|doctor|pathology|biopsy|radiology|report|results?)|lab\s+report|blood\s+test\s+results?|complete\s+blood\s+count|metabolic\s+panel|lipid\s+panel|urinalysis|pathology\s+report|biopsy\s+report|radiology\s+report|ct\s+scan\s+report|mri\s+report|doctor(?:'s)?\s+note|discharge\s+summary|prognosis\s+is|what\s+does\s+my\s+doctor(?:'s)?\s+(?:note|result|prognosis)\s+mean)\b/i.test(
+    /\b(interpret\s+this\s+(?:medical|doctor|lab|biopsy|pathology|radiology|report|results?|document|note)|upload(?:ed)?\s+(?:a\s+)?(?:lab|medical|doctor|pathology|biopsy|radiology|report|results?)|lab\s+report|blood\s+test\s+results?|complete\s+blood\s+count|metabolic\s+panel|lipid\s+panel|urinalysis|pathology\s+report|biopsy\s+report|radiology\s+report|ct\s+scan\s+report|mri\s+report|doctor(?:'s)?\s+note|clinical\s+progress\s+note|progress\s+note|clinical\s+note|discharge\s+summary|prognosis\s+is|what\s+does\s+my\s+doctor(?:'s)?\s+(?:note|result|prognosis)\s+mean)\b/i.test(
       q
     ) ||
+    // Or has explicit pathology/oncology document markers
+    (/\b(surgical\s+pathology|core\s+needle\s+biopsy|histologic\s+grade|nottingham|invasive\s+ductal\s+carcinoma|adenocarcinoma|estrogen\s+receptor|her2\/neu|biomarker\s+profile)\b/i.test(q)) ||
+    // Or has oncology clinical progress note structure
+    (/\b(progress\s+note|clinical\s+note|ecog|folfox)\b/i.test(q) && /\b(assessment|prognosis|subjective|plan)\b/i.test(q)) ||
     // Or has lab analyte listings e.g. "WBC: 14.2, Hgb: 11.0, Plt: 380, Creatinine: 1.6"
     (/\b(wbc|hgb|platelets?|plt)\s*[:=]?\s*\d+/i.test(q) && /\b(creatinine|potassium|bun|sodium|alt|ast)\s*[:=]?\s*\d+/i.test(q));
 

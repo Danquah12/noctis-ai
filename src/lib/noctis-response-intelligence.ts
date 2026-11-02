@@ -1209,6 +1209,24 @@ export function runFollowUpIntelligence(
     if (careerResponse) return adaptSpecialistEngineOutput(currentQuestion, careerResponse, "NOCTIS-CAREERS-001");
   }
 
+  // 00-a. Noctis Universal Attachment & Document Intelligence Engine (UDIE - Any Uploaded/Attached Information)
+  const attachmentResponse = handleNaturalAttachmentIntelligenceQuery(currentQuestion);
+  if (attachmentResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, attachmentResponse, "NOCTIS-DOC-INTEL-001");
+  }
+
+  // 00-b. Noctis Medical Record & Doctor Results Interpreter (NMRI - Labs, Doctor Notes, Prognosis, Biopsy, Imaging)
+  const medicalRecordResponse = handleNaturalMedicalRecordInterpretationQuery(currentQuestion);
+  if (medicalRecordResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, medicalRecordResponse, "NOCTIS-MED-RECORD-001");
+  }
+
+  // 00-c. Noctis Patient Diagnostic & Triage Intelligence Engine (NPDE, FDA CDS Jan 2026, Bayesian Differential & Adaptive Interviewer)
+  const patientDiagResponse = handleNaturalPatientDiagnosticQuery(currentQuestion);
+  if (patientDiagResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, patientDiagResponse, "NOCTIS-PATIENT-DX-001");
+  }
+
   // 00. Noctis Health Intelligence Engine (18 Health Engines, Emergency/988 Safety Gateway, FHIR v5.0.0, Calculators, 7-Part Medical Response & Follow-Up Continuity)
   const healthResponse = handleNaturalHealthQuery(currentQuestion, state.lastAssistantText, turns);
   const alsoAsksArchitectValidationAudit =
@@ -1223,24 +1241,6 @@ export function runFollowUpIntelligence(
       }
     }
     return adaptSpecialistEngineOutput(currentQuestion, healthResponse, "NOCTIS-HEALTH-001");
-  }
-
-  // 00-b. Noctis Patient Diagnostic & Triage Intelligence Engine (NPDE, FDA CDS Jan 2026, Bayesian Differential & Adaptive Interviewer)
-  const patientDiagResponse = handleNaturalPatientDiagnosticQuery(currentQuestion);
-  if (patientDiagResponse) {
-    return adaptSpecialistEngineOutput(currentQuestion, patientDiagResponse, "NOCTIS-PATIENT-DX-001");
-  }
-
-  // 00-c. Noctis Medical Record & Doctor Results Interpreter (NMRI - Labs, Doctor Notes, Prognosis, Biopsy, Imaging)
-  const medicalRecordResponse = handleNaturalMedicalRecordInterpretationQuery(currentQuestion);
-  if (medicalRecordResponse) {
-    return adaptSpecialistEngineOutput(currentQuestion, medicalRecordResponse, "NOCTIS-MED-RECORD-001");
-  }
-
-  // 00-d. Noctis Universal Attachment & Document Intelligence Engine (UDIE - Any Uploaded/Attached Information)
-  const attachmentResponse = handleNaturalAttachmentIntelligenceQuery(currentQuestion);
-  if (attachmentResponse) {
-    return adaptSpecialistEngineOutput(currentQuestion, attachmentResponse, "NOCTIS-DOC-INTEL-001");
   }
 
   // 00a-0. Noctis Architectural Intelligence Engine (NOCTIS-ARCH-001, 7-Part Validation Challenge & Audit Reconciliation ARCH-AT-01..15, Shared IFC 4.3 + buildingSMART IDS)
