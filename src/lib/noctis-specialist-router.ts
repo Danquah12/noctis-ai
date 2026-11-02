@@ -53,6 +53,25 @@ import {
   calculatePediatricResuscitationDoses,
 } from "./noctis-obstetrics-pediatrics-engine.ts";
 
+import {
+  evaluateCopdAsthma,
+  evaluateHypertensiveCrisis,
+  evaluateDiarrhealIllness,
+  evaluateObesityMetabolic,
+  evaluatePhq9Gad7,
+  evaluateHivOpportunisticProphylaxis,
+  evaluateTuberculosis,
+  evaluateMalaria,
+  evaluateHepatitisC,
+} from "./noctis-global-conditions-engine.ts";
+
+import {
+  evaluateCancerStaging,
+  evaluateParkinsons,
+  evaluateOsteoporosis,
+  evaluateSickleCell,
+} from "./noctis-oncology-chronic-engine.ts";
+
 export function handleNaturalSpecialistClinicalQuery(query: string): string | null {
   const q = query.toLowerCase();
 
@@ -621,6 +640,303 @@ export function handleNaturalSpecialistClinicalQuery(query: string): string | nu
       `- **IV Fluid Bolus (20 mL/kg):** ${doses.fluidBolusVolumeMl} mL isotonic crystalloid`,
       `- **Defibrillation Initial (2 J/kg):** ${doses.defibrillationJoulesInitial} Joules`,
       doses.calculatedMedications.map((m) => `- **${m.drugName}:** ${m.calculatedDose} (${m.routeAndAdministration})`).join("\n"),
+    ].join("\n");
+  }
+
+  // =========================================================================
+  // 8. GLOBAL PULMONARY, METABOLIC, PSYCHIATRIC & INFECTIOUS DISEASES
+  // =========================================================================
+
+  // COPD & Asthma (GOLD/GINA 2026)
+  if (/\b(copd|chronic obstructive pulmonary|gold stage|fev1|fev1\/fvc|gina|asthma management|smart therapy)\b/i.test(q)) {
+    const isAsthma = /\b(asthma|gina)\b/i.test(q) && !/\b(copd)\b/i.test(q);
+    const res = evaluateCopdAsthma({
+      isCopdOrAsthma: isAsthma ? "ASTHMA" : "COPD",
+      postBronchodilatorFev1FvcRatio: 0.62,
+      fev1PercentPredicted: 48,
+      hospitalizationsPastYear: 1,
+      currentSpO2RoomAir: 88,
+    });
+
+    return [
+      `# Noctis Clinical Decision Support — Chronic Lower Respiratory Diseases`,
+      `**Condition:** ${res.condition} · **Classification:** ${res.goldOrGinaStage} (${res.exacerbationRiskGroup})`,
+      `- **Long-Term Oxygen Therapy (LTOT) Indicated:** ${res.longTermOxygenTherapyIndicated ? "YES (Resting SpO2 <= 88% or PaO2 <= 55 mmHg)" : "NO"}`,
+      `### Maintenance Pharmacotherapy:`,
+      res.maintenancePharmacotherapy.map((m) => `- ${m}`).join("\n"),
+      `### Acute Exacerbation Protocol:`,
+      res.acuteExacerbationProtocol.map((p) => `- ${p}`).join("\n"),
+    ].join("\n");
+  }
+
+  // Hypertensive Crisis (Emergency vs. Urgency)
+  if (/\b(hypertensive crisis|hypertensive emergency|hypertensive urgency|severe hypertension bp > 180)\b/i.test(q)) {
+    const sbpMatch = q.match(/(\d{3})\/(\d{2,3})/);
+    const sbp = sbpMatch ? parseInt(sbpMatch[1], 10) : 210;
+    const dbp = sbpMatch ? parseInt(sbpMatch[2], 10) : 124;
+    const res = evaluateHypertensiveCrisis({
+      systolicBpMmHg: sbp,
+      diastolicBpMmHg: dbp,
+      hasAcutePulmonaryEdemaShortnessOfBreath: /\b(pulmonary edema|shortness of breath|sob)\b/i.test(q),
+      hasAcuteAorticDissectionTear: /\b(aortic dissection|tearing)\b/i.test(q),
+    });
+
+    return [
+      `# Noctis Clinical Decision Support — Hypertensive Crisis Triage Engine`,
+      `**Classification:** ${res.category} (Blood Pressure: ${sbp}/${dbp} mmHg)`,
+      `- **First-Hour Target:** ${res.targetBloodPressure1stHour}`,
+      `- **Max Permitted 1st-Hour MAP Drop:** ${res.maximumPermittedMapDropPercent1stHour}%`,
+      `### Recommended IV Antihypertensives:`,
+      res.recommendedIvAgents.map((a) => `- ${a}`).join("\n"),
+      res.contraindicatedAgents.length ? `### ⚠️ Strict Contraindications:\n${res.contraindicatedAgents.map((c) => `- ${c}`).join("\n")}` : "",
+      `\n**Action Directive:** ${res.immediateAction}`,
+    ].filter(Boolean).join("\n");
+  }
+
+  // Diarrheal Diseases & Dehydration (WHO)
+  if (/\b(diarrhea|diarrhoeal|c\. diff|clostridioides difficile|dehydration who|dysentery)\b/i.test(q)) {
+    const res = evaluateDiarrhealIllness({
+      durationDays: 4,
+      stoolFrequencyPerDay: 7,
+      recentAntibioticExposurePast3Months: /\b(antibiotic|clindamycin|fluoroquinolone|c\. diff)\b/i.test(q),
+      hasBloodyStoolsOrDysentery: /\b(bloody|blood in stool|dysentery)\b/i.test(q),
+      hasSevereDehydrationSigns: /\b(lethargic|sunken eyes|skin tenting)\b/i.test(q),
+    });
+
+    return [
+      `# Noctis Clinical Decision Support — Diarrheal Illness & Dehydration Engine`,
+      `**Syndrome:** ${res.syndrome} · **Dehydration Tier:** ${res.dehydrationStatus}`,
+      `- **Rehydration Protocol:** ${res.rehydrationProtocol}`,
+      `- **Antimicrobial Guidance:** ${res.antimicrobialGuidance}`,
+      res.contraindications.length ? `\n> ⚠️ **Contraindication:** ${res.contraindications.join(" ")}\n` : "",
+    ].join("\n");
+  }
+
+  // Obesity & Metabolic Syndrome
+  if (/\b(obesity|bmi >=|metabolic syndrome|glp-1|semaglutide|tirzepatide|zepbound|wegovy|bariatric surgery)\b/i.test(q)) {
+    const bmiMatch = q.match(/bmi\s*[:=]?\s*([0-9.]+)/i);
+    const bmi = bmiMatch ? parseFloat(bmiMatch[1]) : 36.2;
+    const res = evaluateObesityMetabolic({
+      bodyMassIndexKgM2: bmi,
+      waistCircumferenceInches: 41,
+      fastingTriglyceridesMgDl: 175,
+      hdlCholesterolMgDl: 38,
+      systolicBpMmHg: 136,
+      fastingGlucoseMgDl: 114,
+    });
+
+    return [
+      `# Noctis Clinical Decision Support — Obesity & Metabolic Syndrome Engine`,
+      `**WHO BMI Category:** ${res.whoBmiCategory} (BMI: ${bmi} kg/m²)`,
+      `- **Metabolic Syndrome Criteria Met:** ${res.metabolicSyndromeCriteriaMet} / 5 (${res.hasMetabolicSyndrome ? "CONFIRMED" : "NOT MET"})`,
+      `- **Incretin / Pharmacotherapy:** ${res.pharmacotherapyEligibility}`,
+      `- **Bariatric Surgery Eligibility:** ${res.bariatricSurgeryEligibility}`,
+      `### First-Line Weight Loss Regimens:`,
+      res.evidenceBasedRegimens.map((r) => `- ${r}`).join("\n"),
+    ].join("\n");
+  }
+
+  // Depression (PHQ-9) & Anxiety (GAD-7)
+  if (/\b(phq-?9|gad-?7|depression screening|anxiety disorder|suicidal ideation)\b/i.test(q)) {
+    const phqMatch = q.match(/phq-?9\s*[:=]?\s*(\d{1,2})/i);
+    const phq = phqMatch ? parseInt(phqMatch[1], 10) : 16;
+    const hasSelfHarm = /\b(suicide|self-harm|thoughts of death|item 9|harm myself)\b/i.test(q);
+
+    const res = evaluatePhq9Gad7({
+      phq9Score: phq,
+      phq9Item9SelfHarmScore: hasSelfHarm ? 2 : 0,
+      gad7Score: 12,
+      hasActiveSuicidalIntentOrPlan: hasSelfHarm,
+    });
+
+    return [
+      `# Noctis Clinical Decision Support — Psychiatric Screening (PHQ-9 / GAD-7)`,
+      `**Depression Severity:** ${res.depressionSeverity} (PHQ-9: ${phq}/27) · **Anxiety:** ${res.anxietySeverity}`,
+      res.immediateSuicideSafetyLock ? `\n> ${res.crisisEscalationDirective}\n` : "",
+      `### First-Line Pharmacotherapy:`,
+      res.firstLinePharmacotherapy.map((p) => `- ${p}`).join("\n"),
+      `### Psychotherapy Pathways:`,
+      res.psychotherapyRecommendations.map((r) => `- ${r}`).join("\n"),
+    ].join("\n");
+  }
+
+  // HIV/AIDS & CD4 Prophylaxis
+  if (/\b(hiv|aids|cd4 count|opportunistic infection prophylaxis|pcp prophylaxis|toxoplasma prophylaxis)\b/i.test(q)) {
+    const cd4Match = q.match(/cd4\s*[:=]?\s*(\d{1,4})/i);
+    const cd4 = cd4Match ? parseInt(cd4Match[1], 10) : 140;
+    const res = evaluateHivOpportunisticProphylaxis({
+      cd4CountCellsPerUl: cd4,
+      viralLoadCopiesPerMl: 35000,
+    });
+
+    return [
+      `# Noctis Clinical Decision Support — HIV/AIDS Opportunistic Infection Engine`,
+      `**CDC Classification:** ${res.cdcClinicalStage} (CD4: ${cd4} cells/uL)`,
+      `- **PCP Prophylaxis (CD4 < 200):** ${res.pcpProphylaxisIndicated ? "INDICATED" : "NOT INDICATED"}`,
+      `- **Toxoplasmosis Prophylaxis (CD4 < 100):** ${res.toxoplasmosisProphylaxisIndicated ? "INDICATED" : "NOT INDICATED"}`,
+      `- **MAC Prophylaxis (CD4 < 50):** ${res.macProphylaxisIndicated ? "INDICATED" : "NOT INDICATED"}`,
+      `### Indicated Regimens:`,
+      res.indicatedProphylacticRegimens.map((r) => `- ${r}`).join("\n"),
+      `\n**Antiretroviral Strategy:** ${res.artGuidance}`,
+    ].join("\n");
+  }
+
+  // Tuberculosis Management
+  if (/\b(tuberculosis|ripe regimen|active tb|latent tb|isoniazid|rifampin|afb smear|genexpert)\b/i.test(q)) {
+    const res = evaluateTuberculosis({
+      presentation: "ACTIVE_PULMONARY_SUSPECTED",
+      sputumAfbSmearOrGeneXpertPositive: true,
+      hasCoughOver3WeeksWithHemoptysisAndNightSweats: true,
+      chestXrayCavitaryInfiltratePresent: true,
+    });
+
+    return [
+      `# Noctis Clinical Decision Support — Tuberculosis Elimination & RIPE Protocol`,
+      `**Clinical Status:** ${res.clinicalStatus}`,
+      `- **Airborne Isolation Required:** ${res.airborneIsolationRequired ? "YES (Negative-pressure room / N95 respirators)" : "NO"}`,
+      `- **Regimen:** ${res.standardRegimen}`,
+      `### RIPE Components:`,
+      Object.entries(res.drugComponents).map(([d, desc]) => `- **${d}:** ${desc}`).join("\n"),
+      `### Hepatotoxicity Safety Guard:`,
+      res.hepatotoxicityMonitoringRules.map((r) => `- ${r}`).join("\n"),
+    ].join("\n");
+  }
+
+  // Malaria Protocol
+  if (/\b(malaria|artesunate|plasmodium falciparum|thick and thin smear|cerebral malaria)\b/i.test(q)) {
+    const res = evaluateMalaria({
+      travelToEndemicAreaPastYear: true,
+      speciesIdentified: "PLASMODIUM_FALCIPARUM",
+      parasitemiaPercentage: 12,
+      hasImpairedConsciousnessOrCerebralMalaria: /\b(cerebral|confusion|coma)\b/i.test(q),
+    });
+
+    return [
+      `# Noctis Clinical Decision Support — Malaria Treatment & Artesunate Protocol`,
+      `**Severity Tier:** ${res.severityTier}`,
+      `- **First-Line Regimen:** ${res.firstLineTherapy}`,
+      `- **G6PD Screen Required Before Primaquine/Tafenoquine:** ${res.g6pdTestingRequiredBeforePrimaquine ? "YES" : "NO"}`,
+      res.emergencyActions.length ? `### Emergency Actions:\n${res.emergencyActions.map((a) => `- ${a}`).join("\n")}` : "",
+    ].join("\n");
+  }
+
+  // Hepatitis C Elimination
+  if (/\b(hepatitis c|hcv rna|epclusa|mavyret|sofosbuvir|velpatasvir|svr12)\b/i.test(q)) {
+    const res = evaluateHepatitisC({
+      hcvAntibodyPositive: true,
+      hcvRnaDetectable: true,
+      hcvRnaViralLoadIuMl: 850000,
+      cirrhosisPresent: /\b(cirrhosis|cirrhotic)\b/i.test(q),
+    });
+
+    return [
+      `# Noctis Clinical Decision Support — Hepatitis C Direct-Acting Antiviral (DAA)`,
+      `**Diagnostic Conclusion:** ${res.diagnosticConclusion}`,
+      `- **Treatment Duration:** ${res.treatmentDurationWeeks} Weeks`,
+      `- **Curative Endpoint:** ${res.sustainedVirologicResponseGoal}`,
+      `### Recommended Pan-Genotypic Regimens:`,
+      res.panGenotypicRegimens.map((r) => `- ${r}`).join("\n"),
+    ].join("\n");
+  }
+
+  // =========================================================================
+  // 9. MAJOR GLOBAL CANCERS & CHRONIC CONDITIONS
+  // =========================================================================
+
+  // Top 5 Cancers (Lung, Breast, Prostate, Colorectal, Cervical)
+  if (/\b(lung cancer|breast cancer|prostate cancer|colorectal cancer|colon cancer|cervical cancer|gleason|her2|egfr lung)\b/i.test(q)) {
+    let site: "LUNG" | "BREAST" | "PROSTATE" | "COLORECTAL" | "CERVICAL" = "LUNG";
+    if (/\b(breast cancer|her2|er positive)\b/i.test(q)) site = "BREAST";
+    else if (/\b(prostate cancer|gleason|psa)\b/i.test(q)) site = "PROSTATE";
+    else if (/\b(colorectal|colon cancer|msi-high|dmmr)\b/i.test(q)) site = "COLORECTAL";
+    else if (/\b(cervical cancer|hpv 16|hpv 18)\b/i.test(q)) site = "CERVICAL";
+
+    const res = evaluateCancerStaging({
+      cancerType: site,
+      biomarkers: {
+        egfrMutation: true,
+        her2Positive: true,
+        erPositive: true,
+        gleasonPrimaryScore: 4,
+        gleasonSecondaryScore: 3,
+        msiHighOrDmmr: true,
+        hpvHighRiskPositive: true,
+      },
+    });
+
+    return [
+      `# Noctis Clinical Decision Support — Oncologic Staging & Targeted Biomarkers`,
+      `**Primary Site:** ${res.cancerSite} · **Stage Group:** ${res.stageGroup}`,
+      `- **Molecular / Grade Subtype:** ${res.molecularSubtypeOrGradeGroup}`,
+      res.targetedTherapiesAndBiomarkers.length ? `### Targeted & Immunotherapy Biomarkers:\n${res.targetedTherapiesAndBiomarkers.map((t) => `- ${t}`).join("\n")}` : "",
+      `### First-Line Therapeutic Pathways:`,
+      res.firstLineTherapeuticPathways.map((p) => `- ${p}`).join("\n"),
+      `\n**Screening Guidance:** ${res.screeningAndSurveillanceGuidance}`,
+    ].join("\n");
+  }
+
+  // Parkinson's Disease (MDS Criteria)
+  if (/\b(parkinson'?s|levodopa|carbidopa|sinemet|hoehn and yahr|resting tremor|bradykinesia)\b/i.test(q)) {
+    const res = evaluateParkinsons({
+      hasBradykinesia: true,
+      hasRestingTremor: true,
+      hasRigidityCogwheelOrLeadpipe: true,
+      experiencesWearingOffOrDyskinesia: /\b(wearing off|dyskinesia)\b/i.test(q),
+    });
+
+    return [
+      `# Noctis Clinical Decision Support — Parkinson's Disease & Movement Disorders`,
+      `**Certainty:** ${res.diagnosticCertainty} · **Stage:** ${res.hoehnAndYahrStage}`,
+      `### Pharmacotherapy Pathways:`,
+      res.firstLinePharmacotherapy.map((p) => `- ${p}`).join("\n"),
+      res.motorFluctuationManagement.length ? `### Motor Fluctuation Management:\n${res.motorFluctuationManagement.map((m) => `- ${m}`).join("\n")}` : "",
+      `### Multidisciplinary Support:`,
+      res.multidisciplinaryCare.map((c) => `- ${c}`).join("\n"),
+    ].join("\n");
+  }
+
+  // Osteoporosis & FRAX
+  if (/\b(osteoporosis|dexa|t-score|frax|alendronate|zoledronic|denosumab|bone mineral density)\b/i.test(q)) {
+    const tMatch = q.match(/t-?score\s*[:=]?\s*(-?[0-9.]+)/i);
+    const t = tMatch ? parseFloat(tMatch[1]) : -2.7;
+    const res = evaluateOsteoporosis({
+      lowestDexaTScore: t,
+      ageYears: 72,
+      isFemale: true,
+      eGfrMlMin173m2: 52,
+    });
+
+    return [
+      `# Noctis Clinical Decision Support — Osteoporosis & Bone Mineral Density`,
+      `**Classification:** ${res.boneMineralDensityClassification} (Lowest T-score: ${t})`,
+      `- **Pharmacologic Therapy Indicated:** ${res.pharmacologicTherapyIndicated ? "YES" : "NO"}`,
+      `### First-Line Antiresorptive Agents:`,
+      res.firstLineAntiresorptiveAgents.map((a) => `- ${a}`).join("\n"),
+      `### Safety & Renal Contraindications:`,
+      res.safetyContraindications.map((s) => `- ${s}`).join("\n"),
+    ].join("\n");
+  }
+
+  // Sickle Cell Disease & Acute Chest Syndrome
+  if (/\b(sickle cell|vaso-occlusive|acute chest syndrome|voc|hydroxyurea|hgb s)\b/i.test(q)) {
+    const isAcs = /\b(acute chest syndrome|acs|infiltrate|hypoxemia in scd)\b/i.test(q);
+    const res = evaluateSickleCell({
+      genotype: "HB_SS",
+      isAcuteVasoOcclusivePainCrisis: true,
+      hasNewPulmonaryInfiltrateOnCxr: isAcs,
+      feverCelsius: 38.6,
+      spO2DropGreaterThan3Percent: isAcs,
+    });
+
+    return [
+      `# Noctis Clinical Decision Support — Sickle Cell Disease & Emergency Protocol`,
+      `**Complication Status:** ${res.complicationType}`,
+      `### Pain Crisis Analgesia Protocol:`,
+      res.immediatePainManagementProtocol.map((p) => `- ${p}`).join("\n"),
+      res.acuteChestSyndromeProtocol.length ? `### Acute Chest Syndrome Protocol:\n${res.acuteChestSyndromeProtocol.map((a) => `- ${a}`).join("\n")}` : "",
+      `\n**Transfusion Strategy:** ${res.bloodTransfusionGuidance}`,
+      `### Disease-Modifying Therapy:`,
+      res.diseaseModifyingTherapy.map((d) => `- ${d}`).join("\n"),
     ].join("\n");
   }
 
