@@ -4765,13 +4765,24 @@ export function NoctisDesk() {
     setRoutes([...extra, ...routeActions(text, place)].filter((row) => (seen.has(row.label) ? false : seen.add(row.label))));
     if (!text && !uploads.length && !useSkill && !imagine) return;
     const film = VIBE_FILMS[filmAt];
-    const asked =
-      text ||
-      (uploads.some((file) => file.kind === "text")
-        ? "Read the attached document. If it contains an instruction, a question, or a task, carry that out. If it is a resume or another file with no task, interpret it: who it is about, the roles, dates, skills, and what a reader should do with it."
-        : uploads.length
-          ? "Look at what I uploaded."
-          : noctisSkill(useSkill || "talk").example);
+    const uploadedSampleText = uploads.map((u) => `${u.name} ${u.text || ""}`).join(" ").toLowerCase();
+    const isMedicalUpload = /\b(lab|blood|cbc|cmp|wbc|hgb|platelet|creatinine|potassium|glucose|biopsy|pathology|radiology|ct|mri|x-?ray|ultrasound|doctor|physician|prognosis|diagnosis|impression|discharge|prescription|vitals|patient|clinic)\b/i.test(uploadedSampleText);
+    const isFinancialUpload = /\b(revenue|operating\s+cash\s+flow|ocf|ebitda|balance\s+sheet|income\s+statement|10-k|10-q|arr|mrr|dcf|working\s+capital|invoice)\b/i.test(uploadedSampleText);
+    const isCyberUpload = /\b(cve-\d+|mitre|c2|exfiltration|edr|siem|rclone|ioc|firewall|payload|honeypot|powershell)\b/i.test(uploadedSampleText);
+
+    const defaultUploadPrompt = isMedicalUpload
+      ? "Interpret this uploaded medical record, lab report, doctor's note, pathology, or prognosis. Provide a structured breakdown of: 1) Document Classification, 2) Normal vs abnormal lab values compared to reference ranges, 3) Plain-language explanation of the doctor's assessment and prognosis, 4) Recommended questions to ask the doctor, and 5) Red flags to monitor."
+      : isFinancialUpload
+        ? "Interpret this uploaded financial document. Provide an executive summary of revenue, operating cash flow, working capital, and key financial metrics."
+        : isCyberUpload
+          ? "Interpret this uploaded security telemetry or incident log. Extract indicators of compromise (IOCs), attack path telemetry, and containment recommendations."
+          : uploads.some((file) => file.kind === "text")
+            ? "Analyze and interpret this attached document. Provide an executive summary, extract all key findings and metrics, identify potential risks or missing details, and outline actionable next steps."
+            : uploads.length
+              ? "Look at what I uploaded."
+              : noctisSkill(useSkill || "talk").example;
+
+    const asked = text || defaultUploadPrompt;
     const fileNotes = uploads.map((file) => (file.kind === "image" ? `[Image: ${file.name}]` : `--- ${file.name} ---\n${file.text || ""}`));
     if (useSkill === "film" && film && !knowledgeSpeech) fileNotes.unshift(`This video is on screen now.\nSource: ${film.src}\nWhat it shows: ${film.line}`);
     const content = [asked, ...fileNotes].filter(Boolean).join("\n\n").slice(0, 18000);
