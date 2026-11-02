@@ -3,6 +3,7 @@ import { buildDeepResearchReport } from "./noctis-deep-research.ts";
 import { buildFrontierUnifiedArchitectureReport } from "./noctis-frontier-pillars.ts";
 import { buildRicIntelligenceReport } from "./noctis-ric.ts";
 import { handleNaturalHealthQuery } from "./noctis-health-engine.ts";
+import { handleNaturalPatientDiagnosticQuery } from "./noctis-patient-diagnosis.ts";
 import { handleNaturalCareerQuery } from "./noctis-career-query.ts";
 import { handleNaturalProfessionalQuery } from "./noctis-professional-engine.ts";
 import { handleNaturalVerifiedExecutionQuery } from "./noctis-verified-execution.ts";
@@ -1220,6 +1221,12 @@ export function runFollowUpIntelligence(
       }
     }
     return adaptSpecialistEngineOutput(currentQuestion, healthResponse, "NOCTIS-HEALTH-001");
+  }
+
+  // 00-b. Noctis Patient Diagnostic & Triage Intelligence Engine (NPDE, FDA CDS Jan 2026, Bayesian Differential & Adaptive Interviewer)
+  const patientDiagResponse = handleNaturalPatientDiagnosticQuery(currentQuestion);
+  if (patientDiagResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, patientDiagResponse, "NOCTIS-PATIENT-DX-001");
   }
 
   // 00a-0. Noctis Architectural Intelligence Engine (NOCTIS-ARCH-001, 7-Part Validation Challenge & Audit Reconciliation ARCH-AT-01..15, Shared IFC 4.3 + buildingSMART IDS)

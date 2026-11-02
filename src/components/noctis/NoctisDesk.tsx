@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ClipboardEvent } from "react";
 import { Link } from "@tanstack/react-router";
-import { Activity, ArrowUp, Bot, Boxes, Brain, Calendar, Cpu, Crosshair, EyeOff, Fingerprint, FileLock, Globe, Key, Layers, Lock, LogOut, Network, Sparkles, Swords, Target, ShieldAlert, Terminal, WifiOff, Zap, ChevronDown, ChevronLeft, Code2, Copy, CornerDownLeft, FileText, GraduationCap, Image, Library, Mail, Menu, Mic, MoreHorizontal, PanelRight, PanelRightOpen, Pencil, Phone, PhoneOff, Plus, Printer, RotateCcw, Search, Square, SquarePen, Trash2, Users2, Video, Volume2, VolumeX, Wrench, X } from "lucide-react";
+import { Activity, ArrowUp, Bot, Boxes, Brain, Calendar, Cpu, Crosshair, EyeOff, Fingerprint, FileLock, Globe, Key, Layers, Lock, LogOut, Network, Sparkles, Stethoscope, Swords, Target, ShieldAlert, Terminal, WifiOff, Zap, ChevronDown, ChevronLeft, Code2, Copy, CornerDownLeft, FileText, GraduationCap, Image, Library, Mail, Menu, Mic, MoreHorizontal, PanelRight, PanelRightOpen, Pencil, Phone, PhoneOff, Plus, Printer, RotateCcw, Search, Square, SquarePen, Trash2, Users2, Video, Volume2, VolumeX, Wrench, X } from "lucide-react";
 import { askNoctis, drawVibe, hearVibe, sayVibe, trainVibe } from "@/lib/noctis-api";
 import { bringImagineFile, bringPortrait } from "@/lib/imagine-api";
 import { playHarmonicTone, playSovereignChime, stopAudioSynth } from "@/lib/noctis-audio-synth";
@@ -46,6 +46,7 @@ import { NoctisPqcModal } from "@/components/noctis/NoctisPqcModal";
 import { NoctisZkProofModal } from "@/components/noctis/NoctisZkProofModal";
 import { NoctisLexModal } from "@/components/noctis/NoctisLexModal";
 import { NoctisCanaryModal } from "@/components/noctis/NoctisCanaryModal";
+import { NoctisPatientDiagnosisModal } from "@/components/noctis/NoctisPatientDiagnosisModal";
 import { NoctisCapabilityMatrixModal, type SovereignEngineKey } from "@/components/noctis/NoctisCapabilityMatrixModal";
 import { getActiveCustomAgent, getActiveCustomAgentContext, type NoctisCustomAgent } from "@/lib/noctis-custom-agents";
 import { NoctisMemoryModal, getNoctisPersonalizedContext } from "@/components/noctis/NoctisMemoryModal";
@@ -3356,6 +3357,7 @@ export function NoctisDesk() {
   const [zkProofModalOpen, setZkProofModalOpen] = useState(false);
   const [lexModalOpen, setLexModalOpen] = useState(false);
   const [canaryModalOpen, setCanaryModalOpen] = useState(false);
+  const [patientDiagnosisModalOpen, setPatientDiagnosisModalOpen] = useState(false);
   const [capabilityMatrixOpen, setCapabilityMatrixOpen] = useState(false);
   const [brainModalOpen, setBrainModalOpen] = useState(false);
   const [suitesExpanded, setSuitesExpanded] = useState(true);
@@ -3367,6 +3369,7 @@ export function NoctisDesk() {
     setCapabilityMatrixOpen(false);
     switch (key) {
       case "canary": setCanaryModalOpen(true); break;
+      case "patient_diagnosis" as any: setPatientDiagnosisModalOpen(true); break;
       case "war_room": setWarRoomModalOpen(true); break;
       case "digital_twin": setDigitalTwinModalOpen(true); break;
       case "holodeck": setHolodeckModalOpen(true); break;
@@ -6677,7 +6680,16 @@ export function NoctisDesk() {
                     <span className="truncate font-medium">AI Red Team & Threat Matrix</span>
                     <span className="ml-auto rounded bg-rose-500/20 px-1.5 py-0.5 text-[9px] font-bold text-rose-300">SHIELD</span>
                   </button>
-                  <button
+                                    <button
+                    type="button"
+                    onClick={() => { setMenu(false); setPatientDiagnosisModalOpen(true); }}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
+                  >
+                    <Stethoscope className="size-3.5 text-blue-400 shrink-0" />
+                    <span className="truncate">Patient Diagnostic CDS</span>
+                    <span className="ml-auto rounded bg-blue-500/20 px-1.5 py-0.5 text-[9px] font-bold text-blue-300">TRIAGE</span>
+                  </button>
+<button
                     type="button"
                     onClick={() => { setMenu(false); setCanaryModalOpen(true); }}
                     className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
@@ -7795,7 +7807,15 @@ export function NoctisDesk() {
         onOpenInCanvas={(md, title) => openInCanvas(title || "Canary Tripwire Alert", md)}
         onInsertToChat={(text) => setDraft(text)}
       />
-      <NoctisCapabilityMatrixModal
+            <NoctisPatientDiagnosisModal
+        open={patientDiagnosisModalOpen}
+        onClose={() => setPatientDiagnosisModalOpen(false)}
+        onSend={(prompt) => {
+          setDraft(prompt);
+          if (inputRef?.current) inputRef.current.focus();
+        }}
+      />
+<NoctisCapabilityMatrixModal
         open={capabilityMatrixOpen}
         onClose={() => setCapabilityMatrixOpen(false)}
         onSelectEngine={handleSelectEngine}
