@@ -670,15 +670,23 @@ export function handleNaturalSpecialistClinicalQuery(query: string): string | nu
   }
 
   // Hypertensive Crisis (Emergency vs. Urgency)
-  if (/\b(hypertensive crisis|hypertensive emergency|hypertensive urgency|severe hypertension bp > 180)\b/i.test(q)) {
-    const sbpMatch = q.match(/(\d{3})\/(\d{2,3})/);
-    const sbp = sbpMatch ? parseInt(sbpMatch[1], 10) : 210;
-    const dbp = sbpMatch ? parseInt(sbpMatch[2], 10) : 124;
+  const bpMatch = q.match(/(\d{2,3})\/(\d{2,3})/);
+  const matchedSbp = bpMatch ? parseInt(bpMatch[1], 10) : 0;
+  const matchedDbp = bpMatch ? parseInt(bpMatch[2], 10) : 0;
+  const isSevereBp = matchedSbp >= 180 || matchedDbp >= 120;
+
+  if (isSevereBp || /\b(hypertensive crisis|hypertensive emergency|hypertensive urgency|malignant hypertension|severe hypertension)\b/i.test(q)) {
+    const sbp = bpMatch ? matchedSbp : 210;
+    const dbp = bpMatch ? matchedDbp : 124;
     const res = evaluateHypertensiveCrisis({
       systolicBpMmHg: sbp,
       diastolicBpMmHg: dbp,
+      hasAcuteHeadacheOrEncephalopathy: /\b(headache|encephalopathy|confusion|altered mental)\b/i.test(q),
+      hasPapilledemaOrRetinalHemorrhages: /\b(papilledema|blurred vision|retinal)\b/i.test(q),
       hasAcutePulmonaryEdemaShortnessOfBreath: /\b(pulmonary edema|shortness of breath|sob)\b/i.test(q),
       hasAcuteAorticDissectionTear: /\b(aortic dissection|tearing)\b/i.test(q),
+      hasAcuteRenalFailureRisingCreatinine: /\b(renal failure|creatinine|oliguria)\b/i.test(q),
+      hasAcuteChestPainOrAcs: /\b(chest pain|angina|infarction)\b/i.test(q),
     });
 
     return [
