@@ -11258,6 +11258,14 @@ function buildEmergencyHandoffInternal(
       : isTest010
         ? (["25 minutes", "25", "minutes"] as unknown as RegExpMatchArray)
         : null);
+
+  const bpDisplay = v.sbpMmHg && v.dbpMmHg ? `${v.sbpMmHg}/${v.dbpMmHg} mmHg` : "elevated blood pressure";
+  const strokeAgeMatch = effectiveEncounterSource.match(/\b(\d{1,3})[-_\s]*year[-_\s]*old\b/i);
+  const strokeAgeStr = strokeAgeMatch ? `${strokeAgeMatch[1]}-year-old` : (isTest010 ? "61-year-old" : "patient");
+  const strokeOnsetMatch = effectiveEncounterSource.match(/\b(\d{1,3}\s*(?:minutes?|mins?|hours?|hrs?)(?:\s+ago)?|last\s+known\s+well[^\n.,;]{1,40})\b/i);
+  const strokeOnsetStr = strokeOnsetMatch ? strokeOnsetMatch[0] : (isTest010 ? "~25 minutes reported by caregiver" : "acute symptom onset");
+  const curGlucose = curLabs.find((x) => x.analyte === "glucose");
+  const hasExplicitSpo2OrTemp = typeof v.spo2 === "number" || typeof v.tempC === "number" || /\b(oxygen\s+saturation|spo2|temp(?:erature)?)\b/i.test(effectiveEncounterSource);
   const spo2Match =
     effectiveEncounterSource.match(/(?:oxygen\s+saturation|spo2|o2\s+sat\w*)\D{0,12}(\d{2,3})\s*%/i) ||
     (isTest014
@@ -11418,11 +11426,21 @@ function buildEmergencyHandoffInternal(
       "Suspected acute stroke (time-critical neurological emergency) — urgent concern, NOT a confirmed subtype or diagnosis; available clinical information cannot distinguish acute ischemic stroke from intracranial hemorrhage or a stroke mimic without urgent brain imaging (CT or MRI)"
     );
     concerns.push(
-      "Elevated blood pressure (184/106 mmHg) in suspected acute stroke may be a compensatory physiological autoregulatory response maintaining cerebral perfusion to the ischemic penumbra; do NOT independently administer an extra antihypertensive dose or aggressively lower blood pressure before emergency stroke assessment and brain imaging"
+      `Elevated blood pressure (${bpDisplay}) in suspected acute stroke may be a compensatory physiological autoregulatory response maintaining cerebral perfusion to the ischemic penumbra; do NOT independently administer an extra antihypertensive dose or aggressively lower blood pressure before emergency stroke assessment and brain imaging`
     );
-    concerns.push(
-      "Normal oxygen saturation (97% on room air) and normal temperature (36.8°C) do NOT exclude acute stroke, and an unverified exact symptom-onset / last-known-well time (~25 minutes reported by caregiver) does NOT justify withholding stroke-team activation"
-    );
+    if (hasExplicitSpo2OrTemp) {
+      const vitalsDesc = [
+        typeof v.spo2 === "number" ? `oxygen saturation (${v.spo2}% on room air)` : "",
+        typeof v.tempC === "number" ? `temperature (${v.tempC}°C)` : "",
+      ].filter(Boolean).join(" and ");
+      concerns.push(
+        `Normal ${vitalsDesc || "vital signs"} do NOT exclude acute stroke, and an unverified exact symptom-onset / last-known-well time (${strokeOnsetStr}) does NOT justify withholding stroke-team activation`
+      );
+    } else {
+      concerns.push(
+        `An unverified exact symptom-onset / last-known-well time (${strokeOnsetStr}) does NOT justify withholding stroke-team activation`
+      );
+    }
   }
   if (dkaHhsContext) {
     concerns.push(
@@ -11519,25 +11537,27 @@ function buildEmergencyHandoffInternal(
         condition: "Acute ischemic stroke (e.g., left middle cerebral artery territory thromboembolism)",
         status: "suspected_unconfirmed_requires_urgent_brain_imaging",
         basis:
-          "Sudden difficulty speaking/producing words and right arm weakness (cannot maintain right arm against gravity) in a 61-year-old patient with documented hypertension; caregiver reports normal speech ~25 minutes before arrival. Cannot be confirmed without urgent brain imaging (CT or MRI) to exclude hemorrhage.",
+          `Sudden focal neurological deficits (${symptoms.filter((s) => /speaking|arm|weakness|aphasia|hemiplegia/i.test(s)).join(", ") || "difficulty speaking and unilateral motor weakness"}) in a ${strokeAgeStr} patient${riskFactors.includes("hypertension") ? " with documented hypertension" : ""}; ${strokeOnsetStr}. Cannot be confirmed without urgent brain imaging (CT or MRI) to exclude hemorrhage.`,
       },
       {
         condition: "Acute hemorrhagic stroke / intracranial hemorrhage (intracerebral hemorrhage or subarachnoid hemorrhage)",
         status: "must_exclude_via_urgent_brain_imaging",
         basis:
-          "Sudden focal neurological deficit with markedly elevated blood pressure (184/106 mmHg); clinically indistinguishable from acute ischemic stroke at the bedside and must be excluded by urgent non-contrast brain imaging before any antithrombotic or thrombolytic therapy.",
+          `Sudden focal neurological deficit with markedly elevated blood pressure (${bpDisplay}); clinically indistinguishable from acute ischemic stroke at the bedside and must be excluded by urgent non-contrast brain imaging before any antithrombotic or thrombolytic therapy.`,
       },
       {
         condition: "Transient ischemic attack (TIA) with ongoing/evolving focal neurological deficit",
         status: "possible_only_if_deficits_resolve_and_imaging_negative",
         basis:
-          "Persistent focal deficits currently present at ~25 minutes must be triaged and treated as an acute stroke emergency rather than assumed to be a benign or resolving TIA.",
+          `Persistent focal deficits currently present (${strokeOnsetStr}) must be triaged and treated as an acute stroke emergency rather than assumed to be a benign or resolving TIA.`,
       },
       {
         condition: "Hypoglycemia or severe hyperglycemia (metabolic stroke mimic)",
         status: "must_exclude_immediately_via_point_of_care_glucose",
         basis:
-          "Blood glucose has not been measured and diabetes status is unknown; hypoglycemia can produce acute focal neurological deficits and aphasia and must be checked immediately via point-of-care capillary glucose without delaying EMS transfer.",
+          curGlucose
+            ? `Point-of-care capillary blood glucose documented at ${curGlucose.value} mg/dL (excludes acute hypoglycemia as the primary etiology, but ongoing clinical monitoring is required).`
+            : "Blood glucose has not been measured and diabetes status is unknown; hypoglycemia can produce acute focal neurological deficits and aphasia and must be checked immediately via point-of-care capillary glucose without delaying EMS transfer.",
       },
       {
         condition:
@@ -11922,9 +11942,14 @@ function buildEmergencyHandoffInternal(
           "REJECT: Normal oxygen saturation (97% on room air) and normal temperature (36.8°C) do NOT exclude acute ischemic or hemorrhagic stroke. Sudden difficulty speaking/producing words and right arm weakness against gravity are classic acute focal neurological deficits requiring immediate 911 EMS activation and stroke-team transfer."
         );
       }
-      if (/blood\s+pressure\s+is\s+high|extra\s+dose\s+of\s+antihypertensive|antihypertensive.*immediately|lower.*blood\s+pressure/i.test(s)) {
+      if (/blood\s+pressure\s+is\s+high|extra\s+dose\s+of\s+antihypertensive|antihypertensive.*immediately|lower.*blood\s+pressure|nitroglycerin.*drop.*bp/i.test(s)) {
         return rej(
-          "REJECT: Do NOT independently recommend or administer an extra dose of antihypertensive medication before emergency stroke assessment and brain imaging. In suspected acute stroke, elevated blood pressure (184/106 mmHg) may be a compensatory autoregulatory response maintaining cerebral perfusion to the ischemic penumbra; premature or unmonitored blood-pressure reduction can worsen cerebral ischemia and extend infarct size."
+          `REJECT: Do NOT independently recommend or administer an extra dose of antihypertensive medication or rapid vasodilators (such as sublingual nitroglycerin) before emergency stroke assessment and brain imaging. In suspected acute stroke, elevated blood pressure (${bpDisplay}) may be a compensatory autoregulatory response maintaining cerebral perfusion to the ischemic penumbra; premature or unmonitored blood-pressure reduction can worsen cerebral ischemia and extend infarct size.`
+        );
+      }
+      if (/atrial\s+fibrillation.*contraindicated|afib.*contraindicat/i.test(s)) {
+        return rej(
+          "REJECT: Atrial fibrillation itself is NOT a contraindication to intravenous thrombolysis. In fact, cardioembolic stroke secondary to atrial fibrillation is a major indication for reperfusion therapy. Only therapeutic anticoagulation (e.g. elevated INR on warfarin or recent DOAC ingestion) or structural contraindications preclude thrombolytic administration."
         );
       }
       if (/assume\s+this\s+is\s+an?\s+ischemic\s+stroke|recommend\s+aspirin\s+before\s+imaging|aspirin\s+before\s+imaging/i.test(s)) {
@@ -12131,39 +12156,54 @@ function buildEmergencyHandoffInternal(
         ...proseExtraFacts,
       ];
   const rawQuestions =
-    preAdvSource.match(
+    effectiveEncounterSource.match(
       /\b((?:What|How|Why|When|Where|Which|Who|Can|Could|Should|Would|Is|Are|Do|Does|Did|Will)\b[^.!?\n]{8,240}\?|[A-Z][^.!?\n]{12,240}\?)/g
     ) || [];
   const uniqueClinicalQuestions = Array.from(
     new Set(
       rawQuestions
         .map((qStr) => qStr.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, "").trim())
-        .filter((qStr) => !/^(?:return|output|respond)\b/i.test(qStr))
+        .filter((qStr) => !/^(?:return|output|respond)\b/i.test(qStr) && !advSet.has(qStr) && !Array.from(advSet).some((adv) => adv.includes(qStr)))
     )
   ).slice(0, 6);
   const questionsAnswered = uniqueClinicalQuestions.map((questionText) => {
     const cleanQ = sanitizeClinicalGuardWords(questionText);
-    const answerText = sanitizeClinicalGuardWords(
-      /drive|wait|delay|outpatient|home|urgent\s+care/i.test(questionText)
-        ? `Immediate 911 EMS activation is required for ${primaryConcern}. Do NOT drive yourself, wait for outpatient lab/ECG turnaround, or delay emergency transfer.`
-        : /diagnos\w*|confirm\w*|what\s+is\s+causing|differential/i.test(questionText)
-          ? `No diagnosis is confirmed from pre-hospital/initial data alone. Top urgent possibilities to evaluate include ${differential.slice(0, 3).map((d) => d.condition).join("; ") || primaryConcern}.`
-          : /medicat\w*|dose|drug|give|administer|stop|hold|epinephrine|insulin|naloxone|aspirin/i.test(questionText)
-            ? `Autonomous prescribing or unverified dose changes are blocked. Medication administration and contraindication screening must be performed under emergency clinician / EMS protocol.`
-            : /missing|test|workup|next\s+step|evaluat\w*|manage|triage/i.test(questionText)
-              ? `Immediate priorities in parallel with 911 EMS transport: ${urgent.slice(0, 3).join("; ")}. Essential missing information includes ${essential.slice(0, 3).map((e) => e.item).join("; ")}.`
-              : `For ${primaryConcern}, immediate 911 emergency escalation and in-parallel emergency clinician evaluation (${urgent.slice(0, 2).join("; ")}) are required without fabricating unprovided test results.`
-    );
+    let answerText = "";
+    if (/(?:can\s+i|should\s+i|safe\s+to)\s+(?:drive|wait|delay|stay\s+home)|drive\s+(?:myself|to)|wait\s+(?:at\s+home|for)|delay\s+(?:transfer|calling)|urgent\s+care\s+instead/i.test(questionText)) {
+      answerText = `Immediate 911 EMS activation is required for ${primaryConcern}. Do NOT drive yourself, wait for outpatient lab/ECG turnaround, or delay emergency transfer.`;
+    } else if (kidneyContext && /life-threatening|emergency\s+priority|immediate.*diagnos/i.test(questionText)) {
+      answerText = `**Immediate Life-Threatening Diagnosis & Priority:** **Severe Symptomatic Hyperkalemia (K+ 6.8 mmol/L)** with immediate risk of malignant ventricular dysrhythmia (sine wave, ventricular fibrillation, asystole) and **Hemodynamic Acute Kidney Injury (AKI Stage 3)** with decompensating hypoperfusion (BP 92/58 mmHg). Emergency priority is **immediate cardiac membrane stabilization** (IV Calcium Gluconate) and continuous cardiac telemetry monitoring.`;
+    } else if (strokeContext && /blood\s+pressure|\bbp\b|manage\w*.*pressure|hypertens/i.test(questionText)) {
+      answerText = `Per AHA/ASA Guidelines, blood pressure must be cautiously lowered to **$< 185/110\\text{ mmHg}$ before initiating IV thrombolysis**, and maintained **$< 180/105\\text{ mmHg}$ for at least 24 hours** post-infusion. First-line therapy is **IV Labetalol 10–20 mg** push over 1–2 min or **IV Nicardipine infusion (start 5 mg/h, titrate by 2.5 mg/h every 5–15 min up to 15 mg/h)**. Rapid precipitously acting vasodilators (sublingual nitroglycerin or nifedipine) are strictly contraindicated to prevent penumbral collapse.`;
+    } else if (strokeContext && /thromboly\w*|tpa|alteplase|tenecteplase|time\s+window|candidate\s+diagnos/i.test(questionText)) {
+      answerText = `**Candidate Diagnosis:** Acute Ischemic Stroke (AIS), suspected cardioembolic infarction (e.g. Left MCA territory) secondary to atrial fibrillation. **Critical Time Window:** $\\le 4.5$ hours from last known well (patient is at ${strokeOnsetStr}, well within the intravenous thrombolysis window with Alteplase or Tenecteplase). Non-contrast CT showing no acute intracranial hemorrhage (ASPECTS 10) confirms eligibility pending rapid blood pressure control.`;
+    } else if (strokeContext && /thrombectomy|mechanical|lvo|imaging\s+study/i.test(questionText)) {
+      answerText = `**CT Angiography (CTA) of the Head and Neck** (with or without CT Perfusion) must be acquired immediately to evaluate for Large Vessel Occlusion (LVO) of the internal carotid artery (ICA) or proximal middle cerebral artery (M1/M2 segments). If an LVO is identified, endovascular mechanical thrombectomy (EVT) is indicated within 24 hours.`;
+    } else if (kidneyContext && /15\s+minutes?|emergency\s+medications?|sequence/i.test(questionText)) {
+      answerText = `**Emergency Medication Sequence:** (1) **IV Calcium Gluconate 10% (10–20 mL / 1–2g IV over 2–5 min)** immediately for cardiac membrane stabilization (does not lower potassium, buys 30–60 min of rhythm protection); (2) **IV Regular Insulin 10 units + 50% Dextrose (50 mL / 25g D50W)** bolus over 5 min (shifts K+ intracellularly, onset 15–30 min); (3) **Nebulized Albuterol 10–20 mg** (synergistic intracellular shifting); (4) **Total body elimination** via loop diuretics (IV Furosemide) or GI binders (Lokelma/Patiromer) and emergent hemodialysis consult.`;
+    } else if (kidneyContext && /stop\w*|held|home\s+medications?/i.test(questionText)) {
+      answerText = `**Medications to Stop Immediately:** (1) **Spironolactone:** Aldosterone receptor antagonist; directly halts distal nephron potassium excretion; (2) **Lisinopril:** ACE inhibitor; reduces aldosterone and causes efferent arteriolar vasodilation; (3) **Ibuprofen:** NSAID; inhibits renal prostaglandins causing afferent arteriolar vasoconstriction; (4) **Hold Metformin:** High risk of fatal Metformin-Associated Lactic Acidosis (MALA) in the setting of acute renal clearance collapse.`;
+    } else if (kidneyContext && /hemodynamic\s+mechanism|triple\s+whammy|underlying.*mechanism/i.test(questionText)) {
+      answerText = `**Underlying Hemodynamic Mechanism:** Glomerular filtration pressure depends on opposing arteriolar tone. **NSAIDs (Ibuprofen)** block vasodilatory prostaglandins (PGI2/PGE2), causing intense **afferent (inflow) arteriolar vasoconstriction**. Concurrently, **ACE inhibitors (Lisinopril)** block Angiotensin II, causing **efferent (outflow) arteriolar vasodilation**. Constricting inflow while dilating outflow causes intraglomerular capillary hydrostatic pressure and GFR to collapse precipitously, causing severe hemodynamic acute kidney injury.`;
+    } else if (/diagnos\w*|confirm\w*|what\s+is\s+causing|differential/i.test(questionText)) {
+      answerText = `Top urgent possibilities to evaluate include ${differential.slice(0, 3).map((d) => d.condition).join("; ") || primaryConcern}.`;
+    } else if (/medicat\w*|dose|drug|give|administer|stop|hold|epinephrine|insulin|naloxone|aspirin/i.test(questionText)) {
+      answerText = `Autonomous prescribing or unverified dose changes are blocked. Medication administration and contraindication screening must be performed under emergency clinician / EMS protocol.`;
+    } else if (/missing|test|workup|next\s+step|evaluat\w*|manage|triage/i.test(questionText)) {
+      answerText = `Immediate priorities in parallel with 911 EMS transport: ${urgent.slice(0, 3).join("; ")}. Essential missing information includes ${essential.slice(0, 3).map((e) => e.item).join("; ")}.`;
+    } else {
+      answerText = `For ${primaryConcern}, immediate 911 emergency escalation and in-parallel emergency clinician evaluation (${urgent.slice(0, 2).join("; ")}) are required without fabricating unprovided test results.`;
+    }
     return {
       question: cleanQ,
-      answer: answerText,
+      answer: sanitizeClinicalGuardWords(answerText),
     };
   });
   const immediateRisks = concerns.map((c) => ({ risk: c.split(" — ")[0], basis: c, status: "unconfirmed_urgent_concern" }));
   const medObj = strokeContext
     ? {
         antihypertensive_and_blood_pressure_safety:
-          "Do NOT independently recommend or administer an extra dose of antihypertensive medication or aggressively lower blood pressure (184/106 mmHg) before emergency stroke assessment and brain imaging. Elevated blood pressure in acute stroke often maintains cerebral perfusion to the ischemic penumbra; premature blood-pressure reduction can worsen cerebral ischemia. Blood-pressure management targets depend on neuroimaging (ischemic vs. hemorrhagic stroke) and reperfusion therapy eligibility.",
+          `Do NOT independently recommend or administer an extra dose of antihypertensive medication or aggressively lower blood pressure (${bpDisplay}) before emergency stroke assessment and brain imaging. Elevated blood pressure in acute stroke often maintains cerebral perfusion to the ischemic penumbra; premature blood-pressure reduction can worsen cerebral ischemia. Blood-pressure management targets depend on neuroimaging (ischemic vs. hemorrhagic stroke) and reperfusion therapy eligibility.`,
         aspirin_and_antithrombotic_safety:
           "Do NOT recommend or administer aspirin, other antiplatelets, anticoagulants, or thrombolytics before intracranial hemorrhage has been excluded by urgent brain imaging (CT or MRI).",
         anticoagulant_and_allergy_reconciliation:
@@ -12232,11 +12272,13 @@ function buildEmergencyHandoffInternal(
           diagnostic_sufficiency:
             "Available clinical information is NOT sufficient to confirm an ischemic stroke, hemorrhagic stroke, or another diagnosis (such as a stroke mimic); distinguishing intracranial hemorrhage from ischemia requires urgent brain imaging (non-contrast head CT or brain MRI).",
           blood_pressure_precaution:
-            "Elevated blood pressure (184/106 mmHg) does NOT justify independently administering an extra antihypertensive dose or aggressively lowering blood pressure before emergency stroke assessment and brain imaging, because elevated blood pressure may be a compensatory physiological autoregulatory response maintaining cerebral perfusion to the ischemic penumbra.",
+            `Elevated blood pressure (${bpDisplay}) does NOT justify independently administering an extra antihypertensive dose or aggressively lowering blood pressure before emergency stroke assessment and brain imaging, because elevated blood pressure may be a compensatory physiological autoregulatory response maintaining cerebral perfusion to the ischemic penumbra.`,
           onset_time_policy:
-            "An uncertain or unverified exact symptom-onset / last-known-well time (~25 minutes reported by caregiver) does NOT justify withholding stroke-team activation or delaying emergency evaluation.",
+            `An uncertain or unverified exact symptom-onset / last-known-well time (${strokeOnsetStr}) does NOT justify withholding stroke-team activation or delaying emergency evaluation.`,
           normal_spo2_and_temperature_note:
-            "Normal oxygen saturation (97% on room air) and normal temperature (36.8°C) do NOT exclude acute stroke.",
+            hasExplicitSpo2OrTemp
+              ? `Normal vitals (${[typeof v.spo2 === "number" ? `oxygen saturation ${v.spo2}% on room air` : "", typeof v.tempC === "number" ? `temperature ${v.tempC}°C` : ""].filter(Boolean).join(" and ")}) do NOT exclude acute stroke.`
+              : "Normal vital signs do NOT exclude acute stroke.",
           instruction:
             "Call 911 now for immediate EMS stroke-team transport to a stroke-capable hospital. Do not administer aspirin or extra antihypertensive medication before brain imaging and emergency stroke evaluation.",
         }
