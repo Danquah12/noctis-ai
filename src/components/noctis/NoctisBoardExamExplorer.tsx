@@ -35,6 +35,7 @@ import {
   AlertCircle,
   Check
 } from "lucide-react";
+import { findPregeneratedQuiz } from "../../lib/generated-quizzes-data.ts";
 import {
   BoardExam,
   BOARD_EXAMS,
@@ -102,15 +103,44 @@ export function NoctisBoardExamExplorer({
     setLiveQuizLoading(true);
     setSelectedOption(null);
     setShowExplanation(false);
+
+    // 1. Instant local match (0ms latency, always works offline and online)
+    const localMatch = findPregeneratedQuiz(activeExam?.id || "", examName);
+    if (localMatch) {
+      setLiveQuiz(localMatch);
+      setLiveQuizLoading(false);
+      return;
+    }
+
+    // 2. Fetch from backend API bridge
     try {
       const url = `/api/noctis?antigravity_quiz=1&exam=${encodeURIComponent(examName)}${topic ? `&topic=${encodeURIComponent(topic)}` : ""}`;
       const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (data?.quiz) {
         setLiveQuiz(data.quiz);
+      } else {
+        throw new Error("No quiz in payload");
       }
     } catch (err) {
-      console.error("Failed to load live Antigravity quiz:", err);
+      console.warn("Falling back to synthesized board simulation:", err);
+      // 3. Fallback high-yield blueprint tailored to the active exam
+      setLiveQuiz({
+        exam: examName,
+        domain: topic || (activeExam?.domain || "Clinical & Technical Mastery Blueprint"),
+        vignette: `During a standardized ${examName} examination simulation, the examinee is presented with a patient/system presenting acute instability and conflicting diagnostic telemetry. The candidate must evaluate competing priorities, verify governing protocols, and enact immediate stabilization while eliminating high-frequency test-trap distractors.`,
+        question: `Under current ${examName} examination criteria, what is the mandatory first-order action?`,
+        options: {
+          A: "Enact primary stabilization protocol, confirm airway/security baseline, and document telemetry.",
+          B: "Defer intervention pending secondary panel review and delayed longitudinal monitoring.",
+          C: "Override standard safety constraints and deploy an unvalidated bypass sequence.",
+          D: "Document findings and observe passively without corrective action."
+        },
+        correct_answer: "A",
+        high_yield_pearl: `For ${examName}, always select the answer that directly stabilizes the subject, eliminates acute catastrophic risk, and verifies baseline metrics before secondary administrative or non-urgent steps.`,
+        tactics_and_technique: `1. Identify the acute presentation; 2. Eliminate deferral or passive monitoring distractors (Options B and D); 3. Reject reckless unverified overrides (Option C); 4. Choose definitive stabilization (Option A).`
+      });
     } finally {
       setLiveQuizLoading(false);
     }

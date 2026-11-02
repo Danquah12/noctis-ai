@@ -7,6 +7,8 @@ import { spawn } from "child_process";
 import fs from "fs";
 import path from "path";
 
+import { findPregeneratedQuiz } from "./generated-quizzes-data.ts";
+
 export interface AntigravityQuizData {
   exam: string;
   domain: string;
@@ -66,6 +68,10 @@ function getScriptPath(): string {
  * Checks if a pre-generated scenario file exists for this exam
  */
 export function getCachedQuizForExam(examName: string): AntigravityQuizData | null {
+  // 1. Check generated quiz archive
+  const match = findPregeneratedQuiz(examName, examName);
+  if (match) return match;
+
   try {
     const dir = getQuizzesDir();
     if (!fs.existsSync(dir)) return null;
