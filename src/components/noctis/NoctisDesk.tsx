@@ -7010,7 +7010,12 @@ export function NoctisDesk() {
             <Menu className="size-5" />
           </button>
           <div ref={topHeaderRef} className="flex items-center gap-2 max-w-[calc(100%-6.5rem)] sm:max-w-[calc(100%-7.5rem)] overflow-x-auto no-scrollbar scroll-smooth">
-            <NoctisModelPicker onOpenBrainModal={() => setBrainModalOpen(true)} />
+            <NoctisModelPicker
+              onOpenBrainModal={() => setBrainModalOpen(true)}
+              onSelectDesk={(d) => setDesk(d)}
+              onSelectEngine={(key) => handleSelectEngine(key)}
+              onOpenCapabilities={() => setCapabilityMatrixOpen(true)}
+            />
             <div className="inline-flex shrink-0 items-center rounded-full bg-[#2a2a2a] p-1 text-sm ring-1 ring-white/10">
               <button
                 type="button"
