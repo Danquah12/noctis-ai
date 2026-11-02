@@ -4,6 +4,7 @@ import { buildFrontierUnifiedArchitectureReport } from "./noctis-frontier-pillar
 import { buildRicIntelligenceReport } from "./noctis-ric.ts";
 import { handleNaturalHealthQuery } from "./noctis-health-engine.ts";
 import { handleNaturalPatientDiagnosticQuery } from "./noctis-patient-diagnosis.ts";
+import { handleNaturalSpecialistClinicalQuery } from "./noctis-specialist-router.ts";
 import { handleNaturalMedicalRecordInterpretationQuery } from "./noctis-medical-record-interpreter.ts";
 import { handleNaturalAttachmentIntelligenceQuery } from "./noctis-document-intelligence.ts";
 import { handleNaturalCareerQuery } from "./noctis-career-query.ts";
@@ -1225,6 +1226,12 @@ export function runFollowUpIntelligence(
   const patientDiagResponse = handleNaturalPatientDiagnosticQuery(currentQuestion);
   if (patientDiagResponse) {
     return adaptSpecialistEngineOutput(currentQuestion, patientDiagResponse, "NOCTIS-PATIENT-DX-001");
+  }
+
+  // 00-d. Noctis Multi-Specialty Clinical Decision Support Engines (Cardiovascular, Infectious Disease, Endocrine, Hematology/Autoimmune)
+  const specialistClinicalResponse = handleNaturalSpecialistClinicalQuery(currentQuestion);
+  if (specialistClinicalResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, specialistClinicalResponse, "NOCTIS-SPEC-CLINICAL-001");
   }
 
   // 00. Noctis Health Intelligence Engine (18 Health Engines, Emergency/988 Safety Gateway, FHIR v5.0.0, Calculators, 7-Part Medical Response & Follow-Up Continuity)
