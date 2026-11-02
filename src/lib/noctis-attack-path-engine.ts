@@ -609,21 +609,27 @@ export function handleAttackPathAndExploitabilityQuery(question: string): string
     "Audit SIEM/application logs for any historical requests matching the source-to-sink exploit pattern before closing the finding",
   ];
 
-  // Extract any direct user questions or imperative instructions from the prompt and answer them specifically
+  // Extract any direct user questions or imperative instructions from the ENTIRE prompt (before or after adversarial block)
+  const advSet = new Set(advItems.map((a) => a.toLowerCase().trim()));
+  const fullPromptSource = q;
   const lineMatches = [
-    ...qCtx.matchAll(
+    ...fullPromptSource.matchAll(
       /(?:^|\n)\s*(?:[-*•]|\d+[.)])?\s*((?:(?:What|How|Why|When|Where|Which|Who|Can|Could|Should|Would|Is|Are|Do|Does|Did|Will|Calculate|Explain|Write|Provide|Identify|Determine|Assess)\b[^\n]{6,260}?)(?:[.!?](?=\s|$)|$))/gim
     ),
   ].map((m) => m[1].trim());
 
   const proseMatches = [
-    ...qCtx.matchAll(
+    ...fullPromptSource.matchAll(
       /\b((?:What|How|Why|When|Where|Which|Who|Can|Could|Should|Would|Is|Are|Do|Does|Did|Will|Calculate|Explain|Write|Provide|Identify|Determine|Assess)\b[^.!?\n]{6,240}(?:\?|\.(?=\s+[A-Z]|$)))/g
     ),
   ].map((m) => m[1].trim());
 
   const explicitQuestions = (lineMatches.length >= 2 ? lineMatches : proseMatches.length > 0 ? proseMatches : lineMatches)
     .filter((qStr, i, arr) => arr.indexOf(qStr) === i)
+    .filter((qStr) => {
+      const clean = qStr.toLowerCase().replace(/^\d+[.)]\s*/, "").trim();
+      return !advSet.has(clean) && !Array.from(advSet).some((adv) => adv.includes(clean) || clean.includes(adv));
+    })
     .slice(0, 6);
 
   const questionsAnswered = explicitQuestions.map((qStr) => {

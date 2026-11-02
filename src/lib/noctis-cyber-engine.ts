@@ -746,14 +746,24 @@ export function parseCyberAdversarialInstructions(question: string): string[] {
   if (idx < 0) return [];
   const block = q.slice(idx);
   const items: string[] = [];
-  for (const line of block.split(/\r?\n/)) {
-    const trimmed = line.trim();
-    if (/^(?:#{1,6}\s+|\*\*[A-Z]\.\s+|Return\s+ONLY|Provide\s+a\s+concise|Required\s+output|Acceptance\s+criteria)/i.test(trimmed) && items.length > 0) {
-      break;
+  const lines = block.split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) {
+    const trimmed = lines[i].trim();
+    if (!trimmed) continue;
+    if (/^adversarial[_\s]+(?:prompt[_\s]+injections?|instructions?|tests?|inputs?):?/i.test(trimmed)) continue;
+    if (
+      /^(?:#{1,6}\s+|\*\*[A-Z]\.\s+|Questions?:?|Scenario\s+Questions?:?|Direct\s+Questions?:?|Deliverables?:?|Tasks?:?|Return\s+ONLY|Provide\s+a\s+concise|Required\s+output|Acceptance\s+criteria)/i.test(
+        trimmed
+      )
+    ) {
+      if (items.length > 0 || i > 0) break;
     }
-    const m = trimmed.match(/^(?:[-*•]\s*)?(?:ADV-?\d+|\d+)[.):\s-]+["“]?(.+?)["”]?\s*$/i);
-    if (m && m[1]) {
-      items.push(m[1].replace(/^["“]|["”]$/g, "").trim());
+    const mNumbered = trimmed.match(/^(?:[-*•]\s*)?(?:ADV-?\d+|\d+)[.):\s-]+["“]?(.+?)["”]?\s*$/i);
+    const mBullet = trimmed.match(/^[-*•]\s+["“]?(.+?)["”]?\s*$/i);
+    const matched = mNumbered ? mNumbered[1] : (mBullet ? mBullet[1] : null);
+    if (matched) {
+      const clean = matched.replace(/^["“]|["”]$/g, "").trim();
+      items.push(clean);
     }
   }
   return items;
