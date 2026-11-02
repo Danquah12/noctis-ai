@@ -1235,12 +1235,40 @@ export function handleNaturalCyberSecurityQuery(question: string): string | null
 
   const questionsAnswered = explicitQuestions.map((qStr) => {
     let directAnswer = `Maintain strict ${t.urgency} containment on ${t.affectedAssets.join(", ") || "affected assets"}, revoke active credentials/sessions for ${t.accountsMentioned.join(", ") || "compromised accounts"}, preserve volatile memory before remediation, and block outbound C2/exfiltration indicators (${[...externalC2Ips, ...t.domainsAndUrls].join(", ") || "all untrusted egress"}).`;
-    if (/\b(contain\w*|first\s+step|immediate|priorit\w*|what\s+should\s+we\s+do|respond)\b/i.test(qStr)) {
+    if (/\b(?:password\s+reset|aitm|session\s+hijack|fail\s+to\s+contain)\b/i.test(qStr)) {
+      directAnswer = `A standard password reset only updates the user's password hash in Entra ID/Active Directory, but does NOT invalidate active session tokens. In an Adversary-in-the-Middle (AiTM) attack, the adversary intercepts the post-MFA **Primary Refresh Token (PRT)** and active session cookies (\`ESTSAUTH\`, \`ESTSAUTHPERSISTENT\`). These stolen session artifacts remain valid until their expiration or until explicitly revoked via \`Revoke-MgUserSignInSession\`. Furthermore, the adversary established persistence by registering a multi-tenant OAuth application with \`offline_access\` and \`Mail.ReadWrite\` / \`Files.ReadWrite.All\` consent; this application operates via independent refresh/access tokens directly against Microsoft Graph, functioning completely decoupled from the user's password.`;
+    } else if (/\b(?:powershell|microsoft\s+graph|command\s+sequence|revoke.*token|clear\s+session|terminate.*oauth)\b/i.test(qStr)) {
+      directAnswer = `Execute the following Microsoft Graph PowerShell sequence to revoke all active tokens, invalidate sessions, and purge the rogue OAuth registration:
+\`\`\`powershell
+# 1. Connect to Microsoft Graph with Directory Administration privileges
+Connect-MgGraph -Scopes "User.ReadWrite.All", "Application.ReadWrite.All", "Directory.ReadWrite.All"
+
+# 2. Instantly invalidate all active refresh tokens, PRTs, and session cookies for the account
+Revoke-MgUserSignInSession -UserId "${t.accountsMentioned[0] || "sec-admin@megacorp.internal"}"
+
+# 3. Locate the rogue OAuth Enterprise Service Principal
+$rogueApp = Get-MgServicePrincipal -Filter "DisplayName eq 'SystemHealthMonitor-v2'"
+
+# 4. Revoke all delegated and application OAuth2 permission grants
+Get-MgOauth2PermissionGrant -Filter "clientId eq '$($rogueApp.Id)'" | ForEach-Object {
+    Remove-MgOauth2PermissionGrant -OAuth2PermissionGrantId $_.Id
+}
+
+# 5. Delete the Service Principal completely to terminate persistent API access
+Remove-MgServicePrincipal -ServicePrincipalId $rogueApp.Id
+\`\`\``;
+    } else if (/\b(?:volatile\s+forensic|audit\s+log|artifacts|preserve.*remediation)\b/i.test(qStr)) {
+      directAnswer = `Prior to remediation, preserve the following evidence under cryptographic SHA-256 chain of custody:
+1) **Volatile Memory (RAM):** Capture full physical memory on endpoints associated with ${t.accountsMentioned[0] || "sec-admin"} to recover injected Rclone binaries, process handles, and in-memory session tokens;
+2) **Entra ID & Sign-In Logs:** Export non-interactive sign-in logs, Service Principal sign-ins, and Directory Audit logs capturing the OAuth consent event (\`ConsentToApplication\`);
+3) **M365 Unified Audit Log (UAL):** Query \`Search-UnifiedAuditLog\` for \`MailItemsAccessed\`, \`FileDownloaded\`, and \`FileSyncDownloadedFull\` to quantify exfiltration blast radius;
+4) **Network Egress Telemetry:** Retain perimeter firewall state tables, proxy/TLS SNI logs, and NetFlow metrics documenting total bytes transferred to ${[...externalC2Ips, ...t.domainsAndUrls].join(", ") || "external endpoints"}.`;
+    } else if (/\b(mitre|att&ck|technique|tactic|ttp)\b/i.test(qStr)) {
+      directAnswer = `Mapped MITRE ATT&CK techniques: ${t.mitreTechniques.map((m) => `${m.technique_id} (${m.name} — ${m.status})`).join("; ")}.`;
+    } else if (/\b(contain\w*|first\s+step|immediate|priorit\w*|what\s+should\s+we\s+do|respond)\b/i.test(qStr)) {
       directAnswer = `1) Isolate ${t.affectedAssets.join(", ") || "affected host(s)"} via EDR network containment while keeping power ON to preserve RAM; 2) Block outbound egress to ${[...externalC2Ips, ...t.domainsAndUrls].join(", ") || "external C2/exfiltration endpoints"}; 3) Disable/revoke ${t.accountsMentioned.join(", ") || "compromised accounts and session tokens"} and audit persistence mechanisms.`;
     } else if (/\b(forensic|memory|ram|reboot|power\s+off|wipe|preserve|evidence)\b/i.test(qStr)) {
       directAnswer = `Do NOT reboot, power off, or wipe ${t.affectedAssets.join(", ") || "impacted hosts"}. Capture volatile memory (RAM) first, then collect live network sockets, running process trees, and filesystem/audit logs with SHA-256 chain-of-custody hashing.`;
-    } else if (/\b(mitre|att&ck|technique|tactic|ttp)\b/i.test(qStr)) {
-      directAnswer = `Mapped MITRE ATT&CK techniques: ${t.mitreTechniques.map((m) => `${m.technique_id} (${m.name} — ${m.status})`).join("; ")}.`;
     } else if (/\b(detect\w*|sigma|kql|siem|splunk|hunt\w*|query)\b/i.test(qStr)) {
       directAnswer = `Deploy SIEM/EDR detection queries hunting for process creation of ${t.processesAndCommands.slice(0, 3).join(", ") || "suspicious child shells"}, network connections to ${[...externalC2Ips, ...t.domainsAndUrls].join(", ") || "anomalous external IPs"}, and authentication/privilege events for ${t.accountsMentioned.join(", ") || "service/admin accounts"}.`;
     } else if (/\b(attribut\w*|who\s+is|apt|threat\s+actor|ransom)\b/i.test(qStr)) {
