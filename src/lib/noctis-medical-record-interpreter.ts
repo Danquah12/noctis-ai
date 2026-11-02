@@ -575,10 +575,11 @@ export function interpretPathologyRecord(text: string): InterpretedPathologyReco
   const specimenMatch = t.match(/\bspecimen(?:\s+source)?\s*[:=]?\s*([^\n.;]+)/i);
   const specimenSource = specimenMatch ? specimenMatch[1].trim() : undefined;
 
-  // 3. Histologic Diagnosis
+  // 3. Histologic Diagnosis (prioritize Final/Pathologic Diagnosis over Pre-operative diagnosis)
   const dxMatch =
-    t.match(/\b(?:final\s+diagnosis|pathologic\s+diagnosis|diagnosis)\s*[:=]?\s*([^\n]+(?:\n[^\n]+)?)/i) ||
-    t.match(/\bimpression\s*[:=]?\s*([^\n]+)/i);
+    t.match(/\b(?:final\s+diagnosis|pathologic\s+diagnosis)\s*[:=]?\s*([^\n]+(?:\n[^\n]+)?)/i) ||
+    t.match(/\bimpression\s*[:=]?\s*([^\n]+)/i) ||
+    t.match(/(?<!pre-operative\s+)\bdiagnosis\s*[:=]?\s*([^\n]+(?:\n[^\n]+)?)/i);
   const histologicDiagnosis = dxMatch ? dxMatch[1].trim().replace(/\s+/g, " ") : undefined;
 
   // 4. Tumor Grade
@@ -601,11 +602,11 @@ export function interpretPathologyRecord(text: string): InterpretedPathologyReco
   // 6. Biomarkers / IHC
   const biomarkers: { marker: string; result: string; interpretation: string }[] = [];
   const IHC_LIST = [
-    { name: "Estrogen Receptor (ER)", regex: /\b(er|estrogen\s+receptor)\s*[:=]?\s*(positive|negative|\d+\s*%)/i },
-    { name: "Progesterone Receptor (PR)", regex: /\b(pr|progesterone\s+receptor)\s*[:=]?\s*(positive|negative|\d+\s*%)/i },
-    { name: "HER2 / neu", regex: /\b(her2|her2\/neu)\s*[:=]?\s*(positive|negative|equivocal|1\+|2\+|3\+|amplified|non-amplified)/i },
-    { name: "Ki-67 Proliferation Index", regex: /\b(ki-?67)\s*[:=]?\s*(\d+(?:\.\d+)?\s*%)/i },
-    { name: "PD-L1 Expression", regex: /\b(pd-?l1)\s*[:=]?\s*(\d+(?:\.\d+)?\s*%|positive|negative)/i },
+    { name: "Estrogen Receptor (ER)", regex: /\b(?:er|estrogen\s+receptor(?:\s*\([a-z0-9]+\))?)\s*[:=]?\s*(positive|negative|\d+\s*%)/i },
+    { name: "Progesterone Receptor (PR)", regex: /\b(?:pr|progesterone\s+receptor(?:\s*\([a-z0-9]+\))?)\s*[:=]?\s*(positive|negative|\d+\s*%)/i },
+    { name: "HER2 / neu", regex: /\b(?:her2|her2\/neu)\s*[:=]?\s*(positive|negative|equivocal|1\+|2\+|3\+|amplified|non-amplified)/i },
+    { name: "Ki-67 Proliferation Index", regex: /\b(?:ki-?67(?:\s+proliferation\s+index)?)\s*[:=]?\s*(\d+(?:\.\d+)?\s*%)/i },
+    { name: "PD-L1 Expression", regex: /\b(?:pd-?l1)\s*[:=]?\s*(\d+(?:\.\d+)?\s*%|positive|negative)/i },
   ];
 
   for (const ihc of IHC_LIST) {
@@ -613,7 +614,7 @@ export function interpretPathologyRecord(text: string): InterpretedPathologyReco
     if (m) {
       biomarkers.push({
         marker: ihc.name,
-        result: m[2],
+        result: m[1] || m[2] || "Reported",
         interpretation: `Receptor testing directs hormone or targeted therapy options with oncology.`,
       });
     }
