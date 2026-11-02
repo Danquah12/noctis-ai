@@ -12,6 +12,7 @@ import {
   evaluateMalaria,
   evaluateHepatitisC,
 } from "./noctis-global-conditions-engine.ts";
+import { handleNaturalSpecialistClinicalQuery } from "./noctis-specialist-router.ts";
 
 describe("Noctis Global Conditions Suite 1: Pulmonary, Cardiovascular & Gastrointestinal", () => {
   it("evaluates COPD GOLD 2026 Group E exacerbator and home oxygen criteria", () => {
@@ -150,5 +151,16 @@ describe("Noctis Global Conditions Suite 2: Metabolic, Psychiatric & Infectious"
     assert.equal(hcv.diagnosticConclusion, "ACTIVE_CHRONIC_HEPATITIS_C");
     assert.equal(hcv.treatmentDurationWeeks, 8);
     assert.ok(hcv.panGenotypicRegimens.some((r) => r.includes("Epclusa") || r.includes("Mavyret")));
+  });
+
+  it("routes natural severe malaria query with parasitemia and cerebral symptoms to IV Artesunate CDS", () => {
+    const output = handleNaturalSpecialistClinicalQuery(
+      "A traveler returning from Ghana 8 days ago presents with high spiking fevers, dark urine, jaundice, confusion, and a blood smear showing 14% P. falciparum parasitemia. What is the immediate treatment?"
+    );
+    assert.ok(output, "Should route to malaria CDS");
+    assert.ok(output.includes("Malaria Treatment & Artesunate Protocol"));
+    assert.ok(output.includes("SEVERE_MALARIA_LIFE_THREATENING"));
+    assert.ok(output.includes("IV ARTESUNATE STAT"));
+    assert.ok(output.includes("14%"));
   });
 });

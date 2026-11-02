@@ -80,7 +80,7 @@ export function handleNaturalSpecialistClinicalQuery(query: string): string | nu
   // =========================================================================
 
   // Heart Failure & GDMT
-  if (/\b(gdmt|hfref|hfpef|hfmref|heart failure|ejection fraction|lvef|sacubitril|entresto)\b/i.test(q)) {
+  if (!/\b(trastuzumab|her2|chemotherapy|cardio-oncology|breast cancer)\b/i.test(q) && /\b(gdmt|hfref|hfpef|hfmref|heart failure|ejection fraction|lvef|sacubitril|entresto)\b/i.test(q)) {
     const efMatch = q.match(/(?:ef|lvef|ejection fraction)\s*(?:of|is|:)?\s*(\d{1,2})%/i);
     const ef = efMatch ? parseInt(efMatch[1], 10) : undefined;
     const nyhaMatch = q.match(/nyha\s*(?:class)?\s*([iv]+)/i);
@@ -803,17 +803,21 @@ export function handleNaturalSpecialistClinicalQuery(query: string): string | nu
   }
 
   // Malaria Protocol
-  if (/\b(malaria|artesunate|plasmodium falciparum|thick and thin smear|cerebral malaria)\b/i.test(q)) {
+  if (/\b(malaria|artesunate|plasmodium|falciparum|parasitemia|thick and thin smear|cerebral malaria)\b/i.test(q)) {
+    const pMatch = q.match(/(\d+(?:\.\d+)?)\s*%\s*(?:p\.?\s*falciparum\s*)?parasitemia/i) || q.match(/parasitemia\s*(?:of|is|:)?\s*(\d+(?:\.\d+)?)\s*%/i) || q.match(/(\d+(?:\.\d+)?)\s*%/i);
+    const parasitemia = pMatch ? parseFloat(pMatch[1]) : 12;
+
     const res = evaluateMalaria({
       travelToEndemicAreaPastYear: true,
       speciesIdentified: "PLASMODIUM_FALCIPARUM",
-      parasitemiaPercentage: 12,
-      hasImpairedConsciousnessOrCerebralMalaria: /\b(cerebral|confusion|coma)\b/i.test(q),
+      parasitemiaPercentage: parasitemia,
+      hasImpairedConsciousnessOrCerebralMalaria: /\b(cerebral|confusion|coma|altered)\b/i.test(q),
     });
 
     return [
       `# Noctis Clinical Decision Support — Malaria Treatment & Artesunate Protocol`,
       `**Severity Tier:** ${res.severityTier}`,
+      `- **Parasitemia Assessed:** ${parasitemia}%`,
       `- **First-Line Regimen:** ${res.firstLineTherapy}`,
       `- **G6PD Screen Required Before Primaquine/Tafenoquine:** ${res.g6pdTestingRequiredBeforePrimaquine ? "YES" : "NO"}`,
       res.emergencyActions.length ? `### Emergency Actions:\n${res.emergencyActions.map((a) => `- ${a}`).join("\n")}` : "",
@@ -844,12 +848,15 @@ export function handleNaturalSpecialistClinicalQuery(query: string): string | nu
   // =========================================================================
 
   // Top 5 Cancers (Lung, Breast, Prostate, Colorectal, Cervical)
-  if (/\b(lung cancer|breast cancer|prostate cancer|colorectal cancer|colon cancer|cervical cancer|gleason|her2|egfr lung)\b/i.test(q)) {
+  if (/\b(lung cancer|breast cancer|prostate cancer|colorectal cancer|colon cancer|cervical cancer|gleason|her2|trastuzumab|cardio-oncology|egfr lung)\b/i.test(q)) {
     let site: "LUNG" | "BREAST" | "PROSTATE" | "COLORECTAL" | "CERVICAL" = "LUNG";
-    if (/\b(breast cancer|her2|er positive)\b/i.test(q)) site = "BREAST";
+    if (/\b(breast cancer|her2|trastuzumab|er positive)\b/i.test(q)) site = "BREAST";
     else if (/\b(prostate cancer|gleason|psa)\b/i.test(q)) site = "PROSTATE";
     else if (/\b(colorectal|colon cancer|msi-high|dmmr)\b/i.test(q)) site = "COLORECTAL";
     else if (/\b(cervical cancer|hpv 16|hpv 18)\b/i.test(q)) site = "CERVICAL";
+
+    const lvefMatch = q.match(/(?:lvef|ejection fraction|ef)\s*(?:of|is|:|=)?\s*(\d{1,2})%/i);
+    const lvef = lvefMatch ? parseInt(lvefMatch[1], 10) : undefined;
 
     const res = evaluateCancerStaging({
       cancerType: site,
@@ -864,15 +871,34 @@ export function handleNaturalSpecialistClinicalQuery(query: string): string | nu
       },
     });
 
+    const cardioGate: string[] = [];
+    if (site === "BREAST" && (q.includes("trastuzumab") || q.includes("her2") || lvef !== undefined)) {
+      if (lvef !== undefined) {
+        if (lvef < 50) {
+          cardioGate.push(`### Cardio-Oncology Critical Safety Alert:`);
+          cardioGate.push(`- **Baseline LVEF:** ${lvef}% (< 50% threshold).`);
+          cardioGate.push(`- **Action:** Withhold/delay HER2-targeted therapy (Trastuzumab). Repeat echocardiography in 3–4 weeks.`);
+          cardioGate.push(`- **Intervention:** Immediate cardio-oncology consultation; consider guideline-directed cardioprotective therapy (ACEi/ARB, beta-blocker).`);
+          cardioGate.push(`- **Safety Rule:** Do NOT initiate Trastuzumab if LVEF < 45% or symptomatic heart failure.`);
+        } else {
+          cardioGate.push(`### Cardio-Oncology Gate:`);
+          cardioGate.push(`- **Baseline LVEF:** ${lvef}% (>= 50%, within acceptable threshold for HER2-targeted therapy).`);
+          cardioGate.push(`- **Surveillance Protocol:** Mandatory surveillance echocardiogram every 3 months during Trastuzumab therapy.`);
+          cardioGate.push(`- **Withholding Criteria:** Withhold Trastuzumab if absolute LVEF drops >= 10% from baseline AND falls below 50%.`);
+        }
+      }
+    }
+
     return [
       `# Noctis Clinical Decision Support — Oncologic Staging & Targeted Biomarkers`,
       `**Primary Site:** ${res.cancerSite} · **Stage Group:** ${res.stageGroup}`,
       `- **Molecular / Grade Subtype:** ${res.molecularSubtypeOrGradeGroup}`,
+      cardioGate.length ? cardioGate.join("\n") : "",
       res.targetedTherapiesAndBiomarkers.length ? `### Targeted & Immunotherapy Biomarkers:\n${res.targetedTherapiesAndBiomarkers.map((t) => `- ${t}`).join("\n")}` : "",
       `### First-Line Therapeutic Pathways:`,
       res.firstLineTherapeuticPathways.map((p) => `- ${p}`).join("\n"),
       `\n**Screening Guidance:** ${res.screeningAndSurveillanceGuidance}`,
-    ].join("\n");
+    ].filter(Boolean).join("\n");
   }
 
   // Parkinson's Disease (MDS Criteria)
@@ -899,16 +925,19 @@ export function handleNaturalSpecialistClinicalQuery(query: string): string | nu
   if (/\b(osteoporosis|dexa|t-score|frax|alendronate|zoledronic|denosumab|bone mineral density)\b/i.test(q)) {
     const tMatch = q.match(/t-?score\s*[:=]?\s*(-?[0-9.]+)/i);
     const t = tMatch ? parseFloat(tMatch[1]) : -2.7;
+    const egfrMatch = q.match(/(?:egfr|gfr)\s*[:=]?\s*([0-9.]+)/i);
+    const egfr = egfrMatch ? parseFloat(egfrMatch[1]) : 52;
     const res = evaluateOsteoporosis({
       lowestDexaTScore: t,
       ageYears: 72,
       isFemale: true,
-      eGfrMlMin173m2: 52,
+      eGfrMlMin173m2: egfr,
     });
 
     return [
       `# Noctis Clinical Decision Support — Osteoporosis & Bone Mineral Density`,
       `**Classification:** ${res.boneMineralDensityClassification} (Lowest T-score: ${t})`,
+      `- **Renal Function Evaluated:** eGFR ${egfr} mL/min/1.73m²`,
       `- **Pharmacologic Therapy Indicated:** ${res.pharmacologicTherapyIndicated ? "YES" : "NO"}`,
       `### First-Line Antiresorptive Agents:`,
       res.firstLineAntiresorptiveAgents.map((a) => `- ${a}`).join("\n"),
