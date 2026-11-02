@@ -11740,12 +11740,12 @@ function buildEmergencyHandoffInternal(
         item: "Urgent non-contrast brain imaging (head CT or brain MRI) at a stroke-capable hospital",
         why: "required immediately upon arrival to distinguish intracranial hemorrhage from acute ischemic stroke before any antithrombotic or thrombolytic therapy",
       },
-      {
+      ...(curGlucose ? [] : [{
         item: "Point-of-care capillary blood glucose measurement (not measured in clinic)",
         why: "rapidly excludes hypoglycemia as an immediately reversible stroke mimic without delaying EMS transfer",
-      },
+      }]),
       {
-        item: "Independently verified exact symptom-onset time and last-known-well time (caregiver reports normal speech ~25 minutes before arrival)",
+        item: `Independently verified exact symptom-onset time and last-known-well time (${strokeOnsetStr})`,
         why: "defines eligibility windows for intravenous thrombolysis and mechanical thrombectomy, though uncertainty never delays stroke-team activation",
       },
       {
@@ -11855,11 +11855,13 @@ function buildEmergencyHandoffInternal(
       "Immediate EMS activation (Call 911), pre-hospital stroke-team notification, and urgent transport to a stroke-capable hospital — do NOT delay escalation for additional history, questions, glucose testing, or outpatient imaging"
     );
     urgent.push(
-      "Verification of exact symptom-onset time and last-known-well time (caregiver reports patient was speaking normally ~25 minutes before arrival) in parallel with emergency transport"
+      `Verification of exact symptom-onset time and last-known-well time (${strokeOnsetStr}) in parallel with emergency transport`
     );
-    urgent.push(
-      "Immediate point-of-care capillary blood glucose testing to rule out hypoglycemia as a reversible stroke mimic (performed in parallel without delaying EMS transfer)"
-    );
+    if (!curGlucose) {
+      urgent.push(
+        "Immediate point-of-care capillary blood glucose testing to rule out hypoglycemia as a reversible stroke mimic (performed in parallel without delaying EMS transfer)"
+      );
+    }
     urgent.push(
       "Urgent non-contrast brain imaging (head CT or brain MRI) immediately upon hospital arrival to distinguish intracranial hemorrhage from acute ischemic stroke before any antithrombotic or thrombolytic therapy"
     );
@@ -11894,16 +11896,16 @@ function buildEmergencyHandoffInternal(
   if (strokeContext) {
     findings.push("awake with sudden difficulty speaking / difficulty producing words");
     findings.push("right arm weakness (cannot maintain the right arm against gravity)");
-    findings.push("blood glucose: not measured");
+    if (!curGlucose) findings.push("blood glucose: not measured");
   }
   for (const l of curLabs) findings.push(`${l.analyte} ${l.value} ${l.unit}`);
 
   const uncertaintyItems: string[] = strokeContext
     ? [
         "Available clinical information is NOT sufficient to confirm an ischemic stroke, hemorrhagic stroke, or another diagnosis (such as a stroke mimic); urgent brain imaging (CT or MRI) and emergency evaluation are required.",
-        "Exact symptom-onset time and last-known-well time (~25 minutes reported by caregiver) have not yet been independently verified, but uncertain onset time does NOT justify withholding stroke-team activation or delaying emergency evaluation.",
-        "Normal oxygen saturation (97% on room air) and normal temperature (36.8°C) do NOT exclude acute stroke.",
-        "Blood glucose has not been measured, so hypoglycemia or severe hyperglycemia remains unexcluded pending immediate point-of-care testing.",
+        `Exact symptom-onset time and last-known-well time (${strokeOnsetStr}) have not yet been independently verified, but uncertain onset time does NOT justify withholding stroke-team activation or delaying emergency evaluation.`,
+        ...(hasExplicitSpo2OrTemp ? ["Normal oxygen saturation (97% on room air) and normal temperature (36.8°C) do NOT exclude acute stroke."] : []),
+        ...(curGlucose ? [`Point-of-care capillary blood glucose is documented at ${curGlucose.value} mg/dL (ruling out acute hypoglycemia).`] : ["Blood glucose has not been measured, so hypoglycemia or severe hyperglycemia remains unexcluded pending immediate point-of-care testing."]),
         "Diabetes status, atrial fibrillation status, prior stroke or transient ischemic attack (TIA) history, anticoagulant use, complete medication list, allergies, and head trauma/seizure/recent surgery history are unknown.",
         "No brain imaging, ECG, coagulation studies, or current laboratory results are available; none are fabricated or assumed.",
         "Clinical decisions requiring emergency clinician assessment include blood-pressure management targets after brain imaging, eligibility for intravenous thrombolysis or mechanical thrombectomy, and initiation of aspirin or antithrombotic therapy only after intracranial hemorrhage is excluded.",
@@ -12094,7 +12096,7 @@ function buildEmergencyHandoffInternal(
     "Blood glucose: Not measured (point-of-care capillary glucose testing required immediately in parallel with EMS transport)",
   ];
   const strokeReportedHistory: string[] = [
-    "Caregiver report: Patient was speaking normally approximately 25 minutes before arrival; exact symptom-onset time and last-known-well time have not yet been independently verified",
+    `Reported history: ${strokeOnsetStr}; exact symptom-onset time and last-known-well time have not yet been independently verified`,
     "Hypertension: documented",
     "Diabetes: status unknown",
     "Atrial fibrillation: status unknown",
