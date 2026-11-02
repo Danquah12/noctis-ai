@@ -51,6 +51,10 @@ export function parseWorkingCapitalDivergenceMetrics(question: string): WorkingC
     question.match(/revenue\s+(?:growth\s+(?:of\s+)?|grows\s+|increases\s+|rises\s+|up\s+)([+-]?\d+(?:\.\d+)?)\s*%/i) ||
     question.match(/([+-]?\d+(?:\.\d+)?)\s*%\s+revenue\s+growth/i);
 
+  const ocfDollarDropMatch = question.match(
+    /operating\s+cash\s+flow\s*(?:\(ocf\))?\s*(?:dropped|fell|declined)\s+from\s+[+]?\$?(\d+(?:\.\d+)?)\s*(?:m|million)?\s+to\s+[-]?\$?(\d+(?:\.\d+)?)\s*(?:m|million)?/i
+  );
+
   const ocfDeclineMatch =
     question.match(/operating\s+cash\s+flow\s+(?:declines|drops|falls|decreases|down)\s+(?:by\s+)?(\d+(?:\.\d+)?)\s*%/i) ||
     question.match(/ocf\s+(?:declines|drops|falls|decreases|down)\s+(?:by\s+)?(\d+(?:\.\d+)?)\s*%/i);
@@ -59,7 +63,8 @@ export function parseWorkingCapitalDivergenceMetrics(question: string): WorkingC
     question.match(/([+-]?\d+(?:\.\d+)?)\s*%\s+operating\s+cash\s+flow/i);
 
   const arMatch =
-    question.match(/(?:accounts\s+)?receivables?\s+(?:rise|rises|increase|increases|grow|grows|up|jump|jumps)\s+(?:by\s+)?([+-]?\d+(?:\.\d+)?)\s*%/i) ||
+    question.match(/(?:accounts\s+)?receivables?[^\n]*?\(\+?([+-]?\d+(?:\.\d+)?)\s*%\s*(?:YoY)?\)/i) ||
+    question.match(/(?:accounts\s+)?receivables?\s+(?:rise|rises|increase|increases|grow|grows|up|jump|jumps|surged|surges)\s+(?:by\s+|from[^\n]+to[^\n]+)?\+?([+-]?\d+(?:\.\d+)?)\s*%/i) ||
     question.match(/([+-]?\d+(?:\.\d+)?)\s*%\s+(?:increase\s+in\s+)?(?:accounts\s+)?receivables?/i);
 
   const invMatch =
@@ -67,11 +72,13 @@ export function parseWorkingCapitalDivergenceMetrics(question: string): WorkingC
     question.match(/([+-]?\d+(?:\.\d+)?)\s*%\s+(?:increase\s+in\s+)?inventor(?:y|ies)/i);
 
   const revenueGrowthPct = revMatch ? parseFloat(revMatch[1]) : 20;
-  const ocfChangePct = ocfDeclineMatch
-    ? -Math.abs(parseFloat(ocfDeclineMatch[1]))
-    : ocfSignedMatch
-      ? parseFloat(ocfSignedMatch[1])
-      : -35;
+  const ocfChangePct = ocfDollarDropMatch
+    ? round2(((-parseFloat(ocfDollarDropMatch[2]) - parseFloat(ocfDollarDropMatch[1])) / parseFloat(ocfDollarDropMatch[1])) * 100)
+    : ocfDeclineMatch
+      ? -Math.abs(parseFloat(ocfDeclineMatch[1]))
+      : ocfSignedMatch
+        ? parseFloat(ocfSignedMatch[1])
+        : -35;
   const receivablesGrowthPct = arMatch ? parseFloat(arMatch[1]) : 60;
   const inventoryGrowthPct = invMatch ? parseFloat(invMatch[1]) : 45;
 
@@ -839,13 +846,13 @@ export function handleNaturalInvestmentQuery(question: string): string | null {
     return buildInvestmentEngineMasterBlueprint(q);
   }
 
-  // 1a. Multi-year Quantitative SaaS Scaling & Comparison Model Probe (5-year table, R&D, Op Income, FCF, ARR plot)
-  const isMultiYearForecastOrTable =
-    /\b(5[-\s]?year|multi[-\s]?year|comparison\s+table|financial\s+table|forecast|scaling\s+from|plot\s+(?:the\s+)?trends?|trend\s+plot|saas\s+model|unit\s+economics)\b/i.test(q) &&
-    /\b(operating\s+income|ebit|r&d|free\s+cash\s+flow|fcf|arr|revenue|cloud\s+security|saas|gross\s+margin|rule\s+of\s+40)\b/i.test(q);
+  // 1a. Working-Capital / Earnings-Quality Divergence Probe (Evaluated FIRST so revenue-vs-OCF queries are never hijacked)
+  const isWorkingCapitalDivergenceProbe =
+    /\b(operating\s+cash\s+flow|ocf|cash\s+flow\s+from\s+operations)\b/i.test(q) &&
+    /\b(receivables?|accounts\s+receivable|inventor(?:y|ies)|dso\b|dio\b|working\s+capital|channel\s+stuffing|revenue\s+growth|unbilled)\b/i.test(q);
 
-  if (isMultiYearForecastOrTable) {
-    return buildSaaSScalingModelResponse(q);
+  if (isWorkingCapitalDivergenceProbe) {
+    return buildWorkingCapitalDivergenceAnalysis(q);
   }
 
   // 1b. SEC EDGAR Corporate Filing Audit Probe (10-K, 10-Q, 8-K footnote & OCF conversion)
@@ -857,23 +864,22 @@ export function handleNaturalInvestmentQuery(question: string): string | null {
     return buildSecFilingAuditResponse(q);
   }
 
-  // 1c. FRED Macro Benchmark & DCF Valuation Sensitivity Probe (10Y/2Y Treasury, SOFR, Bear/Base/Bull WACC)
+  // 1c. Multi-year Quantitative SaaS Scaling & Comparison Model Probe (Requires explicit scaling/forecast request)
+  const isMultiYearForecastOrTable =
+    /\b(5[-\s]?year\s+(?:scaling|forecast|model|arr)|scaling\s+from\s+\$?\d+m?\s+to\s+\$?\d+m?|build\s+a\s+(?:5|multi)[-\s]?year\s+(?:financial\s+model|table|forecast)|arr\s+scaling\s+table)\b/i.test(q) &&
+    /\b(operating\s+income|ebit|r&d|free\s+cash\s+flow|fcf|arr|revenue|cloud\s+security|saas|gross\s+margin|rule\s+of\s+40)\b/i.test(q);
+
+  if (isMultiYearForecastOrTable) {
+    return buildSaaSScalingModelResponse(q);
+  }
+
+  // 1d. FRED Macro Benchmark & DCF Valuation Sensitivity Probe (10Y/2Y Treasury, SOFR, Bear/Base/Bull WACC)
   const isDcfMacroSensitivityProbe =
     /\b(fred\s+benchmark|10y\s+treasury|2y\s+treasury|treasury\s+yield\w*|yield\s+curve|sofr|discounted\s+cash\s+flow|\bdcf\b|wacc|bear\s*\/\s*base\s*\/\s*bull|discount\s+rate\w*|hurdle\s+rate\w*|cost\s+of\s+equity|capm)\b/i.test(q) &&
     /\b(valuation|sensitivity|cash\s+flow|wacc|rate\w*|hurdle|terminal\s+growth|tech\s+invest\w*|discount\s+rate\w*)\b/i.test(q);
 
   if (isDcfMacroSensitivityProbe) {
     return buildDcfMacroSensitivityResponse(q);
-  }
-
-  // 2. Canonical Sample Evaluation Question or Working-Capital / Earnings-Quality Divergence Probe
-  const isWorkingCapitalDivergenceProbe =
-    /\b(revenue\s+growth|revenue\s+grows|revenue\s+increases|revenue\s+rises)\b/i.test(q) &&
-    /\b(operating\s+cash\s+flow|ocf|cash\s+flow\s+from\s+operations)\b/i.test(q) &&
-    /\b(receivables?|inventor(?:y|ies)|dso\b|dio\b|working\s+capital|channel\s+stuffing)\b/i.test(q);
-
-  if (isWorkingCapitalDivergenceProbe) {
-    return buildWorkingCapitalDivergenceAnalysis(q);
   }
 
   // 3. General Wall Street or Main Street Financial & Investment Scenario Probe
