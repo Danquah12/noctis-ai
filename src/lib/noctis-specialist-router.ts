@@ -940,5 +940,38 @@ export function handleNaturalSpecialistClinicalQuery(query: string): string | nu
     ].join("\n");
   }
 
+  // =========================================================================
+  // 10. ENDOCRINE & OSMOTIC SYMPTOM TRIAD (NEW-ONSET DIABETES CDS)
+  // =========================================================================
+  if (/\b(increased thirst|frequent urination|unexplained weight loss|polyuria|polydipsia|osmotic symptoms?|fatigue.*thirst.*urination|thirst.*urination.*weight)\b/i.test(q)) {
+    return [
+      `# Noctis Clinical Decision Support — New-Onset Diabetes & Osmotic Triad Protocol`,
+      `**Clinical Syndrome:** Classic Osmotic Triad (Polyuria + Polydipsia + Weight Loss + Fatigue)`,
+      `**Primary Differential:** Suspected New-Onset Diabetes Mellitus (Type 1 vs Type 2 vs LADA) — Unconfirmed pending laboratory verification.`,
+      ``,
+      `### Diagnostic Criteria (ADA 2026 Standards of Care):`,
+      `- **Random Plasma Glucose:** >= 200 mg/dL (11.1 mmol/L) in the presence of classic symptoms is diagnostic of diabetes without requiring confirmatory retesting.`,
+      `- **Fasting Plasma Glucose (FPG):** >= 126 mg/dL (7.0 mmol/L) after an 8-hour fast.`,
+      `- **Hemoglobin A1c:** >= 6.5% (48 mmol/mol) using a NGSP-certified assay.`,
+      ``,
+      `### Acute Complication Screening (Must Exclude Immediately):`,
+      `- **Diabetic Ketoacidosis (DKA):** Screen for nausea, vomiting, abdominal pain, Kussmaul respirations, fruity breath odor, or tachypnea. Order urine/serum ketones (quantitative beta-hydroxybutyrate).`,
+      `- **Hyperosmolar Hyperglycemic State (HHS):** Screen for severe dehydration, orthostasis, or altered mental status in older adults (effective osmolality > 320 mOsm/kg).`,
+      ``,
+      `### Secondary & Non-Diabetic Differentials:`,
+      `- **Primary Hyperparathyroidism:** Hypercalcemia causes nephrogenic polyuria, polydipsia, fatigue, and weight loss. Check corrected serum calcium.`,
+      `- **Diabetes Insipidus (Central vs Nephrogenic):** Characterized by profound polyuria/polydipsia with dilute urine (urine specific gravity < 1.005, urine osmolality < 300 mOsm/kg).`,
+      `- **Hyperthyroidism / Thyrotoxicosis:** Catabolic state with weight loss, fatigue, increased thirst, heat intolerance, and tremor. Check serum TSH.`,
+      ``,
+      `### Priority Diagnostic Workup Panel:`,
+      `1. **Basic Metabolic Panel (BMP) [LOINC 24323-8]:** Glucose, BUN, Creatinine/eGFR, Electrolytes, Anion Gap, and Bicarbonate.`,
+      `2. **Hemoglobin A1c [LOINC 4548-4]:** Assess average 3-month glycemic load.`,
+      `3. **Serum Beta-Hydroxybutyrate [LOINC 47094-8] & Urinalysis [LOINC 24356-8]:** Screen for ketonuria, glucosuria, and proteinuria.`,
+      `4. **Fasting C-Peptide [LOINC 1988-5] & Pancreatic Autoantibodies (Anti-GAD65 [LOINC 56540-8], IA-2, ZnT8):** If adult-onset Type 1 Diabetes or LADA is suspected.`,
+      ``,
+      `*Safety Gate Enforced: All unmeasured laboratory parameters are kept strictly unknown. Autonomous medication prescribing is blocked until formal clinician assessment.*`,
+    ].join("\n");
+  }
+
   return null;
 }

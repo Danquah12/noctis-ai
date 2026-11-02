@@ -316,6 +316,129 @@ export const CLINICAL_EVIDENCE_VAULT: AuthoritativeChunk[] = [
     ],
     sha256: computeSha256("AACE 2024 Osteoporosis Guidelines"),
   },
+
+  // --- NEUROLOGY: STROKE, ALZHEIMER'S & PARKINSON'S ---
+  {
+    chunkId: "CHK-AHA-2026-STROKE-THROMBOLYSIS",
+    sourceSociety: "American Heart Association / American Stroke Association",
+    title: "2026 Guidelines for the Early Management of Acute Ischemic Stroke",
+    guidelineVersion: "AHA/ASA 2026",
+    publicationYear: 2026,
+    evidenceGrade: "Level A (High RCT)",
+    primaryCondition: "Stroke",
+    content: "In acute ischemic stroke, IV thrombolysis (Alteplase 0.9 mg/kg or Tenecteplase 0.25 mg/kg) is indicated within 4.5 hours of symptom onset in eligible patients. Blood pressure must be lowered to < 185/110 mmHg before thrombolytic infusion and maintained < 180/105 mmHg for 24 hours. Mechanical thrombectomy (EVT) is indicated up to 24 hours in large vessel occlusions (LVO) of the anterior circulation based on CT perfusion / penumbral imaging.",
+    verifiedDirectives: [
+      "IV thrombolytic window is within 4.5 hours of last known normal",
+      "Blood pressure must be < 185/110 mmHg prior to administering thrombolysis",
+      "Mechanical thrombectomy (EVT) indicated up to 24 hours for LVO based on perfusion mismatch",
+      "Non-contrast head CT is immediate first priority to rule out hemorrhage",
+    ],
+    prohibitedContraindications: [
+      "Never administer IV thrombolytics if active internal bleeding or intracranial hemorrhage is present",
+      "Avoid precipitously lowering blood pressure in ischemic stroke without thrombolytic intent (permissive hypertension < 220/120 allows cerebral perfusion)",
+    ],
+    sha256: computeSha256("AHA/ASA 2026 Stroke Guidelines"),
+  },
+  {
+    chunkId: "CHK-NIA-2024-ALZHEIMERS-DEMENTIA",
+    sourceSociety: "National Institute on Aging - Alzheimer's Association (NIA-AA)",
+    title: "Revised Criteria for Diagnosis and Staging of Alzheimer's Disease",
+    guidelineVersion: "NIA-AA 2024",
+    publicationYear: 2024,
+    evidenceGrade: "Level A (High RCT)",
+    primaryCondition: "Alzheimer's Disease",
+    content: "Alzheimer's disease features progressive memory loss, executive dysfunction, and neurofibrillary tangles/amyloid deposition. Acetylcholinesterase inhibitors (Donepezil, Rivastigmine, Galantamine) are first-line for mild to moderate dementia. Memantine (NMDA receptor antagonist) is added for moderate to severe disease. Anti-amyloid monoclonal antibodies (Lecanemab, Donanemab) require ApoE genotypic testing and baseline/serial MRI for Amyloid-Related Imaging Abnormalities (ARIA-E and ARIA-H).",
+    verifiedDirectives: [
+      "First-line symptomatic therapy: Cholinesterase inhibitors (Donepezil 5-10 mg daily)",
+      "Add Memantine (NMDA receptor antagonist) in moderate to severe dementia",
+      "Anti-amyloid antibodies mandate baseline ApoE genotypic screening and serial MRI monitoring for ARIA",
+      "Always exclude reversible mimics: TSH, Vitamin B12, depression (pseudodementia)",
+    ],
+    prohibitedContraindications: [
+      "Avoid anticholinergic medications (e.g. diphenhydramine, oxybutynin) as they directly accelerate cognitive decline",
+    ],
+    sha256: computeSha256("NIA-AA 2024 Alzheimer's Staging Guidelines"),
+  },
+  {
+    chunkId: "CHK-MDS-2024-PARKINSONS-LEVODOPA",
+    sourceSociety: "International Parkinson and Movement Disorder Society (MDS)",
+    title: "Evidence-Based Review of Treatments for Parkinson's Disease",
+    guidelineVersion: "MDS 2024",
+    publicationYear: 2024,
+    evidenceGrade: "Level A (High RCT)",
+    primaryCondition: "Parkinson's Disease",
+    content: "Diagnosis requires bradykinesia plus resting tremor (4-6 Hz) or cogwheel rigidity. Levodopa-Carbidopa remains the gold-standard and most effective symptomatic therapy. Motor fluctuations ('wearing-off' phenomenon) are managed by dose fractionation, adding a COMT inhibitor (Entacapone), MAO-B inhibitor (Rasagiline), or dopamine agonist. Deep Brain Stimulation (DBS) of the subthalamic nucleus or GPi is indicated for refractory motor fluctuations.",
+    verifiedDirectives: [
+      "Levodopa-Carbidopa is the most potent and effective symptomatic treatment",
+      "Wearing-off motor fluctuations managed by dose fractionation, COMT inhibitors, or MAO-B inhibitors",
+      "Physical and occupational therapy (LSVT BIG) improves functional gait and posture",
+    ],
+    prohibitedContraindications: [
+      "Avoid typical antipsychotics (Haloperidol) and D2-blocking antiemetics (Metoclopramide) which precipitate severe Parkinsonian crisis",
+    ],
+    sha256: computeSha256("MDS 2024 Parkinson's Treatment Guidelines"),
+  },
+
+  // --- INFECTIOUS: TUBERCULOSIS, HEPATITIS C & PNEUMONIA ---
+  {
+    chunkId: "CHK-CDC-2024-TB-RIPE-HEPATOTOX",
+    sourceSociety: "CDC / American Thoracic Society / IDSA",
+    title: "Treatment of Drug-Susceptible Tuberculosis",
+    guidelineVersion: "CDC/ATS 2024",
+    publicationYear: 2024,
+    evidenceGrade: "Level A (High RCT)",
+    primaryCondition: "Tuberculosis",
+    content: "Active pulmonary tuberculosis mandates airborne infection isolation and standard 4-drug RIPE therapy (Rifampin, Isoniazid, Pyrazinamide, Ethambutol) for 2 months, followed by 4 months of Isoniazid and Rifampin. Baseline and serial liver function tests (AST/ALT, Bilirubin) are mandatory. Discontinue hepatotoxic agents immediately if AST/ALT >= 3x ULN with symptoms (nausea, vomiting, jaundice) or >= 5x ULN without symptoms. Add Pyridoxine (Vitamin B6 25-50 mg daily) to prevent INH-induced peripheral neuropathy.",
+    verifiedDirectives: [
+      "Airborne infection isolation and standard 4-drug RIPE regimen for 2 months",
+      "Discontinue hepatotoxic drugs if AST/ALT >= 3x ULN with symptoms or >= 5x ULN asymptomatic",
+      "Co-administer Pyridoxine (Vitamin B6) with Isoniazid to prevent peripheral neuropathy",
+      "Ethambutol requires baseline visual acuity and red-green color discrimination testing",
+    ],
+    prohibitedContraindications: [
+      "Never continue full RIPE regimen when transaminases exceed 5x upper limit of normal",
+    ],
+    sha256: computeSha256("CDC/ATS 2024 Tuberculosis Guidelines"),
+  },
+  {
+    chunkId: "CHK-AASLD-2024-HEPATITIS-C-DAA",
+    sourceSociety: "AASLD / IDSA",
+    title: "HCV Guidance: Recommendations for Testing, Managing, and Treating Hepatitis C",
+    guidelineVersion: "AASLD 2024",
+    publicationYear: 2024,
+    evidenceGrade: "Level A (High RCT)",
+    primaryCondition: "Hepatitis C",
+    content: "Confirmation of active Hepatitis C requires detectable HCV RNA viral load following positive HCV antibody screening. First-line pan-genotypic Direct-Acting Antiviral (DAA) regimens are Sofosbuvir-Velpatasvir (Epclusa) for 12 weeks or Glecaprevir-Pibrentasvir (Mavyret) for 8 weeks in treatment-naive non-cirrhotic patients. Sustained Virologic Response at 12 weeks post-treatment (SVR12) represents a clinical virologic cure in > 98% of patients.",
+    verifiedDirectives: [
+      "Confirm active HCV with quantitative HCV RNA viral load",
+      "Pan-genotypic DAA regimens: Sofosbuvir-Velpatasvir 12 weeks or Glecaprevir-Pibrentasvir 8 weeks",
+      "SVR12 (undetectable HCV RNA 12 weeks post-therapy) indicates clinical cure",
+      "Screen for Hepatitis B co-infection (HBsAg, anti-HBc) prior to DAA to prevent HBV reactivation",
+    ],
+    prohibitedContraindications: [
+      "Never initiate HCV DAA therapy without screening for baseline Hepatitis B (risk of fulminant HBV reactivation)",
+    ],
+    sha256: computeSha256("AASLD 2024 Hepatitis C Guidance"),
+  },
+  {
+    chunkId: "CHK-IDSA-2024-CAP-PNEUMONIA",
+    sourceSociety: "IDSA / American Thoracic Society",
+    title: "Diagnosis and Treatment of Adults with Community-Acquired Pneumonia",
+    guidelineVersion: "IDSA/ATS 2024",
+    publicationYear: 2024,
+    evidenceGrade: "Level A (High RCT)",
+    primaryCondition: "Pneumonia",
+    content: "Risk-stratify CAP using CURB-65 or PSI/PORT score. CURB-65 score 0-1 allows safe outpatient management; score >= 2 indicates inpatient hospitalization; score >= 3 indicates intensive care evaluation. Outpatient empiric therapy in healthy adults: Amoxicillin 1g TID or Doxycycline 100mg BID. Inpatient non-severe: IV Ceftriaxone (Beta-lactam) PLUS Azithromycin (Macrolide) OR respiratory fluoroquinolone monotherapy (Levofloxacin).",
+    verifiedDirectives: [
+      "CURB-65 score >= 2 warrants inpatient admission; >= 3 requires ICU consideration",
+      "Outpatient first-line: Amoxicillin 1g TID or Doxycycline 100mg BID",
+      "Inpatient non-severe: Beta-lactam (Ceftriaxone) + Macrolide (Azithromycin) or Levofloxacin",
+    ],
+    prohibitedContraindications: [
+      "Avoid macrolide monotherapy in regions where pneumococcal macrolide resistance exceeds 25%",
+    ],
+    sha256: computeSha256("IDSA/ATS 2024 Pneumonia Guidelines"),
+  },
 ];
 
 /**
