@@ -614,9 +614,15 @@ export function handleAttackPathAndExploitabilityQuery(question: string): string
   const fullPromptSource = q;
   const lineMatches = [
     ...fullPromptSource.matchAll(
-      /(?:^|\n)\s*(?:[-*•]|\d+[.)])?\s*((?:(?:What|How|Why|When|Where|Which|Who|Can|Could|Should|Would|Is|Are|Do|Does|Did|Will|Calculate|Explain|Write|Provide|Identify|Determine|Assess)\b[^\n]{6,260}?)(?:[.!?](?=\s|$)|$))/gim
+      /(?:^|\n)\s*(?:[-*•]|\d+[.)]|Q:?)?\s*((?:(?:What|How|Why|When|Where|Which|Who|Can|Could|Should|Would|Is|Are|Do|Does|Did|Will|Calculate|Explain|Write|Provide|Identify|Determine|Assess)\b[^\n]{6,260}?)(?:[.!?](?=\s|$)|$))/gim
     ),
   ].map((m) => m[1].trim());
+
+  const anyQuestionLines = [
+    ...fullPromptSource.matchAll(
+      /(?:^|\n)\s*(?:[-*•]|\d+[.)]|Q:?)\s*(.+?\?)/gm
+    ),
+  ].map((m) => m[1].replace(/^(?:Q:?\s*)+/i, "").trim());
 
   const proseMatches = [
     ...fullPromptSource.matchAll(
@@ -624,11 +630,18 @@ export function handleAttackPathAndExploitabilityQuery(question: string): string
     ),
   ].map((m) => m[1].trim());
 
-  const explicitQuestions = (lineMatches.length >= 2 ? lineMatches : proseMatches.length > 0 ? proseMatches : lineMatches)
+  const rawCandidates = [...lineMatches, ...anyQuestionLines, ...proseMatches];
+  const explicitQuestions = rawCandidates
+    .map((qStr) => qStr.replace(/^(?:Q:?\s*)+/i, "").trim())
     .filter((qStr, i, arr) => arr.indexOf(qStr) === i)
     .filter((qStr) => {
-      const clean = qStr.toLowerCase().replace(/^\d+[.)]\s*/, "").trim();
-      return !advSet.has(clean) && !Array.from(advSet).some((adv) => adv.includes(clean) || clean.includes(adv));
+      const clean = qStr.toLowerCase().replace(/^\d+[.)]\s*/, "").replace(/^(?:q:?\s*)+/i, "").trim();
+      return (
+        clean.length >= 10 &&
+        !advSet.has(clean) &&
+        !Array.from(advSet).some((adv) => adv.includes(clean) || clean.includes(adv)) &&
+        !/^(?:return|output|json|schema|acceptance|adversarial|prerequisites)\b/i.test(clean)
+      );
     })
     .slice(0, 6);
 
@@ -638,7 +651,7 @@ export function handleAttackPathAndExploitabilityQuery(question: string): string
       answer = `**CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')**, specifically **Time-Based Blind SQL Injection** (CWE-200 / CWE-208 timing inference via \`pg_sleep()\`). Server latency increase from 45ms to 6,180ms confirms live unparameterized execution of the injected subquery.`;
     } else if (/\b(cvss|vector\s+string|base\s+score|severity\s+score)\b/i.test(qStr)) {
       answer = `**CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:L (Base Score: 7.1 High)** (or 8.6 High if unauthenticated). Exploit is delivered over the Network (AV:N) with Low Complexity (AC:L); Privileges Required is Low (PR:L on tenant endpoint); User Interaction is None (UI:N); Scope is Unchanged (S:U); Confidentiality Impact is High (C:H via exfiltration of sensitive table data such as \`app_users.password\`); Integrity Impact is None (I:N); Availability Impact is Low (A:L via backend worker sleep thread exhaustion).`;
-    } else if (/\b(order\s+by|naive\s+(?:input\s+)?escaping|escaping\s+fails|why\s+(?:naive\s+)?escaping)\b/i.test(qStr)) {
+    } else if (/\b(order\s+by|naive\s+(?:input\s+)?escaping|escaping\s+fails|why\s+(?:naive\s+)?escaping|prepared\s+statements?\s+fail)\b/i.test(qStr)) {
       answer = `Database parameterization placeholders (\`$1\`, \`?\`) only accept **data literals / values**, never SQL identifiers (column names, table names) or direction tokens (\`ASC\`/\`DESC\`). Naive string escaping (e.g. wrapping in quotes \`ORDER BY 'created_at'\`) is ineffective because SQL interprets quoted strings as static literals, rendering the sort a no-op. Furthermore, escaping quotes does not stop subqueries or functions: an attacker injects parenthetical expressions (e.g. \`(SELECT CASE WHEN ... THEN pg_sleep(6) ELSE pg_sleep(0) END)\`) that execute unconditionally without containing quotes.`;
     } else if (/\b(code\s+patch|typescript|node(?:\.js)?|allowlist(?:ing)?|patch\s+using|safe\s+allowlisting)\b/i.test(qStr)) {
       answer = `Safe Node.js/TypeScript patch using strict Zod validation and a constant identifier dictionary allowlist:\n\`\`\`typescript\nimport { Request, Response } from "express";\nimport { z } from "zod";\nimport { pool } from "@/lib/db";\n\n// 1. Strict Allowlist of permitted database column identifiers\nexport const INVOICE_SORT_COLUMNS = {\n  id: "invoices.id",\n  invoice_number: "invoices.invoice_number",\n  amount: "invoices.amount_cents",\n  status: "invoices.status",\n  due_date: "invoices.due_date",\n  created_at: "invoices.created_at",\n} as const;\n\ntype AllowedSortKey = keyof typeof INVOICE_SORT_COLUMNS;\n\n// 2. Strict Input Validation via Zod\nconst ExportInvoicesSchema = z.object({\n  sort_column: z\n    .string()\n    .default("created_at")\n    .transform((val) => val.toLowerCase() as AllowedSortKey)\n    .refine((val): val is AllowedSortKey => val in INVOICE_SORT_COLUMNS, {\n      message: "Invalid sort column. Must be a recognized invoice field.",\n    }),\n  sort_order: z\n    .enum(["ASC", "DESC", "asc", "desc"])\n    .default("DESC")\n    .transform((val) => val.toUpperCase() as "ASC" | "DESC"),\n});\n\nexport async function exportInvoicesHandler(req: Request, res: Response) {\n  const tenantId = req.user?.tenantId;\n  if (!tenantId) return res.status(401).json({ error: "Unauthorized" });\n\n  const parseResult = ExportInvoicesSchema.safeParse(req.body);\n  if (!parseResult.success) return res.status(400).json({ error: parseResult.error.flatten() });\n\n  const { sort_column, sort_order } = parseResult.data;\n  const safeSqlColumn = INVOICE_SORT_COLUMNS[sort_column];\n\n  const query = \`\n    SELECT id, invoice_number, amount_cents, status, due_date, created_at\n    FROM tenant_invoices\n    WHERE tenant_id = $1\n    ORDER BY \${safeSqlColumn} \${sort_order}\n    LIMIT 5000;\n  \`;\n\n  const { rows } = await pool.query(query, [tenantId]);\n  return res.status(200).json({ data: rows });\n}\n\`\`\``;

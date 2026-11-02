@@ -747,9 +747,16 @@ function adaptSpecialistEngineOutput(q: string, engineResponse: string, engineId
 
   const requestedKeys = parseUniversalRequestedJsonKeys(q);
 
-  // If the engine response contains a rich quantitative markdown table or executable code interpreter block,
-  // preserve its structure and rendering fidelity directly unless explicit top-level JSON keys were requested.
-  if (!requestedKeys && (engineResponse.includes("|---|") || engineResponse.includes("```"))) {
+  // If the engine response contains a rich quantitative markdown table, executable code interpreter block,
+  // or has already formatted its own direct questions / adversarial gates, preserve it directly.
+  if (
+    !requestedKeys &&
+    (engineResponse.includes("|---|") ||
+      engineResponse.includes("```") ||
+      engineResponse.includes("Direct Scenario Questions Answered") ||
+      engineResponse.includes("Adversarial Pushback Gate") ||
+      engineResponse.includes("Adversarial Instruction Pushback"))
+  ) {
     return engineResponse;
   }
 
