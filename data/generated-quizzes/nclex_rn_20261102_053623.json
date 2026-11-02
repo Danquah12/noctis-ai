@@ -1,0 +1,15 @@
+{
+  "exam": "NCLEX-RN",
+  "domain": "Physiological Integrity: Pharmacological and Parenteral Therapies",
+  "vignette": "A 58-year-old male with end-stage renal disease (ESRD) maintained on thrice-weekly hemodialysis is brought to the emergency department after missing two consecutive dialysis treatments. The client reports severe lower-extremity heaviness, generalized muscle flaccidity, and lightheadedness. Physical examination reveals 1+ deep tendon reflexes bilaterally and a slow, irregular peripheral pulse. Vital signs are: blood pressure 94/56 mmHg, heart rate 42 beats/min, respiratory rate 18 breaths/min, and SpO2 96% on room air. The bedside telemetry monitor shows sinus bradycardia with tall, tented T waves, loss of discernible P waves, and a widened QRS complex measuring 148 ms. Stat laboratory results confirm a serum potassium level of 7.6 mEq/L (reference range: 3.5\u20135.0 mEq/L). The emergency healthcare provider enters several urgent medication orders.",
+  "question": "Which prescribed medication must the nurse administer first?",
+  "options": {
+    "A": "Calcium gluconate 10% 1,000 mg IV push over 3 minutes",
+    "B": "Regular insulin 10 units IV push with 50 mL of 50% dextrose (D50W)",
+    "C": "Sodium polystyrene sulfonate 30 g orally in 20% sorbitol",
+    "D": "Nebulized albuterol sulfate 20 mg via continuous face mask over 15 minutes"
+  },
+  "correct_answer": "A",
+  "high_yield_pearl": "C-BIG-K mnemonic for acute severe hyperkalemia with cardiotoxicity: 'C' (Calcium gluconate/chloride) is ALWAYS first because it immediately raises the cardiac action potential threshold, stabilizing myocardial membranes within 1\u20133 minutes without altering serum potassium. 'B' (Beta-agonists like albuterol) and 'I/G' (Insulin + Glucose) shift potassium into cells (onset 15\u201330 min). 'K' (Kayexalate/sodium polystyrene sulfonate, loop diuretics, or hemodialysis) eliminates potassium from the body (onset 1\u20132 hours or more). Never delay membrane stabilization to wait for shifting or elimination.",
+  "tactics_and_technique": "1. Analyze Urgency and Life Threats (Circulation Priority): The patient exhibits critical hyperkalemia (7.6 mEq/L) with active cardiac toxicity (QRS widening, lost P waves, peaked T waves, bradycardia), placing him at immediate risk for imminent ventricular fibrillation or asystole. 2. Distinguish Drug Mechanisms and Onsets: Recognize that while all four options treat hyperkalemia, they serve three distinct physiological roles: membrane stabilization, intracellular translocation, and total-body elimination. 3. Prioritize by Speed of Myocardial Protection: Calcium gluconate works in 1 to 3 minutes to prevent lethal dysrhythmias. Shifting agents (insulin/dextrose and albuterol) require 15 to 30 minutes, during which an unstabilized heart can arrest. Elimination agents (sodium polystyrene sulfonate) take hours. Therefore, administration of the cardioprotective stabilizer must precede all shifting and elimination agents."
+}

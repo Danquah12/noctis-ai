@@ -15,6 +15,15 @@ import json
 import os
 import sys
 from datetime import datetime
+
+# Ensure utf-8 encoding on Windows standard streams to avoid cp1252 charmap encoding errors
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 from google.antigravity import Agent, LocalAgentConfig, CapabilitiesConfig
 
 SYSTEM_PROMPT = """
@@ -90,15 +99,48 @@ async def generate_vignette(exam_name: str, topic: str, save_output: bool = True
             print("\n\n[Notice] Response was received but could not be parsed as strict JSON.")
         return raw_text
 
+BATCH_EXAMS = [
+    ("USMLE Step 1", "Cardiovascular & Hemodynamic Pathology"),
+    ("NCLEX-RN", "Pharmacology, Safe Medication Administration & Prioritization"),
+    ("NAPLEX", "Pharmacokinetics, Drug Interactions & Bioavailability"),
+    ("California Bar Examination", "Constitutional Law, Due Process & Commercial Speech"),
+    ("Uniform Bar Examination (UBE)", "Civil Procedure, Federal Subject Matter & Personal Jurisdiction"),
+    ("CISSP", "Security Architecture, Zero-Trust & Cryptographic Systems"),
+    ("CompTIA Security+", "Threat Vectors, Identity Management & Incident Response"),
+    ("AWS Certified Solutions Architect", "Resilient Multi-Region & High-Availability Architecture"),
+]
+
+async def run_batch():
+    print(f"\n==================================================")
+    print(f"  Antigravity Autonomous Board Exam Batch Pipeline")
+    print(f"  Targeting {len(BATCH_EXAMS)} Premier Certification Exams")
+    print(f"==================================================\n")
+    results = []
+    for idx, (exam, topic) in enumerate(BATCH_EXAMS, start=1):
+        print(f"\n[{idx}/{len(BATCH_EXAMS)}] Generating: {exam} -> {topic}")
+        try:
+            res = await generate_vignette(exam, topic, save_output=True, quiet=False)
+            results.append((exam, True))
+        except Exception as e:
+            print(f"Error generating {exam}: {e}")
+            results.append((exam, False))
+    print(f"\n==================================================")
+    print(f"  Batch Run Complete: {sum(1 for _, ok in results if ok)}/{len(results)} Succeeded")
+    print(f"==================================================\n")
+
 async def main():
     parser = argparse.ArgumentParser(description="Antigravity Board Exam Question Generator")
     parser.add_argument("--exam", type=str, default="USMLE Step 1", help="Target Board Exam Name")
     parser.add_argument("--topic", type=str, default="Renal Physiology & Tubular Transport", help="Domain or Topic")
     parser.add_argument("--save", action="store_true", default=True, help="Save JSON to disk")
     parser.add_argument("--quiet", action="store_true", default=False, help="Output JSON only to stdout")
+    parser.add_argument("--batch", action="store_true", default=False, help="Run batch generation for top priority exams")
     args = parser.parse_args()
 
-    await generate_vignette(args.exam, args.topic, save_output=args.save, quiet=args.quiet)
+    if args.batch:
+        await run_batch()
+    else:
+        await generate_vignette(args.exam, args.topic, save_output=args.save, quiet=args.quiet)
 
 if __name__ == "__main__":
     asyncio.run(main())

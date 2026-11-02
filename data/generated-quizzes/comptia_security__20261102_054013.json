@@ -1,0 +1,15 @@
+{
+  "exam": "CompTIA Security+",
+  "domain": "Threat Vectors, Identity Management & Incident Response",
+  "vignette": "A Security Operations Center (SOC) analyst receives a high-severity alert indicating anomalous behavior on an enterprise cloud tenant. An executive account authenticated from an unrecognized foreign ASN without generating a secondary multi-factor authentication (MFA) challenge. Log telemetry reveals the session utilized a valid Primary Refresh Token (PRT) and session cookie rather than standard credential negotiation. Forensics confirms the executive clicked a targeted phishing link 45 minutes prior that routed through an Adversary-in-the-Middle (AiTM) reverse-proxy framework (e.g., Evilginx). Audit logs show that within 10 minutes of initial access, the threat actor registered a rogue multi-tenant OAuth 2.0 application grant with 'Application.ReadWrite.All' and 'Directory.ReadWrite.All' delegated permissions, attempting to establish persistent API-level access outside the identity provider's interactive login controls.",
+  "question": "Which of the following sets of actions represents the most effective immediate containment strategy to completely neutralize the attacker's active access?",
+  "options": {
+    "A": "Isolate the executive's corporate laptop from the local subnet via endpoint detection and response (EDR) and initiate a full cryptographic wipe.",
+    "B": "Revoke all active refresh tokens and user sessions, disable the compromised identity, and revoke the rogue OAuth application's service principal grants.",
+    "C": "Reset the user's primary directory password, enforce SMS-based one-time password (OTP) re-enrollment, and block the foreign ASN at the boundary firewall.",
+    "D": "Re-issue the enterprise root CA certificate, flush the internal DNS resolver cache, and submit the reverse-proxy domain to public threat feeds."
+  },
+  "correct_answer": "B",
+  "high_yield_pearl": "AiTM bypasses MFA via Session Hijacking (stealing session cookies/tokens); Password resets alone DO NOT invalidate existing OAuth access/refresh tokens. Containment requires explicit session/token revocation AND stripping persistence mechanisms (illicit app consent/rogue service principals).",
+  "tactics_and_technique": "1. Identify the Threat Vector: The attack used an AiTM phishing reverse-proxy to intercept authentication tokens and cookies, bypassing traditional MFA. 2. Recognize the Threat Actor's Posture: The adversary established persistence in the cloud tenant via OAuth 2.0 delegated permissions. 3. Evaluate Containment Targets: Because the token was replayed from an external network, endpoint isolation (Option A) does not stop cloud-side exploitation. Standard password resets (Option C) leave existing OAuth tokens alive until TTL expiration and do nothing to mitigate the rogue enterprise application. 4. Select the Comprehensive Identity Containment Action: Revoking all active user refresh sessions shuts down the interactive hijacked session, while removing the unauthorized OAuth service principal eliminates the non-interactive API backdoor (Option B)."
+}
