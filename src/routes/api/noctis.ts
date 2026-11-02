@@ -149,6 +149,44 @@ export const Route = createFileRoute("/api/noctis")({
           const { runFrontierPillarsTestSuite } = await import("@/lib/noctis-frontier-pillars");
           return Response.json(runFrontierPillarsTestSuite(), { headers: { "cache-control": "no-store" } });
         }
+        if (url.searchParams.get("medical_benchmark")) {
+          const mode = url.searchParams.get("medical_benchmark");
+          const {
+            BENCHMARK_CATEGORIES,
+            NOCTIS_MED_BENCH_130,
+            build1000QuestionBenchmarkBlueprint,
+          } = await import("@/lib/noctis-medical-benchmark");
+          if (mode === "spec" || mode === "categories") {
+            return Response.json(
+              {
+                benchmark: "NOCTIS-MED-BENCH-130",
+                totalCategories: BENCHMARK_CATEGORIES.length,
+                totalQuestions: NOCTIS_MED_BENCH_130.length,
+                categories: BENCHMARK_CATEGORIES,
+              },
+              { headers: CORS_HEADERS }
+            );
+          }
+          if (mode === "questions") {
+            const cat = url.searchParams.get("category");
+            const filtered = cat
+              ? NOCTIS_MED_BENCH_130.filter((q) => q.categoryNumber === Number(cat))
+              : NOCTIS_MED_BENCH_130;
+            return Response.json({ questions: filtered }, { headers: CORS_HEADERS });
+          }
+          if (mode === "blueprint" || mode === "1000") {
+            return Response.json(build1000QuestionBenchmarkBlueprint(), { headers: CORS_HEADERS });
+          }
+          return Response.json(
+            {
+              benchmark: "NOCTIS-MED-BENCH-130",
+              categories: BENCHMARK_CATEGORIES,
+              totalQuestions: NOCTIS_MED_BENCH_130.length,
+              blueprint1000: build1000QuestionBenchmarkBlueprint(),
+            },
+            { headers: CORS_HEADERS }
+          );
+        }
         if (url.searchParams.get("health") === "suite") {
           const {
             runHealthIntelligenceTestSuite,
