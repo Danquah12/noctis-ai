@@ -22,6 +22,12 @@ import {
   Info,
   ChevronRight,
   ExternalLink,
+  UploadCloud,
+  TrendingUp,
+  Dna,
+  Printer,
+  Download,
+  FileUp,
 } from "lucide-react";
 import {
   PatientReportedData,
@@ -33,6 +39,25 @@ import {
   PatientDiagnosticDossier,
   DifferentialDiagnosisItem,
 } from "@/lib/noctis-patient-diagnosis";
+import {
+  buildLongitudinalDossier,
+  formatLongitudinalReportMarkdown,
+  type LongitudinalEvaluationDossier,
+} from "@/lib/noctis-longitudinal-trends";
+import {
+  evaluatePharmacogenomics,
+  formatPharmacogenomicsMarkdown,
+  type PharmacogenomicReport,
+} from "@/lib/noctis-pharmacogenomics";
+import {
+  generateFhirR4Bundle,
+  generatePrintableDoctorVisitBriefHtml,
+} from "@/lib/noctis-patient-export";
+import {
+  parseOcrMedicalIntake,
+  sanitizeOcrMedicalText,
+  type ExtractedOcrIntake,
+} from "@/lib/noctis-ocr-intake";
 
 interface NoctisPatientDiagnosisModalProps {
   open: boolean;
@@ -98,44 +123,44 @@ const PRESET_SCENARIOS: PresetScenario[] = [
       painRadiation: "none",
       onsetTiming: "2 hours ago shortly after landing",
       associatedSymptoms: ["shortness of breath", "palpitations (racing heart)", "leg / calf swelling"],
-      pastMedicalHistory: ["Deep Vein Thrombosis / Prior PE"],
-      vitals: { systolicBp: 110, diastolicBp: 72, heartRate: 114, spo2: 91, temperatureC: 37.2 },
+      pastMedicalHistory: ["Tobacco Smoking History"],
+      vitals: { systolicBp: 128, diastolicBp: 82, heartRate: 114, spo2: 91, temperatureC: 37.3 },
     },
   },
   {
     id: "appendicitis",
-    name: "RLQ Abdominal Pain & Anorexia (Appendicitis)",
+    name: "Periumbilical Migrating to RLQ Pain (Appendicitis)",
     badge: "P1 URGENT ED",
     badgeColor: "bg-orange-500/20 text-orange-400 border-orange-500/30",
     data: {
-      chiefComplaint: "Severe belly pain that started around my belly button and moved to my lower right side",
+      chiefComplaint: "Severe abdominal pain starting around my belly button that migrated to the right lower belly with fever",
       ageYears: 24,
       biologicalSex: "male",
       painQuality: "sharp",
       painSeverity: 8,
       painRadiation: "right lower quadrant",
-      onsetTiming: "14 hours ago",
-      associatedSymptoms: ["nausea", "vomiting", "fever"],
+      onsetTiming: "14 hours ago, progressively worsening",
+      associatedSymptoms: ["fever", "nausea", "vomiting"],
       pastMedicalHistory: [],
-      vitals: { systolicBp: 122, diastolicBp: 78, heartRate: 94, spo2: 99, temperatureC: 38.2 },
+      vitals: { systolicBp: 122, diastolicBp: 78, heartRate: 102, spo2: 99, temperatureC: 38.3 },
     },
   },
   {
     id: "gerd_reflux",
-    name: "Postprandial Burning Epigastric Pain (GERD)",
-    badge: "P3 ROUTINE",
-    badgeColor: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+    name: "Burning Chest Discomfort after Spicy Meal (GERD)",
+    badge: "P3 OUTPATIENT",
+    badgeColor: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
     data: {
-      chiefComplaint: "Burning pain in the center of my upper chest and throat after eating spicy food",
+      chiefComplaint: "Burning substernal discomfort after heavy dinner, worse when lying flat, relieved by drinking water",
       ageYears: 36,
-      biologicalSex: "female",
+      biologicalSex: "male",
       painQuality: "burning",
       painSeverity: 4,
       painRadiation: "throat",
       onsetTiming: "1 hour after dinner",
       associatedSymptoms: ["nausea"],
       pastMedicalHistory: [],
-      vitals: { systolicBp: 118, diastolicBp: 74, heartRate: 72, spo2: 99, temperatureC: 36.6 },
+      vitals: { systolicBp: 120, diastolicBp: 76, heartRate: 72, spo2: 99, temperatureC: 36.7 },
     },
   },
 ];
@@ -205,13 +230,20 @@ export function NoctisPatientDiagnosisModal({
   const [spo2, setSpo2] = useState<number | undefined>(96);
   const [temperatureC, setTemperatureC] = useState<number | undefined>(37.0);
 
+  // Upload & OCR State
+  const [uploadedRecordText, setUploadedRecordText] = useState("");
+  const [ocrIntake, setOcrIntake] = useState<ExtractedOcrIntake | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+
   // Dynamic Adaptive Responses State (User clicks Yes/No to adaptive questions)
   const [answeredAdaptiveQuestions, setAnsweredAdaptiveQuestions] = useState<
     Record<string, string>
   >({});
 
   const [copiedSoap, setCopiedSoap] = useState(false);
-  const [activeTab, setActiveTab] = useState<"intake" | "differentials" | "adaptive" | "soap">("differentials");
+  const [activeTab, setActiveTab] = useState<
+    "differentials" | "adaptive" | "intake" | "records_upload" | "trends" | "pgx_safety" | "soap"
+  >("differentials");
 
   // Construct patient data object
   const patientData: PatientReportedData = useMemo(() => {
@@ -230,7 +262,7 @@ export function NoctisPatientDiagnosisModal({
       painRadiation,
       associatedSymptoms: selectedSymptoms,
       pastMedicalHistory: selectedPmh,
-      currentMedications: [],
+      currentMedications: ocrIntake ? ocrIntake.detectedMedications : [],
       allergies: [],
       vitals: vitalsEnabled
         ? {
@@ -259,6 +291,7 @@ export function NoctisPatientDiagnosisModal({
     heartRate,
     spo2,
     temperatureC,
+    ocrIntake,
   ]);
 
   // Compute Triage & Differentials
@@ -276,13 +309,33 @@ export function NoctisPatientDiagnosisModal({
     [patientData, triage, differentials]
   );
 
+  // Complete Dossier for Exports
+  const completeDossier: PatientDiagnosticDossier = useMemo(() => {
+    return buildPatientDiagnosticReport(patientData);
+  }, [patientData]);
+
+  // Longitudinal Lab Analysis
+  const longitudinal: LongitudinalEvaluationDossier = useMemo(() => {
+    return buildLongitudinalDossier(uploadedRecordText || chiefComplaint);
+  }, [uploadedRecordText, chiefComplaint]);
+
+  // Pharmacogenomic Safety Screening
+  const pgxReport: PharmacogenomicReport = useMemo(() => {
+    const textCorpus = [
+      uploadedRecordText,
+      chiefComplaint,
+      ...patientData.currentMedications,
+    ].join(" ");
+    return evaluatePharmacogenomics(textCorpus);
+  }, [uploadedRecordText, chiefComplaint, patientData.currentMedications]);
+
   const loadPreset = (preset: PresetScenario) => {
     if (preset.data.chiefComplaint) setChiefComplaint(preset.data.chiefComplaint);
     if (preset.data.ageYears !== undefined) setAgeYears(preset.data.ageYears);
     if (preset.data.biologicalSex) setBiologicalSex(preset.data.biologicalSex);
     if (preset.data.painQuality) setPainQuality(preset.data.painQuality);
     if (preset.data.painSeverity !== undefined) setPainSeverity(preset.data.painSeverity);
-    if (preset.data.painRadiation) setPainRadiation(preset.data.painRadiation);
+    if (preset.data.painRadiation !== undefined) setPainRadiation(preset.data.painRadiation);
     if (preset.data.onsetTiming) setOnsetTiming(preset.data.onsetTiming);
     if (preset.data.associatedSymptoms) setSelectedSymptoms(preset.data.associatedSymptoms);
     if (preset.data.pastMedicalHistory) setSelectedPmh(preset.data.pastMedicalHistory);
@@ -315,9 +368,93 @@ export function NoctisPatientDiagnosisModal({
   const handleAnswerAdaptive = (qId: string, answer: string, questionText: string) => {
     setAnsweredAdaptiveQuestions((prev) => ({ ...prev, [qId]: answer }));
     if (answer === "Yes, definitely") {
-      // Append finding to chief complaint / symptoms
       setChiefComplaint((prev) => `${prev} (Confirmed: ${questionText.slice(0, 50)}...)`);
     }
+  };
+
+  // OCR & Document Intake Handler
+  const handleProcessDocumentText = (text: string) => {
+    setUploadedRecordText(text);
+    const parsed = parseOcrMedicalIntake(text);
+    setOcrIntake(parsed);
+
+    // Auto-populate vitals if found
+    if (parsed.detectedVitals.bloodPressure) {
+      const parts = parsed.detectedVitals.bloodPressure.split("/");
+      if (parts.length === 2) {
+        setSystolicBp(parseInt(parts[0], 10));
+        setDiastolicBp(parseInt(parts[1], 10));
+      }
+    }
+    if (parsed.detectedVitals.heartRate) setHeartRate(parsed.detectedVitals.heartRate);
+    if (parsed.detectedVitals.temperatureCelsius) setTemperatureC(parsed.detectedVitals.temperatureCelsius);
+    if (parsed.detectedVitals.oxygenSaturation) setSpo2(parsed.detectedVitals.oxygenSaturation);
+    if (parsed.detectedVitals.bloodPressure || parsed.detectedVitals.heartRate) {
+      setVitalsEnabled(true);
+    }
+
+    // Auto-populate chief complaint if present
+    if (parsed.suggestedChiefComplaint && !chiefComplaint.includes(parsed.suggestedChiefComplaint)) {
+      setChiefComplaint(parsed.suggestedChiefComplaint);
+    }
+  };
+
+  const handleFileDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0];
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const content = ev.target?.result as string;
+        if (content) handleProcessDocumentText(content);
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const content = ev.target?.result as string;
+        if (content) handleProcessDocumentText(content);
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  // 1-Click Export Handlers
+  const handlePrintDoctorBrief = () => {
+    const html = generatePrintableDoctorVisitBriefHtml({
+      dossier: completeDossier,
+      patientName: "Patient",
+      patientAge: ageYears,
+      patientSex: biologicalSex,
+    });
+    const printWindow = window.open("", "_blank");
+    if (printWindow) {
+      printWindow.document.write(html);
+      printWindow.document.close();
+      printWindow.focus();
+    }
+  };
+
+  const handleExportFhirBundle = () => {
+    const bundle = generateFhirR4Bundle({
+      dossier: completeDossier,
+      patientName: "Patient",
+      patientAge: ageYears,
+      patientSex: biologicalSex,
+    });
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(bundle, null, 2));
+    const downloadAnchor = document.createElement("a");
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", `noctis-fhir-r4-${completeDossier.dossierId.toLowerCase()}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
   };
 
   const copySoapToClipboard = () => {
@@ -360,7 +497,7 @@ export function NoctisPatientDiagnosisModal({
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <div
               className={`px-3 py-1 rounded-full text-xs font-semibold border flex items-center gap-1.5 ${
                 triage.isEmergency
@@ -373,6 +510,25 @@ export function NoctisPatientDiagnosisModal({
               {triage.isEmergency ? <AlertTriangle className="w-3.5 h-3.5" /> : <Activity className="w-3.5 h-3.5" />}
               {triage.urgencyLabel.split("(")[0].trim()}
             </div>
+
+            {/* 1-Click Print & FHIR Export Buttons */}
+            <button
+              onClick={handlePrintDoctorBrief}
+              title="Print Doctor Visit Brief / Save as PDF"
+              className="px-2.5 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 hover:text-white border border-neutral-700 text-xs flex items-center gap-1.5 transition-colors"
+            >
+              <Printer className="w-3.5 h-3.5 text-blue-400" />
+              <span className="hidden sm:inline">Doctor Brief</span>
+            </button>
+
+            <button
+              onClick={handleExportFhirBundle}
+              title="Export HL7 FHIR R4 JSON Bundle"
+              className="px-2.5 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 hover:text-white border border-neutral-700 text-xs flex items-center gap-1.5 transition-colors"
+            >
+              <Download className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="hidden sm:inline">FHIR R4</span>
+            </button>
 
             <button
               onClick={onClose}
@@ -428,9 +584,12 @@ export function NoctisPatientDiagnosisModal({
         )}
 
         {/* Navigation Tabs */}
-        <div className="flex border-b border-neutral-800 px-6 pt-3 bg-neutral-900/50 gap-2">
+        <div className="flex border-b border-neutral-800 px-6 pt-3 bg-neutral-900/50 gap-2 overflow-x-auto no-scrollbar">
           {[
             { id: "differentials", label: "Ranked Differentials", count: differentials.length, icon: Activity },
+            { id: "records_upload", label: "Upload & Scan Records", count: ocrIntake ? `${ocrIntake.detectedLabs.length} labs` : null, icon: UploadCloud },
+            { id: "trends", label: "Lab Trends & Velocity", count: longitudinal.analytesEvaluated.length ? `${longitudinal.analytesEvaluated.length}` : null, icon: TrendingUp },
+            { id: "pgx_safety", label: "Pharmacogenomics", count: pgxReport.totalRisks ? `${pgxReport.totalRisks}` : null, icon: Dna },
             { id: "adaptive", label: "Adaptive Interviewer", count: adaptiveQuestions.length, icon: HelpCircle },
             { id: "intake", label: "Patient Intake & Vitals", count: null, icon: User },
             { id: "soap", label: "Clinical SOAP Dossier", count: null, icon: FileText },
@@ -441,7 +600,7 @@ export function NoctisPatientDiagnosisModal({
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-medium rounded-t-lg transition-colors border-b-2 ${
+                className={`flex items-center gap-2 px-3.5 py-2.5 text-xs font-medium rounded-t-lg transition-colors border-b-2 whitespace-nowrap ${
                   isActive
                     ? "border-blue-500 text-blue-400 bg-neutral-800/60"
                     : "border-transparent text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/30"
@@ -463,117 +622,98 @@ export function NoctisPatientDiagnosisModal({
           })}
         </div>
 
-        {/* Tab Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* TAB 1: DIFFERENTIALS */}
+        {/* Tab Content Body */}
+        <div className="p-6 overflow-y-auto flex-1 space-y-6">
+          {/* TAB 1: RANKED DIFFERENTIALS */}
           {activeTab === "differentials" && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-sm font-semibold text-white">
-                    Differential Diagnosis Rankings ({differentials.length} Evaluated)
+                    Differential Diagnosis Matrix (Bayesian Evidence-Weighted)
                   </h3>
                   <p className="text-xs text-neutral-400">
-                    Calculated using Bayesian symptom-likelihood weights and red-flag exclusion gates
+                    Calculated probabilities from syndromic presentation, vitals, and missing-data constraints
                   </p>
                 </div>
-                <div className="text-xs text-neutral-400 flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span> Primary
-                  <span className="w-2.5 h-2.5 rounded-full bg-red-500"></span> Must-Not-Miss
-                  <span className="w-2.5 h-2.5 rounded-full bg-neutral-500"></span> Alternative
-                </div>
+                <span className="text-xs text-neutral-500">
+                  {differentials.length} candidates evaluated
+                </span>
               </div>
 
               <div className="space-y-3">
-                {differentials.map((diff) => {
-                  const isPrimary = diff.category === "PRIMARY_HYPOTHESIS";
-                  const isMustNotMiss = diff.category === "MUST_NOT_MISS_RULEOUT";
+                {differentials.map((item, idx) => {
+                  const isPrimary = item.tier === "TIER_1_PRIMARY";
+                  const isMustNotMiss = item.tier === "TIER_2_MUST_NOT_MISS";
+
                   return (
                     <div
-                      key={diff.diseaseName}
+                      key={item.conditionId}
                       className={`p-4 rounded-xl border transition-all ${
                         isPrimary
-                          ? "bg-blue-950/20 border-blue-500/40 shadow-sm"
+                          ? "bg-red-950/20 border-red-500/40 shadow-lg shadow-red-950/30"
                           : isMustNotMiss
-                          ? "bg-red-950/20 border-red-500/40"
-                          : "bg-neutral-950/40 border-neutral-800"
+                          ? "bg-amber-950/20 border-amber-500/40"
+                          : "bg-neutral-900 border-neutral-800"
                       }`}
                     >
                       <div className="flex items-start justify-between gap-4">
-                        <div className="flex items-start gap-3">
-                          <span
-                            className={`flex items-center justify-center w-7 h-7 rounded-lg text-xs font-bold shrink-0 ${
-                              isPrimary
-                                ? "bg-blue-500/20 text-blue-300 border border-blue-500/30"
-                                : isMustNotMiss
-                                ? "bg-red-500/20 text-red-300 border border-red-500/30"
-                                : "bg-neutral-800 text-neutral-400"
-                            }`}
-                          >
-                            #{diff.rank}
-                          </span>
-                          <div>
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <h4 className="text-sm font-semibold text-white">{diff.diseaseName}</h4>
-                              <span className="text-[10px] px-2 py-0.5 rounded bg-neutral-800 text-neutral-300 border border-neutral-700 font-mono">
-                                {diff.icd10}
-                              </span>
-                              {isPrimary && (
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/40">
-                                  ⭐ PRIMARY HYPOTHESIS
-                                </span>
-                              )}
-                              {isMustNotMiss && (
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-red-500/20 text-red-300 border border-red-500/40 flex items-center gap-1">
-                                  <ShieldAlert className="w-3 h-3" /> MUST-NOT-MISS
-                                </span>
-                              )}
+                        <div className="space-y-1 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-mono text-neutral-500">#{idx + 1}</span>
+                            <h4 className="text-sm font-bold text-white tracking-tight">
+                              {item.conditionName}
+                            </h4>
+                            <span
+                              className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded border ${
+                                isPrimary
+                                  ? "bg-red-500/20 text-red-300 border-red-500/40"
+                                  : isMustNotMiss
+                                  ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                                  : "bg-blue-500/20 text-blue-300 border-blue-500/40"
+                              }`}
+                            >
+                              {item.tier.replace(/_/g, " ")}
+                            </span>
+                            <span className="text-[11px] font-mono text-neutral-400 bg-neutral-800 px-1.5 py-0.5 rounded">
+                              {item.icd10Code}
+                            </span>
+                          </div>
+
+                          <p className="text-xs text-neutral-300 leading-relaxed pt-1">
+                            {item.clinicalRationale}
+                          </p>
+
+                          <div className="pt-2 flex flex-wrap gap-2 text-xs">
+                            <div className="px-2.5 py-1 rounded-lg bg-neutral-800/80 border border-neutral-700/60 text-neutral-300">
+                              <strong className="text-neutral-400">Gold-Standard Testing:</strong>{" "}
+                              <span className="text-blue-300 font-medium">{item.goldStandardTesting}</span>
                             </div>
-                            <p className="text-xs text-neutral-400 mt-1 leading-relaxed">
-                              {diff.clinicalRationale}
-                            </p>
+                            <div className="px-2.5 py-1 rounded-lg bg-neutral-800/80 border border-neutral-700/60 text-neutral-300">
+                              <strong className="text-neutral-400">Immediate Action:</strong>{" "}
+                              <span className="text-amber-300">{item.immediateAction}</span>
+                            </div>
                           </div>
                         </div>
 
-                        <div className="text-right shrink-0">
-                          <div className="text-base font-bold text-white">{diff.probabilityPct}%</div>
-                          <span className="text-[10px] text-neutral-400">Likelihood</span>
-                          <div className="w-20 bg-neutral-800 rounded-full h-1.5 mt-1 overflow-hidden">
+                        {/* Probability Score Bar */}
+                        <div className="w-24 shrink-0 text-right space-y-1">
+                          <div className="text-base font-extrabold text-white">
+                            {item.probabilityScore}%
+                          </div>
+                          <div className="w-full bg-neutral-800 rounded-full h-2 overflow-hidden">
                             <div
                               className={`h-full rounded-full ${
-                                isPrimary ? "bg-blue-500" : isMustNotMiss ? "bg-red-500" : "bg-neutral-500"
+                                isPrimary
+                                  ? "bg-red-500"
+                                  : isMustNotMiss
+                                  ? "bg-amber-500"
+                                  : "bg-blue-500"
                               }`}
-                              style={{ width: `${diff.probabilityPct}%` }}
-                            ></div>
+                              style={{ width: `${item.probabilityScore}%` }}
+                            />
                           </div>
-                        </div>
-                      </div>
-
-                      {/* Diagnostic Tests & Supporting Findings */}
-                      <div className="mt-3 pt-3 border-t border-neutral-800/80 grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                        <div>
-                          <span className="text-neutral-500 font-medium block mb-1">
-                            Supporting Clinical Findings:
-                          </span>
-                          <ul className="list-disc list-inside text-neutral-300 space-y-0.5">
-                            {diff.supportingEvidence.map((ev, i) => (
-                              <li key={i} className="truncate">
-                                {ev}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                        <div>
-                          <span className="text-neutral-500 font-medium block mb-1">
-                            Confirmatory Diagnostic Tests:
-                          </span>
-                          <ul className="list-disc list-inside text-blue-300/90 space-y-0.5">
-                            {diff.goldStandardDiagnosticTests.map((t, i) => (
-                              <li key={i} className="truncate">
-                                {t}
-                              </li>
-                            ))}
-                          </ul>
+                          <span className="text-[10px] text-neutral-500">Bayesian Match</span>
                         </div>
                       </div>
                     </div>
@@ -583,58 +723,281 @@ export function NoctisPatientDiagnosisModal({
             </div>
           )}
 
+          {/* TAB: UPLOAD & SCAN RECORDS (OCR & MULTI-MODAL) */}
+          {activeTab === "records_upload" && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                  <UploadCloud className="w-4 h-4 text-blue-400" /> Direct Medical Record, Lab Slip & Document Ingestion
+                </h3>
+                <p className="text-xs text-neutral-400">
+                  Drag and drop a lab printout, pathology report, doctor's note, or photo slip to automatically extract findings into the patient intake.
+                </p>
+              </div>
+
+              {/* Drag and Drop Zone */}
+              <div
+                onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+                onDragLeave={() => setIsDragOver(false)}
+                onDrop={handleFileDrop}
+                className={`border-2 border-dashed rounded-xl p-6 text-center transition-colors ${
+                  isDragOver
+                    ? "border-blue-500 bg-blue-500/10"
+                    : "border-neutral-700 bg-neutral-950/40 hover:border-neutral-600"
+                }`}
+              >
+                <FileUp className="w-8 h-8 text-neutral-400 mx-auto mb-2" />
+                <div className="text-xs text-neutral-200 font-medium">
+                  Drag and drop any lab report, biopsy slip, or doctor note here
+                </div>
+                <div className="text-[11px] text-neutral-500 mt-1">
+                  Supports .txt, .csv, .json, or photo scan text
+                </div>
+                <label className="inline-block mt-3 px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-medium cursor-pointer border border-neutral-700 transition-colors">
+                  <span>Browse File</span>
+                  <input type="file" onChange={handleFileInputChange} className="hidden" />
+                </label>
+              </div>
+
+              {/* Paste Document Text Area */}
+              <div>
+                <span className="text-xs font-medium text-neutral-300 block mb-1">
+                  Or Paste Medical Record / Lab Slip Text Directly:
+                </span>
+                <textarea
+                  rows={6}
+                  value={uploadedRecordText}
+                  onChange={(e) => handleProcessDocumentText(e.target.value)}
+                  placeholder="Paste laboratory results (e.g. WBC: 14.5, Creatinine: 2.1, Potassium: 6.4) or doctor's progress note here..."
+                  className="w-full px-3 py-2 rounded-xl bg-neutral-950 border border-neutral-700 text-xs text-neutral-200 font-mono focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              {/* Extraction Preview */}
+              {ocrIntake && (
+                <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-emerald-400 flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4" /> Extracted Document: {ocrIntake.documentType.replace(/_/g, " ")} ({ocrIntake.confidenceScore}% confidence)
+                    </span>
+                    <span className="text-[11px] text-neutral-500">Auto-filled into Patient Intake</span>
+                  </div>
+
+                  {ocrIntake.detectedLabs.length > 0 && (
+                    <div>
+                      <span className="text-[11px] text-neutral-400 font-medium block mb-1.5">Identified Analytes:</span>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {ocrIntake.detectedLabs.map((l, i) => (
+                          <div key={i} className="p-2 rounded bg-neutral-900 border border-neutral-800 text-[11px]">
+                            <div className="text-neutral-400 truncate">{l.analyte}</div>
+                            <div className="text-white font-bold">{l.value} {l.unit}</div>
+                            {l.flag && <span className="text-[9px] text-amber-400">{l.flag}</span>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {ocrIntake.detectedMedications.length > 0 && (
+                    <div>
+                      <span className="text-[11px] text-neutral-400 font-medium block mb-1">Detected Medications:</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {ocrIntake.detectedMedications.map((m, i) => (
+                          <span key={i} className="px-2 py-0.5 rounded bg-blue-500/10 border border-blue-500/20 text-[11px] text-blue-300">
+                            {m}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB: LONGITUDINAL LAB TRENDS & VELOCITY */}
+          {activeTab === "trends" && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-blue-400" /> Longitudinal Laboratory Velocity & Rate-of-Change
+                </h3>
+                <p className="text-xs text-neutral-400">
+                  Tracks baseline vs current analyte shifts to identify acute organ decompensation (KDIGO Acute Kidney Injury, occult bleeding, and rapid electrolyte spikes).
+                </p>
+              </div>
+
+              {longitudinal.hasLongitudinalData ? (
+                <div className="space-y-4">
+                  {/* KDIGO AKI Alert Card */}
+                  {longitudinal.kdigoAki && longitudinal.kdigoAki.isAkiPresent && (
+                    <div className="p-4 rounded-xl bg-red-950/40 border border-red-500/50 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-red-300 flex items-center gap-2">
+                          <AlertTriangle className="w-4 h-4 text-red-400" /> KDIGO ACUTE KIDNEY INJURY: {longitudinal.kdigoAki.akiStage}
+                        </span>
+                        <span className="text-[11px] font-mono text-red-300">
+                          Δ +{longitudinal.kdigoAki.absoluteDeltaMgDl} mg/dL ({longitudinal.kdigoAki.ratioToBaseline}x baseline)
+                        </span>
+                      </div>
+                      <p className="text-xs text-red-200/90 leading-relaxed">
+                        {longitudinal.kdigoAki.clinicalAction}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Multi-point Table */}
+                  <div className="rounded-xl border border-neutral-800 overflow-hidden">
+                    <table className="w-full text-xs text-left">
+                      <thead className="bg-neutral-950 text-neutral-400 font-semibold border-b border-neutral-800">
+                        <tr>
+                          <th className="py-2.5 px-3">Analyte</th>
+                          <th className="py-2.5 px-3">Baseline</th>
+                          <th className="py-2.5 px-3">Current</th>
+                          <th className="py-2.5 px-3">Change (Δ)</th>
+                          <th className="py-2.5 px-3">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-neutral-800 text-neutral-300">
+                        {longitudinal.analytesEvaluated.map((a, i) => (
+                          <tr key={i} className="hover:bg-neutral-800/40">
+                            <td className="py-2.5 px-3 font-medium text-white">{a.analyte}</td>
+                            <td className="py-2.5 px-3 font-mono">{a.baselineValue} {a.unit}</td>
+                            <td className="py-2.5 px-3 font-mono">{a.currentValue} {a.unit}</td>
+                            <td className="py-2.5 px-3 font-mono text-amber-300">
+                              {a.absoluteDelta >= 0 ? "+" : ""}{a.absoluteDelta} ({a.percentChange}%)
+                            </td>
+                            <td className="py-2.5 px-3">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                                a.clinicalSignificance === "CRITICAL_HAZARD"
+                                  ? "bg-red-500/20 text-red-300 border border-red-500/30"
+                                  : "bg-neutral-800 text-neutral-300"
+                              }`}>
+                                {a.clinicalSignificance.replace(/_/g, " ")}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {longitudinal.patientQuestionsForDoctor.length > 0 && (
+                    <div className="p-4 rounded-xl bg-blue-950/20 border border-blue-500/20 space-y-2">
+                      <h4 className="text-xs font-semibold text-blue-300">Key Questions to Ask Your Doctor on These Trends:</h4>
+                      <ul className="list-disc list-inside text-xs text-neutral-300 space-y-1">
+                        {longitudinal.patientQuestionsForDoctor.map((q, i) => (
+                          <li key={i}>{q}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="p-8 rounded-xl bg-neutral-950/40 border border-neutral-800 text-center space-y-2">
+                  <TrendingUp className="w-8 h-8 text-neutral-500 mx-auto" />
+                  <p className="text-xs text-neutral-300">No multi-point historical lab values supplied yet.</p>
+                  <p className="text-[11px] text-neutral-500 max-w-md mx-auto">
+                    Paste or upload records containing baseline and current dates (e.g. "Creatinine: baseline 1.1 -> current 2.4") to trigger automatic KDIGO AKI staging and velocity alerts.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB: PHARMACOGENOMICS & REGIMEN SAFETY */}
+          {activeTab === "pgx_safety" && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                  <Dna className="w-4 h-4 text-purple-400" /> Pharmacogenomic & Cardio-Oncology Safety Screening
+                </h3>
+                <p className="text-xs text-neutral-400">
+                  Synchronized with CPIC and FDA pharmacogenomic tables to screen for high-risk drug-gene metabolism interactions.
+                </p>
+              </div>
+
+              {pgxReport.totalRisks > 0 ? (
+                <div className="space-y-3">
+                  {pgxReport.detectedRisks.map((r, i) => (
+                    <div key={i} className="p-4 rounded-xl bg-neutral-950 border border-purple-500/30 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-purple-300 flex items-center gap-1.5">
+                          <Zap className="w-3.5 h-3.5 text-purple-400" /> {r.geneOrBiomarker}
+                        </span>
+                        <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-purple-500/20 text-purple-200 border border-purple-500/30">
+                          {r.drugName.toUpperCase()}
+                        </span>
+                      </div>
+                      <p className="text-xs text-neutral-300 leading-relaxed">
+                        {r.mechanismSummary}
+                      </p>
+                      <div className="p-2.5 rounded bg-neutral-900 border border-neutral-800 text-[11px] text-neutral-300">
+                        <strong className="text-purple-300">CPIC Recommendation:</strong> {r.cpicGuidelineRecommendation}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-8 rounded-xl bg-neutral-950/40 border border-neutral-800 text-center space-y-2">
+                  <Dna className="w-8 h-8 text-neutral-500 mx-auto" />
+                  <p className="text-xs text-neutral-300">No high-risk pharmacogenomic interactions detected in current regimen.</p>
+                  <p className="text-[11px] text-neutral-500 max-w-md mx-auto">
+                    Includes automatic screening for DPYD (5-FU/FOLFOX), CYP2D6 (Tamoxifen), HER2 LVEF cardio-toxicity, and CYP2C19 (Plavix).
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* TAB 2: ADAPTIVE INTERVIEWER */}
           {activeTab === "adaptive" && (
             <div className="space-y-4">
               <div>
                 <h3 className="text-sm font-semibold text-white">
-                  Adaptive Discriminative Questions ({adaptiveQuestions.length})
+                  Adaptive Discriminative Questions
                 </h3>
                 <p className="text-xs text-neutral-400">
-                  These dynamic questions yield the highest clinical information gain to differentiate candidate conditions
+                  Targeted high-information-gain clinical features to rule in or rule out primary candidates
                 </p>
               </div>
 
-              <div className="space-y-4">
-                {adaptiveQuestions.map((aq) => {
-                  const currentAnswer = answeredAdaptiveQuestions[aq.questionId];
+              <div className="space-y-3">
+                {adaptiveQuestions.map((q) => {
+                  const currentAnswer = answeredAdaptiveQuestions[q.questionId];
+
                   return (
                     <div
-                      key={aq.questionId}
-                      className="p-4 rounded-xl border border-neutral-800 bg-neutral-950/40 space-y-3"
+                      key={q.questionId}
+                      className="p-4 rounded-xl bg-neutral-950 border border-neutral-800 space-y-3"
                     >
-                      <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-start justify-between gap-3">
                         <div className="space-y-1">
-                          <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                            Target: {aq.associatedDifferential}
+                          <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-blue-500/10 text-blue-300 border border-blue-500/20">
+                            Targets: {q.targetCondition}
                           </span>
-                          <h4 className="text-sm font-medium text-white pt-1">
-                            "{aq.promptText}"
+                          <h4 className="text-sm font-semibold text-white pt-1">
+                            {q.questionText}
                           </h4>
                           <p className="text-xs text-neutral-400">
-                            <strong>Objective:</strong> {aq.clinicalObjective}
-                          </p>
-                          <p className="text-[11px] text-neutral-500">
-                            <strong>Impact:</strong> {aq.potentialImpact}
+                            {q.discriminativeRationale}
                           </p>
                         </div>
                       </div>
 
-                      {/* Options */}
-                      <div className="flex items-center gap-2 pt-1 flex-wrap">
-                        {aq.options?.map((opt) => {
+                      <div className="flex items-center gap-2 pt-1">
+                        {q.options.map((opt) => {
                           const isSelected = currentAnswer === opt;
                           return (
                             <button
                               key={opt}
-                              onClick={() => handleAnswerAdaptive(aq.questionId, opt, aq.promptText)}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors flex items-center gap-1.5 ${
+                              onClick={() => handleAnswerAdaptive(q.questionId, opt, q.questionText)}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                                 isSelected
-                                  ? "bg-blue-600 text-white border-blue-500 shadow-sm"
-                                  : "bg-neutral-800/80 text-neutral-300 border-neutral-700 hover:bg-neutral-700 hover:text-white"
+                                  ? "bg-blue-600 border-blue-500 text-white"
+                                  : "bg-neutral-900 border-neutral-700 text-neutral-300 hover:bg-neutral-800 hover:text-white"
                               }`}
                             >
-                              {isSelected && <Check className="w-3.5 h-3.5" />}
                               {opt}
                             </button>
                           );
@@ -647,114 +1010,102 @@ export function NoctisPatientDiagnosisModal({
             </div>
           )}
 
-          {/* TAB 3: INTAKE & VITALS */}
+          {/* TAB 3: PATIENT INTAKE & OPQRST FORM */}
           {activeTab === "intake" && (
             <div className="space-y-6">
               {/* Chief Complaint */}
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-neutral-300">
-                  Chief Complaint (Patient Free-Text Description):
+              <div>
+                <label className="block text-xs font-semibold text-neutral-300 uppercase tracking-wider mb-1.5">
+                  Chief Complaint & Problem Representation
                 </label>
                 <textarea
                   value={chiefComplaint}
                   onChange={(e) => setChiefComplaint(e.target.value)}
                   rows={2}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-950 border border-neutral-700 text-white text-xs focus:outline-none focus:border-blue-500 resize-none"
-                  placeholder="Describe your primary symptom, when it started, and how it feels..."
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-neutral-950 border border-neutral-700 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-blue-500"
                 />
               </div>
 
-              {/* Patient Demographics & Onset */}
+              {/* OPQRST Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="text-xs font-medium text-neutral-400">Age (Years):</label>
-                  <input
-                    type="number"
-                    value={ageYears || ""}
-                    onChange={(e) => setAgeYears(e.target.value ? parseInt(e.target.value, 10) : undefined)}
-                    className="w-full mt-1 px-3 py-2 rounded-lg bg-neutral-950 border border-neutral-700 text-white text-xs focus:outline-none focus:border-blue-500"
-                    placeholder="e.g. 58"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-neutral-400">Biological Sex:</label>
-                  <select
-                    value={biologicalSex}
-                    onChange={(e) => setBiologicalSex(e.target.value as any)}
-                    className="w-full mt-1 px-3 py-2 rounded-lg bg-neutral-950 border border-neutral-700 text-white text-xs focus:outline-none focus:border-blue-500"
-                  >
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
-                    <option value="other">Other / Unspecified</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-neutral-400">Onset / Timing:</label>
+                  <label className="block text-xs font-medium text-neutral-400 mb-1">
+                    Onset & Timing
+                  </label>
                   <input
                     type="text"
                     value={onsetTiming}
                     onChange={(e) => setOnsetTiming(e.target.value)}
-                    className="w-full mt-1 px-3 py-2 rounded-lg bg-neutral-950 border border-neutral-700 text-white text-xs focus:outline-none focus:border-blue-500"
-                    placeholder="e.g. 45 minutes ago"
+                    className="w-full px-3 py-2 rounded-lg bg-neutral-950 border border-neutral-700 text-xs text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-neutral-400 mb-1">
+                    Pain Quality
+                  </label>
+                  <select
+                    value={painQuality}
+                    onChange={(e) => setPainQuality(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg bg-neutral-950 border border-neutral-700 text-xs text-white"
+                  >
+                    <option value="crushing">Crushing / Pressure</option>
+                    <option value="sharp">Sharp / Pleuritic</option>
+                    <option value="burning">Burning</option>
+                    <option value="tearing">Tearing / Ripping</option>
+                    <option value="throbbing">Throbbing</option>
+                    <option value="colicky">Colicky / Cramping</option>
+                    <option value="dull">Dull Aching</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-neutral-400 mb-1">
+                    Pain Radiation
+                  </label>
+                  <input
+                    type="text"
+                    value={painRadiation}
+                    onChange={(e) => setPainRadiation(e.target.value)}
+                    placeholder="e.g. left arm, back, jaw"
+                    className="w-full px-3 py-2 rounded-lg bg-neutral-950 border border-neutral-700 text-xs text-white"
                   />
                 </div>
               </div>
 
-              {/* OPQRST: Quality & Severity */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-medium text-neutral-400">Pain Quality:</label>
-                  <div className="flex flex-wrap gap-1.5 mt-1">
-                    {["crushing", "pressure", "sharp", "burning", "dull", "cramping", "tearing"].map((q) => (
-                      <button
-                        key={q}
-                        type="button"
-                        onClick={() => setPainQuality(q)}
-                        className={`px-2.5 py-1 rounded-md text-xs border capitalize transition-colors ${
-                          painQuality === q
-                            ? "bg-blue-600 text-white border-blue-500"
-                            : "bg-neutral-800 text-neutral-300 border-neutral-700 hover:bg-neutral-700"
-                        }`}
-                      >
-                        {q}
-                      </button>
-                    ))}
-                  </div>
+              {/* Pain Severity Slider */}
+              <div className="space-y-1">
+                <div className="flex justify-between text-xs">
+                  <span className="text-neutral-400 font-medium">Pain Severity Scale (1 - 10)</span>
+                  <span className="text-white font-bold">{painSeverity} / 10</span>
                 </div>
-
-                <div>
-                  <label className="text-xs font-medium text-neutral-400 flex justify-between">
-                    <span>Severity (1–10 Scale):</span>
-                    <span className="font-bold text-white">{painSeverity} / 10</span>
-                  </label>
-                  <input
-                    type="range"
-                    min="1"
-                    max="10"
-                    value={painSeverity}
-                    onChange={(e) => setPainSeverity(parseInt(e.target.value, 10))}
-                    className="w-full mt-2 accent-blue-500"
-                  />
-                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="10"
+                  value={painSeverity}
+                  onChange={(e) => setPainSeverity(parseInt(e.target.value, 10))}
+                  className="w-full accent-blue-500"
+                />
               </div>
 
               {/* Associated Symptoms Multi-Select */}
               <div>
-                <label className="text-xs font-semibold text-neutral-300">
-                  Associated Symptoms (Select All Present):
+                <label className="block text-xs font-medium text-neutral-400 mb-2">
+                  Associated Clinical Symptoms:
                 </label>
-                <div className="flex flex-wrap gap-1.5 mt-2">
+                <div className="flex flex-wrap gap-2">
                   {AVAILABLE_SYMPTOMS.map((sym) => {
-                    const isSelected = selectedSymptoms.includes(sym);
+                    const isChecked = selectedSymptoms.includes(sym);
                     return (
                       <button
                         key={sym}
                         type="button"
                         onClick={() => toggleSymptom(sym)}
-                        className={`px-2.5 py-1 rounded-lg text-xs border transition-colors ${
-                          isSelected
-                            ? "bg-blue-500/20 text-blue-300 border-blue-500/40"
-                            : "bg-neutral-800/60 text-neutral-400 border-neutral-700/60 hover:text-neutral-200"
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${
+                          isChecked
+                            ? "bg-blue-600/30 text-blue-200 border-blue-500/50"
+                            : "bg-neutral-950 text-neutral-400 border-neutral-800 hover:border-neutral-700"
                         }`}
                       >
                         {sym}
@@ -764,23 +1115,23 @@ export function NoctisPatientDiagnosisModal({
                 </div>
               </div>
 
-              {/* Past Medical History Multi-Select */}
+              {/* Past Medical History */}
               <div>
-                <label className="text-xs font-semibold text-neutral-300">
-                  Past Medical History (Risk Factors):
+                <label className="block text-xs font-medium text-neutral-400 mb-2">
+                  Past Medical History:
                 </label>
-                <div className="flex flex-wrap gap-1.5 mt-2">
+                <div className="flex flex-wrap gap-2">
                   {AVAILABLE_PMH.map((pmh) => {
-                    const isSelected = selectedPmh.includes(pmh);
+                    const isChecked = selectedPmh.includes(pmh);
                     return (
                       <button
                         key={pmh}
                         type="button"
                         onClick={() => togglePmh(pmh)}
-                        className={`px-2.5 py-1 rounded-lg text-xs border transition-colors ${
-                          isSelected
-                            ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
-                            : "bg-neutral-800/60 text-neutral-400 border-neutral-700/60 hover:text-neutral-200"
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${
+                          isChecked
+                            ? "bg-purple-600/30 text-purple-200 border-purple-500/50"
+                            : "bg-neutral-950 text-neutral-400 border-neutral-800 hover:border-neutral-700"
                         }`}
                       >
                         {pmh}
@@ -790,13 +1141,12 @@ export function NoctisPatientDiagnosisModal({
                 </div>
               </div>
 
-              {/* Objective Vitals Section */}
-              <div className="p-4 rounded-xl border border-neutral-800 bg-neutral-950/40 space-y-3">
+              {/* Measured Vital Signs */}
+              <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-800 space-y-3">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Activity className="w-4 h-4 text-blue-400" />
-                    <span className="text-xs font-semibold text-white">Objective Vital Signs</span>
-                  </div>
+                  <span className="text-xs font-semibold text-white flex items-center gap-1.5">
+                    <Heart className="w-4 h-4 text-red-400" /> Measured Vital Signs (Zero-Fabrication Mode)
+                  </span>
                   <label className="flex items-center gap-2 text-xs text-neutral-400 cursor-pointer">
                     <input
                       type="checkbox"
@@ -883,13 +1233,22 @@ export function NoctisPatientDiagnosisModal({
                     Ready to hand to attending physicians, triage nurses, or export to EHR systems
                   </p>
                 </div>
-                <button
-                  onClick={copySoapToClipboard}
-                  className="px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-medium border border-neutral-700 transition-colors flex items-center gap-1.5"
-                >
-                  {copiedSoap ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>{copiedSoap ? "Copied SOAP Note" : "Copy to Clipboard"}</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handlePrintDoctorBrief}
+                    className="px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-medium border border-neutral-700 transition-colors flex items-center gap-1.5"
+                  >
+                    <Printer className="w-3.5 h-3.5 text-blue-400" />
+                    <span>Print Handout</span>
+                  </button>
+                  <button
+                    onClick={copySoapToClipboard}
+                    className="px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-medium border border-neutral-700 transition-colors flex items-center gap-1.5"
+                  >
+                    {copiedSoap ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{copiedSoap ? "Copied SOAP" : "Copy SOAP"}</span>
+                  </button>
+                </div>
               </div>
 
               <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-800 font-mono text-xs text-neutral-300 space-y-4 leading-relaxed">
