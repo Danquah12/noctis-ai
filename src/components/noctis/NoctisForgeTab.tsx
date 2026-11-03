@@ -31,6 +31,9 @@ import {
   Calendar,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { NoctisSovereignFactoryStudio } from "@/components/noctis/NoctisSovereignFactoryStudio";
+import { NoctisVoiceSelectorModal } from "@/components/noctis/NoctisVoiceSelectorModal";
+import { type VoicePersona } from "@/lib/noctis-voice";
 
 interface BuildRecentItem {
   id: string;
@@ -288,6 +291,9 @@ export function NoctisForgeTab({ onSendToChat, onClose }: NoctisForgeTabProps) {
   const [buildLogs, setBuildLogs] = useState<string[]>([]);
   const [buildArtifact, setBuildArtifact] = useState<{ title: string; code: string; tests: string } | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [factoryStudioOpen, setFactoryStudioOpen] = useState(false);
+  const [voiceModalOpen, setVoiceModalOpen] = useState(false);
+  const [activeVoicePersona, setActiveVoicePersona] = useState<VoicePersona>("maple");
 
   const activeRecent = recents.find((r) => r.id === activeRecentId) || recents[0];
 
@@ -591,6 +597,14 @@ describe("${textToBuild} - Verification", () => {
               <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
               XTRIKE Verified
             </span>
+            <button
+              type="button"
+              onClick={() => setFactoryStudioOpen(true)}
+              className="rounded-full bg-sky-500/20 hover:bg-sky-500/30 border border-sky-500/40 px-3 py-1 text-xs font-bold text-sky-300 flex items-center gap-1.5 transition shadow-xs"
+            >
+              <Sparkles className="size-3.5" />
+              <span>Sovereign Factory Studio (16)</span>
+            </button>
             {onClose ? (
               <button
                 type="button"
@@ -794,7 +808,8 @@ describe("${textToBuild} - Verification", () => {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  title="Voice dictation"
+                  title="Choose your voice"
+                  onClick={() => setVoiceModalOpen(true)}
                   className="rounded-full p-2 text-zinc-400 hover:text-white hover:bg-white/10 transition"
                 >
                   <Mic className="size-4" />
@@ -811,6 +826,21 @@ describe("${textToBuild} - Verification", () => {
             </div>
           </div>
         </div>
+        <NoctisSovereignFactoryStudio
+          isOpen={factoryStudioOpen}
+          onClose={() => setFactoryStudioOpen(false)}
+          onSelectSystem={(s) => setPrompt(`Inspect architectural invariants and deploy ${s.identity.name}`)}
+        />
+        <NoctisVoiceSelectorModal
+          isOpen={voiceModalOpen}
+          currentPersona={activeVoicePersona}
+          onSelectPersona={(p) => setActiveVoicePersona(p)}
+          onClose={() => setVoiceModalOpen(false)}
+          onStartVoice={(p) => {
+            setActiveVoicePersona(p);
+            setVoiceModalOpen(false);
+          }}
+        />
       </main>
     </div>
   );

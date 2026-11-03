@@ -9,6 +9,8 @@ import {
   executeSystemLifecycle,
   routeSystemInteroperabilityEvent,
   buildSovereignSystemsFactoryReport,
+  FACTORY_FIVE_LAYERS,
+  ENTERPRISE_FABRIC_ORCHESTRATION,
   type LifecycleAction,
 } from "./noctis-sovereign-factory.ts";
 
@@ -167,5 +169,74 @@ describe("Noctis Sovereign Systems Factory (NOCTIS-FACTORY-2026)", () => {
     assert.ok(report.includes("Priority 4: Noctis Finance"));
     assert.ok(report.includes("Priority 5: Noctis Engineering"));
     assert.ok(report.includes("Eleven Standard Dimensions"));
+  });
+
+  it("verifies the 5 Major Architectural Layers of the Sovereign Systems Factory", () => {
+    assert.equal(FACTORY_FIVE_LAYERS.length, 5);
+
+    // Layer 1
+    assert.equal(FACTORY_FIVE_LAYERS[0].layerNumber, 1);
+    assert.ok(FACTORY_FIVE_LAYERS[0].layerName.includes("User Experience"));
+    assert.deepEqual(FACTORY_FIVE_LAYERS[0].components, [
+      "Chat (Multi-Agent)",
+      "Board (Task Kanban & Approval)",
+      "Canvas (Artifacts, Telemetry & Code)",
+    ]);
+
+    // Layer 2
+    assert.equal(FACTORY_FIVE_LAYERS[1].layerNumber, 2);
+    assert.ok(FACTORY_FIVE_LAYERS[1].layerName.includes("Intelligence"));
+    assert.ok(FACTORY_FIVE_LAYERS[1].components.some((c) => c.includes("Brain")));
+    assert.ok(FACTORY_FIVE_LAYERS[1].components.some((c) => c.includes("RAG")));
+    assert.ok(FACTORY_FIVE_LAYERS[1].components.some((c) => c.includes("Knowledge Graph")));
+
+    // Layer 3
+    assert.equal(FACTORY_FIVE_LAYERS[2].layerNumber, 3);
+    assert.ok(FACTORY_FIVE_LAYERS[2].layerName.includes("Professional Systems"));
+    assert.ok(FACTORY_FIVE_LAYERS[2].components.some((c) => c.includes("Noctis Cyber (P1)")));
+    assert.ok(FACTORY_FIVE_LAYERS[2].components.some((c) => c.includes("Noctis Health (P3)")));
+
+    // Layer 4
+    assert.equal(FACTORY_FIVE_LAYERS[3].layerNumber, 4);
+    assert.ok(FACTORY_FIVE_LAYERS[3].layerName.includes("Autonomous Execution"));
+    assert.ok(FACTORY_FIVE_LAYERS[3].components.some((c) => c.includes("Agents")));
+    assert.ok(FACTORY_FIVE_LAYERS[3].components.some((c) => c.includes("Workflows")));
+
+    // Layer 5
+    assert.equal(FACTORY_FIVE_LAYERS[4].layerNumber, 5);
+    assert.ok(FACTORY_FIVE_LAYERS[4].layerName.includes("Sovereign Infrastructure"));
+    assert.ok(FACTORY_FIVE_LAYERS[4].components.some((c) => c.includes("Vault")));
+    assert.ok(FACTORY_FIVE_LAYERS[4].components.some((c) => c.includes("Kyber-768")));
+    assert.ok(FACTORY_FIVE_LAYERS[4].components.some((c) => c.includes("Audit Ledger")));
+  });
+
+  it("verifies the Enterprise Orchestration Fabric architecture and 8 specialized agents", () => {
+    const fabric = ENTERPRISE_FABRIC_ORCHESTRATION;
+
+    // Enterprise Systems & Channels
+    assert.ok(fabric.enterpriseSystems.channels.includes("Voice (Sovereign Voice)"));
+    assert.ok(fabric.enterpriseSystems.systems.includes("CRM"));
+    assert.ok(fabric.enterpriseSystems.systems.includes("ERP"));
+    assert.ok(fabric.enterpriseSystems.systems.includes("HRIS"));
+    assert.ok(fabric.enterpriseSystems.systems.includes("ITSM"));
+    assert.ok(fabric.enterpriseSystems.systems.includes("Finance"));
+
+    // Orchestration Layer Functions & 8 Agents
+    assert.deepEqual(fabric.orchestrationLayer.coreFunctions, ["Plan", "Coordinate", "Monitor", "Optimize"]);
+    assert.equal(fabric.orchestrationLayer.agents.length, 8);
+    const agentNames = fabric.orchestrationLayer.agents.map((a) => a.name);
+    assert.ok(agentNames.includes("Sales Agent"));
+    assert.ok(agentNames.includes("Support Agent"));
+    assert.ok(agentNames.includes("HR Agent"));
+    assert.ok(agentNames.includes("IT Operations Agent"));
+    assert.ok(agentNames.includes("Finance Agent"));
+    assert.ok(agentNames.includes("Content Agent"));
+    assert.ok(agentNames.includes("Data Analyst Agent"));
+    assert.ok(agentNames.includes("Research Agent"));
+
+    // Governance, Infrastructure & Impact
+    assert.ok(fabric.governanceAndSecurity.some((g) => g.includes("FIDO2")));
+    assert.ok(fabric.infrastructureFoundation.some((i) => i.includes("Sovereign Enclaves")));
+    assert.equal(fabric.businessImpact.length, 5);
   });
 });

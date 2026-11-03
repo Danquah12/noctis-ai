@@ -1263,3 +1263,129 @@ export function buildSovereignSystemsFactoryReport(): string {
     `*All 16 Sovereign Systems operate independently with dedicated permissions and validation while sharing approved Noctis sovereign infrastructure.*`,
   ].join("\n");
 }
+
+export interface FactoryLayerDefinition {
+  layerNumber: number;
+  layerName: string;
+  tagline: string;
+  components: string[];
+  description: string;
+  color: string;
+  bgGradient: string;
+}
+
+export const FACTORY_FIVE_LAYERS: FactoryLayerDefinition[] = [
+  {
+    layerNumber: 1,
+    layerName: "Layer 1 — User Experience",
+    tagline: "Chat · Board · Canvas",
+    components: ["Chat (Multi-Agent)", "Board (Task Kanban & Approval)", "Canvas (Artifacts, Telemetry & Code)"],
+    description: "Unified interface layer providing synchronous streaming dialogue, structured project boards with human-in-the-loop sign-off, and high-fidelity artifact canvas workspaces.",
+    color: "#38bdf8",
+    bgGradient: "from-sky-950/40 via-sky-900/20 to-zinc-950",
+  },
+  {
+    layerNumber: 2,
+    layerName: "Layer 2 — Intelligence",
+    tagline: "Brain · RAG · Knowledge Graph · Memory · Models",
+    components: ["Brain Engine", "RAG Vector Index", "Knowledge Graph (Neo4j/PGLite)", "Persistent Memory", "Frontier Models (Noctis Ultra, Claude, GPT)"],
+    description: "Cognitive core powering deep sovereign reasoning, dynamic document retrieval with strict citation grounding, entity relationship graphs, and long-term memory.",
+    color: "#10b981",
+    bgGradient: "from-emerald-950/40 via-emerald-900/20 to-zinc-950",
+  },
+  {
+    layerNumber: 3,
+    layerName: "Layer 3 — Professional Systems",
+    tagline: "Cyber · Health · Finance · RMF · Engineering · Science",
+    components: ["Noctis Cyber (P1)", "Noctis RMF / GRC (P2)", "Noctis Health (P3)", "Noctis Finance (P4)", "Noctis Engineering (P5)", "Noctis Science & 10 Additional Suites"],
+    description: "Domain-specific sovereign engines pre-calibrated with verified industry guidelines, ontologies, and deterministic verification gates.",
+    color: "#d97706",
+    bgGradient: "from-amber-950/40 via-amber-900/20 to-zinc-950",
+  },
+  {
+    layerNumber: 4,
+    layerName: "Layer 4 — Autonomous Execution",
+    tagline: "Agents · Workflows · APIs · Tools · Integrations",
+    components: ["Specialized Autonomous Agents (Sales, HR, IT, Finance, Data, Research)", "Operational Workflows", "API Gateways", "Deterministic Tools", "External Connectors"],
+    description: "Autonomous task orchestration executing complex multi-step pipelines with automated verification, fallback strategies, and regulated API hooks.",
+    color: "#6366f1",
+    bgGradient: "from-indigo-950/40 via-indigo-900/20 to-zinc-950",
+  },
+  {
+    layerNumber: 5,
+    layerName: "Layer 5 — Sovereign Infrastructure",
+    tagline: "Vault · Databases · Encryption · Audit · Access Control · Deployment",
+    components: ["DStrike Vault", "PGLite Vector DB", "Post-Quantum Kyber-768 Encryption", "SHA-256 Audit Ledger", "Passkey FIDO2 / RBAC", "9-Stage Lifecycle Deployment"],
+    description: "Zero-trust sovereign bedrock guaranteeing cryptographic data isolation, air-gapped secret management, continuous compliance monitoring, and automated lifecycle governance.",
+    color: "#64748b",
+    bgGradient: "from-slate-950/40 via-slate-900/20 to-zinc-950",
+  },
+];
+
+export interface EnterpriseFabricAgent {
+  name: string;
+  role: string;
+  focus: string;
+  icon: string;
+}
+
+export interface EnterpriseFabricArchitecture {
+  enterpriseSystems: {
+    channels: string[];
+    systems: string[];
+  };
+  orchestrationLayer: {
+    coreFunctions: string[];
+    agents: EnterpriseFabricAgent[];
+  };
+  toolsAndServices: string[];
+  dataSources: string[];
+  modelLayer: string[];
+  governanceAndSecurity: string[];
+  infrastructureFoundation: string[];
+  businessImpact: string[];
+}
+
+export const ENTERPRISE_FABRIC_ORCHESTRATION: EnterpriseFabricArchitecture = {
+  enterpriseSystems: {
+    channels: ["Web / Portal", "Mobile", "Email", "Chat / Teams", "Voice (Sovereign Voice)", "APIs"],
+    systems: ["CRM", "ERP", "HRIS", "ITSM", "Finance", "Documents", "Legacy Systems"],
+  },
+  orchestrationLayer: {
+    coreFunctions: ["Plan", "Coordinate", "Monitor", "Optimize"],
+    agents: [
+      { name: "Sales Agent", role: "Revenue & Pipeline", focus: "Lead scoring, account insights, proposal generation", icon: "TrendingUp" },
+      { name: "Support Agent", role: "Customer Service", focus: "Resolve queries, recommend actions, escalate", icon: "Headphones" },
+      { name: "HR Agent", role: "People Operations", focus: "Recruiting, onboarding, policy Q&A, employee support", icon: "Users" },
+      { name: "IT Operations Agent", role: "Infrastructure & Reliability", focus: "Monitor systems, incident triage, root cause analysis", icon: "Server" },
+      { name: "Finance Agent", role: "Capital & Accounting", focus: "Expense analysis, forecasting, anomaly detection", icon: "DollarSign" },
+      { name: "Content Agent", role: "Comms & Localization", focus: "Create content, review, and localize", icon: "FileText" },
+      { name: "Data Analyst Agent", role: "Business Intelligence", focus: "Analyse data, uncover insights, build visualizations", icon: "BarChart3" },
+      { name: "Research Agent", role: "Knowledge Synthesis", focus: "Search, summarize, and synthesize information", icon: "Search" },
+    ],
+  },
+  toolsAndServices: ["Search", "RPA", "Workflow", "Code Execution", "Notifications"],
+  dataSources: ["Data Lake / Warehouse", "Knowledge Base (Vector DB)", "Documents / Files", "APIs / Third Party", "Real-time Data"],
+  modelLayer: ["Proprietary Models", "Open Source Models", "Domain Models", "Embedding Models", "Model Gateway"],
+  governanceAndSecurity: [
+    "Identity & Access Management (FIDO2/RBAC)",
+    "Data Privacy & Compliance (HIPAA, FedRAMP, GDPR)",
+    "Policy & Guardrails (Responsible AI)",
+    "Audit & Observability (Logs, Traces, Metrics)",
+    "Evaluation & Monitoring (Model + Agent Performance)",
+  ],
+  infrastructureFoundation: [
+    "Cloud / Hybrid / On-prem Sovereign Enclaves",
+    "Containerization & Orchestration",
+    "Scalable Compute (CPU / GPU)",
+    "Networking & Security (Zero-Trust mTLS)",
+    "Storage & Backup (Tamper-Proof PGLite)",
+  ],
+  businessImpact: [
+    "Higher Productivity",
+    "Better Decisions",
+    "Enhanced Customer Experience",
+    "Operational Efficiency",
+    "Innovation at Scale",
+  ],
+};
