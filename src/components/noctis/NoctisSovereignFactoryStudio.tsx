@@ -77,6 +77,7 @@ interface NoctisSovereignFactoryStudioProps {
   onClose: () => void;
   onSelectSystem?: (system: SovereignSystem, autoBuild?: boolean) => void;
   initialSystemId?: string;
+  initialTab?: "matrix" | "inspector" | "architecture" | "lifecycle" | "bus" | "templates" | "proof";
 }
 
 const CATEGORIES = [
@@ -316,17 +317,24 @@ export function NoctisSovereignFactoryStudio({
   onClose,
   onSelectSystem,
   initialSystemId,
+  initialTab = "matrix",
 }: NoctisSovereignFactoryStudioProps) {
   const [systems, setSystems] = useState<SovereignSystem[]>(listSovereignSystems());
   const [selectedSystemId, setSelectedSystemId] = useState<string>(initialSystemId || "noctis-cyber");
   const [activeCategory, setActiveCategory] = useState<typeof CATEGORIES[number]>("All");
-  const [activeTab, setActiveTab] = useState<"matrix" | "inspector" | "architecture" | "lifecycle" | "bus" | "templates" | "proof">("matrix");
+  const [activeTab, setActiveTab] = useState<"matrix" | "inspector" | "architecture" | "lifecycle" | "bus" | "templates" | "proof">(initialTab);
 
   useEffect(() => {
     if (initialSystemId) {
       setSelectedSystemId(initialSystemId);
     }
   }, [initialSystemId]);
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
   
   // Unified Deep Dive Modal State (Applies across Matrix, Inspector, Architecture, Lifecycle, Bus, Templates)
   const [activeDeepDive, setActiveDeepDive] = useState<UnifiedDeepDive | null>(null);
@@ -909,11 +917,15 @@ export function NoctisSovereignFactoryStudio({
               type="button"
               onClick={() => setActiveTab("proof")}
               className={cn(
-                "rounded-xl px-3 py-1.5 text-xs font-semibold transition cursor-pointer shrink-0",
-                activeTab === "proof" ? "bg-white/15 text-white shadow-xs" : "text-zinc-400 hover:text-white"
+                "rounded-xl px-3 py-1.5 text-xs font-semibold transition cursor-pointer shrink-0 flex items-center gap-1.5",
+                activeTab === "proof"
+                  ? "bg-emerald-500/25 text-emerald-200 border border-emerald-500/50 shadow-[0_0_12px_rgba(16,185,129,0.35)]"
+                  : "text-emerald-300 hover:text-white bg-emerald-950/40 border border-emerald-500/25"
               )}
             >
-              Proof & SQDEC
+              <Shield className="size-3 text-emerald-400" />
+              <span>Proof & SQDEC</span>
+              <span className="rounded bg-emerald-500/25 px-1 py-0.2 text-[8px] font-mono text-emerald-200 font-bold uppercase">P1</span>
             </button>
             <button
               type="button"
@@ -1139,6 +1151,15 @@ export function NoctisSovereignFactoryStudio({
                     className="rounded-xl bg-white/10 hover:bg-white/15 px-3 py-1.5 text-xs text-white font-medium transition cursor-pointer flex items-center gap-1"
                   >
                     <span>Lifecycle Manager</span>
+                    <ArrowRight className="size-3" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("proof")}
+                    className="rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 px-3 py-1.5 text-xs text-emerald-300 font-semibold transition cursor-pointer flex items-center gap-1 shadow-xs"
+                  >
+                    <Shield className="size-3 text-emerald-400" />
+                    <span>Proof & SQDEC</span>
                     <ArrowRight className="size-3" />
                   </button>
                   <button

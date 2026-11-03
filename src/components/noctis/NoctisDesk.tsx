@@ -3364,11 +3364,13 @@ export function NoctisDesk() {
   const [capabilityMatrixOpen, setCapabilityMatrixOpen] = useState(false);
   const [factoryStudioOpen, setFactoryStudioOpen] = useState(false);
   const [factoryStudioSystemId, setFactoryStudioSystemId] = useState<string>("noctis-cyber");
+  const [factoryStudioTab, setFactoryStudioTab] = useState<"matrix" | "inspector" | "architecture" | "lifecycle" | "bus" | "templates" | "proof">("matrix");
   const [dualPlaneModalOpen, setDualPlaneModalOpen] = useState(false);
 
   const handleOpenSovereignSuite = (systemId: string, promptText: string) => {
     setMenu(false);
     setFactoryStudioSystemId(systemId);
+    setFactoryStudioTab("inspector");
     setFactoryStudioOpen(true);
     setDraft(promptText);
   };
@@ -6681,16 +6683,34 @@ export function NoctisDesk() {
                   <span>Sovereign Suites (16+)</span>
                   <ChevronDown className={cn("size-3 transition-transform", suitesExpanded ? "" : "-rotate-90")} />
                 </button>
-                <button
-                  type="button"
-                  onClick={() => { setMenu(false); setFactoryStudioOpen(true); }}
-                  className="text-[11px] font-medium text-[#e4b86a] hover:underline"
-                >
-                  Matrix →
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => { setMenu(false); setFactoryStudioTab("proof"); setFactoryStudioOpen(true); }}
+                    className="text-[10px] font-semibold text-emerald-400 hover:text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 rounded px-1.5 py-0.5"
+                  >
+                    Proof & SQDEC 🛡️
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setMenu(false); setFactoryStudioTab("matrix"); setFactoryStudioOpen(true); }}
+                    className="text-[11px] font-medium text-[#e4b86a] hover:underline"
+                  >
+                    Matrix →
+                  </button>
+                </div>
               </div>
               {suitesExpanded ? (
                 <div className="space-y-0.5 max-h-40 overflow-y-auto no-scrollbar pr-1">
+                  <button
+                    type="button"
+                    onClick={() => { setMenu(false); setFactoryStudioTab("proof"); setFactoryStudioOpen(true); }}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-emerald-300 hover:bg-emerald-500/10 border border-emerald-500/20 transition text-left bg-emerald-950/20"
+                  >
+                    <Shield className="size-3.5 text-emerald-400 shrink-0" />
+                    <span className="truncate font-semibold">Proof & SQDEC Governance</span>
+                    <span className="ml-auto rounded bg-emerald-500/25 px-1.5 py-0.5 text-[9px] font-mono font-bold text-emerald-300">AAIAAS</span>
+                  </button>
                   <button
                     type="button"
                     onClick={() => { setMenu(false); setDesk("redteam");
@@ -7337,18 +7357,33 @@ export function NoctisDesk() {
           </button>
         </header>
         <div className="flex h-11 shrink-0 items-center justify-between border-b border-white/10 px-2.5 sm:px-4 bg-black/20 backdrop-blur-sm gap-2">
-          <button
-            type="button"
-            onClick={() => setDualPlaneModalOpen(true)}
-            title="Inspect Dual-Plane Sovereign Architecture and Zero-Trust Governance"
-            className="flex items-center gap-2 rounded-full bg-white/5 hover:bg-white/10 px-2.5 py-1 text-xs transition border border-white/10 cursor-pointer shadow-xs text-left"
-          >
-            <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="font-semibold text-emerald-300">Dual-Plane:</span>
-            <span className="hidden sm:inline text-zinc-400">Control [Noctis Ultra] ──</span>
-            <span className="text-zinc-200">Enclave [Air-Gapped]</span>
-            <span className="hidden md:inline rounded bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 text-[9px] font-mono font-bold">SQDEC P1</span>
-          </button>
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <button
+              type="button"
+              onClick={() => setDualPlaneModalOpen(true)}
+              title="Inspect Dual-Plane Sovereign Architecture and Zero-Trust Governance"
+              className="flex items-center gap-2 rounded-full bg-white/5 hover:bg-white/10 px-2.5 py-1 text-xs transition border border-white/10 cursor-pointer shadow-xs text-left"
+            >
+              <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="font-semibold text-emerald-300">Dual-Plane:</span>
+              <span className="hidden sm:inline text-zinc-400">Control [Noctis Ultra] ──</span>
+              <span className="text-zinc-200">Enclave [Air-Gapped]</span>
+              <span className="hidden md:inline rounded bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 text-[9px] font-mono font-bold">SQDEC P1</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setFactoryStudioTab("proof");
+                setFactoryStudioOpen(true);
+              }}
+              title="Open Cryptographic Proof-of-Execution & SQDEC Priority Stack"
+              className="flex items-center gap-1.5 rounded-full bg-emerald-950/50 hover:bg-emerald-900/60 px-2.5 sm:px-3 py-1 text-xs transition border border-emerald-500/40 cursor-pointer shadow-xs text-left text-emerald-300"
+            >
+              <Shield className="size-3.5 text-emerald-400 shrink-0" />
+              <span className="font-bold">Proof & SQDEC</span>
+              <span className="hidden sm:inline rounded bg-emerald-500/25 text-emerald-200 px-1.5 py-0.2 text-[9px] font-mono font-bold">SHA-256</span>
+            </button>
+          </div>
 
           {/* Clear Previous Chat & Scaled Compact Logo for Mobile and Desktop */}
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
@@ -7984,6 +8019,7 @@ export function NoctisDesk() {
 <NoctisSovereignFactoryStudio
         isOpen={factoryStudioOpen}
         initialSystemId={factoryStudioSystemId}
+        initialTab={factoryStudioTab}
         onClose={() => setFactoryStudioOpen(false)}
         onSelectSystem={(s, autoBuild) => {
           const text = `Inspect architectural invariants and deploy ${s.identity.name}`;
@@ -8103,12 +8139,13 @@ export function NoctisDesk() {
                 type="button"
                 onClick={() => {
                   setDualPlaneModalOpen(false);
+                  setFactoryStudioTab("proof");
                   setFactoryStudioOpen(true);
                 }}
                 className="rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black px-4 py-2 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
               >
-                <Sparkles className="size-3.5" />
-                <span>Open Sovereign Factory Studio</span>
+                <Shield className="size-3.5" />
+                <span>Open Proof & SQDEC Studio</span>
               </button>
             </div>
           </div>
