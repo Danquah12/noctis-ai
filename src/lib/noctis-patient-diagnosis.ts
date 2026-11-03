@@ -62,14 +62,21 @@ export type DifferentialCategory =
 export interface DifferentialDiagnosisItem {
   rank: number;
   diseaseName: string;
+  conditionName?: string;
+  conditionId?: string;
   icd10: string;
+  icd10Code?: string;
   snomedCt: string;
   probabilityPct: number;
+  probabilityScore?: number;
   category: DifferentialCategory;
+  tier?: string;
   clinicalRationale: string;
   supportingEvidence: string[];
   opposingEvidence: string[];
   goldStandardDiagnosticTests: string[];
+  goldStandardTesting?: string;
+  immediateAction?: string;
   questionsForPhysician: string[];
 }
 
@@ -922,14 +929,21 @@ export function computeDifferentialDiagnosis(data: PatientReportedData): {
     const diffItem: DifferentialDiagnosisItem = {
       rank: index + 1,
       diseaseName: item.rule.diseaseName,
+      conditionName: item.rule.diseaseName,
+      conditionId: `cond-${index + 1}-${item.rule.icd10}`,
       icd10: item.rule.icd10,
+      icd10Code: item.rule.icd10,
       snomedCt: item.rule.snomedCt,
       probabilityPct,
+      probabilityScore: probabilityPct,
       category,
+      tier: category === "PRIMARY_HYPOTHESIS" ? "TIER_1_PRIMARY" : category === "MUST_NOT_MISS_RULEOUT" ? "TIER_2_MUST_NOT_MISS" : "TIER_3_ALTERNATIVE",
       clinicalRationale: item.rule.clinicalRationaleTemplate,
       supportingEvidence: item.supporting.length > 0 ? item.supporting : ["Initial symptom presentation profile"],
       opposingEvidence: item.opposing,
       goldStandardDiagnosticTests: item.rule.goldStandardDiagnosticTests,
+      goldStandardTesting: item.rule.goldStandardDiagnosticTests?.join(", ") || "Clinical Assessment & Continuous Monitoring",
+      immediateAction: item.rule.isMustNotMiss ? "STAT Rule-out Protocol & Emergency Monitoring" : "Routine Guideline Diagnostic Workup",
       questionsForPhysician: item.rule.questionsForPhysician,
     };
 

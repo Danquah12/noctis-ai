@@ -649,12 +649,19 @@ export function NoctisPatientDiagnosisModal({
 
               <div className="space-y-3">
                 {differentials.map((item, idx) => {
-                  const isPrimary = item.tier === "TIER_1_PRIMARY";
-                  const isMustNotMiss = item.tier === "TIER_2_MUST_NOT_MISS";
+                  const isPrimary = item.tier === "TIER_1_PRIMARY" || item.category === "PRIMARY_HYPOTHESIS";
+                  const isMustNotMiss = item.tier === "TIER_2_MUST_NOT_MISS" || item.category === "MUST_NOT_MISS_RULEOUT";
+                  const tierText = (item.tier || (isPrimary ? "PRIMARY_HYPOTHESIS" : isMustNotMiss ? "MUST_NOT_MISS_RULEOUT" : "ALTERNATIVE")).replace(/_/g, " ");
+                  const conditionName = item.conditionName || item.diseaseName || "Clinical Condition";
+                  const conditionId = item.conditionId || `cond-${idx}-${item.icd10 || "dx"}`;
+                  const icd10 = item.icd10Code || item.icd10 || "R69";
+                  const prob = item.probabilityScore ?? item.probabilityPct ?? 50;
+                  const goldStandard = item.goldStandardTesting || item.goldStandardDiagnosticTests?.join(", ") || "Clinical Assessment & Continuous Monitoring";
+                  const action = item.immediateAction || (isMustNotMiss ? "STAT Rule-out Protocol & Emergency Monitoring" : "Routine Guideline Diagnostic Workup");
 
                   return (
                     <div
-                      key={item.conditionId}
+                      key={conditionId}
                       className={`p-4 rounded-xl border transition-all ${
                         isPrimary
                           ? "bg-red-950/20 border-red-500/40 shadow-lg shadow-red-950/30"
@@ -668,7 +675,7 @@ export function NoctisPatientDiagnosisModal({
                           <div className="flex items-center gap-2">
                             <span className="text-xs font-mono text-neutral-500">#{idx + 1}</span>
                             <h4 className="text-sm font-bold text-white tracking-tight">
-                              {item.conditionName}
+                              {conditionName}
                             </h4>
                             <span
                               className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded border ${
@@ -679,10 +686,10 @@ export function NoctisPatientDiagnosisModal({
                                   : "bg-blue-500/20 text-blue-300 border-blue-500/40"
                               }`}
                             >
-                              {item.tier.replace(/_/g, " ")}
+                              {tierText}
                             </span>
                             <span className="text-[11px] font-mono text-neutral-400 bg-neutral-800 px-1.5 py-0.5 rounded">
-                              {item.icd10Code}
+                              {icd10}
                             </span>
                           </div>
 
@@ -693,11 +700,11 @@ export function NoctisPatientDiagnosisModal({
                           <div className="pt-2 flex flex-wrap gap-2 text-xs">
                             <div className="px-2.5 py-1 rounded-lg bg-neutral-800/80 border border-neutral-700/60 text-neutral-300">
                               <strong className="text-neutral-400">Gold-Standard Testing:</strong>{" "}
-                              <span className="text-blue-300 font-medium">{item.goldStandardTesting}</span>
+                              <span className="text-blue-300 font-medium">{goldStandard}</span>
                             </div>
                             <div className="px-2.5 py-1 rounded-lg bg-neutral-800/80 border border-neutral-700/60 text-neutral-300">
                               <strong className="text-neutral-400">Immediate Action:</strong>{" "}
-                              <span className="text-amber-300">{item.immediateAction}</span>
+                              <span className="text-amber-300">{action}</span>
                             </div>
                           </div>
                         </div>
@@ -705,7 +712,7 @@ export function NoctisPatientDiagnosisModal({
                         {/* Probability Score Bar */}
                         <div className="w-24 shrink-0 text-right space-y-1">
                           <div className="text-base font-extrabold text-white">
-                            {item.probabilityScore}%
+                            {prob}%
                           </div>
                           <div className="w-full bg-neutral-800 rounded-full h-2 overflow-hidden">
                             <div
@@ -716,7 +723,7 @@ export function NoctisPatientDiagnosisModal({
                                   ? "bg-amber-500"
                                   : "bg-blue-500"
                               }`}
-                              style={{ width: `${item.probabilityScore}%` }}
+                              style={{ width: `${prob}%` }}
                             />
                           </div>
                           <span className="text-[10px] text-neutral-500">Bayesian Match</span>
@@ -909,7 +916,7 @@ export function NoctisPatientDiagnosisModal({
                 <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-800 space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold text-emerald-400 flex items-center gap-1.5">
-                      <CheckCircle2 className="w-4 h-4" /> Extracted Document: {ocrIntake.documentType.replace(/_/g, " ")} ({ocrIntake.confidenceScore}% confidence)
+                      <CheckCircle2 className="w-4 h-4" /> Extracted Document: {(ocrIntake.documentType || "DOCUMENT").replace(/_/g, " ")} ({ocrIntake.confidenceScore}% confidence)
                     </span>
                     <span className="text-[11px] text-neutral-500">Auto-filled into Patient Intake</span>
                   </div>
@@ -1004,7 +1011,7 @@ export function NoctisPatientDiagnosisModal({
                                   ? "bg-red-500/20 text-red-300 border border-red-500/30"
                                   : "bg-neutral-800 text-neutral-300"
                               }`}>
-                                {a.clinicalSignificance.replace(/_/g, " ")}
+                                {(a.clinicalSignificance || "STANDARD").replace(/_/g, " ")}
                               </span>
                             </td>
                           </tr>
