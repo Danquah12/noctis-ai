@@ -22,13 +22,32 @@ function xaiKey() {
 }
 
 function peakMw(question: string) {
+  const countMatch = question.match(/([\d,]+)\s*(?:households?|homes?|residents?|people|customers?|users?|units?)\b/i);
+  const count = countMatch ? Number(countMatch[1].replace(/,/g, "")) : 1;
+
+  const perUnitMatch =
+    question.match(/peak(?:\s+\w+){0,4}\s*demand:\s*([\d.]+)\s*(kw|mw|gw)\s*(?:\/|\s*per\s*)(?:household|home|resident|person|customer|user|unit)\b/i) ||
+    question.match(/([\d.]+)\s*(kw|mw|gw)\s*(?:\/|\s*per\s*)(?:household|home|resident|person|customer|user|unit)(?:\s+\w+){0,4}\s*peak/i);
+
+  if (perUnitMatch) {
+    const val = Number(perUnitMatch[1]);
+    const unit = perUnitMatch[2].toLowerCase();
+    const mwPerUnit = unit === "gw" ? val * 1000 : unit === "kw" ? val / 1000 : val;
+    return mwPerUnit * count;
+  }
+
   const peak = question.match(/peak(?:\s+\w+){0,4}\s*demand:\s*([\d.]+)\s*(kw|mw|gw)\b/i);
   if (!peak) return 0;
   const value = Number(peak[1]);
   const unit = peak[2].toLowerCase();
-  if (unit === "gw") return value * 1000;
-  if (unit === "kw") return value / 1000;
-  return value;
+  const rawMw = unit === "gw" ? value * 1000 : unit === "kw" ? val / 1000 : value;
+
+  // If question explicitly has a multiplier (e.g. 1000 households) and rawMw is per-unit scale (<= 0.05 MW)
+  if (count > 1 && rawMw <= 0.05) {
+    return rawMw * count;
+  }
+
+  return rawMw;
 }
 
 function moneyLimit(question: string) {
