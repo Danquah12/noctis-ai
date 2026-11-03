@@ -45,6 +45,7 @@ import {
   FileText,
   BarChart3,
   Network,
+  Info,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -80,6 +81,204 @@ const CATEGORIES = [
   "Intelligence",
 ] as const;
 
+export const NOCTIS_SYSTEM_EXPLANATIONS: Record<
+  string,
+  { summary: string; operationalImpact: string; coreCapabilities: string[] }
+> = {
+  "noctis-cyber": {
+    summary:
+      "Noctis Cyber is the sovereign security intelligence engine engineered for continuous AST taint tracking, live exploit graph validation, vulnerability triage, and zero-compromise enclave defense across cloud and edge clusters.",
+    operationalImpact:
+      "Autonomously detects and blocks zero-day lateral movement paths, validates CWE vulnerabilities against cryptographic AST invariant proofs, and eliminates false positives through deterministic AST execution.",
+    coreCapabilities: [
+      "XTRIKE Polyglot SAST/DAST Analysis",
+      "TREPATH Lateral Movement Proof Graph",
+      "AXIOM External Perimeter Attack Surface Discovery",
+      "Zero-Knowledge Attestation & Audit Sealing",
+    ],
+  },
+  "noctis-rmf": {
+    summary:
+      "Noctis RMF / GRC is the sovereign compliance automation engine implementing NIST SP 800-53 Rev. 5, FedRAMP High, ISO 27001, and SOC 2 Type II continuous controls auditing and machine-readable OSCAL evidence harvesting.",
+    operationalImpact:
+      "Accelerates Authority to Operate (ATO) timelines from months to minutes by transforming static compliance paperwork into live, continuously verifiable cryptographic control assessments.",
+    coreCapabilities: [
+      "Automated NIST SP 800-53 Rev. 5 Control Validation",
+      "OSCAL Machine-Readable System Security Plan (SSP)",
+      "Continuous ATO Evidence Harvesting Pipeline",
+      "CISO & Authorizing Official Cryptographic Sign-Off Gates",
+    ],
+  },
+  "noctis-health": {
+    summary:
+      "Noctis Health is a clinical diagnostic decision support (CDS) engine engineered under strict FDA CDS guidance, HIPAA enclave isolation, and FHIR R4 US Core v9.0.0 interoperability standards.",
+    operationalImpact:
+      "Enforces non-compensatory emergency triage gates, prevents unprovided clinical fact fabrication, reconciles multi-source longitudinal EHR records, and validates pharmacogenomic contraindications.",
+    coreCapabilities: [
+      "FDA CDS Non-Compensatory Diagnostic Triage",
+      "Zero Unprovided Fact Fabrication Isolation Gateway",
+      "FHIR R4 / US Core v9.0.0 Clinical Telemetry Mapping",
+      "Hemolysis-Aware Potassium & Creatinine Acute Deterioration Gate",
+    ],
+  },
+  "noctis-finance": {
+    summary:
+      "Noctis Finance & Investment Research is a high-conviction financial simulation engine executing multi-year discounted cash flow (DCF), Monte Carlo capital simulations, risk-parity portfolio allocation, and SEC 10-K/10-Q XBRL parsing.",
+    operationalImpact:
+      "Delivers institutional-grade capital allocation models with automated WACC/Terminal Growth sensitivity matrices, liquidity stress testing, and real-time filings gap auditing.",
+    coreCapabilities: [
+      "5-Year Discounted Cash Flow (DCF) Engine",
+      "SEC 10-K/10-Q XBRL Automated Filing Ingestion",
+      "Monte Carlo Risk-Parity Capital Allocation",
+      "Institutional Capital Structure Sensitivity Modeling",
+    ],
+  },
+  "noctis-engineering": {
+    summary:
+      "Noctis Engineering is an advanced multi-physics simulation engine running native WebAssembly solvers for partial differential equations (PDE), finite element analysis (FEA), and thermodynamic stress dynamics.",
+    operationalImpact:
+      "Enables sub-second mechanical, structural, and thermodynamic simulations directly within sovereign memory enclaves without exporting proprietary CAD/mesh geometries to public cloud APIs.",
+    coreCapabilities: [
+      "Multi-Physics Partial Differential Equation (PDE) Solving",
+      "Finite Element Analysis (FEA) Structural Load Stress",
+      "Thermodynamic Heat Dissipation Simulation",
+      "WebAssembly High-Throughput PDE Compute Mesh",
+    ],
+  },
+  "noctis-legal": {
+    summary:
+      "Noctis Legal provides sovereign jurisprudence intelligence, automated statutory contradiction redlining, patent claims construction, and regulatory compliance verification with verifiable citation graphs.",
+    operationalImpact:
+      "Reconciles conflicting multi-jurisdiction statutes, verifies precedent citation chains down to appellate court records, and generates redlined contractual amendments with audit trails.",
+    coreCapabilities: [
+      "Appellate & Supreme Court Case Precedent Retrieval",
+      "Statutory Clause Redlining & Conflict Resolution",
+      "Patent Claim Boundary & Prior Art Graphing",
+      "Regulatory Compliance Citation Audit Chain",
+    ],
+  },
+  "noctis-defense": {
+    summary:
+      "Noctis Defense provides mission-critical tactical intelligence, multi-domain defense simulation, post-quantum cryptographic (PQC) communication, and air-gapped threat surface modeling.",
+    operationalImpact:
+      "Maintains operational superiority in contested electronic environments through lattice-based Kyber-768 encryption, tactical mesh telemetry, and adversarial red-teaming simulations.",
+    coreCapabilities: [
+      "PQC Kyber-768 / Dilithium Enclave Encryption",
+      "Multi-Domain Tactical Mission Simulation",
+      "Air-Gapped Telemetry Threat Modeling",
+      "Adversarial Deception & Canary Fleet Defense",
+    ],
+  },
+  "noctis-science": {
+    summary:
+      "Noctis Science is an autonomous multi-disciplinary scientific research engine accelerating genomic sequencing analysis, molecular dynamics, biochemical binding affinities, and literature synthesis.",
+    operationalImpact:
+      "Rapidly stress-tests biomedical hypotheses against peer-reviewed corpora and executes automated laboratory protocol designs with reproducible mathematical models.",
+    coreCapabilities: [
+      "Genomic Variant & CRISPR Target Modeling",
+      "Molecular Dynamics & Receptor Binding Affinities",
+      "Peer-Reviewed Citation Graph Extraction",
+      "Reproducible Laboratory Protocol Synthesis",
+    ],
+  },
+  "noctis-intelligence": {
+    summary:
+      "Noctis Intelligence is an open-source intelligence (OSINT) and geopolitical investigative engine performing entity relationship link analysis, multi-modal signal reconnaissance, and global telemetry mapping.",
+    operationalImpact:
+      "Synthesizes fragmented open-source data streams into coherent intelligence dossiers, uncovering hidden entity relationships and temporal event correlations in real time.",
+    coreCapabilities: [
+      "Multi-Modal Open-Source Intelligence (OSINT) Ingestion",
+      "Entity Relationship Knowledge Graph Construction",
+      "Geopolitical Threat & Signal Telemetry Mapping",
+      "Temporal Conflict & Disinformation Link Analysis",
+    ],
+  },
+  "noctis-government": {
+    summary:
+      "Noctis Government coordinates sovereign public sector operations, policy formulation, administrative workflow compliance, and FISMA High data governance.",
+    operationalImpact:
+      "Ensures tamper-proof citizen service workflows, automated legislative impact analysis, and continuous compliance with federal and municipal transparency mandates.",
+    coreCapabilities: [
+      "FISMA High Sovereign Government Workflow Engine",
+      "Legislative Impact Modeling & Statutory Analysis",
+      "Tamper-Proof Citizen Service Audit Chains",
+      "Public Sector Inter-Agency Data Gateway",
+    ],
+  },
+  "noctis-education": {
+    summary:
+      "Noctis Education provides adaptive pedagogical modeling, clinical and engineering credentialing simulations, and personalized multi-modal instructional tutoring.",
+    operationalImpact:
+      "Dynamically models learner knowledge graphs, identifies conceptual misconceptions, and synthesizes rigorous professional credentialing examinations with calibrated difficulty.",
+    coreCapabilities: [
+      "Knowledge Graph Mastery & Cognitive Modeling",
+      "High-Stakes Professional Credentialing Simulation",
+      "Socratic Multi-Modal Instructional Tutoring",
+      "Dynamic Curriculum Optimization Engine",
+    ],
+  },
+  "noctis-enterprise": {
+    summary:
+      "Noctis Enterprise coordinates cross-organization operations, ERP/CRM workflow orchestration, supply chain resilience analysis, and executive decision-support analytics.",
+    operationalImpact:
+      "Connects distributed ERP, HRIS, CRM, and supply chain databases into a unified autonomous execution fabric with automated human-in-the-loop approval thresholds.",
+    coreCapabilities: [
+      "Cross-Enterprise ERP & CRM Unified Fabric",
+      "Autonomous Supply Chain Resilience Modeling",
+      "Multi-Department Workflow Orchestration",
+      "Executive KPI Decision-Support Telemetry",
+    ],
+  },
+  "noctis-energy": {
+    summary:
+      "Noctis Energy delivers real-time smart grid optimization, SCADA telemetry anomaly detection, renewable supply-demand balancing, and critical infrastructure resilience.",
+    operationalImpact:
+      "Prevents grid failure events by forecasting renewable intermittency, isolating abnormal SCADA telemetry signals, and optimizing distributed battery storage discharge cycles.",
+    coreCapabilities: [
+      "Real-Time SCADA Anomaly & Cyber Intrusion Detection",
+      "Renewable Energy Supply-Demand Load Balancing",
+      "Distributed Battery Storage Optimization",
+      "Power Grid Infrastructure Transient Modeling",
+    ],
+  },
+  "noctis-infrastructure": {
+    summary:
+      "Noctis Infrastructure monitors civil and digital critical systems, analyzing structural sensor telemetry, zero-trust network topologies, and disaster recovery orchestration.",
+    operationalImpact:
+      "Enables predictive maintenance across bridges, transportation hubs, and cloud datacenters before structural fatigue or network topology bottlenecks cause catastrophic outages.",
+    coreCapabilities: [
+      "Civil & Industrial Sensor Telemetry Ingestion",
+      "Structural Fatigue Predictive Failure Analysis",
+      "Zero-Trust Network Topology Verification",
+      "Autonomous Disaster Recovery Orchestration",
+    ],
+  },
+  "noctis-research": {
+    summary:
+      "Noctis Research synthesizes cross-disciplinary breakthroughs, stress-testing counterfactual hypotheses against academic corpora and generating structured research methodologies.",
+    operationalImpact:
+      "Breaks down research silos by discovering non-obvious cross-domain connections between physics, biology, computer science, and economics with formal citation proofs.",
+    coreCapabilities: [
+      "Cross-Discipline Citation & Discovery Mapping",
+      "Counterfactual Hypothesis Stress-Testing",
+      "Automated Literature Meta-Analysis Engine",
+      "Formal Methodological Research Synthesis",
+    ],
+  },
+  "noctis-software": {
+    summary:
+      "Noctis Software executes autonomous full-stack software engineering, AST-driven refactoring, formal verification, polyglot SAST/DAST CI/CD integration, and containerized deployment.",
+    operationalImpact:
+      "Autonomously synthesizes production-ready microservices, generates comprehensive unit and invariant test suites, and enforces zero-compromise architectural standards.",
+    coreCapabilities: [
+      "Autonomous Microservice Architecture Synthesis",
+      "Formal AST Invariant Verification & Refactoring",
+      "Polyglot SAST/DAST Continuous CI/CD Gates",
+      "Deterministic Containerized Build & Deploy Pipelines",
+    ],
+  },
+};
+
 export function NoctisSovereignFactoryStudio({
   isOpen,
   onClose,
@@ -89,6 +288,7 @@ export function NoctisSovereignFactoryStudio({
   const [selectedSystemId, setSelectedSystemId] = useState<string>("noctis-cyber");
   const [activeCategory, setActiveCategory] = useState<typeof CATEGORIES[number]>("All");
   const [activeTab, setActiveTab] = useState<"matrix" | "inspector" | "architecture" | "lifecycle" | "bus" | "templates">("matrix");
+  const [explainerSystem, setExplainerSystem] = useState<SovereignSystem | null>(null);
   const [lifecycleLog, setLifecycleLog] = useState<LifecycleExecutionResult | null>(null);
   const [executingAction, setExecutingAction] = useState<LifecycleAction | null>(null);
   const [busEvents, setBusEvents] = useState<{ id: string; from: string; to: string; type: string; latencyMs: number; status: string; timestamp: string }[]>([
@@ -116,13 +316,19 @@ export function NoctisSovereignFactoryStudio({
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        if (explainerSystem) {
+          setExplainerSystem(null);
+        } else {
+          onClose();
+        }
+      }
     };
     if (isOpen) {
       window.addEventListener("keydown", handleKeyDown);
     }
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, explainerSystem]);
 
   if (!isOpen) return null;
 
@@ -245,6 +451,14 @@ export function NoctisSovereignFactoryStudio({
     setActiveTab("inspector");
     setNewSystemName("");
   };
+
+  const explainerData = explainerSystem
+    ? NOCTIS_SYSTEM_EXPLANATIONS[explainerSystem.identity.id] || {
+        summary: explainerSystem.identity.purpose,
+        operationalImpact: `Autonomous execution in ${explainerSystem.identity.category} domain with calibrated invariants.`,
+        coreCapabilities: explainerSystem.capabilities.map((c) => c.name),
+      }
+    : null;
 
   return (
     <div
@@ -380,7 +594,7 @@ export function NoctisSovereignFactoryStudio({
                   return (
                     <div
                       key={sys.identity.id}
-                      onClick={() => handleOpenInspector(sys)}
+                      onClick={() => setExplainerSystem(sys)}
                       className={cn(
                         "group relative flex flex-col justify-between rounded-2xl border p-4 cursor-pointer transition shadow-sm hover:scale-[1.01] active:scale-[0.99]",
                         isSelected
@@ -440,9 +654,20 @@ export function NoctisSovereignFactoryStudio({
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleOpenInspector(sys);
+                                setExplainerSystem(sys);
                               }}
                               className="rounded-lg bg-sky-500/20 hover:bg-sky-500/30 border border-sky-500/40 px-2.5 py-1 text-[11px] font-bold text-sky-300 transition flex items-center gap-1 cursor-pointer"
+                            >
+                              <Sparkles className="size-3 text-sky-300" />
+                              <span>Explain</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenInspector(sys);
+                              }}
+                              className="rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 px-2 py-1 text-[11px] font-medium text-zinc-300 hover:text-white transition cursor-pointer"
                             >
                               <Eye className="size-3" />
                               <span>Inspect</span>
@@ -456,16 +681,6 @@ export function NoctisSovereignFactoryStudio({
                               className="rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 px-2 py-1 text-[11px] font-medium text-zinc-300 hover:text-white transition cursor-pointer"
                             >
                               <span>Lifecycle</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleOpenBus(sys);
-                              }}
-                              className="rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 px-2 py-1 text-[11px] font-medium text-zinc-300 hover:text-white transition cursor-pointer"
-                            >
-                              <span>Bus</span>
                             </button>
                           </div>
                           <button
@@ -502,6 +717,14 @@ export function NoctisSovereignFactoryStudio({
                   <span>Back to Systems Matrix</span>
                 </button>
                 <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setExplainerSystem(currentSystem)}
+                    className="rounded-xl bg-sky-500/20 hover:bg-sky-500/30 border border-sky-500/40 px-3 py-1.5 text-xs text-sky-300 font-semibold transition cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Sparkles className="size-3.5 text-sky-300" />
+                    <span>Explain System</span>
+                  </button>
                   <button
                     type="button"
                     onClick={() => setActiveTab("lifecycle")}
@@ -1139,6 +1362,238 @@ export function NoctisSovereignFactoryStudio({
         </div>
 
       </div>
+
+      {/* NOCTIS INTELLIGENCE DEEP-DIVE EXPLAINER POPUP (NO TRANSITION TO CHAT) */}
+      {explainerSystem && explainerData && (
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setExplainerSystem(null);
+          }}
+          className="fixed inset-0 z-60 flex items-center justify-center bg-black/85 backdrop-blur-md p-3 sm:p-6 animate-in fade-in zoom-in-95 duration-150"
+        >
+          <div className="relative flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-sky-500/40 bg-[#0f0f14] text-white shadow-[0_0_50px_rgba(56,189,248,0.25)]">
+            
+            {/* Pop-up Header */}
+            <div className="flex items-center justify-between border-b border-white/10 bg-[#16161d] px-6 py-4">
+              <div className="flex items-center gap-3">
+                <div className="flex size-11 items-center justify-center rounded-2xl bg-black border border-sky-500/30 text-sky-400 shadow-inner">
+                  {getSystemIcon(explainerSystem.identity.icon)}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base font-bold text-white">{explainerSystem.identity.name}</h2>
+                    <span className="text-xs text-zinc-400 font-mono">({explainerSystem.identity.id})</span>
+                    {typeof explainerSystem.priorityRank === "number" && (
+                      <span className="rounded bg-rose-500/20 border border-rose-500/30 px-1.5 py-0.5 text-[10px] font-bold text-rose-300">
+                        Priority {explainerSystem.priorityRank}
+                      </span>
+                    )}
+                    <span className="rounded-full bg-emerald-500/20 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-bold text-emerald-300 uppercase">
+                      {explainerSystem.deployment.status}
+                    </span>
+                  </div>
+                  <p className="text-xs text-zinc-300 mt-0.5">
+                    {explainerSystem.identity.category} · v{explainerSystem.identity.version} · {explainerSystem.identity.owner}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setExplainerSystem(null)}
+                aria-label="Close Pop-up"
+                className="flex size-8 items-center justify-center rounded-full text-zinc-400 hover:bg-white/10 hover:text-white transition cursor-pointer"
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+
+            {/* Pop-up Body */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-5 scrollbar-thin scrollbar-thumb-zinc-700">
+              
+              {/* Executive Noctis Assessment */}
+              <div className="rounded-2xl border border-sky-500/30 bg-gradient-to-r from-sky-950/30 via-zinc-900 to-indigo-950/30 p-5 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="size-4 text-sky-400" />
+                  <span className="text-xs font-bold uppercase tracking-wider text-sky-300">
+                    Noctis Sovereign Assessment & Deep-Dive Search
+                  </span>
+                </div>
+                <p className="text-sm text-zinc-200 leading-relaxed font-normal">
+                  {explainerData.summary}
+                </p>
+                <div className="pt-2 border-t border-white/10">
+                  <p className="text-xs text-zinc-300 leading-relaxed">
+                    <strong className="text-sky-300">Operational Significance:</strong> {explainerData.operationalImpact}
+                  </p>
+                </div>
+                <div className="pt-2">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-2">Core Sovereign Capabilities:</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {explainerData.coreCapabilities.map((cap) => (
+                      <span
+                        key={cap}
+                        className="rounded-lg bg-sky-500/15 border border-sky-500/30 px-2.5 py-1 text-xs text-sky-200 flex items-center gap-1.5"
+                      >
+                        <CheckCircle2 className="size-3 text-sky-400" />
+                        <span>{cap}</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Technical Blueprint Breakdown */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                
+                {/* Architecture & Runtime */}
+                <div className="rounded-2xl border border-white/10 bg-[#141418] p-4 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Server className="size-4 text-purple-400" />
+                    <span className="text-xs font-bold uppercase tracking-wider text-purple-400">Architecture & Compute</span>
+                  </div>
+                  <p className="text-xs text-zinc-300"><strong>Runtime Enclave:</strong> {explainerSystem.architecture.runtime}</p>
+                  <p className="text-xs text-zinc-300"><strong>Services:</strong> {explainerSystem.architecture.services.join(", ")}</p>
+                  <p className="text-xs text-zinc-300"><strong>Databases:</strong> {explainerSystem.architecture.databases.join(", ")}</p>
+                  <p className="text-xs text-zinc-400 font-mono">Memory: {explainerSystem.architecture.memoryLimitMb}MB · Storage: {explainerSystem.architecture.storageQuotaGb}GB</p>
+                </div>
+
+                {/* Knowledge Base & RAG */}
+                <div className="rounded-2xl border border-white/10 bg-[#141418] p-4 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Database className="size-4 text-teal-400" />
+                    <span className="text-xs font-bold uppercase tracking-wider text-teal-400">Knowledge Base & RAG</span>
+                  </div>
+                  <p className="text-xs text-zinc-300"><strong>Domain:</strong> {explainerSystem.knowledgeBase.domain}</p>
+                  <p className="text-xs text-zinc-300"><strong>Data Sources:</strong> {explainerSystem.knowledgeBase.dataSources.slice(0, 3).join(", ")}</p>
+                  <p className="text-xs text-zinc-300"><strong>Chunking:</strong> {explainerSystem.knowledgeBase.chunkingStrategy}</p>
+                  <p className="text-xs text-zinc-400 font-mono">Top-K: {explainerSystem.knowledgeBase.retrievalTopK} · Threshold: {Math.round(explainerSystem.knowledgeBase.groundingThreshold * 100)}%</p>
+                </div>
+
+                {/* Specialized Agents */}
+                <div className="rounded-2xl border border-white/10 bg-[#141418] p-4 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Cpu className="size-4 text-rose-400" />
+                    <span className="text-xs font-bold uppercase tracking-wider text-rose-400">Specialized Autonomous Agents ({explainerSystem.agents.length})</span>
+                  </div>
+                  {explainerSystem.agents.map((ag) => (
+                    <div key={ag.id} className="rounded-xl bg-black/40 border border-white/5 p-2 text-xs">
+                      <p className="font-bold text-white">{ag.name} ({ag.role})</p>
+                      <p className="text-[11px] text-zinc-400 mt-0.5">Model: {ag.modelTarget} · Focus: {ag.specialization}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Operational Workflows */}
+                <div className="rounded-2xl border border-white/10 bg-[#141418] p-4 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Activity className="size-4 text-amber-400" />
+                    <span className="text-xs font-bold uppercase tracking-wider text-amber-400">Operational Workflows</span>
+                  </div>
+                  {explainerSystem.workflows.map((wf) => (
+                    <div key={wf.id} className="rounded-xl bg-black/40 border border-white/5 p-2 text-xs">
+                      <p className="font-bold text-white">{wf.name} ({wf.trigger})</p>
+                      <p className="text-[11px] text-zinc-400 mt-0.5">Steps: {wf.steps.join(" → ")}</p>
+                      {wf.approvalGates.length > 0 && (
+                        <p className="text-[10px] text-amber-300 mt-1">Approval Gate: {wf.approvalGates.join(", ")}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Security & RBAC */}
+                <div className="rounded-2xl border border-white/10 bg-[#141418] p-4 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Lock className="size-4 text-red-400" />
+                    <span className="text-xs font-bold uppercase tracking-wider text-red-400">Security & Isolation</span>
+                  </div>
+                  <p className="text-xs text-zinc-300"><strong>Isolation:</strong> {explainerSystem.security.tenantIsolation}</p>
+                  <p className="text-xs text-zinc-300"><strong>Authentication:</strong> {explainerSystem.security.authentication}</p>
+                  <p className="text-xs text-zinc-300"><strong>RBAC:</strong> {explainerSystem.security.rbacRoles.join(", ")}</p>
+                  <p className="text-[11px] text-emerald-400">Audit Trail: SHA-256 Cryptographically Sealed</p>
+                </div>
+
+                {/* Evaluation & Accuracy */}
+                <div className="rounded-2xl border border-white/10 bg-[#141418] p-4 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="size-4 text-yellow-400" />
+                    <span className="text-xs font-bold uppercase tracking-wider text-yellow-400">Reliability & Accuracy</span>
+                  </div>
+                  <p className="text-xs text-zinc-300"><strong>Target Score:</strong> &gt;= {explainerSystem.evaluation.benchmarkScoreTarget}%</p>
+                  <p className="text-xs text-zinc-300"><strong>Measured Accuracy:</strong> <span className="text-emerald-400 font-bold">{explainerSystem.evaluation.measuredAccuracy}%</span></p>
+                  <p className="text-xs text-zinc-400">Suites: {explainerSystem.evaluation.testSuites.join(", ")}</p>
+                </div>
+
+              </div>
+
+            </div>
+
+            {/* Pop-up Footer Action Buttons */}
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 bg-[#16161d] px-6 py-4">
+              <button
+                type="button"
+                onClick={() => setExplainerSystem(null)}
+                className="rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 px-4 py-2 text-xs font-medium text-zinc-300 hover:text-white transition cursor-pointer"
+              >
+                Close Pop-up
+              </button>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedSystemId(explainerSystem.identity.id);
+                    setActiveTab("inspector");
+                    setExplainerSystem(null);
+                  }}
+                  className="rounded-xl bg-sky-500/20 hover:bg-sky-500/30 border border-sky-500/40 px-3.5 py-2 text-xs font-bold text-sky-300 transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Eye className="size-3.5" />
+                  <span>Inspect Full 11-D Blueprint</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedSystemId(explainerSystem.identity.id);
+                    setActiveTab("lifecycle");
+                    setExplainerSystem(null);
+                  }}
+                  className="rounded-xl bg-white/10 hover:bg-white/15 px-3 py-2 text-xs font-semibold text-white transition cursor-pointer flex items-center gap-1.5"
+                >
+                  <Terminal className="size-3.5" />
+                  <span>Lifecycle</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedSystemId(explainerSystem.identity.id);
+                    setActiveTab("bus");
+                    setExplainerSystem(null);
+                  }}
+                  className="rounded-xl bg-white/10 hover:bg-white/15 px-3 py-2 text-xs font-semibold text-white transition cursor-pointer flex items-center gap-1.5"
+                >
+                  <Send className="size-3.5" />
+                  <span>Bus</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const sys = explainerSystem;
+                    setExplainerSystem(null);
+                    handleBuildSystem(sys);
+                  }}
+                  className="rounded-xl bg-[#e4b86a] hover:bg-amber-400 text-black px-4 py-2 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                >
+                  <Play className="size-3 fill-current" />
+                  <span>Build in Forge</span>
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
