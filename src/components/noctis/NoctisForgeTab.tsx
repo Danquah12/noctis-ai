@@ -16,6 +16,7 @@ import {
   Cpu,
   Shield,
   Layers,
+  Boxes,
   Code2,
   Play,
   RotateCcw,
@@ -294,8 +295,29 @@ export function NoctisForgeTab({ onSendToChat, onClose }: NoctisForgeTabProps) {
   const [factoryStudioOpen, setFactoryStudioOpen] = useState(false);
   const [voiceModalOpen, setVoiceModalOpen] = useState(false);
   const [activeVoicePersona, setActiveVoicePersona] = useState<VoicePersona>("maple");
+  const [forgeMenuOpen, setForgeMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const activeRecent = recents.find((r) => r.id === activeRecentId) || recents[0];
+
+  const filteredRecents = recents.filter((r) =>
+    searchQuery ? r.title.toLowerCase().includes(searchQuery.toLowerCase()) || r.project.toLowerCase().includes(searchQuery.toLowerCase()) : true
+  );
+  const filteredProjects = PROJECTS.filter((p) =>
+    searchQuery ? p.name.toLowerCase().includes(searchQuery.toLowerCase()) : true
+  );
+
+  const handleSelectRecent = (id: string) => {
+    setActiveRecentId(id);
+    const item = recents.find((r) => r.id === id);
+    const artifact = RECENT_ARTIFACTS[id] || {
+      title: item?.title || "Sovereign Build",
+      code: `// Sovereign Build: ${item?.title || "Custom Workflow"}\n// Project: ${item?.project || "DStrike Core"}\n// Status: ${(item?.status || "completed").toUpperCase()}\n\nexport async function executeSystemBuild() {\n  return {\n    buildId: "${id}",\n    timestamp: new Date().toISOString(),\n    status: "SUCCESS",\n    verifiedBy: "DStrike-Architect-Synthesizer"\n  };\n}`,
+      tests: `// Verification Suite: ${item?.title || "Custom Workflow"}\nimport { describe, it } from "node:test";\nimport assert from "node:assert/strict";\n\ndescribe("${item?.title || "Custom Workflow"}", () => {\n  it("verifies architectural invariant boundaries", () => {\n    assert.ok(true, "All security gates passing.");\n  });\n});`,
+    };
+    setBuildArtifact(artifact);
+  };
 
   const handleStartBuild = (customPrompt?: string) => {
     const textToBuild = customPrompt || prompt;
@@ -442,27 +464,36 @@ describe("${textToBuild} - Verification", () => {
         )}
       >
         {/* Sidebar Header Dropdown */}
-        <div className="flex items-center justify-between border-b border-white/10 px-3 py-3">
+        <div className="relative flex items-center justify-between border-b border-white/10 px-3 py-3">
           <div className="flex items-center gap-2">
             <div className="grid size-7 place-items-center rounded-lg bg-gradient-to-br from-[#e4b86a] to-amber-600 text-black font-black text-xs shadow-xs">
               <Terminal className="size-4" />
             </div>
-            <div className="flex items-center gap-1 cursor-pointer hover:text-white transition">
+            <button
+              type="button"
+              onClick={() => setForgeMenuOpen((v) => !v)}
+              className="flex items-center gap-1 cursor-pointer rounded-lg px-1.5 py-0.5 hover:bg-white/10 hover:text-white transition"
+            >
               <span className="font-bold text-sm tracking-tight text-white">Noctis Forge</span>
-              <ChevronDown className="size-3.5 text-zinc-400" />
-            </div>
+              <ChevronDown className={cn("size-3.5 text-zinc-400 transition-transform", forgeMenuOpen ? "rotate-180 text-white" : "")} />
+            </button>
           </div>
           <div className="flex items-center gap-1">
             <button
               type="button"
+              onClick={() => setSearchOpen((v) => !v)}
               title="Search builds"
-              className="rounded-lg p-1.5 text-zinc-400 hover:text-white hover:bg-white/5 transition"
+              className={cn(
+                "rounded-lg p-1.5 transition",
+                searchOpen ? "bg-white/15 text-white" : "text-zinc-400 hover:text-white hover:bg-white/5"
+              )}
             >
               <Search className="size-4" />
             </button>
             <button
               type="button"
               onClick={() => {
+                setActiveRecentId("");
                 setBuildArtifact(null);
                 setBuildLogs([]);
                 setPrompt("");
@@ -473,18 +504,97 @@ describe("${textToBuild} - Verification", () => {
               <Plus className="size-4" />
             </button>
           </div>
+
+          {/* Forge Menu Dropdown */}
+          {forgeMenuOpen && (
+            <div className="absolute left-3 top-14 w-60 rounded-2xl border border-white/15 bg-[#1c1c22] p-1.5 shadow-2xl z-50 animate-in fade-in zoom-in-95">
+              <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                Sovereign Navigation
+              </div>
+              <button
+                type="button"
+                onClick={() => { setForgeMenuOpen(false); setFactoryStudioOpen(true); }}
+                className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-xs font-semibold text-sky-300 hover:bg-sky-500/20 transition text-left cursor-pointer"
+              >
+                <Sparkles className="size-4 text-sky-400 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="truncate">Sovereign Factory Studio</p>
+                  <p className="text-[10px] text-zinc-400 font-normal">16 Suites · 5 Layers · 11-D</p>
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setForgeMenuOpen(false); setVoiceModalOpen(true); }}
+                className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-xs font-semibold text-zinc-200 hover:bg-white/10 transition text-left cursor-pointer"
+              >
+                <Mic className="size-4 text-purple-400 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="truncate">Choose Voice Persona</p>
+                  <p className="text-[10px] text-zinc-400 font-normal">18 Personas across 9 Languages</p>
+                </div>
+              </button>
+              <div className="my-1 border-t border-white/10" />
+              <button
+                type="button"
+                onClick={() => { setForgeMenuOpen(false); handleSelectRecent("factory"); }}
+                className="flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-xs text-zinc-300 hover:bg-white/10 transition text-left cursor-pointer"
+              >
+                <Boxes className="size-3.5 text-indigo-400 shrink-0" />
+                <span className="truncate">Sovereign Factory Specs</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setForgeMenuOpen(false); handleSelectRecent("1"); }}
+                className="flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-xs text-zinc-300 hover:bg-white/10 transition text-left cursor-pointer"
+              >
+                <Shield className="size-3.5 text-amber-400 shrink-0" />
+                <span className="truncate">XTRIKE SAST Engine</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setForgeMenuOpen(false); handleSelectRecent("2"); }}
+                className="flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-xs text-zinc-300 hover:bg-white/10 transition text-left cursor-pointer"
+              >
+                <Layers className="size-3.5 text-rose-400 shrink-0" />
+                <span className="truncate">TREPATH Proof Graph</span>
+              </button>
+            </div>
+          )}
         </div>
+
+        {/* Search Filter Input (Toggled by Search icon) */}
+        {searchOpen && (
+          <div className="px-3 pt-2 pb-1 animate-in fade-in duration-150">
+            <div className="flex items-center gap-2 rounded-xl bg-black/60 border border-white/15 px-2.5 py-1.5 text-xs text-white">
+              <Search className="size-3.5 text-zinc-400 shrink-0" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Filter builds & projects..."
+                className="w-full bg-transparent text-xs text-white placeholder-zinc-500 focus:outline-none"
+                autoFocus
+              />
+              {searchQuery ? (
+                <button type="button" onClick={() => setSearchQuery("")} className="text-zinc-400 hover:text-white cursor-pointer">
+                  <X className="size-3" />
+                </button>
+              ) : null}
+            </div>
+          </div>
+        )}
 
         {/* New Build Button */}
         <div className="p-3">
           <button
             type="button"
             onClick={() => {
+              setActiveRecentId("");
               setBuildArtifact(null);
               setBuildLogs([]);
               setPrompt("");
             }}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 hover:bg-white/15 px-3 py-2 text-xs font-semibold text-white transition border border-white/10 shadow-xs"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 hover:bg-white/15 px-3 py-2 text-xs font-semibold text-white transition border border-white/10 shadow-xs cursor-pointer active:scale-98"
           >
             <Plus className="size-3.5" />
             <span>New Build</span>
@@ -538,7 +648,7 @@ describe("${textToBuild} - Verification", () => {
               Projects
             </div>
             <div className="mt-1 space-y-0.5">
-              {PROJECTS.map((proj) => (
+              {filteredProjects.map((proj) => (
                 <div
                   key={proj.id}
                   className="flex items-center justify-between rounded-lg px-2.5 py-1.5 text-xs text-zinc-300 hover:bg-white/5 hover:text-white transition cursor-pointer"
@@ -622,6 +732,42 @@ describe("${textToBuild} - Verification", () => {
           {buildArtifact ? (
             // Build Output Result View
             <div className="w-full max-w-3xl space-y-4 animate-in fade-in duration-200">
+              {/* Noctis Sovereign Systems Factory Studio Hero Banner */}
+              {(activeRecentId === "factory" || buildArtifact.title.includes("Sovereign Systems Factory")) && (
+                <div className="rounded-2xl border border-sky-500/40 bg-gradient-to-r from-sky-950/70 via-zinc-900 to-indigo-950/70 p-4 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in duration-200">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="rounded-full bg-sky-500/20 border border-sky-500/40 px-2 py-0.5 text-[10px] font-bold text-sky-300">
+                        16 SOVEREIGN SUITES · 5 LAYERS · 11-D
+                      </span>
+                      <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    </div>
+                    <h3 className="text-sm font-bold text-white">Noctis Sovereign Systems Factory Studio</h3>
+                    <p className="text-xs text-zinc-300">
+                      Interactive visual factory to design, generate, monitor, and transition independent enterprise AI systems.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setFactoryStudioOpen(true)}
+                      className="rounded-xl bg-sky-500 hover:bg-sky-400 text-black px-4 py-2 text-xs font-bold transition shadow-lg flex items-center justify-center gap-2 shrink-0 cursor-pointer active:scale-98"
+                    >
+                      <Sparkles className="size-4" />
+                      <span>Launch Factory Studio (16)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setVoiceModalOpen(true)}
+                      className="rounded-xl bg-white/10 hover:bg-white/15 text-white px-3 py-2 text-xs font-semibold transition border border-white/10 flex items-center gap-1.5 shrink-0 cursor-pointer"
+                    >
+                      <Mic className="size-3.5 text-purple-400" />
+                      <span>Voice</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center justify-between border-b border-white/10 pb-3">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="size-5 text-emerald-400" />
@@ -711,7 +857,14 @@ describe("${textToBuild} - Verification", () => {
                   return (
                     <div
                       key={item.id}
-                      onClick={() => handleStartBuild(item.action)}
+                      onClick={() => {
+                        if (item.id === "factory") {
+                          handleSelectRecent("factory");
+                          setFactoryStudioOpen(true);
+                        } else {
+                          handleStartBuild(item.action);
+                        }
+                      }}
                       className="group flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3 hover:bg-white/[0.08] hover:border-[#e4b86a]/40 transition cursor-pointer"
                     >
                       <div className="flex items-center gap-3 min-w-0">
