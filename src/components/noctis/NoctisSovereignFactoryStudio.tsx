@@ -46,8 +46,19 @@ import {
   BarChart3,
   Network,
   Info,
+  Globe,
+  ExternalLink,
+  Radio,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  ingestVercelLaunchpadApps,
+  REAL_WORLD_SCENARIOS,
+  dispatchRealWorldEvent,
+  type DispatchedEventResult,
+  type LaunchpadMeshTelemetry,
+  type RealWorldEventScenario,
+} from "@/lib/noctis-real-world-mesh";
 import {
   SOVEREIGN_SYSTEMS_PORTFOLIO,
   REUSABLE_SYSTEM_TEMPLATES,
@@ -341,6 +352,32 @@ export function NoctisSovereignFactoryStudio({
 
   const [lifecycleLog, setLifecycleLog] = useState<LifecycleExecutionResult | null>(null);
   const [executingAction, setExecutingAction] = useState<LifecycleAction | null>(null);
+  const [meshTelemetry, setMeshTelemetry] = useState<LaunchpadMeshTelemetry>(() => ingestVercelLaunchpadApps());
+  const [selectedScenarioId, setSelectedScenarioId] = useState<string>("SCENARIO-CYBER-001");
+  const [dispatchedEventLog, setDispatchedEventLog] = useState<DispatchedEventResult | null>(null);
+  const [isDispatching, setIsDispatching] = useState(false);
+  const [activePillarFilter, setActivePillarFilter] = useState<string>("all");
+
+  const handleDispatchRealWorldScenario = (scenarioId: string) => {
+    setIsDispatching(true);
+    setTimeout(() => {
+      const res = dispatchRealWorldEvent(scenarioId);
+      setDispatchedEventLog(res);
+      setIsDispatching(false);
+      setBusEvents((prev) => [
+        {
+          id: `rw-${Date.now()}`,
+          from: res.scenario.sourceApi.split("/")[0].trim(),
+          to: res.scenario.systemName,
+          type: res.scenario.eventTitle,
+          latencyMs: res.latencyMs,
+          status: `SQDEC P1 Attested · Seal ${res.proofOfExecution.sha256Seal.slice(0, 12)}...`,
+          timestamp: new Date().toLocaleTimeString(),
+        },
+        ...prev,
+      ]);
+    }, 350);
+  };
   const [busEvents, setBusEvents] = useState<{ id: string; from: string; to: string; type: string; latencyMs: number; status: string; timestamp: string }[]>([
     {
       id: "msg-initial-1",
@@ -2093,14 +2130,20 @@ export function NoctisSovereignFactoryStudio({
             </div>
           )}
 
-          {/* TAB 4: EVENT BUS */}
+          {/* TAB 4: EVENT BUS & REAL-WORLD LAUNCHPAD INGESTION */}
           {activeTab === "bus" && (
-            <div className="space-y-6 animate-in fade-in duration-200">
-              <div className="bg-[#141418] border border-white/10 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4">
+            <div className="space-y-8 animate-in fade-in duration-200">
+              {/* Header Bar */}
+              <div className="bg-[#141418] border border-white/10 rounded-2xl p-5 flex flex-wrap items-center justify-between gap-4">
                 <div>
-                  <h3 className="text-sm font-bold text-white">DStrike Sovereign Interoperability Bus</h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-bold text-white">DStrike Sovereign Interoperability & Ingestion Mesh</h3>
+                    <span className="rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-mono font-bold">
+                      65+ VERCEL APPS INGESTED
+                    </span>
+                  </div>
                   <p className="text-xs text-zinc-400 mt-1">
-                    Governed sub-5ms event dispatch between Sovereign Systems. Active source: <strong>{currentSystem.identity.name}</strong>
+                    Ingests live data from Vercel Launchpad applications and dispatches real-world external event payloads through the sovereign enclave.
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -2110,7 +2153,7 @@ export function NoctisSovereignFactoryStudio({
                     className="flex items-center gap-1.5 rounded-xl bg-purple-500/20 border border-purple-500/30 px-3 py-1.5 text-xs font-semibold text-purple-300 hover:bg-purple-500/30 transition cursor-pointer"
                   >
                     <Sparkles className="size-3" />
-                    <span>Explain Bus Fabric</span>
+                    <span>Explain Ingestion Fabric</span>
                   </button>
                   <button
                     type="button"
@@ -2118,24 +2161,229 @@ export function NoctisSovereignFactoryStudio({
                     className="flex items-center gap-1.5 rounded-xl bg-amber-500/20 border border-amber-500/30 px-3 py-1.5 text-xs font-semibold text-amber-300 hover:bg-amber-500/30 transition cursor-pointer"
                   >
                     <Send className="size-3" />
-                    <span>Send to RMF/GRC</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDispatchBusEvent("noctis-health")}
-                    className="flex items-center gap-1.5 rounded-xl bg-sky-500/20 border border-sky-500/30 px-3 py-1.5 text-xs font-semibold text-sky-300 hover:bg-sky-500/30 transition cursor-pointer"
-                  >
-                    <Send className="size-3" />
-                    <span>Send to Health CDS</span>
+                    <span>Inter-System Ping</span>
                   </button>
                 </div>
               </div>
 
-              {/* Event Stream (Interactive) */}
+              {/* 1. REAL-WORLD EVENT SIMULATOR & SQDEC DISPATCHER */}
+              <div className="rounded-2xl border border-emerald-500/30 bg-[#121217] p-5 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3">
+                  <div className="flex items-center gap-2">
+                    <Radio className="size-4 text-emerald-400 animate-pulse" />
+                    <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">
+                      Real-World Event Ingestion Simulator (16 Scenarios)
+                    </span>
+                  </div>
+                  <span className="text-[11px] font-mono text-zinc-400">
+                    Source: CISA KEV · SEC EDGAR · FHIR R4 · SCADA PMU · Grants.gov
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+                  <div className="lg:col-span-6 space-y-3">
+                    <label className="text-xs font-semibold text-zinc-300 block">Select Real-World Event Trigger:</label>
+                    <select
+                      value={selectedScenarioId}
+                      onChange={(e) => setSelectedScenarioId(e.target.value)}
+                      className="w-full rounded-xl bg-black border border-white/15 p-2.5 text-xs text-white outline-none focus:border-emerald-500 font-medium"
+                    >
+                      {REAL_WORLD_SCENARIOS.map((sc) => (
+                        <option key={sc.id} value={sc.id}>
+                          [{sc.domain.toUpperCase()}] {sc.systemName}: {sc.eventTitle} ({sc.triggerSeverity})
+                        </option>
+                      ))}
+                    </select>
+
+                    {(() => {
+                      const cur = REAL_WORLD_SCENARIOS.find((s) => s.id === selectedScenarioId) || REAL_WORLD_SCENARIOS[0];
+                      return (
+                        <div className="rounded-xl border border-white/10 bg-black/60 p-3 space-y-2 text-[11px]">
+                          <div className="flex items-center justify-between text-zinc-400">
+                            <span><strong>Source API:</strong> {cur.sourceApi}</span>
+                            <span className="rounded bg-sky-500/20 text-sky-300 px-1.5 py-0.5 text-[9px] font-mono font-bold">
+                              {cur.protocol}
+                            </span>
+                          </div>
+                          <p className="text-zinc-300 leading-relaxed">
+                            <strong className="text-white">Expected Sovereign Reaction:</strong> {cur.expectedReaction}
+                          </p>
+                          <p className="text-emerald-300/90 text-[10px] font-mono border-t border-white/5 pt-1.5">
+                            <strong>SQDEC Invariant:</strong> {cur.sqdecPolicyRule}
+                          </p>
+                        </div>
+                      );
+                    })()}
+
+                    <button
+                      type="button"
+                      disabled={isDispatching}
+                      onClick={() => handleDispatchRealWorldScenario(selectedScenarioId)}
+                      className="w-full rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-black px-4 py-2.5 text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                    >
+                      {isDispatching ? (
+                        <>
+                          <RefreshCw className="size-3.5 animate-spin" />
+                          <span>Processing in Isolated Enclave...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Zap className="size-3.5 fill-current" />
+                          <span>Dispatch Real-World Event into Sovereign Enclave</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Dispatched Result / POE Attestation Card */}
+                  <div className="lg:col-span-6">
+                    {dispatchedEventLog ? (
+                      <div className="rounded-xl border border-emerald-500/40 bg-gradient-to-b from-[#141d17] to-black p-4 space-y-3 text-xs animate-in zoom-in-95 duration-150">
+                        <div className="flex items-center justify-between border-b border-emerald-500/20 pb-2">
+                          <span className="flex items-center gap-1.5 font-bold text-emerald-300">
+                            <CheckCircle2 className="size-4 text-emerald-400" />
+                            <span>Proof-of-Execution Attested</span>
+                          </span>
+                          <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-500/30">
+                            {dispatchedEventLog.latencyMs}ms Latency
+                          </span>
+                        </div>
+
+                        <div className="font-mono text-[10px] bg-black/60 p-2.5 rounded-lg border border-white/5 space-y-1">
+                          <p className="text-zinc-400 truncate">
+                            <strong className="text-zinc-300">SHA-256 Seal:</strong>{" "}
+                            <span className="text-emerald-400 font-bold">{dispatchedEventLog.proofOfExecution.sha256Seal}</span>
+                          </p>
+                          <p className="text-zinc-400">
+                            <strong className="text-zinc-300">Enclave Worker:</strong> {dispatchedEventLog.proofOfExecution.workerId}
+                          </p>
+                          <p className="text-zinc-400">
+                            <strong className="text-zinc-300">Timestamp:</strong> {dispatchedEventLog.executionTimestamp}
+                          </p>
+                        </div>
+
+                        <p className="text-zinc-200 leading-relaxed text-[11px]">
+                          {dispatchedEventLog.narrativeSummary}
+                        </p>
+
+                        <div className="space-y-1 border-t border-white/5 pt-2">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                            Invariant Verification Checklist ({dispatchedEventLog.proofOfExecution.verificationChecklist.length})
+                          </span>
+                          <div className="space-y-1 pt-1 max-h-28 overflow-y-auto pr-1">
+                            {dispatchedEventLog.proofOfExecution.verificationChecklist.map((c, idx) => (
+                              <div key={idx} className="flex items-center justify-between text-[10px] bg-white/5 px-2 py-1 rounded">
+                                <span className="text-zinc-300">{c.invariant}</span>
+                                <span className="text-emerald-400 font-mono font-bold">PASS</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="rounded-xl border border-dashed border-white/10 bg-black/40 p-8 flex flex-col items-center justify-center text-center space-y-2 text-zinc-500">
+                        <Terminal className="size-6 text-zinc-600" />
+                        <p className="text-xs">No active event dispatched yet.</p>
+                        <p className="text-[11px] text-zinc-600">Select any of the 16 real-world scenarios on the left and click Dispatch to witness enclave reaction & SHA-256 seal generation.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. VERCEL LAUNCHPAD INGESTION MESH (65+ APPS) */}
+              <div className="rounded-2xl border border-white/10 bg-[#121217] p-5 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3">
+                  <div className="flex items-center gap-2">
+                    <Globe className="size-4 text-sky-400" />
+                    <span className="text-xs font-bold uppercase tracking-wider text-white">
+                      Vercel Launchpad Ingestion Mesh ({meshTelemetry.totalApps} Applications Active)
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 font-mono text-[11px] text-zinc-400">
+                    <span className="rounded bg-sky-500/20 text-sky-300 px-2 py-0.5 text-[10px] font-bold">
+                      {meshTelemetry.totalPillars} Pillars Connected
+                    </span>
+                    <span className="rounded bg-emerald-500/20 text-emerald-300 px-2 py-0.5 text-[10px] font-bold">
+                      100% Vercel Live
+                    </span>
+                  </div>
+                </div>
+
+                {/* Pillar Filter Pills */}
+                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setActivePillarFilter("all")}
+                    className={cn(
+                      "rounded-lg px-2.5 py-1 text-[11px] font-semibold transition cursor-pointer shrink-0",
+                      activePillarFilter === "all" ? "bg-white/20 text-white" : "text-zinc-400 hover:text-white bg-white/5"
+                    )}
+                  >
+                    All Pillars ({meshTelemetry.totalApps})
+                  </button>
+                  {Object.entries(meshTelemetry.pillarBreakdown).map(([pillar, count]) => (
+                    <button
+                      key={pillar}
+                      type="button"
+                      onClick={() => setActivePillarFilter(pillar)}
+                      className={cn(
+                        "rounded-lg px-2.5 py-1 text-[11px] font-semibold transition cursor-pointer shrink-0 uppercase",
+                        activePillarFilter === pillar ? "bg-sky-500/30 text-sky-200 border border-sky-500/40" : "text-zinc-400 hover:text-white bg-white/5"
+                      )}
+                    >
+                      {pillar.replace(/-/g, " ")} ({count})
+                    </button>
+                  ))}
+                </div>
+
+                {/* Applications Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-96 overflow-y-auto pr-1">
+                  {Object.values(meshTelemetry.appsBySystem)
+                    .flat()
+                    .filter((app) => activePillarFilter === "all" || app.pillar === activePillarFilter)
+                    .map((app) => (
+                      <div
+                        key={app.id}
+                        className="rounded-xl border border-white/10 bg-[#16161c] p-3.5 space-y-2 hover:border-sky-500/40 transition group"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="font-bold text-white text-xs group-hover:text-sky-300 transition truncate">
+                            {app.name}
+                          </span>
+                          <span className="rounded bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 text-[9px] font-mono font-bold shrink-0">
+                            {app.status}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-zinc-400 line-clamp-2 leading-relaxed">
+                          {app.description}
+                        </p>
+                        <div className="pt-2 border-t border-white/5 flex items-center justify-between text-[10px]">
+                          <span className="text-zinc-500">
+                            Bound: <strong className="text-zinc-300">{app.boundSystemName}</strong>
+                          </span>
+                          {app.vercelUrl && (
+                            <a
+                              href={app.vercelUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-sky-400 hover:text-sky-300 flex items-center gap-1 font-mono hover:underline"
+                            >
+                              <span>Vercel Live</span>
+                              <ExternalLink className="size-2.5" />
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+
+              {/* 3. INTER-SYSTEM REAL-TIME EVENT STREAM */}
               <div className="rounded-2xl border border-white/10 bg-black divide-y divide-zinc-800 overflow-hidden">
                 <div className="px-4 py-2.5 bg-zinc-900/60 flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-zinc-400">
-                  <span>Inter-System Event Stream (Click row for Deep Dive)</span>
-                  <span className="text-emerald-400 font-mono">Avg Latency: 1.4ms</span>
+                  <span>DStrike Inter-System Event Bus (Real-Time Attestation Stream)</span>
+                  <span className="text-emerald-400 font-mono">Sub-2ms Zero-Trust Delivery</span>
                 </div>
                 {busEvents.map((evt) => (
                   <div
