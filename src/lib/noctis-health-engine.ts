@@ -548,8 +548,16 @@ export function evaluateHealthSafetyGateway(params: {
     (typeof extractedVitals.respRateMin === "number" &&
       extractedVitals.respRateMin > 0 &&
       extractedVitals.respRateMin <= 10);
+  const isHypertensiveEmergency =
+    (/\b(?:bp|blood\s+pressure)\D{0,12}(?:1[8-9]\d|2\d{2})\s*\/\s*(?:1[2-9]\d|\d{3})\b/i.test(q) ||
+      (typeof extractedVitals.sbpMmHg === "number" && extractedVitals.sbpMmHg >= 180) ||
+      (typeof extractedVitals.dbpMmHg === "number" && extractedVitals.dbpMmHg >= 120)) &&
+    /\b(headache|papilledema|blurred\s+vision|vision|scotoma|encephalopathy|confusion|chest\s+pain|shortness\s+of\s+breath|pulmonary\s+edema|aortic\s+dissection|renal\s+failure)\b/i.test(
+      q
+    );
   const isMedicalEmergency =
     isSevereHyperkalemiaEmergency ||
+    isHypertensiveEmergency ||
     isAcuteCoronaryChestEmergency ||
     isAcuteStrokeOrNeurologicalEmergency ||
     isMarkedBradycardiaEmergency ||

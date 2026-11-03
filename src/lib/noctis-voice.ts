@@ -794,7 +794,7 @@ export async function speakNoctisVoice(
         const inner = bag.result && typeof bag.result === "object" ? (bag.result as { audio?: unknown; error?: unknown }) : bag;
         const audioUrl = typeof inner.audio === "string" ? inner.audio : "";
         if (audioUrl && audioUrl.startsWith("data:audio/")) {
-          return await new Promise<boolean>((resolve) => {
+          const played = await new Promise<boolean>((resolve) => {
             try {
               const audio = new Audio(audioUrl);
               currentAudioElement = audio;
@@ -808,11 +808,20 @@ export async function speakNoctisVoice(
                 currentAudioElement = null;
                 resolve(false);
               };
-              audio.play().catch(() => resolve(false));
+              audio.play().catch(() => {
+                currentAudioElement = null;
+                resolve(false);
+              });
             } catch {
+              currentAudioElement = null;
               resolve(false);
             }
           });
+
+          if (played) {
+            return true;
+          }
+          // If neural playback failed or was blocked by autoplay, cascade to browser voice
         }
       }
     } catch {
