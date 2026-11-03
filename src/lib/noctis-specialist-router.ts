@@ -458,28 +458,39 @@ export function handleNaturalSpecialistClinicalQuery(query: string): string | nu
   // =========================================================================
 
   // NIHSS Stroke Workup
-  if (/\b(nihss|acute stroke|tpa window|thrombectomy|tenecteplase|alteplase)\b/i.test(q)) {
+  if (/\b(nihss|acute stroke|tpa window|thrombectomy|tenecteplase|alteplase|ischemic stroke|code stroke)\b/i.test(q)) {
     const scoreMatch = q.match(/nihss\s*[:=]?\s*(\d{1,2})/i);
-    const scoreVal = scoreMatch ? parseInt(scoreMatch[1], 10) : 10;
+    const scoreVal = scoreMatch ? parseInt(scoreMatch[1], 10) : 14;
+
+    const bpMatch = q.match(/(\d{2,3})\/(\d{2,3})/);
+    const sbp = bpMatch ? parseInt(bpMatch[1], 10) : 165;
+    const dbp = bpMatch ? parseInt(bpMatch[2], 10) : 95;
+
+    const hoursMatch = q.match(/(\d+(?:\.\d+)?)\s*(?:hours?|hrs?)/i);
+    const hours = hoursMatch ? parseFloat(hoursMatch[1]) : 2.0;
+
     const res = evaluateAcuteStrokeNihss({
       facialPalsyScore: 2,
       motorArmRightScore: 3,
       motorLegRightScore: Math.max(0, Math.min(scoreVal - 5, 4)),
       bestLanguageAphasiaScore: 2,
-      hoursSinceLastKnownWell: 2.0,
-      systolicBpMmHg: 165,
-      diastolicBpMmHg: 95,
+      hoursSinceLastKnownWell: hours,
+      systolicBpMmHg: sbp,
+      diastolicBpMmHg: dbp,
     });
 
     return [
       `# Noctis Clinical Decision Support — Acute Stroke & Neurovascular Triage`,
       `**Total NIHSS Score:** ${res.totalScore} · **Severity:** ${res.strokeSeverityCategory}`,
       `- **Large Vessel Occlusion (LVO) Probability:** ${res.estimatedLvoProbabilityPercent}%`,
-      `- **IV Thrombolysis (tPA/TNK) Eligible:** ${res.thrombolysisEligibility.eligibleForIvTpaOrTnk ? "YES" : "NO"}`,
+      `- **IV Thrombolysis (tPA/TNK) Eligible:** ${res.thrombolysisEligibility.eligibleForIvTpaOrTnk ? "YES" : "NO (Pending Pre-Treatment BP Control)"}`,
       `- **Endovascular Thrombectomy (EVT) Window:** ${res.mechanicalThrombectomyEligibility.windowCategory}`,
+      res.thrombolysisEligibility.contraindications.length
+        ? `### ⚠️ Thrombolytic Safety Gates:\n${res.thrombolysisEligibility.contraindications.map((c) => `- ${c}`).join("\n")}\n- **Post-Thrombolysis Target:** Maintain BP < 180/105 mmHg for at least 24 hours.`
+        : "",
       `### Urgent Neurovascular Actions:`,
       res.urgentActions.map((a) => `- ${a}`).join("\n"),
-    ].join("\n");
+    ].filter(Boolean).join("\n");
   }
 
   // ABCD2 Score for TIA
