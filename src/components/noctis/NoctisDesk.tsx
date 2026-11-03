@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ClipboardEvent } from "react";
 import { Link } from "@tanstack/react-router";
-import { Activity, ArrowUp, Bot, Boxes, Brain, Calendar, Cpu, Crosshair, EyeOff, Fingerprint, FileLock, Globe, Key, Layers, Lock, LogOut, Network, Sparkles, Stethoscope, Swords, Target, ShieldAlert, Terminal, WifiOff, Zap, ChevronDown, ChevronLeft, Code2, Copy, CornerDownLeft, FileText, GraduationCap, Image, Library, Mail, Menu, Mic, MoreHorizontal, PanelRight, PanelRightOpen, Pencil, Phone, PhoneOff, Plus, Printer, RotateCcw, Search, Square, SquarePen, Trash2, Users2, Video, Volume2, VolumeX, Wrench, X } from "lucide-react";
+import { Activity, ArrowUp, Bot, Boxes, Brain, Calendar, Cpu, Crosshair, EyeOff, Fingerprint, FileLock, Globe, Key, Layers, Lock, LogOut, Network, Sparkles, Stethoscope, Swords, Target, ShieldAlert, Terminal, WifiOff, Zap, ChevronDown, ChevronLeft, Code2, Copy, CornerDownLeft, FileText, GraduationCap, Image, Library, Mail, Menu, Mic, MoreHorizontal, PanelRight, PanelRightOpen, Pencil, Phone, PhoneOff, Plus, Printer, RotateCcw, Search, Square, SquarePen, Trash2, Users2, Video, Volume2, VolumeX, Wrench, X, TrendingUp, Scale, Atom, Landmark, Building2, Server, Microscope, FileCheck, Shield } from "lucide-react";
+import { SOVEREIGN_SYSTEMS_PORTFOLIO } from "@/lib/noctis-sovereign-factory";
 import { askNoctis, drawVibe, hearVibe, sayVibe, trainVibe } from "@/lib/noctis-api";
 import { bringImagineFile, bringPortrait } from "@/lib/imagine-api";
 import { playHarmonicTone, playSovereignChime, stopAudioSynth } from "@/lib/noctis-audio-synth";
@@ -6665,7 +6666,7 @@ export function NoctisDesk() {
                   onClick={() => setSuitesExpanded((v) => !v)}
                   className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-zinc-400 hover:text-zinc-200"
                 >
-                  <span>Sovereign Suites (16)</span>
+                  <span>Sovereign Suites (16+)</span>
                   <ChevronDown className={cn("size-3 transition-transform", suitesExpanded ? "" : "-rotate-90")} />
                 </button>
                 <button
@@ -6699,6 +6700,140 @@ export function NoctisDesk() {
                     <Stethoscope className="size-3.5 text-blue-400 shrink-0" />
                     <span className="truncate">Patient Diagnostic CDS</span>
                     <span className="ml-auto rounded bg-blue-500/20 px-1.5 py-0.5 text-[9px] font-bold text-blue-300">TRIAGE</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setMenu(false); setPrompt("Analyze cyber threat matrix and active lateral movement vulnerabilities"); }}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
+                  >
+                    <Shield className="size-3.5 text-rose-400 shrink-0" />
+                    <span className="truncate">Noctis Cyber</span>
+                    <span className="ml-auto rounded bg-rose-500/20 px-1.5 py-0.5 text-[9px] font-bold text-rose-300">P1</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setMenu(false); setPrompt("Audit NIST SP 800-53 Rev. 5 controls and compile OSCAL System Security Plan"); }}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
+                  >
+                    <FileCheck className="size-3.5 text-amber-400 shrink-0" />
+                    <span className="truncate">Noctis RMF / GRC</span>
+                    <span className="ml-auto rounded bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-bold text-amber-300">P2</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setMenu(false); setPrompt("Evaluate clinical CDS guidelines and emergency triage protocols"); }}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
+                  >
+                    <Stethoscope className="size-3.5 text-sky-400 shrink-0" />
+                    <span className="truncate">Noctis Health</span>
+                    <span className="ml-auto rounded bg-sky-500/20 px-1.5 py-0.5 text-[9px] font-bold text-sky-300">P3</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setMenu(false); setPrompt("Compute 5-year discounted cash flow valuation and capital sensitivity matrix"); }}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
+                  >
+                    <TrendingUp className="size-3.5 text-emerald-400 shrink-0" />
+                    <span className="truncate">Noctis Finance & Invest</span>
+                    <span className="ml-auto rounded bg-emerald-500/20 px-1.5 py-0.5 text-[9px] font-bold text-emerald-300">P4</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setMenu(false); setPrompt("Run multi-physics PDE simulation and structural finite element analysis"); }}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
+                  >
+                    <Cpu className="size-3.5 text-purple-400 shrink-0" />
+                    <span className="truncate">Noctis Engineering</span>
+                    <span className="ml-auto rounded bg-purple-500/20 px-1.5 py-0.5 text-[9px] font-bold text-purple-300">P5</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setMenu(false); setDesk("forge"); }}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
+                  >
+                    <Code2 className="size-3.5 text-indigo-400 shrink-0" />
+                    <span className="truncate">Noctis Software</span>
+                    <span className="ml-auto rounded bg-indigo-500/20 px-1.5 py-0.5 text-[9px] font-bold text-indigo-300">BUILD</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setMenu(false); setPrompt("Search legal precedents, circuit splits, and statutory contradictions"); }}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
+                  >
+                    <Scale className="size-3.5 text-rose-400 shrink-0" />
+                    <span className="truncate">Noctis Legal</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setMenu(false); setPrompt("Assess defense SIGINT/IMINT threat telemetry and electronic warfare countermeasures"); }}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
+                  >
+                    <ShieldAlert className="size-3.5 text-red-400 shrink-0" />
+                    <span className="truncate">Noctis Defense</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setMenu(false); setPrompt("Evaluate genomics, CRISPR off-target cleavage scores, and molecular dynamics"); }}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
+                  >
+                    <Atom className="size-3.5 text-teal-400 shrink-0" />
+                    <span className="truncate">Noctis Science</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setMenu(false); setPrompt("Analyze OSINT entity graph, corporate registry UBO chains, and sanctions lists"); }}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
+                  >
+                    <Search className="size-3.5 text-indigo-400 shrink-0" />
+                    <span className="truncate">Noctis Intelligence (OSINT)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setMenu(false); setPrompt("Process federal grant review, FAR procurement compliance, and FOIA exemptions"); }}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
+                  >
+                    <Landmark className="size-3.5 text-blue-400 shrink-0" />
+                    <span className="truncate">Noctis Government</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setMenu(false); setPrompt("Engage adaptive Socratic tutoring and professional certification mastery"); }}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
+                  >
+                    <GraduationCap className="size-3.5 text-amber-400 shrink-0" />
+                    <span className="truncate">Noctis Education</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setMenu(false); setPrompt("Coordinate autonomous multi-agent enterprise swarm and ERP reconciliation"); }}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
+                  >
+                    <Building2 className="size-3.5 text-emerald-400 shrink-0" />
+                    <span className="truncate">Noctis Enterprise</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setMenu(false); setPrompt("Optimize power grid frequency balancing and BESS battery storage dispatch"); }}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
+                  >
+                    <Zap className="size-3.5 text-yellow-400 shrink-0" />
+                    <span className="truncate">Noctis Energy</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setMenu(false); setPrompt("Simulate municipal water network hydraulic transients and SCADA telemetry"); }}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
+                  >
+                    <Server className="size-3.5 text-cyan-400 shrink-0" />
+                    <span className="truncate">Noctis Infrastructure</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setMenu(false); setPrompt("Synthesize multidisciplinary literature and Bayesian frontier research claims"); }}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
+                  >
+                    <Microscope className="size-3.5 text-purple-400 shrink-0" />
+                    <span className="truncate">Noctis Research</span>
                   </button>
 <button
                     type="button"

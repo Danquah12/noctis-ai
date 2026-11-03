@@ -2,6 +2,7 @@ import { buildZeroTrustPdeReport } from "./noctis-pde.ts";
 import { buildDeepResearchReport } from "./noctis-deep-research.ts";
 import { buildFrontierUnifiedArchitectureReport } from "./noctis-frontier-pillars.ts";
 import { buildRicIntelligenceReport } from "./noctis-ric.ts";
+import { buildSovereignSystemsFactoryReport } from "./noctis-sovereign-factory.ts";
 import { handleNaturalHealthQuery } from "./noctis-health-engine.ts";
 import { handleNaturalPatientDiagnosticQuery } from "./noctis-patient-diagnosis.ts";
 import { handleNaturalSpecialistClinicalQuery } from "./noctis-specialist-router.ts";
@@ -1333,6 +1334,15 @@ export function runFollowUpIntelligence(
     )
   ) {
     return adaptSpecialistEngineOutput(currentQuestion, buildFrontierUnifiedArchitectureReport(), "NOCTIS-FRONTIER-5P-001");
+  }
+
+  // 0b-2. Noctis Sovereign Systems Factory & Sovereign Suites (5 Layers, 11 Dimensions, 16 Systems Portfolio)
+  if (
+    /\b(build\s+noctis\s+sovereign\s+systems\s+factory|sovereign\s+systems\s+factory|reusable\s+system-building\s+framework|additional\s+systems\s+i\s+would\s+add\s+to\s+the\s+sovereign\s+suites|make\s+noctis\s+a\s+platform\s+that\s+builds\s+platforms|one\s+noctis\s+brain\.?\s*multiple\s+professional\s+intelligence\s+systems|system\s+portfolio|five\s+major\s+layers|layer\s+1\s*—\s*user\s+experience|eleven\s+dimensions|noctis\s+cyber.*noctis\s+health)\b/i.test(
+      currentQuestion
+    )
+  ) {
+    return adaptSpecialistEngineOutput(currentQuestion, buildSovereignSystemsFactoryReport(), "NOCTIS-FACTORY-001");
   }
 
   // 0c. Interactive Diagram Component Inspector (Capability #11: Evidence-Aware Visualization Provenance)
