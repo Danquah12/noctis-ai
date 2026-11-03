@@ -518,7 +518,7 @@ describe("${textToBuild} - Verification", () => {
               >
                 <Sparkles className="size-4 text-sky-400 shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <p className="truncate">Sovereign Factory Studio</p>
+                  <p className="truncate">Launch Factory Studio</p>
                   <p className="text-[10px] text-zinc-400 font-normal">16 Suites · 5 Layers · 11-D</p>
                 </div>
               </button>
@@ -713,7 +713,8 @@ describe("${textToBuild} - Verification", () => {
               className="rounded-full bg-sky-500/20 hover:bg-sky-500/30 border border-sky-500/40 px-3 py-1 text-xs font-bold text-sky-300 flex items-center gap-1.5 transition shadow-xs"
             >
               <Sparkles className="size-3.5" />
-              <span>Sovereign Factory Studio (16)</span>
+
+              <span>Launch Factory Studio</span>
             </button>
             {onClose ? (
               <button
