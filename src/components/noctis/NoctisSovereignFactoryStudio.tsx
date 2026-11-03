@@ -279,6 +279,19 @@ export const NOCTIS_SYSTEM_EXPLANATIONS: Record<
   },
 };
 
+interface UnifiedDeepDive {
+  title: string;
+  subtitle: string;
+  badge?: string;
+  badgeColor?: string;
+  summary: string;
+  operationalImpact?: string;
+  keyPoints: { label: string; value: string | string[] }[];
+  tags?: string[];
+  actionLabel?: string;
+  onAction?: () => void;
+}
+
 export function NoctisSovereignFactoryStudio({
   isOpen,
   onClose,
@@ -288,7 +301,10 @@ export function NoctisSovereignFactoryStudio({
   const [selectedSystemId, setSelectedSystemId] = useState<string>("noctis-cyber");
   const [activeCategory, setActiveCategory] = useState<typeof CATEGORIES[number]>("All");
   const [activeTab, setActiveTab] = useState<"matrix" | "inspector" | "architecture" | "lifecycle" | "bus" | "templates">("matrix");
-  const [explainerSystem, setExplainerSystem] = useState<SovereignSystem | null>(null);
+  
+  // Unified Deep Dive Modal State (Applies across Matrix, Inspector, Architecture, Lifecycle, Bus, Templates)
+  const [activeDeepDive, setActiveDeepDive] = useState<UnifiedDeepDive | null>(null);
+
   const [lifecycleLog, setLifecycleLog] = useState<LifecycleExecutionResult | null>(null);
   const [executingAction, setExecutingAction] = useState<LifecycleAction | null>(null);
   const [busEvents, setBusEvents] = useState<{ id: string; from: string; to: string; type: string; latencyMs: number; status: string; timestamp: string }[]>([
@@ -317,8 +333,8 @@ export function NoctisSovereignFactoryStudio({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        if (explainerSystem) {
-          setExplainerSystem(null);
+        if (activeDeepDive) {
+          setActiveDeepDive(null);
         } else {
           onClose();
         }
@@ -328,7 +344,7 @@ export function NoctisSovereignFactoryStudio({
       window.addEventListener("keydown", handleKeyDown);
     }
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose, explainerSystem]);
+  }, [isOpen, onClose, activeDeepDive]);
 
   if (!isOpen) return null;
 
@@ -366,6 +382,298 @@ export function NoctisSovereignFactoryStudio({
       case "Microscope": return <Microscope className="size-4 text-purple-400" />;
       default: return <Boxes className="size-4 text-zinc-400" />;
     }
+  };
+
+  const openSystemDeepDive = (sys: SovereignSystem) => {
+    const expl = NOCTIS_SYSTEM_EXPLANATIONS[sys.identity.id] || {
+      summary: sys.identity.purpose,
+      operationalImpact: `Autonomous execution in ${sys.identity.category} domain with calibrated invariants.`,
+      coreCapabilities: sys.capabilities.map((c) => c.name),
+    };
+    setActiveDeepDive({
+      title: sys.identity.name,
+      subtitle: `${sys.identity.category} · v${sys.identity.version} · ${sys.identity.owner}`,
+      badge: typeof sys.priorityRank === "number" ? `Priority ${sys.priorityRank}` : sys.deployment.status.toUpperCase(),
+      badgeColor: typeof sys.priorityRank === "number" ? "rose" : "emerald",
+      summary: expl.summary,
+      operationalImpact: expl.operationalImpact,
+      tags: expl.coreCapabilities,
+      keyPoints: [
+        { label: "Runtime Enclave", value: sys.architecture.runtime },
+        { label: "Microservices", value: sys.architecture.services.join(", ") },
+        { label: "Databases", value: sys.architecture.databases.join(", ") },
+        { label: "Memory Limit", value: `${sys.architecture.memoryLimitMb}MB` },
+        { label: "Storage Quota", value: `${sys.architecture.storageQuotaGb}GB` },
+        { label: "RAG Domain", value: sys.knowledgeBase.domain },
+        { label: "RAG Sources", value: sys.knowledgeBase.dataSources.join(", ") },
+        { label: "Grounding Threshold", value: `${Math.round(sys.knowledgeBase.groundingThreshold * 100)}%` },
+        { label: "Specialized Agents", value: sys.agents.map((a) => `${a.name} (${a.role})`).join("; ") },
+        { label: "Workflows", value: sys.workflows.map((w) => `${w.name} [Gates: ${w.approvalGates.join(", ") || "None"}]`).join("; ") },
+        { label: "Security & Isolation", value: `${sys.security.tenantIsolation} · ${sys.security.authentication} · SHA-256 Sealed` },
+        { label: "Measured Accuracy", value: `${sys.evaluation.measuredAccuracy}% (Target: >=${sys.evaluation.benchmarkScoreTarget}%)` },
+      ],
+      actionLabel: "Build in Forge",
+      onAction: () => handleBuildSystem(sys),
+    });
+  };
+
+  const openDimensionDeepDive = (dimensionNumber: number, dimensionName: string, sys: SovereignSystem) => {
+    let summary = "";
+    let operationalImpact = "";
+    let keyPoints: { label: string; value: string | string[] }[] = [];
+
+    switch (dimensionNumber) {
+      case 1:
+        summary = `Dimension 1 defines the sovereign identity boundaries of ${sys.identity.name}, establishing owner authority, immutable identifier (${sys.identity.id}), semantic versioning (v${sys.identity.version}), and core domain purpose.`;
+        operationalImpact = "Enforces non-overlapping tenancy, cryptographic identity attestation, and governance lineage across sovereign execution.";
+        keyPoints = [
+          { label: "System ID", value: sys.identity.id },
+          { label: "Owner Authority", value: sys.identity.owner },
+          { label: "Version Semantics", value: `v${sys.identity.version}` },
+          { label: "Domain Category", value: sys.identity.category },
+          { label: "Core Purpose", value: sys.identity.purpose },
+        ];
+        break;
+      case 2:
+        summary = `Dimension 2 establishes the isolated compute enclave, multi-service topologies, state persistence engines, and hardware resource boundaries for ${sys.identity.name}.`;
+        operationalImpact = "Provides zero-trust compute isolation with guaranteed memory and storage allocations, preventing noisy-neighbor interference and memory leakage.";
+        keyPoints = [
+          { label: "Runtime Environment", value: sys.architecture.runtime },
+          { label: "Dedicated Microservices", value: sys.architecture.services },
+          { label: "State Databases", value: sys.architecture.databases },
+          { label: "Memory Allocation", value: `${sys.architecture.memoryLimitMb} MB dedicated RAM` },
+          { label: "Storage Quota", value: `${sys.architecture.storageQuotaGb} GB encrypted volume` },
+        ];
+        break;
+      case 3:
+        summary = `Dimension 3 configures the domain-specific Retrieval-Augmented Generation (RAG) pipeline for ${sys.identity.name}, detailing authoritative data corpora, semantic chunking, and strict grounding cutoffs.`;
+        operationalImpact = "Guarantees that all generative reasoning is strictly anchored in vetted domain literature, mathematically eliminating hallucination and unprovided fact fabrication.";
+        keyPoints = [
+          { label: "Domain Scope", value: sys.knowledgeBase.domain },
+          { label: "Authoritative Sources", value: sys.knowledgeBase.dataSources },
+          { label: "Semantic Chunking", value: sys.knowledgeBase.chunkingStrategy },
+          { label: "Top-K Context Window", value: `${sys.knowledgeBase.retrievalTopK} vectors` },
+          { label: "Grounding Threshold", value: `${Math.round(sys.knowledgeBase.groundingThreshold * 100)}% non-compensatory` },
+        ];
+        break;
+      case 4:
+        summary = `Dimension 4 registers the professional tools, mathematical solvers, and specialized capabilities accessible to ${sys.identity.name}.`;
+        operationalImpact = "Empowers autonomous agents to invoke verified deterministic tools with typed interfaces and bounded execution timeouts.";
+        keyPoints = sys.capabilities.map((c) => ({
+          label: c.name,
+          value: `${c.description} [Execution: ${c.toolType}, Timeout: ${c.executionTimeoutMs}ms]`,
+        }));
+        break;
+      case 5:
+        summary = `Dimension 5 details the autonomous multi-agent hierarchy operating within ${sys.identity.name}, including model targets, cognitive roles, and specific domain specializations.`;
+        operationalImpact = "Enables multi-agent collaboration and peer verification, ensuring that complex multi-step reasoning is partitioned among dedicated specialists.";
+        keyPoints = sys.agents.map((a) => ({
+          label: `${a.name} (${a.role})`,
+          value: `Model: ${a.modelTarget} | Focus: ${a.specialization} | Autonomy: ${a.permissions.join(", ")}`,
+        }));
+        break;
+      case 6:
+        summary = `Dimension 6 formalizes the operational processes, step-by-step execution pipelines, and mandatory human-in-the-loop approval gates for ${sys.identity.name}.`;
+        operationalImpact = "Guarantees deterministic lifecycle progression and prevents autonomous action on sensitive assets without cryptographic sign-off from designated authorities.";
+        keyPoints = sys.workflows.map((w) => ({
+          label: `${w.name} (${w.trigger})`,
+          value: `Pipeline: ${w.steps.join(" → ")} | Mandatory Approval Gate: ${w.approvalGates.join(", ") || "Autonomous"}`,
+        }));
+        break;
+      case 7:
+        summary = `Dimension 7 establishes the dedicated user interaction surfaces for ${sys.identity.name}, configuring Chat, Board, and Canvas interfaces with custom visual telemetry widgets.`;
+        operationalImpact = "Provides tailored user experiences for distinct operational roles, seamlessly integrating real-time charts, AST taint graphs, OSCAL radars, and DCF grids.";
+        keyPoints = [
+          { label: "Default Surface View", value: sys.interface.defaultView },
+          { label: "Supported Surfaces", value: [sys.interface.hasChat && "Chat", sys.interface.hasBoard && "Board", sys.interface.hasCanvas && "Canvas"].filter(Boolean).join(", ") },
+          { label: "Custom Telemetry Widgets", value: sys.interface.customWidgets },
+        ];
+        break;
+      case 8:
+        summary = `Dimension 8 defines the security architecture, zero-compromise tenant isolation, cryptographic identity verification, and SHA-256 audit trail attestation for ${sys.identity.name}.`;
+        operationalImpact = "Enforces defense-in-depth isolation, strict RBAC authorization, and tamper-proof ledger logging for every action, query, and state transition.";
+        keyPoints = [
+          { label: "Tenant Isolation", value: sys.security.tenantIsolation },
+          { label: "Authentication Provider", value: sys.security.authentication },
+          { label: "RBAC Roles", value: sys.security.rbacRoles },
+          { label: "Cryptographic Audit", value: "Active (SHA-256 Sealed Continuous Hash Chain)" },
+        ];
+        break;
+      case 9:
+        summary = `Dimension 9 specifies the persistent cognitive memory architecture for ${sys.identity.name}, setting context window size, underlying storage technology, and decay policies.`;
+        operationalImpact = "Maintains longitudinal cross-session coherence while strategically pruning stale or contradictory context to prevent hallucination.";
+        keyPoints = [
+          { label: "Persistent Context Window", value: `${sys.memory.persistentContextWindow.toLocaleString()} tokens` },
+          { label: "Storage Engine", value: sys.memory.storageEngine },
+          { label: "Memory Decay Policy", value: sys.memory.decayPolicy },
+        ];
+        break;
+      case 10:
+        summary = `Dimension 10 establishes the empirical evaluation benchmarks, regression test suites, and target accuracy gates for ${sys.identity.name}.`;
+        operationalImpact = "Prevents regressions and verifies that production performance meets or exceeds strict domain acceptance thresholds before any deployment release.";
+        keyPoints = [
+          { label: "Measured Benchmark Accuracy", value: `${sys.evaluation.measuredAccuracy}%` },
+          { label: "Target Gate Score", value: `>= ${sys.evaluation.benchmarkScoreTarget}%` },
+          { label: "Automated Test Suites", value: sys.evaluation.testSuites },
+        ];
+        break;
+      case 11:
+        summary = `Dimension 11 governs the production deployment environment, container replica configuration, high-availability uptime SLA, and automated health probing for ${sys.identity.name}.`;
+        operationalImpact = "Ensures high availability, fault tolerance, and zero-downtime operations with automated health probes and rapid recovery capabilities.";
+        keyPoints = [
+          { label: "Target Environment", value: sys.deployment.environment },
+          { label: "Live Deployment Status", value: sys.deployment.status.toUpperCase() },
+          { label: "Container Replicas", value: `${sys.deployment.replicas} active nodes` },
+          { label: "Uptime Availability SLA", value: `${sys.deployment.uptimePercentage}%` },
+          { label: "Health Probe Endpoint", value: sys.deployment.healthEndpoint },
+        ];
+        break;
+      default:
+        break;
+    }
+
+    setActiveDeepDive({
+      title: `${dimensionNumber}. ${dimensionName}`,
+      subtitle: `${sys.identity.name} · Dimension Blueprint`,
+      badge: `Dimension ${dimensionNumber}/11`,
+      badgeColor: "sky",
+      summary,
+      operationalImpact,
+      keyPoints,
+      actionLabel: "Inspect in Matrix",
+      onAction: () => {
+        setActiveDeepDive(null);
+        setActiveTab("matrix");
+      },
+    });
+  };
+
+  const openLayerDeepDive = (layer: typeof FACTORY_FIVE_LAYERS[number]) => {
+    setActiveDeepDive({
+      title: `Layer ${layer.layerNumber} — ${layer.layerName}`,
+      subtitle: `Sovereign Systems Factory · Top-to-Bottom Architecture`,
+      badge: `Layer ${layer.layerNumber}`,
+      badgeColor: "purple",
+      summary: layer.description,
+      operationalImpact: `Guarantees sovereign integrity at Layer ${layer.layerNumber}, ensuring clean separation of concerns and immutable boundary enforcement.`,
+      tags: layer.components,
+      keyPoints: [
+        { label: "Layer Designation", value: `Layer ${layer.layerNumber} of 5` },
+        { label: "Primary Architecture Role", value: layer.tagline },
+        { label: "Core Subsystems", value: layer.components },
+      ],
+      actionLabel: "View Systems Matrix",
+      onAction: () => {
+        setActiveDeepDive(null);
+        setActiveTab("matrix");
+      },
+    });
+  };
+
+  const openAgentDeepDive = (agent: (typeof ENTERPRISE_FABRIC_ORCHESTRATION.orchestrationLayer.agents)[number]) => {
+    setActiveDeepDive({
+      title: agent.name,
+      subtitle: `Enterprise Orchestration Fabric · Autonomous Agent`,
+      badge: agent.role,
+      badgeColor: "indigo",
+      summary: `${agent.name} is an autonomous specialized agent operating within the Enterprise Orchestration Layer, executing high-conviction workflows in ${agent.focus}.`,
+      operationalImpact: `Connects directly to ingestion touchpoints, interacts with core enterprise databases, and enforces designated approval thresholds.`,
+      keyPoints: [
+        { label: "Agent Designation", value: agent.name },
+        { label: "Operational Role", value: agent.role },
+        { label: "Domain Focus", value: agent.focus },
+        { label: "Orchestration Functions", value: ENTERPRISE_FABRIC_ORCHESTRATION.orchestrationLayer.coreFunctions },
+      ],
+      tags: ENTERPRISE_FABRIC_ORCHESTRATION.toolsAndServices.slice(0, 4),
+      actionLabel: "View Architecture",
+      onAction: () => {
+        setActiveDeepDive(null);
+        setActiveTab("architecture");
+      },
+    });
+  };
+
+  const openLifecycleDeepDive = (action: LifecycleAction) => {
+    const descriptions: Record<LifecycleAction, { desc: string; transition: string; gates: string }> = {
+      CREATE: { desc: "Instantiates system manifest, registers identity, assigns tenant IDs, and allocates isolated enclave memory.", transition: "DRAFT → INITIALIZED", gates: "System Registry Schema Validation" },
+      CONFIGURE: { desc: "Applies environment variables, fine-tunes RAG thresholds, configures RBAC policies, and mounts encrypted storage volumes.", transition: "INITIALIZED → CONFIGURED", gates: "Configuration Integrity Check" },
+      TEST: { desc: "Executes automated unit and integration suites, measuring regression preservation and benchmark target alignment.", transition: "CONFIGURED → TESTED", gates: "100% Invariant Test Pass Rate" },
+      VALIDATE: { desc: "Enforces hard-fail invariant checks, boundary validation, and security compliance attestations.", transition: "TESTED → VALIDATED", gates: "Non-Compensatory Compliance Attestation" },
+      DEPLOY: { desc: "Spins up live enclave replicas, mounts persistent databases, and establishes low-latency event bus endpoints.", transition: "VALIDATED → DEPLOYED (RUNNING)", gates: "Container Health Probe Handshake" },
+      MONITOR: { desc: "Streams real-time metrics, telemetry graphs, latency measurements, and anomaly alarms.", transition: "RUNNING → MONITORED", gates: "Continuous Telemetry Heartbeat" },
+      UPGRADE: { desc: "Performs blue/green zero-downtime rolling upgrades with automated rollback fallback triggers.", transition: "RUNNING → UPGRADED", gates: "Blue/Green Parity Attestation" },
+      ROLLBACK: { desc: "Instantly reverts system state and binaries to previous cryptographically verified release.", transition: "DEGRADED → RESTORED", gates: "Prior Snapshot Cryptographic Verification" },
+      RETIRE: { desc: "Safely drains active connections, archives persistent audit trails to SHA-256 evidence vault, and releases memory resources.", transition: "RUNNING → RETIRED", gates: "Audit Vault Final Seal" },
+    };
+
+    const d = descriptions[action];
+
+    setActiveDeepDive({
+      title: `Lifecycle Action: ${action}`,
+      subtitle: `Noctis Sovereign Systems Factory · Audited Lifecycle Engine`,
+      badge: "Cryptographically Audited",
+      badgeColor: "amber",
+      summary: d.desc,
+      operationalImpact: `Guarantees deterministic, state-machine transitions across all 16 Sovereign Systems with SHA-256 cryptographic audit sealing.`,
+      keyPoints: [
+        { label: "Action Identifier", value: action },
+        { label: "State Transition", value: d.transition },
+        { label: "Verification Gate", value: d.gates },
+        { label: "Audit Attestation", value: "SHA-256 Non-Repudiation Hash Chain" },
+      ],
+      actionLabel: `Execute ${action} on ${currentSystem.identity.name}`,
+      onAction: () => {
+        setActiveDeepDive(null);
+        handleRunLifecycle(action);
+      },
+    });
+  };
+
+  const openBusDeepDive = () => {
+    setActiveDeepDive({
+      title: "DStrike Sovereign Interoperability Bus",
+      subtitle: "Governed Sub-5ms Inter-System Event Routing Fabric",
+      badge: "Sub-5ms Latency",
+      badgeColor: "emerald",
+      summary: "The Sovereign Interoperability Bus provides zero-trust, cryptographically signed, sub-5ms low latency event messaging between all 16 Sovereign Systems.",
+      operationalImpact: "Enables autonomous task handoffs, audit attestations, clinical telemetry sharing, and risk alerts across independent systems without data leakage.",
+      keyPoints: [
+        { label: "Average Routing Latency", value: "1.4 ms (Zero-Trust Local Mesh)" },
+        { label: "Supported Event Types", value: ["TASK_HANDOFF", "AUDIT_ATTESTATION", "CLINICAL_TELEMETRY", "RISK_ALERT", "HEALTH_CHECK"] },
+        { label: "Encryption Mode", value: "AES-256-GCM + Post-Quantum Lattice Signing" },
+        { label: "Isolation Protocol", value: "Zero-Knowledge Inter-System Gateway" },
+      ],
+      tags: ["Sub-5ms", "PQC-Ready", "Zero-Trust", "SHA-256 Audit"],
+      actionLabel: "Send Event to RMF/GRC",
+      onAction: () => {
+        setActiveDeepDive(null);
+        handleDispatchBusEvent("noctis-rmf");
+      },
+    });
+  };
+
+  const openTemplateDeepDive = (tpl: typeof REUSABLE_SYSTEM_TEMPLATES[number]) => {
+    setActiveDeepDive({
+      title: `Domain Template: ${tpl.name}`,
+      subtitle: `Archetype: ${tpl.archetype} · Noctis Systems Factory`,
+      badge: tpl.archetype,
+      badgeColor: "teal",
+      summary: tpl.description,
+      operationalImpact: `Provides an end-to-end 11-dimension blueprint ready to instantiate a production-grade system with suggested runtime, memory, and database configurations.`,
+      keyPoints: [
+        { label: "Template Identifier", value: tpl.id },
+        { label: "Archetype Category", value: tpl.archetype },
+        { label: "Suggested Runtime", value: tpl.suggestedRuntime },
+        { label: "Context Memory Tier", value: `${(tpl.memoryTier / 1000).toFixed(0)}k persistent context window` },
+        { label: "Pre-Configured Capabilities", value: tpl.defaultCapabilities },
+      ],
+      tags: tpl.defaultCapabilities,
+      actionLabel: "Select Template",
+      onAction: () => {
+        setSelectedTemplateId(tpl.id);
+        setActiveDeepDive(null);
+      },
+    });
   };
 
   const handleOpenInspector = (sys: SovereignSystem) => {
@@ -451,14 +759,6 @@ export function NoctisSovereignFactoryStudio({
     setActiveTab("inspector");
     setNewSystemName("");
   };
-
-  const explainerData = explainerSystem
-    ? NOCTIS_SYSTEM_EXPLANATIONS[explainerSystem.identity.id] || {
-        summary: explainerSystem.identity.purpose,
-        operationalImpact: `Autonomous execution in ${explainerSystem.identity.category} domain with calibrated invariants.`,
-        coreCapabilities: explainerSystem.capabilities.map((c) => c.name),
-      }
-    : null;
 
   return (
     <div
@@ -594,7 +894,7 @@ export function NoctisSovereignFactoryStudio({
                   return (
                     <div
                       key={sys.identity.id}
-                      onClick={() => setExplainerSystem(sys)}
+                      onClick={() => openSystemDeepDive(sys)}
                       className={cn(
                         "group relative flex flex-col justify-between rounded-2xl border p-4 cursor-pointer transition shadow-sm hover:scale-[1.01] active:scale-[0.99]",
                         isSelected
@@ -654,12 +954,12 @@ export function NoctisSovereignFactoryStudio({
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setExplainerSystem(sys);
+                                openSystemDeepDive(sys);
                               }}
                               className="rounded-lg bg-sky-500/20 hover:bg-sky-500/30 border border-sky-500/40 px-2.5 py-1 text-[11px] font-bold text-sky-300 transition flex items-center gap-1 cursor-pointer"
                             >
                               <Sparkles className="size-3 text-sky-300" />
-                              <span>Explain</span>
+                              <span>Deep Dive</span>
                             </button>
                             <button
                               type="button"
@@ -719,7 +1019,7 @@ export function NoctisSovereignFactoryStudio({
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setExplainerSystem(currentSystem)}
+                    onClick={() => openSystemDeepDive(currentSystem)}
                     className="rounded-xl bg-sky-500/20 hover:bg-sky-500/30 border border-sky-500/40 px-3 py-1.5 text-xs text-sky-300 font-semibold transition cursor-pointer flex items-center gap-1.5"
                   >
                     <Sparkles className="size-3.5 text-sky-300" />
@@ -789,60 +1089,101 @@ export function NoctisSovereignFactoryStudio({
                 </div>
               </div>
 
-              {/* 11 Dimensions Grid */}
+              {/* 11 Dimensions Interactive Grid (Click ANY card for in-place deep dive) */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 
                 {/* 1. Identity */}
-                <div className="rounded-2xl border border-white/10 bg-[#141418] p-4 space-y-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-sky-400">1. System Identity</span>
+                <div
+                  onClick={() => openDimensionDeepDive(1, "System Identity", currentSystem)}
+                  className="rounded-2xl border border-white/10 bg-[#141418] p-4 space-y-2 cursor-pointer transition hover:border-sky-400 hover:scale-[1.01] active:scale-[0.99] group"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-sky-400 group-hover:underline">1. System Identity</span>
+                    <Sparkles className="size-3 text-sky-400 opacity-60 group-hover:opacity-100" />
+                  </div>
                   <p className="text-xs text-zinc-300"><strong>Owner:</strong> {currentSystem.identity.owner}</p>
                   <p className="text-xs text-zinc-300"><strong>Version:</strong> {currentSystem.identity.version}</p>
                   <p className="text-xs text-zinc-300"><strong>Purpose:</strong> {currentSystem.identity.purpose}</p>
+                  <p className="text-[10px] text-sky-300/80 pt-1 font-medium">Click for Deep Dive →</p>
                 </div>
 
                 {/* 2. Architecture */}
-                <div className="rounded-2xl border border-white/10 bg-[#141418] p-4 space-y-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-purple-400">2. Architecture</span>
+                <div
+                  onClick={() => openDimensionDeepDive(2, "Architecture & Compute", currentSystem)}
+                  className="rounded-2xl border border-white/10 bg-[#141418] p-4 space-y-2 cursor-pointer transition hover:border-purple-400 hover:scale-[1.01] active:scale-[0.99] group"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-purple-400 group-hover:underline">2. Architecture</span>
+                    <Sparkles className="size-3 text-purple-400 opacity-60 group-hover:opacity-100" />
+                  </div>
                   <p className="text-xs text-zinc-300"><strong>Runtime:</strong> {currentSystem.architecture.runtime}</p>
                   <p className="text-xs text-zinc-300"><strong>Services:</strong> {currentSystem.architecture.services.join(", ")}</p>
                   <p className="text-xs text-zinc-300"><strong>Databases:</strong> {currentSystem.architecture.databases.join(", ")}</p>
                   <p className="text-xs text-zinc-400">Memory: {currentSystem.architecture.memoryLimitMb}MB · Storage: {currentSystem.architecture.storageQuotaGb}GB</p>
+                  <p className="text-[10px] text-purple-300/80 pt-1 font-medium">Click for Deep Dive →</p>
                 </div>
 
                 {/* 3. Knowledge Base */}
-                <div className="rounded-2xl border border-white/10 bg-[#141418] p-4 space-y-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-teal-400">3. Knowledge Base & RAG</span>
+                <div
+                  onClick={() => openDimensionDeepDive(3, "Knowledge Base & RAG", currentSystem)}
+                  className="rounded-2xl border border-white/10 bg-[#141418] p-4 space-y-2 cursor-pointer transition hover:border-teal-400 hover:scale-[1.01] active:scale-[0.99] group"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-teal-400 group-hover:underline">3. Knowledge Base & RAG</span>
+                    <Sparkles className="size-3 text-teal-400 opacity-60 group-hover:opacity-100" />
+                  </div>
                   <p className="text-xs text-zinc-300"><strong>Domain:</strong> {currentSystem.knowledgeBase.domain}</p>
                   <p className="text-xs text-zinc-300"><strong>Sources:</strong> {currentSystem.knowledgeBase.dataSources.slice(0, 3).join(", ")}</p>
                   <p className="text-xs text-zinc-300"><strong>Chunking:</strong> {currentSystem.knowledgeBase.chunkingStrategy}</p>
                   <p className="text-xs text-zinc-400">Top-K: {currentSystem.knowledgeBase.retrievalTopK} · Threshold: {Math.round(currentSystem.knowledgeBase.groundingThreshold * 100)}%</p>
+                  <p className="text-[10px] text-teal-300/80 pt-1 font-medium">Click for Deep Dive →</p>
                 </div>
 
                 {/* 4. Capabilities */}
-                <div className="rounded-2xl border border-white/10 bg-[#141418] p-4 space-y-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400">4. Capabilities ({currentSystem.capabilities.length})</span>
+                <div
+                  onClick={() => openDimensionDeepDive(4, "Capabilities & Tools", currentSystem)}
+                  className="rounded-2xl border border-white/10 bg-[#141418] p-4 space-y-2 cursor-pointer transition hover:border-amber-400 hover:scale-[1.01] active:scale-[0.99] group"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400 group-hover:underline">4. Capabilities ({currentSystem.capabilities.length})</span>
+                    <Sparkles className="size-3 text-amber-400 opacity-60 group-hover:opacity-100" />
+                  </div>
                   {currentSystem.capabilities.map((c) => (
                     <div key={c.id} className="text-xs bg-black/40 p-2 rounded-lg border border-white/5">
                       <p className="font-semibold text-white">{c.name}</p>
                       <p className="text-[11px] text-zinc-400">{c.description}</p>
                     </div>
                   ))}
+                  <p className="text-[10px] text-amber-300/80 pt-1 font-medium">Click for Deep Dive →</p>
                 </div>
 
                 {/* 5. Agents */}
-                <div className="rounded-2xl border border-white/10 bg-[#141418] p-4 space-y-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-rose-400">5. Specialized Agents ({currentSystem.agents.length})</span>
+                <div
+                  onClick={() => openDimensionDeepDive(5, "Specialized Agents", currentSystem)}
+                  className="rounded-2xl border border-white/10 bg-[#141418] p-4 space-y-2 cursor-pointer transition hover:border-rose-400 hover:scale-[1.01] active:scale-[0.99] group"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-rose-400 group-hover:underline">5. Specialized Agents ({currentSystem.agents.length})</span>
+                    <Sparkles className="size-3 text-rose-400 opacity-60 group-hover:opacity-100" />
+                  </div>
                   {currentSystem.agents.map((a) => (
                     <div key={a.id} className="text-xs bg-black/40 p-2 rounded-lg border border-white/5">
                       <p className="font-semibold text-white">{a.name} ({a.role})</p>
                       <p className="text-[11px] text-zinc-400">Model: {a.modelTarget} · Focus: {a.specialization}</p>
                     </div>
                   ))}
+                  <p className="text-[10px] text-rose-300/80 pt-1 font-medium">Click for Deep Dive →</p>
                 </div>
 
                 {/* 6. Workflows */}
-                <div className="rounded-2xl border border-white/10 bg-[#141418] p-4 space-y-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-cyan-400">6. Operational Workflows</span>
+                <div
+                  onClick={() => openDimensionDeepDive(6, "Operational Workflows", currentSystem)}
+                  className="rounded-2xl border border-white/10 bg-[#141418] p-4 space-y-2 cursor-pointer transition hover:border-cyan-400 hover:scale-[1.01] active:scale-[0.99] group"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-cyan-400 group-hover:underline">6. Operational Workflows</span>
+                    <Sparkles className="size-3 text-cyan-400 opacity-60 group-hover:opacity-100" />
+                  </div>
                   {currentSystem.workflows.map((w) => (
                     <div key={w.id} className="text-xs bg-black/40 p-2 rounded-lg border border-white/5">
                       <p className="font-semibold text-white">{w.name} ({w.trigger})</p>
@@ -852,11 +1193,18 @@ export function NoctisSovereignFactoryStudio({
                       )}
                     </div>
                   ))}
+                  <p className="text-[10px] text-cyan-300/80 pt-1 font-medium">Click for Deep Dive →</p>
                 </div>
 
                 {/* 7. Interface */}
-                <div className="rounded-2xl border border-white/10 bg-[#141418] p-4 space-y-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400">7. Dedicated Interface</span>
+                <div
+                  onClick={() => openDimensionDeepDive(7, "Interface & Visualization", currentSystem)}
+                  className="rounded-2xl border border-white/10 bg-[#141418] p-4 space-y-2 cursor-pointer transition hover:border-emerald-400 hover:scale-[1.01] active:scale-[0.99] group"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400 group-hover:underline">7. Dedicated Interface</span>
+                    <Sparkles className="size-3 text-emerald-400 opacity-60 group-hover:opacity-100" />
+                  </div>
                   <div className="flex gap-2">
                     <span className={cn("px-2 py-0.5 text-[10px] rounded font-semibold", currentSystem.interface.hasChat ? "bg-emerald-500/20 text-emerald-300" : "bg-zinc-800 text-zinc-500")}>Chat</span>
                     <span className={cn("px-2 py-0.5 text-[10px] rounded font-semibold", currentSystem.interface.hasBoard ? "bg-emerald-500/20 text-emerald-300" : "bg-zinc-800 text-zinc-500")}>Board</span>
@@ -864,40 +1212,69 @@ export function NoctisSovereignFactoryStudio({
                   </div>
                   <p className="text-xs text-zinc-300">Default View: <strong>{currentSystem.interface.defaultView}</strong></p>
                   <p className="text-xs text-zinc-400">Widgets: {currentSystem.interface.customWidgets.join(", ")}</p>
+                  <p className="text-[10px] text-emerald-300/80 pt-1 font-medium">Click for Deep Dive →</p>
                 </div>
 
                 {/* 8. Security */}
-                <div className="rounded-2xl border border-white/10 bg-[#141418] p-4 space-y-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-red-400">8. Security & RBAC</span>
+                <div
+                  onClick={() => openDimensionDeepDive(8, "Security & Enclave Isolation", currentSystem)}
+                  className="rounded-2xl border border-white/10 bg-[#141418] p-4 space-y-2 cursor-pointer transition hover:border-red-400 hover:scale-[1.01] active:scale-[0.99] group"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-red-400 group-hover:underline">8. Security & RBAC</span>
+                    <Sparkles className="size-3 text-red-400 opacity-60 group-hover:opacity-100" />
+                  </div>
                   <p className="text-xs text-zinc-300"><strong>Isolation:</strong> {currentSystem.security.tenantIsolation}</p>
                   <p className="text-xs text-zinc-300"><strong>Auth:</strong> {currentSystem.security.authentication}</p>
                   <p className="text-xs text-zinc-300"><strong>Roles:</strong> {currentSystem.security.rbacRoles.join(", ")}</p>
                   <p className="text-[11px] text-emerald-400">SHA-256 Audit Trail: Active</p>
+                  <p className="text-[10px] text-red-300/80 pt-1 font-medium">Click for Deep Dive →</p>
                 </div>
 
                 {/* 9. Memory */}
-                <div className="rounded-2xl border border-white/10 bg-[#141418] p-4 space-y-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-400">9. Memory Architecture</span>
+                <div
+                  onClick={() => openDimensionDeepDive(9, "Memory Architecture", currentSystem)}
+                  className="rounded-2xl border border-white/10 bg-[#141418] p-4 space-y-2 cursor-pointer transition hover:border-indigo-400 hover:scale-[1.01] active:scale-[0.99] group"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-400 group-hover:underline">9. Memory Architecture</span>
+                    <Sparkles className="size-3 text-indigo-400 opacity-60 group-hover:opacity-100" />
+                  </div>
                   <p className="text-xs text-zinc-300"><strong>Context Window:</strong> {currentSystem.memory.persistentContextWindow.toLocaleString()} tokens</p>
                   <p className="text-xs text-zinc-300"><strong>Storage Engine:</strong> {currentSystem.memory.storageEngine}</p>
                   <p className="text-xs text-zinc-300"><strong>Decay Policy:</strong> {currentSystem.memory.decayPolicy}</p>
+                  <p className="text-[10px] text-indigo-300/80 pt-1 font-medium">Click for Deep Dive →</p>
                 </div>
 
                 {/* 10. Evaluation */}
-                <div className="rounded-2xl border border-white/10 bg-[#141418] p-4 space-y-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-yellow-400">10. Evaluation & Accuracy</span>
+                <div
+                  onClick={() => openDimensionDeepDive(10, "Evaluation & Benchmark Accuracy", currentSystem)}
+                  className="rounded-2xl border border-white/10 bg-[#141418] p-4 space-y-2 cursor-pointer transition hover:border-yellow-400 hover:scale-[1.01] active:scale-[0.99] group"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-yellow-400 group-hover:underline">10. Evaluation & Accuracy</span>
+                    <Sparkles className="size-3 text-yellow-400 opacity-60 group-hover:opacity-100" />
+                  </div>
                   <p className="text-xs text-zinc-300"><strong>Target Score:</strong> &gt;= {currentSystem.evaluation.benchmarkScoreTarget}%</p>
                   <p className="text-xs text-zinc-300"><strong>Measured Accuracy:</strong> <span className="text-emerald-400 font-bold">{currentSystem.evaluation.measuredAccuracy}%</span></p>
                   <p className="text-xs text-zinc-400">Suites: {currentSystem.evaluation.testSuites.join(", ")}</p>
+                  <p className="text-[10px] text-yellow-300/80 pt-1 font-medium">Click for Deep Dive →</p>
                 </div>
 
                 {/* 11. Deployment */}
-                <div className="rounded-2xl border border-white/10 bg-[#141418] p-4 space-y-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-sky-400">11. Deployment & Health</span>
+                <div
+                  onClick={() => openDimensionDeepDive(11, "Deployment & Health Probes", currentSystem)}
+                  className="rounded-2xl border border-white/10 bg-[#141418] p-4 space-y-2 cursor-pointer transition hover:border-sky-400 hover:scale-[1.01] active:scale-[0.99] group"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-sky-400 group-hover:underline">11. Deployment & Health</span>
+                    <Sparkles className="size-3 text-sky-400 opacity-60 group-hover:opacity-100" />
+                  </div>
                   <p className="text-xs text-zinc-300"><strong>Environment:</strong> {currentSystem.deployment.environment}</p>
                   <p className="text-xs text-zinc-300"><strong>Status:</strong> <span className="text-emerald-400 font-bold">{currentSystem.deployment.status.toUpperCase()}</span></p>
                   <p className="text-xs text-zinc-300"><strong>Uptime:</strong> {currentSystem.deployment.uptimePercentage}% ({currentSystem.deployment.replicas} replicas)</p>
                   <p className="text-xs font-mono text-zinc-500">{currentSystem.deployment.healthEndpoint}</p>
+                  <p className="text-[10px] text-sky-300/80 pt-1 font-medium">Click for Deep Dive →</p>
                 </div>
 
               </div>
@@ -909,33 +1286,39 @@ export function NoctisSovereignFactoryStudio({
             <div className="space-y-8 animate-in fade-in duration-200">
               {/* Header Dossier */}
               <div className="rounded-2xl border border-white/10 bg-gradient-to-r from-sky-950/30 via-zinc-900 to-indigo-950/30 p-5">
-                <div className="flex items-center gap-3">
-                  <div className="flex size-10 items-center justify-center rounded-xl bg-sky-500/20 text-sky-400 border border-sky-500/30">
-                    <Layers className="size-5" />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-10 items-center justify-center rounded-xl bg-sky-500/20 text-sky-400 border border-sky-500/30">
+                      <Layers className="size-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-white">5 Major Layers & Enterprise Orchestration Fabric</h3>
+                      <p className="text-xs text-zinc-400 mt-0.5">
+                        One Noctis Brain · 16 Professional Intelligence Systems · Independent Execution · Shared Sovereign Infrastructure
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-base font-bold text-white">5 Major Layers & Enterprise Orchestration Fabric</h3>
-                    <p className="text-xs text-zinc-400 mt-0.5">
-                      One Noctis Brain · 16 Professional Intelligence Systems · Independent Execution · Shared Sovereign Infrastructure
-                    </p>
-                  </div>
+                  <span className="text-xs text-sky-400 font-mono hidden sm:inline">Click any layer or agent for Deep Dive</span>
                 </div>
               </div>
 
-              {/* Section 1: The Five Major Layers Stack */}
+              {/* Section 1: The Five Major Layers Stack (Interactive) */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-400">1. The Five Major Architectural Layers</h4>
-                  <span className="text-[11px] text-zinc-500 font-mono">Top-to-Bottom Sovereignty Pipeline</span>
+                  <span className="text-[11px] text-zinc-500 font-mono">Click layer to inspect Deep Dive</span>
                 </div>
 
                 <div className="space-y-2.5">
                   {FACTORY_FIVE_LAYERS.map((l, idx) => (
                     <div key={l.layerNumber} className="space-y-2.5">
-                      <div className={cn(
-                        "rounded-2xl border border-white/10 bg-gradient-to-r p-4 transition hover:border-white/20 shadow-md",
-                        l.bgGradient
-                      )}>
+                      <div
+                        onClick={() => openLayerDeepDive(l)}
+                        className={cn(
+                          "rounded-2xl border border-white/10 bg-gradient-to-r p-4 transition hover:border-sky-400 hover:scale-[1.005] cursor-pointer shadow-md group",
+                          l.bgGradient
+                        )}
+                      >
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                           <div className="flex items-center gap-3">
                             <span
@@ -945,12 +1328,16 @@ export function NoctisSovereignFactoryStudio({
                               L{l.layerNumber}
                             </span>
                             <div>
-                              <h5 className="text-sm font-bold text-white">{l.layerName}</h5>
+                              <h5 className="text-sm font-bold text-white group-hover:text-sky-300 transition">{l.layerName}</h5>
                               <p className="text-xs font-mono font-medium" style={{ color: l.color }}>
                                 {l.tagline}
                               </p>
                             </div>
                           </div>
+                          <span className="text-xs font-semibold text-sky-400/90 group-hover:text-sky-300 flex items-center gap-1 self-start sm:self-auto">
+                            <span>Deep Dive</span>
+                            <ArrowRight className="size-3" />
+                          </span>
                         </div>
 
                         <p className="text-xs text-zinc-300 mt-2 leading-relaxed">
@@ -980,11 +1367,11 @@ export function NoctisSovereignFactoryStudio({
                 </div>
               </div>
 
-              {/* Section 2: Enterprise Orchestration Architecture */}
+              {/* Section 2: Enterprise Orchestration Architecture (Interactive Agents) */}
               <div className="space-y-4 pt-4 border-t border-white/10">
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-400">2. Enterprise Fabric & Multi-Agent Orchestration</h4>
-                  <span className="text-[11px] text-emerald-400 font-mono">Autonomous Execution Engine</span>
+                  <span className="text-[11px] text-emerald-400 font-mono">Click any agent for Deep Dive</span>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -1016,7 +1403,7 @@ export function NoctisSovereignFactoryStudio({
                     </div>
                   </div>
 
-                  {/* Center: Orchestration Layer & 8 Agents */}
+                  {/* Center: Orchestration Layer & 8 Agents (Interactive) */}
                   <div className="rounded-2xl border border-indigo-500/30 bg-gradient-to-b from-indigo-950/40 to-[#141418] p-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-400">Orchestration Layer</span>
@@ -1030,11 +1417,15 @@ export function NoctisSovereignFactoryStudio({
                     </div>
 
                     <div className="space-y-2">
-                      <p className="text-[11px] text-zinc-400">8 Autonomous Specialized Agents:</p>
+                      <p className="text-[11px] text-zinc-400">8 Autonomous Specialized Agents (Click to inspect):</p>
                       <div className="grid grid-cols-2 gap-2">
                         {ENTERPRISE_FABRIC_ORCHESTRATION.orchestrationLayer.agents.map((ag) => (
-                          <div key={ag.name} className="rounded-xl bg-black/60 border border-white/10 p-2.5">
-                            <p className="text-xs font-bold text-white">{ag.name}</p>
+                          <div
+                            key={ag.name}
+                            onClick={() => openAgentDeepDive(ag)}
+                            className="rounded-xl bg-black/60 border border-white/10 p-2.5 cursor-pointer transition hover:border-indigo-400 hover:scale-[1.02] group"
+                          >
+                            <p className="text-xs font-bold text-white group-hover:text-indigo-300 transition">{ag.name}</p>
                             <p className="text-[10px] text-indigo-300 font-mono">{ag.role}</p>
                             <p className="text-[10px] text-zinc-400 mt-1 line-clamp-2 leading-tight">{ag.focus}</p>
                           </div>
@@ -1150,7 +1541,7 @@ export function NoctisSovereignFactoryStudio({
                 </div>
               </div>
 
-              {/* Action Buttons Grid */}
+              {/* Action Buttons Grid (Click action or info button for Deep Dive) */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold uppercase tracking-wider text-zinc-400">Execute Action on {currentSystem.identity.name}</span>
@@ -1170,20 +1561,32 @@ export function NoctisSovereignFactoryStudio({
                       "RETIRE",
                     ] as LifecycleAction[]
                   ).map((act) => (
-                    <button
-                      key={act}
-                      type="button"
-                      disabled={executingAction !== null}
-                      onClick={() => handleRunLifecycle(act)}
-                      className={cn(
-                        "flex flex-col items-center justify-center p-2.5 rounded-xl border text-xs font-semibold transition cursor-pointer",
-                        executingAction === act
-                          ? "bg-sky-500/20 border-sky-400 text-sky-300 animate-pulse"
-                          : "bg-black/40 border-white/10 hover:bg-white/10 hover:border-white/25 text-zinc-200"
-                      )}
-                    >
-                      <span>{act}</span>
-                    </button>
+                    <div key={act} className="relative group">
+                      <button
+                        type="button"
+                        disabled={executingAction !== null}
+                        onClick={() => handleRunLifecycle(act)}
+                        className={cn(
+                          "w-full flex flex-col items-center justify-center p-2.5 rounded-xl border text-xs font-semibold transition cursor-pointer",
+                          executingAction === act
+                            ? "bg-sky-500/20 border-sky-400 text-sky-300 animate-pulse"
+                            : "bg-black/40 border-white/10 hover:bg-white/10 hover:border-white/25 text-zinc-200"
+                        )}
+                      >
+                        <span>{act}</span>
+                      </button>
+                      <button
+                        type="button"
+                        title={`Deep Dive on ${act}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openLifecycleDeepDive(act);
+                        }}
+                        className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-sky-500 text-black text-[9px] font-bold opacity-0 group-hover:opacity-100 transition cursor-pointer shadow-xs"
+                      >
+                        ?
+                      </button>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -1208,7 +1611,7 @@ export function NoctisSovereignFactoryStudio({
                 </div>
               ) : (
                 <div className="rounded-2xl border border-dashed border-white/10 p-8 text-center text-zinc-500 text-xs">
-                  Select a lifecycle action above to initiate execution and generate a cryptographic SHA-256 audit seal.
+                  Select a lifecycle action above to initiate execution and generate a cryptographic SHA-256 audit seal, or hover and click "?" for action Deep Dive.
                 </div>
               )}
             </div>
@@ -1225,6 +1628,14 @@ export function NoctisSovereignFactoryStudio({
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={openBusDeepDive}
+                    className="flex items-center gap-1.5 rounded-xl bg-purple-500/20 border border-purple-500/30 px-3 py-1.5 text-xs font-semibold text-purple-300 hover:bg-purple-500/30 transition cursor-pointer"
+                  >
+                    <Sparkles className="size-3" />
+                    <span>Explain Bus Fabric</span>
+                  </button>
                   <button
                     type="button"
                     onClick={() => handleDispatchBusEvent("noctis-rmf")}
@@ -1244,14 +1655,18 @@ export function NoctisSovereignFactoryStudio({
                 </div>
               </div>
 
-              {/* Event Stream */}
+              {/* Event Stream (Interactive) */}
               <div className="rounded-2xl border border-white/10 bg-black divide-y divide-zinc-800 overflow-hidden">
                 <div className="px-4 py-2.5 bg-zinc-900/60 flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-zinc-400">
-                  <span>Inter-System Event Stream</span>
+                  <span>Inter-System Event Stream (Click row for Deep Dive)</span>
                   <span className="text-emerald-400 font-mono">Avg Latency: 1.4ms</span>
                 </div>
                 {busEvents.map((evt) => (
-                  <div key={evt.id} className="p-3.5 flex items-center justify-between text-xs hover:bg-white/[0.02]">
+                  <div
+                    key={evt.id}
+                    onClick={openBusDeepDive}
+                    className="p-3.5 flex items-center justify-between text-xs hover:bg-white/[0.04] transition cursor-pointer"
+                  >
                     <div className="flex items-center gap-3">
                       <span className="size-2 rounded-full bg-emerald-400 shrink-0" />
                       <div>
@@ -1306,18 +1721,21 @@ export function NoctisSovereignFactoryStudio({
                 </div>
               </div>
 
-              {/* Template Selection Grid */}
+              {/* Template Selection Grid (Interactive Deep Dive) */}
               <div className="space-y-3">
-                <span className="text-xs font-bold uppercase tracking-wider text-zinc-400">Select Domain Template</span>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-zinc-400">Select Domain Template</span>
+                  <span className="text-[11px] text-zinc-500 font-mono">Click template for Deep Dive</span>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {REUSABLE_SYSTEM_TEMPLATES.map((tpl) => {
                     const isSelected = tpl.id === selectedTemplateId;
                     return (
                       <div
                         key={tpl.id}
-                        onClick={() => setSelectedTemplateId(tpl.id)}
+                        onClick={() => openTemplateDeepDive(tpl)}
                         className={cn(
-                          "p-4 rounded-2xl border cursor-pointer transition flex flex-col justify-between",
+                          "p-4 rounded-2xl border cursor-pointer transition flex flex-col justify-between hover:scale-[1.01] active:scale-[0.99] group",
                           isSelected
                             ? "bg-white/[0.08] border-sky-400 shadow-[0_0_20px_rgba(56,189,248,0.2)]"
                             : "bg-[#141418] border-white/10 hover:bg-white/[0.04] hover:border-white/20"
@@ -1325,7 +1743,7 @@ export function NoctisSovereignFactoryStudio({
                       >
                         <div>
                           <div className="flex items-center justify-between">
-                            <h4 className="text-sm font-bold text-white">{tpl.name}</h4>
+                            <h4 className="text-sm font-bold text-white group-hover:text-sky-300 transition">{tpl.name}</h4>
                             <span className="rounded-full bg-white/5 border border-white/10 px-2 py-0.5 text-[9px] font-semibold text-zinc-300">
                               {tpl.archetype}
                             </span>
@@ -1334,7 +1752,7 @@ export function NoctisSovereignFactoryStudio({
                         </div>
                         <div className="mt-3 pt-2 border-t border-white/5 flex items-center justify-between text-[11px] text-zinc-500 font-mono">
                           <span>Runtime: {tpl.suggestedRuntime}</span>
-                          <span>Context: {(tpl.memoryTier / 1000).toFixed(0)}k</span>
+                          <span className="text-sky-400 group-hover:underline">Deep Dive →</span>
                         </div>
                       </div>
                     );
@@ -1363,52 +1781,57 @@ export function NoctisSovereignFactoryStudio({
 
       </div>
 
-      {/* NOCTIS INTELLIGENCE DEEP-DIVE EXPLAINER POPUP (NO TRANSITION TO CHAT) */}
-      {explainerSystem && explainerData && (
+      {/* UNIFIED NOCTIS INTELLIGENCE DEEP-DIVE MODAL (NO TRANSITION TO CHAT) */}
+      {activeDeepDive && (
         <div
           onClick={(e) => {
-            if (e.target === e.currentTarget) setExplainerSystem(null);
+            if (e.target === e.currentTarget) setActiveDeepDive(null);
           }}
           className="fixed inset-0 z-60 flex items-center justify-center bg-black/85 backdrop-blur-md p-3 sm:p-6 animate-in fade-in zoom-in-95 duration-150"
         >
           <div className="relative flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-sky-500/40 bg-[#0f0f14] text-white shadow-[0_0_50px_rgba(56,189,248,0.25)]">
             
-            {/* Pop-up Header */}
+            {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-white/10 bg-[#16161d] px-6 py-4">
               <div className="flex items-center gap-3">
                 <div className="flex size-11 items-center justify-center rounded-2xl bg-black border border-sky-500/30 text-sky-400 shadow-inner">
-                  {getSystemIcon(explainerSystem.identity.icon)}
+                  <Sparkles className="size-5" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h2 className="text-base font-bold text-white">{explainerSystem.identity.name}</h2>
-                    <span className="text-xs text-zinc-400 font-mono">({explainerSystem.identity.id})</span>
-                    {typeof explainerSystem.priorityRank === "number" && (
-                      <span className="rounded bg-rose-500/20 border border-rose-500/30 px-1.5 py-0.5 text-[10px] font-bold text-rose-300">
-                        Priority {explainerSystem.priorityRank}
+                    <h2 className="text-base font-bold text-white">{activeDeepDive.title}</h2>
+                    {activeDeepDive.badge && (
+                      <span className={cn(
+                        "rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase",
+                        activeDeepDive.badgeColor === "emerald"
+                          ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                          : activeDeepDive.badgeColor === "rose"
+                          ? "bg-rose-500/20 text-rose-300 border border-rose-500/30"
+                          : activeDeepDive.badgeColor === "purple"
+                          ? "bg-purple-500/20 text-purple-300 border border-purple-500/30"
+                          : activeDeepDive.badgeColor === "amber"
+                          ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                          : "bg-sky-500/20 text-sky-300 border border-sky-500/30"
+                      )}>
+                        {activeDeepDive.badge}
                       </span>
                     )}
-                    <span className="rounded-full bg-emerald-500/20 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-bold text-emerald-300 uppercase">
-                      {explainerSystem.deployment.status}
-                    </span>
                   </div>
-                  <p className="text-xs text-zinc-300 mt-0.5">
-                    {explainerSystem.identity.category} · v{explainerSystem.identity.version} · {explainerSystem.identity.owner}
-                  </p>
+                  <p className="text-xs text-zinc-300 mt-0.5">{activeDeepDive.subtitle}</p>
                 </div>
               </div>
 
               <button
                 type="button"
-                onClick={() => setExplainerSystem(null)}
-                aria-label="Close Pop-up"
+                onClick={() => setActiveDeepDive(null)}
+                aria-label="Close Deep Dive"
                 className="flex size-8 items-center justify-center rounded-full text-zinc-400 hover:bg-white/10 hover:text-white transition cursor-pointer"
               >
                 <X className="size-5" />
               </button>
             </div>
 
-            {/* Pop-up Body */}
+            {/* Modal Body */}
             <div className="flex-1 overflow-y-auto p-6 space-y-5 scrollbar-thin scrollbar-thumb-zinc-700">
               
               {/* Executive Noctis Assessment */}
@@ -1416,178 +1839,71 @@ export function NoctisSovereignFactoryStudio({
                 <div className="flex items-center gap-2">
                   <Sparkles className="size-4 text-sky-400" />
                   <span className="text-xs font-bold uppercase tracking-wider text-sky-300">
-                    Noctis Sovereign Assessment & Deep-Dive Search
+                    Noctis Sovereign Deep-Dive Assessment
                   </span>
                 </div>
                 <p className="text-sm text-zinc-200 leading-relaxed font-normal">
-                  {explainerData.summary}
+                  {activeDeepDive.summary}
                 </p>
-                <div className="pt-2 border-t border-white/10">
-                  <p className="text-xs text-zinc-300 leading-relaxed">
-                    <strong className="text-sky-300">Operational Significance:</strong> {explainerData.operationalImpact}
-                  </p>
-                </div>
-                <div className="pt-2">
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-2">Core Sovereign Capabilities:</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {explainerData.coreCapabilities.map((cap) => (
-                      <span
-                        key={cap}
-                        className="rounded-lg bg-sky-500/15 border border-sky-500/30 px-2.5 py-1 text-xs text-sky-200 flex items-center gap-1.5"
-                      >
-                        <CheckCircle2 className="size-3 text-sky-400" />
-                        <span>{cap}</span>
-                      </span>
-                    ))}
+                {activeDeepDive.operationalImpact && (
+                  <div className="pt-2 border-t border-white/10">
+                    <p className="text-xs text-zinc-300 leading-relaxed">
+                      <strong className="text-sky-300">Operational Significance:</strong> {activeDeepDive.operationalImpact}
+                    </p>
                   </div>
-                </div>
+                )}
+                {activeDeepDive.tags && activeDeepDive.tags.length > 0 && (
+                  <div className="pt-2">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 mb-2">Key Components & Capabilities:</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {activeDeepDive.tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="rounded-lg bg-sky-500/15 border border-sky-500/30 px-2.5 py-1 text-xs text-sky-200 flex items-center gap-1.5"
+                        >
+                          <CheckCircle2 className="size-3 text-sky-400" />
+                          <span>{tag}</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* Technical Blueprint Breakdown */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                
-                {/* Architecture & Runtime */}
-                <div className="rounded-2xl border border-white/10 bg-[#141418] p-4 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Server className="size-4 text-purple-400" />
-                    <span className="text-xs font-bold uppercase tracking-wider text-purple-400">Architecture & Compute</span>
+              {/* Technical Blueprint Key Points */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {activeDeepDive.keyPoints.map((kp, idx) => (
+                  <div key={idx} className="rounded-2xl border border-white/10 bg-[#141418] p-3.5 space-y-1">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-sky-400">{kp.label}</span>
+                    <p className="text-xs text-zinc-300 leading-relaxed">
+                      {Array.isArray(kp.value) ? kp.value.join(", ") : kp.value}
+                    </p>
                   </div>
-                  <p className="text-xs text-zinc-300"><strong>Runtime Enclave:</strong> {explainerSystem.architecture.runtime}</p>
-                  <p className="text-xs text-zinc-300"><strong>Services:</strong> {explainerSystem.architecture.services.join(", ")}</p>
-                  <p className="text-xs text-zinc-300"><strong>Databases:</strong> {explainerSystem.architecture.databases.join(", ")}</p>
-                  <p className="text-xs text-zinc-400 font-mono">Memory: {explainerSystem.architecture.memoryLimitMb}MB · Storage: {explainerSystem.architecture.storageQuotaGb}GB</p>
-                </div>
-
-                {/* Knowledge Base & RAG */}
-                <div className="rounded-2xl border border-white/10 bg-[#141418] p-4 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Database className="size-4 text-teal-400" />
-                    <span className="text-xs font-bold uppercase tracking-wider text-teal-400">Knowledge Base & RAG</span>
-                  </div>
-                  <p className="text-xs text-zinc-300"><strong>Domain:</strong> {explainerSystem.knowledgeBase.domain}</p>
-                  <p className="text-xs text-zinc-300"><strong>Data Sources:</strong> {explainerSystem.knowledgeBase.dataSources.slice(0, 3).join(", ")}</p>
-                  <p className="text-xs text-zinc-300"><strong>Chunking:</strong> {explainerSystem.knowledgeBase.chunkingStrategy}</p>
-                  <p className="text-xs text-zinc-400 font-mono">Top-K: {explainerSystem.knowledgeBase.retrievalTopK} · Threshold: {Math.round(explainerSystem.knowledgeBase.groundingThreshold * 100)}%</p>
-                </div>
-
-                {/* Specialized Agents */}
-                <div className="rounded-2xl border border-white/10 bg-[#141418] p-4 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Cpu className="size-4 text-rose-400" />
-                    <span className="text-xs font-bold uppercase tracking-wider text-rose-400">Specialized Autonomous Agents ({explainerSystem.agents.length})</span>
-                  </div>
-                  {explainerSystem.agents.map((ag) => (
-                    <div key={ag.id} className="rounded-xl bg-black/40 border border-white/5 p-2 text-xs">
-                      <p className="font-bold text-white">{ag.name} ({ag.role})</p>
-                      <p className="text-[11px] text-zinc-400 mt-0.5">Model: {ag.modelTarget} · Focus: {ag.specialization}</p>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Operational Workflows */}
-                <div className="rounded-2xl border border-white/10 bg-[#141418] p-4 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Activity className="size-4 text-amber-400" />
-                    <span className="text-xs font-bold uppercase tracking-wider text-amber-400">Operational Workflows</span>
-                  </div>
-                  {explainerSystem.workflows.map((wf) => (
-                    <div key={wf.id} className="rounded-xl bg-black/40 border border-white/5 p-2 text-xs">
-                      <p className="font-bold text-white">{wf.name} ({wf.trigger})</p>
-                      <p className="text-[11px] text-zinc-400 mt-0.5">Steps: {wf.steps.join(" → ")}</p>
-                      {wf.approvalGates.length > 0 && (
-                        <p className="text-[10px] text-amber-300 mt-1">Approval Gate: {wf.approvalGates.join(", ")}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                {/* Security & RBAC */}
-                <div className="rounded-2xl border border-white/10 bg-[#141418] p-4 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Lock className="size-4 text-red-400" />
-                    <span className="text-xs font-bold uppercase tracking-wider text-red-400">Security & Isolation</span>
-                  </div>
-                  <p className="text-xs text-zinc-300"><strong>Isolation:</strong> {explainerSystem.security.tenantIsolation}</p>
-                  <p className="text-xs text-zinc-300"><strong>Authentication:</strong> {explainerSystem.security.authentication}</p>
-                  <p className="text-xs text-zinc-300"><strong>RBAC:</strong> {explainerSystem.security.rbacRoles.join(", ")}</p>
-                  <p className="text-[11px] text-emerald-400">Audit Trail: SHA-256 Cryptographically Sealed</p>
-                </div>
-
-                {/* Evaluation & Accuracy */}
-                <div className="rounded-2xl border border-white/10 bg-[#141418] p-4 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="size-4 text-yellow-400" />
-                    <span className="text-xs font-bold uppercase tracking-wider text-yellow-400">Reliability & Accuracy</span>
-                  </div>
-                  <p className="text-xs text-zinc-300"><strong>Target Score:</strong> &gt;= {explainerSystem.evaluation.benchmarkScoreTarget}%</p>
-                  <p className="text-xs text-zinc-300"><strong>Measured Accuracy:</strong> <span className="text-emerald-400 font-bold">{explainerSystem.evaluation.measuredAccuracy}%</span></p>
-                  <p className="text-xs text-zinc-400">Suites: {explainerSystem.evaluation.testSuites.join(", ")}</p>
-                </div>
-
+                ))}
               </div>
 
             </div>
 
-            {/* Pop-up Footer Action Buttons */}
+            {/* Modal Footer */}
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 bg-[#16161d] px-6 py-4">
               <button
                 type="button"
-                onClick={() => setExplainerSystem(null)}
+                onClick={() => setActiveDeepDive(null)}
                 className="rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 px-4 py-2 text-xs font-medium text-zinc-300 hover:text-white transition cursor-pointer"
               >
-                Close Pop-up
+                Close Deep Dive
               </button>
 
-              <div className="flex flex-wrap items-center gap-2">
+              {activeDeepDive.actionLabel && activeDeepDive.onAction && (
                 <button
                   type="button"
-                  onClick={() => {
-                    setSelectedSystemId(explainerSystem.identity.id);
-                    setActiveTab("inspector");
-                    setExplainerSystem(null);
-                  }}
-                  className="rounded-xl bg-sky-500/20 hover:bg-sky-500/30 border border-sky-500/40 px-3.5 py-2 text-xs font-bold text-sky-300 transition flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Eye className="size-3.5" />
-                  <span>Inspect Full 11-D Blueprint</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedSystemId(explainerSystem.identity.id);
-                    setActiveTab("lifecycle");
-                    setExplainerSystem(null);
-                  }}
-                  className="rounded-xl bg-white/10 hover:bg-white/15 px-3 py-2 text-xs font-semibold text-white transition cursor-pointer flex items-center gap-1.5"
-                >
-                  <Terminal className="size-3.5" />
-                  <span>Lifecycle</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedSystemId(explainerSystem.identity.id);
-                    setActiveTab("bus");
-                    setExplainerSystem(null);
-                  }}
-                  className="rounded-xl bg-white/10 hover:bg-white/15 px-3 py-2 text-xs font-semibold text-white transition cursor-pointer flex items-center gap-1.5"
-                >
-                  <Send className="size-3.5" />
-                  <span>Bus</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const sys = explainerSystem;
-                    setExplainerSystem(null);
-                    handleBuildSystem(sys);
-                  }}
+                  onClick={activeDeepDive.onAction}
                   className="rounded-xl bg-[#e4b86a] hover:bg-amber-400 text-black px-4 py-2 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
                 >
                   <Play className="size-3 fill-current" />
-                  <span>Build in Forge</span>
+                  <span>{activeDeepDive.actionLabel}</span>
                 </button>
-              </div>
+              )}
             </div>
 
           </div>
