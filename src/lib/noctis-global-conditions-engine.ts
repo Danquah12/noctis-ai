@@ -285,6 +285,7 @@ export function evaluateHypertensiveCrisis(input: HypertensiveCrisisInput): Hype
       if (input.hasAcutePulmonaryEdemaShortnessOfBreath) {
         ivAgents.push("IV Nitroglycerin infusion + IV Furosemide (reduces preload in cardiogenic pulmonary edema).");
       }
+      contra.push("Short-acting sublingual/immediate-release Nifedipine is STRICTLY CONTRAINDICATED (causes catastrophic precipitate BP drops, cerebral hypoperfusion, ischemic stroke, and acute MI).");
     }
     action = "🚨 HYPERTENSIVE EMERGENCY ICU ADMISSION STAT: Acute life-threatening target organ damage verified. Continuous arterial line monitoring and titratable IV antihypertensives required.";
   } else if (category === "HYPERTENSIVE_URGENCY") {
