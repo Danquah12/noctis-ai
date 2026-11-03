@@ -27,6 +27,8 @@ import {
   FileCode2,
   Flame,
   X,
+  PanelLeft,
+  PanelLeftClose,
   Mail,
   MessageSquare,
   Calendar,
@@ -66,37 +68,42 @@ const PROJECTS = [
 const PROACTIVE_SUGGESTIONS = [
   {
     id: "factory",
-    icon: Sparkles,
-    iconColor: "text-indigo-400",
-    text: "Sovereign Systems Factory: Reusable 5-layer framework across 16 sovereign suites",
+    tag: "SUITE FACTORY",
+    title: "Sovereign Systems Factory",
+    description: "5-layer framework across 16 sovereign suites & 65+ applications",
+    icon: Boxes,
+    iconColor: "text-sky-400",
+    borderColor: "hover:border-sky-500/50",
     action: "Build Noctis Sovereign Systems Factory",
   },
   {
     id: "xtrike",
+    tag: "SAST AUDIT",
+    title: "XTRIKE SAST Engine",
+    description: "2 high-severity SQL injections detected in legacy auth. Auto-remediate.",
     icon: Shield,
     iconColor: "text-amber-400",
-    text: "XTRIKE SAST: 2 high-severity SQL injections detected in legacy auth",
+    borderColor: "hover:border-amber-500/50",
     action: "Auto-remediate with parameterized prepared statements",
   },
   {
     id: "trepath",
+    tag: "THREAT GRAPH",
+    title: "TREPATH Attack Boundary",
+    description: "Unvalidated lateral movement path targeting Redis cluster. Deploy boundary.",
     icon: Layers,
     iconColor: "text-rose-400",
-    text: "TREPATH: Unvalidated lateral movement path targeting Redis cluster",
+    borderColor: "hover:border-rose-500/50",
     action: "Deploy cryptographic enclave isolation boundary",
   },
   {
-    id: "infra",
-    icon: Cpu,
-    iconColor: "text-sky-400",
-    text: "API Gateway: Inbound traffic anomaly detected on /api/v1/health",
-    action: "Inspect rate limit telemetry and engage air-gap",
-  },
-  {
     id: "proof",
+    tag: "SQDEC GOVERNANCE",
+    title: "Truth Ledger & SQDEC",
+    description: "Block #24190 ready for zero-knowledge SHA-256 cryptographic attestation.",
     icon: CheckCircle2,
     iconColor: "text-emerald-400",
-    text: "Truth Ledger: Block #24190 ready for zero-knowledge SHA-256 attestation",
+    borderColor: "hover:border-emerald-500/50",
     action: "Sign and publish cryptographic audit seal",
   },
 ];
@@ -291,7 +298,7 @@ export function NoctisForgeTab({ onSendToChat, onClose }: NoctisForgeTabProps) {
   const [building, setBuilding] = useState(false);
   const [buildLogs, setBuildLogs] = useState<string[]>([]);
   const [buildArtifact, setBuildArtifact] = useState<{ title: string; code: string; tests: string } | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [factoryStudioOpen, setFactoryStudioOpen] = useState(false);
   const [voiceModalOpen, setVoiceModalOpen] = useState(false);
   const [activeVoicePersona, setActiveVoicePersona] = useState<VoicePersona>("maple");
@@ -499,9 +506,17 @@ describe("${textToBuild} - Verification", () => {
                 setPrompt("");
               }}
               title="New Build Chat"
-              className="rounded-lg p-1.5 text-zinc-400 hover:text-white hover:bg-white/5 transition"
+              className="rounded-lg p-1.5 text-zinc-400 hover:text-white hover:bg-white/5 transition cursor-pointer"
             >
               <Plus className="size-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(false)}
+              title="Close sidebar"
+              className="rounded-lg p-1.5 text-zinc-400 hover:text-white hover:bg-white/5 transition cursor-pointer"
+            >
+              <PanelLeftClose className="size-4" />
             </button>
           </div>
 
@@ -686,18 +701,30 @@ describe("${textToBuild} - Verification", () => {
       <main className="flex-1 flex flex-col h-full overflow-hidden relative bg-[#141414]">
         {/* Top Navbar */}
         <header className="flex h-12 shrink-0 items-center justify-between border-b border-white/10 px-4 bg-[#141414]">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <button
               type="button"
               onClick={() => setSidebarOpen((o) => !o)}
-              title="Toggle Forge sidebar"
-              className="rounded-lg p-1.5 text-zinc-400 hover:text-white hover:bg-white/5 transition"
+              title={sidebarOpen ? "Hide Explorer sidebar" : "Show Explorer sidebar (Recents & Projects)"}
+              className={cn(
+                "flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition cursor-pointer",
+                sidebarOpen
+                  ? "bg-white/15 text-white"
+                  : "bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10"
+              )}
             >
-              <Split className="size-4" />
+              <PanelLeft className="size-3.5" />
+              <span>{sidebarOpen ? "Hide Explorer" : "Explorer"}</span>
+              {!sidebarOpen && recents.length > 0 && (
+                <span className="rounded-full bg-white/10 px-1.5 py-0.2 text-[10px] text-zinc-400 font-mono">
+                  {recents.length}
+                </span>
+              )}
             </button>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-zinc-300">Target:</span>
-              <span className="rounded-full bg-white/5 px-2 py-0.5 text-xs font-mono text-[#e4b86a] border border-white/10">
+            <div className="h-4 w-px bg-white/10" />
+            <div className="flex items-center gap-1.5 text-xs">
+              <span className="text-zinc-500 font-medium">Target:</span>
+              <span className="rounded-full bg-white/5 px-2.5 py-0.5 font-mono text-[#e4b86a] border border-white/10 text-[11px]">
                 {targetRepo}/{targetScope}
               </span>
             </div>
@@ -834,25 +861,26 @@ describe("${textToBuild} - Verification", () => {
               </div>
             </div>
           ) : (
-            // Idle State: What should we build? (Matching Screenshot 8)
-            <div className="w-full max-w-2xl flex flex-col items-center text-center space-y-6">
-              {/* Terminal Icon */}
-              <div className="grid size-16 place-items-center rounded-3xl bg-white/5 border border-white/10 text-white shadow-xl">
-                <Terminal className="size-8 text-zinc-200" />
+            // Idle State: Sovereign Software Engineering Canvas
+            <div className="w-full max-w-2xl flex flex-col items-center text-center space-y-5">
+              {/* Badge & Terminal Icon */}
+              <div className="inline-flex items-center gap-2 rounded-full bg-white/5 border border-white/10 px-3 py-1 text-[11px] font-medium text-zinc-300 shadow-sm">
+                <Terminal className="size-3.5 text-[#e4b86a]" />
+                <span className="tracking-wide">NOCTIS FORGE · SOVEREIGN ARCHITECT</span>
               </div>
 
-              {/* Large Title */}
+              {/* Clean Title with Proper Spacing */}
               <div>
                 <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-                  Architect {"&"} Build Sovereign Systems
+                  Architect &amp; Build Sovereign Systems
                 </h1>
-                <p className="text-xs sm:text-sm text-zinc-400 mt-1 max-w-lg mx-auto">
+                <p className="text-xs sm:text-sm text-zinc-400 mt-1.5 max-w-lg mx-auto leading-relaxed">
                   Autonomous software engineering, continuous security synthesis, and production deployment across 710 repositories.
                 </p>
               </div>
 
-              {/* Proactive Intelligence Integration Rows (From Screenshot 8) */}
-              <div className="w-full space-y-2 text-left">
+              {/* Clean 2-Column Responsive Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full text-left pt-1">
                 {PROACTIVE_SUGGESTIONS.map((item) => {
                   const Icon = item.icon;
                   return (
@@ -866,17 +894,30 @@ describe("${textToBuild} - Verification", () => {
                           handleStartBuild(item.action);
                         }
                       }}
-                      className="group flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3 hover:bg-white/[0.08] hover:border-[#e4b86a]/40 transition cursor-pointer"
+                      className={cn(
+                        "group relative flex flex-col justify-between rounded-xl border border-white/10 bg-white/[0.03] p-3.5 hover:bg-white/[0.07] transition cursor-pointer active:scale-99 shadow-sm",
+                        item.borderColor
+                      )}
                     >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <Icon className={cn("size-4 shrink-0", item.iconColor)} />
-                        <span className="text-xs text-zinc-300 group-hover:text-white truncate">
-                          {item.text}
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <div className="grid size-6 place-items-center rounded-lg bg-white/5 border border-white/5">
+                            <Icon className={cn("size-3.5", item.iconColor)} />
+                          </div>
+                          <span className="text-[10px] font-bold tracking-wider text-zinc-400 uppercase">
+                            {item.tag}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-zinc-500 group-hover:text-[#e4b86a] transition flex items-center gap-0.5">
+                          Launch <ArrowUp className="size-2.5 rotate-45" />
                         </span>
                       </div>
-                      <span className="shrink-0 rounded-full bg-white/5 group-hover:bg-[#e4b86a] group-hover:text-black px-2.5 py-0.5 text-[10px] font-medium text-zinc-400 transition">
-                        Action
-                      </span>
+                      <h4 className="text-xs font-semibold text-zinc-200 group-hover:text-white transition">
+                        {item.title}
+                      </h4>
+                      <p className="text-[11px] text-zinc-400 line-clamp-2 mt-1 leading-snug">
+                        {item.description}
+                      </p>
                     </div>
                   );
                 })}
@@ -887,7 +928,7 @@ describe("${textToBuild} - Verification", () => {
 
         {/* Floating Composer Action Bar (Matching Screenshot 8) */}
         <div className="shrink-0 p-4 sm:p-6 w-full max-w-3xl mx-auto">
-          <div className="rounded-3xl border border-white/15 bg-[#1f1f1f] shadow-2xl p-3 focus-within:border-[#e4b86a]/60 transition">
+          <div className="rounded-2xl border border-white/15 bg-[#18181c]/95 backdrop-blur-md shadow-2xl p-3 focus-within:border-[#e4b86a]/60 transition">
             {/* Target Selectors Top Bar */}
             <div className="flex items-center gap-2 mb-2 px-1 text-xs">
               <div className="flex items-center gap-1 text-zinc-400 hover:text-white cursor-pointer rounded px-1.5 py-0.5 hover:bg-white/5 transition">
