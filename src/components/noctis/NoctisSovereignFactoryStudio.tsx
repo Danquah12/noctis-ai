@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   X,
   Layers,
@@ -36,6 +36,9 @@ import {
   RefreshCw,
   Plus,
   ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUpRight,
   Headphones,
   Users,
   DollarSign,
@@ -62,10 +65,20 @@ import {
 interface NoctisSovereignFactoryStudioProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelectSystem?: (system: SovereignSystem) => void;
+  onSelectSystem?: (system: SovereignSystem, autoBuild?: boolean) => void;
 }
 
-const CATEGORIES = ["All", "Top 5 Priority", "Security", "Healthcare", "Governance", "Finance", "Engineering", "Operations", "Intelligence"] as const;
+const CATEGORIES = [
+  "All",
+  "Top 5 Priority",
+  "Security",
+  "Healthcare",
+  "Governance",
+  "Finance",
+  "Engineering",
+  "Operations",
+  "Intelligence",
+] as const;
 
 export function NoctisSovereignFactoryStudio({
   isOpen,
@@ -101,9 +114,25 @@ export function NoctisSovereignFactoryStudio({
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("tpl-cybersecurity");
   const [newSystemName, setNewSystemName] = useState<string>("");
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    if (isOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+    }
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const currentSystem = systems.find((s) => s.identity.id === selectedSystemId) || systems[0];
+
+  const getCategoryCount = (cat: typeof CATEGORIES[number]) => {
+    if (cat === "All") return systems.length;
+    if (cat === "Top 5 Priority") return systems.filter((s) => typeof s.priorityRank === "number" && s.priorityRank <= 5).length;
+    return systems.filter((s) => s.identity.category === cat).length;
+  };
 
   const filteredSystems = systems.filter((s) => {
     if (activeCategory === "All") return true;
@@ -133,13 +162,35 @@ export function NoctisSovereignFactoryStudio({
     }
   };
 
+  const handleOpenInspector = (sys: SovereignSystem) => {
+    setSelectedSystemId(sys.identity.id);
+    setActiveTab("inspector");
+  };
+
+  const handleOpenLifecycle = (sys: SovereignSystem) => {
+    setSelectedSystemId(sys.identity.id);
+    setActiveTab("lifecycle");
+  };
+
+  const handleOpenBus = (sys: SovereignSystem) => {
+    setSelectedSystemId(sys.identity.id);
+    setActiveTab("bus");
+  };
+
+  const handleBuildSystem = (sys: SovereignSystem) => {
+    setSelectedSystemId(sys.identity.id);
+    if (onSelectSystem) {
+      onSelectSystem(sys, true);
+    }
+    onClose();
+  };
+
   const handleRunLifecycle = (action: LifecycleAction) => {
     setExecutingAction(action);
     setTimeout(() => {
       const res = executeSystemLifecycle(currentSystem.identity.id, action);
       setLifecycleLog(res);
       setExecutingAction(null);
-      // Update system status in local state
       setSystems((prev) =>
         prev.map((s) => (s.identity.id === currentSystem.identity.id ? { ...s, deployment: { ...s.deployment, status: res.newStatus as any } } : s))
       );
@@ -196,8 +247,13 @@ export function NoctisSovereignFactoryStudio({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-2 sm:p-6 animate-in fade-in duration-200">
-      <div className="relative flex h-[94vh] max-h-[900px] w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#0d0d10] text-white shadow-2xl">
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-2 sm:p-6 animate-in fade-in duration-200"
+    >
+      <div className="relative flex h-[94vh] max-h-[920px] w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#0d0d10] text-white shadow-2xl">
         
         {/* Top Header */}
         <div className="flex items-center justify-between border-b border-white/10 bg-[#141418] px-6 py-4">
@@ -224,7 +280,7 @@ export function NoctisSovereignFactoryStudio({
               type="button"
               onClick={() => setActiveTab("matrix")}
               className={cn(
-                "rounded-xl px-3 py-1.5 text-xs font-semibold transition",
+                "rounded-xl px-3 py-1.5 text-xs font-semibold transition cursor-pointer",
                 activeTab === "matrix" ? "bg-white/15 text-white shadow-xs" : "text-zinc-400 hover:text-white"
               )}
             >
@@ -234,7 +290,7 @@ export function NoctisSovereignFactoryStudio({
               type="button"
               onClick={() => setActiveTab("inspector")}
               className={cn(
-                "rounded-xl px-3 py-1.5 text-xs font-semibold transition",
+                "rounded-xl px-3 py-1.5 text-xs font-semibold transition cursor-pointer",
                 activeTab === "inspector" ? "bg-white/15 text-white shadow-xs" : "text-zinc-400 hover:text-white"
               )}
             >
@@ -244,7 +300,7 @@ export function NoctisSovereignFactoryStudio({
               type="button"
               onClick={() => setActiveTab("architecture")}
               className={cn(
-                "rounded-xl px-3 py-1.5 text-xs font-semibold transition",
+                "rounded-xl px-3 py-1.5 text-xs font-semibold transition cursor-pointer",
                 activeTab === "architecture" ? "bg-white/15 text-white shadow-xs" : "text-zinc-400 hover:text-white"
               )}
             >
@@ -254,7 +310,7 @@ export function NoctisSovereignFactoryStudio({
               type="button"
               onClick={() => setActiveTab("lifecycle")}
               className={cn(
-                "rounded-xl px-3 py-1.5 text-xs font-semibold transition",
+                "rounded-xl px-3 py-1.5 text-xs font-semibold transition cursor-pointer",
                 activeTab === "lifecycle" ? "bg-white/15 text-white shadow-xs" : "text-zinc-400 hover:text-white"
               )}
             >
@@ -264,7 +320,7 @@ export function NoctisSovereignFactoryStudio({
               type="button"
               onClick={() => setActiveTab("bus")}
               className={cn(
-                "rounded-xl px-3 py-1.5 text-xs font-semibold transition",
+                "rounded-xl px-3 py-1.5 text-xs font-semibold transition cursor-pointer",
                 activeTab === "bus" ? "bg-white/15 text-white shadow-xs" : "text-zinc-400 hover:text-white"
               )}
             >
@@ -274,7 +330,7 @@ export function NoctisSovereignFactoryStudio({
               type="button"
               onClick={() => setActiveTab("templates")}
               className={cn(
-                "rounded-xl px-3 py-1.5 text-xs font-semibold transition",
+                "rounded-xl px-3 py-1.5 text-xs font-semibold transition cursor-pointer",
                 activeTab === "templates" ? "bg-white/15 text-white shadow-xs" : "text-zinc-400 hover:text-white"
               )}
             >
@@ -285,7 +341,8 @@ export function NoctisSovereignFactoryStudio({
           <button
             type="button"
             onClick={onClose}
-            className="flex size-8 items-center justify-center rounded-full text-zinc-400 hover:bg-white/10 hover:text-white transition"
+            aria-label="Close Factory Studio"
+            className="flex size-8 items-center justify-center rounded-full text-zinc-400 hover:bg-white/10 hover:text-white transition cursor-pointer"
           >
             <X className="size-5" />
           </button>
@@ -305,13 +362,13 @@ export function NoctisSovereignFactoryStudio({
                     type="button"
                     onClick={() => setActiveCategory(cat)}
                     className={cn(
-                      "rounded-full px-3.5 py-1 text-xs font-medium transition shrink-0",
+                      "rounded-full px-3.5 py-1 text-xs font-medium transition shrink-0 cursor-pointer",
                       activeCategory === cat
-                        ? "bg-sky-500/20 text-sky-300 border border-sky-500/40"
+                        ? "bg-sky-500/20 text-sky-300 border border-sky-500/40 shadow-xs"
                         : "bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-zinc-200 border border-white/5"
                     )}
                   >
-                    {cat}
+                    {cat} ({getCategoryCount(cat)})
                   </button>
                 ))}
               </div>
@@ -323,22 +380,19 @@ export function NoctisSovereignFactoryStudio({
                   return (
                     <div
                       key={sys.identity.id}
-                      onClick={() => {
-                        setSelectedSystemId(sys.identity.id);
-                        if (onSelectSystem) onSelectSystem(sys);
-                      }}
+                      onClick={() => handleOpenInspector(sys)}
                       className={cn(
-                        "group relative flex flex-col justify-between rounded-2xl border p-4 cursor-pointer transition shadow-sm",
+                        "group relative flex flex-col justify-between rounded-2xl border p-4 cursor-pointer transition shadow-sm hover:scale-[1.01] active:scale-[0.99]",
                         isSelected
-                          ? "bg-white/[0.07] border-sky-500/50 shadow-[0_0_20px_rgba(56,189,248,0.15)]"
-                          : "bg-[#141418] border-white/10 hover:bg-white/[0.04] hover:border-white/20"
+                          ? "bg-white/[0.08] border-sky-400 shadow-[0_0_25px_rgba(56,189,248,0.2)]"
+                          : "bg-[#141418] border-white/10 hover:bg-white/[0.05] hover:border-sky-500/40"
                       )}
                     >
                       <div>
-                        {/* Header & Badges */}
-                        <div className="flex items-start justify-between gap-2">
+                        {/* Header: Icon, Name, Category */}
+                        <div className="flex items-start justify-between gap-3">
                           <div className="flex items-center gap-2.5">
-                            <div className="flex size-9 items-center justify-center rounded-xl bg-black/40 border border-white/10 shrink-0">
+                            <div className="flex size-9 items-center justify-center rounded-xl bg-black border border-white/10">
                               {getSystemIcon(sys.identity.icon)}
                             </div>
                             <div>
@@ -347,20 +401,22 @@ export function NoctisSovereignFactoryStudio({
                                   {sys.identity.name}
                                 </h3>
                                 {typeof sys.priorityRank === "number" && (
-                                  <span className="rounded bg-rose-500/20 border border-rose-500/30 px-1 py-0.2 text-[9px] font-bold text-rose-300">
+                                  <span className="rounded bg-rose-500/20 border border-rose-500/30 px-1.5 py-0.2 text-[9px] font-bold text-rose-300">
                                     P{sys.priorityRank}
                                   </span>
                                 )}
                               </div>
-                              <span className="text-[11px] text-zinc-400">{sys.identity.category} · v{sys.identity.version}</span>
+                              <p className="text-[11px] text-zinc-400">
+                                {sys.identity.category} · v{sys.identity.version}
+                              </p>
                             </div>
                           </div>
 
                           <span className={cn(
-                            "rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider",
+                            "rounded-full px-2 py-0.5 text-[9px] font-bold tracking-wide uppercase",
                             sys.deployment.status === "running"
                               ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                              : "bg-zinc-700/40 text-zinc-400 border border-zinc-700"
+                              : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
                           )}>
                             {sys.deployment.status}
                           </span>
@@ -372,21 +428,56 @@ export function NoctisSovereignFactoryStudio({
                         </p>
                       </div>
 
-                      {/* Footer Metrics */}
-                      <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-[11px] text-zinc-400">
-                        <span className="truncate max-w-[140px]">{sys.architecture.runtime}</span>
-                        <div className="flex items-center gap-3">
-                          <span className="text-emerald-400 font-medium">{sys.evaluation.measuredAccuracy || 99}% Acc</span>
+                      {/* Footer Metrics & Direct Action Buttons */}
+                      <div className="mt-3 pt-3 border-t border-white/10 space-y-2">
+                        <div className="flex items-center justify-between text-[11px] text-zinc-400">
+                          <span className="truncate max-w-[140px]">{sys.architecture.runtime}</span>
+                          <span className="text-emerald-400 font-medium">{sys.evaluation.measuredAccuracy || 99}% Accuracy</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-1.5 pt-1">
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenInspector(sys);
+                              }}
+                              className="rounded-lg bg-sky-500/20 hover:bg-sky-500/30 border border-sky-500/40 px-2.5 py-1 text-[11px] font-bold text-sky-300 transition flex items-center gap-1 cursor-pointer"
+                            >
+                              <Eye className="size-3" />
+                              <span>Inspect</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenLifecycle(sys);
+                              }}
+                              className="rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 px-2 py-1 text-[11px] font-medium text-zinc-300 hover:text-white transition cursor-pointer"
+                            >
+                              <span>Lifecycle</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenBus(sys);
+                              }}
+                              className="rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 px-2 py-1 text-[11px] font-medium text-zinc-300 hover:text-white transition cursor-pointer"
+                            >
+                              <span>Bus</span>
+                            </button>
+                          </div>
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              setSelectedSystemId(sys.identity.id);
-                              setActiveTab("inspector");
+                              handleBuildSystem(sys);
                             }}
-                            className="text-sky-400 hover:underline font-semibold"
+                            className="rounded-lg bg-[#e4b86a] hover:bg-amber-400 text-black px-2.5 py-1 text-[11px] font-bold transition flex items-center gap-1 cursor-pointer shrink-0"
                           >
-                            Inspect →
+                            <Play className="size-2.5 fill-current" />
+                            <span>Build</span>
                           </button>
                         </div>
                       </div>
@@ -400,6 +491,44 @@ export function NoctisSovereignFactoryStudio({
           {/* TAB 2: 11-DIMENSION SYSTEM INSPECTOR */}
           {activeTab === "inspector" && (
             <div className="space-y-6">
+              {/* Top Navigation & Action Controls */}
+              <div className="flex items-center justify-between pb-1">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("matrix")}
+                  className="inline-flex items-center gap-1.5 text-xs text-sky-400 hover:text-sky-300 font-semibold cursor-pointer rounded-lg px-2.5 py-1 hover:bg-white/5 transition"
+                >
+                  <ArrowLeft className="size-3.5" />
+                  <span>Back to Systems Matrix</span>
+                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("lifecycle")}
+                    className="rounded-xl bg-white/10 hover:bg-white/15 px-3 py-1.5 text-xs text-white font-medium transition cursor-pointer flex items-center gap-1"
+                  >
+                    <span>Lifecycle Manager</span>
+                    <ArrowRight className="size-3" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("bus")}
+                    className="rounded-xl bg-white/10 hover:bg-white/15 px-3 py-1.5 text-xs text-white font-medium transition cursor-pointer flex items-center gap-1"
+                  >
+                    <span>Event Bus</span>
+                    <ArrowRight className="size-3" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleBuildSystem(currentSystem)}
+                    className="rounded-xl bg-[#e4b86a] hover:bg-amber-400 text-black px-3.5 py-1.5 text-xs font-bold transition shadow-xs cursor-pointer flex items-center gap-1"
+                  >
+                    <Play className="size-3 fill-current" />
+                    <span>Build in Forge</span>
+                  </button>
+                </div>
+              </div>
+
               {/* Selected System Bar */}
               <div className="flex flex-wrap items-center justify-between gap-4 bg-[#141418] border border-white/10 rounded-2xl p-4">
                 <div className="flex items-center gap-3">
@@ -426,7 +555,7 @@ export function NoctisSovereignFactoryStudio({
                   <select
                     value={selectedSystemId}
                     onChange={(e) => setSelectedSystemId(e.target.value)}
-                    className="rounded-xl bg-black border border-white/15 px-3 py-1.5 text-xs text-white outline-none focus:border-sky-500"
+                    className="rounded-xl bg-black border border-white/15 px-3 py-1.5 text-xs text-white outline-none focus:border-sky-500 cursor-pointer"
                   >
                     {systems.map((s) => (
                       <option key={s.identity.id} value={s.identity.id}>
@@ -463,7 +592,7 @@ export function NoctisSovereignFactoryStudio({
                   <p className="text-xs text-zinc-300"><strong>Domain:</strong> {currentSystem.knowledgeBase.domain}</p>
                   <p className="text-xs text-zinc-300"><strong>Sources:</strong> {currentSystem.knowledgeBase.dataSources.slice(0, 3).join(", ")}</p>
                   <p className="text-xs text-zinc-300"><strong>Chunking:</strong> {currentSystem.knowledgeBase.chunkingStrategy}</p>
-                  <p className="text-xs text-zinc-400">Top-K: {currentSystem.knowledgeBase.retrievalTopK} · Threshold: {currentSystem.knowledgeBase.groundingThreshold * 100}%</p>
+                  <p className="text-xs text-zinc-400">Top-K: {currentSystem.knowledgeBase.retrievalTopK} · Threshold: {Math.round(currentSystem.knowledgeBase.groundingThreshold * 100)}%</p>
                 </div>
 
                 {/* 4. Capabilities */}
@@ -570,7 +699,7 @@ export function NoctisSovereignFactoryStudio({
                 </div>
               </div>
 
-              {/* Section 1: The Five Major Layers Stack (Image 7) */}
+              {/* Section 1: The Five Major Layers Stack */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-400">1. The Five Major Architectural Layers</h4>
@@ -628,7 +757,7 @@ export function NoctisSovereignFactoryStudio({
                 </div>
               </div>
 
-              {/* Section 2: Enterprise Orchestration Architecture (Image 6) */}
+              {/* Section 2: Enterprise Orchestration Architecture */}
               <div className="space-y-4 pt-4 border-t border-white/10">
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-400">2. Enterprise Fabric & Multi-Agent Orchestration</h4>
@@ -750,13 +879,13 @@ export function NoctisSovereignFactoryStudio({
                     </ul>
                   </div>
 
-                  <div className="rounded-2xl border border-white/10 bg-[#141418] p-4 space-y-3">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-rose-400">Verified Business Impact</span>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {ENTERPRISE_FABRIC_ORCHESTRATION.businessImpact.map((impact) => (
-                        <div key={impact} className="flex items-center gap-2 rounded-xl bg-black/40 border border-white/5 p-2.5 text-xs font-semibold text-white">
-                          <Sparkles className="size-4 text-amber-400 shrink-0" />
-                          <span>{impact}</span>
+                  <div className="rounded-2xl border border-white/10 bg-[#141418] p-4 space-y-2">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-400">Business & Operational Impact</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                      {ENTERPRISE_FABRIC_ORCHESTRATION.businessImpact.map((imp) => (
+                        <div key={imp} className="flex items-center gap-2 rounded-xl bg-white/5 border border-white/5 p-2 text-xs font-semibold text-white">
+                          <CheckCircle2 className="size-3.5 text-emerald-400 shrink-0" />
+                          <span>{imp}</span>
                         </div>
                       ))}
                     </div>
@@ -766,25 +895,65 @@ export function NoctisSovereignFactoryStudio({
             </div>
           )}
 
-          {/* TAB 3: LIFECYCLE CONTROLLER */}
+          {/* TAB 3: LIFECYCLE MANAGER */}
           {activeTab === "lifecycle" && (
-            <div className="space-y-6">
-              <div className="bg-[#141418] border border-white/10 rounded-2xl p-4">
-                <h3 className="text-sm font-bold text-white">9-Stage Formal Lifecycle Manager</h3>
-                <p className="text-xs text-zinc-400 mt-1">
-                  Execute non-repudiable state transitions on <strong>{currentSystem.identity.name}</strong>. Each action generates a cryptographically chained SHA-256 seal.
-                </p>
+            <div className="space-y-6 animate-in fade-in duration-200">
+              <div className="bg-[#141418] border border-white/10 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex size-10 items-center justify-center rounded-xl bg-sky-500/20 text-sky-400 border border-sky-500/30">
+                    <Terminal className="size-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-white">System Lifecycle Management</h3>
+                    <p className="text-xs text-zinc-400 mt-0.5">
+                      Audited deterministic execution across Create, Configure, Test, Validate, Deploy, Monitor, Upgrade, Rollback, Retire.
+                    </p>
+                  </div>
+                </div>
 
-                {/* 9 Action Buttons */}
-                <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-2 mt-4">
-                  {(["Create", "Configure", "Test", "Validate", "Deploy", "Monitor", "Upgrade", "Rollback", "Retire"] as LifecycleAction[]).map((act) => (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-zinc-400">Target System:</span>
+                  <select
+                    value={selectedSystemId}
+                    onChange={(e) => setSelectedSystemId(e.target.value)}
+                    className="rounded-xl bg-black border border-white/15 px-3 py-1.5 text-xs text-white outline-none focus:border-sky-500 cursor-pointer"
+                  >
+                    {systems.map((s) => (
+                      <option key={s.identity.id} value={s.identity.id}>
+                        {s.identity.name} ({s.deployment.status})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Action Buttons Grid */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-zinc-400">Execute Action on {currentSystem.identity.name}</span>
+                  <span className="text-[11px] text-zinc-500">Status: <strong className="text-emerald-400">{currentSystem.deployment.status.toUpperCase()}</strong></span>
+                </div>
+                <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-2">
+                  {(
+                    [
+                      "CREATE",
+                      "CONFIGURE",
+                      "TEST",
+                      "VALIDATE",
+                      "DEPLOY",
+                      "MONITOR",
+                      "UPGRADE",
+                      "ROLLBACK",
+                      "RETIRE",
+                    ] as LifecycleAction[]
+                  ).map((act) => (
                     <button
                       key={act}
                       type="button"
                       disabled={executingAction !== null}
                       onClick={() => handleRunLifecycle(act)}
                       className={cn(
-                        "flex flex-col items-center justify-center p-2.5 rounded-xl border text-xs font-semibold transition",
+                        "flex flex-col items-center justify-center p-2.5 rounded-xl border text-xs font-semibold transition cursor-pointer",
                         executingAction === act
                           ? "bg-sky-500/20 border-sky-400 text-sky-300 animate-pulse"
                           : "bg-black/40 border-white/10 hover:bg-white/10 hover:border-white/25 text-zinc-200"
@@ -804,11 +973,11 @@ export function NoctisSovereignFactoryStudio({
                     <span className="text-zinc-500">{lifecycleLog.timestamp}</span>
                   </div>
                   <p className="text-zinc-400">System ID: <span className="text-zinc-200">{lifecycleLog.systemId}</span></p>
-                  <p className="text-zinc-400">Audit Seal: <span className="text-emerald-400">{lifecycleLog.auditSealSha256}</span></p>
+                  <p className="text-zinc-400">Audit Seal: <span className="text-emerald-400 break-all">{lifecycleLog.auditSealSha256}</span></p>
                   <p className="text-zinc-400">State Transition: <span className="text-zinc-300">{lifecycleLog.priorStatus}</span> → <span className="text-emerald-400 font-bold">{lifecycleLog.newStatus}</span></p>
                   <div className="pt-2 text-zinc-300 space-y-1">
                     {lifecycleLog.log.map((line, idx) => (
-                      <p key={idx} className={line.startsWith("✓") ? "text-emerald-300" : "text-zinc-400"}>
+                      <p key={idx} className={line.includes("✓") || line.includes("COMPLIANT") || line.includes("PASS") ? "text-emerald-300" : "text-zinc-400"}>
                         {line}
                       </p>
                     ))}
@@ -816,7 +985,7 @@ export function NoctisSovereignFactoryStudio({
                 </div>
               ) : (
                 <div className="rounded-2xl border border-dashed border-white/10 p-8 text-center text-zinc-500 text-xs">
-                  Select a lifecycle action above to initiate execution and generate a SHA-256 audit seal.
+                  Select a lifecycle action above to initiate execution and generate a cryptographic SHA-256 audit seal.
                 </div>
               )}
             </div>
@@ -824,7 +993,7 @@ export function NoctisSovereignFactoryStudio({
 
           {/* TAB 4: EVENT BUS */}
           {activeTab === "bus" && (
-            <div className="space-y-6">
+            <div className="space-y-6 animate-in fade-in duration-200">
               <div className="bg-[#141418] border border-white/10 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4">
                 <div>
                   <h3 className="text-sm font-bold text-white">DStrike Sovereign Interoperability Bus</h3>
@@ -836,7 +1005,7 @@ export function NoctisSovereignFactoryStudio({
                   <button
                     type="button"
                     onClick={() => handleDispatchBusEvent("noctis-rmf")}
-                    className="flex items-center gap-1.5 rounded-xl bg-amber-500/20 border border-amber-500/30 px-3 py-1.5 text-xs font-semibold text-amber-300 hover:bg-amber-500/30 transition"
+                    className="flex items-center gap-1.5 rounded-xl bg-amber-500/20 border border-amber-500/30 px-3 py-1.5 text-xs font-semibold text-amber-300 hover:bg-amber-500/30 transition cursor-pointer"
                   >
                     <Send className="size-3" />
                     <span>Send to RMF/GRC</span>
@@ -844,7 +1013,7 @@ export function NoctisSovereignFactoryStudio({
                   <button
                     type="button"
                     onClick={() => handleDispatchBusEvent("noctis-health")}
-                    className="flex items-center gap-1.5 rounded-xl bg-sky-500/20 border border-sky-500/30 px-3 py-1.5 text-xs font-semibold text-sky-300 hover:bg-sky-500/30 transition"
+                    className="flex items-center gap-1.5 rounded-xl bg-sky-500/20 border border-sky-500/30 px-3 py-1.5 text-xs font-semibold text-sky-300 hover:bg-sky-500/30 transition cursor-pointer"
                   >
                     <Send className="size-3" />
                     <span>Send to Health CDS</span>
@@ -864,17 +1033,19 @@ export function NoctisSovereignFactoryStudio({
                       <span className="size-2 rounded-full bg-emerald-400 shrink-0" />
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="font-semibold text-white">{evt.from}</span>
+                          <span className="font-bold text-white">{evt.from}</span>
                           <span className="text-zinc-500">→</span>
-                          <span className="font-semibold text-sky-300">{evt.to}</span>
-                          <span className="rounded bg-white/10 px-1.5 py-0.2 text-[10px] font-mono text-zinc-300">{evt.type}</span>
+                          <span className="font-bold text-white">{evt.to}</span>
+                          <span className="rounded bg-white/10 px-1.5 py-0.5 text-[9px] font-mono text-zinc-300">
+                            {evt.type}
+                          </span>
                         </div>
-                        <span className="text-[11px] text-zinc-400">{evt.status}</span>
+                        <p className="text-[11px] text-zinc-400 mt-0.5">{evt.status}</p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <span className="font-mono text-emerald-400 font-medium">{evt.latencyMs}ms</span>
-                      <p className="text-[10px] text-zinc-500">{evt.timestamp}</p>
+                    <div className="text-right font-mono text-[11px]">
+                      <p className="text-emerald-400">{evt.latencyMs}ms</p>
+                      <p className="text-zinc-500">{evt.timestamp}</p>
                     </div>
                   </div>
                 ))}
@@ -882,58 +1053,70 @@ export function NoctisSovereignFactoryStudio({
             </div>
           )}
 
-          {/* TAB 5: NEW SYSTEM FROM TEMPLATE */}
+          {/* TAB 5: TEMPLATES & GENERATOR */}
           {activeTab === "templates" && (
-            <div className="space-y-6 max-w-2xl mx-auto">
+            <div className="space-y-6 animate-in fade-in duration-200">
               <div className="bg-[#141418] border border-white/10 rounded-2xl p-5 space-y-4">
                 <div>
-                  <h3 className="text-base font-bold text-white">Generate Sovereign System from Template</h3>
+                  <h3 className="text-sm font-bold text-white">Generate New Sovereign System</h3>
                   <p className="text-xs text-zinc-400 mt-1">
-                    Select a pre-validated domain template to instantiate a complete 11-dimension independent AI system.
+                    Instantiate an independent, 11-dimension professional system from vetted architecture templates.
                   </p>
                 </div>
 
-                <div className="space-y-3">
-                  <label className="text-xs font-semibold text-zinc-300">Select Archetype Template</label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {REUSABLE_SYSTEM_TEMPLATES.map((tpl) => (
-                      <button
-                        key={tpl.id}
-                        type="button"
-                        onClick={() => setSelectedTemplateId(tpl.id)}
-                        className={cn(
-                          "p-3 rounded-xl border text-left transition flex flex-col justify-between",
-                          selectedTemplateId === tpl.id
-                            ? "bg-sky-500/20 border-sky-400 shadow-xs"
-                            : "bg-black/40 border-white/10 hover:bg-white/5"
-                        )}
-                      >
-                        <span className="text-xs font-bold text-white">{tpl.name}</span>
-                        <span className="text-[11px] text-zinc-400 mt-1 line-clamp-2">{tpl.description}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-1.5 pt-2">
-                  <label className="text-xs font-semibold text-zinc-300">Custom System Name (Optional)</label>
+                <div className="flex flex-col sm:flex-row gap-3 pt-2">
                   <input
                     type="text"
                     value={newSystemName}
                     onChange={(e) => setNewSystemName(e.target.value)}
-                    placeholder="e.g. Noctis Aerospace Defense Enclave"
-                    className="w-full rounded-xl bg-black border border-white/15 px-3.5 py-2.5 text-xs text-white outline-none focus:border-sky-500"
+                    placeholder="Enter system name (e.g. Noctis BioPharma Intelligence)..."
+                    className="flex-1 rounded-xl bg-black border border-white/15 px-4 py-2 text-xs text-white placeholder-zinc-500 outline-none focus:border-sky-500"
                   />
+                  <button
+                    type="button"
+                    onClick={handleCreateFromTemplate}
+                    className="rounded-xl bg-[#e4b86a] hover:bg-amber-400 text-black px-4 py-2 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Plus className="size-3.5 stroke-[2.5]" />
+                    <span>Generate Sovereign System</span>
+                  </button>
                 </div>
+              </div>
 
-                <button
-                  type="button"
-                  onClick={handleCreateFromTemplate}
-                  className="w-full rounded-xl bg-white hover:bg-zinc-200 text-black py-3 text-xs font-bold transition shadow-lg flex items-center justify-center gap-2"
-                >
-                  <Plus className="size-4" />
-                  <span>Instantiate Sovereign System (11 Dimensions)</span>
-                </button>
+              {/* Template Selection Grid */}
+              <div className="space-y-3">
+                <span className="text-xs font-bold uppercase tracking-wider text-zinc-400">Select Domain Template</span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {REUSABLE_SYSTEM_TEMPLATES.map((tpl) => {
+                    const isSelected = tpl.id === selectedTemplateId;
+                    return (
+                      <div
+                        key={tpl.id}
+                        onClick={() => setSelectedTemplateId(tpl.id)}
+                        className={cn(
+                          "p-4 rounded-2xl border cursor-pointer transition flex flex-col justify-between",
+                          isSelected
+                            ? "bg-white/[0.08] border-sky-400 shadow-[0_0_20px_rgba(56,189,248,0.2)]"
+                            : "bg-[#141418] border-white/10 hover:bg-white/[0.04] hover:border-white/20"
+                        )}
+                      >
+                        <div>
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-bold text-white">{tpl.name}</h4>
+                            <span className="rounded-full bg-white/5 border border-white/10 px-2 py-0.5 text-[9px] font-semibold text-zinc-300">
+                              {tpl.archetype}
+                            </span>
+                          </div>
+                          <p className="text-xs text-zinc-400 mt-1.5 leading-relaxed">{tpl.description}</p>
+                        </div>
+                        <div className="mt-3 pt-2 border-t border-white/5 flex items-center justify-between text-[11px] text-zinc-500 font-mono">
+                          <span>Runtime: {tpl.suggestedRuntime}</span>
+                          <span>Context: {(tpl.memoryTier / 1000).toFixed(0)}k</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           )}
@@ -943,11 +1126,18 @@ export function NoctisSovereignFactoryStudio({
         {/* Bottom Footer Status Bar */}
         <div className="flex items-center justify-between border-t border-white/10 bg-[#141418] px-6 py-3 text-xs text-zinc-400">
           <div className="flex items-center gap-2">
-            <span className="size-2 rounded-full bg-emerald-400" />
-            <span>Sovereign Systems Factory Runtime: <strong>Active (16 Systems Ready)</strong></span>
+            <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span>Sovereign Systems Factory Runtime: <strong className="text-white">Active ({systems.length} Systems Ready)</strong></span>
           </div>
-          <span className="font-mono text-[11px] text-zinc-500">Shared Sovereign Enclave · Zero-Compromise Isolation</span>
+          <div className="flex items-center gap-4 text-[11px] text-zinc-500">
+            <span>Shared Sovereign Enclave</span>
+            <span>·</span>
+            <span>Zero-Compromise Isolation</span>
+            <span>·</span>
+            <span>OSCAL & NIST SP 800-53 Verified</span>
+          </div>
         </div>
+
       </div>
     </div>
   );

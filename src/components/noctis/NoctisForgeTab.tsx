@@ -983,7 +983,13 @@ describe("${textToBuild} - Verification", () => {
         <NoctisSovereignFactoryStudio
           isOpen={factoryStudioOpen}
           onClose={() => setFactoryStudioOpen(false)}
-          onSelectSystem={(s) => setPrompt(`Inspect architectural invariants and deploy ${s.identity.name}`)}
+          onSelectSystem={(s, autoBuild) => {
+            const buildPrompt = `Inspect architectural invariants and deploy ${s.identity.name}`;
+            setPrompt(buildPrompt);
+            if (autoBuild) {
+              handleStartBuild(buildPrompt);
+            }
+          }}
         />
         <NoctisVoiceSelectorModal
           isOpen={voiceModalOpen}
