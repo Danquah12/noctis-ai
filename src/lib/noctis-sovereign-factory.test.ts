@@ -11,6 +11,12 @@ import {
   buildSovereignSystemsFactoryReport,
   FACTORY_FIVE_LAYERS,
   ENTERPRISE_FABRIC_ORCHESTRATION,
+  SQDEC_HIERARCHY,
+  evaluateSQDECPolicy,
+  LIFECYCLE_GOVERNANCE_MAP,
+  generateProofOfExecution,
+  DUAL_PLANE_SPECIFICATION,
+  SYSTEM_CCS_TELEMETRY,
   type LifecycleAction,
 } from "./noctis-sovereign-factory.ts";
 
@@ -238,5 +244,86 @@ describe("Noctis Sovereign Systems Factory (NOCTIS-FACTORY-2026)", () => {
     assert.ok(fabric.governanceAndSecurity.some((g) => g.includes("FIDO2")));
     assert.ok(fabric.infrastructureFoundation.some((i) => i.includes("Sovereign Enclaves")));
     assert.equal(fabric.businessImpact.length, 5);
+  });
+
+  it("enforces SQDEC policy ordering (Safety > Quality > Delivery > Economics > Control)", () => {
+    assert.equal(SQDEC_HIERARCHY.length, 5);
+    assert.equal(SQDEC_HIERARCHY[0].domain, "Safety");
+    assert.equal(SQDEC_HIERARCHY[1].domain, "Quality");
+    assert.equal(SQDEC_HIERARCHY[2].domain, "Delivery");
+    assert.equal(SQDEC_HIERARCHY[3].domain, "Economics");
+    assert.equal(SQDEC_HIERARCHY[4].domain, "Control");
+
+    // Safety priority 1 can never be waived
+    assert.ok(SQDEC_HIERARCHY[0].enforcementRule.includes("CANNOT be bypassed"));
+
+    const evalResult = evaluateSQDECPolicy("Clinical Triage", "Healthcare", { hasEmergencyVitals: true });
+    assert.equal(evalResult.priorityEnforced, "Safety");
+    assert.ok(evalResult.reasoning.includes("Safety Priority 1 enforced"));
+  });
+
+  it("enforces 4-Tier Risk and Permanence Governance across all 9 lifecycle actions", () => {
+    const actions: LifecycleAction[] = [
+      "Create",
+      "Configure",
+      "Test",
+      "Validate",
+      "Deploy",
+      "Monitor",
+      "Upgrade",
+      "Rollback",
+      "Retire",
+    ];
+
+    for (const act of actions) {
+      const gov = LIFECYCLE_GOVERNANCE_MAP[act];
+      assert.ok(gov, `Governance metadata must exist for action ${act}`);
+      assert.ok(gov.riskTier.startsWith("Tier "));
+      assert.ok(gov.permanence.startsWith("Type "));
+      assert.ok(typeof gov.voiceApprovalAllowed === "boolean");
+    }
+
+    // Critical destructive actions require typed confirmation
+    assert.equal(LIFECYCLE_GOVERNANCE_MAP.Retire.riskTier, "Tier 4: Critical");
+    assert.equal(LIFECYCLE_GOVERNANCE_MAP.Retire.permanence, "Type 2 (Irreversible)");
+    assert.equal(LIFECYCLE_GOVERNANCE_MAP.Retire.requiresTypedConfirmation, true);
+
+    // Deploy is High Risk and cannot be voice approved
+    assert.equal(LIFECYCLE_GOVERNANCE_MAP.Deploy.riskTier, "Tier 3: High");
+    assert.equal(LIFECYCLE_GOVERNANCE_MAP.Deploy.voiceApprovalAllowed, false);
+  });
+
+  it("generates and cryptographically verifies Proof-of-Execution artifacts with SHA-256 seals", () => {
+    const proof = generateProofOfExecution("noctis-cyber", "AST_VULN_SCAN", {
+      latencyMs: 2.1,
+      riskTier: "Tier 1: Low",
+    });
+
+    assert.ok(proof.proofId.startsWith("POE-"));
+    assert.equal(proof.sha256Seal.length, 64, "SHA-256 seal must be exactly 64 hex characters");
+    assert.equal(proof.systemId, "noctis-cyber");
+    assert.equal(proof.sqdecCompliance, true);
+    assert.ok(proof.verificationChecklist.length >= 4);
+    assert.ok(proof.verificationChecklist.every((c) => c.status === "PASS"));
+  });
+
+  it("validates Dual-Plane specification and CCS telemetry across all 16 Sovereign Systems", () => {
+    // Dual-Plane specification
+    assert.ok(DUAL_PLANE_SPECIFICATION.controlPlane.name.includes("Noctis Ultra"));
+    assert.ok(DUAL_PLANE_SPECIFICATION.executionPlane.name.includes("Sovereign Enclave"));
+    assert.equal(DUAL_PLANE_SPECIFICATION.executionPlane.airGapCapability, true);
+    assert.ok(DUAL_PLANE_SPECIFICATION.zeroTrustGuarantees.length >= 4);
+
+    // CCS Telemetry on all 16 systems
+    const systems = listSovereignSystems();
+    for (const sys of systems) {
+      const ccs = SYSTEM_CCS_TELEMETRY[sys.identity.id];
+      assert.ok(ccs, `CCS Telemetry must exist for system ${sys.identity.id}`);
+      assert.ok(ccs.capabilityAccuracy >= 98.0, `Accuracy must be >= 98% for ${sys.identity.id}`);
+      assert.equal(ccs.contextWindowTokens, 262144, `Context window must be 256K for ${sys.identity.id}`);
+      assert.ok(ccs.generationSpeedTokPerSec >= 90.0, `Speed must be >= 90 tok/s for ${sys.identity.id}`);
+      assert.ok(ccs.cognitiveCompounding.reviewedSkillVersions > 0);
+      assert.ok(ccs.cognitiveCompounding.compoundingScore >= 98.0);
+    }
   });
 });

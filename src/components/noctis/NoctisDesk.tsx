@@ -15,6 +15,7 @@ import { NoctisCanvas } from "@/components/noctis/NoctisCanvas";
 import { NoctisPluginsTab } from "@/components/noctis/NoctisPluginsTab";
 import { NoctisForgeTab } from "@/components/noctis/NoctisForgeTab";
 import { NoctisSovereignFactoryStudio } from "@/components/noctis/NoctisSovereignFactoryStudio";
+import { DUAL_PLANE_SPECIFICATION, SQDEC_HIERARCHY } from "@/lib/noctis-sovereign-factory";
 import { NoctisConsoleTab } from "@/components/noctis/NoctisConsoleTab";
 import { NoctisRedTeamTab } from "@/components/noctis/NoctisRedTeamTab";
 import { NoctisShelfPluginSection } from "@/components/noctis/NoctisShelfPluginSection";
@@ -3363,6 +3364,7 @@ export function NoctisDesk() {
   const [capabilityMatrixOpen, setCapabilityMatrixOpen] = useState(false);
   const [factoryStudioOpen, setFactoryStudioOpen] = useState(false);
   const [factoryStudioSystemId, setFactoryStudioSystemId] = useState<string>("noctis-cyber");
+  const [dualPlaneModalOpen, setDualPlaneModalOpen] = useState(false);
 
   const handleOpenSovereignSuite = (systemId: string, promptText: string) => {
     setMenu(false);
@@ -7335,10 +7337,18 @@ export function NoctisDesk() {
           </button>
         </header>
         <div className="flex h-11 shrink-0 items-center justify-between border-b border-white/10 px-2.5 sm:px-4 bg-black/20 backdrop-blur-sm gap-2">
-          <div className="flex items-center gap-2 text-xs text-zinc-400">
-            <span className="size-2 rounded-full bg-emerald-400" />
-            <span className="font-medium text-zinc-300">DStrike Sovereign Runtime</span>
-          </div>
+          <button
+            type="button"
+            onClick={() => setDualPlaneModalOpen(true)}
+            title="Inspect Dual-Plane Sovereign Architecture and Zero-Trust Governance"
+            className="flex items-center gap-2 rounded-full bg-white/5 hover:bg-white/10 px-2.5 py-1 text-xs transition border border-white/10 cursor-pointer shadow-xs text-left"
+          >
+            <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="font-semibold text-emerald-300">Dual-Plane:</span>
+            <span className="hidden sm:inline text-zinc-400">Control [Noctis Ultra] ──</span>
+            <span className="text-zinc-200">Enclave [Air-Gapped]</span>
+            <span className="hidden md:inline rounded bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 text-[9px] font-mono font-bold">SQDEC P1</span>
+          </button>
 
           {/* Clear Previous Chat & Scaled Compact Logo for Mobile and Desktop */}
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
@@ -7984,6 +7994,126 @@ export function NoctisDesk() {
           }
         }}
       />
+      {/* DUAL-PLANE SOVEREIGN ARCHITECTURE & ZERO-TRUST GOVERNANCE MODAL */}
+      {dualPlaneModalOpen && (
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setDualPlaneModalOpen(false);
+          }}
+          className="fixed inset-0 z-60 flex items-center justify-center bg-black/85 backdrop-blur-md p-3 sm:p-6 animate-in fade-in zoom-in-95 duration-150"
+        >
+          <div className="relative flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-emerald-500/40 bg-[#0f0f14] text-white shadow-[0_0_50px_rgba(16,185,129,0.25)]">
+            <div className="flex items-center justify-between border-b border-white/10 bg-[#16161d] px-6 py-4">
+              <div className="flex items-center gap-3">
+                <div className="flex size-11 items-center justify-center rounded-2xl bg-black border border-emerald-500/30 text-emerald-400 shadow-inner">
+                  <Shield className="size-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base font-bold text-white">Dual-Plane Sovereign Architecture</h2>
+                    <span className="rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-mono font-bold">
+                      SQDEC P1 ENFORCED
+                    </span>
+                  </div>
+                  <p className="text-xs text-zinc-300 mt-0.5">Control Plane · Isolated Execution Enclaves · Zero-Trust Identity Boundary</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDualPlaneModalOpen(false)}
+                className="flex size-8 items-center justify-center rounded-full text-zinc-400 hover:bg-white/10 hover:text-white transition cursor-pointer"
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6 space-y-5 scrollbar-thin scrollbar-thumb-zinc-700 text-xs">
+              <div className="rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-emerald-950/30 via-zinc-900 to-sky-950/30 p-5 space-y-2">
+                <div className="flex items-center gap-2 text-emerald-400 font-bold uppercase tracking-wider text-[11px]">
+                  <Sparkles className="size-4" />
+                  <span>The Harness-First Sovereign Guarantee</span>
+                </div>
+                <p className="text-zinc-200 leading-relaxed text-xs">
+                  The control plane decides and audits, but never executes raw untrusted code. Execution workers run in isolated sovereign enclaves (Linux Firecracker MicroVMs, WebAssembly solvers, and air-gapped device-local clusters) but never plan. Inference models are treated as commodity inputs behind rigid provider-agnostic adapters.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="rounded-2xl border border-white/10 bg-[#141418] p-4 space-y-2">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                    <span className="font-bold text-white text-xs flex items-center gap-1.5">
+                      <Cpu className="size-4 text-sky-400" />
+                      <span>{DUAL_PLANE_SPECIFICATION.controlPlane.name}</span>
+                    </span>
+                    <span className="rounded bg-sky-500/20 text-sky-300 px-1.5 py-0.2 text-[9px] font-bold">ORCHESTRATOR</span>
+                  </div>
+                  <p className="text-[11px] text-zinc-400 font-mono">Role: {DUAL_PLANE_SPECIFICATION.controlPlane.role}</p>
+                  <ul className="space-y-1 text-zinc-300 pl-1 list-disc list-inside text-[11px]">
+                    {DUAL_PLANE_SPECIFICATION.controlPlane.responsibilities.map((r, i) => (
+                      <li key={i}>{r}</li>
+                    ))}
+                  </ul>
+                  <p className="pt-2 border-t border-white/5 text-[10px] text-zinc-400 font-mono">
+                    <strong className="text-zinc-300">Identity Posture:</strong> {DUAL_PLANE_SPECIFICATION.controlPlane.identityPosture}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-[#141418] p-4 space-y-2">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                    <span className="font-bold text-white text-xs flex items-center gap-1.5">
+                      <Lock className="size-4 text-emerald-400" />
+                      <span>{DUAL_PLANE_SPECIFICATION.executionPlane.name}</span>
+                    </span>
+                    <span className="rounded bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 text-[9px] font-bold">AIR-GAPPED ENCLAVE</span>
+                  </div>
+                  <p className="text-[11px] text-zinc-400 font-mono">Role: {DUAL_PLANE_SPECIFICATION.executionPlane.role}</p>
+                  <ul className="space-y-1 text-zinc-300 pl-1 list-disc list-inside text-[11px]">
+                    {DUAL_PLANE_SPECIFICATION.executionPlane.supportedEnclaves.map((e, i) => (
+                      <li key={i}>{e}</li>
+                    ))}
+                  </ul>
+                  <p className="pt-2 border-t border-white/5 text-[10px] text-emerald-300 font-mono">
+                    Air-Gap Capable: Zero outbound egress, 100% cryptographic enclave containment.
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-[#141418] p-4 space-y-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400">Zero-Trust Identity & Boundary Invariants</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                  {DUAL_PLANE_SPECIFICATION.zeroTrustGuarantees.map((g, i) => (
+                    <div key={i} className="flex items-start gap-2 bg-black/40 p-2.5 rounded-xl border border-white/5 text-[11px] text-zinc-300">
+                      <CheckCircle2 className="size-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                      <span>{g}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between border-t border-white/10 bg-[#16161d] px-6 py-4">
+              <button
+                type="button"
+                onClick={() => setDualPlaneModalOpen(false)}
+                className="rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 px-4 py-2 text-xs font-medium text-zinc-300 hover:text-white transition cursor-pointer"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setDualPlaneModalOpen(false);
+                  setFactoryStudioOpen(true);
+                }}
+                className="rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black px-4 py-2 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+              >
+                <Sparkles className="size-3.5" />
+                <span>Open Sovereign Factory Studio</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <NoctisCapabilityMatrixModal
         open={capabilityMatrixOpen}
         onClose={() => setCapabilityMatrixOpen(false)}
