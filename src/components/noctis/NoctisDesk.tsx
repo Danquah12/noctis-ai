@@ -14,6 +14,7 @@ import { NoctisCall } from "@/components/noctis/NoctisCall";
 import { NoctisCanvas } from "@/components/noctis/NoctisCanvas";
 import { NoctisPluginsTab } from "@/components/noctis/NoctisPluginsTab";
 import { NoctisForgeTab } from "@/components/noctis/NoctisForgeTab";
+import { NoctisSovereignFactoryStudio } from "@/components/noctis/NoctisSovereignFactoryStudio";
 import { NoctisConsoleTab } from "@/components/noctis/NoctisConsoleTab";
 import { NoctisRedTeamTab } from "@/components/noctis/NoctisRedTeamTab";
 import { NoctisShelfPluginSection } from "@/components/noctis/NoctisShelfPluginSection";
@@ -3360,6 +3361,15 @@ export function NoctisDesk() {
   const [canaryModalOpen, setCanaryModalOpen] = useState(false);
   const [patientDiagnosisModalOpen, setPatientDiagnosisModalOpen] = useState(false);
   const [capabilityMatrixOpen, setCapabilityMatrixOpen] = useState(false);
+  const [factoryStudioOpen, setFactoryStudioOpen] = useState(false);
+  const [factoryStudioSystemId, setFactoryStudioSystemId] = useState<string>("noctis-cyber");
+
+  const handleOpenSovereignSuite = (systemId: string, promptText: string) => {
+    setMenu(false);
+    setFactoryStudioSystemId(systemId);
+    setFactoryStudioOpen(true);
+    setDraft(promptText);
+  };
   const [brainModalOpen, setBrainModalOpen] = useState(false);
   const [suitesExpanded, setSuitesExpanded] = useState(true);
   const [studioMenuOpen, setStudioMenuOpen] = useState(false);
@@ -6671,7 +6681,7 @@ export function NoctisDesk() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setMenu(false); setCapabilityMatrixOpen(true); }}
+                  onClick={() => { setMenu(false); setFactoryStudioOpen(true); }}
                   className="text-[11px] font-medium text-[#e4b86a] hover:underline"
                 >
                   Matrix →
@@ -6703,7 +6713,7 @@ export function NoctisDesk() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => { setMenu(false); setPrompt("Analyze cyber threat matrix and active lateral movement vulnerabilities"); }}
+                    onClick={() => handleOpenSovereignSuite("noctis-cyber", "Analyze cyber threat matrix and active lateral movement vulnerabilities")}
                     className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
                   >
                     <Shield className="size-3.5 text-rose-400 shrink-0" />
@@ -6712,7 +6722,7 @@ export function NoctisDesk() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => { setMenu(false); setPrompt("Audit NIST SP 800-53 Rev. 5 controls and compile OSCAL System Security Plan"); }}
+                    onClick={() => handleOpenSovereignSuite("noctis-rmf", "Audit NIST SP 800-53 Rev. 5 controls and compile OSCAL System Security Plan")}
                     className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
                   >
                     <FileCheck className="size-3.5 text-amber-400 shrink-0" />
@@ -6721,7 +6731,7 @@ export function NoctisDesk() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => { setMenu(false); setPrompt("Evaluate clinical CDS guidelines and emergency triage protocols"); }}
+                    onClick={() => handleOpenSovereignSuite("noctis-health", "Evaluate clinical CDS guidelines and emergency triage protocols")}
                     className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
                   >
                     <Stethoscope className="size-3.5 text-sky-400 shrink-0" />
@@ -6730,7 +6740,7 @@ export function NoctisDesk() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => { setMenu(false); setPrompt("Compute 5-year discounted cash flow valuation and capital sensitivity matrix"); }}
+                    onClick={() => handleOpenSovereignSuite("noctis-finance", "Compute 5-year discounted cash flow valuation and capital sensitivity matrix")}
                     className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
                   >
                     <TrendingUp className="size-3.5 text-emerald-400 shrink-0" />
@@ -6739,7 +6749,7 @@ export function NoctisDesk() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => { setMenu(false); setPrompt("Run multi-physics PDE simulation and structural finite element analysis"); }}
+                    onClick={() => handleOpenSovereignSuite("noctis-engineering", "Run multi-physics PDE simulation and structural finite element analysis")}
                     className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
                   >
                     <Cpu className="size-3.5 text-purple-400 shrink-0" />
@@ -6748,7 +6758,7 @@ export function NoctisDesk() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => { setMenu(false); setDesk("forge"); }}
+                    onClick={() => handleOpenSovereignSuite("noctis-software", "Synthesize autonomous microservice architecture and execute formal invariant verification")}
                     className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
                   >
                     <Code2 className="size-3.5 text-indigo-400 shrink-0" />
@@ -6757,7 +6767,7 @@ export function NoctisDesk() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => { setMenu(false); setPrompt("Search legal precedents, circuit splits, and statutory contradictions"); }}
+                    onClick={() => handleOpenSovereignSuite("noctis-legal", "Search legal precedents, circuit splits, and statutory contradictions")}
                     className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
                   >
                     <Scale className="size-3.5 text-rose-400 shrink-0" />
@@ -6765,7 +6775,7 @@ export function NoctisDesk() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => { setMenu(false); setPrompt("Assess defense SIGINT/IMINT threat telemetry and electronic warfare countermeasures"); }}
+                    onClick={() => handleOpenSovereignSuite("noctis-defense", "Assess defense SIGINT/IMINT threat telemetry and electronic warfare countermeasures")}
                     className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
                   >
                     <ShieldAlert className="size-3.5 text-red-400 shrink-0" />
@@ -6773,7 +6783,7 @@ export function NoctisDesk() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => { setMenu(false); setPrompt("Evaluate genomics, CRISPR off-target cleavage scores, and molecular dynamics"); }}
+                    onClick={() => handleOpenSovereignSuite("noctis-science", "Evaluate genomics, CRISPR off-target cleavage scores, and molecular dynamics")}
                     className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
                   >
                     <Atom className="size-3.5 text-teal-400 shrink-0" />
@@ -6781,7 +6791,7 @@ export function NoctisDesk() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => { setMenu(false); setPrompt("Analyze OSINT entity graph, corporate registry UBO chains, and sanctions lists"); }}
+                    onClick={() => handleOpenSovereignSuite("noctis-intelligence", "Analyze OSINT entity graph, corporate registry UBO chains, and sanctions lists")}
                     className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
                   >
                     <Search className="size-3.5 text-indigo-400 shrink-0" />
@@ -6789,7 +6799,7 @@ export function NoctisDesk() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => { setMenu(false); setPrompt("Process federal grant review, FAR procurement compliance, and FOIA exemptions"); }}
+                    onClick={() => handleOpenSovereignSuite("noctis-government", "Process federal grant review, FAR procurement compliance, and FOIA exemptions")}
                     className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
                   >
                     <Landmark className="size-3.5 text-blue-400 shrink-0" />
@@ -6797,7 +6807,7 @@ export function NoctisDesk() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => { setMenu(false); setPrompt("Engage adaptive Socratic tutoring and professional certification mastery"); }}
+                    onClick={() => handleOpenSovereignSuite("noctis-education", "Engage adaptive Socratic tutoring and professional certification mastery")}
                     className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
                   >
                     <GraduationCap className="size-3.5 text-amber-400 shrink-0" />
@@ -6805,7 +6815,7 @@ export function NoctisDesk() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => { setMenu(false); setPrompt("Coordinate autonomous multi-agent enterprise swarm and ERP reconciliation"); }}
+                    onClick={() => handleOpenSovereignSuite("noctis-enterprise", "Coordinate autonomous multi-agent enterprise swarm and ERP reconciliation")}
                     className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
                   >
                     <Building2 className="size-3.5 text-emerald-400 shrink-0" />
@@ -6813,7 +6823,7 @@ export function NoctisDesk() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => { setMenu(false); setPrompt("Optimize power grid frequency balancing and BESS battery storage dispatch"); }}
+                    onClick={() => handleOpenSovereignSuite("noctis-energy", "Optimize power grid frequency balancing and BESS battery storage dispatch")}
                     className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
                   >
                     <Zap className="size-3.5 text-yellow-400 shrink-0" />
@@ -6821,7 +6831,7 @@ export function NoctisDesk() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => { setMenu(false); setPrompt("Simulate municipal water network hydraulic transients and SCADA telemetry"); }}
+                    onClick={() => handleOpenSovereignSuite("noctis-infrastructure", "Simulate municipal water network hydraulic transients and SCADA telemetry")}
                     className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
                   >
                     <Server className="size-3.5 text-cyan-400 shrink-0" />
@@ -6829,7 +6839,7 @@ export function NoctisDesk() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => { setMenu(false); setPrompt("Synthesize multidisciplinary literature and Bayesian frontier research claims"); }}
+                    onClick={() => handleOpenSovereignSuite("noctis-research", "Synthesize multidisciplinary literature and Bayesian frontier research claims")}
                     className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
                   >
                     <Microscope className="size-3.5 text-purple-400 shrink-0" />
@@ -7961,7 +7971,20 @@ export function NoctisDesk() {
           if (inputRef?.current) inputRef.current.focus();
         }}
       />
-<NoctisCapabilityMatrixModal
+<NoctisSovereignFactoryStudio
+        isOpen={factoryStudioOpen}
+        initialSystemId={factoryStudioSystemId}
+        onClose={() => setFactoryStudioOpen(false)}
+        onSelectSystem={(s, autoBuild) => {
+          const text = `Inspect architectural invariants and deploy ${s.identity.name}`;
+          setDraft(text);
+          setFactoryStudioOpen(false);
+          if (autoBuild) {
+            setDesk("forge");
+          }
+        }}
+      />
+      <NoctisCapabilityMatrixModal
         open={capabilityMatrixOpen}
         onClose={() => setCapabilityMatrixOpen(false)}
         onSelectEngine={handleSelectEngine}

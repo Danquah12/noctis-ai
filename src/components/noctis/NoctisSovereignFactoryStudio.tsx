@@ -67,6 +67,7 @@ interface NoctisSovereignFactoryStudioProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectSystem?: (system: SovereignSystem, autoBuild?: boolean) => void;
+  initialSystemId?: string;
 }
 
 const CATEGORIES = [
@@ -296,11 +297,18 @@ export function NoctisSovereignFactoryStudio({
   isOpen,
   onClose,
   onSelectSystem,
+  initialSystemId,
 }: NoctisSovereignFactoryStudioProps) {
   const [systems, setSystems] = useState<SovereignSystem[]>(listSovereignSystems());
-  const [selectedSystemId, setSelectedSystemId] = useState<string>("noctis-cyber");
+  const [selectedSystemId, setSelectedSystemId] = useState<string>(initialSystemId || "noctis-cyber");
   const [activeCategory, setActiveCategory] = useState<typeof CATEGORIES[number]>("All");
   const [activeTab, setActiveTab] = useState<"matrix" | "inspector" | "architecture" | "lifecycle" | "bus" | "templates">("matrix");
+
+  useEffect(() => {
+    if (initialSystemId) {
+      setSelectedSystemId(initialSystemId);
+    }
+  }, [initialSystemId]);
   
   // Unified Deep Dive Modal State (Applies across Matrix, Inspector, Architecture, Lifecycle, Bus, Templates)
   const [activeDeepDive, setActiveDeepDive] = useState<UnifiedDeepDive | null>(null);
