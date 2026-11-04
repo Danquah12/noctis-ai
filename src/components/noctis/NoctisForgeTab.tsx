@@ -17,6 +17,10 @@ import {
   Shield,
   Layers,
   Boxes,
+  BookOpen,
+  Columns,
+  Eye,
+  HelpCircle,
   Code2,
   Play,
   RotateCcw,
@@ -34,6 +38,8 @@ import {
   Calendar,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { generatePlainEnglishCanvas, interpretHighlightedSnippet, type HighlightInterpretation } from "@/lib/noctis-code-interpreter";
+import { useMemo } from "react";
 import { NoctisSovereignFactoryStudio } from "@/components/noctis/NoctisSovereignFactoryStudio";
 import { NoctisVoiceSelectorModal } from "@/components/noctis/NoctisVoiceSelectorModal";
 import { type VoicePersona } from "@/lib/noctis-voice";
@@ -286,9 +292,10 @@ describe("Voice Latency SLA", () => {
 interface NoctisForgeTabProps {
   onSendToChat?: (prompt: string) => void;
   onClose?: () => void;
+  onOpenInCanvas?: (title: string, markdown: string) => void;
 }
 
-export function NoctisForgeTab({ onSendToChat, onClose }: NoctisForgeTabProps) {
+export function NoctisForgeTab({ onSendToChat, onClose, onOpenInCanvas }: NoctisForgeTabProps) {
   const [recents, setRecents] = useState<BuildRecentItem[]>(INITIAL_RECENTS);
   const [activeRecentId, setActiveRecentId] = useState<string>("1");
   const [prompt, setPrompt] = useState("");
@@ -305,6 +312,26 @@ export function NoctisForgeTab({ onSendToChat, onClose }: NoctisForgeTabProps) {
   const [forgeMenuOpen, setForgeMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [viewMode, setViewMode] = useState<"code" | "canvas" | "split">("code");
+  const [highlightedText, setHighlightedText] = useState<string>("");
+  const [highlightInterpretation, setHighlightInterpretation] = useState<HighlightInterpretation | null>(null);
+  const [inspectorOpen, setInspectorOpen] = useState(false);
+
+  const plainEnglishData = useMemo(() => {
+    if (!buildArtifact) return null;
+    return generatePlainEnglishCanvas(buildArtifact.title, buildArtifact.code);
+  }, [buildArtifact]);
+
+  const handleCodeSelection = () => {
+    const selection = window.getSelection();
+    const text = selection ? selection.toString().trim() : "";
+    if (text && text.length >= 3) {
+      setHighlightedText(text);
+      const interp = interpretHighlightedSnippet(text, buildArtifact?.code);
+      setHighlightInterpretation(interp);
+      setInspectorOpen(true);
+    }
+  };
 
   const activeRecent = recents.find((r) => r.id === activeRecentId) || recents[0];
 
@@ -796,50 +823,301 @@ describe("${textToBuild} - Verification", () => {
                 </div>
               )}
 
-              <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              {/* Header with 3-Way Mode Switcher & Canvas Actions */}
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3">
                 <div className="flex items-center gap-2">
-                  <CheckCircle2 className="size-5 text-emerald-400" />
-                  <h2 className="text-base font-bold text-white">{buildArtifact.title}</h2>
+                  <CheckCircle2 className="size-5 text-emerald-400 shrink-0" />
+                  <h2 className="text-base font-bold text-white truncate max-w-md">{buildArtifact.title}</h2>
                 </div>
-                <div className="flex items-center gap-2">
+
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* View Mode Switcher */}
+                  <div className="flex items-center rounded-full bg-white/5 border border-white/10 p-0.5 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setViewMode("code")}
+                      className={cn(
+                        "rounded-full px-2.5 py-1 font-medium transition cursor-pointer flex items-center gap-1.5",
+                        viewMode === "code" ? "bg-white/15 text-white shadow-xs font-semibold" : "text-zinc-400 hover:text-white"
+                      )}
+                    >
+                      <Code2 className="size-3.5" />
+                      <span>Code</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setViewMode("canvas")}
+                      className={cn(
+                        "rounded-full px-2.5 py-1 font-medium transition cursor-pointer flex items-center gap-1.5",
+                        viewMode === "canvas" ? "bg-[#e4b86a] text-black font-semibold shadow-xs" : "text-zinc-400 hover:text-white"
+                      )}
+                    >
+                      <BookOpen className="size-3.5" />
+                      <span>Plain English Canvas</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setViewMode("split")}
+                      className={cn(
+                        "rounded-full px-2.5 py-1 font-medium transition cursor-pointer flex items-center gap-1.5",
+                        viewMode === "split" ? "bg-white/15 text-white shadow-xs font-semibold" : "text-zinc-400 hover:text-white"
+                      )}
+                    >
+                      <Columns className="size-3.5" />
+                      <span>Split</span>
+                    </button>
+                  </div>
+
+                  {/* Open in Canvas Fullscreen Drawer */}
+                  {onOpenInCanvas && plainEnglishData && (
+                    <button
+                      type="button"
+                      onClick={() => onOpenInCanvas(buildArtifact.title, plainEnglishData.fullMarkdown)}
+                      title="Open full interactive interpretation in Noctis Canvas"
+                      className="inline-flex items-center gap-1.5 rounded-full bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/30 px-3 py-1 text-xs font-semibold text-sky-300 transition cursor-pointer shadow-xs"
+                    >
+                      <Sparkles className="size-3.5" />
+                      <span>Open in Canvas</span>
+                    </button>
+                  )}
+
+                  {/* Copy Code */}
                   <button
                     type="button"
                     onClick={() => navigator.clipboard.writeText(buildArtifact.code)}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-white/10 hover:bg-white/15 px-3 py-1 text-xs font-medium text-zinc-200 transition"
+                    className="inline-flex items-center gap-1.5 rounded-full bg-white/10 hover:bg-white/15 px-3 py-1 text-xs font-medium text-zinc-200 transition cursor-pointer"
                   >
                     <Copy className="size-3.5" />
-                    <span>Copy Code</span>
+                    <span>Copy</span>
                   </button>
+
+                  {/* Deploy to Chat */}
                   <button
                     type="button"
                     onClick={() => {
                       if (onSendToChat) onSendToChat(`Implement workflow: ${buildArtifact.title}\n\n\`\`\`typescript\n${buildArtifact.code}\n\`\`\``);
                     }}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-[#e4b86a] hover:bg-amber-400 px-3.5 py-1 text-xs font-semibold text-black transition shadow-xs"
+                    className="inline-flex items-center gap-1.5 rounded-full bg-[#e4b86a] hover:bg-amber-400 px-3.5 py-1 text-xs font-semibold text-black transition shadow-xs cursor-pointer"
                   >
-                    <span>Deploy to Noctis Chat</span>
+                    <span>Deploy</span>
                     <ArrowUp className="size-3.5 rotate-45" />
                   </button>
                 </div>
               </div>
 
-              {/* Code Viewer */}
-              <div className="rounded-2xl border border-white/15 bg-black/60 p-4 font-mono text-xs overflow-x-auto">
-                <div className="flex items-center justify-between text-zinc-500 mb-2 border-b border-white/10 pb-1.5">
-                  <span>workflow.ts</span>
-                  <span className="text-[10px] text-emerald-400">Validated</span>
+              {/* Tip Banner for Highlighting to Interpret */}
+              <div className="flex items-center justify-between rounded-xl bg-white/[0.03] border border-white/5 px-3 py-1.5 text-[11px] text-zinc-400">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="size-3.5 text-[#e4b86a] shrink-0" />
+                  <span>
+                    <strong className="text-zinc-200">Interactive Canvas:</strong> Highlight any code or line with your mouse to instantly interpret it into plain English.
+                  </span>
                 </div>
-                <pre className="text-zinc-200 whitespace-pre leading-relaxed">{buildArtifact.code}</pre>
+                {highlightInterpretation && (
+                  <button
+                    type="button"
+                    onClick={() => setInspectorOpen((o) => !o)}
+                    className="text-[#e4b86a] hover:underline font-medium text-[11px] cursor-pointer shrink-0 ml-2"
+                  >
+                    {inspectorOpen ? "Hide Interpretation" : "Show Highlight Inspector"}
+                  </button>
+                )}
               </div>
 
-              {/* Test Suite Viewer */}
-              <div className="rounded-2xl border border-white/15 bg-black/60 p-4 font-mono text-xs overflow-x-auto">
-                <div className="flex items-center justify-between text-zinc-500 mb-2 border-b border-white/10 pb-1.5">
-                  <span>workflow.test.ts</span>
-                  <span className="text-[10px] text-emerald-400">2 Tests Passed</span>
+              {/* Highlight Interpretation Drawer / Floating Inspector */}
+              {inspectorOpen && highlightInterpretation && (
+                <div className="rounded-2xl border border-[#e4b86a]/40 bg-gradient-to-r from-amber-950/40 via-zinc-900/95 to-zinc-900 p-4 shadow-2xl animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className={cn("rounded-full border px-2.5 py-0.5 text-[10px] font-bold tracking-wide uppercase", highlightInterpretation.categoryColor)}>
+                        {highlightInterpretation.categoryLabel}
+                      </span>
+                      <span className="text-[11px] text-zinc-400 font-mono truncate max-w-sm">
+                        {highlightInterpretation.rawSnippet.slice(0, 50)}...
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setInspectorOpen(false)}
+                      className="rounded-lg p-1 text-zinc-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
+                    >
+                      <X className="size-3.5" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-2 text-xs">
+                    <p className="font-semibold text-white text-sm leading-snug">
+                      {highlightInterpretation.plainEnglish}
+                    </p>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-white/10 text-[11px]">
+                      <div className="bg-white/5 rounded-xl p-2.5 border border-white/5">
+                        <span className="font-bold text-amber-300 block mb-0.5">Why This Matters:</span>
+                        <p className="text-zinc-300 leading-relaxed">{highlightInterpretation.whyItMatters}</p>
+                      </div>
+                      <div className="bg-white/5 rounded-xl p-2.5 border border-white/5">
+                        <span className="font-bold text-sky-300 block mb-0.5">Everyday Analogy:</span>
+                        <p className="text-zinc-300 leading-relaxed">{highlightInterpretation.analogy}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(
+                            `Code snippet: "${highlightInterpretation.rawSnippet}"\nPlain English: ${highlightInterpretation.plainEnglish}\nWhy it matters: ${highlightInterpretation.whyItMatters}`
+                          );
+                        }}
+                        className="rounded-full bg-white/10 hover:bg-white/15 px-3 py-1 text-[11px] text-zinc-300 transition cursor-pointer"
+                      >
+                        Copy Interpretation
+                      </button>
+                      {onSendToChat && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onSendToChat(`Explain this code snippet in more detail:\n\`\`\`typescript\n${highlightInterpretation.rawSnippet}\n\`\`\``);
+                          }}
+                          className="rounded-full bg-[#e4b86a] hover:bg-amber-400 px-3 py-1 text-[11px] font-semibold text-black transition cursor-pointer"
+                        >
+                          Ask Noctis in Chat
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <pre className="text-zinc-400 whitespace-pre leading-relaxed">{buildArtifact.tests}</pre>
-              </div>
+              )}
+
+              {/* View Container: Code, Canvas, or Split */}
+              {viewMode === "canvas" ? (
+                /* Pure Plain English Canvas View */
+                <div className="rounded-2xl border border-white/15 bg-zinc-900/90 p-5 space-y-4 shadow-xl">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                    <div className="flex items-center gap-2">
+                      <BookOpen className="size-4 text-[#e4b86a]" />
+                      <span className="text-xs font-bold uppercase tracking-wider text-zinc-400">Plain English Canvas</span>
+                    </div>
+                    <span className="rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-400">
+                      Executive Grade · Jargon-Free
+                    </span>
+                  </div>
+
+                  {plainEnglishData && (
+                    <>
+                      {/* Executive Summary */}
+                      <div className="rounded-xl border border-sky-500/30 bg-sky-950/20 p-4 space-y-1.5 text-left">
+                        <div className="flex items-center gap-2 text-sky-400 text-xs font-bold">
+                          <Sparkles className="size-3.5" />
+                          <span>Executive Summary</span>
+                        </div>
+                        <p className="text-sm text-zinc-200 leading-relaxed font-sans">
+                          {plainEnglishData.executiveSummary}
+                        </p>
+                      </div>
+
+                      {/* Step-by-Step Flow */}
+                      <div className="space-y-2.5 text-left">
+                        <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">
+                          How It Operates (Step-by-Step)
+                        </h3>
+                        {plainEnglishData.laypersonFlow.map((step) => (
+                          <div key={step.stepNumber} className="rounded-xl border border-white/10 bg-white/[0.03] p-3.5 hover:bg-white/[0.06] transition">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-xs font-bold text-white">{step.title}</span>
+                              <span className="text-[10px] text-zinc-500 font-mono">Step {step.stepNumber}</span>
+                            </div>
+                            <p className="text-xs text-zinc-300 leading-relaxed">
+                              {step.plainExplanation}
+                            </p>
+                            <div className="mt-2 pt-2 border-t border-white/5 flex items-center justify-between text-[11px] text-zinc-400">
+                              <span><strong className="text-amber-400/90 font-medium">Why it matters:</strong> {step.whyItMatters}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Safety & Compliance Guarantees */}
+                      <div className="rounded-xl border border-white/10 bg-black/40 p-4 space-y-2 text-left">
+                        <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                          <CheckCircle2 className="size-4 text-emerald-400" />
+                          <span>Safety & Compliance Guarantees</span>
+                        </h4>
+                        <ul className="space-y-1 text-xs text-zinc-300 list-disc list-inside">
+                          {plainEnglishData.safetyAssurances.map((assurance, idx) => (
+                            <li key={idx}>{assurance}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ) : viewMode === "split" ? (
+                /* Split View: Code on Left, Plain English on Right */
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {/* Code Column */}
+                  <div
+                    onMouseUp={handleCodeSelection}
+                    className="rounded-2xl border border-white/15 bg-black/70 p-4 font-mono text-xs overflow-x-auto text-left"
+                  >
+                    <div className="flex items-center justify-between text-zinc-500 mb-2 border-b border-white/10 pb-1.5">
+                      <span>workflow.ts</span>
+                      <span className="text-[10px] text-emerald-400">Highlight to Explain</span>
+                    </div>
+                    <pre className="text-zinc-200 whitespace-pre leading-relaxed select-text">{buildArtifact.code}</pre>
+                  </div>
+
+                  {/* Plain English Column */}
+                  <div className="rounded-2xl border border-white/15 bg-zinc-900/80 p-4 space-y-3 overflow-y-auto max-h-[600px] text-left no-scrollbar">
+                    <div className="flex items-center justify-between text-zinc-400 mb-1 border-b border-white/10 pb-1.5">
+                      <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                        <BookOpen className="size-3.5 text-[#e4b86a]" />
+                        Plain English Walkthrough
+                      </span>
+                      <span className="text-[10px] text-zinc-500">Executive View</span>
+                    </div>
+
+                    {plainEnglishData && (
+                      <div className="space-y-3">
+                        <p className="text-xs text-zinc-200 bg-sky-950/30 border border-sky-500/20 p-2.5 rounded-xl leading-relaxed">
+                          {plainEnglishData.executiveSummary}
+                        </p>
+                        {plainEnglishData.laypersonFlow.map((step) => (
+                          <div key={step.stepNumber} className="rounded-xl border border-white/10 bg-white/[0.03] p-2.5">
+                            <span className="text-[11px] font-bold text-white block mb-0.5">{step.title}</span>
+                            <p className="text-[11px] text-zinc-300 leading-relaxed">{step.plainExplanation}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                /* Default Code View */
+                <>
+                  <div
+                    onMouseUp={handleCodeSelection}
+                    className="rounded-2xl border border-white/15 bg-black/60 p-4 font-mono text-xs overflow-x-auto text-left cursor-text"
+                  >
+                    <div className="flex items-center justify-between text-zinc-500 mb-2 border-b border-white/10 pb-1.5">
+                      <span>workflow.ts</span>
+                      <span className="text-[10px] text-emerald-400 flex items-center gap-1">
+                        <Sparkles className="size-3" /> Highlight code to interpret
+                      </span>
+                    </div>
+                    <pre className="text-zinc-200 whitespace-pre leading-relaxed select-text">{buildArtifact.code}</pre>
+                  </div>
+
+                  {/* Test Suite Viewer */}
+                  <div className="rounded-2xl border border-white/15 bg-black/60 p-4 font-mono text-xs overflow-x-auto text-left">
+                    <div className="flex items-center justify-between text-zinc-500 mb-2 border-b border-white/10 pb-1.5">
+                      <span>workflow.test.ts</span>
+                      <span className="text-[10px] text-emerald-400">2 Tests Passed</span>
+                    </div>
+                    <pre className="text-zinc-400 whitespace-pre leading-relaxed">{buildArtifact.tests}</pre>
+                  </div>
+                </>
+              )}
             </div>
           ) : building ? (
             // Live Build Console Streaming

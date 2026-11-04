@@ -434,16 +434,29 @@ export function NoctisCanvas({
         </button>
 
         {mode === "code" ? (
-          <button
-            type="button"
-            disabled={isRevising}
-            onClick={() =>
-              triggerRevision("Review this code for edge cases, optimize performance, and append complete unit test cases.")
-            }
-            className="rounded-full bg-amber-500/20 px-2.5 py-1 text-amber-300 hover:bg-amber-500/30 disabled:opacity-40"
-          >
-            Optimize & Tests
-          </button>
+          <>
+            <button
+              type="button"
+              disabled={isRevising}
+              onClick={() =>
+                triggerRevision("Interpret and explain this technical code in crystal-clear plain English for all users and executives, with an executive summary, step-by-step layperson walkthrough, and safety guarantees.")
+              }
+              className="rounded-full bg-emerald-500/20 px-2.5 py-1 text-emerald-300 hover:bg-emerald-500/30 disabled:opacity-40 font-semibold flex items-center gap-1"
+            >
+              <Sparkles className="size-3" />
+              Explain in Plain English
+            </button>
+            <button
+              type="button"
+              disabled={isRevising}
+              onClick={() =>
+                triggerRevision("Review this code for edge cases, optimize performance, and append complete unit test cases.")
+              }
+              className="rounded-full bg-amber-500/20 px-2.5 py-1 text-amber-300 hover:bg-amber-500/30 disabled:opacity-40"
+            >
+              Optimize & Tests
+            </button>
+          </>
         ) : null}
 
         <div className="ml-auto hidden items-center gap-2 text-[11px] text-zinc-500 sm:flex">
