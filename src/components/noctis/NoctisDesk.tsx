@@ -2551,36 +2551,73 @@ function renderBlocks(source: string) {
           const rows = lines.filter((line) => !isTableRule(line)).map(tableCells).filter((row) => row.length > 1);
           const [head, ...body] = rows;
           if (head) {
+            const numCols = head.length;
+            const minTableWidth = numCols >= 5 ? "min-w-[52rem]" : numCols >= 4 ? "min-w-[42rem]" : "min-w-[32rem]";
             return (
-              <div key={`${index}-${p}`} className="my-2.5 overflow-x-auto rounded-xl border border-white/10 bg-black/30 p-2.5">
-                <div className="mb-1.5 flex items-center justify-between px-1">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">Structured Reference Table</span>
+              <div key={`${index}-${p}`} className="my-3 overflow-x-auto rounded-xl border border-white/15 bg-black/40 p-3 shadow-lg">
+                <div className="mb-2 flex items-center justify-between px-1">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">Structured Reference Table ({numCols} Columns)</span>
                   <button
                     type="button"
                     onClick={() => downloadTableCsv(head, body)}
-                    className="rounded-full border border-[#e4b86a]/40 px-2.5 py-0.5 text-[11px] font-semibold text-[#e4b86a] hover:bg-[#e4b86a]/15"
+                    className="rounded-full border border-[#e4b86a]/40 px-3 py-1 text-[11px] font-semibold text-[#e4b86a] hover:bg-[#e4b86a]/15 transition cursor-pointer"
                   >
                     Export CSV (.csv)
                   </button>
                 </div>
-                <table className="w-full min-w-[28rem] border-collapse text-left text-sm">
+                <table className={cn("w-full border-collapse text-left text-xs sm:text-sm", minTableWidth)}>
                   <thead>
-                    <tr>
-                      {head.map((cell, hIdx) => (
-                        <th
-                          key={`${cell}-${hIdx}`}
-                          className="border-b border-[#e4b86a]/30 px-2.5 py-2 font-semibold text-[#e4b86a]"
-                          dangerouslySetInnerHTML={{ __html: inlineHtml(cell) }}
-                        />
-                      ))}
+                    <tr className="bg-white/[0.04]">
+                      {head.map((cell, hIdx) => {
+                        const isId = hIdx === 0;
+                        const isStatus = /status|result|state|check/i.test(cell);
+                        return (
+                          <th
+                            key={`${cell}-${hIdx}`}
+                            className={cn(
+                              "border-b border-[#e4b86a]/30 px-3.5 py-2.5 font-bold text-[#e4b86a]",
+                              isId ? "whitespace-nowrap min-w-[110px]" : isStatus ? "whitespace-nowrap min-w-[100px]" : "min-w-[170px] whitespace-normal leading-snug"
+                            )}
+                            dangerouslySetInnerHTML={{ __html: inlineHtml(cell) }}
+                          />
+                        );
+                      })}
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="divide-y divide-white/10">
                     {body.map((row, rowIndex) => (
-                      <tr key={rowIndex} className="hover:bg-white/[0.02]">
-                        {row.map((cell, cellIndex) => (
-                          <td key={cellIndex} className="border-b border-white/10 px-2.5 py-2 align-top leading-relaxed" dangerouslySetInnerHTML={{ __html: inlineHtml(cell) }} />
-                        ))}
+                      <tr key={rowIndex} className="hover:bg-white/[0.03] transition-colors">
+                        {row.map((cell, cellIndex) => {
+                          const cleanCell = cell.replace(/<[^>]+>/g, "").trim();
+                          const isStatus = /PASSED|TRIPPED|FAILED|WARNING|VERIFIED/i.test(cleanCell) && cleanCell.length <= 16;
+                          const isId = cellIndex === 0;
+                          return (
+                            <td
+                              key={cellIndex}
+                              className={cn(
+                                "px-3.5 py-2.5 align-top leading-relaxed text-zinc-200",
+                                isId ? "font-mono text-xs text-[#e4b86a] whitespace-nowrap min-w-[110px]" : "min-w-[170px] break-words whitespace-normal"
+                              )}
+                            >
+                              {isStatus ? (
+                                <span
+                                  className={cn(
+                                    "inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase border",
+                                    /PASSED|VERIFIED/i.test(cleanCell)
+                                      ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                                      : /TRIPPED|FAILED/i.test(cleanCell)
+                                      ? "bg-rose-500/15 text-rose-400 border-rose-500/30"
+                                      : "bg-amber-500/15 text-amber-300 border-amber-500/30"
+                                  )}
+                                >
+                                  {cleanCell}
+                                </span>
+                              ) : (
+                                <span dangerouslySetInnerHTML={{ __html: inlineHtml(cell) }} />
+                              )}
+                            </td>
+                          );
+                        })}
                       </tr>
                     ))}
                   </tbody>

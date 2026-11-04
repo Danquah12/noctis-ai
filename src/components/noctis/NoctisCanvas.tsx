@@ -411,9 +411,9 @@ export function NoctisCanvas({
           type="button"
           disabled={isRevising}
           onClick={() =>
-            triggerRevision("Convert the quantitative metrics, key findings, and comparison data into clear markdown tables.")
+            triggerRevision("Convert all metrics, invariant checks, system gates, and comparison data into comprehensive, fully populated markdown tables with clear column headers (Invariant ID, Domain, Invariant Gate, Status, Quantitative Proof / Metric). Ensure zero information or columns are omitted, wrap long numbers and formulas clearly, and format status values explicitly as PASSED, TRIPPED, or FAILED.")
           }
-          className="rounded-full bg-white/5 px-2.5 py-1 text-zinc-300 hover:bg-white/15 disabled:opacity-40"
+          className="rounded-full bg-white/5 px-2.5 py-1 text-zinc-300 hover:bg-white/15 disabled:opacity-40 font-medium"
         >
           Convert to Table
         </button>

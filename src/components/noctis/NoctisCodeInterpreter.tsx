@@ -239,8 +239,16 @@ export function evaluateJavaScriptOrPython(code: string, lang = "javascript"): {
         error: (...args: unknown[]) => stdout.push("[ERROR] " + args.join(" ")),
       };
 
+      // Strip ES imports, exports, and type declarations so in-browser Function can evaluate without syntax errors
+      const sanitizedCode = code
+        .replace(/import\s+.*?from\s+['"][^'"]+['"];?/g, "// [Mock Import]")
+        .replace(/import\s+['"][^'"]+['"];?/g, "// [Mock Import]")
+        .replace(/export\s+(?:default\s+)?/g, "")
+        .replace(/interface\s+[a-zA-Z0-9_]+[\s\S]*?\}/g, "")
+        .replace(/type\s+[a-zA-Z0-9_]+\s*=\s*[^;]+;/g, "");
+
       // Safe evaluation sandbox wrapping user code
-      const fn = new Function("console", `"use strict";\n${code}`);
+      const fn = new Function("console", `"use strict";\n${sanitizedCode}`);
       const res = fn(customConsole);
       const executionMs = Math.round((performance.now() - start) * 10) / 10;
       return { stdout, result: res, executionMs };
