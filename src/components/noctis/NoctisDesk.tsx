@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ClipboardEvent } from "react";
 import { Link } from "@tanstack/react-router";
-import { Activity, ArrowUp, Bot, Boxes, Brain, Calendar, Cpu, Crosshair, EyeOff, Fingerprint, FileLock, Globe, Key, Layers, Lock, LogOut, Network, Sparkles, Stethoscope, Swords, Target, ShieldAlert, Terminal, WifiOff, Zap, ChevronDown, ChevronLeft, Code2, Copy, CornerDownLeft, FileText, GraduationCap, Image, Library, Mail, Menu, Mic, MoreHorizontal, PanelRight, PanelRightOpen, Pencil, Phone, PhoneOff, Plus, Printer, RotateCcw, Search, Square, SquarePen, Trash2, Users2, Video, Volume2, VolumeX, Wrench, X, TrendingUp, Scale, Atom, Landmark, Building2, Server, Microscope, FileCheck, Shield, CheckCircle2 } from "lucide-react";
+import { Activity, AlertCircle, AlertTriangle, Info, ArrowUp, Bot, Boxes, Brain, Calendar, Cpu, Crosshair, EyeOff, Fingerprint, FileLock, Globe, Key, Layers, Lock, LogOut, Network, Sparkles, Stethoscope, Swords, Target, ShieldAlert, Terminal, WifiOff, Zap, ChevronDown, ChevronLeft, Code2, Copy, CornerDownLeft, FileText, GraduationCap, Image, Library, Mail, Menu, Mic, MoreHorizontal, PanelRight, PanelRightOpen, Pencil, Phone, PhoneOff, Plus, Printer, RotateCcw, Search, Square, SquarePen, Trash2, Users2, Video, Volume2, VolumeX, Wrench, X, TrendingUp, Scale, Atom, Landmark, Building2, Server, Microscope, FileCheck, Shield, CheckCircle2 } from "lucide-react";
 import { SOVEREIGN_SYSTEMS_PORTFOLIO } from "@/lib/noctis-sovereign-factory";
 import { askNoctis, drawVibe, hearVibe, sayVibe, trainVibe } from "@/lib/noctis-api";
 import { bringImagineFile, bringPortrait } from "@/lib/imagine-api";
@@ -2493,7 +2493,7 @@ function linkHtml(href: string, label: string) {
 function inlineHtml(value: string) {
   const held: string[] = [];
   const escaped = escapeHtml(value).replace(/`([^`]+)`/g, (_m, code) => {
-    held.push(`<code class="rounded bg-[#e4b86a]/15 px-1.5 py-0.5 font-mono text-[13px] text-[#e4b86a]">${code}</code>`);
+    held.push(`<code class="rounded bg-[#e4b86a]/15 px-1.5 py-0.5 font-mono text-[12px] sm:text-[13px] text-[#e4b86a] break-all break-words">${code}</code>`);
     return `\u0000${held.length - 1}\u0000`;
   });
   const linked = escaped
@@ -2664,6 +2664,46 @@ function renderBlocks(source: string) {
             </a>
           );
         }
+        // Markdown Alert callouts: [!NOTE], [!TIP], [!IMPORTANT], [!WARNING], [!CAUTION]
+        const alertMatch = paragraph.match(/^>?\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*([\s\S]*)$/i);
+        if (alertMatch) {
+          const alertType = alertMatch[1].toUpperCase();
+          const alertRemaining = alertMatch[2];
+          const alertLines = alertRemaining
+            ? alertRemaining.split(/\r?\n/).map((l) => l.replace(/^>\s?/, "").trim()).filter(Boolean)
+            : [];
+
+          const alertConfig: Record<string, { icon: any; title: string; border: string; bg: string; text: string; badgeBg: string }> = {
+            NOTE: { icon: Info, title: "Note", border: "border-sky-500/40", bg: "bg-sky-950/20", text: "text-sky-300", badgeBg: "bg-sky-500/20 text-sky-300 border-sky-500/30" },
+            TIP: { icon: Sparkles, title: "Tip", border: "border-emerald-500/40", bg: "bg-emerald-950/20", text: "text-emerald-300", badgeBg: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30" },
+            IMPORTANT: { icon: AlertCircle, title: "Important", border: "border-[#e4b86a]/50", bg: "bg-amber-950/30", text: "text-[#e4b86a]", badgeBg: "bg-[#e4b86a]/20 text-[#e4b86a] border-[#e4b86a]/40" },
+            WARNING: { icon: AlertTriangle, title: "Warning", border: "border-amber-500/50", bg: "bg-amber-950/30", text: "text-amber-300", badgeBg: "bg-amber-500/20 text-amber-300 border-amber-500/30" },
+            CAUTION: { icon: ShieldAlert, title: "Caution", border: "border-rose-500/50", bg: "bg-rose-950/25", text: "text-rose-300", badgeBg: "bg-rose-500/20 text-rose-300 border-rose-500/30" },
+          };
+
+          const cfg = alertConfig[alertType] || alertConfig.NOTE;
+          const AlertIcon = cfg.icon;
+
+          return (
+            <div
+              key={`${index}-${p}`}
+              className={cn("my-3 rounded-2xl border p-4 shadow-lg backdrop-blur-xs space-y-2.5", cfg.border, cfg.bg)}
+            >
+              <div className="flex items-center gap-2">
+                <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider", cfg.badgeBg)}>
+                  <AlertIcon className="size-3.5 shrink-0" />
+                  {cfg.title}
+                </span>
+              </div>
+              <div className="space-y-1.5 text-xs sm:text-sm text-zinc-100 leading-relaxed break-words">
+                {alertLines.map((line, aIdx) => (
+                  <p key={aIdx} dangerouslySetInnerHTML={{ __html: inlineHtml(line) }} />
+                ))}
+              </div>
+            </div>
+          );
+        }
+
         // Pure Blockquote (e.g., Scripture Reading or Spoken Manuscript Opening)
         if (lines.length > 0 && lines.every((line) => line.startsWith(">"))) {
           return (
@@ -7227,7 +7267,7 @@ export function NoctisDesk() {
             </div>
           </div>
         ) : null}
-        <header className="relative z-30 flex h-14 shrink-0 items-center justify-center border-b border-white/10">
+        <header className="relative z-30 flex h-14 shrink-0 items-center justify-center border-b border-white/10 bg-[#12151c]">
           <button
             type="button"
             aria-label="Open menu"
@@ -7393,7 +7433,7 @@ export function NoctisDesk() {
             <span>{signingOut ? "Signing out..." : "Log out"}</span>
           </button>
         </header>
-        <div className="flex h-11 shrink-0 items-center justify-between border-b border-white/10 px-2.5 sm:px-4 bg-black/20 backdrop-blur-sm gap-2">
+        <div className="flex h-11 shrink-0 items-center justify-between border-b border-white/10 px-2.5 sm:px-4 bg-[#0e1118] gap-2">
           <div className="flex items-center gap-1.5 sm:gap-2">
             <button
               type="button"

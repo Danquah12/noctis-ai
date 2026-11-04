@@ -649,9 +649,16 @@ export function NoctisPatientDiagnosisModal({
 
               <div className="space-y-3">
                 {differentials.map((item, idx) => {
-                  const isPrimary = item.tier === "TIER_1_PRIMARY" || item.category === "PRIMARY_HYPOTHESIS";
-                  const isMustNotMiss = item.tier === "TIER_2_MUST_NOT_MISS" || item.category === "MUST_NOT_MISS_RULEOUT";
-                  const tierText = (item.tier || (isPrimary ? "PRIMARY_HYPOTHESIS" : isMustNotMiss ? "MUST_NOT_MISS_RULEOUT" : "ALTERNATIVE")).replace(/_/g, " ");
+                  const isPrimary = (item as any)?.tier === "TIER_1_PRIMARY" || (item as any)?.category === "PRIMARY_HYPOTHESIS";
+                  const isMustNotMiss = (item as any)?.tier === "TIER_2_MUST_NOT_MISS" || (item as any)?.category === "MUST_NOT_MISS_RULEOUT";
+                  const rawTier = typeof (item as any)?.tier === "string" && (item as any)?.tier
+                    ? (item as any).tier
+                    : isPrimary
+                    ? "PRIMARY_HYPOTHESIS"
+                    : isMustNotMiss
+                    ? "MUST_NOT_MISS_RULEOUT"
+                    : "ALTERNATIVE";
+                  const tierText = String(rawTier).replace(/_/g, " ");
                   const conditionName = item.conditionName || item.diseaseName || "Clinical Condition";
                   const conditionId = item.conditionId || `cond-${idx}-${item.icd10 || "dx"}`;
                   const icd10 = item.icd10Code || item.icd10 || "R69";
