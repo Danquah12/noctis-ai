@@ -163,7 +163,10 @@ export function generatePlainEnglishCanvas(title: string, code: string): PlainEn
 
   // Determine system domain
   let systemDomain = "Enterprise Sovereign System";
-  if (/health|clinical|diagnostic|triage|patient/i.test(title + code)) {
+  // Remediation / Active Directory / Identity Security
+  if (/Import-Module|ActiveDirectory|Kerberoasting|Lockdown|svc_|Write-Host|SPN|Disable-ADAccount|Set-ADAccount/i.test(title + code)) {
+    systemDomain = "Noctis Active Directory & Identity Remediation";
+  } else if (/health|clinical|diagnostic|triage|patient/i.test(title + code)) {
     systemDomain = "Noctis Health & Clinical CDS";
   } else if (/cyber|sast|threat|enclave|pqc|trepath/i.test(title + code)) {
     systemDomain = "Noctis Cyber & Security Synthesis";
@@ -176,6 +179,30 @@ export function generatePlainEnglishCanvas(title: string, code: string): PlainEn
   // Identify key logic steps
   const laypersonFlow: PlainEnglishSection[] = [];
   let stepIdx = 1;
+
+  // Identity / PowerShell Remediation Flow
+  if (/Import-Module\s+ActiveDirectory|ActiveDirectory/i.test(code)) {
+    laypersonFlow.push({
+      stepNumber: stepIdx++,
+      title: "Step 1: Active Directory Module Initialization",
+      icon: "ShieldAlert",
+      plainExplanation:
+        "The system imports verified Active Directory administration modules to securely inspect compromised service principals and user accounts.",
+      technicalCode: lines.find((l) => /Import-Module/i.test(l))?.trim() || "Import-Module ActiveDirectory -ErrorAction Stop",
+      whyItMatters: "Enables direct, audited interaction with corporate domain controllers.",
+    });
+  }
+  if (/svc_|Disabling|Disable-ADAccount/i.test(code)) {
+    laypersonFlow.push({
+      stepNumber: stepIdx++,
+      title: "Step 2: Emergency Account Containment & Isolation",
+      icon: "Lock",
+      plainExplanation:
+        "Disables the compromised service account to immediately cut off adversary access and stop Kerberoasting ticket requests.",
+      technicalCode: lines.find((l) => /svc_|Disabling/i.test(l))?.trim() || "Write-Host '[*] Step 1: Disabling target compromised service account'",
+      whyItMatters: "Halts lateral network traversal in under 1 second.",
+    });
+  }
 
   // Step 1: Invariant Inspection
   if (/inspectInvariants|invariants|check/i.test(code)) {

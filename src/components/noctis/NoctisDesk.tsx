@@ -6302,7 +6302,7 @@ export function NoctisDesk() {
 
   return (
     <div
-      className="flex h-dvh min-h-0 text-zinc-100"
+      className="flex h-dvh w-screen min-h-0 overflow-hidden text-zinc-100"
       style={{ background: canvas.swatch }}
       onDragOver={(event) => event.preventDefault()}
       onDrop={(event) => {
@@ -7129,7 +7129,7 @@ export function NoctisDesk() {
         )}
       </aside>
 
-      <div className="relative flex min-w-0 flex-1 flex-col">
+      <div className="relative flex min-w-0 flex-1 flex-col h-full min-h-0 overflow-hidden">
         {callOpen && !voiceOn ? (
           <div className="absolute inset-0 z-[60] flex min-h-0 flex-col">
             <NoctisCall
@@ -7856,7 +7856,7 @@ export function NoctisDesk() {
         )}
           </div>
           {canvasOpen ? (
-            <div className={cn("min-w-0 transition-all duration-200", canvasFullscreen ? "fixed inset-0 z-50 bg-[#141414]" : "hidden md:flex flex-1")}>
+            <div className={cn("min-w-0 h-full min-h-0 overflow-hidden transition-all duration-200", canvasFullscreen ? "fixed inset-0 z-50 bg-[#141414]" : "hidden md:flex flex-1 h-full")}>
               <NoctisCanvas
                 title={canvasTitle}
                 onTitleChange={setCanvasTitle}

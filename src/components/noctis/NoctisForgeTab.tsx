@@ -886,10 +886,10 @@ describe("${textToBuild} - Verification", () => {
               )}
 
               {/* Sticky Top Header with 3-Way Mode Switcher & Canvas Actions */}
-              <div className="sticky top-0 z-30 bg-[#141414]/95 backdrop-blur-md pt-3 pb-3 border-b border-white/10 mb-3 flex flex-wrap items-center justify-between gap-3 shadow-md">
+              <div className="sticky top-0 z-30 bg-[#141414] pt-2.5 pb-2.5 border-b border-white/10 mb-3 flex flex-wrap items-center justify-between gap-2 shadow-md">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="size-5 text-emerald-400 shrink-0" />
-                  <h2 className="text-base font-bold text-white truncate max-w-md">{buildArtifact.title}</h2>
+                  <h2 className="text-sm sm:text-base font-bold text-white leading-tight break-words">{buildArtifact.title}</h2>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">

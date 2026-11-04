@@ -101,7 +101,7 @@ function RootDocument() {
           }}
         />
       </head>
-      <body className="bg-bg text-fg min-h-dvh">
+      <body className="bg-bg text-fg h-dvh w-screen overflow-hidden">
         <PreviewHostBridge />
         <AuthProvider>
           <ClientChrome>
