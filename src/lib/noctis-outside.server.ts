@@ -63,6 +63,16 @@ export async function outsideFacts(question: string) {
   if (/\b(map of|where is|located)\b/i.test(question)) jobs.push(mapOf(question).catch(() => "Map: the place service did not answer."));
   if (/\b(arxiv|journal|preprint|research paper)\b/i.test(question)) jobs.push(papers(question).catch(() => "Journal search: arXiv did not answer."));
   if (/\b(exchange rate|currency|price of)\b/i.test(question) || /\b(USD|EUR|GBP)\b/.test(question)) jobs.push(rate(question).catch(() => "Price: the rate service did not answer."));
+  if (
+    /\b(cve-\d{4}-\d+|zero-day|0-day|exploit|vulnerability|vulnerabilities|cisa\s+kev|epss|ransomware|threat\s+actor|attack\s+surface|live\s+search|web\s+search|search\s+the\s+web)\b/i.test(question)
+  ) {
+    jobs.push(
+      import("./noctis-live-search.server.ts")
+        .then((m) => m.noctisLiveSearch(question))
+        .then((res) => res.groundedContextText)
+        .catch(() => "")
+    );
+  }
   if (!jobs.length) return "";
   const rows = await Promise.all(jobs);
   return rows.filter(Boolean).join("\n\n");
