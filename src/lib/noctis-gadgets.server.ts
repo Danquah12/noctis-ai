@@ -472,6 +472,7 @@ function detectWebArchetype(topic: string, fullPrompt: string): WebArchetype {
 }
 
 export async function webPageBuilderGadget(question: string): Promise<string | null> {
+  if (/\b(react|typescript|javascript|python|unit test|test suite|tailwind|cve|cvss|microservice|component|radar|algorithm|assert|function|import )\b/i.test(question)) return null;
   const rawTopic = extractWebPageTopic(question);
   if (!rawTopic || rawTopic.length < 2) return null;
 
