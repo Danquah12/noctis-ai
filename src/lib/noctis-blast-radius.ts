@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { sha256Sync } from './universal-crypto.ts';
 
 export interface BlastRadiusReport {
   targetResource: string;
@@ -65,9 +65,7 @@ export function calculateBlastRadius(content: string, targetHint?: string): Blas
     riskTier = 'ZERO_RISK';
   }
 
-  const hash = createHash('sha256')
-    .update(`${target}-${containmentBoundary}-${scopeCount}`)
-    .digest('hex');
+  const hash = sha256Sync(`${target}-${containmentBoundary}-${scopeCount}`);
 
   return {
     targetResource: target,

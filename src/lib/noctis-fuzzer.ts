@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { sha256Sync } from './universal-crypto.ts';
 
 export interface FuzzerVectorResult {
   vectorId: string;
@@ -90,9 +90,7 @@ export function runPreMortemFuzzer(content: string): PreMortemFuzzerReport {
   const allPassed = vectors.every((v) => v.neutralized);
   const elapsed = Math.max(1, Date.now() - startTime);
 
-  const digest = createHash('sha256')
-    .update(content + JSON.stringify(vectors) + startTime)
-    .digest('hex');
+  const digest = sha256Sync(content + JSON.stringify(vectors) + startTime);
 
   return {
     status: allPassed ? 'VERIFIED_SECURE' : 'VULNERABILITY_NEUTRALIZED',

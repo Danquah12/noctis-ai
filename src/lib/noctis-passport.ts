@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { sha256Sync } from './universal-crypto.ts';
 import { runPreMortemFuzzer, type PreMortemFuzzerReport } from './noctis-fuzzer.ts';
 import { calculateBlastRadius, type BlastRadiusReport } from './noctis-blast-radius.ts';
 
@@ -29,7 +29,7 @@ export function generateSovereignPassport(
   const blast = calculateBlastRadius(content, title);
 
   const rawPayload = `${title}|${timestamp}|${fuzzer.fuzzerSeal}|${blast.blastSeal}`;
-  const sha256 = createHash('sha256').update(rawPayload).digest('hex');
+  const sha256 = sha256Sync(rawPayload);
   const passportId = `NOCTIS-PASS-${sha256.slice(0, 8).toUpperCase()}-${sha256.slice(8, 12).toUpperCase()}`;
 
   const certificate = `
