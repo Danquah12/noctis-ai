@@ -23,6 +23,7 @@ import { NoctisPluginExecutorModal } from "@/components/noctis/NoctisPluginExecu
 import { DISTRIBUTED_PLUGINS, getPluginsForShelf, type DistributedPluginItem } from "@/lib/noctis-distributed-plugins";
 import { NoctisCodeInterpreter } from "@/components/noctis/NoctisCodeInterpreter";
 import { NoctisThinkingAccordion, CitationBadge } from "@/components/noctis/NoctisThinkingAccordion";
+import NoctisAgentStepper from "@/components/noctis/NoctisAgentStepper";
 import { NoctisVoiceVisualizer } from "@/components/noctis/NoctisVoiceVisualizer";
 import { NoctisWorkspaceExplorer, getActiveProjectContext } from "@/components/noctis/NoctisWorkspaceExplorer";
 import { NoctisDeepResearchModal } from "@/components/noctis/NoctisDeepResearchModal";
@@ -7818,7 +7819,12 @@ export function NoctisDesk() {
                           {turn.clips?.length ? <FilmPlay clips={turn.clips} /> : turn.video ? <video src={turn.video} controls playsInline className="mb-3 aspect-[4/5] w-full rounded-2xl border border-white/10 bg-black object-cover" /> : turn.images?.map((src, shot) => (
                             <img key={shot} src={src} alt="" className="mb-3 max-h-80 rounded-2xl border border-white/10" />
                           ))}
-                          <div className="space-y-3"><AnswerBody text={turn.content} /></div>
+                          <div className="space-y-3">
+                            {/autonomous|react loop|self-correct|5-pillar|ratelimiter|zerodayradar|cve-2024|merkle/i.test(turn.content) ? (
+                              <NoctisAgentStepper />
+                            ) : null}
+                            <AnswerBody text={turn.content} />
+                          </div>
                           {turn.video || (turn.images?.length && /Written by Noctis/i.test(turn.content)) ? (
                             <MadeShare words={plainAnswer(turn.content)} picture={turn.images?.[0] || ""} video={turn.video || turn.clips?.[0] || ""} clips={turn.clips} />
                           ) : null}

@@ -69,6 +69,70 @@ export interface AgentExecutionReport {
   durationMs: number;
 }
 
+export const SAMPLE_AUTONOMOUS_REPORT: AgentExecutionReport = {
+  runId: "noctis-run-react-live",
+  goal: "Autonomous Closed-Loop Engineering: Scaffold, Test, Catch Bug, Self-Correct, and Cryptographically Seal",
+  status: "COMPLETED",
+  totalSteps: 5,
+  selfCorrectionsCount: 1,
+  durationMs: 42,
+  cryptographicSignature: "SIG_NOCTIS_SOVEREIGN_9aef1c47d129b00135edf96bfb9331fa",
+  deliverables: [
+    { path: "rateLimiter.ts", sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", bytes: 1420 },
+    { path: "rateLimiter.test.ts", sha256: "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb", bytes: 890 }
+  ],
+  steps: [
+    {
+      stepNumber: 1,
+      thought: "Scaffolding microservice codebase with input validation and initial rate limiting logic.",
+      action: { toolName: "write_file", args: { path: "rateLimiter.ts", lines: 45 } },
+      observation: { toolName: "write_file", success: true, output: "Wrote 1,420 bytes to rateLimiter.ts", durationMs: 2 },
+      status: "SUCCESS",
+      timestamp: "2026-11-05T19:00:00.000Z"
+    },
+    {
+      stepNumber: 2,
+      thought: "Executing test suite in terminal sandbox to verify concurrent race-condition handling.",
+      action: { toolName: "run_command", args: { commandLine: "test: rateLimiter.ts" } },
+      observation: {
+        toolName: "run_command",
+        success: false,
+        output: "FAIL rateLimiter.ts\n AssertionError [ERR_ASSERTION]: Concurrency failure - Allowed 18 requests exceeding limit of 10\n at rateLimiter.ts:24:9",
+        durationMs: 12
+      },
+      status: "SELF_CORRECTING",
+      timestamp: "2026-11-05T19:00:01.000Z"
+    },
+    {
+      stepNumber: 3,
+      thought: "ReAct Loop triggered. Analyzing stack trace: asynchronous read-modify-write permits race conditions. Formulating atomic Promise-chain mutex lock patch.",
+      action: {
+        toolName: "edit_file",
+        args: { path: "rateLimiter.ts", target: "non-atomic counter increment", replacement: "Promise-mutex atomic lock" }
+      },
+      observation: { toolName: "edit_file", success: true, output: "Successfully patched rateLimiter.ts with atomic mutex queue", durationMs: 4 },
+      status: "SUCCESS",
+      timestamp: "2026-11-05T19:00:02.000Z"
+    },
+    {
+      stepNumber: 4,
+      thought: "Re-running test suite in sandbox to confirm self-correction resolves race condition under 50 simultaneous parallel requests.",
+      action: { toolName: "run_command", args: { commandLine: "test: rateLimiter.ts" } },
+      observation: { toolName: "run_command", success: true, output: "PASS rateLimiter.ts\n ✓ 50 parallel requests handled cleanly (10 allowed, 40 throttled, 0 race conditions)\n 3/3 tests passed (14ms)", durationMs: 14 },
+      status: "SUCCESS",
+      timestamp: "2026-11-05T19:00:03.000Z"
+    },
+    {
+      stepNumber: 5,
+      thought: "Delegating to Security Auditor subagent to verify zero unauthenticated routes and zero-trust PDE compliance.",
+      action: { toolName: "invoke_subagent", args: { role: "Security Auditor", prompt: "Audit rateLimiter.ts against OWASP API standards" } },
+      observation: { toolName: "invoke_subagent", success: true, output: "[Security Auditor | subagent-904a]: Audited 4 attack surfaces: CVSS score 0.0, Zero-Trust PDE compliant.", durationMs: 8 },
+      status: "SUCCESS",
+      timestamp: "2026-11-05T19:00:04.000Z"
+    }
+  ]
+};
+
 /**
  * Pillar 1: Direct Filesystem Engine
  */
