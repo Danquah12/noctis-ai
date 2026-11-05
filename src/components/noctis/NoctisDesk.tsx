@@ -7733,10 +7733,6 @@ export function NoctisDesk() {
             </div>
             {desk === "chat" && (!thread || thread.turns.length === 0) && (
               <div className="mx-auto w-full max-w-3xl px-4 py-8 mb-4 text-center space-y-4 animate-in fade-in duration-300">
-                <div className="inline-flex items-center gap-2 rounded-full border border-[#e4b86a]/30 bg-[#e4b86a]/10 px-3.5 py-1 text-xs font-semibold text-[#e4b86a]">
-                  <Sparkles className="size-3.5" />
-                  <span>Antigravity-Grade Autonomous Intelligence Engine</span>
-                </div>
                 <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
                   Noctis Sovereign Systems Desk
                 </h2>
