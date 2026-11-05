@@ -987,19 +987,29 @@ async function composeVibeReply(
   await hydrateFromDb().catch(() => {});
   const attached = (last?.content || "").split(/\n--- [^\n]+ ---\n/).slice(1).join("\n").trim();
   const fullQuestion = (last?.content || "").replace(/\[Image:[^\]]*\]/g, "").trim();
-  const { runFollowUpIntelligence } = await import("@/lib/noctis-response-intelligence");
-  const followUpOut = runFollowUpIntelligence(turns, fullQuestion);
-  if (followUpOut) {
-    const careerLang = languageNow(question, style.language || "");
-    if (followUpOut.startsWith("# 🧭") && !/^(english|en([-_][a-z]+)?)$/i.test(careerLang.trim())) {
-      return { text: await translateCareerAnswer(followUpOut, careerLang) };
+  const isCodingRequest =
+    /\b(architect and implement|build|create|code|develop|generate|write)\b[\s\S]{0,60}?\b(in react|in typescript|in python|react component|single-file|with tailwind|app|application|ui|unit test|microservice)\b/i.test(
+      fullQuestion
+    ) ||
+    /\b(react with tailwind|single-file interactive|component in react|unit tests ensuring|merkle tree.*in react|dashboard in react)\b/i.test(
+      fullQuestion
+    );
+
+  if (!isCodingRequest) {
+    const { runFollowUpIntelligence } = await import("@/lib/noctis-response-intelligence");
+    const followUpOut = runFollowUpIntelligence(turns, fullQuestion);
+    if (followUpOut) {
+      const careerLang = languageNow(question, style.language || "");
+      if (followUpOut.startsWith("# 🧭") && !/^(english|en([-_][a-z]+)?)$/i.test(careerLang.trim())) {
+        return { text: await translateCareerAnswer(followUpOut, careerLang) };
+      }
+      return { text: followUpOut };
     }
-    return { text: followUpOut };
-  }
-  const { runVibeGadgets } = await import("@/lib/noctis-gadgets.server");
-  const gadgetOut = await runVibeGadgets(fullQuestion).catch(() => null);
-  if (gadgetOut) {
-    return { text: gadgetOut };
+    const { runVibeGadgets } = await import("@/lib/noctis-gadgets.server");
+    const gadgetOut = await runVibeGadgets(fullQuestion).catch(() => null);
+    if (gadgetOut) {
+      return { text: gadgetOut };
+    }
   }
 
   // --- Integrated Plugin & Enterprise System Synthesis ---
