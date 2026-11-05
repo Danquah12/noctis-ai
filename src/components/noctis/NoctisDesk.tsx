@@ -25,6 +25,7 @@ import { NoctisCodeInterpreter } from "@/components/noctis/NoctisCodeInterpreter
 import { NoctisThinkingAccordion, CitationBadge } from "@/components/noctis/NoctisThinkingAccordion";
 import NoctisAgentStepper from "@/components/noctis/NoctisAgentStepper";
 import NoctisLiveCveTicker from "@/components/noctis/NoctisLiveCveTicker";
+import NoctisBlastRadiusStrip from "@/components/noctis/NoctisBlastRadiusStrip";
 import { NoctisVoiceVisualizer } from "@/components/noctis/NoctisVoiceVisualizer";
 import { NoctisWorkspaceExplorer, getActiveProjectContext } from "@/components/noctis/NoctisWorkspaceExplorer";
 import { NoctisDeepResearchModal } from "@/components/noctis/NoctisDeepResearchModal";
@@ -7807,6 +7808,17 @@ export function NoctisDesk() {
                           <div className="space-y-3">
                             {/autonomous|react loop|self-correct|5-pillar|ratelimiter|zerodayradar|cve-2024|merkle/i.test(turn.content) ? (
                               <NoctisAgentStepper />
+                            ) : null}
+                            {/```|powershell|bash|terraform|set-aduser|remediation|dispatch|klist|audit passport|invariant|spoilage/i.test(turn.content) ? (
+                              <NoctisBlastRadiusStrip
+                                content={turn.content}
+                                title="Sovereign Execution Artifact"
+                                onOpenPassport={() => {
+                                  setCanvasTitle("Sovereign Audit Passport");
+                                  setCanvasContent(turn.content);
+                                  setCanvasOpen(true);
+                                }}
+                              />
                             ) : null}
                             <AnswerBody text={turn.content} />
                           </div>

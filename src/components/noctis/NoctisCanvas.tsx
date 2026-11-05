@@ -23,10 +23,11 @@ import {
 import { cn } from "@/lib/utils";
 import NoctisLivePreview from "@/components/noctis/NoctisLivePreview";
 import NoctisTerminal from "@/components/noctis/NoctisTerminal";
-import { GitPullRequest, Terminal } from "lucide-react";
+import { GitPullRequest, Terminal, ShieldCheck } from "lucide-react";
+import NoctisPassportView from "@/components/noctis/NoctisPassportView";
 
 export type CanvasMode = "document" | "code" | "sermon" | "spreadsheet" | "presentation";
-export type CanvasView = "preview" | "edit" | "split" | "diff" | "terminal";
+export type CanvasView = "preview" | "edit" | "split" | "diff" | "terminal" | "passport";
 
 export interface NoctisCanvasProps {
   title: string;
@@ -362,6 +363,18 @@ export function NoctisCanvas({
               <Terminal className="size-3 shrink-0 text-[#e4b86a]" />
               Terminal
             </button>
+            <button
+              type="button"
+              onClick={() => setView("passport")}
+              className={cn(
+                "inline-flex rounded-full px-2 sm:px-2.5 py-1 font-medium transition items-center gap-1 whitespace-nowrap",
+                view === "passport" ? "bg-purple-500/20 text-purple-300 font-semibold" : "text-zinc-400 hover:text-zinc-200"
+              )}
+              title="Cryptographic Sovereign Audit Passport"
+            >
+              <ShieldCheck className="size-3 shrink-0 text-purple-400" />
+              Passport
+            </button>
           </div>
 
           {/* Undo / Redo - shown only when editing */}
@@ -639,6 +652,13 @@ export function NoctisCanvas({
             activeCode={content}
             artifactTitle={title}
           />
+        ) : null}
+
+        {/* Sovereign Cryptographic Audit Passport */}
+        {view === "passport" ? (
+          <div className="h-full w-full overflow-y-auto bg-[#0a0c10]">
+            <NoctisPassportView content={content} title={title} />
+          </div>
         ) : null}
 
         {/* Split View (Side-by-side Edit & Preview) */}
