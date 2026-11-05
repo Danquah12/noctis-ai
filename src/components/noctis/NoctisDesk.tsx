@@ -7444,6 +7444,7 @@ export function NoctisDesk() {
             <span>{signingOut ? "Signing out..." : "Log out"}</span>
           </button>
         </header>
+        <NoctisLiveCveTicker onSelectCve={(cveId, prompt) => void send(prompt)} />
         <div className="flex h-11 shrink-0 items-center justify-between border-b border-white/10 px-2.5 sm:px-4 bg-[#0e1118] gap-2">
           <div className="flex items-center gap-1.5 sm:gap-2">
             <button

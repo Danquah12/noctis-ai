@@ -22,9 +22,11 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import NoctisLivePreview from "@/components/noctis/NoctisLivePreview";
+import NoctisTerminal from "@/components/noctis/NoctisTerminal";
+import { GitPullRequest, Terminal } from "lucide-react";
 
 export type CanvasMode = "document" | "code" | "sermon" | "spreadsheet" | "presentation";
-export type CanvasView = "preview" | "edit" | "split" | "diff";
+export type CanvasView = "preview" | "edit" | "split" | "diff" | "terminal";
 
 export interface NoctisCanvasProps {
   title: string;
@@ -348,6 +350,18 @@ export function NoctisCanvas({
               <GitCompare className="size-3 shrink-0" />
               Diff
             </button>
+            <button
+              type="button"
+              onClick={() => setView("terminal")}
+              className={cn(
+                "inline-flex rounded-full px-2 sm:px-2.5 py-1 font-medium transition items-center gap-1 whitespace-nowrap",
+                view === "terminal" ? "bg-white/15 text-[#e4b86a] font-semibold" : "text-zinc-400 hover:text-zinc-200"
+              )}
+              title="Live Sandboxed Web Terminal"
+            >
+              <Terminal className="size-3 shrink-0 text-[#e4b86a]" />
+              Terminal
+            </button>
           </div>
 
           {/* Undo / Redo - shown only when editing */}
@@ -617,6 +631,14 @@ export function NoctisCanvas({
               )}
             </div>
           </div>
+        ) : null}
+
+        {/* Terminal View (Interactive Shell & Test Runner) */}
+        {view === "terminal" ? (
+          <NoctisTerminal
+            activeCode={content}
+            artifactTitle={title}
+          />
         ) : null}
 
         {/* Split View (Side-by-side Edit & Preview) */}

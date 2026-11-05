@@ -20,6 +20,24 @@ interface NoctisLivePreviewProps {
   className?: string;
 }
 
+
+export function parseMultiFileProject(raw: string): { files: Record<string, string>; rootFile: string } {
+  const fileRegex = /(?:```(?:tsx|jsx|typescript|javascript|html|css|json)\s+([a-zA-Z0-9_\-./]+)|(?:\/\/\s*file:\s*([a-zA-Z0-9_\-./]+)))\n([\s\S]*?)```/gi;
+  const files: Record<string, string> = {};
+  let match;
+  while ((match = fileRegex.exec(raw)) !== null) {
+    const filename = match[1] || match[2];
+    const content = match[3];
+    if (filename && content) {
+      files[filename.trim()] = content.trim();
+    }
+  }
+
+  const fileNames = Object.keys(files);
+  const root = fileNames.find((f) => /App\.(tsx|jsx|js)|index\.(html|tsx|jsx)/i.test(f)) || fileNames[0] || "App.tsx";
+  return { files, rootFile: root };
+}
+
 export function extractRunnableCode(raw: string): { type: "html" | "react" | "js"; code: string } {
   const trimmed = raw.trim();
 
