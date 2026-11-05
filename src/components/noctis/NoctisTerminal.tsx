@@ -5,6 +5,7 @@ import { runPreMortemFuzzer } from "@/lib/noctis-fuzzer";
 import { calculateBlastRadius } from "@/lib/noctis-blast-radius";
 import { generateSovereignPassport } from "@/lib/noctis-passport";
 import { executeMeshSwarm } from "@/lib/noctis-mesh-swarm";
+import { executeInBrowserSandbox } from "@/lib/noctis-wasm-runner";
 import { Users } from "lucide-react";
 
 export interface NoctisTerminalProps {
@@ -74,6 +75,8 @@ export default function NoctisTerminal({
             <p><span className="text-emerald-400 font-mono w-28 inline-block">radius</span> Computes operational blast radius & rollback SLA</p>
             <p><span className="text-emerald-400 font-mono w-28 inline-block">passport</span> Displays cryptographic sovereign audit passport</p>
             <p><span className="text-emerald-400 font-mono w-28 inline-block">swarm</span> Executes 4-Agent Mesh Swarm Consensus Council</p>
+            <p><span className="text-emerald-400 font-mono w-28 inline-block">node &lt;code&gt;</span> Executes real JavaScript/TypeScript in browser memory</p>
+            <p><span className="text-emerald-400 font-mono w-28 inline-block">exec</span> Runs the current active Canvas file in browser sandbox</p>
             <p><span className="text-emerald-400 font-mono w-28 inline-block">test</span> Runs in-memory invariant test runner</p>
             <p><span className="text-emerald-400 font-mono w-28 inline-block">ls</span> Lists current workspace files</p>
             <p><span className="text-emerald-400 font-mono w-28 inline-block">cat &lt;file&gt;</span> Displays file contents</p>
@@ -122,6 +125,68 @@ export default function NoctisTerminal({
             <p className="text-zinc-400">Risk Tier: <span className="text-emerald-300 font-semibold">{blastReport.riskTier}</span> | Seal: {blastReport.blastSeal}</p>
           </div>
         );
+        break;
+
+      case "node":
+      case "eval":
+      case "exec":
+        const codeToRun = (main === "exec" || !arg) ? activeCode : arg;
+        if (!codeToRun.trim()) {
+          output = <p className="text-amber-400 text-xs font-mono">No code provided to execute. Try: node console.log("Hello from Noctis")</p>;
+          break;
+        }
+        output = (
+          <div className="space-y-1.5 text-xs font-mono">
+            <p className="text-cyan-400 font-bold">[IN-BROWSER WASM MICROVM EXECUTION]</p>
+            <div className="p-2.5 bg-black/60 border border-white/10 rounded-lg space-y-1">
+              <p className="text-zinc-500 text-[10px]">Source Target: {main === "exec" ? artifactTitle : "CLI Input Buffer"}</p>
+              <p className="text-emerald-400 font-semibold">Status: EXECUTING IN EPHEMERAL SANDBOX...</p>
+            </div>
+          </div>
+        );
+        // Execute asynchronously
+        executeInBrowserSandbox(codeToRun).then((res) => {
+          setHistory((prev) => [
+            ...prev,
+            {
+              command: `${main} (result)`,
+              output: (
+                <div className="space-y-1.5 text-xs font-mono">
+                  <div className="flex items-center gap-2">
+                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${res.status === "SUCCESS" ? "bg-emerald-500/20 text-emerald-400" : "bg-rose-500/20 text-rose-400"}`}>
+                      {res.status}
+                    </span>
+                    <span className="text-zinc-400 text-[11px]">{res.executionMs}ms · ~{res.memoryEstimateKb}KB</span>
+                  </div>
+                  {res.stdout.length > 0 && (
+                    <div className="p-2 bg-zinc-950 border border-zinc-800 rounded text-zinc-200">
+                      <span className="text-[10px] text-zinc-500 block">STDOUT:</span>
+                      {res.stdout.map((line, idx) => (
+                        <p key={idx} className="text-emerald-300 font-mono">{line}</p>
+                      ))}
+                    </div>
+                  )}
+                  {res.stderr.length > 0 && (
+                    <div className="p-2 bg-rose-950/30 border border-rose-500/30 rounded text-rose-300">
+                      <span className="text-[10px] text-rose-400 block">STDERR:</span>
+                      {res.stderr.map((line, idx) => (
+                        <p key={idx} className="font-mono">{line}</p>
+                      ))}
+                    </div>
+                  )}
+                  {res.returnValue !== undefined && (
+                    <p className="text-zinc-400 text-[11px]">
+                      Return: <span className="text-cyan-300">{JSON.stringify(res.returnValue)}</span>
+                    </p>
+                  )}
+                  <p className="text-zinc-600 text-[10px]">Execution Seal: {res.executionSeal}</p>
+                </div>
+              ),
+              timestamp: new Date().toLocaleTimeString(),
+              isError: res.status !== "SUCCESS"
+            }
+          ]);
+        });
         break;
 
       case "swarm":
@@ -314,6 +379,14 @@ export default function NoctisTerminal({
         >
           <FileCheck className="size-3 text-purple-400" />
           Passport
+        </button>
+        <button
+          type="button"
+          onClick={() => executeCommand("exec")}
+          className="inline-flex items-center gap-1 rounded bg-emerald-500/15 hover:bg-emerald-500/25 px-2 py-1 text-[11px] text-emerald-300 border border-emerald-500/30 transition cursor-pointer"
+        >
+          <Play className="size-3 text-emerald-400" />
+          Run Active Code
         </button>
         <button
           type="button"
