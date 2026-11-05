@@ -26,6 +26,9 @@ import NoctisTerminal from "@/components/noctis/NoctisTerminal";
 import { GitPullRequest, Terminal, ShieldCheck } from "lucide-react";
 import NoctisPassportView from "@/components/noctis/NoctisPassportView";
 import NoctisSwarmView from "@/components/noctis/NoctisSwarmView";
+import NoctisGitHubModal from "@/components/noctis/NoctisGitHubModal";
+import NoctisVoiceHud from "@/components/noctis/NoctisVoiceHud";
+import { Mic } from "lucide-react";
 import { Users } from "lucide-react";
 
 export type CanvasMode = "document" | "code" | "sermon" | "spreadsheet" | "presentation";
@@ -94,6 +97,8 @@ export function NoctisCanvas({
   const [copied, setCopied] = useState(false);
   const [revisionPrompt, setRevisionPrompt] = useState("");
   const [showReviseTools, setShowReviseTools] = useState(false);
+  const [showGitHubModal, setShowGitHubModal] = useState(false);
+  const [showVoiceHud, setShowVoiceHud] = useState(false);
   const [history, setHistory] = useState<string[]>([content]);
   const [historyIndex, setHistoryIndex] = useState(0);
 
@@ -389,6 +394,15 @@ export function NoctisCanvas({
               <Users className="size-3 shrink-0 text-[#e4b86a]" />
               Swarm
             </button>
+            <button
+              type="button"
+              onClick={() => setShowGitHubModal(true)}
+              className="inline-flex rounded-full px-2 sm:px-2.5 py-1 font-medium transition items-center gap-1 whitespace-nowrap bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 border border-emerald-500/30"
+              title="Autonomous Live GitHub Pull Request Dispatcher"
+            >
+              <GitPullRequest className="size-3 shrink-0 text-emerald-400" />
+              Dispatch PR
+            </button>
           </div>
 
           {/* Undo / Redo - shown only when editing */}
@@ -449,6 +463,19 @@ export function NoctisCanvas({
         >
           <Sparkles className="size-3.5" />
           Canvas Tools
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setShowVoiceHud((v) => !v)}
+          className={cn(
+            "inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-semibold transition",
+            showVoiceHud ? "bg-amber-400 text-black shadow-sm" : "bg-white/10 text-amber-300 hover:bg-white/15"
+          )}
+          title="Toggle Tactical Sovereign Ambient Voice HUD"
+        >
+          <Mic className="size-3.5" />
+          Voice HUD
         </button>
 
         <button
@@ -531,6 +558,20 @@ export function NoctisCanvas({
           <span>{charCount} chars</span>
         </div>
       </div>
+
+      {/* Sovereign Ambient Voice HUD (Tactical Hands-Free Cockpit) */}
+      {showVoiceHud && (
+        <div className="border-b border-white/10 bg-[#0e0e10] p-3">
+          <NoctisVoiceHud
+            onOpenSwarm={() => setView("swarm")}
+            onOpenPassport={() => setView("passport")}
+            onOpenTerminal={() => setView("terminal")}
+            onOpenGitHubModal={() => setShowGitHubModal(true)}
+            onReviseArtifact={(inst) => triggerRevision(inst)}
+            onExecuteCode={() => setView("terminal")}
+          />
+        </div>
+      )}
 
       {/* Expanded Canvas Tools Palette */}
       {showReviseTools ? (
@@ -774,6 +815,13 @@ export function NoctisCanvas({
           </span>
         </div>
       </footer>
+      {/* Autonomous Live GitHub PR Dispatcher Modal */}
+      <NoctisGitHubModal
+        isOpen={showGitHubModal}
+        onClose={() => setShowGitHubModal(false)}
+        artifactTitle={title}
+        activeContent={content}
+      />
     </div>
   );
 }
