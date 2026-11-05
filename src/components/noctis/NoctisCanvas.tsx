@@ -21,6 +21,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import NoctisLivePreview from "@/components/noctis/NoctisLivePreview";
 
 export type CanvasMode = "document" | "code" | "sermon" | "spreadsheet" | "presentation";
 export type CanvasView = "preview" | "edit" | "split" | "diff";
@@ -92,6 +93,26 @@ export function NoctisCanvas({
   const [historyIndex, setHistoryIndex] = useState(0);
 
   const mode = useMemo(() => detectCanvasMode(content), [content]);
+
+  const renderedContent = useMemo(() => {
+    if (renderPreview) return renderPreview(content);
+    if (
+      mode === "code" ||
+      /```(?:html|tsx|jsx|typescript|javascript)/i.test(content) ||
+      /import\s+React|export\s+default\s+function|<!DOCTYPE\s+html/i.test(content)
+    ) {
+      return <NoctisLivePreview code={content} title={title} className="h-full rounded-none border-0" />;
+    }
+    return (
+      <div className="h-full overflow-y-auto px-6 py-6 font-sans">
+        <article className="mx-auto max-w-4xl space-y-4">
+          <div className="whitespace-pre-wrap font-sans text-[15px] leading-7 text-zinc-100">
+            {content}
+          </div>
+        </article>
+      </div>
+    );
+  }, [renderPreview, content, mode, title]);
 
   // Keep history updated when external content changes from a revision
   useEffect(() => {
@@ -524,18 +545,10 @@ export function NoctisCanvas({
           </div>
         ) : null}
 
-        {/* Preview View */}
+        {/* Preview View (with Hot-Reload Live Sandboxed Runner) */}
         {view === "preview" ? (
-          <div className="h-full overflow-y-auto px-6 py-6 font-sans">
-            <article className="mx-auto max-w-4xl space-y-4">
-              {renderPreview ? (
-                renderPreview(content)
-              ) : (
-                <div className="whitespace-pre-wrap font-sans text-[15px] leading-7 text-zinc-100">
-                  {content}
-                </div>
-              )}
-            </article>
+          <div className="h-full overflow-hidden font-sans">
+            {renderedContent}
           </div>
         ) : null}
 
@@ -620,16 +633,8 @@ export function NoctisCanvas({
                 placeholder="Edit artifact markdown or code here..."
               />
             </div>
-            <div className="h-full w-1/2 overflow-y-auto p-4">
-              <article className="space-y-3">
-                {renderPreview ? (
-                  renderPreview(content)
-                ) : (
-                  <div className="whitespace-pre-wrap font-sans text-sm leading-6 text-zinc-100">
-                    {content}
-                  </div>
-                )}
-              </article>
+            <div className="h-full w-1/2 overflow-hidden p-2">
+              {renderedContent}
             </div>
           </div>
         ) : null}
