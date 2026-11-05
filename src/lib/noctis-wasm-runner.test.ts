@@ -35,4 +35,20 @@ describe("NOCTIS IN-BROWSER WASM / SANDBOX ENGINE", () => {
     assert.ok(!js.includes(": number"));
     assert.ok(!js.includes(": string"));
   });
+
+  test("Extracts runnable code from markdown blocks and executes cleanly", async () => {
+    const md = `
+# Sample Document
+Here is some text.
+\`\`\`typescript
+const val = 100;
+console.log("Extracted markdown run:", val * 2);
+return val * 2;
+\`\`\`
+    `;
+    const res = await executeInBrowserSandbox(md);
+    assert.equal(res.status, "SUCCESS");
+    assert.ok(res.stdout.some((l) => l.includes("Extracted markdown run: 200")));
+    assert.equal(res.returnValue, 200);
+  });
 });

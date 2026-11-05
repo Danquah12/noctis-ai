@@ -11,6 +11,22 @@ export interface ExecutionResult {
 }
 
 /**
+ * Extracts runnable code from raw text, auto-extracting from markdown code fences if present.
+ */
+export function extractRunnableCode(raw: string): string {
+  const match = raw.match(/```(?:javascript|typescript|js|ts|tsx|jsx)?\s*\n([\s\S]*?)```/i);
+  if (match && match[1]) {
+    return match[1].trim();
+  }
+  if (/^#+\s+/m.test(raw)) {
+    const lines = raw.split("\n").filter((l) => !l.trim().startsWith("#") && !l.trim().startsWith("*") && !l.trim().startsWith("-") && !l.trim().startsWith(">"));
+    const candidate = lines.join("\n").trim();
+    if (candidate) return candidate;
+  }
+  return raw;
+}
+
+/**
  * Strips basic TypeScript type annotations so code can run natively in JavaScript engines
  */
 export function stripTypesSimple(code: string): string {
@@ -41,7 +57,20 @@ export async function executeInBrowserSandbox(
   const stdout: string[] = [];
   const stderr: string[] = [];
 
-  const cleanJs = stripTypesSimple(code);
+  const runnable = extractRunnableCode(code);
+  if (!runnable.trim()) {
+    return {
+      status: "ERROR",
+      stdout: [],
+      stderr: ["No runnable JavaScript/TypeScript code block found in artifact."],
+      returnValue: undefined,
+      executionMs: 1,
+      memoryEstimateKb: 0,
+      executionSeal: `SIG_EXEC_${sha256Sync(code).slice(0, 24)}`
+    };
+  }
+
+  const cleanJs = stripTypesSimple(runnable);
 
   const customConsole = {
     log: (...args: unknown[]) => {
