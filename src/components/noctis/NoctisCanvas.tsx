@@ -25,9 +25,11 @@ import NoctisLivePreview from "@/components/noctis/NoctisLivePreview";
 import NoctisTerminal from "@/components/noctis/NoctisTerminal";
 import { GitPullRequest, Terminal, ShieldCheck } from "lucide-react";
 import NoctisPassportView from "@/components/noctis/NoctisPassportView";
+import NoctisSwarmView from "@/components/noctis/NoctisSwarmView";
+import { Users } from "lucide-react";
 
 export type CanvasMode = "document" | "code" | "sermon" | "spreadsheet" | "presentation";
-export type CanvasView = "preview" | "edit" | "split" | "diff" | "terminal" | "passport";
+export type CanvasView = "preview" | "edit" | "split" | "diff" | "terminal" | "passport" | "swarm";
 
 export interface NoctisCanvasProps {
   title: string;
@@ -375,6 +377,18 @@ export function NoctisCanvas({
               <ShieldCheck className="size-3 shrink-0 text-purple-400" />
               Passport
             </button>
+            <button
+              type="button"
+              onClick={() => setView("swarm")}
+              className={cn(
+                "inline-flex rounded-full px-2 sm:px-2.5 py-1 font-medium transition items-center gap-1 whitespace-nowrap",
+                view === "swarm" ? "bg-[#e4b86a]/20 text-[#e4b86a] font-semibold" : "text-zinc-400 hover:text-zinc-200"
+              )}
+              title="Autonomous Mesh Swarm Consensus Council"
+            >
+              <Users className="size-3 shrink-0 text-[#e4b86a]" />
+              Swarm
+            </button>
           </div>
 
           {/* Undo / Redo - shown only when editing */}
@@ -658,6 +672,13 @@ export function NoctisCanvas({
         {view === "passport" ? (
           <div className="h-full w-full overflow-y-auto bg-[#0a0c10]">
             <NoctisPassportView content={content} title={title} />
+          </div>
+        ) : null}
+
+        {/* Autonomous Mesh Swarm Consensus Council */}
+        {view === "swarm" ? (
+          <div className="h-full w-full overflow-y-auto bg-[#0a0c10]">
+            <NoctisSwarmView content={content} title={title} />
           </div>
         ) : null}
 

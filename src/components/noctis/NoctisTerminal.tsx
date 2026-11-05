@@ -4,6 +4,8 @@ import { cn } from "@/lib/utils";
 import { runPreMortemFuzzer } from "@/lib/noctis-fuzzer";
 import { calculateBlastRadius } from "@/lib/noctis-blast-radius";
 import { generateSovereignPassport } from "@/lib/noctis-passport";
+import { executeMeshSwarm } from "@/lib/noctis-mesh-swarm";
+import { Users } from "lucide-react";
 
 export interface NoctisTerminalProps {
   className?: string;
@@ -71,6 +73,7 @@ export default function NoctisTerminal({
             <p><span className="text-emerald-400 font-mono w-28 inline-block">fuzz</span> Runs Pre-Mortem Adversarial Fuzzer on active code</p>
             <p><span className="text-emerald-400 font-mono w-28 inline-block">radius</span> Computes operational blast radius & rollback SLA</p>
             <p><span className="text-emerald-400 font-mono w-28 inline-block">passport</span> Displays cryptographic sovereign audit passport</p>
+            <p><span className="text-emerald-400 font-mono w-28 inline-block">swarm</span> Executes 4-Agent Mesh Swarm Consensus Council</p>
             <p><span className="text-emerald-400 font-mono w-28 inline-block">test</span> Runs in-memory invariant test runner</p>
             <p><span className="text-emerald-400 font-mono w-28 inline-block">ls</span> Lists current workspace files</p>
             <p><span className="text-emerald-400 font-mono w-28 inline-block">cat &lt;file&gt;</span> Displays file contents</p>
@@ -117,6 +120,25 @@ export default function NoctisTerminal({
             <p>Collateral Downtime: <span className="text-emerald-400">{blastReport.collateralDowntimeMs}ms</span> (Zero Downtime Guaranteed)</p>
             <p>Rollback SLA: <span className="text-amber-400">&lt;{blastReport.reversibilitySlaMs / 1000}s</span> via paired cryptographic undo</p>
             <p className="text-zinc-400">Risk Tier: <span className="text-emerald-300 font-semibold">{blastReport.riskTier}</span> | Seal: {blastReport.blastSeal}</p>
+          </div>
+        );
+        break;
+
+      case "swarm":
+        const swarmRes = executeMeshSwarm(activeCode || "// Active workspace context", artifactTitle);
+        output = (
+          <div className="space-y-1.5 text-xs font-mono text-zinc-300">
+            <p className="text-[#e4b86a] font-bold">[MESH SWARM COUNCIL] {swarmRes.consensusStatus} ({swarmRes.consensusScore}%)</p>
+            <p className="text-zinc-400">Round ID: {swarmRes.roundId}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 py-1">
+              {swarmRes.votes.map((v) => (
+                <div key={v.agentId} className="p-1.5 bg-black/40 border border-white/5 rounded">
+                  <span className="text-zinc-200 font-bold">{v.name}</span>: <span className="text-emerald-400 font-bold">{v.stance}</span> ({v.latencyMs}ms)
+                </div>
+              ))}
+            </div>
+            <p className="text-emerald-300 font-semibold">Verdict: {swarmRes.reconciledVerdict}</p>
+            <p className="text-zinc-500 break-all">Seal: {swarmRes.consensusSeal}</p>
           </div>
         );
         break;
@@ -276,6 +298,14 @@ export default function NoctisTerminal({
         >
           <Target className="size-3 text-cyan-400" />
           Blast Radius
+        </button>
+        <button
+          type="button"
+          onClick={() => executeCommand("swarm")}
+          className="inline-flex items-center gap-1 rounded bg-[#e4b86a]/10 hover:bg-[#e4b86a]/20 px-2 py-1 text-[11px] text-[#e4b86a] border border-[#e4b86a]/25 transition cursor-pointer"
+        >
+          <Users className="size-3 text-[#e4b86a]" />
+          Mesh Swarm
         </button>
         <button
           type="button"
