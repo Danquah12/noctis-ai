@@ -281,10 +281,8 @@ export default function NoctisTerminal({
           repo: "Danquah12/noctis-ai",
           baseBranch: "main",
           filePath: `src/remediation/${artifactTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "patch"}.ts`,
-          originalContent: "// Original unpatched implementation
-export const VULNERABLE = true;",
-          patchedContent: activeCode || "// Sovereign auto-remediation patch
-export const SECURE = true;",
+          originalContent: `// Original unpatched implementation\nexport const VULNERABLE = true;`,
+          patchedContent: activeCode || `// Sovereign auto-remediation patch\nexport const SECURE = true;`,
           prTitle: targetTitle,
         });
         onCreatePr?.(targetTitle, prPackage.unifiedDiff);
