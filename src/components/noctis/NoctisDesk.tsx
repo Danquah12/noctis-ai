@@ -24,6 +24,7 @@ import { DISTRIBUTED_PLUGINS, getPluginsForShelf, type DistributedPluginItem } f
 import { NoctisCodeInterpreter } from "@/components/noctis/NoctisCodeInterpreter";
 import { NoctisThinkingAccordion, CitationBadge } from "@/components/noctis/NoctisThinkingAccordion";
 import NoctisAgentStepper from "@/components/noctis/NoctisAgentStepper";
+import NoctisLiveCveTicker from "@/components/noctis/NoctisLiveCveTicker";
 import { NoctisVoiceVisualizer } from "@/components/noctis/NoctisVoiceVisualizer";
 import { NoctisWorkspaceExplorer, getActiveProjectContext } from "@/components/noctis/NoctisWorkspaceExplorer";
 import { NoctisDeepResearchModal } from "@/components/noctis/NoctisDeepResearchModal";
