@@ -6370,11 +6370,21 @@ export function NoctisDesk() {
     </form>
   );
 
+  const CHAT_DISCOVERY_PROMPTS = [
+    { label: "🛠️ How Noctis Builds Anything", ask: "Explain Noctis's 5-pillar autonomous engineering engine (direct filesystem access, sandboxed terminal execution, ReAct self-correction loop, subagent swarms, and MCP tools) that enables it to build and verify anything." },
+    { label: "⚡ Forge vs. Canvas Reconciler", ask: "How do Noctis Forge execution workflows reconcile with the persistent Canvas governance and audit balance sheets?" },
+    { label: "🛡️ Sovereign 16-Suite Architecture", ask: "Provide an executive overview of the 16 Sovereign Systems across all 5 architectural layers and the SQDEC governance model." },
+    { label: "🔄 Self-Correction Loop", ask: "How does Noctis execute the compile-run-diagnose-patch autonomous self-correction loop when fixing bugs in production code?" },
+    { label: "🔒 Universal Invariant Gates", ask: "Inspect architectural invariants across financial balance sheets, clinical CDS safety, and cybersecurity zero-trust boundaries." },
+  ];
+
   const activeRoutes =
     routes.length > 0
       ? routes
       : desk === "study"
       ? studyAsks(studyTopic || "USMLE Step 2 CK")
+      : desk === "chat"
+      ? CHAT_DISCOVERY_PROMPTS
       : [];
 
   return (
@@ -7567,11 +7577,14 @@ export function NoctisDesk() {
               />
             ) : empty ? (
           <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-            <img src="/media/meet-loft.jpg" alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover" />
+            <div className="pointer-events-none absolute inset-0 bg-[#0d1117]" />
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-sky-950/30 via-[#0e121a]/85 to-[#080a0f]" />
+            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:3.5rem_3.5rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#12151c]/55 via-[#12151c]/35 to-[#12151c]/80" />
             <div className="relative flex min-h-0 flex-1 flex-col">
             <div className="flex min-h-0 flex-1 flex-col items-center gap-3 overflow-y-auto px-4 pt-4">
-              <h1 className="shrink-0 text-center font-display text-[26px] font-medium tracking-tight text-zinc-50 sm:text-[32px]">
+              {shelf !== "chats" && (
+                <h1 className="shrink-0 text-center font-display text-[26px] font-medium tracking-tight text-zinc-50 sm:text-[32px]">
                 {shelf === "pictures"
                   ? "Pictures & Creative Studio"
                   : shelf === "library"
@@ -7582,6 +7595,7 @@ export function NoctisDesk() {
                   ? "Business & Operations"
                   : "What's on your mind?"}
               </h1>
+              )}
               {shelf === "pictures" ? (
                 <div className="w-full max-w-3xl space-y-4">
                   {shots.length ? (
@@ -7717,6 +7731,37 @@ export function NoctisDesk() {
                 </>
               )}
             </div>
+            {desk === "chat" && (!thread || thread.turns.length === 0) && (
+              <div className="mx-auto w-full max-w-3xl px-4 py-8 mb-4 text-center space-y-4 animate-in fade-in duration-300">
+                <div className="inline-flex items-center gap-2 rounded-full border border-[#e4b86a]/30 bg-[#e4b86a]/10 px-3.5 py-1 text-xs font-semibold text-[#e4b86a]">
+                  <Sparkles className="size-3.5" />
+                  <span>Antigravity-Grade Autonomous Intelligence Engine</span>
+                </div>
+                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+                  Noctis Sovereign Systems Desk
+                </h2>
+                <p className="text-xs sm:text-sm text-zinc-400 max-w-lg mx-auto leading-relaxed">
+                  Autonomous software engineering, continuous verification, subagent swarms, and cross-domain SQDEC governance.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2 text-left">
+                  {CHAT_DISCOVERY_PROMPTS.slice(0, 4).map((p) => (
+                    <button
+                      key={p.label}
+                      type="button"
+                      onClick={() => void send(p.ask)}
+                      className="group flex flex-col items-start p-3 rounded-2xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.08] hover:border-[#e4b86a]/40 transition cursor-pointer shadow-xs"
+                    >
+                      <span className="font-semibold text-xs text-zinc-200 group-hover:text-[#e4b86a] transition flex items-center gap-1.5">
+                        {p.label}
+                      </span>
+                      <span className="mt-1 text-[11px] text-zinc-400 line-clamp-2 leading-relaxed">
+                        {p.ask}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="mx-auto w-full max-w-3xl shrink-0 px-3 pt-2 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)]">
               {code ? (
                 <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-[#e4b86a]/15 border border-[#e4b86a]/30 px-3 py-1 text-xs font-medium text-[#e4b86a]">
