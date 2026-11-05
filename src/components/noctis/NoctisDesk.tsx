@@ -7733,30 +7733,13 @@ export function NoctisDesk() {
               )}
             </div>
             {desk === "chat" && (!thread || thread.turns.length === 0) && (
-              <div className="mx-auto w-full max-w-3xl px-4 py-8 mb-4 text-center space-y-4 animate-in fade-in duration-300">
+              <div className="mx-auto w-full max-w-3xl px-4 py-12 mb-2 text-center space-y-3 animate-in fade-in duration-300">
                 <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
                   Noctis Sovereign Systems Desk
                 </h2>
                 <p className="text-xs sm:text-sm text-zinc-400 max-w-lg mx-auto leading-relaxed">
                   Autonomous software engineering, continuous verification, subagent swarms, and cross-domain SQDEC governance.
                 </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2 text-left">
-                  {CHAT_DISCOVERY_PROMPTS.slice(0, 4).map((p) => (
-                    <button
-                      key={p.label}
-                      type="button"
-                      onClick={() => void send(p.ask)}
-                      className="group flex flex-col items-start p-3 rounded-2xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.08] hover:border-[#e4b86a]/40 transition cursor-pointer shadow-xs"
-                    >
-                      <span className="font-semibold text-xs text-zinc-200 group-hover:text-[#e4b86a] transition flex items-center gap-1.5">
-                        {p.label}
-                      </span>
-                      <span className="mt-1 text-[11px] text-zinc-400 line-clamp-2 leading-relaxed">
-                        {p.ask}
-                      </span>
-                    </button>
-                  ))}
-                </div>
               </div>
             )}
             <div className="mx-auto w-full max-w-3xl shrink-0 px-3 pt-2 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)]">
