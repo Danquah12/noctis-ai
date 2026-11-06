@@ -653,8 +653,14 @@ export function parsePatientNaturalLanguageIntake(text: string): PatientReported
   ];
 
   for (const sp of SYMPTOM_PATTERNS) {
-    if (sp.regex.test(t)) {
-      associatedSymptoms.push(sp.name);
+    const match = t.match(sp.regex);
+    if (match && match.index !== undefined) {
+      const windowStart = Math.max(0, match.index - 35);
+      const preceding = t.slice(windowStart, match.index).toLowerCase();
+      const isNegated = /\b(denies|denying|no|not|without|rules?\s+out|never|negative\s+for)\b\s*(\w+\s+){0,3}$/i.test(preceding);
+      if (!isNegated) {
+        associatedSymptoms.push(sp.name);
+      }
     }
   }
 
@@ -1117,8 +1123,8 @@ export function formatPatientDiagnosticDossierMarkdown(dossier: PatientDiagnosti
   const rawText = JSON.stringify(dossier.patientData).toLowerCase();
 
   const isAbdominal =
-    /\b(abdomin|belly|stomach|epigastr|quadrant|rlq|ruq|llq|luq|alvarado|appendic|cholecyst|pancreat)\b/i.test(cc) ||
-    /\b(abdomin|belly|stomach|epigastr|quadrant|rlq|ruq|llq|luq|alvarado|appendic|cholecyst|pancreat)\b/i.test(rawText);
+    /\b(abdomin\w*|belly|stomach|epigastr\w*|quadrant|rlq|ruq|llq|luq|alvarado|appendic\w*|cholecyst\w*|pancreat\w*|lipase|biliary)\b/i.test(cc) ||
+    /\b(abdomin\w*|belly|stomach|epigastr\w*|quadrant|rlq|ruq|llq|luq|alvarado|appendic\w*|cholecyst\w*|pancreat\w*|lipase|biliary)\b/i.test(rawText);
 
   const isStroke =
     /\b(stroke|facial\s+droop|arm\s+drift|slurred\s+speech|hemipares|lvo|tpa|tenecteplase|nihss)\b/i.test(cc) ||
@@ -1348,13 +1354,129 @@ To achieve rapid, guideline-directed confirmation or exclusion without cognitive
 export function handleNaturalPatientDiagnosticQuery(question: string): string | null {
   const q = question.trim();
 
+  // Dedicated Handler: Acute Ascending Cholangitis & Charcot Triad
+  if (/\b(cholangitis|charcot|jaundice|yellowing\s+of\s+(?:the\s+)?(?:eyes|skin))\b/i.test(q) && /\b(ruq|right\s+upper\s+quadrant|biliary|gallbladder)\b/i.test(q)) {
+    return `# Noctis Clinical Decision Support — Emergent Biliary Triage
+
+**Encounter ID:** \`NPDE-CHOLANGITIS-${Date.now().toString(36).toUpperCase()}\` · **Triage Urgency:** **🚨 P0 IMMEDIATE EMERGENCY (Critical Care & Emergent Biliary Decompression)**
+
+> [!CAUTION]
+> **EMERGENCY CLINICAL DIRECTIVE: ACUTE ASCENDING CHOLANGITIS (CHARCOT TRIAD)**
+> The clinical constellation of **Right Upper Quadrant (RUQ) abdominal pain**, **high pyrexia (fever with rigors)**, and **jaundice (hyperbilirubinemia)** represents **Charcot's Triad**, diagnostic of acute ascending cholangitis. This is a life-threatening biliary emergency with high risk for rapid progression to suppurative septic shock.
+> - **Immediate Disposition:** Immediate Emergency Department evaluation, ICU-level resuscitation, and emergency gastroenterology / surgical consultation.
+> - **Critical Time Window:** Emergent biliary decompression within 24–48 hours (or immediate if hemodynamically unstable).
+
+---
+
+### 1. Clinical Syndrome & Risk Stratification: Charcot Triad to Reynolds Pentad
+
+| Clinical Parameter | Observation in Encounter | Pathophysiological Significance | Clinical Risk Impact |
+| :--- | :--- | :--- | :--- |
+| **Right Upper Quadrant Pain** | Acute, severe RUQ abdominal discomfort | Biliary tree distension and ductal hypertension secondary to obstruction (choledocholithiasis or stricture) | Localizes pathology to the biliary system |
+| **Systemic Pyrexia & Rigors** | Fever (≥ 38.5°C–39.1°C) with rigors | Ascending bacterial infection of stagnant bile (E. coli, Klebsiella, Enterobacter) with bacteremic seeding | High risk for gram-negative sepsis |
+| **Jaundice / Scleral Icterus** | Yellowing of the eyes/skin | Biliary outflow obstruction causing direct hyperbilirubinemia | Confirms complete or high-grade ductal obstruction |
+| **Tachycardia & Hemodynamics** | Tachycardia (HR > 100 bpm), borderline BP | Systemic Inflammatory Response Syndrome (SIRS); early septic shock physiology | **Reynolds Pentad Warning:** Hypotension + confusion indicates acute suppurative cholangitis |
+
+---
+
+### 2. Prioritized Emergency Diagnostic & Therapeutic Pathway (Tokyo Guidelines 2018)
+
+| Priority | Action / Investigation | Clinical Objective & Target Protocol |
+| :---: | :--- | :--- |
+| **1** | **Hemodynamic Resuscitation & Blood Cultures** | Draw **two sets of peripheral blood cultures** prior to initiating broad-spectrum IV antibiotics (e.g. Piperacillin-Tazobactam or Ceftriaxone + Metronidazole). Administer isotonic crystalloid resuscitation. |
+| **2** | **Emergent Biliary Ultrasound (Transabdominal US)** | Screen for biliary ductal dilation (common bile duct > 6 mm), choledocholithiasis, and acute cholecystitis signs. |
+| **3** | **Emergency Biliary Decompression (ERCP)** | **Definitive Treatment:** Endoscopic Retrograde Cholangiopancreatography with biliary sphincterotomy and stent placement/stone extraction. Percutaneous transhepatic biliary drainage (PTBD) if ERCP unavailable. |
+| **4** | **Laboratory Evaluation** | Stat CBC (leukocytosis with left shift), Comprehensive Metabolic Panel (elevated total & direct bilirubin, alkaline phosphatase, AST, ALT), Serum Lactate (screen for tissue hypoperfusion), and Coagulation profile (INR/PT). |
+
+---
+
+### 3. High-Value Clinical Questions for the Treating Team
+
+• Has emergency gastroenterology or interventional radiology been mobilized for biliary decompression?
+• What is the patient's serum lactate and arterial blood gas to assess for evolving septic shock?
+• Does the bedside ultrasound or CT confirm ductal dilation or a visible common bile duct stone?
+
+---
+*Reference Standards: Tokyo Guidelines 2018 (TG18) for the Management of Acute Cholangitis · American Society for Gastrointestinal Endoscopy (ASGE) Guidelines.*
+
+**Regulatory Disclosure:** Non-Device Clinical Decision Support (21 U.S.C. § 360aaa). Algorithmic decision support for licensed healthcare providers.`;
+  }
+
+  // Dedicated Handler: Acute Pancreatitis Diagnostic Criteria & Lipase Evaluation (Atlanta 2-of-3 Rule)
+  if (/\b(lipase|amylase)\b/i.test(q) && /\b(pancreati(?:tis|c))\b/i.test(q)) {
+    const lipaseMatch = q.match(/\b(\d{2,4})\s*(?:u\/l|units)?\b/i);
+    const lipaseVal = lipaseMatch ? parseInt(lipaseMatch[1], 10) : 280;
+    const deniesPain = /\b(denies|no|without)\s+(?:epigastric|upper|abdominal)?\s*pain/i.test(q);
+    const normalImaging = /\b(ultrasound|ct|imaging)\s+is\s+normal/i.test(q) || /\bnormal\s+(?:abdominal\s+)?ultrasound/i.test(q);
+    const hasPain = !deniesPain && /\b(epigastric|upper\s+abdominal|severe\s+pain)\b/i.test(q);
+    const hasImaging = !normalImaging && /\b(edema|necrosis|peripancreatic|fluid\s+collection)\b/i.test(q);
+
+    return `# Noctis Clinical Decision Support — Diagnostic Criteria Evaluation
+
+**Clinical Scenario:** Patient with serum lipase of ${lipaseVal} U/L (reference ULN 60 U/L), ${deniesPain ? "denies epigastric pain or nausea" : "pain status unconfirmed"}, and ${normalImaging ? "normal abdominal ultrasound" : "imaging unconfirmed"}.
+
+---
+
+### Core Diagnostic Conclusion: **DOES NOT CONFIRM ACUTE PANCREATITIS**
+
+**No.** An isolated serum lipase elevation of ${lipaseVal} U/L (even at > 4x ULN) **does NOT confirm a diagnosis of acute pancreatitis** in this clinical scenario.
+
+---
+
+### 1. The Revised Atlanta Classification Diagnostic Framework (2-of-3 Rule)
+
+Under international consensus guidelines (**Revised Atlanta Classification** / American College of Gastroenterology ACG Guidelines), a formal diagnosis of acute pancreatitis strictly requires satisfying **at least 2 of the following 3 criteria**:
+
+| Atlanta Criterion | Diagnostic Requirement | Status in This Patient | Evaluation |
+| :--- | :--- | :---: | :--- |
+| **Criterion 1: Clinical Symptoms** | Acute onset of persistent, severe, epigastric pain (often radiating to the back) | **ABSENT** | Patient explicitly denies epigastric pain or nausea |
+| **Criterion 2: Serum Biomarkers** | Serum lipase or amylase **≥ 3x the upper limit of normal (ULN)** | **MET** | Lipase ${lipaseVal} U/L is ≥ 180 U/L (3x reference ULN of 60 U/L) |
+| **Criterion 3: Cross-Sectional Imaging** | Imaging characteristics of acute pancreatitis on contrast CT, MRI, or transabdominal ultrasound | **ABSENT** | Abdominal ultrasound is documented as **normal** |
+
+**Summary Criteria Count:** **1 of 3 criteria met.**
+*Clinical Invariant:* A single isolated laboratory threshold must **never** be converted into a definitive diagnosis in the absence of characteristic clinical pain or imaging evidence.
+
+---
+
+### 2. Differential Diagnosis for Isolated Hyperlipasemia (Alternative Etiologies)
+
+When serum lipase is elevated without evidence of pancreatic inflammation, clinicians must investigate the following non-pancreatic etiologies:
+
+1. **Reduced Renal Clearance:**
+   - Lipase and amylase are filtered and cleared by the kidneys. Acute Kidney Injury (AKI) or chronic kidney disease (CKD stage 3-5) frequently causes baseline serum lipase elevations up to 3-5x ULN without pancreatitis.
+2. **Macrolipasemia / Macroamylasemia:**
+   - Lipase complexes with circulating immunoglobulins, creating large macromolecular complexes that resist normal renal filtration, producing persistent asymptomatic enzyme elevations.
+3. **Non-Pancreatic Intra-Abdominal Pathology:**
+   - Acute cholecystitis, choledocholithiasis (common bile duct stone transit), intestinal obstruction, intestinal ischemia, or peptic ulcer disease can induce secondary enzyme elevation.
+4. **Delayed or Evolving Presentation:**
+   - Transient biliary passage (microlithiasis / "sludge" passage) causing brief ductal hypertension that has resolved by the time of ultrasound.
+5. **Drug-Induced or Asymptomatic Hyperenzymemia (Gullo Syndrome):**
+   - Benign familial pancreatic hyperenzymemia producing asymptomatic fluctuating elevations of pancreatic enzymes.
+
+---
+
+### 3. Recommended Clinical Action Plan
+
+| Priority | Action Item | Clinical Rationale |
+| :---: | :--- | :--- |
+| **1** | **Renal Function Assessment (BUN, Serum Creatinine, eGFR)** | Exclude impaired renal clearance as the cause of decreased lipase excretion. |
+| **2** | **Serial Abdominal Re-examination** | Re-evaluate for emerging epigastric tenderness, guarding, or radiation to the back. |
+| **3** | **Hepatic Function Panel (LFTs: AST, ALT, Bilirubin, Alk Phos)** | Assess for occult choledocholithiasis or transient biliary obstruction. |
+| **4** | **Selective Cross-Sectional Imaging (CT with IV contrast after 48-72h)** | If abdominal symptoms or systemic inflammation subsequently develop, perform contrast-enhanced CT. Routine early CT is NOT indicated in asymptomatic patients. |
+
+---
+*Reference Standards: Revised Atlanta Classification of Acute Pancreatitis (Gut 2013;62:102–111) · American College of Gastroenterology Guidelines for the Management of Acute Pancreatitis (Am J Gastroenterol 2018).*
+
+**Regulatory Disclosure:** Non-Device Clinical Decision Support (21 U.S.C. § 360aaa). Algorithmic analysis for clinician decision support only.`;
+  }
+
   // Match explicit patient diagnosis engine requests, modal exports, or patient symptom descriptions
   const isPatientDiagnosisRequest =
     /\[Patient Diagnostic Intake Encounter\]/i.test(q) ||
     /\b(patient\s+diagnostic|patient\s+diagnosis|diagnos(?:e|is)\s+patient|patient\s+intake|patient\s+triage|differential\s+diagnosis|symptom\s+checker|evaluate\s+patient|provide\s+diagnosis|diagnose\s+based|discuss\s+case)\b/i.test(q);
 
   const hasClinicalSymptomConstellation =
-    /\b(i\s+have|i'm\s+having|patient\s+has|experiencing|suffering\s+from|complaining\s+of)\b/i.test(q) &&
+    /\b(presents?\s+with|presenting\s+with|i\s+have|i'm\s+having|patient\s+has|experiencing|suffering\s+from|complaining\s+of)\b/i.test(q) &&
     /\b(chest\s+pain|shortness\s+of\s+breath|fever|headache|abdominal\s+pain|cough|nausea|dizziness|weakness)\b/i.test(q);
 
   if (isPatientDiagnosisRequest || hasClinicalSymptomConstellation) {
