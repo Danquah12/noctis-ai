@@ -687,7 +687,10 @@ export function parsePatientNaturalLanguageIntake(text: string): PatientReported
     vitals.respiratoryRate = parseInt(rrMatch[1], 10);
   }
 
-  const spo2Match = t.match(/\b(?:spo2|oxygen|o2\s+sat)\s*(?:is|of|=|:)?\s*(\d{2,3})\s*%\b/i);
+  const spo2Match =
+    t.match(/\b(?:spo[2₂]|oxygen(?:\s+saturation)?|o[2₂]\s*(?:sat(?:uration)?)?|saturation)\s*(?:is|of|=|:)?\s*(\d{2,3})\s*%/i) ||
+    t.match(/(\d{2,3})\s*%\s*(?:on\s+room\s+air|spo[2₂]|o[2₂])/i) ||
+    t.match(/\bspo[2₂]\s*(\d{2,3})\b/i);
   if (spo2Match) {
     vitals.spo2 = parseInt(spo2Match[1], 10);
   }
@@ -1083,7 +1086,7 @@ export function buildPatientDiagnosticReport(dataOrText: PatientReportedData | s
   ].join("\n\n");
 
   const regulatoryAttestation =
-    "FDA Jan 2026 Clinical Decision Support (CDS) Notice: This output constitutes algorithmic clinical reasoning support based solely on patient-reported information. It does not replace independent clinical judgment, formal physical examination, laboratory testing, or a licensed physician's diagnosis.";
+    "FDA Jan 2026 Clinical Decision Support (CDS) Non-Device Framework (21 U.S.C. § 360aaa): This algorithmic decision support assists healthcare evaluation. It does not replace independent clinical judgment, formal physical examination, laboratory testing, or a licensed physician's diagnosis.";
 
   return {
     encounterId: `NPDE-${Date.now().toString(36).toUpperCase()}`,
@@ -1106,7 +1109,7 @@ export function formatPatientDiagnosticDossierMarkdown(dossier: PatientDiagnosti
 
   // 1. Header & Emergency Triage Directive
   sections.push(
-    `# Noctis Patient Diagnostic & Triage Intelligence Dossier (Clinical Decision Support)\n**Encounter ID:** \`${dossier.encounterId}\` · **Triage Urgency:** **${triage.urgencyLabel}** · **FDA JAN 2026 CDS COMPLIANT**\n`
+    `# Noctis Patient Diagnostic & Triage Intelligence Dossier (Clinical Decision Support)\n**Encounter ID:** \`${dossier.encounterId}\` · **Triage Urgency:** **${triage.urgencyLabel}** · **NON-DEVICE CDS ARCHITECTURE (21 U.S.C. § 360aaa)**\n`
   );
 
   if (triage.escalationBanner) {
