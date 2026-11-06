@@ -2,6 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   cleanVoiceText,
+  splitIntoSpokenChunks,
   VOICE_PERSONAS,
   VOICE_LANGUAGE_GROUPS,
   getVoicePersona,
@@ -225,5 +226,52 @@ Evidence status: Audited.
 
     const previewRindo = await previewVoiceSample("rindo");
     assert.equal(previewRindo, false);
+  });
+
+  it("splits long text into safe, grammatically coherent spoken chunks under 220 chars", () => {
+    const complexLegalMemo = `
+I. STATEMENT OF THE ISSUE
+Pursuant to the applicable provisions of the Federal Acquisition Regulation (FAR) and Title 41 of the United States Code, what legal remedies, procedural mechanisms, and damages are available to the Federal Government where a commercial prime contractor has committed a material breach of a non-severable supply or service contract?
+
+II. CONTROLLING LEGAL RULES & AUTHORITIES
+1. FAR Part 49 (Termination of Contracts) & FAR 52.249-8 (Default - Fixed-Price Supply and Service): Authorizes the Contracting Officer to terminate a contract for default if the contractor fails to deliver supplies or perform services within the time specified.
+2. Procedural Preconditions — Cure Notice & Show Cause Notice (FAR 49.607): For non-delivery failures occurring prior to the contractual expiration date, the Government must issue a formal written Cure Notice affording the contractor a minimum of ten calendar days to cure the defect. If the delivery date has lapsed, no cure notice is required; the Contracting Officer may issue an immediate Show Cause Notice.
+3. Reprocurement and Excess Reprocurement Costs (FAR 49.402-6): Upon termination for default, the Government may acquire similar supplies or services against the contractor's account and hold the defaulted contractor liable for all reasonable excess reprocurement costs incurred.
+    `;
+
+    const cleaned = cleanVoiceText(complexLegalMemo);
+    // When maxLength is omitted, entire memo is preserved without truncation
+    assert.ok(cleaned.length > 800);
+    assert.ok(cleaned.includes("STATEMENT OF THE ISSUE"));
+    assert.ok(cleaned.includes("excess reprocurement costs"));
+
+    const chunks = splitIntoSpokenChunks(cleaned, 220);
+    assert.ok(chunks.length >= 4);
+
+    // Verify every single chunk is within the safe browser speech limit
+    for (const chunk of chunks) {
+      assert.ok(chunk.length <= 220, `Chunk exceeds 220 chars: "${chunk}" (${chunk.length})`);
+      assert.ok(chunk.trim().length > 0);
+    }
+
+    // Verify zero words were cut off or lost across all chunks
+    const combinedChunks = chunks.join(" ");
+    assert.ok(combinedChunks.includes("Contracting Officer"));
+    assert.ok(combinedChunks.includes("Show Cause Notice"));
+    assert.ok(combinedChunks.includes("excess reprocurement costs"));
+  });
+
+  it("retains arbitrarily long text when maxLength is omitted or <= 0", () => {
+    const veryLongParagraph = "Legal precedent analysis continues with thorough diligence across multiple jurisdictions. ".repeat(60);
+    assert.ok(veryLongParagraph.length > 5000);
+
+    const fullCleaned = cleanVoiceText(veryLongParagraph);
+    assert.equal(fullCleaned.length, veryLongParagraph.trim().length);
+
+    const explicitZero = cleanVoiceText(veryLongParagraph, 0);
+    assert.equal(explicitZero.length, veryLongParagraph.trim().length);
+
+    const explicitNegative = cleanVoiceText(veryLongParagraph, -1);
+    assert.equal(explicitNegative.length, veryLongParagraph.trim().length);
   });
 });

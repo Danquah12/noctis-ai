@@ -1476,10 +1476,10 @@ export async function vibeSay(script: string, keyOverride = "", voice = "", spee
     .replace(/[#*`]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
-  if (input.length > 2000) {
-    const candidate = input.slice(0, 2000);
+  if (input.length > 4000) {
+    const candidate = input.slice(0, 4000);
     const lastPunct = Math.max(candidate.lastIndexOf(". "), candidate.lastIndexOf("! "), candidate.lastIndexOf("? "));
-    input = (lastPunct > 1000 ? candidate.slice(0, lastPunct + 1) : candidate).trim();
+    input = (lastPunct > 2000 ? candidate.slice(0, lastPunct + 1) : candidate).trim();
   }
   if (input.length < 2) return { error: "There was nothing to say." };
   try {

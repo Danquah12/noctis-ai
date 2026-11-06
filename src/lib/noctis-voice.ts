@@ -482,8 +482,9 @@ export function isSpeechSynthesisSupported(): boolean {
 /**
  * Sanitizes markdown, LaTeX math formulas, citations, and table formatting
  * into natural, fully intelligible spoken English without mid-sentence cutoffs.
+ * When maxLength is omitted or <= 0, the full text is cleaned without truncation.
  */
-export function cleanVoiceText(rawText: string, maxLength = 1800): string {
+export function cleanVoiceText(rawText: string, maxLength?: number): string {
   if (!rawText) return "";
 
   let spoken = rawText;
@@ -492,14 +493,24 @@ export function cleanVoiceText(rawText: string, maxLength = 1800): string {
   spoken = spoken.replace(/```[\s\S]*?```/g, " [Code snippet omitted for speech] ");
   spoken = spoken.replace(/`([^`]+)`/g, "$1");
 
-  // 2. Remove markdown tables
+  // 2. Remove horizontal rules and decorative dividers
+  spoken = spoken.replace(/^[─\-_=*]{3,}\s*$/gm, " ");
+
+  // 3. Remove markdown tables
   spoken = spoken.replace(/\|[^\n]+\|\n\|[-:| ]+\|\n(?:\|[^\n]+\|\n?)+/g, " [Detailed table summary available in chat] ");
 
-  // 3. Remove metadata gates and callout blocks
+  // 4. Remove metadata gates and callout blocks
   spoken = spoken.replace(/>\s*\[!(?:IMPORTANT|NOTE|WARNING|TIP|CAUTION)\]/gi, " ");
   spoken = spoken.replace(/^>\s*/gm, "");
 
-  // 4. Units and currencies for human pronunciation (before LaTeX stripping)
+  // 5. Legal symbols and statutory references for speech
+  spoken = spoken.replace(/§§\s*/g, "Sections ");
+  spoken = spoken.replace(/§\s*/g, "Section ");
+  spoken = spoken.replace(/\bU\.S\.C\.\b/g, "U S C");
+  spoken = spoken.replace(/\bC\.F\.R\.\b/g, "C F R");
+  spoken = spoken.replace(/\bFAR\b/g, "F A R");
+
+  // 6. Units and currencies for human pronunciation (before LaTeX stripping)
   spoken = spoken.replace(/\$(\d+(?:\.\d+)?)\s*(?:billion|B)\b/gi, "$1 billion dollars");
   spoken = spoken.replace(/\$(\d+(?:\.\d+)?)\s*(?:million|M)\b/gi, "$1 million dollars");
   spoken = spoken.replace(/\$(\d+(?:\.\d+)?)\s*(?:thousand|K)\b/gi, "$1 thousand dollars");
@@ -509,7 +520,7 @@ export function cleanVoiceText(rawText: string, maxLength = 1800): string {
   spoken = spoken.replace(/\b(\d+(?:\.\d+)?)\s*GW\b/gi, "$1 gigawatts");
   spoken = spoken.replace(/\b(\d+(?:\.\d+)?)\s*MW\b/gi, "$1 megawatts");
 
-  // 5. Clean LaTeX math formatting ($...$ and $$...$$)
+  // 7. Clean LaTeX math formatting ($...$ and $$...$$)
   spoken = spoken.replace(/\$\$[\s\S]*?\$\$/g, " ");
   spoken = spoken.replace(/\\times/gi, " times ");
   spoken = spoken.replace(/\\pm/gi, " plus or minus ");
@@ -528,27 +539,27 @@ export function cleanVoiceText(rawText: string, maxLength = 1800): string {
   spoken = spoken.replace(/\\[a-zA-Z]+/g, " ");
   spoken = spoken.replace(/\\%/g, "%");
 
-  // 6. Common abbreviations expanded into natural spoken English
+  // 8. Common abbreviations expanded into natural spoken English
   spoken = spoken.replace(/\be\.g\.,?\s*/gi, "for example, ");
   spoken = spoken.replace(/\bi\.e\.,?\s*/gi, "that is, ");
   spoken = spoken.replace(/\betc\.\b/gi, "etcetera");
   spoken = spoken.replace(/\bvs\.?\s*/gi, " versus ");
   spoken = spoken.replace(/\bapprox\.\s*/gi, "approximately ");
 
-  // 7. Remove audit/claim status stamps
+  // 9. Remove audit/claim status stamps
   spoken = spoken.split(/\b(?:Evidence status|Claim standing|Audit trail):/i)[0];
 
-  // 8. Clean markdown links, headers, bold, italics, bullets
+  // 10. Clean markdown links, headers, bold, italics, bullets
   spoken = spoken.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
   spoken = spoken.replace(/^#+\s+/gm, "");
-  spoken = spoken.replace(/^[*\-+]\s+/gm, "");
+  spoken = spoken.replace(/^[*\-+•]\s+/gm, "");
   spoken = spoken.replace(/[#*`_~]/g, " ");
 
-  // 9. Collapse whitespace
+  // 11. Collapse whitespace
   spoken = spoken.replace(/\s+/g, " ").trim();
 
-  // 10. Sentence-boundary truncation: Never truncate mid-sentence or mid-word
-  if (spoken.length > maxLength) {
+  // 12. Sentence-boundary truncation: Only when maxLength is explicitly provided and positive
+  if (typeof maxLength === "number" && maxLength > 0 && spoken.length > maxLength) {
     const candidate = spoken.slice(0, maxLength);
     const lastPunctuation = Math.max(
       candidate.lastIndexOf(". "),
@@ -564,6 +575,96 @@ export function cleanVoiceText(rawText: string, maxLength = 1800): string {
   }
 
   return spoken;
+}
+
+/**
+ * Splits sanitized text into natural sentence- and clause-bounded chunks
+ * optimized for browser SpeechSynthesis. Each chunk stays under ~220 characters
+ * to eliminate browser audio buffer overflows, GC drops, and the 15-second speech cutoff.
+ */
+export function splitIntoSpokenChunks(text: string, maxChunkLength = 220): string[] {
+  if (!text || !text.trim()) return [];
+
+  // Match sentences ending in ., !, ?, ;, or major delimiters followed by whitespace
+  // Also treat paragraph breaks and list item bullets as natural pauses
+  const sentences = text
+    .split(/(?<=[.?!;:])\s+|\n{2,}/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const chunks: string[] = [];
+  let buffer = "";
+
+  for (const sentence of sentences) {
+    if (!sentence) continue;
+
+    // If the sentence itself is short enough to fit in current buffer
+    if (buffer && (buffer + " " + sentence).length <= maxChunkLength) {
+      buffer = buffer + " " + sentence;
+      continue;
+    }
+
+    // Flush existing buffer if adding this sentence exceeds maxChunkLength
+    if (buffer) {
+      chunks.push(buffer.trim());
+      buffer = "";
+    }
+
+    // If the single sentence is <= maxChunkLength, start a new buffer with it
+    if (sentence.length <= maxChunkLength) {
+      buffer = sentence;
+      continue;
+    }
+
+    // The sentence is longer than maxChunkLength: split by sub-clauses (commas, colons, dashes)
+    const subClauses = sentence.split(/(?<=[,:\u2014\u2013\-])\s+/);
+    let clauseBuffer = "";
+
+    for (const clause of subClauses) {
+      if (!clause) continue;
+
+      if (clauseBuffer && (clauseBuffer + " " + clause).length <= maxChunkLength) {
+        clauseBuffer = clauseBuffer + " " + clause;
+        continue;
+      }
+
+      if (clauseBuffer) {
+        chunks.push(clauseBuffer.trim());
+        clauseBuffer = "";
+      }
+
+      if (clause.length <= maxChunkLength) {
+        clauseBuffer = clause;
+        continue;
+      }
+
+      // If even a sub-clause exceeds maxChunkLength, break down cleanly by words
+      const words = clause.split(/\s+/);
+      let wordBuffer = "";
+      for (const word of words) {
+        if (!word) continue;
+        if (wordBuffer && (wordBuffer + " " + word).length <= maxChunkLength) {
+          wordBuffer = wordBuffer + " " + word;
+        } else {
+          if (wordBuffer) chunks.push(wordBuffer.trim());
+          wordBuffer = word;
+        }
+      }
+      if (wordBuffer) {
+        clauseBuffer = wordBuffer;
+      }
+    }
+
+    if (clauseBuffer) {
+      buffer = clauseBuffer;
+    }
+  }
+
+  if (buffer.trim()) {
+    chunks.push(buffer.trim());
+  }
+
+  return chunks;
 }
 
 /**
@@ -628,42 +729,56 @@ export function pickHumanBrowserVoice(
   return sorted[0] || null;
 }
 
-// Global active audio and speech references
-let activeUtterance: SpeechSynthesisUtterance | null = null;
+// Global active audio, speech, and session references
+let activeUtterances: SpeechSynthesisUtterance[] = [];
 let currentAudioElement: HTMLAudioElement | null = null;
 let keepAliveTimer: number | null = null;
+let activeSessionId = 0;
 
 /**
  * Stops all currently active audio playback (both Web Speech and HTML5 Audio).
  */
 export function stopCurrentVoicePlayback(): void {
+  activeSessionId++;
   if (typeof window !== "undefined") {
     if (window.speechSynthesis) {
-      window.speechSynthesis.cancel();
+      try {
+        window.speechSynthesis.cancel();
+      } catch {}
     }
     if (currentAudioElement) {
       try {
         currentAudioElement.pause();
         currentAudioElement.currentTime = 0;
-        currentAudioElement = null;
       } catch {}
+      currentAudioElement = null;
     }
     if (keepAliveTimer !== null) {
       window.clearInterval(keepAliveTimer);
       keepAliveTimer = null;
     }
+    activeUtterances = [];
+    try {
+      (window as unknown as { __noctisSpeechUtterances?: SpeechSynthesisUtterance[] }).__noctisSpeechUtterances = [];
+    } catch {}
   }
 }
 
 /**
- * Executes natural speech synthesis using the browser Web Speech API.
- * Uses intelligent voice picking for maximum human warmth, language fidelity, and clarity.
+ * Executes natural, uninterrupted speech synthesis using the browser Web Speech API.
+ * Uses sentence-level chunking and continuous utterance queuing to eliminate browser
+ * audio buffer overflows and the 15-second speech cutoff bug in Chromium and WebKit.
  */
 export function speakBrowserVoice(
   text: string,
   persona: VoicePersona = "maple",
   rate = 1.0,
-  langCode?: string
+  langCode?: string,
+  options?: {
+    onStart?: () => void;
+    onEnd?: () => void;
+    onChunk?: (current: number, total: number) => void;
+  }
 ): Promise<boolean> {
   return new Promise((resolve) => {
     if (!isSpeechSynthesisSupported()) {
@@ -676,70 +791,147 @@ export function speakBrowserVoice(
         window.speechSynthesis.resume();
       }
 
-      const cleaned = cleanVoiceText(text, 1400);
+      // Clean the entire text without arbitrary truncation (maxLength omitted)
+      const cleaned = cleanVoiceText(text);
       if (!cleaned) {
+        if (options?.onEnd) options.onEnd();
         resolve(true);
         return;
       }
 
-      // If already speaking, cancel previous
+      // Cancel previous playback and claim a new session ID
       stopCurrentVoicePlayback();
+      const thisSession = ++activeSessionId;
 
-      const utterance = new SpeechSynthesisUtterance(cleaned);
-      activeUtterance = utterance; // Keep reference to prevent GC!
+      // Split into small, natural phrase chunks (< 220 chars) to prevent Chrome timeouts
+      const chunks = splitIntoSpokenChunks(cleaned, 220);
+      if (chunks.length === 0) {
+        if (options?.onEnd) options.onEnd();
+        resolve(true);
+        return;
+      }
 
       const info = getVoicePersona(persona);
       const effectiveLang = langCode || info.languageCode || "en-US";
-      utterance.lang = effectiveLang;
-      utterance.rate = rate;
-      utterance.pitch = info.gender === "female" ? 1.05 : info.gender === "male" ? 0.94 : 1.0;
+      const pitch = info.gender === "female" ? 1.05 : info.gender === "male" ? 0.94 : 1.0;
 
+      let preferredVoice: SpeechSynthesisVoice | null = null;
       const assignVoice = () => {
         const voices = window.speechSynthesis.getVoices();
         if (voices && voices.length > 0) {
-          const chosen = pickHumanBrowserVoice(voices, persona, effectiveLang);
-          if (chosen) utterance.voice = chosen;
+          preferredVoice = pickHumanBrowserVoice(voices, persona, effectiveLang);
         }
       };
-
       assignVoice();
-      if (!utterance.voice && window.speechSynthesis.onvoiceschanged !== undefined) {
+      if (!preferredVoice && window.speechSynthesis.onvoiceschanged !== undefined) {
         window.speechSynthesis.onvoiceschanged = assignVoice;
       }
 
-      let settled = false;
-      const done = () => {
-        if (settled) return;
-        settled = true;
-        activeUtterance = null;
+      let currentIndex = 0;
+      let isSettled = false;
+
+      const cleanup = () => {
         if (keepAliveTimer !== null) {
           window.clearInterval(keepAliveTimer);
           keepAliveTimer = null;
         }
-        resolve(true);
+        activeUtterances = [];
+        try {
+          (window as unknown as { __noctisSpeechUtterances?: SpeechSynthesisUtterance[] }).__noctisSpeechUtterances = [];
+        } catch {}
       };
 
-      utterance.onend = done;
-      utterance.onerror = () => {
-        done();
+      const finish = (success: boolean) => {
+        if (isSettled) return;
+        isSettled = true;
+        cleanup();
+        if (options?.onEnd) options.onEnd();
+        resolve(success);
       };
 
-      // Workaround for Chrome auto-pause bug during longer utterances
+      // Watchdog & Keep-alive timer: Prevents Chrome speech engine from freezing after 14 seconds
       keepAliveTimer = window.setInterval(() => {
-        if (!window.speechSynthesis.speaking) {
-          if (keepAliveTimer !== null) {
-            window.clearInterval(keepAliveTimer);
-            keepAliveTimer = null;
-          }
-        } else {
+        if (thisSession !== activeSessionId) {
+          cleanup();
+          return;
+        }
+        if (window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        } else if (window.speechSynthesis.speaking) {
+          window.speechSynthesis.pause();
           window.speechSynthesis.resume();
         }
-      }, 2500);
+      }, 3000);
 
-      window.speechSynthesis.speak(utterance);
-      if (window.speechSynthesis.paused) {
-        window.speechSynthesis.resume();
-      }
+      if (options?.onStart) options.onStart();
+
+      const speakNextChunk = () => {
+        if (thisSession !== activeSessionId) {
+          finish(false);
+          return;
+        }
+
+        if (currentIndex >= chunks.length) {
+          // Entire text read successfully to completion!
+          finish(true);
+          return;
+        }
+
+        const chunkText = chunks[currentIndex];
+        currentIndex++;
+
+        try {
+          const utterance = new SpeechSynthesisUtterance(chunkText);
+          utterance.lang = effectiveLang;
+          utterance.rate = rate;
+          utterance.pitch = pitch;
+
+          if (!preferredVoice) {
+            assignVoice();
+          }
+          if (preferredVoice) {
+            utterance.voice = preferredVoice;
+          }
+
+          // Retain strong references in memory to prevent V8 garbage collection mid-speech
+          activeUtterances.push(utterance);
+          if (activeUtterances.length > 25) activeUtterances.shift();
+          try {
+            (window as unknown as { __noctisSpeechUtterances?: SpeechSynthesisUtterance[] }).__noctisSpeechUtterances = activeUtterances;
+          } catch {}
+
+          if (options?.onChunk) {
+            options.onChunk(currentIndex, chunks.length);
+          }
+
+          let chunkFinished = false;
+          const onChunkDone = () => {
+            if (chunkFinished) return;
+            chunkFinished = true;
+            if (thisSession === activeSessionId) {
+              speakNextChunk();
+            }
+          };
+
+          utterance.onend = onChunkDone;
+          utterance.onerror = () => {
+            if (thisSession !== activeSessionId) return;
+            // On non-fatal chunk error, continue seamlessly to the next chunk
+            onChunkDone();
+          };
+
+          window.speechSynthesis.speak(utterance);
+          if (window.speechSynthesis.paused) {
+            window.speechSynthesis.resume();
+          }
+        } catch {
+          if (thisSession === activeSessionId) {
+            speakNextChunk();
+          }
+        }
+      };
+
+      speakNextChunk();
     } catch {
       resolve(false);
     }
@@ -748,9 +940,9 @@ export function speakBrowserVoice(
 
 /**
  * Unified human speech synthesis engine.
- * First attempts Studio-Quality Neural TTS (OpenAI tts-1 with human inflection & breathing)
- * when an API key or server endpoint is configured.
- * Seamlessly falls back to the device's highest-quality natural browser voice.
+ * First attempts Studio-Quality Neural TTS (OpenAI tts-1) when configured.
+ * Seamlessly falls back to the device's natural browser speech engine with
+ * complete sentence-level chunking and continuous keep-alive playback.
  */
 export async function speakNoctisVoice(
   text: string,
@@ -758,70 +950,74 @@ export async function speakNoctisVoice(
   options?: {
     apiKey?: string;
     langCode?: string;
+    rate?: number;
     onStart?: () => void;
     onEnd?: () => void;
+    onChunk?: (current: number, total: number) => void;
   }
 ): Promise<boolean> {
   stopCurrentVoicePlayback();
 
   const info = getVoicePersona(persona);
+  const effectiveLang = options?.langCode || info.languageCode || "en-US";
+  const cleaned = cleanVoiceText(text);
 
-  // 1. Try Studio-Quality Human Neural TTS if available (OpenAI tts-1)
-  if (persona !== "natural") {
+  if (!cleaned) {
+    if (options?.onEnd) options.onEnd();
+    return true;
+  }
+
+  // 1. Try Studio-Quality Human Neural TTS if available (OpenAI tts-1 for <= 3800 chars)
+  if (persona !== "natural" && cleaned.length <= 3800) {
     try {
       const { sayVibe } = await import("@/lib/noctis-api");
-      const cleanedForTts = cleanVoiceText(text, 1800);
-      if (cleanedForTts) {
-        // Map modern personas to closest OpenAI TTS voices if legacy endpoint only accepts alloy/nova/onyx/echo/shimmer/fable
-        let ttsVoice = "alloy";
-        if (["onyx", "spruce", "cove", "arbor", "rivage", "miko", "neer", "rindo", "hanul", "tinta"].includes(persona)) {
-          ttsVoice = "onyx";
-        } else if (["nova", "maple", "breeze", "juniper", "viola", "vale", "aube", "sonna", "leher", "himari", "haetsal", "arrullo"].includes(persona)) {
-          ttsVoice = "nova";
-        } else if (persona === "echo") {
-          ttsVoice = "echo";
-        }
+      let ttsVoice = "alloy";
+      if (["onyx", "spruce", "cove", "arbor", "rivage", "miko", "neer", "rindo", "hanul", "tinta"].includes(persona)) {
+        ttsVoice = "onyx";
+      } else if (["nova", "maple", "breeze", "juniper", "viola", "vale", "aube", "sonna", "leher", "himari", "haetsal", "arrullo"].includes(persona)) {
+        ttsVoice = "nova";
+      } else if (persona === "echo") {
+        ttsVoice = "echo";
+      }
 
-        const res = await sayVibe({
-          data: {
-            text: cleanedForTts,
-            voice: ttsVoice,
-            speed: 1.0,
-            keyOverride: options?.apiKey || "",
-          },
-        });
-        const bag = res && typeof res === "object" ? (res as { audio?: unknown; result?: unknown; error?: unknown }) : {};
-        const inner = bag.result && typeof bag.result === "object" ? (bag.result as { audio?: unknown; error?: unknown }) : bag;
-        const audioUrl = typeof inner.audio === "string" ? inner.audio : "";
-        if (audioUrl && audioUrl.startsWith("data:audio/")) {
-          const played = await new Promise<boolean>((resolve) => {
-            try {
-              const audio = new Audio(audioUrl);
-              currentAudioElement = audio;
-              if (options?.onStart) options.onStart();
-              audio.onended = () => {
-                currentAudioElement = null;
-                if (options?.onEnd) options.onEnd();
-                resolve(true);
-              };
-              audio.onerror = () => {
-                currentAudioElement = null;
-                resolve(false);
-              };
-              audio.play().catch(() => {
-                currentAudioElement = null;
-                resolve(false);
-              });
-            } catch {
+      const res = await sayVibe({
+        data: {
+          text: cleaned,
+          voice: ttsVoice,
+          speed: options?.rate || 1.0,
+          keyOverride: options?.apiKey || "",
+        },
+      });
+      const bag = res && typeof res === "object" ? (res as { audio?: unknown; result?: unknown; error?: unknown }) : {};
+      const inner = bag.result && typeof bag.result === "object" ? (bag.result as { audio?: unknown; error?: unknown }) : bag;
+      const audioUrl = typeof inner.audio === "string" ? inner.audio : "";
+      if (audioUrl && audioUrl.startsWith("data:audio/")) {
+        const played = await new Promise<boolean>((resolve) => {
+          try {
+            const audio = new Audio(audioUrl);
+            currentAudioElement = audio;
+            if (options?.onStart) options.onStart();
+            audio.onended = () => {
+              currentAudioElement = null;
+              if (options?.onEnd) options.onEnd();
+              resolve(true);
+            };
+            audio.onerror = () => {
               currentAudioElement = null;
               resolve(false);
-            }
-          });
-
-          if (played) {
-            return true;
+            };
+            audio.play().catch(() => {
+              currentAudioElement = null;
+              resolve(false);
+            });
+          } catch {
+            currentAudioElement = null;
+            resolve(false);
           }
-          // If neural playback failed or was blocked by autoplay, cascade to browser voice
+        });
+
+        if (played) {
+          return true;
         }
       }
     } catch {
@@ -829,11 +1025,9 @@ export async function speakNoctisVoice(
     }
   }
 
-  // 2. Fallback to Browser Natural Human Voice
-  if (options?.onStart) options.onStart();
-  const success = await speakBrowserVoice(text, persona, 1.0, options?.langCode || info.languageCode);
-  if (options?.onEnd) options.onEnd();
-  return success;
+  // 2. Uninterrupted Browser Natural Human Voice Fallback
+  // Handles arbitrarily long text without mid-stream cutoffs or timeouts
+  return speakBrowserVoice(cleaned, persona, options?.rate || 1.0, effectiveLang, options);
 }
 
 /**
