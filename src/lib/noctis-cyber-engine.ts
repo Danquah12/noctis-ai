@@ -384,6 +384,15 @@ export function extractCyberIncidentTelemetry(question: string): ExtractedCyberT
         : "East-west lateral movement via SMB admin shares, PsExec/WMI, or RDP reported.",
     });
   }
+  if (/\b(msds-keycredentiallink|shadow\s+credential|whisker|pkinit|pre-authentication\s+type\s+16|preauth\s+type\s+16|keycredential)\b/i.test(qCtx)) {
+    mitreTechniques.push({
+      technique_id: "T1098.005 / T1556.001",
+      name: "Account Manipulation: Shadow Credentials (`msDS-KeyCredentialLink`) & PKINIT Pre-Authentication",
+      tactic: "Persistence / Credential Access / Privilege Escalation (TA0003 / TA0006 / TA0004)",
+      status: "observed_indicator",
+      evidence_in_prompt: "Write modification of `msDS-KeyCredentialLink` (Event ID 5136) and Kerberos PKINIT TGT request (Event ID 4768 pre-auth type 16) observed.",
+    });
+  }
   if (isCloudOrIdentityAttack || accountsMentioned.length > 0) {
     mitreTechniques.push({
       technique_id: "T1078",
@@ -968,6 +977,16 @@ export function handleNaturalCyberSecurityQuery(question: string): string | null
   };
 
   const threatHypotheses = [
+    ...(/\b(msds-keycredentiallink|shadow\s+credential|whisker|pkinit)\b/i.test(question)
+      ? [
+          {
+            hypothesis: "Active Directory Shadow Credentials persistence and privilege escalation via msDS-KeyCredentialLink",
+            status: "observed_requires_immediate_isolation",
+            mitre_techniques: ["T1098.005", "T1556.001", "T1078.002"],
+            basis: `Adversary injected an unauthorized raw X.509 public key into \`msDS-KeyCredentialLink\` on ${t.accountsMentioned.find(a => !/helpdesk/i.test(a)) || "DA-Admin"}, enabling passwordless Kerberos TGT acquisition via PKINIT pre-authentication (Event ID 4768).`,
+          },
+        ]
+      : []),
     ...(t.isRansomwareOrShadowDelete
       ? [
           {
@@ -1235,7 +1254,27 @@ export function handleNaturalCyberSecurityQuery(question: string): string | null
 
   const questionsAnswered = explicitQuestions.map((qStr) => {
     let directAnswer = `Maintain strict ${t.urgency} containment on ${t.affectedAssets.join(", ") || "affected assets"}, revoke active credentials/sessions for ${t.accountsMentioned.join(", ") || "compromised accounts"}, preserve volatile memory before remediation, and block outbound C2/exfiltration indicators (${[...externalC2Ips, ...t.domainsAndUrls].join(", ") || "all untrusted egress"}).`;
-    if (/\b(?:password\s+reset|aitm|session\s+hijack|fail\s+to\s+contain)\b/i.test(qStr)) {
+    if (/\b(?:shadow\s+credential|msds-keycredentiallink|pkinit|pre-authentication\s+type\s+16)\b/i.test(qStr) || (/\b(exact\s+attack|what\s+attack|mitre.*mapping)\b/i.test(qStr) && /\b(msds-keycredentiallink|shadow\s+credential|pkinit)\b/i.test(question))) {
+      directAnswer = `**1. Attack Technique:** **Shadow Credentials (Whisker / PyWhisker)** targeting Active Directory Key Trust.
+**2. MITRE ATT&CK Mappings:**
+- **T1098.005** (Account Manipulation: Device Registration / Key Credential Link)
+- **T1556.001** (Modify Authentication Process: Hybrid Identity / PKINIT Pre-Authentication)
+- **T1078.002** (Valid Accounts: Domain Accounts)`;
+    } else if (/\b(?:how.*attacker.*leverage|obtain.*tgt|without.*password|pre-authentication\s+type\s+16)\b/i.test(qStr) && /\b(msds-keycredentiallink|pkinit|shadow\s+credential)\b/i.test(question)) {
+      directAnswer = `The attacker leveraged delegated write permissions (\`GenericWrite\` or \`WriteProperty\`) over \`${t.accountsMentioned.find(a => !/helpdesk/i.test(a)) || "DA-Admin"}\`'s \`msDS-KeyCredentialLink\` attribute. This attribute stores raw X.509 public keys (KeyCredential binary structure) used by **Windows Hello for Business (WHfB)** and certificate-based authentication. The attacker generated an RSA-2048 keypair locally, wrote the public key into the target's attribute via LDAP (Event ID 5136), and then requested a Kerberos Ticket-Granting Ticket (TGT) via **PKINIT (pre-authentication type 16)** (Event ID 4768) using the corresponding private key. The Domain Controller's Key Distribution Center (KDC) verified the cryptographic signature against the public key stored on the target object and issued a valid TGT without ever requiring the user's password.`;
+    } else if (/\b(?:safely\s+eradicate|containment\s+protocol|without\s+locking\s+out|how\s+do\s+we\s+safely)\b/i.test(qStr) && /\b(msds-keycredentiallink|pkinit|shadow\s+credential)\b/i.test(question)) {
+      directAnswer = `Execute the following safe eradication and containment sequence without locking out legitimate administrators:
+1. **Clear Rogue KeyCredential:** Inspect and clear the unauthorized certificate from the target user attribute immediately:
+\`\`\`powershell
+# Clear rogue shadow credentials from target account
+Set-ADUser -Identity "${t.accountsMentioned.find(a => !/helpdesk/i.test(a)) || "DA-Admin"}" -Clear "msDS-KeyCredentialLink"
+\`\`\`
+2. **Revoke Active TGTs & Reset High-Privilege Account:** Reset the password of \`${t.accountsMentioned.find(a => !/helpdesk/i.test(a)) || "DA-Admin"}\` and revoke all active Kerberos ticket-granting tickets.
+3. **Isolate and Audit the Source Account:** Immediately disable \`${t.accountsMentioned.find(a => /helpdesk/i.test(a)) || "helpdesk-svc"}\` and revoke its active sessions.
+4. **ACL / Permission Remediation:** Audit the Access Control Lists (ACLs) on Tier-0 accounts and \`AdminSDHolder\`. Remove the unauthorized \`GenericWrite\` / \`WriteProperty (msDS-KeyCredentialLink)\` ACEs that enabled the compromise.
+5. **krbtgt Double-Rotation:** After confirming that active persistence is eradicated from the Domain Controllers, execute a coordinated **double-rotation of the krbtgt account password** (spaced to allow replication) to invalidate any forged Golden Tickets.
+6. **Host Isolation:** Isolate ${t.affectedAssets.join(", ") || "DC02"} at the network layer while keeping power ON to capture volatile memory (RAM) and investigate initial access.`;
+    } else if (/\b(?:password\s+reset|aitm|session\s+hijack|fail\s+to\s+contain)\b/i.test(qStr)) {
       directAnswer = `A standard password reset only updates the user's password hash in Entra ID/Active Directory, but does NOT invalidate active session tokens. In an Adversary-in-the-Middle (AiTM) attack, the adversary intercepts the post-MFA **Primary Refresh Token (PRT)** and active session cookies (\`ESTSAUTH\`, \`ESTSAUTHPERSISTENT\`). These stolen session artifacts remain valid until their expiration or until explicitly revoked via \`Revoke-MgUserSignInSession\`. Furthermore, the adversary established persistence by registering a multi-tenant OAuth application with \`offline_access\` and \`Mail.ReadWrite\` / \`Files.ReadWrite.All\` consent; this application operates via independent refresh/access tokens directly against Microsoft Graph, functioning completely decoupled from the user's password.`;
     } else if (/\b(?:powershell|microsoft\s+graph|command\s+sequence|revoke.*token|clear\s+session|terminate.*oauth)\b/i.test(qStr)) {
       directAnswer = `Execute the following Microsoft Graph PowerShell sequence to revoke all active tokens, invalidate sessions, and purge the rogue OAuth registration:
