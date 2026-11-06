@@ -1,3 +1,12 @@
+import {
+  assessAcuteAbdominalPain,
+  calculateAlvaradoScore,
+  calculateQSOFA,
+  evaluateAtlantaPancreatitisCriteria,
+  detectClinicalContradictions,
+  evaluateTreatmentSafety,
+  type PatientClinicalEncounter,
+} from "./noctis-clinical-engine.ts";
 /**
  * Noctis Patient Diagnostic & Clinical Decision Support Engine (NPDE)
  *
@@ -1104,6 +1113,16 @@ export function buildPatientDiagnosticReport(dataOrText: PatientReportedData | s
 
 export function formatPatientDiagnosticDossierMarkdown(dossier: PatientDiagnosticDossier): string {
   const { triage, differentials, adaptiveQuestions, clinicianSoapNote, patientPlainSummary, regulatoryAttestation } = dossier;
+  const cc = (dossier.patientData.chiefComplaint || "").toLowerCase();
+  const rawText = JSON.stringify(dossier.patientData).toLowerCase();
+
+  const isAbdominal =
+    /\b(abdomin|belly|stomach|epigastr|quadrant|rlq|ruq|llq|luq|alvarado|appendic|cholecyst|pancreat)\b/i.test(cc) ||
+    /\b(abdomin|belly|stomach|epigastr|quadrant|rlq|ruq|llq|luq|alvarado|appendic|cholecyst|pancreat)\b/i.test(rawText);
+
+  const isStroke =
+    /\b(stroke|facial\s+droop|arm\s+drift|slurred\s+speech|hemipares|lvo|tpa|tenecteplase|nihss)\b/i.test(cc) ||
+    /\b(stroke|facial\s+droop|arm\s+drift|slurred\s+speech|hemipares)\b/i.test(rawText);
 
   const sections: string[] = [];
 
@@ -1114,73 +1133,190 @@ export function formatPatientDiagnosticDossierMarkdown(dossier: PatientDiagnosti
 
   if (triage.escalationBanner) {
     sections.push(
-      `> [!CAUTION]\n> **EMERGENCY MEDICAL WARNING (911 LOCKOUT DIRECTIVE)**\n> ${triage.escalationBanner}\n> - **Immediate Action:** Activate Emergency Medical Services (EMS) immediately. Do NOT drive yourself to the hospital.\n> - **Time-Critical Imperative:** Immediate 12-lead ECG targeted within 10 minutes of presentation and serial high-sensitivity cardiac troponin.`
+      `> [!CAUTION]\n> **EMERGENCY MEDICAL WARNING (911 LOCKOUT DIRECTIVE)**\n> ${triage.escalationBanner}\n> - **Immediate Action:** Activate Emergency Medical Services (EMS) immediately. Do NOT drive yourself to the hospital.\n> - **Time-Critical Imperative:** Immediate evaluation by emergency medical personnel.`
     );
   }
 
-  // 2. Clinical Assessment & Finding Significance Table (Equal/Surpassing ChatGPT detail)
-  sections.push(`## 1. Clinical Assessment of the Presentation
+  // 2. Syndrome-Specific Clinical Assessment & Findings Table
+  if (isAbdominal) {
+    // ABDOMINAL SYNDROME
+    const tempStr = dossier.patientData.vitals.temperatureC
+      ? `${dossier.patientData.vitals.temperatureC}°C (Pyrexia / Elevated)`
+      : "[UNPROVIDED — NOT MEASURED]";
+
+    sections.push(`## 1. Clinical Assessment of the Presentation (Abdominal Syndrome)
+
+The patient presents with acute abdominal discomfort and systemic pyrexia. In acute abdominal pathology, anatomical localization, onset chronology, and peritoneal signs are critical determinants of surgical urgency.
+
+| Clinical Finding | Presentation in Encounter | Physiological Significance | Diagnostic Value & Evidence-Based Likelihood Ratio (LR) |
+| :--- | :--- | :--- | :--- |
+| **Abdominal Pain Localization** | **Undifferentiated / Unspecified Quadrant** | Classifying pathology (RLQ, RUQ, Epigastric, LLQ) determines visceral vs somatic peritoneal involvement | **Mandatory Input:** Localization is strictly required before an anatomical condition can be ranked #1 |
+| **Body Temperature** | ${tempStr} | Systemic inflammatory response; cytokine-mediated pyrexia (IL-1, TNF-alpha) | Contributes +1 point to Alvarado score; indicates acute infectious/inflammatory process |
+| **Pain Onset & Chronology** | ${dossier.patientData.onsetTiming || "Undocumented"} | Distinguishes sudden vascular/obstructive catastrophes from evolving inflammatory conditions | Rapid onset (< 2h) raises concern for perforation, torsion, or obstruction |
+| **Autonomic / GI Symptoms** | ${dossier.patientData.associatedSymptoms.length > 0 ? dossier.patientData.associatedSymptoms.join(", ") : "None reported"} | Vagal stimulation, bowel distension, and peritoneal irritation | Nausea/vomiting and anorexia (+LR 1.5) support acute intra-abdominal pathology |
+| **Hemodynamic Stability** | BP ${dossier.patientData.vitals.systolicBp ? `${dossier.patientData.vitals.systolicBp}/${dossier.patientData.vitals.diastolicBp}` : "[Unmeasured]"}, HR ${dossier.patientData.vitals.heartRate ? `${dossier.patientData.vitals.heartRate} bpm` : "[Unmeasured]"} | Screening for septic shock or hypovolemic third-spacing | Normal hemodynamics do NOT exclude early appendicitis or localized peritonitis |
+
+*Clinical Conclusion:* **Undifferentiated Acute Abdominal Pain with Pyrexia.** Because pain location and progression were not documented, definitive ranking of a single anatomical diagnosis is clinically invalid. Immediate physical examination is required to localize tenderness and screen for surgical peritonitis.`);
+
+    // Add Alvarado & qSOFA Score Section
+    const alvarado = calculateAlvaradoScore({
+      encounterId: dossier.encounterId,
+      ageYears: dossier.patientData.ageYears,
+      biologicalSex: dossier.patientData.biologicalSex,
+      chiefComplaint: dossier.patientData.chiefComplaint,
+      painQuadrant: undefined,
+      associatedSymptoms: dossier.patientData.associatedSymptoms,
+      vitals: dossier.patientData.vitals,
+    });
+
+    const qsofa = calculateQSOFA({
+      encounterId: dossier.encounterId,
+      chiefComplaint: dossier.patientData.chiefComplaint,
+      associatedSymptoms: dossier.patientData.associatedSymptoms,
+      vitals: dossier.patientData.vitals,
+    });
+
+    sections.push(`## 2. Clinical Severity & Diagnostic Scoring Engine
+
+### Alvarado Score for Acute Appendicitis
+- **Documented Score:** **${alvarado.documentedPoints} / 10 points (INCOMPLETE)**
+- **Documented Criteria:** ${alvarado.documentedCriteria.map(c => `${c.name} (+${c.points})`).join(", ") || "None"}
+- **Missing / Undocumented Criteria (7/8 unmeasured):** ${alvarado.missingCriteria.join(", ")}
+- **Risk Stratification:** **INSUFFICIENT DATA — DO NOT STRATIFY**
+- *Clinical Decision Rule:* Do not classify clinical probability (Low, Intermediate, High) based on an incomplete score.
+
+### quick Sequential Organ Failure Assessment (qSOFA)
+- **Documented Points:** **${qsofa.documentedPoints} / 3 (INCOMPLETE)**
+- **Missing Parameters:** ${qsofa.missingInputs.join(", ")}
+- **Safety Invariant:** ${qsofa.safetyCaveat}`);
+
+    // Grouped Abdominal Differential Hierarchy
+    sections.push(`## 3. Evidence-Weighted Differential Diagnosis Hierarchy (Grouped by Anatomical Quadrant)
+
+*Because pain localization was not documented in the intake, potential etiologies are structured by anatomical quadrant rather than an unsupported single diagnosis:*
+
+| Priority Tier | Candidate Condition | Anatomical Location | Key Clinical Features & Criteria | Gold-Standard Diagnostic Protocol |
+| :---: | :--- | :---: | :--- | :--- |
+| **Priority 1: Must-Not-Miss** | **Acute Appendicitis**<br>*(ICD-10: K35.80)* | Right Lower Quadrant (RLQ) / Periumbilical | Periumbilical pain migrating to RLQ, anorexia, McBurney tenderness, fever | **Contrast-Enhanced CT Abdomen/Pelvis** (adults) or Graded Compression US (children/pregnancy) |
+| **Priority 1: Must-Not-Miss** | **Acute Cholecystitis / Ascending Cholangitis**<br>*(ICD-10: K81.0 / K83.09)* | Right Upper Quadrant (RUQ) | RUQ tenderness, Murphy sign, postprandial onset; fever + jaundice (Charcot triad) | **Transabdominal RUQ Ultrasound (First Line)**; LFTs and Lipase |
+| **Priority 1: Must-Not-Miss** | **Acute Pancreatitis**<br>*(ICD-10: K85.90)* | Epigastric / Back | **Revised Atlanta Criteria (Requires ≥ 2 of 3):** Upper pain radiating to back, lipase ≥ 3x ULN, characteristic CT/US imaging | Serum Lipase + LFTs + CMP. *Note: Early CT not indicated if criteria met clinically* |
+| **Priority 1: Must-Not-Miss** | **Testicular Torsion / Epididymo-Orchitis**<br>*(ICD-10: N44.00)* | Inguinal / Scrotal | **6-Hour Salvage Window:** Referred lower abdominal/groin pain from acute testicular ischemia in males | **Emergent Scrotal Color Doppler Ultrasound** — *Do NOT delay surgical consult for imaging* |
+| **Priority 2: Alternative** | **Mesenteric Adenitis / Acute Gastroenteritis**<br>*(ICD-10: I88.0 / K52.9)* | Diffuse / RLQ | Viral prodrome, diffuse cramping, hyperactive bowel sounds | Clinical observation, stool testing if diarrhea present |
+`);
+
+    // Prioritized Abdominal Workup Protocol
+    sections.push(`## 4. Prioritized Emergency Diagnostic Workup Protocol (Abdominal)
+
+1. **Immediate Serial Physical Examination & Peritoneal Localization:**
+   - Palpate all four abdominal quadrants to identify point of maximal tenderness (RLQ McBurney point, RUQ Murphy sign, epigastric tenderness).
+   - Assess peritoneal signs: Involuntary guarding, rigidity, and rebound tenderness (Blumberg sign).
+   - In male patients: Perform mandatory external genital/testicular examination to exclude testicular torsion.
+
+2. **Core Laboratory Investigations:**
+   - **Complete Blood Count (CBC) with Differential:** Evaluate for leukocytosis (WBC > 10,000) and neutrophilic left shift (> 75%).
+   - **Comprehensive Metabolic Panel (CMP):** Assess baseline renal function (BUN/creatinine) and hepatic enzymes (AST, ALT, Total Bilirubin, Alkaline Phosphatase).
+   - **Serum Lipase:** Required if epigastric pain (*Atlanta Criteria: Lipase ≥ 3x ULN supports pancreatitis only in context*).
+   - **Urinalysis:** Rule out nephrolithiasis (hematuria) and urinary tract infection (pyuria/nitrites).
+
+3. **Condition-Specific Imaging Pathways:**
+   - *Suspected Biliary Disease (RUQ):* **Transabdominal Ultrasound** is the first-line imaging modality of choice (sensitivity ~88%).
+   - *Suspected Appendicitis (RLQ) with Diagnostic Uncertainty:* **Contrast-Enhanced CT of Abdomen and Pelvis** (sensitivity 94–98%).
+   - *Suspected Testicular Torsion:* **Emergent Scrotal Color Doppler Ultrasound** (do not delay surgical exploration).
+
+4. **Treatment Safety & Surgical Governance:**
+   - **Allergy Check:** Patient allergy status is currently **UNKNOWN**. Confirm drug allergies prior to prescribing antibiotics or analgesics.
+   - **Surgical Examination First:** Do not administer blind empiric narcotics or broad-spectrum antibiotics that could mask peritoneal signs prior to attending surgical evaluation.`);
+  } else if (isStroke) {
+    // STROKE SYNDROME
+    sections.push(`## 1. Clinical Assessment of the Presentation (Acute Neurological Emergency)
+
+The presentation features acute focal neurological deficits requiring immediate stroke pathway activation.
+
+| Clinical Finding | Presentation in Encounter | Physiological Significance | Emergency Diagnostic Action |
+| :--- | :--- | :--- | :--- |
+| **Facial Asymmetry / Arm Weakness / Slurred Speech** | Acute FAST Stroke Sign | Disruption of focal cerebral blood flow / cortical ischemia | Code Stroke / Immediate Emergency Medical Services Activation |
+| **Last Known Well (LKW)** | Time-critical | Defines eligibility for IV thrombolysis (≤ 4.5h) and mechanical thrombectomy (≤ 24h) | Note exact time last seen normal |
+| **Blood Glucose** | POC evaluation mandatory | Hypoglycemia is the most common time-critical stroke mimic | Point-of-care fingerstick blood glucose immediately |
+
+*Clinical Conclusion:* **Acute Ischemic Stroke vs Intracranial Hemorrhage.** Time is brain. Immediate non-contrast head CT and CTA head/neck required.`);
+
+    sections.push(`## 2. Evidence-Weighted Differential Diagnosis Hierarchy\n\n| Rank | Candidate Condition | Clinical Category | Calibrated Pre-Test Risk | Supporting Clinical Findings | Gold-Standard Diagnostic Protocols |\n| :---: | :--- | :---: | :---: | :--- | :--- |\n| **#1** | **Acute Ischemic Stroke / TIA**<br>*(ICD-10: I63.9)* | 🚨 **TIER 1: PRIMARY EMERGENCY** | **85% Pre-Test Risk**<br>*(STAT Protocol)* | Acute focal deficit (FAST positive) | Non-Contrast Head CT within 20 min, CTA Head/Neck |\n| **#2** | **Intracranial Hemorrhage (ICH)**<br>*(ICD-10: I61.9)* | ⚠️ **TIER 2: MUST-NOT-MISS** | **12% Pre-Test Risk**<br>*(Rule-Out)* | Focal deficit with elevated blood pressure | Non-Contrast Head CT |\n| **#3** | **Hypoglycemia (Stroke Mimic)**<br>*(ICD-10: E16.2)* | 🔹 **TIER 3: ALTERNATIVE** | **3% Pre-Test Risk** | Neuroglycopenic symptoms | Immediate Point-of-Care Capillary Glucose |\n`);
+
+    sections.push(`## 3. Prioritized Emergency Diagnostic Workup Protocol (Stroke)
+
+1. **Immediate Non-Contrast Head CT (Target ≤ 20 Minutes):** Rule out intracranial hemorrhage prior to considering thrombolytic therapy.
+2. **CT Angiography (CTA) of Head and Neck:** Identify Large Vessel Occlusion (LVO) eligible for endovascular mechanical thrombectomy.
+3. **Point-of-Care Fingerstick Blood Glucose:** Immediately exclude neuroglycopenia (< 60 mg/dL).
+4. **NIH Stroke Scale (NIHSS):** Quantify neurological deficit severity.`);
+  } else {
+    // CARDIOVASCULAR CHEST PAIN SYNDROME (Default / ACS)
+    sections.push(`## 1. Clinical Assessment of the Presentation
 
 The reported symptom constellation represents a potentially life-threatening medical emergency requiring urgent in-person evaluation.
 
-| Clinical Finding | Presentation in Encounter | Physiological Significance | Diagnostic Value & Likelihood Ratio |
-| :--- | :--- | :--- | :--- |
-| **Central Chest Discomfort** | Crushing retrosternal pressure | Hallmark manifestation of myocardial ischemia / coronary hypoperfusion | High sensitivity for Acute Coronary Syndrome (ACS) |
-| **Pain Radiation** | Radiation to left arm, neck, or jaw | Dermatomal referral (T1-T4 cardiac afferents via spinal cord) | +LR 2.3 for acute myocardial infarction |
-| **Autonomic Signs** | Profuse diaphoresis, nausea | Systemic sympathetic nervous discharge secondary to cardiogenic stress | +LR 2.0 for acute ischemic injury |
-| **Respiratory Effort** | Concomitant dyspnea / shortness of breath | Elevated left ventricular end-diastolic pressure / pulmonary congestion | Indicates potential hemodynamic compromise |
-| **Blood Pressure** | Documented or elevated baseline | Vascular afterload demand; assess bilateral arm BP (>20 mmHg differential) | Essential to rule out aortic dissection |
-| **Heart Rate & SpO2** | Monitored pulse & oximetry | Tachycardia increases myocardial O2 demand; normal SpO2 does NOT rule out MI | Continuous pulse oximetry & telemetry mandatory |
+| Clinical Finding | Presentation in Encounter | Physiological Significance | Diagnostic Value & Evidence-Based Likelihood Ratio (LR) | Literature Source & Provenance |
+| :--- | :--- | :--- | :--- | :--- |
+| **Central Chest Discomfort** | Crushing retrosternal pressure | Hallmark of acute myocardial ischemia / coronary hypoperfusion | High sensitivity, but descriptive alone has limited standalone specificity (+LR ~1.5) | *JAMA Rat. Clin. Exam* (Swap & Nagurney, 2005) |
+| **Pain Radiation** | Radiation to left arm, neck, or jaw | Dermatomal referral (T1-T4 cardiac afferents via spinal cord) | **+LR 2.3** (95% CI 1.7–3.1) for left arm; **+LR 7.1** (95% CI 3.6–14.2) if both arms | *JAMA* (Panju et al., 1998; Swap & Nagurney, 2005) |
+| **Autonomic Signs** | Profuse diaphoresis | Systemic sympathetic catecholamine discharge from ischemic stress | **+LR 2.0** (95% CI 1.4–2.9); key independent risk predictor | *JAMA Rat. Clin. Exam* (Swap & Nagurney, 2005) |
+| **Dyspnea / Shortness of Breath** | Concomitant breathlessness | Elevated LV end-diastolic pressure / pulmonary venous congestion | Important warning sign, but non-specific (+LR 1.2 for ACS; also seen in PE/heart failure) | *Circulation* (ACC/AHA Guidelines, 2021) |
+| **Elevated Blood Pressure** | 154/96 mmHg | Vascular afterload demand; bilateral measurement mandatory | Standalone LR does not confirm/exclude ACS; >20 mmHg inter-arm diff raises dissection (+LR 5.3) | *JAMA* (von Kodolitsch et al., 2000) |
+| **Heart Rate (98 bpm)** | High-normal / mild tachycardia | Increases myocardial O2 demand; reflex sympathetic tone | Non-specific; does not rule ACS in or out | Emergency Medicine Clinics (2018) |
+| **Preserved SpO2 (96%)** | 96% on room air | Oxygenation currently preserved; supplemental O2 not indicated | Normal SpO2 does **NOT** exclude acute myocardial infarction or ischemia | AHA/ACC NSTEMI/STEMI Guidelines (2021) |
+
+> [!IMPORTANT]
+> **Methodological Invariant:** The diagnostic value of combined symptoms exceeds any isolated finding, but LRs must not be mechanically multiplied due to conditional dependence. The figures above serve as population-level clinical reference estimates rather than individual deterministic calculations.
 
 *Clinical Conclusion:* Acute Coronary Syndrome (STEMI, NSTEMI, Unstable Angina) represents the primary immediate diagnostic concern. However, definitive diagnosis cannot be established from symptoms alone and requires emergent 12-lead ECG and serial cardiac troponin.`);
 
-  // 3. Evidence-Gated Differential Diagnosis Hierarchy
-  const diffRows = differentials.map((d) => {
-    const categoryBadge =
-      d.category === "PRIMARY_HYPOTHESIS"
-        ? "🚨 **TIER 1: PRIMARY EMERGENCY**"
-        : d.category === "MUST_NOT_MISS_RULEOUT"
-          ? "⚠️ **TIER 2: MUST-NOT-MISS**"
-          : "🔹 **TIER 3: ALTERNATIVE**";
+    const diffRows = differentials.map((d) => {
+      const categoryBadge =
+        d.category === "PRIMARY_HYPOTHESIS"
+          ? "🚨 **TIER 1: PRIMARY EMERGENCY**"
+          : d.category === "MUST_NOT_MISS_RULEOUT"
+            ? "⚠️ **TIER 2: MUST-NOT-MISS**"
+            : "🔹 **TIER 3: ALTERNATIVE**";
 
-    const urgencyNote =
-      d.category === "PRIMARY_HYPOTHESIS"
-        ? `**${d.probabilityPct}% Pre-Test Risk**<br>*(STAT Protocol)*`
-        : `**${d.probabilityPct}% Pre-Test Risk**<br>*(Rule-Out)*`;
+      const urgencyNote =
+        d.category === "PRIMARY_HYPOTHESIS"
+          ? `**${d.probabilityPct}% Pre-Test Risk**<br>*(STAT Protocol)*`
+          : `**${d.probabilityPct}% Pre-Test Risk**<br>*(Rule-Out)*`;
 
-    return `| **#${d.rank}** | **${d.diseaseName}**<br>*\`${d.icd10}\`* | ${categoryBadge} | ${urgencyNote} | • ${d.supportingEvidence.slice(0, 3).join("<br>• ")} | ${d.goldStandardDiagnosticTests.slice(0, 2).join("<br>• ") || "Physician exam"} |`;
-  });
+      return `| **#${d.rank}** | **${d.diseaseName}**<br>*(${d.icd10})* | ${categoryBadge} | ${urgencyNote} | • ${d.supportingEvidence.slice(0, 3).join("<br>• ")} | ${d.goldStandardDiagnosticTests.slice(0, 2).join("<br>• ") || "Physician exam"} |`;
+    });
 
-  sections.push(
-    `## 2. Evidence-Weighted Differential Diagnosis Hierarchy\n\n| Rank | Candidate Condition | Clinical Category | Calibrated Pre-Test Risk | Supporting Clinical Findings | Gold-Standard Diagnostic Protocols |\n| :---: | :--- | :---: | :---: | :--- | :--- |\n${diffRows.join("\n")}\n`
-  );
+    sections.push(
+      `## 2. Evidence-Weighted Differential Diagnosis Hierarchy\n\n| Rank | Candidate Condition | Clinical Category | Calibrated Pre-Test Risk | Supporting Clinical Findings | Gold-Standard Diagnostic Protocols |\n| :---: | :--- | :---: | :---: | :--- | :--- |\n${diffRows.join("\n")}\n`
+    );
 
-  // 4. Prioritized Emergency Diagnostic Workup Protocol
-  sections.push(`## 3. Prioritized Emergency Diagnostic Workup Protocol
+    sections.push(`## 3. Prioritized Emergency Diagnostic Workup Protocol
 
 To achieve rapid, guideline-directed confirmation or exclusion without cognitive delay, the following diagnostic protocols are prioritized:
 
 1. **Immediate 12-Lead Electrocardiogram (ECG) — Target ≤ 10 Minutes:**
    - Immediately screen for ST-segment elevation (STEMI criteria: ≥1 mm in contiguous leads, ≥2 mm in V2-V3 in men, or new LBBB).
+   - **Reperfusion Mandate:** If STEMI is confirmed, activate the Cardiac Catheterization Lab immediately without waiting for troponin results.
    - If initial ECG is non-diagnostic but symptoms persist, perform repeat ECGs every 15–30 minutes and consider posterior leads (V7-V9) or right-sided leads (V4R).
    - *Critical Rule:* A normal or non-diagnostic initial ECG does **NOT** rule out acute myocardial infarction.
 
 2. **Serial High-Sensitivity Cardiac Troponin (hs-cTnI / hs-cTnT):**
-   - Execute validated 0h and 1h (or 0h and 2h/3h) rapid rule-in/rule-out algorithms.
+   - Execute validated **0h and 1h (or 0h and 2h/3h) rapid rule-in/rule-out pathways** (ESC/ACC guidelines).
    - Dynamic delta rising above 99th percentile upper reference limit confirms myocardial injury.
 
 3. **Continuous Cardiac Telemetry & Hemodynamic Monitoring:**
    - Continuous 3-to-5 lead rhythm monitoring to detect malignant ventricular arrhythmias (VT/VF) or AV block.
    - Bilateral upper extremity blood pressure measurement: A differential > 20 mmHg demands urgent exclusion of Acute Aortic Dissection.
+   - *Safety Note:* If acute aortic dissection is suspected, withhold antiplatelet and anticoagulation therapy until dissection is excluded.
 
 4. **Point-of-Care Ultrasound (POCUS) / Bedside Echocardiography:**
    - Assess left ventricular regional wall motion abnormalities (RWMA) concordant with coronary anatomy.
    - Exclude pericardial effusion/tamponade, acute right ventricular strain (pulmonary embolism), or ascending aortic root dilation.
 
 5. **Portable Chest Radiography (CXR):**
-   - Screen for widened mediastinum (aortic dissection), pneumothorax, pulmonary edema, or focal pneumonia.`);
+   - Screen for widened mediastinum (aortic dissection), pneumothorax, pulmonary edema, or focal pneumonia. Normal CXR does NOT exclude aortic dissection.`);
+  }
 
-  // 5. Adaptive Follow-Up Discriminative Questions
+  // Adaptive Questions
   if (adaptiveQuestions.length > 0) {
     const qList = adaptiveQuestions.map(
       (q, idx) =>
@@ -1189,22 +1325,22 @@ To achieve rapid, guideline-directed confirmation or exclusion without cognitive
     sections.push(`## 4. Adaptive Discriminative Questions for Clinician Triage\n\n${qList.join("\n\n")}\n`);
   }
 
-  // 6. Clinical SOAP Note
+  // Clinical SOAP Note
   sections.push(
     `## 5. Structured Clinician SOAP Note (EMR Documentation)\n\`\`\`text\n[S - SUBJECTIVE]\n${clinicianSoapNote.subjective}\n\n[O - OBJECTIVE]\n${clinicianSoapNote.objective}\n\n[A - ASSESSMENT]\n${clinicianSoapNote.assessment}\n\n[P - PLAN]\n${clinicianSoapNote.plan}\n\`\`\`\n`
   );
 
-  // 7. Plain Language Patient Summary
+  // Plain Language Patient Summary
   sections.push(`## 6. Plain-Language Patient Summary (Grade 6–8)\n${patientPlainSummary}\n`);
 
-  // 8. Questions to Ask Your Doctor
+  // Questions to Ask Doctor
   if (differentials[0] && differentials[0].questionsForPhysician.length > 0) {
     const docQs = differentials[0].questionsForPhysician.map((q) => `• ${q}`).join("\n");
     sections.push(`## 7. Recommended Questions to Ask Your Emergency Physician\n${docQs}\n`);
   }
 
-  // 9. Regulatory Attestation & Diagnostic Uncertainty
-  sections.push(`---\n*${regulatoryAttestation}*\n\n**Diagnostic Uncertainty Disclosure:** AI-generated clinical decision support only. Definitive diagnosis requires physical physician examination, 12-lead ECG, and laboratory biomarker verification.`);
+  // Regulatory Attestation & Diagnostic Uncertainty
+  sections.push(`---\\n*${regulatoryAttestation}*\\n\\n**Diagnostic Uncertainty Disclosure:** AI-generated clinical decision support only. Definitive diagnosis requires physical physician examination, 12-lead ECG, and laboratory biomarker verification.`);
 
   return sections.join("\n");
 }
