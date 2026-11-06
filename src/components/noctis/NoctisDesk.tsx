@@ -3449,10 +3449,13 @@ export function NoctisDesk() {
 
   const handleOpenSovereignSuite = (systemId: string, promptText: string) => {
     setMenu(false);
+    setDesk("chat");
+    setFactoryStudioOpen(false);
     setFactoryStudioSystemId(systemId);
-    setFactoryStudioTab("inspector");
-    setFactoryStudioOpen(true);
     setDraft(promptText);
+    setTimeout(() => {
+      box.current?.focus();
+    }, 80);
   };
   const [brainModalOpen, setBrainModalOpen] = useState(false);
   const [suitesExpanded, setSuitesExpanded] = useState(true);
@@ -8141,6 +8144,12 @@ export function NoctisDesk() {
       />
 <NoctisSovereignFactoryStudio
         isOpen={factoryStudioOpen}
+        onLaunchChat={(prompt) => {
+          setFactoryStudioOpen(false);
+          setDesk("chat");
+          setDraft(prompt);
+          setTimeout(() => box.current?.focus(), 80);
+        }}
         initialSystemId={factoryStudioSystemId}
         initialTab={factoryStudioTab}
         onClose={() => setFactoryStudioOpen(false)}

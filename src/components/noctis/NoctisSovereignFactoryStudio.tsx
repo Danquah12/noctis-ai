@@ -87,6 +87,7 @@ interface NoctisSovereignFactoryStudioProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectSystem?: (system: SovereignSystem, autoBuild?: boolean) => void;
+  onLaunchChat?: (promptText: string) => void;
   initialSystemId?: string;
   initialTab?: "matrix" | "inspector" | "architecture" | "lifecycle" | "bus" | "templates" | "proof";
 }
@@ -327,9 +328,11 @@ export function NoctisSovereignFactoryStudio({
   isOpen,
   onClose,
   onSelectSystem,
+  onLaunchChat,
   initialSystemId,
   initialTab = "matrix",
 }: NoctisSovereignFactoryStudioProps) {
+  const [inModalPrompt, setInModalPrompt] = useState("");
   const [systems, setSystems] = useState<SovereignSystem[]>(listSovereignSystems());
   const [selectedSystemId, setSelectedSystemId] = useState<string>(initialSystemId || "noctis-cyber");
   const [activeCategory, setActiveCategory] = useState<typeof CATEGORIES[number]>("All");
@@ -1215,6 +1218,23 @@ export function NoctisSovereignFactoryStudio({
                     <Play className="size-3 fill-current" />
                     <span>Build in Forge</span>
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const prompt = currentSystem.identity.id === "noctis-legal"
+                        ? "Execute comprehensive legal analysis under Noctis Legal (NOCTIS-LEGAL-001)"
+                        : `Engage with ${currentSystem.identity.name} sovereign intelligence`;
+                      if (onLaunchChat) {
+                        onLaunchChat(prompt);
+                      } else if (onSelectSystem) {
+                        onSelectSystem(currentSystem, false);
+                      }
+                    }}
+                    className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-black px-4 py-1.5 text-xs font-bold transition shadow-lg cursor-pointer flex items-center gap-1.5 active:scale-95"
+                  >
+                    <Send className="size-3.5 fill-current" />
+                    <span>Chat with {currentSystem.identity.name}</span>
+                  </button>
                 </div>
               </div>
 
@@ -1372,7 +1392,23 @@ export function NoctisSovereignFactoryStudio({
                     <Sparkles className="size-3 text-emerald-400 opacity-60 group-hover:opacity-100" />
                   </div>
                   <div className="flex gap-2">
-                    <span className={cn("px-2 py-0.5 text-[10px] rounded font-semibold", currentSystem.interface.hasChat ? "bg-emerald-500/20 text-emerald-300" : "bg-zinc-800 text-zinc-500")}>Chat</span>
+                    {currentSystem.interface.hasChat && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const prompt = currentSystem.identity.id === "noctis-legal"
+                            ? "Execute comprehensive legal analysis under Noctis Legal (NOCTIS-LEGAL-001)"
+                            : `Engage with ${currentSystem.identity.name} sovereign intelligence`;
+                          if (onLaunchChat) onLaunchChat(prompt);
+                          else if (onSelectSystem) onSelectSystem(currentSystem, false);
+                        }}
+                        className="px-2.5 py-1 text-[11px] rounded-lg font-bold bg-emerald-500 text-black hover:bg-emerald-400 transition cursor-pointer flex items-center gap-1 shadow-xs"
+                      >
+                        <Send className="size-3 fill-current" />
+                        <span>Launch Chat →</span>
+                      </button>
+                    )}
                     <span className={cn("px-2 py-0.5 text-[10px] rounded font-semibold", currentSystem.interface.hasBoard ? "bg-emerald-500/20 text-emerald-300" : "bg-zinc-800 text-zinc-500")}>Board</span>
                     <span className={cn("px-2 py-0.5 text-[10px] rounded font-semibold", currentSystem.interface.hasCanvas ? "bg-emerald-500/20 text-emerald-300" : "bg-zinc-800 text-zinc-500")}>Canvas</span>
                   </div>
@@ -1443,6 +1479,50 @@ export function NoctisSovereignFactoryStudio({
                   <p className="text-[10px] text-sky-300/80 pt-1 font-medium">Click for Deep Dive →</p>
                 </div>
 
+              </div>
+              {/* In-Modal Chat Prompt Bar */}
+              <div className="sticky bottom-2 z-20 mt-6 rounded-2xl border border-emerald-500/40 bg-[#0d0d12]/95 p-3.5 shadow-2xl backdrop-blur-xl flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                <div className="flex items-center gap-2.5 shrink-0">
+                  <div className="flex size-9 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                    {getSystemIcon(currentSystem.identity.icon)}
+                  </div>
+                  <div className="text-left">
+                    <p className="text-xs font-bold text-white leading-none">Chat with {currentSystem.identity.name}</p>
+                    <p className="text-[10px] text-emerald-400/80 leading-none mt-1">Autonomous Reasoning & Voice</p>
+                  </div>
+                </div>
+                <div className="flex-1 flex items-center gap-2 bg-black/60 border border-white/10 rounded-xl px-3 py-1.5 focus-within:border-emerald-500/60 transition">
+                  <input
+                    type="text"
+                    placeholder={`Ask ${currentSystem.identity.name} a legal question, dispute simulation, or statutory citation...`}
+                    value={inModalPrompt}
+                    onChange={(e) => setInModalPrompt(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && inModalPrompt.trim()) {
+                        const p = inModalPrompt.trim();
+                        setInModalPrompt("");
+                        if (onLaunchChat) onLaunchChat(p);
+                        else if (onSelectSystem) onSelectSystem(currentSystem, false);
+                      }
+                    }}
+                    className="w-full bg-transparent text-xs text-white placeholder-zinc-500 outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const p = inModalPrompt.trim() || (currentSystem.identity.id === "noctis-legal"
+                        ? "Execute comprehensive legal analysis under Noctis Legal (NOCTIS-LEGAL-001)"
+                        : `Engage with ${currentSystem.identity.name}`);
+                      setInModalPrompt("");
+                      if (onLaunchChat) onLaunchChat(p);
+                      else if (onSelectSystem) onSelectSystem(currentSystem, false);
+                    }}
+                    className="rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black px-3 py-1 text-xs font-bold transition flex items-center gap-1 shrink-0 cursor-pointer"
+                  >
+                    <span>Send</span>
+                    <Send className="size-3" />
+                  </button>
+                </div>
               </div>
             </div>
           )}
