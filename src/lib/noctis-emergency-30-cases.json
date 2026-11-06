@@ -1,0 +1,3532 @@
+[
+  {
+    "caseId": "EM-ABDOMINAL-001",
+    "domain": "Emergency Medicine & Abdominal Emergencies",
+    "title": "Question 1 \u2013 Acute abdominal pain with incomplete information",
+    "vignette": "22-year-old male presents with abdominal discomfort and a temperature of 38.2\u00b0C. Pain location, onset, radiation, and severity are unspecified.",
+    "top5Differentials": [
+      {
+        "name": "Acute Appendicitis",
+        "icd10": "K35.80",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "HIGH",
+        "rationale": "Most common acute surgical abdomen in young males."
+      },
+      {
+        "name": "Mesenteric Adenitis",
+        "icd10": "I88.0",
+        "clinicalCategory": "TIER_3_ALTERNATIVE",
+        "dangerTier": "MODERATE",
+        "rationale": "Frequent mimic of appendicitis in young adults."
+      },
+      {
+        "name": "Meckel's Diverticulitis",
+        "icd10": "Q43.0",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "HIGH",
+        "rationale": "Prone to perforation and lower GI hemorrhage."
+      },
+      {
+        "name": "Acute Nephrolithiasis with Pyelonephritis",
+        "icd10": "N20.0 / N10",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "HIGH",
+        "rationale": "Obstructive uropathy with superimposed infection."
+      },
+      {
+        "name": "Perforated Viscus / Acute Peritonitis",
+        "icd10": "K65.0",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "Free perforation requiring emergent exploratory laparotomy."
+      }
+    ],
+    "mustNotMissConditions": [
+      "Acute Appendicitis with perforation",
+      "Testicular Torsion with referred abdominal pain (mandatory scrotal exam)",
+      "Obstructed Infected Nephrolithiasis / Urosepsis"
+    ],
+    "explicitMissingInformation": [
+      "Pain quadrant localization (RLQ, RUQ, LLQ, LUQ, epigastric, or generalized)",
+      "Pain onset timing, tempo (sudden vs gradual), character, and radiation",
+      "Pain severity rating (1-10)",
+      "Scrotal/genitourinary examination (rule out testicular torsion)",
+      "Peritoneal signs (guarding, rigidity, rebound tenderness)",
+      "Complete vital signs (BP, HR, RR, SpO2)"
+    ],
+    "clinicalScores": [
+      {
+        "scoreName": "Alvarado Score",
+        "scoreType": "DIAGNOSTIC",
+        "calculatedValue": "1/10 (PARTIAL)",
+        "isFullyCalculable": false,
+        "clinicalMeaning": "Only fever (+1) is known. Formal risk tiering blocked."
+      },
+      {
+        "scoreName": "qSOFA Score",
+        "scoreType": "SEVERITY_PROGNOSTIC",
+        "calculatedValue": "INCOMPLETE",
+        "isFullyCalculable": false,
+        "clinicalMeaning": "Missing RR, BP, and GCS. Cannot evaluate sepsis mortality risk."
+      }
+    ],
+    "recommendedWorkup": [
+      {
+        "category": "BEDSIDE",
+        "action": "Physical examination including abdomen quadrants and testicular exam",
+        "priority": "STAT",
+        "rationale": "Localize pathology and exclude testicular torsion."
+      },
+      {
+        "category": "LABORATORY",
+        "action": "CBC with differential, CMP, Lipase, Urinalysis, CRP",
+        "priority": "STAT",
+        "rationale": "Assess leukocytosis, renal/hepatic function, pancreatitis, and UTI."
+      },
+      {
+        "category": "IMAGING",
+        "action": "Abdominal Ultrasound or Contrast-Enhanced CT Abdomen/Pelvis",
+        "priority": "URGENT",
+        "rationale": "Cross-sectional imaging once exam localizes pathology."
+      }
+    ],
+    "contradictionsAndCaveats": [
+      "Female-specific diagnoses (ectopic pregnancy, ovarian torsion, PID) must be strictly suppressed for this male encounter.",
+      "Never assign a definitive single-organ diagnosis when quadrant localization is unprovided."
+    ],
+    "immediateManagementPlan": [
+      {
+        "priority": 1,
+        "intervention": "Strict NPO status and obtain peripheral IV access",
+        "timeframe": "< 15 min",
+        "objective": "Prepare for potential emergency surgery."
+      },
+      {
+        "priority": 2,
+        "intervention": "Full vital signs acquisition and structured physical exam",
+        "timeframe": "< 20 min",
+        "objective": "Establish stability and localize pain."
+      },
+      {
+        "priority": 3,
+        "intervention": "Isotonic crystalloid resuscitation",
+        "timeframe": "< 30 min",
+        "objective": "Maintain intravascular volume."
+      }
+    ],
+    "strictContraindications": [
+      "Do NOT administer blind empiric antibiotics or heavy sedatives before attending surgical physical examination."
+    ],
+    "escalationTriggers": [
+      "Peritoneal signs on exam",
+      "Hemodynamic instability (tachycardia HR > 110, hypotension SBP < 90 mmHg)",
+      "Testicular asymmetry or scrotal tenderness"
+    ],
+    "guidelineCitations": [
+      {
+        "issuingOrganization": "WSES",
+        "guidelineName": "Jerusalem Guidelines for Diagnosis and Management of Acute Appendicitis",
+        "year": 2020
+      }
+    ]
+  },
+  {
+    "caseId": "EM-ABDOMINAL-002",
+    "domain": "Emergency Medicine & Abdominal Emergencies",
+    "title": "Question 2 \u2013 Suspected appendicitis",
+    "vignette": "26-year-old female presents with 18 hours of abdominal pain initially around the umbilicus, now localized to the right lower quadrant. Temperature 38.5\u00b0C, HR 108 bpm, nausea, and rebound tenderness. WBC 16,200/\u00b5L.",
+    "top5Differentials": [
+      {
+        "name": "Acute Appendicitis",
+        "icd10": "K35.80",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "HIGH",
+        "rationale": "Classic migratory periumbilical-to-RLQ pain with peritonitis, leukocytosis, and pyrexia."
+      },
+      {
+        "name": "Ruptured Ectopic Pregnancy",
+        "icd10": "O00.9",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "CRITICAL",
+        "rationale": "Reproductive-age female with acute RLQ peritonism; life-threatening hemorrhagic emergency."
+      },
+      {
+        "name": "Right Ovarian Torsion",
+        "icd10": "N83.511",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "HIGH",
+        "rationale": "Acute ischemic adnexal emergency requiring detorsion within 6 hours."
+      },
+      {
+        "name": "Pelvic Inflammatory Disease / TOA",
+        "icd10": "N73.9",
+        "clinicalCategory": "TIER_3_ALTERNATIVE",
+        "dangerTier": "HIGH",
+        "rationale": "Ascending pelvic infection causing peritonitis and high leukocytosis."
+      },
+      {
+        "name": "Ruptured Hemorrhagic Ovarian Cyst",
+        "icd10": "N83.0",
+        "clinicalCategory": "TIER_3_ALTERNATIVE",
+        "dangerTier": "MODERATE",
+        "rationale": "Hemoperitoneum and peritoneal irritation following cyst rupture."
+      }
+    ],
+    "mustNotMissConditions": [
+      "Ruptured Ectopic Pregnancy",
+      "Right Ovarian Torsion",
+      "Perforated Appendicitis"
+    ],
+    "explicitMissingInformation": [
+      "Urine or serum beta-hCG (MANDATORY in all reproductive-age females)",
+      "LMP and sexual history",
+      "Blood pressure (assess for shock)"
+    ],
+    "clinicalScores": [
+      {
+        "scoreName": "Alvarado Score",
+        "scoreType": "DIAGNOSTIC",
+        "calculatedValue": "8 / 10 (HIGH RISK)",
+        "isFullyCalculable": true,
+        "clinicalMeaning": "Score >= 7 indicates high probability of appendicitis; warrants surgical consultation."
+      },
+      {
+        "scoreName": "AIR Score",
+        "scoreType": "DIAGNOSTIC",
+        "calculatedValue": "High Probability",
+        "isFullyCalculable": true,
+        "clinicalMeaning": "Strong indication for surgical exploration."
+      }
+    ],
+    "recommendedWorkup": [
+      {
+        "category": "LABORATORY",
+        "action": "Stat Urine/Serum qualitative beta-hCG",
+        "priority": "STAT",
+        "rationale": "Rule out ectopic pregnancy prior to imaging or surgery."
+      },
+      {
+        "category": "IMAGING",
+        "action": "Pelvic & Transvaginal Ultrasound with Doppler, followed by CT if equivocal",
+        "priority": "STAT",
+        "rationale": "First-line imaging in young females."
+      }
+    ],
+    "contradictionsAndCaveats": [
+      "High Alvarado score does NOT rule out gynecologic emergencies in females."
+    ],
+    "immediateManagementPlan": [
+      {
+        "priority": 1,
+        "intervention": "STAT pregnancy test (beta-hCG)",
+        "timeframe": "< 10 min",
+        "objective": "Rule out life-threatening ectopic pregnancy."
+      },
+      {
+        "priority": 2,
+        "intervention": "Emergency General Surgery Consultation",
+        "timeframe": "< 30 min",
+        "objective": "Plan laparoscopic appendectomy."
+      }
+    ],
+    "strictContraindications": [
+      "Do NOT perform CT without checking pregnancy status."
+    ],
+    "escalationTriggers": [
+      "Positive beta-hCG with free fluid on POCUS -> Emergent OB/GYN OR"
+    ],
+    "guidelineCitations": [
+      {
+        "issuingOrganization": "WSES",
+        "guidelineName": "Jerusalem Guidelines for Acute Appendicitis",
+        "year": 2020
+      }
+    ]
+  },
+  {
+    "caseId": "EM-ABDOMINAL-003",
+    "domain": "Emergency Medicine & Abdominal Emergencies",
+    "title": "Question 3 \u2013 Acute pancreatitis",
+    "vignette": "48-year-old male presents with severe epigastric pain radiating to the back, persistent vomiting, HR 122 bpm, and BP 94/62 mmHg. Lipase is 1,250 U/L.",
+    "top5Differentials": [
+      {
+        "name": "Acute Pancreatitis (Moderately Severe / Severe)",
+        "icd10": "K85.90",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "HIGH",
+        "rationale": "Severe epigastric pain with back radiation + lipase 1,250 U/L."
+      },
+      {
+        "name": "Perforated Peptic Ulcer Disease",
+        "icd10": "K25.5",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "CRITICAL",
+        "rationale": "Epigastric pain and shock; can cause secondary lipase elevation."
+      },
+      {
+        "name": "Acute Mesenteric Ischemia",
+        "icd10": "K55.0",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "CRITICAL",
+        "rationale": "Profound pain with vomiting, tachycardia, and early shock."
+      },
+      {
+        "name": "Acute Aortic Dissection / Ruptured AAA",
+        "icd10": "I71.0 / I71.3",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "CRITICAL",
+        "rationale": "Back-radiating pain with tachycardia and borderline hypotension."
+      },
+      {
+        "name": "Acute Ascending Cholangitis / Choledocholithiasis",
+        "icd10": "K83.0 / K80.50",
+        "clinicalCategory": "TIER_3_ALTERNATIVE",
+        "dangerTier": "HIGH",
+        "rationale": "Gallstone passage is the primary etiology of acute pancreatitis."
+      }
+    ],
+    "mustNotMissConditions": [
+      "Severe Acute Pancreatitis with persistent organ failure",
+      "Perforated Peptic Ulcer",
+      "Acute Mesenteric Ischemia"
+    ],
+    "explicitMissingInformation": [
+      "BUN, Creatinine, Hematocrit (assess hemoconcentration and organ failure)",
+      "Respiratory rate and SpO2 (Marshall organ failure score)",
+      "Etiology clues (alcohol, gallstones, lipid panel)"
+    ],
+    "clinicalScores": [
+      {
+        "scoreName": "Revised Atlanta Classification (2-of-3 Rule)",
+        "scoreType": "DIAGNOSTIC",
+        "calculatedValue": "CONFIRMED (2/3 met)",
+        "isFullyCalculable": true,
+        "clinicalMeaning": "Severe pain + lipase >= 3x ULN confirms pancreatitis. Early CT not needed on Day 1."
+      },
+      {
+        "scoreName": "BISAP Score",
+        "scoreType": "SEVERITY_PROGNOSTIC",
+        "calculatedValue": ">= 2 (HIGH RISK)",
+        "isFullyCalculable": false,
+        "clinicalMeaning": "SIRS (HR 122) and age 48 present. Full score requires BUN and CXR."
+      }
+    ],
+    "recommendedWorkup": [
+      {
+        "category": "IMAGING",
+        "action": "Transabdominal Right Upper Quadrant Ultrasound",
+        "priority": "STAT",
+        "rationale": "Detect gallstones and CBD dilation within 24 hours."
+      },
+      {
+        "category": "LABORATORY",
+        "action": "CMP, CBC, Lactate, Triglycerides, Calcium",
+        "priority": "STAT",
+        "rationale": "Assess end-organ injury and etiology."
+      }
+    ],
+    "contradictionsAndCaveats": [
+      "Do NOT order early contrast CT (< 48 hours) to evaluate necrosis: underestimates necrosis and IV contrast risks worsening AKI."
+    ],
+    "immediateManagementPlan": [
+      {
+        "priority": 1,
+        "intervention": "Aggressive Goal-Directed Fluid Resuscitation: Lactated Ringer's 5-10 mL/kg/h",
+        "timeframe": "< 30 min",
+        "objective": "Preserve microvascular pancreatic perfusion."
+      },
+      {
+        "priority": 2,
+        "intervention": "Multimodal analgesia with IV opioids (Hydromorphone or Fentanyl)",
+        "timeframe": "< 30 min",
+        "objective": "Pain control."
+      }
+    ],
+    "strictContraindications": [
+      "Prophylactic antibiotics are NOT recommended in acute pancreatitis without documented infection."
+    ],
+    "escalationTriggers": [
+      "Persistent organ failure > 48h (shock, Cr rise, PaO2/FiO2 < 300) -> ICU transfer"
+    ],
+    "guidelineCitations": [
+      {
+        "issuingOrganization": "ACG",
+        "guidelineName": "Management of Acute Pancreatitis",
+        "year": 2024
+      }
+    ]
+  },
+  {
+    "caseId": "EM-ABDOMINAL-004",
+    "domain": "Emergency Medicine & Abdominal Emergencies",
+    "title": "Question 4 \u2013 Bowel obstruction versus perforation",
+    "vignette": "67-year-old female presents with abdominal distension, vomiting, constipation for four days, and severe generalized abdominal pain. HR 124 bpm, temperature 38.7\u00b0C. Lactate 4.8 mmol/L.",
+    "top5Differentials": [
+      {
+        "name": "Strangulated Closed-Loop Small Bowel Obstruction with Infarction",
+        "icd10": "K56.5",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "Obstruction with SIRS and lactate 4.8 indicates bowel ischemia/strangulation."
+      },
+      {
+        "name": "Perforated Viscus with Secondary Peritonitis",
+        "icd10": "K65.0",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "Severe generalized peritonitis and lactic acidosis."
+      },
+      {
+        "name": "Sigmoid or Cecal Volvulus with Gangrene",
+        "icd10": "K56.2",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "Distension, absolute constipation, and high lactate."
+      },
+      {
+        "name": "Acute Mesenteric Ischemia / Bowel Infarction",
+        "icd10": "K55.0",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "CRITICAL",
+        "rationale": "Severe lactic acidosis and shock."
+      },
+      {
+        "name": "Incarcerated / Strangulated Hernia",
+        "icd10": "K40.9 / K41.9",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "HIGH",
+        "rationale": "Occult groin/femoral hernia causing closed-loop obstruction."
+      }
+    ],
+    "mustNotMissConditions": [
+      "Strangulated Small Bowel Obstruction",
+      "Free Gastrointestinal Perforation",
+      "Transmural Bowel Gangrene"
+    ],
+    "explicitMissingInformation": [
+      "Blood pressure (assess for septic shock)",
+      "Physical exam peritoneal signs and groin exam for occult hernias"
+    ],
+    "clinicalScores": [
+      {
+        "scoreName": "Sepsis-3 Septic Shock Assessment",
+        "scoreType": "SEVERITY_PROGNOSTIC",
+        "calculatedValue": "HIGH RISK (Lactate 4.8 + Tachycardia + Fever)",
+        "isFullyCalculable": true,
+        "clinicalMeaning": "Severe tissue hypoperfusion indicating high mortality."
+      }
+    ],
+    "recommendedWorkup": [
+      {
+        "category": "IMAGING",
+        "action": "Upright Chest X-ray (free air) and Stat Contrast CT Abdomen/Pelvis",
+        "priority": "STAT",
+        "rationale": "Detect pneumoperitoneum and transition point."
+      },
+      {
+        "category": "LABORATORY",
+        "action": "Stat Blood Cultures x2, CBC, CMP, Coags, Blood Gas",
+        "priority": "STAT",
+        "rationale": "Pre-op resuscitation and sepsis bundle."
+      }
+    ],
+    "contradictionsAndCaveats": [
+      "Do NOT administer oral barium contrast: causes lethal chemical peritonitis if perforation is present."
+    ],
+    "immediateManagementPlan": [
+      {
+        "priority": 1,
+        "intervention": "STAT General Surgery Consultation for Emergent Exploratory Laparotomy",
+        "timeframe": "< 15 min",
+        "objective": "Surgical control of gangrenous/perforated bowel."
+      },
+      {
+        "priority": 2,
+        "intervention": "Aggressive IV crystalloid (30 mL/kg) and NG tube decompression",
+        "timeframe": "< 30 min",
+        "objective": "Resuscitation and GI decompression."
+      },
+      {
+        "priority": 3,
+        "intervention": "Broad-spectrum IV antibiotics (Piperacillin-Tazobactam 4.5g IV)",
+        "timeframe": "< 45 min",
+        "objective": "Treat enteric peritonitis."
+      }
+    ],
+    "strictContraindications": [
+      "Do NOT delay surgery while awaiting imaging if peritonitis is overt."
+    ],
+    "escalationTriggers": [
+      "Pneumoperitoneum, pneumatosis intestinalis, or refractory septic shock"
+    ],
+    "guidelineCitations": [
+      {
+        "issuingOrganization": "WSES",
+        "guidelineName": "Management of Adhesive Small Bowel Obstruction",
+        "year": 2018
+      }
+    ]
+  },
+  {
+    "caseId": "EM-ABDOMINAL-005",
+    "domain": "Emergency Medicine & Abdominal Emergencies",
+    "title": "Question 5 \u2013 Acute cholecystitis versus cholangitis",
+    "vignette": "62-year-old female presents with right upper quadrant pain, fever of 39.1\u00b0C, rigors, and jaundice. BP 102/68 mmHg, HR 112 bpm.",
+    "top5Differentials": [
+      {
+        "name": "Acute Ascending Cholangitis (Charcot's Triad)",
+        "icd10": "K83.0",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "Classic Charcot triad (RUQ pain + high fever/rigors + jaundice) with SIRS."
+      },
+      {
+        "name": "Acute Cholecystitis with Choledocholithiasis",
+        "icd10": "K80.00 / K80.50",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "HIGH",
+        "rationale": "Gallbladder inflammation with secondary duct obstruction."
+      },
+      {
+        "name": "Acute Suppurative Cholangitis / Reynolds Pentad",
+        "icd10": "K83.0",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "Impending septic shock and central nervous system obtundation."
+      },
+      {
+        "name": "Pyogenic Hepatic Abscess",
+        "icd10": "K75.0",
+        "clinicalCategory": "TIER_3_ALTERNATIVE",
+        "dangerTier": "HIGH",
+        "rationale": "Hepatic parenchymal infection secondary to ascending biliary stasis."
+      },
+      {
+        "name": "Acute Hepatitis / Fulminant Hepatic Failure",
+        "icd10": "K72.0",
+        "clinicalCategory": "TIER_3_ALTERNATIVE",
+        "dangerTier": "HIGH",
+        "rationale": "Severe hepatocellular jaundice with fever."
+      }
+    ],
+    "mustNotMissConditions": [
+      "Acute Ascending Cholangitis with septic shock",
+      "Reynolds Pentad (hypotension + confusion)"
+    ],
+    "explicitMissingInformation": [
+      "Mental status (screen for Reynolds Pentad)",
+      "Total & Direct Bilirubin, Alk Phos, AST, ALT",
+      "Lactate and coagulation profile"
+    ],
+    "clinicalScores": [
+      {
+        "scoreName": "Tokyo Guidelines 2018 (TG18) for Cholangitis",
+        "scoreType": "DIAGNOSTIC",
+        "calculatedValue": "DEFINITE DIAGNOSIS & GRADE II/III",
+        "isFullyCalculable": true,
+        "clinicalMeaning": "Charcot triad fulfills TG18 criteria; requires urgent biliary decompression."
+      }
+    ],
+    "recommendedWorkup": [
+      {
+        "category": "IMAGING",
+        "action": "Stat Transabdominal RUQ Ultrasound",
+        "priority": "STAT",
+        "rationale": "Confirm ductal dilation and choledocholithiasis."
+      },
+      {
+        "category": "LABORATORY",
+        "action": "Stat Blood Cultures x2, CMP, Lactate, Coagulation Panel",
+        "priority": "STAT",
+        "rationale": "Confirm bacteremia, cholestasis, and coagulopathy."
+      }
+    ],
+    "contradictionsAndCaveats": [
+      "Do NOT mistake cholangitis for simple cholecystitis: JAUNDICE indicates common bile duct obstruction and ascending bacterial sepsis!"
+    ],
+    "immediateManagementPlan": [
+      {
+        "priority": 1,
+        "intervention": "STAT Gastroenterology / IR Consultation for Emergent Biliary Decompression via ERCP (or PTBD)",
+        "timeframe": "< 12\u201324 hours",
+        "objective": "Decompress infected biliary tree."
+      },
+      {
+        "priority": 2,
+        "intervention": "Broad-spectrum IV antibiotics (Piperacillin-Tazobactam 4.5g IV)",
+        "timeframe": "< 30 min",
+        "objective": "Treat biliary bacteremia."
+      }
+    ],
+    "strictContraindications": [
+      "Do NOT perform elective cholecystectomy during acute cholangitis prior to biliary decompression."
+    ],
+    "escalationTriggers": [
+      "Reynolds Pentad (hypotension or altered mental status) -> Emergent ERCP within hours"
+    ],
+    "guidelineCitations": [
+      {
+        "issuingOrganization": "Tokyo Guidelines",
+        "guidelineName": "TG18 Guidelines for Management of Acute Cholangitis",
+        "year": 2018
+      }
+    ]
+  },
+  {
+    "caseId": "EM-CARDIO-006",
+    "domain": "Cardiovascular Emergencies",
+    "title": "Question 6 \u2013 Atypical myocardial infarction",
+    "vignette": "54-year-old male presents with nausea, fatigue, sweating, and mild epigastric discomfort without chest pain. ECG shows ST-segment depression in leads V4\u2013V6. Troponin is elevated.",
+    "top5Differentials": [
+      {
+        "name": "Non-ST-Elevation Myocardial Infarction (NSTEMI)",
+        "icd10": "I21.4",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "HIGH",
+        "rationale": "Ischemic symptoms (diaphoresis, epigastric anginal equivalent) + ST depression + elevated troponin."
+      },
+      {
+        "name": "Unstable Angina with High-Risk Features",
+        "icd10": "I20.0",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "HIGH",
+        "rationale": "Subendocardial ischemia threatening progression to transmural infarction."
+      },
+      {
+        "name": "Acute Peptic Ulcer Disease / Perforation",
+        "icd10": "K27.0",
+        "clinicalCategory": "TIER_3_ALTERNATIVE",
+        "dangerTier": "HIGH",
+        "rationale": "Epigastric discomfort and nausea; can mimic or trigger cardiac events."
+      },
+      {
+        "name": "Acute Aortic Dissection with Coronary Malperfusion",
+        "icd10": "I71.0",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "CRITICAL",
+        "rationale": "Ascending dissection compromising coronary ostia, masquerading as ACS."
+      },
+      {
+        "name": "Acute Pulmonary Embolism",
+        "icd10": "I26.99",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "HIGH",
+        "rationale": "Right ventricular strain producing autonomic signs, diaphoresis, and troponin elevation."
+      }
+    ],
+    "mustNotMissConditions": [
+      "Non-ST-Elevation Myocardial Infarction",
+      "Acute Aortic Dissection with Coronary Involvement",
+      "Acute Pulmonary Embolism"
+    ],
+    "explicitMissingInformation": [
+      "Exact quantitative Troponin delta at 1-2 hours",
+      "Blood pressure in bilateral arms and heart rate",
+      "Prior cardiac history (CAD, stents, CABG)"
+    ],
+    "clinicalScores": [
+      {
+        "scoreName": "HEART Score for MACE",
+        "scoreType": "SEVERITY_PROGNOSTIC",
+        "calculatedValue": "High Risk (Score >= 7)",
+        "isFullyCalculable": false,
+        "clinicalMeaning": "Mandates hospital admission and early invasive angiography within 24h."
+      },
+      {
+        "scoreName": "TIMI Risk Score for NSTEMI",
+        "scoreType": "SEVERITY_PROGNOSTIC",
+        "calculatedValue": ">= 3 (INTERMEDIATE/HIGH)",
+        "isFullyCalculable": false,
+        "clinicalMeaning": "High risk for death/MI; warrants early catheterization."
+      }
+    ],
+    "recommendedWorkup": [
+      {
+        "category": "BEDSIDE",
+        "action": "Serial 12-lead ECGs q15-30 min and continuous ST-segment monitoring",
+        "priority": "STAT",
+        "rationale": "Detect dynamic progression to STEMI requiring immediate primary PCI."
+      },
+      {
+        "category": "LABORATORY",
+        "action": "Serial high-sensitivity cardiac troponin, CBC, CMP, Coagulation panel",
+        "priority": "STAT",
+        "rationale": "Quantify myocardial necrosis and baseline renal function prior to catheterization contrast."
+      }
+    ],
+    "contradictionsAndCaveats": [
+      "Absence of chest pain does NOT rule out acute myocardial infarction: atypical presentations (nausea, diaphoresis, epigastric discomfort) are frequent in diabetics, elderly, and females."
+    ],
+    "immediateManagementPlan": [
+      {
+        "priority": 1,
+        "intervention": "Dual Antiplatelet Therapy: Aspirin 325 mg PO chewed immediately + P2Y12 inhibitor (Ticagrelor 180 mg)",
+        "timeframe": "< 15 min",
+        "objective": "Inhibit platelet aggregation."
+      },
+      {
+        "priority": 2,
+        "intervention": "Parenteral Anticoagulation: Therapeutic LMWH (Enoxaparin 1 mg/kg SC) or UFH",
+        "timeframe": "< 30 min",
+        "objective": "Inhibit thrombin generation."
+      },
+      {
+        "priority": 3,
+        "intervention": "High-intensity statin (Atorvastatin 80 mg PO) and Cardiology consultation for early catheterization (< 24h)",
+        "timeframe": "< 60 min",
+        "objective": "Plaque stabilization and definitive revascularization."
+      }
+    ],
+    "strictContraindications": [
+      "Fibrinolytic/thrombolytic therapy is STRICTLY CONTRAINDICATED in NSTEMI (proven harm; only indicated in STEMI).",
+      "NSAIDs (except aspirin) are contraindicated in acute MI (increases myocardial rupture risk)."
+    ],
+    "escalationTriggers": [
+      "Dynamic ST-elevation on repeat ECG -> Immediate STEMI code activation for catheterization lab"
+    ],
+    "guidelineCitations": [
+      {
+        "issuingOrganization": "ACC/AHA",
+        "guidelineName": "Guideline for Evaluation and Diagnosis of Chest Pain",
+        "year": 2021
+      }
+    ]
+  },
+  {
+    "caseId": "EM-CARDIO-007",
+    "domain": "Cardiovascular Emergencies",
+    "title": "Question 7 \u2013 Pulmonary embolism",
+    "vignette": "34-year-old female presents with sudden shortness of breath, pleuritic chest pain, HR 126 bpm, and oxygen saturation of 89%. She returned from a 12-hour flight two days ago.",
+    "top5Differentials": [
+      {
+        "name": "Acute Pulmonary Embolism (Submassive / Intermediate-High Risk)",
+        "icd10": "I26.99",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "Sudden pleuritic pain, hypoxia (89%), severe tachycardia (126), and prolonged travel stasis."
+      },
+      {
+        "name": "Spontaneous Pneumothorax",
+        "icd10": "J93.9",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "HIGH",
+        "rationale": "Sudden pleuritic pain and hypoxemic dyspnea in young adult."
+      },
+      {
+        "name": "Acute Pericarditis / Myopericarditis",
+        "icd10": "I30.9",
+        "clinicalCategory": "TIER_3_ALTERNATIVE",
+        "dangerTier": "MODERATE",
+        "rationale": "Pleuritic chest pain and sinus tachycardia."
+      },
+      {
+        "name": "Community-Acquired Pneumonia with Pleurisy",
+        "icd10": "J18.9",
+        "clinicalCategory": "TIER_3_ALTERNATIVE",
+        "dangerTier": "MODERATE",
+        "rationale": "Pleurisy and hypoxemia, but sudden onset without fever favors vascular embolism."
+      },
+      {
+        "name": "Aortic Dissection with Pleural Extension",
+        "icd10": "I71.0",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "CRITICAL",
+        "rationale": "Sharp thoracic pain with tachycardia; vital to exclude prior to anticoagulation."
+      }
+    ],
+    "mustNotMissConditions": [
+      "Acute Massive / Submassive Pulmonary Embolism",
+      "Tension Pneumothorax",
+      "Acute Aortic Dissection"
+    ],
+    "explicitMissingInformation": [
+      "Blood pressure (distinguish Massive PE with shock SBP < 90 from Submassive PE)",
+      "Signs of Deep Vein Thrombosis on lower extremity exam",
+      "Bedside echocardiography RV strain findings"
+    ],
+    "clinicalScores": [
+      {
+        "scoreName": "Wells Score for PE",
+        "scoreType": "DIAGNOSTIC",
+        "calculatedValue": "6.0 (HIGH PROBABILITY)",
+        "isFullyCalculable": true,
+        "clinicalMeaning": "HR > 100 (+1.5), PE #1 diagnosis (+3.0), Recent travel/immobilization (+1.5). Mandates direct CTPA."
+      },
+      {
+        "scoreName": "PERC Rule",
+        "scoreType": "DIAGNOSTIC",
+        "calculatedValue": "VIOLATED / STRICTLY NOT APPLICABLE",
+        "isFullyCalculable": true,
+        "clinicalMeaning": "PERC CANNOT be used: Pre-test probability is not low; violates HR < 100 and SpO2 >= 95%."
+      }
+    ],
+    "recommendedWorkup": [
+      {
+        "category": "IMAGING",
+        "action": "CT Pulmonary Angiography (CTPA)",
+        "priority": "STAT",
+        "rationale": "Gold standard diagnostic imaging to confirm pulmonary arterial occlusion."
+      },
+      {
+        "category": "BEDSIDE",
+        "action": "Bedside Transthoracic Echocardiogram (POCUS)",
+        "priority": "STAT",
+        "rationale": "Assess RV strain, McConnell sign, and rule out pericardial tamponade."
+      }
+    ],
+    "contradictionsAndCaveats": [
+      "Do NOT order D-dimer in high-probability PE (Wells >= 6): negative D-dimer cannot safely exclude PE in high-risk patients. Proceed directly to CTPA."
+    ],
+    "immediateManagementPlan": [
+      {
+        "priority": 1,
+        "intervention": "Supplemental Oxygen to maintain SpO2 >= 92% and obtain IV access",
+        "timeframe": "< 5 min",
+        "objective": "Correct hypoxemia."
+      },
+      {
+        "priority": 2,
+        "intervention": "Immediate Therapeutic Anticoagulation: Enoxaparin 1 mg/kg SC or IV UFH bolus and infusion",
+        "timeframe": "< 30 min",
+        "objective": "Halt clot propagation."
+      }
+    ],
+    "strictContraindications": [
+      "Do NOT delay anticoagulation for diagnostic imaging unless active major hemorrhage is present."
+    ],
+    "escalationTriggers": [
+      "Hemodynamic collapse (sustained SBP < 90 mmHg -> Massive PE -> systemic thrombolysis)"
+    ],
+    "guidelineCitations": [
+      {
+        "issuingOrganization": "ESC/ERS",
+        "guidelineName": "Guidelines for Diagnosis and Management of Acute Pulmonary Embolism",
+        "year": 2019
+      }
+    ]
+  },
+  {
+    "caseId": "EM-CARDIO-008",
+    "domain": "Cardiovascular Emergencies",
+    "title": "Question 8 \u2013 Aortic dissection",
+    "vignette": "61-year-old male with uncontrolled hypertension presents with sudden tearing chest pain radiating to the back. BP is 190/110 mmHg in the right arm and 150/90 mmHg in the left arm.",
+    "top5Differentials": [
+      {
+        "name": "Acute Aortic Dissection (Stanford Type A vs Type B)",
+        "icd10": "I71.01 / I71.02",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "Abrupt tearing pain radiating to back + 40 mmHg inter-arm pulse/pressure deficit (+LR > 10)."
+      },
+      {
+        "name": "Acute Coronary Syndrome / Inferior-Posterior STEMI",
+        "icd10": "I21.9",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "HIGH",
+        "rationale": "Dissection can dissect retrogradely into right coronary ostium."
+      },
+      {
+        "name": "Symptomatic Thoracic Aortic Aneurysm Expansion / Impending Rupture",
+        "icd10": "I71.2",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "CRITICAL",
+        "rationale": "Aneurysmal dilation with acute wall tension."
+      },
+      {
+        "name": "Acute Pericarditis with Cardiac Tamponade",
+        "icd10": "I30.9 / I31.4",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "CRITICAL",
+        "rationale": "Type A dissection leaking into pericardial space producing hemopericardium."
+      },
+      {
+        "name": "Acute Pulmonary Embolism",
+        "icd10": "I26.99",
+        "clinicalCategory": "TIER_3_ALTERNATIVE",
+        "dangerTier": "HIGH",
+        "rationale": "Sudden thoracic pain; lacks the inter-arm blood pressure discrepancy."
+      }
+    ],
+    "mustNotMissConditions": [
+      "Stanford Type A Aortic Dissection",
+      "Hemopericardium and Cardiac Tamponade",
+      "Coronary/Carotid Malperfusion"
+    ],
+    "explicitMissingInformation": [
+      "Heart rate and rhythm (target HR < 60 bpm in anti-impulse therapy)",
+      "Neurological exam (focal deficits from carotid involvement)",
+      "Peripheral pulse symmetry"
+    ],
+    "clinicalScores": [
+      {
+        "scoreName": "Aortic Dissection Detection Risk Score (ADD-RS)",
+        "scoreType": "DIAGNOSTIC",
+        "calculatedValue": "HIGH RISK (Score >= 2)",
+        "isFullyCalculable": true,
+        "clinicalMeaning": "Tearing pain + pulse/BP discrepancy > 20 mmHg. Pre-test probability > 80%; mandates immediate CTA."
+      }
+    ],
+    "recommendedWorkup": [
+      {
+        "category": "IMAGING",
+        "action": "Stat CT Angiography (CTA) of the Chest, Abdomen, and Pelvis (Aorta protocol)",
+        "priority": "STAT",
+        "rationale": "Classify Stanford Type A vs B and assess branch vessel perfusion."
+      },
+      {
+        "category": "BEDSIDE",
+        "action": "Bedside Transthoracic Echocardiogram (TTE)",
+        "priority": "STAT",
+        "rationale": "Evaluate ascending aortic root, pericardial effusion/tamponade, and acute aortic regurgitation."
+      }
+    ],
+    "contradictionsAndCaveats": [
+      "NEVER administer pure vasodilators (Hydralazine, Sodium Nitroprusside) without PRIOR beta-blockade: reflex tachycardia increases shear stress (dP/dt), triggering catastrophic aortic rupture and propagation of the dissection flap!"
+    ],
+    "immediateManagementPlan": [
+      {
+        "priority": 1,
+        "intervention": "ANTI-IMPULSE THERAPY - STEP 1 (Beta-blockade): IV Esmolol infusion targeting HR < 60 bpm",
+        "timeframe": "< 10 min",
+        "objective": "Eliminate ventricular ejection force and shear stress (dP/dt)."
+      },
+      {
+        "priority": 2,
+        "intervention": "ANTI-IMPULSE THERAPY - STEP 2 (Vasodilator): IV Nicardipine added ONLY AFTER HR < 60 bpm, targeting SBP < 120 mmHg within 20 min",
+        "timeframe": "< 20 min",
+        "objective": "Controlled blood pressure reduction."
+      },
+      {
+        "priority": 3,
+        "intervention": "STAT Cardiothoracic and Vascular Surgery Consultation",
+        "timeframe": "< 15 min",
+        "objective": "Immediate OR mobilization for Type A dissection."
+      }
+    ],
+    "strictContraindications": [
+      "Vasodilators without prior beta-blockade are STRICTLY CONTRAINDICATED.",
+      "Anticoagulation, antiplatelets, and thrombolytics are STRICTLY CONTRAINDICATED (causes fatal hemorrhage into false lumen or pericardium)."
+    ],
+    "escalationTriggers": [
+      "Stanford Type A involvement -> Emergent open surgical repair STAT"
+    ],
+    "guidelineCitations": [
+      {
+        "issuingOrganization": "ACC/AHA",
+        "guidelineName": "Guideline for Diagnosis and Management of Aortic Disease",
+        "year": 2022
+      }
+    ]
+  },
+  {
+    "caseId": "EM-CARDIO-009",
+    "domain": "Cardiovascular Emergencies",
+    "title": "Question 9 \u2013 Cardiogenic shock",
+    "vignette": "72-year-old male with a history of coronary artery disease presents with chest pain, confusion, cold extremities, and hypotension. BP 78/48 mmHg, HR 130 bpm, lactate 5.2 mmol/L.",
+    "top5Differentials": [
+      {
+        "name": "Cardiogenic Shock secondary to Acute Myocardial Infarction",
+        "icd10": "R57.0 / I21.9",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "CAD history, acute chest pain, profound hypotension (MAP 58), tachycardia, and high lactate (5.2)."
+      },
+      {
+        "name": "Mechanical Complication of Acute MI (Papillary Muscle Rupture / VSD)",
+        "icd10": "I23.5 / I23.2",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "Abrupt hemodynamic collapse post-infarct due to acute mitral regurgitation or VSD."
+      },
+      {
+        "name": "Acute Massive Pulmonary Embolism",
+        "icd10": "I26.99",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "CRITICAL",
+        "rationale": "Obstructive cardiogenic shock from severe acute RV afterload."
+      },
+      {
+        "name": "Cardiac Tamponade",
+        "icd10": "I31.4",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "CRITICAL",
+        "rationale": "Obstructive shock with tachycardia, hypotension, and impaired filling."
+      },
+      {
+        "name": "Distributive Septic Shock with Underlying CAD",
+        "icd10": "R57.2",
+        "clinicalCategory": "TIER_3_ALTERNATIVE",
+        "dangerTier": "HIGH",
+        "rationale": "Severe lactic acidosis and encephalopathy; cold extremities favor cardiogenic hypoperfusion."
+      }
+    ],
+    "mustNotMissConditions": [
+      "Cardiogenic Shock (SCAI Stage D/E)",
+      "Acute Papillary Muscle Rupture",
+      "Post-Infarction Ventricular Septal Rupture"
+    ],
+    "explicitMissingInformation": [
+      "12-Lead ECG findings (ST-elevation)",
+      "Bedside echocardiography findings (LVEF, wall motion, valve integrity)",
+      "Respiratory rate and SpO2 (pulmonary edema)"
+    ],
+    "clinicalScores": [
+      {
+        "scoreName": "SCAI Shock Classification",
+        "scoreType": "SEVERITY_PROGNOSTIC",
+        "calculatedValue": "STAGE D (DETERIORATING) / STAGE E (EXTREMIS)",
+        "isFullyCalculable": true,
+        "clinicalMeaning": "Profound hypotension, cold extremities, confusion, and lactate 5.2 mmol/L. Mortality > 40-50%; mandates emergent mechanical circulatory support and catheterization."
+      }
+    ],
+    "recommendedWorkup": [
+      {
+        "category": "BEDSIDE",
+        "action": "Stat 12-Lead ECG and Bedside Echocardiogram (POCUS)",
+        "priority": "STAT",
+        "rationale": "Identify culprit STEMI and exclude mechanical rupture (VSD, papillary muscle rupture, tamponade)."
+      },
+      {
+        "category": "LABORATORY",
+        "action": "Stat Troponin, Arterial Blood Gas, Lactate, CMP, CBC, Coagulation panel",
+        "priority": "STAT",
+        "rationale": "Quantify end-organ hypoperfusion."
+      }
+    ],
+    "contradictionsAndCaveats": [
+      "Do NOT administer large fluid boluses in cardiogenic shock: volume loading in LV pump failure triggers catastrophic pulmonary edema and worsens oxygenation."
+    ],
+    "immediateManagementPlan": [
+      {
+        "priority": 1,
+        "intervention": "Vasopressor First-Line: Norepinephrine infusion (titrated to MAP >= 65 mmHg)",
+        "timeframe": "< 5 min",
+        "objective": "Restore minimal coronary and cerebral perfusion pressure."
+      },
+      {
+        "priority": 2,
+        "intervention": "Inotrope Addition: Dobutamine once MAP > 65 mmHg",
+        "timeframe": "< 15 min",
+        "objective": "Augment myocardial contractility and stroke volume."
+      },
+      {
+        "priority": 3,
+        "intervention": "STAT Cardiac Catheterization Lab Activation and Mechanical Circulatory Support (Impella / IABP / ECMO)",
+        "timeframe": "< 30 min",
+        "objective": "Emergent coronary revascularization (PCI)."
+      }
+    ],
+    "strictContraindications": [
+      "Beta-blockers, CCBs, and ACE inhibitors are STRICTLY CONTRAINDICATED in cardiogenic shock."
+    ],
+    "escalationTriggers": [
+      "Refractory hypotension -> Emergent Impella / VA-ECMO deployment"
+    ],
+    "guidelineCitations": [
+      {
+        "issuingOrganization": "AHA",
+        "guidelineName": "Management of Cardiogenic Shock",
+        "year": 2017
+      }
+    ]
+  },
+  {
+    "caseId": "EM-CARDIO-010",
+    "domain": "Cardiovascular Emergencies",
+    "title": "Question 10 \u2013 Dangerous arrhythmia",
+    "vignette": "39-year-old male presents with palpitations, dizziness, and syncope. ECG shows a regular wide-complex tachycardia at 190 bpm.",
+    "top5Differentials": [
+      {
+        "name": "Ventricular Tachycardia (Monomorphic VT)",
+        "icd10": "I47.2",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "Accounts for > 80% of regular wide-complex tachycardias; syncope and dizziness reflect severe hemodynamic compromise."
+      },
+      {
+        "name": "Supraventricular Tachycardia with Aberrancy (SVT with BBB)",
+        "icd10": "I47.1",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "HIGH",
+        "rationale": "Pre-existing bundle branch block with AV nodal re-entrant tachycardia."
+      },
+      {
+        "name": "Antidromic Atrioventricular Re-entrant Tachycardia (WPW Syndrome)",
+        "icd10": "I45.6",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "Antegrade conduction down accessory pathway; high risk of ventricular fibrillation if blocked incorrectly."
+      },
+      {
+        "name": "Hyperkalemia-Induced Sine-Wave Wide Tachycardia",
+        "icd10": "E87.5",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "CRITICAL",
+        "rationale": "Severe metabolic conduction block mimicking VT."
+      },
+      {
+        "name": "Toxicological Sodium Channel Blocker Toxicity (TCA Overdose)",
+        "icd10": "T43.01",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "CRITICAL",
+        "rationale": "Drug-induced QRS widening and rapid rate."
+      }
+    ],
+    "mustNotMissConditions": [
+      "Ventricular Tachycardia deteriorating to Ventricular Fibrillation",
+      "WPW Pre-excited Tachycardia",
+      "Severe Hyperkalemia"
+    ],
+    "explicitMissingInformation": [
+      "Blood pressure (determine whether patient is stable or in cardiogenic shock)",
+      "History of prior MI, cardiomyopathy, or WPW",
+      "Serum potassium and toxicology exposure history"
+    ],
+    "clinicalScores": [
+      {
+        "scoreName": "Brugada / Vereckei Algorithm",
+        "scoreType": "DIAGNOSTIC",
+        "calculatedValue": "VENTRICULAR TACHYCARDIA UNTIL PROVEN OTHERWISE",
+        "isFullyCalculable": true,
+        "clinicalMeaning": "All regular wide-complex tachycardias must be clinically treated as Ventricular Tachycardia."
+      }
+    ],
+    "recommendedWorkup": [
+      {
+        "category": "BEDSIDE",
+        "action": "Immediate 12-Lead ECG rhythm strip recording and continuous defibrillator pads placement",
+        "priority": "STAT",
+        "rationale": "Analyze AV dissociation and prepare for instant defibrillation/cardioversion."
+      },
+      {
+        "category": "LABORATORY",
+        "action": "Stat Potassium, Magnesium, Calcium, Blood Gas, Troponin, and Tox Screen",
+        "priority": "STAT",
+        "rationale": "Rule out electrolyte triggers and toxic ingestion."
+      }
+    ],
+    "contradictionsAndCaveats": [
+      "NEVER administer AV nodal blocking agents (Verapamil, Diltiazem, Adenosine, Beta-blockers) to an undifferentiated wide-complex tachycardia: in VT or WPW, calcium channel blockers precipitate catastrophic ventricular fibrillation and irreversible cardiac arrest!"
+    ],
+    "immediateManagementPlan": [
+      {
+        "priority": 1,
+        "intervention": "IF UNSTABLE (Syncope, dizziness, hypotension): Immediate Synchronized Electrical Cardioversion (100\u2013200 Joules biphasic) with procedural sedation",
+        "timeframe": "< 2 min",
+        "objective": "Instant restoration of organized rhythm and perfusion."
+      },
+      {
+        "priority": 2,
+        "intervention": "IF STABLE: Pharmacologic cardioversion with IV Procainamide or IV Amiodarone",
+        "timeframe": "< 15 min",
+        "objective": "Pharmacologic termination of VT."
+      },
+      {
+        "priority": 3,
+        "intervention": "Cardiology / Electrophysiology (EP) Consultation and ICU admission",
+        "timeframe": "< 30 min",
+        "objective": "Post-cardioversion workup and ICD evaluation."
+      }
+    ],
+    "strictContraindications": [
+      "Calcium channel blockers (Verapamil, Diltiazem) are ABSOLUTELY CONTRAINDICATED in wide-complex tachycardia."
+    ],
+    "escalationTriggers": [
+      "Loss of consciousness or pulse -> Immediate unsynchronized defibrillation (200J) and ACLS arrest protocol"
+    ],
+    "guidelineCitations": [
+      {
+        "issuingOrganization": "AHA",
+        "guidelineName": "ACLS Guidelines for Tachycardia with a Pulse",
+        "year": 2020
+      }
+    ]
+  },
+  {
+    "caseId": "EM-NEURO-011",
+    "domain": "Neurology and Neurosurgical Emergencies",
+    "title": "Question 11 \u2013 Acute ischemic stroke",
+    "vignette": "68-year-old female develops sudden right-sided weakness and expressive aphasia 75 minutes before arrival. BP 182/104 mmHg, glucose 118 mg/dL.",
+    "top5Differentials": [
+      {
+        "name": "Acute Ischemic Stroke (Left MCA / Large Vessel Occlusion)",
+        "icd10": "I63.9",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "Sudden focal deficit (hemiparesis, expressive aphasia) within the time-critical 4.5h thrombolytic window."
+      },
+      {
+        "name": "Acute Intracranial Hemorrhage (ICH)",
+        "icd10": "I61.9",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "Clinically indistinguishable from ischemic stroke; mandates non-contrast CT rule-out prior to thrombolysis."
+      },
+      {
+        "name": "Transient Ischemic Attack (TIA)",
+        "icd10": "G45.9",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "HIGH",
+        "rationale": "Transient focal ischemia; high impending stroke risk."
+      },
+      {
+        "name": "Todd's Paresis post-Focal Seizure",
+        "icd10": "G40.909",
+        "clinicalCategory": "TIER_3_ALTERNATIVE",
+        "dangerTier": "MODERATE",
+        "rationale": "Postictal focal motor deficit; stroke mimic."
+      },
+      {
+        "name": "Hypoglycemia (Stroke Mimic)",
+        "icd10": "E16.2",
+        "clinicalCategory": "TIER_3_ALTERNATIVE",
+        "dangerTier": "LOW",
+        "rationale": "Excluded by normal POC glucose 118 mg/dL."
+      }
+    ],
+    "mustNotMissConditions": [
+      "Acute Large Vessel Occlusion (LVO) Stroke",
+      "Intracranial Hemorrhage"
+    ],
+    "explicitMissingInformation": [
+      "Exact baseline NIHSS score",
+      "Medication history: DOACs (Apixaban, Rivaroxaban) or warfarin in past 48h",
+      "Recent surgery, head trauma, or bleeding history past 3 months"
+    ],
+    "clinicalScores": [
+      {
+        "scoreName": "NIH Stroke Scale (NIHSS)",
+        "scoreType": "SEVERITY_PROGNOSTIC",
+        "calculatedValue": "Estimated >= 10 (MODERATE/SEVERE)",
+        "isFullyCalculable": false,
+        "clinicalMeaning": "Aphasia + hemiparesis predicts high likelihood of Large Vessel Occlusion (LVO)."
+      },
+      {
+        "scoreName": "IV Thrombolysis Eligibility Gate",
+        "scoreType": "TREATMENT_ELIGIBILITY",
+        "calculatedValue": "ELIGIBLE (75 min <= 4.5h; BP 182/104 < 185/110)",
+        "isFullyCalculable": true,
+        "clinicalMeaning": "Within golden window; pre-treatment BP < 185/110 mmHg."
+      }
+    ],
+    "recommendedWorkup": [
+      {
+        "category": "IMAGING",
+        "action": "Non-Contrast Head CT (NCCT) within <= 20 minutes",
+        "priority": "STAT",
+        "rationale": "Rule out hemorrhage prior to thrombolysis."
+      },
+      {
+        "category": "IMAGING",
+        "action": "CT Angiography (CTA) of Head and Neck",
+        "priority": "STAT",
+        "rationale": "Detect LVO for emergent mechanical thrombectomy (EVT)."
+      },
+      {
+        "category": "LABORATORY",
+        "action": "Stat CBC (platelets), PT/INR, aPTT, Type & Screen",
+        "priority": "STAT",
+        "rationale": "Do NOT delay thrombolysis for labs unless coagulopathy suspected."
+      }
+    ],
+    "contradictionsAndCaveats": [
+      "Permissive hypertension principle: In acute stroke, do NOT rapidly lower blood pressure! Target < 185/110 mmHg ONLY if giving thrombolysis. If not giving thrombolysis, allow BP up to 220/120 mmHg."
+    ],
+    "immediateManagementPlan": [
+      {
+        "priority": 1,
+        "intervention": "CODE STROKE STAT ACTIVATION and emergent Non-Contrast Head CT <= 20 min",
+        "timeframe": "< 20 min",
+        "objective": "Rule out ICH and establish reperfusion eligibility."
+      },
+      {
+        "priority": 2,
+        "intervention": "IV Thrombolysis (Tenecteplase 0.25 mg/kg or Alteplase 0.9 mg/kg) if NCCT negative and BP < 185/110",
+        "timeframe": "< 45\u201360 min",
+        "objective": "Enzymatic reperfusion of ischemic penumbra."
+      },
+      {
+        "priority": 3,
+        "intervention": "Endovascular Mechanical Thrombectomy (EVT) if CTA confirms LVO",
+        "timeframe": "< 90\u2013120 min",
+        "objective": "Mechanical recanalization."
+      }
+    ],
+    "strictContraindications": [
+      "Sublingual Nifedipine is STRICTLY CONTRAINDICATED (causes precipitate hypotension and stroke expansion).",
+      "Do NOT lower BP below 180/105 unless post-thrombolysis target."
+    ],
+    "escalationTriggers": [
+      "CTA confirms LVO (M1 MCA or ICA terminus) -> Emergent neuro-interventional catheterization lab transfer"
+    ],
+    "guidelineCitations": [
+      {
+        "issuingOrganization": "AHA/ASA",
+        "guidelineName": "Guidelines for Early Management of Patients with Acute Ischemic Stroke",
+        "year": 2019
+      }
+    ]
+  },
+  {
+    "caseId": "EM-NEURO-012",
+    "domain": "Neurology and Neurosurgical Emergencies",
+    "title": "Question 12 \u2013 Subarachnoid hemorrhage",
+    "vignette": "43-year-old male develops a sudden severe headache described as the worst headache of his life, reaching maximum intensity within seconds. He has neck stiffness and vomiting. CT performed four hours after onset is negative.",
+    "top5Differentials": [
+      {
+        "name": "Aneurysmal Subarachnoid Hemorrhage (SAH)",
+        "icd10": "I60.9",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "Classic thunderclap headache peaking in seconds + meningismus + vomiting; CT false-negative rate exists."
+      },
+      {
+        "name": "Reversible Cerebral Vasoconstriction Syndrome (RCVS)",
+        "icd10": "I67.841",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "HIGH",
+        "rationale": "Recurrent thunderclap headaches with multifocal arterial constriction."
+      },
+      {
+        "name": "Cervical / Vertebral Artery Dissection",
+        "icd10": "I72.0",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "HIGH",
+        "rationale": "Sudden occipital/neck pain following minor trauma or spontaneous."
+      },
+      {
+        "name": "Cerebral Venous Sinus Thrombosis (CVST)",
+        "icd10": "I67.6",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "HIGH",
+        "rationale": "Severe headache with intracranial hypertension and vomiting."
+      },
+      {
+        "name": "Acute Bacterial or Viral Meningitis",
+        "icd10": "G00.9 / G03.9",
+        "clinicalCategory": "TIER_3_ALTERNATIVE",
+        "dangerTier": "HIGH",
+        "rationale": "Severe headache, neck stiffness, and vomiting; typically features fever."
+      }
+    ],
+    "mustNotMissConditions": [
+      "Ruptured Saccular Intracranial Aneurysm",
+      "Vertebral/Carotid Artery Dissection",
+      "Cerebral Venous Sinus Thrombosis"
+    ],
+    "explicitMissingInformation": [
+      "Opening pressure on lumbar puncture",
+      "Visual acuity and fundoscopic exam for subhyaloid hemorrhages / papilledema",
+      "Blood pressure and neurological exam (focal cranial nerve III palsy)"
+    ],
+    "clinicalScores": [
+      {
+        "scoreName": "Ottawa SAH Rule",
+        "scoreType": "DIAGNOSTIC",
+        "calculatedValue": "HIGH RISK / SENSITIVITY 100%",
+        "isFullyCalculable": true,
+        "clinicalMeaning": "Age >= 40, neck pain/stiffness, witnessed onset peaking within seconds, vomiting. Mandates complete investigation despite initial negative non-contrast CT."
+      },
+      {
+        "scoreName": "Hunt and Hess Scale",
+        "scoreType": "SEVERITY_PROGNOSTIC",
+        "calculatedValue": "Grade II (Moderate/Severe Headache, Nuchal Rigidity)",
+        "isFullyCalculable": true,
+        "clinicalMeaning": "Guides surgical/interventional aneurysm securing and ICU monitoring."
+      }
+    ],
+    "recommendedWorkup": [
+      {
+        "category": "BEDSIDE",
+        "action": "Lumbar Puncture (LP) measuring opening pressure, cell counts in tubes 1 and 4, and spectrophotometric xanthochromia",
+        "priority": "STAT",
+        "rationale": "Definitive gold standard to detect xanthochromia when CT is negative."
+      },
+      {
+        "category": "IMAGING",
+        "action": "CT Angiography (CTA) of the Head and Neck",
+        "priority": "STAT",
+        "rationale": "Detect underlying berry aneurysm, vascular malformation, or dissection."
+      }
+    ],
+    "contradictionsAndCaveats": [
+      "A negative CT at 4 hours has high sensitivity (~98-99%), but in high-suspicion presentations (meningismus, vomiting, thunderclap), standard consensus mandates Lumbar Puncture or CTA to definitively exclude an unruptured or micro-leaking aneurysm!"
+    ],
+    "immediateManagementPlan": [
+      {
+        "priority": 1,
+        "intervention": "Strict Blood Pressure Control: IV Nicardipine or Labetalol targeting SBP < 140 mmHg",
+        "timeframe": "< 30 min",
+        "objective": "Prevent aneurysm rebleeding."
+      },
+      {
+        "priority": 2,
+        "intervention": "Initiate Nimodipine 60 mg PO/NG q4h",
+        "timeframe": "< 60 min",
+        "objective": "Prevent secondary cerebral vasospasm and delayed ischemic deficits."
+      },
+      {
+        "priority": 3,
+        "intervention": "Emergent Neurosurgery and Neuro-interventional Consultation for aneurysm securing (coiling/clipping)",
+        "timeframe": "< 60 min",
+        "objective": "Definitive aneurysm occlusion."
+      }
+    ],
+    "strictContraindications": [
+      "NSAIDs and antiplatelets are STRICTLY CONTRAINDICATED (increases fatal rebleeding risk).",
+      "Do NOT discharge patient with thunderclap headache and negative CT without LP or CTA vascular imaging."
+    ],
+    "escalationTriggers": [
+      "Xanthochromia on LP or aneurysm demonstrated on CTA -> Emergent neurosurgical ICU admission"
+    ],
+    "guidelineCitations": [
+      {
+        "issuingOrganization": "AHA/ASA",
+        "guidelineName": "Guidelines for the Management of Aneurysmal Subarachnoid Hemorrhage",
+        "year": 2023
+      }
+    ]
+  },
+  {
+    "caseId": "EM-NEURO-013",
+    "domain": "Neurology and Neurosurgical Emergencies",
+    "title": "Question 13 \u2013 Meningitis versus encephalitis",
+    "vignette": "19-year-old female presents with fever 39.4\u00b0C, headache, neck stiffness, confusion, and photophobia. HR 130 bpm.",
+    "top5Differentials": [
+      {
+        "name": "Acute Bacterial Meningitis (Neisseria meningitidis / S. pneumoniae)",
+        "icd10": "G00.9",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "Classic triad of fever, neck stiffness, and altered mental status with high fever and tachycardia."
+      },
+      {
+        "name": "Herpes Simplex Virus (HSV-1) Encephalitis",
+        "icd10": "B00.4",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "Prominent confusion, fever, and headache; temporal lobe necrosis if untreated."
+      },
+      {
+        "name": "Subarachnoid Hemorrhage with Secondary Meningismus",
+        "icd10": "I60.9",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "CRITICAL",
+        "rationale": "Severe headache and neck stiffness, though fever favors infectious etiology."
+      },
+      {
+        "name": "Cerebral Malaria / Meningococcemia",
+        "icd10": "B50.0 / A39.0",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "CRITICAL",
+        "rationale": "Fulminant sepsis with neurological obtundation and purpura."
+      },
+      {
+        "name": "Brain Abscess with Elevated ICP",
+        "icd10": "G06.0",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "HIGH",
+        "rationale": "Space-occupying infection; high herniation risk if LP performed blindly."
+      }
+    ],
+    "mustNotMissConditions": [
+      "Acute Bacterial Meningitis",
+      "HSV-1 Encephalitis",
+      "Impending Cerebral Herniation"
+    ],
+    "explicitMissingInformation": [
+      "Blood pressure and respiratory rate (assess for septic shock and Cushing triad)",
+      "Skin exam: petechiae, purpura fulminans (meningococcal disease)",
+      "Focal neurological deficit or papilledema (determine LP safety before CT)"
+    ],
+    "clinicalScores": [
+      {
+        "scoreName": "qSOFA Score",
+        "scoreType": "SEVERITY_PROGNOSTIC",
+        "calculatedValue": ">= 1 (Confusion)",
+        "isFullyCalculable": false,
+        "clinicalMeaning": "Altered mentation present; full sepsis screening required."
+      }
+    ],
+    "recommendedWorkup": [
+      {
+        "category": "LABORATORY",
+        "action": "Stat Blood Cultures x2 PRIOR to antibiotics (or immediately with first dose)",
+        "priority": "STAT",
+        "rationale": "Identify causative pathogen without delaying therapy."
+      },
+      {
+        "category": "IMAGING",
+        "action": "Non-contrast Head CT BEFORE LP due to altered mental status (confusion)",
+        "priority": "STAT",
+        "rationale": "Rule out space-occupying lesion or brain shift prior to dural puncture."
+      },
+      {
+        "category": "BEDSIDE",
+        "action": "Lumbar Puncture: CSF opening pressure, cell count, Gram stain, protein, glucose, bacterial antigens, and viral PCR (HSV)",
+        "priority": "URGENT",
+        "rationale": "Definitive CSF analysis following CT scan."
+      }
+    ],
+    "contradictionsAndCaveats": [
+      "NEVER DELAY ANTIMICROBIAL THERAPY FOR HEAD CT OR LUMBAR PUNCTURE: In suspected bacterial meningitis or encephalitis, draw blood cultures and administer IV antibiotics, dexamethasone, and acyclovir IMMEDIATELY before sending patient to CT!"
+    ],
+    "immediateManagementPlan": [
+      {
+        "priority": 1,
+        "intervention": "IMMEDIATE EMPIRIC ANTIMICROBIALS: IV Ceftriaxone 2g q12h + IV Vancomycin 15-20 mg/kg + IV Acyclovir 10 mg/kg q8h",
+        "timeframe": "< 30 min",
+        "objective": "Sterilize CSF and prevent parenchymal necrosis."
+      },
+      {
+        "priority": 2,
+        "intervention": "IV Dexamethasone 10 mg given BEFORE or WITH the first antibiotic dose",
+        "timeframe": "< 30 min",
+        "objective": "Reduce neurological morbidity, hearing loss, and mortality from pneumococcal meningitis."
+      },
+      {
+        "priority": 3,
+        "intervention": "Droplet isolation precautions and ICU admission",
+        "timeframe": "< 45 min",
+        "objective": "Infection control for Neisseria meningitidis and intensive monitoring."
+      }
+    ],
+    "strictContraindications": [
+      "Do NOT delay antibiotics to obtain a CT or lumbar puncture.",
+      "Do NOT perform LP in patients with focal neurological deficits, new seizures, or severe encephalopathy without a prior CT."
+    ],
+    "escalationTriggers": [
+      "Rapid neurologic decline, purpuric rash spreading, or septic shock -> Intubation, ICU transfer"
+    ],
+    "guidelineCitations": [
+      {
+        "issuingOrganization": "Infectious Diseases Society of America (IDSA)",
+        "guidelineName": "Practice Guidelines for the Management of Bacterial Meningitis",
+        "year": 2004
+      }
+    ]
+  },
+  {
+    "caseId": "EM-NEURO-014",
+    "domain": "Neurology and Neurosurgical Emergencies",
+    "title": "Question 14 \u2013 Status epilepticus",
+    "vignette": "31-year-old male experiences continuous generalized tonic-clonic seizures lasting eight minutes without regaining consciousness. Oxygen saturation is 84%.",
+    "top5Differentials": [
+      {
+        "name": "Status Epilepticus (Early / Established)",
+        "icd10": "G41.9",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "Generalized tonic-clonic seizure lasting > 5 minutes without recovery of consciousness defines status epilepticus."
+      },
+      {
+        "name": "Severe Hypoglycemic Seizure",
+        "icd10": "E16.2",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "Profound neuroglycopenia triggering refractory seizures."
+      },
+      {
+        "name": "Acute Intracranial Hemorrhage / SAH / Stroke",
+        "icd10": "I61.9 / I60.9",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "CRITICAL",
+        "rationale": "Structural intracranial event precipitating acute seizures."
+      },
+      {
+        "name": "Toxic Ingestion / Drug Toxicity (TCA, Isoniazid, Bupropion, Sympathomimetic)",
+        "icd10": "T50.901",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "CRITICAL",
+        "rationale": "Toxin-induced lowering of seizure threshold."
+      },
+      {
+        "name": "Severe Hyponatremia / Hypocalcemia",
+        "icd10": "E87.1 / E83.51",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "CRITICAL",
+        "rationale": "Acute electrolyte shift producing cerebral edema and seizure."
+      }
+    ],
+    "mustNotMissConditions": [
+      "Refractory Status Epilepticus (RSE)",
+      "Hypoxia / Respiratory Arrest",
+      "Severe Hypoglycemia"
+    ],
+    "explicitMissingInformation": [
+      "Point-of-care capillary blood glucose (MANDATORY immediate bedside test)",
+      "Blood pressure, heart rate, temperature",
+      "History of epilepsy, antiepileptic drug compliance, or substance withdrawal"
+    ],
+    "clinicalScores": [
+      {
+        "scoreName": "Neurocritical Care / AES Status Epilepticus Time Protocol",
+        "scoreType": "TREATMENT_ELIGIBILITY",
+        "calculatedValue": "PHASE 2 (EMERGENT INITIAL THERAPY: 5-20 min)",
+        "isFullyCalculable": true,
+        "clinicalMeaning": "Seizure > 5 min warrants immediate first-line benzodiazepine therapy."
+      }
+    ],
+    "recommendedWorkup": [
+      {
+        "category": "BEDSIDE",
+        "action": "Stat Point-of-Care Blood Glucose and Airway Positioning with High-Flow O2",
+        "priority": "STAT",
+        "rationale": "Treat hypoglycemia immediately and correct SpO2 84%."
+      },
+      {
+        "category": "LABORATORY",
+        "action": "Stat Electrolytes (Na, Ca, Mg), Blood Gas, CBC, CMP, Anticonvulsant levels, Tox screen",
+        "priority": "STAT",
+        "rationale": "Identify metabolic and toxic precipitants."
+      },
+      {
+        "category": "BEDSIDE",
+        "action": "Continuous EEG Monitoring",
+        "priority": "URGENT",
+        "rationale": "Detect non-convulsive status epilepticus following motor cessation."
+      }
+    ],
+    "contradictionsAndCaveats": [
+      "Do NOT use neuromuscular blockers (Paralytics like Rocuronium or Succinylcholine) without continuous EEG or before antiepileptics: paralysis halts motor convulsions but brain electrographic status epilepticus continues, causing irreversible excitotoxic neuronal death!"
+    ],
+    "immediateManagementPlan": [
+      {
+        "priority": 1,
+        "intervention": "PHASE 1 (0\u20135 min): Airway support (bag-valve-mask with 100% O2) + POC Glucose check (give 50 mL D50W + Thiamine 100 mg if hypoglycemic)",
+        "timeframe": "< 2 min",
+        "objective": "Reverse hypoxia and exclude hypoglycemia."
+      },
+      {
+        "priority": 2,
+        "intervention": "PHASE 2 (5\u201320 min - First-Line Benzodiazepine): IV Lorazepam 4 mg IV push over 2 min (or IM Midazolam 10 mg if no IV access); repeat once at 5\u201310 min if seizure persists",
+        "timeframe": "< 5 min",
+        "objective": "Immediate GABA-mediated seizure termination."
+      },
+      {
+        "priority": 3,
+        "intervention": "PHASE 3 (20\u201340 min - Second-Line Urgent Antiepileptic): IV Levetiracetam 60 mg/kg (max 4500 mg) or IV Fosphenytoin 20 mg PE/kg over 10-15 min",
+        "timeframe": "< 15 min",
+        "objective": "Sustained seizure control."
+      },
+      {
+        "priority": 4,
+        "intervention": "PHASE 4 (> 40 min - Refractory Status Epilepticus): Emergent endotracheal intubation and continuous anesthetic infusion (Propofol or Midazolam)",
+        "timeframe": "< 40 min",
+        "objective": "Burst suppression on EEG."
+      }
+    ],
+    "strictContraindications": [
+      "Do NOT place tongue depressors or objects into the patient's mouth during active convulsions.",
+      "Do NOT delay second-line antiepileptics if benzodiazepines terminate the initial seizure."
+    ],
+    "escalationTriggers": [
+      "Seizure continuous beyond 20 minutes -> Prepare for endotracheal intubation and continuous IV propofol"
+    ],
+    "guidelineCitations": [
+      {
+        "issuingOrganization": "American Epilepsy Society (AES)",
+        "guidelineName": "Evidence-Based Guideline: Treatment of Convulsive Status Epilepticus in Children and Adults",
+        "year": 2016
+      }
+    ]
+  },
+  {
+    "caseId": "EM-NEURO-015",
+    "domain": "Neurology and Neurosurgical Emergencies",
+    "title": "Question 15 \u2013 Spinal cord compression",
+    "vignette": "59-year-old male with a history of prostate cancer presents with progressive lower back pain, bilateral leg weakness, saddle anesthesia, and urinary retention.",
+    "top5Differentials": [
+      {
+        "name": "Metastatic Epidural Spinal Cord Compression (MESCC)",
+        "icd10": "G95.20 / C61",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "History of prostate cancer + back pain + bilateral motor weakness; oncologic surgical emergency."
+      },
+      {
+        "name": "Cauda Equina Syndrome",
+        "icd10": "G83.4",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "Saddle anesthesia, urinary retention, and bilateral leg weakness; requires surgical decompression within 24\u201348 hours to prevent permanent incontinence."
+      },
+      {
+        "name": "Spinal Epidural Abscess / Spondylodiscitis",
+        "icd10": "G06.1",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "CRITICAL",
+        "rationale": "Progressive neurologic deficit with back pain; infectious emergency."
+      },
+      {
+        "name": "Spinal Epidural Hematoma",
+        "icd10": "G95.19",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "CRITICAL",
+        "rationale": "Acute space-occupying compression."
+      },
+      {
+        "name": "Acute Transverse Myelitis / Guillain-Barr\u00e9 Variant",
+        "icd10": "G37.3 / G61.0",
+        "clinicalCategory": "TIER_3_ALTERNATIVE",
+        "dangerTier": "HIGH",
+        "rationale": "Bilateral weakness and autonomic dysfunction."
+      }
+    ],
+    "mustNotMissConditions": [
+      "Metastatic Epidural Spinal Cord Compression (MESCC)",
+      "Cauda Equina Syndrome",
+      "Spinal Epidural Abscess"
+    ],
+    "explicitMissingInformation": [
+      "Post-void residual (PVR) volume (catheterization volume > 200\u2013500 mL confirms neurogenic urinary retention)",
+      "Anal sphincter tone on digital rectal examination",
+      "Sensory level mapping to dermatome"
+    ],
+    "clinicalScores": [
+      {
+        "scoreName": "Frankel / ASIA Impairment Scale",
+        "scoreType": "SEVERITY_PROGNOSTIC",
+        "calculatedValue": "Incomplete Motor Deficit (Class C/D)",
+        "isFullyCalculable": true,
+        "clinicalMeaning": "Preserved baseline motor function before intervention strongly predicts post-treatment ambulation."
+      }
+    ],
+    "recommendedWorkup": [
+      {
+        "category": "IMAGING",
+        "action": "Emergent Whole-Spine MRI with and without IV contrast within <= 12\u201324 hours",
+        "priority": "STAT",
+        "rationale": "Gold standard to identify exact thecal sac compression and screen for multiple occult metastatic sites."
+      },
+      {
+        "category": "BEDSIDE",
+        "action": "Post-void catheterization and digital rectal examination",
+        "priority": "STAT",
+        "rationale": "Document neurogenic retention and anal sphincter tone."
+      }
+    ],
+    "contradictionsAndCaveats": [
+      "Do NOT image only the lumbosacral spine: up to 30% of patients with metastatic spinal disease have multiple non-contiguous lesions. Whole-spine MRI is mandatory!"
+    ],
+    "immediateManagementPlan": [
+      {
+        "priority": 1,
+        "intervention": "High-Dose IV Corticosteroids: Dexamethasone 10\u201316 mg IV bolus immediately, then 4 mg IV q6h",
+        "timeframe": "< 30 min",
+        "objective": "Reduce vasogenic spinal cord edema and preserve neuronal conduction."
+      },
+      {
+        "priority": 2,
+        "intervention": "Emergent Spine Neurosurgery and Radiation Oncology Consultations",
+        "timeframe": "< 60 min",
+        "objective": "Mobilize for surgical decompression or urgent palliative radiotherapy."
+      },
+      {
+        "priority": 3,
+        "intervention": "Urinary Catheterization (Foley catheter placement)",
+        "timeframe": "< 30 min",
+        "objective": "Relieve acute urinary retention and prevent permanent detrusor damage."
+      }
+    ],
+    "strictContraindications": [
+      "Do NOT perform chiropractic spinal manipulation or physical therapy on suspected metastatic spine lesions.",
+      "Do NOT delay dexamethasone while waiting for the MRI scan."
+    ],
+    "escalationTriggers": [
+      "Rapidly progressive motor deficit (inability to walk) -> Emergent OR for surgical decompression within hours"
+    ],
+    "guidelineCitations": [
+      {
+        "issuingOrganization": "American Society of Clinical Oncology (ASCO)",
+        "guidelineName": "Management of Metastatic Spinal Cord Compression",
+        "year": 2017
+      }
+    ]
+  },
+  {
+    "caseId": "EM-INFECT-016",
+    "domain": "Infectious Diseases and Sepsis",
+    "title": "Question 16 \u2013 Sepsis with an unclear source",
+    "vignette": "45-year-old female presents with fever 39.5\u00b0C, HR 132 bpm, RR 28/min, BP 88/54 mmHg, and confusion. WBC 22,000/\u00b5L and lactate 4.6 mmol/L.",
+    "top5Differentials": [
+      {
+        "name": "Septic Shock / Sepsis-3 (Source Unclear)",
+        "icd10": "R65.21 / A41.9",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "SIRS criteria met + hypotension (MAP 65.3) + lactate 4.6 + acute organ dysfunction (confusion, leukocytosis)."
+      },
+      {
+        "name": "Urosepsis / Acute Pyelonephritis",
+        "icd10": "N39.0 / N10",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "HIGH",
+        "rationale": "Leading occult source of sepsis in adult females."
+      },
+      {
+        "name": "Severe Community-Acquired Pneumonia / ARDS",
+        "icd10": "J18.9",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "HIGH",
+        "rationale": "Tachypnea (RR 28) and tachycardia; frequent source of bacteremia."
+      },
+      {
+        "name": "Intra-Abdominal Sepsis / Perforated Viscus",
+        "icd10": "K65.0",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "HIGH",
+        "rationale": "Occult perforation or peritonitis producing profound lactic acidosis."
+      },
+      {
+        "name": "Bacterial Meningitis / Meningococcemia",
+        "icd10": "G00.9",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "CRITICAL",
+        "rationale": "High fever, tachycardia, and encephalopathy."
+      }
+    ],
+    "mustNotMissConditions": [
+      "Sepsis-3 Septic Shock",
+      "Occult Intra-Abdominal Sepsis",
+      "Bacterial Meningitis"
+    ],
+    "explicitMissingInformation": [
+      "Arterial Blood Gas / PaO2 (assess lung injury and metabolic acid-base status)",
+      "Urine output / Foley catheter insertion",
+      "Source-specific physical exam (murmurs, peritoneal signs, costovertebral tenderness, skin lesions)"
+    ],
+    "clinicalScores": [
+      {
+        "scoreName": "qSOFA Score",
+        "scoreType": "SEVERITY_PROGNOSTIC",
+        "calculatedValue": "3 / 3 (HIGH MORTALITY RISK)",
+        "isFullyCalculable": true,
+        "clinicalMeaning": "RR >= 22 (+1), Altered Mentation (+1), SBP <= 100 (+1). Score 3/3 indicates severe risk of ICU admission and death. Note: qSOFA is NOT a diagnostic test for sepsis!"
+      },
+      {
+        "scoreName": "Sepsis-3 Septic Shock Criteria",
+        "scoreType": "DIAGNOSTIC",
+        "calculatedValue": "MET",
+        "isFullyCalculable": true,
+        "clinicalMeaning": "Suspected infection + organ dysfunction + refractory hypotension requiring vasopressors to maintain MAP >= 65 and lactate > 2 mmol/L."
+      }
+    ],
+    "recommendedWorkup": [
+      {
+        "category": "LABORATORY",
+        "action": "Stat Blood Cultures x2 sets PRIOR to antibiotics, Urinalysis & Urine culture, Sputum culture, Lactate remeasurement within 4 hours",
+        "priority": "STAT",
+        "rationale": "Hour-1 Sepsis Bundle components."
+      },
+      {
+        "category": "IMAGING",
+        "action": "Portable Chest Radiograph and POCUS Abdomen/Kidneys",
+        "priority": "STAT",
+        "rationale": "Identify source of occult infection."
+      },
+      {
+        "category": "BEDSIDE",
+        "action": "Invasive Arterial Line and Central Venous Access",
+        "priority": "URGENT",
+        "rationale": "Titrate vasopressors and monitor volume responsiveness."
+      }
+    ],
+    "contradictionsAndCaveats": [
+      "qSOFA is a PROGNOSTIC score for mortality risk, NOT a diagnostic score for sepsis: a qSOFA < 2 does NOT rule out sepsis!"
+    ],
+    "immediateManagementPlan": [
+      {
+        "priority": 1,
+        "intervention": "HOUR-1 SEPSIS BUNDLE - Fluid Resuscitation: Rapid IV infusion of 30 mL/kg balanced crystalloid (Lactated Ringer's) within 3 hours",
+        "timeframe": "< 30 min",
+        "objective": "Restore intravascular volume and stroke volume."
+      },
+      {
+        "priority": 2,
+        "intervention": "HOUR-1 SEPSIS BUNDLE - Blood Cultures and Broad-Spectrum IV Antibiotics: IV Vancomycin 15-20 mg/kg + IV Cefepime 2g (or Piperacillin-Tazobactam 4.5g)",
+        "timeframe": "< 45 min",
+        "objective": "Eradicate circulating bacteremia."
+      },
+      {
+        "priority": 3,
+        "intervention": "HOUR-1 SEPSIS BUNDLE - Vasopressor Therapy: Norepinephrine infusion titrated to maintain MAP >= 65 mmHg if hypotension persists during/after fluid load",
+        "timeframe": "< 60 min",
+        "objective": "Maintain vital organ perfusion pressure."
+      }
+    ],
+    "strictContraindications": [
+      "Do NOT delay broad-spectrum antibiotics beyond 1 hour for diagnostic tests or culture collection in septic shock.",
+      "Do NOT administer Dopamine as first-line vasopressor (Norepinephrine is superior with lower tachyarrhythmia risk)."
+    ],
+    "escalationTriggers": [
+      "Persistent hypotension requiring high-dose norepinephrine -> Add Vasopressin 0.03 units/min + Stress-dose hydrocortisone"
+    ],
+    "guidelineCitations": [
+      {
+        "issuingOrganization": "Surviving Sepsis Campaign (SSC)",
+        "guidelineName": "International Guidelines for Management of Sepsis and Septic Shock",
+        "year": 2021
+      }
+    ]
+  },
+  {
+    "caseId": "EM-INFECT-017",
+    "domain": "Infectious Diseases and Sepsis",
+    "title": "Question 17 \u2013 Necrotizing fasciitis",
+    "vignette": "52-year-old diabetic male presents with severe thigh pain, fever, and swelling. Temperature 39\u00b0C, HR 125 bpm. Skin changes appear relatively mild despite severe pain. Sodium 129 mmol/L, CRP 240 mg/L, WBC 21,000/\u00b5L.",
+    "top5Differentials": [
+      {
+        "name": "Necrotizing Fasciitis (Type I Polymicrobial vs Type II Monomicrobial GAS)",
+        "icd10": "M72.6",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "Pain out of proportion to physical exam + systemic toxicity + severe laboratory abnormalities in diabetic male."
+      },
+      {
+        "name": "Severe Cellulitis / Erysipelas",
+        "icd10": "L03.11",
+        "clinicalCategory": "TIER_3_ALTERNATIVE",
+        "dangerTier": "MODERATE",
+        "rationale": "Superficial soft tissue infection; does NOT account for profound pain out of proportion or severe hyponatremia/SIRS."
+      },
+      {
+        "name": "Deep Vein Thrombosis with Phlegmasia Cerulea Dolens",
+        "icd10": "I82.40",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "HIGH",
+        "rationale": "Severe thigh pain and swelling; lacks early skin changes."
+      },
+      {
+        "name": "Pyomyositis / Deep Intramuscular Abscess",
+        "icd10": "M60.0",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "HIGH",
+        "rationale": "Deep muscle suppuration in immunocompromised/diabetic patient."
+      },
+      {
+        "name": "Compartment Syndrome of the Thigh",
+        "icd10": "M79.A11",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "HIGH",
+        "rationale": "Severe pain on passive stretch with swelling."
+      }
+    ],
+    "mustNotMissConditions": [
+      "Necrotizing Soft Tissue Infection (NSTI)",
+      "Streptococcal Toxic Shock Syndrome (STSS)",
+      "Acute Compartment Syndrome"
+    ],
+    "explicitMissingInformation": [
+      "Hemoglobin, Serum Glucose, and Serum Creatinine (to calculate complete LRINEC score)",
+      "Crepitus on palpation, bullae, skin anesthesia, or dishwater fluid exudate",
+      "Blood pressure (assess for septic shock)"
+    ],
+    "clinicalScores": [
+      {
+        "scoreName": "LRINEC Score (Laboratory Risk Indicator for Necrotizing Fasciitis)",
+        "scoreType": "SEVERITY_PROGNOSTIC",
+        "calculatedValue": "Score >= 7 (HIGH RISK)",
+        "isFullyCalculable": false,
+        "clinicalMeaning": "CRP >= 150 (+4), WBC 15-25 (+1), Sodium < 135 (+2). Score >= 6 indicates high risk. CRITICAL LIMITATION: LRINEC has poor sensitivity (~68-80%); a low score NEVER safely rules out necrotizing fasciitis!"
+      }
+    ],
+    "recommendedWorkup": [
+      {
+        "category": "BEDSIDE",
+        "action": "IMMEDIATE SURGICAL BEDSIDE EVALUATION & EXPLORATION (Finger test / operative exploration)",
+        "priority": "STAT",
+        "rationale": "Definitive diagnosis is exclusively surgical; do not delay for imaging!"
+      },
+      {
+        "category": "LABORATORY",
+        "action": "Stat Blood Cultures x2, Lactate, CMP, CBC, Creatine Kinase (CK)",
+        "priority": "STAT",
+        "rationale": "Assess myonecrosis and multi-organ dysfunction."
+      },
+      {
+        "category": "IMAGING",
+        "action": "Bedside Ultrasound (POCUS) to screen for subcutaneous fluid/air while awaiting OR",
+        "priority": "URGENT",
+        "rationale": "Radiographic air is specific but only present in ~30%."
+      }
+    ],
+    "contradictionsAndCaveats": [
+      "A benign-appearing skin examination NEVER excludes necrotizing fasciitis: the infection spreads along deep fascial planes beneath intact skin. PAIN OUT OF PROPORTION is the hallmark warning sign!"
+    ],
+    "immediateManagementPlan": [
+      {
+        "priority": 1,
+        "intervention": "STAT EMERGENCY SURGICAL CONSULTATION FOR OPERATIVE DEBRIDEMENT",
+        "timeframe": "< 15 min",
+        "objective": "Life-saving wide surgical excision of necrotic fascia."
+      },
+      {
+        "priority": 2,
+        "intervention": "Broad-Spectrum Triple IV Antibiotic Regimen: IV Vancomycin 15-20 mg/kg + IV Piperacillin-Tazobactam 4.5g + IV Clindamycin 900 mg q8h",
+        "timeframe": "< 30 min",
+        "objective": "Cover MRSA, Gram-negatives, and suppress toxin production (Clindamycin antitoxin effect)."
+      },
+      {
+        "priority": 3,
+        "intervention": "Aggressive IV Fluid Resuscitation and ICU Bed Reservation",
+        "timeframe": "< 30 min",
+        "objective": "Treat septic shock and tissue hypoperfusion."
+      }
+    ],
+    "strictContraindications": [
+      "Do NOT delay emergency surgical debridement to obtain CT or MRI imaging.",
+      "Do NOT rely on a low LRINEC score to rule out necrotizing infection."
+    ],
+    "escalationTriggers": [
+      "Skin bullae, crepitus, purple discoloration, or septic shock -> Immediate transport to Operating Room"
+    ],
+    "guidelineCitations": [
+      {
+        "issuingOrganization": "WSES",
+        "guidelineName": "Guidelines for the Management of Severe Skin and Soft-Tissue Infections",
+        "year": 2018
+      }
+    ]
+  },
+  {
+    "caseId": "EM-INFECT-018",
+    "domain": "Infectious Diseases and Sepsis",
+    "title": "Question 18 \u2013 Infective endocarditis",
+    "vignette": "41-year-old male with a history of intravenous drug use presents with fever, night sweats, fatigue, and a new systolic murmur. Blood cultures show gram-positive cocci.",
+    "top5Differentials": [
+      {
+        "name": "Acute Infective Endocarditis (Tricuspid vs Aortic/Mitral)",
+        "icd10": "I33.0",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "IVDU + fever + new systolic murmur + gram-positive bacteremia is diagnostic for IE until proven otherwise."
+      },
+      {
+        "name": "Septic Pulmonary Emboli secondary to Right-Sided Endocarditis",
+        "icd10": "I26.99",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "HIGH",
+        "rationale": "Tricuspid vegetations fragmenting into pulmonary circulation."
+      },
+      {
+        "name": "Catheter-Related / Deep Venous Suppurative Thrombophlebitis",
+        "icd10": "I80.9",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "HIGH",
+        "rationale": "Infected vein thrombophlebitis from non-sterile vascular access."
+      },
+      {
+        "name": "Acute Pericarditis / Myocardial Abscess",
+        "icd10": "I30.9 / I51.89",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "CRITICAL",
+        "rationale": "Annular extension of endocarditis causing heart block."
+      },
+      {
+        "name": "Occult Epidural Abscess or Vertebral Osteomyelitis",
+        "icd10": "G06.1 / M46.20",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "HIGH",
+        "rationale": "Metastatic septic seeding of the spine from bacteremia."
+      }
+    ],
+    "mustNotMissConditions": [
+      "Acute Aortic / Mitral Valve Destruction with Acute Heart Failure",
+      "Perivalvular Ring Abscess with Heart Block",
+      "Septic Embolic Stroke"
+    ],
+    "explicitMissingInformation": [
+      "Identified species of Gram-positive cocci (Staphylococcus aureus vs Enterococcus vs Streptococcus)",
+      "12-lead ECG (evaluate for new 1st-degree AV block indicating aortic ring abscess)",
+      "Stigmata of IE on physical exam (Janeway lesions, Osler nodes, splinter hemorrhages, Roth spots)"
+    ],
+    "clinicalScores": [
+      {
+        "scoreName": "Modified Duke Criteria",
+        "scoreType": "DIAGNOSTIC",
+        "calculatedValue": "DEFINITE INFECTIVE ENDOCARDITIS",
+        "isFullyCalculable": true,
+        "clinicalMeaning": "Major criterion 1 (bacteremia) + Major criterion 2 (new regurgitant murmur) + Minor criteria (IVDU, fever). Fulfills definite IE criteria."
+      }
+    ],
+    "recommendedWorkup": [
+      {
+        "category": "IMAGING",
+        "action": "Transthoracic Echocardiogram (TTE) followed immediately by Transesophageal Echocardiogram (TEE)",
+        "priority": "STAT",
+        "rationale": "TEE has > 90-95% sensitivity to detect vegetations, ring abscess, and valve perforation."
+      },
+      {
+        "category": "LABORATORY",
+        "action": "Serial Blood Cultures (3 sets from separate venipuncture sites spaced at least 30-60 min apart)",
+        "priority": "STAT",
+        "rationale": "Document persistent bacteremia and antimicrobial susceptibility."
+      },
+      {
+        "category": "BEDSIDE",
+        "action": "Daily 12-lead ECG monitoring",
+        "priority": "STAT",
+        "rationale": "Detect PR prolongation indicating perivalvular aortic root extension."
+      }
+    ],
+    "contradictionsAndCaveats": [
+      "A negative Transthoracic Echocardiogram (TTE) NEVER excludes endocarditis (TTE misses up to 40-50% of vegetations, especially in prosthetic valves or small vegetations). TEE is mandatory in high-risk patients!"
+    ],
+    "immediateManagementPlan": [
+      {
+        "priority": 1,
+        "intervention": "Empiric Broad-Spectrum IV Antibiotics: IV Vancomycin 15-20 mg/kg q8-12h + IV Cefepime 2g (to cover MRSA, Enterococcus, and Gram-negative bacilli)",
+        "timeframe": "< 45 min",
+        "objective": "Clear high-grade bacteremia."
+      },
+      {
+        "priority": 2,
+        "intervention": "Emergent Cardiothoracic Surgery Consultation",
+        "timeframe": "< 2 hours",
+        "objective": "Evaluate indications for urgent surgical valve replacement."
+      },
+      {
+        "priority": 3,
+        "intervention": "Telemetry and daily ECG monitoring",
+        "timeframe": "< 60 min",
+        "objective": "Monitor for conduction block and ventricular arrhythmias."
+      }
+    ],
+    "strictContraindications": [
+      "Do NOT initiate anticoagulation in native-valve endocarditis (significantly increases risk of fatal hemorrhagic stroke from mycotic aneurysms).",
+      "Do NOT rely on TTE alone to rule out endocarditis."
+    ],
+    "escalationTriggers": [
+      "New heart block, acute severe pulmonary edema/heart failure, or vegetation > 10 mm -> Emergent cardiac surgery"
+    ],
+    "guidelineCitations": [
+      {
+        "issuingOrganization": "AHA",
+        "guidelineName": "Infective Endocarditis in Adults: Diagnosis, Antimicrobial Therapy, and Management of Complications",
+        "year": 2015
+      }
+    ]
+  },
+  {
+    "caseId": "EM-INFECT-019",
+    "domain": "Infectious Diseases and Sepsis",
+    "title": "Question 19 \u2013 Severe malaria",
+    "vignette": "29-year-old male recently returned from Ghana presents with fever, chills, confusion, jaundice, and dark urine. Platelets 48,000/\u00b5L, hemoglobin 8.2 g/dL, and elevated bilirubin.",
+    "top5Differentials": [
+      {
+        "name": "Severe Plasmodium falciparum Malaria (Cerebral Malaria & Hemoglobinuria)",
+        "icd10": "B50.0",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "Travel to endemic region + fever + cerebral involvement (confusion) + hemolysis (anemia, jaundice, blackwater urine) + thrombocytopenia."
+      },
+      {
+        "name": "Fulminant Sepsis / Meningococcemia",
+        "icd10": "A39.0",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "High fever, confusion, and consumptive coagulopathy."
+      },
+      {
+        "name": "Yellow Fever / Viral Hemorrhagic Fever (Lassa)",
+        "icd10": "A95.9 / A96.2",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "CRITICAL",
+        "rationale": "Endemic West African viral infection with hepatitis, jaundice, and coagulopathy."
+      },
+      {
+        "name": "Acute Viral Hepatitis with Hepatic Encephalopathy",
+        "icd10": "B19.9",
+        "clinicalCategory": "TIER_3_ALTERNATIVE",
+        "dangerTier": "HIGH",
+        "rationale": "Jaundice and confusion; lacks severe thrombocytopenia and acute hemolysis."
+      },
+      {
+        "name": "Thrombotic Thrombocytopenic Purpura (TTP)",
+        "icd10": "M31.1",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "CRITICAL",
+        "rationale": "Hemolytic anemia, thrombocytopenia, fever, and confusion."
+      }
+    ],
+    "mustNotMissConditions": [
+      "Cerebral Malaria",
+      "Severe Blackwater Fever Hemolysis with Acute Renal Failure",
+      "Viral Hemorrhagic Fever"
+    ],
+    "explicitMissingInformation": [
+      "Exact percentage parasitemia on peripheral thin blood smear",
+      "Serum Creatinine and Lactate (WHO criteria for severe malaria)",
+      "Blood glucose (severe malaria induces profound hypoglycemia)"
+    ],
+    "clinicalScores": [
+      {
+        "scoreName": "WHO Criteria for Severe Malaria",
+        "scoreType": "DIAGNOSTIC",
+        "calculatedValue": "FULFILLED (MULTIPLE CRITERIA MET)",
+        "isFullyCalculable": true,
+        "clinicalMeaning": "Impaired consciousness (cerebral malaria) + Jaundice + Severe anemia + Hemoglobinuria. Mortality > 20%; mandates immediate IV artesunate."
+      }
+    ],
+    "recommendedWorkup": [
+      {
+        "category": "LABORATORY",
+        "action": "Stat Giemsa-stained Thick and Thin Peripheral Blood Smears with quantitative parasitemia calculation",
+        "priority": "STAT",
+        "rationale": "Definitive gold standard to identify species (P. falciparum) and quantify parasite burden."
+      },
+      {
+        "category": "LABORATORY",
+        "action": "Stat Malaria Rapid Diagnostic Test (RDT for Pf-HRP2) and POC Blood Glucose",
+        "priority": "STAT",
+        "rationale": "Immediate confirmation while smears are processed."
+      },
+      {
+        "category": "LABORATORY",
+        "action": "CMP (Cr, Bilirubin, AST/ALT), Blood Gas/Lactate, Urinalysis (hemoglobinuria)",
+        "priority": "STAT",
+        "rationale": "Assess acute kidney injury and lactic acidosis."
+      }
+    ],
+    "contradictionsAndCaveats": [
+      "Oral antimalarial therapy (Coartem) is STRICTLY CONTRAINDICATED in severe malaria: impaired oral intake, vomiting, and organ failure mandate parenteral IV therapy!"
+    ],
+    "immediateManagementPlan": [
+      {
+        "priority": 1,
+        "intervention": "FIRST-LINE ANTIMALARIAL: IV Artesunate 2.4 mg/kg IV immediately at 0, 12, and 24 hours, then daily",
+        "timeframe": "< 30 min",
+        "objective": "Rapid parasite clearance (superior mortality reduction vs quinine)."
+      },
+      {
+        "priority": 2,
+        "intervention": "Check and treat hypoglycemia (POC glucose < 60 mg/dL with IV D50W)",
+        "timeframe": "< 15 min",
+        "objective": "Reverse neuroglycopenia."
+      },
+      {
+        "priority": 3,
+        "intervention": "Cautious fluid management and ICU admission",
+        "timeframe": "< 45 min",
+        "objective": "Avoid aggressive overhydration (high risk of non-cardiogenic pulmonary edema/ARDS)."
+      }
+    ],
+    "strictContraindications": [
+      "Do NOT administer oral antimalarials in severe malaria.",
+      "Do NOT over-resuscitate with fluids (ARDS is a leading cause of death in severe malaria)."
+    ],
+    "escalationTriggers": [
+      "Parasitemia > 10%, respiratory distress (ARDS), or oliguric acute renal failure -> Hemodialysis, mechanical ventilation"
+    ],
+    "guidelineCitations": [
+      {
+        "issuingOrganization": "World Health Organization (WHO)",
+        "guidelineName": "Guidelines for the Treatment of Malaria (3rd edition)",
+        "year": 2015
+      }
+    ]
+  },
+  {
+    "caseId": "EM-INFECT-020",
+    "domain": "Infectious Diseases and Sepsis",
+    "title": "Question 20 \u2013 Hospital-acquired infection",
+    "vignette": "73-year-old female develops fever, hypotension, and worsening respiratory distress on day six of hospitalization. She has a central venous catheter and urinary catheter.",
+    "top5Differentials": [
+      {
+        "name": "Hospital-Acquired Pneumonia / VAP",
+        "icd10": "J13 / J95.851",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "HIGH",
+        "rationale": "New respiratory distress and fever after > 48h hospitalization; high risk for Pseudomonas and MRSA."
+      },
+      {
+        "name": "Central Line-Associated Bloodstream Infection (CLABSI)",
+        "icd10": "T80.211A",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "Indwelling CVC with abrupt fever and septic hypotension."
+      },
+      {
+        "name": "Catheter-Associated Urinary Tract Infection (CAUTI) with Urosepsis",
+        "icd10": "T83.511A",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "HIGH",
+        "rationale": "Foley catheter colonization progressing to bacteremia."
+      },
+      {
+        "name": "Hospital-Acquired Acute Pulmonary Embolism",
+        "icd10": "I26.99",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "CRITICAL",
+        "rationale": "Sudden respiratory distress and hypotension in hospitalized bedridden patient."
+      },
+      {
+        "name": "Clostridioides difficile Colitis with Toxic Megacolon",
+        "icd10": "A04.7",
+        "clinicalCategory": "TIER_3_ALTERNATIVE",
+        "dangerTier": "HIGH",
+        "rationale": "Hospital-acquired nosocomial infection with systemic sepsis."
+      }
+    ],
+    "mustNotMissConditions": [
+      "CLABSI with Septic Shock",
+      "Multidrug-Resistant (MDR) Hospital-Acquired Pneumonia",
+      "Massive Pulmonary Embolism"
+    ],
+    "explicitMissingInformation": [
+      "Chest radiograph comparison with baseline (new infiltrate/consolidation)",
+      "PaO2/FiO2 ratio and ventilator settings",
+      "Physical exam of CVC insertion site (erythema, purulence, induration)"
+    ],
+    "clinicalScores": [
+      {
+        "scoreName": "Sepsis-3 Septic Shock Assessment",
+        "scoreType": "SEVERITY_PROGNOSTIC",
+        "calculatedValue": "MET",
+        "isFullyCalculable": true,
+        "clinicalMeaning": "Hospital-acquired sepsis with hypotension and organ failure."
+      }
+    ],
+    "recommendedWorkup": [
+      {
+        "category": "LABORATORY",
+        "action": "Paired Blood Cultures: 1 set from CVC lumen + 1 set from peripheral venipuncture",
+        "priority": "STAT",
+        "rationale": "Calculate differential time to positivity to confirm CLABSI."
+      },
+      {
+        "category": "LABORATORY",
+        "action": "Endotracheal aspirate / Sputum culture, Urinalysis & Urine culture, Lactate",
+        "priority": "STAT",
+        "rationale": "Isolate nosocomial respiratory and urinary pathogens."
+      },
+      {
+        "category": "IMAGING",
+        "action": "Portable Chest Radiograph and bedside echocardiogram",
+        "priority": "STAT",
+        "rationale": "Evaluate new lung consolidation and line tip position."
+      }
+    ],
+    "contradictionsAndCaveats": [
+      "Standard community-acquired antibiotic regimens (Ceftriaxone, Ampicillin) are STRICTLY INSUFFICIENT for nosocomial day-6 sepsis: empiric coverage MUST cover resistant pathogens (MRSA + Pseudomonas aeruginosa)!"
+    ],
+    "immediateManagementPlan": [
+      {
+        "priority": 1,
+        "intervention": "Empiric Broad-Spectrum Nosocomial Sepsis Coverage: IV Vancomycin 15-20 mg/kg + IV Cefepime 2g q8h (or Piperacillin-Tazobactam 4.5g q6h or Meropenem 1g q8h)",
+        "timeframe": "< 45 min",
+        "objective": "Cover MRSA, Pseudomonas, and MDR enteric bacilli."
+      },
+      {
+        "priority": 2,
+        "intervention": "Fluid resuscitation (30 mL/kg) and Norepinephrine infusion for MAP >= 65 mmHg",
+        "timeframe": "< 30 min",
+        "objective": "Treat septic shock."
+      },
+      {
+        "priority": 3,
+        "intervention": "Remove/exchange indwelling central venous catheter and replace Foley catheter",
+        "timeframe": "< 2 hours",
+        "objective": "Source control."
+      }
+    ],
+    "strictContraindications": [
+      "Do NOT delay antibiotics for catheter exchange or imaging."
+    ],
+    "escalationTriggers": [
+      "Severe hypoxemia PaO2/FiO2 < 200 or refractory shock -> Transfer to Intensive Care Unit"
+    ],
+    "guidelineCitations": [
+      {
+        "issuingOrganization": "IDSA/ATS",
+        "guidelineName": "Management of Hospital-Acquired and Ventilator-Associated Pneumonia",
+        "year": 2016
+      }
+    ]
+  },
+  {
+    "caseId": "EM-RESP-021",
+    "domain": "Respiratory Emergencies",
+    "title": "Question 21 \u2013 Severe asthma exacerbation",
+    "vignette": "24-year-old female with asthma presents with severe breathlessness, inability to complete sentences, RR 34/min, HR 140 bpm, and oxygen saturation 88%. Peak expiratory flow is 28% of predicted.",
+    "top5Differentials": [
+      {
+        "name": "Severe / Life-Threatening Asthma Exacerbation (Status Asthmaticus)",
+        "icd10": "J45.901",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "PEF < 30%, tachypnea (RR 34), tachycardia (HR 140), hypoxia (88%), and inability to complete sentences."
+      },
+      {
+        "name": "Acute Secondary Spontaneous Pneumothorax",
+        "icd10": "J93.9",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "Airway barotrauma and bullous rupture in severe bronchospasm."
+      },
+      {
+        "name": "Acute Anaphylaxis with Bronchospasm",
+        "icd10": "T78.2",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "CRITICAL",
+        "rationale": "Sudden severe respiratory distress, wheezing, and tachycardia."
+      },
+      {
+        "name": "Acute Pulmonary Embolism",
+        "icd10": "I26.99",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "HIGH",
+        "rationale": "Sudden dyspnea, hypoxemia, and tachycardia."
+      },
+      {
+        "name": "Foreign Body Aspiration / Laryngeal Edema",
+        "icd10": "T17.9",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "HIGH",
+        "rationale": "Upper airway obstruction mimicking bronchospasm."
+      }
+    ],
+    "mustNotMissConditions": [
+      "Life-Threatening Asthma / Respiratory Arrest",
+      "Tension Pneumothorax",
+      "Anaphylaxis"
+    ],
+    "explicitMissingInformation": [
+      "Arterial Blood Gas (PaCO2: normal or elevated PaCO2 >= 42 mmHg indicates impending respiratory failure)",
+      "Pneumothorax signs on auscultation (unilateral absent breath sounds)",
+      "Use of accessory muscles / silent chest"
+    ],
+    "clinicalScores": [
+      {
+        "scoreName": "GINA Severity Assessment for Acute Asthma",
+        "scoreType": "SEVERITY_PROGNOSTIC",
+        "calculatedValue": "LIFE-THREATENING",
+        "isFullyCalculable": true,
+        "clinicalMeaning": "PEF < 50%, RR > 30, HR > 120, SpO2 < 90%, words in phrases. High risk of fatal arrest; warrants ICU admission."
+      }
+    ],
+    "recommendedWorkup": [
+      {
+        "category": "BEDSIDE",
+        "action": "Continuous pulse oximetry, cardiac telemetry, and serial PEF measurements",
+        "priority": "STAT",
+        "rationale": "Assess response to bronchodilators."
+      },
+      {
+        "category": "LABORATORY",
+        "action": "Arterial Blood Gas (ABG) if not rapidly responding",
+        "priority": "STAT",
+        "rationale": "Detect hypercapnia and respiratory fatigue."
+      },
+      {
+        "category": "IMAGING",
+        "action": "Portable Chest Radiograph",
+        "priority": "URGENT",
+        "rationale": "Rule out pneumothorax, pneumomediastinum, and pneumonia."
+      }
+    ],
+    "contradictionsAndCaveats": [
+      "A 'normal' PaCO2 (38-42 mmHg) in a severely tachypneic asthmatic (RR 34) is NOT reassuring: it is an OMINOUS SIGN of respiratory muscle exhaustion and impending catastrophic arrest (pseudonormalization)!"
+    ],
+    "immediateManagementPlan": [
+      {
+        "priority": 1,
+        "intervention": "High-Flow Oxygen targeting SpO2 93\u201395%",
+        "timeframe": "< 2 min",
+        "objective": "Correct life-threatening hypoxemia."
+      },
+      {
+        "priority": 2,
+        "intervention": "Continuous Nebulized SABA + SAMA: Albuterol 5 mg + Ipratropium 0.5 mg nebulized continuously or q20 min x 3 doses",
+        "timeframe": "< 5 min",
+        "objective": "Intense smooth muscle bronchodilation."
+      },
+      {
+        "priority": 3,
+        "intervention": "Systemic Corticosteroids: IV Methylprednisolone 60 mg or PO Prednisone 50 mg immediately",
+        "timeframe": "< 15 min",
+        "objective": "Inhibit airway inflammation and upregulate beta receptors."
+      },
+      {
+        "priority": 4,
+        "intervention": "IV Magnesium Sulfate 2g IV infusion over 20 minutes",
+        "timeframe": "< 20 min",
+        "objective": "Direct bronchial smooth muscle relaxation in refractory severe asthma."
+      }
+    ],
+    "strictContraindications": [
+      "Sedatives and hypnotics (benzodiazepines) are STRICTLY CONTRAINDICATED (depresses respiratory drive and precipitates fatal arrest).",
+      "Do NOT delay bronchodilators or steroids for diagnostic imaging."
+    ],
+    "escalationTriggers": [
+      "Silent chest, worsening PaCO2 > 42 mmHg, confusion -> Emergent RSI with Ketamine and ICU admission"
+    ],
+    "guidelineCitations": [
+      {
+        "issuingOrganization": "GINA",
+        "guidelineName": "Global Strategy for Asthma Management and Prevention",
+        "year": 2024
+      }
+    ]
+  },
+  {
+    "caseId": "EM-RESP-022",
+    "domain": "Respiratory Emergencies",
+    "title": "Question 22 \u2013 COPD exacerbation with respiratory failure",
+    "vignette": "70-year-old male with COPD presents with worsening breathlessness and confusion. ABG: pH 7.25, PaCO\u2082 78 mmHg, PaO\u2082 54 mmHg, HCO\u2083 33 mmol/L.",
+    "top5Differentials": [
+      {
+        "name": "Acute-on-Chronic Hypercapnic Respiratory Failure (COPD Exacerbation)",
+        "icd10": "J44.1 / J96.02",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "Severe respiratory acidosis (pH 7.25, PaCO2 78) with metabolic compensation (HCO3 33) and encephalopathy."
+      },
+      {
+        "name": "Acute Pulmonary Embolism in COPD",
+        "icd10": "I26.99",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "HIGH",
+        "rationale": "Trigger of refractory hypoxemia in COPD."
+      },
+      {
+        "name": "Severe Community-Acquired / Nosocomial Pneumonia",
+        "icd10": "J18.9",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "HIGH",
+        "rationale": "Common precipitant of acute hypercapnic decompensation."
+      },
+      {
+        "name": "Pneumothorax (Secondary Spontaneous)",
+        "icd10": "J93.0",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "CRITICAL",
+        "rationale": "Rupture of emphysematous bulla triggering acute decompensation."
+      },
+      {
+        "name": "Acute Congestive Heart Failure / Cor Pulmonale Decompensation",
+        "icd10": "I50.9 / I27.9",
+        "clinicalCategory": "TIER_3_ALTERNATIVE",
+        "dangerTier": "HIGH",
+        "rationale": "Right/left ventricular failure exacerbating dyspnea."
+      }
+    ],
+    "mustNotMissConditions": [
+      "Acute Life-Threatening Hypercapnic Respiratory Acidosis",
+      "Pneumothorax",
+      "Massive Pulmonary Embolism"
+    ],
+    "explicitMissingInformation": [
+      "Current inspired oxygen concentration (FiO2: evaluate for oxygen-induced hypercapnia)",
+      "Sputum volume, purulence, and fever (Anthonisen criteria)",
+      "Baseline ABG or PaCO2"
+    ],
+    "clinicalScores": [
+      {
+        "scoreName": "ABG Acid-Base Interpretation",
+        "scoreType": "DIAGNOSTIC",
+        "calculatedValue": "ACUTE-ON-CHRONIC RESPIRATORY ACIDOSIS",
+        "isFullyCalculable": true,
+        "clinicalMeaning": "High PaCO2 (78) with uncompensated low pH (7.25) despite elevated chronic HCO3 (33). Fulfills criteria for urgent Non-Invasive Ventilation."
+      }
+    ],
+    "recommendedWorkup": [
+      {
+        "category": "BEDSIDE",
+        "action": "Continuous pulse oximetry, ABG repeat at 1-2 hours, and telemetry",
+        "priority": "STAT",
+        "rationale": "Monitor response to ventilatory support."
+      },
+      {
+        "category": "IMAGING",
+        "action": "Portable Chest Radiograph",
+        "priority": "STAT",
+        "rationale": "Rule out pneumonia, pneumothorax, and cardiomegaly."
+      },
+      {
+        "category": "LABORATORY",
+        "action": "CBC, CMP, BNP, Sputum culture, Blood cultures if febrile",
+        "priority": "STAT",
+        "rationale": "Identify infectious precipitant and heart failure."
+      }
+    ],
+    "contradictionsAndCaveats": [
+      "Do NOT deliver uncontrolled high-flow oxygen (100% NRB): targeting SpO2 100% in chronic hypercapnic COPD worsens ventilation-perfusion mismatch and the Haldane effect, triggering lethal CO2 narcosis and coma! TARGET SpO2 88\u201392%!"
+    ],
+    "immediateManagementPlan": [
+      {
+        "priority": 1,
+        "intervention": "FIRST-LINE VENTILATORY SUPPORT: Non-Invasive Positive Pressure Ventilation (BiPAP: IPAP 10-12 cmH2O, EPAP 4-5 cmH2O)",
+        "timeframe": "< 15 min",
+        "objective": "Reduce work of breathing, blow off CO2, and avoid invasive intubation (reduces mortality > 50%)."
+      },
+      {
+        "priority": 2,
+        "intervention": "Controlled Oxygen Therapy: Titrate Venturi mask or nasal cannula to strict SpO2 target of 88\u201392%",
+        "timeframe": "< 5 min",
+        "objective": "Avoid worsening hypercapnia."
+      },
+      {
+        "priority": 3,
+        "intervention": "Inhaled Bronchodilators (Albuterol + Ipratropium) and Systemic Corticosteroids (Prednisone 40 mg PO or IV Methylprednisolone 40 mg)",
+        "timeframe": "< 30 min",
+        "objective": "Reduce bronchospasm and accelerate recovery."
+      }
+    ],
+    "strictContraindications": [
+      "Hyperoxia (SpO2 > 96%) is STRICTLY CONTRAINDICATED in acute hypercapnic COPD.",
+      "Respiratory depressants (opioids, sedatives) are contraindicated."
+    ],
+    "escalationTriggers": [
+      "Worsening pH < 7.20, worsening encephalopathy, or inability to protect airway on BiPAP -> Endotracheal intubation"
+    ],
+    "guidelineCitations": [
+      {
+        "issuingOrganization": "GOLD",
+        "guidelineName": "Global Strategy for Diagnosis, Management, and Prevention of COPD",
+        "year": 2024
+      }
+    ]
+  },
+  {
+    "caseId": "EM-RESP-023",
+    "domain": "Respiratory Emergencies",
+    "title": "Question 23 \u2013 Tension pneumothorax",
+    "vignette": "35-year-old male presents following a motor vehicle collision with severe respiratory distress, hypotension, absent breath sounds on the right, and distended neck veins.",
+    "top5Differentials": [
+      {
+        "name": "Tension Pneumothorax (Right-Sided)",
+        "icd10": "J93.0 / S27.0",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "Trauma + severe respiratory distress + hypotension (obstructive shock) + absent right breath sounds + JVD (vena cava compression)."
+      },
+      {
+        "name": "Cardiac Tamponade (Traumatic Hemopericardium)",
+        "icd10": "S26.0 / I31.4",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "Hypotension and JVD (Beck's triad); breath sounds are typically equal bilaterally."
+      },
+      {
+        "name": "Massive Hemothorax",
+        "icd10": "S27.1",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "Absent breath sounds and shock post-MVC; neck veins are usually flat due to hypovolemia."
+      },
+      {
+        "name": "Tracheobronchial Tree Disruption",
+        "icd10": "S27.5",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "CRITICAL",
+        "rationale": "Massive air leak post-blunt thoracic trauma."
+      },
+      {
+        "name": "Traumatic Diaphragmatic Rupture with Visceral Herniation",
+        "icd10": "S27.8",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "HIGH",
+        "rationale": "Abdominal viscera entering hemithorax causing lung collapse."
+      }
+    ],
+    "mustNotMissConditions": [
+      "Tension Pneumothorax (Immediate Decompression Required)",
+      "Cardiac Tamponade",
+      "Massive Hemothorax"
+    ],
+    "explicitMissingInformation": [
+      "Numeric blood pressure and heart rate (quantify obstructive shock)",
+      "Tracheal deviation (late clinical sign)",
+      "Associated injuries (pelvic fracture, head trauma)"
+    ],
+    "clinicalScores": [
+      {
+        "scoreName": "ATLS Trauma Triage (Advanced Trauma Life Support)",
+        "scoreType": "TREATMENT_ELIGIBILITY",
+        "calculatedValue": "IMMEDIATE LIFE THREAT (BREATHING / CIRCULATION)",
+        "isFullyCalculable": true,
+        "clinicalMeaning": "Pure clinical diagnosis; mandates instant needle or finger thoracostomy."
+      }
+    ],
+    "recommendedWorkup": [
+      {
+        "category": "BEDSIDE",
+        "action": "IMMEDIATE EMERGENCY THORACIC DECOMPRESSION (DO NOT OBTAIN X-RAY PRIOR TO INTERVENTION)",
+        "priority": "STAT",
+        "rationale": "Tension pneumothorax is a PURE CLINICAL DIAGNOSIS. Delaying decompression for CXR is fatal!"
+      },
+      {
+        "category": "BEDSIDE",
+        "action": "eFAST Exam (Extended Focused Assessment with Sonography for Trauma)",
+        "priority": "STAT",
+        "rationale": "Evaluate lung sliding and rule out pericardial tamponade in seconds."
+      }
+    ],
+    "contradictionsAndCaveats": [
+      "NEVER DELAY EMERGENCY DECOMPRESSION FOR A CHEST RADIOGRAPH OR CT SCAN: Waiting for imaging in tension pneumothorax results in complete cardiac arrest from inferior vena cava collapse and obstructive shock!"
+    ],
+    "immediateManagementPlan": [
+      {
+        "priority": 1,
+        "intervention": "IMMEDIATE DECOMPRESSION: Emergent Needle Thoracostomy (14G 3.25-inch catheter in 2nd intercostal space midclavicular line or 4th/5th intercostal space anterior axillary line) or Finger Thoracostomy",
+        "timeframe": "< 1 min",
+        "objective": "Convert tension pneumothorax to simple open pneumothorax and restore venous return."
+      },
+      {
+        "priority": 2,
+        "intervention": "Tube Thoracostomy (Chest Tube, 28\u201332 Fr) in the 5th intercostal space mid-to-anterior axillary line",
+        "timeframe": "< 5 min",
+        "objective": "Definitive lung re-expansion and drainage."
+      },
+      {
+        "priority": 3,
+        "intervention": "Post-decompression Chest Radiograph and Trauma Team Activation",
+        "timeframe": "< 15 min",
+        "objective": "Confirm tube position and rule out persistent hemothorax."
+      }
+    ],
+    "strictContraindications": [
+      "Do NOT send a hemodynamically unstable trauma patient with absent unilateral breath sounds to the CT scanner or for a formal X-ray.",
+      "Do NOT remove chest tube without confirmation of seal and resolution."
+    ],
+    "escalationTriggers": [
+      "Chest tube output > 1500 mL initially or > 200 mL/hr for 2-4 hours -> Emergent thoracotomy / OR transfer"
+    ],
+    "guidelineCitations": [
+      {
+        "issuingOrganization": "American College of Surgeons (ACS)",
+        "guidelineName": "ATLS: Advanced Trauma Life Support (10th edition)",
+        "year": 2018
+      }
+    ]
+  },
+  {
+    "caseId": "EM-ENDO-024",
+    "domain": "Endocrinology and Metabolic Emergencies",
+    "title": "Question 24 \u2013 Diabetic ketoacidosis",
+    "vignette": "28-year-old female with type 1 diabetes presents with vomiting, abdominal pain, and deep rapid breathing. Glucose 480 mg/dL, pH 7.12, bicarbonate 8 mmol/L, anion gap 26, potassium 5.6 mmol/L.",
+    "top5Differentials": [
+      {
+        "name": "Severe Diabetic Ketoacidosis (DKA)",
+        "icd10": "E10.10",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "High glucose (480) + metabolic acidosis (pH 7.12, HCO3 8) + severe anion gap (26) + Kussmaul respirations in T1D."
+      },
+      {
+        "name": "Hyperglycemic Hyperosmolar State (HHS) / Mixed DKA-HHS",
+        "icd10": "E10.11",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "HIGH",
+        "rationale": "Severe hyperglycemia with dehydration; acidemia confirms dominant DKA."
+      },
+      {
+        "name": "Acute Surgical Abdomen / Appendicitis / Perforation",
+        "icd10": "K35.80",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "HIGH",
+        "rationale": "Abdominal pain is common in DKA, but intra-abdominal sepsis can trigger DKA."
+      },
+      {
+        "name": "Toxic Ingestion (Methanol, Ethylene Glycol, Salicylate Toxicity)",
+        "icd10": "T51.1 / T39.0",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "CRITICAL",
+        "rationale": "Severe high anion gap metabolic acidosis with hyperventilation."
+      },
+      {
+        "name": "Alcoholic Ketoacidosis (AKA)",
+        "icd10": "E87.2",
+        "clinicalCategory": "TIER_3_ALTERNATIVE",
+        "dangerTier": "MODERATE",
+        "rationale": "Ketoacidosis with vomiting; usually features normal or low glucose."
+      }
+    ],
+    "mustNotMissConditions": [
+      "Severe DKA with Cerebral Edema",
+      "Hypokalemic Cardiac Arrest (during insulin therapy)",
+      "Occult Sepsis Precipitating DKA"
+    ],
+    "explicitMissingInformation": [
+      "Serum Sodium (calculate corrected sodium and effective osmolality)",
+      "Urine/Serum beta-hydroxybutyrate level",
+      "Precipitating factor: infection (WBC, cultures), missed insulin, myocardial ischemia"
+    ],
+    "clinicalScores": [
+      {
+        "scoreName": "ADA DKA Severity Classification",
+        "scoreType": "SEVERITY_PROGNOSTIC",
+        "calculatedValue": "SEVERE DKA",
+        "isFullyCalculable": true,
+        "clinicalMeaning": "pH < 7.20 (7.12), HCO3 < 10 (8), Anion Gap > 12 (26). High mortality; requires ICU admission and continuous IV regular insulin."
+      },
+      {
+        "scoreName": "Serum Potassium Insulin-Gate",
+        "scoreType": "TREATMENT_ELIGIBILITY",
+        "calculatedValue": "POTASSIUM 5.6 mEq/L (SAFE TO START INSULIN)",
+        "isFullyCalculable": true,
+        "clinicalMeaning": "Potassium > 5.2 mEq/L: Safe to initiate insulin. Withhold IV KCl until K+ drops < 5.2."
+      }
+    ],
+    "recommendedWorkup": [
+      {
+        "category": "LABORATORY",
+        "action": "Basic Metabolic Panel, Venous Blood Gas, Serum Beta-hydroxybutyrate, Urinalysis, CBC",
+        "priority": "STAT",
+        "rationale": "Serial monitoring of anion gap, potassium, and acidosis q2-4 hours."
+      },
+      {
+        "category": "LABORATORY",
+        "action": "Blood cultures, Chest X-ray, 12-lead ECG",
+        "priority": "URGENT",
+        "rationale": "Identify precipitating infection or myocardial infarction."
+      }
+    ],
+    "contradictionsAndCaveats": [
+      "NEVER start insulin if Serum Potassium is < 3.3 mEq/L: insulin drives potassium into cells, triggering fatal hypokalemic cardiac arrhythmias! Correct potassium first!"
+    ],
+    "immediateManagementPlan": [
+      {
+        "priority": 1,
+        "intervention": "FLUID RESUSCITATION FIRST: 0.9% Normal Saline 1,000\u20131,500 mL IV over the first hour",
+        "timeframe": "< 15 min",
+        "objective": "Restore effective circulating volume and renal perfusion."
+      },
+      {
+        "priority": 2,
+        "intervention": "CONTINUOUS IV INSULIN: IV Regular Insulin infusion 0.1 units/kg/hr (target glucose decrease 50\u201375 mg/dL/hr)",
+        "timeframe": "< 30 min",
+        "objective": "Suppress lipolysis, ketogenesis, and glucagon."
+      },
+      {
+        "priority": 3,
+        "intervention": "DEXTROSE TRANSITION: When glucose reaches 200\u2013250 mg/dL, add 5% Dextrose to IV fluids (D5 0.45% NS)",
+        "timeframe": "Variable (~2-4h)",
+        "objective": "Prevent hypoglycemia while continuing insulin until anion gap closes (HCO3 >= 18, pH > 7.30, AG <= 12)."
+      }
+    ],
+    "strictContraindications": [
+      "Do NOT stop insulin when blood glucose drops to 200 mg/dL: add dextrose and continue insulin to clear ketoacidosis!",
+      "Do NOT administer routine IV sodium bicarbonate unless pH < 6.9 (worsens intracellular acidosis and causes hypokalemia)."
+    ],
+    "escalationTriggers": [
+      "Development of headache, lethargy, or bradycardia -> Suspect Cerebral Edema -> IV Mannitol or 3% Hypertonic Saline"
+    ],
+    "guidelineCitations": [
+      {
+        "issuingOrganization": "American Diabetes Association (ADA)",
+        "guidelineName": "Management of Hyperglycemic Emergencies in Adults",
+        "year": 2023
+      }
+    ]
+  },
+  {
+    "caseId": "EM-ENDO-025",
+    "domain": "Endocrinology and Metabolic Emergencies",
+    "title": "Question 25 \u2013 Hyperosmolar hyperglycemic state",
+    "vignette": "76-year-old male presents with confusion, severe dehydration, and weakness. Glucose 920 mg/dL, sodium 148 mmol/L, BUN 48 mg/dL.",
+    "top5Differentials": [
+      {
+        "name": "Hyperosmolar Hyperglycemic State (HHS)",
+        "icd10": "E11.00",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "Extreme hyperglycemia (920), hyperosmolality (> 340), severe dehydration (BUN 48), and encephalopathy in elderly patient."
+      },
+      {
+        "name": "Acute Ischemic Stroke with Stress Hyperglycemia",
+        "icd10": "I63.9",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "HIGH",
+        "rationale": "Focal or global neurologic deficit in elderly diabetic."
+      },
+      {
+        "name": "Severe Sepsis / Urosepsis / Pneumonia triggering HHS",
+        "icd10": "R65.20",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "Leading infectious precipitant of HHS."
+      },
+      {
+        "name": "Mixed DKA-HHS",
+        "icd10": "E11.10",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "HIGH",
+        "rationale": "Features of both severe hyperosmolality and metabolic acidosis."
+      },
+      {
+        "name": "Acute Kidney Injury / Prerenal Azotemia",
+        "icd10": "N17.9",
+        "clinicalCategory": "TIER_3_ALTERNATIVE",
+        "dangerTier": "HIGH",
+        "rationale": "Dehydration-induced renal failure."
+      }
+    ],
+    "mustNotMissConditions": [
+      "Severe HHS with Vascular Thrombosis",
+      "Underlying Sepsis / Occult Infection",
+      "Osmotic Cerebral Edema from Rapid Glucose Drops"
+    ],
+    "explicitMissingInformation": [
+      "Serum Potassium, Bicarbonate, and Blood Gas (confirm absence of significant ketoacidosis)",
+      "Serum Creatinine (calculate fluid deficit)",
+      "Precipitating cause (urinary/chest infection, stroke, MI)"
+    ],
+    "clinicalScores": [
+      {
+        "scoreName": "Effective Serum Osmolality",
+        "scoreType": "DIAGNOSTIC",
+        "calculatedValue": "347.1 mOsm/kg (SEVERE HYPEROSMOLALITY)",
+        "isFullyCalculable": true,
+        "clinicalMeaning": "2(Na) + Glucose/18 = 2(148) + 920/18 = 347.1 mOsm/kg. Well above diagnostic threshold (> 320 mOsm/kg). Confirms HHS."
+      }
+    ],
+    "recommendedWorkup": [
+      {
+        "category": "LABORATORY",
+        "action": "BMP, Blood Gas, Lactate, Urinalysis, Serum Osmolality, Blood cultures",
+        "priority": "STAT",
+        "rationale": "Confirm absence of acidosis and identify infection."
+      },
+      {
+        "category": "IMAGING",
+        "action": "Non-Contrast Head CT and Chest X-ray",
+        "priority": "URGENT",
+        "rationale": "Rule out acute intracranial event and pneumonia."
+      }
+    ],
+    "contradictionsAndCaveats": [
+      "Do NOT lower blood glucose too rapidly in HHS (> 75\u2013100 mg/dL/hr): rapid drops in extracellular osmolality cause dangerous osmotic fluid shifts into the central nervous system, producing fatal cerebral edema!"
+    ],
+    "immediateManagementPlan": [
+      {
+        "priority": 1,
+        "intervention": "AGGRESSIVE FLUID REHYDRATION (PRIMARY THERAPY): 1,000\u20131,500 mL 0.9% Normal Saline in the first hour, then 0.45% NS if corrected sodium is normal/high",
+        "timeframe": "< 15 min",
+        "objective": "Restore vascular volume and expand GFR (fluid deficit is typically 8\u201310 Liters)."
+      },
+      {
+        "priority": 2,
+        "intervention": "Cautious IV Regular Insulin infusion (0.05\u20130.1 units/kg/hr) STARTED ONLY AFTER INITIAL FLUID EXPANSION",
+        "timeframe": "< 60 min",
+        "objective": "Gradual lowering of glucose (target drop 50-75 mg/dL/hr)."
+      },
+      {
+        "priority": 3,
+        "intervention": "Prophylactic anticoagulation with LMWH",
+        "timeframe": "< 2 hours",
+        "objective": "Prevent venous thromboembolism (severe hyperosmolality induces hyperviscosity and thrombosis)."
+      }
+    ],
+    "strictContraindications": [
+      "Do NOT start insulin before adequate initial fluid resuscitation (insulin without fluids drives glucose and water into cells, worsening hypovolemic vascular collapse).",
+      "Avoid hypotonic fluids initially."
+    ],
+    "escalationTriggers": [
+      "Deterioration in mental status or hemodynamic shock -> ICU admission"
+    ],
+    "guidelineCitations": [
+      {
+        "issuingOrganization": "ADA",
+        "guidelineName": "Hyperglycemic Crises in Adults with Diabetes",
+        "year": 2023
+      }
+    ]
+  },
+  {
+    "caseId": "EM-ENDO-026",
+    "domain": "Endocrinology and Metabolic Emergencies",
+    "title": "Question 26 \u2013 Adrenal crisis",
+    "vignette": "46-year-old female with a history of long-term corticosteroid use presents with vomiting, abdominal pain, weakness, and hypotension. Sodium 124 mmol/L, potassium 6.1 mmol/L, glucose 52 mg/dL.",
+    "top5Differentials": [
+      {
+        "name": "Acute Adrenal Crisis (Secondary to HPA-Axis Suppression)",
+        "icd10": "E27.2",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "Steroid history + refractory hypotension + hyponatremia (124) + hyperkalemia (6.1) + hypoglycemia (52)."
+      },
+      {
+        "name": "Septic Shock with Relative Adrenal Insufficiency",
+        "icd10": "R57.2",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "Hypotension and vomiting precipitated by occult infection."
+      },
+      {
+        "name": "Acute Surgical Abdomen / Peritonitis",
+        "icd10": "K65.0",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "HIGH",
+        "rationale": "Severe abdominal pain and vomiting mimicking surgical abdomen."
+      },
+      {
+        "name": "Primary Addisonian Crisis (Autoimmune Adrenalitis)",
+        "icd10": "E27.1",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "HIGH",
+        "rationale": "Mineralocorticoid and glucocorticoid deficiency."
+      },
+      {
+        "name": "Severe Toxic Overdose / Digoxin or Beta-blocker Toxicity",
+        "icd10": "T46.0",
+        "clinicalCategory": "TIER_3_ALTERNATIVE",
+        "dangerTier": "HIGH",
+        "rationale": "Hypotension and hyperkalemia."
+      }
+    ],
+    "mustNotMissConditions": [
+      "Acute Adrenal Crisis / Refractory Cardiovascular Collapse",
+      "Severe Hypoglycemia (Glucose 52 mg/dL)",
+      "Hyperkalemic Arrhythmia"
+    ],
+    "explicitMissingInformation": [
+      "Exact blood pressure and heart rate (fluid-refractory hypotension)",
+      "12-lead ECG (evaluate peaked T waves from K+ 6.1)",
+      "Precipitating illness: infection, trauma, surgery, or abrupt steroid cessation"
+    ],
+    "clinicalScores": [
+      {
+        "scoreName": "Diagnostic Electrolyte Tetrad for Adrenal Crisis",
+        "scoreType": "DIAGNOSTIC",
+        "calculatedValue": "CLASSIC (Hypotension + Hyponatremia + Hyperkalemia + Hypoglycemia)",
+        "isFullyCalculable": true,
+        "clinicalMeaning": "Loss of cortisol permissiveness causes catecholamine-resistant vascular collapse; mandates instant steroid replacement."
+      }
+    ],
+    "recommendedWorkup": [
+      {
+        "category": "LABORATORY",
+        "action": "Draw stat Random Cortisol and ACTH level PRIOR to steroid administration (DO NOT WAIT FOR RESULTS)",
+        "priority": "STAT",
+        "rationale": "Document baseline adrenal failure."
+      },
+      {
+        "category": "BEDSIDE",
+        "action": "Stat 12-lead ECG and POC Glucose verification",
+        "priority": "STAT",
+        "rationale": "Assess hyperkalemic cardiotoxicity and treat hypoglycemia."
+      }
+    ],
+    "contradictionsAndCaveats": [
+      "NEVER WAIT FOR CORTISOL OR ACTH TEST RESULTS TO INITIATE TREATMENT: Adrenal crisis is fatal within hours from circulatory collapse. Administer IV hydrocortisone immediately!"
+    ],
+    "immediateManagementPlan": [
+      {
+        "priority": 1,
+        "intervention": "IMMEDIATE STEROID REPLACEMENT: IV Hydrocortisone 100 mg IV push immediately, then 50\u2013100 mg IV q6h",
+        "timeframe": "< 5 min",
+        "objective": "Restore vascular tone and glucocorticoid activity."
+      },
+      {
+        "priority": 2,
+        "intervention": "GLUCOSE AND VOLUME RESUSCITATION: IV 5% Dextrose in 0.9% Normal Saline (D5NS) 1,000 mL bolus",
+        "timeframe": "< 10 min",
+        "objective": "Simultaneously treat hypotension, hyponatremia, and hypoglycemia."
+      },
+      {
+        "priority": 3,
+        "intervention": "Treat hyperkalemia (K+ 6.1) with IV Calcium Gluconate if ECG changes present",
+        "timeframe": "< 15 min",
+        "objective": "Myocardial membrane stabilization."
+      }
+    ],
+    "strictContraindications": [
+      "Do NOT delay corticosteroid therapy for diagnostic laboratory results.",
+      "Do NOT give pure hypotonic fluids (D5W alone) without normal saline."
+    ],
+    "escalationTriggers": [
+      "Hypotension refractory to fluids and hydrocortisone -> Vasopressor support (Norepinephrine) in ICU"
+    ],
+    "guidelineCitations": [
+      {
+        "issuingOrganization": "Endocrine Society",
+        "guidelineName": "Diagnosis and Treatment of Primary Adrenal Insufficiency",
+        "year": 2016
+      }
+    ]
+  },
+  {
+    "caseId": "EM-TOX-027",
+    "domain": "Renal, Hematology and Toxicology Emergencies",
+    "title": "Question 27 \u2013 Acute kidney injury",
+    "vignette": "64-year-old male presents with reduced urine output, confusion, and generalized weakness. Creatinine increased from 1.0 to 3.8 mg/dL within 48 hours. Potassium 6.8 mmol/L, ECG shows peaked T waves.",
+    "top5Differentials": [
+      {
+        "name": "Severe Hyperkalemic Emergency secondary to KDIGO Stage 3 AKI",
+        "icd10": "E87.5 / N17.9",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "Creatinine rise > 3x baseline within 48h + K+ 6.8 with cardiotoxicity (peaked T waves); impending sine wave and asystole."
+      },
+      {
+        "name": "Acute Obstructive Uropathy (Post-Renal AKI / BPH / Malignancy)",
+        "icd10": "N13.8",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "HIGH",
+        "rationale": "Abrupt oliguria in older male; reversible with urgent decompression."
+      },
+      {
+        "name": "Acute Tubular Necrosis (ATN - Ischemic or Nephrotoxic)",
+        "icd10": "N17.0",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "HIGH",
+        "rationale": "Intrinsic renal failure from hypoperfusion or medications."
+      },
+      {
+        "name": "Rhabdomyolysis-Induced AKI",
+        "icd10": "M62.82 / N17.9",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "HIGH",
+        "rationale": "Weakness and myoglobinuria causing acute renal shutdown and hyperkalemia."
+      },
+      {
+        "name": "Uremic Encephalopathy / Uremic Pericarditis",
+        "icd10": "N18.9 / I30.8",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "Confusion and azotemia indicating severe uremic toxicity."
+      }
+    ],
+    "mustNotMissConditions": [
+      "Hyperkalemic Cardiac Arrest (Ventricular Fibrillation / Asystole)",
+      "Uremic Encephalopathy / Pericardial Tamponade",
+      "Obstructive Uropathy"
+    ],
+    "explicitMissingInformation": [
+      "Bedside bladder scan volume / post-void residual",
+      "Urine output rate (mL/kg/hr)",
+      "Medication history: ACEi, ARB, Spironolactone, NSAIDs, Trimethoprim"
+    ],
+    "clinicalScores": [
+      {
+        "scoreName": "KDIGO Acute Kidney Injury Staging",
+        "scoreType": "SEVERITY_PROGNOSTIC",
+        "calculatedValue": "KDIGO STAGE 3 AKI",
+        "isFullyCalculable": true,
+        "clinicalMeaning": "Serum creatinine increase >= 3.0 times baseline (1.0 -> 3.8 mg/dL). High risk of mortality and urgent dialysis indication."
+      }
+    ],
+    "recommendedWorkup": [
+      {
+        "category": "BEDSIDE",
+        "action": "CONTINUOUS CARDIAC TELEMETRY and repeat 12-lead ECG q15-30 min",
+        "priority": "STAT",
+        "rationale": "Monitor for sine-wave deterioration and response to calcium."
+      },
+      {
+        "category": "BEDSIDE",
+        "action": "Bedside Bladder Scan and Renal Ultrasound (POCUS)",
+        "priority": "STAT",
+        "rationale": "Rule out bilateral hydronephrosis / urinary outflow obstruction."
+      },
+      {
+        "category": "LABORATORY",
+        "action": "Stat BMP, Calcium, Blood Gas (acidosis), Creatine Kinase, Urinalysis",
+        "priority": "STAT",
+        "rationale": "Assess acidemia, hypocalcemia, and rhabdomyolysis."
+      }
+    ],
+    "contradictionsAndCaveats": [
+      "Sodium Polystyrene Sulfonate (Kayexalate) is STRICTLY CONTRAINDICATED in the acute management of hyperkalemic emergency: it has delayed onset (hours) and causes bowel necrosis. Membrane stabilization with Calcium is the absolute immediate priority!"
+    ],
+    "immediateManagementPlan": [
+      {
+        "priority": 1,
+        "intervention": "STEP 1 - CARDIAC MEMBRANE STABILIZATION: IV Calcium Gluconate 10% 10\u201320 mL IV over 2\u20135 min (or Calcium Chloride 1g via central line)",
+        "timeframe": "< 2 min",
+        "objective": "Immediately stabilize cardiac myocyte resting membrane potential against VF/asystole."
+      },
+      {
+        "priority": 2,
+        "intervention": "STEP 2 - INTRACELLULAR POTASSIUM SHIFTING: IV Regular Insulin 10 units + 50 mL D50W (25g Dextrose) + Inhaled Albuterol 10\u201320 mg nebulized",
+        "timeframe": "< 15 min",
+        "objective": "Drive potassium into cells (lowers serum K+ by 0.5\u20131.2 mEq/L within 30 min)."
+      },
+      {
+        "priority": 3,
+        "intervention": "STEP 3 - POTASSIUM ELIMINATION & EMERGENCE CONSULT: Emergent Nephrology Consultation for Hemodialysis and urinary catheterization",
+        "timeframe": "< 30 min",
+        "objective": "Definitive potassium removal."
+      }
+    ],
+    "strictContraindications": [
+      "Do NOT delay calcium administration when peaked T waves or QRS widening are present.",
+      "Do NOT administer potassium-sparing diuretics, ACEi/ARBs, or IV fluids containing potassium."
+    ],
+    "escalationTriggers": [
+      "Widening QRS complex, sine-wave pattern, or refractory hyperkalemia -> Immediate Emergent Hemodialysis"
+    ],
+    "guidelineCitations": [
+      {
+        "issuingOrganization": "KDIGO",
+        "guidelineName": "Clinical Practice Guideline for Acute Kidney Injury",
+        "year": 2012
+      }
+    ]
+  },
+  {
+    "caseId": "EM-TOX-028",
+    "domain": "Renal, Hematology and Toxicology Emergencies",
+    "title": "Question 28 \u2013 Thrombotic thrombocytopenic purpura",
+    "vignette": "36-year-old female presents with fever, confusion, petechiae, and fatigue. Hemoglobin 7.8 g/dL, platelets 18,000/\u00b5L, elevated LDH, and schistocytes on peripheral smear.",
+    "top5Differentials": [
+      {
+        "name": "Thrombotic Thrombocytopenic Purpura (TTP)",
+        "icd10": "M31.1",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "Classic pentad: Microangiopathic Hemolytic Anemia (schistocytes, high LDH, low Hb) + severe thrombocytopenia (18k) + neurological symptoms (confusion) + fever."
+      },
+      {
+        "name": "Hemolytic Uremic Syndrome (Atypical HUS / Shiga-toxin HUS)",
+        "icd10": "D59.3",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "MAHA and thrombocytopenia with dominant renal failure."
+      },
+      {
+        "name": "Disseminated Intravascular Coagulation (DIC)",
+        "icd10": "D65",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "CRITICAL",
+        "rationale": "Consumptive coagulopathy; distinguished by abnormal PT/INR, aPTT, and low fibrinogen."
+      },
+      {
+        "name": "Immune Thrombocytopenia (ITP) with Anemia",
+        "icd10": "D69.3",
+        "clinicalCategory": "TIER_3_ALTERNATIVE",
+        "dangerTier": "HIGH",
+        "rationale": "Isolated thrombocytopenia; does NOT feature schistocytes or high LDH."
+      },
+      {
+        "name": "Severe Sepsis / Meningococcemia with Purpura",
+        "icd10": "A39.0",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "CRITICAL",
+        "rationale": "Fever, petechiae, and encephalopathy."
+      }
+    ],
+    "mustNotMissConditions": [
+      "Thrombotic Thrombocytopenic Purpura (TTP)",
+      "Atypical HUS",
+      "Fulminant DIC"
+    ],
+    "explicitMissingInformation": [
+      "ADAMTS13 activity level and inhibitor titer (draw blood prior to plasma exchange)",
+      "Coagulation profile (PT/INR, aPTT, Fibrinogen: normal coags confirm TTP over DIC)",
+      "Serum Creatinine and pregnancy test"
+    ],
+    "clinicalScores": [
+      {
+        "scoreName": "PLASMIC Score for TTP",
+        "scoreType": "DIAGNOSTIC",
+        "calculatedValue": "Score 6\u20137 (HIGH RISK: 90% Probability of ADAMTS13 < 10%)",
+        "isFullyCalculable": true,
+        "clinicalMeaning": "Platelets < 30k (+1), Hemolysis (+1), No cancer (+1), No transplant (+1), MCV < 90 (+1), INR < 1.5 (+1), Cr < 2.0 (+1). Strongly predicts severe ADAMTS13 deficiency; mandates immediate plasma exchange."
+      }
+    ],
+    "recommendedWorkup": [
+      {
+        "category": "LABORATORY",
+        "action": "Draw stat ADAMTS13 Activity and Inhibitor level PRIOR to plasma infusion (DO NOT WAIT FOR RESULTS)",
+        "priority": "STAT",
+        "rationale": "Definitive biomarker confirmation."
+      },
+      {
+        "category": "LABORATORY",
+        "action": "Stat Peripheral Blood Smear (quantify schistocytes), Direct Coombs test, Haptoglobin, Reticulocyte count",
+        "priority": "STAT",
+        "rationale": "Confirm non-immune microangiopathic hemolytic anemia."
+      },
+      {
+        "category": "LABORATORY",
+        "action": "Coagulation Panel (PT/INR, aPTT, Fibrinogen, D-dimer)",
+        "priority": "STAT",
+        "rationale": "Exclude DIC (coagulation profile is typically NORMAL in pure TTP)."
+      }
+    ],
+    "contradictionsAndCaveats": [
+      "PLATELET TRANSFUSIONS ARE STRICTLY CONTRAINDICATED IN TTP: Transfusing platelets 'fuels the fire' by providing substrate for microvascular platelet thrombi, triggering fatal acute myocardial infarction and stroke! Platelets are indicated ONLY in catastrophic life-threatening hemorrhage!"
+    ],
+    "immediateManagementPlan": [
+      {
+        "priority": 1,
+        "intervention": "EMERGENT THERAPEUTIC PLASMA EXCHANGE (PEX): 1.0\u20131.5 plasma volume exchange with Fresh Frozen Plasma (FFP) replacement",
+        "timeframe": "< 2\u20134 hours",
+        "objective": "Remove autoantibodies and replenish ADAMTS13 (reduces mortality from > 90% to < 15%)."
+      },
+      {
+        "priority": 2,
+        "intervention": "High-Dose Corticosteroids: Methylprednisolone 1 g/day IV (or Prednisone 1 mg/kg/day)",
+        "timeframe": "< 60 min",
+        "objective": "Inhibit anti-ADAMTS13 autoantibody production."
+      },
+      {
+        "priority": 3,
+        "intervention": "Caplacizumab (anti-vWF nanobody) and Hematology Consultation",
+        "timeframe": "< 2 hours",
+        "objective": "Inhibit vWF-platelet adhesion and microthrombosis."
+      }
+    ],
+    "strictContraindications": [
+      "Platelet transfusions are STRICTLY CONTRAINDICATED in TTP.",
+      "Do NOT wait for ADAMTS13 test results to initiate plasma exchange."
+    ],
+    "escalationTriggers": [
+      "Fluctuating neurological deficits, seizures, or cardiac ischemia -> Emergent PEX initiation"
+    ],
+    "guidelineCitations": [
+      {
+        "issuingOrganization": "International Society on Thrombosis and Haemostasis (ISTH)",
+        "guidelineName": "Guidelines for Diagnosis and Management of Thrombotic Thrombocytopenic Purpura",
+        "year": 2020
+      }
+    ]
+  },
+  {
+    "caseId": "EM-TOX-029",
+    "domain": "Renal, Hematology and Toxicology Emergencies",
+    "title": "Question 29 \u2013 Opioid toxicity",
+    "vignette": "32-year-old male is found unconscious with RR 5/min, oxygen saturation 78%, pinpoint pupils, and minimal response to pain.",
+    "top5Differentials": [
+      {
+        "name": "Acute Opioid Overdose (Opioid Toxidrome)",
+        "icd10": "T40.2X1A",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "Classic opioid triad: Central nervous system depression (coma) + Severe respiratory depression (RR 5) + Miosis (pinpoint pupils)."
+      },
+      {
+        "name": "Pontine Hemorrhage",
+        "icd10": "I61.3",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "Coma, pinpoint pupils, and abnormal breathing; non-responsive to naloxone."
+      },
+      {
+        "name": "Sedative-Hypnotic Toxicity (Benzodiazepines, Barbiturates, GHB)",
+        "icd10": "T42.4X1A",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "HIGH",
+        "rationale": "CNS and respiratory depression; pupils typically normal or dilated."
+      },
+      {
+        "name": "Severe Anoxic-Ischemic Encephalopathy",
+        "icd10": "G93.1",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "Coma following prolonged unobserved hypoxemia."
+      },
+      {
+        "name": "Severe Hypoglycemia",
+        "icd10": "E16.2",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "HIGH",
+        "rationale": "Unresponsiveness and hypoventilation."
+      }
+    ],
+    "mustNotMissConditions": [
+      "Fatal Respiratory Arrest / Asphyxia",
+      "Pontine Hemorrhage",
+      "Co-ingestion with Acetaminophen or Fentanyl Analogs"
+    ],
+    "explicitMissingInformation": [
+      "Point-of-care blood glucose (immediate bedside test to rule out hypoglycemia)",
+      "Body temperature (hypothermia common in prolonged coma)",
+      "Arterial Blood Gas (degree of hypercapnic respiratory acidosis)"
+    ],
+    "clinicalScores": [
+      {
+        "scoreName": "Opioid Toxidrome Assessment",
+        "scoreType": "DIAGNOSTIC",
+        "calculatedValue": "DEFINITE OPIOID TOXIDROME",
+        "isFullyCalculable": true,
+        "clinicalMeaning": "Miosis + Respiratory depression + Unconsciousness. Immediate indication for naloxone."
+      }
+    ],
+    "recommendedWorkup": [
+      {
+        "category": "BEDSIDE",
+        "action": "Stat Point-of-Care Capillary Blood Glucose",
+        "priority": "STAT",
+        "rationale": "Rule out hypoglycemia mimic."
+      },
+      {
+        "category": "LABORATORY",
+        "action": "Stat Acetaminophen level, Salicylate level, Blood Gas, CMP, Creatine Kinase (rhabdomyolysis)",
+        "priority": "STAT",
+        "rationale": "Rule out co-ingested toxins and compartment syndrome/rhabdomyolysis from prolonged immobilization."
+      }
+    ],
+    "contradictionsAndCaveats": [
+      "BAG-VALVE-MASK VENTILATION MUST PRECEDE OR ACCOMPANY NALOXONE: Administering high-dose naloxone to a severely hypoxic patient (SpO2 78%) triggers massive sympathetic catecholamine surge, acute non-cardiogenic pulmonary edema, and ventricular fibrillation! Oxygenate first!"
+    ],
+    "immediateManagementPlan": [
+      {
+        "priority": 1,
+        "intervention": "AIRWAY AND VENTILATION FIRST: Bag-Valve-Mask (BVM) ventilatory support with 100% O2",
+        "timeframe": "< 1 min",
+        "objective": "Reverse life-threatening hypoxia and hypercapnia prior to naloxone surge."
+      },
+      {
+        "priority": 2,
+        "intervention": "TITRATED NALOXONE: Naloxone 0.4 mg IV (or 2-4 mg IN) titrated to restore spontaneous respiratory rate >= 10-12/min, NOT full emergence",
+        "timeframe": "< 3 min",
+        "objective": "Restore ventilation without triggering severe acute withdrawal or vomiting."
+      },
+      {
+        "priority": 3,
+        "intervention": "MANDATORY EXTENDED OBSERVATION: Monitor for at least 4\u20136 hours (or >= 24h for long-acting opioids like Methadone)",
+        "timeframe": "4-6 hours",
+        "objective": "Naloxone half-life (30-90 min) is much shorter than most opioids; monitor for renarcotization."
+      }
+    ],
+    "strictContraindications": [
+      "Do NOT administer massive boluses of naloxone (e.g. 10 mg) in opioid-dependent patients without cardiac arrest (causes violent withdrawal, vomiting, aspiration, and flash pulmonary edema).",
+      "Do NOT discharge patient early after naloxone reversal."
+    ],
+    "escalationTriggers": [
+      "Renarcotization (respiratory rate drops < 8/min) -> Start continuous IV Naloxone infusion (2/3 of waking dose per hour)"
+    ],
+    "guidelineCitations": [
+      {
+        "issuingOrganization": "American Heart Association (AHA)",
+        "guidelineName": "Focused Update on Adult Basic and Advanced Life Support: Opioid Overdose",
+        "year": 2020
+      }
+    ]
+  },
+  {
+    "caseId": "EM-TOX-030",
+    "domain": "Renal, Hematology and Toxicology Emergencies",
+    "title": "Question 30 \u2013 Multiple drug overdose",
+    "vignette": "25-year-old female presents after an intentional ingestion of an unknown quantity of medication. She is drowsy, HR 118 bpm, BP 96/60 mmHg, and QTc 520 ms.",
+    "top5Differentials": [
+      {
+        "name": "Tricyclic Antidepressant (TCA) / Sodium Channel Blocker Toxicity",
+        "icd10": "T43.01",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "Tachycardia, hypotension, drowsiness, and cardiac conduction delay; high risk of seizures and refractory arrhythmias."
+      },
+      {
+        "name": "QT-Prolonging Antipsychotic / Antidepressant Overdose (Quetiapine, Citalopram)",
+        "icd10": "T43.2",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "Marked QTc prolongation (520 ms) with hypotension and lethargy; triggers Torsades de Pointes."
+      },
+      {
+        "name": "Acetaminophen Co-Ingestion (Silent Lethal Ingestion)",
+        "icd10": "T39.1",
+        "clinicalCategory": "TIER_1_PRIMARY_EMERGENCY",
+        "dangerTier": "CRITICAL",
+        "rationale": "Frequently co-ingested in intentional overdoses; initially asymptomatic but causes fatal acute liver failure."
+      },
+      {
+        "name": "Antihistamine / Anticholinergic Toxicity",
+        "icd10": "T45.0",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "HIGH",
+        "rationale": "Tachycardia, drowsiness/delirium, and QTc widening."
+      },
+      {
+        "name": "Serotonin Syndrome (SSRI/SNRI Overdose)",
+        "icd10": "T43.20",
+        "clinicalCategory": "TIER_2_MUST_NOT_MISS",
+        "dangerTier": "HIGH",
+        "rationale": "Tachycardia, autonomic instability, and altered mental status."
+      }
+    ],
+    "mustNotMissConditions": [
+      "Torsades de Pointes (TdP) / Ventricular Arrhythmias",
+      "TCA Sodium Channel Blocker Seizures & Shock",
+      "Acetaminophen Hepatotoxicity"
+    ],
+    "explicitMissingInformation": [
+      "Stat 12-lead ECG QRS duration and terminal R-wave amplitude in lead aVR",
+      "Serum Acetaminophen and Salicylate levels (MANDATORY in all intentional overdoses)",
+      "Serum Potassium, Magnesium, and Calcium"
+    ],
+    "clinicalScores": [
+      {
+        "scoreName": "Tisdale Risk Score for QT Prolongation",
+        "scoreType": "SEVERITY_PROGNOSTIC",
+        "calculatedValue": "HIGH RISK (QTc > 500 ms)",
+        "isFullyCalculable": true,
+        "clinicalMeaning": "QTc 520 ms confers extreme risk for Torsades de Pointes and ventricular fibrillation."
+      }
+    ],
+    "recommendedWorkup": [
+      {
+        "category": "BEDSIDE",
+        "action": "Stat 12-lead ECG with continuous telemetry and automated QRS/QTc monitoring",
+        "priority": "STAT",
+        "rationale": "Evaluate QRS widening (> 100 ms) and terminal R in aVR (> 3 mm)."
+      },
+      {
+        "category": "LABORATORY",
+        "action": "Stat 4-hour Serum Acetaminophen level, Salicylate level, Blood Glucose, Ethanol, BMP",
+        "priority": "STAT",
+        "rationale": "Detect occult lethal co-ingestions requiring N-acetylcysteine."
+      },
+      {
+        "category": "LABORATORY",
+        "action": "Urine Pregnancy Test (beta-hCG) in all reproductive-age females",
+        "priority": "STAT",
+        "rationale": "Teratogen and obstetric management."
+      }
+    ],
+    "contradictionsAndCaveats": [
+      "Class IA and IC antiarrhythmics (Procainamide, Flecainide) and QT-prolonging agents (Amiodarone) are ABSOLUTELY CONTRAINDICATED in drug-induced QTc prolongation or TCA toxicity: they worsen sodium channel blockade and trigger fatal arrhythmias!"
+    ],
+    "immediateManagementPlan": [
+      {
+        "priority": 1,
+        "intervention": "IMMEDIATE POISON CONTROL CENTER CONSULTATION (1-800-222-1222) and continuous cardiac monitoring",
+        "timeframe": "< 15 min",
+        "objective": "Expert toxicology management and antidotal guidance."
+      },
+      {
+        "priority": 2,
+        "intervention": "IV SODIUM BICARBONATE GATING: If QRS > 100 ms, ventricular arrhythmia, or severe hypotension occurs, administer IV Sodium Bicarbonate 1\u20132 mEq/kg boluses",
+        "timeframe": "< 10 min",
+        "objective": "Outcompete sodium channel blockade and alkalinize serum (target pH 7.50\u20137.55)."
+      },
+      {
+        "priority": 3,
+        "intervention": "TORSADES DE POINTES PROPHYLAXIS: IV Magnesium Sulfate 2g IV push if QTc > 500 ms with ventricular ectopy",
+        "timeframe": "< 20 min",
+        "objective": "Suppress early afterdepolarizations."
+      },
+      {
+        "priority": 4,
+        "intervention": "N-ACETYLCYSTEINE (NAC) GATING: Initiate IV N-acetylcysteine immediately if 4-hour acetaminophen level crosses treatment line on Rumack-Matthew nomogram",
+        "timeframe": "< 4 hours",
+        "objective": "Prevent centrilobular hepatic necrosis."
+      }
+    ],
+    "strictContraindications": [
+      "Do NOT administer Physostigmine in suspected TCA toxicity (causes asystolic cardiac arrest).",
+      "Do NOT administer Flumazenil for suspected benzodiazepine co-overdose (precipitates intractable refractory status epilepticus)."
+    ],
+    "escalationTriggers": [
+      "QRS widening > 100 ms, Torsades de Pointes, or seizures -> Stat IV Sodium Bicarbonate and ICU transfer"
+    ],
+    "guidelineCitations": [
+      {
+        "issuingOrganization": "American College of Emergency Physicians (ACEP)",
+        "guidelineName": "Clinical Policy: Critical Issues in the Initial Evaluation and Management of Patients Presenting After Self-Harm or Overdose",
+        "year": 2017
+      },
+      {
+        "issuingOrganization": "American Academy of Clinical Toxicology (AACT)",
+        "guidelineName": "Position Paper: Management of Tricyclic Antidepressant Poisoning",
+        "year": 2019
+      }
+    ]
+  }
+]

@@ -41,6 +41,7 @@ export interface CopdAsthmaResult {
 export interface HypertensiveCrisisInput {
   systolicBpMmHg: number;
   diastolicBpMmHg: number;
+  hasAcuteStrokeOrNeurologicalDeficit?: boolean;
   hasAcuteHeadacheOrEncephalopathy?: boolean;
   hasAcuteChestPainOrAcs?: boolean;
   hasAcuteAorticDissectionTear?: boolean;
@@ -253,6 +254,7 @@ export function evaluateHypertensiveCrisis(input: HypertensiveCrisisInput): Hype
   const isCrisisRange = sbp >= 180 || dbp >= 120;
 
   const hasEndOrgan = Boolean(
+    input.hasAcuteStrokeOrNeurologicalDeficit ||
     input.hasAcuteHeadacheOrEncephalopathy ||
     input.hasAcuteChestPainOrAcs ||
     input.hasAcuteAorticDissectionTear ||
@@ -274,10 +276,16 @@ export function evaluateHypertensiveCrisis(input: HypertensiveCrisisInput): Hype
   let action = "";
 
   if (category === "HYPERTENSIVE_EMERGENCY") {
-    if (input.hasAcuteAorticDissectionTear) {
+    if (input.hasAcuteStrokeOrNeurologicalDeficit) {
+      target = "ACUTE ISCHEMIC STROKE PERMISSIVE HYPERTENSION: If candidate for IV thrombolysis (Alteplase/Tenecteplase), gently lower BP to < 185/110 mmHg pre-treatment, then maintain < 180/105 mmHg for 24h. If NOT receiving thrombolysis, maintain permissive hypertension up to 220/120 mmHg (do NOT lower BP unless SBP > 220 or DBP > 120 mmHg).";
+      ivAgents.push("IV Labetalol 10-20 mg slow IV push over 1-2 min (may repeat x1), or IV Nicardipine infusion 5 mg/hr (titrate by 2.5 mg/hr q5-15 min up to 15 mg/hr).");
+      contra.push("DO NOT AGGRESSIVELY LOWER BLOOD PRESSURE: Precipitously dropping MAP (> 15%) in acute ischemic stroke causes catastrophic hypoperfusion in the ischemic penumbra, expanding the core infarct. SUBLINGUAL NIFEDIPINE IS STRICTLY CONTRAINDICATED.");
+      action = "🚨 CODE STROKE ACTIVATION STAT: Acute focal neurological deficit with severe hypertension. Emergent Non-Contrast Head CT within <= 20 minutes to exclude intracranial hemorrhage. Permissive hypertension protocol strictly enforced.";
+    } else if (input.hasAcuteAorticDissectionTear) {
       target = "RAPID REDUCTION: Lower SBP to < 120 mmHg and HR to < 60 bpm within 20 minutes.";
       ivAgents.push("IV Esmolol infusion FIRST to prevent reflex tachycardia and shear stress, then IV Nicardipine or Nitroprusside.");
       contra.push("DO NOT GIVE DIRECT VASODILATORS (Hydralazine, Nitroprusside) WITHOUT PRIOR BETA-BLOCKADE (triggers aortic wall shear and propagation of tear).");
+      action = "🚨 HYPERTENSIVE EMERGENCY ICU ADMISSION STAT: Acute life-threatening aortic dissection verified. Continuous arterial line monitoring and titratable IV antihypertensives required.";
     } else {
       target = "Reduce Mean Arterial Pressure (MAP) by NO MORE THAN 20% to 25% in the first hour, then to 160/100-110 over next 2-6 hours.";
       ivAgents.push("IV Nicardipine (Cardene) infusion 5 mg/hr (titrate q5-15 min by 2.5 mg/hr up to 15 mg/hr).");
@@ -286,8 +294,8 @@ export function evaluateHypertensiveCrisis(input: HypertensiveCrisisInput): Hype
         ivAgents.push("IV Nitroglycerin infusion + IV Furosemide (reduces preload in cardiogenic pulmonary edema).");
       }
       contra.push("Short-acting sublingual/immediate-release Nifedipine is STRICTLY CONTRAINDICATED (causes catastrophic precipitate BP drops, cerebral hypoperfusion, ischemic stroke, and acute MI).");
+      action = "🚨 HYPERTENSIVE EMERGENCY ICU ADMISSION STAT: Acute life-threatening target organ damage verified. Continuous arterial line monitoring and titratable IV antihypertensives required.";
     }
-    action = "🚨 HYPERTENSIVE EMERGENCY ICU ADMISSION STAT: Acute life-threatening target organ damage verified. Continuous arterial line monitoring and titratable IV antihypertensives required.";
   } else if (category === "HYPERTENSIVE_URGENCY") {
     target = "Gradual outpatient/observation blood pressure reduction over 24 to 48 hours to < 160/100 mmHg.";
     action = "Hypertensive Urgency (SBP >= 180 or DBP >= 120 without acute end-organ damage). Do NOT rapidly drop blood pressure with IV meds (risk of cerebral or myocardial ischemia). Initiate or adjust oral medications (Amlodipine, Lisinopril, Chlorthalidone) with close 24-48 hr follow-up.";
@@ -300,7 +308,7 @@ export function evaluateHypertensiveCrisis(input: HypertensiveCrisisInput): Hype
   return {
     category,
     targetBloodPressure1stHour: target,
-    maximumPermittedMapDropPercent1stHour: input.hasAcuteAorticDissectionTear ? 50 : 25,
+    maximumPermittedMapDropPercent1stHour: input.hasAcuteAorticDissectionTear ? 50 : (input.hasAcuteStrokeOrNeurologicalDeficit ? 15 : 25),
     recommendedIvAgents: ivAgents,
     contraindicatedAgents: contra,
     immediateAction: action,

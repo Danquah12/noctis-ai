@@ -1,5 +1,8 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { handleNaturalPatientDiagnosticQuery } from "./noctis-patient-diagnosis.ts";
+import { handleNaturalSpecialistClinicalQuery } from "./noctis-specialist-router.ts";
+import { evaluateHypertensiveCrisis } from "./noctis-global-conditions-engine.ts";
 import {
   assessAcuteAbdominalPain,
   calculateAlvaradoScore,
@@ -7,7 +10,7 @@ import {
   evaluateAtlantaPancreatitisCriteria,
   detectClinicalContradictions,
   evaluateTreatmentSafety,
-  PatientClinicalEncounter,
+  type PatientClinicalEncounter,
 } from "./noctis-clinical-engine.ts";
 
 describe("Noctis Clinical Reasoning & Triage Acceptance Test Suite (CT-001..CT-012)", () => {
@@ -246,5 +249,34 @@ describe("Noctis Clinical Reasoning & Triage Acceptance Test Suite (CT-001..CT-0
     const evaluation = evaluateAtlantaPancreatitisCriteria(true, 300, 60, true);
     assert.match(evaluation.diagnosticRationale, /Revised Atlanta Criteria/);
     assert.equal(evaluation.isConfirmed, true);
+  });
+  // CT-013: Acute Stroke with Severe Hypertension
+  it("CT-013: Acute focal neurological deficits with severe hypertension -> prioritizes Acute Stroke / Code Stroke, enforces permissive hypertension, and rejects benign Hypertensive Urgency", () => {
+    const prompt = "72-year-old female suddenly develops right-sided weakness, facial drooping, and difficulty speaking. Symptoms began 75 minutes ago. BP 188/104 mmHg, HR 92 bpm, glucose 112 mg/dL.";
+
+    // 1. Patient Diagnostic Engine Output Verification
+    const patientDxOutput = handleNaturalPatientDiagnosticQuery(prompt);
+    assert.ok(patientDxOutput !== null, "Must match acute stroke diagnostic pathway");
+    assert.match(patientDxOutput!, /P0 IMMEDIATE EMERGENCY/, "Must triage as P0 Immediate Emergency");
+    assert.match(patientDxOutput!, /Acute Ischemic Stroke|Code Stroke/i, "Must identify acute ischemic stroke");
+    assert.doesNotMatch(patientDxOutput!, /HYPERTENSIVE_URGENCY.*without acute end-organ damage/i, "Must never classify as Hypertensive Urgency without end-organ damage");
+    assert.match(patientDxOutput!, /185\/110/i, "Must note pre-thrombolysis BP threshold < 185/110 mmHg");
+
+    // 2. Specialist Clinical Router Output Verification
+    const specialistOutput = handleNaturalSpecialistClinicalQuery(prompt);
+    assert.ok(specialistOutput !== null, "Must match specialist neurology pathway");
+    assert.match(specialistOutput!, /Acute Stroke & Neurovascular Triage|NIHSS/i, "Must route to stroke triage");
+    assert.match(specialistOutput!, /CODE STROKE STAT|185\/110/i, "Must specify Code Stroke and BP gate");
+
+    // 3. Hypertensive Crisis Engine with Stroke
+    const crisisRes = evaluateHypertensiveCrisis({
+      systolicBpMmHg: 188,
+      diastolicBpMmHg: 104,
+      hasAcuteStrokeOrNeurologicalDeficit: true,
+    });
+    assert.equal(crisisRes.category, "HYPERTENSIVE_EMERGENCY", "Acute stroke with severe BP is Hypertensive Emergency, never Urgency");
+    assert.match(crisisRes.immediateAction, /CODE STROKE ACTIVATION STAT/);
+    assert.match(crisisRes.targetBloodPressure1stHour, /PERMISSIVE HYPERTENSION/);
+    assert.equal(crisisRes.maximumPermittedMapDropPercent1stHour, 15, "Max permitted MAP drop is limited to 15% in acute stroke");
   });
 });

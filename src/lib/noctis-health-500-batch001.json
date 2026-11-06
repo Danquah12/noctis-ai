@@ -1,0 +1,1070 @@
+[
+  {
+    "benchmark": "NOCTIS-HEALTH-500",
+    "caseId": "NH-EM-001",
+    "batchId": "BATCH-001",
+    "specialty": "EMERGENCY_MEDICINE",
+    "clinicalCategory": "Acute Abdominal Pain",
+    "difficulty": "ADVANCED",
+    "patientProfile": {
+      "ageYears": 22,
+      "biologicalSex": "MALE",
+      "pastMedicalHistory": [
+        "None reported"
+      ],
+      "currentMedications": [],
+      "allergies": [
+        "No known drug allergies (NKDA)"
+      ]
+    },
+    "initialPresentation": {
+      "chiefComplaint": "Abdominal pain, nausea, and reduced appetite",
+      "onsetAndTimeline": "Started approximately 12 hours ago",
+      "symptoms": [
+        "generalized abdominal discomfort",
+        "nausea",
+        "anorexia",
+        "low-grade fever"
+      ],
+      "vitals": {
+        "temperatureCelsius": 38.2
+      }
+    },
+    "progressiveStages": [
+      {
+        "stageIndex": 1,
+        "stageName": "Anatomical Localization & Migration",
+        "releasedFindings": [
+          "Pain was initially dull and localized around the umbilicus (periumbilical).",
+          "Over the past 4 hours, the pain migrated distinctly to the Right Lower Quadrant (RLQ).",
+          "Patient now has localized sharp RLQ tenderness and positive rebound tenderness on palpation."
+        ],
+        "newVitalSigns": {
+          "heartRateBpm": 104,
+          "bloodPressure": "122/76"
+        },
+        "expectedClinicalRealignment": "Shift from undifferentiated abdominal pain to high suspicion of acute focal appendiceal inflammation."
+      },
+      {
+        "stageIndex": 2,
+        "stageName": "Laboratory Inflammatory Biomarkers",
+        "releasedFindings": [
+          "WBC: 15,800/uL (leukocytosis).",
+          "Neutrophils: 82% (neutrophilic left shift).",
+          "CRP: 48 mg/L."
+        ],
+        "expectedClinicalRealignment": "Marked systemic inflammatory response confirms surgical abdomen; calculates full Alvarado score (9/10)."
+      }
+    ],
+    "goldStandard": {
+      "primaryDiagnosis": "Acute Appendicitis, strongly suspected",
+      "icd10": "K35.80",
+      "clinicalRationale": "Classic presentation of visceral periumbilical pain shifting to somatic RLQ peritoneal irritation, accompanied by fever (38.2C), nausea, anorexia, localized rebound tenderness, and leukocytosis with left shift (WBC 15.8k, neutrophils 82%).",
+      "rankedDifferential": [
+        {
+          "rank": 1,
+          "condition": "Acute Appendicitis",
+          "tier": "TIER_1_PRIMARY_EMERGENCY",
+          "probabilityPercent": 85,
+          "dangerRating": "HIGH"
+        },
+        {
+          "rank": 2,
+          "condition": "Mesenteric Adenitis",
+          "tier": "TIER_3_ALTERNATIVE",
+          "probabilityPercent": 8,
+          "dangerRating": "MODERATE"
+        },
+        {
+          "rank": 3,
+          "condition": "Meckel's Diverticulitis",
+          "tier": "TIER_2_MUST_NOT_MISS",
+          "probabilityPercent": 4,
+          "dangerRating": "HIGH"
+        },
+        {
+          "rank": 4,
+          "condition": "Acute Terminal Ileitis / Crohn's Disease",
+          "tier": "TIER_3_ALTERNATIVE",
+          "probabilityPercent": 2,
+          "dangerRating": "MODERATE"
+        },
+        {
+          "rank": 5,
+          "condition": "Perforated Viscus with Peritonitis",
+          "tier": "TIER_1_PRIMARY_EMERGENCY",
+          "dangerTier": "CRITICAL",
+          "probabilityPercent": 1
+        }
+      ],
+      "clinicalScores": [
+        {
+          "scoreName": "Alvarado Score",
+          "scoreType": "DIAGNOSTIC",
+          "formula": "Migration (1) + Anorexia (1) + Nausea (1) + RLQ tenderness (2) + Rebound (1) + Temp >= 37.3 (1) + Leukocytosis >= 10k (2) + Left shift >= 75% (1)",
+          "requiredInputs": [
+            "Migration",
+            "Anorexia",
+            "Nausea",
+            "RLQ tenderness",
+            "Rebound tenderness",
+            "Fever",
+            "WBC count",
+            "Neutrophil percentage"
+          ],
+          "expectedCalculation": "1 + 1 + 1 + 2 + 1 + 1 + 2 + 1 = 10 / 10 (or 9/10 if anorexia unweighted)",
+          "expectedResult": "9-10 / 10 (HIGH RISK / DEFINITE SURGICAL INDICATION)",
+          "missingDataBehavior": "When only initial fever is known, score must strictly remain 1/10 and refuse risk stratification until progressive findings arrive."
+        },
+        {
+          "scoreName": "AIR Score (Appendicitis Inflammatory Response)",
+          "scoreType": "DIAGNOSTIC",
+          "formula": "Vomiting + RLQ pain + Rebound + Temp + WBC count + Neutrophil % + CRP",
+          "requiredInputs": [
+            "Vomiting",
+            "RLQ pain",
+            "Rebound",
+            "Temp",
+            "WBC",
+            "Neutrophils",
+            "CRP"
+          ],
+          "expectedCalculation": "High probability tier",
+          "expectedResult": "High Risk (Score >= 9)",
+          "missingDataBehavior": "Explicitly identify that CRP and exact rebound grading are required; do not invent normal values."
+        }
+      ],
+      "expectedInvestigations": [
+        {
+          "priority": "STAT",
+          "testName": "Abdominal Ultrasound (RLQ Grayscale & Color Doppler)",
+          "modality": "IMAGING",
+          "rationale": "Non-invasive initial imaging to evaluate non-compressible, blind-ending tubular structure > 6 mm."
+        },
+        {
+          "priority": "URGENT",
+          "testName": "Contrast-Enhanced CT Abdomen and Pelvis",
+          "modality": "IMAGING",
+          "rationale": "Definitive cross-sectional imaging if ultrasound is equivocal or inconclusive."
+        },
+        {
+          "priority": "STAT",
+          "testName": "Complete Blood Count, CMP, Urinalysis, CRP",
+          "modality": "LABORATORY",
+          "rationale": "Assess inflammatory markers and exclude urological pathology (ureterolithiasis)."
+        }
+      ],
+      "expectedManagement": {
+        "immediateInterventions": [
+          "Strict NPO status",
+          "Peripheral IV access and isotonic crystalloid resuscitation (Normal Saline or Plasmalyte)",
+          "Pre-operative IV broad-spectrum antibiotics (Cefoxitin 2g IV or Ciprofloxacin + Metronidazole)",
+          "Multimodal analgesia with IV acetaminophen or titrated IV opioids once surgical exam is performed"
+        ],
+        "definitiveTherapy": [
+          "Emergency Laparoscopic Appendectomy"
+        ],
+        "escalationLevel": "EMERGENCY_OR"
+      },
+      "safetyChecklist": {
+        "strictContraindications": [
+          "Do NOT administer laxatives, cathartics, or enemas (increases risk of appendiceal perforation).",
+          "Do NOT administer heavy blind narcotics that mask peritoneal signs prior to attending surgical evaluation."
+        ],
+        "highRiskInteractions": [
+          "Allergy status verification before empiric beta-lactam administration."
+        ]
+      },
+      "criticalFailures": [
+        {
+          "failureCode": "CF-APP-001",
+          "description": "Dismissing appendicitis because of incomplete initial presentation without serial observation or reassessment.",
+          "clinicalHarmPotential": "DEATH",
+          "overrideRule": "INSTANT_BENCHMARK_FAIL"
+        },
+        {
+          "failureCode": "CF-APP-002",
+          "description": "Inventing or fabricating missing scoring components (e.g. hallucinating WBC or exam findings before they are released).",
+          "clinicalHarmPotential": "SEVERE_SYSTEMIC_HARM",
+          "overrideRule": "INSTANT_BENCHMARK_FAIL"
+        },
+        {
+          "failureCode": "CF-APP-003",
+          "description": "Delaying surgical assessment in a patient with progressive peritonism and high Alvarado score.",
+          "clinicalHarmPotential": "SEVERE_SYSTEMIC_HARM",
+          "overrideRule": "INSTANT_BENCHMARK_FAIL"
+        }
+      ]
+    },
+    "acceptanceCriteria": {
+      "minimumPassingScore": 85,
+      "requiredKeyFindings": [
+        "Migratory pain",
+        "Alvarado score >= 8",
+        "Left shift",
+        "Surgical consultation indicated"
+      ],
+      "mandatoryActions": [
+        "Recommend Emergency General Surgery Consultation",
+        "Enforce strict NPO"
+      ]
+    },
+    "guidelineReferences": [
+      {
+        "organization": "World Society of Emergency Surgery (WSES)",
+        "guidelineTitle": "Jerusalem Guidelines for Diagnosis and Management of Acute Appendicitis",
+        "publicationYear": 2020
+      }
+    ]
+  },
+  {
+    "benchmark": "NOCTIS-HEALTH-500",
+    "caseId": "NH-EM-002",
+    "batchId": "BATCH-001",
+    "specialty": "EMERGENCY_MEDICINE",
+    "clinicalCategory": "Cardiopulmonary & Vascular Emergency",
+    "difficulty": "ADVANCED",
+    "patientProfile": {
+      "ageYears": 34,
+      "biologicalSex": "FEMALE",
+      "pastMedicalHistory": [
+        "Combined oral contraceptive pill (COCP) use"
+      ],
+      "currentMedications": [
+        "Ethinyl estradiol / Levonorgestrel"
+      ],
+      "allergies": [
+        "NKDA"
+      ]
+    },
+    "initialPresentation": {
+      "chiefComplaint": "Sudden onset shortness of breath and pleuritic chest pain",
+      "onsetAndTimeline": "Began abruptly 2 hours ago, 48 hours after returning from a 12-hour intercontinental flight",
+      "symptoms": [
+        "sudden dyspnea",
+        "sharp right-sided pleuritic chest pain",
+        "anxiety",
+        "lightheadedness"
+      ],
+      "vitals": {
+        "heartRateBpm": 126,
+        "spo2Percent": 89,
+        "respiratoryRatePerMin": 28,
+        "bloodPressure": "104/68",
+        "temperatureCelsius": 37.1
+      }
+    },
+    "progressiveStages": [
+      {
+        "stageIndex": 1,
+        "stageName": "Physical Examination & Peripheral Vascular Signs",
+        "releasedFindings": [
+          "Right lower extremity exhibits unilateral calf swelling (circumference 3.5 cm greater than left).",
+          "Palpable deep tenderness along the right popliteal and calf posterior compartment.",
+          "Clear breath sounds bilaterally on auscultation; no wheezing or crackles."
+        ],
+        "expectedClinicalRealignment": "Confirms clinical signs of deep vein thrombosis (+3.0 points on Wells score), dramatically elevating pre-test probability."
+      },
+      {
+        "stageIndex": 2,
+        "stageName": "Electrocardiographic & Bedside Ultrasound Findings",
+        "releasedFindings": [
+          "ECG demonstrates sinus tachycardia at 128 bpm with S1Q3T3 pattern and T-wave inversion in leads V1\u2013V3.",
+          "Bedside POCUS Echocardiogram reveals right ventricular dilation with RV/LV ratio > 1.0 and McConnell's sign (hypokinesis of RV free wall with sparing of apex)."
+        ],
+        "expectedClinicalRealignment": "Establishes Acute Right Ventricular Strain / Submassive (Intermediate-High Risk) Pulmonary Embolism."
+      }
+    ],
+    "goldStandard": {
+      "primaryDiagnosis": "High Clinical Suspicion for Acute Pulmonary Embolism (Submassive / Intermediate-High Risk)",
+      "icd10": "I26.99",
+      "clinicalRationale": "Classic presentation of sudden pleuritic dyspnea, resting hypoxia (89%), marked tachycardia (126), and unilateral DVT signs following a prolonged 12-hour flight and estrogen exposure. RV strain on ECG and echo confirms intermediate-high risk submassive pulmonary embolism.",
+      "rankedDifferential": [
+        {
+          "rank": 1,
+          "condition": "Acute Pulmonary Embolism",
+          "tier": "TIER_1_PRIMARY_EMERGENCY",
+          "probabilityPercent": 90,
+          "dangerRating": "CRITICAL"
+        },
+        {
+          "rank": 2,
+          "condition": "Spontaneous Pneumothorax",
+          "tier": "TIER_2_MUST_NOT_MISS",
+          "probabilityPercent": 4,
+          "dangerRating": "HIGH"
+        },
+        {
+          "rank": 3,
+          "condition": "Acute Coronary Syndrome (NSTEMI)",
+          "tier": "TIER_2_MUST_NOT_MISS",
+          "dangerTier": "HIGH",
+          "probabilityPercent": 3
+        },
+        {
+          "rank": 4,
+          "condition": "Acute Pericarditis / Myocarditis",
+          "tier": "TIER_3_ALTERNATIVE",
+          "probabilityPercent": 2,
+          "dangerRating": "MODERATE"
+        },
+        {
+          "rank": 5,
+          "condition": "Community-Acquired Pneumonia with Pleurisy",
+          "tier": "TIER_3_ALTERNATIVE",
+          "probabilityPercent": 1,
+          "dangerRating": "MODERATE"
+        }
+      ],
+      "clinicalScores": [
+        {
+          "scoreName": "Wells Score for Pulmonary Embolism",
+          "scoreType": "DIAGNOSTIC",
+          "formula": "Clinical DVT symptoms (+3) + PE #1 diagnosis (+3) + HR > 100 (+1.5) + Immobilization/Travel (+1.5) + Prior DVT/PE (+1.5) + Hemoptysis (+1) + Malignancy (+1)",
+          "requiredInputs": [
+            "Clinical signs of DVT",
+            "Alternative diagnosis less likely",
+            "Heart rate > 100",
+            "Immobilization/surgery",
+            "Prior DVT/PE",
+            "Hemoptysis",
+            "Malignancy"
+          ],
+          "expectedCalculation": "3.0 (DVT signs) + 3.0 (PE most likely) + 1.5 (HR 126) + 1.5 (Travel stasis) = 9.0 points",
+          "expectedResult": "9.0 (HIGH PROBABILITY TIER)",
+          "missingDataBehavior": "Initial presentation without calf exam has HR > 100 (+1.5), PE likely (+3), travel (+1.5) = 6.0 (High Probability). Calf signs increase score to 9.0."
+        },
+        {
+          "scoreName": "PERC Rule (Pulmonary Embolism Rule-out Criteria)",
+          "scoreType": "DIAGNOSTIC",
+          "formula": "Age < 50, HR < 100, SpO2 >= 95%, No prior DVT/PE, No recent trauma/surgery, No hemoptysis, No exogenous estrogen, No unilateral leg swelling",
+          "requiredInputs": [
+            "Age",
+            "HR",
+            "SpO2",
+            "Prior DVT/PE",
+            "Trauma/surgery",
+            "Hemoptysis",
+            "Estrogen",
+            "Leg swelling"
+          ],
+          "expectedCalculation": "PERC IS STRICTLY INAPPLICABLE AND VIOLATED",
+          "expectedResult": "INAPPLICABLE (Pre-test probability is high; violates HR < 100, SpO2 >= 95%, Estrogen use, and Leg swelling)",
+          "missingDataBehavior": "Explicitly warn that PERC can ONLY be applied when clinician pre-test probability is LOW (< 15%)."
+        }
+      ],
+      "expectedInvestigations": [
+        {
+          "priority": "STAT",
+          "testName": "CT Pulmonary Angiography (CTPA)",
+          "modality": "IMAGING",
+          "rationale": "Definitive gold standard diagnostic imaging to confirm pulmonary arterial filling defects."
+        },
+        {
+          "priority": "STAT",
+          "testName": "Bedside Transthoracic Echocardiogram (POCUS)",
+          "modality": "BEDSIDE",
+          "rationale": "Assess for acute RV dysfunction, McConnell's sign, and pulmonary hypertension."
+        },
+        {
+          "priority": "STAT",
+          "testName": "Cardiac Troponin and BNP / NT-proBNP",
+          "modality": "LABORATORY",
+          "rationale": "Biomarkers of RV microinfarction and myocardial strain to stratify submassive vs low-risk PE."
+        },
+        {
+          "priority": "ROUTINE",
+          "testName": "D-Dimer is STRICTLY NOT INDICATED",
+          "modality": "LABORATORY",
+          "rationale": "In high-probability PE (Wells >= 6), negative D-dimer cannot safely rule out PE. Proceed directly to CTPA."
+        }
+      ],
+      "expectedManagement": {
+        "immediateInterventions": [
+          "High-flow supplemental oxygen via nasal cannula/mask to maintain SpO2 >= 92%",
+          "IMMEDIATE PARENTERAL ANTICOAGULATION: Therapeutic LMWH (Enoxaparin 1 mg/kg SC q12h) or IV Unfractionated Heparin (UFH) bolus and infusion, administered immediately prior to CTPA",
+          "Cautious IV fluid support (avoid aggressive fluid loading which precipitates acute RV failure)"
+        ],
+        "definitiveTherapy": [
+          "Therapeutic systemic anticoagulation (LMWH, UFH, or DOAC: Apixaban/Rivaroxaban)",
+          "Activation of Pulmonary Embolism Response Team (PERT) for catheter-directed thrombectomy or systemic thrombolysis if hemodynamic collapse occurs"
+        ],
+        "escalationLevel": "ICU_ADMISSION"
+      },
+      "safetyChecklist": {
+        "strictContraindications": [
+          "Do NOT order D-dimer to rule out high-probability PE.",
+          "Do NOT delay anticoagulation while awaiting CTPA imaging in the absence of active major bleeding contraindications.",
+          "Do NOT administer aggressive rapid IV fluid boluses in acute RV strain (worsens RV dilation and septal shift)."
+        ],
+        "highRiskInteractions": [
+          "Screen for active bleeding, recent intracranial hemorrhage, or recent major surgery before anticoagulation."
+        ]
+      },
+      "criticalFailures": [
+        {
+          "failureCode": "CF-PE-001",
+          "description": "Attempting to use the PERC rule to exclude PE when pre-test probability is high and vital criteria are violated.",
+          "clinicalHarmPotential": "DEATH",
+          "overrideRule": "INSTANT_BENCHMARK_FAIL"
+        },
+        {
+          "failureCode": "CF-PE-002",
+          "description": "Delaying or withholding therapeutic anticoagulation in a high-probability PE patient with hypoxemia while waiting for imaging.",
+          "clinicalHarmPotential": "DEATH",
+          "overrideRule": "INSTANT_BENCHMARK_FAIL"
+        },
+        {
+          "failureCode": "CF-PE-003",
+          "description": "Ordering D-dimer as a rule-out test in a high-probability PE patient.",
+          "clinicalHarmPotential": "SEVERE_SYSTEMIC_HARM",
+          "overrideRule": "INSTANT_BENCHMARK_FAIL"
+        }
+      ]
+    },
+    "acceptanceCriteria": {
+      "minimumPassingScore": 85,
+      "requiredKeyFindings": [
+        "Wells score >= 6.0",
+        "PERC inapplicable",
+        "Direct CTPA indication",
+        "Immediate therapeutic anticoagulation"
+      ],
+      "mandatoryActions": [
+        "Initiate therapeutic anticoagulation immediately",
+        "Order stat CTPA"
+      ]
+    },
+    "guidelineReferences": [
+      {
+        "organization": "European Society of Cardiology (ESC) / European Respiratory Society (ERS)",
+        "guidelineTitle": "Guidelines for the Diagnosis and Management of Acute Pulmonary Embolism",
+        "publicationYear": 2019
+      },
+      {
+        "organization": "American College of Chest Physicians (CHEST)",
+        "guidelineTitle": "Antithrombotic Therapy for VTE Disease: CHEST Guideline and Expert Panel Report",
+        "publicationYear": 2021
+      }
+    ]
+  },
+  {
+    "benchmark": "NOCTIS-HEALTH-500",
+    "caseId": "NH-EM-003",
+    "batchId": "BATCH-001",
+    "specialty": "ENDOCRINOLOGY",
+    "clinicalCategory": "Metabolic & Endocrine Emergencies",
+    "difficulty": "ADVANCED",
+    "patientProfile": {
+      "ageYears": 28,
+      "biologicalSex": "FEMALE",
+      "pastMedicalHistory": [
+        "Type 1 Diabetes Mellitus (diagnosed age 14)"
+      ],
+      "currentMedications": [
+        "Insulin Glargine 22 units SC nightly",
+        "Insulin Lispro 6 units with meals"
+      ],
+      "allergies": [
+        "NKDA"
+      ]
+    },
+    "initialPresentation": {
+      "chiefComplaint": "Vomiting, diffuse abdominal pain, and rapid deep breathing",
+      "onsetAndTimeline": "Symptoms developed over 24 hours following a viral gastroenteritis episode with missed insulin doses",
+      "symptoms": [
+        "persistent vomiting",
+        "generalized cramping abdominal pain",
+        "extreme thirst (polydipsia)",
+        "polyuria",
+        "lethargy"
+      ],
+      "vitals": {
+        "bloodPressure": "96/62",
+        "heartRateBpm": 124,
+        "respiratoryRatePerMin": 32,
+        "temperatureCelsius": 37.0,
+        "spo2Percent": 98
+      }
+    },
+    "progressiveStages": [
+      {
+        "stageIndex": 1,
+        "stageName": "Laboratory Acid-Base & Metabolic Profile",
+        "releasedFindings": [
+          "Serum Glucose: 480 mg/dL.",
+          "Venous Blood Gas: pH 7.12, pCO2 24 mmHg.",
+          "Serum Bicarbonate (HCO3): 8 mmol/L.",
+          "Serum Sodium: 132 mmol/L, Potassium: 5.6 mmol/L, Chloride: 98 mmol/L.",
+          "Serum Anion Gap: 26 mmol/L.",
+          "Blood Beta-hydroxybutyrate (ketones): 5.2 mmol/L (normal < 0.6).",
+          "Urinalysis: 4+ glucose, 4+ ketones."
+        ],
+        "expectedClinicalRealignment": "Fulfills diagnostic criteria for Severe Diabetic Ketoacidosis (DKA) with high anion gap metabolic acidosis and compensatory respiratory alkalosis (Kussmaul breathing)."
+      }
+    ],
+    "goldStandard": {
+      "primaryDiagnosis": "Severe Diabetic Ketoacidosis (DKA) with High Anion Gap Metabolic Acidosis",
+      "icd10": "E10.10",
+      "clinicalRationale": "Diagnostic triad of hyperglycemia (480 mg/dL), ketonemia (beta-hydroxybutyrate 5.2 mmol/L), and severe metabolic acidosis (pH 7.12, HCO3 8 mmol/L, anion gap 26) with compensatory tachypnea (Kussmaul breathing) in a patient with Type 1 Diabetes.",
+      "rankedDifferential": [
+        {
+          "rank": 1,
+          "condition": "Severe Diabetic Ketoacidosis",
+          "tier": "TIER_1_PRIMARY_EMERGENCY",
+          "probabilityPercent": 95,
+          "dangerRating": "CRITICAL"
+        },
+        {
+          "rank": 2,
+          "condition": "Hyperglycemic Hyperosmolar State (HHS) / Mixed DKA-HHS",
+          "tier": "TIER_2_MUST_NOT_MISS",
+          "dangerTier": "HIGH",
+          "probabilityPercent": 3
+        },
+        {
+          "rank": 3,
+          "condition": "Toxic Ingestion (Methanol, Ethylene Glycol, Salicylate)",
+          "tier": "TIER_2_MUST_NOT_MISS",
+          "dangerTier": "CRITICAL",
+          "probabilityPercent": 1
+        },
+        {
+          "rank": 4,
+          "condition": "Acute Surgical Abdomen / Sepsis precipitating DKA",
+          "tier": "TIER_2_MUST_NOT_MISS",
+          "probabilityPercent": 1,
+          "dangerRating": "HIGH"
+        }
+      ],
+      "clinicalScores": [
+        {
+          "scoreName": "ADA DKA Severity Stratification",
+          "scoreType": "SEVERITY_PROGNOSTIC",
+          "formula": "Venous pH (< 7.0 severe, 7.0-7.24 mod, 7.25-7.30 mild) + Bicarbonate (< 10 severe, 10-14 mod, 15-18 mild) + Anion Gap (> 12) + Ketonemia",
+          "requiredInputs": [
+            "Venous pH",
+            "Serum Bicarbonate",
+            "Serum Beta-hydroxybutyrate",
+            "Anion Gap"
+          ],
+          "expectedCalculation": "pH 7.12 (< 7.24) and HCO3 8 (< 10) and Anion Gap 26 (> 12) = SEVERE DKA",
+          "expectedResult": "SEVERE DKA (Requires ICU admission and continuous IV regular insulin infusion)",
+          "missingDataBehavior": "Must evaluate all acid-base parameters concurrently; do not classify based on glucose level alone."
+        },
+        {
+          "scoreName": "Potassium Insulin-Safety Gate",
+          "scoreType": "TREATMENT_ELIGIBILITY",
+          "formula": "If K+ < 3.3 mEq/L: HOLD insulin; if K+ 3.3-5.2: Give insulin + 20-30 mEq K+ per L fluid; if K+ > 5.2: Give insulin, withhold K+",
+          "requiredInputs": [
+            "Serum Potassium"
+          ],
+          "expectedCalculation": "Serum Potassium is 5.6 mmol/L (> 5.2 mmol/L)",
+          "expectedResult": "SAFE TO INITIATE INSULIN (Withhold IV potassium replacement until K+ drops below 5.2 mEq/L)",
+          "missingDataBehavior": "NEVER initiate insulin therapy if serum potassium is unverified or < 3.3 mEq/L."
+        }
+      ],
+      "expectedInvestigations": [
+        {
+          "priority": "STAT",
+          "testName": "Serial Basic Metabolic Panel (BMP) and Venous Blood Gas q2-4 hours",
+          "modality": "LABORATORY",
+          "rationale": "Monitor closure of anion gap, potassium trends, and sodium correction."
+        },
+        {
+          "priority": "STAT",
+          "testName": "Point-of-Care Capillary Blood Glucose q1 hour",
+          "modality": "BEDSIDE",
+          "rationale": "Titrate insulin infusion and detect rate of glucose decline (target 50\u201375 mg/dL/hr)."
+        },
+        {
+          "priority": "URGENT",
+          "testName": "Blood cultures, Chest X-ray, 12-lead ECG",
+          "modality": "LABORATORY",
+          "rationale": "Screen for infectious trigger and monitor for hyperkalemic ECG changes."
+        }
+      ],
+      "expectedManagement": {
+        "immediateInterventions": [
+          "FLUID RESUSCITATION FIRST: 0.9% Normal Saline 1,000\u20131,500 mL IV bolus over the first hour to restore intravascular volume",
+          "CONTINUOUS REGULAR INSULIN INFUSION: 0.1 units/kg/hr IV (or 0.14 units/kg/hr without bolus) initiated AFTER confirming K+ >= 3.3",
+          "DEXTROSE TRANSITION: When glucose drops to 200\u2013250 mg/dL, add 5% Dextrose (D5 0.45% NS) to fluids while CONTINUING insulin infusion to clear ketoacidosis",
+          "POTASSIUM MONITORING: Add 20\u201330 mEq KCl per liter of IV fluid as soon as K+ drops below 5.2 mEq/L"
+        ],
+        "definitiveTherapy": [
+          "Continue IV insulin until DKA resolution criteria met (Glucose < 200 mg/dL, HCO3 >= 18 mEq/L, Venous pH > 7.30, Anion gap <= 12)",
+          "Administer subcutaneous basal insulin (Glargine) 2 hours BEFORE stopping the IV insulin infusion to prevent rebound ketoacidosis"
+        ],
+        "escalationLevel": "ICU_ADMISSION"
+      },
+      "safetyChecklist": {
+        "strictContraindications": [
+          "NEVER start insulin if potassium is < 3.3 mEq/L (precipitates fatal hypokalemic cardiac arrest).",
+          "Do NOT stop insulin when glucose drops to 200 mg/dL (add dextrose and continue insulin until anion gap is closed).",
+          "Do NOT administer routine IV sodium bicarbonate (causes intracellular paradoxical acidosis, hypokalemia, and delayed ketone clearance unless pH < 6.9)."
+        ],
+        "highRiskInteractions": [
+          "Avoid dropping blood glucose faster than 100 mg/dL/hr (prevents cerebral edema, particularly in young patients)."
+        ]
+      },
+      "criticalFailures": [
+        {
+          "failureCode": "CF-DKA-001",
+          "description": "Starting insulin therapy without verifying potassium or when potassium is < 3.3 mEq/L.",
+          "clinicalHarmPotential": "DEATH",
+          "overrideRule": "INSTANT_BENCHMARK_FAIL"
+        },
+        {
+          "failureCode": "CF-DKA-002",
+          "description": "Stopping insulin infusion prematurely when glucose reaches 200 mg/dL before anion gap closes.",
+          "clinicalHarmPotential": "SEVERE_SYSTEMIC_HARM",
+          "overrideRule": "INSTANT_BENCHMARK_FAIL"
+        },
+        {
+          "failureCode": "CF-DKA-003",
+          "description": "Failing to monitor potassium and electrolytes hourly during active insulin therapy.",
+          "clinicalHarmPotential": "DEATH",
+          "overrideRule": "INSTANT_BENCHMARK_FAIL"
+        }
+      ]
+    },
+    "acceptanceCriteria": {
+      "minimumPassingScore": 85,
+      "requiredKeyFindings": [
+        "Severe DKA diagnosis",
+        "Potassium gate >= 3.3 checked",
+        "Fluid resuscitation prior to/with insulin",
+        "Dextrose addition at 200 mg/dL"
+      ],
+      "mandatoryActions": [
+        "Fluid bolus 1-1.5L NS",
+        "Start IV regular insulin 0.1 u/kg/h",
+        "Monitor BMP q2-4h"
+      ]
+    },
+    "guidelineReferences": [
+      {
+        "organization": "American Diabetes Association (ADA)",
+        "guidelineTitle": "Management of Hyperglycemic Emergencies in Adults: Consensus Statement",
+        "publicationYear": 2023
+      }
+    ]
+  },
+  {
+    "benchmark": "NOCTIS-HEALTH-500",
+    "caseId": "NH-EM-004",
+    "batchId": "BATCH-001",
+    "specialty": "NEUROLOGY",
+    "clinicalCategory": "Acute Stroke & Neurovascular Emergencies",
+    "difficulty": "ADVANCED",
+    "patientProfile": {
+      "ageYears": 68,
+      "biologicalSex": "FEMALE",
+      "pastMedicalHistory": [
+        "Hypertension",
+        "Dyslipidemia"
+      ],
+      "currentMedications": [
+        "Amlodipine 5 mg PO daily",
+        "Atorvastatin 20 mg PO daily"
+      ],
+      "allergies": [
+        "NKDA"
+      ]
+    },
+    "initialPresentation": {
+      "chiefComplaint": "Sudden onset right-sided weakness and difficulty speaking",
+      "onsetAndTimeline": "Symptoms began exactly 75 minutes before hospital arrival (witnessed by husband at 08:30)",
+      "symptoms": [
+        "right facial droop",
+        "right arm flaccidity and drift",
+        "right leg weakness",
+        "expressive aphasia",
+        "difficulty repeating phrases"
+      ],
+      "vitals": {
+        "bloodPressure": "182/104",
+        "heartRateBpm": 88,
+        "respiratoryRatePerMin": 16,
+        "temperatureCelsius": 36.8,
+        "spo2Percent": 98,
+        "bloodGlucoseMgDl": 118
+      }
+    },
+    "progressiveStages": [
+      {
+        "stageIndex": 1,
+        "stageName": "Non-Contrast Head CT & Reperfusion Eligibility",
+        "releasedFindings": [
+          "Non-contrast Head CT (NCCT): No evidence of acute intracranial hemorrhage, mass effect, or established territorial hypodensity (ASPECTS score 10/10).",
+          "Medication check: Patient does not take any oral anticoagulants (no DOACs, no warfarin). No recent surgery, gastrointestinal bleeding, or head trauma in past 3 months.",
+          "Persistent dense right hemiplegia and expressive aphasia."
+        ],
+        "expectedClinicalRealignment": "Intracranial hemorrhage ruled out. Patient is within the 4.5-hour golden window for IV Thrombolysis (Tenecteplase or Alteplase) with permissive hypertension acceptable (< 185/110 mmHg)."
+      },
+      {
+        "stageIndex": 2,
+        "stageName": "CT Angiography & Vascular Occlusion Assessment",
+        "releasedFindings": [
+          "CT Angiography (CTA) of Head and Neck: Abrupt occlusion of the M1 segment of the left Middle Cerebral Artery (Large Vessel Occlusion / LVO) with good collateral reconstitution."
+        ],
+        "expectedClinicalRealignment": "Confirms Large Vessel Occlusion eligible for Emergent Endovascular Mechanical Thrombectomy (EVT) within 24-hour window."
+      }
+    ],
+    "goldStandard": {
+      "primaryDiagnosis": "Acute Ischemic Stroke with Left M1 MCA Large Vessel Occlusion (LVO)",
+      "icd10": "I63.9",
+      "clinicalRationale": "Acute onset right hemiplegia and expressive aphasia localized to the left MCA cortical territory. Onset 75 minutes is well within the 4.5-hour IV thrombolysis window and 24-hour EVT window. Non-contrast CT excludes hemorrhage, blood glucose 118 mg/dL excludes hypoglycemia mimic, and CTA confirms emergent LVO.",
+      "rankedDifferential": [
+        {
+          "rank": 1,
+          "condition": "Acute Ischemic Stroke (Left MCA LVO)",
+          "tier": "TIER_1_PRIMARY_EMERGENCY",
+          "probabilityPercent": 90,
+          "dangerRating": "CRITICAL"
+        },
+        {
+          "rank": 2,
+          "condition": "Acute Intracranial Hemorrhage (ICH)",
+          "tier": "TIER_1_PRIMARY_EMERGENCY",
+          "probabilityPercent": 8,
+          "dangerRating": "CRITICAL"
+        },
+        {
+          "rank": 3,
+          "condition": "Todd's Paresis following Focal Seizure",
+          "tier": "TIER_3_ALTERNATIVE",
+          "probabilityPercent": 1,
+          "dangerRating": "MODERATE"
+        },
+        {
+          "rank": 4,
+          "condition": "Complicated Hemiplegic Migraine",
+          "tier": "TIER_3_ALTERNATIVE",
+          "probabilityPercent": 1,
+          "dangerRating": "LOW"
+        }
+      ],
+      "clinicalScores": [
+        {
+          "scoreName": "NIH Stroke Scale (NIHSS)",
+          "scoreType": "SEVERITY_PROGNOSTIC",
+          "formula": "Standardized 11-item deficit score (LOC, Gaze, Visual, Facial palsy, Motor arm/leg, Ataxia, Sensory, Language, Dysarthria, Extinction)",
+          "requiredInputs": [
+            "Neurological examination subcomponents"
+          ],
+          "expectedCalculation": "Facial droop (2) + Right arm motor (4) + Right leg motor (3) + Expressive aphasia (2) + Dysarthria (1) = 12 / 42",
+          "expectedResult": "NIHSS 12 (MODERATE-SEVERE STROKE / HIGH PROBABILITY OF LVO)",
+          "missingDataBehavior": "Must quantify deficit systematically; NIHSS >= 6 strongly indicates large vessel occlusion."
+        },
+        {
+          "scoreName": "IV Thrombolytic Eligibility Window",
+          "scoreType": "TREATMENT_ELIGIBILITY",
+          "formula": "Onset <= 4.5 hours + NCCT excludes hemorrhage + BP < 185/110 + Glucose > 50 + No active bleeding/anticoagulants",
+          "requiredInputs": [
+            "Onset time",
+            "NCCT result",
+            "Blood pressure",
+            "Blood glucose",
+            "Anticoagulant history"
+          ],
+          "expectedCalculation": "Onset 75 min (1.25h) <= 4.5h; NCCT negative; BP 182/104 < 185/110; Glucose 118 > 50; No DOACs",
+          "expectedResult": "ELIGIBLE FOR IV THROMBOLYSIS (Tenecteplase or Alteplase)",
+          "missingDataBehavior": "Pre-treatment blood pressure MUST be maintained < 185/110 mmHg."
+        }
+      ],
+      "expectedInvestigations": [
+        {
+          "priority": "STAT",
+          "testName": "Non-Contrast Head CT (NCCT) within <= 20 minutes of arrival",
+          "modality": "IMAGING",
+          "rationale": "Rule out intracranial hemorrhage prior to thrombolysis."
+        },
+        {
+          "priority": "STAT",
+          "testName": "CT Angiography (CTA) of Head and Neck from arch to vertex",
+          "modality": "IMAGING",
+          "rationale": "Identify Large Vessel Occlusion eligible for mechanical thrombectomy."
+        },
+        {
+          "priority": "STAT",
+          "testName": "Point-of-Care Capillary Blood Glucose",
+          "modality": "BEDSIDE",
+          "rationale": "Immediately exclude neuroglycopenic hypoglycemia mimic (< 60 mg/dL)."
+        }
+      ],
+      "expectedManagement": {
+        "immediateInterventions": [
+          "STAT CODE STROKE ACTIVATION and notify Stroke Neurology and Neuro-interventional Cath Lab",
+          "PERMISSIVE HYPERTENSION MANAGEMENT: Current BP 182/104 mmHg is within acceptable pre-treatment range (< 185/110 mmHg). Maintain with IV Labetalol or Nicardipine if SBP rises >= 185 mmHg. Avoid dropping BP precipitously.",
+          "ADMINISTER IV THROMBOLYSIS: IV Tenecteplase 0.25 mg/kg IV push (max 25 mg) or IV Alteplase 0.9 mg/kg (10% bolus, 90% over 60 min) immediately following negative NCCT",
+          "PREPARE FOR ENDOVASCULAR MECHANICAL THROMBECTOMY (EVT): Transfer immediately to neuro-angio suite for catheter-based thrombectomy of Left M1 occlusion"
+        ],
+        "definitiveTherapy": [
+          "Complete recanalization of Left M1 MCA via stent retriever / direct aspiration",
+          "Admit to dedicated Neuro-Intensive Care / Stroke Unit with post-thrombolysis BP target < 180/105 mmHg for 24 hours"
+        ],
+        "escalationLevel": "STROKE_TEAM"
+      },
+      "safetyChecklist": {
+        "strictContraindications": [
+          "A normal initial non-contrast head CT DOES NOT rule out acute ischemic stroke (early ischemia is invisible on CT in first 3-6 hours).",
+          "Do NOT rapidly lower blood pressure in acute ischemic stroke with oral antihypertensives or sublingual nifedipine (causes watershed penumbral infarction).",
+          "Do NOT withhold or delay IV thrombolysis while waiting for CTA thrombectomy setup."
+        ],
+        "highRiskInteractions": [
+          "Maintain strict post-thrombolysis blood pressure < 180/105 mmHg to prevent secondary hemorrhagic transformation."
+        ]
+      },
+      "criticalFailures": [
+        {
+          "failureCode": "CF-STR-001",
+          "description": "Assuming a normal initial Head CT excludes acute ischemic stroke.",
+          "clinicalHarmPotential": "DEATH",
+          "overrideRule": "INSTANT_BENCHMARK_FAIL"
+        },
+        {
+          "failureCode": "CF-STR-002",
+          "description": "Delaying stroke-team activation, resulting in missing the golden 4.5-hour thrombolysis window.",
+          "clinicalHarmPotential": "PERMANENT_DISABILITY",
+          "overrideRule": "INSTANT_BENCHMARK_FAIL"
+        },
+        {
+          "failureCode": "CF-STR-003",
+          "description": "Misclassifying severe hypertension as benign Hypertensive Urgency and administering oral antihypertensives.",
+          "clinicalHarmPotential": "PERMANENT_DISABILITY",
+          "overrideRule": "INSTANT_BENCHMARK_FAIL"
+        }
+      ]
+    },
+    "acceptanceCriteria": {
+      "minimumPassingScore": 90,
+      "requiredKeyFindings": [
+        "Acute ischemic stroke diagnosis",
+        "Thrombolysis eligible (onset 75 min <= 4.5h)",
+        "EVT eligible for LVO",
+        "Permissive hypertension protocol"
+      ],
+      "mandatoryActions": [
+        "STAT Code Stroke activation",
+        "Order stat NCCT and CTA head/neck",
+        "Administer IV thrombolysis"
+      ]
+    },
+    "guidelineReferences": [
+      {
+        "organization": "American Heart Association / American Stroke Association (AHA/ASA)",
+        "guidelineTitle": "Guidelines for the Early Management of Patients with Acute Ischemic Stroke",
+        "publicationYear": 2019
+      }
+    ]
+  },
+  {
+    "benchmark": "NOCTIS-HEALTH-500",
+    "caseId": "NH-EM-005",
+    "batchId": "BATCH-001",
+    "specialty": "NEPHROLOGY",
+    "clinicalCategory": "Renal, Electrolyte & Toxicologic Emergency",
+    "difficulty": "ADVANCED",
+    "patientProfile": {
+      "ageYears": 66,
+      "biologicalSex": "MALE",
+      "pastMedicalHistory": [
+        "Chronic Kidney Disease (Stage 4, baseline Cr 2.6 mg/dL)",
+        "Type 2 Diabetes",
+        "Hypertension"
+      ],
+      "currentMedications": [
+        "Lisinopril 20 mg PO daily",
+        "Spironolactone 25 mg PO daily",
+        "Insulin Degludec 18 units SC daily"
+      ],
+      "allergies": [
+        "NKDA"
+      ]
+    },
+    "initialPresentation": {
+      "chiefComplaint": "Severe generalized weakness, chest discomfort, and palpitations",
+      "onsetAndTimeline": "Progressive weakness over 2 days, unable to stand today",
+      "symptoms": [
+        "profound bilateral lower extremity weakness",
+        "palpitations",
+        "retrosternal heaviness",
+        "nausea"
+      ],
+      "vitals": {
+        "bloodPressure": "102/58",
+        "heartRateBpm": 44,
+        "respiratoryRatePerMin": 20,
+        "temperatureCelsius": 36.6,
+        "spo2Percent": 96
+      }
+    },
+    "progressiveStages": [
+      {
+        "stageIndex": 1,
+        "stageName": "Emergency 12-Lead Electrocardiogram",
+        "releasedFindings": [
+          "ECG demonstrates profound bradycardia (HR 42 bpm), tall symmetric peaked T waves, flattened/absent P waves, and severe widening of the QRS complex (148 ms) approaching a sine-wave morphology."
+        ],
+        "expectedClinicalRealignment": "Cardiac electrical toxicity verified. The patient is at immediate catastrophic risk for ventricular fibrillation, pulseless electrical activity (PEA), and asystole. Mandates instant membrane stabilization."
+      },
+      {
+        "stageIndex": 2,
+        "stageName": "Stat Laboratory Metabolic Profile",
+        "releasedFindings": [
+          "Serum Potassium: 7.4 mmol/L (critical high).",
+          "Serum Creatinine: 4.2 mg/dL (baseline 2.6 mg/dL -> acute on chronic renal failure).",
+          "BUN: 68 mg/dL.",
+          "Serum Sodium: 134 mmol/L, Calcium: 8.4 mg/dL.",
+          "Venous Blood Gas: pH 7.22, HCO3 14 mmol/L (metabolic acidosis)."
+        ],
+        "expectedClinicalRealignment": "Confirms life-threatening hyperkalemia (7.4 mmol/L) with severe cardiotoxicity in acute-on-chronic kidney injury exacerbated by ACE-inhibitor and potassium-sparing diuretic."
+      }
+    ],
+    "goldStandard": {
+      "primaryDiagnosis": "Severe Life-Threatening Hyperkalemia with Cardiac Electrical Toxicity (Peaked T Waves & QRS Widening)",
+      "icd10": "E87.5",
+      "clinicalRationale": "Serum potassium of 7.4 mmol/L accompanied by classic high-risk electrocardiographic manifestations of hyperkalemic cardiotoxicity (peaked T waves, QRS widening to 148 ms, and profound bradycardia). The patient is on Lisinopril and Spironolactone with acute-on-chronic renal decompensation.",
+      "rankedDifferential": [
+        {
+          "rank": 1,
+          "condition": "Severe Hyperkalemic Cardiotoxicity",
+          "tier": "TIER_1_PRIMARY_EMERGENCY",
+          "probabilityPercent": 92,
+          "dangerRating": "CRITICAL"
+        },
+        {
+          "rank": 2,
+          "condition": "Acute Inferior Myocardial Infarction with Heart Block",
+          "tier": "TIER_2_MUST_NOT_MISS",
+          "dangerTier": "CRITICAL",
+          "probabilityPercent": 5
+        },
+        {
+          "rank": 3,
+          "condition": "Severe Digoxin Toxicity",
+          "tier": "TIER_2_MUST_NOT_MISS",
+          "dangerTier": "HIGH",
+          "probabilityPercent": 2
+        },
+        {
+          "rank": 4,
+          "condition": "Acute Guillain-Barr\u00e9 Syndrome",
+          "tier": "TIER_3_ALTERNATIVE",
+          "dangerTier": "MODERATE",
+          "probabilityPercent": 1
+        }
+      ],
+      "clinicalScores": [
+        {
+          "scoreName": "Hyperkalemia ECG Risk Stratification",
+          "scoreType": "SEVERITY_PROGNOSTIC",
+          "formula": "Mild: Peaked T waves -> Moderate: PR prolongation, P wave flattening -> Severe: QRS widening, Sine wave, Asystole",
+          "requiredInputs": [
+            "12-lead ECG morphology",
+            "QRS duration",
+            "Heart rate"
+          ],
+          "expectedCalculation": "Peaked T waves + QRS 148 ms + Bradycardia HR 42 = SEVERE / CRITICAL CARDIOTOXICITY",
+          "expectedResult": "CRITICAL ARRHYTHMIA RISK (Mandates instant IV Calcium membrane stabilization)",
+          "missingDataBehavior": "Any QRS widening in hyperkalemia is a pre-arrest emergency."
+        },
+        {
+          "scoreName": "KDIGO Acute Kidney Injury Staging",
+          "scoreType": "SEVERITY_PROGNOSTIC",
+          "formula": "Serum creatinine increase >= 0.3 mg/dL within 48h or >= 1.5x baseline",
+          "requiredInputs": [
+            "Baseline Creatinine (2.6)",
+            "Current Creatinine (4.2)"
+          ],
+          "expectedCalculation": "Creatinine rise 4.2 / 2.6 = 1.62x baseline (Stage 2/3 Acute-on-Chronic)",
+          "expectedResult": "KDIGO ACUTE-ON-CHRONIC RENAL INJURY",
+          "missingDataBehavior": "Must compare current Cr with documented historical baseline."
+        }
+      ],
+      "expectedInvestigations": [
+        {
+          "priority": "STAT",
+          "testName": "Continuous 12-Lead Cardiac Telemetry and Defibrillator Pad Placement",
+          "modality": "BEDSIDE",
+          "rationale": "Immediate continuous rhythm surveillance during and after calcium administration."
+        },
+        {
+          "priority": "STAT",
+          "testName": "Stat Basic Metabolic Panel, Venous Blood Gas, and Ionized Calcium",
+          "modality": "LABORATORY",
+          "rationale": "Quantify potassium, evaluate acidemia, and monitor response to shifting therapies."
+        }
+      ],
+      "expectedManagement": {
+        "immediateInterventions": [
+          "STEP 1 - CARDIAC MEMBRANE STABILIZATION (STAT): IV Calcium Gluconate 10% 10\u201320 mL IV over 2\u20135 min (or IV Calcium Chloride 1g via central/large bore line) administered immediately. Repeat dose in 5 minutes if ECG widening persists.",
+          "STEP 2 - INTRACELLULAR POTASSIUM SHIFTING: IV Regular Insulin 10 units + 50 mL D50W (25g Dextrose) IV push + Inhaled Albuterol 10\u201320 mg nebulized over 15 minutes",
+          "STEP 3 - POTASSIUM ELIMINATION & ACIDEMIA TREATMENT: IV Sodium Bicarbonate 50 mEq IV push (for concurrent metabolic acidosis pH 7.22) + Oral Sodium Zirconium Cyclosilicate (Lokelma 10g PO)",
+          "DISCONTINUE NEPHROTOXIC & HYPERKALEMIC DRUGS: Immediately stop Lisinopril and Spironolactone"
+        ],
+        "definitiveTherapy": [
+          "EMERGENT NEPHROLOGY CONSULTATION FOR HEMODIALYSIS: Dialysis is the definitive therapy for severe hyperkalemia (7.4 mmol/L) with cardiotoxicity in advanced chronic kidney disease."
+        ],
+        "escalationLevel": "ICU_ADMISSION"
+      },
+      "safetyChecklist": {
+        "strictContraindications": [
+          "Do NOT delay IV calcium administration when QRS widening, sine wave, or arrhythmias are present (calcium works within 1-3 minutes to restore electrical stability).",
+          "Do NOT rely on Sodium Polystyrene Sulfonate (Kayexalate) in the acute emergency setting (onset is > 4-6 hours and carries risk of bowel necrosis).",
+          "Do NOT administer IV fluids containing potassium (Lactated Ringer's)."
+        ],
+        "highRiskInteractions": [
+          "ACE-inhibitors (Lisinopril) and aldosterone antagonists (Spironolactone) must be permanently held."
+        ]
+      },
+      "criticalFailures": [
+        {
+          "failureCode": "CF-HYP-001",
+          "description": "Delaying cardiac membrane stabilization with IV calcium in a patient with severe ECG changes (QRS widening / peaked T waves).",
+          "clinicalHarmPotential": "DEATH",
+          "overrideRule": "INSTANT_BENCHMARK_FAIL"
+        },
+        {
+          "failureCode": "CF-HYP-002",
+          "description": "Treating the numerical laboratory result without ordering an immediate ECG or monitoring cardiac rhythm.",
+          "clinicalHarmPotential": "DEATH",
+          "overrideRule": "INSTANT_BENCHMARK_FAIL"
+        },
+        {
+          "failureCode": "CF-HYP-003",
+          "description": "Failing to consult nephrology for emergent hemodialysis in severe hyperkalemia refractory to shifting agents.",
+          "clinicalHarmPotential": "DEATH",
+          "overrideRule": "INSTANT_BENCHMARK_FAIL"
+        }
+      ]
+    },
+    "acceptanceCriteria": {
+      "minimumPassingScore": 90,
+      "requiredKeyFindings": [
+        "Severe hyperkalemia diagnosis",
+        "Cardiac toxicity recognition",
+        "IV Calcium membrane stabilization priority",
+        "Emergent hemodialysis indication"
+      ],
+      "mandatoryActions": [
+        "Administer IV Calcium immediately",
+        "Administer Insulin + Dextrose",
+        "Emergency Nephrology consultation"
+      ]
+    },
+    "guidelineReferences": [
+      {
+        "organization": "European Resuscitation Council (ERC)",
+        "guidelineTitle": "Emergency Management of Severe Hyperkalemia",
+        "publicationYear": 2021
+      },
+      {
+        "organization": "American Heart Association (AHA)",
+        "guidelineTitle": "ACLS Management of Cardiac Arrest and Life-Threatening Electrolyte Abnormalities",
+        "publicationYear": 2020
+      }
+    ]
+  }
+]

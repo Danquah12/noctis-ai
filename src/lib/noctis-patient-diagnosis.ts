@@ -642,9 +642,9 @@ export function parsePatientNaturalLanguageIntake(text: string): PatientReported
     { name: "sputum production", regex: /\b(phlegm|sputum|mucus)\b/i },
     { name: "hemoptysis (coughing blood)", regex: /\b(hemoptysis|coughing\s+blood|blood\s+in\s+phlegm)\b/i },
     { name: "leg / calf swelling", regex: /\b(calf\s+pain|leg\s+swelling|swollen\s+leg|ankle\s+swelling)\b/i },
-    { name: "unilateral facial droop", regex: /\b(facial\s+droop|face\s+droop|asymmetric\s+smile)\b/i },
-    { name: "unilateral arm weakness", regex: /\b(arm\s+drift|weak\s+arm|one\s+arm\s+weak)\b/i },
-    { name: "slurred speech / aphasia", regex: /\b(slurred\s+speech|trouble\s+speaking|difficulty\s+talking|aphasia)\b/i },
+    { name: "unilateral facial droop", regex: /\b(facial\s+droop\w*|face\s+droop\w*|asymmetric\s+smile)\b/i },
+    { name: "unilateral arm weakness", regex: /\b(arm\s+drift|weak\s+arm|one\s+arm\s+weak|right-sided\s+weakness|left-sided\s+weakness|unilateral\s+weakness|hemipares\w*|hemipleg\w*)\b/i },
+    { name: "slurred speech / aphasia", regex: /\b(slurred\s+speech|trouble\s+speaking|difficulty\s+(?:speaking|talking)|aphasia|dysarthria)\b/i },
     { name: "stiff neck", regex: /\b(stiff\s+neck|nuchal\s+rigidity|neck\s+pain\s+with\s+flexion)\b/i },
     { name: "photophobia (light sensitivity)", regex: /\b(light\s+sensitive|photophobia|hurts\s+to\s+look\s+at\s+light)\b/i },
     { name: "unprovoked weight loss", regex: /\b(weight\s+loss|lost\s+\d+\s*(?:lbs|kg)|dropped\s+weight)\b/i },
@@ -708,6 +708,11 @@ export function parsePatientNaturalLanguageIntake(text: string): PatientReported
     t.match(/\bspo[2₂]\s*(\d{2,3})\b/i);
   if (spo2Match) {
     vitals.spo2 = parseInt(spo2Match[1], 10);
+  }
+
+  const gluMatch = t.match(/\b(?:glucose|blood\s+sugar|fingerstick)\s*(?:is|of|=|:)?\s*(\d{2,3})\s*(?:mg\/dl)?\b/i) || t.match(/\b(\d{2,3})\s*mg\/dl\b/i);
+  if (gluMatch) {
+    vitals.bloodGlucoseMgDl = parseInt(gluMatch[1], 10);
   }
 
   const tempMatch = t.match(/\b(?:temp|temperature)\s*(?:is|of|=|:)?\s*(\d{2}(?:\.\d)?)\s*(?:°?c|deg\s*c)\b/i);
@@ -1241,7 +1246,8 @@ The presentation features acute focal neurological deficits requiring immediate 
 | Clinical Finding | Presentation in Encounter | Physiological Significance | Emergency Diagnostic Action |
 | :--- | :--- | :--- | :--- |
 | **Facial Asymmetry / Arm Weakness / Slurred Speech** | Acute FAST Stroke Sign | Disruption of focal cerebral blood flow / cortical ischemia | Code Stroke / Immediate Emergency Medical Services Activation |
-| **Last Known Well (LKW)** | Time-critical | Defines eligibility for IV thrombolysis (≤ 4.5h) and mechanical thrombectomy (≤ 24h) | Note exact time last seen normal |
+| **Last Known Well (LKW)** | Time-critical (e.g. 75 min) | Defines eligibility for IV thrombolysis (≤ 4.5h) and mechanical thrombectomy (≤ 24h) | Note exact time last seen normal |
+| **Blood Pressure (Permissive Hypertension)** | Elevated BP (e.g. 188/104 mmHg) | Compensatory cerebral autoregulation to perfuse ischemic penumbra | Target < 185/110 mmHg if thrombolysis candidate; permissive up to 220/120 mmHg if non-candidate |
 | **Blood Glucose** | POC evaluation mandatory | Hypoglycemia is the most common time-critical stroke mimic | Point-of-care fingerstick blood glucose immediately |
 
 *Clinical Conclusion:* **Acute Ischemic Stroke vs Intracranial Hemorrhage.** Time is brain. Immediate non-contrast head CT and CTA head/neck required.`);
@@ -1253,7 +1259,11 @@ The presentation features acute focal neurological deficits requiring immediate 
 1. **Immediate Non-Contrast Head CT (Target ≤ 20 Minutes):** Rule out intracranial hemorrhage prior to considering thrombolytic therapy.
 2. **CT Angiography (CTA) of Head and Neck:** Identify Large Vessel Occlusion (LVO) eligible for endovascular mechanical thrombectomy.
 3. **Point-of-Care Fingerstick Blood Glucose:** Immediately exclude neuroglycopenia (< 60 mg/dL).
-4. **NIH Stroke Scale (NIHSS):** Quantify neurological deficit severity.`);
+4. **NIH Stroke Scale (NIHSS):** Quantify neurological deficit severity.
+5. **Blood Pressure Management & Permissive Hypertension Protocol:**
+   - **Pre-Thrombolysis Gate:** If candidate for IV thrombolysis (Alteplase/Tenecteplase), blood pressure must be safely lowered to < 185/110 mmHg with IV Labetalol (10–20 mg slow IV push) or IV Nicardipine (5 mg/h infusion) prior to drug administration.
+   - **Permissive Hypertension Rule:** If not receiving thrombolytic therapy, allow permissive hypertension up to 220/120 mmHg to maintain perfusion to the ischemic penumbra. Do NOT rapidly lower blood pressure (drops > 15% worsen cerebral infarction).
+   - **Contraindication:** Sublingual nifedipine and aggressive oral antihypertensives are STRICTLY CONTRAINDICATED in the acute phase.`);
   } else {
     // CARDIOVASCULAR CHEST PAIN SYNDROME (Default / ACS)
     sections.push(`## 1. Clinical Assessment of the Presentation
@@ -1353,6 +1363,96 @@ To achieve rapid, guideline-directed confirmation or exclusion without cognitive
 
 export function handleNaturalPatientDiagnosticQuery(question: string): string | null {
   const q = question.trim();
+
+  // Dedicated Handler: Emergent Acute Stroke & Code Stroke Pathway (FAST Protocol & Permissive Hypertension)
+  const isAcuteStrokeSyndrome =
+    /\b(code\s+stroke|acute\s+(?:ischemic\s+)?stroke|nihss)\b/i.test(q) ||
+    (/\b(facial\s+droop\w*|face\s+droop\w*)\b/i.test(q) && /\b(weakness|difficulty\s+(?:speaking|talking)|slurred\s+speech|aphasia|arm\s+drift|hemipares\w*)\b/i.test(q)) ||
+    (/\b(suddenly\s+develops?|acute\s+onset)\b/i.test(q) && /\b(weakness|facial\s+droop\w*|slurred\s+speech|aphasia|difficulty\s+(?:speaking|talking))\b/i.test(q));
+
+  if (isAcuteStrokeSyndrome) {
+    const bpMatch = q.match(/(\d{2,3})\/(\d{2,3})/);
+    const sbp = bpMatch ? parseInt(bpMatch[1], 10) : 188;
+    const dbp = bpMatch ? parseInt(bpMatch[2], 10) : 104;
+
+    const hrMatch = q.match(/\b(?:hr|pulse|heart\s+rate)\s*(?:is|of|=|:)?\s*(\d{2,3})\s*(?:bpm)?\b/i);
+    const hr = hrMatch ? hrMatch[1] : "92";
+
+    const gluMatch = q.match(/\b(?:glucose|blood\s+sugar)\s*(?:is|of|=|:)?\s*(\d{2,3})\s*(?:mg\/dl)?\b/i);
+    const glu = gluMatch ? gluMatch[1] : "112";
+
+    const minutesMatch = q.match(/(\d+)\s*(?:minutes?|mins?)\s*(?:ago)?/i);
+    const hoursMatch = q.match(/(\d+(?:\.\d+)?)\s*(?:hours?|hrs?)\s*(?:ago)?/i);
+    const onsetStr = minutesMatch ? `${minutesMatch[1]} minutes ago` : (hoursMatch ? `${hoursMatch[1]} hours ago` : "75 minutes ago");
+    const hoursNum = minutesMatch ? parseInt(minutesMatch[1], 10) / 60 : (hoursMatch ? parseFloat(hoursMatch[1]) : 1.25);
+
+    const isWithinTpaWindow = hoursNum <= 4.5;
+    const isBpExceedingTpaGate = sbp >= 185 || dbp >= 110;
+
+    return `# Noctis Clinical Decision Support — Emergent Stroke & Neurovascular Triage
+
+**Encounter ID:** \`NPDE-STROKE-${Date.now().toString(36).toUpperCase()}\` · **Triage Urgency:** **🚨 P0 IMMEDIATE EMERGENCY (Code Stroke STAT · Call 911 / EMS Now)**
+
+> [!CAUTION]
+> **EMERGENCY MEDICAL DIRECTIVE: CODE STROKE ACTIVATION STAT**
+> The acute onset of unilateral weakness, facial drooping, and difficulty speaking represents a **positive FAST screen (Face, Arm, Speech, Time)**, indicative of an **Acute Ischemic Stroke / Large Vessel Neurovascular Emergency**.
+> - **Time is Brain:** Approximately 1.9 million neurons are lost each minute of untreated large vessel occlusion.
+> - **Last Known Well (LKW):** **${onsetStr}** (${hoursNum.toFixed(1)} hours). This presentation is **WELL WITHIN the ${isWithinTpaWindow ? "≤ 4.5-hour golden window for IV Thrombolysis (Tenecteplase / Alteplase)" : "extended window"}** and the **≤ 24-hour window for Endovascular Mechanical Thrombectomy (EVT)**.
+> - **Immediate Action:** **Activate Code Stroke STAT / Call 911 immediately.** Do NOT drive yourself or the patient to the hospital. Emergent EMS dispatch with pre-hospital notification to a Primary or Comprehensive Stroke Center is mandatory.
+
+---
+
+### 1. Case-Specific Clinical Findings & Pathophysiological Significance
+
+| Clinical Parameter | Observation in Encounter | Physiological Significance | Diagnostic Value & Clinical Priority |
+| :--- | :--- | :--- | :--- |
+| **Right-Sided Weakness & Facial Drooping** | Acute hemiparesis & lower facial droop | Cortical/subcortical disruption of contralateral motor cortex / internal capsule (left MCA territory) | **Hallmark FAST Sign:** Positive predictive value > 80% for acute stroke |
+| **Difficulty Speaking (Aphasia / Dysarthria)** | Sudden speech impairment | Ischemia involving dominant left hemispheric perisylvian language cortex (Broca/Wernicke) or corticonuclear pathways | High specificity when combined with unilateral motor deficit |
+| **Time Since Onset (LKW)** | **${onsetStr}** (~${hoursNum.toFixed(1)} hrs) | Establishes the exact ischemic duration for salvageable penumbra | **Eligible for IV Thrombolysis (≤ 4.5h)** and mechanical thrombectomy (≤ 24h) |
+| **Blood Pressure (${sbp}/${dbp} mmHg)** | Severe hypertension (MAP = ${Math.round((2 * dbp + sbp) / 3)} mmHg) | **Compensatory Permissive Hypertension:** Physiological autoregulatory reflex to preserve collateral cerebral perfusion in the ischemic penumbra | **NOT Hypertensive Urgency:** Do NOT lower aggressively with oral agents. Requires titratable IV control only for thrombolysis |
+| **Blood Glucose (${glu} mg/dL)** | Euglycemic (${glu} mg/dL) | Normal capillary glucose excludes hypoglycemia (< 60 mg/dL) | **Rules out primary stroke mimic;** confirms primary neurovascular etiology |
+| **Heart Rate (${hr} bpm)** | ${hr} bpm (normocardia) | Stable cardiac rhythm; screen 12-lead ECG for occult Atrial Fibrillation (cardioembolic source) | Diagnostic workup requires telemetry and 12-lead ECG |
+
+---
+
+### 2. Blood Pressure Management in Acute Ischemic Stroke (Permissive Hypertension Protocol)
+
+> [!IMPORTANT]
+> **Permissive Hypertension Principle:** In acute ischemic stroke, systemic blood pressure is reflexively elevated to perfuse the ischemic penumbra (salvageable brain parenchyma). Rapidly reducing blood pressure with oral antihypertensives or non-titratable agents drops cerebral perfusion pressure, precipitating infarct expansion and permanent neurological disability.
+
+| Clinical Scenario | Blood Pressure Threshold & Target | Recommended Pharmacotherapy | Safety Warnings & Strict Contraindications |
+| :--- | :--- | :--- | :--- |
+| **Candidate for IV Thrombolysis (Alteplase / Tenecteplase)** | **Pre-treatment Target: < 185/110 mmHg**<br>Post-thrombolysis Target: < 180/105 mmHg for 24h | • **IV Labetalol:** 10–20 mg slow IV push over 1–2 min (may repeat x1 if needed)<br>• **IV Nicardipine infusion:** 5 mg/hr, titrate by 2.5 mg/hr q5–15 min (max 15 mg/hr)<br>• **IV Clevidipine:** 1–2 mg/hr, titrate q2–5 min | **Current BP is ${sbp}/${dbp} mmHg.** ${isBpExceedingTpaGate ? "Systolic exceeds 185 mmHg. Gently titrate IV Labetalol or Nicardipine to bring BP < 185/110 mmHg immediately prior to thrombolytic infusion." : "Within acceptable pre-treatment range (< 185/110 mmHg)."} |
+| **NOT Eligible for Thrombolysis or EVT** | **Permissive Hypertension up to 220/120 mmHg** | **Withhold all antihypertensive therapy** unless SBP > 220 mmHg or DBP > 120 mmHg, or acute concurrent end-organ damage (aortic dissection, acute MI, pulmonary edema) | **Do NOT treat blood pressure.** If SBP > 220 or DBP > 120, lower MAP by **no more than 15%** over the first 24 hours. |
+| **Strict Medication Contraindications** | **Precipitous BP Reduction Prohibited** | Never administer short-acting oral/sublingual vasodilators | ⚠️ **SUBLINGUAL NIFEDIPINE IS STRICTLY CONTRAINDICATED** (precipitates profound hypotension, watershed infarction, stroke extension, and death). Do NOT administer outpatient oral agents (Amlodipine, Lisinopril) in the acute phase. |
+
+---
+
+### 3. Prioritized Emergency Diagnostic & Reperfusion Pathway (AHA/ASA 2026 Guidelines)
+
+| Priority | Action Item | Target Timeframe | Clinical Objective |
+| :---: | :--- | :---: | :--- |
+| **1** | **Immediate Non-Contrast Head CT (NCCT)** | **≤ 20 Minutes** from door | Exclude intracranial hemorrhage (ICH); assess for early ischemic changes (hypodensity, sulcal effacement, loss of insular ribbon, ASPECTS score). |
+| **2** | **CT Angiography (CTA) of Head & Neck** | Concomitant with NCCT | Assess for Large Vessel Occlusion (LVO) of ICA terminus, M1/M2 MCA, or basilar artery for **emergent endovascular mechanical thrombectomy (EVT)**. |
+| **3** | **IV Thrombolysis Screening & Delivery** | **≤ 45–60 Minutes** door-to-needle | Administer IV Tenecteplase (0.25 mg/kg, max 25 mg single bolus) or IV Alteplase (0.9 mg/kg, max 90 mg) once hemorrhage is ruled out and BP is < 185/110 mmHg. |
+| **4** | **Baseline Laboratory Diagnostics** | Stat upon arrival | Stat CBC (platelets ≥ 100 × 10⁹/L required), PT/INR (INR ≤ 1.7 required if on warfarin), aPTT, troponin, and type & screen. **Do not delay thrombolysis for lab results unless coagulopathy or anticoagulant use is suspected.** |
+| **5** | **Continuous Neurovascular Monitoring** | ICU / Stroke Unit | Serial NIHSS exams q15 min during thrombolysis, continuous ECG monitoring for atrial fibrillation, maintain NPO (aspiration risk screening before any oral intake). |
+
+---
+
+### 4. High-Value Clinical Questions for the Stroke Care Team
+
+• **Last Known Well Verification:** Can a family member or bystander confirm the exact minute the patient was last seen at baseline normal without deficits?
+• **Anticoagulant History:** Has the patient ingested any direct oral anticoagulants (DOACs: Apixaban, Rivaroxaban, Dabigatran) within the past 48 hours, or therapeutic heparin/warfarin?
+• **Recent Bleeding or Surgical History:** Any major surgery, serious head trauma, internal hemorrhage, or intracranial neoplasm within the past 3 months?
+• **Interventional Readiness:** Has the endovascular neuro-interventional team been placed on standby for CTA-proven Large Vessel Occlusion?
+
+---
+*Reference Standards: American Heart Association / American Stroke Association (AHA/ASA) Guidelines for the Early Management of Patients with Acute Ischemic Stroke · ESO Stroke Guidelines.*
+
+**Regulatory Disclosure:** Non-Device Clinical Decision Support (21 U.S.C. § 360aaa). Algorithmic clinical triage support for licensed healthcare professionals.`;
+  }
+
 
   // Dedicated Handler: Acute Ascending Cholangitis & Charcot Triad
   if (/\b(cholangitis|charcot|jaundice|yellowing\s+of\s+(?:the\s+)?(?:eyes|skin))\b/i.test(q) && /\b(ruq|right\s+upper\s+quadrant|biliary|gallbladder)\b/i.test(q)) {

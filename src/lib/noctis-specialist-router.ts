@@ -458,7 +458,12 @@ export function handleNaturalSpecialistClinicalQuery(query: string): string | nu
   // =========================================================================
 
   // NIHSS Stroke Workup
-  if (/\b(nihss|acute stroke|tpa window|thrombectomy|tenecteplase|alteplase|ischemic stroke|code stroke)\b/i.test(q)) {
+  const isStrokePresentation =
+    /\b(nihss|acute stroke|ischemic stroke|code stroke|tpa window|thrombectomy|tenecteplase|alteplase)\b/i.test(q) ||
+    (/\b(facial\s+droop\w*|face\s+droop\w*)\b/i.test(q) && /\b(weakness|arm\s+drift|difficulty\s+(?:speaking|talking)|slurred\s+speech|aphasia|hemipares\w*)\b/i.test(q)) ||
+    (/\b(suddenly\s+develops?|acute\s+onset)\b/i.test(q) && /\b(weakness|facial\s+droop\w*|slurred\s+speech|aphasia|difficulty\s+(?:speaking|talking))\b/i.test(q));
+
+  if (isStrokePresentation) {
     const scoreMatch = q.match(/nihss\s*[:=]?\s*(\d{1,2})/i);
     const scoreVal = scoreMatch ? parseInt(scoreMatch[1], 10) : 14;
 
@@ -466,8 +471,14 @@ export function handleNaturalSpecialistClinicalQuery(query: string): string | nu
     const sbp = bpMatch ? parseInt(bpMatch[1], 10) : 165;
     const dbp = bpMatch ? parseInt(bpMatch[2], 10) : 95;
 
-    const hoursMatch = q.match(/(\d+(?:\.\d+)?)\s*(?:hours?|hrs?)/i);
-    const hours = hoursMatch ? parseFloat(hoursMatch[1]) : 2.0;
+    let hours = 2.0;
+    const minutesMatch = q.match(/(\d+)\s*(?:minutes?|mins?)\s*(?:ago)?/i);
+    const hoursMatch = q.match(/(\d+(?:\.\d+)?)\s*(?:hours?|hrs?)\s*(?:ago)?/i);
+    if (minutesMatch) {
+      hours = parseFloat((parseInt(minutesMatch[1], 10) / 60).toFixed(2));
+    } else if (hoursMatch) {
+      hours = parseFloat(hoursMatch[1]);
+    }
 
     const res = evaluateAcuteStrokeNihss({
       facialPalsyScore: 2,
@@ -689,9 +700,14 @@ export function handleNaturalSpecialistClinicalQuery(query: string): string | nu
   if (isSevereBp || /\b(hypertensive crisis|hypertensive emergency|hypertensive urgency|malignant hypertension|severe hypertension)\b/i.test(q)) {
     const sbp = bpMatch ? matchedSbp : 210;
     const dbp = bpMatch ? matchedDbp : 124;
+    const hasAcuteNeuro =
+      /\b(stroke|facial\s+droop\w*|face\s+droop\w*|arm\s+drift|slurred\s+speech|difficulty\s+(?:speaking|talking)|aphasia|hemipares\w*|hemipleg\w*)\b/i.test(q) ||
+      (/\bweakness\b/i.test(q) && /\b(facial|face|speech|speaking|right-sided|left-sided|unilateral)\b/i.test(q));
+
     const res = evaluateHypertensiveCrisis({
       systolicBpMmHg: sbp,
       diastolicBpMmHg: dbp,
+      hasAcuteStrokeOrNeurologicalDeficit: hasAcuteNeuro,
       hasAcuteHeadacheOrEncephalopathy: /\b(headache|encephalopathy|confusion|altered mental)\b/i.test(q),
       hasPapilledemaOrRetinalHemorrhages: /\b(papilledema|blurred vision|retinal)\b/i.test(q),
       hasAcutePulmonaryEdemaShortnessOfBreath: /\b(pulmonary edema|shortness of breath|sob)\b/i.test(q),
