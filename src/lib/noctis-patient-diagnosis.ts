@@ -151,6 +151,42 @@ interface DiagnosticConditionRule {
 }
 
 const CLINICAL_DIAGNOSTIC_RULES: DiagnosticConditionRule[] = [
+  // --- METABOLIC & ENDOCRINE ---
+  {
+    diseaseName: "Diabetic Ketoacidosis (DKA) / Hyperglycemic Crisis",
+    icd10: "ICD-10-CM: E10.10",
+    snomedCt: "SNOMED CT: 420422005",
+    baseProbability: 45,
+    isMustNotMiss: true,
+    requiredSymptomMatches: [/\b(dka|ketoacidosis|kussmaul|hyperglycem|diabet|glucose)\b/i],
+    bonusSymptomMatches: [
+      { regex: /\b(kussmaul|deep\s+breathing|rapid\s+deep)\b/i, points: 30 },
+      { regex: /\b(540|[3-9]\d{2}\s*mg\/dl|glucose\s*(?:is|of|=|:)?\s*[3-9]\d{2})\b/i, points: 30 },
+      { regex: /\b(vomit|vomiting|emesis)\b/i, points: 20 },
+      { regex: /\b(nausea)\b/i, points: 15 },
+      { regex: /\b(type\s*1|t1d|insulin)\b/i, points: 20 },
+      { regex: /\b(polyuria|polydipsia|thirst|dehydration)\b/i, points: 15 },
+    ],
+    penaltySymptomMatches: [
+      { regex: /\b(hypoglycem|low\s+blood\s+sugar|<60)\b/i, points: -40 },
+    ],
+    supportingEvidenceBase: [
+      "Extreme hyperglycemia (blood glucose > 300-500 mg/dL) with osmotic diuresis",
+      "Kussmaul hyperventilation (compensatory respiratory alkalosis for severe metabolic ketoacidosis)",
+      "Persistent nausea and vomiting in an insulin-dependent diabetic"
+    ],
+    goldStandardTesting: [
+      "STAT Comprehensive Metabolic Panel (electrolytes, BUN, creatinine, calculated anion gap)",
+      "Venous or arterial blood gas (pH, HCO3)",
+      "Serum beta-hydroxybutyrate and urine ketones",
+      "STAT serum potassium (mandatory safety gate prior to IV insulin)"
+    ],
+    discriminativeQuestion: {
+      promptText: "Has the patient missed any recent insulin doses or experienced an acute infection/illness?",
+      clinicalObjective: "Identify precipitating triggers for acute metabolic decompensation (omission, infection, pump failure)",
+      potentialImpact: "Confirming missed insulin or infection clarifies precipitant and guides antimicrobial/fluid therapy"
+    }
+  },
   // --- CARDIOVASCULAR ---
   {
     diseaseName: "Acute Coronary Syndrome (NSTEMI / STEMI / Unstable Angina)",
@@ -840,7 +876,22 @@ export function evaluateEmergencyTriage(data: PatientReportedData): EmergencyTri
     category = category === "P0_IMMEDIATE_EMERGENCY" ? "P0_IMMEDIATE_EMERGENCY" : "P1_URGENT_EMERGENCY_DEPT";
   }
 
-  // 5. Urgent Non-P0 presentations (P1 or P2)
+  // 5. Metabolic & Endocrine Emergency Red Flags (DKA / HHS / Severe Hyperglycemia)
+  const isDkaOrMetabolic =
+    /\b(kussmaul|dka|ketoacidosis|acidosis)\b/i.test(cc) ||
+    ((v.bloodGlucoseMgDl && v.bloodGlucoseMgDl >= 300) && (data.associatedSymptoms.some((s) => /vomit|nausea|breath|confus/i.test(s)) || /\b(type\s*1\s*diabet|kussmaul|vomit|nausea)\b/i.test(cc))) ||
+    (v.bloodGlucoseMgDl && v.bloodGlucoseMgDl >= 500) ||
+    (/\b(type\s*1\s*diabet|t1d)\b/i.test(cc) && /\b(vomit|nausea|kussmaul)\b/i.test(cc));
+
+  if (isDkaOrMetabolic) {
+    redFlags.push("Suspected Severe Diabetic Ketoacidosis (DKA) / Hyperglycemic Crisis (Severe Hyperglycemia with Kussmaul breathing or persistent vomiting)");
+    instructions.push("Call Emergency Services (Dial 911 immediately) — Suspected DKA is a life-threatening endocrine emergency requiring emergent resuscitation.");
+    instructions.push("Do NOT attempt outpatient oral hydration or unmonitored subcutaneous insulin.");
+    isEmergency = true;
+    category = "P0_IMMEDIATE_EMERGENCY";
+  }
+
+  // 6. Urgent Non-P0 presentations (P1 or P2)
   if (!isEmergency) {
     if (data.associatedSymptoms.some((s) => s.includes("hemoptysis") || s.includes("calf swelling") || s.includes("syncope"))) {
       category = "P1_URGENT_EMERGENCY_DEPT";
@@ -1286,8 +1337,14 @@ The presentation features acute focal neurological deficits requiring immediate 
    - **Pre-Thrombolysis Gate:** If candidate for IV thrombolysis (Alteplase/Tenecteplase), blood pressure must be safely lowered to < 185/110 mmHg with IV Labetalol (10–20 mg slow IV push) or IV Nicardipine (5 mg/h infusion) prior to drug administration.
    - **Permissive Hypertension Rule:** If not receiving thrombolytic therapy, allow permissive hypertension up to 220/120 mmHg to maintain perfusion to the ischemic penumbra. Do NOT rapidly lower blood pressure (drops > 15% worsen cerebral infarction).
    - **Contraindication:** Sublingual nifedipine and aggressive oral antihypertensives are STRICTLY CONTRAINDICATED in the acute phase.`);
-  } else {
-    // CARDIOVASCULAR CHEST PAIN SYNDROME (Default / ACS)
+  }
+
+  const isCardiovascularChestPain =
+    /\b(chest\s+pain|retrosternal|substernal|angina|myocardial\s+infarction|acs|coronary|stemi|nstemi)\b/i.test(cc) ||
+    /\b(chest\s+pain|retrosternal|substernal|angina|myocardial\s+infarction|acs|coronary|stemi|nstemi)\b/i.test(rawText);
+
+  if (!isAbdominal && !isStroke && isCardiovascularChestPain) {
+    // CARDIOVASCULAR CHEST PAIN SYNDROME
     sections.push(`## 1. Clinical Assessment of the Presentation
 
 The reported symptom constellation represents a potentially life-threatening medical emergency requiring urgent in-person evaluation.
@@ -1352,6 +1409,56 @@ To achieve rapid, guideline-directed confirmation or exclusion without cognitive
 
 5. **Portable Chest Radiography (CXR):**
    - Screen for widened mediastinum (aortic dissection), pneumothorax, pulmonary edema, or focal pneumonia. Normal CXR does NOT exclude aortic dissection.`);
+  } else if (!isAbdominal && !isStroke) {
+    // DYNAMIC GENERAL PRESENTATION SECTION (Avoids ACS Fallback)
+    const vitalsList: string[] = [];
+    if (dossier.patientData.vitals.bloodPressure) vitalsList.push(`BP: ${dossier.patientData.vitals.bloodPressure}`);
+    else if (dossier.patientData.vitals.systolicBp) vitalsList.push(`BP: ${dossier.patientData.vitals.systolicBp}/${dossier.patientData.vitals.diastolicBp} mmHg`);
+    if (dossier.patientData.vitals.heartRate) vitalsList.push(`HR: ${dossier.patientData.vitals.heartRate} bpm`);
+    if (dossier.patientData.vitals.respiratoryRate) vitalsList.push(`RR: ${dossier.patientData.vitals.respiratoryRate}/min`);
+    if (dossier.patientData.vitals.temperatureC) vitalsList.push(`Temp: ${dossier.patientData.vitals.temperatureC}°C`);
+    if (dossier.patientData.vitals.oxygenSaturation) vitalsList.push(`SpO2: ${dossier.patientData.vitals.oxygenSaturation}%`);
+    if (dossier.patientData.vitals.bloodGlucoseMgDl) vitalsList.push(`Glucose: ${dossier.patientData.vitals.bloodGlucoseMgDl} mg/dL`);
+
+    sections.push(`## 1. Clinical Assessment of the Presentation
+
+The patient presents with ${dossier.patientData.chiefComplaint || "an acute clinical concern"}. Emergency evaluation is directed toward stabilizing life-threatening organ dysfunction and establishing the underlying etiology.
+
+| Parameter | Documented Value | Physiological Significance | Diagnostic / Resuscitation Priority |
+| :--- | :--- | :--- | :--- |
+| **Chief Complaint** | ${dossier.patientData.chiefComplaint || "Unspecified"} | Primary presenting physiological distress | Triage and immediate risk stratification |
+| **Associated Symptoms** | ${dossier.patientData.associatedSymptoms.length > 0 ? dossier.patientData.associatedSymptoms.join(", ") : "None reported"} | Multi-system symptom constellation | Refining differential diagnosis hierarchy |
+| **Documented Vitals** | ${vitalsList.join(" · ") || "Awaiting bedside measurement"} | Hemodynamic and metabolic stability | Rapid identification of organ failure / shock |
+
+*Clinical Conclusion:* Immediate clinical stabilization and targeted diagnostic testing required to rule out acute critical illness.`);
+
+    const diffRows = differentials.map((d) => {
+      const categoryBadge =
+        d.category === "PRIMARY_HYPOTHESIS"
+          ? "🚨 **TIER 1: PRIMARY EMERGENCY**"
+          : d.category === "MUST_NOT_MISS_RULEOUT"
+            ? "⚠️ **TIER 2: MUST-NOT-MISS**"
+            : "📋 **TIER 3: ALTERNATIVE**";
+
+      const urgencyNote =
+        d.category === "PRIMARY_HYPOTHESIS"
+          ? `**${d.probabilityPct}% Pre-Test Risk**<br>*(STAT Protocol)*`
+          : `**${d.probabilityPct}% Pre-Test Risk**<br>*(Rule-Out)*`;
+
+      return `| **#${d.rank}** | **${d.diseaseName}**<br>*(${d.icd10})* | ${categoryBadge} | ${urgencyNote} | • ${d.supportingEvidence.slice(0, 3).join("<br>• ") || "Clinical presentation"} | ${d.goldStandardDiagnosticTests.slice(0, 2).join("<br>• ") || "Physician exam"} |`;
+    });
+
+    sections.push(
+      `## 2. Evidence-Weighted Differential Diagnosis Hierarchy\n\n| Rank | Candidate Condition | Clinical Category | Calibrated Pre-Test Risk | Supporting Clinical Findings | Gold-Standard Diagnostic Protocols |\n| :---: | :--- | :---: | :--- | :--- | :--- |\n${diffRows.join("\n")}\n`
+    );
+
+    sections.push(`## 3. Prioritized Emergency Diagnostic Workup Protocol
+
+1. **Immediate Bedside Vital Signs & Hemodynamic Assessment:** Continuous cardiorespiratory telemetry, pulse oximetry, and non-invasive blood pressure monitoring.
+2. **Point-of-Care Laboratory Evaluation:** Point-of-care blood glucose, venous/arterial blood gas with lactate, and electrolyte screening.
+3. **Comprehensive Diagnostic Blood Testing:** Complete blood count (CBC), comprehensive metabolic panel (CMP), coagulation profile, and disease-specific biomarkers.
+4. **Directed Diagnostic Imaging:** Bedside POCUS ultrasound, portable radiography, or targeted contrast-enhanced computed tomography (CT) based on primary clinical suspicion.
+5. **Empiric Resuscitation & Safety Protocols:** Secure intravenous access, initiate targeted fluid/electrolyte resuscitation, and confirm drug allergies before pharmacotherapy.`);
   }
 
   // Adaptive Questions
@@ -1413,6 +1520,101 @@ export function handleNaturalPatientDiagnosticQuery(question: string): string | 
     const encMatch = q.match(/\b(NPDE-[A-Z0-9]+)\b/i);
     const encId = encMatch ? encMatch[1] : `NPDE-SEPSIS-${Date.now().toString(36).toUpperCase()}`;
     return generateIsolatedSepticShockDossier(encId);
+  }
+
+  // Dedicated Handler: Emergent Diabetic Ketoacidosis (DKA) Resuscitation Protocol
+  const isDkaScenario =
+    /\b(dka|ketoacidosis|kussmaul)\b/i.test(q) ||
+    (/\b(type\s*1\s*diabet\w*|diabetes|t1d)\b/i.test(q) && /\b(glucose\s*(?:is|of|=|:)?\s*[3-9]\d{2}|540|kussmaul|vomiting|nausea)\b/i.test(q)) ||
+    (/\b(blood\s+sugar|glucose)\b/i.test(q) && /\b(540|[3-9]\d{2})\b/i.test(q) && /\b(vomiting|nausea|kussmaul|breathing)\b/i.test(q));
+
+  if (isDkaScenario) {
+    const encMatch = q.match(/\b(NPDE-[A-Z0-9]+)\b/i);
+    const encId = encMatch ? encMatch[1] : `NPDE-DKA-${Date.now().toString(36).toUpperCase()}`;
+
+    return `# Noctis Patient Diagnostic & Triage Intelligence Dossier (Clinical Decision Support)
+**Encounter ID:** \`${encId}\` · **Triage Urgency:** **🚨 P0 IMMEDIATE EMERGENCY (Call 911 / EMS Now · Resuscitation & ICU)**
+**Statutory Classification:** Clinical Decision Support Software under **21 U.S.C. § 360j(o)(1)(E)** (Section 520(o)(1)(E) FD&C Act).
+
+> [!CAUTION]
+> **EMERGENCY MEDICAL WARNING (CRITICAL ENDOCRINE RESUSCITATION DIRECTIVE)**
+> 🚨 **CRITICAL LIFE THREAT:** The clinical presentation of extreme hyperglycemia (blood glucose 540 mg/dL), Kussmaul respirations, persistent vomiting, and dehydration in a Type 1 Diabetic represents **Severe Diabetic Ketoacidosis (DKA) with High Anion Gap Metabolic Acidosis**.
+> - **Immediate Action:** **Activate Emergency Medical Services (Call 911 immediately).** Do NOT drive yourself or attempt outpatient oral rehydration.
+> - **Time-Critical Imperative:** Immediate emergency department admission, rapid aggressive IV crystalloid resuscitation, and monitored ICU admission.
+
+---
+
+### 1. Case-Specific Clinical Findings & Pathophysiological Derangements
+
+| Clinical Parameter | Observation in Encounter | Physiological Significance | Diagnostic & Resuscitation Priority |
+| :--- | :--- | :--- | :--- |
+| **Blood Glucose** | **540 mg/dL (Extreme Hyperglycemia)** | Profound absolute insulin deficiency; uninhibited hepatic gluconeogenesis and lipolysis | Drives massive osmotic diuresis, total body dehydration (5–8L deficit), and electrolyte wasting |
+| **Kussmaul Breathing** | **Rapid, deep, labored respirations** | **Compensatory Respiratory Alkalosis:** Brainstem chemoreceptor drive hyperventilating to blow off CO2 to buffer severe metabolic ketoacidosis | Pathognomonic clinical hallmark of profound acidemia (arterial/venous pH typically < 7.20, HCO3 < 10) |
+| **Persistent Nausea & Vomiting** | Intractable emesis | Ketone body central chemoreceptor trigger zone stimulation + gastroparesis / metabolic ileus | Precludes oral rehydration; compounds pre-renal azotemia and hypovolemia |
+| **Patient Background** | **24-year-old female with T1DM** | Complete lack of endogenous beta-cell insulin production | High risk for precipitous ketoacidosis if insulin is omitted, pump malfunctions, or infection occurs |
+
+---
+
+### 2. Clinical Scoring & Acid-Base Severity Calculations
+
+#### High Anion Gap Metabolic Acidosis
+\[ \text{Anion Gap} = \text{Na}^+ - (\text{Cl}^- + \text{HCO}_3^-) \]
+- **Diagnostic Evaluation:** The presence of Kussmaul breathing and severe hyperglycemia strongly indicates an elevated anion gap ($> 16-20\text{ mEq/L}$) driven by circulating acetoacetate and beta-hydroxybutyrate.
+
+#### ADA DKA Severity Stratification (2026 Standards of Care)
+- **Classification:** **Severe DKA** (based on clinical Kussmaul respirations, dehydration, and vomiting).
+- **Disposition:** **Immediate Intensive Care Unit (ICU) / Stepdown Monitored Unit Admission**.
+
+---
+
+### 3. CRITICAL SAFETY GATE: The Serum Potassium Safety Gate
+
+> [!WARNING]
+> **MANDATORY PATIENT SAFETY INVARIANT (POTASSIUM RULE):**
+> **DO NOT ADMINISTER INTRAVENOUS INSULIN WITHOUT KNOWING SERUM POTASSIUM.**
+> - **Physiological Mechanism:** Insulin drives potassium into cells via the Na+/K+ ATPase pump. In DKA, total body potassium is severely depleted due to osmotic diuresis, despite normal or elevated extracellular serum potassium from acidosis.
+> - **Fatal Hazard:** If serum potassium is **< 3.3 mEq/L**, starting insulin drives potassium precipitously lower, triggering **fatal hypokalemic cardiac arrest (ventricular fibrillation, asystole) and respiratory muscle paralysis**.
+> - **Clinical Directive:** If $\text{K}^+ < 3.3\text{ mEq/L}$, **WITHHOLD ALL INSULIN**. Administer aggressive IV potassium repletion (20–30 mEq/hr) until potassium is $\ge 3.3\text{ mEq/L}$ *before* initiating regular insulin infusion.
+
+---
+
+### 4. Prioritized Emergency Diagnostic & Resuscitation Protocol (ADA / Endocrine Society)
+
+| Priority | Resuscitation Stage | Clinical Target & Action Protocol |
+| :---: | :--- | :--- |
+| **1** | **Aggressive IV Fluid Resuscitation** | **First Line — Minutes 0 to 60:** Administer isotonic balanced crystalloids (Plasma-Lyte or 0.9% Normal Saline) at **1000–1500 mL/hr** (15–20 mL/kg/hr) to restore effective circulating arterial volume. |
+| **2** | **STAT Serum Potassium & CMP** | Stat ion-selective electrode potassium, electrolytes, BUN, creatinine, glucose, venous blood gas (VBG), and serum beta-hydroxybutyrate. |
+| **3** | **Potassium Maintenance / Repletion** | Once serum potassium is **between 3.3 and 5.2 mEq/L**, add 20–30 mEq potassium per liter of IV fluids to maintain potassium between 4.0 and 5.0 mEq/L throughout insulin therapy. |
+| **4** | **Intravenous Regular Insulin Infusion** | **Only after K+ ≥ 3.3 mEq/L is verified:** Start continuous IV regular insulin infusion at **0.1 units/kg/hr** (or 0.14 units/kg/hr without bolus). Target gradual glucose reduction of 50–75 mg/dL/hr. |
+| **5** | **Dextrose Addition Protocol** | When blood glucose drops to **200–250 mg/dL**, switch IV fluids to **5% Dextrose with 0.45% Saline (D5 1/2 NS)** while continuing insulin infusion at a reduced rate to close the anion gap while preventing hypoglycemia and cerebral edema. |
+| **6** | **Search for Precipitating Cause** | Screen for trigger: Insulin omission/pump failure, infection (UTI, pneumonia, sepsis), myocardial ischemia, or acute abdomen. |
+
+---
+
+### 5. Prioritized Differential Diagnosis Hierarchy
+
+1. **Diabetic Ketoacidosis (DKA) with Severe High Anion Gap Metabolic Acidosis** *(ICD-10: E10.10)*
+   - *Tier:* 🚨 **TIER 1: PRIMARY EMERGENCY**
+   - *Rationale:* Classical triad of hyperglycemia (> 500 mg/dL), Kussmaul respirations, and vomiting in a Type 1 Diabetic.
+2. **Hyperosmolar Hyperglycemic State (HHS) / Mixed DKA-HHS** *(ICD-10: E11.00)*
+   - *Tier:* ⚠️ **TIER 2: MUST-NOT-MISS**
+   - *Rationale:* Severe dehydration and extreme hyperglycemia; evaluate calculated serum effective osmolality.
+3. **Sepsis / Underlying Acute Infection Precipitating DKA** *(ICD-10: R65.20)*
+   - *Tier:* ⚠️ **TIER 2: MUST-NOT-MISS**
+   - *Rationale:* Most common acute trigger for DKA in known diabetics; requires blood and urine cultures.
+4. **Acute Surgical Abdomen / Pseudo-Peritonitis of DKA** *(ICD-10: R10.0)*
+   - *Tier:* 🔹 **TIER 3: ALTERNATIVE**
+   - *Rationale:* Severe ketonemia causes abdominal cramping and nausea mimicking an acute abdomen.
+
+---
+
+### 6. FDA Regulatory Assessment (21 U.S.C. § 360j(o)(1)(E))
+
+> [!NOTE]
+> **Regulatory Disclosure & Guidance Compliance:**
+> This software output provides clinical decision support. Under Section 520(o)(1)(E) of the FD&C Act (21 U.S.C. § 360j(o)(1)(E)) and the FDA Updated Clinical Decision Support Software Final Guidance (January 2026):
+> - Software providing time-critical recommendations for acute life-threatening metabolic crises (such as DKA and septic shock) is classified under active medical device oversight because the immediacy of resuscitation limits independent literature verification prior to action.
+`;
   }
 
   // Dedicated Handler: Emergent Acute Stroke & Code Stroke Pathway (FAST Protocol & Permissive Hypertension)

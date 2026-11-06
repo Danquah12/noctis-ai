@@ -187,4 +187,19 @@ describe("Noctis Patient Diagnostic & Triage Intelligence Engine (NPDE)", () => 
     assert.match(res, /Noctis Patient Diagnostic & Triage Intelligence Dossier/);
     assert.match(res, /Gastroesophageal Reflux/);
   });
+
+  it('enforces P0 Emergency Gate and Potassium Safety Gate for severe DKA presentation without ACS leakage', () => {
+    const res = handleNaturalPatientDiagnosticQuery(
+      '24-year-old female with Type 1 Diabetes presents with severe nausea, vomiting, Kussmaul breathing, and blood glucose of 540 mg/dL'
+    );
+
+    assert.ok(res !== null);
+    assert.match(res, /P0 IMMEDIATE EMERGENCY/);
+    assert.match(res, /21 U\.S\.C\. § 360j\(o\)\(1\)\(E\)/);
+    assert.match(res, /Diabetic Ketoacidosis/);
+    assert.match(res, /Kussmaul/);
+    assert.match(res, /3\.3\s*mEq\/L/);
+    assert.doesNotMatch(res, /Central Chest Discomfort/);
+    assert.doesNotMatch(res, /154\/96\s*mmHg/);
+  });
 });
