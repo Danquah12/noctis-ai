@@ -3606,6 +3606,18 @@ export function handleNaturalHealthQuery(
   turns: { role: string; content: string }[] = []
 ): string | null {
   const q = question.trim();
+
+  // Zero-trust domain boundary: Non-health creation, web development, tourism, or engineering queries must NEVER enter health engine
+  if (
+    /\b(build|develop|create|code|design|website|web\s*site|tourism|tourist|travel\s+guide|itinerary|attractions|hotel|sightseeing|regions?\s+of\s+ghana|frontend|backend)\b/i.test(
+      q
+    ) &&
+    !/\b(fever|chills|patient|diagnos[eb]|sickness|illness|malaria|infection|disease|symptoms?|clinical|medical|hospital|doctor|physician|health\s+app|health\s+website)\b/i.test(
+      q
+    )
+  ) {
+    return null;
+  }
   const isModernEmergencyTest =
     /\b(test[-_\s]*01[0-9]|test[-_\s]*014[-_\s]*r\d*|noctis[-_\s]*health[-_\s]*live[-_\s]*01[0-9]|nh[-_\s]*test[-_\s]*01[0-9]|emergency\s+workflow\s+routing\s+release\s+gate)\b/i.test(
       q
@@ -4198,7 +4210,9 @@ export const NOCTIS_PHYSICIAN_DIAGNOSTIC_ATLAS: PhysicianSyndromeEntry[] = [
     specialty: "Infectious Disease & Tropical Medicine",
     clinicalPresentationName: "Acute Febrile Illness with Rigors, Headache, Myalgias & Thrombocytopenia (Suspected Malaria / Typhoid / Dengue / Sepsis)",
     keywordTriggers: [
-      /\b(malaria|plasmodium|falciparum|vivax|anopheles|mosquito|rigors?|chills\s+and\s+fever|intermittent\s+fever|cyclic\s+fever|typhoid|enteric\s+fever|salmonella\s+typhi|dengue|breakbone|retro-?orbital|ghana|nigeria|kenya|sub-?saharan|tropics?|endemic|thick\s+and\s+thin\s+smear|parasitemia)\b/i,
+      /\b(malaria|plasmodium|falciparum|vivax|anopheles|mosquito|rigors?|chills\s+and\s+fever|intermittent\s+fever|cyclic\s+fever|typhoid|enteric\s+fever|salmonella\s+typhi|dengue|breakbone|retro-?orbital|thick\s+and\s+thin\s+smear|parasitemia)\b/i,
+      /\b(fever|chills|illness|symptoms?|rigors?|travel(?:ed)?|returned|returning)\b[\s\S]{0,60}\b(ghana|nigeria|kenya|sub-?saharan|tropics?|endemic)\b/i,
+      /\b(ghana|nigeria|kenya|sub-?saharan|tropics?|endemic)\b[\s\S]{0,60}\b(fever|chills|illness|symptoms?|rigors?|travel(?:ed)?|returned|returning)\b/i,
       /\b(fever)\b[\s\S]{0,120}\b(chills|headache|joint\s+pain|body\s+aches|myalgia|bitter\s+taste|splenomegaly|thrombocytopenia|platelets?)\b/i,
     ],
     leadingDiagnosis: {
@@ -6025,6 +6039,16 @@ export function buildPhysicianChallengeTest003Report(question = ""): string {
  */
 export function handlePhysicianDiagnosticQuery(question: string): string | null {
   const q = question.trim();
+
+  // Guard: Non-clinical creation, software, web design, tourism, or engineering requests must NEVER be hijacked
+  if (
+    /\b(build|develop|create|code|design|website|web\s*site|tourism|tourist|travel\s+guide|itinerary|attractions|hotel|sightseeing|frontend|backend)\b/i.test(
+      q
+    ) &&
+    !/\b(fever|chills|patient|diagnos[eb]|sickness|illness|malaria|infection|disease|symptoms?)\b/i.test(q)
+  ) {
+    return null;
+  }
 
   // 00. Check if the user is running NOCTIS PHYSICIAN ENGINE — CHALLENGE TEST 003 (67yo male, 10-hour flight, HR 126, BP 92/64, RR 30, SpO2 88%, troponin/D-dimer elevated)
   if (
