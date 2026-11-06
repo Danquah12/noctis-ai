@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { AlertTriangle, ChevronDown, ChevronUp, Flame, ExternalLink, ShieldAlert, Sparkles } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronUp, Flame, ExternalLink, ShieldAlert, Sparkles, Search, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface LiveCveEntry {
@@ -70,6 +70,34 @@ export default function NoctisLiveCveTicker({ onSelectCve, className }: NoctisLi
   const [activeIdx, setActiveIdx] = useState(0);
   const [expanded, setExpanded] = useState(false);
   const [selectedVendorFilter, setSelectedVendorFilter] = useState<string>("All");
+  const [manualCve, setManualCve] = useState<string>("");
+
+  const handleManualSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const raw = manualCve.trim();
+    let targetCve = raw;
+    if (!targetCve) {
+      targetCve = entries[activeIdx]?.cveId || "CVE-2024-3400";
+    } else {
+      targetCve = targetCve.toUpperCase().replace(/\s+/g, "-");
+      if (!targetCve.startsWith("CVE-")) {
+        if (/^\d{4}-\d{4,8}$/.test(targetCve)) {
+          targetCve = `CVE-${targetCve}`;
+        } else if (/^CVE\d{4}/.test(targetCve)) {
+          targetCve = targetCve.replace(/^CVE/, "CVE-");
+        }
+      }
+    }
+
+    if (onSelectCve) {
+      onSelectCve(
+        targetCve,
+        `Assess active weaponization, CVSS exploitability, attack vectors, EPSS score, and CISA KEV remediation playbook for ${targetCve}.`
+      );
+    }
+    setManualCve("");
+    setExpanded(false);
+  };
 
   // Cycle ticker every 6 seconds if not expanded
   useEffect(() => {
@@ -141,20 +169,29 @@ export default function NoctisLiveCveTicker({ onSelectCve, className }: NoctisLi
           </div>
         </div>
 
-        {/* Controls */}
+        {/* Controls: Manual Input + Investigate Button + Drawer Toggle */}
         <div className="flex items-center gap-2 shrink-0 pl-2">
-          <button
-            type="button"
-            onClick={() =>
-              onSelectCve?.(
-                current.cveId,
-                `Assess active weaponization, CVSS exploitability, and CISA KEV remediation for ${current.cveId} (${current.vendor} ${current.product}).`
-              )
-            }
-            className="hidden sm:inline-flex items-center gap-1 text-[11px] font-sans font-medium text-zinc-400 hover:text-[#e4b86a] transition"
-          >
-            Investigate →
-          </button>
+          <form onSubmit={handleManualSubmit} className="flex items-center gap-1.5">
+            <div className="relative flex items-center">
+              <Search className="pointer-events-none absolute left-2 size-3 text-zinc-500" />
+              <input
+                type="text"
+                value={manualCve}
+                onChange={(e) => setManualCve(e.target.value)}
+                placeholder="CVE-YYYY-NNNN"
+                className="h-6 w-28 sm:w-36 md:w-44 rounded-full border border-white/15 bg-white/5 pl-6 pr-2 text-[11px] font-mono text-zinc-100 placeholder:text-zinc-500 focus:border-[#e4b86a] focus:bg-[#121622] focus:outline-none transition uppercase"
+                title="Enter any CVE value and press Enter or click Investigate"
+              />
+            </div>
+            <button
+              type="submit"
+              className="inline-flex h-6 items-center gap-1 rounded-full bg-[#e4b86a] hover:bg-[#d4a85a] text-[#1a1408] px-2.5 text-[11px] font-sans font-bold shadow-sm transition active:scale-95 cursor-pointer whitespace-nowrap"
+              title="Investigate this CVE (or press Enter)"
+            >
+              <span>Investigate</span>
+              <ArrowRight className="size-3" />
+            </button>
+          </form>
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
@@ -169,6 +206,32 @@ export default function NoctisLiveCveTicker({ onSelectCve, className }: NoctisLi
       {/* Expanded Multi-CVE Radar Drawer */}
       {expanded ? (
         <div className="border-t border-white/10 bg-[#0a0c12] p-4 text-xs font-sans animate-in slide-in-from-top-2 duration-200">
+          {/* Prominent Manual CVE Investigation Banner */}
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2.5 rounded-xl border border-white/10 bg-white/[0.04] p-2.5">
+            <div className="flex items-center gap-2">
+              <Search className="size-4 text-[#e4b86a]" />
+              <div>
+                <span className="font-semibold text-xs text-zinc-200">Manual CVE Deep Investigation</span>
+                <p className="text-[11px] text-zinc-400">Enter any CVE identifier from NVD / CISA KEV to simulate weaponization and remediation</p>
+              </div>
+            </div>
+            <form onSubmit={handleManualSubmit} className="flex flex-1 items-center gap-2 min-w-[280px] max-w-md">
+              <input
+                type="text"
+                value={manualCve}
+                onChange={(e) => setManualCve(e.target.value)}
+                placeholder="e.g. CVE-2024-3400, CVE-2023-46805, CVE-2021-44228"
+                className="h-8 flex-1 rounded-lg border border-white/15 bg-black/60 px-3 text-xs font-mono text-zinc-100 placeholder:text-zinc-500 focus:border-[#e4b86a] focus:outline-none uppercase"
+              />
+              <button
+                type="submit"
+                className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[#e4b86a] hover:bg-[#d4a85a] px-3.5 text-xs font-bold text-[#1a1408] transition active:scale-95 cursor-pointer whitespace-nowrap"
+              >
+                <Sparkles className="size-3.5" />
+                <span>Investigate CVE</span>
+              </button>
+            </form>
+          </div>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <ShieldAlert className="size-4 text-rose-400" />

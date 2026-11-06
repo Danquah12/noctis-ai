@@ -27,6 +27,7 @@ import NoctisAgentStepper from "@/components/noctis/NoctisAgentStepper";
 import NoctisLiveCveTicker from "@/components/noctis/NoctisLiveCveTicker";
 import NoctisBlastRadiusStrip from "@/components/noctis/NoctisBlastRadiusStrip";
 import { NoctisVoiceVisualizer } from "@/components/noctis/NoctisVoiceVisualizer";
+import { NoctisVoiceSelectorModal } from "@/components/noctis/NoctisVoiceSelectorModal";
 import { NoctisWorkspaceExplorer, getActiveProjectContext } from "@/components/noctis/NoctisWorkspaceExplorer";
 import { NoctisDeepResearchModal } from "@/components/noctis/NoctisDeepResearchModal";
 import { NoctisModelPicker } from "@/components/noctis/NoctisModelPicker";
@@ -67,6 +68,7 @@ import {
   createAudioLevelAnalyzer,
   isSpeechRecognitionSupported,
   isBraveBrowser,
+  getVoicePersona,
   type VoicePersona,
 } from "@/lib/noctis-voice";
 import { CANVASES, useTheme } from "@/lib/theme";
@@ -3669,8 +3671,26 @@ export function NoctisDesk() {
   const [voicePhase, setVoicePhase] = useState<"listen" | "think" | "speak" | "idle">("idle");
   const [voiceSaid, setVoiceSaid] = useState("");
   const [voiceReply, setVoiceReply] = useState("");
-  const [voicePersona, setVoicePersona] = useState<VoicePersona>("alloy");
+  const [voicePersona, setVoicePersona] = useState<VoicePersona>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("noctis_preferred_voice");
+        if (saved) return saved as VoicePersona;
+      } catch {}
+    }
+    return "alloy";
+  });
+  const [voiceModalOpen, setVoiceModalOpen] = useState(false);
   const [readingTurnIndex, setReadingTurnIndex] = useState<number | null>(null);
+
+  const handleSelectVoicePersona = (newPersona: VoicePersona) => {
+    setVoicePersona(newPersona);
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("noctis_preferred_voice", newPersona);
+      } catch {}
+    }
+  };
   const [voiceAudioLevel, setVoiceAudioLevel] = useState(0);
   const [voiceMuted, setVoiceMuted] = useState(false);
   const voiceMutedRef = useRef(false);
@@ -7269,7 +7289,7 @@ export function NoctisDesk() {
                 responseText={voiceReply}
                 audioLevel={voiceAudioLevel}
                 persona={voicePersona}
-                onPersonaChange={setVoicePersona}
+                onPersonaChange={handleSelectVoicePersona}
                 isMuted={voiceMuted}
                 onToggleMute={() => setVoiceMuted(!voiceMuted)}
                 onInterrupt={() => {
@@ -7887,6 +7907,18 @@ export function NoctisDesk() {
                               </button>
                             );
                           })()}
+                          <button
+                            type="button"
+                            onClick={() => setVoiceModalOpen(true)}
+                            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs text-zinc-400 hover:bg-white/10 hover:text-zinc-200 transition border border-white/10 hover:border-white/20 group shadow-sm"
+                            title={`Reading Voice: ${getVoicePersona(voicePersona).label} (${getVoicePersona(voicePersona).tone}). Click to choose voice.`}
+                          >
+                            <Mic className="size-3 text-[#e4b86a] group-hover:scale-110 transition-transform" />
+                            <span className="text-[11px] font-medium text-zinc-300 group-hover:text-white">
+                              {getVoicePersona(voicePersona).label}
+                            </span>
+                            <ChevronDown className="size-3 text-zinc-500 group-hover:text-zinc-300" />
+                          </button>
                           {asked ? (
                             <button
                               type="button"
@@ -8341,6 +8373,14 @@ export function NoctisDesk() {
       <NoctisBrainModal
         isOpen={brainModalOpen}
         onClose={() => setBrainModalOpen(false)}
+      />
+      <NoctisVoiceSelectorModal
+        isOpen={voiceModalOpen}
+        currentPersona={voicePersona}
+        onSelectPersona={handleSelectVoicePersona}
+        onClose={() => setVoiceModalOpen(false)}
+        title="Choose Reading & Speaking Voice"
+        actionLabel="Set Reading Voice"
       />
       <NoctisPluginExecutorModal
         plugin={executorPlugin}

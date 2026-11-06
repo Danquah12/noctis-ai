@@ -12,12 +12,14 @@ import {
   isSpeechSynthesisSupported,
 } from "@/lib/noctis-voice";
 
-interface NoctisVoiceSelectorModalProps {
+export interface NoctisVoiceSelectorModalProps {
   isOpen: boolean;
   currentPersona: VoicePersona;
   onSelectPersona: (persona: VoicePersona) => void;
   onClose: () => void;
   onStartVoice?: (persona: VoicePersona) => void;
+  title?: string;
+  actionLabel?: string;
 }
 
 export function NoctisVoiceSelectorModal({
@@ -26,6 +28,8 @@ export function NoctisVoiceSelectorModal({
   onSelectPersona,
   onClose,
   onStartVoice,
+  title,
+  actionLabel,
 }: NoctisVoiceSelectorModalProps) {
   const [selected, setSelected] = useState<VoicePersona>(currentPersona || "maple");
   const [previewingId, setPreviewingId] = useState<VoicePersona | null>(null);
@@ -101,7 +105,7 @@ export function NoctisVoiceSelectorModal({
         {/* Top Header with Centered Title & Close Button */}
         <div className="relative flex items-center justify-between px-6 pt-5 pb-2">
           <div className="w-8" />
-          <h2 className="text-xl font-bold tracking-tight text-white">Choose your voice</h2>
+          <h2 className="text-xl font-bold tracking-tight text-white">{title || "Choose your voice"}</h2>
           <button
             type="button"
             onClick={() => {
@@ -250,7 +254,7 @@ export function NoctisVoiceSelectorModal({
             onClick={handleStartVoice}
             className="flex w-full items-center justify-center rounded-full bg-white py-3.5 px-6 text-[16px] font-semibold text-black shadow-lg transition active:scale-[0.98] hover:bg-zinc-200"
           >
-            Start Voice
+            {actionLabel || (onStartVoice ? "Start Voice" : "Set Voice")}
           </button>
         </div>
       </div>
