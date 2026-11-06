@@ -56,7 +56,28 @@ export default function NoctisTerminal({
   }, [history]);
 
   function executeCommand(cmdRaw: string) {
-    const cmd = cmdRaw.trim();
+    // If user pasted a multiline block or lines with prompt prefixes, split and process
+    let cmd = cmdRaw.trim();
+    if (!cmd) return;
+
+    // Handle multiline paste: take the first clean command or sequence
+    if (cmd.includes("\n")) {
+      const lines = cmd.split("\n").map(l => l.trim()).filter(Boolean);
+      for (const line of lines) {
+        executeSingleCommand(line);
+      }
+      return;
+    }
+
+    executeSingleCommand(cmd);
+  }
+
+  function executeSingleCommand(cmdRaw: string) {
+    let cmd = cmdRaw.trim();
+    if (!cmd) return;
+
+    // Strip copied terminal prompt prefixes (e.g. "noctis@sovereign:~$ ", "$ ", "> ")
+    cmd = cmd.replace(/^(?:noctis@[a-zA-Z0-9_-]+:?[~A-Za-z0-9_/-]*[$#]\s*|\$\s*|>\s*)+/i, "").trim();
     if (!cmd) return;
 
     const parts = cmd.split(/\s+/);
@@ -68,6 +89,22 @@ export default function NoctisTerminal({
     let isError = false;
 
     switch (main) {
+      case "init":
+        const isAirGap = arg.includes("air-gap");
+        output = (
+          <div className="space-y-1 text-zinc-300">
+            <p className="text-emerald-400 font-semibold">
+              [+] Noctis {isAirGap ? "Air-Gap Enclave" : "Sovereign Terminal"} v2.4 initialized. {isAirGap ? "WAN egress = 0." : ""}
+            </p>
+            <p className="text-zinc-400 text-xs">
+              {isAirGap 
+                ? "Zero-packet egress isolation active. All remote sockets severed. Local WebGPU/WASM engine online."
+                : "Direct sandboxed execution plane. Type help for available commands or click quick actions above."}
+            </p>
+          </div>
+        );
+        break;
+
       case "help":
         output = (
           <div className="space-y-1 text-zinc-300 text-xs">
