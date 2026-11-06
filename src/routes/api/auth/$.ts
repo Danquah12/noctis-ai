@@ -18,7 +18,10 @@ function failure(err: unknown): Response {
 }
 
 async function ensureCredentialUserInDb(emailRaw: string, passwordRaw: string, nameRaw?: string) {
-  const email = emailRaw.trim().toLowerCase();
+  let email = emailRaw.trim().toLowerCase();
+  if (email && !email.includes("@")) {
+    email = `${email.replace(/[^a-z0-9._-]/g, "")}@dstrike.app`;
+  }
   const password = passwordRaw;
   if (!email.includes("@") || password.length < 4) return null;
   const display = (nameRaw || email.split("@")[0] || "Member").trim();
@@ -89,19 +92,34 @@ async function handle(request: Request): Promise<Response> {
     const isSignOut = request.method === "POST" && pathname.endsWith("/sign-out");
     const isGetSession = request.method === "GET" && pathname.endsWith("/get-session");
 
+    let reqToPass = request;
     let provisionedUser: { id: string; email: string; name: string } | null = null;
-    if (isSignInEmail) {
+    if (isSignInEmail || isSignUpEmail) {
       const body = (await request.clone().json().catch(() => null)) as {
         email?: string;
         password?: string;
         name?: string;
       } | null;
       if (body?.email && body?.password) {
-        provisionedUser = await ensureCredentialUserInDb(body.email, body.password, body.name).catch(() => null);
+        let cleanEmail = body.email.trim().toLowerCase();
+        if (!cleanEmail.includes("@")) {
+          cleanEmail = `${cleanEmail.replace(/[^a-z0-9._-]/g, "")}@dstrike.app`;
+          const newBody = JSON.stringify({ ...body, email: cleanEmail });
+          const newHeaders = new Headers(request.headers);
+          newHeaders.set("content-type", "application/json");
+          reqToPass = new Request(request.url, {
+            method: request.method,
+            headers: newHeaders,
+            body: newBody,
+          });
+        }
+        if (isSignInEmail) {
+          provisionedUser = await ensureCredentialUserInDb(cleanEmail, body.password, body.name).catch(() => null);
+        }
       }
     }
 
-    const res = await auth.handler(request);
+    const res = await auth.handler(reqToPass);
 
     if (isSignOut) {
       return appendSetCookie(res, buildMemberClearCookie());

@@ -91,11 +91,15 @@ const LOCAL_DEV_ORIGINS: string[] = [
   "http://localhost:8080",
   "http://127.0.0.1:8080",
   "http://[::1]:8080",
+  "https://dstrike.app",
+  "https://www.dstrike.app",
+  "https://noctis.social",
+  "https://www.noctis.social",
 ];
 const baseURL = explicitBaseURL ?? {
   // Include loopback hosts so dynamic baseURL resolves for local email/password
   // (not only the preview wildcard). *.vercel.app is the published host.
-  allowedHosts: [...previewAllowedHosts, "localhost", "127.0.0.1", "[::1]", "*.vercel.app"],
+  allowedHosts: [...previewAllowedHosts, "localhost", "127.0.0.1", "[::1]", "*.vercel.app", "*.dstrike.app", "dstrike.app", "*.noctis.social", "noctis.social"],
   // `auto` → trust both http:// and https:// expansions of allowedHosts
   // (preview is https; local dev is http).
   protocol: "auto" as const,

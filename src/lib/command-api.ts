@@ -229,10 +229,13 @@ export const listMembers = createServerFn({ method: "GET" })
 /** Create a clinic account in the same database Desk lists. */
 export const registerClinicMember = createServerFn({ method: "POST" })
   .validator((input: { name?: string; email?: string; password?: string; allowExisting?: boolean }) => {
-    const email = String(input?.email ?? "").trim().toLowerCase().slice(0, 180);
+    let email = String(input?.email ?? "").trim().toLowerCase().slice(0, 180);
+    if (email && !email.includes("@")) {
+      email = `${email.replace(/[^a-z0-9._-]/g, "")}@dstrike.app`;
+    }
     const password = String(input?.password ?? "");
     const name = String(input?.name ?? "").trim().slice(0, 80);
-    if (!email.includes("@")) throw new Error("Enter a valid email.");
+    if (!email || !email.includes("@")) throw new Error("Enter a valid email or username.");
     if (password.length < 4) throw new Error("Use at least 4 characters.");
     return { email, password, name, allowExisting: Boolean(input?.allowExisting) };
   })

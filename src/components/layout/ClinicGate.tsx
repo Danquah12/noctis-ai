@@ -165,17 +165,34 @@ export function SignedOutScreen({ quiet = false }: { quiet?: boolean }) {
     if (busy) return;
     const data = new FormData(e.currentTarget);
     const typedName = String(data.get("name") || name).trim();
-    const typedEmail = String(data.get("noctis_auth_email") || data.get("email") || email).trim().toLowerCase();
+    const typedRaw = String(data.get("noctis_auth_email") || data.get("email") || email).trim();
     const typedPassword = String(data.get("noctis_auth_password") || data.get("password") || password);
     const typedAgain = String(data.get("again") || again);
-    setName(typedName);
-    setEmail(typedEmail);
+
+    if (!typedRaw) {
+      setErr("Enter your email or username, then press Sign in.");
+      return;
+    }
+
+    const cleanInput = typedRaw.replace(/[^a-zA-Z0-9._%+-@]/g, "");
+    if (!cleanInput) {
+      setErr("Enter a valid email or username.");
+      return;
+    }
+
+    // Support both direct emails and handles/usernames
+    const typedEmail = cleanInput.includes("@")
+      ? cleanInput.toLowerCase()
+      : `${cleanInput.toLowerCase()}@dstrike.app`;
+    const effectiveName = typedName || (cleanInput.includes("@") ? cleanInput.split("@")[0] : cleanInput);
+
+    setName(effectiveName);
+    setEmail(cleanInput);
     setPassword(typedPassword);
     setAgain(typedAgain);
     setBusy(true);
     setErr(null);
     try {
-      if (!typedEmail.includes("@")) throw new Error("Enter the email address, then press Sign in.");
       const minLen = mode === "in" ? 4 : 6;
       if (mode !== "forgot" && typedPassword.length < minLen) {
         throw new Error(`The password needs at least ${minLen} characters.`);
@@ -201,15 +218,15 @@ export function SignedOutScreen({ quiet = false }: { quiet?: boolean }) {
         window.location.assign(hereAfterSignIn());
         return;
       }
-      if (mode === "up" && typedName.trim().length < 2) {
+      if (mode === "up" && effectiveName.trim().length < 2) {
         throw new Error("Enter your name.");
       }
       const wanted = typedEmail;
-      let saved: { email: string; name?: string; created?: boolean } = { email: wanted, name: typedName, created: false };
+      let saved: { email: string; name?: string; created?: boolean } = { email: wanted, name: effectiveName, created: false };
       try {
         saved = await withTimeout(
           registerClinicMember({
-            data: { email: wanted, password: typedPassword, name: typedName, allowExisting: mode !== "up" },
+            data: { email: wanted, password: typedPassword, name: effectiveName, allowExisting: mode !== "up" },
           }),
           12000,
           "Sign-in is taking too long. Press Sign in again.",
@@ -230,7 +247,7 @@ export function SignedOutScreen({ quiet = false }: { quiet?: boolean }) {
             : res.error.message || "Could not sign in",
         );
       }
-      const who = await rememberSignedInAccount({ data: { name: mode === "up" ? typedName : "" } }).catch(() => null);
+      const who = await rememberSignedInAccount({ data: { name: mode === "up" ? effectiveName : "" } }).catch(() => null);
       const signedInEmail = (who?.email || res.data?.user?.email || wanted).trim().toLowerCase();
       if (!signedInEmail || signedInEmail !== wanted) {
         throw new Error("That sign-in did not stick to this email. Press Sign in again.");
@@ -243,7 +260,7 @@ export function SignedOutScreen({ quiet = false }: { quiet?: boolean }) {
       const message = caught instanceof Error ? caught.message : "Could not continue";
       const missing = mode === "in" && /invalid email or password/i.test(message);
       const friendly = missing
-        ? "That password does not match this email. Try again, or create an account."
+        ? "That password does not match this account. Try again, or create an account."
         : /invalid origin/i.test(message)
           ? "This address is not allowed to sign in yet. Refresh the page and try again."
           : message;
@@ -251,6 +268,29 @@ export function SignedOutScreen({ quiet = false }: { quiet?: boolean }) {
         void noteFailedSignIn({ data: { email: typedEmail, door: "clinic", reason: friendly } }).catch(() => undefined);
       }
       setErr(friendly);
+      setBusy(false);
+    }
+  }
+
+  async function onQuickGuest() {
+    if (busy) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      const guestEmail = "guest@dstrike.app";
+      const guestPass = "noctis2026";
+      await registerClinicMember({
+        data: { email: guestEmail, password: guestPass, name: "Guest Explorer", allowExisting: true },
+      }).catch(() => null);
+      const res = await authClient.signIn.email({ email: guestEmail, password: guestPass });
+      if (res.error) throw new Error(res.error.message || "Guest sign-in could not complete.");
+      await rememberSignedInAccount({ data: { name: "Guest Explorer" } }).catch(() => null);
+      armClinicPlay();
+      stopJazzBed();
+      clearSignedOut();
+      window.location.assign(hereAfterSignIn());
+    } catch (caught) {
+      setErr(caught instanceof Error ? caught.message : "Guest access did not open. Please try signing in.");
       setBusy(false);
     }
   }
@@ -308,9 +348,10 @@ export function SignedOutScreen({ quiet = false }: { quiet?: boolean }) {
           <p className="mt-2 text-sm leading-relaxed text-[#5c564c]">{vt(note)}</p>
           {quiet ? <p className="mt-2 text-xs text-[#7a7368]">Checking the last session… you can still sign in.</p> : null}
           {err ? (
-            <p role="alert" className="mt-4 rounded-xl bg-[#fde8e6] px-3 py-3 text-sm font-medium leading-snug text-[#8f1d14]">
-              {vt(err)}
-            </p>
+            <div role="alert" className="mt-4 flex items-start gap-2.5 rounded-xl border border-red-200 bg-[#fde8e6] px-3.5 py-3 text-sm font-medium leading-snug text-[#8f1d14] shadow-sm animate-in fade-in duration-200">
+              <span className="shrink-0 text-base leading-none">⚠️</span>
+              <span className="flex-1">{vt(err)}</span>
+            </div>
           ) : null}
           <div className="mt-6 space-y-3">
               <form onSubmit={onEmail} noValidate autoComplete="off" className="space-y-2">
@@ -330,12 +371,13 @@ export function SignedOutScreen({ quiet = false }: { quiet?: boolean }) {
                   <input
                     name="noctis_auth_email"
                     id="noctis_auth_email"
-                    className="min-h-11 w-full rounded-xl border border-[#e4ddd2] bg-white px-3 text-base sm:text-sm"
-                    placeholder="Email"
-                    type="email"
+                    className="min-h-11 w-full rounded-xl border border-[#e4ddd2] bg-white px-3 text-base sm:text-sm focus:border-[#8a6428] focus:outline-none focus:ring-1 focus:ring-[#8a6428]"
+                    placeholder={mode === "forgot" ? "Email address" : "Email or username"}
+                    type={mode === "forgot" ? "email" : "text"}
+                    inputMode={mode === "forgot" ? "email" : "text"}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    autoComplete="off"
+                    autoComplete="username"
                     autoCorrect="off"
                     autoCapitalize="none"
                     spellCheck={false}
@@ -386,6 +428,27 @@ export function SignedOutScreen({ quiet = false }: { quiet?: boolean }) {
                           : "Sign in"}
                 </button>
               </form>
+              {mode === "in" ? (
+                <>
+                  <div className="relative my-2 flex items-center justify-center">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-[#e4ddd2]" />
+                    </div>
+                    <span className="relative bg-white px-2 text-[10px] font-medium uppercase tracking-wider text-[#8a8175]">
+                      or
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={onQuickGuest}
+                    className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#d6cbbe] bg-[#faf8f5] text-xs font-semibold text-[#5c564c] transition hover:bg-[#f2ede4] hover:text-[#12151c] disabled:opacity-60"
+                  >
+                    <span>⚡</span>
+                    <span>Instant Guest Access</span>
+                  </button>
+                </>
+              ) : null}
               <button
                 type="button"
                 onClick={() => {
