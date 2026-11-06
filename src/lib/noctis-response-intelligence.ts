@@ -36,6 +36,7 @@ import { handleNaturalEnclaveQuery } from "./noctis-enclave-attestation.ts";
 import { handleNaturalPqcQuery } from "./noctis-pqc-shield.ts";
 import { handleNaturalZkProofQuery } from "./noctis-zk-proof.ts";
 import { handleNaturalLexQuery } from "./noctis-lex-synthesizer.ts";
+import { handleNaturalLegalQuery } from "./noctis-legal-engine.ts";
 import { handleNaturalCanaryQuery } from "./noctis-canary-engine.ts";
 
 export type AdaptiveResponseMode = "Direct" | "Teaching" | "Technical" | "Audit";
@@ -1191,6 +1192,12 @@ export function runFollowUpIntelligence(
   const zkpResponse = handleNaturalZkProofQuery(currentQuestion);
   if (zkpResponse) {
     return adaptSpecialistEngineOutput(currentQuestion, zkpResponse, "NOCTIS-ZKPROOF-001");
+  }
+
+  // 00-legal. Noctis Legal Intelligence & Attorney Persona Engine (NOCTIS-LEGAL-001)
+  const legalResponse = handleNaturalLegalQuery(currentQuestion);
+  if (legalResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, legalResponse, "NOCTIS-LEGAL-001");
   }
 
   // 00-lex. Noctis Cross-Border Conflict-of-Laws Regulatory Synthesizer (NOCTIS-LEX-001)
