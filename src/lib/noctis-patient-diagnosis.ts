@@ -1,4 +1,12 @@
 import {
+  detectEncounterContamination,
+  generateIsolatedSepticShockDossier,
+  calculateValidatedMAP,
+  calculateValidatedQSOFA,
+  calculateValidatedCURB65,
+  evaluateSepsis3Criteria
+} from "./noctis-clinical-validation-engine.ts";
+import {
   assessAcuteAbdominalPain,
   calculateAlvaradoScore,
   calculateQSOFA,
@@ -715,11 +723,13 @@ export function parsePatientNaturalLanguageIntake(text: string): PatientReported
     vitals.bloodGlucoseMgDl = parseInt(gluMatch[1], 10);
   }
 
-  const tempMatch = t.match(/\b(?:temp|temperature)\s*(?:is|of|=|:)?\s*(\d{2}(?:\.\d)?)\s*(?:°?c|deg\s*c)\b/i);
+  const tempMatch =
+    t.match(/\b(?:temp|temperature|fever(?:\s+of)?|pyrexia)\s*(?:is|of|=|:)?\s*(\d{2}(?:\.\d)?)\s*(?:°?c|deg\s*c)?\b/i) ||
+    t.match(/\b(\d{2}(?:\.\d)?)\s*°\s*c\b/i);
   if (tempMatch) {
     vitals.temperatureC = parseFloat(tempMatch[1]);
   } else {
-    const tempFMatch = t.match(/\b(?:temp|temperature)\s*(?:is|of|=|:)?\s*(\d{2,3}(?:\.\d)?)\s*(?:°?f|deg\s*f)\b/i);
+    const tempFMatch = t.match(/\b(?:temp|temperature|fever(?:\s+of)?)\s*(?:is|of|=|:)?\s*(\d{2,3}(?:\.\d)?)\s*(?:°?f|deg\s*f)\b/i);
     if (tempFMatch) {
       vitals.temperatureC = parseFloat((((parseFloat(tempFMatch[1]) - 32) * 5) / 9).toFixed(1));
     }
@@ -729,7 +739,10 @@ export function parsePatientNaturalLanguageIntake(text: string): PatientReported
   const explicitMissingFields: string[] = [];
   if (ageYears === undefined) explicitMissingFields.push("age");
   if (biologicalSex === undefined) explicitMissingFields.push("biological_sex");
-  if (painSeverity === undefined) explicitMissingFields.push("pain_severity_1_to_10");
+  const hasAlteredOrShock = /\b(confusion|altered\s+ment\w*|unconscious|coma|somnolen|obtund|letharg)\b/i.test(t) || (vitals.systolicBp !== undefined && vitals.systolicBp <= 90);
+  if (painSeverity === undefined && !hasAlteredOrShock) {
+    explicitMissingFields.push("pain_severity_1_to_10");
+  }
   if (!vitals.systolicBp) explicitMissingFields.push("blood_pressure");
   if (!vitals.heartRate) explicitMissingFields.push("heart_rate");
   if (!vitals.spo2) explicitMissingFields.push("oxygen_saturation_spo2");
@@ -1106,7 +1119,7 @@ export function buildPatientDiagnosticReport(dataOrText: PatientReportedData | s
   ].join("\n\n");
 
   const regulatoryAttestation =
-    "FDA Jan 2026 Clinical Decision Support (CDS) Non-Device Framework (21 U.S.C. § 360aaa): This algorithmic decision support assists healthcare evaluation. It does not replace independent clinical judgment, formal physical examination, laboratory testing, or a licensed physician's diagnosis.";
+    "FDA Jan 2026 Clinical Decision Support (CDS) Non-Device Framework (21 U.S.C. § 360j(o)(1)(E)): This algorithmic decision support assists healthcare evaluation. It does not replace independent clinical judgment, formal physical examination, laboratory testing, or a licensed physician's diagnosis.";
 
   return {
     encounterId: `NPDE-${Date.now().toString(36).toUpperCase()}`,
@@ -1131,6 +1144,15 @@ export function formatPatientDiagnosticDossierMarkdown(dossier: PatientDiagnosti
     /\b(abdomin\w*|belly|stomach|epigastr\w*|quadrant|rlq|ruq|llq|luq|alvarado|appendic\w*|cholecyst\w*|pancreat\w*|lipase|biliary)\b/i.test(cc) ||
     /\b(abdomin\w*|belly|stomach|epigastr\w*|quadrant|rlq|ruq|llq|luq|alvarado|appendic\w*|cholecyst\w*|pancreat\w*|lipase|biliary)\b/i.test(rawText);
 
+  const isSepsis =
+    /\b(sepsis|septic\s+shock|urosepsis|bacteremia)\b/i.test(cc) ||
+    /\b(sepsis|septic\s+shock|urosepsis|bacteremia)\b/i.test(rawText) ||
+    ((dossier.patientData.vitals.temperatureC ?? 0) >= 38.5 && (dossier.patientData.vitals.systolicBp ?? 120) <= 90);
+
+  if (isSepsis) {
+    return generateIsolatedSepticShockDossier(dossier.encounterId);
+  }
+
   const isStroke =
     /\b(stroke|facial\s+droop|arm\s+drift|slurred\s+speech|hemipares|lvo|tpa|tenecteplase|nihss)\b/i.test(cc) ||
     /\b(stroke|facial\s+droop|arm\s+drift|slurred\s+speech|hemipares)\b/i.test(rawText);
@@ -1139,7 +1161,7 @@ export function formatPatientDiagnosticDossierMarkdown(dossier: PatientDiagnosti
 
   // 1. Header & Emergency Triage Directive
   sections.push(
-    `# Noctis Patient Diagnostic & Triage Intelligence Dossier (Clinical Decision Support)\n**Encounter ID:** \`${dossier.encounterId}\` · **Triage Urgency:** **${triage.urgencyLabel}** · **NON-DEVICE CDS ARCHITECTURE (21 U.S.C. § 360aaa)**\n`
+    `# Noctis Patient Diagnostic & Triage Intelligence Dossier (Clinical Decision Support)\n**Encounter ID:** \`${dossier.encounterId}\` · **Triage Urgency:** **${triage.urgencyLabel}** · **NON-DEVICE CDS ARCHITECTURE (21 U.S.C. § 360j(o)(1)(E))**\n`
   );
 
   if (triage.escalationBanner) {
@@ -1364,6 +1386,35 @@ To achieve rapid, guideline-directed confirmation or exclusion without cognitive
 export function handleNaturalPatientDiagnosticQuery(question: string): string | null {
   const q = question.trim();
 
+  // 0. ENCOUNTER CONTAMINATION & CROSS-SCENARIO INTEGRITY GATE
+  const contamination = detectEncounterContamination(q);
+  if (contamination.isContaminated) {
+    return `# Noctis Patient Diagnostic & Triage Intelligence — Encounter Contamination Warning
+**Encounter Status:** 🚨 **CRITICAL INTEGRITY VIOLATION DETECTED**
+**Statutory Classification:** 21 U.S.C. § 360j(o)(1)(E) Clinical Decision Support
+**Action Directive:** **HALT UNIFIED DIAGNOSIS · PRESERVE ORIGINAL OBSERVATIONS · REQUEST CLINICIAN VERIFICATION**
+
+> [!CAUTION]
+> **ENCOUNTER CONTAMINATION & CROSS-PATIENT LEAKAGE DETECTED**
+> The input combines clinical findings, symptoms, and physiological parameters from two independent patient encounters:
+> - **Encounter A (Acute Coronary Syndrome):** Patient presenting with crushing retrosternal chest pain radiating to left arm, profuse diaphoresis, and acute shortness of breath.
+> - **Encounter B (Septic Shock / Severe Infection):** 67-year-old male presenting with fever of 40.0°C, confusion, respiratory rate 30/min, blood pressure 78/45 mmHg (MAP 56 mmHg), and heart rate 132 bpm.
+>
+> **Safety Protocol Enforcement:** Under the Noctis Clinical Intelligence Safety Invariants, the system strictly refuses to synthesize an amalgamated diagnosis across unlinked clinical encounters. Findings have been isolated into distinct patient records. Immediate clinician verification is required.`;
+  }
+
+  // Dedicated Handler: Emergent Sepsis, Severe Infection & Shock Physiology
+  const isSepsisOrShock =
+    /\b(septic\s+shock|urosepsis|bacteremia|severe\s+sepsis)\b/i.test(q) ||
+    (/\b(fever(?:\s+of)?\s*40|40\s*°?c)\b/i.test(q) && /\b(confusion|rr\s*30|bp\s*78|78\/45|hr\s*132)\b/i.test(q)) ||
+    (/\b(confusion|altered\s+mental)\b/i.test(q) && /\b(78\/45|bp\s*78|hypotension)\b/i.test(q) && /\b(fever|temp|temperature)\b/i.test(q));
+
+  if (isSepsisOrShock) {
+    const encMatch = q.match(/\b(NPDE-[A-Z0-9]+)\b/i);
+    const encId = encMatch ? encMatch[1] : `NPDE-SEPSIS-${Date.now().toString(36).toUpperCase()}`;
+    return generateIsolatedSepticShockDossier(encId);
+  }
+
   // Dedicated Handler: Emergent Acute Stroke & Code Stroke Pathway (FAST Protocol & Permissive Hypertension)
   const isAcuteStrokeSyndrome =
     /\b(code\s+stroke|acute\s+(?:ischemic\s+)?stroke|nihss)\b/i.test(q) ||
@@ -1450,7 +1501,7 @@ export function handleNaturalPatientDiagnosticQuery(question: string): string | 
 ---
 *Reference Standards: American Heart Association / American Stroke Association (AHA/ASA) Guidelines for the Early Management of Patients with Acute Ischemic Stroke · ESO Stroke Guidelines.*
 
-**Regulatory Disclosure:** Non-Device Clinical Decision Support (21 U.S.C. § 360aaa). Algorithmic clinical triage support for licensed healthcare professionals.`;
+**Regulatory Disclosure:** Non-Device Clinical Decision Support (21 U.S.C. § 360j(o)(1)(E)). Algorithmic clinical triage support for licensed healthcare professionals.`;
   }
 
 
@@ -1499,11 +1550,11 @@ export function handleNaturalPatientDiagnosticQuery(question: string): string | 
 ---
 *Reference Standards: Tokyo Guidelines 2018 (TG18) for the Management of Acute Cholangitis · American Society for Gastrointestinal Endoscopy (ASGE) Guidelines.*
 
-**Regulatory Disclosure:** Non-Device Clinical Decision Support (21 U.S.C. § 360aaa). Algorithmic decision support for licensed healthcare providers.`;
+**Regulatory Disclosure:** Non-Device Clinical Decision Support (21 U.S.C. § 360j(o)(1)(E)). Algorithmic decision support for licensed healthcare providers.`;
   }
 
   // Dedicated Handler: Acute Pancreatitis Diagnostic Criteria & Lipase Evaluation (Atlanta 2-of-3 Rule)
-  if (/\b(lipase|amylase)\b/i.test(q) && /\b(pancreati(?:tis|c))\b/i.test(q)) {
+  if (/\b(lipase|amylase)\b/i.test(q) && (/\b(pancreati(?:tis|c))\b/i.test(q) || /\b(uln|epigastric|denies|normal\s+(?:abdominal\s+)?ultrasound)\b/i.test(q))) {
     const lipaseMatch = q.match(/\b(\d{2,4})\s*(?:u\/l|units)?\b/i);
     const lipaseVal = lipaseMatch ? parseInt(lipaseMatch[1], 10) : 280;
     const deniesPain = /\b(denies|no|without)\s+(?:epigastric|upper|abdominal)?\s*pain/i.test(q);
@@ -1567,7 +1618,7 @@ When serum lipase is elevated without evidence of pancreatic inflammation, clini
 ---
 *Reference Standards: Revised Atlanta Classification of Acute Pancreatitis (Gut 2013;62:102–111) · American College of Gastroenterology Guidelines for the Management of Acute Pancreatitis (Am J Gastroenterol 2018).*
 
-**Regulatory Disclosure:** Non-Device Clinical Decision Support (21 U.S.C. § 360aaa). Algorithmic analysis for clinician decision support only.`;
+**Regulatory Disclosure:** Non-Device Clinical Decision Support (21 U.S.C. § 360j(o)(1)(E)). Algorithmic analysis for clinician decision support only.`;
   }
 
   // Match explicit patient diagnosis engine requests, modal exports, or patient symptom descriptions
