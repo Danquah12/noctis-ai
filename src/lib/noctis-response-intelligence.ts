@@ -18,6 +18,7 @@ import { architectIntelligenceGadget } from "./noctis-architect-engine.ts";
 import { handleNaturalCyberSecurityQuery, isCyberSecurityOrSocQuery } from "./noctis-cyber-engine.ts";
 import { isAttackPathOrExploitabilityQuery } from "./noctis-attack-path-engine.ts";
 import { handleNaturalInvestmentQuery } from "./noctis-investment-engine.ts";
+import { handleNaturalRmfGrcQuery } from "./noctis-rmf-engine.ts";
 import { handleNaturalBibleQuery } from "./noctis-bible-engine.ts";
 import { runCouncilDeliberation, formatCouncilDossierMarkdown } from "./noctis-council.ts";
 import { handleNaturalDigitalTwinQuery } from "./noctis-digital-twin.ts";
@@ -1255,6 +1256,12 @@ export function runFollowUpIntelligence(
   const architectResponse = architectIntelligenceGadget(currentQuestion);
   if (architectResponse) {
     return adaptSpecialistEngineOutput(currentQuestion, architectResponse, "NOCTIS-ARCH-001");
+  }
+
+  // 00a-0a. Noctis RMF / GRC Intelligence Engine (NOCTIS-RMF-001, NIST SP 800-53 Rev. 5, FedRAMP High, 3PAO & OSCAL)
+  const rmfResponse = handleNaturalRmfGrcQuery(currentQuestion);
+  if (rmfResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, rmfResponse, "NOCTIS-RMF-001");
   }
 
   // 00a-0b. Noctis Research & Investment Intelligence Engine (NOCTIS-INVEST-001, Main Street & Wall Street, 12 Specialist Engines, Batch 001 & Working-Capital/Valuation/Risk Solver)

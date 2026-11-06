@@ -831,6 +831,9 @@ export function handleNaturalInvestmentQuery(question: string): string | null {
     ) ||
     /\b(verified\s+professional\s+execution\s+layer|noctis-verified-exec-001|tier-2\s+adversarial\s+suite|unified\s+predictive\s+intelligence\s+platform|noctis-pred-001|pred-1042|15\s+prediction\s+engines)\b/i.test(
       q
+    ) ||
+    /\b(fedramp|nist\s+sp|800-53|800-53a|800-53b|800-37|800-171|grc\b|rmf\b|poa&m|poam\b|3pao|security\s+control|fips\s*199|fips\s*200|oscal|stig\b|cmmc|ato\b|cm-3|ia-2|ac-6)\b/i.test(
+      q
     )
   ) {
     return null;
@@ -884,7 +887,7 @@ export function handleNaturalInvestmentQuery(question: string): string | null {
 
   // 3. General Wall Street or Main Street Financial & Investment Scenario Probe
   const isFinancialOrInvestmentProbe =
-    /\b(sec\s+edgar|10-k\b|10-q\b|8-k\b|xbrl\b|gaap\b|non-gaap|free\s+cash\s+flow|fcff\b|fcfe\b|wacc\b|discounted\s+cash\s+flow|\bdcf\b|ev\/ebitda|p\/e\s+multiple|earnings\s+quality|beneish|sloan\s+accrual|days\s+sales\s+outstanding|\bdso\b|days\s+inventory\s+outstanding|\bdio\b|cash\s+conversion\s+cycle|asc\s*606|channel\s+stuffing|value-at-risk|expected\s+shortfall|\bcvar\b|sharpe\s+ratio|look-ahead\s+bias|survivorship\s+bias|cfa\s+institute\s+standard|finra\b|emergency\s+reserve|debt\s+avalanche|debt\s+snowball|fdd\s+item\s*19|cap\s+rate|cash-on-cash\s+return|ponzi|investment\s+scam|operating\s+income|r&d\s+expense|gross\s+margin|rule\s+of\s+40|scaling\s+from|saas)\b/i.test(
+    /\b(sec\s+edgar|10-k\b|10-q\b|8-k\b|xbrl\b|gaap\b|non-gaap|free\s+cash\s+flow|fcff\b|fcfe\b|wacc\b|discounted\s+cash\s+flow|\bdcf\b|ev\/ebitda|p\/e\s+multiple|earnings\s+quality|beneish|sloan\s+accrual|days\s+sales\s+outstanding|\bdso\b|days\s+inventory\s+outstanding|\bdio\b|cash\s+conversion\s+cycle|asc\s*606|channel\s+stuffing|value-at-risk|expected\s+shortfall|\bcvar\b|sharpe\s+ratio|look-ahead\s+bias|survivorship\s+bias|cfa\s+institute\s+standard|finra\b|emergency\s+reserve|debt\s+avalanche|debt\s+snowball|fdd\s+item\s*19|cap\s+rate|cash-on-cash\s+return|ponzi|investment\s+scam|operating\s+income|r&d\s+expense|gross\s+margin|rule\s+of\s+40|scaling\s+from|saas\s+(?:revenue|arr|mrr|valuation|margin|metrics|pricing|churn|ltv|cac|multiple|ebitda|fcf))\b/i.test(
       q
     );
 
