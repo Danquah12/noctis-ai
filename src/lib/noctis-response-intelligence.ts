@@ -1078,6 +1078,14 @@ export function runFollowUpIntelligence(
 ): string | null {
   const state = extractConversationState(turns, currentQuestion);
 
+  // 00-cve. Specific CVE vulnerability exploitability, detection & remediation inquiry
+  if (/\b(CVE-\d{4}-\d{4,7})\b/i.test(currentQuestion)) {
+    const cyberResponse = handleNaturalCyberSecurityQuery(currentQuestion);
+    if (cyberResponse) {
+      return adaptSpecialistEngineOutput(currentQuestion, cyberResponse, "NOCTIS-CYBER-VULN-001");
+    }
+  }
+
   // 00-council. Noctis Council of Engines (Multi-Agent Debate & Consensus Engine)
   const isCouncilPrompt = /\b(?:convene\s+(?:the\s+)?council|council\s+of\s+engines|\/council|multi-agent\s+debate|council\s+deliberat\w*)\b/i.test(
     currentQuestion

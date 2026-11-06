@@ -399,6 +399,11 @@ export function handleNaturalRemediationQuery(question: string): string | null {
   const q = (question || "").trim();
   if (!q) return null;
 
+  // Never hijack specific CVE vulnerability queries into generic Active Directory / Cloud / K8s scripts
+  if (/\bCVE-\d{4}-\d{4,7}\b/i.test(q)) {
+    return null;
+  }
+
   const isRemedProbe =
     /\b(?:auto[- ]?remediat\w*|rollback\s*script|undo\s*script|pre[- ]?signed\s*fix|remediation\s*playbook|atomic\s*remediat\w*|dry[- ]?run\s*fix)\b/i.test(
       q

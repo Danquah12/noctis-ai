@@ -935,6 +935,12 @@ export function handleNaturalCyberSecurityQuery(question: string): string | null
   const careerAnswer = handleNaturalCareerQuery(question);
   if (careerAnswer) return careerAnswer;
 
+  // Authoritative priority for specific CVE queries: route directly to CVE intelligence engine
+  if (/\b(CVE-\d{4}-\d{4,7})\b/i.test(question)) {
+    const vulnAnswer = handleNaturalVulnQuery(question);
+    if (vulnAnswer) return vulnAnswer;
+  }
+
   const apxAnswer = handleAttackPathAndExploitabilityQuery(question);
   if (apxAnswer) return apxAnswer;
 
