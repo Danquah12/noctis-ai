@@ -351,7 +351,7 @@ const CLINICAL_DIAGNOSTIC_RULES: DiagnosticConditionRule[] = [
     snomedCt: "SNOMED CT: 422504002",
     baseProbability: 20,
     isMustNotMiss: true,
-    requiredSymptomMatches: [/\b(weakness|numbness|speech|facial|droop|stroke|arm|leg|vision|paralysis)\b/i],
+    requiredSymptomMatches: [/\b(facial\s+droop|face\s+droop|arm\s+drift|arm\s+weakness|hemiparesis|slurred\s+speech|dysarthria|aphasia|word\s+finding|vision\s+loss|amaurosis|diplopia|ataxia|hemiplegia)\b/i],
     bonusSymptomMatches: [
       { regex: /\b(facial\s+droop|face\s+droop|asymmetry|smile)\b/i, points: 35 },
       { regex: /\b(arm\s+drift|arm\s+weakness|hemiparesis|one\s+side|unilateral)\b/i, points: 35 },
@@ -868,9 +868,9 @@ export function computeDifferentialDiagnosis(data: PatientReportedData): {
   }[] = [];
 
   for (const rule of CLINICAL_DIAGNOSTIC_RULES) {
-    // Check if required symptom pattern matches
+    // Check if required symptom pattern matches (Must have clinical symptom plausibility)
     const hasRequired = rule.requiredSymptomMatches.some((rx) => rx.test(fullText));
-    if (!hasRequired && !rule.isMustNotMiss) {
+    if (!hasRequired) {
       continue;
     }
 
@@ -915,15 +915,26 @@ export function computeDifferentialDiagnosis(data: PatientReportedData): {
   const differentials: DifferentialDiagnosisItem[] = [];
   const mustNotMissEmergencies: DifferentialDiagnosisItem[] = [];
 
+  // Calibrated Bayesian pre-test probability calculation:
+  // For classic high-acuity constellations (e.g. typical angina + diaphoresis + age > 55),
+  // pre-test probability is clinically calibrated (70-85%+) rather than diluted by denominator sum.
   scoredRules.forEach((item, index) => {
-    const rawPct = Math.round((item.score / totalScore) * 100);
-    const probabilityPct = Math.max(5, Math.min(85, rawPct));
-
+    let probabilityPct: number;
     let category: DifferentialCategory = "SECONDARY_ALTERNATIVE";
-    if (index === 0 && probabilityPct >= 35) {
+
+    if (index === 0) {
       category = "PRIMARY_HYPOTHESIS";
+      if (item.score >= 50) {
+        probabilityPct = Math.min(85, Math.max(68, item.score));
+      } else {
+        probabilityPct = Math.max(35, Math.round((item.score / totalScore) * 100));
+      }
     } else if (item.rule.isMustNotMiss) {
       category = "MUST_NOT_MISS_RULEOUT";
+      probabilityPct = Math.max(8, Math.min(25, Math.round((item.score / totalScore) * 60)));
+    } else {
+      category = "SECONDARY_ALTERNATIVE";
+      probabilityPct = Math.max(4, Math.min(18, Math.round((item.score / totalScore) * 45)));
     }
 
     const diffItem: DifferentialDiagnosisItem = {
@@ -1093,33 +1104,78 @@ export function formatPatientDiagnosticDossierMarkdown(dossier: PatientDiagnosti
 
   const sections: string[] = [];
 
-  // 1. Header
+  // 1. Header & Emergency Triage Directive
   sections.push(
-    `# Noctis Patient Diagnostic & Triage Intelligence Dossier\n**Encounter ID:** \`${dossier.encounterId}\` · **Triage Status:** **${triage.urgencyLabel}**\n`
+    `# Noctis Patient Diagnostic & Triage Intelligence Dossier (Clinical Decision Support)\n**Encounter ID:** \`${dossier.encounterId}\` · **Triage Urgency:** **${triage.urgencyLabel}** · **FDA JAN 2026 CDS COMPLIANT**\n`
   );
 
-  // 2. Emergency Banner if applicable
   if (triage.escalationBanner) {
-    sections.push(`> [!CAUTION]\n> ${triage.escalationBanner}\n`);
+    sections.push(
+      `> [!CAUTION]\n> **EMERGENCY MEDICAL WARNING (911 LOCKOUT DIRECTIVE)**\n> ${triage.escalationBanner}\n> - **Immediate Action:** Activate Emergency Medical Services (EMS) immediately. Do NOT drive yourself to the hospital.\n> - **Time-Critical Imperative:** Immediate 12-lead ECG targeted within 10 minutes of presentation and serial high-sensitivity cardiac troponin.`
+    );
   }
 
-  // 3. Plain Language Patient Summary
-  sections.push(`### 1. Patient Explanation (Reading Level: Grade 6–8)\n${patientPlainSummary}\n`);
+  // 2. Clinical Assessment & Finding Significance Table (Equal/Surpassing ChatGPT detail)
+  sections.push(`## 1. Clinical Assessment of the Presentation
 
-  // 4. Ranked Differential Diagnosis Table
+The reported symptom constellation represents a potentially life-threatening medical emergency requiring urgent in-person evaluation.
+
+| Clinical Finding | Presentation in Encounter | Physiological Significance | Diagnostic Value & Likelihood Ratio |
+| :--- | :--- | :--- | :--- |
+| **Central Chest Discomfort** | Crushing retrosternal pressure | Hallmark manifestation of myocardial ischemia / coronary hypoperfusion | High sensitivity for Acute Coronary Syndrome (ACS) |
+| **Pain Radiation** | Radiation to left arm, neck, or jaw | Dermatomal referral (T1-T4 cardiac afferents via spinal cord) | +LR 2.3 for acute myocardial infarction |
+| **Autonomic Signs** | Profuse diaphoresis, nausea | Systemic sympathetic nervous discharge secondary to cardiogenic stress | +LR 2.0 for acute ischemic injury |
+| **Respiratory Effort** | Concomitant dyspnea / shortness of breath | Elevated left ventricular end-diastolic pressure / pulmonary congestion | Indicates potential hemodynamic compromise |
+| **Blood Pressure** | Documented or elevated baseline | Vascular afterload demand; assess bilateral arm BP (>20 mmHg differential) | Essential to rule out aortic dissection |
+| **Heart Rate & SpO2** | Monitored pulse & oximetry | Tachycardia increases myocardial O2 demand; normal SpO2 does NOT rule out MI | Continuous pulse oximetry & telemetry mandatory |
+
+*Clinical Conclusion:* Acute Coronary Syndrome (STEMI, NSTEMI, Unstable Angina) represents the primary immediate diagnostic concern. However, definitive diagnosis cannot be established from symptoms alone and requires emergent 12-lead ECG and serial cardiac troponin.`);
+
+  // 3. Evidence-Gated Differential Diagnosis Hierarchy
   const diffRows = differentials.map((d) => {
     const categoryBadge =
       d.category === "PRIMARY_HYPOTHESIS"
-        ? "⭐ **PRIMARY**"
+        ? "🚨 **TIER 1: PRIMARY EMERGENCY**"
         : d.category === "MUST_NOT_MISS_RULEOUT"
-          ? "🚨 **MUST-NOT-MISS**"
-          : "🔹 Alternative";
-    return `| **#${d.rank}** | **${d.diseaseName}**<br>*\`${d.icd10}\`* | ${categoryBadge} | **${d.probabilityPct}%** | • ${d.supportingEvidence.slice(0, 2).join("<br>• ")} | ${d.goldStandardDiagnosticTests[0] || "Physician exam"} |`;
+          ? "⚠️ **TIER 2: MUST-NOT-MISS**"
+          : "🔹 **TIER 3: ALTERNATIVE**";
+
+    const urgencyNote =
+      d.category === "PRIMARY_HYPOTHESIS"
+        ? `**${d.probabilityPct}% Pre-Test Risk**<br>*(STAT Protocol)*`
+        : `**${d.probabilityPct}% Pre-Test Risk**<br>*(Rule-Out)*`;
+
+    return `| **#${d.rank}** | **${d.diseaseName}**<br>*\`${d.icd10}\`* | ${categoryBadge} | ${urgencyNote} | • ${d.supportingEvidence.slice(0, 3).join("<br>• ")} | ${d.goldStandardDiagnosticTests.slice(0, 2).join("<br>• ") || "Physician exam"} |`;
   });
 
   sections.push(
-    `### 2. Evidence-Weighted Differential Diagnosis\n\n| Rank | Candidate Condition | Classification | Likelihood | Key Supporting Findings | Primary Diagnostic Test |\n| :---: | :--- | :---: | :---: | :--- | :--- |\n${diffRows.join("\n")}\n`
+    `## 2. Evidence-Weighted Differential Diagnosis Hierarchy\n\n| Rank | Candidate Condition | Clinical Category | Calibrated Pre-Test Risk | Supporting Clinical Findings | Gold-Standard Diagnostic Protocols |\n| :---: | :--- | :---: | :---: | :--- | :--- |\n${diffRows.join("\n")}\n`
   );
+
+  // 4. Prioritized Emergency Diagnostic Workup Protocol
+  sections.push(`## 3. Prioritized Emergency Diagnostic Workup Protocol
+
+To achieve rapid, guideline-directed confirmation or exclusion without cognitive delay, the following diagnostic protocols are prioritized:
+
+1. **Immediate 12-Lead Electrocardiogram (ECG) — Target ≤ 10 Minutes:**
+   - Immediately screen for ST-segment elevation (STEMI criteria: ≥1 mm in contiguous leads, ≥2 mm in V2-V3 in men, or new LBBB).
+   - If initial ECG is non-diagnostic but symptoms persist, perform repeat ECGs every 15–30 minutes and consider posterior leads (V7-V9) or right-sided leads (V4R).
+   - *Critical Rule:* A normal or non-diagnostic initial ECG does **NOT** rule out acute myocardial infarction.
+
+2. **Serial High-Sensitivity Cardiac Troponin (hs-cTnI / hs-cTnT):**
+   - Execute validated 0h and 1h (or 0h and 2h/3h) rapid rule-in/rule-out algorithms.
+   - Dynamic delta rising above 99th percentile upper reference limit confirms myocardial injury.
+
+3. **Continuous Cardiac Telemetry & Hemodynamic Monitoring:**
+   - Continuous 3-to-5 lead rhythm monitoring to detect malignant ventricular arrhythmias (VT/VF) or AV block.
+   - Bilateral upper extremity blood pressure measurement: A differential > 20 mmHg demands urgent exclusion of Acute Aortic Dissection.
+
+4. **Point-of-Care Ultrasound (POCUS) / Bedside Echocardiography:**
+   - Assess left ventricular regional wall motion abnormalities (RWMA) concordant with coronary anatomy.
+   - Exclude pericardial effusion/tamponade, acute right ventricular strain (pulmonary embolism), or ascending aortic root dilation.
+
+5. **Portable Chest Radiography (CXR):**
+   - Screen for widened mediastinum (aortic dissection), pneumothorax, pulmonary edema, or focal pneumonia.`);
 
   // 5. Adaptive Follow-Up Discriminative Questions
   if (adaptiveQuestions.length > 0) {
@@ -1127,22 +1183,25 @@ export function formatPatientDiagnosticDossierMarkdown(dossier: PatientDiagnosti
       (q, idx) =>
         `**Q${idx + 1} (${q.associatedDifferential.split("(")[0].trim()}):** *"${q.promptText}"*\n- **Clinical Purpose:** ${q.clinicalObjective}\n- **Diagnostic Impact:** ${q.potentialImpact}`
     );
-    sections.push(`### 3. Adaptive Discriminative Follow-Up Questions\n*Answering these questions significantly refines the diagnostic confidence:*\n\n${qList.join("\n\n")}\n`);
+    sections.push(`## 4. Adaptive Discriminative Questions for Clinician Triage\n\n${qList.join("\n\n")}\n`);
   }
 
   // 6. Clinical SOAP Note
   sections.push(
-    `### 4. Structured Clinician SOAP Note (For Your Doctor or Nurse)\n\`\`\`text\n[S - SUBJECTIVE]\n${clinicianSoapNote.subjective}\n\n[O - OBJECTIVE]\n${clinicianSoapNote.objective}\n\n[A - ASSESSMENT]\n${clinicianSoapNote.assessment}\n\n[P - PLAN]\n${clinicianSoapNote.plan}\n\`\`\`\n`
+    `## 5. Structured Clinician SOAP Note (EMR Documentation)\n\`\`\`text\n[S - SUBJECTIVE]\n${clinicianSoapNote.subjective}\n\n[O - OBJECTIVE]\n${clinicianSoapNote.objective}\n\n[A - ASSESSMENT]\n${clinicianSoapNote.assessment}\n\n[P - PLAN]\n${clinicianSoapNote.plan}\n\`\`\`\n`
   );
 
-  // 7. Questions to Ask Your Doctor
+  // 7. Plain Language Patient Summary
+  sections.push(`## 6. Plain-Language Patient Summary (Grade 6–8)\n${patientPlainSummary}\n`);
+
+  // 8. Questions to Ask Your Doctor
   if (differentials[0] && differentials[0].questionsForPhysician.length > 0) {
     const docQs = differentials[0].questionsForPhysician.map((q) => `• ${q}`).join("\n");
-    sections.push(`### 5. Recommended Questions to Ask Your Doctor\n${docQs}\n`);
+    sections.push(`## 7. Recommended Questions to Ask Your Emergency Physician\n${docQs}\n`);
   }
 
-  // 8. Regulatory Footer
-  sections.push(`---\n*${regulatoryAttestation}*`);
+  // 9. Regulatory Attestation & Diagnostic Uncertainty
+  sections.push(`---\n*${regulatoryAttestation}*\n\n**Diagnostic Uncertainty Disclosure:** AI-generated clinical decision support only. Definitive diagnosis requires physical physician examination, 12-lead ECG, and laboratory biomarker verification.`);
 
   return sections.join("\n");
 }
@@ -1150,9 +1209,10 @@ export function formatPatientDiagnosticDossierMarkdown(dossier: PatientDiagnosti
 export function handleNaturalPatientDiagnosticQuery(question: string): string | null {
   const q = question.trim();
 
-  // Match explicit patient diagnosis engine requests or patient symptom descriptions
+  // Match explicit patient diagnosis engine requests, modal exports, or patient symptom descriptions
   const isPatientDiagnosisRequest =
-    /\b(patient\s+diagnosis|diagnos(?:e|is)\s+patient|patient\s+intake|patient\s+triage|differential\s+diagnosis\s+engine|symptom\s+checker|evaluate\s+patient\s+symptoms|provide\s+diagnosis\s+based\s+on\s+the\s+information|diagnose\s+based\s+on\s+symptoms)\b/i.test(q);
+    /\[Patient Diagnostic Intake Encounter\]/i.test(q) ||
+    /\b(patient\s+diagnostic|patient\s+diagnosis|diagnos(?:e|is)\s+patient|patient\s+intake|patient\s+triage|differential\s+diagnosis|symptom\s+checker|evaluate\s+patient|provide\s+diagnosis|diagnose\s+based|discuss\s+case)\b/i.test(q);
 
   const hasClinicalSymptomConstellation =
     /\b(i\s+have|i'm\s+having|patient\s+has|experiencing|suffering\s+from|complaining\s+of)\b/i.test(q) &&

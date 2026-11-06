@@ -8134,8 +8134,9 @@ export function NoctisDesk() {
         open={patientDiagnosisModalOpen}
         onClose={() => setPatientDiagnosisModalOpen(false)}
         onSend={(prompt) => {
+          setPatientDiagnosisModalOpen(false);
           setDraft(prompt);
-          if (inputRef?.current) inputRef.current.focus();
+          void send(prompt);
         }}
       />
 <NoctisSovereignFactoryStudio

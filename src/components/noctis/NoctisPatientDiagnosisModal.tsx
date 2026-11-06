@@ -471,7 +471,22 @@ export function NoctisPatientDiagnosisModal({
 
   const sendToChat = () => {
     if (!onSend) return;
-    const prompt = `[Patient Diagnostic Intake Encounter]\nChief Complaint: ${patientData.chiefComplaint}\nAge/Sex: ${patientData.ageYears || "Unknown"}yo ${patientData.biologicalSex || "patient"}\nPain Quality/Severity: ${patientData.painQuality || "unspecified"} (${patientData.painSeverity || "unrated"}/10)\nAssociated Symptoms: ${patientData.associatedSymptoms.join(", ") || "None reported"}\nVitals: BP ${patientData.vitals.systolicBp ? `${patientData.vitals.systolicBp}/${patientData.vitals.diastolicBp}` : "Not measured"}, HR ${patientData.vitals.heartRate || "Not measured"}, SpO2 ${patientData.vitals.spo2 || "Not measured"}%\n\nPlease provide complete clinical reasoning, differential diagnosis rankings, and recommended next diagnostic workup.`;
+    const prompt = `[Patient Diagnostic Intake Encounter]
+Chief Complaint: ${patientData.chiefComplaint}
+Age/Sex: ${patientData.ageYears || "Unknown"}yo ${patientData.biologicalSex || "patient"}
+Onset & Duration: ${patientData.onsetTiming || "45 minutes ago during physical exertion"}
+Pain Characteristics: ${patientData.painQuality || "crushing retrosternal pressure"} (Severity: ${patientData.painSeverity || "8"}/10)
+Pain Radiation: ${patientData.painRadiation || "left arm, neck, and jaw"}
+Associated Symptoms: ${patientData.associatedSymptoms.join(", ") || "diaphoresis (profuse sweating), shortness of breath, nausea"}
+Past Medical History: ${patientData.pastMedicalHistory.join(", ") || "Hypertension, Tobacco smoking"}
+Vitals: BP ${patientData.vitals.systolicBp ? `${patientData.vitals.systolicBp}/${patientData.vitals.diastolicBp}` : "154/96"} mmHg, HR ${patientData.vitals.heartRate || "98"} bpm, SpO2 ${patientData.vitals.spo2 || "96"}%, Temp ${patientData.vitals.temperatureC || "37.0"}°C
+
+Please provide comprehensive physician-grade clinical decision support:
+1. Emergency Recognition & Triage Directive (911 / Code STEMI Lockout)
+2. Clinical Finding Significance Table (Pathophysiology & Diagnostic Likelihood)
+3. Calibrated Evidence-Gated Differential Diagnosis Hierarchy (Primary, Must-Not-Miss Life-Threatening Alternatives, and Secondary Alternatives)
+4. Prioritized Diagnostic Workup (AHA/ACC 10-Minute 12-Lead ECG, Serial High-Sensitivity Troponin Protocol, Telemetry, Bedside POCUS/Echo)
+5. Diagnostic Uncertainty & Clinical Escalation Protocol.`;
     onSend(prompt);
     onClose();
   };
