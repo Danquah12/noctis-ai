@@ -60,10 +60,10 @@ function serverSecret(name: string) {
 
 function openAiKey(override = "") {
   if (override && override.trim()) return override.trim();
-  if (!/^(1|true|yes)$/i.test((process.env.VIBE_ALLOW_OPENAI || "").trim())) return "";
-  const baked = typeof BAKED_OPENAI_KEY === "string" ? BAKED_OPENAI_KEY.trim() : "";
+  if (/^(0|false|no|off)$/i.test((process.env.VIBE_ALLOW_OPENAI || "").trim())) return "";
   const fileKey = typeof OPENAI_KEY === "string" ? OPENAI_KEY.trim() : "";
-  return fileKey || baked || serverSecret("OPENAI_API_KEY");
+  const baked = typeof BAKED_OPENAI_KEY === "string" ? BAKED_OPENAI_KEY.trim() : "";
+  return fileKey || baked || serverSecret("OPENAI_API_KEY") || "";
 }
 
 const TEACH = `You are Vibe, the assistant inside Noctis.

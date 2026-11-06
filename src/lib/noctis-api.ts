@@ -119,7 +119,7 @@ export const hearVibe = createServerFn({ method: "POST" })
 export const sayVibe = createServerFn({ method: "POST" })
   .validator((input: { text?: unknown; voice?: unknown; speed?: unknown; keyOverride?: unknown }) => ({
     text: typeof input?.text === "string" ? input.text.slice(0, 4000) : "",
-    voice: input?.voice === "onyx" || input?.voice === "nova" || input?.voice === "alloy" || input?.voice === "echo" ? input.voice : "alloy",
+    voice: input?.voice === "onyx" || input?.voice === "nova" || input?.voice === "alloy" || input?.voice === "echo" || input?.voice === "fable" || input?.voice === "shimmer" ? input.voice : "alloy",
     speed: typeof input?.speed === "number" && input.speed >= 0.7 && input.speed <= 1.2 ? input.speed : 0,
     keyOverride: typeof input?.keyOverride === "string" ? input.keyOverride.trim() : "",
   }))
