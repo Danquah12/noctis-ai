@@ -69,7 +69,10 @@ describe("Noctis Confidential Compute Hardware Enclave Attestation (NOCTIS-ENCLA
     assert.notEqual(resSev, null);
     assert.equal(resSev?.includes("AMD_SEV_SNP"), true);
 
-    // Negative case
+    // Negative cases: CMMC / GRC / CUI enclave scoping must never trigger hardware attestation quotes
+    const cmmcEnclaveQuery = "Our application processes CUI inside an AWS GovCloud VPC. Laptops live outside the CUI enclave.";
+    assert.equal(handleNaturalEnclaveQuery(cmmcEnclaveQuery), null);
+
     const unrelated = "How to write a poem about trees?";
     assert.equal(handleNaturalEnclaveQuery(unrelated), null);
   });

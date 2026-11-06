@@ -165,10 +165,23 @@ export function handleNaturalEnclaveQuery(question: string): string | null {
   const q = (question || "").trim();
   if (!q) return null;
 
-  const isEnclaveProbe =
-    /\b(?:enclave|confidential\s*compute|attestation\s*quote|pcr\s*measurement|nitro\s*enclave|amd\s*sev|intel\s*sgx)\b/i.test(
+  // Strict Exclusions: Never intercept GRC, CMMC, CUI, NIST SP 800-171/53, FedRAMP, or general architecture scoping queries
+  if (
+    /\b(?:cmmc|cui|nist|800-171|800-53|fedramp|c3pao|ssp|poa&m|poam|rmf|grc|fips|scoping|gap\s+analysis|dfars)\b/i.test(
       q
-    );
+    )
+  ) {
+    return null;
+  }
+
+  const isEnclaveProbe =
+    /\b(?:confidential\s*compute|attestation\s*quote|pcr\s*measurement|nitro\s*enclave|amd\s*sev|intel\s*sgx|hardware\s*enclave|enclave\s*attestation)\b/i.test(
+      q
+    ) ||
+    (/\benclave\b/i.test(q) &&
+      /\b(?:attest\w*|quote|pcr\d*|nitro|sev|sgx|hardware|root\s*of\s*trust|hypervisor|measurement)\b/i.test(
+        q
+      ));
 
   if (!isEnclaveProbe) return null;
 

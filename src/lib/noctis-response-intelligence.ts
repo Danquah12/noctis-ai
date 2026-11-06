@@ -1169,6 +1169,12 @@ export function runFollowUpIntelligence(
     return adaptSpecialistEngineOutput(currentQuestion, stagResponse, "NOCTIS-STAG-001");
   }
 
+  // 00-rmf. Noctis RMF / GRC Intelligence Engine (NOCTIS-RMF-001, CMMC 2.0, NIST SP 800-53 / 800-171, FedRAMP High, 3PAO & OSCAL)
+  const rmfResponse = handleNaturalRmfGrcQuery(currentQuestion);
+  if (rmfResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, rmfResponse, "NOCTIS-RMF-001");
+  }
+
   // 00-enclave. Noctis Confidential Compute Hardware Enclave Attestation (NOCTIS-ENCLAVE-001)
   const enclaveResponse = handleNaturalEnclaveQuery(currentQuestion);
   if (enclaveResponse) {
@@ -1256,12 +1262,6 @@ export function runFollowUpIntelligence(
   const architectResponse = architectIntelligenceGadget(currentQuestion);
   if (architectResponse) {
     return adaptSpecialistEngineOutput(currentQuestion, architectResponse, "NOCTIS-ARCH-001");
-  }
-
-  // 00a-0a. Noctis RMF / GRC Intelligence Engine (NOCTIS-RMF-001, NIST SP 800-53 Rev. 5, FedRAMP High, 3PAO & OSCAL)
-  const rmfResponse = handleNaturalRmfGrcQuery(currentQuestion);
-  if (rmfResponse) {
-    return adaptSpecialistEngineOutput(currentQuestion, rmfResponse, "NOCTIS-RMF-001");
   }
 
   // 00a-0b. Noctis Research & Investment Intelligence Engine (NOCTIS-INVEST-001, Main Street & Wall Street, 12 Specialist Engines, Batch 001 & Working-Capital/Valuation/Risk Solver)
