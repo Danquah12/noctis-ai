@@ -36,7 +36,7 @@ export function isRmfGrcQuery(question: string): boolean {
   const q = question.trim();
   if (!q) return false;
 
-  return /\b(fedramp|nist\s+sp\s*800-53|800-53\b|800-53a|800-53b|800-37\b|800-171\b|nist\s+sp\s*800-171|rmf\b|grc\b|poa&m|poam\b|3pao\b|c3pao\b|oscal\b|fips\s*199|fips\s*200|cmmc\b|cui\b|dod\s+il[4-6]|continuous\s+monitoring\s+strategy|system\s+security\s+plan|\bssp\b|security\s+control\s+assessment|ato\s+readiness|cato\b|fisma\b|disa\s+stig|security\s+protection\s+assets?|crma\b)\b/i.test(
+  return /\b(fedramp|nist\s+sp\s*800-53|800-53\b|800-53a|800-53b|800-37\b|800-171\b|nist\s+sp\s*800-171|rmf\b|grc\b|rmg\b|poa&m|poam\b|3pao\b|c3pao\b|oscal\b|fips\s*199|fips\s*200|cmmc\b|cui\b|dod\s+il[2-6]|dow\s+il[2-6]|department\s+of\s+war|department\s+of\s+defense|impact\s+levels?|il[2-6]\b|scca\b|bcap\b|vdss\b|vdms\b|tccm\b|cc\s*srg|cloud\s+computing\s+security\s+requirements\s+guide|disa\s+srg|disa\s+pa|provisional\s+authorization|cnssi\s*1253|continuous\s+monitoring\s+strategy|system\s+security\s+plan|\bssp\b|security\s+control\s+assessment|ato\s+readiness|cato\b|fisma\b|disa\s+stig|security\s+protection\s+assets?|crma\b)\b/i.test(
     q
   );
 }
@@ -214,41 +214,125 @@ export function handleNaturalRmfGrcQuery(question: string): string | null {
     return s.join("\n");
   }
 
-  // 2. FIPS 199 & DoD IL5 / CUI Export Control Boundary
-  const isFipsOrDodIlScenario =
-    /\b(fips\s*199|dod\s+il[4-6]|cui\b|itar\b|controlled\s+unclassified|export\s+control)\b/i.test(q);
+  // 2. Department of War (DoW / DoD) Cloud Impact Levels (IL2, IL4, IL5, IL6), SCCA Architecture & DISA CC SRG
+  const isDowOrDodCloudImpactLevelScenario =
+    /\b(dow|dod|department\s+of\s+war|department\s+of\s+defense|disa|cc\s*srg|scca|bcap|vdss|vdms|tccm|cnssi\s*1253|fips\s*199|itar\b|export\s+control)\b/i.test(q) &&
+    /\b(impact\s+levels?|il[2-6]|provisional\s+authorization|pa\b|scca|cui|nss|fedramp|srg|cloud|categoriz\w*)\b/i.test(q) ||
+    /\b(il[2-6]\b.*il[2-6]\b|il4\b.*il5\b|il2\b.*il5\b|scca\b)\b/i.test(q);
 
-  if (isFipsOrDodIlScenario) {
+  if (isDowOrDodCloudImpactLevelScenario) {
     const s: string[] = [];
     s.push("# Noctis RMF / GRC Intelligence Assessment (NOCTIS-RMF-001)\n");
-    s.push("**Framework Alignment:** **FIPS 199 / FIPS 200 · DoD Cloud Computing SRG · NIST SP 800-53 Rev. 5**");
-    s.push("**Classification:** Controlled Unclassified Information (CUI) / ITAR Technical Data");
-    s.push("**Governing Standard:** NIST SP 800-171 Rev. 3 & DoD IL5 Security Requirements Guide\n");
+    s.push("**Framework Alignment:** **DoW / DoD Cloud Computing Security Requirements Guide (CC SRG) · NIST SP 800-37 Rev. 2 (RMF) · CNSSI 1253 · NIST SP 800-53 Rev. 5**");
+    s.push("**Scope:** Department of War Cloud Impact Levels (IL2, IL4, IL5, IL6), SCCA Perimeter Security & System ATO Governance");
+    s.push("**Governing Directives:** DISA CC SRG Version 1 Release 2 (January 2025), DoD Instruction 8510.01 (RMF), DFARS 252.204-7012 & NIST SP 800-53A Rev. 5\n");
     s.push("---\n");
 
-    s.push("### 1. FIPS 199 Security Categorization");
-    s.push("Under FIPS Publication 199, security categorization is evaluated via: `SC_system = {(Confidentiality, impact), (Integrity, impact), (Availability, impact)}`\n");
-    s.push("For **ITAR Export-Controlled Technical Data & CUI**:");
-    s.push("- **Confidentiality:** **HIGH** (or Moderate for non-ITAR CUI) — Unauthorized disclosure of defense export-controlled technical data causes catastrophic damage to national security.");
-    s.push("- **Integrity:** **MODERATE to HIGH** — Modification of engineering blueprints introduces physical failure risks in defense systems.");
-    s.push("- **Availability:** **LOW to MODERATE** — Temporary loss of access delays operational workflows but does not immediately compromise human life.");
-    s.push("- **Overall System Categorization (High Water Mark):** **FIPS 199 HIGH** (or Moderate-Moderate-Low for baseline CUI)\n");
+    s.push("### 1. Department of War (DoW / DoD) Cloud Impact Level Architecture Matrix\n");
+    s.push("Under the **DISA Cloud Computing Security Requirements Guide (CC SRG)**, defense workloads are segregated into four principal operational impact tiers. An Impact Level establishes the technical protection baseline and hosting constraints for a specific category of defense information:\n");
+    s.push("| Impact Level | Information Classification | Baseline Security Categorization (FIPS 199 / CNSSI 1253) | Primary Workloads & Data Types | Cloud Authorization Standard | Network & Perimeter Boundary |");
+    s.push("| :--- | :--- | :--- | :--- | :--- | :--- |");
+    s.push("| **IL2** | **Public / Non-CUI** | **Low Confidentiality**<br>**Moderate Integrity** | Publicly releasable defense data, open-source military research, recruiting portals, public-facing services. | FedRAMP Moderate / DoD IL2 Provisional Authorization (PA) | Public Internet routable. Commercial multi-tenant cloud regions permitted. No direct DISN / NIPRNet connectivity. |");
+    s.push("| **IL4** | **Controlled Unclassified Information (CUI)** | **Moderate Confidentiality**<br>**Moderate Integrity** | Controlled Unclassified Information (CUI), Personally Identifiable Information (PII), Protected Health Information (PHI), non-critical military logistics. | FedRAMP Moderate + DoD FedRAMP+ Controls / DoD IL4 PA | Dedicated Government Cloud regions (e.g. AWS GovCloud, Azure Government). NIPRNet connectivity or secure internet with approved perimeter controls. |");
+    s.push("| **IL5** | **Higher-Impact CUI & Unclassified NSS** | **High Confidentiality**<br>**High Integrity** | Higher-sensitivity CUI, ITAR / EAR defense export-controlled technical data, nuclear command non-classified data, **Unclassified National Security Systems (NSS)**. | FedRAMP High + DoD FedRAMP+ Controls / DoD IL5 PA | Dedicated sovereign government cloud infrastructure. Mandatory **SCCA / BCAP** inspection before traffic reaches NIPRNet. Strict CONUS boundary isolation. |");
+    s.push("| **IL6** | **Classified National Security Information** | **High Confidentiality**<br>**High Integrity** | Classified defense information up to the **SECRET** level. Warfighter tactical command, classified operational plans, intelligence streams. | Intelligence Community Directive (ICD) 503 / DoD IL6 PA | Dedicated **SIPRNet** enclave. Physically air-gapped, SCIF-grade sovereign cloud infrastructure. US Citizens with active Secret/Top Secret clearances only. |\n");
 
-    s.push("### 2. DoD Cloud Computing SRG Impact Level Determination");
-    s.push("- **Required Level:** **DoD Impact Level 5 (IL5)**");
-    s.push("- **Justification:** DoD IL4 accommodates standard non-critical CUI. However, **CUI containing ITAR, export-controlled technical drawings, and unclassified National Security Systems (NSS) data** strictly mandates **DoD IL5**.");
-    s.push("- **Key Architecture Mandates for IL5:**");
-    s.push("  - Dedicated logical/physical tenant separation (FedRAMP High + DoD IL5 Provisional Authorization).");
-    s.push("  - Personnel screening: US Persons only with DoD-approved background investigations.");
-    s.push("  - Outbound data egress and management planes must terminate strictly within CONUS (Continental United States) boundaries.\n");
+    s.push("### 2. The Architectural Chasm: Technical Differentiation Between IL4 and IL5\n");
+    s.push("The transition from **IL4 to IL5** is a structural architectural transformation rather than an incremental control checklist addition:\n");
+    s.push("1. **Confidentiality and Integrity Baselines (FIPS 199 / CNSSI 1253):**");
+    s.push("   - **IL4:** Evaluated against a **Moderate-Moderate** baseline under NIST SP 800-53 / CC SRG. Information compromise causes serious adverse effects on operations, but does not threaten catastrophic defense mission failure.");
+    s.push("   - **IL5:** Evaluated against a strict **High-High** baseline under CNSSI 1253. Any loss of confidentiality or unauthorized modification of system integrity is recognized as causing severe or catastrophic degradation to critical defense capabilities.");
+    s.push("2. **National Security System (NSS) Eligibility:**");
+    s.push("   - **IL4:** Excludes National Security Systems. It cannot host systems designated as NSS under 44 U.S.C. 3552.");
+    s.push("   - **IL5:** Specifically engineered, evaluated, and authorized to host **Unclassified National Security Systems (NSS)** governed by **CNSSI 1253**.");
+    s.push("3. **Physical & Logical Tenant Separation:**");
+    s.push("   - **IL4:** Accommodates logical segregation across multi-tenant government community clouds.");
+    s.push("   - **IL5:** Mandates enhanced tenant isolation, including physical separation of compute nodes or cryptographically isolated enclaves with dedicated networking lanes and hardened hypervisor boundaries.");
+    s.push("4. **Personnel Vetting and Screening:**");
+    s.push("   - **IL4:** U.S. Persons or individuals holding favorable agency-approved background reviews.");
+    s.push("   - **IL5:** Strictly restricted to **vetted U.S. Persons only** possessing active favorable national security background investigations (SF-85P or T3/T5 tier) for all physical datacenter access and logical control-plane administrative operations.");
+    s.push("5. **Geographic Data Residency & Egress Lock:**");
+    s.push("   - **IL5:** All data at rest, data in transit, control planes, metadata, and failover disaster-recovery nodes must reside strictly within the **Continental United States (CONUS)** with zero offshore routing.\n");
 
-    s.push("### 3. Triggered NIST SP 800-53 Rev. 5 Controls\n");
-    s.push("| Control | Title | Exact IL5 / FIPS 199 High Requirement |");
-    s.push("| :--- | :--- | :--- |");
-    s.push("| **SC-12** | Cryptographic Key Establishment & Management | FIPS 140-3 validated Level 2/3 Hardware Security Modules (HSM); KMS keys must be customer-managed with dual-custody access. |");
-    s.push("| **SC-13** | Cryptographic Protection | Enforce FIPS-approved algorithms (AES-256, SHA-384, TLS 1.3 with approved cipher suites); disallow legacy TLS 1.0/1.1 and unencrypted cleartext protocols. |");
-    s.push("| **SC-7(3)/(4)** | Boundary Protection & Tenant Isolation | Cryptographic separation and policy enforcement for multi-tenant cloud environments at IL5. |");
-    s.push("| **PS-3** | Personnel Screening | Formal personnel vetting (SF-85P / T3 equivalent) prior to granting administrative access to CUI systems. |");
+    s.push("### 3. The Three-Tier Authorization Stack (FedRAMP vs. DISA PA vs. System ATO)\n");
+    s.push("Defense cloud governance enforces three distinct authorization tiers to govern risk across infrastructure and mission applications:\n");
+    s.push("```text");
+    s.push("┌────────────────────────────────────────────────────────────────────────┐");
+    s.push("│ Tier 1: FedRAMP Baseline Authorization (GSA / FedRAMP PMO)             │");
+    s.push("│ Civilian federal baseline evaluating NIST SP 800-53 Rev. 5 controls.   │");
+    s.push("└──────────────────────────────────┬─────────────────────────────────────┘");
+    s.push("                                   │ + DISA CC SRG FedRAMP+ Overlays");
+    s.push("                                   ▼");
+    s.push("┌────────────────────────────────────────────────────────────────────────┐");
+    s.push("│ Tier 2: DISA Cloud Service Provider Provisional Authorization (PA)      │");
+    s.push("│ DISA evaluates CSP data centers, tenant isolation, and CONUS boundaries│");
+    s.push("│ at IL2, IL4, IL5, or IL6. (Authorizes the Hosting Platform).           │");
+    s.push("└──────────────────────────────────┬─────────────────────────────────────┘");
+    s.push("                                   │ + System Boundary & Customer Controls (CRM)");
+    s.push("                                   ▼");
+    s.push("┌────────────────────────────────────────────────────────────────────────┐");
+    s.push("│ Tier 3: Mission Owner System Authority to Operate (ATO)                │");
+    s.push("│ Designated Authorizing Official (AO) signs formal risk acceptance      │");
+    s.push("│ for the specific application under NIST SP 800-37 Rev. 2 (RMF).        │");
+    s.push("└────────────────────────────────────────────────────────────────────────┘");
+    s.push("```\n");
+    s.push("> [!IMPORTANT]");
+    s.push("> **The Inheritance Invariant:** A Cloud Service Provider’s (CSP) IL5 Provisional Authorization does **NOT** grant an application an IL5 ATO. The CSP PA authorizes only the underlying cloud infrastructure (IaaS/PaaS). The mission system owner must implement all customer-responsibility controls, author the System Security Plan (SSP), undergo 3PAO assessment, and obtain an ATO from their Component Authorizing Official (AO).\n");
+    s.push("#### Customer Responsibility Matrix (CRM) Control Partitioning:");
+    s.push("1. **Inherited Controls (CSP-Owned):** Fully inherited by the application (e.g., physical facility access `PE-3`, hardware maintenance `MA-2`, hypervisor isolation `SC-7(4)`).");
+    s.push("2. **Shared / Hybrid Controls:** Co-managed between CSP and mission owner (e.g., identity platform infrastructure provided by CSP, but MFA enforcement rules and session timeouts configured by the system owner `IA-2`, `AC-12`).");
+    s.push("3. **Customer-Specific Controls (Application-Owned):** Wholly implemented by the mission owner (e.g., application vulnerability scanning `RA-5`, code review `SA-11`, role-based access control `AC-6`).\n");
+
+    s.push("### 4. Secure Cloud Computing Architecture (SCCA) Technical Breakdown\n");
+    s.push("The **DISA Secure Cloud Computing Architecture (SCCA)** provides the perimeter and management security framework mandated for connecting commercial cloud environments (IL4/IL5) to the Defense Information Systems Network (DISN / NIPRNet):\n");
+    s.push("1. **Boundary Cloud Access Point (BCAP / CAP):**");
+    s.push("   - The perimeter routing and boundary defense gateway linking the CSP infrastructure to the DISN / NIPRNet.");
+    s.push("   - Enforces traffic filtering, DDoS mitigation, and packet telemetry capture before any external payload enters defense operational networks.");
+    s.push("2. **Virtual Datacenter Security Stack (VDSS):**");
+    s.push("   - Serves as the cloud-native Demilitarized Zone (DMZ) and traffic inspection engine.");
+    s.push("   - Houses Next-Generation Firewalls (NGFW), Web Application Firewalls (WAF), and Intrusion Detection/Prevention Systems (IDS/IPS).");
+    s.push("   - Performs full **TLS break-and-inspect** on ingress and egress traffic to detect command-and-control (C2) channels and data exfiltration.");
+    s.push("3. **Virtual Datacenter Management Service (VDMS):**");
+    s.push("   - Provides centralized security operations and management across all hosted workloads.");
+    s.push("   - Integrates **Privileged Access Workstations (PAW)** and bastion jumpboxes enforcing hardware-token MFA (PIV/CAC).");
+    s.push("   - Hosts the Host-Based Security System (HBSS) / Endpoint Detection and Response (EDR) consoles.");
+    s.push("   - Executes Assured Compliance Assessment Solution (ACAS / Nessus) authenticated vulnerability scans and centralizes syslog aggregation for forward transmission to the DISA Cyber Security Service Provider (CSSP).");
+    s.push("4. **Trusted Cloud Credential Manager (TCCM):**");
+    s.push("   - Manages cloud governance, identity federation, and cryptographic key infrastructure.");
+    s.push("   - Enforces Role-Based Access Control (RBAC), least privilege role delegation, and customer-managed keys (CMEK) via FIPS 140-3 Level 3 Hardware Security Modules (HSMs).");
+    s.push("5. **Virtual Data Center (VDC):**");
+    s.push("   - The segmented cloud tenant network hosting mission application workloads, containers, databases, and microservices.");
+    s.push("   - Prohibited from having direct public internet gateways; all traffic is strictly routed through the VDSS and BCAP.\n");
+
+    s.push("### 5. System Migration Blueprint: Transforming an Architecture from IL2 to IL5\n");
+    s.push("Executing a technical transformation of a system from an **IL2 baseline to an IL5 authorized enclave** follows a structured five-phase engineering lifecycle:\n");
+    s.push("1. **Phase 1: Information Categorization & Scope Delineation (RMF Steps 1–2):**");
+    s.push("   - Map data schemas against the National CUI Registry and defense technical categories.");
+    s.push("   - Identify export-controlled data (ITAR/EAR) or unclassified NSS workloads triggering the mandatory High-High baseline under CNSSI 1253.");
+    s.push("2. **Phase 2: Target IL5 Cloud Service Selection & Scoping Verification:**");
+    s.push("   - Provision dedicated enclaves within an authorized IL5 cloud region (e.g., AWS GovCloud US, Azure Government, Oracle Cloud DoD).");
+    s.push("   - **Service Scoping Audit:** Verify that every PaaS service utilized (e.g., managed Kubernetes, object storage, serverless functions) is explicitly listed within the CSP active DISA IL5 Provisional Authorization scope.");
+    s.push("3. **Phase 3: SCCA Enclave Deployment & Network Microsegmentation:**");
+    s.push("   - Deploy cloud-native VDSS and VDMS infrastructure or peer into an agency-shared SCCA gateway.");
+    s.push("   - Enforce dedicated transit route tables eliminating direct public ingress/egress.");
+    s.push("4. **Phase 4: NIST SP 800-53 Rev. 5 High Baseline Gap Remediation:**");
+    s.push("   - Remediate the ~100+ additional controls required by the High baseline:");
+    s.push("     - *IA-2(1)/(6):* Enforce phishing-resistant PIV/CAC hardware tokens for all privileged access; eliminate static SSH keys.");
+    s.push("     - *SC-12 / SC-13:* Implement FIPS 140-3 validated Level 3 HSM key management.");
+    s.push("     - *AU-12 / AU-4:* Implement immutable command-level keystroke logging with S3 Object Lock (WORM).");
+    s.push("     - *CM-3 / CM-6:* Deploy Infrastructure as Code (Terraform) pipelines with Service Control Policies (SCPs) blocking console mutations.");
+    s.push("5. **Phase 5: Continuous Authorization (cATO) & CSSP Integration:**");
+    s.push("   - Integrate real-time security event pipelines with an accredited DoD Cyber Security Service Provider (CSSP).");
+    s.push("   - Automate vulnerability reporting via OSCAL and maintain dynamic continuous monitoring telemetry for the Authorizing Official (AO).\n");
+
+    s.push("### 6. Regulatory Governance Invariant (`GRC-GATE-DOW-IL`)\n");
+    s.push("> [!CAUTION]");
+    s.push("> **DEFENSE CLOUD GOVERNANCE DIRECTIVE:**");
+    s.push("> Under the Noctis GRC Invariants, **IL5 system authorization cannot be achieved through administrative or paper attestations**.");
+    s.push("> The system requires verifiable technical proof:");
+    s.push("> 1. Architectural route table evidence proving zero direct internet access from the VDC.");
+    s.push("> 2. Hardware-token MFA enforcement logs with zero bypass exemptions.");
+    s.push("> 3. Live FIPS 140 cryptographic module validation certificates for all transit and at-rest encryption engines.");
 
     return s.join("\n");
   }
