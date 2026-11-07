@@ -239,3 +239,25 @@ export const submitNoctisSource = createServerFn({ method: "POST" })
     const { registerNoctisTextSource } = await import("@/lib/noctis-source-ingestion.server");
     return registerNoctisTextSource(data, userId);
   });
+
+/** Owner/MFA-only source review queue and approval/rejection actions. */
+export const manageNoctisSources = createServerFn({ method: "POST" })
+  .validator((input: { action?: unknown; sourceId?: unknown; reason?: unknown }) => ({
+    action: input?.action === "approve" || input?.action === "reject" ? input.action : "pending",
+    sourceId: typeof input?.sourceId === "string" ? input.sourceId.trim().slice(0, 160) : "",
+    reason: typeof input?.reason === "string" ? input.reason.trim().slice(0, 500) : "",
+  }))
+  .handler(async ({ data }) => {
+    const { requireUserId } = await import("@/lib/auth/verify.server");
+    const userId = await requireUserId();
+    const { requireNoctisLearningReviewer } = await import("@/lib/admin-api");
+    await requireNoctisLearningReviewer(userId);
+    const { pendingNoctisSources, reviewNoctisSource } = await import("@/lib/noctis-source-ingestion.server");
+    if (data.action === "pending") return { ok: true, pending: await pendingNoctisSources() };
+    return reviewNoctisSource({
+      sourceId: data.sourceId,
+      decision: data.action === "approve" ? "approved" : "rejected",
+      reviewerId: userId,
+      reason: data.reason,
+    });
+  });
