@@ -129,7 +129,7 @@ export const sayVibe = createServerFn({ method: "POST" })
   });
 
 export const trainVibe = createServerFn({ method: "POST" })
-  .validator((input: { action?: unknown; question?: unknown; answer?: unknown; rule?: unknown }) => ({
+  .validator((input: { action?: unknown; question?: unknown; answer?: unknown; rule?: unknown; kind?: unknown; id?: unknown; reason?: unknown }) => ({
     action: input?.action === "train" || input?.action === "rule" || input?.action === "export" || input?.action === "approve" || input?.action === "reject" || input?.action === "pending" ? input.action : ("status" as const),
     question: typeof input?.question === "string" ? input.question.trim().slice(0, 800) : "",
     answer: typeof input?.answer === "string" ? input.answer.trim().slice(0, 6000) : "",
