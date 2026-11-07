@@ -293,3 +293,21 @@ export const retrieveNoctisEvidence = createServerFn({ method: "POST" })
       limit: data.limit,
     });
   });
+
+
+/**
+ * Return the descriptive engine registry to authenticated clients.
+ * This endpoint exposes metadata only; it does not execute specialist engines.
+ */
+export const getNoctisEngineRegistry = createServerFn({ method: "GET" })
+  .handler(async () => {
+    const { requireUserId } = await import("@/lib/auth/verify.server");
+    await requireUserId();
+    const { listNoctisEngines } = await import("@/lib/noctis-engine-registry");
+    return {
+      engines: listNoctisEngines(),
+      executionEnabled: false,
+      note: "Registry metadata only. Engine execution is not enabled by this endpoint.",
+    };
+  });
+
