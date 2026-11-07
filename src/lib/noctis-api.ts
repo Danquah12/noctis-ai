@@ -261,3 +261,31 @@ export const manageNoctisSources = createServerFn({ method: "POST" })
       reason: data.reason,
     });
   });
+
+/**
+ * Evidence lookup for server-side Noctis workflows. This endpoint returns
+ * citations/snippets only; callers must not represent lexical matches as
+ * semantic relevance or as proof that a claim is true.
+ */
+export const retrieveNoctisEvidence = createServerFn({ method: "POST" })
+  .validator((input: { query?: unknown; domain?: unknown; limit?: unknown }) => ({
+    query: typeof input?.query === "string" ? input.query.trim().slice(0, 2000) : "",
+    domain: typeof input?.domain === "string" ? input.domain.trim().slice(0, 80) : "",
+    limit: typeof input?.limit === "number" && Number.isFinite(input.limit)
+      ? Math.max(1, Math.min(10, Math.trunc(input.limit)))
+      : 5,
+  }))
+  .handler(async ({ data }) => {
+    const { requireUserId } = await import("@/lib/auth/verify.server");
+    const { callerKey, guardRate } = await import("@/lib/security.server");
+    const userId = await requireUserId();
+    await guardRate(`noctis-evidence:${callerKey(userId)}`, 30, 10 * 60 * 1000);
+    if (data.query.length < 3) throw new Error("Enter at least 3 characters to search evidence.");
+    const { retrieveApprovedNoctisEvidence } = await import("@/lib/noctis-evidence-retrieval.server");
+    return retrieveApprovedNoctisEvidence({
+      query: data.query,
+      domain: data.domain,
+      userId,
+      limit: data.limit,
+    });
+  });
