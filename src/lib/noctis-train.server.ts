@@ -609,7 +609,7 @@ let dbHydrating: Promise<void> | null = null;
 function load(): TrainingPair[] {
   const map = new Map<string, TrainingPair>();
   for (const seed of SEED_CORPUS) {
-    map.set(seed.question.toLowerCase(), { ...seed });
+    map.set(seed.question.toLowerCase(), { ...seed, approvalStatus: "approved" });
   }
   try {
     const raw = JSON.parse(readFileSync(FILE, "utf8")) as unknown;
@@ -753,7 +753,7 @@ export async function hydrateFromDb(): Promise<void> {
   return dbHydrating;
 }
 
-export function rememberAnswer(question: string, answer: string, model = "vibe-native", domain?: string) {
+export function rememberAnswer(question: string, answer: string, model = "vibe-native", domain?: string, submittedBy?: string) {
   const asked = question.replace(/\s+/g, " ").trim().slice(0, 600);
   const said = answer.split(/\n\s*Claim standing:/i)[0]?.trim().slice(0, 6000) || answer.trim().slice(0, 6000);
   const isExplicitTrain = model === "user-taught" || model === "vibe-trained" || model === "api-trained";
@@ -786,8 +786,8 @@ export function rememberAnswer(question: string, answer: string, model = "vibe-n
       const { getSql } = await import("@/lib/db");
       const sql = await getSql();
       await sql`
-        insert into vibe_training_pair (id, question, answer, domain, model, hits, verified, approval_status, updated_at)
-        values (${id}, ${asked}, ${said}, ${resolvedDomain}, ${next.model}, 1, false, 'quarantined', now())
+        insert into vibe_training_pair (id, question, answer, domain, model, hits, verified, approval_status, submitted_by, updated_at)
+        values (${id}, ${asked}, ${said}, ${resolvedDomain}, ${next.model}, 1, false, 'quarantined', ${submittedBy || null}, now())
         on conflict (id) do update set
           answer = excluded.answer,
           domain = excluded.domain,
@@ -807,6 +807,7 @@ export async function trainPair(
   question: string,
   answer: string,
   modelOrDomain = "user-taught",
+  submittedBy?: string,
 ): Promise<{ ok: boolean; question: string; answer: string; reason?: string; pair?: TrainingPair }> {
   const asked = question.replace(/\s+/g, " ").trim().slice(0, 600);
   const said = answer.trim().slice(0, 6000);
@@ -814,7 +815,7 @@ export async function trainPair(
     return { ok: false, question: asked, answer: said, reason: "Provide a question (at least 4 chars) and an answer (at least 12 chars)." };
   }
   await hydrateFromDb();
-  rememberAnswer(asked, said, modelOrDomain);
+  rememberAnswer(asked, said, modelOrDomain, undefined, submittedBy);
   const pair = pairs.find((p) => p.question.toLowerCase() === asked.toLowerCase());
   return { ok: true, question: asked, answer: said, pair };
 }
@@ -1064,6 +1065,7 @@ export async function trainingStatus() {
       model: p.model,
       hits: p.hits ?? 1,
       at: p.at,
+      approvalStatus: p.approvalStatus || "quarantined",
     })),
     recentQuestions: pairs.slice(-8).reverse().map((p) => p.question),
     rules: rulesMem.slice(-12),
