@@ -965,6 +965,62 @@ export async function rememberRule(ruleText: string, domain = "general", submitt
   return { ok: true, rule: clean };
 }
 
+export async function reviewTrainingSubmission(params: {
+  kind: "pair" | "rule";
+  id: string;
+  decision: "approved" | "rejected";
+  reviewerId: string;
+  reason: string;
+}): Promise<{ ok: boolean; kind: string; id: string; decision: string }> {
+  const id = params.id.trim().slice(0, 160);
+  const reason = params.reason.replace(/\\s+/g, " ").trim().slice(0, 500);
+  if (!id || !reason) throw new Error("A submission ID and review reason are required.");
+  await hydrateFromDb();
+  const { getSql } = await import("@/lib/db");
+  const sql = await getSql();
+  if (params.kind === "pair") {
+    const rows = await sql<{ id: string }>`
+      update vibe_training_pair
+      set approval_status = ${params.decision},
+          verified = ${params.decision === "approved"},
+          reviewed_by = ${params.reviewerId},
+          reviewed_at = now(),
+          approval_reason = ${reason},
+          updated_at = now()
+      where id = ${id}
+      returning id
+    `;
+    if (!rows.length) throw new Error("Training pair was not found.");
+    const pair = pairs.find((item) => item.id === id);
+    if (pair) pair.approvalStatus = params.decision;
+  } else {
+    const rows = await sql<{ id: string; rule: string }>`
+      update vibe_training_rule
+      set approval_status = ${params.decision},
+          reviewed_by = ${params.reviewerId},
+          reviewed_at = now(),
+          approval_reason = ${reason},
+          created_at = now()
+      where id = ${id}
+      returning id, rule
+    `;
+    if (!rows.length) throw new Error("Training rule was not found.");
+    const rule = rows[0]!.rule;
+    const existing = rulesMem.findIndex((item) => item.toLowerCase() === rule.toLowerCase());
+    if (params.decision === "approved" && existing < 0) {
+      rulesMem.push(rule);
+      if (rulesMem.length > 24) rulesMem.splice(0, rulesMem.length - 24);
+    } else if (params.decision === "rejected" && existing >= 0) {
+      rulesMem.splice(existing, 1);
+    }
+  }
+  await sql`
+    insert into noctis_learning_audit (id, actor_id, action, target_type, target_id, reason)
+    values (${pairId(`audit:review:${params.kind}:${id}:${Date.now()}`)}, ${params.reviewerId}, ${params.decision === "approved" ? "learning_submission_approved" : "learning_submission_rejected"}, ${params.kind === "pair" ? "training_pair" : "training_rule"}, ${id}, ${reason})
+  `;
+  return { ok: true, kind: params.kind, id, decision: params.decision };
+}
+
 export function storedRulesBlock(): string {
   if (!rulesMem.length) return "";
   return `Persistent Vibe training rules:\n${rulesMem.slice(-12).map((r) => `- ${r}`).join("\n")}`;
