@@ -3435,6 +3435,7 @@ export function NoctisDesk() {
   const [airGapModalOpen, setAirGapModalOpen] = useState(false);
   const [holodeckModalOpen, setHolodeckModalOpen] = useState(false);
   const [remediationModalOpen, setRemediationModalOpen] = useState(false);
+  const [defenseModalOpen, setDefenseModalOpen] = useState(false);
   const [circuitBreakerModalOpen, setCircuitBreakerModalOpen] = useState(false);
   const [crisisNegotiationModalOpen, setCrisisNegotiationModalOpen] = useState(false);
   const [steganographyModalOpen, setSteganographyModalOpen] = useState(false);
@@ -3475,6 +3476,7 @@ export function NoctisDesk() {
       case "digital_twin": setDigitalTwinModalOpen(true); break;
       case "holodeck": setHolodeckModalOpen(true); break;
       case "auto_remediation": setAutoRemediationModalOpen(true); break;
+      case "defense" as any: setDefenseModalOpen(true); break;
       case "pqc": setPqcModalOpen(true); break;
       case "enclave": setEnclaveModalOpen(true); break;
       case "zk_proof": setZkProofModalOpen(true); break;
@@ -8166,6 +8168,12 @@ export function NoctisDesk() {
         open={remediationModalOpen}
         onClose={() => setRemediationModalOpen(false)}
         onOpenInCanvas={(md, title) => openInCanvas(title || "Auto-Remediation Playbook", md)}
+        onInsertToChat={(text) => setDraft(text)}
+      />
+      <NoctisDefenseModal
+        open={defenseModalOpen}
+        onClose={() => setDefenseModalOpen(false)}
+        onOpenInCanvas={(md, title) => openInCanvas(title || "Noctis Defense Intelligence Briefing", md)}
         onInsertToChat={(text) => setDraft(text)}
       />
       <NoctisCircuitBreakerModal
