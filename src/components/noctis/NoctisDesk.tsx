@@ -46,6 +46,7 @@ import { NoctisAirGapModal } from "@/components/noctis/NoctisAirGapModal";
 import { NoctisHolodeckModal } from "@/components/noctis/NoctisHolodeckModal";
 import { NoctisAutoRemediationModal } from "@/components/noctis/NoctisAutoRemediationModal";
 import { NoctisDefenseModal } from "@/components/noctis/NoctisDefenseModal";
+import { NoctisScienceModal } from "@/components/noctis/NoctisScienceModal";
 import { NoctisCircuitBreakerModal } from "@/components/noctis/NoctisCircuitBreakerModal";
 import { NoctisCrisisNegotiationModal } from "@/components/noctis/NoctisCrisisNegotiationModal";
 import { NoctisSteganographyModal } from "@/components/noctis/NoctisSteganographyModal";
@@ -3436,6 +3437,7 @@ export function NoctisDesk() {
   const [holodeckModalOpen, setHolodeckModalOpen] = useState(false);
   const [remediationModalOpen, setRemediationModalOpen] = useState(false);
   const [defenseModalOpen, setDefenseModalOpen] = useState(false);
+  const [scienceModalOpen, setScienceModalOpen] = useState(false);
   const [circuitBreakerModalOpen, setCircuitBreakerModalOpen] = useState(false);
   const [crisisNegotiationModalOpen, setCrisisNegotiationModalOpen] = useState(false);
   const [steganographyModalOpen, setSteganographyModalOpen] = useState(false);
@@ -3477,6 +3479,7 @@ export function NoctisDesk() {
       case "holodeck": setHolodeckModalOpen(true); break;
       case "auto_remediation": setAutoRemediationModalOpen(true); break;
       case "defense" as any: setDefenseModalOpen(true); break;
+      case "science" as any: setScienceModalOpen(true); break;
       case "pqc": setPqcModalOpen(true); break;
       case "enclave": setEnclaveModalOpen(true); break;
       case "zk_proof": setZkProofModalOpen(true); break;
@@ -6922,7 +6925,7 @@ export function NoctisDesk() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleOpenSovereignSuite("noctis-science", "Evaluate genomics, CRISPR off-target cleavage scores, and molecular dynamics")}
+                    onClick={() => setScienceModalOpen(true)}
                     className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
                   >
                     <Atom className="size-3.5 text-teal-400 shrink-0" />
@@ -8174,6 +8177,12 @@ export function NoctisDesk() {
         open={defenseModalOpen}
         onClose={() => setDefenseModalOpen(false)}
         onOpenInCanvas={(md, title) => openInCanvas(title || "Noctis Defense Intelligence Briefing", md)}
+        onInsertToChat={(text) => setDraft(text)}
+      />
+      <NoctisScienceModal
+        open={scienceModalOpen}
+        onClose={() => setScienceModalOpen(false)}
+        onOpenInCanvas={(md, title) => openInCanvas(title || "Noctis Science Research Dossier", md)}
         onInsertToChat={(text) => setDraft(text)}
       />
       <NoctisCircuitBreakerModal
