@@ -64,4 +64,4 @@ const report = {
   routes: routes.sort(),
 };
 
-process.stdout.write(JSON.stringify(report, null, 2) + "\\n");
+process.stdout.write(JSON.stringify(report, null, 2) + "\n");
