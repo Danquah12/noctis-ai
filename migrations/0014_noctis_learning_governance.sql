@@ -98,3 +98,27 @@ create table if not exists noctis_learning_audit (
 
 create index if not exists noctis_learning_audit_target_idx
   on noctis_learning_audit (target_type, target_id, created_at desc);
+
+
+-- Rules submitted through the learning endpoint also require independent approval.
+alter table vibe_training_rule
+  add column if not exists approval_status text not null default 'quarantined',
+  add column if not exists submitted_by text,
+  add column if not exists reviewed_by text,
+  add column if not exists reviewed_at timestamptz,
+  add column if not exists approval_reason text;
+
+alter table vibe_training_rule
+  drop constraint if exists vibe_training_rule_approval_status_check;
+
+alter table vibe_training_rule
+  add constraint vibe_training_rule_approval_status_check
+  check (approval_status in ('quarantined', 'approved', 'rejected', 'deprecated', 'legacy_review_required'));
+
+-- Existing rules have no reviewer/provenance record and therefore require review.
+update vibe_training_rule
+set approval_status = 'legacy_review_required'
+where approval_status = 'quarantined';
+
+create index if not exists vibe_training_rule_approval_idx
+  on vibe_training_rule (approval_status, created_at desc);
