@@ -1,0 +1,70 @@
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
+import {
+  findNoctisEnginesByCapability,
+  getNoctisEngine,
+  listNoctisEngines,
+  validateNoctisEngineRequest,
+  type NoctisEngineRequest,
+} from "./noctis-engine-registry.ts";
+
+describe("Noctis engine registry", () => {
+  it("registers the initial source-backed specialist cohort", () => {
+    const engines = listNoctisEngines();
+    assert.equal(engines.length, 11);
+    assert.equal(new Set(engines.map((engine) => engine.id)).size, engines.length);
+    assert.ok(engines.every((engine) => engine.sourcePath.startsWith("src/lib/noctis-")));
+  });
+
+  it("supports domain and capability discovery", () => {
+    assert.ok(listNoctisEngines({ domain: "health" }).some((engine) => engine.id === "noctis.health.clinical"));
+    assert.deepEqual(findNoctisEnginesByCapability("cyber.sast.analyze").map((engine) => engine.id), ["noctis.cyber.sast"]);
+    assert.deepEqual(findNoctisEnginesByCapability(" ").map((engine) => engine.id), []);
+  });
+
+  it("returns defensive copies rather than mutable registry internals", () => {
+    const first = getNoctisEngine("noctis.core.orchestrator");
+    assert.ok(first);
+    first.capabilities.push("unsafe.injected.capability");
+    assert.equal(getNoctisEngine("noctis.core.orchestrator")?.capabilities.includes("unsafe.injected.capability"), false);
+  });
+
+  it("rejects unknown engines, unsupported capabilities and missing evidence", () => {
+    const base: NoctisEngineRequest = {
+      requestId: "req-1", tenantId: "tenant-1", actorId: "actor-1",
+      engineId: "noctis.cyber.sast", capability: "cyber.sast.analyze", input: {},
+      context: { correlationId: "corr-1" },
+      authorization: { scopes: ["cyber:read"], executionMode: "analysis" },
+      constraints: { dataClassification: "confidential" },
+    };
+    assert.equal(validateNoctisEngineRequest({ ...base, engineId: "missing" }).code, "ENGINE_NOT_FOUND");
+    assert.equal(validateNoctisEngineRequest({ ...base, capability: "cyber.delete" }).code, "CAPABILITY_NOT_SUPPORTED");
+    assert.equal(validateNoctisEngineRequest(base).code, "EVIDENCE_REQUIRED");
+  });
+
+  it("requires evidence and explicit approval before supervised high-impact work", () => {
+    const request: NoctisEngineRequest = {
+      requestId: "req-2", tenantId: "tenant-1", actorId: "actor-1",
+      engineId: "noctis.cyber.sast", capability: "cyber.sast.analyze", input: {},
+      context: { correlationId: "corr-2", evidenceIds: ["ev-1"] },
+      authorization: { scopes: ["cyber:read"], executionMode: "supervised" },
+      constraints: { dataClassification: "confidential" },
+    };
+    assert.equal(validateNoctisEngineRequest(request).code, "APPROVAL_REQUIRED");
+    assert.equal(validateNoctisEngineRequest({
+      ...request,
+      authorization: { ...request.authorization, approvalId: "approval-1" },
+    }).ok, true);
+  });
+
+  it("does not permit unsupported execution modes", () => {
+    const request: NoctisEngineRequest = {
+      requestId: "req-3", tenantId: "tenant-1", actorId: "actor-1",
+      engineId: "noctis.health.clinical", capability: "health.clinical.assess", input: {},
+      context: { correlationId: "corr-3", evidenceIds: ["ev-2"] },
+      authorization: { scopes: ["health:read"], executionMode: "approved_execution" },
+      constraints: { dataClassification: "restricted" },
+    };
+    assert.equal(validateNoctisEngineRequest(request).code, "EXECUTION_MODE_NOT_ALLOWED");
+  });
+});
