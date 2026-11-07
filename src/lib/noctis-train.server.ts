@@ -797,7 +797,12 @@ export function rememberAnswer(question: string, answer: string, model = "vibe-n
           hits = vibe_training_pair.hits + 1,
           verified = false,
           approval_status = 'quarantined',
+          submitted_by = excluded.submitted_by,
           updated_at = now()
+      `;
+      await sql`
+        insert into noctis_learning_audit (id, actor_id, action, target_type, target_id, reason)
+        values (${pairId(`audit:pair:${id}:${Date.now()}`)}, ${submittedBy || "system"}, 'training_pair_submitted', 'training_pair', ${id}, 'Submitted for independent review')
       `;
     } catch {
       /* non-blocking DB write */
@@ -936,7 +941,7 @@ export async function executeZeroTouchAutonomous20AreaTraining(options?: {
   };
 }
 
-export async function rememberRule(ruleText: string, domain = "general"): Promise<{ ok: boolean; rule: string; reason?: string }> {
+export async function rememberRule(ruleText: string, domain = "general", submittedBy?: string): Promise<{ ok: boolean; rule: string; reason?: string }> {
   const clean = ruleText.replace(/\s+/g, " ").trim().slice(0, 240);
   if (clean.length < 6) return { ok: false, rule: "", reason: "Rule must be at least 6 characters." };
   await hydrateFromDb();
@@ -946,9 +951,13 @@ export async function rememberRule(ruleText: string, domain = "general"): Promis
     const { getSql } = await import("@/lib/db");
     const sql = await getSql();
     await sql`
-      insert into vibe_training_rule (id, rule, domain, approval_status)
-      values (${id}, ${clean}, ${domain}, 'quarantined')
-      on conflict (id) do update set rule = excluded.rule, approval_status = 'quarantined', created_at = now()
+      insert into vibe_training_rule (id, rule, domain, approval_status, submitted_by)
+      values (${id}, ${clean}, ${domain}, 'quarantined', ${submittedBy || null})
+      on conflict (id) do update set rule = excluded.rule, approval_status = 'quarantined', submitted_by = excluded.submitted_by, created_at = now()
+    `;
+    await sql`
+      insert into noctis_learning_audit (id, actor_id, action, target_type, target_id, reason)
+      values (${pairId(`audit:rule:${id}:${Date.now()}`)}, ${submittedBy || "system"}, 'training_rule_submitted', 'training_rule', ${id}, 'Submitted for independent review')
     `;
   } catch {
     /* non-blocking */
