@@ -208,3 +208,34 @@ export const testBrainConnection = createServerFn({ method: "POST" })
       return { ok: false, error: msg };
     }
   });
+
+/**
+ * Submit text as quarantined Noctis source material. No URL is fetched and no
+ * content becomes active knowledge until an authorized reviewer approves it.
+ */
+export const submitNoctisSource = createServerFn({ method: "POST" })
+  .validator((input: {
+    title?: unknown; domain?: unknown; content?: unknown; canonicalUri?: unknown;
+    publisher?: unknown; jurisdiction?: unknown; sourceVersion?: unknown; license?: unknown;
+    classification?: unknown;
+  }) => ({
+    title: typeof input?.title === "string" ? input.title.slice(0, 240) : "",
+    domain: typeof input?.domain === "string" ? input.domain.slice(0, 80) : "",
+    content: typeof input?.content === "string" ? input.content.slice(0, 500_000) : "",
+    canonicalUri: typeof input?.canonicalUri === "string" ? input.canonicalUri.slice(0, 1000) : "",
+    publisher: typeof input?.publisher === "string" ? input.publisher.slice(0, 200) : "",
+    jurisdiction: typeof input?.jurisdiction === "string" ? input.jurisdiction.slice(0, 120) : "",
+    sourceVersion: typeof input?.sourceVersion === "string" ? input.sourceVersion.slice(0, 120) : "",
+    license: typeof input?.license === "string" ? input.license.slice(0, 240) : "",
+    classification: ["public", "internal", "confidential", "restricted"].includes(String(input?.classification))
+      ? input.classification as "public" | "internal" | "confidential" | "restricted"
+      : "public" as const,
+  }))
+  .handler(async ({ data }) => {
+    const { requireUserId } = await import("@/lib/auth/verify.server");
+    const { callerKey, guardRate } = await import("@/lib/security.server");
+    const userId = await requireUserId();
+    await guardRate(`noctis-source-submit:${callerKey(userId)}`, 5, 10 * 60 * 1000);
+    const { registerNoctisTextSource } = await import("@/lib/noctis-source-ingestion.server");
+    return registerNoctisTextSource(data, userId);
+  });
