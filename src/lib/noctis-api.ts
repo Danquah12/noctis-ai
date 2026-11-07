@@ -136,9 +136,13 @@ export const trainVibe = createServerFn({ method: "POST" })
     rule: typeof input?.rule === "string" ? input.rule.trim().slice(0, 320) : "",
   }))
   .handler(async ({ data }) => {
+    const { requireUserId } = await import("@/lib/auth/verify.server");
+    const { callerKey, guardRate } = await import("@/lib/security.server");
+    const userId = await requireUserId();
+    await guardRate(`noctis-training:${callerKey(userId)}`, 10, 10 * 60 * 1000);
     const { trainPair, rememberRule, trainingStatus, exportTrainingJsonl } = await import("@/lib/noctis-train.server");
     if (data.action === "train") {
-      const res = await trainPair(data.question, data.answer, "user-taught");
+      const res = await trainPair(data.question, data.answer, "user-taught", userId);
       const status = await trainingStatus();
       return { ok: res.ok, reason: res.reason || "", status };
     }
