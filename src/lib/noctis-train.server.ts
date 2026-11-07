@@ -965,6 +965,32 @@ export async function rememberRule(ruleText: string, domain = "general", submitt
   return { ok: true, rule: clean };
 }
 
+export async function pendingTrainingSubmissions(limit = 100) {
+  await hydrateFromDb();
+  const safeLimit = Math.max(1, Math.min(200, Math.floor(limit)));
+  const { getSql } = await import("@/lib/db");
+  const sql = await getSql();
+  const pairsPending = await sql<{
+    id: string; question: string; answer: string; domain: string;
+    submitted_by: string | null; created_at: string; approval_status: string;
+  }>`
+    select id, question, answer, domain, submitted_by, created_at::text as created_at, approval_status
+    from vibe_training_pair
+    where approval_status in ('quarantined', 'legacy_review_required')
+    order by created_at desc limit ${safeLimit}
+  `;
+  const rulesPending = await sql<{
+    id: string; rule: string; domain: string; submitted_by: string | null;
+    created_at: string; approval_status: string;
+  }>`
+    select id, rule, domain, submitted_by, created_at::text as created_at, approval_status
+    from vibe_training_rule
+    where approval_status in ('quarantined', 'legacy_review_required')
+    order by created_at desc limit ${safeLimit}
+  `;
+  return { pairs: pairsPending, rules: rulesPending };
+}
+
 export async function reviewTrainingSubmission(params: {
   kind: "pair" | "rule";
   id: string;
@@ -1123,15 +1149,16 @@ export async function trainingStatus() {
     rulesCount: rulesMem.length,
     dbConnected: dbHydrated,
     byDomain,
-    recent: pairs.slice(-8).reverse().map((p) => ({
+    recent: pairs.filter((p) => p.approvalStatus === "approved").slice(-8).reverse().map((p) => ({
+      id: p.id,
       question: p.question,
       domain: p.domain || inferDomain(p.question),
       model: p.model,
       hits: p.hits ?? 1,
       at: p.at,
-      approvalStatus: p.approvalStatus || "quarantined",
+      approvalStatus: "approved",
     })),
-    recentQuestions: pairs.slice(-8).reverse().map((p) => p.question),
+    recentQuestions: pairs.filter((p) => p.approvalStatus === "approved").slice(-8).reverse().map((p) => p.question),
     rules: rulesMem.slice(-12),
   };
 }
