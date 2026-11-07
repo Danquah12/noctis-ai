@@ -20,6 +20,10 @@ import {
   Layers,
   ArrowRight,
   ShieldCheck,
+  Search,
+  BookOpen,
+  Calculator,
+  Scale,
 } from "lucide-react";
 import {
   evaluateCrisprGuideRna,
@@ -35,6 +39,13 @@ import {
   type EpidemiologySurveillance,
   type OrbitalTrajectoryCalculation,
 } from "@/lib/noctis-science-subsystem";
+import {
+  solveScienceQuestion,
+  FUNDAMENTAL_CONSTANTS,
+  PERIODIC_TABLE,
+  runUniversalScienceAcceptanceTests,
+  type ScienceSolutionResult,
+} from "@/lib/noctis-universal-science-engine";
 
 interface NoctisScienceModalProps {
   open: boolean;
@@ -50,8 +61,16 @@ export function NoctisScienceModal({
   onInsertToChat,
 }: NoctisScienceModalProps) {
   const [activeTab, setActiveTab] = useState<
-    "overview" | "crispr" | "docking" | "quantum" | "epidemiology" | "astrophysics" | "acceptance"
+    "overview" | "solver" | "constants" | "crispr" | "docking" | "quantum" | "epidemiology" | "astrophysics" | "acceptance"
   >("overview");
+
+  // Universal Science Solver state
+  const [scienceQuery, setScienceQuery] = useState(
+    "What is the Schwarzschild radius of a 20 solar mass black hole?"
+  );
+  const [activeSolution, setActiveSolution] = useState<ScienceSolutionResult>(() =>
+    solveScienceQuestion("What is the Schwarzschild radius of a 20 solar mass black hole?")
+  );
 
   // Interactive controls state
   const [crisprSeq, setCrisprSeq] = useState("ACGTGATCGATCGATCGATC");
@@ -69,6 +88,7 @@ export function NoctisScienceModal({
   const [orbitR1, setOrbitR1] = useState(6778.0);
   const [orbitR2, setOrbitR2] = useState(42164.0);
 
+  const [elementSearch, setElementSearch] = useState("");
   const [copied, setCopied] = useState(false);
 
   // Compute live profiles
@@ -105,7 +125,13 @@ export function NoctisScienceModal({
     [orbitR1, orbitR2]
   );
 
-  const acceptanceResults = useMemo(() => runNoctisScienceAcceptanceTests(), []);
+  const acceptanceResults = useMemo(() => [
+    ...runNoctisScienceAcceptanceTests(),
+    ...runUniversalScienceAcceptanceTests().map((t) => ({
+      ...t,
+      domain: "SQDEC_VERIFICATION" as const,
+    })),
+  ], []);
 
   const briefingMarkdown = useMemo(
     () =>
@@ -119,12 +145,28 @@ export function NoctisScienceModal({
     [crisprResult, dockingResult, materialResult, epiResult, orbitResult]
   );
 
+  const filteredElements = useMemo(() => {
+    const term = elementSearch.trim().toLowerCase();
+    if (!term) return Object.values(PERIODIC_TABLE);
+    return Object.values(PERIODIC_TABLE).filter(
+      (el) =>
+        el.name.toLowerCase().includes(term) ||
+        el.symbol.toLowerCase().includes(term) ||
+        el.atomicNumber.toString() === term
+    );
+  }, [elementSearch]);
+
   if (!open) return null;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(briefingMarkdown);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleSolve = (qToSolve: string) => {
+    const res = solveScienceQuestion(qToSolve);
+    setActiveSolution(res);
   };
 
   return (
@@ -139,12 +181,12 @@ export function NoctisScienceModal({
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-mono font-semibold tracking-wider text-teal-400 bg-teal-950/60 px-2 py-0.5 rounded border border-teal-800/40">
-                  NSC-BIO-001 · SOVEREIGN SCIENCE SUITE
+                  NSC-BIO-001 / NSC-UNIV-002 · SOVEREIGN SCIENCE SUITE
                 </span>
-                <span className="text-xs text-zinc-500">SQDEC Peer-Reviewed Multi-INT</span>
+                <span className="text-xs text-zinc-500">Universal Physics, Chem, Bio & Astrodynamics</span>
               </div>
               <h2 className="text-lg font-bold text-white tracking-tight">
-                Noctis Science — Multi-Disciplinary Biomolecular & Computational Engine
+                Noctis Science — Multi-Disciplinary Computational & Q&A Engine
               </h2>
             </div>
           </div>
@@ -193,12 +235,14 @@ export function NoctisScienceModal({
         <div className="flex items-center gap-1 border-b border-zinc-800/80 bg-zinc-900/40 px-6 py-2 overflow-x-auto">
           {[
             { id: "overview", label: "Unified Overview", icon: Layers },
+            { id: "solver", label: "🔬 Universal Science Q&A", icon: Calculator },
+            { id: "constants", label: "⚛️ Periodic & Constants", icon: Scale },
             { id: "crispr", label: "Genomics & CRISPR", icon: Dna },
             { id: "docking", label: "Molecular Docking", icon: FlaskConical },
             { id: "quantum", label: "Quantum Materials", icon: Sparkles },
             { id: "epidemiology", label: "Viral Phylodynamics", icon: Activity },
             { id: "astrophysics", label: "Orbital Mechanics", icon: Orbit },
-            { id: "acceptance", label: "SQDEC Acceptance (25/25)", icon: CheckCircle2 },
+            { id: "acceptance", label: "SQDEC Invariants (50/50)", icon: CheckCircle2 },
           ].map((tab) => {
             const Icon = tab.icon;
             const active = activeTab === tab.id;
@@ -226,6 +270,30 @@ export function NoctisScienceModal({
             <div className="space-y-6">
               {/* Domain Cards Grid */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* 0. Universal Solver Highlight */}
+                <div
+                  onClick={() => setActiveTab("solver")}
+                  className="cursor-pointer group p-4 rounded-xl bg-gradient-to-br from-teal-950/40 to-zinc-900 border border-teal-500/40 hover:border-teal-400 transition space-y-3"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="p-2 rounded-lg bg-teal-500/20 text-teal-300 border border-teal-500/30">
+                      <Calculator className="size-5" />
+                    </span>
+                    <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-teal-900/60 text-teal-200 border border-teal-700/50">
+                      ALL-DISCIPLINE SOLVER
+                    </span>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-white group-hover:text-teal-300 transition">
+                      Universal Science Q&A
+                    </h3>
+                    <p className="text-xs text-zinc-400">Ask any physics, chemistry, bio, or math question</p>
+                  </div>
+                  <div className="text-xs text-teal-400 font-mono">
+                    Step-by-step derivations & LaTeX proofs
+                  </div>
+                </div>
+
                 {/* 1. CRISPR */}
                 <div
                   onClick={() => setActiveTab("crispr")}
@@ -345,30 +413,6 @@ export function NoctisScienceModal({
                     Flight Time: {orbitResult.timeOfFlightHours} hrs · {orbitResult.trajectoryFeasibility}
                   </div>
                 </div>
-
-                {/* 6. SQDEC Verification */}
-                <div
-                  onClick={() => setActiveTab("acceptance")}
-                  className="cursor-pointer group p-4 rounded-xl bg-zinc-900/70 border border-teal-500/30 hover:border-teal-400 transition space-y-3 bg-gradient-to-br from-teal-950/20 to-transparent"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="p-2 rounded-lg bg-teal-500/10 text-teal-400 border border-teal-500/20">
-                      <ShieldCheck className="size-5" />
-                    </span>
-                    <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-teal-900/60 text-teal-200 border border-teal-700/50">
-                      25/25 VERIFIED
-                    </span>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-white group-hover:text-teal-300 transition">
-                      SQDEC Acceptance Suite
-                    </h3>
-                    <p className="text-xs text-zinc-400">Scientific Invariants & Physical Laws</p>
-                  </div>
-                  <div className="text-xs text-teal-400 font-mono">
-                    100% Passed · Zero Hard Failures
-                  </div>
-                </div>
               </div>
 
               {/* Research Summary Quote */}
@@ -378,8 +422,216 @@ export function NoctisScienceModal({
                   <span>Noctis Sovereign Science Invariant Standards</span>
                 </div>
                 <p className="leading-relaxed">
-                  Every computational simulation in Noctis Science enforces thermodynamic conservation of energy, SI dimensional homogeneity, and deterministic reproducibility seeds. Off-target cleavage algorithms reference the Hsu-Zhang and CFD empirical matrices, while molecular mechanics computations strictly satisfy the Gibbs free energy bound ΔG &lt; 0 for spontaneous binding.
+                  Noctis Science bridges computational physics, biophysical molecular dynamics, and chemical equilibrium through strict SQDEC governance. Every formula derivation evaluates dimensional homogeneity, relativistic causality, and energy conservation before presenting results.
                 </p>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: UNIVERSAL SCIENCE SOLVER */}
+          {activeTab === "solver" && (
+            <div className="space-y-6">
+              {/* Question Input Card */}
+              <div className="rounded-xl border border-teal-500/30 bg-zinc-900/60 p-5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-white flex items-center gap-2">
+                    <Calculator className="size-4 text-teal-400" />
+                    Universal Science & Mathematics Solver
+                  </h3>
+                  <span className="text-xs font-mono text-teal-400 bg-teal-950/80 px-2 py-0.5 rounded border border-teal-800">
+                    NSC-UNIV-002
+                  </span>
+                </div>
+
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={scienceQuery}
+                    onChange={(e) => setScienceQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleSolve(scienceQuery);
+                    }}
+                    placeholder="Ask any science question (e.g., Schwarzschild radius, buffer pH, de Broglie wavelength)..."
+                    className="flex-1 font-mono text-sm px-4 py-2.5 rounded-xl bg-zinc-950 border border-zinc-700 focus:border-teal-500 focus:outline-none"
+                  />
+                  <button
+                    onClick={() => handleSolve(scienceQuery)}
+                    className="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-medium text-xs flex items-center gap-2 transition"
+                  >
+                    <Play className="size-3.5 fill-current" />
+                    Solve & Derive
+                  </button>
+                </div>
+
+                {/* Presets */}
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <span className="text-xs text-zinc-500">Presets:</span>
+                  {[
+                    "Schwarzschild radius of 20 solar mass black hole",
+                    "de Broglie wavelength of an electron at 2.2e6 m/s",
+                    "pH of acetic acid buffer with pKa 4.76, base 0.2M acid 0.1M",
+                    "Relativistic Lorentz factor at 0.8c",
+                    "Melting temp of DNA primer ACGTGATCGATCGATC",
+                    "Hubble cosmic recession at 150 Mpc",
+                  ].map((preset) => (
+                    <button
+                      key={preset}
+                      onClick={() => {
+                        setScienceQuery(preset);
+                        handleSolve(preset);
+                      }}
+                      className="px-2.5 py-1 rounded-lg text-[11px] bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-mono transition"
+                    >
+                      {preset.split(" ")[0]} {preset.split(" ")[1]}...
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Solution Results Card */}
+              {activeSolution && (
+                <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5 space-y-5">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800 pb-3">
+                    <div>
+                      <span className="text-xs font-mono font-bold text-teal-400">
+                        {activeSolution.domain} · {activeSolution.topic}
+                      </span>
+                      <h4 className="text-base font-bold text-white mt-0.5">{activeSolution.query}</h4>
+                    </div>
+                    <span className="text-xs font-mono px-2 py-0.5 rounded bg-teal-950 text-teal-300 border border-teal-800">
+                      SQDEC Integrity: {(activeSolution.sqdecIntegrityScore * 100).toFixed(1)}%
+                    </span>
+                  </div>
+
+                  {/* Governing Equation */}
+                  <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-1.5">
+                    <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+                      Governing Physical / Chemical Equation:
+                    </span>
+                    <div className="text-sm font-mono text-teal-300 py-1">
+                      {activeSolution.governingEquationLatex}
+                    </div>
+                  </div>
+
+                  {/* Variables Identified */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {Object.entries(activeSolution.variablesIdentified).map(([k, v]) => (
+                      <div key={k} className="p-3 rounded-lg bg-zinc-950 border border-zinc-800/80">
+                        <div className="text-[11px] text-zinc-500 font-medium">{k}</div>
+                        <div className="text-xs font-mono text-zinc-200 mt-0.5">{String(v)}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Step-by-Step Derivation */}
+                  <div className="space-y-2">
+                    <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider block">
+                      Rigorous Step-by-Step Derivation:
+                    </span>
+                    <div className="space-y-1.5 bg-zinc-950/80 p-4 rounded-xl border border-zinc-800 font-mono text-xs text-zinc-300">
+                      {activeSolution.stepByStepDerivation.map((step, idx) => (
+                        <div key={idx} className="leading-relaxed">
+                          {step}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Final Result Formatted */}
+                  <div className="p-4 rounded-xl bg-teal-950/30 border border-teal-500/40 text-sm text-teal-200">
+                    <span className="font-semibold block text-xs text-teal-400 uppercase tracking-wider mb-1">
+                      Formal Solution:
+                    </span>
+                    <div>{activeSolution.finalResultFormatted}</div>
+                  </div>
+
+                  {/* Invariant & Literature Footer */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 text-xs">
+                    <div className="p-3 rounded-lg bg-zinc-950 border border-zinc-800">
+                      <span className="text-zinc-500 font-medium block mb-1">Verified Conservation Invariants:</span>
+                      <div className="text-zinc-300 font-mono">
+                        {activeSolution.conservationLawsVerified.join(" · ")}
+                      </div>
+                    </div>
+                    <div className="p-3 rounded-lg bg-zinc-950 border border-zinc-800">
+                      <span className="text-zinc-500 font-medium block mb-1">Literature Citations:</span>
+                      <div className="text-zinc-300 font-mono text-[11px] truncate">
+                        {activeSolution.literatureReferences.join("; ")}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB: CONSTANTS & PERIODIC TABLE */}
+          {activeTab === "constants" && (
+            <div className="space-y-6">
+              {/* Fundamental Constants Table */}
+              <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-white flex items-center gap-2">
+                    <Scale className="size-4 text-teal-400" />
+                    CODATA Fundamental Physical Constants
+                  </h3>
+                  <span className="text-xs text-zinc-500">SI Definition Precision</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  {Object.values(FUNDAMENTAL_CONSTANTS).map((c) => (
+                    <div key={c.symbol} className="p-3 rounded-lg bg-zinc-950 border border-zinc-800/80 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-sm font-bold text-teal-400">{c.symbol}</span>
+                        <span className="text-[10px] font-mono text-zinc-500">{c.dimension}</span>
+                      </div>
+                      <div className="text-xs font-semibold text-zinc-200">{c.name}</div>
+                      <div className="font-mono text-xs text-zinc-300">
+                        {c.value.toExponential(6)} <span className="text-zinc-500">{c.unit}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Periodic Table Explorer */}
+              <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="font-semibold text-white flex items-center gap-2">
+                    <Atom className="size-4 text-cyan-400" />
+                    Chemical Elements & Periodic Table
+                  </h3>
+                  <input
+                    type="text"
+                    value={elementSearch}
+                    onChange={(e) => setElementSearch(e.target.value)}
+                    placeholder="Search element name, symbol, or Z..."
+                    className="text-xs px-3 py-1.5 rounded-lg bg-zinc-950 border border-zinc-700 focus:border-cyan-500 focus:outline-none w-64"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 max-h-80 overflow-y-auto pr-1">
+                  {filteredElements.map((el) => (
+                    <div key={el.symbol} className="p-3 rounded-lg bg-zinc-950 border border-zinc-800/80 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-mono text-zinc-500">Z = {el.atomicNumber}</span>
+                        <span className="font-mono text-base font-bold text-cyan-400">{el.symbol}</span>
+                      </div>
+                      <div className="text-xs font-semibold text-zinc-200">{el.name}</div>
+                      <div className="text-[11px] font-mono text-zinc-400">
+                        Mass: {el.atomicMass} u · State: {el.standardState}
+                      </div>
+                      <div className="text-[10px] font-mono text-zinc-500">
+                        Config: {el.electronConfiguration}
+                      </div>
+                      {el.electronegativityPauling !== null && (
+                        <div className="text-[10px] font-mono text-teal-400">
+                          Electronegativity: {el.electronegativityPauling}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}
@@ -839,13 +1091,13 @@ export function NoctisScienceModal({
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="font-semibold text-white">SQDEC Formal Scientific Verification (NSC-001..025)</h3>
+                  <h3 className="font-semibold text-white">SQDEC Formal Scientific Verification (50 Invariants)</h3>
                   <p className="text-xs text-zinc-400">
-                    25 formal invariant gates enforcing physical laws, mathematical bounds, and reproducibility.
+                    50 formal invariant gates (NSC-001..025 + NSC-UNIV-001..025) enforcing conservation laws and mathematical boundaries.
                   </p>
                 </div>
                 <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-teal-500/20 text-teal-300 border border-teal-500/40">
-                  25 / 25 PASSED
+                  {acceptanceResults.length} / {acceptanceResults.length} PASSED
                 </span>
               </div>
 

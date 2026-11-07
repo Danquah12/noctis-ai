@@ -946,6 +946,12 @@ export async function vibeReply(
   }
   const report = retrievalReport(kept, latest);
   if (report) return { text: report };
+
+  if (/\b(schwarzschild|de broglie|henderson-?hasselbalch|lorentz factor|relativistic lorentz|melting temp.*(?:dna|primer)|dna.*melting temp|hubble.*recession|event horizon radius)\b/i.test(latest)) {
+    const { solveScienceQuestion, formatScienceResponse } = await import("@/lib/noctis-universal-science-engine");
+    const sol = solveScienceQuestion(latest);
+    return { text: formatScienceResponse(sol) };
+  }
   const reply = await composeVibeReply(kept, keyOverride, style);
   if (!("text" in reply) || reply.text.includes("Independent check") || reply.text.startsWith("## Vibe ") || (reply.text.trim().startsWith("{") && reply.text.trim().endsWith("}"))) return reply;
   const { attachHard } = await import("@/lib/noctis-hard");
