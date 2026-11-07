@@ -58,6 +58,7 @@ export type TrainingPair = {
   model: string;
   hits?: number;
   at: string;
+  approvalStatus?: "quarantined" | "approved" | "rejected" | "deprecated" | "legacy_review_required";
 };
 
 const FILE = path.join(process.cwd(), "data", "vibe-training.json");
@@ -624,6 +625,7 @@ function load(): TrainingPair[] {
           model: item.model || "vibe-native",
           hits: typeof item.hits === "number" ? item.hits : 1,
           at: item.at || new Date().toISOString(),
+          approvalStatus: item.approvalStatus || (item.model === "vibe-seed" ? "approved" : "quarantined"),
         });
       }
     }
@@ -692,11 +694,7 @@ export async function hydrateFromDb(): Promise<void> {
     try {
       const { getSql } = await import("@/lib/db");
       const sql = await getSql();
-      await sql`
-        delete from vibe_training_pair
-        where model in ('vibe', 'vibe-native', 'vibe-gadget')
-      `.catch(() => undefined);
-      const rows = await sql<{
+       const rows = await sql<{
         id: string;
         question: string;
         answer: string;
@@ -704,20 +702,16 @@ export async function hydrateFromDb(): Promise<void> {
         model: string;
         hits: number;
         updated_at: string;
+        approval_status: TrainingPair["approvalStatus"];
       }>`
-        select id, question, answer, domain, model, hits, updated_at::text as updated_at
+        select id, question, answer, domain, model, hits, updated_at::text as updated_at, approval_status
         from vibe_training_pair
         where verified = true
-          and model not in ('vibe', 'vibe-native', 'vibe-gadget')
+          and approval_status = 'approved'
         order by updated_at desc
         limit 500
       `;
-      for (let i = pairs.length - 1; i >= 0; i -= 1) {
-        if (pairs[i]?.model === "vibe" || pairs[i]?.model === "vibe-native" || pairs[i]?.model === "vibe-gadget") {
-          pairs.splice(i, 1);
-        }
-      }
-      for (const row of rows.reverse()) {
+       for (const row of rows.reverse()) {
         const key = row.question.toLowerCase().trim();
         const idx = pairs.findIndex((p) => p.question.toLowerCase().trim() === key);
         const item: TrainingPair = {
@@ -728,6 +722,7 @@ export async function hydrateFromDb(): Promise<void> {
           model: row.model || "vibe-seed",
           hits: Number(row.hits) || 1,
           at: row.updated_at || new Date().toISOString(),
+          approvalStatus: row.approval_status || "approved",
         };
         if (idx >= 0) pairs[idx] = item;
         else pairs.push(item);
@@ -742,8 +737,8 @@ export async function hydrateFromDb(): Promise<void> {
         for (const seed of SEED_CORPUS) {
           const id = pairId(seed.question);
           await sql`
-            insert into vibe_training_pair (id, question, answer, domain, model, hits, verified)
-            values (${id}, ${seed.question}, ${seed.answer}, ${seed.domain || "general"}, ${seed.model}, ${seed.hits || 1}, true)
+            insert into vibe_training_pair (id, question, answer, domain, model, hits, verified, approval_status)
+            values (${id}, ${seed.question}, ${seed.answer}, ${seed.domain || "general"}, ${seed.model}, ${seed.hits || 1}, true, 'approved')
             on conflict (id) do nothing
           `.catch(() => undefined);
         }
@@ -779,6 +774,7 @@ export function rememberAnswer(question: string, answer: string, model = "vibe-n
     model,
     hits: prevHits + 1,
     at: new Date().toISOString(),
+    approvalStatus: "quarantined",
   };
   if (same >= 0) pairs.splice(same, 1);
   pairs.push(next);
@@ -790,13 +786,15 @@ export function rememberAnswer(question: string, answer: string, model = "vibe-n
       const { getSql } = await import("@/lib/db");
       const sql = await getSql();
       await sql`
-        insert into vibe_training_pair (id, question, answer, domain, model, hits, verified, updated_at)
-        values (${id}, ${asked}, ${said}, ${resolvedDomain}, ${next.model}, 1, true, now())
+        insert into vibe_training_pair (id, question, answer, domain, model, hits, verified, approval_status, updated_at)
+        values (${id}, ${asked}, ${said}, ${resolvedDomain}, ${next.model}, 1, false, 'quarantined', now())
         on conflict (id) do update set
           answer = excluded.answer,
           domain = excluded.domain,
           model = excluded.model,
           hits = vibe_training_pair.hits + 1,
+          verified = false,
+          approval_status = 'quarantined',
           updated_at = now()
       `;
     } catch {
@@ -1002,7 +1000,7 @@ export function recallTrainedAnswer(question: string): { answer: string; questio
   const q = question.trim();
   if (q.length < 6 || hasScenarioNumbers(q)) return null;
   const ranked = pairs
-    .filter((pair) => pair.model !== "vibe" && pair.model !== "vibe-native" && pair.model !== "vibe-gadget" && pair.model !== "vibe-rag")
+    .filter((pair) => pair.approvalStatus === "approved" && pair.model !== "vibe" && pair.model !== "vibe-native" && pair.model !== "vibe-gadget" && pair.model !== "vibe-rag")
     .map((pair) => {
       const sim = similarityScore(q, pair.question);
       return { pair, ...sim };
@@ -1023,6 +1021,7 @@ export function lessonBlock(question: string) {
   const asked = words(question);
   if (!asked.size) return "";
   const ranked = pairs
+    .filter((pair) => pair.approvalStatus === "approved")
     .map((pair) => {
       const sim = similarityScore(question, pair.question);
       return { pair, shared: sim.shared, ratio: sim.ratio };
@@ -1041,7 +1040,9 @@ export async function trainingStatus() {
   await hydrateFromDb();
   const byDomain: Record<string, number> = {};
   let userTaughtPairs = 0;
+  let quarantinedPairs = 0;
   for (const pair of pairs) {
+    if (pair.approvalStatus !== "approved") quarantinedPairs += 1;
     const d = pair.domain || inferDomain(pair.question);
     byDomain[d] = (byDomain[d] || 0) + 1;
     if (pair.model === "user-taught" || pair.model === "vibe-trained" || pair.model === "api-trained") {
@@ -1051,6 +1052,8 @@ export async function trainingStatus() {
   return {
     totalPairs: pairs.length,
     userTaughtPairs,
+    quarantinedPairs,
+    approvedPairs: pairs.length - quarantinedPairs,
     totalRules: rulesMem.length,
     rulesCount: rulesMem.length,
     dbConnected: dbHydrated,
@@ -1072,6 +1075,7 @@ export async function exportTrainingJsonl(): Promise<string> {
   const systemPrompt =
     "You are Vibe, the self-trained teaching and verification engine inside Noctis. Start with the direct answer in the first sentence, organize multi-part explanations with clear headings or markdown tables, and never invent citations or unverified numbers.";
   return pairs
+    .filter((pair) => pair.approvalStatus === "approved")
     .map((pair) =>
       JSON.stringify({
         messages: [
