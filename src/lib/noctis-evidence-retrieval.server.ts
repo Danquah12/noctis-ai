@@ -68,7 +68,7 @@ export async function retrieveApprovedNoctisEvidence(input: {
      join noctis_source_chunk c on c.source_id = s.id
      where ${where}
      order by s.retrieved_at desc, c.ordinal asc
-     limit $${limitParam}`,
+     limit 100`,
     params,
   );
 
