@@ -192,6 +192,7 @@ export function getNoctisEngine(engineId: string): NoctisEngineManifest | null {
   return manifest ? {
     ...manifest,
     capabilities: [...manifest.capabilities],
+    requiredScopes: [...manifest.requiredScopes],
     dependencies: [...manifest.dependencies],
     executionModes: [...manifest.executionModes],
   } : null;
@@ -211,6 +212,7 @@ export function validateNoctisEngineRequest(
       !request.actorId?.trim() || !request.context?.correlationId?.trim() ||
       !request.capability?.trim() || !request.engineId?.trim() ||
       !request.authorization || !Array.isArray(request.authorization.scopes) ||
+      !request.context || typeof request.context !== "object" ||
       !request.constraints || typeof request.constraints !== "object") {
     return { ok: false, code: "INVALID_REQUEST", message: "Required request identity and routing fields are missing." };
   }
@@ -226,7 +228,7 @@ export function validateNoctisEngineRequest(
     return { ok: false, code: "SCOPE_REQUIRED", message: "The caller lacks one or more required engine scopes." };
   }
   const classificationRank = { public: 0, internal: 1, confidential: 2, restricted: 3 } as const;
-  if (!(request.constraints.dataClassification in classificationRank) ||
+  if (!Object.hasOwn(classificationRank, request.constraints.dataClassification) ||
       classificationRank[request.constraints.dataClassification] > classificationRank[manifest.dataClassification]) {
     return { ok: false, code: "DATA_CLASSIFICATION_EXCEEDED", message: "The request classification exceeds the engine's declared data boundary." };
   }
