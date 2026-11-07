@@ -130,17 +130,32 @@ export const sayVibe = createServerFn({ method: "POST" })
 
 export const trainVibe = createServerFn({ method: "POST" })
   .validator((input: { action?: unknown; question?: unknown; answer?: unknown; rule?: unknown }) => ({
-    action: input?.action === "train" || input?.action === "rule" || input?.action === "export" ? input.action : ("status" as const),
+    action: input?.action === "train" || input?.action === "rule" || input?.action === "export" || input?.action === "approve" || input?.action === "reject" ? input.action : ("status" as const),
     question: typeof input?.question === "string" ? input.question.trim().slice(0, 800) : "",
     answer: typeof input?.answer === "string" ? input.answer.trim().slice(0, 6000) : "",
     rule: typeof input?.rule === "string" ? input.rule.trim().slice(0, 320) : "",
+    kind: input?.kind === "pair" || input?.kind === "rule" ? input.kind : "pair",
+    id: typeof input?.id === "string" ? input.id.trim().slice(0, 160) : "",
+    reason: typeof input?.reason === "string" ? input.reason.trim().slice(0, 500) : "",
   }))
   .handler(async ({ data }) => {
     const { requireUserId } = await import("@/lib/auth/verify.server");
     const { callerKey, guardRate } = await import("@/lib/security.server");
     const userId = await requireUserId();
     await guardRate(`noctis-training:${callerKey(userId)}`, 10, 10 * 60 * 1000);
-    const { trainPair, rememberRule, trainingStatus, exportTrainingJsonl } = await import("@/lib/noctis-train.server");
+    const { trainPair, rememberRule, trainingStatus, exportTrainingJsonl, reviewTrainingSubmission } = await import("@/lib/noctis-train.server");
+    if (data.action === "approve" || data.action === "reject") {
+      const { requireNoctisLearningReviewer } = await import("@/lib/admin-api");
+      await requireNoctisLearningReviewer(userId);
+      const review = await reviewTrainingSubmission({
+        kind: data.kind,
+        id: data.id,
+        decision: data.action === "approve" ? "approved" : "rejected",
+        reviewerId: userId,
+        reason: data.reason,
+      });
+      return { ...review, status: await trainingStatus() };
+    }
     if (data.action === "train") {
       const res = await trainPair(data.question, data.answer, "user-taught", userId);
       const status = await trainingStatus();
