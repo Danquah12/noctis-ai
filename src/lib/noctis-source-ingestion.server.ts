@@ -142,18 +142,24 @@ export async function reviewNoctisSource(input: {
   const reason = clean(input.reason, 500);
   if (!sourceId || reason.length < 8) throw new Error("A source ID and review reason of at least 8 characters are required.");
   const sql = await getSql();
-  const rows = await sql<{ id: string; content_hash: string; status: string }>`
-    select id, content_hash, status from noctis_learning_source where id = ${sourceId} limit 1
+  const rows = await sql<{ id: string; content_hash: string; status: string; license: string | null; publisher: string | null }>`
+    select id, content_hash, status, license, publisher from noctis_learning_source where id = ${sourceId} limit 1
   `;
   const source = rows[0];
   if (!source) throw new Error("Source not found.");
   if (source.status !== "quarantined") throw new Error("Only quarantined sources can be reviewed.");
-  await sql`
+  if (input.decision === "approved" && (!source.license || !source.publisher)) {
+    throw new Error("Approval requires publisher and license/terms metadata. Keep the source quarantined until verified.");
+  }
+  const changed = await sql<{ id: string }>`
     update noctis_learning_source
     set status = ${input.decision}, reviewed_by = ${input.reviewerId},
         reviewed_at = now(), review_reason = ${reason}, updated_at = now()
     where id = ${sourceId} and status = 'quarantined'
+    returning id
   `;
+  if (!changed[0]) throw new Error("Source review conflict: the source was already reviewed.");
+
   await sql`
     insert into noctis_learning_audit
       (id, actor_id, action, target_type, target_id, reason, before_hash, after_hash)
