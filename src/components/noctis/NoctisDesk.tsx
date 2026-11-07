@@ -45,6 +45,7 @@ import { NoctisCognitiveModal } from "@/components/noctis/NoctisCognitiveModal";
 import { NoctisAirGapModal } from "@/components/noctis/NoctisAirGapModal";
 import { NoctisHolodeckModal } from "@/components/noctis/NoctisHolodeckModal";
 import { NoctisAutoRemediationModal } from "@/components/noctis/NoctisAutoRemediationModal";
+import { NoctisDefenseModal } from "@/components/noctis/NoctisDefenseModal";
 import { NoctisCircuitBreakerModal } from "@/components/noctis/NoctisCircuitBreakerModal";
 import { NoctisCrisisNegotiationModal } from "@/components/noctis/NoctisCrisisNegotiationModal";
 import { NoctisSteganographyModal } from "@/components/noctis/NoctisSteganographyModal";
@@ -6911,7 +6912,7 @@ export function NoctisDesk() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleOpenSovereignSuite("noctis-defense", "Assess defense SIGINT/IMINT threat telemetry and electronic warfare countermeasures")}
+                    onClick={() => setDefenseModalOpen(true)}
                     className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
                   >
                     <ShieldAlert className="size-3.5 text-red-400 shrink-0" />

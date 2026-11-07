@@ -1,3 +1,4 @@
+import { handleNaturalDefenseSubsystemQuery } from "./noctis-defense-subsystem.ts";
 import { buildZeroTrustPdeReport } from "./noctis-pde.ts";
 import { buildDeepResearchReport } from "./noctis-deep-research.ts";
 import { buildFrontierUnifiedArchitectureReport } from "./noctis-frontier-pillars.ts";
@@ -1084,6 +1085,12 @@ export function runFollowUpIntelligence(
     if (cyberResponse) {
       return adaptSpecialistEngineOutput(currentQuestion, cyberResponse, "NOCTIS-CYBER-VULN-001");
     }
+  }
+
+  // 00-defense. NOCTIS DEFENSE — Multi-INT Fusion & EW Assurance Engine (NDF-EW-001)
+  const defenseResponse = handleNaturalDefenseSubsystemQuery(currentQuestion);
+  if (defenseResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, defenseResponse, "NDF-EW-001");
   }
 
   // 00-council. Noctis Council of Engines (Multi-Agent Debate & Consensus Engine)
