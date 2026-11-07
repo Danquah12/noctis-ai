@@ -26,7 +26,13 @@
 
 A user teaching Noctis no longer causes the submitted answer to become active knowledge immediately. It is accepted as a quarantined submission. This avoids treating an unsupported answer as verified merely because it was submitted.
 
-### Not yet implemented
+### Milestone 2 — Evidence and evaluation persistence contracts
+
+- Added additive migration `0015_noctis_evidence_evaluation.sql` for immutable source chunks, retrieval traces, provider/model response provenance, evaluation runs, and per-case results.
+- Added `docs/noctis-training/EVIDENCE-AND-EVALUATION.md` with the source lifecycle, evidence rules, live-model evaluation protocol, security/privacy requirements, and implementation order.
+- These are schema and design foundations only. Source ingestion, retrieval instrumentation, provider telemetry, and the live evaluator are not yet wired into runtime.
+
+## Not yet implemented
 
 - Source upload and source-version ingestion service.
 - Claim extraction with exact source locators.
@@ -37,7 +43,7 @@ A user teaching Noctis no longer causes the submitted answer to become active kn
 
 ### Validation status
 
-- GitHub Actions CI has been triggered repeatedly; earlier runs failed at `npm ci` before TypeScript checks or build could run. A newer run is pending/in progress; see the PR checks for the latest status.
+- GitHub Actions CI has been triggered repeatedly; the latest observed run failed at `npm ci` before TypeScript checks or build could run. See the PR checks for current status.
 - No local TypeScript test, build, migration, database write, or model training job has been executed in the user's environment.
 - The migration has been committed but **has not been applied to any database**.
 - No production branch merge or deployment has occurred.
