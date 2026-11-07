@@ -130,7 +130,7 @@ export const sayVibe = createServerFn({ method: "POST" })
 
 export const trainVibe = createServerFn({ method: "POST" })
   .validator((input: { action?: unknown; question?: unknown; answer?: unknown; rule?: unknown }) => ({
-    action: input?.action === "train" || input?.action === "rule" || input?.action === "export" || input?.action === "approve" || input?.action === "reject" ? input.action : ("status" as const),
+    action: input?.action === "train" || input?.action === "rule" || input?.action === "export" || input?.action === "approve" || input?.action === "reject" || input?.action === "pending" ? input.action : ("status" as const),
     question: typeof input?.question === "string" ? input.question.trim().slice(0, 800) : "",
     answer: typeof input?.answer === "string" ? input.answer.trim().slice(0, 6000) : "",
     rule: typeof input?.rule === "string" ? input.rule.trim().slice(0, 320) : "",
@@ -143,7 +143,12 @@ export const trainVibe = createServerFn({ method: "POST" })
     const { callerKey, guardRate } = await import("@/lib/security.server");
     const userId = await requireUserId();
     await guardRate(`noctis-training:${callerKey(userId)}`, 10, 10 * 60 * 1000);
-    const { trainPair, rememberRule, trainingStatus, exportTrainingJsonl, reviewTrainingSubmission } = await import("@/lib/noctis-train.server");
+    const { trainPair, rememberRule, trainingStatus, exportTrainingJsonl, reviewTrainingSubmission, pendingTrainingSubmissions } = await import("@/lib/noctis-train.server");
+    if (data.action === "pending") {
+      const { requireNoctisLearningReviewer } = await import("@/lib/admin-api");
+      await requireNoctisLearningReviewer(userId);
+      return { ok: true, pending: await pendingTrainingSubmissions() };
+    }
     if (data.action === "approve" || data.action === "reject") {
       const { requireNoctisLearningReviewer } = await import("@/lib/admin-api");
       await requireNoctisLearningReviewer(userId);
@@ -159,7 +164,7 @@ export const trainVibe = createServerFn({ method: "POST" })
     if (data.action === "train") {
       const res = await trainPair(data.question, data.answer, "user-taught", userId);
       const status = await trainingStatus();
-      return { ok: res.ok, reason: res.reason || "", status };
+      return { ok: res.ok, reason: res.reason || "", submissionId: res.pair?.id || "", status };
     }
     if (data.action === "rule") {
       const res = await rememberRule(data.rule, "general", userId);
