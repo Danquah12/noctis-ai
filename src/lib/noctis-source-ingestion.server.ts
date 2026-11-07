@@ -93,13 +93,15 @@ export async function registerNoctisTextSource(input: NoctisSourceSubmission, su
           (id, source_id, ordinal, locator, content_text, content_hash, token_estimate)
         values
           (${randomUUID()}, ${sourceId}, ${ordinal},
-           ${`text-offset:${ordinal * CHUNK_CHARS}-${ordinal * CHUNK_CHARS + text.length}`},
+           ${`text-chunk:${ordinal}`},
            ${text}, ${chunkHash}, ${Math.ceil(text.length / 4)})
       `;
     }
   } catch (error) {
-    // Keep the source quarantined; a later repair/retry can identify partial chunks.
-    throw new Error(`Source was registered in quarantine but chunk storage was incomplete: ${error instanceof Error ? error.message : "storage error"}`);
+    // Best-effort cleanup prevents an incomplete source from appearing ingestible.
+    await sql.query("delete from noctis_source_chunk where source_id = $1", [sourceId]).catch(() => []);
+    await sql.query("delete from noctis_learning_source where id = $1", [sourceId]).catch(() => []);
+    throw new Error(`Source registration failed and was rolled back where possible: ${error instanceof Error ? error.message : "storage error"}`);
   }
 
   await sql`
