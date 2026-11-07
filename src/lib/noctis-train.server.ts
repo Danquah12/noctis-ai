@@ -728,7 +728,9 @@ export async function hydrateFromDb(): Promise<void> {
         else pairs.push(item);
       }
       const ruleRows = await sql<{ rule: string }>`
-        select rule from vibe_training_rule order by created_at desc limit 24
+        select rule from vibe_training_rule
+        where approval_status = 'approved'
+        order by created_at desc limit 24
       `;
       for (const r of ruleRows.reverse()) {
         if (r.rule && !rulesMem.includes(r.rule)) rulesMem.push(r.rule);
@@ -938,18 +940,15 @@ export async function rememberRule(ruleText: string, domain = "general"): Promis
   const clean = ruleText.replace(/\s+/g, " ").trim().slice(0, 240);
   if (clean.length < 6) return { ok: false, rule: "", reason: "Rule must be at least 6 characters." };
   await hydrateFromDb();
-  const idx = rulesMem.findIndex((r) => r.toLowerCase() === clean.toLowerCase());
-  if (idx >= 0) rulesMem.splice(idx, 1);
-  rulesMem.push(clean);
-  if (rulesMem.length > 24) rulesMem.splice(0, rulesMem.length - 24);
+  // Newly submitted rules remain quarantined until an authorized reviewer approves them.
   const id = pairId(`rule:${clean}`);
   try {
     const { getSql } = await import("@/lib/db");
     const sql = await getSql();
     await sql`
-      insert into vibe_training_rule (id, rule, domain)
-      values (${id}, ${clean}, ${domain})
-      on conflict (id) do update set rule = excluded.rule, created_at = now()
+      insert into vibe_training_rule (id, rule, domain, approval_status)
+      values (${id}, ${clean}, ${domain}, 'quarantined')
+      on conflict (id) do update set rule = excluded.rule, approval_status = 'quarantined', created_at = now()
     `;
   } catch {
     /* non-blocking */
