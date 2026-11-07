@@ -36,15 +36,23 @@ const groups = {
   legal_risk_finance: /(?:legal|risk|rmf|investment)/i,
   execution_integrations: /(?:execute|pipeline|swarm|mesh|workspace|plugin|github|gmail|voice|audio|vault|air-gap|code-interpreter|cognitive-sandbox|war-room|passport|desk|outside|gadgets|lex-synthesizer|diff|ledger|scenarios|ric|sovereign-factory)/i,
   professions_careers: /(?:career)/i,
-  other: /.*/,
+  other: null,
 };
 
-const grouped = Object.fromEntries(
-  Object.entries(groups).map(([group, pattern]) => [
-    group,
-    implementationFiles.filter((file) => pattern.test(path.posix.basename(file))),
-  ])
+const classified = new Set(
+  Object.entries(groups)
+    .filter(([, pattern]) => pattern instanceof RegExp)
+    .flatMap(([, pattern]) => implementationFiles.filter((file) => pattern.test(path.posix.basename(file))))
 );
+const grouped = Object.fromEntries([
+  ...Object.entries(groups)
+    .filter(([, pattern]) => pattern instanceof RegExp)
+    .map(([group, pattern]) => [
+      group,
+      implementationFiles.filter((file) => pattern.test(path.posix.basename(file))),
+    ]),
+  ["other", implementationFiles.filter((file) => !classified.has(file))],
+]);
 const report = {
   generatedAt: new Date().toISOString(),
   note: "File presence is inventory evidence only; it does not prove runtime integration, test success, or production readiness.",
