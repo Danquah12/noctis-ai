@@ -51,6 +51,26 @@ export function resolveXaiKey(): string {
   return findEnvKeyByPrefix(["xai-"]);
 }
 
+function isAllowedCustomModelEndpoint(rawEndpoint: string): boolean {
+  const allowedHosts = (process.env.NOCTIS_CUSTOM_MODEL_ALLOWED_HOSTS || "")
+    .split(",")
+    .map((host) => host.trim().toLowerCase())
+    .filter(Boolean);
+  if (!allowedHosts.length) return false;
+  try {
+    const url = new URL(rawEndpoint);
+    return url.protocol === "https:"
+      && !url.username
+      && !url.password
+      && !url.port
+      && allowedHosts.includes(url.hostname.toLowerCase())
+      && !url.hostname.endsWith(".localhost")
+      && url.hostname !== "localhost";
+  } catch {
+    return false;
+  }
+}
+
 function key() {
   return resolveOpenAiKey();
 }
@@ -347,6 +367,9 @@ export async function modelChat(
         /* fall through to other providers */
       }
     } else {
+      if (provider === "custom" && (!clientBrain?.endpoint || !isAllowedCustomModelEndpoint(clientBrain.endpoint))) {
+        return { error: "Custom model endpoint is not approved. Configure NOCTIS_CUSTOM_MODEL_ALLOWED_HOSTS with the exact HTTPS hostname(s) permitted by the server." };
+      }
       const endpoint =
         provider === "groq"
           ? "https://api.groq.com/openai/v1/chat/completions"
@@ -369,6 +392,7 @@ export async function modelChat(
       try {
         const res = await fetch(endpoint, {
           method: "POST",
+          redirect: "manual",
           headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
           signal: AbortSignal.timeout(60000),
           body: JSON.stringify({
