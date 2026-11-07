@@ -1376,8 +1376,8 @@ async function fetchWikiDirect(question: string): Promise<string> {
       return `${idx + 1}. **What are the key facts and highlights of ${p.title}?**\n   - *Answer:* ${s.join(" ") || p.extract.slice(0, 300)}`;
     });
 
-    const mode = classifyAdaptiveMode(rawQuestion);
-    const customDiag = generateDynamicDiagram(rawQuestion, pages[0]?.title || "");
+    const mode = classifyAdaptiveMode(question);
+    const customDiag = generateDynamicDiagram(question, pages[0]?.title || "");
     const mermaidBlock = customDiag
       ? `\`\`\`mermaid\n${customDiag.mermaid}\n\`\`\``
       : pages.length >= 2
@@ -1399,7 +1399,7 @@ async function fetchWikiDirect(question: string): Promise<string> {
       )
       .join("\n");
     const compTable = `| Entity / Subtopic | Verified Summary | Traceable Reference |\n| :--- | :--- | :--- |\n${compRows}`;
-    const check = verifyResponseIntegrity(rawQuestion, studySections.join("\n"), Boolean(mermaidBlock), false);
+    const check = verifyResponseIntegrity(question, studySections.join("\n"), Boolean(mermaidBlock), false);
 
     return [
       `## Study notes (\`Adaptive Mode: ${mode}\`)\n${studySections.join("\n\n")}`,
