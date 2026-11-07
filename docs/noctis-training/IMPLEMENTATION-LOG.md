@@ -32,6 +32,16 @@ A user teaching Noctis no longer causes the submitted answer to become active kn
 - Added `docs/noctis-training/EVIDENCE-AND-EVALUATION.md` with the source lifecycle, evidence rules, live-model evaluation protocol, security/privacy requirements, and implementation order.
 - These are schema and design foundations only. Source ingestion, retrieval instrumentation, provider telemetry, and the live evaluator are not yet wired into runtime.
 
+## Milestone 3 — Quarantined source submission and owner review API
+
+- Added server-only text-source registration with size bounds, SHA-256 source/chunk hashes, stable chunk locators, duplicate detection, and quarantined persistence.
+- Source submission does not fetch a URL, call an LLM, extract claims, approve material, or add it to training exports.
+- Added an authenticated and rate-limited source submission server function.
+- Added owner/MFA-only pending source queue and approve/reject actions with reviewer identity and audit records.
+- Source approval is blocked unless publisher and license/terms metadata are present. This is a metadata gate, not a legal determination that the license permits model training.
+- Partial chunk-write failures trigger best-effort cleanup.
+- Source retrieval is not yet connected to the answer-generation path; approved sources are not automatically used by Noctis.
+
 ## Not yet implemented
 
 - Source upload and source-version ingestion service.
