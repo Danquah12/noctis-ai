@@ -339,7 +339,8 @@ export async function modelChat(
         });
         if (res.ok) {
           const data = (await res.json());
-          const text = data.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("").trim();
+          const parts = data.candidates?.[0]?.content?.parts as Array<{ text?: string }> | undefined;
+          const text = parts?.map((part: { text?: string }) => part.text || "").join("").trim();
           if (text) return { text };
         }
       } catch {
