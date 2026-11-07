@@ -5,11 +5,6 @@
  * (OpenAI Studio Neural TTS + Browser Natural Human Web Speech API).
  */
 
-import {
-  translateToPlainLanguage,
-  type PlainLanguageAudience,
-} from "./noctis-plain-language.ts";
-
 export type VoicePersona =
   // American English (OpenAI Advanced Voice 2024-2026 + Core)
   | "maple"
@@ -956,7 +951,6 @@ export async function speakNoctisVoice(
     apiKey?: string;
     langCode?: string;
     rate?: number;
-    audience?: PlainLanguageAudience;
     onStart?: () => void;
     onEnd?: () => void;
     onChunk?: (current: number, total: number) => void;
@@ -966,11 +960,7 @@ export async function speakNoctisVoice(
 
   const info = getVoicePersona(persona);
   const effectiveLang = options?.langCode || info.languageCode || "en-US";
-  const textToSpeak =
-    options?.audience === "verbatim"
-      ? text
-      : translateToPlainLanguage(text, { audience: options?.audience || "youth_under_18" }).spokenNarrative;
-  const cleaned = cleanVoiceText(textToSpeak);
+  const cleaned = cleanVoiceText(text);
 
   if (!cleaned) {
     if (options?.onEnd) options.onEnd();

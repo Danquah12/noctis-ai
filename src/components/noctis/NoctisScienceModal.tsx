@@ -39,8 +39,6 @@ import {
   calculateHohmannTransfer,
   generateScienceIntelligenceBriefing,
 } from "@/lib/noctis-science-subsystem";
-import { speakNoctisVoice, stopCurrentVoicePlayback } from "@/lib/noctis-voice";
-import { translateToPlainLanguage } from "@/lib/noctis-plain-language";
 import {
   solveScienceQuestion,
   FUNDAMENTAL_CONSTANTS,
@@ -107,7 +105,6 @@ export function NoctisScienceModal({
   );
 
   const [copied, setCopied] = useState(false);
-  const [scienceSpeaking, setScienceSpeaking] = useState<boolean>(false);
 
   // Selected division profile
   const activeDivision = useMemo(
@@ -752,57 +749,9 @@ ${DISCOVERY_HYPOTHESIS_CATALOG.map((h) => `### [${h.hypothesisId}] ${h.title}
                       </span>
                       <h4 className="text-base font-bold text-white mt-0.5">{activeSolution.query}</h4>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => {
-                          if (scienceSpeaking) {
-                            stopCurrentVoicePlayback();
-                            setScienceSpeaking(false);
-                          } else {
-                            setScienceSpeaking(true);
-                            const raw = `${activeSolution.query}. ${activeSolution.finalResultFormatted}`;
-                            const plain = translateToPlainLanguage(raw, { audience: "youth_under_18" });
-                            void speakNoctisVoice(plain.spokenNarrative, "maple", {
-                              audience: "youth_under_18",
-                              onEnd: () => setScienceSpeaking(false),
-                            });
-                          }
-                        }}
-                        className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1.5 transition border ${
-                          scienceSpeaking
-                            ? "bg-amber-500/20 text-amber-300 border-amber-500/50 animate-pulse"
-                            : "bg-teal-950/60 hover:bg-teal-900/60 text-teal-300 border-teal-800"
-                        }`}
-                        title="Read aloud in simple words for children (18 & under) and non-technical researchers"
-                      >
-                        <Volume2 className="size-3.5" />
-                        <span>{scienceSpeaking ? "Stop" : "🧒 Read (Simple / All Ages)"}</span>
-                      </button>
-                      <span className="text-xs font-mono px-2 py-0.5 rounded bg-teal-950 text-teal-300 border border-teal-800">
-                        SQDEC Integrity: {(activeSolution.sqdecIntegrityScore * 100).toFixed(1)}%
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Simple Breakdown for Everyone (Ages 18 & Under) */}
-                  <div className="rounded-xl border border-amber-500/30 bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-zinc-950 p-4 space-y-2 text-xs">
-                    {(() => {
-                      const raw = `${activeSolution.query}. ${activeSolution.finalResultFormatted}`;
-                      const plain = translateToPlainLanguage(raw, { audience: "youth_under_18" });
-                      return (
-                        <>
-                          <div className="flex items-center justify-between">
-                            <span className="font-bold text-amber-300 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
-                              <span>🧒 Simple Breakdown (Ages 18 & Under)</span>
-                            </span>
-                            <span className="text-[10px] font-mono text-zinc-400">Plain English</span>
-                          </div>
-                          <p className="font-semibold text-zinc-100 text-sm leading-snug">{plain.headline}</p>
-                          <p className="text-zinc-300 italic"><span className="text-amber-400 font-medium not-italic">💡 Real-life analogy: </span>{plain.analogy}</p>
-                          <p className="text-teal-300"><span className="font-medium">🎯 Why it matters: </span>{plain.takeaway}</p>
-                        </>
-                      );
-                    })()}
+                    <span className="text-xs font-mono px-2 py-0.5 rounded bg-teal-950 text-teal-300 border border-teal-800">
+                      SQDEC Integrity: {(activeSolution.sqdecIntegrityScore * 100).toFixed(1)}%
+                    </span>
                   </div>
 
                   <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-1.5">
