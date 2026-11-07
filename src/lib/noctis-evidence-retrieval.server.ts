@@ -51,9 +51,6 @@ export async function retrieveApprovedNoctisEvidence(input: {
     params.push(domain);
     where += ` and s.domain = $${params.length}`;
   }
-  params.push(Math.max(1, Math.min(10, Math.trunc(input.limit ?? 5))));
-  const limitParam = params.length;
-
   const candidates = await sql.query<{
     source_id: string; chunk_id: string; title: string; publisher: string;
     canonical_uri: string | null; license: string; domain: string;
