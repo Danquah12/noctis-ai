@@ -245,7 +245,7 @@ This audit has not yet run the full test suite or completed a call-graph review.
 | Source inventory | Git tree inspection | Source-present |
 | Professional taxonomy | Specification and implementation file | Spec-present; reconciliation required |
 | Specialist modules | Source files present | Source-present; per-module review required |
-| UI | Components and routes present | UI-present; action wiring requires review |
+| UI | 57 Noctis UI components and 2 routes confirmed by CI inventory | UI-present; action wiring requires review |
 | Automated tests | 58 Noctis test files present | Test-present; pass status not asserted |
 | Learning governance | Prior branch implementation and migrations 0014/0015 | Implemented on branch; DB migrations unapplied |
 | Source ingestion | Quarantined text intake implementation | Implemented foundation; operational integration requires review |
@@ -254,7 +254,13 @@ This audit has not yet run the full test suite or completed a call-graph review.
 | Full CI | Latest reported run failed TypeScript validation | Failing; release blocked |
 | Production readiness | No production deployment evidence | Not established |
 
-## 8. Immediate audit actions
+## 8. Registry foundation added after baseline audit
+
+The branch now includes `src/lib/noctis-engine-registry.ts`, a typed metadata registry for an initial 11-engine cohort (core orchestration, cyber vulnerability/SAST, RMF, clinical, science, engineering, legal, defense, research and professional intelligence). It supports listing, domain filtering, capability discovery and request-contract validation. An authenticated metadata-only server function exposes the registry. It deliberately does not execute specialist modules or claim runtime integration.
+
+A focused test suite covers registry identity uniqueness, discovery, defensive copies, unsupported capabilities, evidence requirements, execution-mode boundaries and human approval gates. The suite is included in the typecheck/test gate.
+
+## 9. Immediate audit actions
 
 1. Build a machine-readable inventory from the repository tree.
 2. Parse the full professional taxonomy and compare declared engines to implementation exports.
@@ -265,7 +271,7 @@ This audit has not yet run the full test suite or completed a call-graph review.
 7. Assign maturity only after evidence is collected.
 8. Publish an approved baseline before refactoring.
 
-## 9. Non-negotiable preservation rules
+## 10. Non-negotiable preservation rules
 
 - Do not delete or rename existing engines merely to fit a new taxonomy.
 - Do not silently change existing exported function signatures.
