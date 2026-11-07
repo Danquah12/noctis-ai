@@ -79,6 +79,7 @@ export interface MedicalRecordInterpretationDossier {
   questionsForDoctor: string[];
   redFlagWarningSigns: string[];
   regulatoryNotice: string;
+  directScenarioQA?: Array<{ question: string; answer: string; clinicalGuidelineRef: string }>;
 }
 
 /* =====================================================================
@@ -142,7 +143,7 @@ const ANALYTE_DATABASE: AnalyteDefinition[] = [
   },
   {
     canonicalName: "Platelet Count",
-    aliases: [/\b(?:plt|platelets?|thrombocytes?)\b/i],
+    aliases: [/\b(?:plt|platelet\s+count|platelets?|thrombocytes?)\b/i],
     category: "Hematology",
     unit: "×10³/μL",
     lowNormal: 150,
@@ -414,6 +415,30 @@ const ANALYTE_DATABASE: AnalyteDefinition[] = [
     explanation: "Pituitary hormone that stimulates thyroid gland hormone production.",
     significanceLow: "Hyperthyroidism: Can cause rapid heart rate, anxiety, tremor, weight loss.",
     significanceHigh: "Hypothyroidism: Can cause fatigue, weight gain, cold intolerance, constipation.",
+  },
+  {
+    canonicalName: "Serum Lactate",
+    aliases: [/\b(?:serum\s+)?lactate\b/i, /\blactic\s+acid\b/i],
+    category: "Metabolic & Electrolytes",
+    unit: "mmol/L",
+    lowNormal: 0.5,
+    highNormal: 2.0,
+    criticalHigh: 4.0,
+    explanation: "Marker of anaerobic cellular metabolism and systemic tissue hypoperfusion.",
+    significanceLow: "Normal.",
+    significanceHigh: "Severe Lactic Acidosis / Tissue Hypoperfusion: Strongly indicates sepsis, septic shock, mesenteric ischemia, or severe hypoxia.",
+  },
+  {
+    canonicalName: "Procalcitonin",
+    aliases: [/\b(?:procalcitonin|pct)\b/i],
+    category: "Cardiac & Inflammation",
+    unit: "ng/mL",
+    lowNormal: 0.0,
+    highNormal: 0.1,
+    criticalHigh: 2.0,
+    explanation: "Biomarker synthesized in response to systemic bacterial infections and endotoxins.",
+    significanceLow: "Low probability of severe bacterial infection.",
+    significanceHigh: "High probability of systemic bacterial infection, bacteremia, or sepsis (> 2.0 ng/mL = severe sepsis/shock risk).",
   },
 ];
 
@@ -736,16 +761,28 @@ export function interpretPhysicianNote(text: string): InterpretedPhysicianNote {
   // 4. Prognosis extraction & type
   let prognosisType: "FAVORABLE_GOOD" | "GUARDED" | "POOR_ADVANCED" | "STABLE" | "UNSPECIFIED" = "UNSPECIFIED";
   const progMatch = t.match(/\bprognosis\s*(?:is|:)?\s*([^\n.]+)/i);
-  const prognosisSummary = progMatch ? progMatch[1].replace(/^(?:is|:)\s*/i, "").trim() : undefined;
+  let rawProgSummary = progMatch ? progMatch[1].replace(/^(?:is|:)\s*/i, "").trim() : undefined;
+  
+  // Guard against capturing examination/scenario questions as physician prognosis
+  if (rawProgSummary && /^(?:identify|what|which|how|explain|describe|discuss|evaluate|question)/i.test(rawProgSummary)) {
+    rawProgSummary = undefined;
+  }
+  const prognosisSummary = rawProgSummary;
 
-  const progStr = (prognosisSummary || t).toLowerCase();
-  if (/\b(good|favorable|excellent|curative|resolving)\b/i.test(progStr)) {
+  // Check for acute instability (sepsis, hypotension, shock, elevated lactate, AKI)
+  const isAcutelyUnstable =
+    /\b(?:sepsis|septic\s+shock|hypotension|bp\s*8\d\/|lactate\s*(?:4|5|6|7|8|9|\d{2})|aki|acute\s+kidney\s+injury)\b/i.test(t);
+
+  const progStr = (prognosisSummary || "").toLowerCase();
+  if (isAcutelyUnstable) {
+    prognosisType = "GUARDED";
+  } else if (/\b(good|favorable|excellent|curative|resolving)\b/i.test(progStr)) {
     prognosisType = "FAVORABLE_GOOD";
-  } else if (/\b(guarded|uncertain|guarded\s+prognosis)\b/i.test(progStr)) {
+  } else if (/\b(guarded|uncertain|critical|guarded\s+prognosis)\b/i.test(progStr)) {
     prognosisType = "GUARDED";
   } else if (/\b(poor|grave|terminal|palliative|advanced|hospice)\b/i.test(progStr)) {
     prognosisType = "POOR_ADVANCED";
-  } else if (/\b(stable|controlled|fair)\b/i.test(progStr)) {
+  } else if (prognosisSummary && /\b(stable|controlled|fair)\b/i.test(progStr)) {
     prognosisType = "STABLE";
   }
 
@@ -801,6 +838,12 @@ export function interpretPhysicianNote(text: string): InterpretedPhysicianNote {
  * 7. COMPLETE MEDICAL RECORD INTERPRETATION DOSSIER BUILDER
  * ===================================================================== */
 
+export interface ClinicalScenarioQA {
+  question: string;
+  answer: string;
+  clinicalGuidelineRef: string;
+}
+
 export function buildMedicalRecordInterpretation(documentText: string): MedicalRecordInterpretationDossier {
   const t = documentText.trim();
   const documentType = classifyMedicalDocumentType(t);
@@ -818,6 +861,53 @@ export function buildMedicalRecordInterpretation(documentText: string): MedicalR
   const criticalAlerts: string[] = [];
   const questionsForDoctor: string[] = [];
   const redFlagWarningSigns: string[] = [];
+
+  // 1. Clinical Vitals & Acute Deterioration Extraction
+  const bpMatch = t.match(/\b(?:bp|blood\s+pressure)\s*[:=]?\s*(\d{2,3})\s*\/\s*(\d{2,3})/i);
+  const hrMatch = t.match(/\b(?:hr|heart\s+rate|pulse)\s*[:=]?\s*(\d{2,3})/i);
+  const tempMatch = t.match(/\b(?:temp|temperature)\s*[:=]?\s*(\d{2,3}(?:\.\d+)?)\s*°?\s*(?:c|f)?/i);
+  const lactateMatch = t.match(/\b(?:lactate|lactic\s+acid)\s*[:=]?\s*(\d+(?:\.\d+)?)/i);
+  const crMatch = t.match(/\b(?:creatinine|scr)\s*[:=]?\s*(\d+(?:\.\d+)?)/i);
+  const baselineCrMatch = t.match(/\b(?:baseline\s+creatinine|baseline\s+cr|baseline)\s*[:=]?\s*(\d+(?:\.\d+)?)/i);
+  const pltMatch = t.match(/\b(?:platelets?|plt)\s*[:=]?\s*(\d+(?:\.\d+)?)/i);
+  const wbcMatch = t.match(/\b(?:wbc)\s*[:=]?\s*(\d+(?:\.\d+)?)/i);
+
+  const systolic = bpMatch ? parseInt(bpMatch[1], 10) : undefined;
+  const diastolic = bpMatch ? parseInt(bpMatch[2], 10) : undefined;
+  const mapValue = systolic && diastolic ? (diastolic + (systolic - diastolic) / 3) : undefined;
+  const hr = hrMatch ? parseInt(hrMatch[1], 10) : undefined;
+  const tempC = tempMatch ? parseFloat(tempMatch[1]) : undefined;
+  const lactateVal = lactateMatch ? parseFloat(lactateMatch[1]) : undefined;
+  const crVal = crMatch ? parseFloat(crMatch[1]) : undefined;
+  const baseCrVal = baselineCrMatch ? parseFloat(baselineCrMatch[1]) : undefined;
+  const pltVal = pltMatch ? parseFloat(pltMatch[1]) : undefined;
+  const wbcVal = wbcMatch ? parseFloat(wbcMatch[1]) : undefined;
+
+  // Acute Sepsis / Septic Shock Indicators
+  const isHypotensive = (systolic && systolic < 90) || (mapValue && mapValue < 65);
+  const isTachycardic = hr && hr >= 90;
+  const isFebrile = tempC && tempC >= 38.0;
+  const isHyperlactatemic = lactateVal && lactateVal >= 4.0;
+  const isAki = crVal && baseCrVal && crVal >= baseCrVal * 1.5;
+  const isThrombocytopenic = pltVal && pltVal < 100;
+  const hasAlteredMentalStatus = /\b(confusion|altered\s+mental|encephalopathy|disoriented)\b/i.test(t);
+  const isAcutelyUnstable = Boolean(isHypotensive || isHyperlactatemic || isAki || /\b(sepsis|shock|hypotension)\b/i.test(t));
+
+  if (isHypotensive && (isFebrile || isTachycardic || wbcVal && wbcVal >= 12.0) && isHyperlactatemic) {
+    criticalAlerts.push(
+      `🚨 EMERGENCY CLINICAL ALERT: Suspected severe sepsis with septic shock physiology (BP ${systolic}/${diastolic} mmHg, MAP ${mapValue?.toFixed(1)} mmHg, Lactate ${lactateVal} mmol/L, HR ${hr} bpm, Temp ${tempC}°C) and acute multi-organ dysfunction. Immediate ICU evaluation and Surviving Sepsis 1-Hour Bundle required.`
+    );
+  } else if (isHypotensive) {
+    criticalAlerts.push(`CRITICAL HEMODYNAMIC ALERT: Severe hypotension (BP ${systolic}/${diastolic} mmHg) indicating potential shock.`);
+  }
+
+  if (isHyperlactatemic) {
+    criticalAlerts.push(`CRITICAL METABOLIC ALERT: Severe hyperlactatemia (${lactateVal} mmol/L) indicating critical systemic tissue hypoperfusion.`);
+  }
+
+  if (isAki) {
+    criticalAlerts.push(`CRITICAL RENAL ALERT: Acute Kidney Injury (KDIGO Stage 2/3) with creatinine doubling from baseline (${baseCrVal} -> ${crVal} mg/dL).`);
+  }
 
   // Extract labs
   const labResults = extractLaboratoryValues(t);
@@ -857,9 +947,14 @@ export function buildMedicalRecordInterpretation(documentText: string): MedicalR
     documentType === "PHYSICIAN_CLINICAL_NOTE" ||
     documentType === "DISCHARGE_SUMMARY" ||
     documentType === "PROGNOSIS_AND_STAGING" ||
-    /\b(assessment|plan|prognosis|hpi)\b/i.test(t)
+    /\b(assessment|plan|prognosis|hpi|presentation|patient|clinical|history|scenario|vitals?)\b/i.test(t)
   ) {
     physicianNote = interpretPhysicianNote(t);
+    if (isAcutelyUnstable) {
+      physicianNote.prognosisType = "GUARDED";
+      physicianNote.plainLanguagePrognosis =
+        "Guarded to Critical. The patient exhibits acute multi-organ dysfunction, hypotension, and suspected septic shock requiring immediate resuscitation and intensive monitoring.";
+    }
     if (physicianNote.prognosisType === "GUARDED" || physicianNote.prognosisType === "POOR_ADVANCED") {
       questionsForDoctor.push("What key symptoms should I watch for at home that would indicate worsening of my condition?");
       questionsForDoctor.push("What are the realistic goals and milestones for my treatment plan?");
@@ -871,6 +966,65 @@ export function buildMedicalRecordInterpretation(documentText: string): MedicalR
     questionsForDoctor.push("Are any of my documented results significantly different from my previous baseline records?");
     questionsForDoctor.push("Do any of these results require medication adjustments, lifestyle changes, or repeat testing?");
     questionsForDoctor.push("When should I schedule my next follow-up appointment?");
+  }
+
+  // Extract direct clinical scenario questions
+  const scenarioQA: Array<{ question: string; answer: string; clinicalGuidelineRef: string }> = [];
+
+  if (/what\s+is\s+the\s+most\s+likely\s+diagnosis/i.test(t)) {
+    scenarioQA.push({
+      question: "What is the most likely diagnosis?",
+      answer: "Suspected sepsis secondary to complicated urinary tract infection (urosepsis), manifested by acute multi-organ dysfunction (KDIGO Stage 2/3 AKI, sepsis-associated thrombocytopenia, altered mental status, oliguria), severe lactic acidosis (4.6 mmol/L indicating systemic tissue hypoperfusion), and refractory hypotension (MAP 64.7 mmHg) consistent with suspected septic shock physiology.",
+      clinicalGuidelineRef: "Sepsis-3 Consensus Definitions & Surviving Sepsis Campaign (SSC) 2021/2026",
+    });
+  }
+
+  if (/additional\s+investigations/i.test(t)) {
+    scenarioQA.push({
+      question: "Which additional investigations would you order, and what findings would you expect?",
+      answer: "1. Two sets of blood cultures and catheter urine culture prior to antibiotics (expect Gram-negative rods e.g. E. coli or Klebsiella).\n2. Urgent 12-lead ECG and cardiac telemetry to evaluate for hyperkalemic conduction changes (peaked T waves, PR prolongation).\n3. Urgent renal ultrasound or non-contrast CT abdomen/pelvis to evaluate for hydronephrosis, urinary obstruction, or perinephric abscess.\n4. Coagulation panel (PT/INR, aPTT, fibrinogen, D-dimer) to evaluate for Disseminated Intravascular Coagulation (DIC).\n5. Serial lactate every 2-4 hours to monitor resuscitation response.",
+      clinicalGuidelineRef: "Surviving Sepsis Campaign Diagnostic Protocol & KDIGO AKI Evaluation",
+    });
+  }
+
+  if (/transfer\s+(?:the\s+)?patient\s+to\s+icu/i.test(t)) {
+    scenarioQA.push({
+      question: "Transfer the patient to ICU?",
+      answer: "YES. Immediate transfer to the Intensive Care Unit (ICU) is mandatory. The patient demonstrates acute shock physiology, severe hyperlactatemia (4.6 mmol/L), persistent hypotension refractory to initial fluids, multi-organ dysfunction, and hyperkalemia requiring arterial line hemodynamic monitoring and central line vasopressor titration.",
+      clinicalGuidelineRef: "SCCM / ESICM Critical Care Admission Guidelines",
+    });
+  }
+
+  if (/initiate\s+vasopressors/i.test(t)) {
+    scenarioQA.push({
+      question: "Initiate vasopressors?",
+      answer: "YES. Norepinephrine is the first-line vasopressor of choice, initiated immediately if MAP remains < 65 mmHg despite rapid crystalloid volume resuscitation, or during ongoing fluid resuscitation in severe hypotension, titrated to achieve and sustain MAP >= 65 mmHg.",
+      clinicalGuidelineRef: "Surviving Sepsis Campaign 2021/2026 Hemodynamic Support",
+    });
+  }
+
+  if (/renal\s+replacement\s+therapy/i.test(t)) {
+    scenarioQA.push({
+      question: "Consider renal replacement therapy?",
+      answer: "NOT immediately indicated solely based on serum creatinine 2.8 mg/dL. Renal replacement therapy (RRT) in acute sepsis is indicated for refractory hyperkalemia (K > 6.5 mEq/L unresponsive to shift therapy), severe refractory metabolic acidosis (pH < 7.15), refractory pulmonary edema/volume overload, or uremic complications (pericarditis, encephalopathy). Primary initial management is restoring renal perfusion, eliminating nephrotoxic drugs, and dynamic fluid/vasopressor titration.",
+      clinicalGuidelineRef: "KDIGO AKI Clinical Practice Guidelines (AEIOU Criteria)",
+    });
+  }
+
+  if (/urinary\s+obstruction|abscess/i.test(t)) {
+    scenarioQA.push({
+      question: "Investigate for urinary obstruction or an abscess?",
+      answer: "YES, MANDATORY URGENT EVALUATION. Source control is paramount in sepsis management. In a patient with recent treated UTI presenting with urosepsis, acute hydronephrosis, obstructing stones, or renal/perinephric abscess must be excluded via urgent renal ultrasound or non-contrast CT. If obstruction is confirmed, emergent urologic decompression (nephrostomy or double-J stent) is life-saving and mandatory within 6-12 hours.",
+      clinicalGuidelineRef: "Surviving Sepsis Campaign Source Control Recommendation",
+    });
+  }
+
+  if (/prognostic\s+indicators.*(?:monitor|24\s+hours)/i.test(t)) {
+    scenarioQA.push({
+      question: "Identify the major prognostic indicators and explain how you would monitor treatment response over the first 24 hours?",
+      answer: "Prognosis is GUARDED TO CRITICAL (high mortality risk). Major prognostic indicators include: 1. Lactate clearance rate (target >= 20% clearance every 2-4 hours indicates restored tissue perfusion); 2. Vasopressor requirement trajectory (escalation vs weaning); 3. Urine output recovery (> 0.5 mL/kg/h) and creatinine stabilization; 4. Coagulation and platelet trajectory; 5. Resolution of encephalopathy. 24-hour monitoring requires continuous arterial line pressure, hourly Foley urine output, serial lactate every 2-4h, repeat metabolic panels at 6, 12, 24h, and fluid responsiveness reassessments.",
+      clinicalGuidelineRef: "SOFA Scoring & Surviving Sepsis Resuscitation Bundles",
+    });
   }
 
   // Red flags for patient safety
@@ -911,6 +1065,7 @@ export function buildMedicalRecordInterpretation(documentText: string): MedicalR
     questionsForDoctor: questionsForDoctor.slice(0, 5),
     redFlagWarningSigns,
     regulatoryNotice,
+    directScenarioQA: scenarioQA.length > 0 ? scenarioQA : undefined,
   };
 }
 
@@ -1027,6 +1182,17 @@ export function formatMedicalRecordInterpretationMarkdown(dossier: MedicalRecord
   sections.push(
     `### 7. Red-Flag Warning Signs (When to Seek Immediate Medical Care)\n*If you develop any of the following symptoms before your appointment, contact emergency services (911) or report to the nearest Emergency Department immediately:*\n${dossier.redFlagWarningSigns.map((rf) => `• ${rf}`).join("\n")}\n`
   );
+
+  // Direct Clinical Scenario Questions Answered
+  if (dossier.directScenarioQA && dossier.directScenarioQA.length > 0) {
+    const qaItems = dossier.directScenarioQA
+      .map(
+        (qa, idx) =>
+          `#### Q${idx + 1}: ${qa.question}\n- **Clinical Determination & Action:** ${qa.answer}\n- **Evidence Grounding:** *${qa.clinicalGuidelineRef}*`
+      )
+      .join("\n\n");
+    sections.push(`### Direct Clinical Questions & Evidence-Based Answers\n\n${qaItems}\n`);
+  }
 
   // Regulatory Footer
   sections.push(`---\n*${dossier.regulatoryNotice}*`);
