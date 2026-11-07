@@ -8,6 +8,10 @@ import {
   type NoctisEngineRequest,
 } from "./noctis-engine-registry.ts";
 
+function resultCode(result: ReturnType<typeof validateNoctisEngineRequest>): string {
+  return result.ok ? "OK" : result.code;
+}
+
 describe("Noctis engine registry", () => {
   it("registers the initial source-backed specialist cohort", () => {
     const engines = listNoctisEngines();
@@ -37,9 +41,9 @@ describe("Noctis engine registry", () => {
       authorization: { scopes: ["cyber:read"], executionMode: "analysis" },
       constraints: { dataClassification: "confidential" },
     };
-    assert.equal(validateNoctisEngineRequest({ ...base, engineId: "missing" }).code, "ENGINE_NOT_FOUND");
-    assert.equal(validateNoctisEngineRequest({ ...base, capability: "cyber.delete" }).code, "CAPABILITY_NOT_SUPPORTED");
-    assert.equal(validateNoctisEngineRequest(base).code, "EVIDENCE_REQUIRED");
+    assert.equal(resultCode(validateNoctisEngineRequest({ ...base, engineId: "missing" })), "ENGINE_NOT_FOUND");
+    assert.equal(resultCode(validateNoctisEngineRequest({ ...base, capability: "cyber.delete" })), "CAPABILITY_NOT_SUPPORTED");
+    assert.equal(resultCode(validateNoctisEngineRequest(base)), "EVIDENCE_REQUIRED");
   });
 
   it("requires evidence and explicit approval before supervised high-impact work", () => {
@@ -50,7 +54,7 @@ describe("Noctis engine registry", () => {
       authorization: { scopes: ["cyber:read"], executionMode: "supervised" },
       constraints: { dataClassification: "confidential" },
     };
-    assert.equal(validateNoctisEngineRequest(request).code, "APPROVAL_REQUIRED");
+    assert.equal(resultCode(validateNoctisEngineRequest(request)), "APPROVAL_REQUIRED");
     assert.equal(validateNoctisEngineRequest({
       ...request,
       authorization: { ...request.authorization, approvalId: "approval-1" },
@@ -65,6 +69,6 @@ describe("Noctis engine registry", () => {
       authorization: { scopes: ["health:read"], executionMode: "approved_execution" },
       constraints: { dataClassification: "restricted" },
     };
-    assert.equal(validateNoctisEngineRequest(request).code, "EXECUTION_MODE_NOT_ALLOWED");
+    assert.equal(resultCode(validateNoctisEngineRequest(request)), "EXECUTION_MODE_NOT_ALLOWED");
   });
 });
