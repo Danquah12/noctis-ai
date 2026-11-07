@@ -29,7 +29,7 @@ describe("Noctis engine registry", () => {
   it("returns defensive copies rather than mutable registry internals", () => {
     const first = getNoctisEngine("noctis.core.orchestrator");
     assert.ok(first);
-    first.capabilities.push("unsafe.injected.capability");
+    (first.capabilities as string[]).push("unsafe.injected.capability");
     assert.equal(getNoctisEngine("noctis.core.orchestrator")?.capabilities.includes("unsafe.injected.capability"), false);
   });
 
