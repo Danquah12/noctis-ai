@@ -42,6 +42,16 @@ A user teaching Noctis no longer causes the submitted answer to become active kn
 - Partial chunk-write failures trigger best-effort cleanup.
 - Source retrieval is not yet connected to the answer-generation path; approved sources are not automatically used by Noctis.
 
+## Milestone 4 — Approved public evidence retrieval
+
+- Added an authenticated, rate-limited evidence retrieval server function.
+- Retrieval is restricted to approved sources classified as public; internal, confidential, restricted, and quarantined sources are excluded.
+- Added parameterized lexical candidate search and bounded top-result ranking by query-term overlap.
+- Results carry source/chunk identifiers, source metadata, hashes, stable chunk locators, and excerpts.
+- Every returned citation is persisted in the retrieval trace table with request/user identity, query hash, rank, score, and selection status.
+- Documented that the lexical overlap score is not semantic relevance, confidence, or proof of truth.
+- This retrieval endpoint is not yet connected to answer generation. Prompt-injection defenses, claim-level evidence mapping, contradiction detection, semantic retrieval, and citation entailment validation remain future work.
+
 ## Not yet implemented
 
 - Source upload and source-version ingestion service.
