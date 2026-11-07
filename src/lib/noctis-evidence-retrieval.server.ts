@@ -5,9 +5,9 @@ export type NoctisEvidenceCitation = {
   sourceId: string;
   chunkId: string;
   title: string;
-  publisher: string;
+  publisher: string | null;
   canonicalUri: string | null;
-  license: string;
+  license: string | null;
   domain: string;
   jurisdiction: string | null;
   sourceVersion: string | null;
@@ -53,7 +53,7 @@ export async function retrieveApprovedNoctisEvidence(input: {
   }
   const candidates = await sql.query<{
     source_id: string; chunk_id: string; title: string; publisher: string;
-    canonical_uri: string | null; license: string; domain: string;
+    canonical_uri: string | null; license: string | null; domain: string;
     jurisdiction: string | null; source_version: string | null;
     source_hash: string; chunk_hash: string; locator: string; content_text: string;
   }>(
