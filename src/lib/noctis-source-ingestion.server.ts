@@ -114,3 +114,52 @@ export async function registerNoctisTextSource(input: NoctisSourceSubmission, su
 
   return { ok: true as const, duplicate: false, sourceId, status: "quarantined" as const, chunkCount: chunks.length, contentHash: sourceHash };
 }
+
+export async function pendingNoctisSources(limit = 50) {
+  const sql = await getSql();
+  return sql<{
+    id: string; title: string; domain: string; publisher: string | null;
+    canonical_uri: string | null; license: string | null; classification: string;
+    content_hash: string; retrieved_at: string; submitted_by: string | null;
+    chunk_count: number;
+  }>`
+    select s.id, s.title, s.domain, s.publisher, s.canonical_uri, s.license,
+           s.classification, s.content_hash, s.retrieved_at::text as retrieved_at,
+           s.submitted_by, count(c.id)::int as chunk_count
+    from noctis_learning_source s
+    left join noctis_source_chunk c on c.source_id = s.id
+    where s.status = 'quarantined'
+    group by s.id
+    order by s.created_at asc
+    limit ${Math.max(1, Math.min(100, Math.trunc(limit)))}
+  `;
+}
+
+export async function reviewNoctisSource(input: {
+  sourceId: string; decision: "approved" | "rejected"; reviewerId: string; reason: string;
+}) {
+  const sourceId = clean(input.sourceId, 160);
+  const reason = clean(input.reason, 500);
+  if (!sourceId || reason.length < 8) throw new Error("A source ID and review reason of at least 8 characters are required.");
+  const sql = await getSql();
+  const rows = await sql<{ id: string; content_hash: string; status: string }>`
+    select id, content_hash, status from noctis_learning_source where id = ${sourceId} limit 1
+  `;
+  const source = rows[0];
+  if (!source) throw new Error("Source not found.");
+  if (source.status !== "quarantined") throw new Error("Only quarantined sources can be reviewed.");
+  await sql`
+    update noctis_learning_source
+    set status = ${input.decision}, reviewed_by = ${input.reviewerId},
+        reviewed_at = now(), review_reason = ${reason}, updated_at = now()
+    where id = ${sourceId} and status = 'quarantined'
+  `;
+  await sql`
+    insert into noctis_learning_audit
+      (id, actor_id, action, target_type, target_id, reason, before_hash, after_hash)
+    values
+      (${randomUUID()}, ${input.reviewerId}, ${`source.${input.decision}`},
+       'source', ${sourceId}, ${reason}, ${source.content_hash}, ${source.content_hash})
+  `;
+  return { ok: true as const, sourceId, status: input.decision };
+}
