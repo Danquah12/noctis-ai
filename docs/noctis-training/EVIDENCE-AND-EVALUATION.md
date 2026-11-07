@@ -130,3 +130,20 @@ These tables are persistence contracts only. The application service layer must 
 - No provider telemetry has yet been wired into the live response path.
 - No live-model evaluation or fine-tuning job has run.
 - Migration 0015 has not been applied to any database.
+
+
+## Runtime evidence retrieval — first implementation increment
+
+The server-side `retrieveApprovedNoctisEvidence` function and authenticated `retrieveNoctisEvidence` server function provide an initial lexical retrieval path.
+
+- Retrieval is restricted to source records with `status = 'approved'` and `classification = 'public'`.
+- Candidate chunks are selected using parameterized case-insensitive term matching, then ranked by the fraction of query terms found in the title and chunk text.
+- Each returned passage includes source/chunk IDs, title, publisher, canonical URI, license metadata, domain, jurisdiction, source version, source/chunk hashes, and a stable chunk locator.
+- Every returned citation is recorded in `noctis_retrieval_trace` with request ID, user ID, query hash, source/chunk IDs, rank, score, and selection flag.
+- The API is authenticated and rate-limited.
+- The score is a simple lexical overlap ratio. It is **not** a calibrated confidence, semantic similarity, factual correctness score, or source-quality score.
+- This retrieval endpoint returns evidence and citations; it is not yet wired into `modelChat`/answer generation. It does not prove that generated answers are grounded.
+- Non-public classifications are deliberately excluded until a source-access policy is implemented. No private/internal/confidential source should be exposed by relaxing this filter without authorization design and tests.
+- Source text remains untrusted data. A future answer-generation integration must explicitly delimit passages as evidence, instruct the model not to follow instructions found inside sources, and test prompt-injection cases.
+- No embedding/vector retrieval, claim extraction, contradiction detection, citation entailment checking, or automated source-quality verification is implemented in this increment.
+
