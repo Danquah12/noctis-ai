@@ -61,6 +61,23 @@ describe("Noctis engine registry", () => {
     }).ok, true);
   });
 
+
+  it("enforces declared scopes and classification ceilings", () => {
+    const request: NoctisEngineRequest = {
+      requestId: "req-4", tenantId: "tenant-1", actorId: "actor-1",
+      engineId: "noctis.cyber.sast", capability: "cyber.sast.analyze", input: {},
+      context: { correlationId: "corr-4", evidenceIds: ["ev-3"] },
+      authorization: { scopes: ["risk:read"], executionMode: "analysis" },
+      constraints: { dataClassification: "confidential" },
+    };
+    assert.equal(resultCode(validateNoctisEngineRequest(request)), "SCOPE_REQUIRED");
+    assert.equal(resultCode(validateNoctisEngineRequest({
+      ...request,
+      authorization: { scopes: ["cyber:read"], executionMode: "analysis" },
+      constraints: { dataClassification: "restricted" },
+    })), "DATA_CLASSIFICATION_EXCEEDED");
+  });
+
   it("does not permit unsupported execution modes", () => {
     const request: NoctisEngineRequest = {
       requestId: "req-3", tenantId: "tenant-1", actorId: "actor-1",
