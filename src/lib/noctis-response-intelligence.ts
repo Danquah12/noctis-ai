@@ -762,6 +762,7 @@ function adaptSpecialistEngineOutput(q: string, engineResponse: string, engineId
     (engineResponse.includes("|---|") ||
       engineResponse.includes("```") ||
       engineResponse.includes("Direct Scenario Questions Answered") ||
+      engineResponse.includes("Direct Clinical Questions") ||
       engineResponse.includes("Adversarial Pushback Gate") ||
       engineResponse.includes("Adversarial Instruction Pushback"))
   ) {

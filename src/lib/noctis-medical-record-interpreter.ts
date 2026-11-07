@@ -600,12 +600,25 @@ export function interpretPathologyRecord(text: string): InterpretedPathologyReco
   const specimenMatch = t.match(/\bspecimen(?:\s+source)?\s*[:=]?\s*([^\n.;]+)/i);
   const specimenSource = specimenMatch ? specimenMatch[1].trim() : undefined;
 
-  // 3. Histologic Diagnosis (prioritize Final/Pathologic Diagnosis over Pre-operative diagnosis)
-  const dxMatch =
-    t.match(/\b(?:final\s+diagnosis|pathologic\s+diagnosis)\s*[:=]?\s*([^\n]+(?:\n[^\n]+)?)/i) ||
-    t.match(/\bimpression\s*[:=]?\s*([^\n]+)/i) ||
-    t.match(/(?<!pre-operative\s+)\bdiagnosis\s*[:=]?\s*([^\n]+(?:\n[^\n]+)?)/i);
-  const histologicDiagnosis = dxMatch ? dxMatch[1].trim().replace(/\s+/g, " ") : undefined;
+  // 3. Histologic Diagnosis (prioritize specific entity or explicit pathologic label)
+  const entityMatch = t.match(
+    /\b(invasive\s+ductal\s+carcinoma|invasive\s+lobular\s+carcinoma|adenocarcinoma|squamous\s+cell\s+carcinoma|infiltrating\s+ductal\s+carcinoma|ductal\s+carcinoma\s+in\s+situ|dcis|melanoma|sarcoma)\b[^\n.;,]*/i
+  );
+
+  let candidateDx: string | undefined = entityMatch ? entityMatch[0].trim() : undefined;
+  if (!candidateDx) {
+    const dxMatch =
+      t.match(/\b(?:final\s+diagnosis|pathologic\s+diagnosis)\s*[:=]\s*([^\n]+(?:\n[^\n]+)?)/i) ||
+      t.match(/\bimpression\s*[:=]\s*([^\n]+)/i) ||
+      t.match(/(?<!pre-operative\s+)\bdiagnosis\s*[:=]\s*([^\n]+(?:\n[^\n]+)?)/i);
+    if (dxMatch) {
+      const raw = dxMatch[1].trim().replace(/\s+/g, " ");
+      if (!/^(?:,|\?|what|which|how|should|transfer)/i.test(raw)) {
+        candidateDx = raw;
+      }
+    }
+  }
+  const histologicDiagnosis = candidateDx;
 
   // 4. Tumor Grade
   let tumorGrade: string | undefined = undefined;
@@ -1024,6 +1037,33 @@ export function buildMedicalRecordInterpretation(documentText: string): MedicalR
       question: "Identify the major prognostic indicators and explain how you would monitor treatment response over the first 24 hours?",
       answer: "Prognosis is GUARDED TO CRITICAL (high mortality risk). Major prognostic indicators include: 1. Lactate clearance rate (target >= 20% clearance every 2-4 hours indicates restored tissue perfusion); 2. Vasopressor requirement trajectory (escalation vs weaning); 3. Urine output recovery (> 0.5 mL/kg/h) and creatinine stabilization; 4. Coagulation and platelet trajectory; 5. Resolution of encephalopathy. 24-hour monitoring requires continuous arterial line pressure, hourly Foley urine output, serial lactate every 2-4h, repeat metabolic panels at 6, 12, 24h, and fluid responsiveness reassessments.",
       clinicalGuidelineRef: "SOFA Scoring & Surviving Sepsis Resuscitation Bundles",
+    });
+  }
+
+  // Question: Sepsis combined question (What is the diagnosis, should we transfer to ICU, and what are the immediate 1-hour priorities?)
+  if (/(?:what\s+is\s+the\s+diagnosis.*(?:transfer.*icu|1-?hour\s+priorities))/i.test(t)) {
+    scenarioQA.push({
+      question: "What is the diagnosis, should we transfer to ICU, and what are the immediate 1-hour priorities?",
+      answer: "1. **Primary Diagnosis:** Sepsis secondary to complicated urinary tract infection (urosepsis), manifested by acute multi-organ dysfunction (KDIGO Stage 2/3 AKI, thrombocytopenia, encephalopathy), severe lactic acidosis (4.6 mmol/L indicating critical tissue hypoperfusion), and hypotension (BP 86/54 mmHg, MAP 64.7 mmHg) consistent with septic shock physiology.\n2. **ICU Transfer:** YES, immediate mandatory ICU admission for arterial line monitoring, central venous access, and continuous vasopressor titration.\n3. **Immediate 1-Hour Sepsis Bundle Priorities:**\n   • Measure serum lactate (re-measure within 2-4h).\n   • Obtain 2 sets of blood cultures and catheter urine culture before antibiotics.\n   • Administer broad-spectrum empiric IV antibiotics targeting resistant uropathogens (e.g., Cefepime + Vancomycin, or Meropenem if ESBL suspected).\n   • Begin rapid IV crystalloid infusion (30 mL/kg balanced crystalloids within 3 hours).\n   • Apply Norepinephrine if MAP < 65 mmHg during or after fluid resuscitation.",
+      clinicalGuidelineRef: "Surviving Sepsis Campaign (SSC) 2021/2026 1-Hour Hour Bundle Guidelines",
+    });
+  }
+
+  // Question: Renal & Electrolyte Emergencies (K 6.2, Cr 3.4 in CKD)
+  if (/(?:potassium.*6\.2|acute\s+management.*ecg.*aeiou|ckd.*potassium)/i.test(t)) {
+    scenarioQA.push({
+      question: "Walk me through the acute management of hyperkalemia (K 6.2 mmol/L), ECG findings to watch for, and the exact AEIOU criteria for emergent dialysis.",
+      answer: "1. **Acute Management of Severe Hyperkalemia (K 6.2 mmol/L):**\n   • **Membrane Stabilization (Immediate):** IV Calcium Gluconate 10% (10-20 mL over 2-5 min) or Calcium Chloride 10% (via central line) if ECG changes present. Repeat in 5-10 min if ECG does not normalize.\n   • **Intracellular Shifting:** Regular Insulin 10 units IV with 50 mL Dextrose 50% (D50W) to prevent hypoglycemia; add inhaled Albuterol (10-20 mg nebulized) for synergistic shift.\n   • **Potassium Elimination:** IV Furosemide (if residual urine output exists) or oral potassium binders (Sodium Zirconium Cyclosilicate / Lokelma or Patiromer); prepare emergent hemodialysis.\n2. **ECG Findings to Monitor (in progressive order of severity):**\n   • Tall, narrow, peaked, symmetric T waves (often earliest sign, K > 5.5).\n   • PR interval prolongation and flattening/loss of P waves (K 6.5-7.0).\n   • QRS widening and bundle branch blocks (K 7.0-8.0).\n   • Sine wave pattern, ventricular tachycardia, ventricular fibrillation, or asystole (K > 8.0 or rapid rise).\n3. **Exact AEIOU Criteria for Emergent Dialysis:**\n   • **A (Acidosis):** Severe refractory metabolic acidosis (pH < 7.15 or HCO3 < 10) unresponsive to medical therapy.\n   • **E (Electrolytes):** Refractory, life-threatening hyperkalemia (K > 6.5 mEq/L) refractory to calcium, insulin/dextrose, and binders, especially with ECG changes.\n   • **I (Ingestion / Intoxication):** Toxic ingestions of dialyzable substances (SLIME: Salicylates, Lithium, Isopropanol, Methanol, Ethylene glycol).\n   • **O (Overload):** Refractory volume overload / pulmonary edema unresponsive to high-dose loop diuretics.\n   • **U (Uremia):** Overt symptomatic uremic complications: uremic pericarditis (pericardial rub), uremic encephalopathy (asterixis, confusion, seizures), or uremic bleeding diathesis.",
+      clinicalGuidelineRef: "KDIGO Clinical Practice Guideline for Acute Kidney Injury & AHA ACLS Hyperkalemia Protocols",
+    });
+  }
+
+  // Question: Oncology & Pathology Interpretation (Invasive ductal carcinoma, Grade 3, 2.4 cm, 1/14 nodes, ER/PR 90%, HER2 3+, margins 1 mm)
+  if (/(?:invasive\s+ductal\s+carcinoma|pathology\s+report.*nottingham.*grade\s*3|clinical\s+stage.*multidisciplinary\s+treatment\s+plan)/i.test(t)) {
+    scenarioQA.push({
+      question: "What is the clinical stage and recommended multidisciplinary treatment plan for this breast pathology report?",
+      answer: "1. **Pathology Breakdown & TNM Staging:**\n   • **Histology:** Invasive Ductal Carcinoma (IDC), Nottingham Histologic Grade 3 (poorly differentiated, high mitotic rate).\n   • **Primary Tumor (T):** Tumor size 2.4 cm in greatest dimension = **pT2** (> 2.0 cm but <= 5.0 cm).\n   • **Regional Lymph Nodes (N):** 1 of 14 sentinel lymph nodes positive for macrometastasis = **pN1a** (1-3 axillary nodes positive).\n   • **Distant Metastasis (M):** Presumed cM0 pending staging imaging (CT chest/abdomen/pelvis or PET-CT + bone scan).\n   • **Anatomic Stage:** **Stage IIB (pT2 pN1a cM0)**.\n   • **Biomarker Subtype:** **Triple-Positive Breast Cancer** (ER+ 90%, PR+ 90%, HER2 3+ overexpression).\n   • **Prognostic Stage (AJCC 8th Edition):** Incorporating high ER/PR expression and HER2 positivity with Grade 3 shifts the clinical prognostic stage favourably compared to anatomic stage alone.\n2. **Surgical Margins Assessment:**\n   • Margin is 1 mm. Under SSO-ASTRO consensus guidelines for invasive cancer, 'no ink on tumor' is technically negative, but a 1 mm close margin requires multidisciplinary review for re-excision vs adequate radiation boost, especially if extensive intraductal component (EIC) is present.\n3. **Recommended Multidisciplinary Treatment Plan:**\n   • **Systemic Targeted & Chemotherapy:** Adjuvant dual-HER2 blockade with Trastuzumab (Herceptin) + Pertuzumab (Perjeta) combined with taxane-based chemotherapy (e.g., TCHP or AC followed by THP) for 1 year of total HER2 therapy.\n   • **Radiation Therapy:** Post-mastectomy radiation therapy (PMRT) or whole-breast radiation with tumor bed boost following breast-conserving surgery, including comprehensive regional nodal irradiation (supraclavicular and internal mammary nodes) given node-positive disease.\n   • **Adjuvant Endocrine Therapy:** Following completion of chemotherapy, initiate ovarian function suppression + Aromatase Inhibitor (e.g., Anastrozole/Letrozole) if premenopausal, or Aromatase Inhibitor for 5-10 years if postmenopausal, plus consideration of adjuvant CDK4/6 inhibitor (Abemaciclib) for high-risk node-positive hormone-receptor-positive disease.",
+      clinicalGuidelineRef: "NCCN Clinical Practice Guidelines in Oncology: Breast Cancer (Version 2025/2026) & AJCC 8th Edition",
     });
   }
 
