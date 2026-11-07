@@ -147,7 +147,7 @@ export const trainVibe = createServerFn({ method: "POST" })
       return { ok: res.ok, reason: res.reason || "", status };
     }
     if (data.action === "rule") {
-      const res = await rememberRule(data.rule);
+      const res = await rememberRule(data.rule, "general", userId);
       const status = await trainingStatus();
       return { ok: res.ok, reason: res.reason || "", status };
     }
