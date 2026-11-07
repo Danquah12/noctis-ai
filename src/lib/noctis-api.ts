@@ -190,6 +190,10 @@ export const testBrainConnection = createServerFn({ method: "POST" })
     };
   })
   .handler(async ({ data }) => {
+    const { requireUserId } = await import("@/lib/auth/verify.server");
+    const userId = await requireUserId();
+    const { callerKey, guardRate } = await import("@/lib/security.server");
+    await guardRate(`noctis-model-test:${callerKey(userId)}`, 5, 10 * 60 * 1000);
     if (!data.apiKey && data.provider !== "custom") {
       return { ok: false, error: "Please enter an API key." };
     }
