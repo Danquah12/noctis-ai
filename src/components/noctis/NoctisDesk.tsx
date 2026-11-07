@@ -86,6 +86,7 @@ import { NoctisBoardExamExplorer } from "@/components/noctis/NoctisBoardExamExpl
 import { leaveHall } from "@/lib/auth/client";
 import { textFromDocx, textFromPdf, textFromRtf } from "@/lib/read-document";
 import { saveShareLink } from "@/lib/share-link";
+import { translateToPlainLanguage } from "@/lib/noctis-plain-language";
 
 type Turn = { role: "user" | "assistant"; content: string; images?: string[]; video?: string; clips?: string[]; audio?: string };
 type Thread = { id: string; title: string; turns: Turn[]; temp?: boolean };
@@ -3688,6 +3689,7 @@ export function NoctisDesk() {
   });
   const [voiceModalOpen, setVoiceModalOpen] = useState(false);
   const [readingTurnIndex, setReadingTurnIndex] = useState<number | null>(null);
+  const [simpleReadingMode, setSimpleReadingMode] = useState<boolean>(true);
 
   const handleSelectVoicePersona = (newPersona: VoicePersona) => {
     setVoicePersona(newPersona);
@@ -7878,6 +7880,7 @@ export function NoctisDesk() {
                                     const userOpenAiKey = activeBrain.provider === "openai" ? activeBrain.key : "";
                                     void speakNoctisVoice(rawAnswer, voicePersona, {
                                       apiKey: userOpenAiKey,
+                                      audience: simpleReadingMode ? "youth_under_18" : "verbatim",
                                       onStart: () => setReadingTurnIndex(index),
                                       onEnd: () => setReadingTurnIndex((cur) => (cur === index ? null : cur)),
                                     }).then((ok) => {
@@ -7913,6 +7916,22 @@ export function NoctisDesk() {
                               </button>
                             );
                           })()}
+                          <button
+                            type="button"
+                            onClick={() => setSimpleReadingMode(!simpleReadingMode)}
+                            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium transition border ${
+                              simpleReadingMode
+                                ? "bg-amber-500/15 text-amber-300 border-amber-500/40 hover:bg-amber-500/25"
+                                : "bg-white/5 text-zinc-400 border-white/10 hover:text-zinc-200"
+                            }`}
+                            title={
+                              simpleReadingMode
+                                ? "Simple Reading Mode: ACTIVE. Explains everything in plain, easy-to-understand words for children aged 18 & under and non-technical readers. Click to switch to technical verbatim."
+                                : "Technical Verbatim Mode: ACTIVE. Reads exact technical text. Click to switch to simple plain English for all ages."
+                            }
+                          >
+                            <span>{simpleReadingMode ? "🧒 Simple (Under 18)" : "🔬 Technical"}</span>
+                          </button>
                           <button
                             type="button"
                             onClick={() => setVoiceModalOpen(true)}
@@ -7979,6 +7998,46 @@ export function NoctisDesk() {
                           </button>
                           <AnswerShare text={turn.content} />
                         </div>
+                        {simpleReadingMode && (
+                          <div className="mt-3.5 w-full rounded-xl border border-amber-500/30 bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-zinc-950 p-3.5 text-xs text-zinc-200 shadow-sm animate-in fade-in duration-200">
+                            {(() => {
+                              const raw = turn.content.split(/\n\s*Claim standing:/i)[0] || turn.content;
+                              const exp = translateToPlainLanguage(raw, { audience: "youth_under_18" });
+                              const isReadingThis = readingTurnIndex === index;
+                              return (
+                                <div className="space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <span className="flex items-center gap-1.5 font-bold text-amber-300 text-[11px] uppercase tracking-wider">
+                                      <span>🧒 Simple Breakdown (Ages 18 & Under)</span>
+                                      <span className="rounded bg-zinc-800/90 px-1.5 py-0.5 text-[9px] font-mono text-zinc-400 normal-case border border-zinc-700/60">
+                                        {exp.domain}
+                                      </span>
+                                    </span>
+                                    {isReadingThis && (
+                                      <span className="inline-flex items-center gap-1 text-[10px] text-amber-400 font-mono animate-pulse">
+                                        <Volume2 className="size-3" />
+                                        Reading Simply Aloud...
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="font-semibold text-zinc-100 text-sm leading-snug">
+                                    {exp.headline}
+                                  </p>
+                                  <div className="rounded-lg bg-zinc-950/70 p-2.5 border border-amber-500/20 text-zinc-300 space-y-1.5">
+                                    <div className="flex items-start gap-2">
+                                      <span className="text-amber-400 font-bold shrink-0">💡 Analogy:</span>
+                                      <span className="italic text-zinc-200">{exp.analogy}</span>
+                                    </div>
+                                    <div className="flex items-start gap-2 pt-1 border-t border-zinc-800/60">
+                                      <span className="text-teal-400 font-bold shrink-0">🎯 Takeaway:</span>
+                                      <span className="text-teal-200 font-medium">{exp.takeaway}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        )}
                         </article>
                         {last && !busy ? (
                           <div className="mt-3 flex flex-wrap gap-1.5">
