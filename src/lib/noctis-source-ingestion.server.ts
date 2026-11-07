@@ -151,21 +151,27 @@ export async function reviewNoctisSource(input: {
   if (input.decision === "approved" && (!source.license || !source.publisher)) {
     throw new Error("Approval requires publisher and license/terms metadata. Keep the source quarantined until verified.");
   }
+  // Update and audit in one SQL statement: either both persist or neither does.
+  const action = `source.${input.decision}`;
+  const auditId = randomUUID();
   const changed = await sql<{ id: string }>`
-    update noctis_learning_source
-    set status = ${input.decision}, reviewed_by = ${input.reviewerId},
-        reviewed_at = now(), review_reason = ${reason}, updated_at = now()
-    where id = ${sourceId} and status = 'quarantined'
-    returning id
+    with changed as (
+      update noctis_learning_source
+      set status = ${input.decision}, reviewed_by = ${input.reviewerId},
+          reviewed_at = now(), review_reason = ${reason}, updated_at = now()
+      where id = ${sourceId} and status = 'quarantined'
+      returning id, content_hash
+    ),
+    audit as (
+      insert into noctis_learning_audit
+        (id, actor_id, action, target_type, target_id, reason, before_hash, after_hash)
+      select ${auditId}, ${input.reviewerId}, ${action},
+             'source', id, ${reason}, content_hash, content_hash
+      from changed
+      returning target_id
+    )
+    select changed.id from changed join audit on audit.target_id = changed.id
   `;
-  if (!changed[0]) throw new Error("Source review conflict: the source was already reviewed.");
-
-  await sql`
-    insert into noctis_learning_audit
-      (id, actor_id, action, target_type, target_id, reason, before_hash, after_hash)
-    values
-      (${randomUUID()}, ${input.reviewerId}, ${`source.${input.decision}`},
-       'source', ${sourceId}, ${reason}, ${source.content_hash}, ${source.content_hash})
-  `;
+  if (!changed[0]) throw new Error('Source review conflict or audit failure: no state change was committed.');
   return { ok: true as const, sourceId, status: input.decision };
 }
