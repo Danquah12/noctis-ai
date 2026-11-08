@@ -86,6 +86,17 @@ const MANIFESTS: readonly NoctisEngineManifest[] = [
   },
 
   {
+    id: "noctis.core.workflow-persistence", name: "Tenant-Scoped Workflow Persistence", version: "0.1.0",
+    domain: "core", description: "Server-side tenant-scoped atomic task claims, leases, attempt records, bounded lease recovery and audit events; no engine execution.",
+    sourcePath: "src/lib/noctis-workflow-persistence.server.ts",
+    capabilities: ["workflow.task.claim", "workflow.task.finish", "workflow.lease.enforce", "workflow.lease.recover"],
+    requiredScopes: ["workflow:worker"],
+    dependencies: ["noctis.core.workflow-contract"],
+    lifecycle: "registered",
+    executionModes: ["supervised"], dataClassification: "confidential",
+    evidenceRequired: false, humanReviewRequired: true,
+  },
+  {
     id: "noctis.core.workflow-scheduler", name: "Workflow Scheduler", version: "0.1.0",
     domain: "core", description: "Deterministic dependency-aware scheduling and concurrency planning; no task claiming or execution.",
     sourcePath: "src/lib/noctis-workflow-scheduler.ts", capabilities: ["workflow.schedule", "workflow.capacity.evaluate"],
