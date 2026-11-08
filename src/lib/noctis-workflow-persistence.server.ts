@@ -244,8 +244,8 @@ export async function createNoctisWorkflowIdempotently(
         (task.maxAttempts ?? 1) > 5 ||
         !Number.isInteger(task.priority ?? 0) ||
         (task.priority ?? 0) < -100 || (task.priority ?? 0) > 100 ||
-        (task.dependsOn ?? []).some((id) => !nonEmpty(id)) ||
-        (task.evidenceRefs ?? []).some((id) => !nonEmpty(id)) ||
+        (task.dependsOn ?? []).some((id: string) => !nonEmpty(id)) ||
+        (task.evidenceRefs ?? []).some((id: string) => !nonEmpty(id)) ||
         (task.approvalRef !== undefined && !nonEmpty(task.approvalRef))) {
       return { ok: false, code: "INVALID_INPUT" };
     }
@@ -255,7 +255,7 @@ export async function createNoctisWorkflowIdempotently(
   for (const task of input.tasks) {
     const dependencies = task.dependsOn ?? [];
     if (new Set(dependencies).size !== dependencies.length ||
-        dependencies.some((dependency) => dependency === task.taskId || !taskIds.has(dependency))) {
+        dependencies.some((dependency: string) => dependency === task.taskId || !taskIds.has(dependency))) {
       return { ok: false, code: "INVALID_INPUT" };
     }
   }
@@ -263,7 +263,7 @@ export async function createNoctisWorkflowIdempotently(
   while (resolved.size < taskIds.size) {
     const next = input.tasks
       .filter((task) => !resolved.has(task.taskId))
-      .filter((task) => (task.dependsOn ?? []).every((dependency) => resolved.has(dependency)));
+      .filter((task) => (task.dependsOn ?? []).every((dependency: string) => resolved.has(dependency)));
     if (next.length === 0) return { ok: false, code: "INVALID_INPUT" };
     for (const task of next) resolved.add(task.taskId);
   }
@@ -738,7 +738,7 @@ export type NoctisExpiredLeaseRecoveryInput = {
 export async function recoverNoctisExpiredWorkflowLease(
   db: NoctisWorkflowSqlDatabase,
   input: NoctisExpiredLeaseRecoveryInput,
-): Promise<NoctisPersistenceResult<{ taskRecordId: string; state: "ready" | "failed"; attemptNumber: number } | null>> {
+): Promise<NoctisPersistenceResult<{ taskRecordId: string; state: "ready" | "failed" | "blocked"; attemptNumber: number } | null>> {
   if (!nonEmpty(input.tenantId) || !nonEmpty(input.eventId) ||
       !nonEmpty(input.correlationId) || !validUtc(input.at) ||
       !validUtc(input.retryAvailableAt) ||
