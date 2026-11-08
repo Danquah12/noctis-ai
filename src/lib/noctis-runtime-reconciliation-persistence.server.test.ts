@@ -68,7 +68,7 @@ describe("Noctis transactional reconciliation repository", () => {
         leaseExpiresAt: "2026-11-08T13:00:00.000Z",
       }]);
       const setting = await pg.query<{ value: string }>("SELECT current_setting('app.tenant_id', true) AS value");
-      assert.equal(setting.rows[0].value, null);
+      assert.equal(setting.rows[0].value, "");
     } finally { await pg.close(); }
   });
 
