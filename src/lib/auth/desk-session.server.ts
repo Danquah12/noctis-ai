@@ -140,8 +140,6 @@ export async function deskPasswordRegister(name: string, email: string, password
   const { recordActivity } = await import("@/lib/activity.server");
   await recordActivity({
     userId: id,
-    who: display,
-    email: normalized,
     action: "sign-in",
     detail: `Registered and signed in to Desk (${normalized})`,
     surface: "desk",
@@ -205,8 +203,6 @@ export async function deskPasswordSignIn(email: string, password: string) {
   const { recordActivity } = await import("@/lib/activity.server");
   await recordActivity({
     userId,
-    who: display,
-    email: normalized,
     action: "sign-in",
     detail: `Signed in to Desk (${normalized})`,
     surface: "desk",
