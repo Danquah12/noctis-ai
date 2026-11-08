@@ -77,6 +77,13 @@ export type NoctisRuntimeLifecycleResult =
       state: "launch_failed" | "audit_blocked";
       reasonCode: string;
       auditSequences: string[];
+    }
+  | {
+      state: "launch_cleanup_incomplete";
+      reasonCode: string;
+      executionId: string;
+      cleanup: { processStopped: boolean; resourcesReaped: boolean };
+      auditSequences: string[];
     };
 
 export class NoctisRuntimeLifecycleSupervisor {
@@ -193,12 +200,16 @@ export class NoctisRuntimeLifecycleSupervisor {
           resourcesReaped: cleanup.resourcesReaped,
         }, launched.runtimeId?.trim() || undefined, executionId);
       } catch { /* audit alerting remains an operations requirement */ }
-      return {
-        state: executionId && (!cleanup.processStopped || !cleanup.resourcesReaped)
-          ? "cleanup_incomplete" : "launch_failed",
-        reasonCode: "PROVIDER_RUNTIME_IDENTITY_MISMATCH",
-        auditSequences,
-      } as NoctisRuntimeLifecycleResult;
+      if (executionId && (!cleanup.processStopped || !cleanup.resourcesReaped)) {
+        return {
+          state: "launch_cleanup_incomplete",
+          reasonCode: "PROVIDER_RUNTIME_IDENTITY_MISMATCH",
+          executionId,
+          cleanup,
+          auditSequences,
+        };
+      }
+      return { state: "launch_failed", reasonCode: "PROVIDER_RUNTIME_IDENTITY_MISMATCH", auditSequences };
     }
 
     let observation: NoctisRuntimeObservation | { status: "monitor_failed"; reasonCode: string };
