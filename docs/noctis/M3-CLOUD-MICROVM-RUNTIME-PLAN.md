@@ -169,3 +169,15 @@ Added `migrations/20261108_noctis_runtime_reconciliation.sql` with three additiv
 Added `src/lib/noctis-runtime-reconciliation-schema.test.ts` to verify migration idempotency, table creation, identity/idempotency constraints, quarantine defaults, audit sequence generation, and append-only trigger behavior. The audit event TypeScript contract now includes reconciliation and quarantine lifecycle event types.
 
 **Important security boundary:** this migration is storage schema only. It is not yet connected to the runtime supervisor, provider inventory, or production repositories. It does not establish tenant-scoped database roles/RLS, external tamper-evidence, retention/legal-hold, alert delivery, or operator authorization. A database owner/superuser can alter the trigger; production audit integrity requires separate roles, restricted ownership, external integrity anchoring, and independently reviewed access controls. No quarantine record may trigger automatic stop/delete. Cleanup must be a separate approval-bound workflow with fresh authoritative tenant/workload binding and provider-side revalidation.
+## 14. Transactional runtime persistence adapter (implemented; provider remains disconnected)
+
+Added `src/lib/noctis-runtime-persistence.server.ts` with tenant-transaction-scoped repository operations:
+
+- `reserveNoctisRuntimeExecution` records the exact launch intent before the provider call. It binds provider, idempotency key, execution-intent ID, tenant, workload, digest, runtime, resource limits, and lease. An identical replay returns the original ledger record; same-key reuse with changed identity or limits is rejected.
+- `markNoctisRuntimeLaunchUnknown` records an ambiguous provider response so a lost launch response can be reconciled without blindly issuing a new execution.
+- `recordNoctisRuntimeLaunch` binds a provider execution ID only when provider, idempotency key, tenant, workload, digest, runtime, and lifecycle state match the reserved row.
+- `quarantineNoctisRuntimeObservation` persists unknown/mismatched observations as open quarantine records. Repeated observations update last-seen time and retain the original quarantine identity. Each operation writes its audit event in the same database transaction.
+
+Added PGlite integration tests for reservation/replay, changed-payload and cross-tenant conflict, ambiguous launch recovery, tenant mismatch rejection, quarantine idempotency, and malformed inputs. Tests are included in typecheck, stress, and full CI scripts.
+
+**Boundary:** this adapter is not called by the lifecycle supervisor and has no production database connection, provider SDK, inventory poller, alert channel, or cleanup authority. Tenant context is applied as a transaction-local database setting; production must enforce it with a restricted database role and verified RLS, not trust the setting as authentication. The caller must derive actor/tenant from authenticated server context. The provider must still implement atomic idempotency and inventory listing.
