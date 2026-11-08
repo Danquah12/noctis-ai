@@ -613,7 +613,7 @@ export function runNoctisDefenseAcceptanceTests(): {
   // NDF-020: Classification violation access denied
   const userClearance: ClassificationLevel = "SECRET";
   const docClearance: ClassificationLevel = "TOP_SECRET//SCI";
-  const clearanceAllowed = userClearance === docClearance || userClearance === "TOP_SECRET//SCI";
+  const clearanceAllowed = (userClearance as ClassificationLevel) === docClearance || (userClearance as ClassificationLevel) === "TOP_SECRET//SCI";
   add("NDF-020", "Classification violation", !clearanceAllowed, "Access denied to document exceeding clearance level.");
 
   // NDF-021: Sensor outage degraded-mode operation
