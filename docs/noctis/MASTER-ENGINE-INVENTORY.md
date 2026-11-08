@@ -1,19 +1,19 @@
 # Noctis Master Engine Inventory
 
 **Audit branch:** `noctis/training-foundation`  
-**Audited head:** `0f0fb9d9d3dc124cbd1e3c9405a921b663bf0fb7`  
+**Audited head:** `459c08aec17916cc22b9b74cba64b66ce32ecbfd`  
 **Audit date:** 2026-11-08  
 **Purpose:** Establish a repository-backed baseline before engine refactoring or expansion.
 
 ## 1. Executive inventory
 
-The recursive Git tree for the audited branch contained 1,072 tracked files. The following Noctis-specific source inventory was identified:
+The recursive Git tree for the audited branch contained 1,073 tracked files. The following Noctis-specific source inventory was identified:
 
 | Artifact | Count | What the count proves |
 |---|---:|---|
-| Files under `src/lib/noctis-*` | 189 | Noctis-prefixed library artifacts exist |
+| Files under `src/lib/noctis-*` | 190 | Noctis-prefixed library artifacts exist |
 | Implementation source files (.ts/.tsx/.py, excluding tests) | 128 | Implementation source files exist; behavior is not thereby validated |
-| Test files | 59 | Test source files exist; pass status and coverage require execution |
+| Test files | 60 | Test source files exist; pass status and coverage require execution |
 | Components under `src/components/noctis/` | 57 | Noctis UI components exist |
 | Dedicated Noctis routes | 2 | `/noctis` and `/api/noctis` route files exist |
 | Professional specification | 1 principal specification identified | A source taxonomy/specification exists |
@@ -283,6 +283,10 @@ A focused test suite covers registry identity uniqueness, discovery, defensive c
 
 ## 7. Static integration graph
 
-The current CI run also executes `npm run audit:noctis-integrations`. It scans 822 source files, identifies 128 Noctis-prefixed implementation modules and validates all 11 registry source paths. The latest result reports 0 missing source paths, 0 duplicate registry IDs, 0 registered engines without runtime importers and 0 registered engines outside the modeled application-entrypoint graph. The 117 other Noctis-prefixed modules remain outside the curated registry pending classification; they are not automatically treated as missing engines.
+The current CI run also executes `npm run audit:noctis-integrations`. It scans 823 source files, identifies 128 Noctis-prefixed implementation modules and validates all 11 registry source paths. The latest result reports 0 missing source paths, 0 duplicate registry IDs, 0 registered engines without runtime importers and 0 registered engines outside the modeled application-entrypoint graph. The 117 other Noctis-prefixed modules remain outside the curated registry pending classification; they are not automatically treated as missing engines.
 
 See [ENGINE-INTEGRATION-AUDIT.md](./ENGINE-INTEGRATION-AUDIT.md) for methodology, limitations and the distinction between static reachability and proven runtime invocation.
+
+## 8. Orchestration routing update
+
+The deterministic orchestrator is now applied to the model context in `noctis-desk.server.ts` through `buildRouteDirective()`. The directive includes the classified intent, preferred tool and verification requirement, while explicitly warning that a routing recommendation is not proof a tool executed. Four focused tests cover engineering, cyber, Bible and current-information routing. The cyber classifier was corrected to recognize full vulnerability/exploitability terms and CVE identifiers. See the current CI run and the integration-audit document; this remains a routing instruction, not a general-purpose tool executor.
