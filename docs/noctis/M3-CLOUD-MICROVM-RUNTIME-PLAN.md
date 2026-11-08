@@ -199,3 +199,20 @@ Only a successful result returns an observation array, marked `complete: true`, 
 Added tests for stable multi-page snapshots, provider outage mid-scan, snapshot changes, incomplete terminal pages, cursor loops, duplicate execution IDs, page bounds, and malformed page envelopes. The tests are included in typecheck, stress, and full CI scripts.
 
 **Boundary:** this is a pagination contract and collector, not a connected cloud inventory API. The provider implementation must supply a genuine consistent-snapshot mechanism or equivalent documented semantics. The collector verifies continuity signals returned by that provider; it cannot prove that the provider's inventory is truthful, complete, or cryptographically attested. No reconciliation persistence orchestration, alert delivery, cleanup authorization, or resource deletion is implemented by this milestone.
+
+
+## 16. Complete-snapshot reconciliation orchestration (implemented; repository adapter remains external)
+
+Added `src/lib/noctis-runtime-reconciliation-service.ts`. The orchestration sequence is deliberately ordered:
+
+1. Collect the provider inventory and require a complete, stable snapshot.
+2. If inventory collection fails or is incomplete, stop without reading the ledger or writing decisions.
+3. Load the authoritative expected-execution snapshot for the same provider.
+4. Run the pure reconciliation classifier against that ledger snapshot and the complete provider observations.
+5. Commit the full decision set through an injected repository contract.
+
+The repository contract requires atomic persistence and idempotency on `(providerId, snapshotId)`: an exact replay is a no-op, while a changed decision payload for the same snapshot key must be rejected. The service surfaces separate inventory, ledger, classification, and persistence failures and never reports success unless the repository confirms commit. Unknown and mismatched resources remain classification/quarantine decisions; the service has no stop, delete, adoption, or cleanup operation.
+
+Tests cover complete snapshot ordering, incomplete inventory short-circuiting, ledger outage, persistence failure, replay acknowledgement, and unknown-resource quarantine decisions. The tests are included in typecheck, stress, and full CI scripts.
+
+**Boundary:** this is orchestration plus an injected repository port. A production implementation of the repository is not yet connected; durable decision persistence, transaction-level snapshot idempotency, provider credentials/API, alert delivery, and approval-bound cleanup remain outstanding. The provider-supplied snapshot ID and completeness flag are only as trustworthy as the eventual provider API's documented semantics.
