@@ -6,6 +6,8 @@ import {
   claimNoctisWorkflowTask,
   createNoctisWorkflowIdempotently,
   finishNoctisWorkflowTask,
+  getNoctisTaskCancellationRequest,
+  requestNoctisWorkflowCancellation,
   recoverNoctisExpiredWorkflowLease,
   type NoctisWorkflowSqlDatabase,
   type NoctisWorkflowSqlExecutor,
@@ -21,6 +23,10 @@ const idempotencyMigration = readFileSync(
 );
 const rlsMigration = readFileSync(
   new URL("../../migrations/20261107_noctis_workflow_rls.sql", import.meta.url),
+  "utf8",
+);
+const cancellationMigration = readFileSync(
+  new URL("../../migrations/20261107_noctis_workflow_cancellation.sql", import.meta.url),
   "utf8",
 );
 const at = "2026-11-07T16:00:00Z";
@@ -51,6 +57,7 @@ async function setup() {
   await pg.exec(migration);
   await pg.exec(idempotencyMigration);
   await pg.exec(rlsMigration);
+  await pg.exec(cancellationMigration);
   const wrap = (client: { query: (sql: string, params?: unknown[]) => Promise<any> }): NoctisWorkflowSqlExecutor => ({
     query: (sql, params) => client.query(sql, params ? [...params] : undefined),
   });
@@ -459,5 +466,102 @@ describe("Noctis tenant-scoped workflow persistence", () => {
       await pg.close();
     }
   });
+
+
+  it("cancels queued work and waits for a running worker to acknowledge stop", async () => {
+    const { pg, db } = await setup();
+    try {
+      await pg.query(
+        `INSERT INTO noctis_workflow_tasks
+          (task_record_id,workflow_id,task_id,engine_id,capability,state,created_at,updated_at,available_at)
+         VALUES ('task-pending','wf-a','pending','engine.p','run','pending',$1,$1,$1)`,
+        [at],
+      );
+      const claim = await claimNoctisWorkflowTask(db, {
+        tenantId: "tenant-a", workerId: "worker-a", at,
+        leaseExpiresAt: "2026-11-07T16:05:00Z", leaseToken: "lease-cancel",
+        attemptId: "attempt-cancel", eventId: "claim-cancel", correlationId: "corr-cancel",
+      }, testGates);
+      assert.equal(claim.ok, true);
+
+      const requested = await requestNoctisWorkflowCancellation(db, {
+        tenantId: "tenant-a", actorId: "actor-a", workflowId: "wf-a",
+        at: "2026-11-07T16:01:00Z", reason: "User requested cancellation.",
+        eventId: "cancel-event", correlationId: "corr-cancel",
+      });
+      assert.deepEqual(requested, {
+        ok: true,
+        value: { workflowId: "wf-a", state: "cancelling", cancelledTasks: 1, runningTasksAwaitingStop: 1, unconfirmedTasks: 0 },
+      });
+      const poll = await getNoctisTaskCancellationRequest(db, {
+        tenantId: "tenant-a", workerId: "worker-a", taskRecordId: "task-a",
+        leaseToken: "lease-cancel", at: "2026-11-07T16:01:30Z",
+      });
+      assert.deepEqual(poll, { ok: true, value: { requested: true, reason: "User requested cancellation." } });
+
+      const rejectedSuccess = await finishNoctisWorkflowTask(db, {
+        tenantId: "tenant-a", workerId: "worker-a", taskRecordId: "task-a",
+        leaseToken: "lease-cancel", at: "2026-11-07T16:02:00Z", eventId: "finish-success",
+        correlationId: "corr-cancel", outcome: "succeeded",
+      });
+      assert.deepEqual(rejectedSuccess, { ok: false, code: "CANCELLATION_REQUESTED" });
+
+      const acknowledged = await finishNoctisWorkflowTask(db, {
+        tenantId: "tenant-a", workerId: "worker-a", taskRecordId: "task-a",
+        leaseToken: "lease-cancel", at: "2026-11-07T16:02:00Z", eventId: "finish-cancel",
+        correlationId: "corr-cancel", outcome: "cancelled",
+      });
+      assert.deepEqual(acknowledged, { ok: true, value: { taskRecordId: "task-a", outcome: "cancelled" } });
+      const workflow = await pg.query<{ state: string }>("SELECT state FROM noctis_workflows WHERE workflow_id='wf-a'");
+      assert.equal(workflow.rows[0].state, "cancelled");
+      const attempts = await pg.query<{ outcome: string }>("SELECT outcome FROM noctis_workflow_attempts WHERE attempt_id='attempt-cancel'");
+      assert.equal(attempts.rows[0].outcome, "cancelled");
+    } finally {
+      await pg.close();
+    }
+  });
+
+  it("blocks and does not retry a cancellation whose worker never confirms stop", async () => {
+    const { pg, db } = await setup();
+    try {
+      await claimNoctisWorkflowTask(db, {
+        tenantId: "tenant-a", workerId: "worker-a", at,
+        leaseExpiresAt: "2026-11-07T16:01:00Z", leaseToken: "lease-unconfirmed",
+        attemptId: "attempt-unconfirmed", eventId: "claim-unconfirmed", correlationId: "corr-unconfirmed",
+      }, testGates);
+      await requestNoctisWorkflowCancellation(db, {
+        tenantId: "tenant-a", actorId: "actor-a", workflowId: "wf-a",
+        at: "2026-11-07T16:00:30Z", reason: "Stop requested.",
+        eventId: "cancel-unconfirmed", correlationId: "corr-unconfirmed",
+      });
+      const recovered = await recoverNoctisExpiredWorkflowLease(db, {
+        tenantId: "tenant-a", at: "2026-11-07T16:02:00Z",
+        retryAvailableAt: "2026-11-07T16:03:00Z",
+        eventId: "recover-unconfirmed", correlationId: "corr-unconfirmed",
+      });
+      assert.deepEqual(recovered, {
+        ok: true,
+        value: { taskRecordId: "task-a", state: "blocked", attemptNumber: 1 },
+      });
+      const task = await pg.query<{ state: string; failure_code: string }>(
+        "SELECT state, failure_code FROM noctis_workflow_tasks WHERE task_record_id='task-a'",
+      );
+      assert.deepEqual(task.rows[0], { state: "blocked", failure_code: "CANCELLATION_UNCONFIRMED" });
+      const workflow = await pg.query<{ state: string }>("SELECT state FROM noctis_workflows WHERE workflow_id='wf-a'");
+      assert.equal(workflow.rows[0].state, "blocked");
+      const repeated = await requestNoctisWorkflowCancellation(db, {
+        tenantId: "tenant-a", actorId: "actor-a", workflowId: "wf-a",
+        at: "2026-11-07T16:04:00Z", reason: "Stop requested.",
+        eventId: "cancel-unconfirmed-again", correlationId: "corr-unconfirmed",
+      });
+      assert.deepEqual(repeated, {
+        ok: true,
+        value: { workflowId: "wf-a", state: "blocked", cancelledTasks: 0, runningTasksAwaitingStop: 0, unconfirmedTasks: 1 },
+      });
+    } finally {
+      await pg.close();
+    }
+  });
+
 
 });
