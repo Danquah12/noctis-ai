@@ -40,7 +40,7 @@ function peakMw(question: string) {
   if (!peak) return 0;
   const value = Number(peak[1]);
   const unit = peak[2].toLowerCase();
-  const rawMw = unit === "gw" ? value * 1000 : unit === "kw" ? val / 1000 : value;
+  const rawMw = unit === "gw" ? value * 1000 : unit === "kw" ? value / 1000 : value;
 
   // If question explicitly has a multiplier (e.g. 1000 households) and rawMw is per-unit scale (<= 0.05 MW)
   if (count > 1 && rawMw <= 0.05) {
