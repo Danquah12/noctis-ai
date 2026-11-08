@@ -259,6 +259,7 @@ describe("Noctis tenant-scoped workflow persistence", () => {
         ...base,
         tenantId: "tenant-b", actorId: "actor-b", workflowId: "wf-tenant-b",
         eventId: "event-tenant-b",
+        tasks: [{ ...base.tasks[0], taskRecordId: "task-record-tenant-b" }],
       });
       assert.deepEqual(otherTenant, { ok: true, value: { workflowId: "wf-tenant-b", created: true } });
 
