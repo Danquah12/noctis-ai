@@ -75,6 +75,15 @@ export type NoctisEngineRequestValidation =
 
 const MANIFESTS: readonly NoctisEngineManifest[] = [
   {
+    id: "noctis.core.universal-orchestrator", name: "Universal Intelligence Planner", version: "0.1.0",
+    domain: "core", description: "Deterministic cross-domain task planning; planning only, with no implicit execution.",
+    sourcePath: "src/lib/noctis-universal-orchestrator.ts", capabilities: ["workflow.plan", "workflow.decompose"],
+    requiredScopes: ["noctis:route"],
+    dependencies: ["noctis.core.orchestrator", "noctis.core.checks"], lifecycle: "registered",
+    executionModes: ["analysis"], dataClassification: "internal",
+    evidenceRequired: false, humanReviewRequired: false,
+  },
+  {
     id: "noctis.core.orchestrator", name: "Noctis Core Orchestrator", version: "0.1.0",
     domain: "core", description: "Intent routing and orchestration foundation.",
     sourcePath: "src/lib/noctis-orchestrator.ts", capabilities: ["intent.route", "task.classify"],
