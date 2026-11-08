@@ -404,7 +404,7 @@ The legacy src/lib/noctis-wasm-runner.ts is not a genuine WASM sandbox: it evalu
 
 **Status:** Provider-neutral contracts and unit tests added; no cloud inventory or idempotency API is connected.
 
-- Launch keys are deterministic over tenant, workload ID, digest, and resource limits; the same workload contract produces the same key across retries.
+- Launch keys are deterministic over execution intent, tenant, workload ID, digest, and resource limits; the same workload contract produces the same key across retries.
 - The provider control-plane contract requires atomic same-request deduplication and conflict on same-key/different-request reuse.
 - src/lib/noctis-runtime-reconciliation.ts compares expected ledger records with provider inventory and classifies tracked, missing, stale, unknown, mismatched, and duplicate executions.
 - Uncertain provider resources are quarantined; the classifier never performs destructive cleanup.
