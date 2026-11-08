@@ -87,6 +87,46 @@ function nonEmpty(value: string): boolean {
 }
 
 /**
+ * Recomputes the parent workflow state from persisted task states.
+ * This is a database projection only; it does not dispatch or authorize work.
+ */
+async function refreshNoctisWorkflowState(
+  tx: NoctisWorkflowSqlExecutor,
+  workflowId: string,
+  at: string,
+): Promise<void> {
+  await tx.query(
+    `UPDATE noctis_workflows w
+     SET state = aggregate.state,
+         updated_at = $2::timestamptz,
+         completed_at = CASE
+           WHEN aggregate.state IN ('succeeded', 'failed', 'cancelled') THEN $2::timestamptz
+           ELSE NULL
+         END
+     FROM (
+       SELECT
+         CASE
+           WHEN COUNT(*) = 0 THEN 'planned'
+           WHEN COUNT(*) FILTER (WHERE state NOT IN ('succeeded', 'skipped')) = 0 THEN 'succeeded'
+           WHEN COUNT(*) FILTER (WHERE state NOT IN ('succeeded', 'failed', 'skipped', 'cancelled')) = 0
+             AND COUNT(*) FILTER (WHERE state = 'cancelled') > 0 THEN 'cancelled'
+           WHEN COUNT(*) FILTER (WHERE state NOT IN ('succeeded', 'failed', 'skipped', 'cancelled')) = 0
+             AND COUNT(*) FILTER (WHERE state = 'failed') > 0 THEN 'failed'
+           WHEN COUNT(*) FILTER (WHERE state = 'blocked') > 0 THEN 'blocked'
+           WHEN COUNT(*) FILTER (WHERE state = 'waiting_approval') > 0 THEN 'waiting_approval'
+           WHEN COUNT(*) FILTER (WHERE state = 'running') > 0 THEN 'running'
+           WHEN COUNT(*) FILTER (WHERE state = 'ready') > 0 THEN 'ready'
+           ELSE 'planned'
+         END AS state
+       FROM noctis_workflow_tasks
+       WHERE workflow_id = $1
+     ) aggregate
+     WHERE w.workflow_id = $1`,
+    [workflowId, at],
+  );
+}
+
+/**
  * Claims at most one ready task for the authenticated tenant.
  *
  * Row selection uses FOR UPDATE SKIP LOCKED; task state, lease, attempt record,
@@ -151,6 +191,8 @@ export async function claimNoctisWorkflowTask(
     );
     const row = claimed.rows[0];
     if (!row) return { ok: true, value: null };
+
+    await refreshNoctisWorkflowState(tx, row.workflow_id, input.at);
 
     await tx.query(
       `INSERT INTO noctis_workflow_attempts
@@ -253,6 +295,8 @@ export async function finishNoctisWorkflowTask(
        JSON.stringify({ failureCode: input.failureCode ?? null })],
     );
 
+    await refreshNoctisWorkflowState(tx, row.workflow_id, input.at);
+
     return { ok: true, value: { taskRecordId: row.task_record_id, outcome: input.outcome } };
   });
 }
@@ -336,6 +380,8 @@ export async function recoverNoctisExpiredWorkflowLease(
        `lease-expired:${row.task_record_id}:${row.attempt_count}`, input.at,
        JSON.stringify({ previousWorker: row.lease_owner, attemptNumber: row.attempt_count, nextState })],
     );
+
+    await refreshNoctisWorkflowState(tx, row.workflow_id, input.at);
 
     return { ok: true, value: { taskRecordId: row.task_record_id, state: nextState, attemptNumber: row.attempt_count } };
   });
