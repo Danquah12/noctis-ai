@@ -49,10 +49,10 @@ describe("Noctis engine registry", () => {
   it("requires evidence and explicit approval before supervised high-impact work", () => {
     const request: NoctisEngineRequest = {
       requestId: "req-2", tenantId: "tenant-1", actorId: "actor-1",
-      engineId: "noctis.cyber.sast", capability: "cyber.sast.analyze", input: {},
+      engineId: "noctis.professional.intelligence", capability: "profession.workflow.plan", input: {},
       context: { correlationId: "corr-2", evidenceIds: ["ev-1"] },
-      authorization: { scopes: ["cyber:read"], executionMode: "supervised" },
-      constraints: { dataClassification: "confidential" },
+      authorization: { scopes: ["profession:read"], executionMode: "supervised" },
+      constraints: { dataClassification: "internal" },
     };
     assert.equal(resultCode(validateNoctisEngineRequest(request)), "APPROVAL_REQUIRED");
     assert.equal(validateNoctisEngineRequest({
