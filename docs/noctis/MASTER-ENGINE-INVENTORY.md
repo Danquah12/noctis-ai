@@ -200,7 +200,7 @@ Dedicated route files:
 - `src/routes/noctis.tsx`
 - `src/routes/api/noctis.ts`
 
-Route existence does not imply every UI action or API branch is authenticated, safe, or operational. The API route requires a dedicated security review, especially its CORS policy, tenant scoping, and query parameter handling.
+Route existence does not imply every UI action or API branch is authenticated, safe, or operational. The API route requires a dedicated security review, especially its CORS policy, tenant scoping, and query parameter handling. The authenticated engine registry endpoint is metadata-only and does not execute engines.
 
 ## 5. Professional taxonomy and existing specifications
 
@@ -258,7 +258,7 @@ This audit has not yet run the full test suite or completed a call-graph review.
 
 The branch now includes `src/lib/noctis-engine-registry.ts`, a typed metadata registry for an initial 11-engine cohort (core orchestration, cyber vulnerability/SAST, RMF, clinical, science, engineering, legal, defense, research and professional intelligence). It supports listing, domain filtering, capability discovery and request-contract validation. An authenticated metadata-only server function exposes the registry. It deliberately does not execute specialist modules or claim runtime integration.
 
-A focused test suite covers registry identity uniqueness, discovery, defensive copies, unsupported capabilities, evidence requirements, execution-mode boundaries and human approval gates. The suite is included in the typecheck/test gate.
+A focused test suite covers registry identity uniqueness, discovery, defensive copies, unsupported capabilities, evidence requirements, execution-mode boundaries, required scopes, data-classification ceilings and human approval-reference gates. The suite is included in the typecheck/test gate. Approval-reference presence is not approval verification; a trusted approval service is still required before any future execution.
 
 ## 9. Immediate audit actions
 
@@ -271,7 +271,7 @@ A focused test suite covers registry identity uniqueness, discovery, defensive c
 7. Assign maturity only after evidence is collected.
 8. Publish an approved baseline before refactoring.
 
-## 10. Non-negotiable preservation rules
+## 10. Current model prompt integrity correction\n\nThe model system prompt previously described unsupported direct filesystem access, terminal execution, autonomous deployment, parallel subagents and simulated enterprise telemetry. Those capability claims have been replaced with an execution-honesty policy: only tools actually available and successfully invoked may be described as used. The plugin prompt was also changed to prohibit invented telemetry and approvals. This is a prompt-integrity improvement, not proof that every other prompt or integration is correct.\n\nApproved stored evidence is now added as context for authenticated source-dependent requests when the database is available. Retrieval remains optional, lexical, and fail-closed with respect to unapproved sources; if the evidence store or migrations are unavailable, no retrieved evidence is claimed.\n\n## 11. Non-negotiable preservation rules
 
 - Do not delete or rename existing engines merely to fit a new taxonomy.
 - Do not silently change existing exported function signatures.
