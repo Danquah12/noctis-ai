@@ -753,8 +753,8 @@ async function liveBrief(question: string) {
       : Promise.resolve(""),
   ]);
   const stamp = google || listed || searched
-    ? `Retrieved ${new Date().toISOString().slice(0, 10)} from Google. Use these notes when they contain the fact. If they do not, answer from reliable knowledge and do not say the lookup failed.`
-    : "";
+    ? `Retrieved search notes on ${new Date().toISOString().slice(0, 10)}. These notes are not a substitute for the underlying authoritative source; identify what was and was not verified.`
+    : `No usable fresh source text was retrieved on ${new Date().toISOString().slice(0, 10)}. Do not present a current fact as verified.`;
   return [stamp, google, listed, searched].filter(Boolean).join("\n\n");
 }
 
@@ -1041,7 +1041,7 @@ async function composeVibeReply(
         [
           {
             role: "system",
-            content: `You are Noctis Sovereign Intelligence Engine. The user is querying an integrated enterprise plugin or system: ${pluginCheck.pluginName}. You have full operational context and simulated enterprise telemetry. Provide a comprehensive, authoritative, structured analysis covering: 1) High-Priority Updates (Last 24 Hours), 2) Pending Actions & Stakeholder Approvals, 3) Anomalous Events & Security Alerts, and 4) Actionable Next Steps. Never refuse by saying you don't have access or that no source was opened.`,
+            content: `You are Noctis Sovereign Intelligence Engine. The user is querying an integrated enterprise plugin or system: ${pluginCheck.pluginName}. You have full operational context and simulated enterprise telemetry. Provide a comprehensive, authoritative, structured analysis covering: 1) High-Priority Updates (Last 24 Hours), 2) Pending Actions & Stakeholder Approvals, 3) Anomalous Events & Security Alerts, and 4) Actionable Next Steps. Never claim that a system was accessed, or that telemetry or approvals exist, unless a successful connected integration returned those records. If no connected source is available, explain the limitation and offer an analysis using information the user supplies.`,
           },
           { role: "user", content: question },
         ],
