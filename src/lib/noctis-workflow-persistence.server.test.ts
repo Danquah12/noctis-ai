@@ -20,6 +20,23 @@ const idempotencyMigration = readFileSync(
   "utf8",
 );
 const at = "2026-11-07T16:00:00Z";
+const testGates = {
+  resolveEvidence: async (_tx: NoctisWorkflowSqlExecutor, context: {
+    tenantId: string; evidenceRefs: readonly string[];
+  }) => context.evidenceRefs.map((evidenceId) => ({
+    status: "approved" as const, tenantId: context.tenantId, evidenceId,
+    sourceId: "source-1", chunkId: `chunk-${evidenceId}`,
+    sourceStatus: "approved" as const, accessAllowed: true,
+  })),
+  resolveApproval: async (_tx: NoctisWorkflowSqlExecutor, context: {
+    tenantId: string; approvalRef: string; engineId: string; capability: string;
+  }) => ({
+    status: "approved" as const, tenantId: context.tenantId,
+    approvalId: context.approvalRef, engineId: context.engineId,
+    capability: context.capability, approvedBy: "reviewer-1",
+    approvedAt: "2026-11-07T15:00:00Z", expiresAt: null, revokedAt: null,
+  }),
+};
 
 async function setup() {
   const pg = new PGlite();
@@ -178,7 +195,7 @@ describe("Noctis tenant-scoped workflow persistence", () => {
         tenantId: "tenant-a", workerId: "worker-a", at,
         leaseExpiresAt: "2026-11-07T16:05:00Z", leaseToken: "lease-a",
         attemptId: "attempt-a", eventId: "claim-event-a", correlationId: "corr-a",
-      });
+      }, testGates);
       assert.equal(claim.ok, true);
       if (!claim.ok) return;
       assert.equal(claim.value?.taskRecordId, "task-a");
@@ -193,7 +210,7 @@ describe("Noctis tenant-scoped workflow persistence", () => {
         tenantId: "tenant-c", workerId: "worker-c", at,
         leaseExpiresAt: "2026-11-07T16:05:00Z", leaseToken: "lease-c",
         attemptId: "attempt-c", eventId: "claim-event-c", correlationId: "corr-c",
-      });
+      }, testGates);
       assert.deepEqual(otherTenant, { ok: true, value: null });
 
       const finished = await finishNoctisWorkflowTask(db, {
@@ -233,7 +250,7 @@ describe("Noctis tenant-scoped workflow persistence", () => {
         tenantId: "tenant-a", workerId: "worker-a", at,
         leaseExpiresAt: "2026-11-07T16:05:00Z", leaseToken: "lease-a",
         attemptId: "attempt-a", eventId: "claim-event-a", correlationId: "corr-a",
-      });
+      }, testGates);
       assert.deepEqual(blocked, { ok: true, value: null });
 
       await pg.query(
@@ -243,7 +260,7 @@ describe("Noctis tenant-scoped workflow persistence", () => {
         tenantId: "tenant-a", workerId: "worker-a", at,
         leaseExpiresAt: "2026-11-07T16:05:00Z", leaseToken: "lease-a",
         attemptId: "attempt-a", eventId: "claim-event-a", correlationId: "corr-a",
-      });
+      }, testGates);
       assert.equal(claimed.ok, true);
       const lost = await finishNoctisWorkflowTask(db, {
         tenantId: "tenant-a", workerId: "other-worker", taskRecordId: "task-a",
@@ -266,14 +283,14 @@ describe("Noctis tenant-scoped workflow persistence", () => {
         tenantId: "tenant-a", workerId: "worker-a", at,
         leaseExpiresAt: "2026-11-07T16:01:00Z", leaseToken: "lease-1",
         attemptId: "attempt-1", eventId: "claim-1", correlationId: "corr-a",
-      });
+      }, testGates);
       assert.equal(first.ok, true);
 
       const recovered = await recoverNoctisExpiredWorkflowLease(db, {
         tenantId: "tenant-a", at: "2026-11-07T16:02:00Z",
         retryAvailableAt: "2026-11-07T16:03:00Z",
         eventId: "recover-1", correlationId: "corr-a",
-      });
+      }, testGates);
       assert.deepEqual(recovered, {
         ok: true,
         value: { taskRecordId: "task-a", state: "ready", attemptNumber: 1 },
@@ -289,7 +306,7 @@ describe("Noctis tenant-scoped workflow persistence", () => {
         tenantId: "tenant-a", workerId: "worker-b", at: "2026-11-07T16:03:00Z",
         leaseExpiresAt: "2026-11-07T16:04:00Z", leaseToken: "lease-2",
         attemptId: "attempt-2", eventId: "claim-2", correlationId: "corr-a",
-      });
+      }, testGates);
       assert.equal(second.ok, true);
       if (second.ok) assert.equal(second.value?.attemptNumber, 2);
 
@@ -297,7 +314,7 @@ describe("Noctis tenant-scoped workflow persistence", () => {
         tenantId: "tenant-a", at: "2026-11-07T16:05:00Z",
         retryAvailableAt: "2026-11-07T16:05:00Z",
         eventId: "recover-2", correlationId: "corr-a",
-      });
+      }, testGates);
       assert.deepEqual(exhausted, {
         ok: true,
         value: { taskRecordId: "task-a", state: "failed", attemptNumber: 2 },
@@ -325,7 +342,7 @@ describe("Noctis tenant-scoped workflow persistence", () => {
         tenantId: "tenant-a", workerId: "worker-a", at: "not-a-date",
         leaseExpiresAt: "2026-11-07T16:05:00Z", leaseToken: "lease",
         attemptId: "attempt", eventId: "event", correlationId: "corr",
-      });
+      }, testGates);
       assert.deepEqual(invalid, { ok: false, code: "INVALID_INPUT" });
     } finally {
       await pg.close();
