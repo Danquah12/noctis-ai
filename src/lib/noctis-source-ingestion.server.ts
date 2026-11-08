@@ -161,14 +161,17 @@ export async function reviewNoctisSource(input: {
 }) {
   const sourceId = clean(input.sourceId, 160);
   const reason = clean(input.reason, 500);
-  if (!sourceId || reason.length < 8) throw new Error("A source ID and review reason of at least 8 characters are required.");
+  const reviewerId = clean(input.reviewerId, 160);
+  if (!sourceId || !reviewerId || reason.length < 8) throw new Error("A source ID, trusted reviewer ID, and review reason of at least 8 characters are required.");
+  if (input.decision !== "approved" && input.decision !== "rejected") throw new Error("Invalid source review decision.");
   const sql = await getSql();
-  const rows = await sql<{ id: string; content_hash: string; status: string; license: string | null; publisher: string | null }>`
-    select id, content_hash, status, license, publisher from noctis_learning_source where id = ${sourceId} limit 1
+  const rows = await sql<{ id: string; content_hash: string; status: string; license: string | null; publisher: string | null; submitted_by: string | null }>`
+    select id, content_hash, status, license, publisher, submitted_by from noctis_learning_source where id = ${sourceId} limit 1
   `;
   const source = rows[0];
   if (!source) throw new Error("Source not found.");
   if (source.status !== "quarantined") throw new Error("Only quarantined sources can be reviewed.");
+  if (source.submitted_by === reviewerId) throw new Error("A submitter cannot review their own source.");
   if (input.decision === "approved" && (!source.license || !source.publisher)) {
     throw new Error("Approval requires publisher and license/terms metadata. Keep the source quarantined until verified.");
   }
@@ -178,15 +181,16 @@ export async function reviewNoctisSource(input: {
   const changed = await sql<{ id: string }>`
     with changed as (
       update noctis_learning_source
-      set status = ${input.decision}, reviewed_by = ${input.reviewerId},
+      set status = ${input.decision}, reviewed_by = ${reviewerId},
           reviewed_at = now(), review_reason = ${reason}, updated_at = now()
       where id = ${sourceId} and status = 'quarantined'
+        and (submitted_by is null or submitted_by <> ${reviewerId})
       returning id, content_hash
     ),
     audit as (
       insert into noctis_learning_audit
         (id, actor_id, action, target_type, target_id, reason, before_hash, after_hash)
-      select ${auditId}, ${input.reviewerId}, ${action},
+      select ${auditId}, ${reviewerId}, ${action},
              'source', id, ${reason}, content_hash, content_hash
       from changed
       returning target_id
