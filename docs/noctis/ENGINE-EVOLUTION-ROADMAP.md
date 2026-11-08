@@ -327,6 +327,12 @@ Added `src/lib/noctis-workflow-persistence.server.ts` with injected PostgreSQL e
 
 Tests added in `src/lib/noctis-workflow-persistence.server.test.ts` for tenant isolation, evidence gating, lease-token enforcement and attempt closure. Stale-lease recovery, approval resolution, database row-level security, idempotent workflow creation and runtime wiring remain outstanding. The adapter's presence and tests do not establish operational readiness.
 
+### Authoritative evidence and approval gate contracts
+
+Task claim now accepts injected evidence and approval resolvers and checks them inside the task-claim transaction before creating a lease or attempt. Evidence gates require exact tenant-bound approved records, source/chunk identity, access permission, and non-revoked/non-expired status. Approval gates require an approved task-execution grant bound to the exact tenant, engine and capability, an authorized approver, valid issue/expiry times and no revocation. Missing, duplicate, stale, mismatched or unavailable results fail closed.
+
+Tests cover cross-tenant evidence rejection, task-capability approval mismatch and successful resolution. These are contract-level tests using test resolver implementations. No production evidence ledger or approval service has been connected; the next integration must implement the resolver interfaces against authoritative application services and prove their identity and permission checks.
+
 ### Idempotent workflow creation update
 
 Added `createNoctisWorkflowIdempotently` to the server-only persistence adapter and a follow-on migration adding a SHA-256 request fingerprint. Workflow creation, task-row insertion and the `workflow.created` audit event share one transaction. Replays with the same tenant, actor, idempotency key and semantic request return the original workflow; key reuse with a changed request or a different actor is rejected. Dependency references and cycles are validated before any write. This operation creates stored tasks in `pending` state and does not dispatch or execute them.
