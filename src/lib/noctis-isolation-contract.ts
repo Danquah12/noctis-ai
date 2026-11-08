@@ -187,6 +187,7 @@ export async function admitNoctisSandboxWorkload(
 export interface NoctisIsolatedRuntimeProvider {
   launch(input: {
     workloadId: string;
+    executionIntentId: string;
     tenantId: string;
     workloadDigest: string;
     limits: NoctisSandboxLimits;
