@@ -4,7 +4,7 @@
 **Audit command:** `npm run audit:noctis-integrations`  
 **CI gate:** `.github/workflows/ci.yml`  
 **Status:** Static import-graph validation passes in CI; per-engine runtime integration certification remains open.
-**Latest validated graph:** CI run `42432825019`, commit `0214f61c60ff2f728f28a54b106902bd08cf4910`.
+**Latest validated graph:** CI run `42433480671`, commit `459c08aec17916cc22b9b74cba64b66ce32ecbfd`.
 
 ## Purpose
 
@@ -14,7 +14,7 @@ It deliberately does **not** equate an import with a function call, a reachable 
 
 ## Current repository inventory
 
-The CI audit on the current workstream scans 822 source files and identifies 128 `src/lib/noctis-*` implementation modules, of which 11 are represented by the curated registry. The remaining 117 are not automatically labeled missing engines: the set includes supporting libraries, adapters, data modules, orchestration helpers and specialist modules that still need taxonomy review.
+The CI audit on the current workstream scans 823 source files and identifies 128 `src/lib/noctis-*` implementation modules, of which 11 are represented by the curated registry. The remaining 117 are not automatically labeled missing engines: the set includes supporting libraries, adapters, data modules, orchestration helpers and specialist modules that still need taxonomy review.
 
 The latest validated integration-graph pass established:
 - 822 source files scanned.
@@ -70,3 +70,7 @@ Promotion requires a separate engine-level audit confirming:
 3. Classify the 117 non-registry Noctis modules as engine, service, helper, adapter, data or deprecated artifact.
 4. Add typed engine adapters and a trusted execution controller only after actor/tenant/scope, evidence and approval services are authoritative.
 5. Add integration tests proving the route-to-engine call path and its safety boundaries.
+
+## Orchestrator call-path improvement
+
+The core orchestrator now contributes a deterministic routing directive to the model context in `noctis-desk.server.ts`. `buildRouteDirective()` classifies intent, preferred tool and verification requirement, then explicitly states that a routing recommendation is not evidence a tool ran. Four focused tests cover engineering, cyber, Bible and current-information routes. The cyber route classifier now recognizes complete vulnerability/exploitability terms and CVE identifiers. This improves deterministic routing guidance but does not create a general tool-execution dispatcher or prove that a preferred external tool was invoked.
