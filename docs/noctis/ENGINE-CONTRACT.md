@@ -256,3 +256,18 @@ The server-only persistence adapter at `src/lib/noctis-workflow-persistence.serv
 - This adapter is not wired to routes, schedulers or workers and does not execute specialist engines.
 
 Before runtime enablement, wire these resolver contracts to the production evidence and approval ledgers, connect cancellation polling to trusted worker adapters, add stale-lease operational scheduling, concurrency/load tests, audit retention and authenticated integration tests.
+
+## 14. Multi-engine analysis execution controller
+
+`src/lib/noctis-engine-execution-controller.ts` introduces a bounded controller for explicitly supplied specialist task graphs. It is a separate layer from the deterministic planner and from persistent workflow dispatch.
+
+- The caller supplies an explicit task DAG, adapter registry, trusted tenant/actor identity, server-derived scopes, correlation ID, UTC timestamp and data classification.
+- The controller validates task IDs, dependency references, cycles, task-count limits, adapter uniqueness, registry capability, required scopes, evidence-reference presence, classification ceiling and analysis-mode support before invoking each adapter.
+- Execution is sequential and deterministic in topological batches. Independent branches continue if another branch fails; descendants of a failed, partial or blocked prerequisite are blocked.
+- Adapter exceptions are isolated. Raw exception text is not exposed in the report. There are no implicit retries.
+- Adapter result envelopes are checked for engine identity and required result structure. Completed specialist results are passed to the existing deterministic result-reconciliation service; reconciliation errors are surfaced rather than hidden.
+- The controller is analysis-only. It cannot authorize writes, approve actions, run privileged tools or infer that an engine is production-ready from registry presence.
+- It does not implement a sandbox, timeout/termination enforcement, persistent state, worker leases, evidence repository resolution, approval ledger resolution, or authenticated route wiring. Those remain mandatory production integration work.
+- The `at` timestamp is caller-supplied UTC time for deterministic reconciliation; the controller does not read an ambient clock.
+
+Registry validation is a contract check, not a replacement for authorization. The production server must derive scopes and tenant identity from authenticated policy services and resolve evidence references against authoritative records before supplying adapters.
