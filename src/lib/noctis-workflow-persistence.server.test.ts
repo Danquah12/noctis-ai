@@ -19,6 +19,10 @@ const idempotencyMigration = readFileSync(
   new URL("../../migrations/20261107_noctis_workflow_idempotency.sql", import.meta.url),
   "utf8",
 );
+const rlsMigration = readFileSync(
+  new URL("../../migrations/20261107_noctis_workflow_rls.sql", import.meta.url),
+  "utf8",
+);
 const at = "2026-11-07T16:00:00Z";
 const testGates = {
   resolveEvidence: async (_tx: NoctisWorkflowSqlExecutor, context: {
@@ -46,6 +50,7 @@ async function setup() {
   await pg.waitReady;
   await pg.exec(migration);
   await pg.exec(idempotencyMigration);
+  await pg.exec(rlsMigration);
   const wrap = (client: { query: (sql: string, params?: unknown[]) => Promise<any> }): NoctisWorkflowSqlExecutor => ({
     query: (sql, params) => client.query(sql, params ? [...params] : undefined),
   });
