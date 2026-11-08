@@ -236,6 +236,9 @@ The server-only persistence adapter at `src/lib/noctis-workflow-persistence.serv
 - Completion requires a matching tenant, worker, lease token and unexpired lease.
 - Expired attempts are marked `timed_out`; tasks are retried only while `attempt_count < max_attempts`, otherwise they fail.
 - Retry timestamps, identifiers and event correlation values are explicit inputs.
+
+- Parent workflow state is recomputed transactionally after task claim, finish and expired-lease recovery. Aggregate states reflect persisted task states; terminal completion timestamps are set only for succeeded, failed or cancelled workflows.
+- This projection is not a cancellation protocol, a background reconciler, or proof that external work has stopped. Running-task cancellation still requires a trusted executor stop/termination contract.
 - This adapter is not wired to routes, schedulers or workers and does not execute specialist engines.
 
 Before runtime enablement, add authoritative approval/evidence resolution, idempotent workflow creation, database row-level security, stale-lease operational scheduling, concurrency/load tests, audit retention and authenticated integration tests.
