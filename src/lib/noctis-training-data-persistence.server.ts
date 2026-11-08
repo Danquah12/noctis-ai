@@ -201,7 +201,7 @@ export async function snapshotNoctisTrainingDataset(
       "SELECT domain FROM noctis_training_dataset WHERE dataset_id=$1 AND tenant_id=$2 FOR UPDATE",
       [input.datasetId,input.tenantId]);
     if(!dataset.rows.length)return {ok:false,code:"NOT_FOUND" as const};
-    const placeholders=input.pairIds.map((_,i)=>`${i+2}`).join(",");
+    const placeholders=input.pairIds.map((_,i)=>"$"+(i+2)).join(",");
     const rows=await tx.query<{
       id:string;question:string;answer:string;domain:string;source_id:string;source_hash:string;license:string;
       source_status:string;source_content_hash:string;source_license:string;
