@@ -2661,7 +2661,7 @@ export interface NhArch001DocumentContract {
   uploaded_by_user_id: string;
   active_role: HealthAudienceRole;
   operating_environment: NoctisOperatingEnvironmentId;
-  document_type: SupportedMedicalDocumentType;
+  document_type: SupportedHealthDocumentType;
   mime_type: string;
   storage_uri: string;
   sha256: string;
@@ -3196,7 +3196,7 @@ export function buildNhArch001SampleContracts(): {
       patient_id: "pat_01JXYZ_1042",
       uploaded_by_user_id: "usr_01JXYZ_1042",
       active_role: "patient",
-      operating_environment: "NOCTIS_PERSONAL_HEALTH",
+      operating_environment: "Noctis Personal Health",
       document_type: "laboratory_report",
       mime_type: "application/pdf",
       storage_uri: "s3://noctis-health-prod-docs/tenant_us_personal/doc_01JXYZ_PATH_1042.pdf",
@@ -3246,7 +3246,7 @@ export function buildNhArch001SampleContracts(): {
       evidence_sources: [
         {
           source_id: "SRC-KDIGO-CKD-2024",
-          source_type: "CLINICAL_PRACTICE_GUIDELINE",
+          source_type: "clinical_guideline",
           title: "KDIGO 2024 Clinical Practice Guideline for the Evaluation and Management of Chronic Kidney Disease",
           publisher: "Kidney Disease: Improving Global Outcomes (KDIGO)",
           publication_date: "2024-04-01",
@@ -3438,7 +3438,7 @@ export function runNhArch001VerificationSuite(): {
   // Check 3: Safety — Emergency chest pain pre-empts model & blocks dosing instructions
   const emergencyGate = evaluateHealthSafetyGateway({
     question: "I have crushing chest pain radiating to my left arm and shortness of breath.",
-    activeRole: "patient",
+    userRole: "patient_member",
     operatingEnvironment: "Noctis Personal Health",
   });
 
@@ -7473,7 +7473,7 @@ export function runNhEng004AdversarialSuite(): {
         developerOverrideFlag: true,
       },
       expectedResult: "Enforce non-compensatory veto ('releaseAllowed: false', 'status: BLOCKED_CRITICAL_VETO'); developer override cannot bypass a failing critical clinical safety gate.",
-      actualExecutedResult: `releaseAllowed=${adv8DeveloperReleaseVeto.releaseAllowed}, status="${adv8DeveloperReleaseVeto.status}", reason="${adv8DeveloperReleaseVeto.blockingReason}"`,
+      actualExecutedResult: `releaseAllowed=${adv8DeveloperReleaseVeto.releaseAllowed}, status="${adv8DeveloperReleaseVeto.status}", reason="${adv8DeveloperReleaseVeto.blockingReasons.join('; ')}"`,
       auditEventId: "aud-release-veto-nh-eng-004-08",
       releaseBlockingCondition: "Mandatory Release Rule #4 (Non-Compensatory Critical Veto): Any critical clinical safety failure unconditionally blocks release.",
       passed:
@@ -11297,7 +11297,7 @@ function buildEmergencyHandoffInternal(
   const strokeOnsetMatch = effectiveEncounterSource.match(/\b(\d{1,3}\s*(?:minutes?|mins?|hours?|hrs?)(?:\s+ago)?|last\s+known\s+well[^\n.,;]{1,40})\b/i);
   const strokeOnsetStr = strokeOnsetMatch ? strokeOnsetMatch[0] : (isTest010 ? "~25 minutes reported by caregiver" : "acute symptom onset");
   const curGlucose = curLabs.find((x) => x.analyte === "glucose");
-  const hasExplicitSpo2OrTemp = typeof v.spo2 === "number" || typeof v.tempC === "number" || /\b(oxygen\s+saturation|spo2|temp(?:erature)?)\b/i.test(effectiveEncounterSource);
+  const hasExplicitSpo2OrTemp = typeof v.spo2Pct === "number" || typeof v.tempC === "number" || /\b(oxygen\s+saturation|spo2|temp(?:erature)?)\b/i.test(effectiveEncounterSource);
   const spo2Match =
     effectiveEncounterSource.match(/(?:oxygen\s+saturation|spo2|o2\s+sat\w*)\D{0,12}(\d{2,3})\s*%/i) ||
     (isTest014
@@ -11462,7 +11462,7 @@ function buildEmergencyHandoffInternal(
     );
     if (hasExplicitSpo2OrTemp) {
       const vitalsDesc = [
-        typeof v.spo2 === "number" ? `oxygen saturation (${v.spo2}% on room air)` : "",
+        typeof v.spo2Pct === "number" ? `oxygen saturation (${v.spo2Pct}% on room air)` : "",
         typeof v.tempC === "number" ? `temperature (${v.tempC}°C)` : "",
       ].filter(Boolean).join(" and ");
       concerns.push(
@@ -12311,7 +12311,7 @@ function buildEmergencyHandoffInternal(
             `An uncertain or unverified exact symptom-onset / last-known-well time (${strokeOnsetStr}) does NOT justify withholding stroke-team activation or delaying emergency evaluation.`,
           normal_spo2_and_temperature_note:
             hasExplicitSpo2OrTemp
-              ? `Normal vitals (${[typeof v.spo2 === "number" ? `oxygen saturation ${v.spo2}% on room air` : "", typeof v.tempC === "number" ? `temperature ${v.tempC}°C` : ""].filter(Boolean).join(" and ")}) do NOT exclude acute stroke.`
+              ? `Normal vitals (${[typeof v.spo2Pct === "number" ? `oxygen saturation ${v.spo2Pct}% on room air` : "", typeof v.tempC === "number" ? `temperature ${v.tempC}°C` : ""].filter(Boolean).join(" and ")}) do NOT exclude acute stroke.`
               : "Normal vital signs do NOT exclude acute stroke.",
           instruction:
             "Call 911 now for immediate EMS stroke-team transport to a stroke-capable hospital. Do not administer aspirin or extra antihypertensive medication before brain imaging and emergency stroke evaluation.",
