@@ -80,7 +80,7 @@ function toSql(
     ...values: unknown[]
   ): Promise<T[]> => {
     let text = strings[0];
-    for (let i = 0; i < values.length; i += 1) text += \`$\${i + 1}\${strings[i + 1]}\`;
+    for (let i = 0; i < values.length; i += 1) text += `${i + 1}${strings[i + 1]}`;
     return run<T>(text, values);
   }) as unknown as Sql;
   sql.query = <T = Record<string, unknown>>(text: string, params: unknown[] = []) =>
