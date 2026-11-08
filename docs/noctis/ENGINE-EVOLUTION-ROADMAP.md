@@ -425,3 +425,17 @@ The legacy src/lib/noctis-wasm-runner.ts is not a genuine WASM sandbox: it evalu
 **Next:** implement transactional repository methods for pre-launch ledger reservation and audit append; implement authenticated provider inventory pagination; persist reconciliation results idempotently; add alert delivery and operator review. Then implement a separate approval-bound cleanup-candidate workflow with fresh tenant/workload/digest checks and provider revalidation.
 
 **Boundary:** SQL schema and local migration tests are not production persistence, RLS, tamper-proof audit, provider inventory, alerting, or cleanup execution. A database owner can bypass the trigger. Do not enable automatic deletion of unknown or mismatched resources.
+## 18. M3 — Transactional runtime persistence adapter
+
+**Status:** Server-only repository contract and PGlite tests added; production DB and cloud provider remain disconnected.
+
+- Reserve exact launch intent before provider invocation; exact replay returns the original record.
+- Reject idempotency-key reuse when tenant, execution intent, workload, digest, runtime or limits differ.
+- Persist ambiguous provider responses as `launch_unknown` for safe inventory reconciliation.
+- Bind provider execution IDs to the exact expected ledger row and allowed lifecycle state.
+- Persist quarantine records idempotently; repeat observations update last-seen without changing the original quarantine identity.
+- Commit audit events with ledger/quarantine state changes in the same transaction.
+
+**Next:** authenticated provider inventory adapter with pagination and completeness semantics; reconciliation service that reads ledger and inventory snapshots, persists decisions idempotently, and raises alerts. Then implement a separate approval-bound cleanup-candidate process; it must not automatically stop or delete unknown resources.
+
+**Boundary:** tests use PGlite and fake SQL adapters. No cloud control plane, inventory feed, production DB role/RLS, alert delivery, or cleanup execution is connected.
