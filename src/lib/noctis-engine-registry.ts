@@ -183,6 +183,15 @@ const MANIFESTS: readonly NoctisEngineManifest[] = [
     evidenceRequired: false, humanReviewRequired: false,
   },
   {
+    id: "noctis.evidence.integrity", name: "Evidence Integrity Validator", version: "0.1.0",
+    domain: "core", description: "Deterministic citation identity and excerpt-integrity checks; not semantic entailment.",
+    sourcePath: "src/lib/noctis-evidence-integrity.ts", capabilities: ["evidence.integrity.validate"],
+    requiredScopes: ["evidence:read"],
+    dependencies: ["noctis.evidence.retrieval"], lifecycle: "registered",
+    executionModes: ["analysis", "assisted"], dataClassification: "public",
+    evidenceRequired: true, humanReviewRequired: false,
+  },
+  {
     id: "noctis.core.checks", name: "Core Verification Checks", version: "0.1.0",
     domain: "core", description: "Shared deterministic checks used by Noctis reasoning and validation workflows.",
     sourcePath: "src/lib/noctis-checks.ts", capabilities: ["checks.evaluate", "checks.validate"],
