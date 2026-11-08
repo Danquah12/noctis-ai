@@ -2526,7 +2526,7 @@ export function handleNaturalPredictiveIntelligenceQuery(query: string): string 
       riskLevel: pdm.risk_level,
       kpis: [
         { label: "30-Day Failure Risk", value: `${probPct}%`, sub: `Confidence: ${ciLow}%–${ciHigh}%` },
-        { label: "Safe Operating Window", value: `${pdm.estimatedRulOperatingHoursRange[0]}–${pdm.estimatedRulOperatingHoursRange[1]}h`, sub: "Remaining useful life range" },
+        { label: "Safe Operating Window", value: "Not estimated", sub: "Requires a validated remaining-useful-life model" },
         { label: "Vibration Reading", value: `${vib} mm/s`, sub: "ISO alert threshold: 4.5 mm/s" },
         { label: "Bearing Temperature", value: `${temp}°C`, sub: `${hours.toLocaleString("en-US")} hrs since overhaul` },
       ],
