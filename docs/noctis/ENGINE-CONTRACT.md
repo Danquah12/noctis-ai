@@ -273,3 +273,20 @@ Before runtime enablement, wire these resolver contracts to the production evide
 - The `at` timestamp is caller-supplied UTC time for deterministic reconciliation; the controller does not read an ambient clock.
 
 Registry validation is a contract check, not a replacement for authorization. The production server must derive scopes and tenant identity from authenticated policy services and resolve evidence references against authoritative records before supplying adapters.
+
+
+## 14. Secure execution isolation admission contract
+
+src/lib/noctis-isolation-contract.ts defines a fail-closed admission contract for untrusted workloads submitted to an external isolation provider.
+
+Admission requires:
+- An allowlisted provider and approved isolation type (microVM is the initial policy target).
+- A SHA-256 digest binding the attestation to the exact workload and tenant.
+- A provider signature checked by an injected trusted signature verifier; a non-empty signature string alone is never accepted.
+- An unexpired UTC attestation.
+- Explicit attestation of disabled network access, ephemeral-only storage, no host filesystem mount, enforced CPU/memory/time/output limits, forced termination capability, tenant isolation, audit logging and unprivileged execution.
+- Requested resource limits within the server policy maximum.
+
+The provider interface requires a launch request with network disabled, ephemeral-only filesystem and no privileged execution. Termination must report both process stopped and resources reaped.
+
+**Critical boundary:** this is an admission contract, not a sandbox implementation. It does not create or verify OS isolation by itself. The existing src/lib/noctis-wasm-runner.ts uses new Function, a Promise race and an estimated memory value; it is not a WebAssembly runtime, secure sandbox or forced-termination mechanism and must not execute untrusted workloads. No provider adapter, signing-key service, container/microVM runtime, worker route or production enforcement is connected yet. Production use remains prohibited until independent provider attestation verification, runtime integration, kill/reap behavior and hostile-workload tests pass.
