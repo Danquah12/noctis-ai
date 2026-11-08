@@ -40,7 +40,7 @@ export function routeQuestion(question: string): VibeRoute {
   const arithmetic = /(?:^|\s)[\d,.]+\s*[×x*+\-/÷]\s*[\d,.]+/.test(question) || /\b(calculate|compute|evaluate)\b/i.test(question);
   const engineering = /\b(design|size|sizing|strategy|resilien|survival|microgrid|inverter|battery|solar|peak demand|outage)\b/i.test(question) && /\b(kw|mw|gw|tw|kwh|mwh|gwh|twh|household|load|battery|solar|inverter|budget)\b/i.test(question);
   const bible = /\b(bible|verse|scripture|psalm|gospel|ephesians|genesis|matthew)\b/i.test(question);
-  const cyber = /\b(cve-\d|vulnerab|malware|phish|exploit)\b/i.test(question);
+  const cyber = /\b(?:cve-\d{4}-\d{4,7}|vulnerab\w*|malware|phish\w*|exploit\w*)\b/i.test(question);
   const science = /\b(hypothesis|experiment|molecule|physics|chemist|biology|gravity)\b/i.test(question);
   const current = needsCurrent(question) || /\b(today|current|latest|who is the|price|unemployment)\b/i.test(question);
   const teach = /\b(teach me|quiz me|practice)\b/i.test(question);
