@@ -134,10 +134,17 @@ CREATE TRIGGER noctis_training_dataset_version_immutable
 BEFORE UPDATE OR DELETE ON noctis_training_dataset_version
 FOR EACH ROW EXECUTE FUNCTION noctis_reject_training_snapshot_mutation();
 
+CREATE OR REPLACE FUNCTION noctis_reject_training_member_mutation()
+RETURNS trigger LANGUAGE plpgsql AS $
+BEGIN
+  RAISE EXCEPTION 'Noctis training dataset membership is immutable; create a new version';
+END;
+$;
+
 DROP TRIGGER IF EXISTS noctis_training_dataset_member_immutable ON noctis_training_dataset_member;
 CREATE TRIGGER noctis_training_dataset_member_immutable
 BEFORE UPDATE OR DELETE ON noctis_training_dataset_member
-FOR EACH ROW EXECUTE FUNCTION noctis_reject_training_snapshot_mutation();
+FOR EACH ROW EXECUTE FUNCTION noctis_reject_training_member_mutation();
 
 -- Learning audit history is append-only for ordinary application roles.
 CREATE OR REPLACE FUNCTION noctis_reject_learning_audit_mutation()
