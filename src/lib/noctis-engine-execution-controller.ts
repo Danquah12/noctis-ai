@@ -118,10 +118,11 @@ export async function executeNoctisAnalysisGraph(input: {
   tasks: readonly NoctisExecutionTask[];
   adapters: readonly NoctisEngineExecutionAdapter[];
 }): Promise<NoctisExecutionResult> {
-  const context = input?.context;
+  if (!input || typeof input !== "object") return fail("INVALID_CONTEXT", "Execution input is required.");
+  const context = input.context;
   if (!context || !context.requestId?.trim() || !context.tenantId?.trim() ||
       !context.actorId?.trim() || !context.correlationId?.trim() ||
-      !/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?Z$/.test(context.at) || !Number.isFinite(Date.parse(context.at)) ||
+      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/.test(context.at) || !Number.isFinite(Date.parse(context.at)) ||
       !Array.isArray(context.scopes) || !context.scopes.length ||
       !["public", "internal", "confidential", "restricted"].includes(context.dataClassification) ||
       (context.executionMode !== undefined && context.executionMode !== "analysis")) {
