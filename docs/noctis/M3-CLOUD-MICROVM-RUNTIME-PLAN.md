@@ -140,3 +140,20 @@ The supervisor does not run guest code, implement cloud polling, enforce deadlin
 ### 11.1 Provider identity mismatch cleanup hardening
 
 The lifecycle supervisor now treats a returned execution ID with an unexpected runtime identity as a possible live resource: it attempts termination and reaping before returning. If either operation is unconfirmed, it returns a distinct `launch_cleanup_incomplete` result rather than hiding the orphan risk inside a generic launch failure. Tests cover both successful cleanup and unresolved cleanup. A provider call that throws after the cloud service accepted a launch but before returning its execution ID still requires provider-side idempotency and orphan reconciliation; the supervisor cannot clean up an identifier it never received.
+
+## 12. Launch idempotency and inventory reconciliation contracts
+
+The cloud adapter now derives a deterministic launch idempotency key from the exact tenant, workload ID, workload SHA-256 digest, and canonical resource limits. The key is stable across retries for the same workload contract and changes when any bound field changes. It is forwarded to the provider control-plane interface.
+
+**Provider obligation:** the eventual cloud implementation must atomically deduplicate the same key and identical request, return the original execution for a replay, and reject reuse of the same key with a different request. The current provider-neutral interface documents this semantic requirement but does not prove a cloud service implements it. A provider call that times out after accepting a launch can still leave an unknown execution until inventory reconciliation runs.
+
+Added `src/lib/noctis-runtime-reconciliation.ts` as a pure classifier comparing the authoritative Noctis execution ledger with provider inventory. It distinguishes:
+- exact tracked executions;
+- expected executions missing from provider inventory;
+- expired/stale expected leases;
+- unknown provider resources with no expected ledger record;
+- identity mismatches and duplicate idempotency keys.
+
+Unknown, duplicate, foreign-provider, malformed, or mismatched resources are quarantined. The classifier never deletes, stops, or adopts a resource. Stale/missing classifications are signals for an authorized operator/reaper workflow, not deletion permission. A production implementation still needs an authenticated provider inventory API, durable expected-execution ledger, atomic launch idempotency, quarantine persistence, alerting, and separately authorized cleanup with fresh tenant/workload binding.
+
+**Validation boundary:** unit tests exercise deterministic key generation and reconciliation classifications only. No cloud provider idempotency or inventory API is connected, and no orphan is automatically deleted.
