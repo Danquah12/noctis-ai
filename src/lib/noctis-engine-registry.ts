@@ -173,6 +173,24 @@ const MANIFESTS: readonly NoctisEngineManifest[] = [
     executionModes: ["analysis", "assisted", "supervised"], dataClassification: "internal",
     evidenceRequired: true, humanReviewRequired: true,
   },
+  {
+    id: "noctis.evidence.retrieval", name: "Evidence Retrieval Service", version: "0.1.0",
+    domain: "core", description: "Tenant-scoped retrieval of approved, provenance-bearing evidence.",
+    sourcePath: "src/lib/noctis-evidence-retrieval.server.ts", capabilities: ["evidence.retrieve", "evidence.resolve"],
+    requiredScopes: ["evidence:read"],
+    dependencies: [], lifecycle: "registered",
+    executionModes: ["analysis", "assisted"], dataClassification: "restricted",
+    evidenceRequired: false, humanReviewRequired: false,
+  },
+  {
+    id: "noctis.core.checks", name: "Core Verification Checks", version: "0.1.0",
+    domain: "core", description: "Shared deterministic checks used by Noctis reasoning and validation workflows.",
+    sourcePath: "src/lib/noctis-checks.ts", capabilities: ["checks.evaluate", "checks.validate"],
+    requiredScopes: ["noctis:checks"],
+    dependencies: [], lifecycle: "registered",
+    executionModes: ["analysis", "assisted"], dataClassification: "internal",
+    evidenceRequired: false, humanReviewRequired: false,
+  },
 ];
 
 const REGISTRY = new Map(MANIFESTS.map((manifest) => [manifest.id, manifest]));
