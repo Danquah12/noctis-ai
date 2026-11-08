@@ -62,3 +62,16 @@ export function routeQuestion(question: string): VibeRoute {
   if (teach) return { intent: "teach", tool: "specialist", verify: false, note: "Route: teaching. Explain, then one check. Do not only search." };
   return { intent: "general", tool: "reason", verify: false, note: "Route: general. Answer the question. Do not add a tool result that was not computed." };
 }
+
+/**
+ * Converts the deterministic intent classification into a model instruction.
+ * This is guidance only: it never claims a tool was executed or a source was opened.
+ */
+export function buildRouteDirective(question: string): string {
+  const route = routeQuestion(question);
+  return [
+    `Orchestration decision: intent=${route.intent}; preferred_tool=${route.tool}; verification_required=${route.verify}.`,
+    route.note,
+    "This is a routing recommendation, not evidence that a tool ran. Never claim a tool result unless the corresponding integration actually returned it.",
+  ].join(" ");
+}
