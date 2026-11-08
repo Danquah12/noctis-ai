@@ -267,7 +267,9 @@ Before runtime enablement, wire these resolver contracts to the production evide
 - Adapter exceptions are isolated. Raw exception text is not exposed in the report. There are no implicit retries.
 - Adapter result envelopes are checked for engine identity and required result structure. Completed specialist results are passed to the existing deterministic result-reconciliation service; reconciliation errors are surfaced rather than hidden.
 - The controller is analysis-only. It cannot authorize writes, approve actions, run privileged tools or infer that an engine is production-ready from registry presence.
-- It does not implement a sandbox, timeout/termination enforcement, persistent state, worker leases, evidence repository resolution, approval ledger resolution, or authenticated route wiring. Those remain mandatory production integration work.
+- Each adapter receives an `AbortSignal`, absolute UTC deadline and configured timeout. The default is 30 seconds; trusted callers may set 10–120,000 ms. The controller races the adapter promise against the deadline and signals cooperative cancellation on expiry.
+- A timeout does not prove that adapter work stopped. An adapter that ignores the signal may continue after the controller returns; `Promise.race` is not process termination, a sandbox, or resource isolation. Adapters must propagate the signal to cancellable downstream operations. Production untrusted workloads require a separately supervised process/container/microVM runtime with kill/reap semantics.
+- It does not implement hard sandboxing, forced termination, persistent state, worker leases, evidence repository resolution, approval ledger resolution, or authenticated route wiring. Those remain mandatory production integration work.
 - The `at` timestamp is caller-supplied UTC time for deterministic reconciliation; the controller does not read an ambient clock.
 
 Registry validation is a contract check, not a replacement for authorization. The production server must derive scopes and tenant identity from authenticated policy services and resolve evidence references against authoritative records before supplying adapters.
