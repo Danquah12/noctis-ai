@@ -95,7 +95,10 @@ for (const importer of sourceFiles) {
   }
 }
 
-const applicationEntrypoints = sourceFiles.filter((file) => file.startsWith("src/routes/"));
+const applicationEntrypoints = [
+  ...sourceFiles.filter((file) => file.startsWith("src/routes/")),
+  "src/components/noctis/NoctisDesk.tsx",
+].filter((file) => sourceSet.has(file));
 const reachableFromRoutes = new Set(applicationEntrypoints);
 const pending = [...applicationEntrypoints];
 while (pending.length) {
@@ -130,7 +133,7 @@ const registry = manifests.map((manifest) => {
     duplicateId,
     importerCount: importers.length,
     runtimeImporterCount: importers.filter((file) => !["test", "script"].includes(classifyImporter(file))).length,
-    reachableFromRouteEntrypoint: reachableFromRoutes.has(sourcePath),
+    reachableFromApplicationEntrypoint: reachableFromRoutes.has(sourcePath),
     routeImporters: byKind.route ?? [],
     uiImporters: byKind.ui ?? [],
     serverImporters: byKind.server ?? [],
@@ -145,10 +148,10 @@ const unregisteredNoctisModules = engineFiles.filter((file) => !registeredPaths.
 const missingSources = registry.filter((entry) => !entry.sourceExists);
 const duplicateIds = registry.filter((entry) => entry.duplicateId);
 const noRuntimeImporters = registry.filter((entry) => entry.runtimeImporterCount === 0);
-const notRouteReachable = registry.filter((entry) => !entry.reachableFromRouteEntrypoint);
+const notApplicationReachable = registry.filter((entry) => !entry.reachableFromApplicationEntrypoint);
 const summary = {
   generatedAt: new Date().toISOString(),
-  scope: "Static source import graph and route-entrypoint reachability only; function invocation and runtime execution are not inferred.",
+  scope: "Static source import graph and application-entrypoint reachability only; function invocation and runtime execution are not inferred.",
   counts: {
     sourceFilesScanned: sourceFiles.length,
     noctisModulesFound: engineFiles.length,
@@ -156,14 +159,14 @@ const summary = {
     missingRegistrySources: missingSources.length,
     duplicateRegistryIds: duplicateIds.length,
     registeredEnginesWithNoRuntimeImporters: noRuntimeImporters.length,
-    registeredEnginesNotReachableFromRoutes: notRouteReachable.length,
+    registeredEnginesNotReachableFromApplication: notApplicationReachable.length,
     unregisteredNoctisModules: unregisteredNoctisModules.length,
   },
   registry,
   missingSources,
   duplicateIds,
   noRuntimeImporters: noRuntimeImporters.map(({ id, sourcePath }) => ({ id, sourcePath })),
-  notRouteReachable: notRouteReachable.map(({ id, sourcePath, importerCount }) => ({ id, sourcePath, importerCount })),
+  notApplicationReachable: notApplicationReachable.map(({ id, sourcePath, importerCount }) => ({ id, sourcePath, importerCount })),
   unregisteredNoctisModules,
 };
 
