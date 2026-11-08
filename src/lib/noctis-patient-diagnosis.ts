@@ -140,6 +140,7 @@ interface DiagnosticConditionRule {
   requiredSymptomMatches: RegExp[];
   bonusSymptomMatches: { regex: RegExp; points: number }[];
   supportingEvidenceBase?: string[];
+  goldStandardTesting?: string[];
   penaltySymptomMatches: { regex: RegExp; points: number }[];
   clinicalRationaleTemplate: string;
   goldStandardDiagnosticTests: string[];
@@ -1417,7 +1418,7 @@ To achieve rapid, guideline-directed confirmation or exclusion without cognitive
     if (dossier.patientData.vitals.heartRate) vitalsList.push(`HR: ${dossier.patientData.vitals.heartRate} bpm`);
     if (dossier.patientData.vitals.respiratoryRate) vitalsList.push(`RR: ${dossier.patientData.vitals.respiratoryRate}/min`);
     if (dossier.patientData.vitals.temperatureC) vitalsList.push(`Temp: ${dossier.patientData.vitals.temperatureC}°C`);
-    if (dossier.patientData.vitals.spo2) vitalsList.push(`SpO2: ${dossier.patientData.vitals.oxygenSaturation}%`);
+    if (dossier.patientData.vitals.spo2) vitalsList.push(`SpO2: ${dossier.patientData.vitals.spo2}%`);
     if (dossier.patientData.vitals.bloodGlucoseMgDl) vitalsList.push(`Glucose: ${dossier.patientData.vitals.bloodGlucoseMgDl} mg/dL`);
 
     sections.push(`## 1. Clinical Assessment of the Presentation
