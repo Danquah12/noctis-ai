@@ -69,6 +69,62 @@ async function setup() {
 
 describe("Noctis tenant-scoped workflow persistence", () => {
 
+  it("fails closed on unapproved evidence and task-mismatched approvals", async () => {
+    const { pg, db } = await setup();
+    try {
+      await pg.query(
+        `UPDATE noctis_workflow_tasks
+         SET evidence_required=true, evidence_refs='["evidence-1"]'::jsonb,
+             approval_required=true, approval_ref='approval-1'
+         WHERE task_record_id='task-a'`,
+      );
+      const rejectedEvidence = {
+        ...testGates,
+        resolveEvidence: async (_tx: NoctisWorkflowSqlExecutor, context: { tenantId: string; evidenceRefs: readonly string[] }) =>
+          context.evidenceRefs.map((evidenceId) => ({
+            status: "approved" as const, tenantId: "different-tenant", evidenceId,
+            sourceId: "source-1", chunkId: "chunk-1",
+            sourceStatus: "approved" as const, accessAllowed: true,
+          })),
+      };
+      const evidenceBlocked = await claimNoctisWorkflowTask(db, {
+        tenantId: "tenant-a", workerId: "worker-a", at,
+        leaseExpiresAt: "2026-11-07T16:05:00Z", leaseToken: "lease-a",
+        attemptId: "attempt-a", eventId: "claim-event-a", correlationId: "corr-a",
+      }, rejectedEvidence);
+      assert.deepEqual(evidenceBlocked, { ok: true, value: null });
+
+      const mismatchedApproval = {
+        ...testGates,
+        resolveApproval: async (_tx: NoctisWorkflowSqlExecutor, context: {
+          tenantId: string; approvalRef: string; engineId: string; capability: string;
+        }) => ({
+          status: "approved" as const, tenantId: context.tenantId,
+          approvalId: context.approvalRef, engineId: "different-engine",
+          capability: context.capability, approvedBy: "reviewer-1",
+          approvedAt: "2026-11-07T15:00:00Z", expiresAt: null, revokedAt: null,
+        }),
+      };
+      const approvalBlocked = await claimNoctisWorkflowTask(db, {
+        tenantId: "tenant-a", workerId: "worker-a", at,
+        leaseExpiresAt: "2026-11-07T16:05:00Z", leaseToken: "lease-a",
+        attemptId: "attempt-a", eventId: "claim-event-b", correlationId: "corr-a",
+      }, mismatchedApproval);
+      assert.deepEqual(approvalBlocked, { ok: true, value: null });
+
+      const allowed = await claimNoctisWorkflowTask(db, {
+        tenantId: "tenant-a", workerId: "worker-a", at,
+        leaseExpiresAt: "2026-11-07T16:05:00Z", leaseToken: "lease-a",
+        attemptId: "attempt-a", eventId: "claim-event-c", correlationId: "corr-a",
+      }, testGates);
+      assert.equal(allowed.ok, true);
+      if (allowed.ok) assert.equal(allowed.value?.taskRecordId, "task-a");
+    } finally {
+      await pg.close();
+    }
+  });
+
+
   it("creates workflows atomically and returns the original for an identical idempotent replay", async () => {
     const { pg, db } = await setup();
     try {
