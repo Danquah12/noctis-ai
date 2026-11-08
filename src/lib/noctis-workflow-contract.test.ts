@@ -151,5 +151,7 @@ describe("Noctis workflow task contract", () => {
     assert.equal(deriveNoctisWorkflowState(["failed"]), "failed");
     assert.equal(deriveNoctisWorkflowState(["cancelled"]), "cancelled");
     assert.equal(deriveNoctisWorkflowState(["blocked", "pending"]), "blocked");
+    assert.equal(deriveNoctisWorkflowState(["running", "cancelled"], true), "cancelling");
+    assert.equal(deriveNoctisWorkflowState(["cancelled", "succeeded"]), "cancelled");
   });
 });
