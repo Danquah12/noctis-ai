@@ -135,7 +135,7 @@ describe("Noctis transactional reconciliation repository", () => {
     const { pg, repository } = await setup();
     try {
       const collisionEventId = "runtime-reconciliation:" + createHash("sha256")
-        .update("provider-a\\0snapshot-rollback").digest("hex");
+        .update("provider-a\0snapshot-rollback").digest("hex");
       await pg.query(
         `INSERT INTO noctis_runtime_audit_events
          (event_id,event_type,occurred_at,request_id,correlation_id,tenant_id,actor_id,
