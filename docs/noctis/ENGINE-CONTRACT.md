@@ -224,3 +224,18 @@ Each specialist result also supplies a stable result ID, engine ID, result statu
 - A conflict, insufficient evidence, or incomplete specialist coverage should trigger human review according to the applicable domain policy.
 
 The reconciler is a pure analysis function. It does not invoke specialist engines, access external sources, write to the database, authorize actions, or make a final truth determination.
+
+## 13. Workflow persistence and lease contract
+
+The server-only persistence adapter at `src/lib/noctis-workflow-persistence.server.ts` provides tenant-scoped task claim, finish and expired-lease recovery operations through an injected transactional SQL interface.
+
+- Tenant and worker identifiers are trusted server-context values and must be derived from authenticated identity.
+- Claims use row-level locking with `SKIP LOCKED`; dependency checks are restricted to tasks in the same workflow.
+- Evidence and approval fields are gating references only. They are not proof that evidence is authentic or that an approval is valid.
+- Claim, attempt creation and audit-event insertion are one transaction.
+- Completion requires a matching tenant, worker, lease token and unexpired lease.
+- Expired attempts are marked `timed_out`; tasks are retried only while `attempt_count < max_attempts`, otherwise they fail.
+- Retry timestamps, identifiers and event correlation values are explicit inputs.
+- This adapter is not wired to routes, schedulers or workers and does not execute specialist engines.
+
+Before runtime enablement, add authoritative approval/evidence resolution, idempotent workflow creation, database row-level security, stale-lease operational scheduling, concurrency/load tests, audit retention and authenticated integration tests.
