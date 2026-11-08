@@ -110,12 +110,12 @@ export function parseOcrMedicalIntake(rawText: string): ExtractedOcrIntake {
 
   // Extract Labs using our robust clinical parser
   const parsedLabs = extractLaboratoryValues(normalizedText);
-  const detectedLabs = parsedLabs.map((l) => ({
-    analyte: l.analyteName,
-    value: l.measuredValue,
-    unit: l.unit,
-    flag: l.status,
-  }));
+  const detectedLabs = parsedLabs.flatMap((l) => {
+    const numericValue = l.numericValue ?? (typeof l.measuredValue === "number" ? l.measuredValue : Number(l.measuredValue));
+    return Number.isFinite(numericValue)
+      ? [{ analyte: l.analyteName, value: numericValue, unit: l.unit, flag: l.status }]
+      : [];
+  });
 
   // Extract Medications
   const detectedMedications: string[] = [];
