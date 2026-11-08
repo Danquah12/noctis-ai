@@ -394,6 +394,9 @@ export const NOCTIS_HEALTH_USER_ENVIRONMENTS: HealthUserEnvironmentSpec[] = [
  * Section 4: The Clinical Safety Engine / Health Safety Gateway
  * Evaluates every incoming health request before execution and every proposed answer before delivery.
  */
+export type HealthAudienceRole = HealthUserEnvironmentRole;
+export type HealthSafetyUrgencyLevel = HealthSafetyGatewayDecision["urgency"];
+
 export interface HealthSafetyGatewayDecision {
   requestId: string;
   userEnvironmentRole: HealthUserEnvironmentRole;
@@ -3195,7 +3198,7 @@ export function buildNhArch001SampleContracts(): {
       tenant_id: "tenant_us_personal",
       patient_id: "pat_01JXYZ_1042",
       uploaded_by_user_id: "usr_01JXYZ_1042",
-      active_role: "patient",
+      active_role: "patient_member",
       operating_environment: "Noctis Personal Health",
       document_type: "laboratory_report",
       mime_type: "application/pdf",
