@@ -8567,6 +8567,7 @@ export function runChestPain58YoAndTop5DeliverablesSuite(): {
     requester_role: "clinician",
     source_type: "user_upload",
     purpose: "clinician_review",
+    requested_outputs: ["plain_language_summary", "extracted_findings", "questions_for_clinician", "source_provenance"],
     parse_dynamic_only: true,
     raw_text_override:
       "Serum Creatinine: 148.5 umol/L (Ref: 53-106 umol/L). Potassium: 6.4 mmol/L. [UNREADABLE_IMMUNOFLUORESCENCE_PAGE_3]. Page 1: Surgical margins negative. Page 2: Positive deep surgical margin.",
