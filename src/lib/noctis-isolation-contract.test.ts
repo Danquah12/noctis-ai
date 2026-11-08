@@ -31,6 +31,7 @@ function attestation(overrides: Partial<NoctisSandboxAttestation> = {}): NoctisS
     isolationType: "microvm",
     workloadDigest: digest,
     tenantId: "tenant-01",
+    enforcedLimits: { executionMs: 10_000, cpuMillis: 5_000, memoryMb: 256, outputBytes: 100_000 },
     networkDisabled: true,
     ephemeralFilesystem: true,
     noHostFilesystem: true,
@@ -130,6 +131,18 @@ describe("Noctis sandbox isolation admission contract", () => {
     );
     assert.equal(expired.ok, false);
     if (!expired.ok) assert.equal(expired.code, "ATTESTATION_EXPIRED");
+  });
+
+  it("rejects provider attestations whose actual resource ceilings exceed the request", async () => {
+    const result = await admitNoctisSandboxWorkload(
+      request({ attestation: attestation({
+        enforcedLimits: { executionMs: 20_000, cpuMillis: 5_000, memoryMb: 256, outputBytes: 100_000 },
+      }) }),
+      policy,
+      () => true,
+    );
+    assert.equal(result.ok, false);
+    if (!result.ok) assert.equal(result.code, "ATTESTATION_BINDING_MISMATCH");
   });
 
   it("rejects malformed digests and non-positive resource limits", async () => {
