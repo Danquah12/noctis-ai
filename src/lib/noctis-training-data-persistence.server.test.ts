@@ -18,7 +18,7 @@ const migrations=[
   "0016_noctis_training_data_pipeline.sql",
 ].map(name=>readFileSync(new URL(`../../migrations/${name}`,import.meta.url),"utf8"));
 const at="2026-11-08T16:00:00.000Z";
-const sourceHash="sha256:"+"a".repeat(64);
+const sourceHash="a".repeat(64);
 const base={
   tenantId:"tenant-a",actorId:"reviewer-a",pairId:"pair-1",
   question:"Explain secure training data provenance",
@@ -65,7 +65,7 @@ describe("Noctis governed training data persistence",()=>{
   it("rejects unapproved or mismatched source provenance",async()=>{
     const {pg,db}=await setup();
     try{
-      assert.deepEqual(await submitNoctisTrainingExample(db,{...base,sourceHash:"sha256:"+"b".repeat(64)}),
+      assert.deepEqual(await submitNoctisTrainingExample(db,{...base,sourceHash:"b".repeat(64)}),
         {ok:false,code:"SOURCE_NOT_APPROVED"});
       const result=await submitNoctisTrainingExample(db,{...base,sourceId:"missing"});
       assert.deepEqual(result,{ok:false,code:"NOT_FOUND"});
