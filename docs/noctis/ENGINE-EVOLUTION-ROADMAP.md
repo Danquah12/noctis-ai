@@ -327,6 +327,18 @@ Added `src/lib/noctis-workflow-persistence.server.ts` with injected PostgreSQL e
 
 Tests added in `src/lib/noctis-workflow-persistence.server.test.ts` for tenant isolation, evidence gating, lease-token enforcement and attempt closure. Stale-lease recovery, approval resolution, database row-level security, idempotent workflow creation and runtime wiring remain outstanding. The adapter's presence and tests do not establish operational readiness.
 
+### Cooperative workflow cancellation and safe termination
+
+Added an additive migration for workflow/task cancellation metadata and a deterministic `cancelling` workflow state. The persistence adapter now supports:
+- Tenant-scoped cancellation requests with reason, actor and audit event.
+- Immediate cancellation of work that has not started.
+- Lease-bound worker polling for cancellation requests.
+- Explicit `cancelled` completion only when the worker acknowledges the stop.
+- Rejection of ordinary success/failure completion after cancellation has been requested.
+- Safe handling of expired cancellation leases: the task becomes blocked with `CANCELLATION_UNCONFIRMED` and is never automatically retried.
+- Idempotent cancellation audit behavior and aggregate workflow state updates.
+
+This is a cooperative protocol, not remote process termination. The worker adapter must poll, propagate the stop signal into its executor, and acknowledge only after the process or external action is actually stopped. A lease expiry does not prove termination; unresolved tasks require manual reconciliation. No production worker or API route is wired yet.
 ### PostgreSQL tenant row-level security
 
 Added an idempotent migration enabling and forcing row-level security on workflow, task, attempt and event tables. Parent workflow ownership is used to scope child rows. Every workflow persistence operation now establishes a transaction-local `app.tenant_id` from trusted server context before data access, and the setting expires with the transaction. PGlite schema coverage exercises a non-owner role, tenant-filtered reads and cross-tenant insert rejection.
