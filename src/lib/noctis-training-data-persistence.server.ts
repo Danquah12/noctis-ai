@@ -38,7 +38,7 @@ function nonEmpty(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
 function validUtc(value: string): boolean {
-  return /^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,3})?Z$/.test(value) && Number.isFinite(Date.parse(value));
+  return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/.test(value) && Number.isFinite(Date.parse(value));
 }
 function sha256(value: string): string {
   return createHash("sha256").update(value).digest("hex");
@@ -71,7 +71,7 @@ export async function submitNoctisTrainingExample(
     return { ok: false, code: "INVALID_INPUT" };
   }
   const clean = {
-    question: input.question.replace(/\\s+/g, " ").trim(),
+    question: input.question.replace(/\s+/g, " ").trim(),
     answer: input.answer.trim(),
     domain: input.domain.trim(),
     sourceId: input.sourceId,
