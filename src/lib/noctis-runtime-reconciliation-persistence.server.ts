@@ -118,7 +118,7 @@ implements NoctisRuntimeReconciliationRepository {
         !validUtc(input.completedAt) || !Array.isArray(input.decisions)) {
       throw new Error("Invalid reconciliation snapshot commit input.");
     }
-    const decisions = input.decisions.map(stableDecision);
+    const decisions = input.decisions.map(stableDecision).sort((left, right) => canonical(left).localeCompare(canonical(right)));
     const payload = {
       providerId: input.providerId,
       snapshotId: input.snapshotId,
