@@ -67,9 +67,10 @@ describe("Noctis analysis execution controller", () => {
     assert.equal(output.ok, true);
     if (output.ok) {
       assert.deepEqual(order, ["cyber", "risk"]);
-      assert.equal(output.report.status, "completed");
+      assert.equal(output.report.status, "partial");
       assert.equal(output.report.executedCount, 2);
       assert.ok(output.report.reconciliation);
+      assert.equal(output.report.reconciliation?.status, "insufficient_evidence");
       assert.deepEqual(output.report.outcomes.map((item) => item.status), ["succeeded", "succeeded"]);
     }
   });
@@ -142,6 +143,12 @@ describe("Noctis analysis execution controller", () => {
     });
     assert.equal(mismatch.ok, true);
     if (mismatch.ok) assert.equal(mismatch.report.outcomes[0].errorCode, "RESULT_MISMATCH");
+  });
+
+  it("rejects an empty task graph rather than reporting a no-op as success", async () => {
+    const output = await executeNoctisAnalysisGraph({ context, tasks: [], adapters: [] });
+    assert.equal(output.ok, false);
+    if (!output.ok) assert.equal(output.code, "INVALID_GRAPH");
   });
 
   it("enforces task limits and refuses non-analysis execution modes", async () => {
