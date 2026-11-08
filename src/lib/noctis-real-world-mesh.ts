@@ -458,13 +458,7 @@ export function dispatchRealWorldEvent(scenarioId: string): DispatchedEventResul
   // Generate Cryptographic Proof-of-Execution Seal
   const proofOfExecution = generateProofOfExecution(scenario.systemId, `REAL_WORLD_EVENT_${scenario.id}`, {
     latencyMs: Math.floor(Math.random() * 8) + 2,
-    customChecklist: [
-      { invariant: "Source API verified", status: "PASS", detail: scenario.sourceApi },
-      { invariant: "Protocol sanitized", status: "PASS", detail: scenario.protocol },
-      { invariant: "Payload schema validation", status: "PASS", detail: "Domain invariants evaluated" },
-      { invariant: "SQDEC Safety Priority 1", status: sqdecEvaluation?.allowed === false ? "FAIL" : "PASS", detail: "Policy result recorded separately" },
-      { invariant: "Cryptographic proof generated", status: "PASS", detail: "Proof artifact emitted by generator" },
-    ],
+    customChecklist: [],
   });
 
   const latencyMs = Math.round((Math.random() * 1.5 + 0.8) * 10) / 10;
