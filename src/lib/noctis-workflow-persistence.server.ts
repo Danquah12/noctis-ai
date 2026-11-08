@@ -104,7 +104,7 @@ function canonicalizeJson(value: unknown, seen = new WeakSet<object>()): unknown
       return undefined;
     }
     seen.add(object);
-    const normalized: Record<string, unknown> = {};
+    const normalized: Record<string, unknown> = Object.create(null);
     for (const key of Object.keys(object).sort()) {
       const item = canonicalizeJson(object[key], seen);
       if (item === undefined) {
@@ -167,7 +167,7 @@ export async function createNoctisWorkflowIdempotently(
       !nonEmpty(input.workflowId) || !nonEmpty(input.idempotencyKey) ||
       !nonEmpty(input.planVersion) || !nonEmpty(input.eventId) ||
       !nonEmpty(input.correlationId) || !validUtc(input.at) ||
-      input.idempotencyKey.length > 200 ||
+      input.idempotencyKey.length > 200 || input.idempotencyKey !== input.idempotencyKey.trim() ||
       (input.requestSummary !== undefined && input.requestSummary.length > 2000) ||
       !Array.isArray(input.tasks) || input.tasks.length < 1 || input.tasks.length > 200) {
     return { ok: false, code: "INVALID_INPUT" };
@@ -209,6 +209,8 @@ export async function createNoctisWorkflowIdempotently(
 
   const policy = input.policy ?? {};
   const semanticRequest = {
+    tenantId: input.tenantId,
+    actorId: input.actorId,
     planVersion: input.planVersion,
     requestSummary: input.requestSummary ?? "",
     policy,
