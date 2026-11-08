@@ -75,6 +75,16 @@ export type NoctisEngineRequestValidation =
 
 const MANIFESTS: readonly NoctisEngineManifest[] = [
   {
+    id: "noctis.core.execution-controller", name: "Multi-Engine Analysis Execution Controller", version: "0.1.0",
+    domain: "core", description: "Bounded dependency-aware analysis-only specialist adapter coordination with request validation, failure isolation and typed result envelopes; no production dispatch or privileged actions.",
+    sourcePath: "src/lib/noctis-engine-execution-controller.ts",
+    capabilities: ["workflow.engines.execute.analysis", "workflow.engines.coordinate", "workflow.engines.failure.isolate"],
+    requiredScopes: ["noctis:route"],
+    dependencies: ["noctis.core.workflow-contract", "noctis.core.result-reconciliation"], lifecycle: "registered",
+    executionModes: ["analysis"], dataClassification: "confidential",
+    evidenceRequired: false, humanReviewRequired: true,
+  },
+  {
     id: "noctis.core.result-reconciliation", name: "Specialist Result Reconciliation", version: "0.1.0",
     domain: "core", description: "Deterministic structured-claim reconciliation and evidence traceability reporting; no truth adjudication.",
     sourcePath: "src/lib/noctis-result-reconciliation.ts",
