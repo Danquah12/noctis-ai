@@ -445,7 +445,8 @@ export async function claimNoctisWorkflowTask(
       } catch {
         continue;
       }
-      const valid = resolved.length === row.evidence_refs.length &&
+      const valid = Array.isArray(resolved) && resolved.length === row.evidence_refs.length &&
+        resolved.every((item) => item !== null && typeof item === "object") &&
         row.evidence_refs.every((id) => resolved.filter((item) =>
           item.evidenceId === id && item.tenantId === input.tenantId &&
           item.status === "approved" && item.sourceStatus === "approved" &&
@@ -464,7 +465,8 @@ export async function claimNoctisWorkflowTask(
       } catch {
         continue;
       }
-      if (approval.status !== "approved" || approval.tenantId !== input.tenantId ||
+      if (!approval || typeof approval !== "object" ||
+          approval.status !== "approved" || approval.tenantId !== input.tenantId ||
           approval.approvalType !== "task_execution" || approval.approverAuthorized !== true ||
           approval.approvalId !== row.approval_ref ||
           approval.engineId !== row.engine_id || approval.capability !== row.capability ||
