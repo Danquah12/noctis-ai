@@ -434,7 +434,9 @@ export async function claimNoctisWorkflowTask(
     };
 
     if (row.evidence_required) {
-      if (!Array.isArray(row.evidence_refs) || row.evidence_refs.length === 0) {
+      if (!Array.isArray(row.evidence_refs) || row.evidence_refs.length === 0 ||
+          row.evidence_refs.some((id) => !nonEmpty(id)) ||
+          new Set(row.evidence_refs).size !== row.evidence_refs.length) {
         continue;
       }
       let resolved: readonly NoctisEvidenceResolution[];
