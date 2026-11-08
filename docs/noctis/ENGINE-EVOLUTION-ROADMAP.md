@@ -332,6 +332,7 @@ Tests added in `src/lib/noctis-workflow-persistence.server.test.ts` for tenant i
 Task claim now accepts injected evidence and approval resolvers and checks them inside the task-claim transaction before creating a lease or attempt. Evidence gates require exact tenant-bound approved records, source/chunk identity, access permission, and non-revoked/non-expired status. Approval gates require an approved task-execution grant bound to the exact tenant, engine and capability, an authorized approver, valid issue/expiry times and no revocation. Missing, duplicate, stale, mismatched or unavailable results fail closed.
 
 Tests cover cross-tenant evidence rejection, task-capability approval mismatch and successful resolution. These are contract-level tests using test resolver implementations. No production evidence ledger or approval service has been connected; the next integration must implement the resolver interfaces against authoritative application services and prove their identity and permission checks.
+The claim path scans up to 20 eligible candidates and skips gate-failing tasks rather than allowing one blocked task to starve later work. Approval resolution must bind the approval to the exact workflow, task, engine and capability. Resolver adapters are expected to query local authoritative services within the transaction; remote calls while holding task locks are not an acceptable production integration.
 
 ### Idempotent workflow creation update
 
