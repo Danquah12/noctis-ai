@@ -75,6 +75,17 @@ export type NoctisEngineRequestValidation =
 
 const MANIFESTS: readonly NoctisEngineManifest[] = [
   {
+    id: "noctis.core.result-reconciliation", name: "Specialist Result Reconciliation", version: "0.1.0",
+    domain: "core", description: "Deterministic structured-claim reconciliation and evidence traceability reporting; no truth adjudication.",
+    sourcePath: "src/lib/noctis-result-reconciliation.ts",
+    capabilities: ["results.normalize", "results.reconcile", "results.conflicts.detect"],
+    requiredScopes: ["noctis:route"],
+    dependencies: ["noctis.evidence.integrity", "noctis.core.workflow-scheduler"], lifecycle: "registered",
+    executionModes: ["analysis"], dataClassification: "internal",
+    evidenceRequired: false, humanReviewRequired: true,
+  },
+
+  {
     id: "noctis.core.workflow-scheduler", name: "Workflow Scheduler", version: "0.1.0",
     domain: "core", description: "Deterministic dependency-aware scheduling and concurrency planning; no task claiming or execution.",
     sourcePath: "src/lib/noctis-workflow-scheduler.ts", capabilities: ["workflow.schedule", "workflow.capacity.evaluate"],
