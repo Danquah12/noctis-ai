@@ -7,6 +7,10 @@ const migration = readFileSync(
   new URL("../../migrations/20261108_noctis_runtime_reconciliation.sql", import.meta.url),
   "utf8",
 );
+const decisionsMigration = readFileSync(
+  new URL("../../migrations/20261108_noctis_runtime_reconciliation_decisions.sql", import.meta.url),
+  "utf8",
+);
 
 describe("Noctis runtime reconciliation persistence schema", () => {
   it("applies idempotently and creates the execution, quarantine, and audit stores", async () => {
@@ -14,7 +18,9 @@ describe("Noctis runtime reconciliation persistence schema", () => {
     try {
       await db.waitReady;
       await db.exec(migration);
+      await db.exec(decisionsMigration);
       await db.exec(migration);
+      await db.exec(decisionsMigration);
       const tables = await db.query<{ table_name: string }>(
         "SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_name LIKE 'noctis_runtime_%' ORDER BY table_name",
       );
@@ -22,6 +28,8 @@ describe("Noctis runtime reconciliation persistence schema", () => {
         "noctis_runtime_audit_events",
         "noctis_runtime_executions",
         "noctis_runtime_quarantine",
+        "noctis_runtime_reconciliation_decisions",
+        "noctis_runtime_reconciliation_runs",
       ]);
     } finally {
       await db.close();
