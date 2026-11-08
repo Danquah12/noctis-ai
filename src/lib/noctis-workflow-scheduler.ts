@@ -63,6 +63,15 @@ export function scheduleNoctisReadyTasks(
       if (dependency === task.taskId) throw new Error(`Task ${task.taskId} cannot depend on itself.`);
     }
   }
+  const unresolved = new Map(tasks.map((task) => [task.taskId, new Set(task.dependsOn)]));
+  const resolved = new Set<string>();
+  while (resolved.size < tasks.length) {
+    const next = [...unresolved.entries()]
+      .filter(([id, dependencies]) => !resolved.has(id) && [...dependencies].every((dependency) => resolved.has(dependency)))
+      .map(([id]) => id);
+    if (next.length === 0) throw new Error("Workflow dependency graph contains a cycle.");
+    for (const id of next) resolved.add(id);
+  }
 
   const running = tasks.filter((task) => task.state === "running");
   const engineRunning = new Map<string, number>();
@@ -79,10 +88,7 @@ export function scheduleNoctisReadyTasks(
   );
 
   for (const task of ordered) {
-    if (task.state !== "pending" && task.state !== "ready") {
-      deferred.push({ taskId: task.taskId, reason: "TASK_NOT_PENDING" });
-      continue;
-    }
+    if (task.state !== "pending" && task.state !== "ready") continue;
 
     const dependencyStates = task.dependsOn.map((id) => byId.get(id)!.state);
     if (dependencyStates.some((state) => state === "failed" || state === "cancelled" || state === "skipped" || state === "blocked")) {
