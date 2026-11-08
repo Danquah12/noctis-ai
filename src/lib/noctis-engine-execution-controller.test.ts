@@ -170,6 +170,33 @@ describe("Noctis analysis execution controller", () => {
     }
   });
 
+  it("returns a timeout when an adapter ignores cancellation, while documenting that work may continue", async () => {
+    let workFinishedAfterControllerReturn = false;
+    const output = await executeNoctisAnalysisGraph({
+      context: { ...context, adapterTimeoutMs: 10 },
+      tasks: [tasks[0]],
+      adapters: [{
+        engineId: "noctis.cyber.sast",
+        execute: async () => new Promise<NoctisSpecialistResult>((resolve) => {
+          // Deliberately ignore AbortSignal to model a non-cooperative adapter.
+          setTimeout(() => {
+            workFinishedAfterControllerReturn = true;
+            resolve(result("noctis.cyber.sast", "late-result"));
+          }, 40);
+        }),
+      }],
+    });
+
+    assert.equal(output.ok, true);
+    if (output.ok) {
+      assert.equal(output.report.outcomes[0].errorCode, "ADAPTER_TIMEOUT");
+      assert.match(output.report.limitations.join(" "), /may continue running after the controller returns/);
+    }
+    assert.equal(workFinishedAfterControllerReturn, false);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    assert.equal(workFinishedAfterControllerReturn, true);
+  });
+
   it("rejects adapter deadlines outside the bounded range", async () => {
     const output = await executeNoctisAnalysisGraph({
       context: { ...context, adapterTimeoutMs: 120_001 },
