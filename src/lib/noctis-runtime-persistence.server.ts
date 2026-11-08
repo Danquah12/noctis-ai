@@ -152,8 +152,9 @@ export async function recordNoctisRuntimeLaunch(
       [input.executionId,input.at,input.providerId,input.idempotencyKey,input.tenantId,
        input.workloadId,input.workloadDigest,input.runtimeId]);
     if(updated.rows.length===0){
-      const exists=await tx.query("SELECT 1 FROM noctis_runtime_executions WHERE provider_id=$1 AND idempotency_key=$2",
-        [input.providerId,input.idempotencyKey]);
+      const exists=await tx.query(
+        "SELECT 1 FROM noctis_runtime_executions WHERE provider_id=$1 AND idempotency_key=$2 AND tenant_id=$3",
+        [input.providerId,input.idempotencyKey,input.tenantId]);
       return {ok:false,code:exists.rows.length?"STATE_CONFLICT" as const:"NOT_FOUND" as const};
     }
     await appendAudit(tx,{eventId:input.eventId,eventType:"launch_succeeded",occurredAt:input.at,
