@@ -6742,7 +6742,7 @@ export function runNhClin002ChallengeSuite(): {
       inputSummary: "meds=['lisinopril','spironolactone','metformin','ibuprofen'], doses=missing, eGFR=33.8, K+=6.4",
       expectedBehavior:
         "Flags 3 high-priority Medication Safety Alerts (ACEi+MRA hyperkalemia, NSAID+ACEi+MRA 'Triple Whammy', Metformin in G3b/acute illness) without autonomous prescribing/discontinuation or claiming confirmed drug-induced injury",
-      measuredOutput: `Alerts=${medSafety.alerts.length} (${medSafety.alerts.map((a) => a.alertId).join(", ")}), AutonomousOrderBlocked=true`,
+      measuredOutput: `Alerts=${medSafety.alerts.length} (${medSafety.alerts.map((a) => a.sourceId).join(", ")}), AutonomousOrderBlocked=true`,
       passed: medSafety.alerts.length === 3,
     },
     {
