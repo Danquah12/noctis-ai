@@ -175,11 +175,11 @@ const MANIFESTS: readonly NoctisEngineManifest[] = [
   },
   {
     id: "noctis.evidence.retrieval", name: "Evidence Retrieval Service", version: "0.1.0",
-    domain: "core", description: "Tenant-scoped retrieval of approved, provenance-bearing evidence.",
+    domain: "core", description: "Retrieval of approved, provenance-bearing public evidence.",
     sourcePath: "src/lib/noctis-evidence-retrieval.server.ts", capabilities: ["evidence.retrieve", "evidence.resolve"],
     requiredScopes: ["evidence:read"],
     dependencies: [], lifecycle: "registered",
-    executionModes: ["analysis", "assisted"], dataClassification: "restricted",
+    executionModes: ["analysis", "assisted"], dataClassification: "public",
     evidenceRequired: false, humanReviewRequired: false,
   },
   {
