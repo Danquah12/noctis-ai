@@ -67,7 +67,7 @@ export type NoctisTransitionResult<T> =
   | { ok: false; code: string; message: string };
 
 const TERMINAL_TASK_STATES: readonly NoctisTaskState[] = [
-  "succeeded", "failed", "skipped", "cancelled",
+  "succeeded", "skipped", "cancelled",
 ];
 
 function validTimestamp(value: string): boolean {
