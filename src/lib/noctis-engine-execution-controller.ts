@@ -13,8 +13,10 @@ import {
   validateNoctisEngineRequest,
   type NoctisEngineRequest,
 } from "./noctis-engine-registry.ts";
-import type {
-  NoctisSpecialistResult,
+import {
+  reconcileNoctisSpecialistResults,
+  type NoctisSpecialistResult,
+  type NoctisReconciliationReport,
 } from "./noctis-result-reconciliation.ts";
 
 export type NoctisExecutionTask = {
@@ -37,6 +39,7 @@ export type NoctisExecutionContext = {
   tenantId: string;
   actorId: string;
   correlationId: string;
+  at: string;
   scopes: readonly string[];
   dataClassification: "public" | "internal" | "confidential" | "restricted";
   executionMode?: "analysis";
@@ -57,6 +60,8 @@ export type NoctisExecutionReport = {
   status: "completed" | "partial" | "failed" | "rejected";
   executionMode: "analysis";
   outcomes: NoctisExecutionTaskOutcome[];
+  reconciliation?: NoctisReconciliationReport;
+  reconciliationError?: string;
   executedCount: number;
   blockedCount: number;
   limitations: string[];
@@ -116,6 +121,7 @@ export async function executeNoctisAnalysisGraph(input: {
   const context = input?.context;
   if (!context || !context.requestId?.trim() || !context.tenantId?.trim() ||
       !context.actorId?.trim() || !context.correlationId?.trim() ||
+      !/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?Z$/.test(context.at) || !Number.isFinite(Date.parse(context.at)) ||
       !Array.isArray(context.scopes) || !context.scopes.length ||
       !["public", "internal", "confidential", "restricted"].includes(context.dataClassification) ||
       (context.executionMode !== undefined && context.executionMode !== "analysis")) {
@@ -233,6 +239,10 @@ export async function executeNoctisAnalysisGraph(input: {
   }
 
   const orderedOutcomes = input.tasks.map((task) => outcomes.get(task.taskId)!);
+  const specialistResults = orderedOutcomes.flatMap((outcome) => outcome.result ? [outcome.result] : []);
+  const reconciliation = specialistResults.length
+    ? reconcileNoctisSpecialistResults({ requestId: context.requestId, at: context.at, results: specialistResults })
+    : null;
   const failedCount = orderedOutcomes.filter((outcome) => outcome.status === "failed").length;
   const partialCount = orderedOutcomes.filter((outcome) => outcome.status === "partial").length;
   const blockedCount = orderedOutcomes.filter((outcome) => outcome.status === "blocked").length;
@@ -248,6 +258,8 @@ export async function executeNoctisAnalysisGraph(input: {
       status,
       executionMode: "analysis",
       outcomes: orderedOutcomes,
+      ...(reconciliation?.ok ? { reconciliation: reconciliation.report } : {}),
+      ...(reconciliation && !reconciliation.ok ? { reconciliationError: reconciliation.message } : {}),
       executedCount,
       blockedCount,
       limitations: [
