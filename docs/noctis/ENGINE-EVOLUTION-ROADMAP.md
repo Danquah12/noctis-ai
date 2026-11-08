@@ -277,3 +277,39 @@ A release is blocked if any of the following is true:
 - Security threat model.
 - Release readiness dashboard.
 - Versioned implementation log.
+
+
+## 12. Implemented foundation update — workflow and result reconciliation
+
+The following source-backed foundations have been added on `noctis/training-foundation`. Their presence does not establish production operation.
+
+| Component | Source | Current boundary |
+|---|---|---|
+| Universal Intelligence Planner | `src/lib/noctis-universal-orchestrator.ts` | Deterministic plan generation only; execution remains blocked |
+| Workflow contract/state machine | `src/lib/noctis-workflow-contract.ts` | Pure task lifecycle transitions; no authorization or queue |
+| Plan-to-workflow adapter | `src/lib/noctis-plan-workflow-adapter.ts` | Converts plan steps to typed task records; no dispatch |
+| Workflow scheduler | `src/lib/noctis-workflow-scheduler.ts` | Emits candidates; does not claim or execute tasks |
+| Workflow persistence schema | `migrations/20261107_noctis_workflow_control_plane.sql` | Defines workflow, task, attempt and event tables; application services are not yet connected |
+| Evidence integrity validator | `src/lib/noctis-evidence-integrity.ts` | Checks reference identity and excerpt hashes; not semantic entailment |
+| Specialist result reconciliation | `src/lib/noctis-result-reconciliation.ts` | Groups structured claims, flags explicit polarity conflicts and reports traceability; does not decide truth |
+
+### Result reconciliation rules
+
+1. Specialist outputs must provide stable result IDs, engine IDs, structured claim IDs, subject/predicate keys, explicit polarity, confidence label with rationale, and evidence chunk IDs.
+2. The reconciliation key is exact normalized subject plus predicate. It intentionally does not infer semantic equivalence between differently worded claims.
+3. Opposing affirmed/negated polarity for the same key is marked `conflicted`; no side is selected automatically.
+4. Evidence is checked for identity and excerpt-hash integrity. A traceable citation is not proof that the source supports the claim.
+5. Specialist confidence labels are preserved conservatively; labels are not averaged and are not calibrated probabilities.
+6. Partial or failed specialist results are surfaced. Claims from a failed result are rejected.
+7. Conflicts, insufficient evidence and incomplete specialist coverage recommend human review.
+
+### Remaining gates before live orchestration
+
+- Execute typecheck, unit, integration and build suites against the current branch head.
+- Add a trusted server-side persistence adapter with tenant-scoped queries and transaction boundaries.
+- Implement atomic worker leases and idempotent claim/complete/fail operations.
+- Resolve evidence and approval references against authoritative services; never trust client-provided scope claims.
+- Add a governed semantic entailment evaluation and human adjudication workflow before using terms such as supported or verified.
+- Add source authority, jurisdiction, license and freshness metadata checks.
+- Add end-to-end tests with multiple specialist adapters and realistic conflicting results.
+- Complete security review, audit retention and operational monitoring before enabling execution.
