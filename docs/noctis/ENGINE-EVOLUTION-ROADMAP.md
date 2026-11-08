@@ -327,6 +327,13 @@ Added `src/lib/noctis-workflow-persistence.server.ts` with injected PostgreSQL e
 
 Tests added in `src/lib/noctis-workflow-persistence.server.test.ts` for tenant isolation, evidence gating, lease-token enforcement and attempt closure. Stale-lease recovery, approval resolution, database row-level security, idempotent workflow creation and runtime wiring remain outstanding. The adapter's presence and tests do not establish operational readiness.
 
+### Bounded multi-engine analysis controller
+
+Added `src/lib/noctis-engine-execution-controller.ts` as a bounded adapter coordination layer separate from planning and persistent workflow dispatch. It validates an explicit task DAG, checks registry capability/scope/classification/analysis-mode contracts, executes in deterministic topological order, isolates adapter failures, blocks dependent tasks after unsuccessful prerequisites, and continues independent branches. Completed typed specialist results are passed to the existing result-reconciliation service.
+
+Tests cover dependency ordering, independent-branch continuation, failure propagation, scope rejection before invocation, graph cycles, duplicate adapters, mismatched result identities, task limits and analysis-only enforcement. The registry and standard test scripts include the new controller.
+
+Current boundary: this is an injected-adapter analysis controller, not a production agent runtime. No authenticated API route, production engine adapter, sandbox, timeout/termination mechanism, persistent dispatch, authoritative evidence resolver or approval ledger is connected to it. Production integration must be added behind trusted server-side identity and policy enforcement.
 ### Cooperative workflow cancellation and safe termination
 
 Added an additive migration for workflow/task cancellation metadata and a deterministic `cancelling` workflow state. The persistence adapter now supports:
