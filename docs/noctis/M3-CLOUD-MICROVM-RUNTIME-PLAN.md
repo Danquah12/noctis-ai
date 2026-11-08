@@ -181,3 +181,21 @@ Added `src/lib/noctis-runtime-persistence.server.ts` with tenant-transaction-sco
 Added PGlite integration tests for reservation/replay, changed-payload and cross-tenant conflict, ambiguous launch recovery, tenant mismatch rejection, quarantine idempotency, and malformed inputs. Tests are included in typecheck, stress, and full CI scripts.
 
 **Boundary:** this adapter is not called by the lifecycle supervisor and has no production database connection, provider SDK, inventory poller, alert channel, or cleanup authority. Tenant context is applied as a transaction-local database setting; production must enforce it with a restricted database role and verified RLS, not trust the setting as authentication. The caller must derive actor/tenant from authenticated server context. The provider must still implement atomic idempotency and inventory listing.
+
+
+## 15. Provider inventory pagination and completeness contract
+
+Added `src/lib/noctis-runtime-inventory-provider.ts` with a provider-neutral inventory pagination interface and a fail-closed collector. The collector:
+
+- bounds page size (1–500) and maximum pages (1–1,000);
+- requires a non-empty provider snapshot identifier and the same snapshot identifier on every page;
+- follows opaque continuation cursors and rejects cursor loops;
+- rejects duplicate provider execution IDs across pages;
+- requires the terminal page to explicitly certify a complete snapshot;
+- withholds all partial observations when a provider call fails, a page is malformed, the snapshot changes, pagination loops, a duplicate execution ID appears, or the page limit is reached.
+
+Only a successful result returns an observation array, marked `complete: true`, with the provider ID, snapshot ID, and page count. Callers must not invoke `reconcileNoctisRuntimeInventory` with partial provider results. Provider-reported tenant/workload metadata remains untrusted and is compared against the authoritative Noctis ledger by the reconciliation classifier; it is never an authorization source.
+
+Added tests for stable multi-page snapshots, provider outage mid-scan, snapshot changes, incomplete terminal pages, cursor loops, duplicate execution IDs, page bounds, and malformed page envelopes. The tests are included in typecheck, stress, and full CI scripts.
+
+**Boundary:** this is a pagination contract and collector, not a connected cloud inventory API. The provider implementation must supply a genuine consistent-snapshot mechanism or equivalent documented semantics. The collector verifies continuity signals returned by that provider; it cannot prove that the provider's inventory is truthful, complete, or cryptographically attested. No reconciliation persistence orchestration, alert delivery, cleanup authorization, or resource deletion is implemented by this milestone.
