@@ -965,7 +965,7 @@ export async function rememberRule(ruleText: string, domain = "general", submitt
   return { ok: true, rule: clean };
 }
 
-export async function pendingTrainingSubmissions(limit = 100) {
+export async function pendingTrainingSubmissions(limit = 100, tenantId?: string) {
   await hydrateFromDb();
   const safeLimit = Math.max(1, Math.min(200, Math.floor(limit)));
   const { getSql } = await import("@/lib/db");
@@ -977,6 +977,8 @@ export async function pendingTrainingSubmissions(limit = 100) {
     select id, question, answer, domain, submitted_by, created_at::text as created_at, approval_status
     from vibe_training_pair
     where approval_status in ('quarantined', 'legacy_review_required')
+      and (${tenantId ?? null}::text is null and tenant_id is null
+        or tenant_id = ${tenantId ?? null})
     order by created_at desc limit ${safeLimit}
   `;
   const rulesPending = await sql<{
