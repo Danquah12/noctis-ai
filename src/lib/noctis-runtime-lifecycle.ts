@@ -66,6 +66,7 @@ export type NoctisRuntimeLifecycleResult =
     }
   | {
       state: "cleanup_incomplete";
+      auditIncomplete?: true;
       runtimeId: string;
       executionId: string;
       observation: NoctisRuntimeObservation | { status: "monitor_failed"; reasonCode: string };
@@ -210,7 +211,7 @@ export class NoctisRuntimeLifecycleSupervisor {
       } catch {
         return {
           state: "cleanup_incomplete", runtimeId: launched.runtimeId, executionId: launched.executionId,
-          observation, cleanup: { ...cleanup, resourcesReaped: false }, auditSequences,
+          observation, cleanup, auditIncomplete: true, auditSequences,
         };
       }
       if (observation.status === "completed") {
