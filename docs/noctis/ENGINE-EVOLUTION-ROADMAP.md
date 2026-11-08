@@ -439,3 +439,12 @@ The legacy src/lib/noctis-wasm-runner.ts is not a genuine WASM sandbox: it evalu
 **Next:** authenticated provider inventory adapter with pagination and completeness semantics; reconciliation service that reads ledger and inventory snapshots, persists decisions idempotently, and raises alerts. Then implement a separate approval-bound cleanup-candidate process; it must not automatically stop or delete unknown resources.
 
 **Boundary:** tests use PGlite and fake SQL adapters. No cloud control plane, inventory feed, production DB role/RLS, alert delivery, or cleanup execution is connected.
+
+
+## 19. M3 — Provider inventory pagination and completeness
+
+**Status:** provider-neutral pagination collector and tests added. It enforces bounded page size/count, stable snapshot identity, cursor-loop detection, duplicate execution-ID rejection, and explicit terminal completeness. Partial inventories are withheld from reconciliation on any provider error or pagination inconsistency.
+
+**Next:** connect one selected cloud provider's authenticated inventory API; then build transactional reconciliation orchestration and alerting. Keep cleanup separate and approval-bound.
+
+**Boundary:** no cloud inventory endpoint, credentials, provider attestation, alert channel, or cleanup action is connected. A complete API response is not proof of provider truth.
