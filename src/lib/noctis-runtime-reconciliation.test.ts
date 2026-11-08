@@ -5,7 +5,7 @@ import { reconcileNoctisRuntimeInventory } from "./noctis-runtime-reconciliation
 const digest = `sha256:${"c".repeat(64)}`;
 const now = "2026-11-08T10:00:00.000Z";
 const expected = {
-  idempotencyKey: "noctis:request-fingerprint-01",
+  idempotencyKey: "noctis:" + "e".repeat(64),
   tenantId: "tenant-a",
   workloadId: "workload-a",
   workloadDigest: digest,
@@ -104,6 +104,11 @@ describe("Noctis runtime inventory reconciliation", () => {
     }));
     assert.throws(() => reconcileNoctisRuntimeInventory({
       providerId: "provider-a", expected: [expected, expected], observed: [], now,
+    }));
+    assert.throws(() => reconcileNoctisRuntimeInventory({
+      providerId: "provider-a",
+      expected: [{ ...expected, idempotencyKey: "not-a-canonical-key" }],
+      observed: [], now,
     }));
   });
 });
