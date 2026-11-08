@@ -175,7 +175,12 @@ export async function createNoctisTrainingDataset(
       `INSERT INTO noctis_training_dataset(dataset_id,tenant_id,name,domain,description,created_by)
        VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(tenant_id,name) DO NOTHING RETURNING dataset_id`,
       [input.datasetId,input.tenantId,input.name.trim(),input.domain.trim(),input.description??null,input.actorId]);
-    if(inserted.rows.length)return {ok:true,value:{datasetId:input.datasetId,created:true}};
+    if(inserted.rows.length){
+      await tx.query(
+        "INSERT INTO noctis_learning_audit(id,actor_id,action,target_type,target_id,reason,after_hash) VALUES($1,$2,'training_dataset_created','training_dataset',$3,'Dataset registry entry created',$4)",
+        [`dataset-create-${sha256(input.datasetId)}`,input.actorId,input.datasetId,`sha256:${sha256(canonical({tenantId:input.tenantId,name:input.name.trim(),domain:input.domain.trim(),description:input.description??null}))}`]);
+      return {ok:true,value:{datasetId:input.datasetId,created:true}};
+    }
     const existing=await tx.query<{dataset_id:string;domain:string;description:string|null}>(
       "SELECT dataset_id,domain,description FROM noctis_training_dataset WHERE tenant_id=$1 AND name=$2",
       [input.tenantId,input.name.trim()]);
@@ -231,6 +236,15 @@ export async function snapshotNoctisTrainingDataset(
       test:assigned.filter(x=>x.split==="test").length,
     };
     const digest=`sha256:${sha256(canonical({datasetId:input.datasetId,splitSeed:input.splitSeed,items:assigned}))}`;
+    const replay=await tx.query<{dataset_id:string;version_number:number;content_digest:string}>(
+      "SELECT dataset_id,version_number,content_digest FROM noctis_training_dataset_version WHERE dataset_version_id=$1 FOR UPDATE",
+      [input.datasetVersionId]);
+    if(replay.rows.length){
+      const prior=replay.rows[0]!;
+      if(prior.dataset_id!==input.datasetId || prior.content_digest!==digest)
+        return {ok:false,code:"IDEMPOTENCY_CONFLICT" as const};
+      return {ok:true,value:{datasetVersionId:input.datasetVersionId,versionNumber:Number(prior.version_number),contentDigest:digest,counts}};
+    }
     const versionRows=await tx.query<{version_number:string}>(
       "SELECT COALESCE(MAX(version_number),0)::text AS version_number FROM noctis_training_dataset_version WHERE dataset_id=$1",
       [input.datasetId]);
