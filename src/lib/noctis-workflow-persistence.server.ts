@@ -733,9 +733,10 @@ export async function recoverNoctisExpiredWorkflowLease(
       lease_owner: string;
       attempt_count: number;
       max_attempts: number;
+      cancellation_requested_at: string | null;
     }>(
       `SELECT t.task_record_id, t.workflow_id, t.task_id, t.lease_owner,
-              t.attempt_count, t.max_attempts
+              t.attempt_count, t.max_attempts, t.cancellation_requested_at
        FROM noctis_workflow_tasks t
        JOIN noctis_workflows w ON w.workflow_id = t.workflow_id
        WHERE w.tenant_id = $1
@@ -749,7 +750,8 @@ export async function recoverNoctisExpiredWorkflowLease(
     const row = expired.rows[0];
     if (!row) return { ok: true, value: null };
 
-    const nextState = row.attempt_count < row.max_attempts ? "ready" : "failed";
+    const cancellationUnconfirmed = row.cancellation_requested_at !== null;
+    const nextState = cancellationUnconfirmed ? "blocked" : (row.attempt_count < row.max_attempts ? "ready" : "failed");
     await tx.query(
       `UPDATE noctis_workflow_attempts
        SET finished_at = $1::timestamptz, outcome = 'timed_out',
@@ -762,8 +764,8 @@ export async function recoverNoctisExpiredWorkflowLease(
       `UPDATE noctis_workflow_tasks
        SET state = $1,
            available_at = CASE WHEN $1 = 'ready' THEN $2::timestamptz ELSE available_at END,
-           failure_code = CASE WHEN $1 = 'failed' THEN 'MAX_ATTEMPTS_EXHAUSTED' ELSE NULL END,
-           failure_reason = CASE WHEN $1 = 'failed' THEN 'Maximum task attempts exhausted after lease expiry.' ELSE NULL END,
+           failure_code = CASE WHEN $1 = 'failed' THEN 'MAX_ATTEMPTS_EXHAUSTED' WHEN $1 = 'blocked' THEN 'CANCELLATION_UNCONFIRMED' ELSE NULL END,
+           failure_reason = CASE WHEN $1 = 'failed' THEN 'Maximum task attempts exhausted after lease expiry.' WHEN $1 = 'blocked' THEN 'Cancellation was requested but the worker did not acknowledge that execution stopped before lease expiry; manual reconciliation is required.' ELSE NULL END,
            lease_owner = NULL, lease_token = NULL, lease_expires_at = NULL,
            updated_at = $3::timestamptz
        WHERE task_record_id = $4 AND state = 'running'`,
