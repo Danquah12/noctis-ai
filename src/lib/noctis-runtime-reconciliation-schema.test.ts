@@ -26,9 +26,9 @@ describe("Noctis runtime reconciliation persistence schema", () => {
       );
       assert.deepEqual(tables.rows.map((row) => row.table_name), [
         "noctis_runtime_audit_events",
-        "noctis_runtime_reconciliation_decisions",
         "noctis_runtime_executions",
         "noctis_runtime_quarantine",
+        "noctis_runtime_reconciliation_decisions",
         "noctis_runtime_reconciliation_runs",
       ]);
     } finally {
