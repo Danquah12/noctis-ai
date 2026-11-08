@@ -40,6 +40,8 @@ export type NoctisEvidenceResolution = {
   chunkId: string;
   sourceStatus: "approved" | "revoked" | "quarantined" | "unknown";
   accessAllowed: boolean;
+  validUntil: string | null;
+  revokedAt: string | null;
 };
 
 export type NoctisApprovalResolution = {
@@ -52,6 +54,8 @@ export type NoctisApprovalResolution = {
   approvedAt: string;
   expiresAt: string | null;
   revokedAt: string | null;
+  approvalType: "task_execution";
+  approverAuthorized: boolean;
 };
 
 export type NoctisWorkflowGateContext = {
@@ -64,11 +68,11 @@ export type NoctisWorkflowGateContext = {
 };
 
 export interface NoctisWorkflowGateResolvers {
-  /** Must query an authoritative, tenant-scoped evidence service. */
+  /** Must query authoritative tenant-scoped evidence, access, revocation and freshness records. */
   resolveEvidence(tx: NoctisWorkflowSqlExecutor, context: NoctisWorkflowGateContext & {
     evidenceRefs: readonly string[];
   }): Promise<readonly NoctisEvidenceResolution[]>;
-  /** Must query an authoritative approval ledger and bind approval to this task. */
+  /** Must query the authoritative approval ledger, verify approver authority, and bind the grant to this exact task capability. */
   resolveApproval(tx: NoctisWorkflowSqlExecutor, context: NoctisWorkflowGateContext & {
     approvalRef: string;
   }): Promise<NoctisApprovalResolution>;
@@ -441,7 +445,9 @@ export async function claimNoctisWorkflowTask(
         row.evidence_refs.every((id) => resolved.filter((item) =>
           item.evidenceId === id && item.tenantId === input.tenantId &&
           item.status === "approved" && item.sourceStatus === "approved" &&
-          item.accessAllowed && nonEmpty(item.sourceId) && nonEmpty(item.chunkId),
+          item.accessAllowed && item.revokedAt === null &&
+          (item.validUntil === null || (validUtc(item.validUntil) && Date.parse(item.validUntil) > Date.parse(input.at))) &&
+          nonEmpty(item.sourceId) && nonEmpty(item.chunkId),
         ).length === 1);
       if (!valid) return { ok: true, value: null };
     }
@@ -455,6 +461,7 @@ export async function claimNoctisWorkflowTask(
         return { ok: true, value: null };
       }
       if (approval.status !== "approved" || approval.tenantId !== input.tenantId ||
+          approval.approvalType !== "task_execution" || approval.approverAuthorized !== true ||
           approval.approvalId !== row.approval_ref ||
           approval.engineId !== row.engine_id || approval.capability !== row.capability ||
           !nonEmpty(approval.approvedBy) || !validUtc(approval.approvedAt) ||
