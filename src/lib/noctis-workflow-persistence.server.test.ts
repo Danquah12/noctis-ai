@@ -26,7 +26,7 @@ const rlsMigration = readFileSync(
   "utf8",
 );
 const cancellationMigration = readFileSync(
-  new URL("../../migrations/20261107_noctis_workflow_cancellation.sql", import.meta.url),
+  new URL("../../migrations/20261107_noctis_workflow_z_cancellation.sql", import.meta.url),
   "utf8",
 );
 const at = "2026-11-07T16:00:00Z";
