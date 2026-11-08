@@ -1,5 +1,5 @@
-import { hardProblem } from "@/lib/worked-figures";
-import { needsCurrent } from "@/lib/noctis-checks";
+import { hardProblem } from "./worked-figures.ts";
+import { needsCurrent } from "./noctis-checks.ts";
 
 export type VibeIntent = "arithmetic" | "engineering" | "science" | "bible" | "cyber" | "current" | "teach" | "general";
 export type VibeTool = "calculator" | "reason" | "library" | "web" | "specialist";
