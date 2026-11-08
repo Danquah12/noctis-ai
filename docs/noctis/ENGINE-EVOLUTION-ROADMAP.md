@@ -327,6 +327,12 @@ Added `src/lib/noctis-workflow-persistence.server.ts` with injected PostgreSQL e
 
 Tests added in `src/lib/noctis-workflow-persistence.server.test.ts` for tenant isolation, evidence gating, lease-token enforcement and attempt closure. Stale-lease recovery, approval resolution, database row-level security, idempotent workflow creation and runtime wiring remain outstanding. The adapter's presence and tests do not establish operational readiness.
 
+### PostgreSQL tenant row-level security
+
+Added an idempotent migration enabling and forcing row-level security on workflow, task, attempt and event tables. Parent workflow ownership is used to scope child rows. Every workflow persistence operation now establishes a transaction-local `app.tenant_id` from trusted server context before data access, and the setting expires with the transaction. PGlite schema coverage exercises a non-owner role, tenant-filtered reads and cross-tenant insert rejection.
+
+Deployment still must provision a dedicated runtime role without table ownership or `BYPASSRLS`, grant only required privileges, and validate the real connection pool and authentication boundary. PGlite coverage is committed but has not yet been executed in CI. The GUC does not authenticate a tenant by itself: the runtime must never expose arbitrary SQL or allow clients to select the tenant context.
+
 ### Authoritative evidence and approval gate contracts
 
 Task claim now accepts injected evidence and approval resolvers and checks them inside the task-claim transaction before creating a lease or attempt. Evidence gates require exact tenant-bound approved records, source/chunk identity, access permission, and non-revoked/non-expired status. Approval gates require an approved task-execution grant bound to the exact tenant, engine and capability, an authorized approver, valid issue/expiry times and no revocation. Missing, duplicate, stale, mismatched or unavailable results fail closed.
