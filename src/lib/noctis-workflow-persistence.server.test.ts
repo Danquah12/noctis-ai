@@ -30,10 +30,11 @@ const testGates = {
     validUntil: null, revokedAt: null,
   })),
   resolveApproval: async (_tx: NoctisWorkflowSqlExecutor, context: {
-    tenantId: string; approvalRef: string; engineId: string; capability: string;
+    tenantId: string; workflowId: string; taskId: string; approvalRef: string; engineId: string; capability: string;
   }) => ({
     status: "approved" as const, tenantId: context.tenantId,
-    approvalId: context.approvalRef, engineId: context.engineId,
+    approvalId: context.approvalRef, workflowId: context.workflowId, taskId: context.taskId,
+    engineId: context.engineId,
     capability: context.capability, approvedBy: "reviewer-1",
     approvedAt: "2026-11-07T15:00:00Z", expiresAt: null, revokedAt: null,
     approvalType: "task_execution" as const, approverAuthorized: true,
@@ -144,10 +145,11 @@ describe("Noctis tenant-scoped workflow persistence", () => {
       const mismatchedApproval = {
         ...testGates,
         resolveApproval: async (_tx: NoctisWorkflowSqlExecutor, context: {
-          tenantId: string; approvalRef: string; engineId: string; capability: string;
+          tenantId: string; workflowId: string; taskId: string; approvalRef: string; engineId: string; capability: string;
         }) => ({
           status: "approved" as const, tenantId: context.tenantId,
-          approvalId: context.approvalRef, engineId: "different-engine",
+          approvalId: context.approvalRef, workflowId: context.workflowId, taskId: context.taskId,
+          engineId: "different-engine",
           capability: context.capability, approvedBy: "reviewer-1",
           approvedAt: "2026-11-07T15:00:00Z", expiresAt: null, revokedAt: null,
           approvalType: "task_execution" as const, approverAuthorized: true,
