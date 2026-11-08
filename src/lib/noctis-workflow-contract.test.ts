@@ -19,14 +19,14 @@ function makeTask(overrides: Partial<Parameters<typeof createNoctisWorkflowTask>
     ...overrides,
   });
   assert.equal(result.ok, true);
-  if (!result.ok) throw new Error(result.message);
+  if (!result.ok) throw new Error("Unexpected task contract failure.");
   return result.value;
 }
 
 function apply(task: NoctisWorkflowTask, event: Parameters<typeof transitionNoctisTask>[1]): NoctisWorkflowTask {
   const result = transitionNoctisTask(task, event);
   assert.equal(result.ok, true);
-  if (!result.ok) throw new Error(result.message);
+  if (!result.ok) throw new Error("Unexpected task contract failure.");
   return result.value;
 }
 
