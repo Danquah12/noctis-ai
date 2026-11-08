@@ -7,7 +7,7 @@ import { OPENAI_KEY } from "@/lib/openai-key.server";
 import { stripStatus } from "@/lib/evidence";
 import { formatMap, walkGraph } from "@/lib/knowledge-graph";
 import { noctisSkill } from "@/lib/noctis-skills";
-import { routeQuestion } from "@/lib/noctis-orchestrator";
+import { buildRouteDirective } from "@/lib/noctis-orchestrator";
 import { hardProblem, resourcePlan, workedFigures, onlyMath } from "@/lib/worked-figures";
 import { domainRules, runPipeline } from "@/lib/noctis-pipeline";
 import { memoryLines, nextFromRecord } from "@/lib/noctis-memory";
@@ -968,6 +968,7 @@ async function composeVibeReply(
     /\b(write|create|generate|build|implement|train|design|make|develop|code|run|execute)\b[\s\S]{0,90}\b(code|script|program|function|class|test|tasks?|c\s+code|c\s+program|c\s+script|web\s*page|webpage|website|web\s*site|landing\s*page|html\s*page|web\s*app|homepage|home\s*page|portal|dashboard|portfolio|storefront|site|benchmark|evaluation)\b/i.test(question);
   const math = onlyMath(question);
   if (math) return { text: math };
+  const orchestrationDirective = buildRouteDirective(question);
   const trainCmd = question.match(/^(?:train(?:\s+vibe)?|teach\s+vibe)\s*:\s*([\s\S]+?)\s*(?:\|\||=>|->)\s*([\s\S]+)$/i);
   if (trainCmd) {
     const { trainPair, trainingStatus } = await import("@/lib/noctis-train.server");
@@ -1055,7 +1056,6 @@ async function composeVibeReply(
     const synthesized = await synthesizePluginIntelligence(question, pluginCheck.pluginId, pluginCheck.pluginName);
     return { text: synthesized };
   }
-  const route = routeQuestion(question);
   const spoken = languageNow(question, style.language || "");
   if (!attached && spoken.toLowerCase() === "english" && !engineeringDesign(question) && !resourcePlan(question) && !hasHardRows) {
     const trainedHit = recallTrainedAnswer(question);
@@ -1301,6 +1301,7 @@ async function composeVibeReply(
   const packet = [growthSheet(scenario), hourlyGrid(scenario), optimizeOptions(scenario), executionSheet(scenario), ledgerSheet(scenario), strategySheet(scenario), domainRules(question), vocabularyLine(question), authorityLine(question), memoryLines(question, style.context || ""), statedRules(isolatedTurns), persistedRules, rulesFromContext(style.context || ""), graphFromNotes(notes), uncertaintyLine(question), predictionLine(question), shockLine(question), decisionLine(question), optimizeLine(question), causalLine(question), askLine(question), consistencyLine(question, earlier), stakesLine(question), needsCurrent(question) ? "This can go out of date. Use a page opened for this message. If none was opened, say the current fact was not retrieved. Do not supply it from memory." : ""].filter(Boolean).join("\n\n");
   const messages: ChatMessage[] = [
     { role: "system", content: SYSTEM },
+    { role: "system", content: orchestrationDirective },
     { role: "system", content: `${pipe.route.note} ${reasonBrief(scenario)} The pipeline packet below was computed in code. Copy it. Do not replace a pipeline line with a guess. A feasibility sentence comes after the figures, never instead of them.` },
     ...(packet ? [{ role: "system" as const, content: packet }] : []),
     ...(stance ? [{ role: "system" as const, content: stance }] : []),
