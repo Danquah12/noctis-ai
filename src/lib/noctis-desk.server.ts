@@ -975,7 +975,7 @@ async function composeVibeReply(
     if (!saved.ok) return { text: saved.reason || "Provide both a question and an answer after Train: <question> || <answer>." };
     const stats = await trainingStatus();
     return {
-      text: `Trained and saved to Vibe memory (${stats.dbConnected ? "Neon Postgres + local store" : "local store"}).\n\n- **Question:** ${saved.question}\n- **Trained Answer:** ${saved.answer}\n- **Corpus size:** ${stats.totalPairs} total pairs (${stats.userTaughtPairs} custom-trained, ${stats.rulesCount} active rules)\n\nAsk this question at any time and Vibe will recall this exact lesson without needing an external model.`,
+      text: `Submitted for independent review; this pair is quarantined and is not an active lesson (${stats.dbConnected ? "Neon Postgres + local store" : "local store"}).\n\n- **Question:** ${saved.question}\n- **Submitted Answer:** ${saved.answer}\n- **Corpus size:** ${stats.totalPairs} total pairs (${stats.userTaughtPairs} custom-trained, ${stats.rulesCount} active rules)\n\nThis submission will not be used as an approved lesson until an authorized reviewer approves it. It is not model-weight training.`,
     };
   }
   if (/\b(?:training\s+(?:database\s+|memory\s+|store\s+|corpus\s+|live\s+)*(?:status|stats|report|memory|check)|check\s+[\s\S]*?training[\s\S]*?(?:status|database|memory)|what\s+has\s+vibe\s+(?:learned|been\s+trained))\b/i.test(question)) {
@@ -992,7 +992,7 @@ async function composeVibeReply(
   if (typedRule) {
     const { rememberRule } = await import("@/lib/noctis-train.server");
     await rememberRule(typedRule[1].trim()).catch(() => {});
-    return { text: `Saved as a user-said rule: ${typedRule[1].trim()}. It is not a verified fact. It applies on the next question in this conversation only when it does not contradict a calculated figure or an opened page.` };
+    return { text: `Submitted for independent review as a user-said rule: ${typedRule[1].trim()}. It is not a verified fact. It remains quarantined and will not become an active persistent rule unless an authorized reviewer approves it.` };
   }
   const { hydrateFromDb, lessonBlock, rememberAnswer, recallTrainedAnswer, storedRulesBlock } = await import("@/lib/noctis-train.server");
   await hydrateFromDb().catch(() => {});
