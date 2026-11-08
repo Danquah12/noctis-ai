@@ -357,7 +357,7 @@ function sayAloud(text: string): boolean {
   try {
     const brainConfig = getBrainConfig();
     const activeBrain = getActiveKeyAndModel(brainConfig);
-    const userOpenAiKey = activeBrain.provider === "openai" ? activeBrain.key : "";
+    const userOpenAiKey = activeBrain.provider === "openai" ? activeBrain.apiKey : "";
     void speakNoctisVoice(text, "alloy", { apiKey: userOpenAiKey });
     return true;
   } catch {
@@ -3526,7 +3526,7 @@ export function NoctisDesk() {
           desk: "chat",
           skill: "write",
           think: false,
-          speaks: "English",
+          language: "English",
         },
       });
       const picked = pickAnswer(res);
@@ -4645,7 +4645,7 @@ export function NoctisDesk() {
       try {
         const brainConfig = getBrainConfig();
         const activeBrain = getActiveKeyAndModel(brainConfig);
-        const userOpenAiKey = activeBrain.provider === "openai" ? activeBrain.key : "";
+        const userOpenAiKey = activeBrain.provider === "openai" ? activeBrain.apiKey : "";
         await speakNoctisVoice(answer, voicePersona, {
           apiKey: userOpenAiKey,
         });
@@ -7875,7 +7875,7 @@ export function NoctisDesk() {
                                     const rawAnswer = turn.content.split(/\n\s*Claim standing:/i)[0] || turn.content;
                                     const brainConfig = getBrainConfig();
                                     const activeBrain = getActiveKeyAndModel(brainConfig);
-                                    const userOpenAiKey = activeBrain.provider === "openai" ? activeBrain.key : "";
+                                    const userOpenAiKey = activeBrain.provider === "openai" ? activeBrain.apiKey : "";
                                     void speakNoctisVoice(rawAnswer, voicePersona, {
                                       apiKey: userOpenAiKey,
                                       onStart: () => setReadingTurnIndex(index),
