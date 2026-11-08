@@ -91,9 +91,10 @@ describe("Noctis runtime inventory reconciliation", () => {
       providerId: "provider-a", expected: [expected],
       observed: [{ ...observed, providerId: "provider-b" }], now,
     });
-    assert.deepEqual(result, [{
-      kind: "quarantine_mismatch", executionId: "execution-a", reason: "INVALID_OBSERVATION",
-    }]);
+    assert.deepEqual(result, [
+      { kind: "quarantine_mismatch", executionId: "execution-a", reason: "INVALID_OBSERVATION" },
+      { kind: "missing_expected", idempotencyKey: expected.idempotencyKey, tenantId: "tenant-a", workloadId: "workload-a" },
+    ]);
   });
 
   it("rejects malformed ledger entries and duplicate expected keys", () => {
