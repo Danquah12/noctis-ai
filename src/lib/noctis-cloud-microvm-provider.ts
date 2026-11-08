@@ -6,6 +6,7 @@
  * backed by a real microVM service. No shell, Docker socket, ambient credentials,
  * or arbitrary endpoint is used by this module.
  */
+import { createHash } from "node:crypto";
 import type {
   NoctisIsolatedRuntimeProvider,
   NoctisSandboxAdmissionResult,
@@ -13,6 +14,8 @@ import type {
 } from "./noctis-isolation-contract.ts";
 
 export type NoctisCloudMicrovmLaunchRequest = {
+  /** Stable across retries; provider must deduplicate this key atomically. */
+  idempotencyKey: string;
   runtimeId: string;
   workloadId: string;
   tenantId: string;
@@ -24,11 +27,37 @@ export type NoctisCloudMicrovmLaunchRequest = {
 };
 
 export interface NoctisCloudMicrovmControlPlane {
+  /** Same key + same request returns the original execution; same key + different request must conflict. */
   launchExecution(
     request: NoctisCloudMicrovmLaunchRequest,
   ): Promise<{ runtimeId: string; executionId: string }>;
   terminateExecution(executionId: string): Promise<{ processStopped: boolean }>;
   reapExecution(executionId: string): Promise<{ resourcesReaped: boolean }>;
+}
+
+export function createNoctisLaunchIdempotencyKey(input: {
+  tenantId: string;
+  workloadId: string;
+  workloadDigest: string;
+  limits: NoctisSandboxLimits;
+}): string {
+  if (!input.tenantId?.trim() || !input.workloadId?.trim() ||
+      !/^sha256:[a-f0-9]{64}$/.test(input.workloadDigest) ||
+      !Number.isSafeInteger(input.limits?.executionMs) || input.limits.executionMs <= 0 ||
+      !Number.isSafeInteger(input.limits?.cpuMillis) || input.limits.cpuMillis <= 0 ||
+      !Number.isSafeInteger(input.limits?.memoryMb) || input.limits.memoryMb <= 0 ||
+      !Number.isSafeInteger(input.limits?.outputBytes) || input.limits.outputBytes <= 0) {
+    throw new Error("Valid tenant, workload, digest and resource limits are required for idempotency.");
+  }
+  const canonical = JSON.stringify({
+    tenantId: input.tenantId, workloadId: input.workloadId,
+    workloadDigest: input.workloadDigest,
+    limits: {
+      executionMs: input.limits.executionMs, cpuMillis: input.limits.cpuMillis,
+      memoryMb: input.limits.memoryMb, outputBytes: input.limits.outputBytes,
+    },
+  });
+  return "noctis:" + createHash("sha256").update(canonical, "utf8").digest("hex");
 }
 
 export type NoctisCloudMicrovmProviderConfig = {
@@ -75,7 +104,12 @@ export class NoctisCloudMicrovmProviderAdapter implements NoctisIsolatedRuntimeP
       throw new Error("Sandbox launch rejected: successful admission does not match this exact workload.");
     }
 
+    const idempotencyKey = createNoctisLaunchIdempotencyKey({
+      tenantId: input.tenantId, workloadId: input.workloadId,
+      workloadDigest: input.workloadDigest, limits: admission.limits,
+    });
     const launched = await this.controlPlane.launchExecution({
+      idempotencyKey,
       runtimeId: admission.runtimeId,
       workloadId: input.workloadId,
       tenantId: input.tenantId,
