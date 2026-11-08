@@ -100,7 +100,7 @@ CREATE TABLE IF NOT EXISTS noctis_training_run_artifact (
 -- Dataset snapshots and their membership are append-only. Approval is recorded
 -- on the version row; edits require creating a new version, not rewriting history.
 CREATE OR REPLACE FUNCTION noctis_reject_training_snapshot_mutation()
-RETURNS trigger LANGUAGE plpgsql AS $
+RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
   IF TG_OP = 'DELETE' THEN
     RAISE EXCEPTION 'Noctis training dataset snapshots are immutable; create a new version';
@@ -127,7 +127,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$;
+$$;
 
 DROP TRIGGER IF EXISTS noctis_training_dataset_version_immutable ON noctis_training_dataset_version;
 CREATE TRIGGER noctis_training_dataset_version_immutable
@@ -135,11 +135,11 @@ BEFORE UPDATE OR DELETE ON noctis_training_dataset_version
 FOR EACH ROW EXECUTE FUNCTION noctis_reject_training_snapshot_mutation();
 
 CREATE OR REPLACE FUNCTION noctis_reject_training_member_mutation()
-RETURNS trigger LANGUAGE plpgsql AS $
+RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
   RAISE EXCEPTION 'Noctis training dataset membership is immutable; create a new version';
 END;
-$;
+$$;
 
 DROP TRIGGER IF EXISTS noctis_training_dataset_member_immutable ON noctis_training_dataset_member;
 CREATE TRIGGER noctis_training_dataset_member_immutable
