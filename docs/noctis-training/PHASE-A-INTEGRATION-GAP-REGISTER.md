@@ -2,7 +2,7 @@
 
 **Branch:** noctis/phase-a-learning-integration  
 **Baseline:** noctis/training-foundation at 5916b0dc708b693446ab25722a9fd059c2650564  
-**Scope:** Read-only repository inspection; no database or model changes.
+**Scope:** Repository audit plus a first code change for atomic source registration. No database or model changes.
 
 ## Executive finding
 
@@ -18,13 +18,11 @@ src/routes/api/noctis.ts still handles body.train by calling trainPair(...) from
 
 **Required change:** Replace or explicitly deprecate the legacy write path. Route submissions through an authenticated server composition layer that derives tenant and actor identity from the verified session, not request-body fields. Preserve a compatibility response only if it does not bypass quarantine and audit.
 
-### A2. Source ingestion is not atomic
+### A2. Source ingestion atomicity — implementation committed; verification pending
 
-src/lib/noctis-source-ingestion.server.ts writes the source row, chunks, and audit record in separate operations. Chunk failure triggers best-effort deletes; an audit failure can occur after the source and chunks have persisted.
+`src/lib/noctis-source-ingestion.server.ts` now inserts the source row, every chunk, and the audit event inside one `getSql().transaction(...)`. Any insertion or audit failure rolls the complete transaction back. The unique `(content_hash, domain)` index arbitrates concurrent duplicate submissions; a losing submission reads and returns the winning source without creating chunks or a second audit event. The submitter ID is normalized and required before persistence.
 
-**Risk:** Partial source state can survive a failed submission, and callers may receive an error despite durable source data existing.
-
-**Required change:** Use one database transaction for source row, all chunks, and audit event. Add a unique-conflict/idempotency path for (content_hash, domain) and verify that a replay returns the original source record without creating duplicate chunks or audit events.
+**Remaining verification:** Add/execute focused database tests for rollback on chunk/audit failure, concurrent duplicate submissions, and replay behavior on both supported database backends. No such tests have yet been run for this commit.
 
 ### A3. Source registration and review lack tenant-scoped persistence
 
@@ -60,8 +58,8 @@ The training repository sets app.tenant_id transaction-locally. Its own design n
 
 ## Required Phase A implementation order
 
-1. Add source tenant ownership and migration/backfill policy.
-2. Implement transaction-backed source register/review/revoke repository methods.
+1. [In progress] Add source tenant ownership and migration/backfill policy.
+2. [Partially complete] Source registration is transaction-backed; review/revoke still need tenant-aware repository methods.
 3. Add authenticated source and reviewer server handlers with role/MFA checks.
 4. Route all candidate submissions through the canonical governed repository; close legacy bypasses.
 5. Add dataset export eligibility checks and post-approval source revocation handling.
