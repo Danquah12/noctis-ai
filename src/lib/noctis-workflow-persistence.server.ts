@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 /**
  * Tenant-scoped PostgreSQL workflow persistence adapter.
  *
@@ -65,7 +67,7 @@ export type NoctisTaskFinishInput = NoctisTrustedWorkflowContext & {
 
 export type NoctisPersistenceResult<T> =
   | { ok: true; value: T }
-  | { ok: false; code: "INVALID_INPUT" | "NOT_CLAIMED" | "LEASE_LOST" | "NOT_RUNNING" };
+  | { ok: false; code: "INVALID_INPUT" | "NOT_CLAIMED" | "LEASE_LOST" | "NOT_RUNNING" | "IDEMPOTENCY_CONFLICT" };
 
 type ClaimRow = {
   task_record_id: string;
@@ -84,6 +86,194 @@ function validUtc(value: string): boolean {
 
 function nonEmpty(value: string): boolean {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+function canonicalizeJson(value: unknown, seen = new WeakSet<object>()): unknown | undefined {
+  if (value === null || typeof value === "string" || typeof value === "boolean") return value;
+  if (typeof value === "number") return Number.isFinite(value) ? value : undefined;
+  if (Array.isArray(value)) {
+    if (seen.has(value)) return undefined;
+    seen.add(value);
+    const items = value.map((item) => canonicalizeJson(item, seen));
+    seen.delete(value);
+    return items.some((item) => item === undefined) ? undefined : items;
+  }
+  if (typeof value === "object") {
+    const object = value as Record<string, unknown>;
+    if (seen.has(object) || (Object.getPrototypeOf(object) !== Object.prototype && Object.getPrototypeOf(object) !== null)) {
+      return undefined;
+    }
+    seen.add(object);
+    const normalized: Record<string, unknown> = {};
+    for (const key of Object.keys(object).sort()) {
+      const item = canonicalizeJson(object[key], seen);
+      if (item === undefined) {
+        seen.delete(object);
+        return undefined;
+      }
+      normalized[key] = item;
+    }
+    seen.delete(object);
+    return normalized;
+  }
+  return undefined;
+}
+
+function fingerprintJson(value: unknown): string | null {
+  const normalized = canonicalizeJson(value);
+  if (normalized === undefined) return null;
+  return createHash("sha256").update(JSON.stringify(normalized)).digest("hex");
+}
+
+export type NoctisWorkflowCreateTaskInput = {
+  taskRecordId: string;
+  taskId: string;
+  engineId: string;
+  capability: string;
+  dependsOn?: readonly string[];
+  evidenceRequired?: boolean;
+  evidenceRefs?: readonly string[];
+  approvalRequired?: boolean;
+  approvalRef?: string;
+  maxAttempts?: number;
+  priority?: number;
+};
+
+export type NoctisWorkflowCreateInput = {
+  /** Tenant and actor must come from authenticated server context. */
+  tenantId: string;
+  actorId: string;
+  workflowId: string;
+  idempotencyKey: string;
+  planVersion: string;
+  requestSummary?: string;
+  policy?: Record<string, unknown>;
+  at: string;
+  eventId: string;
+  correlationId: string;
+  tasks: readonly NoctisWorkflowCreateTaskInput[];
+};
+
+/**
+ * Creates a workflow and all task rows atomically. Replays with the same
+ * tenant/key and identical canonical request return the existing workflow.
+ * Reusing a key for a different request is rejected. No tasks are dispatched.
+ */
+export async function createNoctisWorkflowIdempotently(
+  db: NoctisWorkflowSqlDatabase,
+  input: NoctisWorkflowCreateInput,
+): Promise<NoctisPersistenceResult<{ workflowId: string; created: boolean }>> {
+  if (!nonEmpty(input.tenantId) || !nonEmpty(input.actorId) ||
+      !nonEmpty(input.workflowId) || !nonEmpty(input.idempotencyKey) ||
+      !nonEmpty(input.planVersion) || !nonEmpty(input.eventId) ||
+      !nonEmpty(input.correlationId) || !validUtc(input.at) ||
+      input.idempotencyKey.length > 200 ||
+      (input.requestSummary !== undefined && input.requestSummary.length > 2000) ||
+      !Array.isArray(input.tasks) || input.tasks.length < 1 || input.tasks.length > 200) {
+    return { ok: false, code: "INVALID_INPUT" };
+  }
+
+  const taskIds = new Set<string>();
+  const taskRecordIds = new Set<string>();
+  for (const task of input.tasks) {
+    if (!nonEmpty(task.taskRecordId) || !nonEmpty(task.taskId) ||
+        !nonEmpty(task.engineId) || !nonEmpty(task.capability) ||
+        taskIds.has(task.taskId) || taskRecordIds.has(task.taskRecordId) ||
+        !Number.isInteger(task.maxAttempts ?? 1) || (task.maxAttempts ?? 1) < 1 ||
+        (task.maxAttempts ?? 1) > 5 ||
+        !Number.isInteger(task.priority ?? 0) ||
+        (task.priority ?? 0) < -100 || (task.priority ?? 0) > 100 ||
+        (task.dependsOn ?? []).some((id) => !nonEmpty(id)) ||
+        (task.evidenceRefs ?? []).some((id) => !nonEmpty(id)) ||
+        (task.approvalRef !== undefined && !nonEmpty(task.approvalRef))) {
+      return { ok: false, code: "INVALID_INPUT" };
+    }
+    taskIds.add(task.taskId);
+    taskRecordIds.add(task.taskRecordId);
+  }
+  for (const task of input.tasks) {
+    const dependencies = task.dependsOn ?? [];
+    if (new Set(dependencies).size !== dependencies.length ||
+        dependencies.some((dependency) => dependency === task.taskId || !taskIds.has(dependency))) {
+      return { ok: false, code: "INVALID_INPUT" };
+    }
+  }
+
+  const policy = input.policy ?? {};
+  const semanticRequest = {
+    planVersion: input.planVersion,
+    requestSummary: input.requestSummary ?? "",
+    policy,
+    tasks: input.tasks.map((task) => ({
+      taskId: task.taskId,
+      engineId: task.engineId,
+      capability: task.capability,
+      dependsOn: [...(task.dependsOn ?? [])],
+      evidenceRequired: task.evidenceRequired ?? false,
+      evidenceRefs: [...(task.evidenceRefs ?? [])],
+      approvalRequired: task.approvalRequired ?? false,
+      approvalRef: task.approvalRef ?? null,
+      maxAttempts: task.maxAttempts ?? 1,
+      priority: task.priority ?? 0,
+    })),
+  };
+  const requestFingerprint = fingerprintJson(semanticRequest);
+  const policyJson = fingerprintJson(policy);
+  if (!requestFingerprint || !policyJson) return { ok: false, code: "INVALID_INPUT" };
+
+  return db.transaction(async (tx) => {
+    const inserted = await tx.query<{ workflow_id: string }>(
+      `INSERT INTO noctis_workflows
+         (workflow_id, tenant_id, created_by, idempotency_key, request_fingerprint,
+          plan_version, state, request_summary, policy, created_at, updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,'planned',$7,$8::jsonb,$9::timestamptz,$9::timestamptz)
+       ON CONFLICT (tenant_id, idempotency_key) DO NOTHING
+       RETURNING workflow_id`,
+      [input.workflowId, input.tenantId, input.actorId, input.idempotencyKey,
+       requestFingerprint, input.planVersion, input.requestSummary ?? "",
+       JSON.stringify(policy), input.at],
+    );
+    if (inserted.rows.length === 0) {
+      const existing = await tx.query<{ workflow_id: string; request_fingerprint: string }>(
+        `SELECT workflow_id, request_fingerprint
+         FROM noctis_workflows
+         WHERE tenant_id = $1 AND idempotency_key = $2
+         FOR UPDATE`,
+        [input.tenantId, input.idempotencyKey],
+      );
+      const row = existing.rows[0];
+      if (!row) return { ok: false, code: "INVALID_INPUT" as const };
+      if (row.request_fingerprint !== requestFingerprint) {
+        return { ok: false, code: "IDEMPOTENCY_CONFLICT" as const };
+      }
+      return { ok: true, value: { workflowId: row.workflow_id, created: false } };
+    }
+
+    for (const task of input.tasks) {
+      await tx.query(
+        `INSERT INTO noctis_workflow_tasks
+           (task_record_id, workflow_id, task_id, engine_id, capability, state,
+            dependencies, evidence_required, evidence_refs, approval_required,
+            approval_ref, max_attempts, priority, available_at, created_at, updated_at)
+         VALUES ($1,$2,$3,$4,$5,'pending',$6::jsonb,$7,$8::jsonb,$9,$10,$11,$12,
+                 $13::timestamptz,$13::timestamptz,$13::timestamptz)`,
+        [task.taskRecordId, input.workflowId, task.taskId, task.engineId, task.capability,
+         JSON.stringify(task.dependsOn ?? []), task.evidenceRequired ?? false,
+         JSON.stringify(task.evidenceRefs ?? []), task.approvalRequired ?? false,
+         task.approvalRef ?? null, task.maxAttempts ?? 1, task.priority ?? 0, input.at],
+      );
+    }
+    await tx.query(
+      `INSERT INTO noctis_workflow_events
+         (event_id, workflow_id, event_type, actor_type, actor_id,
+          correlation_id, idempotency_key, occurred_at, event_data)
+       VALUES ($1,$2,'workflow.created','user',$3,$4,$5,$6::timestamptz,$7::jsonb)`,
+      [input.eventId, input.workflowId, input.actorId, input.correlationId,
+       `workflow.created:${input.idempotencyKey}`, input.at,
+       JSON.stringify({ taskCount: input.tasks.length, planVersion: input.planVersion })],
+    );
+    return { ok: true, value: { workflowId: input.workflowId, created: true } };
+  });
 }
 
 /**
