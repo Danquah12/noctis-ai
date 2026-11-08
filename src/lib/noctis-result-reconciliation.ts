@@ -252,7 +252,7 @@ export function reconcileNoctisSpecialistResults(
       failedEngines: [...new Set(failedEngines)].sort(),
       partialEngines: [...new Set(partialEngines)].sort(),
       limitations,
-      humanReviewRecommended: hasConflict || hasInsufficient || hasPartial,
+      humanReviewRecommended: hasConflict || hasInsufficient || hasPartial || claims.length === 0,
     },
   };
 }
