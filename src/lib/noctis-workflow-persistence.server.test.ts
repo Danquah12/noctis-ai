@@ -112,6 +112,14 @@ describe("Noctis tenant-scoped workflow persistence", () => {
       });
       assert.deepEqual(conflict, { ok: false, code: "IDEMPOTENCY_CONFLICT" });
 
+      const otherActor = await createNoctisWorkflowIdempotently(db, {
+        ...base,
+        actorId: "actor-b",
+        workflowId: "wf-other-actor",
+        eventId: "event-other-actor",
+      });
+      assert.deepEqual(otherActor, { ok: false, code: "IDEMPOTENCY_CONFLICT" });
+
       const otherTenant = await createNoctisWorkflowIdempotently(db, {
         ...base,
         tenantId: "tenant-b", actorId: "actor-b", workflowId: "wf-tenant-b",
