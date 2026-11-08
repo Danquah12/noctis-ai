@@ -141,14 +141,14 @@ const registry = manifests.map((manifest) => {
 });
 
 const registeredPaths = new Set(manifests.map((manifest) => manifest.sourcePath.replaceAll("\\", "/")));
-const unregisteredEngineModules = engineFiles.filter((file) => !registeredPaths.has(file)).sort();
+const unregisteredNoctisModules = engineFiles.filter((file) => !registeredPaths.has(file)).sort();
 const missingSources = registry.filter((entry) => !entry.sourceExists);
 const duplicateIds = registry.filter((entry) => entry.duplicateId);
 const noRuntimeImporters = registry.filter((entry) => entry.runtimeImporterCount === 0);
 const notRouteReachable = registry.filter((entry) => !entry.reachableFromRouteEntrypoint);
 const summary = {
   generatedAt: new Date().toISOString(),
-  scope: "Static source import graph only; no runtime reachability or execution is inferred.",
+  scope: "Static source import graph and route-entrypoint reachability only; function invocation and runtime execution are not inferred.",
   counts: {
     sourceFilesScanned: sourceFiles.length,
     noctisModulesFound: engineFiles.length,
