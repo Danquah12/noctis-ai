@@ -9,7 +9,7 @@
 
 export type NoctisWorkflowState =
   | "planned" | "ready" | "running" | "waiting_approval"
-  | "blocked" | "succeeded" | "failed" | "cancelled";
+  | "blocked" | "cancelling" | "succeeded" | "failed" | "cancelled";
 
 export type NoctisTaskState =
   | "pending" | "ready" | "running" | "waiting_approval"
@@ -269,11 +269,13 @@ export function attachNoctisTaskEvidence(
 /** Derives a workflow's aggregate state from task states without executing work. */
 export function deriveNoctisWorkflowState(
   taskStates: readonly NoctisTaskState[],
+  cancellationRequested = false,
 ): NoctisWorkflowState {
   if (taskStates.length === 0) return "planned";
   if (taskStates.every((state) => state === "succeeded" || state === "skipped")) return "succeeded";
   if (taskStates.some((state) => state === "cancelled") && taskStates.every((state) => TERMINAL_TASK_STATES.includes(state))) return "cancelled";
   if (taskStates.some((state) => state === "failed") && taskStates.every((state) => TERMINAL_TASK_STATES.includes(state))) return "failed";
+  if (cancellationRequested && taskStates.some((state) => state === "running")) return "cancelling";
   if (taskStates.some((state) => state === "blocked")) return "blocked";
   if (taskStates.some((state) => state === "waiting_approval")) return "waiting_approval";
   if (taskStates.some((state) => state === "running")) return "running";
