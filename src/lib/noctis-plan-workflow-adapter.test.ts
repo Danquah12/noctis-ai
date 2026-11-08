@@ -57,7 +57,7 @@ describe("Noctis plan-to-workflow adapter", () => {
   });
 
   it("rejects plans that do not explicitly block execution", () => {
-    const result = createNoctisWorkflowFromPlan(plan({ executionBlocked: false as true }), AT);
+    const result = createNoctisWorkflowFromPlan(plan({ executionBlocked: false as unknown as true }), AT);
     assert.equal(result.ok, false);
     if (!result.ok) assert.equal(result.code, "INVALID_PLAN");
   });
