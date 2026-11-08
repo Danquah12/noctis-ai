@@ -249,7 +249,10 @@ The server-only persistence adapter at `src/lib/noctis-workflow-persistence.serv
 - Retry timestamps, identifiers and event correlation values are explicit inputs.
 
 - Parent workflow state is recomputed transactionally after task claim, finish and expired-lease recovery. Aggregate states reflect persisted task states; terminal completion timestamps are set only for succeeded, failed or cancelled workflows.
-- This projection is not a cancellation protocol, a background reconciler, or proof that external work has stopped. Running-task cancellation still requires a trusted executor stop/termination contract.
+- Workflow cancellation is cooperative. Queued, pending, approval-waiting and ordinarily blocked tasks are cancelled immediately. Running tasks remain leased and running while the worker polls its lease-bound cancellation status and stops its work.
+- A worker must acknowledge `cancelled` only after its executor confirms that work has stopped. A success/failure completion after a cancellation request is rejected; a cancellation acknowledgement without a request is also rejected.
+- If a cancellation-requested worker lease expires without acknowledgement, the task becomes `blocked` with `CANCELLATION_UNCONFIRMED` and is not automatically retried. This avoids duplicate or continuing external work being mistaken for safely terminated work. Manual reconciliation must establish actual stop state before any future restart.
+- Repeated cancellation requests are idempotent with respect to the cancellation audit event. A workflow remains `cancelling` while workers are stopping, becomes `cancelled` after all running workers acknowledge, or remains `blocked` if stop cannot be confirmed.
 - This adapter is not wired to routes, schedulers or workers and does not execute specialist engines.
 
-Before runtime enablement, wire these resolver contracts to the production evidence and approval ledgers, add database row-level security, stale-lease operational scheduling, concurrency/load tests, audit retention and authenticated integration tests.
+Before runtime enablement, wire these resolver contracts to the production evidence and approval ledgers, connect cancellation polling to trusted worker adapters, add stale-lease operational scheduling, concurrency/load tests, audit retention and authenticated integration tests.
