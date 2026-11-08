@@ -11,7 +11,7 @@ const admission: Extract<NoctisSandboxAdmissionResult, { ok: true }> = {
 };
 const input = {
   requestId: "request-x", correlationId: "correlation-x", tenantId: "tenant-x",
-  actorId: "actor-x", workloadId: "workload-x", workloadDigest: admission.workloadDigest,
+  actorId: "actor-x", workloadId: "workload-x", executionIntentId: "workflow-task-attempt-x", workloadDigest: admission.workloadDigest,
   admission, deadlineAt: "2026-11-08T09:00:00.000Z",
   createEventId: (() => { let n = 0; return () => `event-${++n}`; })(),
   now: () => "2026-11-08T08:00:00.000Z",
