@@ -13036,7 +13036,7 @@ export function runTest014R2AcceptanceGate(customPrompt?: string) {
 
 export function runLiveClinicalTest009Suite() {
   const output = buildEmergencyHandoffSections(LIVE_CLINICAL_TEST_009_EXACT_INPUT);
-  const full = handleNaturalHealthQuery(LIVE_CLINICAL_TEST_009_EXACT_INPUT);
+  const full = handleNaturalHealthQuery(LIVE_CLINICAL_TEST_009_EXACT_INPUT) ?? "";
   const jsonText = (output.match(/```json\n([\s\S]*?)\n```/) || [])[1] || "";
   let parsed: Record<string, unknown> | null = null;
   try { parsed = JSON.parse(jsonText); } catch { parsed = null; }
