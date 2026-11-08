@@ -80,11 +80,18 @@ export type NoctisRuntimeLifecycleResult =
     };
 
 export class NoctisRuntimeLifecycleSupervisor {
+  private readonly provider: NoctisIsolatedRuntimeProvider;
+  private readonly monitor: NoctisRuntimeMonitor;
+  private readonly auditSink: NoctisAppendOnlyRuntimeAuditSink;
+
   constructor(
-    private readonly provider: NoctisIsolatedRuntimeProvider,
-    private readonly monitor: NoctisRuntimeMonitor,
-    private readonly auditSink: NoctisAppendOnlyRuntimeAuditSink,
+    provider: NoctisIsolatedRuntimeProvider,
+    monitor: NoctisRuntimeMonitor,
+    auditSink: NoctisAppendOnlyRuntimeAuditSink,
   ) {
+    this.provider = provider;
+    this.monitor = monitor;
+    this.auditSink = auditSink;
     if (!provider || typeof provider.launch !== "function" ||
         typeof provider.terminateAndReap !== "function") {
       throw new Error("A complete isolated runtime provider is required.");
