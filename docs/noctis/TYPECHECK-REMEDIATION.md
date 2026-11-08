@@ -104,6 +104,17 @@ The remaining files include API route, authentication, cyber/defense, architectu
 
 The CI install log reported 14 npm audit findings (2 low, 8 moderate, 3 high, 1 critical). This is a summary only; package names, paths and fix availability must be collected from a full audit report before changing dependencies. Do not run `npm audit fix --force` as an automatic remediation.
 
-## 8. Current release status
+## 8. Latest validation result
 
-The branch is not release-ready. Typecheck has failed, build has not run after those failures, no production migrations have been applied, and no deployment is authorized by this remediation plan.
+CI run 42431521719 on commit fdeb8de0ade30f88c8bf49d4b6bc6adb9974b54e completed successfully:
+- npm ci: passed.
+- npm run inventory:noctis: passed.
+- npm run typecheck: passed with zero TypeScript diagnostics; its configured Noctis limits, vulnerability and registry test suites passed.
+- npm run build:dev: passed and produced the Vercel development bundle.
+- CI now uses npm run build:dev, not the production npm run build script, because the latter invokes db:migrate.
+
+This is a clean typecheck and development-bundle validation, not a production release. The full npm test suite has now been added as a separate CI gate and is pending its first run.
+
+## 9. Current release status
+
+The branch is still not release-ready. The typecheck and configured test suites pass, and the migration-free development bundle builds. The expanded full repository test suite is pending. No production migrations have been applied, no deployment has been performed, and no model weights have been trained. Keep the PR draft and unmerged until full tests, security review and migration review pass.
