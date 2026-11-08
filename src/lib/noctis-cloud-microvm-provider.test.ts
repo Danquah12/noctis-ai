@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  createNoctisLaunchIdempotencyKey,
   NoctisCloudMicrovmProviderAdapter,
   type NoctisCloudMicrovmControlPlane,
 } from "./noctis-cloud-microvm-provider.ts";
@@ -62,6 +63,10 @@ describe("Noctis cloud microVM provider adapter", () => {
     assert.deepEqual(result, { runtimeId: "runtime-approved-01", executionId: "execution-01" });
     assert.equal(calls.length, 1);
     assert.deepEqual(calls[0].value, {
+      idempotencyKey: createNoctisLaunchIdempotencyKey({
+        tenantId: "tenant-01", workloadId: "workload-01",
+        workloadDigest: admission.workloadDigest, limits,
+      }),
       runtimeId: "runtime-approved-01",
       workloadId: "workload-01",
       tenantId: "tenant-01",
@@ -71,6 +76,21 @@ describe("Noctis cloud microVM provider adapter", () => {
       filesystem: "ephemeral-only",
       privileged: false,
     });
+  });
+
+  it("uses a stable tenant/workload/digest/limits key across retries", async () => {
+    const { client, calls } = fakeControlPlane();
+    const adapter = new NoctisCloudMicrovmProviderAdapter({ providerId: "cloud-microvm" }, client);
+    await adapter.launch(input());
+    await adapter.launch(input());
+    const first = (calls[0].value as { idempotencyKey: string }).idempotencyKey;
+    const second = (calls[1].value as { idempotencyKey: string }).idempotencyKey;
+    assert.match(first, /^noctis:[a-f0-9]{64}$/);
+    assert.equal(first, second);
+    assert.equal(createNoctisLaunchIdempotencyKey({
+      tenantId: "tenant-01", workloadId: "workload-01",
+      workloadDigest: admission.workloadDigest, limits,
+    }), first);
   });
 
   it("rejects missing, mismatched or widened admission before provider invocation", async () => {
