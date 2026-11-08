@@ -75,13 +75,18 @@ async function serviceTransaction<T>(
 
 export class PostgresNoctisRuntimeReconciliationRepository
 implements NoctisRuntimeReconciliationRepository {
+  private readonly db: NoctisRuntimeSqlDatabase;
+  private readonly identity: NoctisRuntimeReconciliationServiceIdentity;
+
   constructor(
-    private readonly db: NoctisRuntimeSqlDatabase,
-    private readonly identity: NoctisRuntimeReconciliationServiceIdentity,
+    db: NoctisRuntimeSqlDatabase,
+    identity: NoctisRuntimeReconciliationServiceIdentity,
   ) {
     if (!db || !isNonEmpty(identity?.systemTenantId) || !isNonEmpty(identity?.serviceActorId)) {
       throw new Error("A database and trusted reconciliation service identity are required.");
     }
+    this.db = db;
+    this.identity = identity;
   }
 
   async loadExpectedExecutions(providerId: string): Promise<readonly NoctisExpectedRuntimeExecution[]> {
