@@ -15,9 +15,21 @@ function resultCode(result: ReturnType<typeof validateNoctisEngineRequest>): str
 describe("Noctis engine registry", () => {
   it("registers the initial source-backed specialist cohort", () => {
     const engines = listNoctisEngines();
-    assert.equal(engines.length, 11);
+    assert.equal(engines.length, 13);
     assert.equal(new Set(engines.map((engine) => engine.id)).size, engines.length);
     assert.ok(engines.every((engine) => engine.sourcePath.startsWith("src/lib/noctis-")));
+  });
+
+  it("resolves every declared dependency and keeps source paths unique", () => {
+    const engines = listNoctisEngines();
+    const ids = new Set(engines.map((engine) => engine.id));
+    const sourcePaths = engines.map((engine) => engine.sourcePath);
+    assert.equal(new Set(sourcePaths).size, sourcePaths.length);
+    for (const engine of engines) {
+      for (const dependency of engine.dependencies) {
+        assert.ok(ids.has(dependency), `Unresolved dependency ${dependency} declared by ${engine.id}`);
+      }
+    }
   });
 
   it("supports domain and capability discovery", () => {
