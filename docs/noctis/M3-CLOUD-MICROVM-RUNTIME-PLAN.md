@@ -157,3 +157,15 @@ Added `src/lib/noctis-runtime-reconciliation.ts` as a pure classifier comparing 
 Unknown, duplicate, foreign-provider, malformed, or mismatched resources are quarantined. The classifier never deletes, stops, or adopts a resource. Stale/missing classifications are signals for an authorized operator/reaper workflow, not deletion permission. A production implementation still needs an authenticated provider inventory API, durable expected-execution ledger, atomic launch idempotency, quarantine persistence, alerting, and separately authorized cleanup with fresh tenant/workload binding.
 
 **Validation boundary:** unit tests exercise deterministic key generation and reconciliation classifications only. No cloud provider idempotency or inventory API is connected, and no orphan is automatically deleted.
+
+## 13. Runtime ledger, quarantine, and audit persistence schema
+
+Added `migrations/20261108_noctis_runtime_reconciliation.sql` with three additive stores:
+
+- `noctis_runtime_executions`: provider-scoped idempotency key, execution-intent ID, tenant/workload/digest/runtime binding, optional provider execution ID, canonical resource-limit JSON, lifecycle state, lease expiry, and reconciliation timestamp. Unique constraints prevent duplicate provider/idempotency-key and provider/execution-ID records.
+- `noctis_runtime_quarantine`: provider execution observations, untrusted observed tenant metadata, reason, first/last-seen timestamps, and operator resolution state. New records default to `open`; a quarantine record is not cleanup authorization.
+- `noctis_runtime_audit_events`: structured lifecycle events with generated sequence numbers, tenant/actor/correlation identity, workload digest, provider/runtime/execution IDs, outcome, and JSON details. A database trigger rejects ordinary UPDATE and DELETE statements.
+
+Added `src/lib/noctis-runtime-reconciliation-schema.test.ts` to verify migration idempotency, table creation, identity/idempotency constraints, quarantine defaults, audit sequence generation, and append-only trigger behavior. The audit event TypeScript contract now includes reconciliation and quarantine lifecycle event types.
+
+**Important security boundary:** this migration is storage schema only. It is not yet connected to the runtime supervisor, provider inventory, or production repositories. It does not establish tenant-scoped database roles/RLS, external tamper-evidence, retention/legal-hold, alert delivery, or operator authorization. A database owner/superuser can alter the trigger; production audit integrity requires separate roles, restricted ownership, external integrity anchoring, and independently reviewed access controls. No quarantine record may trigger automatic stop/delete. Cleanup must be a separate approval-bound workflow with fresh authoritative tenant/workload binding and provider-side revalidation.
