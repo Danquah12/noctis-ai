@@ -399,3 +399,16 @@ The legacy src/lib/noctis-wasm-runner.ts is not a genuine WASM sandbox: it evalu
 **Next:** select the cloud vendor, region, and microVM service; implement workload-identity-authenticated control-plane calls; provision signed guest images; establish provider-backed attestation; then validate isolation in a dedicated non-production cloud account.
 
 **Boundary:** This milestone is an adapter contract, not a deployed microVM runtime. Do not send untrusted code to the legacy in-process runner. Production remains blocked until provider integration, provider-enforced isolation, cleanup reconciliation, operational controls, and independent security review pass.
+
+## 16. M3 — Idempotent launches and orphan reconciliation contracts
+
+**Status:** Provider-neutral contracts and unit tests added; no cloud inventory or idempotency API is connected.
+
+- Launch keys are deterministic over tenant, workload ID, digest, and resource limits; the same workload contract produces the same key across retries.
+- The provider control-plane contract requires atomic same-request deduplication and conflict on same-key/different-request reuse.
+- src/lib/noctis-runtime-reconciliation.ts compares expected ledger records with provider inventory and classifies tracked, missing, stale, unknown, mismatched, and duplicate executions.
+- Uncertain provider resources are quarantined; the classifier never performs destructive cleanup.
+
+**Next:** implement a provider-specific idempotent launch API and authenticated inventory listing; persist expected executions and quarantine records; build a reaper that revalidates tenant/workload identity and requires separate authorization before stop/delete; test lost launch responses, duplicate requests, provider outages, stale leases, and cleanup races.
+
+**Boundary:** Deterministic key generation and reconciliation classification are tested contracts only. They do not prove cloud-side idempotency, inventory completeness, durable quarantine, or safe deletion.
