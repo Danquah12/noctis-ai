@@ -3,7 +3,8 @@
 **Branch:** `noctis/training-foundation`  
 **Audit command:** `npm run audit:noctis-integrations`  
 **CI gate:** `.github/workflows/ci.yml`  
-**Status:** Static import-graph validation is automated; per-engine runtime integration certification remains open.
+**Status:** Static import-graph validation passes in CI; per-engine runtime integration certification remains open.
+**Latest validated graph:** CI run `42432825019`, commit `0214f61c60ff2f728f28a54b106902bd08cf4910`.
 
 ## Purpose
 
@@ -15,14 +16,17 @@ It deliberately does **not** equate an import with a function call, a reachable 
 
 The CI audit on the current workstream scans 822 source files and identifies 128 `src/lib/noctis-*` implementation modules, of which 11 are represented by the curated registry. The remaining 117 are not automatically labeled missing engines: the set includes supporting libraries, adapters, data modules, orchestration helpers and specialist modules that still need taxonomy review.
 
-The initial integration-graph pass established:
+The latest validated integration-graph pass established:
+- 822 source files scanned.
+- 128 Noctis-prefixed implementation modules found.
 - 11 registry entries.
 - 0 missing registered source paths.
 - 0 duplicate registry IDs.
 - 0 registered entries without a non-test/non-script runtime importer.
-- 117 Noctis-prefixed source modules outside the curated 11-entry registry.
+- 0 registered engines outside the modeled application-entrypoint graph.
+- 117 Noctis-prefixed source modules outside the curated 11-entry registry. These are unclassified modules, not automatically missing engines.
 
-A route-only graph initially marked four modules as not reachable because the framework's server-function boundary was not represented as a normal route import. The audit roots were expanded to include the Noctis Desk UI and its server-side `vibeReply` entrypoint. The updated CI run is the authoritative result for application-entrypoint reachability.
+The application-entrypoint graph includes route files, the primary `NoctisDesk.tsx` UI root and the `noctis-desk.server.ts` server-function entrypoint. The server entrypoint is explicit because the framework boundary cannot be inferred reliably from client imports alone.
 
 ## How the audit works
 
@@ -62,7 +66,7 @@ Promotion requires a separate engine-level audit confirming:
 ## Next engineering work
 
 1. Complete per-engine call-site and workflow audits for the 11 registry entries.
-2. Resolve the four route-only reachability candidates using verified server/UI entrypoint paths, not forced lifecycle promotion.
+2. Complete per-engine function-call and route workflow audits; static reachability is not proof that the intended function is invoked.
 3. Classify the 117 non-registry Noctis modules as engine, service, helper, adapter, data or deprecated artifact.
 4. Add typed engine adapters and a trusted execution controller only after actor/tenant/scope, evidence and approval services are authoritative.
 5. Add integration tests proving the route-to-engine call path and its safety boundaries.
