@@ -71,6 +71,50 @@ async function setup() {
 
 describe("Noctis tenant-scoped workflow persistence", () => {
 
+  it("continues scanning when a higher-priority task fails authoritative gates", async () => {
+    const { pg, db } = await setup();
+    try {
+      await pg.query(
+        `UPDATE noctis_workflow_tasks
+         SET evidence_required=true, evidence_refs='["bad-evidence"]'::jsonb, priority=10
+         WHERE task_record_id='task-a'`,
+      );
+      await pg.query(
+        `INSERT INTO noctis_workflow_tasks
+          (task_record_id,workflow_id,task_id,engine_id,capability,state,
+           dependencies,evidence_required,evidence_refs,approval_required,
+           max_attempts,attempt_count,priority,created_at,updated_at,available_at)
+         VALUES ('task-c','wf-a','c','engine.c','run','ready',
+                 '[]'::jsonb,false,'[]'::jsonb,false,1,0,1,$1,$1,$1)`,
+        [at],
+      );
+      const invalidEvidence = {
+        ...testGates,
+        resolveEvidence: async (_tx: NoctisWorkflowSqlExecutor, context: { tenantId: string; evidenceRefs: readonly string[] }) =>
+          context.evidenceRefs.map((evidenceId) => ({
+            status: "approved" as const, tenantId: "other-tenant", evidenceId,
+            sourceId: "source-1", chunkId: "chunk-1",
+            sourceStatus: "approved" as const, accessAllowed: true,
+            validUntil: null, revokedAt: null,
+          })),
+      };
+      const claim = await claimNoctisWorkflowTask(db, {
+        tenantId: "tenant-a", workerId: "worker-a", at,
+        leaseExpiresAt: "2026-11-07T16:05:00Z", leaseToken: "lease-c",
+        attemptId: "attempt-c", eventId: "claim-event-c", correlationId: "corr-c",
+      }, invalidEvidence);
+      assert.equal(claim.ok, true);
+      if (claim.ok) assert.equal(claim.value?.taskRecordId, "task-c");
+      const rejected = await pg.query<{ state: string }>(
+        "SELECT state FROM noctis_workflow_tasks WHERE task_record_id='task-a'",
+      );
+      assert.equal(rejected.rows[0].state, "ready");
+    } finally {
+      await pg.close();
+    }
+  });
+
+
   it("fails closed on unapproved evidence and task-mismatched approvals", async () => {
     const { pg, db } = await setup();
     try {
