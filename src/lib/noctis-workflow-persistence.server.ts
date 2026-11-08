@@ -48,6 +48,8 @@ export type NoctisApprovalResolution = {
   status: "approved" | "rejected" | "missing" | "expired" | "revoked" | "unavailable";
   tenantId: string;
   approvalId: string;
+  workflowId: string;
+  taskId: string;
   engineId: string;
   capability: string;
   approvedBy: string;
@@ -469,6 +471,7 @@ export async function claimNoctisWorkflowTask(
           approval.status !== "approved" || approval.tenantId !== input.tenantId ||
           approval.approvalType !== "task_execution" || approval.approverAuthorized !== true ||
           approval.approvalId !== row.approval_ref ||
+          approval.workflowId !== row.workflow_id || approval.taskId !== row.task_id ||
           approval.engineId !== row.engine_id || approval.capability !== row.capability ||
           !nonEmpty(approval.approvedBy) || !validUtc(approval.approvedAt) ||
           Date.parse(approval.approvedAt) > Date.parse(input.at) ||
