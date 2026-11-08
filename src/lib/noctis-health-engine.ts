@@ -5423,7 +5423,7 @@ export function extractClinicalParametersFromText(question: string): ExtractedCl
 
 export interface ClinicalRegressionTestResult {
   testId: string;
-  suite: "RESPIRATORY_ENGINE_RESP_001_010" | "TROPICAL_FEBRILE_NH_TROP_001_007";
+  suite: "RESPIRATORY_ENGINE_RESP_001_010" | "TROPICAL_FEBRILE_NH_TROP_001_007" | "CLINICAL_FAILURE_TRAPS_031_036";
   title: string;
   requirementTested: string;
   measuredOutputSummary: string;
