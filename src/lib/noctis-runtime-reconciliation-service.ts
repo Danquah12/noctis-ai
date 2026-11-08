@@ -32,6 +32,7 @@ export interface NoctisRuntimeReconciliationRepository {
     snapshotId: string;
     observedCount: number;
     pageCount: number;
+    completedAt: string;
     decisions: readonly NoctisRuntimeReconciliationDecision[];
   }): Promise<{ committed: true; replayed: boolean }>;
 }
@@ -109,6 +110,7 @@ export async function runNoctisRuntimeReconciliation(
       snapshotId: inventory.snapshotId,
       observedCount: inventory.executions.length,
       pageCount: inventory.pageCount,
+      completedAt: options.now,
       decisions,
     });
     if (!committed || committed.committed !== true || typeof committed.replayed !== "boolean") {
