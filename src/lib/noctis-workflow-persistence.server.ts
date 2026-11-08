@@ -392,8 +392,9 @@ async function refreshNoctisWorkflowState(
  *
  * Row selection uses FOR UPDATE SKIP LOCKED; task state, lease, attempt record,
  * and audit event are committed in one transaction. Dependencies are resolved
- * within the same workflow and tenant. A missing evidence/approval reference
- * blocks claim but does not imply that the referenced item is authentic.
+ * within the same workflow and tenant. Required evidence and approval are
+ * resolved by injected authoritative services before a task lease is created.
+ * This adapter enforces resolver responses but does not provide those ledgers.
  */
 export async function claimNoctisWorkflowTask(
   db: NoctisWorkflowSqlDatabase,
