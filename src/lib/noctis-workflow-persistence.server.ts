@@ -198,6 +198,14 @@ export async function createNoctisWorkflowIdempotently(
       return { ok: false, code: "INVALID_INPUT" };
     }
   }
+  const resolved = new Set<string>();
+  while (resolved.size < taskIds.size) {
+    const next = input.tasks
+      .filter((task) => !resolved.has(task.taskId))
+      .filter((task) => (task.dependsOn ?? []).every((dependency) => resolved.has(dependency)));
+    if (next.length === 0) return { ok: false, code: "INVALID_INPUT" };
+    for (const task of next) resolved.add(task.taskId);
+  }
 
   const policy = input.policy ?? {};
   const semanticRequest = {
