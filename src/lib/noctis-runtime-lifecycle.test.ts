@@ -95,6 +95,47 @@ describe("Noctis runtime lifecycle supervisor", () => {
     assert.equal(h.events.at(-1)?.eventType, "cleanup_incomplete");
   });
 
+  it("cleans up a provider execution that returns an unapproved runtime identity", async () => {
+    const calls: string[] = [];
+    const provider: NoctisIsolatedRuntimeProvider = {
+      async launch() {
+        calls.push("launch");
+        return { runtimeId: "runtime-unapproved", executionId: "execution-untrusted" };
+      },
+      async terminateAndReap(id) {
+        calls.push(`cleanup:${id}`);
+        return { processStopped: true, resourcesReaped: true };
+      },
+    };
+    const h = harness();
+    const supervisor = new NoctisRuntimeLifecycleSupervisor(
+      provider,
+      { async waitForCompletion() { calls.push("monitor"); return { status: "completed" }; } },
+      { async append(event) { return { persisted: true, sequence: event.eventId }; } },
+    );
+    const result = await supervisor.execute(input);
+    assert.equal(result.state, "launch_failed");
+    assert.deepEqual(calls, ["launch", "cleanup:execution-untrusted"]);
+    assert.equal(h.events.length, 0);
+  });
+
+  it("reports incomplete cleanup for a mismatched runtime identity", async () => {
+    const provider: NoctisIsolatedRuntimeProvider = {
+      async launch() { return { runtimeId: "runtime-unapproved", executionId: "execution-untrusted" }; },
+      async terminateAndReap() { return { processStopped: false, resourcesReaped: false }; },
+    };
+    const supervisor = new NoctisRuntimeLifecycleSupervisor(
+      provider,
+      { async waitForCompletion() { return { status: "completed" }; } },
+      { async append(event) { return { persisted: true, sequence: event.eventId }; } },
+    );
+    const result = await supervisor.execute(input);
+    assert.equal(result.state, "launch_cleanup_incomplete");
+    if (result.state === "launch_cleanup_incomplete") {
+      assert.deepEqual(result.cleanup, { processStopped: false, resourcesReaped: false });
+    }
+  });
+
   it("still cleans up if post-launch audit persistence fails", async () => {
     const h = harness({ auditFailsAt: 3 });
     const result = await h.supervisor.execute(input);
