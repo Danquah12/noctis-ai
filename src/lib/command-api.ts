@@ -364,9 +364,12 @@ export const rememberSignedInAccount = createServerFn({ method: "POST" })
     }).catch(() => undefined);
     try {
       const { setCookie } = await import("@tanstack/react-start/server");
-      const { MEMBER_COOKIE, signMemberCookie } = await import("@/lib/auth/member-cookie.server");
-      const val = signMemberCookie({ id: who.id, email: who.email, name });
-      setCookie(MEMBER_COOKIE, val, {
+      const { buildMemberSetCookie } = await import("@/lib/auth/member-cookie.server");
+      const cookiePair = buildMemberSetCookie({ id: who.id, email: who.email, name }).split(";", 1)[0];
+      const separator = cookiePair.indexOf("=");
+      const cookieName = cookiePair.slice(0, separator);
+      const val = cookiePair.slice(separator + 1);
+      setCookie(cookieName, val, {
         path: "/",
         httpOnly: true,
         secure: true,
