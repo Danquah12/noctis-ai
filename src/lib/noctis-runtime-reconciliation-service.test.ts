@@ -105,8 +105,9 @@ describe("Noctis runtime reconciliation orchestration", () => {
       snapshotId: "snapshot-2", executions: [orphan], nextCursor: null, complete: true,
     }]), repository, { now });
     assert.equal(result.ok, true);
-    if (result.ok) assert.deepEqual(result.decisions, [{
-      kind: "quarantine_unknown", executionId: "orphan-1", reason: "NO_EXPECTED_RECORD",
-    }]);
+    if (result.ok) assert.deepEqual(result.decisions, [
+      { kind: "quarantine_unknown", executionId: "orphan-1", reason: "NO_EXPECTED_RECORD" },
+      { kind: "missing_expected", idempotencyKey: key, tenantId: "tenant-a", workloadId: "workload-a" },
+    ]);
   });
 });
