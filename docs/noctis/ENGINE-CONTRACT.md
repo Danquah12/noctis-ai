@@ -230,6 +230,9 @@ The reconciler is a pure analysis function. It does not invoke specialist engine
 The server-only persistence adapter at `src/lib/noctis-workflow-persistence.server.ts` provides tenant-scoped task claim, finish and expired-lease recovery operations through an injected transactional SQL interface.
 
 - Tenant and worker identifiers are trusted server-context values and must be derived from authenticated identity.
+- `createNoctisWorkflowIdempotently` atomically inserts the workflow, its task rows and a creation audit event. It scopes idempotency by tenant and key, fingerprints the canonical request including trusted actor identity, returns the existing workflow for an identical replay, and rejects a reused key with a changed request or actor.
+- Request fingerprints use SHA-256 over normalized JSON fields; generated workflow/event/task-record IDs and timestamps are excluded from semantic equivalence where appropriate. The actor and tenant remain part of the fingerprint to prevent cross-actor replay disclosure.
+- Task identifiers must be unique, dependencies must resolve within the submitted task set, and cyclic dependency graphs are rejected before database writes. Workflow creation is persistence only; it does not ready, claim or execute tasks.
 - Claims use row-level locking with `SKIP LOCKED`; dependency checks are restricted to tasks in the same workflow.
 - Evidence and approval fields are gating references only. They are not proof that evidence is authentic or that an approval is valid.
 - Claim, attempt creation and audit-event insertion are one transaction.
@@ -241,4 +244,4 @@ The server-only persistence adapter at `src/lib/noctis-workflow-persistence.serv
 - This projection is not a cancellation protocol, a background reconciler, or proof that external work has stopped. Running-task cancellation still requires a trusted executor stop/termination contract.
 - This adapter is not wired to routes, schedulers or workers and does not execute specialist engines.
 
-Before runtime enablement, add authoritative approval/evidence resolution, idempotent workflow creation, database row-level security, stale-lease operational scheduling, concurrency/load tests, audit retention and authenticated integration tests.
+Before runtime enablement, add authoritative approval/evidence resolution, database row-level security, stale-lease operational scheduling, concurrency/load tests, audit retention and authenticated integration tests.
