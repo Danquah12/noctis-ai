@@ -4,7 +4,7 @@ import {
   runNoctisRuntimeReconciliation,
   type NoctisRuntimeReconciliationRepository,
 } from "./noctis-runtime-reconciliation-service.ts";
-import type { NoctisRuntimeInventoryProvider } from "./noctis-runtime-inventory-provider.ts";
+import type { NoctisRuntimeInventoryPage, NoctisRuntimeInventoryProvider } from "./noctis-runtime-inventory-provider.ts";
 
 const now = "2026-11-08T12:00:00.000Z";
 const key = "noctis:" + "a".repeat(64);
@@ -20,7 +20,7 @@ const observed = [{
   executionId: "exec-a", state: "running" as const, createdAt: "2026-11-08T11:00:00.000Z",
 }];
 
-function makeProvider(pages = [{
+function makeProvider(pages: NoctisRuntimeInventoryPage[] = [{
   snapshotId: "snapshot-1", executions: observed, nextCursor: null, complete: true,
 }]): NoctisRuntimeInventoryProvider {
   let index = 0;
