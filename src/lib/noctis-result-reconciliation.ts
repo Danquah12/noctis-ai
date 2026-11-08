@@ -140,13 +140,24 @@ export function reconcileNoctisSpecialistResults(
       return error("DUPLICATE_RESULT", `Duplicate specialist result ID: ${result.resultId}.`);
     }
     resultIds.add(result.resultId);
-    if (result.status === "failed") failedEngines.push(result.engineId);
+    if (result.status === "failed") {
+      failedEngines.push(result.engineId);
+      if (result.claims.length > 0) {
+        return error("INVALID_INPUT", "Failed specialist results cannot contribute claims.");
+      }
+    }
     if (result.status === "partial") partialEngines.push(result.engineId);
 
     for (const evidence of result.evidence) {
-      // Preserve duplicate chunk IDs for the integrity validator to flag.
-      if (!allEvidence.has(evidence.chunkId)) allEvidence.set(evidence.chunkId, evidence);
-      else allEvidence.set(`${evidence.chunkId}#duplicate#${allEvidence.size}`, evidence);
+      const existing = allEvidence.get(evidence.chunkId);
+      if (!existing) {
+        allEvidence.set(evidence.chunkId, evidence);
+      } else if (JSON.stringify(existing) !== JSON.stringify(evidence)) {
+        // Identical citations shared by multiple specialists are deduplicated;
+        // conflicting records for one chunk ID are preserved as duplicates so
+        // the integrity validator marks the identifier invalid.
+        allEvidence.set(`${evidence.chunkId}#conflict#${allEvidence.size}`, evidence);
+      }
     }
 
     for (const claim of result.claims) {
