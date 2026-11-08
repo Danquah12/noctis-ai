@@ -3442,7 +3442,6 @@ export function runNhArch001VerificationSuite(): {
   const emergencyGate = evaluateHealthSafetyGateway({
     question: "I have crushing chest pain radiating to my left arm and shortness of breath.",
     userRole: "patient_member",
-    operatingEnvironment: "Noctis Personal Health",
   });
 
   // Check 4: Provenance — Workflow state machine blocks client or unverified transition to `completed`
