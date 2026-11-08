@@ -358,7 +358,7 @@ async function readImagine(_input: { data: { requestId: string } }): Promise<{ s
 async function loadImg(src: string): Promise<HTMLImageElement | null> {
   if (typeof window === "undefined") return null;
   return new Promise((resolve) => {
-    const image = new Image();
+    const image = document.createElement("img");
     image.onload = () => resolve(image);
     image.onerror = () => resolve(null);
     image.src = src;
@@ -7310,7 +7310,7 @@ export function NoctisDesk() {
             </div>
             <div className="flex flex-1 flex-col items-center justify-center px-4 py-6 overflow-y-auto">
               <NoctisVoiceVisualizer
-                phase={voicePhase}
+                phase={voicePhase === "think" ? "transcribe" : voicePhase}
                 spokenText={voiceSaid}
                 responseText={voiceReply}
                 audioLevel={voiceAudioLevel}
