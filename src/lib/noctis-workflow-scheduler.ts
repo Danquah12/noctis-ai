@@ -88,11 +88,6 @@ export function scheduleNoctisReadyTasks(
   );
 
   for (const task of ordered) {
-    if (task.state !== "ready") {
-      if (task.state === "pending") deferred.push({ taskId: task.taskId, reason: "TASK_NOT_READY" });
-      continue;
-    }
-
     const dependencyStates = task.dependsOn.map((id) => byId.get(id)!.state);
     if (dependencyStates.some((state) => state === "failed" || state === "cancelled" || state === "skipped" || state === "blocked")) {
       deferred.push({ taskId: task.taskId, reason: "DEPENDENCY_FAILED" });
@@ -100,6 +95,10 @@ export function scheduleNoctisReadyTasks(
     }
     if (dependencyStates.some((state) => state !== "succeeded")) {
       deferred.push({ taskId: task.taskId, reason: "DEPENDENCIES_INCOMPLETE" });
+      continue;
+    }
+    if (task.state !== "ready") {
+      if (task.state === "pending") deferred.push({ taskId: task.taskId, reason: "TASK_NOT_READY" });
       continue;
     }
     if (task.evidenceRequired && task.evidenceRefs.length === 0) {
@@ -116,10 +115,6 @@ export function scheduleNoctisReadyTasks(
 
   const dispatchCandidates: string[] = [];
   for (const task of eligible) {
-    if (dispatchCandidates.length >= dispatchLimit) {
-      deferred.push({ taskId: task.taskId, reason: "WORKFLOW_CAPACITY" });
-      continue;
-    }
     const engineLimit = policy.maxPerEngineOverrides?.[task.engineId] ?? maxPerEngine;
     if (!Number.isInteger(engineLimit) || engineLimit < 1 || engineLimit > 100) {
       throw new Error(`Invalid per-engine concurrency limit for ${task.engineId}.`);
@@ -128,6 +123,10 @@ export function scheduleNoctisReadyTasks(
       dispatchCandidates.filter((id) => byId.get(id)!.engineId === task.engineId).length;
     if (activeForEngine >= engineLimit) {
       deferred.push({ taskId: task.taskId, reason: "ENGINE_CAPACITY" });
+      continue;
+    }
+    if (dispatchCandidates.length >= dispatchLimit) {
+      deferred.push({ taskId: task.taskId, reason: "WORKFLOW_CAPACITY" });
       continue;
     }
     dispatchCandidates.push(task.taskId);
