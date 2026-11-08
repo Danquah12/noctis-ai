@@ -11,6 +11,10 @@ const idempotencyMigration = readFileSync(
   new URL("../../migrations/20261107_noctis_workflow_idempotency.sql", import.meta.url),
   "utf8",
 );
+const rlsMigration = readFileSync(
+  new URL("../../migrations/20261107_noctis_workflow_rls.sql", import.meta.url),
+  "utf8",
+);
 
 describe("Noctis workflow persistence schema", () => {
   it("applies idempotently and enforces core workflow, task, attempt, and event constraints", async () => {
@@ -19,8 +23,10 @@ describe("Noctis workflow persistence schema", () => {
       await db.waitReady;
       await db.exec(migration);
       await db.exec(idempotencyMigration);
+      await db.exec(rlsMigration);
       await db.exec(migration);
       await db.exec(idempotencyMigration);
+      await db.exec(rlsMigration);
 
       const tables = await db.query<{ table_name: string }>(
         "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name LIKE 'noctis_workflow%' ORDER BY table_name",
