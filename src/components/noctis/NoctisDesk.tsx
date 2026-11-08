@@ -5218,7 +5218,7 @@ export function NoctisDesk() {
       ),
       action: () => {
         setAddOpen(false);
-        setSkill("news");
+        setSkill("search");
         setActivePlugin("web_search");
         box.current?.focus();
       },
@@ -5484,7 +5484,6 @@ export function NoctisDesk() {
       ),
       action: () => {
         setAddOpen(false);
-        setActivePlugin("report_validator");
         if (!draft.trim()) setDraft("Execute the Noctis Report Integrity Validator (NOCTIS-VALIDATOR-001) on the canonical findings");
         box.current?.focus();
       },
@@ -7142,7 +7141,7 @@ export function NoctisDesk() {
               })
             ) : (
               <p className="px-3 py-2 text-sm text-zinc-500">
-                {shelf === "pictures" ? "No picture chats yet." : query.trim() ? "No matches." : "No chats yet."}
+                {query.trim() ? "No matches." : "No chats yet."}
               </p>
             )}
             </div>
