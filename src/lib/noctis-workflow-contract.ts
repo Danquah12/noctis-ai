@@ -227,6 +227,7 @@ export function transitionNoctisTask(
       next.state = "ready";
       next.failureCode = undefined;
       next.failureReason = undefined;
+      next.approvalRef = undefined;
       break;
     case "block":
       if (task.state !== "pending" && task.state !== "ready") {
