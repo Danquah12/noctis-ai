@@ -303,3 +303,9 @@ Termination and resource reaping are independent outcomes. A caller must not tre
 The cloud provider, region, microVM service, workload identity, signed image, attestation key registry, guest agent, provider-side quotas, and orphan reaper remain deployment requirements. See `docs/noctis/M3-CLOUD-MICROVM-RUNTIME-PLAN.md`.
 
 **Security status:** Adapter contract only. No real sandbox is connected. Production execution remains prohibited until provider-backed controls and independent security gates are validated.
+
+## 16. Cloud launch idempotency and runtime reconciliation
+
+The cloud adapter derives a deterministic idempotency key from tenant ID, workload ID, workload digest, and resource limits, and forwards it with each launch request. This prevents a retry from changing identity for the same exact workload contract. The real provider client must atomically return the original execution for a replayed identical request and reject same-key/different-request reuse; the interface alone does not enforce provider semantics.
+
+The new runtime reconciliation contract compares an authoritative expected-execution ledger with provider inventory. It classifies exact matches, missing or stale expectations, unknown provider resources, identity mismatches, and duplicate idempotency keys. Unknown, duplicate, malformed, or mismatched resources are quarantined. Reconciliation is classification-only: it never adopts, stops, or deletes resources. Production still requires a real provider inventory API, durable ledger, quarantine persistence, alerting, and separately authorized cleanup.
