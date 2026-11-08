@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
@@ -133,14 +134,15 @@ describe("Noctis transactional reconciliation repository", () => {
   it("rolls back the entire snapshot when an audit event ID collision occurs", async () => {
     const { pg, repository } = await setup();
     try {
+      const collisionEventId = "runtime-reconciliation:" + createHash("sha256")
+        .update("provider-a\\0snapshot-rollback").digest("hex");
       await pg.query(
         `INSERT INTO noctis_runtime_audit_events
          (event_id,event_type,occurred_at,request_id,correlation_id,tenant_id,actor_id,
           workload_id,workload_digest,provider_id,outcome,details)
-         VALUES ('runtime-reconciliation:' || encode(digest('provider-a' || chr(0) || 'snapshot-rollback','sha256'),'hex'),
-          'inventory_reconciled',$1::timestamptz,'r','c','system-runtime','service',
-          'runtime-reconciliation',$2,'provider-a','succeeded','{}'::jsonb)`,
-        [at,digest],
+         VALUES ($1,'inventory_reconciled',$2::timestamptz,'r','c','system-runtime','service',
+          'runtime-reconciliation',$3,'provider-a','succeeded','{}'::jsonb)`,
+        [collisionEventId,at,digest],
       );
       await assert.rejects(() => repository.commitSnapshot({
         providerId: "provider-a", snapshotId: "snapshot-rollback", observedCount: 1,
