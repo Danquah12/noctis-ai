@@ -313,3 +313,16 @@ The following source-backed foundations have been added on `noctis/training-foun
 - Add source authority, jurisdiction, license and freshness metadata checks.
 - Add end-to-end tests with multiple specialist adapters and realistic conflicting results.
 - Complete security review, audit retention and operational monitoring before enabling execution.
+
+## 13. Tenant-scoped workflow persistence foundation
+
+Added `src/lib/noctis-workflow-persistence.server.ts` with injected PostgreSQL executor contracts and transactional operations:
+- Claims at most one ready task within a tenant, using row locking with `FOR UPDATE SKIP LOCKED`.
+- Requires succeeded dependencies in the same workflow, evidence references when flagged, and a non-empty approval reference when flagged.
+- Atomically writes the task lease, attempt record and claim event.
+- Completes or fails only when tenant, worker identity, lease token and lease expiry match; task, attempt and event updates share one transaction.
+- Keeps tenant and worker identity as trusted server-context inputs; callers must derive them from authenticated identity, never request payloads.
+- Does not verify evidence authenticity or approval validity; authoritative services must do that before dispatch.
+- Does not execute specialist engines and is not connected to an application route or worker.
+
+Tests added in `src/lib/noctis-workflow-persistence.server.test.ts` for tenant isolation, evidence gating, lease-token enforcement and attempt closure. Stale-lease recovery, approval resolution, database row-level security, idempotent workflow creation and runtime wiring remain outstanding. The adapter's presence and tests do not establish operational readiness.
