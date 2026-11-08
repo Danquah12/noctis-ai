@@ -530,7 +530,7 @@ export const Route = createFileRoute("/api/noctis")({
           if (!sameOrigin && !isSovereignKey && supplied !== requiredKey) {
             return Response.json(
               { error: "Unauthorized. Send a valid Bearer token or x-noctis-key header." },
-              { status: 401, headers: { "cache-control": "no-store", ...CORS_HEADERS } }
+              { status: 401, headers: CORS_HEADERS }
             );
           }
         }
@@ -732,8 +732,6 @@ export const Route = createFileRoute("/api/noctis")({
               body.research_revision.newScopeOrConstraint ||
               "Scale population and recalculate all dependent figures",
             updatedPopulation: body.research_revision.updatedPopulation,
-            updatedInverterMw: body.research_revision.updatedInverterMw,
-            updatedBatteryMwh: body.research_revision.updatedBatteryMwh,
           });
           return Response.json(revised || { error: "RESEARCH_JOB_NOT_FOUND" }, {
             status: revised ? 200 : 404,
