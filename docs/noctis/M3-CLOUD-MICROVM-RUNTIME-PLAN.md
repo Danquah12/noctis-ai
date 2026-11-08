@@ -119,3 +119,10 @@ The deployment direction is cloud microVM, but the cloud vendor and concrete run
 **Not delivered:** cloud SDK client, provisioned microVMs, signed runtime attestation source, guest image, guest agent, provider-enforced quotas, network controls, orphan reaper, or production deployment.
 
 This distinction is mandatory in product, engineering, and security status reporting.
+
+
+## 10. Runtime audit event contract (implemented; sink not connected)
+
+Added `src/lib/noctis-runtime-audit.ts` and focused tests. The contract standardizes lifecycle event identity, UTC timestamp, tenant/actor/request/correlation IDs, workload digest, provider/runtime/execution identity, outcome, and scalar structured details. The append helper validates the event, freezes the submitted envelope, and requires the sink to confirm durable persistence with a sequence identifier.
+
+The sink is an injected append-only interface. No production database, tamper-evident ledger, retention policy, access-control policy, key/signature mechanism, or operational dashboard is connected. A frozen JavaScript object is not immutable storage, and a successful mocked sink test is not proof of durable audit integrity. Production acceptance still requires a real append-only store, collision/idempotency handling, tenant-scoped read access, tamper-evidence, retention/legal-hold controls, and failure-injection tests.
