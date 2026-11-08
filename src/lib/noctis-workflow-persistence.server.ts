@@ -547,8 +547,8 @@ export type NoctisWorkflowCancellationInput = {
   reason: string; eventId: string; correlationId: string;
 };
 export type NoctisWorkflowCancellationResult = {
-  workflowId: string; state: "cancelling" | "cancelled";
-  cancelledTasks: number; runningTasksAwaitingStop: number;
+  workflowId: string; state: "cancelling" | "cancelled" | "blocked";
+  cancelledTasks: number; runningTasksAwaitingStop: number; unconfirmedTasks: number;
 };
 
 /** Cancel non-running work immediately; running work remains leased until stop acknowledgement. */
@@ -571,6 +571,7 @@ export async function requestNoctisWorkflowCancellation(
        SET state = 'cancelled', failure_code = 'WORKFLOW_CANCELLED',
            failure_reason = LEFT($1, 1000), updated_at = $2::timestamptz
        WHERE workflow_id = $3 AND state IN ('pending','ready','waiting_approval','blocked')
+         AND cancellation_requested_at IS NULL
        RETURNING task_record_id`,
       [input.reason, input.at, input.workflowId],
     );
@@ -581,9 +582,16 @@ export async function requestNoctisWorkflowCancellation(
        WHERE workflow_id = $3 AND state = 'running'`,
       [input.at, input.reason, input.workflowId],
     );
-    const running = await tx.query<{ count: string }>("SELECT COUNT(*)::text AS count FROM noctis_workflow_tasks WHERE workflow_id = $1 AND state = 'running'", [input.workflowId]);
-    const runningTasksAwaitingStop = Number(running.rows[0]?.count ?? 0);
-    const state = runningTasksAwaitingStop > 0 ? "cancelling" : "cancelled";
+    const unresolved = await tx.query<{ running_count: string; unresolved_count: string }>(
+      `SELECT COUNT(*) FILTER (WHERE state = 'running')::text AS running_count,
+              COUNT(*) FILTER (WHERE state NOT IN ('cancelled','succeeded','failed','skipped'))::text AS unresolved_count
+       FROM noctis_workflow_tasks
+       WHERE workflow_id = $1 AND cancellation_requested_at IS NOT NULL`,
+      [input.workflowId],
+    );
+    const runningTasksAwaitingStop = Number(unresolved.rows[0]?.running_count ?? 0);
+    const unconfirmedTasks = Math.max(0, Number(unresolved.rows[0]?.unresolved_count ?? 0) - runningTasksAwaitingStop);
+    const state = runningTasksAwaitingStop > 0 ? "cancelling" : (unconfirmedTasks > 0 ? "blocked" : "cancelled");
     await tx.query(
       `UPDATE noctis_workflows
        SET state = $1, cancellation_requested_at = COALESCE(cancellation_requested_at, $2::timestamptz),
@@ -593,14 +601,16 @@ export async function requestNoctisWorkflowCancellation(
        WHERE workflow_id = $5 AND tenant_id = $6`,
       [state, input.at, input.actorId, input.reason, input.workflowId, input.tenantId],
     );
-    await tx.query(
-      `INSERT INTO noctis_workflow_events
-       (event_id, workflow_id, event_type, actor_type, actor_id, correlation_id, idempotency_key, occurred_at, event_data)
-       VALUES ($1,$2,'workflow.cancellation_requested','user',$3,$4,$5,$6::timestamptz,$7::jsonb)`,
-      [input.eventId, input.workflowId, input.actorId, input.correlationId, "workflow.cancel:" + input.workflowId, input.at,
-       JSON.stringify({ reason: input.reason, cancelledTasks: changed.rows.length, runningTasksAwaitingStop })],
-    );
-    return { ok: true, value: { workflowId: input.workflowId, state, cancelledTasks: changed.rows.length, runningTasksAwaitingStop } };
+    if (workflow.state !== "cancelling" && workflow.state !== "cancelled" && workflow.state !== "blocked") {
+      await tx.query(
+        `INSERT INTO noctis_workflow_events
+         (event_id, workflow_id, event_type, actor_type, actor_id, correlation_id, idempotency_key, occurred_at, event_data)
+         VALUES ($1,$2,'workflow.cancellation_requested','user',$3,$4,$5,$6::timestamptz,$7::jsonb)`,
+        [input.eventId, input.workflowId, input.actorId, input.correlationId, "workflow.cancel:" + input.workflowId, input.at,
+         JSON.stringify({ reason: input.reason, cancelledTasks: changed.rows.length, runningTasksAwaitingStop, unconfirmedTasks })],
+      );
+    }
+    return { ok: true, value: { workflowId: input.workflowId, state, cancelledTasks: changed.rows.length, runningTasksAwaitingStop, unconfirmedTasks } };
   });
 }
 
