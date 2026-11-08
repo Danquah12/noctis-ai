@@ -134,7 +134,7 @@ export const trainVibe = createServerFn({ method: "POST" })
     question: typeof input?.question === "string" ? input.question.trim().slice(0, 800) : "",
     answer: typeof input?.answer === "string" ? input.answer.trim().slice(0, 6000) : "",
     rule: typeof input?.rule === "string" ? input.rule.trim().slice(0, 320) : "",
-    kind: input?.kind === "pair" || input?.kind === "rule" ? input.kind : "pair",
+    kind: (input?.kind === "pair" || input?.kind === "rule" ? input.kind : "pair") as "pair" | "rule",
     id: typeof input?.id === "string" ? input.id.trim().slice(0, 160) : "",
     reason: typeof input?.reason === "string" ? input.reason.trim().slice(0, 500) : "",
   }))
