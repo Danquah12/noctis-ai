@@ -1324,7 +1324,7 @@ export function runConstructionBoqEstimate(params: {
     missingInfo.push("Geotechnical soil report / allowable soil bearing capacity (kPa) is missing.");
   }
 
-  const measuredItems = [
+  const measuredItems: Array<{ itemCode: string; description: string; sourceLocation: string; formula: string; quantity: number; unit: string; materialCostUsd: number; laborCostUsd: number; totalDirectCostUsd: number; status: "VERIFIED_FROM_DRAWING" | "HALTED_MISSING_DESIGN_INPUT" }> = [
     {
       itemCode: "BOQ-03-3000-01",
       description: "Reinforced Concrete Ground Floor Slab (C30/37, 150mm thick)",
