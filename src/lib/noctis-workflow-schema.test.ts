@@ -17,6 +17,55 @@ const rlsMigration = readFileSync(
 );
 
 describe("Noctis workflow persistence schema", () => {
+
+  it("enforces tenant isolation in PostgreSQL for workflows and child records", async () => {
+    const db = new PGlite();
+    try {
+      await db.waitReady;
+      await db.exec(migration);
+      await db.exec(idempotencyMigration);
+      await db.exec(rlsMigration);
+      await db.query(
+        `INSERT INTO noctis_workflows
+          (workflow_id,tenant_id,created_by,idempotency_key,plan_version,state,created_at,updated_at)
+         VALUES ('rls-a','tenant-a','actor-a','key-a','1','ready',now(),now()),
+                ('rls-b','tenant-b','actor-b','key-b','1','ready',now(),now())`,
+      );
+      await db.query(
+        `INSERT INTO noctis_workflow_tasks
+          (task_record_id,workflow_id,task_id,engine_id,capability,state,created_at,updated_at,available_at)
+         VALUES ('rls-task-a','rls-a','a','engine.a','run','ready',now(),now(),now()),
+                ('rls-task-b','rls-b','b','engine.b','run','ready',now(),now(),now())`,
+      );
+      await db.exec("CREATE ROLE noctis_rls_test NOLOGIN");
+      await db.exec("GRANT SELECT, INSERT, UPDATE, DELETE ON noctis_workflows, noctis_workflow_tasks, noctis_workflow_attempts, noctis_workflow_events TO noctis_rls_test");
+      await db.exec("BEGIN");
+      await db.exec("SET LOCAL ROLE noctis_rls_test");
+      await db.query("SELECT set_config('app.tenant_id','tenant-a',true)");
+      const visibleWorkflows = await db.query<{ workflow_id: string }>(
+        "SELECT workflow_id FROM noctis_workflows ORDER BY workflow_id",
+      );
+      assert.deepEqual(visibleWorkflows.rows.map((row) => row.workflow_id), ["rls-a"]);
+      const visibleTasks = await db.query<{ task_record_id: string }>(
+        "SELECT task_record_id FROM noctis_workflow_tasks ORDER BY task_record_id",
+      );
+      assert.deepEqual(visibleTasks.rows.map((row) => row.task_record_id), ["rls-task-a"]);
+      await assert.rejects(() => db.query(
+        `INSERT INTO noctis_workflows
+          (workflow_id,tenant_id,created_by,idempotency_key,plan_version,state,created_at,updated_at)
+         VALUES ('rls-cross','tenant-b','actor-a','cross-key','1','planned',now(),now())`,
+      ));
+      await assert.rejects(() => db.query(
+        `INSERT INTO noctis_workflow_tasks
+          (task_record_id,workflow_id,task_id,engine_id,capability,state,created_at,updated_at,available_at)
+         VALUES ('rls-cross-task','rls-b','cross','engine.b','run','ready',now(),now(),now())`,
+      ));
+      await db.exec("ROLLBACK");
+    } finally {
+      await db.close();
+    }
+  });
+
   it("applies idempotently and enforces core workflow, task, attempt, and event constraints", async () => {
     const db = new PGlite();
     try {
