@@ -80,7 +80,6 @@ describe("Noctis workflow persistence schema", () => {
       await db.exec(cancellationMigration);
       await db.exec(migration);
       await db.exec(idempotencyMigration);
-      await db.exec(rlsMigration);
       await db.exec(cancellationMigration);
 
       const tables = await db.query<{ table_name: string }>(
