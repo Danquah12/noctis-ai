@@ -135,3 +135,8 @@ Added `src/lib/noctis-runtime-lifecycle.ts` with a deterministic lifecycle coord
 The supervisor does not run guest code, implement cloud polling, enforce deadlines by itself, or provide durable storage. The monitor must enforce and report the provider-backed deadline and cancellation semantics. The provider adapter must be backed by an authenticated real cloud control plane. The audit sink must be a durable append-only implementation. If audit persistence fails after cleanup, the result is marked audit-incomplete while preserving the actual stop/reap booleans.
 
 **Validation boundary:** current tests exercise injected fakes and state transitions only. They do not demonstrate real cloud launch, hypervisor isolation, runtime monitoring, termination, or durable audit integrity.
+
+
+### 11.1 Provider identity mismatch cleanup hardening
+
+The lifecycle supervisor now treats a returned execution ID with an unexpected runtime identity as a possible live resource: it attempts termination and reaping before returning. If either operation is unconfirmed, it returns a distinct `launch_cleanup_incomplete` result rather than hiding the orphan risk inside a generic launch failure. Tests cover both successful cleanup and unresolved cleanup. A provider call that throws after the cloud service accepted a launch but before returning its execution ID still requires provider-side idempotency and orphan reconciliation; the supervisor cannot clean up an identifier it never received.
