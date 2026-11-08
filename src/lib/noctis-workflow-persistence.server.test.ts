@@ -56,7 +56,6 @@ async function setup() {
   await pg.waitReady;
   await pg.exec(migration);
   await pg.exec(idempotencyMigration);
-  await pg.exec(rlsMigration);
   await pg.exec(cancellationMigration);
   const wrap = (client: { query: (sql: string, params?: unknown[]) => Promise<any> }): NoctisWorkflowSqlExecutor => ({
     query: (sql, params) => client.query(sql, params ? [...params] : undefined),
@@ -79,6 +78,7 @@ async function setup() {
             ('task-b','wf-b','b','engine.b','run','ready',$1,$1,$1)`,
     [at],
   );
+  await pg.exec(rlsMigration);
   return { pg, db };
 }
 
