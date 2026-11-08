@@ -498,6 +498,19 @@ describe("Noctis tenant-scoped workflow persistence", () => {
         leaseToken: "lease-cancel", at: "2026-11-07T16:01:30Z",
       });
       assert.deepEqual(poll, { ok: true, value: { requested: true, reason: "User requested cancellation." } });
+      const repeated = await requestNoctisWorkflowCancellation(db, {
+        tenantId: "tenant-a", actorId: "actor-a", workflowId: "wf-a",
+        at: "2026-11-07T16:01:45Z", reason: "A later duplicate request.",
+        eventId: "cancel-event-repeat", correlationId: "corr-cancel",
+      });
+      assert.deepEqual(repeated, {
+        ok: true,
+        value: { workflowId: "wf-a", state: "cancelling", cancelledTasks: 0, runningTasksAwaitingStop: 1, unconfirmedTasks: 0 },
+      });
+      const cancelEvents = await pg.query<{ count: string }>(
+        "SELECT COUNT(*)::text AS count FROM noctis_workflow_events WHERE workflow_id='wf-a' AND event_type='workflow.cancellation_requested'",
+      );
+      assert.equal(cancelEvents.rows[0].count, "1");
 
       const rejectedSuccess = await finishNoctisWorkflowTask(db, {
         tenantId: "tenant-a", workerId: "worker-a", taskRecordId: "task-a",
