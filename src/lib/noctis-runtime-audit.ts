@@ -14,7 +14,11 @@ export type NoctisRuntimeAuditEventType =
   | "launch_failed"
   | "termination_requested"
   | "termination_completed"
-  | "cleanup_incomplete";
+  | "cleanup_incomplete"
+  | "inventory_reconciled"
+  | "resource_quarantined"
+  | "cleanup_candidate_created"
+  | "cleanup_authorized";
 
 export type NoctisRuntimeAuditEvent = {
   schemaVersion: 1;
@@ -30,7 +34,7 @@ export type NoctisRuntimeAuditEvent = {
   providerId: string;
   runtimeId?: string;
   executionId?: string;
-  outcome: "accepted" | "requested" | "succeeded" | "failed" | "incomplete";
+  outcome: "accepted" | "requested" | "succeeded" | "failed" | "incomplete" | "observed";
   details: Readonly<Record<string, string | number | boolean | null>>;
 };
 
