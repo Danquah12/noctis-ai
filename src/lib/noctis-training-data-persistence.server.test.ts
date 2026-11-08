@@ -35,7 +35,7 @@ async function setup(){
      VALUES('source-1','Verified source','engineering',$1,'CC-BY-4.0','approved','public')`,
     [sourceHash]);
   const wrap=(client:{query:(sql:string,params?:unknown[])=>Promise<any>}):TrainingSqlExecutor=>({
-    query:(sql,params)=>client.query(sql,params?[...params]:undefined),
+    query:async(sql,params)=>{try{return await client.query(sql,params?[...params]:undefined);}catch(error){throw new Error(`Training SQL failed: ${sql}: ${error instanceof Error?error.message:String(error)}`);}},
   });
   const db:TrainingSqlDatabase={
     ...wrap(pg),
