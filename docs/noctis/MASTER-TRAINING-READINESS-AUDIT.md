@@ -148,3 +148,31 @@ The current training store has a useful quarantine/review concept, but its write
 ### Required correction
 
 Replace fire-and-forget writes with awaited transactional repository operations. A submission API must return distinct outcomes for candidate-created, durable, quarantined, approved, rejected, or failed. If persistence or audit fails, the caller must receive a failure and the system must not report a durable training submission. Keep candidate capture separate from activation and model-training jobs.
+
+
+## 10. Training data governance implementation — first milestone
+
+Implemented on the training branch:
+
+- `migrations/0016_noctis_training_data_pipeline.sql` adds tenant-scoped dataset roots, immutable dataset versions, immutable dataset membership, training-run lineage, and artifact metadata.
+- `src/lib/noctis-training-data-persistence.server.ts` adds transaction-backed candidate submission, source-verified human review, deterministic dataset splitting, immutable snapshot creation, and one-time dataset-version approval.
+- `src/lib/noctis-training-data-persistence.server.test.ts` exercises durable candidate creation/replay, source mismatch rejection, review/audit atomicity, snapshot creation, snapshot immutability, and source revocation before dataset approval.
+- CI scripts now include this suite in typecheck, stress, and full test runs.
+
+### Important behavior
+
+1. Candidate examples are persisted as quarantined and audited in the same transaction.
+2. A source-backed example can only be approved if its source is approved and the stored source hash and license match exactly.
+3. Dataset snapshots include only approved examples with currently approved, licensed sources. Membership records capture a digest and deterministic train/validation/test split.
+4. Snapshot content and membership cannot be rewritten. A one-time approval/rejection decision is permitted without changing the snapshot digest.
+5. Revoking or deprecating a source before dataset approval blocks release of that snapshot.
+6. Tenant and actor values are injected into the repository as trusted context. The application route must derive them from authenticated server-side identity; this repository is not an authentication provider.
+7. The training-run and artifact tables are lineage contracts only. No model provider, fine-tuning job, checkpoint upload, or model-weight update is implemented by this milestone.
+
+### Remaining work in this track
+
+- Connect source ingestion and review routes to the new durable repository instead of detached, best-effort writes.
+- Add authenticated authorization checks for reviewer and dataset approver roles.
+- Add dataset revocation/supersession policy for sources withdrawn after a dataset has already been approved.
+- Add reproducible training-run lifecycle methods and provider-neutral model-job adapter contracts.
+- Replace synthetic evaluation with real model responses before accepting any training run as an improvement.
