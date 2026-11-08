@@ -327,8 +327,6 @@ export const registerClinicMember = createServerFn({ method: "POST" })
     const { recordActivity } = await import("@/lib/activity.server");
     await recordActivity({
       userId: saved[0].id,
-      who: display,
-      email: saved[0].email,
       action: "account",
       detail: `Created account (${saved[0].email})`,
       surface: "clinic",
@@ -360,8 +358,6 @@ export const rememberSignedInAccount = createServerFn({ method: "POST" })
     const { recordActivity } = await import("@/lib/activity.server");
     await recordActivity({
       userId: who.id,
-      who: name,
-      email: who.email,
       action: "sign-in",
       detail: `Signed in (${who.email})`,
       surface: "clinic",
