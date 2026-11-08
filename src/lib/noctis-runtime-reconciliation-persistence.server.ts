@@ -124,7 +124,6 @@ implements NoctisRuntimeReconciliationRepository {
       snapshotId: input.snapshotId,
       observedCount: input.observedCount,
       pageCount: input.pageCount,
-      completedAt: input.completedAt,
       decisions,
     };
     const digest = `sha256:${sha256(canonical(payload))}`;
