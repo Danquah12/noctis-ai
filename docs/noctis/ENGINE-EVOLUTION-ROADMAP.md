@@ -327,6 +327,12 @@ Added `src/lib/noctis-workflow-persistence.server.ts` with injected PostgreSQL e
 
 Tests added in `src/lib/noctis-workflow-persistence.server.test.ts` for tenant isolation, evidence gating, lease-token enforcement and attempt closure. Stale-lease recovery, approval resolution, database row-level security, idempotent workflow creation and runtime wiring remain outstanding. The adapter's presence and tests do not establish operational readiness.
 
+### Idempotent workflow creation update
+
+Added `createNoctisWorkflowIdempotently` to the server-only persistence adapter and a follow-on migration adding a SHA-256 request fingerprint. Workflow creation, task-row insertion and the `workflow.created` audit event share one transaction. Replays with the same tenant, actor, idempotency key and semantic request return the original workflow; key reuse with a changed request or a different actor is rejected. Dependency references and cycles are validated before any write. This operation creates stored tasks in `pending` state and does not dispatch or execute them.
+
+Coverage has been added for identical replay, changed-payload conflict, actor isolation, tenant isolation and invalid dependency graphs. The migration is applied by the existing top-level migration discovery mechanism. These changes are committed but remain unverified until CI executes the updated tests and migration against the supported database environments.
+
 ### Lease recovery update
 
 The server-only persistence adapter now also includes `recoverNoctisExpiredWorkflowLease`. It closes the expired attempt as `timed_out`, clears the lease, and either requeues the task after an explicit retry timestamp or marks it failed when the task's configured attempt ceiling is reached. Recovery and its audit event are transactional. The caller supplies timestamps and event identifiers; this is not a background worker and does not start execution.
