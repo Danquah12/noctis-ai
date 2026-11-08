@@ -1115,7 +1115,7 @@ export function runFollowUpIntelligence(
       memberIds = ["health-chief", "ethics-arbiter", "inv-cfo"];
     }
 
-    const session = runCouncilDeliberation(topic, memberIds);
+    const session = runCouncilDeliberation(topic, memberIds ?? []);
     const markdown = formatCouncilDossierMarkdown(session);
     return adaptSpecialistEngineOutput(currentQuestion, markdown, "NOCTIS-COUNCIL-001");
   }
