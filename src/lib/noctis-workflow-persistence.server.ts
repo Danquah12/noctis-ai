@@ -97,10 +97,10 @@ async function refreshNoctisWorkflowState(
 ): Promise<void> {
   await tx.query(
     `UPDATE noctis_workflows w
-     SET state = aggregate.state,
+     SET state = summary.state,
          updated_at = $2::timestamptz,
          completed_at = CASE
-           WHEN aggregate.state IN ('succeeded', 'failed', 'cancelled') THEN $2::timestamptz
+           WHEN summary.state IN ('succeeded', 'failed', 'cancelled') THEN $2::timestamptz
            ELSE NULL
          END
      FROM (
@@ -120,7 +120,7 @@ async function refreshNoctisWorkflowState(
          END AS state
        FROM noctis_workflow_tasks
        WHERE workflow_id = $1
-     ) aggregate
+     ) summary
      WHERE w.workflow_id = $1`,
     [workflowId, at],
   );
