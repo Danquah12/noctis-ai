@@ -39,6 +39,7 @@ export type NoctisRuntimeLifecycleInput = {
   tenantId: string;
   actorId: string;
   workloadId: string;
+  executionIntentId: string;
   workloadDigest: string;
   admission: Extract<NoctisSandboxAdmissionResult, { ok: true }>;
   signal?: AbortSignal;
@@ -124,6 +125,7 @@ export class NoctisRuntimeLifecycleSupervisor {
       input.tenantId.trim().length > 0 &&
       input.actorId.trim().length > 0 &&
       input.workloadId.trim().length > 0 &&
+      input.executionIntentId.trim().length > 0 &&
       Number.isFinite(Date.parse(input.deadlineAt)) &&
       /^\d{4}-\d{2}-\d{2}T.*Z$/.test(input.deadlineAt);
     if (!identityMatches) return { state: "audit_blocked", reasonCode: "INVALID_OR_MISMATCHED_LIFECYCLE_CONTEXT", auditSequences: [] };
@@ -170,6 +172,7 @@ export class NoctisRuntimeLifecycleSupervisor {
     try {
       launched = await this.provider.launch({
         workloadId: input.workloadId,
+        executionIntentId: input.executionIntentId,
         tenantId: input.tenantId,
         workloadDigest: input.workloadDigest,
         limits: { ...input.admission.limits },
