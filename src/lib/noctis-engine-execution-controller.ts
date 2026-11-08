@@ -29,9 +29,20 @@ export type NoctisExecutionTask = {
   approvalId?: string;
 };
 
+export type NoctisAdapterExecutionContext = {
+  /** Cooperative cancellation signal. Adapters must propagate it to their work. */
+  signal: AbortSignal;
+  /** Absolute UTC deadline for observability and downstream timeout propagation. */
+  deadlineAt: string;
+  timeoutMs: number;
+};
+
 export type NoctisEngineExecutionAdapter = {
   engineId: string;
-  execute(request: NoctisEngineRequest): Promise<NoctisSpecialistResult>;
+  execute(
+    request: NoctisEngineRequest,
+    execution?: NoctisAdapterExecutionContext,
+  ): Promise<NoctisSpecialistResult>;
 };
 
 export type NoctisExecutionContext = {
@@ -44,6 +55,8 @@ export type NoctisExecutionContext = {
   dataClassification: "public" | "internal" | "confidential" | "restricted";
   executionMode?: "analysis";
   maxTasks?: number;
+  /** Per-adapter deadline; defaults to 30 seconds and is capped at 120 seconds. */
+  adapterTimeoutMs?: number;
 };
 
 export type NoctisExecutionTaskOutcome = {
@@ -70,7 +83,7 @@ export type NoctisExecutionReport = {
 export type NoctisExecutionErrorCode =
   | "INVALID_CONTEXT" | "INVALID_GRAPH" | "TASK_LIMIT_EXCEEDED"
   | "DUPLICATE_ADAPTER" | "ADAPTER_NOT_FOUND" | "ADAPTER_ENGINE_MISMATCH"
-  | "REQUEST_REJECTED" | "ADAPTER_ERROR" | "RESULT_MISMATCH";
+  | "REQUEST_REJECTED" | "ADAPTER_ERROR" | "ADAPTER_TIMEOUT" | "RESULT_MISMATCH";
 
 export type NoctisExecutionResult =
   | { ok: true; report: NoctisExecutionReport }
@@ -132,6 +145,10 @@ export async function executeNoctisAnalysisGraph(input: {
     return fail("INVALID_GRAPH", "Tasks and adapters must be arrays.");
   }
   const maxTasks = context.maxTasks ?? 20;
+  const adapterTimeoutMs = context.adapterTimeoutMs ?? 30_000;
+  if (!Number.isInteger(adapterTimeoutMs) || adapterTimeoutMs < 10 || adapterTimeoutMs > 120_000) {
+    return fail("INVALID_CONTEXT", "adapterTimeoutMs must be an integer from 10 through 120000 milliseconds.");
+  }
   if (!Number.isInteger(maxTasks) || maxTasks < 1 || maxTasks > 100) {
     return fail("INVALID_CONTEXT", "maxTasks must be an integer from 1 through 100.");
   }
@@ -208,8 +225,24 @@ export async function executeNoctisAnalysisGraph(input: {
       }
 
       executedCount += 1;
+      const abortController = new AbortController();
+      const deadlineAt = new Date(Date.now() + adapterTimeoutMs).toISOString();
+      let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+      let timedOut = false;
       try {
-        const result = await adapter.execute(request);
+        const timeout = new Promise<never>((_, reject) => {
+          timeoutHandle = setTimeout(() => {
+            timedOut = true;
+            abortController.abort("NOCTIS_ADAPTER_DEADLINE_EXCEEDED");
+            reject(new Error("NOCTIS_ADAPTER_DEADLINE_EXCEEDED"));
+          }, adapterTimeoutMs);
+        });
+        const invocation = Promise.resolve().then(() => adapter.execute(request, {
+          signal: abortController.signal,
+          deadlineAt,
+          timeoutMs: adapterTimeoutMs,
+        }));
+        const result = await Promise.race([invocation, timeout]);
         if (!result || result.engineId !== task.engineId ||
             !result.resultId?.trim() ||
             !["complete", "partial", "failed"].includes(result.status) ||
@@ -233,8 +266,13 @@ export async function executeNoctisAnalysisGraph(input: {
       } catch {
         outcomes.set(task.taskId, {
           taskId: task.taskId, engineId: task.engineId, status: "failed",
-          errorCode: "ADAPTER_ERROR", message: "Specialist adapter failed; details are intentionally not exposed.",
+          errorCode: timedOut ? "ADAPTER_TIMEOUT" : "ADAPTER_ERROR",
+          message: timedOut
+            ? "Specialist adapter exceeded its deadline. Cancellation was signalled but process termination is not guaranteed."
+            : "Specialist adapter failed; details are intentionally not exposed.",
         });
+      } finally {
+        if (timeoutHandle !== undefined) clearTimeout(timeoutHandle);
       }
     }
   }
@@ -269,7 +307,8 @@ export async function executeNoctisAnalysisGraph(input: {
         "Only analysis-mode adapters were invoked; this controller cannot authorize consequential or write actions.",
         "Identity and scopes must be derived by the authenticated server; registry validation is not an authorization provider.",
         "Evidence IDs are references only; authoritative evidence freshness, access and approval checks must occur in trusted adapters.",
-        "Adapters are injected by the caller. No production engine adapters, sandbox, persistence, worker dispatch or automatic retry are connected here.",
+        "Adapter deadlines use Promise.race and AbortSignal for cooperative cancellation only; an adapter that ignores the signal may continue running after the controller returns. This is not process isolation or forced termination.",
+        "Adapters are injected by the caller. No production engine adapters, hardened sandbox, persistence, worker dispatch or automatic retry are connected here.",
         "Specialist results must be reconciled and independently evidence-validated before being treated as a unified conclusion.",
       ],
     },
