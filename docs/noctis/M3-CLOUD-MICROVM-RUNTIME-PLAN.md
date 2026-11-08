@@ -126,3 +126,12 @@ This distinction is mandatory in product, engineering, and security status repor
 Added `src/lib/noctis-runtime-audit.ts` and focused tests. The contract standardizes lifecycle event identity, UTC timestamp, tenant/actor/request/correlation IDs, workload digest, provider/runtime/execution identity, outcome, and scalar structured details. The append helper validates the event, freezes the submitted envelope, and requires the sink to confirm durable persistence with a sequence identifier.
 
 The sink is an injected append-only interface. No production database, tamper-evident ledger, retention policy, access-control policy, key/signature mechanism, or operational dashboard is connected. A frozen JavaScript object is not immutable storage, and a successful mocked sink test is not proof of durable audit integrity. Production acceptance still requires a real append-only store, collision/idempotency handling, tenant-scoped read access, tamper-evidence, retention/legal-hold controls, and failure-injection tests.
+
+
+## 11. Lifecycle supervisor contract (implemented; infrastructure adapters remain external)
+
+Added `src/lib/noctis-runtime-lifecycle.ts` with a deterministic lifecycle coordinator and tests. It verifies the successful admission is bound to the supplied tenant, workload and digest; requires pre-launch audit persistence; then requests launch, delegates completion observation to an injected monitor, and always attempts termination plus resource reaping after a confirmed launch. It distinguishes launch failure, execution failure, timeout/cancellation observations, audit blocking, and incomplete cleanup. A post-launch audit failure does not suppress cleanup.
+
+The supervisor does not run guest code, implement cloud polling, enforce deadlines by itself, or provide durable storage. The monitor must enforce and report the provider-backed deadline and cancellation semantics. The provider adapter must be backed by an authenticated real cloud control plane. The audit sink must be a durable append-only implementation. If audit persistence fails after cleanup, the result is marked audit-incomplete while preserving the actual stop/reap booleans.
+
+**Validation boundary:** current tests exercise injected fakes and state transitions only. They do not demonstrate real cloud launch, hypervisor isolation, runtime monitoring, termination, or durable audit integrity.
