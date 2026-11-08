@@ -183,6 +183,14 @@ const CLINICAL_DIAGNOSTIC_RULES: DiagnosticConditionRule[] = [
       "Serum beta-hydroxybutyrate and urine ketones",
       "STAT serum potassium (mandatory safety gate prior to IV insulin)"
     ],
+    clinicalRationaleTemplate: "Evaluate suspected DKA using documented hyperglycemia, ketonemia, metabolic acidosis and precipitating factors; do not infer diagnosis without confirmatory laboratory evidence.",
+    goldStandardDiagnosticTests: [
+      "STAT Comprehensive Metabolic Panel with anion gap",
+      "Venous or arterial blood gas",
+      "Serum beta-hydroxybutyrate and urine ketones",
+      "STAT serum potassium before IV insulin"
+    ],
+    questionsForPhysician: ["Has the patient missed recent insulin doses or experienced an acute infection or illness?"],
     discriminativeQuestion: {
       promptText: "Has the patient missed any recent insulin doses or experienced an acute infection/illness?",
       clinicalObjective: "Identify precipitating triggers for acute metabolic decompensation (omission, infection, pump failure)",
