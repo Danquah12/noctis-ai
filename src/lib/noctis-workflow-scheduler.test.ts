@@ -31,8 +31,15 @@ describe("Noctis deterministic workflow scheduler", () => {
     assert.equal(result.capacity.availableSlots, 2);
   });
 
+  it("never dispatches pending tasks before the state machine marks them ready", () => {
+    const pending = task("pending");
+    const result = scheduleNoctisReadyTasks([pending], { maxConcurrent: 1 });
+    assert.deepEqual(result.dispatchCandidates, []);
+    assert.ok(result.deferred.some((item) => item.taskId === "pending" && item.reason === "TASK_NOT_READY"));
+  });
+
   it("waits for dependencies to succeed", () => {
-    const upstream = task("upstream");
+    const upstream = ready(task("upstream"));
     const downstream = task("downstream", { dependsOn: ["upstream"] });
     const result = scheduleNoctisReadyTasks([upstream, downstream], { maxConcurrent: 2 });
     assert.deepEqual(result.dispatchCandidates, ["upstream"]);
@@ -96,6 +103,12 @@ describe("Noctis deterministic workflow scheduler", () => {
     const before = JSON.stringify(original);
     scheduleNoctisReadyTasks([original], { maxConcurrent: 1 });
     assert.equal(JSON.stringify(original), before);
+  });
+
+  it("rejects dependency cycles", () => {
+    const a = task("a", { dependsOn: ["b"] });
+    const b = task("b", { dependsOn: ["a"] });
+    assert.throws(() => scheduleNoctisReadyTasks([a, b], { maxConcurrent: 2 }), /cycle/i);
   });
 
   it("rejects duplicate IDs, unknown dependencies, and invalid limits", () => {
