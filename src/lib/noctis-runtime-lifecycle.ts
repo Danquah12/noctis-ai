@@ -171,15 +171,34 @@ export class NoctisRuntimeLifecycleSupervisor {
         filesystem: "ephemeral-only",
         privileged: false,
       });
-      if (!launched.runtimeId?.trim() || !launched.executionId?.trim() ||
-          launched.runtimeId !== input.admission.runtimeId) {
-        throw new Error("Provider returned an unexpected runtime identity.");
-      }
     } catch {
       try {
         await emit("launch_failed", "failed", { reasonCode: "PROVIDER_LAUNCH_FAILED" });
-      } catch { /* original launch failure remains primary; alerting is an operations requirement */ }
+      } catch { /* original launch failure remains primary; orphan reconciliation is still required */ }
       return { state: "launch_failed", reasonCode: "PROVIDER_LAUNCH_FAILED", auditSequences };
+    }
+
+    if (!launched.runtimeId?.trim() || !launched.executionId?.trim() ||
+        launched.runtimeId !== input.admission.runtimeId) {
+      const executionId = launched.executionId?.trim() ? launched.executionId : undefined;
+      let cleanup = { processStopped: false, resourcesReaped: false };
+      if (executionId) {
+        try { cleanup = await this.provider.terminateAndReap(executionId); } catch { /* unresolved cleanup is an incident */ }
+      }
+      try {
+        await emit("launch_failed", "failed", {
+          reasonCode: "PROVIDER_RUNTIME_IDENTITY_MISMATCH",
+          cleanupAttempted: !!executionId,
+          processStopped: cleanup.processStopped,
+          resourcesReaped: cleanup.resourcesReaped,
+        }, launched.runtimeId?.trim() || undefined, executionId);
+      } catch { /* audit alerting remains an operations requirement */ }
+      return {
+        state: executionId && (!cleanup.processStopped || !cleanup.resourcesReaped)
+          ? "cleanup_incomplete" : "launch_failed",
+        reasonCode: "PROVIDER_RUNTIME_IDENTITY_MISMATCH",
+        auditSequences,
+      } as NoctisRuntimeLifecycleResult;
     }
 
     let observation: NoctisRuntimeObservation | { status: "monitor_failed"; reasonCode: string };
