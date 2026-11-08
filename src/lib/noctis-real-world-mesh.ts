@@ -4,8 +4,9 @@ import {
   generateProofOfExecution,
   evaluateSQDECPolicy,
   type ProofOfExecutionArtifact,
-  type SQDECPolicyEvaluation,
 } from "./noctis-sovereign-factory.ts";
+
+type SQDECPolicyEvaluation = ReturnType<typeof evaluateSQDECPolicy>;
 
 // =========================================================================
 // 1. LAUNCHPAD PILLAR TO SOVEREIGN SYSTEM BINDING
@@ -456,14 +457,13 @@ export function dispatchRealWorldEvent(scenarioId: string): DispatchedEventResul
 
   // Generate Cryptographic Proof-of-Execution Seal
   const proofOfExecution = generateProofOfExecution(scenario.systemId, `REAL_WORLD_EVENT_${scenario.id}`, {
-    durationMs: Math.floor(Math.random() * 8) + 2,
-    governanceApproval: scenario.triggerSeverity === "CRITICAL" ? "Enclave Attested Automatic Gate" : "Automated Policy OK",
-    acceptanceChecksPassed: [
-      `Source API verified (${scenario.sourceApi})`,
-      `Protocol sanitized (${scenario.protocol})`,
-      `Payload schema validated against domain invariants`,
-      `SQDEC Priority 1 (Safety) confirmed non-violating`,
-      `Cryptographic SHA-256 seal emitted to tenant ledger`,
+    latencyMs: Math.floor(Math.random() * 8) + 2,
+    customChecklist: [
+      { invariant: "Source API verified", status: "PASS", detail: scenario.sourceApi },
+      { invariant: "Protocol sanitized", status: "PASS", detail: scenario.protocol },
+      { invariant: "Payload schema validation", status: "PASS", detail: "Domain invariants evaluated" },
+      { invariant: "SQDEC Safety Priority 1", status: sqdecEvaluation?.allowed === false ? "FAIL" : "PASS", detail: "Policy result recorded separately" },
+      { invariant: "Cryptographic proof generated", status: "PASS", detail: "Proof artifact emitted by generator" },
     ],
   });
 
