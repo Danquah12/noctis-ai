@@ -578,7 +578,7 @@ export async function requestNoctisWorkflowCancellation(
     await tx.query(
       `UPDATE noctis_workflow_tasks
        SET cancellation_requested_at = COALESCE(cancellation_requested_at, $1::timestamptz),
-           cancellation_reason = LEFT($2, 1000), updated_at = $1::timestamptz
+           cancellation_reason = COALESCE(cancellation_reason, LEFT($2, 1000)), updated_at = CASE WHEN cancellation_requested_at IS NULL THEN $1::timestamptz ELSE updated_at END
        WHERE workflow_id = $3 AND state = 'running'`,
       [input.at, input.reason, input.workflowId],
     );
@@ -596,7 +596,7 @@ export async function requestNoctisWorkflowCancellation(
       `UPDATE noctis_workflows
        SET state = $1, cancellation_requested_at = COALESCE(cancellation_requested_at, $2::timestamptz),
            cancellation_requested_by = COALESCE(cancellation_requested_by, $3),
-           cancellation_reason = LEFT($4, 1000), updated_at = $2::timestamptz,
+           cancellation_reason = COALESCE(cancellation_reason, LEFT($4, 1000)), updated_at = $2::timestamptz,
            completed_at = CASE WHEN $1 = 'cancelled' THEN $2::timestamptz ELSE NULL END
        WHERE workflow_id = $5 AND tenant_id = $6`,
       [state, input.at, input.actorId, input.reason, input.workflowId, input.tenantId],
