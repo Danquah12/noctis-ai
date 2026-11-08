@@ -559,6 +559,17 @@ export async function requestNoctisWorkflowCancellation(
       !nonEmpty(input.reason) || input.reason.length > 1000 || !validUtc(input.at) ||
       !nonEmpty(input.eventId) || !nonEmpty(input.correlationId)) return { ok: false, code: "INVALID_INPUT" };
   return withTenantTransaction(db, input.tenantId, async (tx) => {
+    // Lock child task rows before the parent workflow row. Claim/finish/recovery
+    // follow the same task-to-workflow lock order to avoid cancellation deadlocks.
+    await tx.query(
+      `SELECT t.task_record_id
+       FROM noctis_workflow_tasks t
+       JOIN noctis_workflows w ON w.workflow_id = t.workflow_id
+       WHERE t.workflow_id = $1 AND w.tenant_id = $2
+       ORDER BY t.task_record_id
+       FOR UPDATE OF t`,
+      [input.workflowId, input.tenantId],
+    );
     const locked = await tx.query<{ workflow_id: string; state: string; cancellation_requested_at: string | null }>(
       "SELECT workflow_id, state, cancellation_requested_at FROM noctis_workflows WHERE workflow_id = $1 AND tenant_id = $2 FOR UPDATE",
       [input.workflowId, input.tenantId],
