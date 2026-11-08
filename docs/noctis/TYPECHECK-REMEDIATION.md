@@ -13,7 +13,15 @@
 - The build step was skipped because the workflow runs typecheck before build.
 - The latest `main` CI run available during this audit failed at `npm ci`, so it did not provide a valid TypeScript baseline. Do not label all diagnostics as newly introduced or pre-existing without a successful baseline comparison.
 
-## 2. Diagnostic distribution
+## 2. Latest remediation result
+
+A later CI run for commit `ec67e81108f7f2de8bcc1c3b11bf84f001f6176b` reported 181 TypeScript diagnostics, down from 339 in the earlier evidence run (a reduction of 158 diagnostics). The board-exam cohort was reduced from 157 diagnostics to zero after:
+- Adding the actually used `open_textbook` resource type to the catalog union.
+- Replacing a UI access to nonexistent `BoardExam.domain` with the existing `categoryLabel`.
+
+That run also reported zero diagnostics in `noctis-engine-registry` and `noctis-desk.server.ts`. The overall typecheck still failed; the build step remained blocked. Subsequent prompt-integrity and training-copy changes have new CI runs pending.
+
+## 3. Diagnostic distribution
 
 The 339-diagnostic run grouped as follows by source file:
 
@@ -35,7 +43,7 @@ The 339-diagnostic run grouped as follows by source file:
 
 The remaining files include API route, authentication, cyber/defense, architecture, legal, OCR, truth-ledger, science, vault and test modules. The exact CI log is the source of truth for line-level details.
 
-## 3. Main diagnostic clusters
+## 4. Main diagnostic clusters
 
 ### A. Board exam catalog and UI contract drift
 - `BoardExam` lacks properties consumed by the UI (for example, `domain`).
@@ -69,7 +77,7 @@ The remaining files include API route, authentication, cyber/defense, architectu
 - API response/header type issues and route registration mismatch.
 - Fix with explicit shared interfaces and route contract tests.
 
-## 4. Safe remediation order
+## 5. Safe remediation order
 
 1. Keep TypeScript strict; do not suppress diagnostics or use broad `any` casts.
 2. Establish a successful install baseline on both the PR merge ref and a controlled main-branch baseline.
@@ -82,7 +90,7 @@ The remaining files include API route, authentication, cyber/defense, architectu
 9. Run all targeted tests, full tests, build and security checks.
 10. Review migrations and security before merge.
 
-## 5. Rules for fixing diagnostics
+## 6. Rules for fixing diagnostics
 
 - Do not add fields to a type unless the data is actually produced and validated.
 - Do not fabricate default clinical values to satisfy types.
@@ -92,10 +100,10 @@ The remaining files include API route, authentication, cyber/defense, architectu
 - Do not remove failing tests to make CI green.
 - Keep each fix cohort small enough to review and revert independently.
 
-## 6. Dependency audit observation
+## 7. Dependency audit observation
 
 The CI install log reported 14 npm audit findings (2 low, 8 moderate, 3 high, 1 critical). This is a summary only; package names, paths and fix availability must be collected from a full audit report before changing dependencies. Do not run `npm audit fix --force` as an automatic remediation.
 
-## 7. Current release status
+## 8. Current release status
 
 The branch is not release-ready. Typecheck has failed, build has not run after those failures, no production migrations have been applied, and no deployment is authorized by this remediation plan.
