@@ -92,7 +92,7 @@ describe("Noctis provider inventory pagination", () => {
   });
 
   it("enforces page and resource bounds", async () => {
-    assert.throws(() => collectNoctisRuntimeInventory(provider([]), { pageSize: 501 }));
+    await assert.rejects(() => collectNoctisRuntimeInventory(provider([]), { pageSize: 501 }));
     const result = await collectNoctisRuntimeInventory(provider([
       { snapshotId: "snap-1", executions: [], nextCursor: "next", complete: false },
     ]), { maxPages: 1 });
