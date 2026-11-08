@@ -28,7 +28,6 @@ describe("Noctis workflow persistence schema", () => {
       await db.waitReady;
       await db.exec(migration);
       await db.exec(idempotencyMigration);
-      await db.exec(rlsMigration);
       await db.query(
         `INSERT INTO noctis_workflows
           (workflow_id,tenant_id,created_by,idempotency_key,plan_version,state,created_at,updated_at)
@@ -41,6 +40,8 @@ describe("Noctis workflow persistence schema", () => {
          VALUES ('rls-task-a','rls-a','a','engine.a','run','ready',now(),now(),now()),
                 ('rls-task-b','rls-b','b','engine.b','run','ready',now(),now(),now())`,
       );
+      await db.exec(rlsMigration);
+      await db.exec(rlsMigration);
       await db.exec("CREATE ROLE noctis_rls_test NOLOGIN");
       await db.exec("GRANT SELECT, INSERT, UPDATE, DELETE ON noctis_workflows, noctis_workflow_tasks, noctis_workflow_attempts, noctis_workflow_events TO noctis_rls_test");
       await db.exec("BEGIN");
@@ -76,7 +77,6 @@ describe("Noctis workflow persistence schema", () => {
       await db.waitReady;
       await db.exec(migration);
       await db.exec(idempotencyMigration);
-      await db.exec(rlsMigration);
       await db.exec(cancellationMigration);
       await db.exec(migration);
       await db.exec(idempotencyMigration);
