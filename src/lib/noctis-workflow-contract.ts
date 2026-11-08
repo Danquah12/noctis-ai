@@ -70,6 +70,10 @@ const TERMINAL_TASK_STATES: readonly NoctisTaskState[] = [
   "succeeded", "skipped", "cancelled",
 ];
 
+const AGGREGATE_TERMINAL_TASK_STATES: readonly NoctisTaskState[] = [
+  ...TERMINAL_TASK_STATES, "failed",
+];
+
 function validTimestamp(value: string): boolean {
   return typeof value === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/.test(value) &&
     Number.isFinite(Date.parse(value));
@@ -274,7 +278,7 @@ export function deriveNoctisWorkflowState(
   if (taskStates.length === 0) return "planned";
   if (taskStates.every((state) => state === "succeeded" || state === "skipped")) return "succeeded";
   if (taskStates.some((state) => state === "cancelled") && taskStates.every((state) => TERMINAL_TASK_STATES.includes(state))) return "cancelled";
-  if (taskStates.some((state) => state === "failed") && taskStates.every((state) => TERMINAL_TASK_STATES.includes(state))) return "failed";
+  if (taskStates.some((state) => state === "failed") && taskStates.every((state) => AGGREGATE_TERMINAL_TASK_STATES.includes(state))) return "failed";
   if (cancellationRequested && taskStates.some((state) => state === "running")) return "cancelling";
   if (taskStates.some((state) => state === "blocked")) return "blocked";
   if (taskStates.some((state) => state === "waiting_approval")) return "waiting_approval";
