@@ -139,6 +139,7 @@ interface DiagnosticConditionRule {
   isMustNotMiss: boolean;
   requiredSymptomMatches: RegExp[];
   bonusSymptomMatches: { regex: RegExp; points: number }[];
+  supportingEvidenceBase?: string[];
   penaltySymptomMatches: { regex: RegExp; points: number }[];
   clinicalRationaleTemplate: string;
   goldStandardDiagnosticTests: string[];
@@ -1412,12 +1413,11 @@ To achieve rapid, guideline-directed confirmation or exclusion without cognitive
   } else if (!isAbdominal && !isStroke) {
     // DYNAMIC GENERAL PRESENTATION SECTION (Avoids ACS Fallback)
     const vitalsList: string[] = [];
-    if (dossier.patientData.vitals.bloodPressure) vitalsList.push(`BP: ${dossier.patientData.vitals.bloodPressure}`);
-    else if (dossier.patientData.vitals.systolicBp) vitalsList.push(`BP: ${dossier.patientData.vitals.systolicBp}/${dossier.patientData.vitals.diastolicBp} mmHg`);
+    if (dossier.patientData.vitals.systolicBp !== undefined) vitalsList.push(`BP: ${dossier.patientData.vitals.systolicBp}/${dossier.patientData.vitals.diastolicBp ?? "not recorded"} mmHg`);
     if (dossier.patientData.vitals.heartRate) vitalsList.push(`HR: ${dossier.patientData.vitals.heartRate} bpm`);
     if (dossier.patientData.vitals.respiratoryRate) vitalsList.push(`RR: ${dossier.patientData.vitals.respiratoryRate}/min`);
     if (dossier.patientData.vitals.temperatureC) vitalsList.push(`Temp: ${dossier.patientData.vitals.temperatureC}°C`);
-    if (dossier.patientData.vitals.oxygenSaturation) vitalsList.push(`SpO2: ${dossier.patientData.vitals.oxygenSaturation}%`);
+    if (dossier.patientData.vitals.spo2) vitalsList.push(`SpO2: ${dossier.patientData.vitals.oxygenSaturation}%`);
     if (dossier.patientData.vitals.bloodGlucoseMgDl) vitalsList.push(`Glucose: ${dossier.patientData.vitals.bloodGlucoseMgDl} mg/dL`);
 
     sections.push(`## 1. Clinical Assessment of the Presentation
