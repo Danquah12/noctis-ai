@@ -145,6 +145,41 @@ describe("Noctis analysis execution controller", () => {
     if (mismatch.ok) assert.equal(mismatch.report.outcomes[0].errorCode, "RESULT_MISMATCH");
   });
 
+
+  it("signals cooperative cancellation and records an adapter deadline", async () => {
+    let receivedSignal: AbortSignal | undefined;
+    const output = await executeNoctisAnalysisGraph({
+      context: { ...context, adapterTimeoutMs: 10 },
+      tasks: [tasks[0]],
+      adapters: [{
+        engineId: "noctis.cyber.sast",
+        execute: async (_request, execution) => {
+          receivedSignal = execution?.signal;
+          return new Promise<NoctisSpecialistResult>((_resolve, reject) => {
+            execution?.signal.addEventListener("abort", () => reject(new Error("adapter observed cancellation")), { once: true });
+          });
+        },
+      }],
+    });
+    assert.equal(output.ok, true);
+    assert.equal(receivedSignal?.aborted, true);
+    if (output.ok) {
+      assert.equal(output.report.outcomes[0].errorCode, "ADAPTER_TIMEOUT");
+      assert.equal(output.report.outcomes[0].status, "failed");
+      assert.match(output.report.outcomes[0].message ?? "", /termination is not guaranteed/);
+    }
+  });
+
+  it("rejects adapter deadlines outside the bounded range", async () => {
+    const output = await executeNoctisAnalysisGraph({
+      context: { ...context, adapterTimeoutMs: 120_001 },
+      tasks: [tasks[0]],
+      adapters: [],
+    });
+    assert.equal(output.ok, false);
+    if (!output.ok) assert.equal(output.code, "INVALID_CONTEXT");
+  });
+
   it("rejects an empty task graph rather than reporting a no-op as success", async () => {
     const output = await executeNoctisAnalysisGraph({ context, tasks: [], adapters: [] });
     assert.equal(output.ok, false);
