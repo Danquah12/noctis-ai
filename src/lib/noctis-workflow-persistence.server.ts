@@ -422,12 +422,11 @@ export async function claimNoctisWorkflowTask(
            )
          )
        ORDER BY t.priority DESC, t.available_at ASC, t.created_at ASC
-       LIMIT 1 FOR UPDATE OF t SKIP LOCKED`,
+       LIMIT 20 FOR UPDATE OF t SKIP LOCKED`,
       [input.tenantId, input.at],
     );
-    const row = candidates.rows[0];
-    if (!row) return { ok: true, value: null };
-
+    if (candidates.rows.length === 0) continue;
+    for (const row of candidates.rows) {
     const gateContext: NoctisWorkflowGateContext = {
       tenantId: input.tenantId, workflowId: row.workflow_id,
       taskId: row.task_id, engineId: row.engine_id,
@@ -436,13 +435,13 @@ export async function claimNoctisWorkflowTask(
 
     if (row.evidence_required) {
       if (!Array.isArray(row.evidence_refs) || row.evidence_refs.length === 0) {
-        return { ok: true, value: null };
+        continue;
       }
       let resolved: readonly NoctisEvidenceResolution[];
       try {
         resolved = await gates.resolveEvidence(tx, { ...gateContext, evidenceRefs: row.evidence_refs });
       } catch {
-        return { ok: true, value: null };
+        continue;
       }
       const valid = resolved.length === row.evidence_refs.length &&
         row.evidence_refs.every((id) => resolved.filter((item) =>
@@ -452,16 +451,16 @@ export async function claimNoctisWorkflowTask(
           (item.validUntil === null || (validUtc(item.validUntil) && Date.parse(item.validUntil) > Date.parse(input.at))) &&
           nonEmpty(item.sourceId) && nonEmpty(item.chunkId),
         ).length === 1);
-      if (!valid) return { ok: true, value: null };
+      if (!valid) continue;
     }
 
     if (row.approval_required) {
-      if (!nonEmpty(row.approval_ref ?? "")) return { ok: true, value: null };
+      if (!nonEmpty(row.approval_ref ?? "")) continue;
       let approval: NoctisApprovalResolution;
       try {
         approval = await gates.resolveApproval(tx, { ...gateContext, approvalRef: row.approval_ref! });
       } catch {
-        return { ok: true, value: null };
+        continue;
       }
       if (approval.status !== "approved" || approval.tenantId !== input.tenantId ||
           approval.approvalType !== "task_execution" || approval.approverAuthorized !== true ||
@@ -472,7 +471,7 @@ export async function claimNoctisWorkflowTask(
           approval.revokedAt !== null ||
           (approval.expiresAt !== null &&
             (!validUtc(approval.expiresAt) || Date.parse(approval.expiresAt) <= Date.parse(input.at)))) {
-        return { ok: true, value: null };
+        continue;
       }
     }
 
@@ -485,7 +484,7 @@ export async function claimNoctisWorkflowTask(
        RETURNING attempt_count`,
       [input.workerId, input.leaseToken, input.leaseExpiresAt, input.at, row.task_record_id],
     );
-    if ((updated.rowCount ?? 0) !== 1) return { ok: true, value: null };
+    if ((updated.rowCount ?? 0) !== 1) continue;
     const attemptNumber = updated.rows[0].attempt_count;
 
     await refreshNoctisWorkflowState(tx, row.workflow_id, input.at);
@@ -512,6 +511,8 @@ export async function claimNoctisWorkflowTask(
       attemptNumber, leaseOwner: input.workerId, leaseToken: input.leaseToken,
       leaseExpiresAt: input.leaseExpiresAt,
     } };
+    }
+    return { ok: true, value: null };
   });
 }
 
