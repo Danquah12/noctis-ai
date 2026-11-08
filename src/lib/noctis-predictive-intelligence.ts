@@ -2522,7 +2522,7 @@ export function handleNaturalPredictiveIntelligenceQuery(query: string): string 
     const ciHigh = Math.round((pdm.prediction_interval?.[1] ?? 0) * 100);
     const pdmDash = {
       title: "Equipment Health & Predictive Maintenance Dashboard",
-      subtitle: `30-Day Failure Risk & Vibration Trend · Operating Window: ${pdm.estimatedRulOperatingHoursRange[0]}–${pdm.estimatedRulOperatingHoursRange[1]} hrs`,
+      subtitle: `30-Day Failure Risk & Vibration Trend · Operating Window: Not estimated (RUL evidence unavailable)`,
       riskLevel: pdm.risk_level,
       kpis: [
         { label: "30-Day Failure Risk", value: `${probPct}%`, sub: `Confidence: ${ciLow}%–${ciHigh}%` },
@@ -2555,7 +2555,7 @@ export function handleNaturalPredictiveIntelligenceQuery(query: string): string 
     const sections = [
       `## Equipment Maintenance & Failure Forecast`,
       `\`\`\`noctis-dashboard\n${JSON.stringify(pdmDash)}\n\`\`\``,
-      `### Summary\n- **Failure Risk (Next 30 Days):** **${probPct}%** (${pdm.risk_level.toUpperCase()} risk)\n- **Estimated Operating Window:** **${pdm.estimatedRulOperatingHoursRange[0]} to ${pdm.estimatedRulOperatingHoursRange[1]} hours** (95% confidence range: ${ciLow}%–${ciHigh}%)\n- **Recommended Action:** ${pdm.recommended_action}`,
+      `### Summary\n- **Failure Risk (Next 30 Days):** **${probPct}%** (${pdm.risk_level.toUpperCase()} risk)\n- **Remaining Useful Life:** Not estimated; no calibrated operating-hours interval is available.\n- **Recommended Action:** ${pdm.recommended_action}`,
       `### Why This Is Happening\n- **Key Indicators:** ${pdm.explanation?.why_drivers_summary}\n- **Important Note:** ${pdm.explanation?.uncertainty_and_calibration_statement}\n- **What Could Change the Forecast:**\n${pdm.explanation?.what_could_change_result.map((c) => `  - ${c}`).join("\n")}`,
       `### Likely Physical Causes\n${pdm.failureModes.map((f) => `${f.likelihoodRank}. **${f.mode.replace(/_/g, " ")}** — ${f.physicalMechanism}`).join("\n")}`,
     ];
