@@ -50,7 +50,7 @@ function result(overrides: Partial<NoctisSpecialistResult> = {}): NoctisSpeciali
 
 function reconcile(results: NoctisSpecialistResult[]) {
   const output = reconcileNoctisSpecialistResults({ requestId: "req-1", at: AT, results });
-  assert.equal(output.ok, true);
+  if (output.ok === false) throw new Error("Reconciliation fixture was rejected: " + output.code);
   return output.report;
 }
 
