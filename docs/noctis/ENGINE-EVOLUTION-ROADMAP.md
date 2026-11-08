@@ -370,3 +370,16 @@ Coverage has been added for identical replay, changed-payload conflict, actor is
 The server-only persistence adapter now also includes `recoverNoctisExpiredWorkflowLease`. It closes the expired attempt as `timed_out`, clears the lease, and either requeues the task after an explicit retry timestamp or marks it failed when the task's configured attempt ceiling is reached. Recovery and its audit event are transactional. The caller supplies timestamps and event identifiers; this is not a background worker and does not start execution.
 
 The timestamp validator accepts strict UTC timestamps only. Automated tests now cover retry exhaustion and malformed timestamp rejection. Database-level concurrency behavior still requires CI and production-database validation.
+
+
+## 14. Secure execution isolation foundation — admission contract added
+
+Added:
+- src/lib/noctis-isolation-contract.ts: typed resource-limit policy, provider-signed attestation contract, tenant/workload digest binding, provider and isolation-type allowlists, expiry validation, required-control checks, injected signature verification and a provider launch/terminate-and-reap interface.
+- src/lib/noctis-isolation-contract.test.ts: admission, invalid signature, verifier outage, tenant/digest mismatch, missing network isolation, provider/type allowlists, resource-limit ceiling, expired attestation and malformed-input tests.
+
+This is M2 contract code only, not a runtime integration or validated sandbox. The production implementation still needs a separately deployed isolation provider (prefer microVM isolation for arbitrary untrusted code), trusted key rotation and signature verification, bounded input/output transport, enforced CPU/memory/PID/disk/time quotas, deny-by-default egress, ephemeral filesystem, non-root identity, seccomp/AppArmor or equivalent, per-workload identity, audit export, forced kill plus reap, cleanup after worker crash, and multi-tenant hostile-workload testing.
+
+The legacy src/lib/noctis-wasm-runner.ts is not a genuine WASM sandbox: it evaluates code with new Function, uses a timeout race that cannot terminate the underlying execution, and reports a string-size estimate rather than measured memory. Do not route untrusted code to it. Keep it isolated from the new provider contract until callers have been audited and migrated.
+
+**Next release gate:** add provider-specific integration only after selecting and deploying the isolation backend. Then test infinite loops, memory exhaustion, fork/process exhaustion, filesystem escape attempts, network egress attempts, tenant crossover, timeout kill/reap, provider outage, stale/forged attestations and audit completeness. Do not enable execution if any enforcement control cannot be independently demonstrated.
