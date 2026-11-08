@@ -1174,6 +1174,13 @@ export function runVerifiedExecutionAndAdversarialSuite(): {
   latencyBreakdown: ReturnType<typeof measureWorkflowStageLatencyBreakdown>;
   next10Capabilities: Next10CapabilityVerificationItem[];
   tier2AdversarialTests: Tier2AdversarialTestItem[];
+  advanced10PassedCount: number;
+  advanced10TotalCount: number;
+  advanced10Systems: ReturnType<typeof runTenAdvancedIntelligenceSystemsSuite>["systems"];
+  organizationalSystems11To20: typeof NOCTIS_SYSTEMS_11_TO_20;
+  workbenchViews6: ReturnType<typeof buildUnifiedWorkbenchState>;
+  maturityModelL1ToL5: typeof NOCTIS_MATURITY_MODEL_L1_TO_L5;
+  capabilityRegistry: typeof NOCTIS_CAPABILITY_REGISTRY;
 } {
   // 1. Run TASK-1042 end-to-end
   const task1042 = runAutonomousProfessionalWorkTask("TASK-1042");
