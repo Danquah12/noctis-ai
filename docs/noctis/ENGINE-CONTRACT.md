@@ -290,3 +290,16 @@ Admission requires:
 The provider interface requires a launch request with network disabled, ephemeral-only filesystem and no privileged execution. Termination must report both process stopped and resources reaped.
 
 **Critical boundary:** this is an admission contract, not a sandbox implementation. It does not create or verify OS isolation by itself. The existing src/lib/noctis-wasm-runner.ts uses new Function, a Promise race and an estimated memory value; it is not a WebAssembly runtime, secure sandbox or forced-termination mechanism and must not execute untrusted workloads. No provider adapter, signing-key service, container/microVM runtime, worker route or production enforcement is connected yet. Production use remains prohibited until independent provider attestation verification, runtime integration, kill/reap behavior and hostile-workload tests pass.
+
+
+## 15. Cloud microVM provider adapter boundary
+
+The cloud microVM adapter in `src/lib/noctis-cloud-microvm-provider.ts` is a provider-neutral control-plane boundary. It delegates to an injected authenticated provider client; it does not itself provision infrastructure, authenticate to a cloud, or enforce hypervisor isolation.
+
+A launch requires a successful admission result bound to the configured provider, exact runtime, workload, tenant, digest, and resource limits. The adapter sends only fixed security settings: network disabled, ephemeral-only filesystem, and unprivileged execution. Provider runtime identity mismatch fails launch and triggers best-effort termination and reaping.
+
+Termination and resource reaping are independent outcomes. A caller must not treat either boolean as proof of complete cleanup unless both are true and provider-side evidence confirms the result.
+
+The cloud provider, region, microVM service, workload identity, signed image, attestation key registry, guest agent, provider-side quotas, and orphan reaper remain deployment requirements. See `docs/noctis/M3-CLOUD-MICROVM-RUNTIME-PLAN.md`.
+
+**Security status:** Adapter contract only. No real sandbox is connected. Production execution remains prohibited until provider-backed controls and independent security gates are validated.
