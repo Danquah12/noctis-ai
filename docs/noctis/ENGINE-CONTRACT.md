@@ -320,3 +320,16 @@ Added `migrations/20261108_noctis_runtime_reconciliation.sql` for:
 The schema migration is covered by `src/lib/noctis-runtime-reconciliation-schema.test.ts` and included in the typecheck, stress and full test scripts. The TypeScript audit event contract includes reconciliation and quarantine event types.
 
 **Boundary:** these tables are not connected to production repositories or a provider inventory API. This migration alone does not provide tenant RLS/role separation, external tamper-evidence, retention, alerting, or operator authorization. Database owners can bypass/alter triggers. Unknown resources remain quarantined; destructive cleanup requires a distinct authorized workflow and fresh provider/ledger identity checks.
+## 18. Transactional cloud-runtime persistence adapter
+
+Added `src/lib/noctis-runtime-persistence.server.ts`:
+- reserves the launch intent before cloud invocation and returns the original record on exact idempotent replay;
+- rejects reuse of an idempotency key with changed tenant, workload, digest, runtime, intent, or resource limits;
+- records ambiguous provider responses as `launch_unknown` for orphan reconciliation;
+- records a returned execution ID only when it matches the exact reserved identity and allowed lifecycle state;
+- persists quarantined observations idempotently, retaining their original quarantine identity;
+- writes each operation's audit event in the same database transaction.
+
+PGlite tests cover replay/conflict, tenant mismatch, lost-response recovery, quarantine idempotency and malformed input. These tests are included in the validation scripts.
+
+**Boundary:** the adapter is not wired into the runtime supervisor or a real provider. The tenant transaction setting must be protected by production RLS and restricted DB roles; it is not authentication. No inventory polling, alerting, provider-side idempotency, or destructive cleanup is implemented.
