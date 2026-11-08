@@ -24,6 +24,7 @@ const admission: Extract<NoctisSandboxAdmissionResult, { ok: true }> = {
 function input(overrides: Record<string, unknown> = {}) {
   return {
     workloadId: "workload-01",
+    executionIntentId: "workflow-task-attempt-01",
     tenantId: "tenant-01",
     workloadDigest: admission.workloadDigest,
     limits,
@@ -64,9 +65,12 @@ describe("Noctis cloud microVM provider adapter", () => {
     assert.equal(calls.length, 1);
     assert.deepEqual(calls[0].value, {
       idempotencyKey: createNoctisLaunchIdempotencyKey({
+        executionIntentId: "workflow-task-attempt-01",
         tenantId: "tenant-01", workloadId: "workload-01",
         workloadDigest: admission.workloadDigest, limits,
       }),
+      idempotencyKey: createNoctisLaunchIdempotencyKey({ executionIntentId: "workflow-task-attempt-01", tenantId: "tenant-01", workloadId: "workload-01", workloadDigest: admission.workloadDigest, limits }),
+      executionIntentId: "workflow-task-attempt-01",
       runtimeId: "runtime-approved-01",
       workloadId: "workload-01",
       tenantId: "tenant-01",
@@ -88,7 +92,11 @@ describe("Noctis cloud microVM provider adapter", () => {
     assert.match(first, /^noctis:[a-f0-9]{64}$/);
     assert.equal(first, second);
     assert.equal(createNoctisLaunchIdempotencyKey({
-      tenantId: "tenant-01", workloadId: "workload-01",
+      executionIntentId: "workflow-task-attempt-01", tenantId: "tenant-01", workloadId: "workload-01",
+      workloadDigest: admission.workloadDigest, limits,
+    }), first);
+    assert.notEqual(createNoctisLaunchIdempotencyKey({
+      executionIntentId: "workflow-task-attempt-02", tenantId: "tenant-01", workloadId: "workload-01",
       workloadDigest: admission.workloadDigest, limits,
     }), first);
   });
