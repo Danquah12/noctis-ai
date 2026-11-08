@@ -15,7 +15,7 @@ function resultCode(result: ReturnType<typeof validateNoctisEngineRequest>): str
 describe("Noctis engine registry", () => {
   it("registers the initial source-backed specialist cohort", () => {
     const engines = listNoctisEngines();
-    assert.equal(engines.length, 19);
+    assert.equal(engines.length, 20);
     assert.equal(new Set(engines.map((engine) => engine.id)).size, engines.length);
     assert.ok(engines.every((engine) => engine.sourcePath.startsWith("src/lib/noctis-")));
     assert.ok(findNoctisEnginesByCapability("workflow.create.idempotent").some((engine) => engine.id === "noctis.core.workflow-persistence"));
@@ -24,6 +24,8 @@ describe("Noctis engine registry", () => {
     assert.ok(findNoctisEnginesByCapability("workflow.cancel.request").some((engine) => engine.id === "noctis.core.workflow-persistence"));
     assert.ok(findNoctisEnginesByCapability("workflow.cancel.poll").some((engine) => engine.id === "noctis.core.workflow-persistence"));
     assert.ok(findNoctisEnginesByCapability("workflow.cancel.acknowledge").some((engine) => engine.id === "noctis.core.workflow-persistence"));
+    assert.ok(findNoctisEnginesByCapability("workflow.engines.execute.analysis").some((engine) => engine.id === "noctis.core.execution-controller"));
+    assert.ok(findNoctisEnginesByCapability("workflow.engines.coordinate").some((engine) => engine.id === "noctis.core.execution-controller"));
   });
 
   it("resolves every declared dependency and keeps source paths unique", () => {
