@@ -75,7 +75,8 @@ const engineFiles = sourceFiles.filter((file) =>
   !/\.test\./.test(file) &&
   !/\.spec\./.test(file)
 );
-const importersByTarget = new Map(engineFiles.map((file) => [file, []]));
+const importersByTarget = new Map(engineFiles.map((file) => [file, new Set()]));
+const importsByFile = new Map(sourceFiles.map((file) => [file, new Set()]));
 
 for (const importer of sourceFiles) {
   let source;
@@ -87,9 +88,22 @@ for (const importer of sourceFiles) {
   IMPORT_PATTERN.lastIndex = 0;
   for (const match of source.matchAll(IMPORT_PATTERN)) {
     const target = resolveImport(importer, match[1], sourceSet);
-    if (target && importersByTarget.has(target) && target !== importer) {
-      importersByTarget.get(target).push(importer);
+    if (target && target !== importer) {
+      importsByFile.get(importer)?.add(target);
+      if (importersByTarget.has(target)) importersByTarget.get(target).add(importer);
     }
+  }
+}
+
+const applicationEntrypoints = sourceFiles.filter((file) => file.startsWith("src/routes/"));
+const reachableFromRoutes = new Set(applicationEntrypoints);
+const pending = [...applicationEntrypoints];
+while (pending.length) {
+  const importer = pending.shift();
+  for (const target of importsByFile.get(importer) ?? []) {
+    if (reachableFromRoutes.has(target)) continue;
+    reachableFromRoutes.add(target);
+    pending.push(target);
   }
 }
 
@@ -100,7 +114,7 @@ const registry = manifests.map((manifest) => {
   manifestIds.add(manifest.id);
   const sourcePath = manifest.sourcePath.replaceAll("\\", "/");
   const sourceExists = existsSync(path.join(ROOT, sourcePath));
-  const importers = importersByTarget.get(sourcePath) ?? [];
+  const importers = [...(importersByTarget.get(sourcePath) ?? [])].sort();
   const byKind = Object.groupBy
     ? Object.groupBy(importers, classifyImporter)
     : importers.reduce((groups, file) => {
@@ -115,6 +129,8 @@ const registry = manifests.map((manifest) => {
     sourceExists,
     duplicateId,
     importerCount: importers.length,
+    runtimeImporterCount: importers.filter((file) => !["test", "script"].includes(classifyImporter(file))).length,
+    reachableFromRouteEntrypoint: reachableFromRoutes.has(sourcePath),
     routeImporters: byKind.route ?? [],
     uiImporters: byKind.ui ?? [],
     serverImporters: byKind.server ?? [],
@@ -128,13 +144,14 @@ const registeredPaths = new Set(manifests.map((manifest) => manifest.sourcePath.
 const unregisteredEngineModules = engineFiles.filter((file) => !registeredPaths.has(file)).sort();
 const missingSources = registry.filter((entry) => !entry.sourceExists);
 const duplicateIds = registry.filter((entry) => entry.duplicateId);
-const noDirectImporters = registry.filter((entry) => entry.importerCount === 0);
+const noRuntimeImporters = registry.filter((entry) => entry.runtimeImporterCount === 0);
+const notRouteReachable = registry.filter((entry) => !entry.reachableFromRouteEntrypoint);
 const summary = {
   generatedAt: new Date().toISOString(),
   scope: "Static source import graph only; no runtime reachability or execution is inferred.",
   counts: {
     sourceFilesScanned: sourceFiles.length,
-    engineModulesFound: engineFiles.length,
+    noctisModulesFound: engineFiles.length,
     registryEntries: manifests.length,
     missingRegistrySources: missingSources.length,
     duplicateRegistryIds: duplicateIds.length,
