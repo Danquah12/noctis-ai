@@ -333,7 +333,7 @@ Added `src/lib/noctis-engine-execution-controller.ts` as a bounded adapter coord
 
 Tests cover dependency ordering, independent-branch continuation, failure propagation, scope rejection before invocation, graph cycles, duplicate adapters, mismatched result identities, task limits and analysis-only enforcement. The registry and standard test scripts include the new controller.
 
-Current boundary: this is an injected-adapter analysis controller, not a production agent runtime. No authenticated API route, production engine adapter, sandbox, timeout/termination mechanism, persistent dispatch, authoritative evidence resolver or approval ledger is connected to it. Production integration must be added behind trusted server-side identity and policy enforcement.
+Current boundary: this is an injected-adapter analysis controller, not a production agent runtime. It now passes each adapter an AbortSignal and UTC deadline, races invocation against a configurable 10–120,000 ms deadline (30 seconds by default), and records `ADAPTER_TIMEOUT` when exceeded. This is cooperative cancellation only: adapters that ignore the signal may continue running, and the controller cannot forcibly terminate them. No authenticated API route, production engine adapter, hardened sandbox, persistent dispatch, authoritative evidence resolver or approval ledger is connected. Production integration must be added behind trusted server-side identity and policy enforcement.
 ### Cooperative workflow cancellation and safe termination
 
 Added an additive migration for workflow/task cancellation metadata and a deterministic `cancelling` workflow state. The persistence adapter now supports:
