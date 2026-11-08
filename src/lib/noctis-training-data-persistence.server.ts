@@ -201,7 +201,7 @@ export async function snapshotNoctisTrainingDataset(
       "SELECT domain FROM noctis_training_dataset WHERE dataset_id=$1 AND tenant_id=$2 FOR UPDATE",
       [input.datasetId,input.tenantId]);
     if(!dataset.rows.length)return {ok:false,code:"NOT_FOUND" as const};
-    const placeholders=input.pairIds.map((_,i)=>`$${i+3}`).join(",");
+    const placeholders=input.pairIds.map((_,i)=>`${i+2}`).join(",");
     const rows=await tx.query<{
       id:string;question:string;answer:string;domain:string;source_id:string;source_hash:string;license:string;
       source_status:string;source_content_hash:string;source_license:string;
@@ -214,7 +214,7 @@ export async function snapshotNoctisTrainingDataset(
          AND p.source_hash=s.content_hash AND p.license=s.license
          AND p.id IN (${placeholders})
        ORDER BY p.id`,
-      [input.tenantId,input.datasetId,...input.pairIds]);
+      [input.tenantId,...input.pairIds]);
     if(rows.rows.length!==input.pairIds.length)return {ok:false,code:"SOURCE_NOT_APPROVED" as const};
     if(rows.rows.some(r=>r.domain!==dataset.rows[0].domain))return {ok:false,code:"INVALID_INPUT" as const};
     const items=rows.rows.map(r=>({
@@ -252,5 +252,56 @@ export async function snapshotNoctisTrainingDataset(
       [`dataset-audit-${sha256(input.datasetVersionId)}`,input.actorId,
        input.datasetVersionId,`Snapshot contains ${assigned.length} source-approved examples`,digest]);
     return {ok:true,value:{datasetVersionId:input.datasetVersionId,versionNumber,contentDigest:digest,counts}};
+  });
+}
+
+export async function reviewNoctisTrainingDatasetVersion(
+  db:TrainingSqlDatabase,
+  input:NoctisTrainingTrustedContext & {
+    datasetVersionId:string;decision:"approved"|"rejected";reason:string;at:string;
+  },
+):Promise<NoctisTrainingRepositoryResult<{datasetVersionId:string;decision:"approved"|"rejected"}>>{
+  if(!input || ![input.tenantId,input.actorId,input.datasetVersionId,input.reason].every(nonEmpty) ||
+     input.reason.trim().length>500 || !validUtc(input.at))
+    return {ok:false,code:"INVALID_INPUT"};
+  return tenantTransaction(db,input.tenantId,async(tx)=>{
+    const rows=await tx.query<{dataset_version_id:string;approval_status:string;content_digest:string}>(
+      `SELECT v.dataset_version_id,v.approval_status,v.content_digest
+       FROM noctis_training_dataset_version v
+       JOIN noctis_training_dataset d ON d.dataset_id=v.dataset_id
+       WHERE v.dataset_version_id=$1 AND d.tenant_id=$2 FOR UPDATE`,
+      [input.datasetVersionId,input.tenantId]);
+    const row=rows.rows[0];
+    if(!row)return {ok:false,code:"NOT_FOUND" as const};
+    if(row.approval_status!=="quarantined")return {ok:false,code:"STATE_CONFLICT" as const};
+    if(input.decision==="approved"){
+      const eligible=await tx.query<{count:string}>(
+        `SELECT count(*)::text AS count
+         FROM noctis_training_dataset_member m
+         JOIN vibe_training_pair p ON p.id=m.training_pair_id
+         JOIN noctis_learning_source s ON s.id=m.source_id
+         WHERE m.dataset_version_id=$1 AND p.approval_status='approved'
+           AND p.verified=true AND s.status='approved' AND s.license IS NOT NULL
+           AND p.source_hash=s.content_hash AND p.license=s.license`,
+        [input.datasetVersionId]);
+      const version=await tx.query<{item_count:number}>(
+        "SELECT item_count FROM noctis_training_dataset_version WHERE dataset_version_id=$1",
+        [input.datasetVersionId]);
+      if(Number(eligible.rows[0]?.count??0)!==Number(version.rows[0]?.item_count??-1))
+        return {ok:false,code:"SOURCE_NOT_APPROVED" as const};
+    }
+    await tx.query(
+      `UPDATE noctis_training_dataset_version
+       SET approval_status=$1,approved_by=$2,approved_at=$3::timestamptz,approval_reason=$4
+       WHERE dataset_version_id=$5`,
+      [input.decision,input.actorId,input.at,input.reason.trim(),input.datasetVersionId]);
+    await tx.query(
+      `INSERT INTO noctis_learning_audit(id,actor_id,action,target_type,target_id,reason,before_hash,after_hash)
+       VALUES($1,$2,$3,'training_dataset_version',$4,$5,$6,$7)`,
+      [`dataset-review-${sha256(input.datasetVersionId+":"+input.decision)}`,input.actorId,
+       input.decision==="approved"?"training_dataset_version_approved":"training_dataset_version_rejected",
+       input.datasetVersionId,input.reason.trim(),row.content_digest,
+       sha256(row.content_digest+":"+input.decision+":"+input.reason.trim())]);
+    return {ok:true,value:{datasetVersionId:input.datasetVersionId,decision:input.decision}};
   });
 }
