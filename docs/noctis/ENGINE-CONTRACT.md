@@ -347,3 +347,10 @@ Added `src/lib/noctis-runtime-inventory-provider.ts`, a provider-neutral paginat
 Added `src/lib/noctis-runtime-reconciliation-service.ts`. It collects and validates a complete provider snapshot before loading the authoritative expected-execution ledger, classifies the two snapshots, and submits the full decision set to an injected atomic/idempotent repository. Incomplete inventory never reaches the ledger or persistence stages. Inventory, ledger, classification, and persistence failures remain distinguishable. The service never performs cleanup, adoption, stop, or deletion.
 
 **Boundary:** the repository is an interface only; durable reconciliation snapshot/decision storage and provider API credentials are not connected. The repository implementation must enforce exact replay semantics for `(providerId,snapshotId)` and reject changed payloads for the same key.
+
+
+## 21. Transactional runtime reconciliation repository
+
+Added a PostgreSQL/PGlite repository for reconciliation snapshots. It reads expected executions from the authoritative runtime ledger and commits the run record, normalized decisions, and audit event atomically. Provider/snapshot identity is the idempotency key; canonical decision payloads are hashed, exact retries return replay acknowledgement, and changed payloads conflict. Decision order is canonicalized so provider pagination order does not change the digest.
+
+The repository uses an injected system tenant/service actor for cross-tenant inventory reconciliation. Provider-reported tenant metadata is not used as authorization or ownership. Unknown resources are stored as unowned quarantine decisions. This adapter is tested with PGlite but is not wired to a production database or authenticated cloud provider.
