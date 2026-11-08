@@ -88,6 +88,7 @@ export class NoctisCloudMicrovmProviderAdapter implements NoctisIsolatedRuntimeP
 
   async launch(input: {
     workloadId: string;
+    executionIntentId: string;
     tenantId: string;
     workloadDigest: string;
     limits: NoctisSandboxLimits;
