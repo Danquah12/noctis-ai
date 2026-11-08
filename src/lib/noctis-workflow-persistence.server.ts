@@ -138,7 +138,7 @@ async function withTenantTransaction<T>(
   operation: (tx: NoctisWorkflowSqlExecutor) => Promise<T>,
 ): Promise<T> {
   if (!nonEmpty(tenantId)) throw new Error("A trusted tenant context is required.");
-  return withTenantTransaction(db, input.tenantId, async (tx) => {
+  return db.transaction(async (tx) => {
     // Transaction-local setting is cleared automatically on commit/rollback.
     await tx.query("SELECT set_config('app.tenant_id', $1, true)", [tenantId]);
     return operation(tx);
@@ -292,7 +292,7 @@ export async function createNoctisWorkflowIdempotently(
   const policyJson = fingerprintJson(policy);
   if (!requestFingerprint || !policyJson) return { ok: false, code: "INVALID_INPUT" };
 
-  return db.transaction(async (tx) => {
+  return withTenantTransaction(db, input.tenantId, async (tx) => {
     const inserted = await tx.query<{ workflow_id: string }>(
       `INSERT INTO noctis_workflows
          (workflow_id, tenant_id, created_by, idempotency_key, request_fingerprint,
@@ -409,7 +409,7 @@ export async function claimNoctisWorkflowTask(
     return { ok: false, code: "INVALID_INPUT" };
   }
 
-  return db.transaction(async (tx) => {
+  return withTenantTransaction(db, input.tenantId, async (tx) => {
     const candidates = await tx.query<{
       task_record_id: string; workflow_id: string; task_id: string;
       engine_id: string; capability: string; attempt_count: number;
@@ -552,7 +552,7 @@ export async function finishNoctisWorkflowTask(
     return { ok: false, code: "INVALID_INPUT" };
   }
 
-  return db.transaction(async (tx) => {
+  return withTenantTransaction(db, input.tenantId, async (tx) => {
     const locked = await tx.query<{ workflow_id: string; task_record_id: string }>(
       `SELECT t.workflow_id, t.task_record_id
        FROM noctis_workflow_tasks t
@@ -636,7 +636,7 @@ export async function recoverNoctisExpiredWorkflowLease(
     return { ok: false, code: "INVALID_INPUT" };
   }
 
-  return db.transaction(async (tx) => {
+  return withTenantTransaction(db, input.tenantId, async (tx) => {
     const expired = await tx.query<{
       task_record_id: string;
       workflow_id: string;
