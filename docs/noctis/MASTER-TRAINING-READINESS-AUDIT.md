@@ -133,3 +133,18 @@ If an existing engine can cover the gap safely, improve it instead of creating a
 6. Implement the first provider-neutral training job contract; defer provider-specific fine-tuning until model/provider selection.
 
 **Definition of done:** Noctis is considered trained for a domain only when a versioned model has completed a reproducible training or adaptation process (if needed), passed independent held-out evaluation for that domain, met safety and evidence thresholds, and has an approved release record. The platform may use a strong foundation model without fine-tuning where evidence shows that retrieval, tools, and deterministic controls achieve the required performance; this decision must be measured, not assumed.
+
+
+## 9. Additional findings from the training-store path
+
+The current training store has a useful quarantine/review concept, but its write semantics need hardening before it can be the authoritative dataset pipeline:
+
+- `rememberAnswer` immediately adds a candidate to process memory with `approvalStatus: "quarantined"`, then starts database writes in a detached async task. Database failures are swallowed, so callers cannot know whether the persistent write and audit event succeeded.
+- `trainNoctisFromRawDocument` increments and returns `trainedPairsCount` after calling that in-memory path. That count currently means candidate lesson entries generated/submitted, not durable database commits and not model-weight updates.
+- `hydrateFromDb` loads approved rows and seeds the legacy corpus as approved when the database count is below the seed-corpus size. Seed provenance and review policy should be made explicit in the canonical dataset registry.
+- `reviewTrainingSubmission` writes reviewer identity, decision, reason, and an audit row. The route/service boundary must still prove that the reviewer identity is authenticated and authorized; a caller-supplied reviewer ID is not itself authorization.
+- `recallTrainedAnswer` and `lessonBlock` retrieve approved examples using lexical similarity. This is retrieval from a memory store, not learned model parameters or semantic vector search.
+
+### Required correction
+
+Replace fire-and-forget writes with awaited transactional repository operations. A submission API must return distinct outcomes for candidate-created, durable, quarantined, approved, rejected, or failed. If persistence or audit fails, the caller must receive a failure and the system must not report a durable training submission. Keep candidate capture separate from activation and model-training jobs.
