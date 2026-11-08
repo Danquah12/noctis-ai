@@ -155,14 +155,16 @@ const summary = {
     registryEntries: manifests.length,
     missingRegistrySources: missingSources.length,
     duplicateRegistryIds: duplicateIds.length,
-    registeredEnginesWithNoDirectImporters: noDirectImporters.length,
-    unregisteredEngineModules: unregisteredEngineModules.length,
+    registeredEnginesWithNoRuntimeImporters: noRuntimeImporters.length,
+    registeredEnginesNotReachableFromRoutes: notRouteReachable.length,
+    unregisteredNoctisModules: unregisteredNoctisModules.length,
   },
   registry,
   missingSources,
   duplicateIds,
-  noDirectImporters: noDirectImporters.map(({ id, sourcePath }) => ({ id, sourcePath })),
-  unregisteredEngineModules,
+  noRuntimeImporters: noRuntimeImporters.map(({ id, sourcePath }) => ({ id, sourcePath })),
+  notRouteReachable: notRouteReachable.map(({ id, sourcePath, importerCount }) => ({ id, sourcePath, importerCount })),
+  unregisteredNoctisModules,
 };
 
 process.stdout.write(JSON.stringify(summary, null, 2) + "\n");
