@@ -7075,7 +7075,7 @@ export function NoctisDesk() {
             </div>
 
             <div className="flex items-center justify-between px-3 pb-1 border-t border-white/5 pt-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">{shelf === "pictures" ? "Pictures" : "Recent conversations"}</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">{"Recent conversations"}</p>
               {shelf === "chats" && listed.length ? (
                 <button type="button" onClick={clearHistory} className="text-xs text-zinc-500 hover:text-zinc-100">
                   Clear
