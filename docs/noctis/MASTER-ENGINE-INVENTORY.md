@@ -1,20 +1,20 @@
 # Noctis Master Engine Inventory
 
 **Audit branch:** `noctis/training-foundation`  
-**Audited head:** `669068514c607c16b87a8d1c8bd94e2b0e890b61`  
-**Audit date:** 2026-11-07  
+**Audited head:** `0f0fb9d9d3dc124cbd1e3c9405a921b663bf0fb7`  
+**Audit date:** 2026-11-08  
 **Purpose:** Establish a repository-backed baseline before engine refactoring or expansion.
 
 ## 1. Executive inventory
 
-The recursive Git tree for the audited branch contained 1,006 tracked files. The following Noctis-specific source inventory was identified:
+The recursive Git tree for the audited branch contained 1,072 tracked files. The following Noctis-specific source inventory was identified:
 
 | Artifact | Count | What the count proves |
 |---|---:|---|
-| Files under `src/lib/noctis-*` | 187 | Noctis-prefixed library artifacts exist |
-| Implementation source files (.ts/.tsx/.py, excluding tests) | 127 | Implementation source files exist; behavior is not thereby validated |
-| Test files | 58 | Test source files exist; pass status and coverage require execution |
-| Components under `src/components/noctis/` | 55 | Noctis UI components exist |
+| Files under `src/lib/noctis-*` | 189 | Noctis-prefixed library artifacts exist |
+| Implementation source files (.ts/.tsx/.py, excluding tests) | 128 | Implementation source files exist; behavior is not thereby validated |
+| Test files | 59 | Test source files exist; pass status and coverage require execution |
+| Components under `src/components/noctis/` | 57 | Noctis UI components exist |
 | Dedicated Noctis routes | 2 | `/noctis` and `/api/noctis` route files exist |
 | Professional specification | 1 principal specification identified | A source taxonomy/specification exists |
 
@@ -280,3 +280,9 @@ A focused test suite covers registry identity uniqueness, discovery, defensive c
 - Do not claim model-weight training unless an actual training job and resulting artifact exist.
 - Do not promote engines based on UI presence or synthetic acceptance scores.
 - Keep all work on the development branch until CI, security, migration and human review gates pass.
+
+## 7. Static integration graph
+
+The current CI run also executes `npm run audit:noctis-integrations`. It scans 822 source files, identifies 128 Noctis-prefixed implementation modules and validates all 11 registry source paths. The latest result reports 0 missing source paths, 0 duplicate registry IDs, 0 registered engines without runtime importers and 0 registered engines outside the modeled application-entrypoint graph. The 117 other Noctis-prefixed modules remain outside the curated registry pending classification; they are not automatically treated as missing engines.
+
+See [ENGINE-INTEGRATION-AUDIT.md](./ENGINE-INTEGRATION-AUDIT.md) for methodology, limitations and the distinction between static reachability and proven runtime invocation.
