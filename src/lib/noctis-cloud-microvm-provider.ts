@@ -36,10 +36,15 @@ export type NoctisCloudMicrovmProviderConfig = {
 };
 
 export class NoctisCloudMicrovmProviderAdapter implements NoctisIsolatedRuntimeProvider {
+  private readonly config: NoctisCloudMicrovmProviderConfig;
+  private readonly controlPlane: NoctisCloudMicrovmControlPlane;
+
   constructor(
-    private readonly config: NoctisCloudMicrovmProviderConfig,
-    private readonly controlPlane: NoctisCloudMicrovmControlPlane,
+    config: NoctisCloudMicrovmProviderConfig,
+    controlPlane: NoctisCloudMicrovmControlPlane,
   ) {
+    this.config = config;
+    this.controlPlane = controlPlane;
     if (!config.providerId?.trim()) throw new Error("A trusted cloud microVM provider ID is required.");
     if (!controlPlane ||
         typeof controlPlane.launchExecution !== "function" ||
