@@ -216,3 +216,22 @@ The repository contract requires atomic persistence and idempotency on `(provide
 Tests cover complete snapshot ordering, incomplete inventory short-circuiting, ledger outage, persistence failure, replay acknowledgement, and unknown-resource quarantine decisions. The tests are included in typecheck, stress, and full CI scripts.
 
 **Boundary:** this is orchestration plus an injected repository port. A production implementation of the repository is not yet connected; durable decision persistence, transaction-level snapshot idempotency, provider credentials/API, alert delivery, and approval-bound cleanup remain outstanding. The provider-supplied snapshot ID and completeness flag are only as trustworthy as the eventual provider API's documented semantics.
+
+
+## 17. Transactional reconciliation snapshot persistence
+
+Added `migrations/20261108_noctis_runtime_reconciliation_decisions.sql` and `src/lib/noctis-runtime-reconciliation-persistence.server.ts`.
+
+The schema stores one reconciliation run per provider/snapshot pair and its normalized decision rows. The repository:
+- Loads expected executions from the Noctis execution ledger under an explicit reconciliation service identity.
+- Canonicalizes and sorts decisions before computing a SHA-256 snapshot digest.
+- Inserts the run, all decisions, and one `inventory_reconciled` audit event in a single database transaction.
+- Treats the same provider/snapshot and same decision payload as an idempotent replay, even if the collection timestamp differs.
+- Rejects reuse of the same provider/snapshot ID with a changed payload.
+- Uses deterministic run, decision, and audit identifiers so retry after an ambiguous commit response is safe.
+
+Provider-reported tenant identity is not copied into ownership columns. Quarantine decisions retain no tenant ownership; tenant/workload values on `missing_expected` decisions come from the authoritative execution ledger. The service actor and system tenant are injected by the trusted server composition root.
+
+Tests cover ledger reads, atomic run/decision/audit persistence, replay, payload conflicts, concurrent duplicate submission, and transaction rollback on audit collision.
+
+**Boundary:** this is a PGlite-tested PostgreSQL adapter, not a connected production database. Production must enforce service-role permissions, RLS, trusted service identity, migrations, backup/retention, and external audit anchoring. Persisted decisions do not authorize cleanup.
