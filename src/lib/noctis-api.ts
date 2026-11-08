@@ -143,28 +143,46 @@ export const trainVibe = createServerFn({ method: "POST" })
     const { callerKey, guardRate } = await import("@/lib/security.server");
     const userId = await requireUserId();
     await guardRate(`noctis-training:${callerKey(userId)}`, 10, 10 * 60 * 1000);
-    const { trainPair, rememberRule, trainingStatus, exportTrainingJsonl, reviewTrainingSubmission, pendingTrainingSubmissions } = await import("@/lib/noctis-train.server");
+    const { rememberRule, trainingStatus, exportTrainingJsonl, reviewTrainingSubmission, pendingTrainingSubmissions } = await import("@/lib/noctis-train.server");
     if (data.action === "pending") {
       const { requireNoctisLearningReviewer } = await import("@/lib/admin-api");
       await requireNoctisLearningReviewer(userId);
-      return { ok: true, pending: await pendingTrainingSubmissions() };
+      return { ok: true, pending: await pendingTrainingSubmissions(100, userId) };
     }
     if (data.action === "approve" || data.action === "reject") {
       const { requireNoctisLearningReviewer } = await import("@/lib/admin-api");
       await requireNoctisLearningReviewer(userId);
+      const decision = data.action === "approve" ? "approved" : "rejected";
+      if (data.kind === "pair") {
+        const { getNoctisTrainingDatabase } = await import("@/lib/noctis-training-db-adapter.server");
+        const { reviewNoctisTrainingExample } = await import("@/lib/noctis-training-data-persistence.server");
+        const { randomUUID } = await import("node:crypto");
+        const review = await reviewNoctisTrainingExample(await getNoctisTrainingDatabase(), {
+          tenantId: userId, actorId: userId, pairId: data.id, decision, reason: data.reason,
+          at: new Date().toISOString(), auditId: randomUUID(),
+        });
+        if (!review.ok) return { ok: false, reason: review.code, status: await trainingStatus() };
+        return { ok: true, kind: "pair", id: data.id, decision, status: await trainingStatus() };
+      }
       const review = await reviewTrainingSubmission({
-        kind: data.kind,
-        id: data.id,
-        decision: data.action === "approve" ? "approved" : "rejected",
-        reviewerId: userId,
-        reason: data.reason,
+        kind: "rule", id: data.id, decision, reviewerId: userId, reason: data.reason,
       });
       return { ...review, status: await trainingStatus() };
     }
     if (data.action === "train") {
-      const res = await trainPair(data.question, data.answer, "user-taught", userId);
+      const { getNoctisTrainingDatabase } = await import("@/lib/noctis-training-db-adapter.server");
+      const { submitNoctisTrainingExample } = await import("@/lib/noctis-training-data-persistence.server");
+      const { randomUUID } = await import("node:crypto");
+      const submissionId = randomUUID();
+      const result = await submitNoctisTrainingExample(await getNoctisTrainingDatabase(), {
+        tenantId: userId, actorId: userId, pairId: submissionId,
+        question: data.question, answer: data.answer, domain: "general", model: "user-taught",
+        at: new Date().toISOString(), auditId: randomUUID(),
+      });
       const status = await trainingStatus();
-      return { ok: res.ok, reason: res.reason || "", submissionId: res.pair?.id || "", status };
+      return result.ok
+        ? { ok: true, reason: "Saved durably as a quarantined candidate. It is not active training data.", submissionId, status }
+        : { ok: false, reason: result.code, submissionId: "", status };
     }
     if (data.action === "rule") {
       const res = await rememberRule(data.rule, "general", userId);
