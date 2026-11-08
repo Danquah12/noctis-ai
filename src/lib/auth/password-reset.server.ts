@@ -127,7 +127,6 @@ export async function finishDeskPasswordReset(token: string, password: string) {
   const { recordActivity } = await import("@/lib/activity.server");
   await recordActivity({
     userId: user.id,
-    email,
     action: "sign-in",
     detail: `Reset Desk password and signed in (${email})`,
     surface: "desk",
