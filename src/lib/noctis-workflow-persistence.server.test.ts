@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import { PGlite } from "@electric-sql/pglite";
 import {
   claimNoctisWorkflowTask,
+  createNoctisWorkflowIdempotently,
   finishNoctisWorkflowTask,
   recoverNoctisExpiredWorkflowLease,
   type NoctisWorkflowSqlDatabase,
@@ -14,12 +15,17 @@ const migration = readFileSync(
   new URL("../../migrations/20261107_noctis_workflow_control_plane.sql", import.meta.url),
   "utf8",
 );
+const idempotencyMigration = readFileSync(
+  new URL("../../migrations/20261107_noctis_workflow_idempotency.sql", import.meta.url),
+  "utf8",
+);
 const at = "2026-11-07T16:00:00Z";
 
 async function setup() {
   const pg = new PGlite();
   await pg.waitReady;
   await pg.exec(migration);
+  await pg.exec(idempotencyMigration);
   const wrap = (client: { query: (sql: string, params?: unknown[]) => Promise<any> }): NoctisWorkflowSqlExecutor => ({
     query: (sql, params) => client.query(sql, params ? [...params] : undefined),
   });
@@ -45,6 +51,105 @@ async function setup() {
 }
 
 describe("Noctis tenant-scoped workflow persistence", () => {
+
+  it("creates workflows atomically and returns the original for an identical idempotent replay", async () => {
+    const { pg, db } = await setup();
+    try {
+      const request = {
+        tenantId: "tenant-a", actorId: "actor-a", workflowId: "wf-idem",
+        idempotencyKey: "request-idem-1", planVersion: "plan-v1",
+        requestSummary: "Run a bounded analysis", policy: { review: true, limit: 3 },
+        at, eventId: "event-idem-1", correlationId: "corr-idem",
+        tasks: [{
+          taskRecordId: "task-record-idem", taskId: "step-1",
+          engineId: "noctis.science.universal", capability: "science.research.analyze",
+          dependsOn: [], evidenceRequired: true, evidenceRefs: ["evidence-1"],
+          approvalRequired: false, maxAttempts: 2,
+        }],
+      } as const;
+      const created = await createNoctisWorkflowIdempotently(db, request);
+      assert.deepEqual(created, { ok: true, value: { workflowId: "wf-idem", created: true } });
+
+      const replay = await createNoctisWorkflowIdempotently(db, {
+        ...request,
+        workflowId: "different-generated-id",
+        eventId: "different-event",
+      });
+      assert.deepEqual(replay, { ok: true, value: { workflowId: "wf-idem", created: false } });
+
+      const counts = await pg.query<{ workflows: string; tasks: string; events: string }>(
+        `SELECT
+           (SELECT count(*)::text FROM noctis_workflows WHERE workflow_id='wf-idem') AS workflows,
+           (SELECT count(*)::text FROM noctis_workflow_tasks WHERE workflow_id='wf-idem') AS tasks,
+           (SELECT count(*)::text FROM noctis_workflow_events WHERE workflow_id='wf-idem') AS events`,
+      );
+      assert.deepEqual(counts.rows[0], { workflows: "1", tasks: "1", events: "1" });
+    } finally {
+      await pg.close();
+    }
+  });
+
+  it("rejects reuse of an idempotency key for a different request without leaking across tenants", async () => {
+    const { pg, db } = await setup();
+    try {
+      const base = {
+        tenantId: "tenant-a", actorId: "actor-a", workflowId: "wf-idem",
+        idempotencyKey: "same-key", planVersion: "plan-v1",
+        at, eventId: "event-idem", correlationId: "corr-idem",
+        tasks: [{
+          taskRecordId: "task-record-idem", taskId: "step-1",
+          engineId: "engine.a", capability: "run",
+        }],
+      } as const;
+      const created = await createNoctisWorkflowIdempotently(db, base);
+      assert.equal(created.ok, true);
+
+      const conflict = await createNoctisWorkflowIdempotently(db, {
+        ...base,
+        workflowId: "wf-conflict",
+        requestSummary: "Different payload",
+        eventId: "event-conflict",
+      });
+      assert.deepEqual(conflict, { ok: false, code: "IDEMPOTENCY_CONFLICT" });
+
+      const otherTenant = await createNoctisWorkflowIdempotently(db, {
+        ...base,
+        tenantId: "tenant-b", actorId: "actor-b", workflowId: "wf-tenant-b",
+        eventId: "event-tenant-b",
+      });
+      assert.deepEqual(otherTenant, { ok: true, value: { workflowId: "wf-tenant-b", created: true } });
+
+      const rows = await pg.query<{ tenant_id: string; workflow_id: string }>(
+        "SELECT tenant_id, workflow_id FROM noctis_workflows WHERE idempotency_key='same-key' ORDER BY tenant_id",
+      );
+      assert.deepEqual(rows.rows, [
+        { tenant_id: "tenant-a", workflow_id: "wf-idem" },
+        { tenant_id: "tenant-b", workflow_id: "wf-tenant-b" },
+      ]);
+    } finally {
+      await pg.close();
+    }
+  });
+
+  it("rejects invalid dependency graphs before writing workflow records", async () => {
+    const { pg, db } = await setup();
+    try {
+      const invalid = await createNoctisWorkflowIdempotently(db, {
+        tenantId: "tenant-a", actorId: "actor-a", workflowId: "wf-invalid",
+        idempotencyKey: "invalid-key", planVersion: "plan-v1",
+        at, eventId: "event-invalid", correlationId: "corr-invalid",
+        tasks: [{
+          taskRecordId: "task-invalid", taskId: "step-1",
+          engineId: "engine.a", capability: "run", dependsOn: ["missing-step"],
+        }],
+      });
+      assert.deepEqual(invalid, { ok: false, code: "INVALID_INPUT" });
+      const row = await pg.query("SELECT workflow_id FROM noctis_workflows WHERE workflow_id='wf-invalid'");
+      assert.equal(row.rows.length, 0);
+    } finally {
+      await pg.close();
+    }
+  });
   it("claims only the trusted tenant's task and atomically closes its attempt", async () => {
     const { pg, db } = await setup();
     try {
