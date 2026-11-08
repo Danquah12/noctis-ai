@@ -34,7 +34,7 @@ describe("Noctis universal orchestration planner", () => {
       requestId: "req-multi-1",
       question: "Research the scientific basis and engineer a solar battery microgrid.",
     });
-    assert.deepEqual(plan.selectedDomains, ["science", "engineering"]);
+    assert.deepEqual(plan.selectedDomains, ["science", "engineering", "research"]);
     assert.equal(plan.steps.filter((step) => step.engineId.startsWith("noctis.")).length >= 4, true);
   });
 
