@@ -15,7 +15,7 @@ function resultCode(result: ReturnType<typeof validateNoctisEngineRequest>): str
 describe("Noctis engine registry", () => {
   it("registers the initial source-backed specialist cohort", () => {
     const engines = listNoctisEngines();
-    assert.equal(engines.length, 17);
+    assert.equal(engines.length, 18);
     assert.equal(new Set(engines.map((engine) => engine.id)).size, engines.length);
     assert.ok(engines.every((engine) => engine.sourcePath.startsWith("src/lib/noctis-")));
   });
