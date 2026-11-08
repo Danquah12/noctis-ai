@@ -107,7 +107,7 @@ export type NoctisTaskFinishInput = NoctisTrustedWorkflowContext & {
   at: string;
   eventId: string;
   correlationId: string;
-  outcome: "succeeded" | "failed";
+  outcome: "succeeded" | "failed" | "cancelled";
   result?: unknown;
   failureCode?: string;
   failureReason?: string;
@@ -115,7 +115,7 @@ export type NoctisTaskFinishInput = NoctisTrustedWorkflowContext & {
 
 export type NoctisPersistenceResult<T> =
   | { ok: true; value: T }
-  | { ok: false; code: "INVALID_INPUT" | "NOT_CLAIMED" | "LEASE_LOST" | "NOT_RUNNING" | "IDEMPOTENCY_CONFLICT" };
+  | { ok: false; code: "INVALID_INPUT" | "NOT_CLAIMED" | "LEASE_LOST" | "NOT_RUNNING" | "IDEMPOTENCY_CONFLICT" | "NOT_FOUND" | "ALREADY_TERMINAL" | "CANCELLATION_REQUESTED" | "CANCELLATION_NOT_REQUESTED" };
 
 type ClaimRow = {
   task_record_id: string;
@@ -373,6 +373,7 @@ async function refreshNoctisWorkflowState(
              AND COUNT(*) FILTER (WHERE state = 'cancelled') > 0 THEN 'cancelled'
            WHEN COUNT(*) FILTER (WHERE state NOT IN ('succeeded', 'failed', 'skipped', 'cancelled')) = 0
              AND COUNT(*) FILTER (WHERE state = 'failed') > 0 THEN 'failed'
+           WHEN COUNT(*) FILTER (WHERE state = 'running' AND cancellation_requested_at IS NOT NULL) > 0 THEN 'cancelling'
            WHEN COUNT(*) FILTER (WHERE state = 'blocked') > 0 THEN 'blocked'
            WHEN COUNT(*) FILTER (WHERE state = 'waiting_approval') > 0 THEN 'waiting_approval'
            WHEN COUNT(*) FILTER (WHERE state = 'running') > 0 THEN 'running'
@@ -541,10 +542,90 @@ export async function claimNoctisWorkflowTask(
  * Completes a running task only when tenant, worker, lease token and unexpired
  * lease all match. Attempt closure, task update and audit event are atomic.
  */
+export type NoctisWorkflowCancellationInput = {
+  tenantId: string; actorId: string; workflowId: string; at: string;
+  reason: string; eventId: string; correlationId: string;
+};
+export type NoctisWorkflowCancellationResult = {
+  workflowId: string; state: "cancelling" | "cancelled";
+  cancelledTasks: number; runningTasksAwaitingStop: number;
+};
+
+/** Cancel non-running work immediately; running work remains leased until stop acknowledgement. */
+export async function requestNoctisWorkflowCancellation(
+  db: NoctisWorkflowSqlDatabase, input: NoctisWorkflowCancellationInput,
+): Promise<NoctisPersistenceResult<NoctisWorkflowCancellationResult>> {
+  if (!nonEmpty(input.tenantId) || !nonEmpty(input.actorId) || !nonEmpty(input.workflowId) ||
+      !nonEmpty(input.reason) || input.reason.length > 1000 || !validUtc(input.at) ||
+      !nonEmpty(input.eventId) || !nonEmpty(input.correlationId)) return { ok: false, code: "INVALID_INPUT" };
+  return withTenantTransaction(db, input.tenantId, async (tx) => {
+    const locked = await tx.query<{ workflow_id: string; state: string }>(
+      "SELECT workflow_id, state FROM noctis_workflows WHERE workflow_id = $1 AND tenant_id = $2 FOR UPDATE",
+      [input.workflowId, input.tenantId],
+    );
+    const workflow = locked.rows[0];
+    if (!workflow) return { ok: false, code: "NOT_FOUND" as const };
+    if (["succeeded", "failed", "cancelled"].includes(workflow.state)) return { ok: false, code: "ALREADY_TERMINAL" as const };
+    const changed = await tx.query<{ task_record_id: string }>(
+      `UPDATE noctis_workflow_tasks
+       SET state = 'cancelled', failure_code = 'WORKFLOW_CANCELLED',
+           failure_reason = LEFT($1, 1000), updated_at = $2::timestamptz
+       WHERE workflow_id = $3 AND state IN ('pending','ready','waiting_approval','blocked')
+       RETURNING task_record_id`,
+      [input.reason, input.at, input.workflowId],
+    );
+    await tx.query(
+      `UPDATE noctis_workflow_tasks
+       SET cancellation_requested_at = COALESCE(cancellation_requested_at, $1::timestamptz),
+           cancellation_reason = LEFT($2, 1000), updated_at = $1::timestamptz
+       WHERE workflow_id = $3 AND state = 'running'`,
+      [input.at, input.reason, input.workflowId],
+    );
+    const running = await tx.query<{ count: string }>("SELECT COUNT(*)::text AS count FROM noctis_workflow_tasks WHERE workflow_id = $1 AND state = 'running'", [input.workflowId]);
+    const runningTasksAwaitingStop = Number(running.rows[0]?.count ?? 0);
+    const state = runningTasksAwaitingStop > 0 ? "cancelling" : "cancelled";
+    await tx.query(
+      `UPDATE noctis_workflows
+       SET state = $1, cancellation_requested_at = COALESCE(cancellation_requested_at, $2::timestamptz),
+           cancellation_requested_by = COALESCE(cancellation_requested_by, $3),
+           cancellation_reason = LEFT($4, 1000), updated_at = $2::timestamptz,
+           completed_at = CASE WHEN $1 = 'cancelled' THEN $2::timestamptz ELSE NULL END
+       WHERE workflow_id = $5 AND tenant_id = $6`,
+      [state, input.at, input.actorId, input.reason, input.workflowId, input.tenantId],
+    );
+    await tx.query(
+      `INSERT INTO noctis_workflow_events
+       (event_id, workflow_id, event_type, actor_type, actor_id, correlation_id, idempotency_key, occurred_at, event_data)
+       VALUES ($1,$2,'workflow.cancellation_requested','user',$3,$4,$5,$6::timestamptz,$7::jsonb)`,
+      [input.eventId, input.workflowId, input.actorId, input.correlationId, "workflow.cancel:" + input.workflowId, input.at,
+       JSON.stringify({ reason: input.reason, cancelledTasks: changed.rows.length, runningTasksAwaitingStop })],
+    );
+    return { ok: true, value: { workflowId: input.workflowId, state, cancelledTasks: changed.rows.length, runningTasksAwaitingStop } };
+  });
+}
+
+/** Worker-side lease-bound poll; a requested stop must be acknowledged before the lease expires. */
+export async function getNoctisTaskCancellationRequest(
+  db: NoctisWorkflowSqlDatabase, input: NoctisTrustedWorkflowContext & { taskRecordId: string; leaseToken: string; at: string },
+): Promise<NoctisPersistenceResult<{ requested: boolean; reason: string | null }>> {
+  if (!nonEmpty(input.tenantId) || !nonEmpty(input.workerId) || !nonEmpty(input.taskRecordId) || !nonEmpty(input.leaseToken) || !validUtc(input.at)) return { ok: false, code: "INVALID_INPUT" };
+  return withTenantTransaction(db, input.tenantId, async (tx) => {
+    const result = await tx.query<{ cancellation_requested_at: string | null; cancellation_reason: string | null }>(
+      `SELECT t.cancellation_requested_at, t.cancellation_reason
+       FROM noctis_workflow_tasks t JOIN noctis_workflows w ON w.workflow_id = t.workflow_id
+       WHERE t.task_record_id = $1 AND w.tenant_id = $2 AND t.state = 'running'
+         AND t.lease_owner = $3 AND t.lease_token = $4 AND t.lease_expires_at > $5::timestamptz`,
+      [input.taskRecordId, input.tenantId, input.workerId, input.leaseToken, input.at],
+    );
+    const row = result.rows[0];
+    if (!row) return { ok: false, code: "LEASE_LOST" as const };
+    return { ok: true, value: { requested: row.cancellation_requested_at !== null, reason: row.cancellation_reason } };
+  });
+}
 export async function finishNoctisWorkflowTask(
   db: NoctisWorkflowSqlDatabase,
   input: NoctisTaskFinishInput,
-): Promise<NoctisPersistenceResult<{ taskRecordId: string; outcome: "succeeded" | "failed" }>> {
+): Promise<NoctisPersistenceResult<{ taskRecordId: string; outcome: "succeeded" | "failed" | "cancelled" }>> {
   if (!nonEmpty(input.tenantId) || !nonEmpty(input.workerId) ||
       !nonEmpty(input.taskRecordId) || !nonEmpty(input.leaseToken) ||
       !nonEmpty(input.eventId) || !nonEmpty(input.correlationId) ||
@@ -568,13 +649,20 @@ export async function finishNoctisWorkflowTask(
     );
     const row = locked.rows[0];
     if (!row) return { ok: false, code: "LEASE_LOST" };
+    const cancellation = await tx.query<{ cancellation_requested_at: string | null }>(
+      "SELECT cancellation_requested_at FROM noctis_workflow_tasks WHERE task_record_id = $1",
+      [input.taskRecordId],
+    );
+    const cancellationRequested = cancellation.rows[0]?.cancellation_requested_at != null;
+    if (cancellationRequested && input.outcome !== "cancelled") return { ok: false, code: "CANCELLATION_REQUESTED" };
+    if (!cancellationRequested && input.outcome === "cancelled") return { ok: false, code: "CANCELLATION_NOT_REQUESTED" };
 
     const updated = await tx.query(
       `UPDATE noctis_workflow_tasks
        SET state = $1,
            result = CASE WHEN $1 = 'succeeded' THEN $2::jsonb ELSE NULL END,
-           failure_code = CASE WHEN $1 = 'failed' THEN LEFT($3, 80) ELSE NULL END,
-           failure_reason = CASE WHEN $1 = 'failed' THEN LEFT($4, 1000) ELSE NULL END,
+           failure_code = CASE WHEN $1 = 'failed' THEN LEFT($3, 80) WHEN $1 = 'cancelled' THEN 'WORKER_CONFIRMED_STOP' ELSE NULL END,
+           failure_reason = CASE WHEN $1 = 'failed' THEN LEFT($4, 1000) WHEN $1 = 'cancelled' THEN 'Worker acknowledged cancellation and stop.' ELSE NULL END,
            lease_owner = NULL, lease_token = NULL, lease_expires_at = NULL,
            updated_at = $5::timestamptz
        WHERE task_record_id = $6 AND state = 'running'
@@ -602,7 +690,7 @@ export async function finishNoctisWorkflowTask(
       [input.eventId, row.workflow_id, row.task_record_id,
        `task.${input.outcome}`, input.workerId, input.correlationId,
        `finish:${row.task_record_id}:${input.leaseToken}`, input.at,
-       JSON.stringify({ failureCode: input.failureCode ?? null })],
+       JSON.stringify({ failureCode: input.failureCode ?? null, cancellationAcknowledged: input.outcome === "cancelled" })],
     );
 
     await refreshNoctisWorkflowState(tx, row.workflow_id, input.at);
