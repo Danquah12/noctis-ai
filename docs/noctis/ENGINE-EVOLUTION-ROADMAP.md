@@ -457,3 +457,12 @@ The legacy src/lib/noctis-wasm-runner.ts is not a genuine WASM sandbox: it evalu
 **Next:** implement the transactional repository and snapshot/decision schema, then connect a provider-specific authenticated inventory client and operational alerting. Cleanup remains a separate approval-bound workflow.
 
 **Boundary:** no production reconciliation repository, provider API, alert channel, or destructive cleanup is connected.
+
+
+## 21. M3 — Transactional reconciliation persistence
+
+**Status:** migration, transactional repository, and PGlite tests added. Complete snapshots are persisted as one run plus normalized decisions and an append-only audit event. Provider/snapshot idempotency, canonical decision digests, changed-payload conflict detection, replay, concurrent submission, and rollback behavior are covered.
+
+**Next:** integrate this repository into the authenticated reconciliation worker/API composition, configure production database roles/RLS and migrations, connect provider credentials and a real inventory API, and add operational alert delivery. Cleanup remains separate and approval-bound.
+
+**Boundary:** validated against PGlite; no production database, cloud provider, alert channel, or cleanup executor is connected.
