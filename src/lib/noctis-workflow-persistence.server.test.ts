@@ -58,6 +58,11 @@ describe("Noctis tenant-scoped workflow persistence", () => {
       assert.equal(claim.value?.taskRecordId, "task-a");
       assert.equal(claim.value?.attemptNumber, 1);
 
+      const runningWorkflow = await pg.query<{ state: string }>(
+        "SELECT state FROM noctis_workflows WHERE workflow_id='wf-a'",
+      );
+      assert.equal(runningWorkflow.rows[0].state, "running");
+
       const otherTenant = await claimNoctisWorkflowTask(db, {
         tenantId: "tenant-c", workerId: "worker-c", at,
         leaseExpiresAt: "2026-11-07T16:05:00Z", leaseToken: "lease-c",
@@ -76,6 +81,12 @@ describe("Noctis tenant-scoped workflow persistence", () => {
         "SELECT state, lease_token FROM noctis_workflow_tasks WHERE task_record_id='task-a'",
       );
       assert.deepEqual(state.rows[0], { state: "succeeded", lease_token: null });
+
+      const completedWorkflow = await pg.query<{ state: string; completed_at: string | null }>(
+        "SELECT state, completed_at FROM noctis_workflows WHERE workflow_id='wf-a'",
+      );
+      assert.equal(completedWorkflow.rows[0].state, "succeeded");
+      assert.ok(completedWorkflow.rows[0].completed_at);
       const attempt = await pg.query<{ outcome: string; finished_at: string | null }>(
         "SELECT outcome, finished_at FROM noctis_workflow_attempts WHERE attempt_id='attempt-a'",
       );
@@ -142,6 +153,12 @@ describe("Noctis tenant-scoped workflow persistence", () => {
         value: { taskRecordId: "task-a", state: "ready", attemptNumber: 1 },
       });
 
+      const retryWorkflow = await pg.query<{ state: string; completed_at: string | null }>(
+        "SELECT state, completed_at FROM noctis_workflows WHERE workflow_id='wf-a'",
+      );
+      assert.equal(retryWorkflow.rows[0].state, "ready");
+      assert.equal(retryWorkflow.rows[0].completed_at, null);
+
       const second = await claimNoctisWorkflowTask(db, {
         tenantId: "tenant-a", workerId: "worker-b", at: "2026-11-07T16:03:00Z",
         leaseExpiresAt: "2026-11-07T16:04:00Z", leaseToken: "lease-2",
@@ -159,6 +176,12 @@ describe("Noctis tenant-scoped workflow persistence", () => {
         ok: true,
         value: { taskRecordId: "task-a", state: "failed", attemptNumber: 2 },
       });
+
+      const failedWorkflow = await pg.query<{ state: string; completed_at: string | null }>(
+        "SELECT state, completed_at FROM noctis_workflows WHERE workflow_id='wf-a'",
+      );
+      assert.equal(failedWorkflow.rows[0].state, "failed");
+      assert.ok(failedWorkflow.rows[0].completed_at);
 
       const attempts = await pg.query<{ outcome: string }>(
         "SELECT outcome FROM noctis_workflow_attempts WHERE task_record_id='task-a' ORDER BY attempt_number",
