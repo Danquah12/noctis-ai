@@ -5,6 +5,7 @@ import { PGlite } from "@electric-sql/pglite";
 import {
   claimNoctisWorkflowTask,
   finishNoctisWorkflowTask,
+  recoverNoctisExpiredWorkflowLease,
   type NoctisWorkflowSqlDatabase,
   type NoctisWorkflowSqlExecutor,
 } from "./noctis-workflow-persistence.server.ts";
@@ -117,4 +118,69 @@ describe("Noctis tenant-scoped workflow persistence", () => {
       await pg.close();
     }
   });
+
+  it("recovers expired leases with bounded retries and times out each attempt", async () => {
+    const { pg, db } = await setup();
+    try {
+      await pg.query(
+        "UPDATE noctis_workflow_tasks SET max_attempts=2 WHERE task_record_id='task-a'",
+      );
+      const first = await claimNoctisWorkflowTask(db, {
+        tenantId: "tenant-a", workerId: "worker-a", at,
+        leaseExpiresAt: "2026-11-07T16:01:00Z", leaseToken: "lease-1",
+        attemptId: "attempt-1", eventId: "claim-1", correlationId: "corr-a",
+      });
+      assert.equal(first.ok, true);
+
+      const recovered = await recoverNoctisExpiredWorkflowLease(db, {
+        tenantId: "tenant-a", at: "2026-11-07T16:02:00Z",
+        retryAvailableAt: "2026-11-07T16:03:00Z",
+        eventId: "recover-1", correlationId: "corr-a",
+      });
+      assert.deepEqual(recovered, {
+        ok: true,
+        value: { taskRecordId: "task-a", state: "ready", attemptNumber: 1 },
+      });
+
+      const second = await claimNoctisWorkflowTask(db, {
+        tenantId: "tenant-a", workerId: "worker-b", at: "2026-11-07T16:03:00Z",
+        leaseExpiresAt: "2026-11-07T16:04:00Z", leaseToken: "lease-2",
+        attemptId: "attempt-2", eventId: "claim-2", correlationId: "corr-a",
+      });
+      assert.equal(second.ok, true);
+      if (second.ok) assert.equal(second.value?.attemptNumber, 2);
+
+      const exhausted = await recoverNoctisExpiredWorkflowLease(db, {
+        tenantId: "tenant-a", at: "2026-11-07T16:05:00Z",
+        retryAvailableAt: "2026-11-07T16:05:00Z",
+        eventId: "recover-2", correlationId: "corr-a",
+      });
+      assert.deepEqual(exhausted, {
+        ok: true,
+        value: { taskRecordId: "task-a", state: "failed", attemptNumber: 2 },
+      });
+
+      const attempts = await pg.query<{ outcome: string }>(
+        "SELECT outcome FROM noctis_workflow_attempts WHERE task_record_id='task-a' ORDER BY attempt_number",
+      );
+      assert.deepEqual(attempts.rows.map((row) => row.outcome), ["timed_out", "timed_out"]);
+    } finally {
+      await pg.close();
+    }
+  });
+
+  it("rejects non-UTC and malformed timestamp inputs before querying", async () => {
+    const { pg, db } = await setup();
+    try {
+      const invalid = await claimNoctisWorkflowTask(db, {
+        tenantId: "tenant-a", workerId: "worker-a", at: "not-a-date",
+        leaseExpiresAt: "2026-11-07T16:05:00Z", leaseToken: "lease",
+        attemptId: "attempt", eventId: "event", correlationId: "corr",
+      });
+      assert.deepEqual(invalid, { ok: false, code: "INVALID_INPUT" });
+    } finally {
+      await pg.close();
+    }
+  });
+
 });
