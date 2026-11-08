@@ -67,7 +67,7 @@ export async function submitNoctisTrainingExample(
       input.question.trim().length < 4 || input.answer.trim().length < 12 ||
       input.question.length > 600 || input.answer.length > 6000 || !validUtc(input.at) ||
       ((input.sourceId || input.sourceHash || input.license) && ![input.sourceId,input.sourceHash,input.license].every(nonEmpty)) ||
-      (input.sourceHash !== undefined && !/^sha256:[a-f0-9]{64}$/.test(input.sourceHash))) {
+      (input.sourceHash !== undefined && !/^[a-f0-9]{64}$/.test(input.sourceHash))) {
     return { ok: false, code: "INVALID_INPUT" };
   }
   const clean = {
