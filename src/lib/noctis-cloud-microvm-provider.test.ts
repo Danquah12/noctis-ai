@@ -64,11 +64,6 @@ describe("Noctis cloud microVM provider adapter", () => {
     assert.deepEqual(result, { runtimeId: "runtime-approved-01", executionId: "execution-01" });
     assert.equal(calls.length, 1);
     assert.deepEqual(calls[0].value, {
-      idempotencyKey: createNoctisLaunchIdempotencyKey({
-        executionIntentId: "workflow-task-attempt-01",
-        tenantId: "tenant-01", workloadId: "workload-01",
-        workloadDigest: admission.workloadDigest, limits,
-      }),
       idempotencyKey: createNoctisLaunchIdempotencyKey({ executionIntentId: "workflow-task-attempt-01", tenantId: "tenant-01", workloadId: "workload-01", workloadDigest: admission.workloadDigest, limits }),
       executionIntentId: "workflow-task-attempt-01",
       runtimeId: "runtime-approved-01",
@@ -82,7 +77,7 @@ describe("Noctis cloud microVM provider adapter", () => {
     });
   });
 
-  it("uses a stable tenant/workload/digest/limits key across retries", async () => {
+  it("uses a stable execution-intent-scoped key across retries", async () => {
     const { client, calls } = fakeControlPlane();
     const adapter = new NoctisCloudMicrovmProviderAdapter({ providerId: "cloud-microvm" }, client);
     await adapter.launch(input());
