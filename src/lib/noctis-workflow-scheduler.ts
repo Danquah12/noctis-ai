@@ -11,7 +11,7 @@ import type { NoctisWorkflowTask } from "./noctis-workflow-contract.ts";
 export type NoctisScheduleDeferral = {
   taskId: string;
   reason: "DEPENDENCIES_INCOMPLETE" | "DEPENDENCY_FAILED" | "EVIDENCE_REQUIRED" |
-    "APPROVAL_REQUIRED" | "WORKFLOW_CAPACITY" | "ENGINE_CAPACITY" | "TASK_NOT_PENDING";
+    "APPROVAL_REQUIRED" | "WORKFLOW_CAPACITY" | "ENGINE_CAPACITY" | "TASK_NOT_READY";
 };
 
 export type NoctisScheduleResult = {
@@ -88,7 +88,10 @@ export function scheduleNoctisReadyTasks(
   );
 
   for (const task of ordered) {
-    if (task.state !== "pending" && task.state !== "ready") continue;
+    if (task.state !== "ready") {
+      if (task.state === "pending") deferred.push({ taskId: task.taskId, reason: "TASK_NOT_READY" });
+      continue;
+    }
 
     const dependencyStates = task.dependsOn.map((id) => byId.get(id)!.state);
     if (dependencyStates.some((state) => state === "failed" || state === "cancelled" || state === "skipped" || state === "blocked")) {
