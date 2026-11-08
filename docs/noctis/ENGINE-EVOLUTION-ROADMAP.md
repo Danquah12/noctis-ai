@@ -383,3 +383,19 @@ This is M2 contract code only, not a runtime integration or validated sandbox. T
 The legacy src/lib/noctis-wasm-runner.ts is not a genuine WASM sandbox: it evaluates code with new Function, uses a timeout race that cannot terminate the underlying execution, and reports a string-size estimate rather than measured memory. Do not route untrusted code to it. Keep it isolated from the new provider contract until callers have been audited and migrated.
 
 **Next release gate:** add provider-specific integration only after selecting and deploying the isolation backend. Then test infinite loops, memory exhaustion, fork/process exhaustion, filesystem escape attempts, network egress attempts, tenant crossover, timeout kill/reap, provider outage, stale/forged attestations and audit completeness. Do not enable execution if any enforcement control cannot be independently demonstrated.
+
+
+## 15. M3 — Cloud microVM runtime integration
+
+**Selected direction:** Cloud-hosted microVMs. **Status:** Provider-neutral adapter contract and unit tests implemented; no cloud provider or operational runtime connected.
+
+- Added `src/lib/noctis-cloud-microvm-provider.ts` as a narrow adapter over an injected cloud control-plane client.
+- Launch requires a successful admission result bound to the exact provider, runtime, tenant, workload ID, workload digest, and resource limits.
+- Network access is fixed to disabled, storage to ephemeral-only, and privileged execution to false at the adapter boundary.
+- Stop and resource reaping are attempted and reported independently; a partial cleanup is never represented as complete.
+- Added adapter tests to typecheck, stress, and full test scripts.
+- Detailed implementation, threat model, provider-selection phases, adversarial test matrix, and production gates: `docs/noctis/M3-CLOUD-MICROVM-RUNTIME-PLAN.md`.
+
+**Next:** select the cloud vendor, region, and microVM service; implement workload-identity-authenticated control-plane calls; provision signed guest images; establish provider-backed attestation; then validate isolation in a dedicated non-production cloud account.
+
+**Boundary:** This milestone is an adapter contract, not a deployed microVM runtime. Do not send untrusted code to the legacy in-process runner. Production remains blocked until provider integration, provider-enforced isolation, cleanup reconciliation, operational controls, and independent security review pass.
