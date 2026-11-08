@@ -146,6 +146,19 @@ describe("Noctis tenant-scoped workflow persistence", () => {
       assert.deepEqual(invalid, { ok: false, code: "INVALID_INPUT" });
       const row = await pg.query("SELECT workflow_id FROM noctis_workflows WHERE workflow_id='wf-invalid'");
       assert.equal(row.rows.length, 0);
+
+      const cycle = await createNoctisWorkflowIdempotently(db, {
+        tenantId: "tenant-a", actorId: "actor-a", workflowId: "wf-cycle",
+        idempotencyKey: "cycle-key", planVersion: "plan-v1",
+        at, eventId: "event-cycle", correlationId: "corr-cycle",
+        tasks: [
+          { taskRecordId: "task-cycle-1", taskId: "step-1", engineId: "engine.a", capability: "run", dependsOn: ["step-2"] },
+          { taskRecordId: "task-cycle-2", taskId: "step-2", engineId: "engine.b", capability: "run", dependsOn: ["step-1"] },
+        ],
+      });
+      assert.deepEqual(cycle, { ok: false, code: "INVALID_INPUT" });
+      const cycleRow = await pg.query("SELECT workflow_id FROM noctis_workflows WHERE workflow_id='wf-cycle'");
+      assert.equal(cycleRow.rows.length, 0);
     } finally {
       await pg.close();
     }
