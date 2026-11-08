@@ -112,7 +112,7 @@ export function parseOcrMedicalIntake(rawText: string): ExtractedOcrIntake {
   const parsedLabs = extractLaboratoryValues(normalizedText);
   const detectedLabs = parsedLabs.map((l) => ({
     analyte: l.analyteName,
-    value: l.value,
+    value: l.measuredValue,
     unit: l.unit,
     flag: l.status,
   }));
