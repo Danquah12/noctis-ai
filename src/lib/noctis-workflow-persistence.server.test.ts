@@ -290,7 +290,7 @@ describe("Noctis tenant-scoped workflow persistence", () => {
         tenantId: "tenant-a", at: "2026-11-07T16:02:00Z",
         retryAvailableAt: "2026-11-07T16:03:00Z",
         eventId: "recover-1", correlationId: "corr-a",
-      }, testGates);
+      });
       assert.deepEqual(recovered, {
         ok: true,
         value: { taskRecordId: "task-a", state: "ready", attemptNumber: 1 },
@@ -314,7 +314,7 @@ describe("Noctis tenant-scoped workflow persistence", () => {
         tenantId: "tenant-a", at: "2026-11-07T16:05:00Z",
         retryAvailableAt: "2026-11-07T16:05:00Z",
         eventId: "recover-2", correlationId: "corr-a",
-      }, testGates);
+      });
       assert.deepEqual(exhausted, {
         ok: true,
         value: { taskRecordId: "task-a", state: "failed", attemptNumber: 2 },
