@@ -27,6 +27,7 @@ const testGates = {
     status: "approved" as const, tenantId: context.tenantId, evidenceId,
     sourceId: "source-1", chunkId: `chunk-${evidenceId}`,
     sourceStatus: "approved" as const, accessAllowed: true,
+    validUntil: null, revokedAt: null,
   })),
   resolveApproval: async (_tx: NoctisWorkflowSqlExecutor, context: {
     tenantId: string; approvalRef: string; engineId: string; capability: string;
@@ -35,6 +36,7 @@ const testGates = {
     approvalId: context.approvalRef, engineId: context.engineId,
     capability: context.capability, approvedBy: "reviewer-1",
     approvedAt: "2026-11-07T15:00:00Z", expiresAt: null, revokedAt: null,
+    approvalType: "task_execution" as const, approverAuthorized: true,
   }),
 };
 
@@ -85,6 +87,7 @@ describe("Noctis tenant-scoped workflow persistence", () => {
             status: "approved" as const, tenantId: "different-tenant", evidenceId,
             sourceId: "source-1", chunkId: "chunk-1",
             sourceStatus: "approved" as const, accessAllowed: true,
+            validUntil: null, revokedAt: null,
           })),
       };
       const evidenceBlocked = await claimNoctisWorkflowTask(db, {
@@ -103,6 +106,7 @@ describe("Noctis tenant-scoped workflow persistence", () => {
           approvalId: context.approvalRef, engineId: "different-engine",
           capability: context.capability, approvedBy: "reviewer-1",
           approvedAt: "2026-11-07T15:00:00Z", expiresAt: null, revokedAt: null,
+          approvalType: "task_execution" as const, approverAuthorized: true,
         }),
       };
       const approvalBlocked = await claimNoctisWorkflowTask(db, {
