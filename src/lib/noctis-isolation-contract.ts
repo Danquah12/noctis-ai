@@ -85,7 +85,7 @@ function reject(code: NoctisSandboxAdmissionError, message: string): NoctisSandb
 }
 
 function isUtcTimestamp(value: string): boolean {
-  return /^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?Z$/.test(value) &&
+  return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/.test(value) &&
     Number.isFinite(Date.parse(value));
 }
 
