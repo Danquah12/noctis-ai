@@ -12,6 +12,7 @@ const context = {
   tenantId: "tenant-1",
   actorId: "actor-1",
   correlationId: "corr-1",
+  at: "2026-11-07T17:00:00Z",
   scopes: ["cyber:read", "risk:read"],
   dataClassification: "confidential" as const,
   maxTasks: 10,
@@ -68,6 +69,7 @@ describe("Noctis analysis execution controller", () => {
       assert.deepEqual(order, ["cyber", "risk"]);
       assert.equal(output.report.status, "completed");
       assert.equal(output.report.executedCount, 2);
+      assert.ok(output.report.reconciliation);
       assert.deepEqual(output.report.outcomes.map((item) => item.status), ["succeeded", "succeeded"]);
     }
   });
@@ -150,7 +152,7 @@ describe("Noctis analysis execution controller", () => {
     if (!tooMany.ok) assert.equal(tooMany.code, "TASK_LIMIT_EXCEEDED");
 
     const nonAnalysis = await executeNoctisAnalysisGraph({
-      context: { ...context, executionMode: "supervised" as "analysis" },
+      context: { ...context, executionMode: "supervised" as unknown as "analysis" },
       tasks: [], adapters: [],
     });
     assert.equal(nonAnalysis.ok, false);
