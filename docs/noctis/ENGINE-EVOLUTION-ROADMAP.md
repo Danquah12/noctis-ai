@@ -326,3 +326,9 @@ Added `src/lib/noctis-workflow-persistence.server.ts` with injected PostgreSQL e
 - Does not execute specialist engines and is not connected to an application route or worker.
 
 Tests added in `src/lib/noctis-workflow-persistence.server.test.ts` for tenant isolation, evidence gating, lease-token enforcement and attempt closure. Stale-lease recovery, approval resolution, database row-level security, idempotent workflow creation and runtime wiring remain outstanding. The adapter's presence and tests do not establish operational readiness.
+
+### Lease recovery update
+
+The server-only persistence adapter now also includes `recoverNoctisExpiredWorkflowLease`. It closes the expired attempt as `timed_out`, clears the lease, and either requeues the task after an explicit retry timestamp or marks it failed when the task's configured attempt ceiling is reached. Recovery and its audit event are transactional. The caller supplies timestamps and event identifiers; this is not a background worker and does not start execution.
+
+The timestamp validator accepts strict UTC timestamps only. Automated tests now cover retry exhaustion and malformed timestamp rejection. Database-level concurrency behavior still requires CI and production-database validation.
