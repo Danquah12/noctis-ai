@@ -309,3 +309,14 @@ The cloud provider, region, microVM service, workload identity, signed image, at
 The cloud adapter derives a deterministic idempotency key from execution-intent ID, tenant ID, workload ID, workload digest, and resource limits, and forwards it with each launch request. This prevents a retry from changing identity for the same exact workload contract. The real provider client must atomically return the original execution for a replayed identical request and reject same-key/different-request reuse; the interface alone does not enforce provider semantics.
 
 The new runtime reconciliation contract compares an authoritative expected-execution ledger with provider inventory. It classifies exact matches, missing or stale expectations, unknown provider resources, identity mismatches, and duplicate idempotency keys. Unknown, duplicate, malformed, or mismatched resources are quarantined. Reconciliation is classification-only: it never adopts, stops, or deletes resources. Production still requires a real provider inventory API, durable ledger, quarantine persistence, alerting, and separately authorized cleanup.
+
+## 17. Runtime reconciliation persistence schema
+
+Added `migrations/20261108_noctis_runtime_reconciliation.sql` for:
+- a provider-scoped expected execution ledger with tenant/workload/digest/runtime binding, idempotency uniqueness, provider execution uniqueness, resource limits, lifecycle state and lease expiry;
+- a quarantine table for unknown, duplicate or mismatched provider observations, defaulting to open and carrying no cleanup authority;
+- a sequenced runtime audit event table with an ordinary-SQL UPDATE/DELETE rejection trigger.
+
+The schema migration is covered by `src/lib/noctis-runtime-reconciliation-schema.test.ts` and included in the typecheck, stress and full test scripts. The TypeScript audit event contract includes reconciliation and quarantine event types.
+
+**Boundary:** these tables are not connected to production repositories or a provider inventory API. This migration alone does not provide tenant RLS/role separation, external tamper-evidence, retention, alerting, or operator authorization. Database owners can bypass/alter triggers. Unknown resources remain quarantined; destructive cleanup requires a distinct authorized workflow and fresh provider/ledger identity checks.
