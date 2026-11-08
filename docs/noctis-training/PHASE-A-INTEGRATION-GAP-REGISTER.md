@@ -58,7 +58,7 @@ The training repository sets app.tenant_id transaction-locally. Its own design n
 
 ## Required Phase A implementation order
 
-1. [In progress] Add source tenant ownership and migration/backfill policy.
+1. Add source tenant ownership and a reviewed migration/backfill policy.
 2. [Partially complete] Source registration is transaction-backed; review/revoke still need tenant-aware repository methods.
 3. Add authenticated source and reviewer server handlers with role/MFA checks.
 4. Route all candidate submissions through the canonical governed repository; close legacy bypasses.
@@ -78,6 +78,6 @@ The training repository sets app.tenant_id transaction-locally. Its own design n
 - Cross-tenant and unauthenticated tests fail closed.
 - No model training is claimed until a real provider job and artifact lineage are recorded.
 
-## Safety boundary
+## Current validation and safety boundary
 
-This branch contains this gap register only. No production database was accessed, no migration was applied, no model provider was called, no training job was started, and no branch was merged or deployed.
+The source-ingestion implementation has been committed to this feature branch. GitHub did not report a PR-triggered workflow run for the latest implementation commit at the time of this update; no local test runner was available through the connected GitHub operations. Therefore this change is inspection-only and is not represented as tested or production-ready. No production database was accessed, no migration was applied, no model provider was called, no training job was started, and no branch was merged or deployed.
