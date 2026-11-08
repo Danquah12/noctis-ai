@@ -100,11 +100,34 @@ CREATE TABLE IF NOT EXISTS noctis_training_run_artifact (
 -- Dataset snapshots and their membership are append-only. Approval is recorded
 -- on the version row; edits require creating a new version, not rewriting history.
 CREATE OR REPLACE FUNCTION noctis_reject_training_snapshot_mutation()
-RETURNS trigger LANGUAGE plpgsql AS $$
+RETURNS trigger LANGUAGE plpgsql AS $
 BEGIN
-  RAISE EXCEPTION 'Noctis training dataset snapshots are immutable; create a new version';
+  IF TG_OP = 'DELETE' THEN
+    RAISE EXCEPTION 'Noctis training dataset snapshots are immutable; create a new version';
+  END IF;
+  -- Permit only a one-time review decision. Dataset identity, content digest,
+  -- split counts, seed, creator, and creation time are immutable.
+  IF OLD.approval_status <> 'quarantined'
+     OR NEW.approval_status NOT IN ('approved','rejected')
+     OR NEW.dataset_version_id IS DISTINCT FROM OLD.dataset_version_id
+     OR NEW.dataset_id IS DISTINCT FROM OLD.dataset_id
+     OR NEW.version_number IS DISTINCT FROM OLD.version_number
+     OR NEW.content_digest IS DISTINCT FROM OLD.content_digest
+     OR NEW.item_count IS DISTINCT FROM OLD.item_count
+     OR NEW.train_count IS DISTINCT FROM OLD.train_count
+     OR NEW.validation_count IS DISTINCT FROM OLD.validation_count
+     OR NEW.test_count IS DISTINCT FROM OLD.test_count
+     OR NEW.split_seed IS DISTINCT FROM OLD.split_seed
+     OR NEW.created_by IS DISTINCT FROM OLD.created_by
+     OR NEW.created_at IS DISTINCT FROM OLD.created_at
+     OR NEW.approved_by IS NULL
+     OR NEW.approved_at IS NULL
+     OR NEW.approval_reason IS NULL THEN
+    RAISE EXCEPTION 'Noctis dataset snapshot content is immutable; only a one-time review decision is allowed';
+  END IF;
+  RETURN NEW;
 END;
-$$;
+$;
 
 DROP TRIGGER IF EXISTS noctis_training_dataset_version_immutable ON noctis_training_dataset_version;
 CREATE TRIGGER noctis_training_dataset_version_immutable
