@@ -448,3 +448,12 @@ The legacy src/lib/noctis-wasm-runner.ts is not a genuine WASM sandbox: it evalu
 **Next:** connect one selected cloud provider's authenticated inventory API; then build transactional reconciliation orchestration and alerting. Keep cleanup separate and approval-bound.
 
 **Boundary:** no cloud inventory endpoint, credentials, provider attestation, alert channel, or cleanup action is connected. A complete API response is not proof of provider truth.
+
+
+## 20. M3 — Reconciliation orchestration service
+
+**Status:** provider-neutral orchestration service and tests added. It gates ledger access and persistence on a complete inventory snapshot, classifies against the authoritative expected ledger, and requires an atomic/idempotent repository commit acknowledgement. Failure stages are explicit; partial inventory is never reconciled.
+
+**Next:** implement the transactional repository and snapshot/decision schema, then connect a provider-specific authenticated inventory client and operational alerting. Cleanup remains a separate approval-bound workflow.
+
+**Boundary:** no production reconciliation repository, provider API, alert channel, or destructive cleanup is connected.
