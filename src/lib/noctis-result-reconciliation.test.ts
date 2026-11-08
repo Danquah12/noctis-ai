@@ -175,6 +175,48 @@ describe("Noctis specialist result reconciliation", () => {
     if (!invalidClaim.ok) assert.equal(invalidClaim.code, "INVALID_CLAIM");
   });
 
+  it("deduplicates an identical citation shared by multiple specialist engines", () => {
+    const report = reconcile([
+      result(),
+      result({
+        resultId: "result-2",
+        engineId: "noctis.risk.rmf",
+        claims: [claim({ claimId: "claim-2" })],
+      }),
+    ]);
+    assert.equal(report.evidenceIntegrity.status, "traceable");
+    assert.equal(report.claims[0].evidenceStatus, "traceable");
+    assert.deepEqual(report.claims[0].sourceIds, ["source-1"]);
+  });
+
+  it("marks conflicting metadata for one evidence chunk ID as invalid", () => {
+    const report = reconcile([
+      result(),
+      result({
+        resultId: "result-2",
+        engineId: "noctis.risk.rmf",
+        claims: [claim({ claimId: "claim-2" })],
+        evidence: [{ ...evidence, title: "Different title for same chunk" }],
+      }),
+    ]);
+    assert.equal(report.evidenceIntegrity.status, "unverified");
+    assert.ok(report.evidenceIntegrity.invalidEvidenceChunkIds.includes("chunk-1"));
+  });
+
+  it("does not accept claims emitted by a failed specialist result", () => {
+    const failed = reconcileNoctisSpecialistResults({
+      requestId: "req-1", at: AT,
+      results: [result({ status: "failed", claims: [] }), result({
+        resultId: "result-2",
+        engineId: "noctis.risk.rmf",
+        status: "failed",
+        claims: [claim({ claimId: "claim-failed" })],
+      })],
+    });
+    assert.equal(failed.ok, false);
+    if (!failed.ok) assert.equal(failed.code, "INVALID_INPUT");
+  });
+
   it("reports evidence hash tampering as unverified", () => {
     const report = reconcile([result({
       evidence: [{ ...evidence, excerpt: "tampered" }],
