@@ -333,3 +333,10 @@ Added `src/lib/noctis-runtime-persistence.server.ts`:
 PGlite tests cover replay/conflict, tenant mismatch, lost-response recovery, quarantine idempotency and malformed input. These tests are included in the validation scripts.
 
 **Boundary:** the adapter is not wired into the runtime supervisor or a real provider. The tenant transaction setting must be protected by production RLS and restricted DB roles; it is not authentication. No inventory polling, alerting, provider-side idempotency, or destructive cleanup is implemented.
+
+
+## 19. Provider inventory snapshot collector
+
+Added `src/lib/noctis-runtime-inventory-provider.ts`, a provider-neutral paginated inventory collector. It requires a stable snapshot ID across pages, follows bounded opaque cursors, rejects cursor loops and duplicate execution IDs, and returns observations only when the terminal page certifies completeness. Provider errors, changed snapshots, malformed pages, incomplete terminal pages, and page-limit exhaustion return a failure without exposing partial observations to reconciliation. Tests cover these failure modes and are included in all CI test scripts.
+
+**Boundary:** no cloud inventory API is connected. Snapshot completeness is only as trustworthy as the provider's documented snapshot semantics; provider metadata remains untrusted and is not authorization.
