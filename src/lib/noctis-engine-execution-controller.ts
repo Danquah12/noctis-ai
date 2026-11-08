@@ -128,7 +128,7 @@ export async function executeNoctisAnalysisGraph(input: {
       (context.executionMode !== undefined && context.executionMode !== "analysis")) {
     return fail("INVALID_CONTEXT", "A trusted identity, scopes, correlation ID, classification and analysis-only mode are required.");
   }
-  if (!Array.isArray(input.tasks) || !Array.isArray(input.adapters)) {
+  if (!Array.isArray(input.tasks) || !input.tasks.length || !Array.isArray(input.adapters)) {
     return fail("INVALID_GRAPH", "Tasks and adapters must be arrays.");
   }
   const maxTasks = context.maxTasks ?? 20;
@@ -248,7 +248,9 @@ export async function executeNoctisAnalysisGraph(input: {
   const partialCount = orderedOutcomes.filter((outcome) => outcome.status === "partial").length;
   const blockedCount = orderedOutcomes.filter((outcome) => outcome.status === "blocked").length;
   const succeededCount = orderedOutcomes.filter((outcome) => outcome.status === "succeeded").length;
-  const status = failedCount === 0 && partialCount === 0 && blockedCount === 0
+  const reconciliationNeedsReview = reconciliation !== null &&
+    (!reconciliation.ok || reconciliation.report.status !== "consistent");
+  const status = failedCount === 0 && partialCount === 0 && blockedCount === 0 && !reconciliationNeedsReview
     ? "completed"
     : succeededCount === 0 ? "failed" : "partial";
 
