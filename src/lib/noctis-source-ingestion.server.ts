@@ -60,7 +60,8 @@ export async function registerNoctisTextSource(input: NoctisSourceSubmission, su
     throw new Error("Invalid source classification.");
   }
 
-  if (!clean(submitterId, 160)) throw new Error("A trusted submitter ID is required.");
+  const actorId = clean(submitterId, 160);
+  if (!actorId) throw new Error("A trusted submitter ID is required.");
 
   const sourceHash = createHash("sha256").update(content, "utf8").digest("hex");
   const chunks = splitIntoChunks(content);
@@ -78,7 +79,7 @@ export async function registerNoctisTextSource(input: NoctisSourceSubmission, su
       values
         (${sourceId}, ${canonicalUri || null}, ${title}, ${publisher || null},
          ${domain}, ${jurisdiction || null}, ${sourceVersion || null},
-         ${sourceHash}, ${license || null}, ${classification}, 'quarantined', ${submitterId})
+         ${sourceHash}, ${license || null}, ${classification}, 'quarantined', ${actorId})
       on conflict (content_hash, domain) do nothing
       returning id, status
     `;
@@ -120,7 +121,7 @@ export async function registerNoctisTextSource(input: NoctisSourceSubmission, su
       insert into noctis_learning_audit
         (id, actor_id, action, target_type, target_id, reason, after_hash)
       values
-        (${randomUUID()}, ${submitterId}, 'source.submit', 'source', ${sourceId},
+        (${randomUUID()}, ${actorId}, 'source.submit', 'source', ${sourceId},
          'Text source registered; awaiting independent review', ${sourceHash})
     `;
 
