@@ -256,3 +256,87 @@ export async function finishNoctisWorkflowTask(
     return { ok: true, value: { taskRecordId: row.task_record_id, outcome: input.outcome } };
   });
 }
+
+
+export type NoctisExpiredLeaseRecoveryInput = {
+  tenantId: string;
+  at: string;
+  retryAvailableAt: string;
+  eventId: string;
+  correlationId: string;
+};
+
+/**
+ * Recovers one expired lease for a tenant. The previous attempt is closed as
+ * timed_out. Tasks with remaining attempts return to ready after the supplied
+ * retry delay; exhausted tasks become failed. The task, attempt and event are
+ * updated atomically. This function never starts a replacement worker.
+ */
+export async function recoverNoctisExpiredWorkflowLease(
+  db: NoctisWorkflowSqlDatabase,
+  input: NoctisExpiredLeaseRecoveryInput,
+): Promise<NoctisPersistenceResult<{ taskRecordId: string; state: "ready" | "failed"; attemptNumber: number } | null>> {
+  if (!nonEmpty(input.tenantId) || !nonEmpty(input.eventId) ||
+      !nonEmpty(input.correlationId) || !validUtc(input.at) ||
+      !validUtc(input.retryAvailableAt) ||
+      Date.parse(input.retryAvailableAt) < Date.parse(input.at)) {
+    return { ok: false, code: "INVALID_INPUT" };
+  }
+
+  return db.transaction(async (tx) => {
+    const expired = await tx.query<{
+      task_record_id: string;
+      workflow_id: string;
+      task_id: string;
+      lease_owner: string;
+      attempt_count: number;
+      max_attempts: number;
+    }>(
+      `SELECT t.task_record_id, t.workflow_id, t.task_id, t.lease_owner,
+              t.attempt_count, t.max_attempts
+       FROM noctis_workflow_tasks t
+       JOIN noctis_workflows w ON w.workflow_id = t.workflow_id
+       WHERE w.tenant_id = $1
+         AND t.state = 'running'
+         AND t.lease_expires_at <= $2::timestamptz
+       ORDER BY t.lease_expires_at ASC
+       LIMIT 1
+       FOR UPDATE OF t SKIP LOCKED`,
+      [input.tenantId, input.at],
+    );
+    const row = expired.rows[0];
+    if (!row) return { ok: true, value: null };
+
+    const nextState = row.attempt_count < row.max_attempts ? "ready" : "failed";
+    await tx.query(
+      `UPDATE noctis_workflow_attempts
+       SET finished_at = $1::timestamptz, outcome = 'timed_out',
+           failure_code = 'LEASE_EXPIRED',
+           failure_reason = 'Worker lease expired before task completion.'
+       WHERE task_record_id = $2 AND attempt_number = $3 AND finished_at IS NULL`,
+      [input.at, row.task_record_id, row.attempt_count],
+    );
+    await tx.query(
+      `UPDATE noctis_workflow_tasks
+       SET state = $1,
+           available_at = CASE WHEN $1 = 'ready' THEN $2::timestamptz ELSE available_at END,
+           failure_code = CASE WHEN $1 = 'failed' THEN 'MAX_ATTEMPTS_EXHAUSTED' ELSE NULL END,
+           failure_reason = CASE WHEN $1 = 'failed' THEN 'Maximum task attempts exhausted after lease expiry.' ELSE NULL END,
+           lease_owner = NULL, lease_token = NULL, lease_expires_at = NULL,
+           updated_at = $3::timestamptz
+       WHERE task_record_id = $4 AND state = 'running'`,
+      [nextState, input.retryAvailableAt, input.at, row.task_record_id],
+    );
+    await tx.query(
+      `INSERT INTO noctis_workflow_events
+         (event_id, workflow_id, task_record_id, event_type, actor_type, actor_id,
+          correlation_id, idempotency_key, occurred_at, event_data)
+       VALUES ($1, $2, $3, 'task.lease_expired', 'system', NULL, $4, $5, $6::timestamptz, $7::jsonb)`,
+      [input.eventId, row.workflow_id, row.task_record_id, input.correlationId,
+       `lease-expired:${row.task_record_id}:${row.attempt_count}`, input.at,
+       JSON.stringify({ previousWorker: row.lease_owner, attemptNumber: row.attempt_count, nextState })],
+    );
+
+    return { ok: true, value: { taskRecordId: row.task_record_id, state: nextState, attemptNumber: row.attempt_count } };
+  });
+}
