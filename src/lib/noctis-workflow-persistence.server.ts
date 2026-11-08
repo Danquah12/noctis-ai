@@ -409,6 +409,9 @@ export async function claimNoctisWorkflowTask(
        WHERE w.tenant_id = $1 AND t.state = 'ready'
          AND t.available_at <= $2::timestamptz
          AND t.attempt_count < t.max_attempts AND t.lease_token IS NULL
+         AND (NOT t.evidence_required OR
+              (jsonb_typeof(t.evidence_refs) = 'array' AND jsonb_array_length(t.evidence_refs) > 0))
+         AND (NOT t.approval_required OR NULLIF(BTRIM(t.approval_ref), '') IS NOT NULL)
          AND jsonb_typeof(t.dependencies) = 'array'
          AND NOT EXISTS (
            SELECT 1 FROM jsonb_array_elements_text(t.dependencies) dep(task_id)
