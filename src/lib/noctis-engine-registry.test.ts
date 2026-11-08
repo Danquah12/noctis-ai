@@ -21,6 +21,9 @@ describe("Noctis engine registry", () => {
     assert.ok(findNoctisEnginesByCapability("workflow.create.idempotent").some((engine) => engine.id === "noctis.core.workflow-persistence"));
     assert.ok(findNoctisEnginesByCapability("workflow.gates.evidence.resolve").some((engine) => engine.id === "noctis.core.workflow-persistence"));
     assert.ok(findNoctisEnginesByCapability("workflow.gates.approval.resolve").some((engine) => engine.id === "noctis.core.workflow-persistence"));
+    assert.ok(findNoctisEnginesByCapability("workflow.cancel.request").some((engine) => engine.id === "noctis.core.workflow-persistence"));
+    assert.ok(findNoctisEnginesByCapability("workflow.cancel.poll").some((engine) => engine.id === "noctis.core.workflow-persistence"));
+    assert.ok(findNoctisEnginesByCapability("workflow.cancel.acknowledge").some((engine) => engine.id === "noctis.core.workflow-persistence"));
   });
 
   it("resolves every declared dependency and keeps source paths unique", () => {
