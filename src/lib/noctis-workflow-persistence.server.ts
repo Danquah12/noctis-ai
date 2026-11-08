@@ -32,6 +32,48 @@ export type NoctisTrustedWorkflowContext = {
   workerId: string;
 };
 
+export type NoctisEvidenceResolution = {
+  status: "approved" | "rejected" | "missing" | "unavailable";
+  tenantId: string;
+  evidenceId: string;
+  sourceId: string;
+  chunkId: string;
+  sourceStatus: "approved" | "revoked" | "quarantined" | "unknown";
+  accessAllowed: boolean;
+};
+
+export type NoctisApprovalResolution = {
+  status: "approved" | "rejected" | "missing" | "expired" | "revoked" | "unavailable";
+  tenantId: string;
+  approvalId: string;
+  engineId: string;
+  capability: string;
+  approvedBy: string;
+  approvedAt: string;
+  expiresAt: string | null;
+  revokedAt: string | null;
+};
+
+export type NoctisWorkflowGateContext = {
+  tenantId: string;
+  workflowId: string;
+  taskId: string;
+  engineId: string;
+  capability: string;
+  at: string;
+};
+
+export interface NoctisWorkflowGateResolvers {
+  /** Must query an authoritative, tenant-scoped evidence service. */
+  resolveEvidence(tx: NoctisWorkflowSqlExecutor, context: NoctisWorkflowGateContext & {
+    evidenceRefs: readonly string[];
+  }): Promise<readonly NoctisEvidenceResolution[]>;
+  /** Must query an authoritative approval ledger and bind approval to this task. */
+  resolveApproval(tx: NoctisWorkflowSqlExecutor, context: NoctisWorkflowGateContext & {
+    approvalRef: string;
+  }): Promise<NoctisApprovalResolution>;
+}
+
 export type NoctisClaimInput = NoctisTrustedWorkflowContext & {
   at: string;
   leaseExpiresAt: string;
@@ -337,6 +379,7 @@ async function refreshNoctisWorkflowState(
 export async function claimNoctisWorkflowTask(
   db: NoctisWorkflowSqlDatabase,
   input: NoctisClaimInput,
+  gates: NoctisWorkflowGateResolvers,
 ): Promise<NoctisPersistenceResult<NoctisClaimedTask | null>> {
   if (!nonEmpty(input.tenantId) || !nonEmpty(input.workerId) ||
       !nonEmpty(input.leaseToken) || !nonEmpty(input.at) ||
@@ -348,57 +391,99 @@ export async function claimNoctisWorkflowTask(
   }
 
   return db.transaction(async (tx) => {
-    const claimed = await tx.query<ClaimRow>(
-      `WITH candidate AS (
-         SELECT t.task_record_id
-         FROM noctis_workflow_tasks t
-         JOIN noctis_workflows w ON w.workflow_id = t.workflow_id
-         WHERE w.tenant_id = $1
-           AND t.state = 'ready'
-           AND t.available_at <= $2::timestamptz
-           AND t.attempt_count < t.max_attempts
-           AND t.lease_token IS NULL
-           AND jsonb_typeof(t.dependencies) = 'array'
-           AND NOT EXISTS (
-             SELECT 1
-             FROM jsonb_array_elements_text(t.dependencies) dep(task_id)
-             WHERE NOT EXISTS (
-               SELECT 1 FROM noctis_workflow_tasks d
-               WHERE d.workflow_id = t.workflow_id
-                 AND d.task_id = dep.task_id
-                 AND d.state = 'succeeded'
-             )
+    const candidates = await tx.query<{
+      task_record_id: string; workflow_id: string; task_id: string;
+      engine_id: string; capability: string; attempt_count: number;
+      evidence_required: boolean; evidence_refs: string[];
+      approval_required: boolean; approval_ref: string | null;
+    }>(
+      `SELECT t.task_record_id, t.workflow_id, t.task_id, t.engine_id,
+              t.capability, t.attempt_count, t.evidence_required,
+              t.evidence_refs, t.approval_required, t.approval_ref
+       FROM noctis_workflow_tasks t
+       JOIN noctis_workflows w ON w.workflow_id = t.workflow_id
+       WHERE w.tenant_id = $1 AND t.state = 'ready'
+         AND t.available_at <= $2::timestamptz
+         AND t.attempt_count < t.max_attempts AND t.lease_token IS NULL
+         AND jsonb_typeof(t.dependencies) = 'array'
+         AND NOT EXISTS (
+           SELECT 1 FROM jsonb_array_elements_text(t.dependencies) dep(task_id)
+           WHERE NOT EXISTS (
+             SELECT 1 FROM noctis_workflow_tasks d
+             WHERE d.workflow_id = t.workflow_id
+               AND d.task_id = dep.task_id AND d.state = 'succeeded'
            )
-           AND (NOT t.evidence_required OR
-                (jsonb_typeof(t.evidence_refs) = 'array' AND jsonb_array_length(t.evidence_refs) > 0))
-           AND (NOT t.approval_required OR NULLIF(BTRIM(t.approval_ref), '') IS NOT NULL)
-         ORDER BY t.priority DESC, t.available_at ASC, t.created_at ASC
-         LIMIT 1
-         FOR UPDATE OF t SKIP LOCKED
-       )
-       UPDATE noctis_workflow_tasks t
-       SET state = 'running',
-           lease_owner = $3,
-           lease_token = $4,
-           lease_expires_at = $5::timestamptz,
-           attempt_count = t.attempt_count + 1,
-           updated_at = $2::timestamptz
-       FROM candidate c
-       WHERE t.task_record_id = c.task_record_id
-       RETURNING t.task_record_id, t.workflow_id, t.task_id, t.engine_id,
-                 t.capability, t.attempt_count`,
-      [input.tenantId, input.at, input.workerId, input.leaseToken, input.leaseExpiresAt],
+         )
+       ORDER BY t.priority DESC, t.available_at ASC, t.created_at ASC
+       LIMIT 1 FOR UPDATE OF t SKIP LOCKED`,
+      [input.tenantId, input.at],
     );
-    const row = claimed.rows[0];
+    const row = candidates.rows[0];
     if (!row) return { ok: true, value: null };
 
-    await refreshNoctisWorkflowState(tx, row.workflow_id, input.at);
+    const gateContext: NoctisWorkflowGateContext = {
+      tenantId: input.tenantId, workflowId: row.workflow_id,
+      taskId: row.task_id, engineId: row.engine_id,
+      capability: row.capability, at: input.at,
+    };
 
+    if (row.evidence_required) {
+      if (!Array.isArray(row.evidence_refs) || row.evidence_refs.length === 0) {
+        return { ok: true, value: null };
+      }
+      let resolved: readonly NoctisEvidenceResolution[];
+      try {
+        resolved = await gates.resolveEvidence(tx, { ...gateContext, evidenceRefs: row.evidence_refs });
+      } catch {
+        return { ok: true, value: null };
+      }
+      const valid = resolved.length === row.evidence_refs.length &&
+        row.evidence_refs.every((id) => resolved.filter((item) =>
+          item.evidenceId === id && item.tenantId === input.tenantId &&
+          item.status === "approved" && item.sourceStatus === "approved" &&
+          item.accessAllowed && nonEmpty(item.sourceId) && nonEmpty(item.chunkId),
+        ).length === 1);
+      if (!valid) return { ok: true, value: null };
+    }
+
+    if (row.approval_required) {
+      if (!nonEmpty(row.approval_ref ?? "")) return { ok: true, value: null };
+      let approval: NoctisApprovalResolution;
+      try {
+        approval = await gates.resolveApproval(tx, { ...gateContext, approvalRef: row.approval_ref! });
+      } catch {
+        return { ok: true, value: null };
+      }
+      if (approval.status !== "approved" || approval.tenantId !== input.tenantId ||
+          approval.approvalId !== row.approval_ref ||
+          approval.engineId !== row.engine_id || approval.capability !== row.capability ||
+          !nonEmpty(approval.approvedBy) || !validUtc(approval.approvedAt) ||
+          Date.parse(approval.approvedAt) > Date.parse(input.at) ||
+          approval.revokedAt !== null ||
+          (approval.expiresAt !== null &&
+            (!validUtc(approval.expiresAt) || Date.parse(approval.expiresAt) <= Date.parse(input.at)))) {
+        return { ok: true, value: null };
+      }
+    }
+
+    const updated = await tx.query<{ attempt_count: number }>(
+      `UPDATE noctis_workflow_tasks
+       SET state = 'running', lease_owner = $1, lease_token = $2,
+           lease_expires_at = $3::timestamptz, attempt_count = attempt_count + 1,
+           updated_at = $4::timestamptz
+       WHERE task_record_id = $5 AND state = 'ready' AND lease_token IS NULL
+       RETURNING attempt_count`,
+      [input.workerId, input.leaseToken, input.leaseExpiresAt, input.at, row.task_record_id],
+    );
+    if ((updated.rowCount ?? 0) !== 1) return { ok: true, value: null };
+    const attemptNumber = updated.rows[0].attempt_count;
+
+    await refreshNoctisWorkflowState(tx, row.workflow_id, input.at);
     await tx.query(
       `INSERT INTO noctis_workflow_attempts
          (attempt_id, workflow_id, task_record_id, attempt_number, worker_id, started_at)
        VALUES ($1, $2, $3, $4, $5, $6::timestamptz)`,
-      [input.attemptId, row.workflow_id, row.task_record_id, row.attempt_count, input.workerId, input.at],
+      [input.attemptId, row.workflow_id, row.task_record_id, attemptNumber, input.workerId, input.at],
     );
     await tx.query(
       `INSERT INTO noctis_workflow_events
@@ -406,24 +491,17 @@ export async function claimNoctisWorkflowTask(
           correlation_id, idempotency_key, occurred_at, event_data)
        VALUES ($1, $2, $3, 'task.claimed', 'worker', $4, $5, $6, $7::timestamptz, $8::jsonb)`,
       [input.eventId, row.workflow_id, row.task_record_id, input.workerId,
-       input.correlationId, `claim:${row.task_record_id}:${row.attempt_count}`, input.at,
-       JSON.stringify({ attemptNumber: row.attempt_count, leaseExpiresAt: input.leaseExpiresAt })],
+       input.correlationId, `claim:${row.task_record_id}:${attemptNumber}`, input.at,
+       JSON.stringify({ attemptNumber, leaseExpiresAt: input.leaseExpiresAt,
+         evidenceResolved: row.evidence_required, approvalResolved: row.approval_required })],
     );
 
-    return {
-      ok: true,
-      value: {
-        taskRecordId: row.task_record_id,
-        workflowId: row.workflow_id,
-        taskId: row.task_id,
-        engineId: row.engine_id,
-        capability: row.capability,
-        attemptNumber: row.attempt_count,
-        leaseOwner: input.workerId,
-        leaseToken: input.leaseToken,
-        leaseExpiresAt: input.leaseExpiresAt,
-      },
-    };
+    return { ok: true, value: {
+      taskRecordId: row.task_record_id, workflowId: row.workflow_id,
+      taskId: row.task_id, engineId: row.engine_id, capability: row.capability,
+      attemptNumber, leaseOwner: input.workerId, leaseToken: input.leaseToken,
+      leaseExpiresAt: input.leaseExpiresAt,
+    } };
   });
 }
 
