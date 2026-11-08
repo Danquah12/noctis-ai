@@ -223,7 +223,7 @@ export const Route = createFileRoute("/api/share-card")({
           }
           if (!painted) {
             const kwesiBytes = Buffer.from(KWESI_AVATAR, "base64");
-            const face = jpeg.decode(kwesiBytes, "base64" ? { useTArray: true, formatAsRGBA: true } : undefined);
+            const face = jpeg.decode(kwesiBytes);
             paintFace(logo.data, logo.width, logo.height, face.data, face.width, face.height);
           }
           paintCharts(logo.data, logo.width, logo.height, trendVals, barVals);
