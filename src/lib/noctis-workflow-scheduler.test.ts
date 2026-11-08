@@ -11,14 +11,14 @@ function task(id: string, overrides: Partial<Parameters<typeof createNoctisWorkf
     taskId: id, engineId: "engine-a", capability: "run", at: T0, ...overrides,
   });
   assert.equal(result.ok, true);
-  if (!result.ok) throw new Error(result.message);
+  if (!result.ok) throw new Error("Unexpected task contract failure.");
   return result.value;
 }
 
 function ready(value: NoctisWorkflowTask, states: Record<string, "succeeded"> = {}): NoctisWorkflowTask {
   const result = transitionNoctisTask(value, { type: "make_ready", at: T1, dependencyStates: states });
   assert.equal(result.ok, true);
-  if (!result.ok) throw new Error(result.message);
+  if (!result.ok) throw new Error("Unexpected task contract failure.");
   return result.value;
 }
 
