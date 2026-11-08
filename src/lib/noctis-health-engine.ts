@@ -8047,13 +8047,15 @@ export async function executeV1HealthHttpRequest(request: Request): Promise<Resp
     if (endpoint === "patient-observations") {
       const patientId = url.searchParams.get("patient_id") || "patient-1042";
       const requesterId = url.searchParams.get("requester_id") || "public_anonymous";
-      const userRole =
-        (url.searchParams.get("user_role") as
-          | "public_user"
-          | "patient_member"
-          | "clinician_verified"
-          | "research_analyst"
-          | "admin_security") || "patient_member";
+      const requestedRole = url.searchParams.get("user_role") || "patient_member";
+      const roleMap: Record<string, HealthUserEnvironmentRole> = {
+        public_user: "public_general",
+        patient_member: "patient_member",
+        clinician_verified: "healthcare_professional",
+        research_analyst: "medical_researcher",
+        admin_security: "healthcare_organization_admin",
+      };
+      const userRole = roleMap[requestedRole] || "patient_member";
 
       const safetyGate = evaluateHealthSafetyGateway({
         question: `GET /api/v1/health?endpoint=patient-observations&patient_id=${patientId}`,
@@ -8165,26 +8167,33 @@ export async function executeV1HealthHttpRequest(request: Request): Promise<Resp
     }
 
     if (endpoint === "reviews") {
+      const rawRoles: unknown[] = Array.isArray(body.accountHolderRoles) ? body.accountHolderRoles : ["clinician"];
+      const accountHolderRoles = rawRoles
+        .map((role) => role === "caregiver_proxy" ? "caregiver" : role)
+        .filter((role): role is "patient" | "caregiver" | "clinician" | "researcher" | "administrator" =>
+          role === "patient" || role === "caregiver" || role === "clinician" || role === "researcher" || role === "administrator"
+        );
+      const requestedEnvironment = typeof body.activeOperatingEnvironment === "string" ? body.activeOperatingEnvironment : "";
+      const activeOperatingEnvironment: NoctisOperatingEnvironmentId =
+        requestedEnvironment === "Noctis Personal" ? "Noctis Personal Health" :
+        requestedEnvironment === "Noctis Clinical" || requestedEnvironment === "Noctis Research" || requestedEnvironment === "Noctis Personal Health"
+          ? requestedEnvironment
+          : "Noctis Health Public";
+      const requestedAction = body.actionType;
+      if (requestedAction !== "explain_treatment" && requestedAction !== "draft_order" && requestedAction !== "submit_order") {
+        return jsonResponse(400, { error: "Unsupported clinical action type; use explain_treatment, draft_order, or submit_order." });
+      }
       const authResult = evaluateClinicalActionAuthorization({
-        accountHolderRoles: Array.isArray(body.accountHolderRoles)
-          ? (body.accountHolderRoles as ("patient" | "caregiver_proxy" | "clinician" | "researcher")[])
-          : ["clinician"],
-        activeOperatingEnvironment:
-          (body.activeOperatingEnvironment as "Noctis Personal" | "Noctis Clinical" | "Noctis Research") ||
-          "Noctis Clinical",
-        actionType:
-          (body.actionType as
-            | "view_personal_record"
-            | "draft_clinical_note"
-            | "draft_order"
-            | "approve_and_sign_order"
-            | "submit_order") || "draft_order",
+        accountHolderRoles,
+        activeOperatingEnvironment,
+        actionType: requestedAction,
         professionalAuthVerified: Boolean(body.professionalAuthVerified),
         clinicianSignedOff: Boolean(body.clinicianSignedOff),
       });
+      const auditEventId = crypto.randomUUID();
 
       appendHealthAuditChainEvent({
-        audit_event_id: authResult.auditEventId,
+        audit_event_id: auditEventId,
         event_type: "CLINICAL_ACTION_GATE",
         actor_id: String(body.requester_id || "clinician-1042"),
         actor_role: String(body.activeOperatingEnvironment || "Noctis Clinical"),
@@ -8192,7 +8201,7 @@ export async function executeV1HealthHttpRequest(request: Request): Promise<Resp
         payload: authResult,
       });
 
-      return jsonResponse(authResult.allowed ? 200 : 403, authResult);
+      return jsonResponse(authResult.allowed ? 200 : 403, { ...authResult, auditEventId });
     }
 
     return jsonResponse(400, {
@@ -8615,7 +8624,7 @@ export function runChestPain58YoAndTop5DeliverablesSuite(): {
         "NH-CLIN-002-AT-06 (ACEi + MRA + NSAID + Metformin)",
         "H-009 (Unapproved Order Block)",
       ],
-      measuredProof: `Nitroglycerin="${medSafetyResult.decisions[1].decisionStatus}", NSAID="${medSafetyResult.decisions[2].decisionStatus}", autonomousOrderAllowed=${unapprovedOrderGate.allowed} (status="${unapprovedOrderGate.workflowState}")`,
+      measuredProof: `Nitroglycerin="${medSafetyResult.decisions[1].decisionStatus}", NSAID="${medSafetyResult.decisions[2].decisionStatus}", autonomousOrderAllowed=${unapprovedOrderGate.allowed} (status="${(unapprovedOrderGate.allowed ? "ALLOWED" : "BLOCKED")}")`,
       passed:
         medSafetyResult.autonomousPrescriptionBlocked === true &&
         medSafetyResult.decisions[1].decisionStatus === "HELD_MISSING_BP_AND_PDE5_SCREEN" &&
