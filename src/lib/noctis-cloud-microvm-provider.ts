@@ -16,6 +16,7 @@ import type {
 export type NoctisCloudMicrovmLaunchRequest = {
   /** Stable across retries; provider must deduplicate this key atomically. */
   idempotencyKey: string;
+  executionIntentId: string;
   runtimeId: string;
   workloadId: string;
   tenantId: string;
@@ -36,12 +37,13 @@ export interface NoctisCloudMicrovmControlPlane {
 }
 
 export function createNoctisLaunchIdempotencyKey(input: {
+  executionIntentId: string;
   tenantId: string;
   workloadId: string;
   workloadDigest: string;
   limits: NoctisSandboxLimits;
 }): string {
-  if (!input.tenantId?.trim() || !input.workloadId?.trim() ||
+  if (!input.executionIntentId?.trim() || !input.tenantId?.trim() || !input.workloadId?.trim() ||
       !/^sha256:[a-f0-9]{64}$/.test(input.workloadDigest) ||
       !Number.isSafeInteger(input.limits?.executionMs) || input.limits.executionMs <= 0 ||
       !Number.isSafeInteger(input.limits?.cpuMillis) || input.limits.cpuMillis <= 0 ||
@@ -50,6 +52,7 @@ export function createNoctisLaunchIdempotencyKey(input: {
     throw new Error("Valid tenant, workload, digest and resource limits are required for idempotency.");
   }
   const canonical = JSON.stringify({
+    executionIntentId: input.executionIntentId,
     tenantId: input.tenantId, workloadId: input.workloadId,
     workloadDigest: input.workloadDigest,
     limits: {
@@ -105,11 +108,13 @@ export class NoctisCloudMicrovmProviderAdapter implements NoctisIsolatedRuntimeP
     }
 
     const idempotencyKey = createNoctisLaunchIdempotencyKey({
+      executionIntentId: input.executionIntentId,
       tenantId: input.tenantId, workloadId: input.workloadId,
       workloadDigest: input.workloadDigest, limits: admission.limits,
     });
     const launched = await this.controlPlane.launchExecution({
       idempotencyKey,
+      executionIntentId: input.executionIntentId,
       runtimeId: admission.runtimeId,
       workloadId: input.workloadId,
       tenantId: input.tenantId,
