@@ -87,9 +87,9 @@ const MANIFESTS: readonly NoctisEngineManifest[] = [
 
   {
     id: "noctis.core.workflow-persistence", name: "Tenant-Scoped Workflow Persistence", version: "0.1.0",
-    domain: "core", description: "Server-side tenant-scoped idempotent workflow creation, authoritative evidence/approval gate contracts, atomic task claims, leases, attempt records, bounded lease recovery and audit events; no engine execution.",
+    domain: "core", description: "Server-side tenant-scoped idempotent workflow creation, authoritative evidence/approval gate contracts, atomic task claims, leases, attempt records, bounded lease recovery, cooperative cancellation and stop acknowledgement; no engine execution.",
     sourcePath: "src/lib/noctis-workflow-persistence.server.ts",
-    capabilities: ["workflow.create.idempotent", "workflow.task.claim", "workflow.task.finish", "workflow.gates.evidence.resolve", "workflow.gates.approval.resolve", "workflow.lease.enforce", "workflow.lease.recover"],
+    capabilities: ["workflow.create.idempotent", "workflow.task.claim", "workflow.task.finish", "workflow.gates.evidence.resolve", "workflow.gates.approval.resolve", "workflow.lease.enforce", "workflow.lease.recover", "workflow.cancel.request", "workflow.cancel.poll", "workflow.cancel.acknowledge"],
     requiredScopes: ["workflow:worker"],
     dependencies: ["noctis.core.workflow-contract"],
     lifecycle: "registered",
