@@ -37,6 +37,8 @@ export type NoctisSandboxAttestation = {
   isolationType: NoctisIsolationType;
   workloadDigest: string;
   tenantId: string;
+  /** Actual provider-enforced ceilings; must be no greater than requested. */
+  enforcedLimits: NoctisSandboxLimits;
   networkDisabled: boolean;
   ephemeralFilesystem: boolean;
   noHostFilesystem: boolean;
@@ -115,6 +117,7 @@ export async function admitNoctisSandboxWorkload(
       !request.workloadId?.trim() || !request.tenantId?.trim() || !request.actorId?.trim() ||
       !/^sha256:[a-f0-9]{64}$/.test(request.workloadDigest) ||
       !validLimits(request.limits) || !validLimits(policy.maxLimits) ||
+      !Array.isArray(policy.allowedProviderIds) || !Array.isArray(policy.allowedIsolationTypes) ||
       !isUtcTimestamp(request.now) || !request.attestation) {
     return reject("INVALID_REQUEST", "A workload identity, SHA-256 digest, valid limits, UTC time and attestation are required.");
   }
@@ -132,7 +135,8 @@ export async function admitNoctisSandboxWorkload(
   }
   if (attestation.tenantId !== request.tenantId ||
       attestation.workloadDigest !== request.workloadDigest ||
-      !attestation.runtimeId?.trim() || !attestation.runtimeVersion?.trim()) {
+      !attestation.runtimeId?.trim() || !attestation.runtimeVersion?.trim() ||
+      !validLimits(attestation.enforcedLimits) || !withinLimits(attestation.enforcedLimits, request.limits)) {
     return reject("ATTESTATION_BINDING_MISMATCH", "Attestation does not bind this tenant and exact workload digest.");
   }
   if (!isUtcTimestamp(attestation.issuedAt) || !isUtcTimestamp(attestation.expiresAt) ||
@@ -168,7 +172,7 @@ export async function admitNoctisSandboxWorkload(
     ok: true,
     providerId: attestation.providerId,
     runtimeId: attestation.runtimeId,
-    limits: { ...request.limits },
+    limits: { ...attestation.enforcedLimits },
     workloadDigest: request.workloadDigest,
   };
 }
