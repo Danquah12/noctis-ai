@@ -204,6 +204,12 @@ export function findNoctisEnginesByCapability(capability: string): NoctisEngineM
   return listNoctisEngines().filter((manifest) => manifest.capabilities.includes(normalized));
 }
 
+/**
+ * Pure contract validation only; this is not an authorization decision.
+ * A trusted server adapter must construct actorId, tenantId and scopes from
+ * authenticated identity, then resolve evidence IDs and verify approval IDs
+ * against their authoritative services before any engine execution.
+ */
 export function validateNoctisEngineRequest(
   request: NoctisEngineRequest,
 ): NoctisEngineRequestValidation {
@@ -236,7 +242,7 @@ export function validateNoctisEngineRequest(
     return { ok: false, code: "EXECUTION_MODE_NOT_ALLOWED", message: "The requested execution mode is not allowed for this engine." };
   }
   if (manifest.evidenceRequired && !(request.context.evidenceIds?.length)) {
-    return { ok: false, code: "EVIDENCE_REQUIRED", message: "This capability requires approved evidence references." };
+    return { ok: false, code: "EVIDENCE_REQUIRED", message: "This capability requires evidence references; a trusted evidence service must verify approval and provenance." };
   }
   // This checks only for an approval reference. A trusted server-side approval
   // service must resolve and authorize that reference before any execution.
