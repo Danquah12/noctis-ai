@@ -194,3 +194,33 @@ Every run records commit SHA, engine version, dataset version, evaluator type, m
 ## 11. Definition of done
 
 An engine is not complete merely because its manifest exists. The engine must have a working implementation, authenticated integration, validated inputs and outputs, evidence handling where applicable, domain-specific tests, security controls, observability and documented limitations.
+
+
+## 12. Specialist result reconciliation contract
+
+The current source-backed reconciliation implementation is in `src/lib/noctis-result-reconciliation.ts`. Specialist adapters that eventually feed it should emit claims with these fields:
+
+| Field | Requirement |
+|---|---|
+| `claimId` | Stable unique identifier across the submitted result set |
+| `subject` | Explicit entity or subject |
+| `predicate` | Explicit property or relationship being asserted |
+| `polarity` | `affirmed`, `negated`, or `unknown` |
+| `statement` | Human-readable claim |
+| `confidence` | `low`, `medium`, `high`, or `not_assessed` |
+| `confidenceRationale` | Explanation of how the specialist arrived at its label |
+| `evidenceChunkIds` | Exact evidence chunk identifiers, or an empty list when none exists |
+
+Each specialist result also supplies a stable result ID, engine ID, result status, evidence records and limitations.
+
+### Reconciliation semantics
+
+- Subject and predicate are normalized for case and whitespace, then matched exactly. This is not semantic entity resolution.
+- Opposing affirmed and negated claims for the same key are flagged as a conflict. The system must not silently select a winner.
+- Unknown polarity is not an affirmative finding.
+- Evidence integrity validates identity and excerpt hashes only. Semantic entailment must be evaluated separately.
+- Confidence labels are source-specialist assessments, not calibrated probabilities. Do not average labels.
+- Failed specialist results cannot contribute claims. Partial results must remain visible in the final report.
+- A conflict, insufficient evidence, or incomplete specialist coverage should trigger human review according to the applicable domain policy.
+
+The reconciler is a pure analysis function. It does not invoke specialist engines, access external sources, write to the database, authorize actions, or make a final truth determination.
