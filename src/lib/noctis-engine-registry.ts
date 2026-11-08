@@ -75,6 +75,15 @@ export type NoctisEngineRequestValidation =
 
 const MANIFESTS: readonly NoctisEngineManifest[] = [
   {
+    id: "noctis.core.workflow-contract", name: "Workflow Contract and State Machine", version: "0.1.0",
+    domain: "core", description: "Deterministic workflow task lifecycle contracts; no queueing, authorization, or execution.",
+    sourcePath: "src/lib/noctis-workflow-contract.ts", capabilities: ["workflow.state.validate", "workflow.state.transition"],
+    requiredScopes: ["noctis:route"],
+    dependencies: ["noctis.core.checks"], lifecycle: "registered",
+    executionModes: ["analysis"], dataClassification: "internal",
+    evidenceRequired: false, humanReviewRequired: false,
+  },
+  {
     id: "noctis.core.universal-orchestrator", name: "Universal Intelligence Planner", version: "0.1.0",
     domain: "core", description: "Deterministic cross-domain task planning; planning only, with no implicit execution.",
     sourcePath: "src/lib/noctis-universal-orchestrator.ts", capabilities: ["workflow.plan", "workflow.decompose"],
