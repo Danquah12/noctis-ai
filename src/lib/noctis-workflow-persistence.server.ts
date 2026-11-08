@@ -559,8 +559,8 @@ export async function requestNoctisWorkflowCancellation(
       !nonEmpty(input.reason) || input.reason.length > 1000 || !validUtc(input.at) ||
       !nonEmpty(input.eventId) || !nonEmpty(input.correlationId)) return { ok: false, code: "INVALID_INPUT" };
   return withTenantTransaction(db, input.tenantId, async (tx) => {
-    const locked = await tx.query<{ workflow_id: string; state: string }>(
-      "SELECT workflow_id, state FROM noctis_workflows WHERE workflow_id = $1 AND tenant_id = $2 FOR UPDATE",
+    const locked = await tx.query<{ workflow_id: string; state: string; cancellation_requested_at: string | null }>(
+      "SELECT workflow_id, state, cancellation_requested_at FROM noctis_workflows WHERE workflow_id = $1 AND tenant_id = $2 FOR UPDATE",
       [input.workflowId, input.tenantId],
     );
     const workflow = locked.rows[0];
@@ -601,7 +601,7 @@ export async function requestNoctisWorkflowCancellation(
        WHERE workflow_id = $5 AND tenant_id = $6`,
       [state, input.at, input.actorId, input.reason, input.workflowId, input.tenantId],
     );
-    if (workflow.state !== "cancelling" && workflow.state !== "cancelled" && workflow.state !== "blocked") {
+    if (workflow.cancellation_requested_at === null) {
       await tx.query(
         `INSERT INTO noctis_workflow_events
          (event_id, workflow_id, event_type, actor_type, actor_id, correlation_id, idempotency_key, occurred_at, event_data)
