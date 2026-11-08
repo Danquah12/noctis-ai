@@ -132,6 +132,19 @@ function validUtc(value: string): boolean {
     Number.isFinite(Date.parse(value));
 }
 
+async function withTenantTransaction<T>(
+  db: NoctisWorkflowSqlDatabase,
+  tenantId: string,
+  operation: (tx: NoctisWorkflowSqlExecutor) => Promise<T>,
+): Promise<T> {
+  if (!nonEmpty(tenantId)) throw new Error("A trusted tenant context is required.");
+  return withTenantTransaction(db, input.tenantId, async (tx) => {
+    // Transaction-local setting is cleared automatically on commit/rollback.
+    await tx.query("SELECT set_config('app.tenant_id', $1, true)", [tenantId]);
+    return operation(tx);
+  });
+}
+
 function nonEmpty(value: string): boolean {
   return typeof value === "string" && value.trim().length > 0;
 }
