@@ -73,7 +73,7 @@ export type NoctisSandboxAdmissionError =
   | "ISOLATION_CONTROL_MISSING";
 
 export type NoctisSandboxAdmissionResult =
-  | { ok: true; providerId: string; runtimeId: string; limits: NoctisSandboxLimits; workloadDigest: string }
+  | { ok: true; providerId: string; runtimeId: string; workloadId: string; tenantId: string; limits: NoctisSandboxLimits; workloadDigest: string }
   | { ok: false; code: NoctisSandboxAdmissionError; message: string };
 
 export type NoctisSandboxAttestationVerifier = (
@@ -172,6 +172,8 @@ export async function admitNoctisSandboxWorkload(
     ok: true,
     providerId: attestation.providerId,
     runtimeId: attestation.runtimeId,
+    workloadId: request.workloadId,
+    tenantId: request.tenantId,
     limits: { ...attestation.enforcedLimits },
     workloadDigest: request.workloadDigest,
   };
@@ -188,6 +190,7 @@ export interface NoctisIsolatedRuntimeProvider {
     tenantId: string;
     workloadDigest: string;
     limits: NoctisSandboxLimits;
+    admission: Extract<NoctisSandboxAdmissionResult, { ok: true }>;
     networkAccess: "disabled";
     filesystem: "ephemeral-only";
     privileged: false;
