@@ -143,7 +143,7 @@ The lifecycle supervisor now treats a returned execution ID with an unexpected r
 
 ## 12. Launch idempotency and inventory reconciliation contracts
 
-The cloud adapter now derives a deterministic launch idempotency key from the exact tenant, workload ID, workload SHA-256 digest, and canonical resource limits. The key is stable across retries for the same workload contract and changes when any bound field changes. It is forwarded to the provider control-plane interface.
+The cloud adapter now derives a deterministic launch idempotency key from the exact execution-intent ID, tenant, workload ID, workload SHA-256 digest, and canonical resource limits. The key is stable across retries for the same workload contract and changes when any bound field changes. It is forwarded to the provider control-plane interface.
 
 **Provider obligation:** the eventual cloud implementation must atomically deduplicate the same key and identical request, return the original execution for a replay, and reject reuse of the same key with a different request. The current provider-neutral interface documents this semantic requirement but does not prove a cloud service implements it. A provider call that times out after accepting a launch can still leave an unknown execution until inventory reconciliation runs.
 
