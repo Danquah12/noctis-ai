@@ -18,6 +18,7 @@ describe("Noctis engine registry", () => {
     assert.equal(engines.length, 19);
     assert.equal(new Set(engines.map((engine) => engine.id)).size, engines.length);
     assert.ok(engines.every((engine) => engine.sourcePath.startsWith("src/lib/noctis-")));
+    assert.ok(findNoctisEnginesByCapability("workflow.create.idempotent").some((engine) => engine.id === "noctis.core.workflow-persistence"));
   });
 
   it("resolves every declared dependency and keeps source paths unique", () => {
