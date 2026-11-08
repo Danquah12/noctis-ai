@@ -115,7 +115,7 @@ export async function reserveNoctisRuntimeExecution(
       const row=existing.rows[0];
       if(!row || row.tenant_id!==input.tenantId || row.execution_intent_id!==input.executionIntentId ||
         row.workload_id!==input.workloadId || row.workload_digest!==input.workloadDigest ||
-        row.runtime_id!==input.runtimeId || JSON.stringify(row.resource_limits)!==JSON.stringify(input.limits))
+        row.runtime_id!==input.runtimeId || !row.resource_limits ||\n        row.resource_limits.executionMs!==input.limits.executionMs ||\n        row.resource_limits.cpuMillis!==input.limits.cpuMillis ||\n        row.resource_limits.memoryMb!==input.limits.memoryMb ||\n        row.resource_limits.outputBytes!==input.limits.outputBytes)
         return {ok:false,code:"IDEMPOTENCY_CONFLICT" as const};
       return {ok:true,value:{recordId:row.runtime_execution_record_id,created:false}};
     }
