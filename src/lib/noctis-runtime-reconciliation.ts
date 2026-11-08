@@ -49,7 +49,7 @@ function validUtc(value: string): boolean {
 }
 
 function validIdentity(value: NoctisObservedRuntimeExecution): boolean {
-  return !!value.executionId?.trim() && !!value.idempotencyKey?.trim() &&
+  return !!value.executionId?.trim() && /^noctis:[a-f0-9]{64}$/.test(value.idempotencyKey) &&
     !!value.tenantId?.trim() && !!value.workloadId?.trim() &&
     !!value.runtimeId?.trim() && /^sha256:[a-f0-9]{64}$/.test(value.workloadDigest) &&
     validUtc(value.createdAt);
@@ -69,7 +69,7 @@ export function reconcileNoctisRuntimeInventory(
 
   const expectedByKey = new Map<string, NoctisExpectedRuntimeExecution>();
   for (const item of input.expected) {
-    if (!item.idempotencyKey?.trim() || !item.tenantId?.trim() ||
+    if (!/^noctis:[a-f0-9]{64}$/.test(item.idempotencyKey) || !item.tenantId?.trim() ||
         !item.workloadId?.trim() || !item.runtimeId?.trim() ||
         !/^sha256:[a-f0-9]{64}$/.test(item.workloadDigest) || !validUtc(item.leaseExpiresAt) ||
         expectedByKey.has(item.idempotencyKey)) {
