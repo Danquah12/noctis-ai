@@ -412,3 +412,16 @@ The legacy src/lib/noctis-wasm-runner.ts is not a genuine WASM sandbox: it evalu
 **Next:** implement a provider-specific idempotent launch API and authenticated inventory listing; persist expected executions and quarantine records; build a reaper that revalidates tenant/workload identity and requires separate authorization before stop/delete; test lost launch responses, duplicate requests, provider outages, stale leases, and cleanup races.
 
 **Boundary:** Deterministic key generation and reconciliation classification are tested contracts only. They do not prove cloud-side idempotency, inventory completeness, durable quarantine, or safe deletion.
+
+## 17. M3 — Runtime ledger, quarantine, and audit persistence schema
+
+**Status:** Additive SQL schema and PGlite migration tests committed; production adapters are not connected.
+
+- `noctis_runtime_executions` stores the expected provider execution contract and enforces provider-scoped idempotency and execution-ID uniqueness.
+- `noctis_runtime_quarantine` stores unknown or mismatched provider observations as open investigation records; it does not authorize cleanup.
+- `noctis_runtime_audit_events` stores sequenced structured events and rejects ordinary UPDATE/DELETE statements through a database trigger.
+- Added migration tests for idempotency, identity constraints, quarantine defaults, audit sequence, and append-only behavior.
+
+**Next:** implement transactional repository methods for pre-launch ledger reservation and audit append; implement authenticated provider inventory pagination; persist reconciliation results idempotently; add alert delivery and operator review. Then implement a separate approval-bound cleanup-candidate workflow with fresh tenant/workload/digest checks and provider revalidation.
+
+**Boundary:** SQL schema and local migration tests are not production persistence, RLS, tamper-proof audit, provider inventory, alerting, or cleanup execution. A database owner can bypass the trigger. Do not enable automatic deletion of unknown or mismatched resources.
