@@ -425,7 +425,7 @@ export async function claimNoctisWorkflowTask(
        LIMIT 20 FOR UPDATE OF t SKIP LOCKED`,
       [input.tenantId, input.at],
     );
-    if (candidates.rows.length === 0) continue;
+    if (candidates.rows.length === 0) return { ok: true, value: null };
     for (const row of candidates.rows) {
     const gateContext: NoctisWorkflowGateContext = {
       tenantId: input.tenantId, workflowId: row.workflow_id,
