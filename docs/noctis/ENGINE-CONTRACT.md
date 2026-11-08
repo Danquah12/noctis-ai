@@ -238,6 +238,7 @@ The server-only persistence adapter at `src/lib/noctis-workflow-persistence.serv
 - Task claims now require injected authoritative gate resolvers whenever evidence or approval is required. Evidence resolution must return exactly one approved, tenant-matching, access-allowed, non-revoked and non-expired record for every referenced ID, including source and chunk identity.
 - Approval resolution must return an approved, tenant-matching task-execution grant bound to the exact engine and capability, with an authorized approver, valid approval time, no revocation and no expired grant.
 - Resolver exceptions, missing records, duplicate records, tenant mismatches, stale/revoked evidence and invalid approvals fail closed: the task is not claimed and no lease or attempt is created.
+- The claim path scans a bounded candidate batch and continues past tasks whose authoritative gates fail, preventing one blocked high-priority task from starving otherwise eligible work. Candidate rows are locked while resolvers run; resolver implementations must be local, bounded and transaction-compatible, not long-running remote network calls.
 - Resolver adapters receive the transaction executor and are expected to query authoritative local services in that transaction. They must not accept client-supplied resolution objects. No production evidence or approval backend is wired by this contract alone.
 - Claim, attempt creation and audit-event insertion are one transaction.
 - Completion requires a matching tenant, worker, lease token and unexpired lease.
