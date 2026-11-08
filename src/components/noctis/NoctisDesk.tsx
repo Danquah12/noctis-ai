@@ -345,6 +345,26 @@ function turnsForApi(
   return list;
 }
 
+
+// Explicitly unavailable until a real video-generation provider is connected.
+async function startImagine(_input: { data: { prompt: string; words: string; kind?: string | null; image?: string } }): Promise<{ error: string }> {
+  return { error: "Film generation is not connected to a provider in this build." };
+}
+
+async function readImagine(_input: { data: { requestId: string } }): Promise<{ status: "failed"; error: string }> {
+  return { status: "failed", error: "Film generation is not connected to a provider in this build." };
+}
+
+async function loadImg(src: string): Promise<HTMLImageElement | null> {
+  if (typeof window === "undefined") return null;
+  return new Promise((resolve) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => resolve(null);
+    image.src = src;
+  });
+}
+
 function userFace(turn: Turn) {
   const files = [...turn.content.matchAll(/^--- (.+?) ---$/gm)].map((hit) => hit[1] || "File");
   const shots = [...turn.content.matchAll(/\[Image: ([^\]]+)\]/g)].map((hit) => hit[1] || "Image");
@@ -3477,7 +3497,7 @@ export function NoctisDesk() {
       case "war_room": setWarRoomModalOpen(true); break;
       case "digital_twin": setDigitalTwinModalOpen(true); break;
       case "holodeck": setHolodeckModalOpen(true); break;
-      case "auto_remediation": setAutoRemediationModalOpen(true); break;
+      case "auto_remediation": setRemediationModalOpen(true); break;
       case "defense" as any: setDefenseModalOpen(true); break;
       case "science" as any: setScienceModalOpen(true); break;
       case "pqc": setPqcModalOpen(true); break;
@@ -5063,7 +5083,7 @@ export function NoctisDesk() {
     }
     if (plugin.id === "sovereign_voice") {
       setDesk("chat");
-      void startVoice();
+      setError("The voice-session plugin is not connected to a voice handler in this build.");
       return;
     }
     setExecutorPlugin(plugin);
@@ -7037,7 +7057,7 @@ export function NoctisDesk() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => { setMenu(false); setAutoRemediationModalOpen(true); }}
+                    onClick={() => { setMenu(false); setRemediationModalOpen(true); }}
                     className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
                   >
                     <Wrench className="size-3.5 text-purple-400 shrink-0" />
