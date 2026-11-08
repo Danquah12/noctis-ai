@@ -148,7 +148,7 @@ export async function executeNoctisAnalysisGraph(input: {
     adapters.set(adapter.engineId, adapter);
   }
 
-  const pending = new Map(input.tasks.map((task) => [task.taskId, task]));
+  const pending = new Map<string, NoctisExecutionTask>(input.tasks.map((task): [string, NoctisExecutionTask] => [task.taskId, task]));
   const outcomes = new Map<string, NoctisExecutionTaskOutcome>();
   let executedCount = 0;
   while (pending.size) {
