@@ -133,8 +133,8 @@ export async function claimNoctisWorkflowTask(
                 (jsonb_typeof(t.evidence_refs) = 'array' AND jsonb_array_length(t.evidence_refs) > 0))
            AND (NOT t.approval_required OR NULLIF(BTRIM(t.approval_ref), '') IS NOT NULL)
          ORDER BY t.priority DESC, t.available_at ASC, t.created_at ASC
-         FOR UPDATE OF t SKIP LOCKED
          LIMIT 1
+         FOR UPDATE OF t SKIP LOCKED
        )
        UPDATE noctis_workflow_tasks t
        SET state = 'running',
