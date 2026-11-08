@@ -98,6 +98,9 @@ for (const importer of sourceFiles) {
 const applicationEntrypoints = [
   ...sourceFiles.filter((file) => file.startsWith("src/routes/")),
   "src/components/noctis/NoctisDesk.tsx",
+  // TanStack server functions are invoked across a framework boundary that a
+  // plain import graph cannot model from the client component alone.
+  "src/lib/noctis-desk.server.ts",
 ].filter((file) => sourceSet.has(file));
 const reachableFromRoutes = new Set(applicationEntrypoints);
 const pending = [...applicationEntrypoints];
