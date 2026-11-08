@@ -1168,13 +1168,52 @@ async function composeVibeReply(
   const brain = brainQuestion(question, skill.id) && !design && !wantsCode;
   const strict = !wantsCode && (["evidence", "library", "search", "tools", "check", "extract", "film"].includes(skill.id) || fresh);
   const lesson = teachingQuestion(question) && !hasHardRows && !wantsCode;
+  const evidenceIntent = /\b(source|cite|citation|evidence|according to|guideline|standard|regulation|cve-|nist|iso\s*\d|owasp|clinical|diagnos|treatment|risk control|rmf)\b/i.test(question);
+  let approvedEvidenceNotes = "";
+  if (evidenceIntent) {
+    try {
+      const { getSessionUser } = await import("@/lib/auth/verify.server");
+      const user = await getSessionUser();
+      if (user?.id) {
+        const domain = /\b(clinical|medical|patient|diagnos|treatment|health)\b/i.test(question) ? "health"
+          : /\b(cyber|cve-|vulnerab|owasp|exploit|sast)\b/i.test(question) ? "cybersecurity"
+          : /\b(rmf|nist|risk|control|compliance)\b/i.test(question) ? "risk"
+          : /\b(science|research|experiment|study)\b/i.test(question) ? "science"
+          : undefined;
+        const { retrieveApprovedNoctisEvidence } = await import("@/lib/noctis-evidence-retrieval.server");
+        const retrieved = await retrieveApprovedNoctisEvidence({ query: question, domain, userId: user.id, limit: 5 });
+        if (retrieved.citations.length) {
+          approvedEvidenceNotes = [
+            "APPROVED STORED EVIDENCE — lexical retrieval only. Term-overlap scores are not truth probabilities or semantic relevance scores.",
+            "Use only the cited excerpts for source-dependent claims. Do not infer beyond the excerpt. If an excerpt does not support a claim, do not cite it.",
+            ...retrieved.citations.map((item) => [
+              "Evidence ID: " + item.chunkId,
+              "Source ID: " + item.sourceId,
+              "Title: " + item.title,
+              item.publisher ? "Publisher: " + item.publisher : "",
+              item.canonicalUri ? "URI: " + item.canonicalUri : "",
+              item.license ? "License: " + item.license : "",
+              "Domain: " + item.domain,
+              item.jurisdiction ? "Jurisdiction: " + item.jurisdiction : "",
+              item.sourceVersion ? "Version: " + item.sourceVersion : "",
+              "Locator: " + item.locator,
+              "Excerpt: " + item.excerpt.slice(0, 1200)
+            ].filter(Boolean).join("\n"))
+          ].join("\n\n");
+        }
+      }
+    } catch {
+      // The source tables may be unavailable until migrations are applied.
+      approvedEvidenceNotes = "";
+    }
+  }
   const pulled = await Promise.all([
     skill.source === "study" || skill.source === "both" || (brain && libraryQuestion(question)) ? libraryNotes(question).catch(() => "") : Promise.resolve(""),
     !lesson && (skill.source === "web" || skill.source === "both" || lookUp || brain) ? within(liveBrief(question), 12000) : Promise.resolve(""),
     brain || lesson ? within(wikiBrief(lesson ? searchSubject(question) : question), 8000) : Promise.resolve(""),
     within(import("@/lib/noctis-outside.server").then((mod) => mod.outsideFacts(question)), 9000),
   ]);
-  const notes = pulled.filter(Boolean).join("\n\n");
+  const notes = [approvedEvidenceNotes, ...pulled].filter(Boolean).join("\n\n");
   const walk = walkGraph(question);
   const map = walk ? formatMap(walk) : "";
   const record = [notes, pages, map].filter(Boolean).join("\n\n");
