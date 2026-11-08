@@ -60,59 +60,80 @@ export async function registerNoctisTextSource(input: NoctisSourceSubmission, su
     throw new Error("Invalid source classification.");
   }
 
+  const actorId = clean(submitterId, 160);
+  if (!actorId) throw new Error("A trusted submitter ID is required.");
+
   const sourceHash = createHash("sha256").update(content, "utf8").digest("hex");
   const chunks = splitIntoChunks(content);
   const sourceId = randomUUID();
   const sql = await getSql();
 
-  const existing = await sql<{ id: string; status: string }>`
-    select id, status from noctis_learning_source
-    where content_hash = ${sourceHash} and domain = ${domain}
-    limit 1
-  `;
-  if (existing[0]) {
-    return { ok: true as const, duplicate: true, sourceId: existing[0].id, status: existing[0].status, chunkCount: 0 };
-  }
+  // The unique (content_hash, domain) index arbitrates concurrent submissions.
+  // Source, chunks, and audit are committed together; any failure rolls all
+  // three back. No best-effort cleanup or partially ingestible source remains.
+  return sql.transaction(async (tx) => {
+    const inserted = await tx<{ id: string; status: string }>`
+      insert into noctis_learning_source
+        (id, canonical_uri, title, publisher, domain, jurisdiction, source_version,
+         content_hash, license, classification, status, submitted_by)
+      values
+        (${sourceId}, ${canonicalUri || null}, ${title}, ${publisher || null},
+         ${domain}, ${jurisdiction || null}, ${sourceVersion || null},
+         ${sourceHash}, ${license || null}, ${classification}, 'quarantined', ${actorId})
+      on conflict (content_hash, domain) do nothing
+      returning id, status
+    `;
 
-  await sql`
-    insert into noctis_learning_source
-      (id, canonical_uri, title, publisher, domain, jurisdiction, source_version,
-       content_hash, license, classification, status, submitted_by)
-    values
-      (${sourceId}, ${canonicalUri || null}, ${title}, ${publisher || null},
-       ${domain}, ${jurisdiction || null}, ${sourceVersion || null},
-       ${sourceHash}, ${license || null}, ${classification}, 'quarantined', ${submitterId})
-  `;
+    if (!inserted[0]) {
+      const existing = await tx<{ id: string; status: string }>`
+        select id, status from noctis_learning_source
+        where content_hash = ${sourceHash} and domain = ${domain}
+        limit 1
+      `;
+      if (!existing[0]) {
+        // A conflict without a visible winner indicates an unexpected database
+        // condition; fail closed rather than reporting a false duplicate.
+        throw new Error("Source idempotency conflict could not be resolved.");
+      }
+      return {
+        ok: true as const,
+        duplicate: true,
+        sourceId: existing[0].id,
+        status: existing[0].status,
+        chunkCount: 0,
+      };
+    }
 
-  try {
     for (let ordinal = 0; ordinal < chunks.length; ordinal += 1) {
-      const text = chunks[ordinal];
-      const chunkHash = createHash("sha256").update(text, "utf8").digest("hex");
-      await sql`
+      const chunkText = chunks[ordinal];
+      const chunkHash = createHash("sha256").update(chunkText, "utf8").digest("hex");
+      await tx`
         insert into noctis_source_chunk
           (id, source_id, ordinal, locator, content_text, content_hash, token_estimate)
         values
           (${randomUUID()}, ${sourceId}, ${ordinal},
            ${`text-chunk:${ordinal}`},
-           ${text}, ${chunkHash}, ${Math.ceil(text.length / 4)})
+           ${chunkText}, ${chunkHash}, ${Math.ceil(chunkText.length / 4)})
       `;
     }
-  } catch (error) {
-    // Best-effort cleanup prevents an incomplete source from appearing ingestible.
-    await sql.query("delete from noctis_source_chunk where source_id = $1", [sourceId]).catch(() => []);
-    await sql.query("delete from noctis_learning_source where id = $1", [sourceId]).catch(() => []);
-    throw new Error(`Source registration failed and was rolled back where possible: ${error instanceof Error ? error.message : "storage error"}`);
-  }
 
-  await sql`
-    insert into noctis_learning_audit
-      (id, actor_id, action, target_type, target_id, reason, after_hash)
-    values
-      (${randomUUID()}, ${submitterId}, 'source.submit', 'source', ${sourceId},
-       'Text source registered; awaiting independent review', ${sourceHash})
-  `;
+    await tx`
+      insert into noctis_learning_audit
+        (id, actor_id, action, target_type, target_id, reason, after_hash)
+      values
+        (${randomUUID()}, ${actorId}, 'source.submit', 'source', ${sourceId},
+         'Text source registered; awaiting independent review', ${sourceHash})
+    `;
 
-  return { ok: true as const, duplicate: false, sourceId, status: "quarantined" as const, chunkCount: chunks.length, contentHash: sourceHash };
+    return {
+      ok: true as const,
+      duplicate: false,
+      sourceId,
+      status: "quarantined" as const,
+      chunkCount: chunks.length,
+      contentHash: sourceHash,
+    };
+  });
 }
 
 export async function pendingNoctisSources(limit = 50) {
@@ -140,14 +161,17 @@ export async function reviewNoctisSource(input: {
 }) {
   const sourceId = clean(input.sourceId, 160);
   const reason = clean(input.reason, 500);
-  if (!sourceId || reason.length < 8) throw new Error("A source ID and review reason of at least 8 characters are required.");
+  const reviewerId = clean(input.reviewerId, 160);
+  if (!sourceId || !reviewerId || reason.length < 8) throw new Error("A source ID, trusted reviewer ID, and review reason of at least 8 characters are required.");
+  if (input.decision !== "approved" && input.decision !== "rejected") throw new Error("Invalid source review decision.");
   const sql = await getSql();
-  const rows = await sql<{ id: string; content_hash: string; status: string; license: string | null; publisher: string | null }>`
-    select id, content_hash, status, license, publisher from noctis_learning_source where id = ${sourceId} limit 1
+  const rows = await sql<{ id: string; content_hash: string; status: string; license: string | null; publisher: string | null; submitted_by: string | null }>`
+    select id, content_hash, status, license, publisher, submitted_by from noctis_learning_source where id = ${sourceId} limit 1
   `;
   const source = rows[0];
   if (!source) throw new Error("Source not found.");
   if (source.status !== "quarantined") throw new Error("Only quarantined sources can be reviewed.");
+  if (source.submitted_by === reviewerId) throw new Error("A submitter cannot review their own source.");
   if (input.decision === "approved" && (!source.license || !source.publisher)) {
     throw new Error("Approval requires publisher and license/terms metadata. Keep the source quarantined until verified.");
   }
@@ -157,15 +181,16 @@ export async function reviewNoctisSource(input: {
   const changed = await sql<{ id: string }>`
     with changed as (
       update noctis_learning_source
-      set status = ${input.decision}, reviewed_by = ${input.reviewerId},
+      set status = ${input.decision}, reviewed_by = ${reviewerId},
           reviewed_at = now(), review_reason = ${reason}, updated_at = now()
       where id = ${sourceId} and status = 'quarantined'
+        and (submitted_by is null or submitted_by <> ${reviewerId})
       returning id, content_hash
     ),
     audit as (
       insert into noctis_learning_audit
         (id, actor_id, action, target_type, target_id, reason, before_hash, after_hash)
-      select ${auditId}, ${input.reviewerId}, ${action},
+      select ${auditId}, ${reviewerId}, ${action},
              'source', id, ${reason}, content_hash, content_hash
       from changed
       returning target_id
