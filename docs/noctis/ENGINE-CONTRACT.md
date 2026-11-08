@@ -340,3 +340,10 @@ PGlite tests cover replay/conflict, tenant mismatch, lost-response recovery, qua
 Added `src/lib/noctis-runtime-inventory-provider.ts`, a provider-neutral paginated inventory collector. It requires a stable snapshot ID across pages, follows bounded opaque cursors, rejects cursor loops and duplicate execution IDs, and returns observations only when the terminal page certifies completeness. Provider errors, changed snapshots, malformed pages, incomplete terminal pages, and page-limit exhaustion return a failure without exposing partial observations to reconciliation. Tests cover these failure modes and are included in all CI test scripts.
 
 **Boundary:** no cloud inventory API is connected. Snapshot completeness is only as trustworthy as the provider's documented snapshot semantics; provider metadata remains untrusted and is not authorization.
+
+
+## 20. Complete-snapshot runtime reconciliation service
+
+Added `src/lib/noctis-runtime-reconciliation-service.ts`. It collects and validates a complete provider snapshot before loading the authoritative expected-execution ledger, classifies the two snapshots, and submits the full decision set to an injected atomic/idempotent repository. Incomplete inventory never reaches the ledger or persistence stages. Inventory, ledger, classification, and persistence failures remain distinguishable. The service never performs cleanup, adoption, stop, or deletion.
+
+**Boundary:** the repository is an interface only; durable reconciliation snapshot/decision storage and provider API credentials are not connected. The repository implementation must enforce exact replay semantics for `(providerId,snapshotId)` and reject changed payloads for the same key.
