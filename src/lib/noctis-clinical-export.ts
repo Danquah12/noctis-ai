@@ -520,6 +520,52 @@ export function generatePrintableDossierHtml(
 }
 
 /**
+ * 4. Generates zero-truncation markdown representation of the Clinical Presentation,
+ * Structured Reference Table (Image 1), and Section 5 Safety Invariants (Image 2)
+ * for audible enunciation via cleanVoiceText and speakNoctisVoice.
+ */
+export function generateSpokenCasePresentation(c: BenchmarkFlagshipSummary): string {
+  const v = c.vitals;
+  const vitalsArr: string[] = [];
+  if (v.bloodPressure) vitalsArr.push(`BP: ${v.bloodPressure} mmHg`);
+  if (v.heartRateBpm) vitalsArr.push(`HR: ${v.heartRateBpm} bpm`);
+  if (v.respiratoryRatePerMin) vitalsArr.push(`RR: ${v.respiratoryRatePerMin} /min`);
+  if (v.temperatureCelsius) vitalsArr.push(`Temp: ${v.temperatureCelsius} °C`);
+  if (v.spo2Percent) vitalsArr.push(`SpO2: ${v.spo2Percent}%`);
+  if (v.bloodGlucoseMgDl) vitalsArr.push(`Blood Glucose: ${v.bloodGlucoseMgDl} mg/dL`);
+  const vitalsText = vitalsArr.length ? vitalsArr.join(" · ") : "Continuous cardiorespiratory monitoring verified";
+
+  const contraLines = c.contraindications.map((co) => `> - **CONTRAINDICATION:** ${co}`).join("\n");
+  const cfLines = c.criticalFailures.map((cf) => `> - **SAFETY INVARIANT (${cf.failureCode}):** ${cf.description} *(Prevention: ${cf.preventionCheck})*`).join("\n");
+
+  return `1. Clinical Presentation & Baseline Physiological Profile
+
+STRUCTURED REFERENCE TABLE (3 COLUMNS)
+
+| Patient Parameter | Documented Clinical Value | Physiological Significance & Localization |
+| :--- | :--- | :--- |
+| **Patient Profile** | **${c.ageYears}-year-old ${c.biologicalSex.toLowerCase()}** | Demographic and epidemiological baseline |
+| **Chief Complaint** | **"${c.chiefComplaint}"** | Primary presenting acute physiological distress |
+| **Onset & Timeline** | **${c.onsetAndTimeline}** | **Time-Critical Window:** Hyperacute specialist pathway activated |
+| **Bedside Vitals** | ${vitalsText} | Hemodynamic and metabolic stability |
+| **Associated Symptoms** | ${c.symptoms.join(", ")} | Multi-system symptom constellation |
+| **Past Medical History** | ${c.pastMedicalHistory.join("; ") || "None documented"} | Baseline chronic comorbidities |
+| **Current Medications** | ${c.medications.join("; ") || "None documented"} | Co-medication interactions / bleeding risk |
+| **Documented Allergies** | ${c.allergies.join(", ") || "No Known Drug Allergies (NKDA)"} | Safety verification before empiric pharmacotherapy |
+
+5. Critical Patient Safety Invariants & Contraindication Checklist
+
+> [!WARNING]
+> **MANDATORY PATIENT SAFETY INVARIANTS (CRITICAL FAILURE PREVENTION):**
+> Clinical decision support strictly enforces the following hard contraindications:
+${contraLines}
+${cfLines}
+
+6. Regulatory Framework Compliance (21 U.S.C. § 360j(o)(1)(E))
+FDA January 2026 Non-Device Clinical Decision Support Software Criteria.`;
+}
+
+/**
  * Triggers instant browser file download
  */
 export function downloadBlob(filename: string, content: string, mimeType: string): void {

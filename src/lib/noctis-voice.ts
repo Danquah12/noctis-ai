@@ -541,10 +541,10 @@ export function cleanVoiceText(rawText: string, maxLength?: number): string {
   spoken = spoken.replace(/°F\b/gi, " degrees Fahrenheit");
   spoken = spoken.replace(/\bmEq\/L\b/gi, "milliequivalents per liter");
   spoken = spoken.replace(/\bmg\/dL\b/gi, "milligrams per deciliter");
-  spoken = spoken.replace(/\bK\+\b/g, "potassium");
-  spoken = spoken.replace(/\bNa\+\b/g, "sodium");
-  spoken = spoken.replace(/\bCl-\b/g, "chloride");
-  spoken = spoken.replace(/\bHCO3-?\b/g, "bicarbonate");
+  spoken = spoken.replace(/\bK\+(?!\w)/g, "potassium");
+  spoken = spoken.replace(/\bNa\+(?!\w)/g, "sodium");
+  spoken = spoken.replace(/\bCl-(?!\w)/g, "chloride");
+  spoken = spoken.replace(/\bHCO3-?(?!\w)/g, "bicarbonate");
   spoken = spoken.replace(/<=\s*(\d+(?:\.\d+)?)/g, "less than or equal to $1");
   spoken = spoken.replace(/>=\s*(\d+(?:\.\d+)?)/g, "greater than or equal to $1");
   spoken = spoken.replace(/<\s*(\d+(?:\.\d+)?)/g, "less than $1");

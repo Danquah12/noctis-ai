@@ -1,6 +1,9 @@
 import React, { useState } from "react";
 import {
   Activity,
+  Volume2,
+  Square,
+  Headphones,
   ArrowRight,
   Award,
   BarChart3,
@@ -105,6 +108,7 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
   const [selectedSpecialty, setSelectedSpecialty] = useState("EMERGENCY_MEDICINE");
   const [evalOutput, setEvalOutput] = useState<string>("");
   const [evalResult, setEvalResult] = useState<any>(null);
+  const [isReadingCase, setIsReadingCase] = useState(false);
 
   // Engineering state
   const [challengeId, setChallengeId] = useState<number>(1);
@@ -490,51 +494,153 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
-                  <div className="rounded bg-black/30 p-2 border border-white/5">
-                    <div className="text-[10px] uppercase font-bold text-violet-400/80 mb-0.5">Patient Profile & Onset</div>
-                    <div className="text-white/90">
-                      <span className="font-semibold">{activeCase.ageYears}yo {activeCase.biologicalSex.toLowerCase()}</span> · {activeCase.onsetAndTimeline}
+                {/* 1. Clinical Presentation & Baseline Physiological Profile (Image 1 Specification) */}
+                <div className="space-y-3 pt-1">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-sm font-bold text-amber-100 tracking-tight">
+                        1. Clinical Presentation &amp; Baseline Physiological Profile
+                      </h4>
+                      <div className="text-[10px] font-mono font-bold tracking-wider uppercase text-amber-400/90 mt-0.5">
+                        STRUCTURED REFERENCE TABLE (3 COLUMNS)
+                      </div>
                     </div>
-                    <div className="text-white/70 text-[11px] mt-1 line-clamp-2">
-                      <span className="text-white/40">CC:</span> "{activeCase.chiefComplaint}"
-                    </div>
-                  </div>
-
-                  <div className="rounded bg-black/30 p-2 border border-white/5">
-                    <div className="text-[10px] uppercase font-bold text-violet-400/80 mb-0.5">Documented Vitals</div>
-                    <div className="text-white/90 font-mono text-[11px]">
-                      {activeCase.vitals.bloodPressure && <span>BP: {activeCase.vitals.bloodPressure} </span>}
-                      {activeCase.vitals.heartRateBpm && <span>· HR: {activeCase.vitals.heartRateBpm} bpm </span>}
-                      {activeCase.vitals.spo2Percent && <span>· SpO2: {activeCase.vitals.spo2Percent}% </span>}
-                      {activeCase.vitals.bloodGlucoseMgDl && <span>· Glu: {activeCase.vitals.bloodGlucoseMgDl} mg/dL</span>}
-                    </div>
-                    <div className="text-white/70 text-[11px] mt-1 truncate">
-                      <span className="text-white/40">Target Dx:</span> {activeCase.primaryDiagnosis} ({activeCase.icd10})
-                    </div>
-                  </div>
-                </div>
-
-                <div className="rounded bg-rose-950/20 border border-rose-500/20 p-2 text-[11px] text-rose-300/90 flex items-start gap-1.5">
-                  <ShieldAlert className="size-3.5 shrink-0 mt-0.5 text-rose-400" />
-                  <div>
-                    <span className="font-bold">Critical Safety Invariant:</span> {activeCase.contraindications[0] || "Adhere to FDA Jan 2026 CDS practice parameters."}
-                  </div>
-                </div>
-
-                {/* EHR Interoperability & Dossier Export Bar */}
-                <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-white/10">
-                  <div className="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
                       onClick={() => {
                         const csv = exportReferenceTableCsv(activeCase);
                         downloadBlob(`${activeCase.caseId}_Reference_Table.csv`, csv, "text/csv;charset=utf-8;");
                       }}
-                      className="inline-flex items-center gap-1.5 rounded-md bg-amber-500/10 hover:bg-amber-500/20 px-2.5 py-1 text-[11px] font-semibold text-amber-300 border border-amber-500/30 transition shadow-sm"
+                      className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 hover:bg-amber-500/25 px-3 py-1 text-[11px] font-semibold text-amber-300 border border-amber-500/30 transition shadow-sm"
                       title="Export 3-column structured clinical presentation table as CSV (Image 1 specification)"
                     >
                       <FileSpreadsheet className="size-3.5" /> Export CSV (.csv)
+                    </button>
+                  </div>
+
+                  {/* 3-Column Structured Reference Table */}
+                  <div className="overflow-x-auto rounded-xl border border-white/10 bg-[#0d0c0c] shadow-inner">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="border-b border-white/10 bg-white/[0.02]">
+                          <th className="py-2.5 px-3.5 font-semibold text-amber-300/90 w-[24%]">Patient Parameter</th>
+                          <th className="py-2.5 px-3.5 font-semibold text-amber-300/90 w-[42%]">Documented Clinical Value</th>
+                          <th className="py-2.5 px-3.5 font-semibold text-amber-300/90 w-[34%]">Physiological Significance &amp; Localization</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5 font-sans">
+                        <tr className="hover:bg-white/[0.02] transition-colors">
+                          <td className="py-2.5 px-3.5 font-medium text-white/95">Patient Profile</td>
+                          <td className="py-2.5 px-3.5 font-semibold text-white/95">
+                            {activeCase.ageYears}-year-old {activeCase.biologicalSex.toLowerCase()}
+                          </td>
+                          <td className="py-2.5 px-3.5 text-white/60">Demographic and epidemiological baseline</td>
+                        </tr>
+                        <tr className="hover:bg-white/[0.02] transition-colors">
+                          <td className="py-2.5 px-3.5 font-medium text-white/95">Chief Complaint</td>
+                          <td className="py-2.5 px-3.5 text-amber-100/90 font-medium">"{activeCase.chiefComplaint}"</td>
+                          <td className="py-2.5 px-3.5 text-white/60">Primary presenting acute physiological distress</td>
+                        </tr>
+                        <tr className="hover:bg-white/[0.02] transition-colors">
+                          <td className="py-2.5 px-3.5 font-medium text-white/95">Onset &amp; Timeline</td>
+                          <td className="py-2.5 px-3.5 text-white/90">{activeCase.onsetAndTimeline}</td>
+                          <td className="py-2.5 px-3.5 text-white/60">
+                            <span className="font-semibold text-amber-400">Time-Critical Window:</span> Hyperacute specialist pathway activated
+                          </td>
+                        </tr>
+                        <tr className="hover:bg-white/[0.02] transition-colors">
+                          <td className="py-2.5 px-3.5 font-medium text-white/95">Bedside Vitals</td>
+                          <td className="py-2.5 px-3.5 font-mono text-[11px] text-white/95 leading-relaxed">
+                            {activeCase.vitals.bloodPressure && <span>BP: <strong className="text-amber-200">{activeCase.vitals.bloodPressure} mmHg</strong> · </span>}
+                            {activeCase.vitals.heartRateBpm && <span>HR: <strong className="text-amber-200">{activeCase.vitals.heartRateBpm} bpm</strong> · </span>}
+                            {activeCase.vitals.respiratoryRatePerMin && <span>RR: <strong className="text-amber-200">{activeCase.vitals.respiratoryRatePerMin} /min</strong> · </span>}
+                            {activeCase.vitals.temperatureCelsius && <span>Temp: <strong className="text-amber-200">{activeCase.vitals.temperatureCelsius} °C</strong> · </span>}
+                            {activeCase.vitals.spo2Percent && <span>SpO2: <strong className="text-amber-200">{activeCase.vitals.spo2Percent}%</strong> · </span>}
+                            {activeCase.vitals.bloodGlucoseMgDl && <span>Blood Glucose: <strong className="text-amber-200">{activeCase.vitals.bloodGlucoseMgDl} mg/dL</strong></span>}
+                          </td>
+                          <td className="py-2.5 px-3.5 text-white/60">Hemodynamic and metabolic stability</td>
+                        </tr>
+                        <tr className="hover:bg-white/[0.02] transition-colors">
+                          <td className="py-2.5 px-3.5 font-medium text-white/95">Associated Symptoms</td>
+                          <td className="py-2.5 px-3.5 text-white/90">
+                            <span className="bg-amber-950/40 text-amber-200 px-1.5 py-0.5 rounded border border-amber-600/30 font-mono text-[11px]">
+                              {activeCase.symptoms.join(", ")}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3.5 text-white/60">Multi-system symptom constellation</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* 5. Critical Patient Safety Invariants & Contraindication Checklist (Image 2 Specification) */}
+                <div className="space-y-2 pt-2">
+                  <h4 className="text-sm font-bold text-amber-100 tracking-tight">
+                    5. Critical Patient Safety Invariants &amp; Contraindication Checklist
+                  </h4>
+                  <div className="rounded-xl border border-amber-500/40 bg-[#16120b] p-3.5 text-xs space-y-2 shadow-lg">
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center gap-1 rounded bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-300 border border-amber-500/30 uppercase tracking-wide">
+                        <AlertTriangle className="size-3 text-amber-400" /> WARNING
+                      </span>
+                    </div>
+                    <div className="font-bold text-amber-200 uppercase tracking-wide text-xs">
+                      MANDATORY PATIENT SAFETY INVARIANTS (CRITICAL FAILURE PREVENTION):
+                    </div>
+                    <div className="text-amber-300/80 text-[11px]">
+                      Clinical decision support strictly enforces the following hard contraindications:
+                    </div>
+                    <div className="space-y-1.5 pt-1 text-white/90 leading-relaxed font-sans text-xs">
+                      {activeCase.contraindications.map((contra, i) => (
+                        <div key={i} className="flex items-start gap-1.5">
+                          <span className="text-amber-400 font-bold shrink-0">-</span>
+                          <div>
+                            <strong className="text-amber-300">CONTRAINDICATION:</strong> {contra}
+                          </div>
+                        </div>
+                      ))}
+                      {activeCase.criticalFailures.map((cf, i) => (
+                        <div key={i} className="flex items-start gap-1.5">
+                          <span className="text-rose-400 font-bold shrink-0">-</span>
+                          <div>
+                            <strong className="text-rose-300">SAFETY INVARIANT ({cf.failureCode}):</strong> {cf.description}{" "}
+                            <span className="text-amber-400/90 italic font-mono text-[11px]">(Prevention: {cf.preventionCheck})</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 6. Regulatory Framework Compliance (21 U.S.C. § 360j(o)(1)(E)) & Export Controls */}
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-white/10">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {/* Read Aloud Voice Button with Zero Truncation */}
+                    <button
+                      type="button"
+                      onClick={handleToggleReadCase}
+                      className={cn(
+                        "inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-[11px] font-semibold transition shadow-sm border",
+                        isReadingCase
+                          ? "bg-amber-500/25 text-amber-300 border-amber-500/50 ring-1 ring-amber-500/50 shadow-amber-500/20"
+                          : "bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-200 border-amber-500/30 hover:bg-amber-500/30"
+                      )}
+                      title={isReadingCase ? "Stop reading aloud" : "Read aloud entire clinical presentation and safety invariants"}
+                    >
+                      {isReadingCase ? (
+                        <>
+                          <span className="relative flex h-2 w-2">
+                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" />
+                            <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500" />
+                          </span>
+                          <Square className="size-3.5 fill-current text-amber-300" /> Stop Reading
+                        </>
+                      ) : (
+                        <>
+                          <Volume2 className="size-3.5 text-amber-300" /> Read Aloud (Full Dossier &amp; Safety Invariants)
+                        </>
+                      )}
                     </button>
                     <button
                       type="button"
@@ -556,8 +662,8 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
                       <Printer className="size-3.5" /> Print / Save PDF
                     </button>
                   </div>
-                  <span className="text-[10px] text-white/40 font-mono">
-                    21 U.S.C. § 360j(o)(1)(E)
+                  <span className="text-[10px] text-amber-400/70 font-mono">
+                    6. Regulatory Framework: 21 U.S.C. § 360j(o)(1)(E)
                   </span>
                 </div>
               </div>
