@@ -44,6 +44,7 @@ import {
   Heart,
   Scan,
   Pill,
+  Flame,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -124,6 +125,7 @@ import { NoctisAntimicrobialSection } from "./NoctisAntimicrobialSection";
 import { NoctisObstetricSection } from "./NoctisObstetricSection";
 import { NoctisPocusSection } from "./NoctisPocusSection";
 import { NoctisPharmacologySection } from "./NoctisPharmacologySection";
+import { NoctisBurnSection } from "./NoctisBurnSection";
 
 interface NoctisFrontierTabProps {
   onSendToChat?: (promptText: string) => void;
@@ -149,6 +151,7 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
     | "ob"
     | "pocus"
     | "pharm"
+    | "burn"
     | "estar"
     | "mesh"
     | "pgx"
@@ -598,6 +601,18 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
           <Pill className="size-3.5 text-amber-400" />
           Pharmacology Matrix &amp; QTc
           <span className="rounded bg-amber-500/20 px-1 py-0.2 text-[9px] font-bold text-amber-300">QTc</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab("burn")}
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
+            activeSubTab === "burn" ? "bg-orange-600 text-white shadow-sm ring-1 ring-orange-400" : "bg-white/5 text-white/70 hover:bg-white/10"
+          )}
+        >
+          <Flame className="size-3.5 text-orange-400" />
+          Acute Burn &amp; Inhalation (Parkland)
+          <span className="rounded bg-orange-500/20 px-1 py-0.2 text-[9px] font-bold text-orange-300">BURN</span>
         </button>
         <button
           type="button"
@@ -1649,6 +1664,11 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
       {/* Track 23: Clinical Pharmacology Drug-Drug Interaction Matrix & QTc Engine */}
       {activeSubTab === "pharm" && (
         <NoctisPharmacologySection onSendToChat={onSendToChat} />
+      )}
+
+      {/* Track 24: Acute Burn Resuscitation & Fluid Titration Engine */}
+      {activeSubTab === "burn" && (
+        <NoctisBurnSection onSendToChat={onSendToChat} />
       )}
 
       {activeSubTab === "edge" && (
