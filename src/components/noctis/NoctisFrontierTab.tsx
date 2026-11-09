@@ -40,6 +40,7 @@ import {
   Radio,
   FlaskConical,
   HeartPulse,
+  Bug,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -116,6 +117,7 @@ import { NoctisVentilatorSection } from "./NoctisVentilatorSection";
 import { NoctisOntologySection } from "./NoctisOntologySection";
 import { NoctisToxicologySection } from "./NoctisToxicologySection";
 import { NoctisPalsSection } from "./NoctisPalsSection";
+import { NoctisAntimicrobialSection } from "./NoctisAntimicrobialSection";
 
 interface NoctisFrontierTabProps {
   onSendToChat?: (promptText: string) => void;
@@ -137,6 +139,7 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
     | "ontology"
     | "tox"
     | "pals"
+    | "abx"
     | "estar"
     | "mesh"
     | "pgx"
@@ -538,6 +541,18 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
           <Baby className="size-3.5 text-pink-400" />
           PALS Resuscitation (Broselow)
           <span className="rounded bg-pink-500/20 px-1 py-0.2 text-[9px] font-bold text-pink-300">PALS</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab("abx")}
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
+            activeSubTab === "abx" ? "bg-teal-600 text-white shadow-sm ring-1 ring-teal-400" : "bg-white/5 text-white/70 hover:bg-white/10"
+          )}
+        >
+          <Bug className="size-3.5 text-teal-400" />
+          Antimicrobial &amp; Sepsis
+          <span className="rounded bg-teal-500/20 px-1 py-0.2 text-[9px] font-bold text-teal-300">IDSA</span>
         </button>
         <button
           type="button"
@@ -1569,6 +1584,11 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
       {/* Track 19: Pediatric Advanced Life Support (PALS) & Broselow Resuscitation Engine */}
       {activeSubTab === "pals" && (
         <NoctisPalsSection onSendToChat={onSendToChat} />
+      )}
+
+      {/* Track 20: Antimicrobial Stewardship & Sepsis Pathogen Empiric Guidance Engine */}
+      {activeSubTab === "abx" && (
+        <NoctisAntimicrobialSection onSendToChat={onSendToChat} />
       )}
 
       {activeSubTab === "edge" && (
