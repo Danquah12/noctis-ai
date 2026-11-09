@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import {
   Activity,
+  Dna,
   Network,
   Volume2,
   Square,
@@ -93,6 +94,7 @@ import { NoctisSmartFhirSection } from "./NoctisSmartFhirSection";
 import { NoctisBedsideTelemetrySection } from "./NoctisBedsideTelemetrySection";
 import { NoctisFdaEstarSection } from "./NoctisFdaEstarSection";
 import { NoctisHospitalMeshSection } from "./NoctisHospitalMeshSection";
+import { NoctisPgxSection } from "./NoctisPgxSection";
 
 interface NoctisFrontierTabProps {
   onSendToChat?: (promptText: string) => void;
@@ -100,7 +102,7 @@ interface NoctisFrontierTabProps {
 }
 
 export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabProps) {
-  const [activeSubTab, setActiveSubTab] = useState<"health500" | "leaderboard" | "ambient" | "qlora" | "swarm" | "dicom" | "fhir" | "telemetry" | "estar" | "mesh" | "engineering" | "edge" | "specialist">("health500");
+  const [activeSubTab, setActiveSubTab] = useState<"health500" | "leaderboard" | "ambient" | "qlora" | "swarm" | "dicom" | "fhir" | "telemetry" | "estar" | "mesh" | "pgx" | "engineering" | "edge" | "specialist">("health500");
   
   // Leaderboard State
   const [leaderboardData, setLeaderboardData] = useState<BenchmarkRunReport>(() => getDefaultLeaderboard());
@@ -1299,6 +1301,11 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
       {/* Track 10: Multi-Hospital Sovereign Federation & Air-Gapped Mesh Sync */}
       {activeSubTab === "mesh" && (
         <NoctisHospitalMeshSection onSendToChat={onSendToChat} />
+      )}
+
+      {/* Track 11: Real-Time Pharmacogenomics (PGx) & Drug-Gene Safety Engine */}
+      {activeSubTab === "pgx" && (
+        <NoctisPgxSection onSendToChat={onSendToChat} />
       )}
 
       {activeSubTab === "edge" && (
