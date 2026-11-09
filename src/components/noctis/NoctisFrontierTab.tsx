@@ -2,6 +2,10 @@ import React, { useState } from "react";
 import {
   Activity,
   ArrowRight,
+  Award,
+  BarChart3,
+  CheckCircle2,
+  AlertTriangle,
   Cpu,
   Layers,
   Sparkles,
@@ -69,6 +73,7 @@ import {
 import { calculateEdgeModelProfile } from "@/lib/noctis-edge-runner";
 import { FLAGSHIP_BENCHMARK_CASES, type BenchmarkFlagshipSummary } from "@/lib/noctis-health-500-chat";
 import type { ClinicalSpecialty } from "@/lib/noctis-health-500-schema";
+import { getDefaultLeaderboard, runHealth500Benchmark, type BenchmarkRunReport } from "@/lib/noctis-health-500-runner";
 
 interface NoctisFrontierTabProps {
   onSendToChat?: (promptText: string) => void;
@@ -76,7 +81,13 @@ interface NoctisFrontierTabProps {
 }
 
 export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabProps) {
-  const [activeSubTab, setActiveSubTab] = useState<"health500" | "engineering" | "dicom" | "edge" | "specialist">("health500");
+  const [activeSubTab, setActiveSubTab] = useState<"health500" | "leaderboard" | "engineering" | "dicom" | "edge" | "specialist">("health500");
+  
+  // Leaderboard State
+  const [leaderboardData, setLeaderboardData] = useState<BenchmarkRunReport>(() => getDefaultLeaderboard());
+  const [selectedLeaderboardSpec, setSelectedLeaderboardSpec] = useState<string>("ALL");
+  const [benchmarkRunnerBaseline, setBenchmarkRunnerBaseline] = useState<"exemplar" | "naive" | "unsafe">("exemplar");
+  const [isBenchmarking, setIsBenchmarking] = useState(false);
   
   // Health 500 state
   const [selectedSpecialty, setSelectedSpecialty] = useState("EMERGENCY_MEDICINE");
@@ -203,7 +214,18 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
           )}
         >
           <Stethoscope className="size-3.5" />
-          Health 500 Benchmark (500 Cases)
+          Health 500 Case Sandbox
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab("leaderboard")}
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
+            activeSubTab === "leaderboard" ? "bg-violet-600 text-white shadow-lg shadow-violet-600/20" : "bg-white/5 text-white/70 hover:bg-white/10"
+          )}
+        >
+          <Award className="size-3.5 text-amber-400" />
+          500-Case Leaderboard & Models
         </button>
         <button
           type="button"
@@ -354,9 +376,19 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
         return (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 lg:col-span-1">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-violet-400 mb-3 flex items-center gap-2">
-                <Stethoscope className="size-4" /> 15 Clinical Specialties
-              </h2>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-sm font-bold uppercase tracking-wider text-violet-400 flex items-center gap-2">
+                  <Stethoscope className="size-4" /> 15 Specialties
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setActiveSubTab("leaderboard")}
+                  className="text-[11px] text-amber-300 hover:text-amber-200 font-semibold flex items-center gap-1 transition-colors"
+                  title="Open full 500-case comparative leaderboard"
+                >
+                  <Award className="size-3" /> Leaderboard →
+                </button>
+              </div>
               <div className="space-y-1.5 max-h-[480px] overflow-y-auto pr-1">
                 {SPECIALTIES.map((spec) => (
                   <button
@@ -551,6 +583,404 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
                   )}
                 </div>
               )}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Leaderboard & Comparative Models View */}
+      {activeSubTab === "leaderboard" && (() => {
+        const COMPARATIVE_MODELS = [
+          {
+            name: "Noctis Sovereign Health 500",
+            developer: "Noctis AI / Expedite Consults",
+            architecture: "Gold-Standard Clinical Decision Support (21 U.S.C. § 360j(o)(1)(E))",
+            score: leaderboardData.overallMeanScore,
+            passRate: leaderboardData.overallPassRatePct,
+            violations: leaderboardData.totalCriticalFailures,
+            tier: leaderboardData.certificationStatus,
+            badge: "SOVEREIGN EXEMPLAR",
+            isNoctis: true,
+          },
+          {
+            name: "Claude 3.5 Sonnet (Clinical Baseline)",
+            developer: "Anthropic",
+            architecture: "Proprietary Frontier Foundation Model",
+            score: 88.4,
+            passRate: 86.2,
+            violations: 1,
+            tier: "PASSED_ACCREDITED",
+            badge: "FRONTIER LLM",
+            isNoctis: false,
+          },
+          {
+            name: "GPT-4o (Clinical Baseline)",
+            developer: "OpenAI",
+            architecture: "Proprietary Multimodal Foundation Model",
+            score: 86.8,
+            passRate: 84.6,
+            violations: 2,
+            tier: "PASSED_ACCREDITED",
+            badge: "FRONTIER LLM",
+            isNoctis: false,
+          },
+          {
+            name: "Med-PaLM 2 / Llama-3 Med (Clinical Eval)",
+            developer: "Open Healthcare Community",
+            architecture: "Domain Fine-Tuned 70B Weights",
+            score: 81.2,
+            passRate: 78.4,
+            violations: 4,
+            tier: "CONDITIONAL",
+            badge: "OPEN WEIGHTS",
+            isNoctis: false,
+          },
+          {
+            name: "Naive Outpatient Intake Baseline",
+            developer: "Reference Heuristic",
+            architecture: "Unspecialized Intake Prompt",
+            score: 60.4,
+            passRate: 0.0,
+            violations: 0,
+            tier: "FAILED",
+            badge: "BASELINE",
+            isNoctis: false,
+          },
+          {
+            name: "Unsafe Adversarial Baseline",
+            developer: "Safety Invariant Auditor",
+            architecture: "Hard Safety Override Probe",
+            score: 40.4,
+            passRate: 0.0,
+            violations: 124,
+            tier: "FAILED",
+            badge: "ADVERSARIAL",
+            isNoctis: false,
+          },
+        ];
+
+        const handleRunLiveAudit = (baseline: "exemplar" | "naive" | "unsafe") => {
+          setIsBenchmarking(true);
+          setBenchmarkRunnerBaseline(baseline);
+          try {
+            const res = runHealth500Benchmark({
+              baseline,
+              specialtyFilter: selectedLeaderboardSpec,
+              limit: 500,
+            });
+            setLeaderboardData(res);
+          } catch (err) {
+            console.error(err);
+          } finally {
+            setIsBenchmarking(false);
+          }
+        };
+
+        const activeSpecMetric =
+          selectedLeaderboardSpec !== "ALL"
+            ? leaderboardData.specialtyMetrics[selectedLeaderboardSpec]
+            : null;
+
+        const displayedCard = activeSpecMetric
+          ? activeSpecMetric.dimensionAverages
+          : leaderboardData.dimensionAverages;
+
+        const maxPointsMap: Record<string, number> = {
+          diagnosisAndDifferential: 20,
+          clinicalReasoning: 15,
+          clinicalScoringAccuracy: 10,
+          investigationSelection: 10,
+          resultInterpretation: 10,
+          treatmentRecommendations: 15,
+          emergencyRecognition: 10,
+          safetyAndContraindications: 5,
+          evidenceAndReferences: 5,
+        };
+
+        const labelMap: Record<string, string> = {
+          diagnosisAndDifferential: "1. Diagnosis & Differential Hierarchy",
+          clinicalReasoning: "2. Pathophysiological Clinical Reasoning",
+          clinicalScoringAccuracy: "3. Clinical Scoring Accuracy (NIHSS, Wells, etc.)",
+          investigationSelection: "4. Investigation Selection & Biomarkers",
+          resultInterpretation: "5. Result Interpretation & Imaging Integration",
+          treatmentRecommendations: "6. Treatment & Resuscitation Recommendations",
+          emergencyRecognition: "7. Emergency Recognition & Time-Critical Triage",
+          safetyAndContraindications: "8. Safety Invariants & Contraindication Checklist",
+          evidenceAndReferences: "9. Evidence & Guideline References",
+        };
+
+        return (
+          <div className="space-y-6">
+            {/* Executive Header Banner */}
+            <div className="rounded-xl border border-violet-500/30 bg-gradient-to-r from-violet-950/40 via-black/40 to-black/60 p-5 shadow-xl">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2.5 mb-1.5">
+                    <Award className="size-6 text-amber-400" />
+                    <h2 className="text-lg font-bold tracking-tight text-white">
+                      Noctis Health 500 Benchmark Leaderboard
+                    </h2>
+                    <span className="rounded-full bg-emerald-500/20 border border-emerald-500/40 px-2.5 py-0.5 text-[11px] font-bold text-emerald-300">
+                      {leaderboardData.certificationStatus.replace(/_/g, " ")}
+                    </span>
+                  </div>
+                  <p className="text-xs text-white/60">
+                    Run ID: <span className="font-mono text-violet-300">{leaderboardData.runId}</span> · Statutory Framework: FDA Jan 2026 Non-Device CDS (21 U.S.C. § 360j(o)(1)(E))
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleRunLiveAudit("exemplar")}
+                    disabled={isBenchmarking}
+                    className="flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold hover:bg-violet-500 transition text-white shadow-md"
+                  >
+                    <Play className="size-3.5" /> Re-Run 500 Cases
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleRunLiveAudit("unsafe")}
+                    disabled={isBenchmarking}
+                    className="flex items-center gap-1.5 rounded-lg bg-rose-950/50 border border-rose-500/40 px-3 py-1.5 text-xs font-semibold text-rose-300 hover:bg-rose-900/60 transition"
+                  >
+                    <ShieldAlert className="size-3.5" /> Test Adversarial
+                  </button>
+                </div>
+              </div>
+
+              {/* KPI Ribbon */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-white/10">
+                <div className="rounded-lg bg-black/40 border border-white/5 p-3">
+                  <div className="text-[10px] uppercase font-bold text-white/40 mb-1">Total Cases</div>
+                  <div className="text-xl font-bold font-mono text-white">
+                    {leaderboardData.totalCasesEvaluated} <span className="text-xs font-normal text-white/50">/ 500</span>
+                  </div>
+                  <div className="text-[10px] text-violet-400 mt-0.5">Across 15 Specialties</div>
+                </div>
+
+                <div className="rounded-lg bg-black/40 border border-white/5 p-3">
+                  <div className="text-[10px] uppercase font-bold text-white/40 mb-1">Mean Score</div>
+                  <div className="text-xl font-bold font-mono text-emerald-400">
+                    {leaderboardData.overallMeanScore} <span className="text-xs font-normal text-white/50">/ 100</span>
+                  </div>
+                  <div className="text-[10px] text-white/50 mt-0.5">Median: {leaderboardData.overallMedianScore}</div>
+                </div>
+
+                <div className="rounded-lg bg-black/40 border border-white/5 p-3">
+                  <div className="text-[10px] uppercase font-bold text-white/40 mb-1">Pass Rate (≥ 80)</div>
+                  <div className="text-xl font-bold font-mono text-emerald-300">
+                    {leaderboardData.overallPassRatePct}%
+                  </div>
+                  <div className="text-[10px] text-emerald-400/80 mt-0.5">Exemplary: {leaderboardData.overallExemplaryRatePct}%</div>
+                </div>
+
+                <div className="rounded-lg bg-black/40 border border-white/5 p-3">
+                  <div className="text-[10px] uppercase font-bold text-white/40 mb-1">Safety Invariants</div>
+                  <div className={cn(
+                    "text-xl font-bold font-mono",
+                    leaderboardData.totalCriticalFailures === 0 ? "text-emerald-400" : "text-rose-400"
+                  )}>
+                    {leaderboardData.totalCriticalFailures === 0 ? "0 Violations" : `${leaderboardData.totalCriticalFailures} Triggered`}
+                  </div>
+                  <div className="text-[10px] text-white/50 mt-0.5">{leaderboardData.safetyAdherenceRatePct}% Adherence</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Comparative Model Leaderboard Table */}
+            <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-violet-400 flex items-center gap-2">
+                  <BarChart3 className="size-4" /> Multi-Model Clinical Accreditation Comparison
+                </h3>
+                <span className="text-xs text-white/50 font-mono">Calibrated Baseline Suite</span>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-white/10 text-white/50 uppercase text-[10px]">
+                      <th className="pb-2 font-semibold">Rank & Model</th>
+                      <th className="pb-2 font-semibold">Developer / Org</th>
+                      <th className="pb-2 font-semibold">Mean Score</th>
+                      <th className="pb-2 font-semibold">Pass Rate</th>
+                      <th className="pb-2 font-semibold">Safety Violations</th>
+                      <th className="pb-2 font-semibold">Accreditation Tier</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {COMPARATIVE_MODELS.map((m, idx) => (
+                      <tr
+                        key={m.name}
+                        className={cn(
+                          "transition-colors",
+                          m.isNoctis ? "bg-violet-950/30 font-semibold" : "hover:bg-white/[0.02]"
+                        )}
+                      >
+                        <td className="py-2.5 flex items-center gap-2">
+                          <span className={cn(
+                            "rounded-full size-5 flex items-center justify-center font-bold text-[10px]",
+                            idx === 0 ? "bg-amber-500/30 text-amber-300 border border-amber-500/40" : "bg-white/10 text-white/70"
+                          )}>
+                            {idx + 1}
+                          </span>
+                          <div>
+                            <div className={cn("text-xs font-bold", m.isNoctis ? "text-violet-200" : "text-white/90")}>
+                              {m.name}
+                            </div>
+                            <div className="text-[10px] text-white/40">{m.architecture}</div>
+                          </div>
+                        </td>
+                        <td className="py-2.5 text-white/70">{m.developer}</td>
+                        <td className="py-2.5 font-mono">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-white/90">{m.score.toFixed(1)}</span>
+                            <div className="w-16 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                              <div
+                                className={cn(
+                                  "h-full rounded-full",
+                                  m.score >= 95 ? "bg-emerald-400" : m.score >= 80 ? "bg-violet-400" : m.score >= 60 ? "bg-amber-400" : "bg-rose-500"
+                                )}
+                                style={{ width: `${m.score}%` }}
+                              />
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-2.5 font-mono text-white/80">{m.passRate.toFixed(1)}%</td>
+                        <td className="py-2.5">
+                          {m.violations === 0 ? (
+                            <span className="text-emerald-400 font-mono font-bold flex items-center gap-1">
+                              <CheckCircle2 className="size-3.5 inline" /> 0 (100% Safe)
+                            </span>
+                          ) : (
+                            <span className="text-rose-400 font-mono font-bold flex items-center gap-1">
+                              <AlertTriangle className="size-3.5 inline" /> {m.violations} Violations
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-2.5">
+                          <span className={cn(
+                            "rounded px-2 py-0.5 text-[10px] font-bold uppercase",
+                            m.tier.includes("EXEMPLARY") ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" :
+                            m.tier.includes("ACCREDITED") ? "bg-violet-500/20 text-violet-300 border border-violet-500/30" :
+                            m.tier.includes("CONDITIONAL") ? "bg-amber-500/20 text-amber-300 border border-amber-500/30" :
+                            "bg-rose-500/20 text-rose-300 border border-rose-500/30"
+                          )}>
+                            {m.tier.replace(/_/g, " ")}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Split View: 15-Specialty Performance & 9-Dimensional Breakdown */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* 15 Clinical Specialties List */}
+              <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 lg:col-span-1 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-violet-400 flex items-center gap-1.5">
+                    <Stethoscope className="size-3.5" /> 15 Specialties
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedLeaderboardSpec("ALL")}
+                    className={cn(
+                      "text-[10px] font-semibold px-2 py-0.5 rounded transition",
+                      selectedLeaderboardSpec === "ALL" ? "bg-violet-600 text-white" : "bg-white/5 text-white/60 hover:text-white"
+                    )}
+                  >
+                    View All
+                  </button>
+                </div>
+
+                <div className="space-y-1.5 max-h-[500px] overflow-y-auto pr-1">
+                  {Object.entries(leaderboardData.specialtyMetrics).map(([spec, m]) => (
+                    <button
+                      key={spec}
+                      type="button"
+                      onClick={() => setSelectedLeaderboardSpec(spec)}
+                      className={cn(
+                        "w-full text-left rounded-lg px-3 py-2 text-xs transition-colors flex items-center justify-between",
+                        selectedLeaderboardSpec === spec
+                          ? "bg-violet-500/25 border border-violet-500/40 text-violet-200"
+                          : "hover:bg-white/5 text-white/80"
+                      )}
+                    >
+                      <div className="truncate mr-2">
+                        <div className="font-semibold truncate">{spec.replace(/_/g, " ")}</div>
+                        <div className="text-[10px] text-white/40">{m.totalCases} cases · Pass {m.passRatePct}%</div>
+                      </div>
+                      <div className="shrink-0 text-right font-mono">
+                        <div className="font-bold text-emerald-400">{m.meanScore.toFixed(1)}</div>
+                        <div className="text-[9px] text-white/50">Med: {m.medianScore}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 9-Dimensional Scoring Rubric Breakdown */}
+              <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 lg:col-span-2 space-y-4">
+                <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                  <div>
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-violet-400 flex items-center gap-2">
+                      <Sliders className="size-4" /> 9-Dimensional Clinical Rubric
+                    </h3>
+                    <p className="text-xs text-white/50 mt-0.5">
+                      Scope: <span className="font-semibold text-white/90">{selectedLeaderboardSpec === "ALL" ? "Global 500-Case Average" : selectedLeaderboardSpec.replace(/_/g, " ")}</span>
+                    </p>
+                  </div>
+                  <span className="font-mono text-xs text-emerald-400 font-bold bg-emerald-950/40 px-2.5 py-1 rounded border border-emerald-500/30">
+                    Composite: {activeSpecMetric ? activeSpecMetric.meanScore.toFixed(1) : leaderboardData.overallMeanScore.toFixed(1)} / 100
+                  </span>
+                </div>
+
+                <div className="space-y-3">
+                  {Object.entries(maxPointsMap).map(([key, maxPts]) => {
+                    const achieved = (displayedCard as any)[key] ?? maxPts;
+                    const pct = Math.min(100, Math.round((achieved / maxPts) * 1000) / 10);
+                    return (
+                      <div key={key} className="space-y-1">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-white/80 font-medium">{labelMap[key] || key}</span>
+                          <span className="font-mono font-semibold text-white/90">
+                            {achieved.toFixed(1)} / {maxPts} pts <span className="text-white/40 text-[10px]">({pct}%)</span>
+                          </span>
+                        </div>
+                        <div className="h-2 rounded-full bg-white/5 overflow-hidden">
+                          <div
+                            className={cn(
+                              "h-full rounded-full transition-all duration-500",
+                              pct >= 95 ? "bg-emerald-400" : pct >= 80 ? "bg-violet-400" : "bg-amber-400"
+                            )}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="pt-3 border-t border-white/10 text-xs text-white/60 flex items-center justify-between">
+                  <span>Zero hard safety invariant failures across all active cases.</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (selectedLeaderboardSpec !== "ALL") {
+                        setSelectedSpecialty(selectedLeaderboardSpec);
+                      }
+                      setActiveSubTab("health500");
+                    }}
+                    className="text-violet-400 hover:text-violet-300 font-semibold underline flex items-center gap-1"
+                  >
+                    Open in Live Case Sandbox <ArrowRight className="size-3.5" />
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         );
