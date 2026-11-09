@@ -25,6 +25,7 @@ import {
   Microscope,
   FileCheck,
   Binary,
+  Link2,
   Users,
   Mic,
   Radio,
@@ -84,6 +85,7 @@ import { NoctisAmbientDictationSection } from "./NoctisAmbientDictationSection";
 import { NoctisQLoRASection } from "./NoctisQLoRASection";
 import { NoctisSpecialistSwarmSection } from "./NoctisSpecialistSwarmSection";
 import { NoctisDicomVisionSection } from "./NoctisDicomVisionSection";
+import { NoctisSmartFhirSection } from "./NoctisSmartFhirSection";
 
 interface NoctisFrontierTabProps {
   onSendToChat?: (promptText: string) => void;
@@ -91,7 +93,7 @@ interface NoctisFrontierTabProps {
 }
 
 export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabProps) {
-  const [activeSubTab, setActiveSubTab] = useState<"health500" | "leaderboard" | "ambient" | "qlora" | "swarm" | "engineering" | "dicom" | "edge" | "specialist">("health500");
+  const [activeSubTab, setActiveSubTab] = useState<"health500" | "leaderboard" | "ambient" | "qlora" | "swarm" | "dicom" | "fhir" | "engineering" | "edge" | "specialist">("health500");
   
   // Leaderboard State
   const [leaderboardData, setLeaderboardData] = useState<BenchmarkRunReport>(() => getDefaultLeaderboard());
@@ -271,6 +273,18 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
           <Users className="size-3.5 text-emerald-400" />
           Specialist Swarm Council
           <span className="rounded bg-emerald-500/20 px-1 py-0.2 text-[9px] font-bold text-emerald-300">SWARM</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab("fhir")}
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
+            activeSubTab === "fhir" ? "bg-violet-600 text-white shadow-sm" : "bg-white/5 text-white/70 hover:bg-white/10"
+          )}
+        >
+          <Link2 className="size-3.5 text-blue-400" />
+          SMART on FHIR EHR Connector
+          <span className="rounded bg-blue-500/20 px-1 py-0.2 text-[9px] font-bold text-blue-300">R4</span>
         </button>
         <button
           type="button"
@@ -1141,6 +1155,10 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
 
       {activeSubTab === "dicom" && (
         <NoctisDicomVisionSection onSendToChat={onSendToChat} />
+      )}
+
+      {activeSubTab === "fhir" && (
+        <NoctisSmartFhirSection onSendToChat={onSendToChat} />
       )}
 
       {activeSubTab === "edge" && (
