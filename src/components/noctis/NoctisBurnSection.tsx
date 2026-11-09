@@ -651,7 +651,7 @@ export function NoctisBurnSection({ onSendToChat }: NoctisBurnSectionProps) {
           <strong className="text-zinc-200">1. Prophylactic Airway in Inhalation Injury:</strong> Thermal injury to the supraglottic structures produces massive progressive edema reaching maximum swelling at 12 to 24 hours. Waiting for signs of respiratory fatigue or hypoxemia leads to complete glottic closure and can't-intubate-can't-oxygenate (CICO) arrest. Stridor or soot in the oropharynx mandates immediate preemptive intubation with an endotracheal tube size &ge; 7.5 mm to facilitate subsequent bronchoscopy.
         </p>
         <p className="leading-relaxed">
-          <strong className="text-zinc-200">2. Cyanide Poisoning &amp; Hydroxocobalamin:</strong> Combustion of nitrogen-containing synthetic polymers (plastics, wool, polyurethane) produces hydrogen cyanide gas. Cyanide binds ferric iron ($Fe^{3+}$) in cytochrome c oxidase, blocking aerobic ATP production and causing severe lactic acidosis ($\ge 8\text{ mmol/L}$). Hydroxocobalamin ($5\text{g}$ IV) chelates cyanide to form non-toxic cyanocobalamin (vitamin B12), which is excreted in the urine without inducing methemoglobinemia.
+          <strong className="text-zinc-200">2. Cyanide Poisoning &amp; Hydroxocobalamin:</strong> Combustion of nitrogen-containing synthetic polymers (plastics, wool, polyurethane) produces hydrogen cyanide gas. Cyanide binds ferric iron (Fe3+) in cytochrome c oxidase, blocking aerobic ATP production and causing severe lactic acidosis (&ge; 8 mmol/L). Hydroxocobalamin (5g IV) chelates cyanide to form non-toxic cyanocobalamin (vitamin B12), which is excreted in the urine without inducing methemoglobinemia.
         </p>
       </div>
     </div>
