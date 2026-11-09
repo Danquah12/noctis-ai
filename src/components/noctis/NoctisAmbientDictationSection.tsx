@@ -52,9 +52,25 @@ export function NoctisAmbientDictationSection({ onSendToChat }: NoctisAmbientDic
   const [copied, setCopied] = useState<boolean>(false);
   const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
 
-  // Synthesized dossier state
-  const [synthesizedDossier, setSynthesizedDossier] = useState<string | null>(null);
-  const [flagshipSummary, setFlagshipSummary] = useState<BenchmarkFlagshipSummary | null>(null);
+  // Synthesized dossier state - pre-synthesized so the dossier panel is never an empty void
+  const [synthesizedDossier, setSynthesizedDossier] = useState<string | null>(() => {
+    const raw = CURATED_AMBIENT_PRESETS[0]?.rawTranscript || "";
+    if (!raw) return null;
+    try {
+      return synthesizeAmbientToDossier(raw).goldDossier;
+    } catch {
+      return null;
+    }
+  });
+  const [flagshipSummary, setFlagshipSummary] = useState<BenchmarkFlagshipSummary | null>(() => {
+    const raw = CURATED_AMBIENT_PRESETS[0]?.rawTranscript || "";
+    if (!raw) return null;
+    try {
+      return synthesizeAmbientToDossier(raw).flagshipSummary;
+    } catch {
+      return null;
+    }
+  });
 
   // Live extracted clinical entities from transcript
   const entities = useMemo<ExtractedClinicalEntities>(() => {
@@ -67,8 +83,14 @@ export function NoctisAmbientDictationSection({ onSendToChat }: NoctisAmbientDic
     if (!preset) return;
     setSelectedPresetId(id);
     setTranscript(preset.rawTranscript);
-    setSynthesizedDossier(null);
-    setFlagshipSummary(null);
+    try {
+      const { flagshipSummary: summary, goldDossier } = synthesizeAmbientToDossier(preset.rawTranscript);
+      setFlagshipSummary(summary);
+      setSynthesizedDossier(goldDossier);
+    } catch {
+      setSynthesizedDossier(null);
+      setFlagshipSummary(null);
+    }
     setSpeechError(null);
     stopCurrentVoicePlayback();
     setIsSpeaking(false);
@@ -408,6 +430,15 @@ export function NoctisAmbientDictationSection({ onSendToChat }: NoctisAmbientDic
               <div className="flex flex-wrap items-center gap-1.5">
                 <button
                   type="button"
+                  onClick={handleSynthesize}
+                  className="inline-flex items-center gap-1.5 rounded-md bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 px-2.5 py-1 text-[11px] font-bold text-white border border-violet-400/50 shadow-sm transition"
+                  title="Synthesize 7-section CDS consultation dossier"
+                >
+                  <Sparkles className="size-3 text-amber-300" /> Synthesize
+                </button>
+
+                <button
+                  type="button"
                   onClick={handleToggleRead}
                   className={cn(
                     "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-semibold transition border",
@@ -458,15 +489,23 @@ export function NoctisAmbientDictationSection({ onSendToChat }: NoctisAmbientDic
                   {synthesizedDossier}
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center h-full text-center p-6 space-y-3 text-white/40">
-                  <Stethoscope className="size-8 text-white/20" />
-                  <div>
-                    <div className="font-semibold text-white/60">No Dossier Synthesized Yet</div>
-                    <div className="text-[11px] mt-1 max-w-sm">
-                      Speak your clinical observations, select a preset handoff, or click{" "}
-                      <span className="text-violet-300 font-semibold">"Synthesize Dossier"</span> to generate the full 7-section CDS consultation.
+                <div className="flex flex-col items-center justify-center h-full text-center p-6 space-y-4 text-white/60">
+                  <div className="rounded-full bg-violet-500/10 p-3.5 border border-violet-500/20">
+                    <Stethoscope className="size-8 text-violet-400" />
+                  </div>
+                  <div className="space-y-1">
+                    <div className="font-bold text-sm text-white">No Consultation Dossier Synthesized Yet</div>
+                    <div className="text-[11px] text-neutral-400 max-w-sm">
+                      Convert the ambient dictation on the left into a 7-section gold-standard clinical consultation dossier with structured reference tables, safety invariant checks, and statutory FDA non-device CDS classifications.
                     </div>
                   </div>
+                  <button
+                    type="button"
+                    onClick={handleSynthesize}
+                    className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 px-4 py-2 text-xs font-bold text-white shadow-lg shadow-violet-600/30 transition-all border border-violet-400/40"
+                  >
+                    <Sparkles className="size-3.5 text-amber-300" /> Synthesize 7-Section Gold Dossier Now
+                  </button>
                 </div>
               )}
             </div>
