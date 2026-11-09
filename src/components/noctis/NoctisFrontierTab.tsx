@@ -36,6 +36,7 @@ import {
   Mic,
   Radio,
   FlaskConical,
+  HeartPulse,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -107,6 +108,7 @@ import { NoctisPgxSection } from "./NoctisPgxSection";
 import { NoctisEarlyWarningSection } from "./NoctisEarlyWarningSection";
 import { NoctisLisHl7Section } from "./NoctisLisHl7Section";
 import { NoctisE2EDemoSection } from "./NoctisE2EDemoSection";
+import { NoctisEcgSection } from "./NoctisEcgSection";
 
 interface NoctisFrontierTabProps {
   onSendToChat?: (promptText: string) => void;
@@ -114,7 +116,7 @@ interface NoctisFrontierTabProps {
 }
 
 export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabProps) {
-  const [activeSubTab, setActiveSubTab] = useState<"health500" | "leaderboard" | "ambient" | "qlora" | "swarm" | "dicom" | "fhir" | "telemetry" | "estar" | "mesh" | "pgx" | "early-warning" | "lis" | "demo" | "engineering" | "edge" | "specialist">("health500");
+  const [activeSubTab, setActiveSubTab] = useState<"health500" | "leaderboard" | "ambient" | "qlora" | "swarm" | "dicom" | "fhir" | "telemetry" | "ecg" | "estar" | "mesh" | "pgx" | "early-warning" | "lis" | "demo" | "engineering" | "edge" | "specialist">("health500");
   
   // Leaderboard State
   const [leaderboardData, setLeaderboardData] = useState<BenchmarkRunReport>(() => getDefaultLeaderboard());
@@ -320,6 +322,18 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
           <Activity className="size-3.5 text-rose-400" />
           Bedside IoMT Telemetry
           <span className="rounded bg-rose-500/20 px-1 py-0.2 text-[9px] font-bold text-rose-300">BLE</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab("ecg")}
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
+            activeSubTab === "ecg" ? "bg-violet-600 text-white shadow-sm" : "bg-white/5 text-white/70 hover:bg-white/10"
+          )}
+        >
+          <HeartPulse className="size-3.5 text-rose-400" />
+          12-Lead ECG & VCG Arrhythmia
+          <span className="rounded bg-rose-500/20 px-1 py-0.2 text-[9px] font-bold text-rose-300">12L</span>
         </button>
         <button
           type="button"
