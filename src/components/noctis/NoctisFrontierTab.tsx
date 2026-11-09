@@ -41,6 +41,7 @@ import {
   FlaskConical,
   HeartPulse,
   Bug,
+  Heart,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -118,6 +119,7 @@ import { NoctisOntologySection } from "./NoctisOntologySection";
 import { NoctisToxicologySection } from "./NoctisToxicologySection";
 import { NoctisPalsSection } from "./NoctisPalsSection";
 import { NoctisAntimicrobialSection } from "./NoctisAntimicrobialSection";
+import { NoctisObstetricSection } from "./NoctisObstetricSection";
 
 interface NoctisFrontierTabProps {
   onSendToChat?: (promptText: string) => void;
@@ -140,6 +142,7 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
     | "tox"
     | "pals"
     | "abx"
+    | "ob"
     | "estar"
     | "mesh"
     | "pgx"
@@ -553,6 +556,18 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
           <Bug className="size-3.5 text-teal-400" />
           Antimicrobial &amp; Sepsis
           <span className="rounded bg-teal-500/20 px-1 py-0.2 text-[9px] font-bold text-teal-300">IDSA</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab("ob")}
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
+            activeSubTab === "ob" ? "bg-rose-600 text-white shadow-sm ring-1 ring-pink-400" : "bg-white/5 text-white/70 hover:bg-white/10"
+          )}
+        >
+          <Heart className="size-3.5 text-rose-400" />
+          Obstetric &amp; Neonatal (NRP)
+          <span className="rounded bg-rose-500/20 px-1 py-0.2 text-[9px] font-bold text-rose-300">NRP</span>
         </button>
         <button
           type="button"
@@ -1589,6 +1604,11 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
       {/* Track 20: Antimicrobial Stewardship & Sepsis Pathogen Empiric Guidance Engine */}
       {activeSubTab === "abx" && (
         <NoctisAntimicrobialSection onSendToChat={onSendToChat} />
+      )}
+
+      {/* Track 21: Obstetric & Neonatal Resuscitation (NRP / Category III Fetal Heart Tracing) */}
+      {activeSubTab === "ob" && (
+        <NoctisObstetricSection onSendToChat={onSendToChat} />
       )}
 
       {activeSubTab === "edge" && (
