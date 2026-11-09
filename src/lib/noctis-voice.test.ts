@@ -274,4 +274,59 @@ II. CONTROLLING LEGAL RULES & AUTHORITIES
     const explicitNegative = cleanVoiceText(veryLongParagraph, -1);
     assert.equal(explicitNegative.length, veryLongParagraph.trim().length);
   });
+
+  it("reads clinical presentation tables, vitals, and safety contraindications without leaving anything out", () => {
+    const clinicalDossier = `
+1. Clinical Presentation & Baseline Physiological Profile
+
+| Patient Parameter | Documented Clinical Value | Physiological Significance & Localization |
+| :--- | :--- | :--- |
+| Patient Profile | 24-year-old female | Demographic and epidemiological baseline |
+| Chief Complaint | "Vomiting, diffuse abdominal pain, and rapid deep breathing" | Primary presenting acute physiological distress |
+| Onset & Timeline | Symptoms developed over 18 hours following a 2-day bout of gastroenteritis and missed insulin doses | Time-Critical Window: Hyperacute specialist pathway activated |
+| Bedside Vitals | BP: 96/62 mmHg · HR: 124 bpm · RR: 32 /min · Temp: 37 °C · SpO2: 98% · Blood Glucose: 540 mg/dL | Hemodynamic and metabolic stability |
+| Associated Symptoms | Kussmaul breathing (deep, rapid respirations with fruity acetone odor), dry mucous membranes | Multi-system symptom constellation |
+
+5. Critical Patient Safety Invariants & Contraindication Checklist
+
+> [!WARNING]
+> MANDATORY PATIENT SAFETY INVARIANTS (CRITICAL FAILURE PREVENTION):
+> Clinical decision support strictly enforces the following hard contraindications:
+> - CONTRAINDICATION: Absolute contraindication: Do NOT administer intravenous insulin if serum potassium is < 3.3 mEq/L (drives potassium into cells causing fatal hypokalemic cardiac arrest and respiratory paralysis)
+> - CONTRAINDICATION: Do NOT discontinue insulin infusion when blood glucose reaches 200 mg/dL; add dextrose to fluids and continue insulin until anion gap closes
+> - SAFETY INVARIANT (CF-DKA-001): Administering IV insulin when serum potassium is < 3.3 mEq/L (Prevention: Mandatory potassium safety gate: verify K+ >= 3.3 mEq/L before starting insulin infusion)
+> - SAFETY INVARIANT (CF-DKA-002): Stopping insulin infusion prematurely when blood glucose drops below 200 mg/dL before ketoacidosis and anion gap resolve (Prevention: Protocolized addition of D5W while continuing insulin until venous pH > 7.30 and anion gap <= 12)
+`;
+
+    const cleaned = cleanVoiceText(clinicalDossier);
+
+    // Table parameters must all be preserved in spoken English
+    assert.ok(cleaned.includes("Patient Profile: 24-year-old female"));
+    assert.ok(cleaned.includes("Demographic and epidemiological baseline"));
+    assert.ok(cleaned.includes("Vomiting, diffuse abdominal pain, and rapid deep breathing"));
+    assert.ok(cleaned.includes("Blood pressure: 96 over 62 millimeters of mercury"));
+    assert.ok(cleaned.includes("Heart rate: 124 beats per minute"));
+    assert.ok(cleaned.includes("Respiratory rate: 32 per minute"));
+    assert.ok(cleaned.includes("Temperature: 37 degrees Celsius"));
+    assert.ok(cleaned.includes("Oxygen saturation: 98%"));
+    assert.ok(cleaned.includes("Blood Glucose: 540 milligrams per deciliter"));
+    assert.ok(cleaned.includes("Kussmaul breathing"));
+
+    // Critical safety invariants and contraindications must all be preserved
+    assert.ok(cleaned.includes("Warning: MANDATORY PATIENT SAFETY INVARIANTS"));
+    assert.ok(cleaned.includes("CONTRAINDICATION: Absolute contraindication: Do NOT administer intravenous insulin"));
+    assert.ok(cleaned.includes("less than 3.3 milliequivalents per liter"));
+    assert.ok(cleaned.includes("Safety invariant DKA 001"));
+    assert.ok(cleaned.includes("Safety invariant DKA 002"));
+    assert.ok(cleaned.includes("greater than or equal to 3.3 milliequivalents per liter"));
+    assert.ok(cleaned.includes("D 5 W"));
+    assert.ok(cleaned.includes("less than or equal to 12"));
+
+    // Ensure speech chunks cover the complete text without exceeding 220 chars
+    const chunks = splitIntoSpokenChunks(cleaned, 220);
+    assert.ok(chunks.length > 5);
+    for (const chunk of chunks) {
+      assert.ok(chunk.length <= 220, `Spoken chunk exceeded 220 chars: ${chunk}`);
+    }
+  });
 });

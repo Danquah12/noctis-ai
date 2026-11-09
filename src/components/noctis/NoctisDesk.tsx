@@ -7893,7 +7893,7 @@ export function NoctisDesk() {
                                   } else {
                                     stopCurrentVoicePlayback();
                                     setReadingTurnIndex(index);
-                                    const rawAnswer = turn.content.split(/\n\s*Claim standing:/i)[0] || turn.content;
+                                    const rawAnswer = turn.content;
                                     const brainConfig = getBrainConfig();
                                     const activeBrain = getActiveKeyAndModel(brainConfig);
                                     const userOpenAiKey = activeBrain.provider === "openai" ? activeBrain.key : "";

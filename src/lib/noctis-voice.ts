@@ -489,28 +489,78 @@ export function cleanVoiceText(rawText: string, maxLength?: number): string {
 
   let spoken = rawText;
 
-  // 1. Remove code blocks with clean spoken transition
+  // 1. Convert markdown tables into spoken rows so no table content is skipped
+  const tableRegex = /(?:^|\n)\|([^\n]+)\|\r?\n\|[-:| ]+\|\r?\n((?:\|[^\n]+\|\r?\n?)+)/g;
+  spoken = spoken.replace(tableRegex, (_match, _headerLine, bodyLines) => {
+    const rows = bodyLines.trim().split(/\r?\n/).map((rowStr) => {
+      return rowStr.split("|").map((c) => c.trim()).filter(Boolean);
+    });
+    const spokenRows: string[] = [];
+    for (const row of rows) {
+      if (row.length === 0) continue;
+      if (row.length === 1) {
+        spokenRows.push(`${row[0]}.`);
+      } else if (row.length === 2) {
+        spokenRows.push(`${row[0]}: ${row[1]}.`);
+      } else {
+        const param = row[0];
+        const val = row[1];
+        const detail = row.slice(2).join(". ");
+        spokenRows.push(`${param}: ${val}. ${detail}.`);
+      }
+    }
+    return "\n\n" + spokenRows.join("\n") + "\n\n";
+  });
+
+  // 2. Remove code blocks with clean spoken transition
   spoken = spoken.replace(/```[\s\S]*?```/g, " [Code snippet omitted for speech] ");
   spoken = spoken.replace(/`([^`]+)`/g, "$1");
 
-  // 2. Remove horizontal rules and decorative dividers
-  spoken = spoken.replace(/^[─\-_=*]{3,}\s*$/gm, " ");
+  // 3. Remove horizontal rules and decorative dividers
+  spoken = spoken.replace(/^[\-_=*\u2500-\u254F]{3,}\s*$/gm, " ");
 
-  // 3. Remove markdown tables
-  spoken = spoken.replace(/\|[^\n]+\|\n\|[-:| ]+\|\n(?:\|[^\n]+\|\n?)+/g, " [Detailed table summary available in chat] ");
-
-  // 4. Remove metadata gates and callout blocks
-  spoken = spoken.replace(/>\s*\[!(?:IMPORTANT|NOTE|WARNING|TIP|CAUTION)\]/gi, " ");
+  // 4. Enhance callout blocks for spoken warning awareness
+  spoken = spoken.replace(/>\s*\[!WARNING\]/gi, " Warning: ");
+  spoken = spoken.replace(/>\s*\[!CAUTION\]/gi, " Caution: ");
+  spoken = spoken.replace(/>\s*\[!IMPORTANT\]/gi, " Important: ");
+  spoken = spoken.replace(/>\s*\[!NOTE\]/gi, " Note: ");
+  spoken = spoken.replace(/>\s*\[!TIP\]/gi, " Tip: ");
   spoken = spoken.replace(/^>\s*/gm, "");
 
-  // 5. Legal symbols and statutory references for speech
+  // 5. Medical and physiological units & abbreviations for natural pronunciation
+  spoken = spoken.replace(/\bBP:\s*/gi, "Blood pressure: ");
+  spoken = spoken.replace(/\bHR:\s*/gi, "Heart rate: ");
+  spoken = spoken.replace(/\bRR:\s*/gi, "Respiratory rate: ");
+  spoken = spoken.replace(/\bTemp:\s*/gi, "Temperature: ");
+  spoken = spoken.replace(/\bSpO2:?\s*/gi, "Oxygen saturation: ");
+  spoken = spoken.replace(/(\d+)\s*\/\s*(\d+)\s*mmHg/gi, "$1 over $2 millimeters of mercury");
+  spoken = spoken.replace(/\bmmHg\b/gi, "millimeters of mercury");
+  spoken = spoken.replace(/\bbpm\b/gi, "beats per minute");
+  spoken = spoken.replace(/\/min\b/gi, " per minute");
+  spoken = spoken.replace(/°C\b/gi, " degrees Celsius");
+  spoken = spoken.replace(/°F\b/gi, " degrees Fahrenheit");
+  spoken = spoken.replace(/\bmEq\/L\b/gi, "milliequivalents per liter");
+  spoken = spoken.replace(/\bmg\/dL\b/gi, "milligrams per deciliter");
+  spoken = spoken.replace(/\bK\+\b/g, "potassium");
+  spoken = spoken.replace(/\bNa\+\b/g, "sodium");
+  spoken = spoken.replace(/\bCl-\b/g, "chloride");
+  spoken = spoken.replace(/\bHCO3-?\b/g, "bicarbonate");
+  spoken = spoken.replace(/<=\s*(\d+(?:\.\d+)?)/g, "less than or equal to $1");
+  spoken = spoken.replace(/>=\s*(\d+(?:\.\d+)?)/g, "greater than or equal to $1");
+  spoken = spoken.replace(/<\s*(\d+(?:\.\d+)?)/g, "less than $1");
+  spoken = spoken.replace(/>\s*(\d+(?:\.\d+)?)/g, "greater than $1");
+  spoken = spoken.replace(/\bCF-([A-Za-z0-9]+)-(\d+)\b/g, "Safety invariant $1 $2");
+  spoken = spoken.replace(/\bD5W\b/gi, "D 5 W");
+  spoken = spoken.replace(/\bD10W\b/gi, "D 10 W");
+
+  // 6. Legal symbols and statutory references for speech
   spoken = spoken.replace(/§§\s*/g, "Sections ");
   spoken = spoken.replace(/§\s*/g, "Section ");
   spoken = spoken.replace(/\bU\.S\.C\.\b/g, "U S C");
   spoken = spoken.replace(/\bC\.F\.R\.\b/g, "C F R");
   spoken = spoken.replace(/\bFAR\b/g, "F A R");
 
-  // 6. Units and currencies for human pronunciation (before LaTeX stripping)
+  // 7. Units and currencies for human pronunciation
   spoken = spoken.replace(/\$(\d+(?:\.\d+)?)\s*(?:billion|B)\b/gi, "$1 billion dollars");
   spoken = spoken.replace(/\$(\d+(?:\.\d+)?)\s*(?:million|M)\b/gi, "$1 million dollars");
   spoken = spoken.replace(/\$(\d+(?:\.\d+)?)\s*(?:thousand|K)\b/gi, "$1 thousand dollars");
@@ -520,7 +570,7 @@ export function cleanVoiceText(rawText: string, maxLength?: number): string {
   spoken = spoken.replace(/\b(\d+(?:\.\d+)?)\s*GW\b/gi, "$1 gigawatts");
   spoken = spoken.replace(/\b(\d+(?:\.\d+)?)\s*MW\b/gi, "$1 megawatts");
 
-  // 7. Clean LaTeX math formatting ($...$ and $$...$$)
+  // 8. Clean LaTeX math formatting ($...$ and $$...$$)
   spoken = spoken.replace(/\$\$[\s\S]*?\$\$/g, " ");
   spoken = spoken.replace(/\\times/gi, " times ");
   spoken = spoken.replace(/\\pm/gi, " plus or minus ");
@@ -539,26 +589,27 @@ export function cleanVoiceText(rawText: string, maxLength?: number): string {
   spoken = spoken.replace(/\\[a-zA-Z]+/g, " ");
   spoken = spoken.replace(/\\%/g, "%");
 
-  // 8. Common abbreviations expanded into natural spoken English
+  // 9. Common abbreviations expanded into natural spoken English
   spoken = spoken.replace(/\be\.g\.,?\s*/gi, "for example, ");
   spoken = spoken.replace(/\bi\.e\.,?\s*/gi, "that is, ");
   spoken = spoken.replace(/\betc\.\b/gi, "etcetera");
   spoken = spoken.replace(/\bvs\.?\s*/gi, " versus ");
   spoken = spoken.replace(/\bapprox\.\s*/gi, "approximately ");
 
-  // 9. Remove audit/claim status stamps
-  spoken = spoken.split(/\b(?:Evidence status|Claim standing|Audit trail):/i)[0];
+  // 10. Clean inline audit stamps without lopping off rest of document
+  spoken = spoken.replace(/\bEvidence status:\s*[^\n.]+[.]?/gi, " ");
+  spoken = spoken.replace(/\bClaim standing:\s*[^\n.]+[.]?/gi, " ");
 
-  // 10. Clean markdown links, headers, bold, italics, bullets
+  // 11. Clean markdown links, headers, bold, italics, bullets
   spoken = spoken.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
   spoken = spoken.replace(/^#+\s+/gm, "");
-  spoken = spoken.replace(/^[*\-+•]\s+/gm, "");
+  spoken = spoken.replace(/^[*\-+•·]\s+/gm, "");
   spoken = spoken.replace(/[#*`_~]/g, " ");
 
-  // 11. Collapse whitespace
+  // 12. Collapse whitespace
   spoken = spoken.replace(/\s+/g, " ").trim();
 
-  // 12. Sentence-boundary truncation: Only when maxLength is explicitly provided and positive
+  // 13. Sentence-boundary truncation: Only when maxLength is explicitly provided and positive
   if (typeof maxLength === "number" && maxLength > 0 && spoken.length > maxLength) {
     const candidate = spoken.slice(0, maxLength);
     const lastPunctuation = Math.max(
