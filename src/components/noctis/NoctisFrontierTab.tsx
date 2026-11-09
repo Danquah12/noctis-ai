@@ -25,6 +25,7 @@ import {
   Microscope,
   FileCheck,
   Binary,
+  Users,
   Mic,
   Radio,
 } from "lucide-react";
@@ -81,6 +82,7 @@ import { getDefaultLeaderboard, runHealth500Benchmark, type BenchmarkRunReport }
 import { exportReferenceTableCsv, exportFhirR4DocumentBundle, downloadBlob, printDossier } from "@/lib/noctis-clinical-export";
 import { NoctisAmbientDictationSection } from "./NoctisAmbientDictationSection";
 import { NoctisQLoRASection } from "./NoctisQLoRASection";
+import { NoctisSpecialistSwarmSection } from "./NoctisSpecialistSwarmSection";
 
 interface NoctisFrontierTabProps {
   onSendToChat?: (promptText: string) => void;
@@ -88,7 +90,7 @@ interface NoctisFrontierTabProps {
 }
 
 export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabProps) {
-  const [activeSubTab, setActiveSubTab] = useState<"health500" | "leaderboard" | "ambient" | "qlora" | "engineering" | "dicom" | "edge" | "specialist">("health500");
+  const [activeSubTab, setActiveSubTab] = useState<"health500" | "leaderboard" | "ambient" | "qlora" | "swarm" | "engineering" | "dicom" | "edge" | "specialist">("health500");
   
   // Leaderboard State
   const [leaderboardData, setLeaderboardData] = useState<BenchmarkRunReport>(() => getDefaultLeaderboard());
@@ -256,6 +258,18 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
         >
           <Cpu className="size-3.5 text-cyan-400" />
           QLoRA Fine-Tuning & Dataset Forge
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab("swarm")}
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
+            activeSubTab === "swarm" ? "bg-violet-600 text-white shadow-sm" : "bg-white/5 text-white/70 hover:bg-white/10"
+          )}
+        >
+          <Users className="size-3.5 text-emerald-400" />
+          Specialist Swarm Council
+          <span className="rounded bg-emerald-500/20 px-1 py-0.2 text-[9px] font-bold text-emerald-300">SWARM</span>
         </button>
         <button
           type="button"
@@ -1061,6 +1075,10 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
 
       {activeSubTab === "qlora" && (
         <NoctisQLoRASection />
+      )}
+
+      {activeSubTab === "swarm" && (
+        <NoctisSpecialistSwarmSection onSendToChat={onSendToChat} />
       )}
 
       {activeSubTab === "engineering" && (
