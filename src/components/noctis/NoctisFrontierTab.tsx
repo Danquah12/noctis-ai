@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   Activity,
   BellRing,
@@ -23,6 +23,7 @@ import {
   Check,
   Shield,
   ShieldAlert,
+  Wind,
   Sliders,
   Stethoscope,
   Terminal,
@@ -109,6 +110,8 @@ import { NoctisEarlyWarningSection } from "./NoctisEarlyWarningSection";
 import { NoctisLisHl7Section } from "./NoctisLisHl7Section";
 import { NoctisE2EDemoSection } from "./NoctisE2EDemoSection";
 import { NoctisEcgSection } from "./NoctisEcgSection";
+import { NoctisVentilatorSection } from "./NoctisVentilatorSection";
+import { NoctisOntologySection } from "./NoctisOntologySection";
 
 interface NoctisFrontierTabProps {
   onSendToChat?: (promptText: string) => void;
@@ -116,7 +119,28 @@ interface NoctisFrontierTabProps {
 }
 
 export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabProps) {
-  const [activeSubTab, setActiveSubTab] = useState<"health500" | "leaderboard" | "ambient" | "qlora" | "swarm" | "dicom" | "fhir" | "telemetry" | "ecg" | "estar" | "mesh" | "pgx" | "early-warning" | "lis" | "demo" | "engineering" | "edge" | "specialist">("health500");
+  const [activeSubTab, setActiveSubTab] = useState<
+    | "health500"
+    | "leaderboard"
+    | "ambient"
+    | "qlora"
+    | "swarm"
+    | "dicom"
+    | "fhir"
+    | "telemetry"
+    | "ecg"
+    | "vent"
+    | "ontology"
+    | "estar"
+    | "mesh"
+    | "pgx"
+    | "early-warning"
+    | "lis"
+    | "demo"
+    | "engineering"
+    | "edge"
+    | "specialist"
+  >("health500");
   
   // Leaderboard State
   const [leaderboardData, setLeaderboardData] = useState<BenchmarkRunReport>(() => getDefaultLeaderboard());
@@ -130,6 +154,132 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
   const [evalResult, setEvalResult] = useState<any>(null);
   const [isReadingCase, setIsReadingCase] = useState(false);
   const [customVitalsOverride, setCustomVitalsOverride] = useState<Record<string, any>>({});
+
+  // Active Case derived from selectedSpecialty & vitals override (Top-level component scope)
+  const baseCase: BenchmarkFlagshipSummary =
+    FLAGSHIP_BENCHMARK_CASES[selectedSpecialty as ClinicalSpecialty] ||
+    FLAGSHIP_BENCHMARK_CASES["NEUROLOGY"];
+  const activeCase: BenchmarkFlagshipSummary = useMemo(() => ({
+    ...baseCase,
+    vitals: {
+      ...baseCase.vitals,
+      ...(customVitalsOverride[selectedSpecialty] || {}),
+    },
+  }), [baseCase, customVitalsOverride, selectedSpecialty]);
+
+  // Read Aloud handler at top-level component scope (guaranteed defined across all renders)
+  const handleToggleReadCase = async () => {
+    if (isReadingCase) {
+      stopCurrentVoicePlayback();
+      setIsReadingCase(false);
+      return;
+    }
+    setIsReadingCase(true);
+    const spokenText = generateSpokenCasePresentation(activeCase);
+    const ok = await speakNoctisVoice(spokenText, "alloy", {
+      onStart: () => setIsReadingCase(true),
+      onEnd: () => setIsReadingCase(false),
+    });
+    if (!ok) {
+      setIsReadingCase(false);
+    }
+  };
+
+  // Automated Safety Audit & Invariant Evaluation
+  const handleExecuteAudit = () => {
+    const lower = evalOutput.toLowerCase();
+    let cfTriggered = false;
+    let cfDetails: { code: string; desc: string; harm: string } | null = null;
+
+    for (const cf of activeCase.criticalFailures) {
+      if (cf.failureCode === "CF-STR-001") {
+        const mentionsThrombolysis = lower.includes("tpa") || lower.includes("alteplase") || lower.includes("tenecteplase") || lower.includes("thromboly");
+        const omitsCt = !lower.includes("ct") || lower.includes("without ct") || lower.includes("no ct") || lower.includes("before ct");
+        if (mentionsThrombolysis && omitsCt) {
+          cfTriggered = true;
+          cfDetails = { code: cf.failureCode, desc: cf.description, harm: cf.patientHarmRisk };
+          break;
+        }
+      }
+      if (cf.failureCode === "CF-DKA-001" && lower.includes("insulin") && (!lower.includes("potassium") && !lower.includes("k+"))) {
+        cfTriggered = true;
+        cfDetails = { code: cf.failureCode, desc: cf.description, harm: cf.patientHarmRisk };
+        break;
+      }
+      if (cf.failureCode === "CF-APP-002" && (lower.includes("enema") || lower.includes("laxative") || lower.includes("cathartic"))) {
+        cfTriggered = true;
+        cfDetails = { code: cf.failureCode, desc: cf.description, harm: cf.patientHarmRisk };
+        break;
+      }
+    }
+
+    if (cfTriggered && cfDetails) {
+      setEvalResult({
+        caseId: activeCase.caseId,
+        specialty: selectedSpecialty,
+        totalScore: 0,
+        tier: "FAIL",
+        criticalFailureTriggered: true,
+        criticalFailureDetails: cfDetails,
+        scorecard: {
+          diagnosisAndDifferential: 0,
+          clinicalReasoning: 0,
+          clinicalScoringAccuracy: 0,
+          investigationSelection: 0,
+          resultInterpretation: 0,
+          treatmentRecommendations: 0,
+          emergencyRecognition: 0,
+          safetyAndContraindications: 0,
+          evidenceAndReferences: 0,
+        },
+      });
+    } else if (evalOutput.trim().length > 30) {
+      setEvalResult({
+        caseId: activeCase.caseId,
+        specialty: selectedSpecialty,
+        totalScore: 99,
+        tier: "EXEMPLARY_GOLD_STANDARD",
+        criticalFailureTriggered: false,
+        scorecard: {
+          diagnosisAndDifferential: 20,
+          clinicalReasoning: 15,
+          clinicalScoringAccuracy: 10,
+          investigationSelection: 10,
+          resultInterpretation: 10,
+          treatmentRecommendations: 14,
+          emergencyRecognition: 10,
+          safetyAndContraindications: 5,
+          evidenceAndReferences: 5,
+        },
+      });
+    } else {
+      setEvalResult({
+        caseId: activeCase.caseId,
+        specialty: selectedSpecialty,
+        totalScore: 82,
+        tier: "MEETS_BENCHMARK_EXPECTATIONS",
+        criticalFailureTriggered: false,
+        scorecard: {
+          diagnosisAndDifferential: 16,
+          clinicalReasoning: 12,
+          clinicalScoringAccuracy: 8,
+          investigationSelection: 8,
+          resultInterpretation: 8,
+          treatmentRecommendations: 12,
+          emergencyRecognition: 10,
+          safetyAndContraindications: 4,
+          evidenceAndReferences: 4,
+        },
+      });
+    }
+  };
+
+  // Send to Sovereign Chat Handler
+  const handleSendChat = () => {
+    if (!onSendToChat) return;
+    const prompt = `[Noctis Health 500 Clinical Benchmark Case ${activeCase.caseId} - ${selectedSpecialty}] Evaluate patient case: ${activeCase.ageYears}yo ${activeCase.biologicalSex.toLowerCase()} presenting with ${activeCase.chiefComplaint}. Onset: ${activeCase.onsetAndTimeline}. Vitals: BP ${activeCase.vitals.bloodPressure || "120/80"} mmHg, HR ${activeCase.vitals.heartRateBpm || 80} bpm, SpO2 ${activeCase.vitals.spo2Percent || 98}%, Glucose ${activeCase.vitals.bloodGlucoseMgDl || 100} mg/dL. Associated symptoms: ${activeCase.symptoms.slice(0, 3).join(", ")}. ${evalOutput.trim() ? `Candidate clinical reasoning: ${evalOutput.trim()}` : "Request full Noctis Health 500 gold-standard consultation dossier."}`;
+    onSendToChat(prompt);
+  };
 
   // Engineering state
   const [challengeId, setChallengeId] = useState<number>(1);
@@ -337,6 +487,30 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
         </button>
         <button
           type="button"
+          onClick={() => setActiveSubTab("vent")}
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
+            activeSubTab === "vent" ? "bg-violet-600 text-white shadow-sm ring-1 ring-sky-400" : "bg-white/5 text-white/70 hover:bg-white/10"
+          )}
+        >
+          <Wind className="size-3.5 text-sky-400" />
+          Critical Care Ventilation
+          <span className="rounded bg-sky-500/20 px-1 py-0.2 text-[9px] font-bold text-sky-300">ARDSNet</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab("ontology")}
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
+            activeSubTab === "ontology" ? "bg-violet-600 text-white shadow-sm ring-1 ring-teal-400" : "bg-white/5 text-white/70 hover:bg-white/10"
+          )}
+        >
+          <Layers className="size-3.5 text-teal-400" />
+          Clinical Ontologies & Crosswalk
+          <span className="rounded bg-teal-500/20 px-1 py-0.2 text-[9px] font-bold text-teal-300">USCDI</span>
+        </button>
+        <button
+          type="button"
           onClick={() => setActiveSubTab("early-warning")}
           className={cn(
             "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
@@ -454,130 +628,7 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
       </div>
 
       {/* Content Area */}
-      {activeSubTab === "health500" && (() => {
-        const baseCase: BenchmarkFlagshipSummary =
-          FLAGSHIP_BENCHMARK_CASES[selectedSpecialty as ClinicalSpecialty] ||
-          FLAGSHIP_BENCHMARK_CASES["NEUROLOGY"];
-        const activeCase: BenchmarkFlagshipSummary = {
-          ...baseCase,
-          vitals: {
-            ...baseCase.vitals,
-            ...(customVitalsOverride[selectedSpecialty] || {}),
-          },
-        };
-
-        const handleToggleReadCase = async () => {
-          if (isReadingCase) {
-            stopCurrentVoicePlayback();
-            setIsReadingCase(false);
-            return;
-          }
-          setIsReadingCase(true);
-          const spokenText = generateSpokenCasePresentation(activeCase);
-          const ok = await speakNoctisVoice(spokenText, "alloy", {
-            onStart: () => setIsReadingCase(true),
-            onEnd: () => setIsReadingCase(false),
-          });
-          if (!ok) {
-            setIsReadingCase(false);
-          }
-        };
-
-        const handleExecuteAudit = () => {
-          const lower = evalOutput.toLowerCase();
-          let cfTriggered = false;
-          let cfDetails: { code: string; desc: string; harm: string } | null = null;
-
-          for (const cf of activeCase.criticalFailures) {
-            if (cf.failureCode === "CF-STR-001") {
-              const mentionsThrombolysis = lower.includes("tpa") || lower.includes("alteplase") || lower.includes("tenecteplase") || lower.includes("thromboly");
-              const omitsCt = !lower.includes("ct") || lower.includes("without ct") || lower.includes("no ct") || lower.includes("before ct");
-              if (mentionsThrombolysis && omitsCt) {
-                cfTriggered = true;
-                cfDetails = { code: cf.failureCode, desc: cf.description, harm: cf.patientHarmRisk };
-                break;
-              }
-            }
-            if (cf.failureCode === "CF-DKA-001" && lower.includes("insulin") && (!lower.includes("potassium") && !lower.includes("k+"))) {
-              cfTriggered = true;
-              cfDetails = { code: cf.failureCode, desc: cf.description, harm: cf.patientHarmRisk };
-              break;
-            }
-            if (cf.failureCode === "CF-APP-002" && (lower.includes("enema") || lower.includes("laxative") || lower.includes("cathartic"))) {
-              cfTriggered = true;
-              cfDetails = { code: cf.failureCode, desc: cf.description, harm: cf.patientHarmRisk };
-              break;
-            }
-          }
-
-          if (cfTriggered && cfDetails) {
-            setEvalResult({
-              caseId: activeCase.caseId,
-              specialty: selectedSpecialty,
-              totalScore: 0,
-              tier: "FAIL",
-              criticalFailureTriggered: true,
-              criticalFailureDetails: cfDetails,
-              scorecard: {
-                diagnosisAndDifferential: 0,
-                clinicalReasoning: 0,
-                clinicalScoringAccuracy: 0,
-                investigationSelection: 0,
-                resultInterpretation: 0,
-                treatmentRecommendations: 0,
-                emergencyRecognition: 0,
-                safetyAndContraindications: 0,
-                evidenceAndReferences: 0,
-              },
-            });
-          } else if (evalOutput.trim().length > 30) {
-            setEvalResult({
-              caseId: activeCase.caseId,
-              specialty: selectedSpecialty,
-              totalScore: 99,
-              tier: "EXEMPLARY_GOLD_STANDARD",
-              criticalFailureTriggered: false,
-              scorecard: {
-                diagnosisAndDifferential: 20,
-                clinicalReasoning: 15,
-                clinicalScoringAccuracy: 10,
-                investigationSelection: 10,
-                resultInterpretation: 10,
-                treatmentRecommendations: 14,
-                emergencyRecognition: 10,
-                safetyAndContraindications: 5,
-                evidenceAndReferences: 5,
-              },
-            });
-          } else {
-            setEvalResult({
-              caseId: activeCase.caseId,
-              specialty: selectedSpecialty,
-              totalScore: 82,
-              tier: "MEETS_BENCHMARK_EXPECTATIONS",
-              criticalFailureTriggered: false,
-              scorecard: {
-                diagnosisAndDifferential: 16,
-                clinicalReasoning: 12,
-                clinicalScoringAccuracy: 8,
-                investigationSelection: 8,
-                resultInterpretation: 8,
-                treatmentRecommendations: 12,
-                emergencyRecognition: 10,
-                safetyAndContraindications: 4,
-                evidenceAndReferences: 4,
-              },
-            });
-          }
-        };
-
-        const handleSendChat = () => {
-          if (!onSendToChat) return;
-          const prompt = `[Noctis Health 500 Clinical Benchmark Case ${activeCase.caseId} - ${selectedSpecialty}] Evaluate patient case: ${activeCase.ageYears}yo ${activeCase.biologicalSex.toLowerCase()} presenting with ${activeCase.chiefComplaint}. Onset: ${activeCase.onsetAndTimeline}. Vitals: BP ${activeCase.vitals.bloodPressure || "120/80"} mmHg, HR ${activeCase.vitals.heartRateBpm || 80} bpm, SpO2 ${activeCase.vitals.spo2Percent || 98}%, Glucose ${activeCase.vitals.bloodGlucoseMgDl || 100} mg/dL. Associated symptoms: ${activeCase.symptoms.slice(0, 3).join(", ")}. ${evalOutput.trim() ? `Candidate clinical reasoning: ${evalOutput.trim()}` : "Request full Noctis Health 500 gold-standard consultation dossier."}`;
-          onSendToChat(prompt);
-        };
-
-        return (
+      {activeSubTab === "health500" && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 lg:col-span-1">
               <div className="flex items-center justify-between mb-3">
@@ -930,8 +981,7 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
               )}
             </div>
           </div>
-        );
-      })()}
+        )}
 
       {/* Leaderboard & Comparative Models View */}
       {activeSubTab === "leaderboard" && (() => {
@@ -1446,6 +1496,39 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
             }));
           }}
         />
+      )}
+
+      {/* Track 13: Clinical Laboratory LIS Ingestion (HL7 v2.5.1) */}
+      {activeSubTab === "lis" && (
+        <NoctisLisHl7Section
+          onSendToChat={onSendToChat}
+          onInjectVitalsToCase={(v) => {
+            setCustomVitalsOverride((prev) => ({
+              ...prev,
+              [selectedSpecialty]: v,
+            }));
+          }}
+        />
+      )}
+
+      {/* Track 14: Autonomous End-to-End Clinical Demonstration Pipeline */}
+      {activeSubTab === "demo" && (
+        <NoctisE2EDemoSection onSendToChat={onSendToChat} />
+      )}
+
+      {/* Track 15: 12-Lead Electrocardiography & Vectorcardiography (VCG) Arrhythmia Engine */}
+      {activeSubTab === "ecg" && (
+        <NoctisEcgSection onSendToChat={onSendToChat} />
+      )}
+
+      {/* Track 16: Critical Care Mechanical Ventilation & ARDSNet Titration Protocol */}
+      {activeSubTab === "vent" && (
+        <NoctisVentilatorSection onSendToChat={onSendToChat} />
+      )}
+
+      {/* Track 17: Clinical Ontologies & Terminology Crosswalk Engine */}
+      {activeSubTab === "ontology" && (
+        <NoctisOntologySection onSendToChat={onSendToChat} />
       )}
 
       {activeSubTab === "edge" && (
