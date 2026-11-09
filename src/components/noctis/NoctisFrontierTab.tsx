@@ -46,7 +46,6 @@ import {
   Pill,
   Flame,
   Droplet,
-  Activity,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
