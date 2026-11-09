@@ -85,7 +85,14 @@ import { calculateEdgeModelProfile } from "@/lib/noctis-edge-runner";
 import { FLAGSHIP_BENCHMARK_CASES, type BenchmarkFlagshipSummary } from "@/lib/noctis-health-500-chat";
 import type { ClinicalSpecialty } from "@/lib/noctis-health-500-schema";
 import { getDefaultLeaderboard, runHealth500Benchmark, type BenchmarkRunReport } from "@/lib/noctis-health-500-runner";
-import { exportReferenceTableCsv, exportFhirR4DocumentBundle, downloadBlob, printDossier } from "@/lib/noctis-clinical-export";
+import {
+  exportReferenceTableCsv,
+  exportFhirR4DocumentBundle,
+  generateSpokenCasePresentation,
+  downloadBlob,
+  printDossier,
+} from "@/lib/noctis-clinical-export";
+import { speakNoctisVoice, stopCurrentVoicePlayback } from "@/lib/noctis-voice";
 import { NoctisAmbientDictationSection } from "./NoctisAmbientDictationSection";
 import { NoctisQLoRASection } from "./NoctisQLoRASection";
 import { NoctisSpecialistSwarmSection } from "./NoctisSpecialistSwarmSection";
@@ -354,6 +361,23 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
             ...baseCase.vitals,
             ...(customVitalsOverride[selectedSpecialty] || {}),
           },
+        };
+
+        const handleToggleReadCase = async () => {
+          if (isReadingCase) {
+            stopCurrentVoicePlayback();
+            setIsReadingCase(false);
+            return;
+          }
+          setIsReadingCase(true);
+          const spokenText = generateSpokenCasePresentation(activeCase);
+          const ok = await speakNoctisVoice(spokenText, "alloy", {
+            onStart: () => setIsReadingCase(true),
+            onEnd: () => setIsReadingCase(false),
+          });
+          if (!ok) {
+            setIsReadingCase(false);
+          }
         };
 
         const handleExecuteAudit = () => {
