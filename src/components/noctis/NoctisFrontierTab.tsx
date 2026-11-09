@@ -89,6 +89,7 @@ import { NoctisQLoRASection } from "./NoctisQLoRASection";
 import { NoctisSpecialistSwarmSection } from "./NoctisSpecialistSwarmSection";
 import { NoctisDicomVisionSection } from "./NoctisDicomVisionSection";
 import { NoctisSmartFhirSection } from "./NoctisSmartFhirSection";
+import { NoctisBedsideTelemetrySection } from "./NoctisBedsideTelemetrySection";
 
 interface NoctisFrontierTabProps {
   onSendToChat?: (promptText: string) => void;
@@ -109,6 +110,7 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
   const [evalOutput, setEvalOutput] = useState<string>("");
   const [evalResult, setEvalResult] = useState<any>(null);
   const [isReadingCase, setIsReadingCase] = useState(false);
+  const [customVitalsOverride, setCustomVitalsOverride] = useState<Record<string, any>>({});
 
   // Engineering state
   const [challengeId, setChallengeId] = useState<number>(1);
@@ -338,9 +340,16 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
 
       {/* Content Area */}
       {activeSubTab === "health500" && (() => {
-        const activeCase: BenchmarkFlagshipSummary =
+        const baseCase: BenchmarkFlagshipSummary =
           FLAGSHIP_BENCHMARK_CASES[selectedSpecialty as ClinicalSpecialty] ||
           FLAGSHIP_BENCHMARK_CASES["NEUROLOGY"];
+        const activeCase: BenchmarkFlagshipSummary = {
+          ...baseCase,
+          vitals: {
+            ...baseCase.vitals,
+            ...(customVitalsOverride[selectedSpecialty] || {}),
+          },
+        };
 
         const handleExecuteAudit = () => {
           const lower = evalOutput.toLowerCase();
@@ -1265,6 +1274,17 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
 
       {activeSubTab === "fhir" && (
         <NoctisSmartFhirSection onSendToChat={onSendToChat} />
+
+        {/* Track 8: Real-Time Bedside Medical Device Telemetry & Web Bluetooth IoMT Engine */}
+        <NoctisBedsideTelemetrySection
+          onSendToChat={onSendToChat}
+          onInjectVitalsToCase={(v) => {
+            setCustomVitalsOverride((prev) => ({
+              ...prev,
+              [selectedSpecialty]: v,
+            }));
+          }}
+        />
       )}
 
       {activeSubTab === "edge" && (
