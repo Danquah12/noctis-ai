@@ -46,6 +46,9 @@ import {
   Pill,
   Flame,
   Droplet,
+  Thermometer,
+  Droplets,
+  Brain,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -129,6 +132,10 @@ import { NoctisPharmacologySection } from "./NoctisPharmacologySection";
 import { NoctisBurnSection } from "./NoctisBurnSection";
 import { NoctisMtpSection } from "./NoctisMtpSection";
 import { NoctisDkaSection } from "./NoctisDkaSection";
+import { NoctisTtmSection } from "./NoctisTtmSection";
+import { NoctisCrrtSection } from "./NoctisCrrtSection";
+import { NoctisVasoactiveSection } from "./NoctisVasoactiveSection";
+import { NoctisStrokeSection } from "./NoctisStrokeSection";
 
 interface NoctisFrontierTabProps {
   onSendToChat?: (promptText: string) => void;
@@ -157,6 +164,10 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
     | "burn"
     | "mtp"
     | "dka"
+    | "ttm"
+    | "crrt"
+    | "vaso"
+    | "stroke"
     | "estar"
     | "mesh"
     | "pgx"
@@ -642,6 +653,54 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
           <Activity className="size-3.5 text-violet-400" />
           DKA &amp; HHS Resuscitation
           <span className="rounded bg-violet-500/20 px-1 py-0.2 text-[9px] font-bold text-violet-300">ADA</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab("ttm")}
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
+            activeSubTab === "ttm" ? "bg-cyan-600 text-white shadow-sm ring-1 ring-cyan-400" : "bg-white/5 text-white/70 hover:bg-white/10"
+          )}
+        >
+          <Thermometer className="size-3.5 text-cyan-400" />
+          TTM &amp; Neuroprognostication
+          <span className="rounded bg-cyan-500/20 px-1 py-0.2 text-[9px] font-bold text-cyan-300">TTM2</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab("crrt")}
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
+            activeSubTab === "crrt" ? "bg-teal-600 text-white shadow-sm ring-1 ring-teal-400" : "bg-white/5 text-white/70 hover:bg-white/10"
+          )}
+        >
+          <Droplets className="size-3.5 text-teal-400" />
+          CRRT &amp; KDIGO AKI
+          <span className="rounded bg-teal-500/20 px-1 py-0.2 text-[9px] font-bold text-teal-300">KDIGO</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab("vaso")}
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
+            activeSubTab === "vaso" ? "bg-rose-600 text-white shadow-sm ring-1 ring-rose-400" : "bg-white/5 text-white/70 hover:bg-white/10"
+          )}
+        >
+          <Zap className="size-3.5 text-rose-400" />
+          Vasoactive &amp; Inotropes (VIS)
+          <span className="rounded bg-rose-500/20 px-1 py-0.2 text-[9px] font-bold text-rose-300">VIS</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab("stroke")}
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
+            activeSubTab === "stroke" ? "bg-indigo-600 text-white shadow-sm ring-1 ring-indigo-400" : "bg-white/5 text-white/70 hover:bg-white/10"
+          )}
+        >
+          <Brain className="size-3.5 text-indigo-400" />
+          Stroke Code &amp; EVT Reperfusion
+          <span className="rounded bg-indigo-500/20 px-1 py-0.2 text-[9px] font-bold text-indigo-300">DAWN</span>
         </button>
         <button
           type="button"
@@ -1708,6 +1767,26 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
       {/* Track 26: Diabetic Ketoacidosis (DKA) & HHS Resuscitation Protocol */}
       {activeSubTab === "dka" && (
         <NoctisDkaSection onSendToChat={onSendToChat} />
+      )}
+
+      {/* Track 27: Targeted Temperature Management (TTM) & Neuroprognostication */}
+      {activeSubTab === "ttm" && (
+        <NoctisTtmSection onSendToChat={onSendToChat} />
+      )}
+
+      {/* Track 28: Acute Kidney Injury (AKI) & CRRT (KDIGO / FST / RCA) Engine */}
+      {activeSubTab === "crrt" && (
+        <NoctisCrrtSection onSendToChat={onSendToChat} />
+      )}
+
+      {/* Track 29: Hemodynamic Instability & Vasoactive Titration (VIS) Engine */}
+      {activeSubTab === "vaso" && (
+        <NoctisVasoactiveSection onSendToChat={onSendToChat} />
+      )}
+
+      {/* Track 30: Comprehensive Stroke Code & Neurovascular Reperfusion Engine */}
+      {activeSubTab === "stroke" && (
+        <NoctisStrokeSection onSendToChat={onSendToChat} />
       )}
 
       {activeSubTab === "edge" && (
