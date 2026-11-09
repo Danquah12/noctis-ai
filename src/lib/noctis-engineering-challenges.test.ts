@@ -11,9 +11,19 @@ import {
   solveQuantumDilutionFridge008,
   solveHypersonicScramjet009,
   solveDeepSeaSubmersible010,
+  solveDacEnergetics011,
+  solveFloatingWindMooring012,
+  solveSmesQuenchProtection013,
+  solveSolidStateBattery014,
+  solveTbccPropulsion015,
+  solveDsocLaserLink016,
+  solveLiquidHydrogenZbo017,
+  solveSupercriticalGeothermal018,
+  solveNeuromorphicRram019,
+  solveAsteroidDeflection020,
 } from "./noctis-engineering-challenges.ts";
 
-test("NOCTIS MULTIDISCIPLINARY HARD ENGINEERING CHALLENGES (NEC-001..005)", async (t) => {
+test("NOCTIS MULTIDISCIPLINARY HARD ENGINEERING CHALLENGES (NEC-001..020)", async (t) => {
   await t.test("Challenge 001: Computes exact smart city energy, solar, storage, and water balances", () => {
     const city = solveSmartCity001();
     assert.equal(city.dailyElectricityDemandMWh, 725);
@@ -30,7 +40,6 @@ test("NOCTIS MULTIDISCIPLINARY HARD ENGINEERING CHALLENGES (NEC-001..005)", asyn
     const space = solveSpacecraftTrajectory002({ dryMassKg: 2000, ionEngineIspSec: 3500 });
     assert.equal(space.earthMarsDeltaVTotalKmS, 5.594);
     assert.ok(space.transferTimeDays > 250 && space.transferTimeDays < 265);
-    // Tsiolkovsky mass check: m0 = 2000 * exp(5594 / (3500 * 9.80665)) ~ 2353.4 kg
     assert.ok(space.initialMassKg > 2300 && space.initialMassKg < 2400);
     assert.ok(space.xenonPropellantMassKg > 300 && space.xenonPropellantMassKg < 400);
   });
@@ -99,5 +108,89 @@ test("NOCTIS MULTIDISCIPLINARY HARD ENGINEERING CHALLENGES (NEC-001..005)", asyn
     assert.ok(sub.hydrostaticPressureAtm > 1050);
     assert.ok(sub.safetyFactor >= 1.25);
     assert.equal(sub.hullStructuralIntegrity, "SAFE");
+  });
+
+  await t.test("Challenge 011: Direct Air Capture (DAC) verifies air volume scaling and net-negative ratio", () => {
+    const dac = solveDacEnergetics011({ annualCaptureTons: 1000000 });
+    assert.equal(dac.annualCo2CaptureTons, 1000000);
+    assert.ok(dac.airVolumeProcessedKm3PerYear > 1000);
+    assert.ok(dac.totalEnergyTWhPerYear > 1.5 && dac.totalEnergyTWhPerYear < 2.5);
+    assert.ok(dac.netNegativeRatio >= 0.85);
+    assert.equal(dac.dacScalabilityRating, "VIABLE_CLEAN_ENERGY");
+  });
+
+  await t.test("Challenge 012: 15 MW Floating Wind Turbine verifies catenary mooring lines and surge limits", () => {
+    const wind = solveFloatingWindMooring012({ ratedPowerMW: 15, waterDepthM: 200 });
+    assert.equal(wind.turbineRatedPowerMW, 15);
+    assert.ok(wind.thrustForceMegaNewtons > 2.5 && wind.thrustForceMegaNewtons < 3.0);
+    assert.ok(wind.maxSurgeOffsetM < 15.0); // Within allowable surge excursion
+    assert.ok(wind.catenarySafetyFactor >= 2.0);
+    assert.equal(wind.seakeepingStatus, "STABLE_SAFE");
+  });
+
+  await t.test("Challenge 013: 100 MJ SMES Cryogenic Quench Protection verifies dump resistor and hot-spot temp", () => {
+    const smes = solveSmesQuenchProtection013({ storedEnergyMJ: 100, operatingCurrentAmps: 10000 });
+    assert.equal(smes.storedEnergyMJ, 100);
+    assert.equal(smes.coilInductanceHenries, 2.0);
+    assert.equal(smes.dumpResistorOhms, 0.50);
+    assert.equal(smes.dischargeTimeConstantSeconds, 4.0);
+    assert.ok(smes.peakHotSpotTempKelvin < 150);
+    assert.equal(smes.quenchProtectionStatus, "PROTECTED_FAILSAFE");
+  });
+
+  await t.test("Challenge 014: All-Solid-State Lithium Battery confirms CCD >= 10 mA/cm2 and volumetric density", () => {
+    const battery = solveSolidStateBattery014({ targetCcd: 10.5, targetPressureMPa: 2.5 });
+    assert.ok(battery.criticalCurrentDensityMAcm2 >= 10.0);
+    assert.ok(battery.gravimetricEnergyDensityWhKg >= 450);
+    assert.ok(battery.volumetricEnergyDensityWhL >= 1000);
+    assert.equal(battery.dendriteSuppressionStatus, "SUPPRESSED_IMMUNE");
+  });
+
+  await t.test("Challenge 015: TBCC Mach 0–5+ propulsion mode transition confirms pressure recovery and continuity", () => {
+    const tbcc = solveTbccPropulsion015();
+    assert.equal(tbcc.turbojetToRamjetMachHandoff, 2.5);
+    assert.equal(tbcc.ramjetToScramjetMachHandoff, 4.2);
+    assert.ok(tbcc.inletPressureRecoveryRatio >= 0.70);
+    assert.equal(tbcc.modeTransitionFeasible, true);
+    assert.equal(tbcc.thrustContinuityStatus, "CONTINUOUS_NO_PINCH");
+  });
+
+  await t.test("Challenge 016: DSOC Optical Deep Space Link verifies pointing jitter and link margin", () => {
+    const dsoc = solveDsocLaserLink016();
+    assert.equal(dsoc.laserWavelengthNm, 1550);
+    assert.ok(dsoc.pointingJitterMicroRad < 1.0);
+    assert.ok(dsoc.opticalLinkMarginDb >= 3.0);
+    assert.ok(dsoc.achievedDataRateMbps >= 20.0);
+  });
+
+  await t.test("Challenge 017: Liquid Hydrogen Zero-Boil-Off verifies ortho-to-para conversion and cryocooler lift", () => {
+    const lh2 = solveLiquidHydrogenZbo017({ missionDays: 180 });
+    assert.equal(lh2.storageTempKelvin, 20.28);
+    assert.ok(lh2.equilibriumParaFractionPercent >= 99.5);
+    assert.equal(lh2.boilOffLossPercentOverMission, 0.0);
+    assert.equal(lh2.boilOffPreventionFeasibility, "ZERO_BOIL_OFF_ACHIEVED");
+  });
+
+  await t.test("Challenge 018: Supercritical Deep Geothermal verifies 35+ MWe output and Inconel casing safety", () => {
+    const geo = solveSupercriticalGeothermal018({ depthMeters: 5000, flowRateKgS: 45 });
+    assert.ok(geo.electricalPowerOutputMWe >= 35.0);
+    assert.ok(geo.casingYieldSafetyFactor >= 1.50);
+    assert.equal(geo.geothermalViability, "SUPERCRITICAL_COMMERCIAL");
+  });
+
+  await t.test("Challenge 019: Neuromorphic RRAM crossbar array achieves 40x+ energy efficiency over GPU", () => {
+    const rram = solveNeuromorphicRram019();
+    assert.equal(rram.crossbarDimensions[0], 1024);
+    assert.ok(rram.energyPerSynapticOpFemtoJoules < 50.0);
+    assert.ok(rram.energyEfficiencyGainFactor >= 40.0);
+    assert.equal(rram.rramArrayStatus, "ULTRA_LOW_POWER_OPTIMAL");
+  });
+
+  await t.test("Challenge 020: Asteroid Kinetic Impactor Deflection confirms planetary defense miss distance", () => {
+    const asteroid = solveAsteroidDeflection020({ warningYears: 10 });
+    assert.ok(asteroid.betaMomentumEnhancementFactor > 2.0);
+    assert.ok(asteroid.deltaVImpartedMmS > 1.5);
+    assert.ok(asteroid.deflectionDistanceKm > 500);
+    assert.equal(asteroid.planetaryDefenseFeasible, true);
   });
 });
