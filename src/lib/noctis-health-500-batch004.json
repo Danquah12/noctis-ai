@@ -1,0 +1,589 @@
+[
+  {
+    "benchmark": "NOCTIS-HEALTH-500",
+    "caseId": "NH-PEDS-001",
+    "batchId": "BATCH-004",
+    "specialty": "PEDIATRICS_NEONATOLOGY",
+    "clinicalCategory": "Pediatric Septic Shock & Resuscitation",
+    "difficulty": "EXPERT_COMPLEX",
+    "patientProfile": {
+      "ageYears": 3,
+      "biologicalSex": "MALE",
+      "pastMedicalHistory": ["Previously healthy, fully vaccinated"],
+      "currentMedications": ["None"],
+      "allergies": ["No known drug allergies (NKDA)"]
+    },
+    "initialPresentation": {
+      "chiefComplaint": "Lethargy, high fever, mottled cool extremities, and grunting respirations",
+      "onsetAndTimeline": "Fever started 18 hours ago; acute deterioration into lethargy over past 4 hours",
+      "symptoms": ["mottled skin", "delayed capillary refill", "grunting", "lethargy"],
+      "vitals": {
+        "bloodPressure": "70/36",
+        "heartRateBpm": 182,
+        "respiratoryRatePerMin": 44,
+        "temperatureCelsius": 39.6,
+        "spo2Percent": 93
+      }
+    },
+    "progressiveStages": [
+      {
+        "stageIndex": 1,
+        "stageName": "Cold Shock Recognition & Vascular Access",
+        "releasedFindings": [
+          "Physical exam: Inconsolable and lethargic, weak thready peripheral pulses, bounding central pulses, capillary refill time 5 seconds in extremities, cool mottled skin up to mid-thighs.",
+          "Weight: 15 kg.",
+          "Nursing staff fails two peripheral IV attempts after 90 seconds."
+        ],
+        "expectedClinicalRealignment": "Classic pediatric cold septic shock (hypotension, tachycardia, prolonged capillary refill, high SVR state); immediate placement of intraosseous (IO) access within 60 seconds; administer rapid push of 20 mL/kg balanced crystalloids (300 mL) via push-pull technique over 5-10 minutes."
+      },
+      {
+        "stageIndex": 2,
+        "stageName": "Fluid-Refractory Shock & First-Line Inotrope Gating",
+        "releasedFindings": [
+          "Patient has received two 20 mL/kg fluid boluses (total 40 mL/kg = 600 mL) with persistent hypotension (BP 72/38), heart rate 178 bpm, and hepatomegaly palpable 3 cm below right costal margin (early fluid overload / hepatic congestion).",
+          "Blood glucose is 54 mg/dL (pediatric hypoglycemia)."
+        ],
+        "expectedClinicalRealignment": "Fluid-refractory cold septic shock with early fluid overload; cease aggressive fluid boluses; administer 2 mL/kg D10W (30 mL) IV/IO for hypoglycemia; immediately initiate Epinephrine infusion (0.05-0.2 mcg/kg/min) as first-line inotrope/vasopressor for cold shock (Surviving Sepsis Pediatric Guidelines)."
+      }
+    ],
+    "goldStandard": {
+      "primaryDiagnosis": "Pediatric Fluid-Refractory Cold Septic Shock",
+      "icd10": "R65.21",
+      "clinicalRationale": "Severe hypotension (systolic BP 70 mmHg in a 3-year-old), profound sinus tachycardia (182 bpm), prolonged capillary refill (> 4 sec), cool mottled extremities, and fluid-refractory state requiring early inotropic support.",
+      "rankedDifferential": [
+        { "rank": 1, "condition": "Septic Shock (Cold Shock Subtype)", "tier": "TIER_1_PRIMARY_EMERGENCY", "probabilityPercent": 92, "dangerRating": "CRITICAL" },
+        { "rank": 2, "condition": "Acute Viral Myocarditis with Cardiogenic Shock", "tier": "TIER_2_MUST_NOT_MISS", "probabilityPercent": 5, "dangerRating": "CRITICAL" },
+        { "rank": 3, "condition": "Severe Dehydration secondary to Gastroenteritis", "tier": "TIER_3_ALTERNATIVE", "probabilityPercent": 2, "dangerRating": "HIGH" },
+        { "rank": 4, "condition": "Congenital Adrenal Hyperplasia (Adrenal Crisis)", "tier": "TIER_3_ALTERNATIVE", "probabilityPercent": 1, "dangerRating": "CRITICAL" }
+      ],
+      "clinicalScores": [
+        {
+          "scoreName": "Pediatric Advanced Life Support (PALS) Shock Classification",
+          "scoreType": "SEVERITY_PROGNOSTIC",
+          "formula": "Hypotension for age: SBP < 70 + (2 x Age in years)",
+          "requiredInputs": ["Age = 3", "SBP = 70 mmHg", "Threshold = 70 + 6 = 76 mmHg"],
+          "expectedCalculation": "SBP 70 < 76 mmHg",
+          "expectedResult": "Hypotensive (Decompensated) Pediatric Shock",
+          "missingDataBehavior": "Must evaluate pediatric age-specific normal blood pressure percentiles."
+        }
+      ],
+      "expectedInvestigations": [
+        { "priority": "STAT", "testName": "Point-of-Care Blood Glucose", "modality": "BEDSIDE", "rationale": "Identify and treat critical pediatric hypoglycemia." },
+        { "priority": "STAT", "testName": "Blood Cultures, CBC, Lactate, and Blood Gas", "modality": "LABORATORY", "rationale": "Evaluate bacteremia, tissue hypoperfusion, and metabolic acidosis." }
+      ],
+      "expectedManagement": {
+        "immediateInterventions": [
+          "Emergency intraosseous (IO) access established immediately after failed peripheral IV attempts",
+          "Rapid IV/IO balanced crystalloid bolus 20 mL/kg (300 mL) titrated up to 40-60 mL/kg with lung/liver reassessment",
+          "Initiate Epinephrine infusion (0.05-0.2 mcg/kg/min) for fluid-refractory cold shock",
+          "Administer D10W (2 mL/kg = 30 mL) IV/IO for hypoglycemia",
+          "Broad-spectrum IV antibiotics (Ceftriaxone 100 mg/kg + Vancomycin 15 mg/kg) within 60 minutes"
+        ],
+        "definitiveTherapy": [
+          "Pediatric Intensive Care Unit (PICU) transfer with invasive arterial line monitoring"
+        ],
+        "escalationLevel": "ICU_ADMISSION"
+      },
+      "safetyChecklist": {
+        "strictContraindications": [
+          "Delaying vascular access with > 2 peripheral IV attempts (mandates immediate IO needle insertion)",
+          "Continuing fluid boluses once signs of fluid overload appear (hepatomegaly or pulmonary rales)",
+          "Using adult-dose vasopressors without weight-based pediatric syringe pump programming"
+        ],
+        "highRiskInteractions": [
+          "Children rapidly deplete glycogen stores in septic shock; failure to check and replete glucose leads to hypoglycemic seizures and brain injury."
+        ]
+      },
+      "criticalFailures": [
+        {
+          "failureCode": "CF-PEDS-001",
+          "description": "Failing to establish IO access promptly in decompensated pediatric shock or failing to start inotropes for fluid-refractory cold shock",
+          "clinicalHarmPotential": "DEATH",
+          "overrideRule": "INSTANT_BENCHMARK_FAIL"
+        }
+      ]
+    },
+    "acceptanceCriteria": {
+      "minimumPassingScore": 85,
+      "requiredKeyFindings": ["Decompensated cold septic shock", "Hypotension for age (< 76 SBP)", "Hypoglycemia"],
+      "mandatoryActions": ["Immediate IO access", "Weight-based fluid resuscitation", "Epinephrine infusion for cold shock", "Glucose administration"]
+    },
+    "guidelineReferences": [
+      {
+        "organization": "Society of Critical Care Medicine",
+        "guidelineTitle": "Surviving Sepsis Campaign International Guidelines for the Management of Septic Shock and Sepsis-Associated Organ Dysfunction in Children",
+        "publicationYear": 2020
+      }
+    ]
+  },
+  {
+    "benchmark": "NOCTIS-HEALTH-500",
+    "caseId": "NH-PSYCH-001",
+    "batchId": "BATCH-004",
+    "specialty": "PSYCHIATRY",
+    "clinicalCategory": "Neuroleptic Malignant Syndrome",
+    "difficulty": "EXPERT_COMPLEX",
+    "patientProfile": {
+      "ageYears": 31,
+      "biologicalSex": "MALE",
+      "pastMedicalHistory": ["Schizoaffective disorder", "Bipolar type"],
+      "currentMedications": ["Haloperidol decanoate depot + oral Haloperidol 10mg daily (recently escalated 4 days ago)"],
+      "allergies": ["No known drug allergies (NKDA)"]
+    },
+    "initialPresentation": {
+      "chiefComplaint": "Severe generalized muscle stiffness, mutism, extreme hyperthermia, and profuse diaphoresis",
+      "onsetAndTimeline": "Progressive stiffening and confusion over past 48 hours following Haloperidol dose increase",
+      "symptoms": ["extreme rigidity", "hyperthermia", "mutism", "diaphoresis", "tachycardia"],
+      "vitals": {
+        "bloodPressure": "178/104",
+        "heartRateBpm": 128,
+        "temperatureCelsius": 40.2,
+        "respiratoryRatePerMin": 26,
+        "spo2Percent": 96
+      }
+    },
+    "progressiveStages": [
+      {
+        "stageIndex": 1,
+        "stageName": "Rigidity Grading & Autonomic Instability",
+        "releasedFindings": [
+          "Physical exam: Severe generalized 'lead-pipe' muscle rigidity in all extremities with cogwheel resistance, absence of spontaneous movement (catatonia), mutism, and severe drenching diaphoresis.",
+          "Pupils are equal and reactive without mydriasis; normal deep tendon reflexes (no hyperreflexia or clonus, ruling out Serotonin Syndrome).",
+          "Blood pressure fluctuates wildly between 180/105 and 130/75 mmHg over 30 minutes."
+        ],
+        "expectedClinicalRealignment": "Classic Neuroleptic Malignant Syndrome (NMS) secondary to potent dopamine D2 receptor antagonism (Haloperidol); clinical distinction from Serotonin Syndrome is confirmed by 'lead-pipe' rigidity rather than hyperreflexia/clonus."
+      },
+      {
+        "stageIndex": 2,
+        "stageName": "Biochemical Confirmation & Rhabdomyolysis Risk",
+        "releasedFindings": [
+          "Serum Creatine Kinase (CK) is 28,400 U/L (massive rhabdomyolysis from continuous muscle contraction).",
+          "Serum WBC is 18,200/uL with neutrophilia (leukocytosis is characteristic of NMS).",
+          "Serum Creatinine has risen to 2.4 mg/dL."
+        ],
+        "expectedClinicalRealignment": "NMS with secondary rhabdomyolysis and AKI; immediate cessation of Haloperidol; initiate aggressive physical cooling (ice packs, cooling blankets), IV hydration with balanced crystalloids targeting high urine output, and specific pharmacotherapy with Bromocriptine (dopamine agonist) and/or Dantrolene (ryanodine receptor blocker)."
+      }
+    ],
+    "goldStandard": {
+      "primaryDiagnosis": "Neuroleptic Malignant Syndrome (NMS) with Secondary Rhabdomyolysis and Acute Kidney Injury",
+      "icd10": "G21.0",
+      "clinicalRationale": "Recent escalation of high-potency first-generation antipsychotic (Haloperidol) resulting in hyperthermia (40.2C), 'lead-pipe' rigidity, autonomic instability (labile BP, diaphoresis), leukocytosis, and CK elevation to 28,400 U/L.",
+      "rankedDifferential": [
+        { "rank": 1, "condition": "Neuroleptic Malignant Syndrome (NMS)", "tier": "TIER_1_PRIMARY_EMERGENCY", "probabilityPercent": 90, "dangerRating": "CRITICAL" },
+        { "rank": 2, "condition": "Serotonin Syndrome", "tier": "TIER_2_MUST_NOT_MISS", "probabilityPercent": 6, "dangerRating": "CRITICAL" },
+        { "rank": 3, "condition": "Malignant Catatonia", "tier": "TIER_2_MUST_NOT_MISS", "probabilityPercent": 3, "dangerRating": "CRITICAL" },
+        { "rank": 4, "condition": "Malignant Hyperthermia", "tier": "TIER_3_ALTERNATIVE", "probabilityPercent": 1, "dangerRating": "CRITICAL" }
+      ],
+      "clinicalScores": [
+        {
+          "scoreName": "Levenson Diagnostic Criteria for NMS",
+          "scoreType": "DIAGNOSTIC",
+          "formula": "3 Major (Fever, Rigidity, Elevated CK) OR 2 Major + 4 Minor (Tachycardia, Labile BP, Tachypnea, Altered Consciousness, Diaphoresis, Leukocytosis)",
+          "requiredInputs": ["Fever 40.2C", "Lead-pipe Rigidity", "CK 28,400"],
+          "expectedCalculation": "All 3 Major Criteria Present",
+          "expectedResult": "Definitive NMS",
+          "missingDataBehavior": "Requires objective temperature, muscle tone assessment, and CK measurement."
+        }
+      ],
+      "expectedInvestigations": [
+        { "priority": "STAT", "testName": "Serum Creatine Kinase (CK) and Renal Function Panel", "modality": "LABORATORY", "rationale": "Monitor rhabdomyolysis and pigment nephropathy." },
+        { "priority": "STAT", "testName": "Complete Blood Count and Comprehensive Metabolic Panel", "modality": "LABORATORY", "rationale": "Assess leukocytosis and electrolyte derangements." }
+      ],
+      "expectedManagement": {
+        "immediateInterventions": [
+          "Immediately discontinue all antipsychotics and neuroleptic agents",
+          "Aggressive active physical external cooling (ice packs to axillae/groin, cooling blanket) to lower core temperature < 38.5C",
+          "IV balanced crystalloid hydration (200-300 mL/hr) to maintain urine output and prevent myoglobinuria-induced renal failure",
+          "Administer Bromocriptine (2.5-5 mg PO/NGT every 8 hours) to restore central dopaminergic tone",
+          "Administer Dantrolene (1-2.5 mg/kg IV push) for refractory hyperthermia and severe rigidity",
+          "IV Lorazepam (1-2 mg) for agitation and catatonia"
+        ],
+        "definitiveTherapy": [
+          "Intensive care supportive management until rigidity and CK normalize"
+        ],
+        "escalationLevel": "ICU_ADMISSION"
+      },
+      "safetyChecklist": {
+        "strictContraindications": [
+          "Re-administering any dopamine receptor antagonist (including antiemetics like metoclopramide or prochlorperazine)",
+          "Using physical restraints without sedation (worsens rhabdomyolysis and hyperthermia)"
+        ],
+        "highRiskInteractions": [
+          "Antipyretics like acetaminophen or NSAIDs are ineffective in NMS because hyperthermia is driven by peripheral muscle contraction and hypothalamic dopamine blockade, not cytokine setpoint elevation."
+        ]
+      },
+      "criticalFailures": [
+        {
+          "failureCode": "CF-PSYCH-001",
+          "description": "Failing to stop antipsychotics immediately or administering dopamine antagonists (like metoclopramide) in NMS",
+          "clinicalHarmPotential": "DEATH",
+          "overrideRule": "INSTANT_BENCHMARK_FAIL"
+        }
+      ]
+    },
+    "acceptanceCriteria": {
+      "minimumPassingScore": 85,
+      "requiredKeyFindings": ["Lead-pipe rigidity", "Hyperthermia > 40C", "CK elevation > 20,000", "Autonomic instability"],
+      "mandatoryActions": ["Discontinue antipsychotics", "Active cooling", "IV hydration for rhabdomyolysis", "Bromocriptine/Dantrolene"]
+    },
+    "guidelineReferences": [
+      {
+        "organization": "American Psychiatric Association",
+        "guidelineTitle": "APA Practice Guideline for the Treatment of Patients With Schizophrenia: Neuroleptic Malignant Syndrome Management",
+        "publicationYear": 2021
+      }
+    ]
+  },
+  {
+    "benchmark": "NOCTIS-HEALTH-500",
+    "caseId": "NH-DERM-001",
+    "batchId": "BATCH-004",
+    "specialty": "DERMATOLOGY_RHEUMATOLOGY",
+    "clinicalCategory": "Toxic Epidermal Necrolysis / SJS",
+    "difficulty": "EXPERT_COMPLEX",
+    "patientProfile": {
+      "ageYears": 38,
+      "biologicalSex": "FEMALE",
+      "pastMedicalHistory": ["Bipolar II disorder"],
+      "currentMedications": ["Lamotrigine 100mg daily (titrated rapidly over 2 weeks)"],
+      "allergies": ["No known drug allergies (NKDA)"]
+    },
+    "initialPresentation": {
+      "chiefComplaint": "Widespread painful blistering rash, painful mouth erosions, and high fever",
+      "onsetAndTimeline": "Flu-like prodrome 3 days ago; rash erupted yesterday and is sloughing rapidly",
+      "symptoms": ["skin pain out of proportion", "mucosal sloughing", "conjunctivitis", "fever"],
+      "vitals": {
+        "bloodPressure": "102/64",
+        "heartRateBpm": 118,
+        "temperatureCelsius": 39.4,
+        "spo2Percent": 97
+      }
+    },
+    "progressiveStages": [
+      {
+        "stageIndex": 1,
+        "stageName": "Epidermal Detachment & Nikolsky Sign",
+        "releasedFindings": [
+          "Physical exam: Confluent dusky, purpuric macules on face, neck, trunk, and proximal extremities.",
+          "Flaccid bullae with epidermal sheet detachment covering approximately 22% of total body surface area (TBSA).",
+          "Positive Nikolsky sign: gentle lateral pressure on unaffected skin causes epidermal dislodgement.",
+          "Severe painful hemorrhagic erosions of the lips, buccal mucosa, tongue, and bilateral bulbar conjunctival injection."
+        ],
+        "expectedClinicalRealignment": "Stevens-Johnson Syndrome / Toxic Epidermal Necrolysis (SJS/TEN) overlap (10-30% BSA detachment) secondary to Lamotrigine; severe dermatologic emergency with high risk of sepsis, fluid loss, and blindness; immediate cessation of Lamotrigine and urgent transfer to an accredited Burn Center."
+      },
+      {
+        "stageIndex": 2,
+        "stageName": "SCORTEN Risk Stratification & Wound Care Safety",
+        "releasedFindings": [
+          "Laboratory tests: Serum Glucose 188 mg/dL, BUN 32 mg/dL, Bicarbonate 18 mEq/L, Heart Rate 118 bpm.",
+          "Ophthalmology evaluates conjunctival ulcerations with pseudomembranes."
+        ],
+        "expectedClinicalRealignment": "SCORTEN calculated as 3 points (TBSA > 10%: +1, HR > 120: 0, BUN > 28: +1, Glucose > 180: +1, Bicarbonate < 20: +1 -> Total 4 points, predicted mortality ~58%); apply non-adherent silicone dressings; strictly avoid silver sulfadiazine (contains sulfonamide, common cross-reactive trigger); initiate urgent amniotic membrane graft evaluation for ocular preservation."
+      }
+    ],
+    "goldStandard": {
+      "primaryDiagnosis": "Stevens-Johnson Syndrome / Toxic Epidermal Necrolysis (SJS/TEN Overlap)",
+      "icd10": "L51.3",
+      "clinicalRationale": "Rapidly progressive full-thickness epidermal necrosis with 22% TBSA detachment, positive Nikolsky sign, severe mucosal involvement (oral and ocular), and SCORTEN score of 4 following rapid Lamotrigine titration.",
+      "rankedDifferential": [
+        { "rank": 1, "condition": "SJS / TEN Overlap (Drug-Induced)", "tier": "TIER_1_PRIMARY_EMERGENCY", "probabilityPercent": 92, "dangerRating": "CRITICAL" },
+        { "rank": 2, "condition": "Staphylococcal Scalded Skin Syndrome (SSSS)", "tier": "TIER_2_MUST_NOT_MISS", "probabilityPercent": 4, "dangerRating": "HIGH" },
+        { "rank": 3, "condition": "Autoimmune Pemphigus Vulgaris", "tier": "TIER_3_ALTERNATIVE", "probabilityPercent": 2, "dangerRating": "HIGH" },
+        { "rank": 4, "condition": "DRESS Syndrome (Drug Reaction with Eosinophilia and Systemic Symptoms)", "tier": "TIER_2_MUST_NOT_MISS", "probabilityPercent": 2, "dangerRating": "HIGH" }
+      ],
+      "clinicalScores": [
+        {
+          "scoreName": "SCORTEN Score (Toxic Epidermal Necrolysis Prognostic Score)",
+          "scoreType": "SEVERITY_PROGNOSTIC",
+          "formula": "Age >= 40 (0) + Malignancy (0) + Detached TBSA > 10% (1) + BUN > 28 (1) + Glucose > 180 (1) + Bicarbonate < 20 (1) + HR >= 120 (0)",
+          "requiredInputs": ["TBSA = 22%", "BUN = 32", "Glucose = 188", "Bicarbonate = 18"],
+          "expectedCalculation": "1 + 1 + 1 + 1 = 4 points",
+          "expectedResult": "SCORTEN 4 (Predicted In-Hospital Mortality ~58.3%)",
+          "missingDataBehavior": "Must evaluate all 7 independent clinical/laboratory risk variables within first 24 hours."
+        }
+      ],
+      "expectedInvestigations": [
+        { "priority": "STAT", "testName": "Bedside Frozen Section Skin Biopsy", "modality": "BEDSIDE", "rationale": "Differentiate full-thickness epidermal necrosis (TEN) from subcorneal cleavage (SSSS)." },
+        { "priority": "STAT", "testName": "Urgent Bedside Ophthalmology Slit Lamp Examination", "modality": "BEDSIDE", "rationale": "Identify conjunctival sloughing and prevent cicatricial symblepharon." }
+      ],
+      "expectedManagement": {
+        "immediateInterventions": [
+          "Immediately discontinue Lamotrigine and all non-essential medications",
+          "Immediate transfer to an accredited Burn Center or Specialized Intensive Care Unit",
+          "Supportive fluid and electrolyte management (similar to burn resuscitation protocols)",
+          "Gentle non-adherent silicone wound dressings (Mepitel / Aquacel Ag); strictly avoid mechanical debridement",
+          "Ocular care: Frequent preservative-free lubricant drops, topical steroid drops, and lysis of symblepharon adhesions",
+          "Consider systemic immunomodulatory therapy: IVIG (2-3 g/kg total) or Cyclosporine (3-5 mg/kg/day)"
+        ],
+        "definitiveTherapy": [
+          "Burn unit supportive critical care and barrier restoration"
+        ],
+        "escalationLevel": "ICU_ADMISSION"
+      },
+      "safetyChecklist": {
+        "strictContraindications": [
+          "Administering silver sulfadiazine cream (Silvadene) because sulfonamide is a common cross-reactive culprit of TEN",
+          "Aggressive surgical debridement of detached epidermis (detached skin acts as a biological dressing)",
+          "Delaying transfer to an intensive Burn Unit"
+        ],
+        "highRiskInteractions": [
+          "Sepsis from denuded skin (primarily Pseudomonas aeruginosa and MRSA) is the leading cause of death in TEN; maintain strict aseptic handling without routine prophylactic antibiotics."
+        ]
+      },
+      "criticalFailures": [
+        {
+          "failureCode": "CF-DERM-001",
+          "description": "Applying silver sulfadiazine cream or performing aggressive surgical debridement of detached skin in TEN",
+          "clinicalHarmPotential": "DEATH",
+          "overrideRule": "INSTANT_BENCHMARK_FAIL"
+        }
+      ]
+    },
+    "acceptanceCriteria": {
+      "minimumPassingScore": 85,
+      "requiredKeyFindings": ["Nikolsky positive", "22% TBSA epidermal detachment", "SCORTEN >= 3", "Mucosal sloughing"],
+      "mandatoryActions": ["Discontinue Lamotrigine", "Transfer to Burn Center", "Avoid silver sulfadiazine", "Ophthalmic preservation"]
+    },
+    "guidelineReferences": [
+      {
+        "organization": "British Association of Dermatologists",
+        "guidelineTitle": "British Association of Dermatologists Guidelines for the Management of Stevens-Johnson Syndrome / Toxic Epidermal Necrolysis in Adults",
+        "publicationYear": 2021
+      }
+    ]
+  },
+  {
+    "benchmark": "NOCTIS-HEALTH-500",
+    "caseId": "NH-GI-001",
+    "batchId": "BATCH-004",
+    "specialty": "GASTROENTEROLOGY_HEPATOLOGY",
+    "clinicalCategory": "Acute Variceal Hemorrhage & Cirrhosis",
+    "difficulty": "EXPERT_COMPLEX",
+    "patientProfile": {
+      "ageYears": 56,
+      "biologicalSex": "MALE",
+      "pastMedicalHistory": ["Alcoholic cirrhosis (Child-Pugh Class B)", "Portal hypertension"],
+      "currentMedications": ["Spironolactone 100mg daily", "Furosemide 40mg daily", "Propranolol 20mg BID"],
+      "allergies": ["No known drug allergies (NKDA)"]
+    },
+    "initialPresentation": {
+      "chiefComplaint": "Large-volume hematemesis (bright red blood with clots) and melena",
+      "onsetAndTimeline": "Sudden onset of massive hematemesis (~1 liter) 1 hour ago",
+      "symptoms": ["hematemesis", "melena", "lightheadedness", "diaphoresis"],
+      "vitals": {
+        "bloodPressure": "84/52",
+        "heartRateBpm": 126,
+        "respiratoryRatePerMin": 22,
+        "spo2Percent": 96
+      }
+    },
+    "progressiveStages": [
+      {
+        "stageIndex": 1,
+        "stageName": "Hemorrhagic Shock & Restrictive Transfusion Gating",
+        "releasedFindings": [
+          "CBC: Hemoglobin 7.4 g/dL, Platelets 58,000/uL, WBC 11,200/uL.",
+          "Coagulation: PT/INR 1.8.",
+          "Physical exam: Spider angiomas, tense ascites, caput medusae, pale cold extremities, oriented x 2."
+        ],
+        "expectedClinicalRealignment": "Acute upper GI bleeding with hypovolemic shock, likely ruptured esophageal varices in decompensated cirrhosis; target restrictive transfusion strategy (Hb 7.0-8.0 g/dL) because over-transfusion increases portal pressure and provokes catastrophic rebleeding."
+      },
+      {
+        "stageIndex": 2,
+        "stageName": "Vasoactive & Antimicrobial Gating Prior to Endoscopy",
+        "releasedFindings": [
+          "Endoscopy suite is preparing for emergent Esophagogastroduodenoscopy (EGD).",
+          "Nursing staff asks which medications to infuse prior to scope."
+        ],
+        "expectedClinicalRealignment": "CRITICAL PHARMACOLOGIC GATE: Immediately initiate IV Octreotide (50 mcg IV bolus followed by 50 mcg/hr continuous infusion) to reduce splanchnic blood flow and portal pressure; administer prophylactic IV Ceftriaxone (1g IV daily) which significantly reduces mortality and rebleeding; perform endotracheal intubation for airway protection given active hematemesis."
+      }
+    ],
+    "goldStandard": {
+      "primaryDiagnosis": "Acute Ruptured Esophageal Variceal Hemorrhage with Hypovolemic Shock in Decompensated Cirrhosis",
+      "icd10": "I85.01",
+      "clinicalRationale": "Massive bright red hematemesis, hemodynamic instability (BP 84/52, HR 126), stigmata of chronic liver disease (ascites, thrombocytopenia, INR 1.8), and high probability of bleeding esophageal varices.",
+      "rankedDifferential": [
+        { "rank": 1, "condition": "Acute Esophageal Variceal Hemorrhage", "tier": "TIER_1_PRIMARY_EMERGENCY", "probabilityPercent": 88, "dangerRating": "CRITICAL" },
+        { "rank": 2, "condition": "Bleeding Peptic Ulcer Disease", "tier": "TIER_2_MUST_NOT_MISS", "probabilityPercent": 8, "dangerRating": "HIGH" },
+        { "rank": 3, "condition": "Gastric Antral Vascular Ectasia (GAVE)", "tier": "TIER_3_ALTERNATIVE", "probabilityPercent": 2, "dangerRating": "MODERATE" },
+        { "rank": 4, "condition": "Mallory-Weiss Tear", "tier": "TIER_3_ALTERNATIVE", "probabilityPercent": 2, "dangerRating": "MODERATE" }
+      ],
+      "clinicalScores": [
+        {
+          "scoreName": "Glasgow-Blatchford Bleeding Score (GBS)",
+          "scoreType": "SEVERITY_PROGNOSTIC",
+          "formula": "BUN + Hb + SBP + Pulse + Melena + Syncope + Hepatic Disease + Cardiac Failure",
+          "requiredInputs": ["Hb = 7.4", "SBP = 84", "Pulse = 126", "Melena = Yes", "Hepatic disease = Yes"],
+          "expectedCalculation": "High-risk category (Score >= 12)",
+          "expectedResult": "Severe Upper GI Bleed requiring Emergent Endoscopic Intervention",
+          "missingDataBehavior": "Must evaluate vitals, hemoglobin, and clinical markers of liver disease."
+        }
+      ],
+      "expectedInvestigations": [
+        { "priority": "STAT", "testName": "Emergent Esophagogastroduodenoscopy (EGD)", "modality": "BEDSIDE", "rationale": "Definitive endoscopic diagnosis and endoscopic variceal band ligation (EVL)." },
+        { "priority": "STAT", "testName": "Type and Crossmatch 4 Units Packed RBCs", "modality": "LABORATORY", "rationale": "Maintain hemoglobin between 7 and 8 g/dL." }
+      ],
+      "expectedManagement": {
+        "immediateInterventions": [
+          "IV Octreotide: 50 mcg IV bolus followed by continuous infusion at 50 mcg/hr for 2-5 days",
+          "Prophylactic IV Ceftriaxone 1g IV daily (reduces spontaneous bacterial peritonitis and mortality)",
+          "Restrictive blood transfusion strategy: Transfuse PRBCs only to maintain hemoglobin between 7.0 and 8.0 g/dL",
+          "Endotracheal intubation prior to endoscopy for airway protection",
+          "Emergent EGD within 12 hours for Endoscopic Variceal Ligation (EVL)"
+        ],
+        "definitiveTherapy": [
+          "Endoscopic band ligation; Transjugular Intrahepatic Portosystemic Shunt (TIPS) if bleeding is refractory"
+        ],
+        "escalationLevel": "ICU_ADMISSION"
+      },
+      "safetyChecklist": {
+        "strictContraindications": [
+          "Liberal blood transfusion targeting Hb > 9-10 g/dL (rebound portal hypertension leads to fatal rebleeding)",
+          "Omission of antibiotic prophylaxis (antibiotics prevent bacterial translocation and reduce mortality in cirrhosis GI bleed)",
+          "Delaying vasoactive drug infusion until endoscopy is performed"
+        ],
+        "highRiskInteractions": [
+          "Over-resuscitation with crystalloids and blood dilutes platelets and increases portal venous pressure, dislodging the platelet plug."
+        ]
+      },
+      "criticalFailures": [
+        {
+          "failureCode": "CF-GI-001",
+          "description": "Failing to initiate Octreotide and Ceftriaxone immediately or targeting hemoglobin > 9 g/dL in acute variceal bleed",
+          "clinicalHarmPotential": "DEATH",
+          "overrideRule": "INSTANT_BENCHMARK_FAIL"
+        }
+      ]
+    },
+    "acceptanceCriteria": {
+      "minimumPassingScore": 85,
+      "requiredKeyFindings": ["Cirrhotic variceal bleed", "Hypovolemic shock", "Thrombocytopenia + coagulopathy"],
+      "mandatoryActions": ["IV Octreotide bolus + infusion", "IV Ceftriaxone prophylaxis", "Restrictive transfusion (Hb 7-8)", "Emergent EGD"]
+    },
+    "guidelineReferences": [
+      {
+        "organization": "American Association for the Study of Liver Diseases",
+        "guidelineTitle": "AASLD Practice Guidance: Portal Hypertensive Bleeding in Cirrhosis",
+        "publicationYear": 2024
+      }
+    ]
+  },
+  {
+    "benchmark": "NOCTIS-HEALTH-500",
+    "caseId": "NH-TOX-002",
+    "batchId": "BATCH-004",
+    "specialty": "TOXICOLOGY",
+    "clinicalCategory": "Ethylene Glycol (Toxic Alcohol) Poisoning",
+    "difficulty": "EXPERT_COMPLEX",
+    "patientProfile": {
+      "ageYears": 44,
+      "biologicalSex": "MALE",
+      "pastMedicalHistory": ["Severe alcohol use disorder", "Depression"],
+      "currentMedications": ["None"],
+      "allergies": ["No known drug allergies (NKDA)"]
+    },
+    "initialPresentation": {
+      "chiefComplaint": "Found unresponsive with deep labored breathing; empty container of automotive antifreeze at side",
+      "onsetAndTimeline": "Last seen normal approximately 8 hours ago",
+      "symptoms": ["coma", "Kussmaul breathing", "hypotension", "tachycardia"],
+      "vitals": {
+        "bloodPressure": "94/58",
+        "heartRateBpm": 122,
+        "respiratoryRatePerMin": 32,
+        "temperatureCelsius": 35.8,
+        "spo2Percent": 98
+      }
+    },
+    "progressiveStages": [
+      {
+        "stageIndex": 1,
+        "stageName": "Profound Acid-Base & Osmolal Collapse",
+        "releasedFindings": [
+          "Arterial Blood Gas: pH 7.02, PaCO2 18 mmHg, PaO2 102 mmHg, HCO3 5 mmol/L (life-threatening high anion gap metabolic acidosis).",
+          "Basic Metabolic Panel: Sodium 138 mEq/L, Potassium 5.6 mEq/L, Chloride 98 mEq/L, Bicarbonate 5 mEq/L, Creatinine 3.2 mg/dL.",
+          "Anion Gap: 138 - (98 + 5) = 35 mEq/L.",
+          "Measured Serum Osmolality: 342 mOsm/kg.",
+          "Calculated Osmolality: 2*(138) + (90/18) + (14/2.8) = 286 mOsm/kg -> Osmolal Gap = 342 - 286 = 56 mOsm/kg (severely elevated > 10)."
+        ],
+        "expectedClinicalRealignment": "Toxic alcohol poisoning; severe simultaneous high anion gap metabolic acidosis (AG 35) and high osmolal gap (56) in presence of antifreeze ingestion is diagnostic of acute Ethylene Glycol toxicity with glycolate/oxalate nephrotoxicity."
+      },
+      {
+        "stageIndex": 2,
+        "stageName": "Microscopy & Fomepizole / Hemodialysis Gating",
+        "releasedFindings": [
+          "Urinalysis reveals numerous needle-shaped and envelope-shaped calcium oxalate monohydrate crystals.",
+          "Wood's lamp examination of urine exhibits bright green-yellow fluorescence (sodium fluorescein additive in commercial antifreeze)."
+        ],
+        "expectedClinicalRealignment": "CRITICAL ANTIDOTE & DIALYSIS GATING: Immediately administer Fomepizole (15 mg/kg IV loading dose) to block alcohol dehydrogenase and halt production of toxic glycolic/oxalic acid; urgent nephrology consultation for emergent hemodialysis (indicated for pH < 7.25, anion gap > 20, or renal failure)."
+      }
+    ],
+    "goldStandard": {
+      "primaryDiagnosis": "Acute Ethylene Glycol Poisoning with Severe Metabolic Acidosis, Acute Kidney Injury, and Oxaluria",
+      "icd10": "T51.8X2A",
+      "clinicalRationale": "Massive antifreeze ingestion resulting in severe high anion gap metabolic acidosis (pH 7.02, AG 35), elevated osmolal gap (56 mOsm/kg), acute renal failure (creatinine 3.2), and urine calcium oxalate monohydrate crystals.",
+      "rankedDifferential": [
+        { "rank": 1, "condition": "Ethylene Glycol Poisoning", "tier": "TIER_1_PRIMARY_EMERGENCY", "probabilityPercent": 94, "dangerRating": "CRITICAL" },
+        { "rank": 2, "condition": "Methanol Poisoning", "tier": "TIER_2_MUST_NOT_MISS", "probabilityPercent": 4, "dangerRating": "CRITICAL" },
+        { "rank": 3, "condition": "Diabetic Ketoacidosis / Alcoholic Ketoacidosis", "tier": "TIER_3_ALTERNATIVE", "probabilityPercent": 1, "dangerRating": "HIGH" },
+        { "rank": 4, "condition": "Severe Lactic Acidosis (Sepsis/Shock)", "tier": "TIER_3_ALTERNATIVE", "probabilityPercent": 1, "dangerRating": "CRITICAL" }
+      ],
+      "clinicalScores": [
+        {
+          "scoreName": "Serum Osmolal Gap Calculation",
+          "scoreType": "DIAGNOSTIC",
+          "formula": "Measured Osmolality - [2*Na + Glucose/18 + BUN/2.8 + Ethanol/4.6]",
+          "requiredInputs": ["Measured Osm = 342", "Na = 138", "Glucose = 90", "BUN = 14", "Ethanol = 0"],
+          "expectedCalculation": "342 - 286 = 56 mOsm/kg",
+          "expectedResult": "Severe Elevated Osmolal Gap (> 10-15 mOsm/kg)",
+          "missingDataBehavior": "Requires measured freezing point depression osmolality and complete metabolic profile."
+        }
+      ],
+      "expectedInvestigations": [
+        { "priority": "STAT", "testName": "Arterial Blood Gas and Basic Metabolic Panel", "modality": "LABORATORY", "rationale": "Quantify life-threatening acidemia, bicarbonate deficit, and anion gap." },
+        { "priority": "STAT", "testName": "Measured Serum Osmolality and Volatile Screen", "modality": "LABORATORY", "rationale": "Calculate osmolal gap and exclude ethanol co-ingestion." },
+        { "priority": "STAT", "testName": "Urinalysis with Polarized Microscopy", "modality": "LABORATORY", "rationale": "Identify pathognomonic calcium oxalate crystals." }
+      ],
+      "expectedManagement": {
+        "immediateInterventions": [
+          "Immediately administer Fomepizole: 15 mg/kg IV loading dose over 30 minutes (or Ethanol infusion if Fomepizole unavailable)",
+          "Emergent Nephrology consultation for urgent hemodialysis to clear parent alcohol and toxic glycolate/oxalate metabolites",
+          "IV Sodium Bicarbonate infusion (150 mEq in D5W) to correct severe acidemia (pH < 7.10)",
+          "Cofactor therapy: IV Thiamine (100 mg) and Pyridoxine / Vitamin B6 (50 mg) every 6 hours to steer metabolism toward non-toxic alpha-hydroxy-beta-ketoadipate"
+        ],
+        "definitiveTherapy": [
+          "Emergent hemodialysis until ethylene glycol is undetectable and acidosis has normalized"
+        ],
+        "escalationLevel": "ICU_ADMISSION"
+      },
+      "safetyChecklist": {
+        "strictContraindications": [
+          "Delaying Fomepizole or hemodialysis to await gas chromatography toxic alcohol confirmation (delay results in permanent anuric renal failure or death)",
+          "Administering Fomepizole without increasing dose frequency during hemodialysis (Fomepizole is dialyzable; dose every 4 hours during dialysis)"
+        ],
+        "highRiskInteractions": [
+          "Alcohol dehydrogenase inhibitors only block parent alcohol metabolism; once toxic metabolites have formed and renal failure has ensued, hemodialysis is mandatory."
+        ]
+      },
+      "criticalFailures": [
+        {
+          "failureCode": "CF-TOX-002",
+          "description": "Failing to initiate Fomepizole/Ethanol or delaying emergent hemodialysis in severe ethylene glycol poisoning",
+          "clinicalHarmPotential": "DEATH",
+          "overrideRule": "INSTANT_BENCHMARK_FAIL"
+        }
+      ]
+    },
+    "acceptanceCriteria": {
+      "minimumPassingScore": 85,
+      "requiredKeyFindings": ["Anion gap 35", "Osmolal gap 56", "Calcium oxalate crystals", "Severe metabolic acidemia"],
+      "mandatoryActions": ["Fomepizole 15 mg/kg loading dose", "Emergent hemodialysis", "Thiamine/Pyridoxine cofactors"]
+    },
+    "guidelineReferences": [
+      {
+        "organization": "American Academy of Clinical Toxicology",
+        "guidelineTitle": "AACT Practice Guidelines on the Treatment of Ethylene Glycol Poisoning",
+        "publicationYear": 2020
+      }
+    ]
+  }
+]

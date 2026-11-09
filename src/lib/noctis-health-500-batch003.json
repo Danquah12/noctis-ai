@@ -1,0 +1,586 @@
+[
+  {
+    "benchmark": "NOCTIS-HEALTH-500",
+    "caseId": "NH-PULM-001",
+    "batchId": "BATCH-003",
+    "specialty": "RESPIRATORY_MEDICINE",
+    "clinicalCategory": "Massive Pulmonary Embolism & Obstructive Shock",
+    "difficulty": "EXPERT_COMPLEX",
+    "patientProfile": {
+      "ageYears": 49,
+      "biologicalSex": "FEMALE",
+      "pastMedicalHistory": ["Recent left total knee arthroplasty 10 days ago", "Obesity"],
+      "currentMedications": ["Aspirin 81mg daily"],
+      "allergies": ["No known drug allergies (NKDA)"]
+    },
+    "initialPresentation": {
+      "chiefComplaint": "Sudden severe syncope, dyspnea, and crushing substernal chest pressure",
+      "onsetAndTimeline": "Sudden collapse while walking to bathroom 20 minutes ago",
+      "symptoms": ["syncope", "severe air hunger", "cyanosis", "diaphoresis"],
+      "vitals": {
+        "bloodPressure": "78/48",
+        "heartRateBpm": 136,
+        "respiratoryRatePerMin": 34,
+        "spo2Percent": 84
+      }
+    },
+    "progressiveStages": [
+      {
+        "stageIndex": 1,
+        "stageName": "Obstructive Shock & Acute Cor Pulmonale",
+        "releasedFindings": [
+          "Physical exam: Profound jugular venous distention to the angle of the jaw; clear lungs bilaterally on auscultation.",
+          "Bedside echocardiogram (FOCUS): Severe right ventricular dilation (RV/LV diameter ratio > 1.2), McConnell sign (RV free wall hypokinesis with preserved apical contractility), and paradoxical interventricular septal flattening ('D-shaped' left ventricle).",
+          "12-Lead ECG: Sinus tachycardia at 138 bpm with classic S1Q3T3 pattern and T-wave inversions across V1-V4."
+        ],
+        "expectedClinicalRealignment": "Massive high-risk pulmonary embolism presenting with acute obstructive shock and RV failure; immediate indication for systemic thrombolysis or catheter-directed embolectomy; avoid aggressive fluid boluses which worsen RV wall tension and ischemia."
+      },
+      {
+        "stageIndex": 2,
+        "stageName": "STAT Imaging & Reperfusion Timing",
+        "releasedFindings": [
+          "Patient is too hemodynamically unstable to transfer to CT scanner for CTPA.",
+          "Bedside lower extremity ultrasound demonstrates non-compressible left common femoral vein thrombus.",
+          "Serum Troponin I is 0.48 ng/mL; Serum Lactate is 5.4 mmol/L."
+        ],
+        "expectedClinicalRealignment": "Confirmed massive PE with hemodynamic collapse; CTPA is deferred due to instability; proceed immediately to systemic thrombolytic therapy (Alteplase 100 mg IV over 2 hours or accelerated 50 mg push in cardiac arrest) with simultaneous Norepinephrine infusion."
+      }
+    ],
+    "goldStandard": {
+      "primaryDiagnosis": "Massive High-Risk Pulmonary Embolism with Acute Obstructive Shock",
+      "icd10": "I26.02",
+      "clinicalRationale": "Sustained hypotension (SBP < 90 mmHg), acute RV dilation with McConnell sign on bedside echo, elevated troponin/lactate, and S1Q3T3 ECG pattern in a high-risk post-orthopedic surgery patient.",
+      "rankedDifferential": [
+        { "rank": 1, "condition": "Massive Pulmonary Embolism with Obstructive Shock", "tier": "TIER_1_PRIMARY_EMERGENCY", "probabilityPercent": 92, "dangerRating": "CRITICAL" },
+        { "rank": 2, "condition": "Acute Inferior / RV Myocardial Infarction", "tier": "TIER_2_MUST_NOT_MISS", "probabilityPercent": 5, "dangerRating": "CRITICAL" },
+        { "rank": 3, "condition": "Cardiac Tamponade", "tier": "TIER_2_MUST_NOT_MISS", "probabilityPercent": 2, "dangerRating": "CRITICAL" },
+        { "rank": 4, "condition": "Tension Pneumothorax", "tier": "TIER_3_ALTERNATIVE", "probabilityPercent": 1, "dangerRating": "HIGH" }
+      ],
+      "clinicalScores": [
+        {
+          "scoreName": "PESI Score (Pulmonary Embolism Severity Index)",
+          "scoreType": "SEVERITY_PROGNOSTIC",
+          "formula": "Age + Male + Cancer + Heart Failure + Chronic Lung + Pulse >= 110 + SBP < 100 + RR >= 30 + Temp < 36 + Altered Mental + SpO2 < 90",
+          "requiredInputs": ["Pulse 136", "SBP 78", "RR 34", "SpO2 84"],
+          "expectedCalculation": "High-risk Class V (> 125 points)",
+          "expectedResult": "PESI Class V (Very High 30-Day Mortality Risk > 20%)",
+          "missingDataBehavior": "Assign points strictly for verified vital/clinical derangements."
+        }
+      ],
+      "expectedInvestigations": [
+        { "priority": "STAT", "testName": "Bedside Transthoracic Echocardiogram (FOCUS)", "modality": "BEDSIDE", "rationale": "Assess RV strain, McConnell sign, and rule out tamponade." },
+        { "priority": "STAT", "testName": "Serum Lactate and High-Sensitivity Cardiac Troponin", "modality": "LABORATORY", "rationale": "Quantify tissue hypoperfusion and right ventricular myocardial injury." }
+      ],
+      "expectedManagement": {
+        "immediateInterventions": [
+          "Immediate systemic thrombolytic therapy: IV Alteplase (tPA) 100 mg infusion over 2 hours",
+          "Titrate Norepinephrine or Epinephrine infusion to support RV perfusion pressure (target MAP >= 65 mmHg)",
+          "Avoid large crystalloid fluid boluses (limit to <= 500 mL) to prevent RV overdistention",
+          "Unfractionated Heparin infusion without bolus if thrombolysis given"
+        ],
+        "definitiveTherapy": [
+          "Emergency surgical embolectomy or catheter-directed thrombectomy if thrombolysis fails or is contraindicated"
+        ],
+        "escalationLevel": "ICU_ADMISSION"
+      },
+      "safetyChecklist": {
+        "strictContraindications": [
+          "Aggressive fluid resuscitation (> 1,000 mL crystalloid) which causes fatal RV chamber dilation and septal shift",
+          "Transporting an unstable hypotensive patient away from the resuscitation bay for CTPA"
+        ],
+        "highRiskInteractions": [
+          "Fluid overload in acute cor pulmonale increases RV wall tension, compresses the RCA, and precipitates circulatory arrest."
+        ]
+      },
+      "criticalFailures": [
+        {
+          "failureCode": "CF-PULM-001",
+          "description": "Giving aggressive fluid boluses instead of inotropic/vasopressor support and thrombolysis in massive PE shock",
+          "clinicalHarmPotential": "DEATH",
+          "overrideRule": "INSTANT_BENCHMARK_FAIL"
+        }
+      ]
+    },
+    "acceptanceCriteria": {
+      "minimumPassingScore": 85,
+      "requiredKeyFindings": ["Obstructive shock with RV strain", "McConnell sign", "Severe hypoxia"],
+      "mandatoryActions": ["Immediate thrombolytic therapy or embolectomy", "Avoid fluid overload", "Norepinephrine titration"]
+    },
+    "guidelineReferences": [
+      {
+        "organization": "European Society of Cardiology / European Respiratory Society",
+        "guidelineTitle": "2019 ESC Guidelines for the diagnosis and management of acute pulmonary embolism",
+        "publicationYear": 2019
+      }
+    ]
+  },
+  {
+    "benchmark": "NOCTIS-HEALTH-500",
+    "caseId": "NH-ENDO-001",
+    "batchId": "BATCH-003",
+    "specialty": "ENDOCRINOLOGY",
+    "clinicalCategory": "Euglycemic Diabetic Ketoacidosis (euDKA)",
+    "difficulty": "EXPERT_COMPLEX",
+    "patientProfile": {
+      "ageYears": 42,
+      "biologicalSex": "MALE",
+      "pastMedicalHistory": ["Type 2 Diabetes Mellitus (on SGLT2 inhibitor)", "Hypertension"],
+      "currentMedications": ["Empagliflozin 25mg daily", "Metformin 1000mg BID", "Lisinopril 10mg daily"],
+      "allergies": ["No known drug allergies (NKDA)"]
+    },
+    "initialPresentation": {
+      "chiefComplaint": "Persistent vomiting, profound weakness, and deep rapid breathing",
+      "onsetAndTimeline": "Symptoms developed over past 36 hours during acute viral gastroenteritis",
+      "symptoms": ["nausea", "repeated non-bloody vomiting", "tachypnea", "malaise"],
+      "vitals": {
+        "bloodPressure": "108/70",
+        "heartRateBpm": 114,
+        "respiratoryRatePerMin": 28,
+        "temperatureCelsius": 37.4,
+        "spo2Percent": 98
+      }
+    },
+    "progressiveStages": [
+      {
+        "stageIndex": 1,
+        "stageName": "Laboratory Dissociation & Acid-Base Derangement",
+        "releasedFindings": [
+          "Fingerstick blood glucose is unexpectedly only 172 mg/dL (below standard DKA threshold of 250 mg/dL).",
+          "Venous Blood Gas: pH 7.14, pCO2 22 mmHg, HCO3 7 mmol/L (severe metabolic acidosis with respiratory compensation).",
+          "Basic Metabolic Panel: Sodium 132 mEq/L, Potassium 4.8 mEq/L, Chloride 96 mEq/L, Bicarbonate 7 mEq/L, Creatinine 1.4 mg/dL.",
+          "Anion Gap calculation: 132 - (96 + 7) = 29 mEq/L (severe high anion gap metabolic acidosis)."
+        ],
+        "expectedClinicalRealignment": "Severe high anion gap metabolic acidosis with blood glucose < 200 mg/dL in a patient taking an SGLT2 inhibitor (Empagliflozin) is diagnostic of Euglycemic Diabetic Ketoacidosis (euDKA); do not be falsely reassured by non-hyperglycemic blood glucose."
+      },
+      {
+        "stageIndex": 2,
+        "stageName": "Ketonemia Confirmation & Dual Infusion Protocol",
+        "releasedFindings": [
+          "Serum Beta-hydroxybutyrate is markedly elevated at 6.8 mmol/L (normal < 0.5 mmol/L).",
+          "Urinalysis: 4+ Ketones, 4+ Glucose (persistent glucosuria despite euglycemia due to SGLT2 blockade)."
+        ],
+        "expectedClinicalRealignment": "Confirmed euDKA; immediately withhold SGLT2 inhibitor; initiate continuous IV Regular Insulin infusion (0.05-0.1 units/kg/hr) combined with early IV Dextrose (D5W or D10W with half-normal saline) to allow continuous insulin administration without precipitating hypoglycemia."
+      }
+    ],
+    "goldStandard": {
+      "primaryDiagnosis": "Euglycemic Diabetic Ketoacidosis (euDKA) secondary to SGLT2 Inhibitor (Empagliflozin)",
+      "icd10": "E11.10",
+      "clinicalRationale": "Severe metabolic ketoacidosis (pH 7.14, HCO3 7, anion gap 29, beta-hydroxybutyrate 6.8 mmol/L) with normal or mildly elevated blood glucose (172 mg/dL) caused by SGLT2 inhibitor-mediated glucosuria and glucagon elevation.",
+      "rankedDifferential": [
+        { "rank": 1, "condition": "Euglycemic Diabetic Ketoacidosis (SGLT2i-induced)", "tier": "TIER_1_PRIMARY_EMERGENCY", "probabilityPercent": 90, "dangerRating": "CRITICAL" },
+        { "rank": 2, "condition": "Starvation Ketosis", "tier": "TIER_3_ALTERNATIVE", "probabilityPercent": 5, "dangerRating": "MODERATE" },
+        { "rank": 3, "condition": "Alcoholic Ketoacidosis (AKA)", "tier": "TIER_2_MUST_NOT_MISS", "probabilityPercent": 3, "dangerRating": "HIGH" },
+        { "rank": 4, "condition": "Lactic Acidosis (Metformin-associated)", "tier": "TIER_2_MUST_NOT_MISS", "probabilityPercent": 2, "dangerRating": "CRITICAL" }
+      ],
+      "clinicalScores": [
+        {
+          "scoreName": "Serum Anion Gap",
+          "scoreType": "DIAGNOSTIC",
+          "formula": "Na - (Cl + HCO3)",
+          "requiredInputs": ["Na = 132", "Cl = 96", "HCO3 = 7"],
+          "expectedCalculation": "132 - (96 + 7) = 29 mEq/L",
+          "expectedResult": "Severe High Anion Gap Metabolic Acidosis (> 12 mEq/L)",
+          "missingDataBehavior": "Requires exact serum sodium, chloride, and bicarbonate."
+        }
+      ],
+      "expectedInvestigations": [
+        { "priority": "STAT", "testName": "Serum Beta-hydroxybutyrate", "modality": "LABORATORY", "rationale": "Directly quantify circulating ketone body concentration." },
+        { "priority": "STAT", "testName": "Arterial or Venous Blood Gas", "modality": "LABORATORY", "rationale": "Determine systemic pH, bicarbonate, and respiratory compensation." }
+      ],
+      "expectedManagement": {
+        "immediateInterventions": [
+          "Immediately discontinue Empagliflozin and Metformin",
+          "Initiate continuous IV Regular Insulin infusion (0.05-0.10 units/kg/hr)",
+          "Concurrently administer IV Dextrose (D5W or D10W in 0.45% NaCl) to prevent hypoglycemia while shutting off ketogenesis",
+          "Fluid resuscitation with balanced crystalloids",
+          "Frequent hourly blood glucose and 2-hour electrolyte/anion gap monitoring"
+        ],
+        "definitiveTherapy": [
+          "Continue insulin and dextrose infusion until anion gap normalizes (<= 12 mEq/L) and beta-hydroxybutyrate is < 0.6 mmol/L"
+        ],
+        "escalationLevel": "ICU_ADMISSION"
+      },
+      "safetyChecklist": {
+        "strictContraindications": [
+          "Withholding insulin because blood glucose is < 200 mg/dL (insulin is required to stop lipolysis and ketogenesis)",
+          "Re-starting SGLT2 inhibitor during acute illness"
+        ],
+        "highRiskInteractions": [
+          "Failing to give glucose while infusing insulin in euDKA induces profound hypoglycemia; failing to give insulin allows fatal acidosis progression."
+        ]
+      },
+      "criticalFailures": [
+        {
+          "failureCode": "CF-ENDO-001",
+          "description": "Dismissing DKA because blood glucose is below 200 mg/dL or withholding insulin therapy",
+          "clinicalHarmPotential": "DEATH",
+          "overrideRule": "INSTANT_BENCHMARK_FAIL"
+        }
+      ]
+    },
+    "acceptanceCriteria": {
+      "minimumPassingScore": 85,
+      "requiredKeyFindings": ["Anion gap 29", "SGLT2 inhibitor exposure", "Beta-hydroxybutyrate > 6"],
+      "mandatoryActions": ["Discontinue SGLT2i", "IV insulin + IV dextrose co-infusion", "ICU monitoring"]
+    },
+    "guidelineReferences": [
+      {
+        "organization": "American Association of Clinical Endocrinology",
+        "guidelineTitle": "AACE Consensus Statement on the Association of SGLT2 Inhibitors and Diabetic Ketoacidosis",
+        "publicationYear": 2022
+      }
+    ]
+  },
+  {
+    "benchmark": "NOCTIS-HEALTH-500",
+    "caseId": "NH-HEME-001",
+    "batchId": "BATCH-003",
+    "specialty": "HEMATOLOGY_ONCOLOGY",
+    "clinicalCategory": "Acute Promyelocytic Leukemia & Disseminated Intravascular Coagulation",
+    "difficulty": "EXPERT_COMPLEX",
+    "patientProfile": {
+      "ageYears": 36,
+      "biologicalSex": "FEMALE",
+      "pastMedicalHistory": ["Previously healthy"],
+      "currentMedications": ["None"],
+      "allergies": ["No known drug allergies (NKDA)"]
+    },
+    "initialPresentation": {
+      "chiefComplaint": "Spontaneous bleeding from gums, severe epistaxis, and multiple large spontaneous ecchymoses",
+      "onsetAndTimeline": "Progressive bruising over 4 days; severe epistaxis started 3 hours ago",
+      "symptoms": ["epistaxis", "gingival bleeding", "fatigue", "petechiae"],
+      "vitals": {
+        "bloodPressure": "112/68",
+        "heartRateBpm": 104,
+        "temperatureCelsius": 38.1,
+        "spo2Percent": 99
+      }
+    },
+    "progressiveStages": [
+      {
+        "stageIndex": 1,
+        "stageName": "Severe Consumptive Coagulopathy",
+        "releasedFindings": [
+          "CBC: WBC 3,200/uL, Hemoglobin 8.1 g/dL, Platelets 18,000/uL (profound thrombocytopenia).",
+          "Coagulation Profile: PT/INR 2.4, aPTT 48 seconds, Fibrinogen 65 mg/dL (severe hypofibrinogenemia, normal 200-400), D-Dimer > 20,000 ng/mL.",
+          "Physical exam: Active oozing from venipuncture sites and oral mucosa, diffuse confluent petechiae on extremities."
+        ],
+        "expectedClinicalRealignment": "Fulminant Disseminated Intravascular Coagulation (DIC) with severe hyperfibrinolysis and bleeding diathesis in a young patient with pancytopenia; high suspicion of Acute Promyelocytic Leukemia (APL / AML M3)."
+      },
+      {
+        "stageIndex": 2,
+        "stageName": "Peripheral Blood Smear & Pre-Genetic Treatment Priority",
+        "releasedFindings": [
+          "Peripheral blood smear: 45% hypergranular promyelocytes with folded kidney-shaped nuclei and multiple Auer rods in bundles (classic 'faggot cells').",
+          "Bone marrow aspirate and cytogenetics / PML-RARA FISH are ordered and will take 24-48 hours."
+        ],
+        "expectedClinicalRealignment": "CRITICAL EMERGENCY: Do NOT delay differentiation therapy for genetic or bone marrow confirmation. Immediate administration of All-Trans Retinoic Acid (ATRA / Tretinoin 45 mg/m2/day) within hours of clinical suspicion is mandatory to reverse life-threatening coagulopathy and prevent fatal intracranial hemorrhage."
+      }
+    ],
+    "goldStandard": {
+      "primaryDiagnosis": "Acute Promyelocytic Leukemia (APL) with Severe Consumptive Coagulopathy (DIC)",
+      "icd10": "C92.40",
+      "clinicalRationale": "Pancytopenia, severe consumptive coagulopathy (fibrinogen 65 mg/dL, elevated INR, D-dimer > 20,000), and peripheral smear demonstrating promyelocytes packed with Auer rod bundles ('faggot cells').",
+      "rankedDifferential": [
+        { "rank": 1, "condition": "Acute Promyelocytic Leukemia (APL)", "tier": "TIER_1_PRIMARY_EMERGENCY", "probabilityPercent": 95, "dangerRating": "CRITICAL" },
+        { "rank": 2, "condition": "Acute Myeloid Leukemia (Non-APL) with Sepsis-Induced DIC", "tier": "TIER_2_MUST_NOT_MISS", "probabilityPercent": 3, "dangerRating": "CRITICAL" },
+        { "rank": 3, "condition": "Immune Thrombocytopenia (ITP) with Secondary Hemorrhage", "tier": "TIER_3_ALTERNATIVE", "probabilityPercent": 1, "dangerRating": "HIGH" },
+        { "rank": 4, "condition": "Thrombotic Thrombocytopenic Purpura (TTP)", "tier": "TIER_2_MUST_NOT_MISS", "probabilityPercent": 1, "dangerRating": "CRITICAL" }
+      ],
+      "clinicalScores": [
+        {
+          "scoreName": "ISTH DIC Score",
+          "scoreType": "DIAGNOSTIC",
+          "formula": "Platelets (< 50k: +2) + Elevated D-Dimer (strong: +3) + Prolonged PT (> 6s: +2) + Fibrinogen (< 100 mg/dL: +1)",
+          "requiredInputs": ["Platelets 18k", "D-dimer > 20,000", "INR 2.4", "Fibrinogen 65"],
+          "expectedCalculation": "2 + 3 + 2 + 1 = 8 / 8",
+          "expectedResult": "Overt DIC (Score >= 5)",
+          "missingDataBehavior": "Calculated using all 4 standard ISTH coagulation parameters."
+        }
+      ],
+      "expectedInvestigations": [
+        { "priority": "STAT", "testName": "Peripheral Blood Smear Examination", "modality": "LABORATORY", "rationale": "Identify Auer rod bundles ('faggot cells') and promyelocyte morphology." },
+        { "priority": "STAT", "testName": "Fibrinogen, PT/INR, aPTT, and D-Dimer", "modality": "LABORATORY", "rationale": "Monitor severe hypofibrinogenemia and consumption." },
+        { "priority": "URGENT", "testName": "PML-RARA Translocation by FISH / RT-PCR", "modality": "LABORATORY", "rationale": "Definitive molecular confirmation of t(15;17)." }
+      ],
+      "expectedManagement": {
+        "immediateInterventions": [
+          "Immediate administration of All-Trans Retinoic Acid (ATRA) 45 mg/m2/day PO without waiting for genetic confirmation",
+          "Aggressive blood product support: Cryoprecipitate transfusions targeting Fibrinogen >= 150 mg/dL",
+          "Platelet transfusions targeting Platelets >= 50,000/uL",
+          "Fresh Frozen Plasma (FFP) to correct INR < 1.5",
+          "Initiate Arsenic Trioxide (ATO) or anthracycline chemotherapy once ATRA is started"
+        ],
+        "definitiveTherapy": [
+          "Dual ATRA + Arsenic Trioxide (ATO) curative induction protocol"
+        ],
+        "escalationLevel": "ICU_ADMISSION"
+      },
+      "safetyChecklist": {
+        "strictContraindications": [
+          "Delaying ATRA therapy to await FISH or bone marrow aspirate results (delay causes fatal intracranial or pulmonary hemorrhage)",
+          "Withholding platelet or cryoprecipitate transfusions in active consumptive coagulopathy"
+        ],
+        "highRiskInteractions": [
+          "APL carries an early mortality rate of 20-30% primarily from catastrophic hemorrhagic stroke during the first 48 hours without ATRA."
+        ]
+      },
+      "criticalFailures": [
+        {
+          "failureCode": "CF-HEME-001",
+          "description": "Delaying ATRA administration while awaiting confirmatory cytogenetics or bone marrow biopsy in suspected APL",
+          "clinicalHarmPotential": "DEATH",
+          "overrideRule": "INSTANT_BENCHMARK_FAIL"
+        }
+      ]
+    },
+    "acceptanceCriteria": {
+      "minimumPassingScore": 85,
+      "requiredKeyFindings": ["Promyelocytes with Auer rods ('faggot cells')", "Fibrinogen < 100 mg/dL", "ISTH DIC score >= 5"],
+      "mandatoryActions": ["Immediate ATRA administration prior to FISH confirmation", "Cryoprecipitate to target fibrinogen > 150", "Platelet support > 50k"]
+    },
+    "guidelineReferences": [
+      {
+        "organization": "National Comprehensive Cancer Network",
+        "guidelineTitle": "NCCN Clinical Practice Guidelines in Oncology: Acute Myeloid Leukemia (APL Subtype)",
+        "publicationYear": 2024
+      }
+    ]
+  },
+  {
+    "benchmark": "NOCTIS-HEALTH-500",
+    "caseId": "NH-OBGYN-001",
+    "batchId": "BATCH-003",
+    "specialty": "OBSTETRICS_GYNECOLOGY",
+    "clinicalCategory": "Severe Preeclampsia & HELLP Syndrome",
+    "difficulty": "EXPERT_COMPLEX",
+    "patientProfile": {
+      "ageYears": 29,
+      "biologicalSex": "FEMALE",
+      "pastMedicalHistory": ["Primigravida at 34 weeks gestation"],
+      "currentMedications": ["Prenatal vitamins"],
+      "allergies": ["No known drug allergies (NKDA)"]
+    },
+    "initialPresentation": {
+      "chiefComplaint": "Severe right upper quadrant (RUQ) abdominal pain, scotoma (visual flashes), and throbbing headache",
+      "onsetAndTimeline": "Headache and epigastric discomfort started yesterday; worsened acutely this morning",
+      "symptoms": ["RUQ pain", "photopsia", "headache", "facial edema"],
+      "vitals": {
+        "bloodPressure": "178/112",
+        "heartRateBpm": 92,
+        "respiratoryRatePerMin": 18,
+        "spo2Percent": 98
+      }
+    },
+    "progressiveStages": [
+      {
+        "stageIndex": 1,
+        "stageName": "Severe Hypertensive Urgency & Neurologic Gating",
+        "releasedFindings": [
+          "Repeat blood pressure 15 minutes later confirms severe range: 174/110 mmHg.",
+          "Physical exam: Marked 3+ patellar hyperreflexia with 3 beats of bilateral ankle clonus; pronounced RUQ subcostal hepatic tenderness.",
+          "Continuous fetal monitoring demonstrates reassuring fetal heart rate baseline of 140 bpm with moderate variability."
+        ],
+        "expectedClinicalRealignment": "Preeclampsia with severe features; immediate hyperreflexia and clonus signal impending eclamptic convulsion; urgent administration of IV Magnesium Sulfate for seizure prophylaxis and emergent parenteral antihypertensive (IV Labetalol or Hydralazine) to prevent maternal intracranial hemorrhage."
+      },
+      {
+        "stageIndex": 2,
+        "stageName": "HELLP Triad Confirmation",
+        "releasedFindings": [
+          "CBC: Platelets 62,000/uL (severe thrombocytopenia, baseline 210,000).",
+          "Liver Function Tests: AST 340 U/L, ALT 290 U/L (marked transaminitis, > 2x upper limit).",
+          "Hemolysis Markers: Total Bilirubin 2.4 mg/dL, LDH 820 U/L (elevated > 600 U/L), peripheral smear reveals schistocytes (microangiopathic hemolytic anemia).",
+          "Urinalysis: 3+ Protein (protein-to-creatinine ratio 1.8)."
+        ],
+        "expectedClinicalRealignment": "Confirmed HELLP Syndrome (Hemolysis, Elevated Liver enzymes, Low Platelets); definitive treatment is delivery; at 34 weeks gestation, expedite delivery following maternal stabilization; avoid maternal NSAIDs for pain."
+      }
+    ],
+    "goldStandard": {
+      "primaryDiagnosis": "Preeclampsia with Severe Features and HELLP Syndrome",
+      "icd10": "O14.23",
+      "clinicalRationale": "Severe gestational hypertension (178/112 mmHg) accompanied by microangiopathic hemolytic anemia (schistocytes, LDH 820), transaminitis (AST 340), thrombocytopenia (platelets 62k), and clonus.",
+      "rankedDifferential": [
+        { "rank": 1, "condition": "Preeclampsia with HELLP Syndrome", "tier": "TIER_1_PRIMARY_EMERGENCY", "probabilityPercent": 90, "dangerRating": "CRITICAL" },
+        { "rank": 2, "condition": "Acute Fatty Liver of Pregnancy (AFLP)", "tier": "TIER_2_MUST_NOT_MISS", "probabilityPercent": 6, "dangerRating": "CRITICAL" },
+        { "rank": 3, "condition": "Thrombotic Thrombocytopenic Purpura (TTP)", "tier": "TIER_2_MUST_NOT_MISS", "probabilityPercent": 3, "dangerRating": "CRITICAL" },
+        { "rank": 4, "condition": "Biliary Colic / Acute Cholecystitis", "tier": "TIER_3_ALTERNATIVE", "probabilityPercent": 1, "dangerRating": "MODERATE" }
+      ],
+      "clinicalScores": [
+        {
+          "scoreName": "Mississippi Triple Class System for HELLP",
+          "scoreType": "SEVERITY_PROGNOSTIC",
+          "formula": "Platelets (< 50k Class 1; 50k-100k Class 2; 100k-150k Class 3)",
+          "requiredInputs": ["Platelets = 62,000", "AST = 340", "LDH = 820"],
+          "expectedCalculation": "Platelets between 50k and 100k",
+          "expectedResult": "Class 2 HELLP Syndrome",
+          "missingDataBehavior": "Requires exact platelet count and transaminases."
+        }
+      ],
+      "expectedInvestigations": [
+        { "priority": "STAT", "testName": "Complete Blood Count and Peripheral Smear", "modality": "LABORATORY", "rationale": "Quantify thrombocytopenia and identify schistocytes." },
+        { "priority": "STAT", "testName": "Comprehensive Hepatic Panel, LDH, and Coagulation Panel", "modality": "LABORATORY", "rationale": "Confirm HELLP triad and rule out coagulopathy." },
+        { "priority": "STAT", "testName": "Continuous Fetal Heart Rate Monitoring (TOCO)", "modality": "BEDSIDE", "rationale": "Assess fetal well-being and placental insufficiency." }
+      ],
+      "expectedManagement": {
+        "immediateInterventions": [
+          "IV Magnesium Sulfate: 4-6 gram loading dose over 20 minutes, followed by 1-2 g/hour continuous infusion for seizure prophylaxis",
+          "Immediate blood pressure control within 30-60 minutes: IV Labetalol (20 mg initial, doubling every 10 min) or IV Hydralazine (5-10 mg)",
+          "Target maternal blood pressure 140-150 / 90-100 mmHg (avoid precipitous drop which impairs uteroplacental perfusion)",
+          "Administer IM Betamethasone (12 mg) for fetal lung maturity if delivery can be delayed 24 hours safely"
+        ],
+        "definitiveTherapy": [
+          "Expedited delivery (induction vs cesarean section) once maternal blood pressure and seizure prophylaxis are stabilized"
+        ],
+        "escalationLevel": "EMERGENCY_OR"
+      },
+      "safetyChecklist": {
+        "strictContraindications": [
+          "Withholding magnesium sulfate in severe preeclampsia with clonus",
+          "Dropping systolic blood pressure precipitously below 130 mmHg (causes acute fetal distress from placental hypoperfusion)",
+          "Administering NSAIDs for postpartum analgesia in HELLP with thrombocytopenia"
+        ],
+        "highRiskInteractions": [
+          "Magnesium toxicity causes loss of deep tendon reflexes, respiratory depression, and cardiac arrest; monitor patellar reflexes hourly and keep calcium gluconate at bedside."
+        ]
+      },
+      "criticalFailures": [
+        {
+          "failureCode": "CF-OB-001",
+          "description": "Failing to initiate Magnesium Sulfate for seizure prophylaxis or failing to treat severe-range BP in preeclampsia",
+          "clinicalHarmPotential": "DEATH",
+          "overrideRule": "INSTANT_BENCHMARK_FAIL"
+        }
+      ]
+    },
+    "acceptanceCriteria": {
+      "minimumPassingScore": 85,
+      "requiredKeyFindings": ["Severe range hypertension", "HELLP laboratory triad", "Hyperreflexia with clonus"],
+      "mandatoryActions": ["Magnesium sulfate infusion", "Acute antihypertensive therapy within 60 min", "Obstetric delivery coordination"]
+    },
+    "guidelineReferences": [
+      {
+        "organization": "American College of Obstetricians and Gynecologists",
+        "guidelineTitle": "ACOG Practice Bulletin No. 222: Gestational Hypertension and Preeclampsia",
+        "publicationYear": 2020
+      }
+    ]
+  },
+  {
+    "benchmark": "NOCTIS-HEALTH-500",
+    "caseId": "NH-TOX-001",
+    "batchId": "BATCH-003",
+    "specialty": "TOXICOLOGY",
+    "clinicalCategory": "Severe Calcium Channel Blocker Overdose",
+    "difficulty": "EXPERT_COMPLEX",
+    "patientProfile": {
+      "ageYears": 46,
+      "biologicalSex": "MALE",
+      "pastMedicalHistory": ["Major depressive disorder", "Essential hypertension"],
+      "currentMedications": ["Amlodipine 10mg daily", "Sertraline 50mg daily"],
+      "allergies": ["No known drug allergies (NKDA)"]
+    },
+    "initialPresentation": {
+      "chiefComplaint": "Deliberate overdose of approximately 30 tablets of Amlodipine 10mg (300 mg total) 2 hours ago",
+      "onsetAndTimeline": "Ingested 2 hours prior; brought by family with empty pill bottle",
+      "symptoms": ["lethargy", "dizziness", "profound flushing", "nausea"],
+      "vitals": {
+        "bloodPressure": "72/38",
+        "heartRateBpm": 52,
+        "respiratoryRatePerMin": 16,
+        "temperatureCelsius": 36.2,
+        "spo2Percent": 96
+      }
+    },
+    "progressiveStages": [
+      {
+        "stageIndex": 1,
+        "stageName": "Refractory Vasoplegic Shock & Hyperglycemia",
+        "releasedFindings": [
+          "Patient has received 3 liters of IV normal saline with NO improvement in blood pressure (BP remains 74/40 mmHg, MAP 51 mmHg).",
+          "Bedside glucose is 298 mg/dL (hyperglycemia is a classic marker of L-type calcium channel blockade of pancreatic islet beta-cells, correlating with overdose severity).",
+          "ECG: Junctional bradycardia at 48 bpm with PR prolongation and loss of P waves."
+        ],
+        "expectedClinicalRealignment": "Severe calcium channel blocker overdose refractory to fluid loading; calcium channel antagonism impairs myocardial contractility, vascular smooth muscle tone, and pancreatic insulin secretion; fluid boluses must cease; initiate High-Dose Insulin Euglycemia Therapy (HIET) and IV Calcium immediately."
+      },
+      {
+        "stageIndex": 2,
+        "stageName": "High-Dose Insulin Euglycemia (HIET) Titration",
+        "releasedFindings": [
+          "Peripheral Norepinephrine at 20 mcg/min fails to restore MAP > 65 mmHg.",
+          "Patient becomes increasingly somnolent."
+        ],
+        "expectedClinicalRealignment": "Activate toxicologic shock protocol: Administer IV Calcium Chloride (1-2 g via central line) or Calcium Gluconate (3-6 g); initiate High-Dose Insulin Therapy: regular insulin bolus 1 unit/kg IV followed by continuous infusion of 1 unit/kg/hr (titrated up to 5-10 units/kg/hr) with continuous D10W/D50W dextrose infusion to maintain euglycemia (glucose 150-250 mg/dL) and supplemental potassium to maintain K 2.8-3.2 mEq/L."
+      }
+    ],
+    "goldStandard": {
+      "primaryDiagnosis": "Severe Calcium Channel Blocker (Amlodipine) Toxicity with Refractory Vasoplegic Shock",
+      "icd10": "T46.1X2A",
+      "clinicalRationale": "Massive Amlodipine ingestion (300 mg) causing junctional bradycardia, profound vasodilation refractory to 3L fluids, and characteristic stress hyperglycemia (298 mg/dL) due to pancreatic beta-cell calcium blockade.",
+      "rankedDifferential": [
+        { "rank": 1, "condition": "Calcium Channel Blocker Overdose", "tier": "TIER_1_PRIMARY_EMERGENCY", "probabilityPercent": 92, "dangerRating": "CRITICAL" },
+        { "rank": 2, "condition": "Beta-Blocker Overdose", "tier": "TIER_2_MUST_NOT_MISS", "probabilityPercent": 5, "dangerRating": "CRITICAL" },
+        { "rank": 3, "condition": "Digoxin Toxicity", "tier": "TIER_2_MUST_NOT_MISS", "probabilityPercent": 2, "dangerRating": "CRITICAL" },
+        { "rank": 4, "condition": "Septic Shock", "tier": "TIER_3_ALTERNATIVE", "probabilityPercent": 1, "dangerRating": "HIGH" }
+      ],
+      "clinicalScores": [
+        {
+          "scoreName": "CCB Severity Marker (Hyperglycemia Index)",
+          "scoreType": "SEVERITY_PROGNOSTIC",
+          "formula": "Blood glucose > 200 mg/dL in non-diabetic CCB ingestion",
+          "requiredInputs": ["Blood glucose = 298 mg/dL"],
+          "expectedCalculation": "Glucose > 250 mg/dL",
+          "expectedResult": "Severe Toxicity with High Risk of In-Hospital Mortality",
+          "missingDataBehavior": "Requires verified blood glucose concentration."
+        }
+      ],
+      "expectedInvestigations": [
+        { "priority": "STAT", "testName": "12-Lead Electrocardiogram and Continuous Telemetry", "modality": "BEDSIDE", "rationale": "Monitor conduction blocks, bradycardia, and QT interval." },
+        { "priority": "STAT", "testName": "Frequent Serial Blood Glucose (every 15-30 min)", "modality": "BEDSIDE", "rationale": "Prevent life-threatening hypoglycemia during high-dose insulin therapy." },
+        { "priority": "STAT", "testName": "Serial Serum Potassium (hourly)", "modality": "LABORATORY", "rationale": "Prevent fatal hypokalemia during high-dose insulin shift." }
+      ],
+      "expectedManagement": {
+        "immediateInterventions": [
+          "IV Calcium Chloride (1-2 g via central line) or Calcium Gluconate (3-6 g peripheral) repeated every 10-20 minutes",
+          "High-Dose Insulin Euglycemia Therapy (HIET): Regular insulin 1 unit/kg IV bolus + 1 unit/kg/hr infusion",
+          "Co-infusion of D10W or D50W to maintain target blood glucose 150-250 mg/dL",
+          "Norepinephrine or Epinephrine infusion for peripheral vascular resistance",
+          "Vasopressin (0.04 units/min) as adjunctive non-adrenergic vasopressor"
+        ],
+        "definitiveTherapy": [
+          "Venoarterial (VA) ECMO evaluation for refractory cardiogenic shock if HIET and vasopressors fail"
+        ],
+        "escalationLevel": "ICU_ADMISSION"
+      },
+      "safetyChecklist": {
+        "strictContraindications": [
+          "Continuing large volume fluid resuscitation (> 30 mL/kg) which causes acute pulmonary edema in cardiogenic/vasoplegic shock",
+          "Failing to administer concentrated dextrose during high-dose insulin therapy",
+          "Aggressive repletion of potassium when K > 3.0 mEq/L (insulin-driven shift does not reflect whole-body potassium depletion)"
+        ],
+        "highRiskInteractions": [
+          "HIET works as an inotrope by switching stressed myocytes to glucose metabolism; delayed initiation leads to refractory asystolic arrest."
+        ]
+      },
+      "criticalFailures": [
+        {
+          "failureCode": "CF-TOX-001",
+          "description": "Failing to initiate high-dose insulin therapy or IV calcium in shock-refractory CCB overdose",
+          "clinicalHarmPotential": "DEATH",
+          "overrideRule": "INSTANT_BENCHMARK_FAIL"
+        }
+      ]
+    },
+    "acceptanceCriteria": {
+      "minimumPassingScore": 85,
+      "requiredKeyFindings": ["Massive CCB ingestion", "Refractory vasoplegia", "Characteristic hyperglycemia"],
+      "mandatoryActions": ["High-dose insulin protocol (1 unit/kg/hr)", "IV calcium therapy", "Concentrated dextrose co-infusion"]
+    },
+    "guidelineReferences": [
+      {
+        "organization": "American College of Medical Toxicology",
+        "guidelineTitle": "ACMT Position Statement: High-Dose Insulin Therapy for Calcium Channel Blocker Toxicity",
+        "publicationYear": 2021
+      }
+    ]
+  }
+]
