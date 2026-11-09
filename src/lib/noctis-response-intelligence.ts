@@ -5,6 +5,7 @@ import { buildFrontierUnifiedArchitectureReport } from "./noctis-frontier-pillar
 import { buildRicIntelligenceReport } from "./noctis-ric.ts";
 import { buildSovereignSystemsFactoryReport } from "./noctis-sovereign-factory.ts";
 import { handleNaturalHealthQuery } from "./noctis-health-engine.ts";
+import { handleNaturalHealth500Query } from "./noctis-health-500-chat.ts";
 import { handleNaturalPatientDiagnosticQuery } from "./noctis-patient-diagnosis.ts";
 import { handleNaturalSpecialistClinicalQuery } from "./noctis-specialist-router.ts";
 import { handleNaturalMedicalRecordInterpretationQuery } from "./noctis-medical-record-interpreter.ts";
@@ -1251,6 +1252,12 @@ export function runFollowUpIntelligence(
   const medicalRecordResponse = handleNaturalMedicalRecordInterpretationQuery(currentQuestion);
   if (medicalRecordResponse) {
     return adaptSpecialistEngineOutput(currentQuestion, medicalRecordResponse, "NOCTIS-MED-RECORD-001");
+  }
+
+  // 00-b2. Noctis Health 500 Clinical Benchmark Intelligence Engine (NOCTIS-HEALTH-500, 15 Specialties)
+  const health500Response = handleNaturalHealth500Query(currentQuestion);
+  if (health500Response) {
+    return adaptSpecialistEngineOutput(currentQuestion, health500Response, "NOCTIS-HEALTH-500-001");
   }
 
   // 00-c. Noctis Patient Diagnostic & Triage Intelligence Engine (NPDE, FDA CDS Jan 2026, Bayesian Differential & Adaptive Interviewer)
