@@ -1261,7 +1261,7 @@ async function composeVibeReply(
     const { modelChat } = await import("@/lib/video-mind.server");
     const result = await modelChat(
       taught.map((message) => ({ role: message.role, content: message.content })),
-      { temperature: 0.5, maxTokens: 4096 },
+      { temperature: 0.5, maxTokens: 4096, brain: style.brain },
     );
     if ("error" in result) return result;
     return { text: result.text };
