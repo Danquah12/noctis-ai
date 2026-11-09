@@ -24,6 +24,7 @@ import {
   Shield,
   ShieldAlert,
   Wind,
+  Skull,
   Sliders,
   Stethoscope,
   Terminal,
@@ -112,6 +113,7 @@ import { NoctisE2EDemoSection } from "./NoctisE2EDemoSection";
 import { NoctisEcgSection } from "./NoctisEcgSection";
 import { NoctisVentilatorSection } from "./NoctisVentilatorSection";
 import { NoctisOntologySection } from "./NoctisOntologySection";
+import { NoctisToxicologySection } from "./NoctisToxicologySection";
 
 interface NoctisFrontierTabProps {
   onSendToChat?: (promptText: string) => void;
@@ -131,6 +133,7 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
     | "ecg"
     | "vent"
     | "ontology"
+    | "tox"
     | "estar"
     | "mesh"
     | "pgx"
@@ -508,6 +511,18 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
           <Layers className="size-3.5 text-teal-400" />
           Clinical Ontologies & Crosswalk
           <span className="rounded bg-teal-500/20 px-1 py-0.2 text-[9px] font-bold text-teal-300">USCDI</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab("tox")}
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
+            activeSubTab === "tox" ? "bg-violet-600 text-white shadow-sm ring-1 ring-amber-400" : "bg-white/5 text-white/70 hover:bg-white/10"
+          )}
+        >
+          <Skull className="size-3.5 text-amber-400" />
+          Clinical Toxicology &amp; Toxidromes
+          <span className="rounded bg-amber-500/20 px-1 py-0.2 text-[9px] font-bold text-amber-300">TOX</span>
         </button>
         <button
           type="button"
@@ -1529,6 +1544,11 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
       {/* Track 17: Clinical Ontologies & Terminology Crosswalk Engine */}
       {activeSubTab === "ontology" && (
         <NoctisOntologySection onSendToChat={onSendToChat} />
+      )}
+
+      {/* Track 18: Clinical Toxicology & Emergency Toxidrome Resuscitation Engine */}
+      {activeSubTab === "tox" && (
+        <NoctisToxicologySection onSendToChat={onSendToChat} />
       )}
 
       {activeSubTab === "edge" && (
