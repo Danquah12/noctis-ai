@@ -45,6 +45,7 @@ import {
   Scan,
   Pill,
   Flame,
+  Droplet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -126,6 +127,7 @@ import { NoctisObstetricSection } from "./NoctisObstetricSection";
 import { NoctisPocusSection } from "./NoctisPocusSection";
 import { NoctisPharmacologySection } from "./NoctisPharmacologySection";
 import { NoctisBurnSection } from "./NoctisBurnSection";
+import { NoctisMtpSection } from "./NoctisMtpSection";
 
 interface NoctisFrontierTabProps {
   onSendToChat?: (promptText: string) => void;
@@ -152,6 +154,7 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
     | "pocus"
     | "pharm"
     | "burn"
+    | "mtp"
     | "estar"
     | "mesh"
     | "pgx"
@@ -613,6 +616,18 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
           <Flame className="size-3.5 text-orange-400" />
           Acute Burn &amp; Inhalation (Parkland)
           <span className="rounded bg-orange-500/20 px-1 py-0.2 text-[9px] font-bold text-orange-300">BURN</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab("mtp")}
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
+            activeSubTab === "mtp" ? "bg-red-600 text-white shadow-sm ring-1 ring-rose-400" : "bg-white/5 text-white/70 hover:bg-white/10"
+          )}
+        >
+          <Droplet className="size-3.5 text-rose-400" />
+          Massive Transfusion (MTP/TEG)
+          <span className="rounded bg-rose-500/20 px-1 py-0.2 text-[9px] font-bold text-rose-300">1:1:1</span>
         </button>
         <button
           type="button"
@@ -1669,6 +1684,11 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
       {/* Track 24: Acute Burn Resuscitation & Fluid Titration Engine */}
       {activeSubTab === "burn" && (
         <NoctisBurnSection onSendToChat={onSendToChat} />
+      )}
+
+      {/* Track 25: Massive Transfusion Protocol (MTP) & Viscoelastic Hemostasis Engine */}
+      {activeSubTab === "mtp" && (
+        <NoctisMtpSection onSendToChat={onSendToChat} />
       )}
 
       {activeSubTab === "edge" && (
