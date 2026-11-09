@@ -533,31 +533,17 @@ export const Route = createFileRoute("/api/noctis")({
           }, { headers: CORS_HEADERS });
         }
         if (url.searchParams.get("health500") === "summary") {
-          const fs = await import("node:fs");
-          const path = await import("node:path");
-          const catalogPath = path.resolve(process.cwd(), "src/lib/noctis-health-500-complete.json");
-          let count = 500;
-          let specialties: Record<string, number> = {};
-          if (fs.existsSync(catalogPath)) {
-            const cases = JSON.parse(fs.readFileSync(catalogPath, "utf-8"));
-            count = cases.length;
-            for (const c of cases) {
-              specialties[c.specialty] = (specialties[c.specialty] || 0) + 1;
-            }
+          const { getDefaultLeaderboard } = await import("@/lib/noctis-health-500-runner");
+          const lb = getDefaultLeaderboard();
+          const specialties: Record<string, number> = {};
+          for (const [spec, m] of Object.entries(lb.specialtyMetrics)) {
+            specialties[spec] = m.totalCases;
           }
-          return Response.json({ totalCases: count, specialties, benchmark: "NOCTIS-HEALTH-500", passRate: 100 }, { headers: CORS_HEADERS });
+          return Response.json({ totalCases: lb.totalCasesEvaluated, specialties, benchmark: "NOCTIS-HEALTH-500", passRate: 100 }, { headers: CORS_HEADERS });
         }
         if (url.searchParams.get("health500") === "leaderboard") {
-          const fs = await import("node:fs");
-          const path = await import("node:path");
-          const reportPath = path.resolve(process.cwd(), "data/noctis-health-500-leaderboard-exemplar.json");
-          if (fs.existsSync(reportPath)) {
-            const data = JSON.parse(fs.readFileSync(reportPath, "utf-8"));
-            return Response.json(data, { headers: CORS_HEADERS });
-          }
-          const { runHealth500Benchmark } = await import("../../scripts/run_health_500_benchmark");
-          const freshReport = runHealth500Benchmark({ baseline: "exemplar" });
-          return Response.json(freshReport, { headers: CORS_HEADERS });
+          const { getDefaultLeaderboard } = await import("@/lib/noctis-health-500-runner");
+          return Response.json(getDefaultLeaderboard(), { headers: CORS_HEADERS });
         }
         if (url.searchParams.get("engineering") === "all") {
           const challenges = await import("@/lib/noctis-engineering-challenges");
@@ -732,14 +718,8 @@ export const Route = createFileRoute("/api/noctis")({
         }
         if (body?.health_500_evaluate) {
           const { evaluateNoctisHealth500Case } = await import("@/lib/noctis-health-500-engine");
-          const fs = await import("node:fs");
-          const path = await import("node:path");
-          const catalogPath = path.resolve(process.cwd(), "src/lib/noctis-health-500-complete.json");
-          if (!fs.existsSync(catalogPath)) {
-            return Response.json({ error: "Catalog not found" }, { status: 500, headers: CORS_HEADERS });
-          }
-          const cases = JSON.parse(fs.readFileSync(catalogPath, "utf-8"));
-          const targetCase = cases.find((c: any) => c.caseId === body.health_500_evaluate?.caseId);
+          const { completeCasesData } = await import("@/lib/noctis-health-500-runner");
+          const targetCase = (completeCasesData as any[]).find((c: any) => c.caseId === body.health_500_evaluate?.caseId);
           if (!targetCase) {
             return Response.json({ error: "Case not found" }, { status: 404, headers: CORS_HEADERS });
           }
@@ -747,7 +727,7 @@ export const Route = createFileRoute("/api/noctis")({
           return Response.json(evalResult, { headers: CORS_HEADERS });
         }
         if (body?.health_500_batch_run) {
-          const { runHealth500Benchmark } = await import("../../scripts/run_health_500_benchmark");
+          const { runHealth500Benchmark } = await import("@/lib/noctis-health-500-runner");
           const result = runHealth500Benchmark({
             baseline: (body.health_500_batch_run.baseline as any) || "exemplar",
             specialtyFilter: body.health_500_batch_run.specialty || "ALL",

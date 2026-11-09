@@ -1,5 +1,5 @@
 # Noctis Health 500 Benchmark Evaluation Leaderboard Report
-**Run ID:** `NH500-RUN-MW94VSDU` · **Timestamp:** 2026-11-09T10:44:02.034Z · **Baseline:** `EXEMPLAR`
+**Run ID:** `NH500-RUN-MW95O59N` · **Timestamp:** 2026-11-09T11:06:05.099Z · **Baseline:** `EXEMPLAR`
 **Statutory Framework:** FDA Jan 2026 Non-Device Clinical Decision Support (21 U.S.C. § 360j(o)(1)(E))
 
 ## 1. Executive Summary & Benchmark Accreditation
