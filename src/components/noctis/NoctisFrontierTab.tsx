@@ -6,6 +6,9 @@ import {
   BarChart3,
   CheckCircle2,
   AlertTriangle,
+  FileSpreadsheet,
+  FileCode,
+  Printer,
   Cpu,
   Layers,
   Sparkles,
@@ -74,6 +77,7 @@ import { calculateEdgeModelProfile } from "@/lib/noctis-edge-runner";
 import { FLAGSHIP_BENCHMARK_CASES, type BenchmarkFlagshipSummary } from "@/lib/noctis-health-500-chat";
 import type { ClinicalSpecialty } from "@/lib/noctis-health-500-schema";
 import { getDefaultLeaderboard, runHealth500Benchmark, type BenchmarkRunReport } from "@/lib/noctis-health-500-runner";
+import { exportReferenceTableCsv, exportFhirR4DocumentBundle, downloadBlob, printDossier } from "@/lib/noctis-clinical-export";
 
 interface NoctisFrontierTabProps {
   onSendToChat?: (promptText: string) => void;
@@ -461,6 +465,45 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
                   <div>
                     <span className="font-bold">Critical Safety Invariant:</span> {activeCase.contraindications[0] || "Adhere to FDA Jan 2026 CDS practice parameters."}
                   </div>
+                </div>
+
+                {/* EHR Interoperability & Dossier Export Bar */}
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-white/10">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const csv = exportReferenceTableCsv(activeCase);
+                        downloadBlob(`${activeCase.caseId}_Reference_Table.csv`, csv, "text/csv;charset=utf-8;");
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-md bg-amber-500/10 hover:bg-amber-500/20 px-2.5 py-1 text-[11px] font-semibold text-amber-300 border border-amber-500/30 transition shadow-sm"
+                      title="Export 3-column structured clinical presentation table as CSV (Image 1 specification)"
+                    >
+                      <FileSpreadsheet className="size-3.5" /> Export CSV (.csv)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const fhir = exportFhirR4DocumentBundle(activeCase, evalResult);
+                        downloadBlob(`${activeCase.caseId}_FHIR_R4_Bundle.json`, JSON.stringify(fhir, null, 2), "application/json");
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-md bg-violet-500/10 hover:bg-violet-500/20 px-2.5 py-1 text-[11px] font-semibold text-violet-300 border border-violet-500/30 transition shadow-sm"
+                      title="Export US Core v9.0.0 / HL7 FHIR R4 Document Bundle JSON"
+                    >
+                      <FileCode className="size-3.5" /> Export FHIR R4 (.json)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => printDossier(activeCase, evalResult)}
+                      className="inline-flex items-center gap-1.5 rounded-md bg-emerald-500/10 hover:bg-emerald-500/20 px-2.5 py-1 text-[11px] font-semibold text-emerald-300 border border-emerald-500/30 transition shadow-sm"
+                      title="Print or Save PDF Clinical Decision Support Dossier"
+                    >
+                      <Printer className="size-3.5" /> Print / Save PDF
+                    </button>
+                  </div>
+                  <span className="text-[10px] text-white/40 font-mono">
+                    21 U.S.C. § 360j(o)(1)(E)
+                  </span>
                 </div>
               </div>
 
