@@ -25,6 +25,7 @@ import {
   Microscope,
   FileCheck,
   Binary,
+  Mic,
   Radio,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -78,6 +79,7 @@ import { FLAGSHIP_BENCHMARK_CASES, type BenchmarkFlagshipSummary } from "@/lib/n
 import type { ClinicalSpecialty } from "@/lib/noctis-health-500-schema";
 import { getDefaultLeaderboard, runHealth500Benchmark, type BenchmarkRunReport } from "@/lib/noctis-health-500-runner";
 import { exportReferenceTableCsv, exportFhirR4DocumentBundle, downloadBlob, printDossier } from "@/lib/noctis-clinical-export";
+import { NoctisAmbientDictationSection } from "./NoctisAmbientDictationSection";
 
 interface NoctisFrontierTabProps {
   onSendToChat?: (promptText: string) => void;
@@ -85,7 +87,7 @@ interface NoctisFrontierTabProps {
 }
 
 export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabProps) {
-  const [activeSubTab, setActiveSubTab] = useState<"health500" | "leaderboard" | "engineering" | "dicom" | "edge" | "specialist">("health500");
+  const [activeSubTab, setActiveSubTab] = useState<"health500" | "leaderboard" | "ambient" | "engineering" | "dicom" | "edge" | "specialist">("health500");
   
   // Leaderboard State
   const [leaderboardData, setLeaderboardData] = useState<BenchmarkRunReport>(() => getDefaultLeaderboard());
@@ -230,6 +232,18 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
         >
           <Award className="size-3.5 text-amber-400" />
           500-Case Leaderboard & Models
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab("ambient")}
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
+            activeSubTab === "ambient" ? "bg-violet-600 text-white shadow-sm" : "bg-white/5 text-white/70 hover:bg-white/10"
+          )}
+        >
+          <Mic className="size-3.5 text-rose-400" />
+          Ambient Dictation & Speech-to-Dossier
+          <span className="rounded bg-rose-500/20 px-1 py-0.2 text-[9px] font-bold text-rose-300">LIVE</span>
         </button>
         <button
           type="button"
@@ -1028,6 +1042,10 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
           </div>
         );
       })()}
+
+      {activeSubTab === "ambient" && (
+        <NoctisAmbientDictationSection onSendToChat={onSendToChat} />
+      )}
 
       {activeSubTab === "engineering" && (
         <div className="space-y-6">
