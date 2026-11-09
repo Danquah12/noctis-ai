@@ -43,6 +43,7 @@ import {
   Bug,
   Heart,
   Scan,
+  Pill,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -122,6 +123,7 @@ import { NoctisPalsSection } from "./NoctisPalsSection";
 import { NoctisAntimicrobialSection } from "./NoctisAntimicrobialSection";
 import { NoctisObstetricSection } from "./NoctisObstetricSection";
 import { NoctisPocusSection } from "./NoctisPocusSection";
+import { NoctisPharmacologySection } from "./NoctisPharmacologySection";
 
 interface NoctisFrontierTabProps {
   onSendToChat?: (promptText: string) => void;
@@ -146,6 +148,7 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
     | "abx"
     | "ob"
     | "pocus"
+    | "pharm"
     | "estar"
     | "mesh"
     | "pgx"
@@ -583,6 +586,18 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
           <Scan className="size-3.5 text-sky-400" />
           POCUS &amp; Resuscitation (E-FAST/RUSH)
           <span className="rounded bg-sky-500/20 px-1 py-0.2 text-[9px] font-bold text-sky-300">POCUS</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab("pharm")}
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
+            activeSubTab === "pharm" ? "bg-amber-600 text-white shadow-sm ring-1 ring-amber-400" : "bg-white/5 text-white/70 hover:bg-white/10"
+          )}
+        >
+          <Pill className="size-3.5 text-amber-400" />
+          Pharmacology Matrix &amp; QTc
+          <span className="rounded bg-amber-500/20 px-1 py-0.2 text-[9px] font-bold text-amber-300">QTc</span>
         </button>
         <button
           type="button"
@@ -1629,6 +1644,11 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
       {/* Track 22: Point-of-Care Ultrasound (POCUS) & Resuscitation Protocols */}
       {activeSubTab === "pocus" && (
         <NoctisPocusSection onSendToChat={onSendToChat} />
+      )}
+
+      {/* Track 23: Clinical Pharmacology Drug-Drug Interaction Matrix & QTc Engine */}
+      {activeSubTab === "pharm" && (
+        <NoctisPharmacologySection onSendToChat={onSendToChat} />
       )}
 
       {activeSubTab === "edge" && (
