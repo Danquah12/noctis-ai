@@ -25,6 +25,7 @@ import {
   ShieldAlert,
   Wind,
   Skull,
+  Baby,
   Sliders,
   Stethoscope,
   Terminal,
@@ -114,6 +115,7 @@ import { NoctisEcgSection } from "./NoctisEcgSection";
 import { NoctisVentilatorSection } from "./NoctisVentilatorSection";
 import { NoctisOntologySection } from "./NoctisOntologySection";
 import { NoctisToxicologySection } from "./NoctisToxicologySection";
+import { NoctisPalsSection } from "./NoctisPalsSection";
 
 interface NoctisFrontierTabProps {
   onSendToChat?: (promptText: string) => void;
@@ -134,6 +136,7 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
     | "vent"
     | "ontology"
     | "tox"
+    | "pals"
     | "estar"
     | "mesh"
     | "pgx"
@@ -523,6 +526,18 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
           <Skull className="size-3.5 text-amber-400" />
           Clinical Toxicology &amp; Toxidromes
           <span className="rounded bg-amber-500/20 px-1 py-0.2 text-[9px] font-bold text-amber-300">TOX</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab("pals")}
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
+            activeSubTab === "pals" ? "bg-violet-600 text-white shadow-sm ring-1 ring-pink-400" : "bg-white/5 text-white/70 hover:bg-white/10"
+          )}
+        >
+          <Baby className="size-3.5 text-pink-400" />
+          PALS Resuscitation (Broselow)
+          <span className="rounded bg-pink-500/20 px-1 py-0.2 text-[9px] font-bold text-pink-300">PALS</span>
         </button>
         <button
           type="button"
@@ -1549,6 +1564,11 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
       {/* Track 18: Clinical Toxicology & Emergency Toxidrome Resuscitation Engine */}
       {activeSubTab === "tox" && (
         <NoctisToxicologySection onSendToChat={onSendToChat} />
+      )}
+
+      {/* Track 19: Pediatric Advanced Life Support (PALS) & Broselow Resuscitation Engine */}
+      {activeSubTab === "pals" && (
+        <NoctisPalsSection onSendToChat={onSendToChat} />
       )}
 
       {activeSubTab === "edge" && (
