@@ -35,6 +35,7 @@ import {
   Users,
   Mic,
   Radio,
+  FlaskConical,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -104,6 +105,7 @@ import { NoctisFdaEstarSection } from "./NoctisFdaEstarSection";
 import { NoctisHospitalMeshSection } from "./NoctisHospitalMeshSection";
 import { NoctisPgxSection } from "./NoctisPgxSection";
 import { NoctisEarlyWarningSection } from "./NoctisEarlyWarningSection";
+import { NoctisLisHl7Section } from "./NoctisLisHl7Section";
 
 interface NoctisFrontierTabProps {
   onSendToChat?: (promptText: string) => void;
@@ -111,7 +113,7 @@ interface NoctisFrontierTabProps {
 }
 
 export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabProps) {
-  const [activeSubTab, setActiveSubTab] = useState<"health500" | "leaderboard" | "ambient" | "qlora" | "swarm" | "dicom" | "fhir" | "telemetry" | "estar" | "mesh" | "pgx" | "early-warning" | "engineering" | "edge" | "specialist">("health500");
+  const [activeSubTab, setActiveSubTab] = useState<"health500" | "leaderboard" | "ambient" | "qlora" | "swarm" | "dicom" | "fhir" | "telemetry" | "estar" | "mesh" | "pgx" | "early-warning" | "lis" | "engineering" | "edge" | "specialist">("health500");
   
   // Leaderboard State
   const [leaderboardData, setLeaderboardData] = useState<BenchmarkRunReport>(() => getDefaultLeaderboard());
@@ -305,6 +307,78 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
           <Link2 className="size-3.5 text-blue-400" />
           SMART on FHIR EHR Connector
           <span className="rounded bg-blue-500/20 px-1 py-0.2 text-[9px] font-bold text-blue-300">R4</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab("telemetry")}
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
+            activeSubTab === "telemetry" ? "bg-violet-600 text-white shadow-sm" : "bg-white/5 text-white/70 hover:bg-white/10"
+          )}
+        >
+          <Activity className="size-3.5 text-rose-400" />
+          Bedside IoMT Telemetry
+          <span className="rounded bg-rose-500/20 px-1 py-0.2 text-[9px] font-bold text-rose-300">BLE</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab("early-warning")}
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
+            activeSubTab === "early-warning" ? "bg-violet-600 text-white shadow-sm" : "bg-white/5 text-white/70 hover:bg-white/10"
+          )}
+        >
+          <BellRing className="size-3.5 text-amber-400" />
+          NEWS2 / qSOFA Scoring
+          <span className="rounded bg-amber-500/20 px-1 py-0.2 text-[9px] font-bold text-amber-300">ALERT</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab("lis")}
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
+            activeSubTab === "lis" ? "bg-violet-600 text-white shadow-sm" : "bg-white/5 text-white/70 hover:bg-white/10"
+          )}
+        >
+          <FlaskConical className="size-3.5 text-cyan-400" />
+          Laboratory LIS Ingestion
+          <span className="rounded bg-cyan-500/20 px-1 py-0.2 text-[9px] font-bold text-cyan-300">HL7</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab("pgx")}
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
+            activeSubTab === "pgx" ? "bg-violet-600 text-white shadow-sm" : "bg-white/5 text-white/70 hover:bg-white/10"
+          )}
+        >
+          <Dna className="size-3.5 text-teal-400" />
+          PGx Drug-Gene Engine
+          <span className="rounded bg-teal-500/20 px-1 py-0.2 text-[9px] font-bold text-teal-300">CPIC</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab("estar")}
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
+            activeSubTab === "estar" ? "bg-violet-600 text-white shadow-sm" : "bg-white/5 text-white/70 hover:bg-white/10"
+          )}
+        >
+          <FileCheck className="size-3.5 text-emerald-400" />
+          FDA 510(k) eSTAR Builder
+          <span className="rounded bg-emerald-500/20 px-1 py-0.2 text-[9px] font-bold text-emerald-300">FDA</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab("mesh")}
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
+            activeSubTab === "mesh" ? "bg-violet-600 text-white shadow-sm" : "bg-white/5 text-white/70 hover:bg-white/10"
+          )}
+        >
+          <Network className="size-3.5 text-indigo-400" />
+          Hospital Mesh Sync
+          <span className="rounded bg-indigo-500/20 px-1 py-0.2 text-[9px] font-bold text-indigo-300">CRDT</span>
         </button>
         <button
           type="button"
