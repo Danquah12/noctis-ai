@@ -385,7 +385,7 @@ export function NoctisSwarmModal({
               <div className="p-4 rounded-xl bg-zinc-900/60 border border-zinc-800 space-y-4 text-xs">
                 <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
                   <span className="font-bold text-cyan-400 uppercase tracking-wider">
-                    Stage 1: Harvester Extracted Sources &amp; Entities
+                    Stage 1: Harvester Extracted Sources & Entities
                   </span>
                   <span className="font-mono text-zinc-400">
                     Telemetry Integrity: <strong>{result.mission.harvesterArtifact.telemetryIntegrityScore}%</strong>

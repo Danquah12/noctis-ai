@@ -265,7 +265,7 @@ export function NoctisPluginDetailView({
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-400">
-                Connection Architecture &amp; Credentials
+                Connection Architecture & Credentials
               </h2>
               <p className="mt-0.5 text-xs text-zinc-400">
                 Choose between sovereign local air-gapped simulation or live external API connectivity.
@@ -339,7 +339,7 @@ export function NoctisPluginDetailView({
                     </span>
                   </button>
                   {oauthSuccess && (
-                    <span className="text-xs text-emerald-400">OAuth token valid &amp; active</span>
+                    <span className="text-xs text-emerald-400">OAuth token valid & active</span>
                   )}
                 </div>
               ) : (

@@ -245,7 +245,7 @@ export function DoorBoard({ door, onDoor }: { door?: DoorId; onDoor: (door?: Doo
             <section key="work" aria-label={vt("Work")} className="min-w-0 space-y-4">
               <div>
                 <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#e4b86a]">
-                  {vt(open.label)} · Career Explorer, Certifications, Skilled Trades, Projects, Opportunities &amp; Skills Passport
+                  {vt(open.label)} · Career Explorer, Certifications, Skilled Trades, Projects, Opportunities & Skills Passport
                 </p>
                 <DoorLinks items={open.items} from={open.id} />
               </div>

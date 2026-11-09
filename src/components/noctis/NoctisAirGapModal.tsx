@@ -195,7 +195,7 @@ export function NoctisAirGapModal({
                 <span className="text-xs text-zinc-400">Attempts Intercepted</span>
               </div>
               <span className="text-[10px] font-mono text-zinc-500 mt-2">
-                External LLM &amp; DNS Drops
+                External LLM & DNS Drops
               </span>
             </div>
 

@@ -279,7 +279,7 @@ export function NoctisTruthLedgerModal({
                 </span>
               </div>
               <span className="text-[10px] text-zinc-500 mt-2 font-mono">
-                Exact Math &amp; Code Reproducibility
+                Exact Math & Code Reproducibility
               </span>
             </div>
 
@@ -456,7 +456,7 @@ export function NoctisTruthLedgerModal({
               <div className="flex items-center gap-2">
                 <Lock className="w-4 h-4 text-emerald-400" />
                 <span className="font-bold text-white uppercase tracking-wider text-xs">
-                  Cryptographic Attestation &amp; Merkle Proof Chain
+                  Cryptographic Attestation & Merkle Proof Chain
                 </span>
                 <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-zinc-800 text-zinc-300">
                   {activeBundle.bundleId}

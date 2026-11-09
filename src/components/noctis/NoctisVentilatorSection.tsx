@@ -237,10 +237,10 @@ export function NoctisVentilatorSection({ onSendToChat }: NoctisVentilatorSectio
             </span>
           </div>
           <h2 className="text-lg font-bold tracking-tight text-white mt-1">
-            Critical Care Mechanical Ventilation &amp; ARDSNet Titration Protocol
+            Critical Care Mechanical Ventilation & ARDSNet Titration Protocol
           </h2>
           <p className="text-xs text-white/60">
-            Automated Predicted Body Weight (Devine), Berlin ARDS stratification, Driving Pressure (&Delta;P &lt; 15 cmH2O) &amp; Barotrauma Veto (Pplat &le; 30 cmH2O).
+            Automated Predicted Body Weight (Devine), Berlin ARDS stratification, Driving Pressure (&Delta;P &lt; 15 cmH2O) & Barotrauma Veto (Pplat &le; 30 cmH2O).
           </p>
         </div>
 
@@ -344,7 +344,7 @@ export function NoctisVentilatorSection({ onSendToChat }: NoctisVentilatorSectio
         <div className="lg:col-span-5 space-y-4">
           <div className="rounded-xl border border-white/10 bg-black/40 p-4 space-y-4">
             <h3 className="text-xs font-bold uppercase tracking-wider text-sky-400 flex items-center gap-2">
-              <Sliders className="size-4" /> Patient &amp; Ventilator Parameters
+              <Sliders className="size-4" /> Patient & Ventilator Parameters
             </h3>
 
             {/* Sex & Height (PBW Devine) */}

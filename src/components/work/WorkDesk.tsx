@@ -497,10 +497,10 @@ export function WorkDesk({
                 className="w-full rounded-lg border border-[#e4b86a]/35 bg-[#0d1322]/90 px-2.5 py-2 text-xs text-[#f6f1e8] sm:w-auto sm:py-1.5"
               >
                 <option value="all">All Categories</option>
-                <option value="Cybersecurity & Cloud">Cybersecurity &amp; Cloud</option>
-                <option value="Software & Data">Software &amp; Data</option>
+                <option value="Cybersecurity & Cloud">Cybersecurity & Cloud</option>
+                <option value="Software & Data">Software & Data</option>
                 <option value="Skilled Trades">Skilled Trades</option>
-                <option value="Engineering & Operations">Engineering &amp; Operations</option>
+                <option value="Engineering & Operations">Engineering & Operations</option>
               </select>
 
               <select
@@ -558,7 +558,7 @@ export function WorkDesk({
 
             <p className="mt-3.5 rounded-xl border border-[#e4b86a]/25 bg-[#0d1322]/75 p-3 text-xs leading-relaxed text-[#e7d9be]">
               &ldquo;You&apos;re building strong skills in{" "}
-              <strong className="text-[#f6e3b0]">Cloud Security &amp; Web Development</strong>. Ready
+              <strong className="text-[#f6e3b0]">Cloud Security & Web Development</strong>. Ready
               to explore careers, certifications, or real-world projects?&rdquo;
             </p>
 
@@ -721,7 +721,7 @@ export function WorkDesk({
                     <Compass className="size-5" />
                   </span>
                   <h2 className="font-display text-lg font-bold text-[#f6f1e8]">
-                    Jobs &amp; Opportunities
+                    Jobs & Opportunities
                   </h2>
                 </div>
                 <p className="mt-3 text-xs leading-relaxed text-[#d7c4a2]">
@@ -904,7 +904,7 @@ export function WorkDesk({
                   <li className="flex items-center justify-between gap-2 rounded-xl border border-[#e4b86a]/20 bg-[#0d1322]/75 px-3 py-2">
                     <span className="flex min-w-0 items-center gap-2 text-[#d7c4a2]">
                       <CheckCircle2 className="size-4 shrink-0 text-[#f0c56a]" />
-                      <span className="truncate">Verified &amp; Demonstrated Skills</span>
+                      <span className="truncate">Verified & Demonstrated Skills</span>
                     </span>
                     <strong className="shrink-0 text-sm text-[#f6f1e8]">{verifiedSkillsCount}</strong>
                   </li>
@@ -1134,7 +1134,7 @@ export function WorkDesk({
                   onClick={() => handleBuildCareerJourney(explorerCareer.id, true)}
                   className="w-full rounded-xl border border-[#e4b86a]/50 bg-[#0d1322] px-4 py-2.5 text-xs font-semibold text-[#f6e3b0] hover:bg-[#1e2942] sm:w-auto"
                 >
-                  Build &amp; Open in Journey →
+                  Build & Open in Journey →
                 </button>
               </div>
             </div>
@@ -1156,7 +1156,7 @@ export function WorkDesk({
 
               <div className="min-w-0 rounded-xl border border-[#e4b86a]/25 bg-[#0d1322]/85 p-4">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-[#f0c56a]">
-                  Required &amp; Preferred Skills
+                  Required & Preferred Skills
                 </h3>
                 <p className="mt-2 text-[11px] font-semibold text-[#d7c4a2]">Required Skills:</p>
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
@@ -1195,7 +1195,7 @@ export function WorkDesk({
 
               <div className="min-w-0 rounded-xl border border-[#e4b86a]/25 bg-[#0d1322]/85 p-4">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-[#f0c56a]">
-                  Typical Entry Pathways &amp; Practical Experience
+                  Typical Entry Pathways & Practical Experience
                 </h3>
                 <ul className="mt-2 space-y-1.5 text-xs text-[#e7d9be]">
                   {explorerCareer.entryPathways.map((p) => (
@@ -1210,7 +1210,7 @@ export function WorkDesk({
 
               <div className="min-w-0 rounded-xl border border-[#e4b86a]/25 bg-[#0d1322]/85 p-4">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-[#f0c56a]">
-                  Salary Range, Market Context &amp; Provenance
+                  Salary Range, Market Context & Provenance
                 </h3>
                 <p className="mt-2 text-sm font-bold text-[#f6e3b0]">
                   {explorerCareer.salaryRange.rangeText} ({explorerCareer.salaryRange.region})
@@ -1241,7 +1241,7 @@ export function WorkDesk({
           <div className="flex flex-col gap-3 rounded-2xl border border-[#e4b86a]/40 bg-[#141c30] p-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:p-5">
             <div className="min-w-0">
               <h2 className="font-display text-lg font-bold text-[#f6f1e8] sm:text-xl">
-                Screen 3 · Certifications &amp; Qualifications
+                Screen 3 · Certifications & Qualifications
               </h2>
               <p className="mt-1 text-xs text-[#d7c4a2]">
                 Official vendor catalogues are the source of truth. Completing a Vibe prep course
@@ -1318,7 +1318,7 @@ export function WorkDesk({
                     <p className="text-[11px] text-amber-200/90">{cred.issuerDistinctionNote}</p>
 
                     <p className="text-[11px] text-[#9aa4bf]">
-                      <strong>Renewal &amp; Policy:</strong> {cred.examAndRenewalInfo} ·{" "}
+                      <strong>Renewal & Policy:</strong> {cred.examAndRenewalInfo} ·{" "}
                       <strong>Last Verified:</strong> {cred.lastVerifiedDate}
                     </p>
                   </div>
@@ -1362,7 +1362,7 @@ export function WorkDesk({
             <ShieldAlert className="mt-0.5 size-5 shrink-0 text-amber-300" />
             <div className="min-w-0">
               <p className="font-bold text-amber-200">
-                Trade Safety &amp; Supervised Qualification Notice
+                Trade Safety & Supervised Qualification Notice
               </p>
               <p className="mt-0.5 leading-relaxed">
                 Online lessons, videos, and simulations in Vibe support theoretical preparation and
@@ -1439,10 +1439,10 @@ export function WorkDesk({
 
                 <div className="min-w-0 rounded-xl border border-[#e4b86a]/25 bg-[#0d1322]/90 p-4">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-[#f0c56a]">
-                    2. Tools, Materials &amp; Demonstrations
+                    2. Tools, Materials & Demonstrations
                   </h4>
                   <p className="mt-2 text-xs text-[#e7d9be]">
-                    <strong>Tools &amp; Materials:</strong>{" "}
+                    <strong>Tools & Materials:</strong>{" "}
                     {selectedTrade.toolsAndMaterials.join(", ")}
                   </p>
                   <ul className="mt-2 space-y-1 text-xs text-[#d7c4a2]">
@@ -1456,7 +1456,7 @@ export function WorkDesk({
 
                 <div className="min-w-0 rounded-xl border border-[#e4b86a]/25 bg-[#0d1322]/90 p-4">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-[#f0c56a]">
-                    3. Simulated Exercise &amp; Rubric
+                    3. Simulated Exercise & Rubric
                   </h4>
                   <p className="mt-2 text-xs font-semibold text-[#f6f1e8]">
                     {selectedTrade.simulatedPracticalExercise.title}
@@ -1475,7 +1475,7 @@ export function WorkDesk({
 
                 <div className="min-w-0 rounded-xl border border-[#e4b86a]/25 bg-[#0d1322]/90 p-4">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-[#f0c56a]">
-                    4. Supervised Practice, Apprenticeships &amp; Licensing
+                    4. Supervised Practice, Apprenticeships & Licensing
                   </h4>
                   <p className="mt-2 text-xs text-[#e7d9be]">
                     <strong>Supervised Hours:</strong>{" "}
@@ -1574,7 +1574,7 @@ export function WorkDesk({
               {/* Interactive Task Checklist */}
               <div className="min-w-0 rounded-xl border border-[#e4b86a]/25 bg-[#0d1322]/90 p-4">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-[#f0c56a]">
-                  Required Tasks &amp; Deliverables
+                  Required Tasks & Deliverables
                 </h4>
                 <ul className="mt-3 space-y-2">
                   {selectedProject.taskChecklist.map((task) => {
@@ -1639,7 +1639,7 @@ export function WorkDesk({
             {/* Submit Evidence & Add to Skills Passport */}
             <div className="rounded-xl border border-[#e4b86a]/40 bg-[#0d1322] p-4">
               <h4 className="text-xs font-bold uppercase tracking-wider text-[#f0c56a]">
-                Submit Project Evidence &amp; Add to Skills Passport
+                Submit Project Evidence & Add to Skills Passport
               </h4>
               <textarea
                 rows={3}
@@ -1658,7 +1658,7 @@ export function WorkDesk({
                   onClick={() => handleSubmitProjectEvidence(selectedProject.id)}
                   className="w-full rounded-xl bg-gradient-to-r from-[#e4b86a] to-[#c89238] px-4 py-2.5 text-xs font-bold text-[#121829] shadow hover:brightness-110 sm:w-auto sm:py-2"
                 >
-                  Submit Evidence &amp; Add to Skills Passport
+                  Submit Evidence & Add to Skills Passport
                 </button>
               </div>
             </div>
@@ -1674,7 +1674,7 @@ export function WorkDesk({
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#e4b86a]/40 bg-[#141c30] p-4 sm:p-5">
             <div className="min-w-0">
               <h2 className="font-display text-lg font-bold text-[#f6f1e8] sm:text-xl">
-                Screen 6 · Jobs, Internships &amp; Apprenticeships
+                Screen 6 · Jobs, Internships & Apprenticeships
               </h2>
               <p className="mt-1 text-xs text-[#d7c4a2]">
                 Explainable skill matching compares your demonstrated Skills Passport against each
@@ -1838,7 +1838,7 @@ export function WorkDesk({
           <div className="flex flex-col gap-4 rounded-2xl border border-[#e4b86a]/40 bg-[#141c30] p-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:p-5">
             <div className="min-w-0">
               <h2 className="font-display text-lg font-bold text-[#f6f1e8] sm:text-xl">
-                Screen 7 · Portfolio &amp; Skills Passport
+                Screen 7 · Portfolio & Skills Passport
               </h2>
               <p className="mt-1 max-w-2xl text-xs text-[#d7c4a2]">
                 Every record carries explicit provenance (

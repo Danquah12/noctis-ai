@@ -84,7 +84,7 @@ function DeskNotes() {
         note="Live record for this site. Sign-ins, watches, searches, likes, comments, follows, study, and Vibe questions land here. This page checks every 5 seconds."
       />
       <section className="rounded-2xl bg-surface p-4 shadow-border" aria-label="Desk Note Public Screening and Archive Sources">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">Desk Note · Public Screening &amp; Archive Sources</p>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">Desk Note · Public Screening & Archive Sources</p>
         <p className="mt-1 text-xs leading-relaxed text-muted">
           Verified public-domain and open-license film collections wired into Noctis Study, Clinic, and Reels:
         </p>
@@ -120,7 +120,7 @@ function DeskNotes() {
             className="group rounded-xl bg-elevated p-3 transition hover:ring-1 hover:ring-primary/50"
           >
             <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-primary">Pixabay Commons</p>
-            <p className="mt-1 text-xs font-semibold text-fg group-hover:underline">Free HD &amp; 4K Video Downloads ↗</p>
+            <p className="mt-1 text-xs font-semibold text-fg group-hover:underline">Free HD & 4K Video Downloads ↗</p>
             <p className="mt-1 text-[11px] leading-snug text-muted">
               Royalty-free MP4 motion clips and B-roll cleared for direct native playback in Noctis Reels.
             </p>
@@ -132,55 +132,55 @@ function DeskNotes() {
           </p>
           <ul className="mt-2 space-y-1.5 text-[11px] leading-relaxed text-muted">
             <li>
-              <strong className="text-fg">Computer Science, AI &amp; Engineering (MIT OCW / Internet Archive):</strong>{" "}
+              <strong className="text-fg">Computer Science, AI & Engineering (MIT OCW / Internet Archive):</strong>{" "}
               <a href="https://archive.org/details/mit_ocw" target="_blank" rel="noreferrer" className="text-primary underline">
                 archive.org/details/mit_ocw
               </a>{" "}
-              &amp;{" "}
+              &{" "}
               <a href="https://ocw.mit.edu/search/?f=Lecture%20Videos" target="_blank" rel="noreferrer" className="text-primary underline">
                 MIT OCW Lecture Videos
               </a>{" "}
               — Click <em>Download Video (.mp4)</em> under any lecture (CC BY-NC-SA) or use the Internet Archive direct <code>/download/&lt;item&gt;/&lt;file&gt;.mp4</code> link.
             </li>
             <li>
-              <strong className="text-fg">Cybersecurity, NIST RMF &amp; Cloud Defense:</strong>{" "}
+              <strong className="text-fg">Cybersecurity, NIST RMF & Cloud Defense:</strong>{" "}
               <a href="https://www.nist.gov/video-gallery" target="_blank" rel="noreferrer" className="text-primary underline">
                 NIST Public-Domain Video Gallery
               </a>{" "}
-              &amp;{" "}
+              &{" "}
               <a href="https://archive.org/details/computerchronicles" target="_blank" rel="noreferrer" className="text-primary underline">
-                Internet Archive Computing &amp; Security Collection
+                Internet Archive Computing & Security Collection
               </a>{" "}
               — U.S. government public-domain MP4s with zero YouTube dependency.
             </li>
             <li>
-              <strong className="text-fg">Medicine, Nursing &amp; Public Health (NIH / CDC / NLM):</strong>{" "}
+              <strong className="text-fg">Medicine, Nursing & Public Health (NIH / CDC / NLM):</strong>{" "}
               <a href="https://collections.nlm.nih.gov/?f%5Bdrep2.format%5D%5B%5D=moving+image" target="_blank" rel="noreferrer" className="text-primary underline">
                 NIH National Library of Medicine Digital Films
               </a>{" "}
-              &amp;{" "}
+              &{" "}
               <a href="https://wwwn.cdc.gov/iknow/video/" target="_blank" rel="noreferrer" className="text-primary underline">
                 CDC Public Health Media
               </a>{" "}
-              — Public-domain clinical &amp; biomedical MP4 files.
+              — Public-domain clinical & biomedical MP4 files.
             </li>
             <li>
-              <strong className="text-fg">Space, Earth &amp; Physics (NASA / NOAA):</strong>{" "}
+              <strong className="text-fg">Space, Earth & Physics (NASA / NOAA):</strong>{" "}
               <a href="https://images.nasa.gov/" target="_blank" rel="noreferrer" className="text-primary underline">
                 images.nasa.gov (Filter by Video)
               </a>{" "}
-              &amp;{" "}
+              &{" "}
               <a href="https://svs.gsfc.nasa.gov/" target="_blank" rel="noreferrer" className="text-primary underline">
                 NASA Scientific Visualization Studio
               </a>{" "}
               — Every clip has a direct 1080p/4K <code>.mp4</code> download button (100% public domain).
             </li>
             <li>
-              <strong className="text-fg">History, Civics &amp; Archival Cinema:</strong>{" "}
+              <strong className="text-fg">History, Civics & Archival Cinema:</strong>{" "}
               <a href="https://www.loc.gov/collections/national-screening-room/?utm_source=chatgpt.com" target="_blank" rel="noreferrer" className="text-primary underline">
                 LOC National Screening Room
               </a>{" "}
-              &amp;{" "}
+              &{" "}
               <a href="https://archive.org/details/movies?utm_source=chatgpt.com" target="_blank" rel="noreferrer" className="text-primary underline">
                 Internet Archive Movies
               </a>{" "}

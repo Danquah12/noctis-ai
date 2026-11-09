@@ -127,7 +127,7 @@ Interaction Findings: ${
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-bold text-white/95">
-                Real-Time Pharmacogenomics (PGx) &amp; Drug-Gene Safety Engine
+                Real-Time Pharmacogenomics (PGx) & Drug-Gene Safety Engine
               </h3>
               <span className="rounded bg-fuchsia-500/20 px-2 py-0.5 text-[10px] font-mono font-bold text-fuchsia-300 border border-fuchsia-500/30">
                 CPIC Level A · FDA CDS
@@ -207,7 +207,7 @@ Interaction Findings: ${
       {/* Gene Diplotypes HUD Grid */}
       <div className="space-y-1.5">
         <div className="text-[10px] uppercase font-bold text-white/40 tracking-wider">
-          Patient Diplotypes &amp; Metabolic Phenotypes ({profile.patientName})
+          Patient Diplotypes & Metabolic Phenotypes ({profile.patientName})
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-2">
           {Object.values(profile.genes).map((g) => {
@@ -256,7 +256,7 @@ Interaction Findings: ${
       <div className="space-y-2 pt-2 border-t border-white/10">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="text-[10px] uppercase font-bold text-white/40 tracking-wider">
-            Active Prescription Gating &amp; Candidate Orders
+            Active Prescription Gating & Candidate Orders
           </div>
 
           {/* Quick Add Presets */}

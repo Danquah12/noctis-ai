@@ -1589,7 +1589,7 @@ function buildMermaidSvg(mermaidSource: string): string {
 
   const escapeXml = (s: string) =>
     s
-      .replace(/&/g, "&amp;")
+      .replace(/&/g, "&")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;");
@@ -1701,7 +1701,7 @@ function downloadTableCsv(head: string[], body: string[][]) {
 function formatInlinePrintHtml(text: string): string {
   const held: string[] = [];
   const escaped = text
-    .replace(/&/g, "&amp;")
+    .replace(/&/g, "&")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/`([^`]+)`/g, (_m, code) => {
@@ -1789,7 +1789,7 @@ function markdownToPrintableHtml(question: string, markdown: string): string {
     return `<p>${formatInlinePrintHtml(block)}</p>`;
   });
 
-  const safeQuestion = question.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const safeQuestion = question.replace(/&/g, "&").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const dateStr = new Date().toLocaleDateString("en-US", {
     year: "numeric",
     month: "short",

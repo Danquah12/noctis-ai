@@ -564,7 +564,7 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
           )}
         >
           <Skull className="size-3.5 text-amber-400" />
-          Clinical Toxicology &amp; Toxidromes
+          Clinical Toxicology & Toxidromes
           <span className="rounded bg-amber-500/20 px-1 py-0.2 text-[9px] font-bold text-amber-300">TOX</span>
         </button>
         <button
@@ -588,7 +588,7 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
           )}
         >
           <Bug className="size-3.5 text-teal-400" />
-          Antimicrobial &amp; Sepsis
+          Antimicrobial & Sepsis
           <span className="rounded bg-teal-500/20 px-1 py-0.2 text-[9px] font-bold text-teal-300">IDSA</span>
         </button>
         <button
@@ -600,7 +600,7 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
           )}
         >
           <Heart className="size-3.5 text-rose-400" />
-          Obstetric &amp; Neonatal (NRP)
+          Obstetric & Neonatal (NRP)
           <span className="rounded bg-rose-500/20 px-1 py-0.2 text-[9px] font-bold text-rose-300">NRP</span>
         </button>
         <button
@@ -612,7 +612,7 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
           )}
         >
           <Scan className="size-3.5 text-sky-400" />
-          POCUS &amp; Resuscitation (E-FAST/RUSH)
+          POCUS & Resuscitation (E-FAST/RUSH)
           <span className="rounded bg-sky-500/20 px-1 py-0.2 text-[9px] font-bold text-sky-300">POCUS</span>
         </button>
         <button
@@ -624,7 +624,7 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
           )}
         >
           <Pill className="size-3.5 text-amber-400" />
-          Pharmacology Matrix &amp; QTc
+          Pharmacology Matrix & QTc
           <span className="rounded bg-amber-500/20 px-1 py-0.2 text-[9px] font-bold text-amber-300">QTc</span>
         </button>
         <button
@@ -636,7 +636,7 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
           )}
         >
           <Flame className="size-3.5 text-orange-400" />
-          Acute Burn &amp; Inhalation (Parkland)
+          Acute Burn & Inhalation (Parkland)
           <span className="rounded bg-orange-500/20 px-1 py-0.2 text-[9px] font-bold text-orange-300">BURN</span>
         </button>
         <button
@@ -660,7 +660,7 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
           )}
         >
           <Activity className="size-3.5 text-violet-400" />
-          DKA &amp; HHS Resuscitation
+          DKA & HHS Resuscitation
           <span className="rounded bg-violet-500/20 px-1 py-0.2 text-[9px] font-bold text-violet-300">ADA</span>
         </button>
         <button
@@ -672,7 +672,7 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
           )}
         >
           <Thermometer className="size-3.5 text-cyan-400" />
-          TTM &amp; Neuroprognostication
+          TTM & Neuroprognostication
           <span className="rounded bg-cyan-500/20 px-1 py-0.2 text-[9px] font-bold text-cyan-300">TTM2</span>
         </button>
         <button
@@ -684,7 +684,7 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
           )}
         >
           <Droplets className="size-3.5 text-teal-400" />
-          CRRT &amp; KDIGO AKI
+          CRRT & KDIGO AKI
           <span className="rounded bg-teal-500/20 px-1 py-0.2 text-[9px] font-bold text-teal-300">KDIGO</span>
         </button>
         <button
@@ -696,7 +696,7 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
           )}
         >
           <Zap className="size-3.5 text-rose-400" />
-          Vasoactive &amp; Inotropes (VIS)
+          Vasoactive & Inotropes (VIS)
           <span className="rounded bg-rose-500/20 px-1 py-0.2 text-[9px] font-bold text-rose-300">VIS</span>
         </button>
         <button
@@ -708,7 +708,7 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
           )}
         >
           <Brain className="size-3.5 text-indigo-400" />
-          Stroke Code &amp; EVT Reperfusion
+          Stroke Code & EVT Reperfusion
           <span className="rounded bg-indigo-500/20 px-1 py-0.2 text-[9px] font-bold text-indigo-300">DAWN</span>
         </button>
         <button
@@ -929,7 +929,7 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
                   <div className="flex items-center justify-between">
                     <div>
                       <h4 className="text-sm font-bold text-amber-100 tracking-tight">
-                        1. Clinical Presentation &amp; Baseline Physiological Profile
+                        1. Clinical Presentation & Baseline Physiological Profile
                       </h4>
                       <div className="text-[10px] font-mono font-bold tracking-wider uppercase text-amber-400/90 mt-0.5">
                         STRUCTURED REFERENCE TABLE (3 COLUMNS)
@@ -955,7 +955,7 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
                         <tr className="border-b border-white/10 bg-white/[0.02]">
                           <th className="py-2.5 px-3.5 font-semibold text-amber-300/90 w-[24%]">Patient Parameter</th>
                           <th className="py-2.5 px-3.5 font-semibold text-amber-300/90 w-[42%]">Documented Clinical Value</th>
-                          <th className="py-2.5 px-3.5 font-semibold text-amber-300/90 w-[34%]">Physiological Significance &amp; Localization</th>
+                          <th className="py-2.5 px-3.5 font-semibold text-amber-300/90 w-[34%]">Physiological Significance & Localization</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-white/5 font-sans">
@@ -972,7 +972,7 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
                           <td className="py-2.5 px-3.5 text-white/60">Primary presenting acute physiological distress</td>
                         </tr>
                         <tr className="hover:bg-white/[0.02] transition-colors">
-                          <td className="py-2.5 px-3.5 font-medium text-white/95">Onset &amp; Timeline</td>
+                          <td className="py-2.5 px-3.5 font-medium text-white/95">Onset & Timeline</td>
                           <td className="py-2.5 px-3.5 text-white/90">{activeCase.onsetAndTimeline}</td>
                           <td className="py-2.5 px-3.5 text-white/60">
                             <span className="font-semibold text-amber-400">Time-Critical Window:</span> Hyperacute specialist pathway activated
@@ -1007,7 +1007,7 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
                 {/* 5. Critical Patient Safety Invariants & Contraindication Checklist (Image 2 Specification) */}
                 <div className="space-y-2 pt-2">
                   <h4 className="text-sm font-bold text-amber-100 tracking-tight">
-                    5. Critical Patient Safety Invariants &amp; Contraindication Checklist
+                    5. Critical Patient Safety Invariants & Contraindication Checklist
                   </h4>
                   <div className="rounded-xl border border-amber-500/40 bg-[#16120b] p-3.5 text-xs space-y-2 shadow-lg">
                     <div className="flex items-center gap-2">
@@ -1068,7 +1068,7 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
                         </>
                       ) : (
                         <>
-                          <Volume2 className="size-3.5 text-amber-300" /> Read Aloud (Full Dossier &amp; Safety Invariants)
+                          <Volume2 className="size-3.5 text-amber-300" /> Read Aloud (Full Dossier & Safety Invariants)
                         </>
                       )}
                     </button>

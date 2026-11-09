@@ -159,10 +159,10 @@ export function NoctisPalsSection({ onSendToChat }: NoctisPalsSectionProps) {
             </span>
           </div>
           <h2 className="text-lg font-bold tracking-tight text-white mt-1">
-            Pediatric Advanced Life Support (PALS) &amp; Broselow Resuscitation Engine
+            Pediatric Advanced Life Support (PALS) & Broselow Resuscitation Engine
           </h2>
           <p className="text-xs text-white/60">
-            Broselow color zones (Grey to Adolescent), age-stratified physiological vitals, weight-based mL volume dosing, cuffed ETT formulas &amp; 10-fold Epinephrine overdose veto.
+            Broselow color zones (Grey to Adolescent), age-stratified physiological vitals, weight-based mL volume dosing, cuffed ETT formulas & 10-fold Epinephrine overdose veto.
           </p>
         </div>
 
@@ -372,7 +372,7 @@ export function NoctisPalsSection({ onSendToChat }: NoctisPalsSectionProps) {
           {/* Age-Stratified Physiological Normals */}
           <div className="rounded-xl border border-white/10 bg-black/40 p-4 space-y-3">
             <h3 className="text-xs font-bold uppercase tracking-wider text-pink-400 flex items-center gap-2">
-              <Activity className="size-4" /> Age-Stratified Vitals &amp; Hypotension
+              <Activity className="size-4" /> Age-Stratified Vitals & Hypotension
             </h3>
 
             <div className="grid grid-cols-3 gap-2 text-center text-xs">

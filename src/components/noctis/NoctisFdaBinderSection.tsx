@@ -62,7 +62,7 @@ export function NoctisFdaBinderSection({ onSendToChat }: NoctisFdaBinderSectionP
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-bold text-white tracking-wide">
-                  FDA 510(k) / eSTAR &amp; SaMD Comprehensive Regulatory Binder
+                  FDA 510(k) / eSTAR & SaMD Comprehensive Regulatory Binder
                 </h2>
                 <span className="rounded bg-amber-500/10 border border-amber-500/30 px-1.5 py-0.5 text-[10px] font-mono text-amber-300">
                   eSTAR v5.2 / ISO 14971
@@ -135,7 +135,7 @@ export function NoctisFdaBinderSection({ onSendToChat }: NoctisFdaBinderSectionP
       {/* Risk Management Matrix */}
       <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 space-y-3">
         <h3 className="text-xs font-bold uppercase tracking-wider text-white flex items-center gap-2 border-b border-white/10 pb-2">
-          <ShieldCheck className="size-4 text-emerald-400" /> ISO 14971:2019 Risk Management &amp; Hazard Analysis Matrix
+          <ShieldCheck className="size-4 text-emerald-400" /> ISO 14971:2019 Risk Management & Hazard Analysis Matrix
         </h3>
 
         <div className="overflow-x-auto">

@@ -172,7 +172,7 @@ Recommendations: ${news2.recommendedResponse} ${qsofa.isHighRiskSepsis ? `\nSeps
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-bold text-white/95">
-                Automated Clinical Deterioration &amp; Early Warning Scoring (NEWS2 / qSOFA)
+                Automated Clinical Deterioration & Early Warning Scoring (NEWS2 / qSOFA)
               </h3>
               <span className="rounded bg-rose-500/20 px-2 py-0.5 text-[10px] font-mono font-bold text-rose-300 border border-rose-500/30">
                 RCP NEWS2 · Sepsis-3
@@ -401,7 +401,7 @@ Recommendations: ${news2.recommendedResponse} ${qsofa.isHighRiskSepsis ? `\nSeps
             </span>
           )}
           <span className="text-[10px] text-white/40 font-mono">
-            Royal College of Physicians (RCP) NEWS2 &amp; SCCM Sepsis-3 Guidelines
+            Royal College of Physicians (RCP) NEWS2 & SCCM Sepsis-3 Guidelines
           </span>
         </div>
 

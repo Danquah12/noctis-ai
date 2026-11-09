@@ -369,7 +369,7 @@ export function NoctisCognitiveModal({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
                     <div className="p-3 rounded-lg bg-emerald-950/20 border border-emerald-800/40 space-y-1">
                       <span className="text-[10px] font-mono font-bold text-emerald-400 uppercase block">
-                        ✅ Chosen (Deterministic &amp; Calibrated)
+                        ✅ Chosen (Deterministic & Calibrated)
                       </span>
                       <p className="text-emerald-200/90 leading-relaxed font-sans">{pair.chosen}</p>
                     </div>

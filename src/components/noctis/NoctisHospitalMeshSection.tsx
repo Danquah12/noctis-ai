@@ -139,7 +139,7 @@ Recent Replications: ${deltas.map((d) => `[${d.opId}] ${d.operationType} on ${d.
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-bold text-white/95">
-                Multi-Hospital Sovereign Federation &amp; Air-Gapped Mesh Sync
+                Multi-Hospital Sovereign Federation & Air-Gapped Mesh Sync
               </h3>
               <span className="rounded bg-teal-500/20 px-2 py-0.5 text-[10px] font-mono font-bold text-teal-300 border border-teal-500/30">
                 PGLite-CRDT-010

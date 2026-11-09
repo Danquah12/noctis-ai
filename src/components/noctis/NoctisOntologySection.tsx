@@ -127,10 +127,10 @@ export function NoctisOntologySection({ onSendToChat }: NoctisOntologySectionPro
             </span>
           </div>
           <h2 className="text-lg font-bold tracking-tight text-white mt-1">
-            Clinical Ontologies &amp; Semantic Terminology Crosswalk
+            Clinical Ontologies & Semantic Terminology Crosswalk
           </h2>
           <p className="text-xs text-white/60">
-            Bi-directional semantic mapping across SNOMED-CT, RxNorm (RxCUI), LOINC, ICD-10-CM &amp; 2023 AMA CPT E/M MDM Auditor.
+            Bi-directional semantic mapping across SNOMED-CT, RxNorm (RxCUI), LOINC, ICD-10-CM & 2023 AMA CPT E/M MDM Auditor.
           </p>
         </div>
 
@@ -198,7 +198,7 @@ export function NoctisOntologySection({ onSendToChat }: NoctisOntologySectionPro
         <div className="rounded-xl border border-rose-500/50 bg-rose-950/30 p-4 space-y-2">
           <div className="flex items-center gap-2 text-rose-300 font-bold text-sm">
             <ShieldAlert className="size-4 text-rose-400 animate-pulse" />
-            CRITICAL ONTOLOGY &amp; CODING INTEGRITY VETO TRIPPED ({mdmAudit.trippedInvariants.join(", ")})
+            CRITICAL ONTOLOGY & CODING INTEGRITY VETO TRIPPED ({mdmAudit.trippedInvariants.join(", ")})
           </div>
           <div className="space-y-1.5 text-xs text-rose-200/90">
             {mdmAudit.mandatoryActions.map((action, i) => (

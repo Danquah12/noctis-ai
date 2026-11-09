@@ -277,11 +277,11 @@ export function NoctisToxicologySection({ onSendToChat }: NoctisToxicologySectio
               21 U.S.C. § 360j(o)(1)(E)
             </span>
             <span className="rounded bg-red-600/20 border border-red-500/40 px-2 py-0.5 text-[10px] font-bold text-red-300">
-              Rumack-Matthew &amp; Hunter Criteria
+              Rumack-Matthew & Hunter Criteria
             </span>
           </div>
           <h2 className="text-lg font-bold tracking-tight text-white mt-1">
-            Clinical Toxicology &amp; Emergency Toxidrome Resuscitation Engine
+            Clinical Toxicology & Emergency Toxidrome Resuscitation Engine
           </h2>
           <p className="text-xs text-white/60">
             Rumack-Matthew APAP nomogram with 3-bag IV NAC infusion, Hunter Serotonin Syndrome criteria, High-Dose Insulin (HIET), and Flumazenil veto.
@@ -348,7 +348,7 @@ export function NoctisToxicologySection({ onSendToChat }: NoctisToxicologySectio
               : "bg-black/30 border-white/10 text-white/70 hover:bg-white/5"
           )}
         >
-          <span className="text-rose-400 font-bold mr-1">&bull;</span> Diltiazem Shock (HR 38, BP 72/44, HIET &amp; Intralipid)
+          <span className="text-rose-400 font-bold mr-1">&bull;</span> Diltiazem Shock (HR 38, BP 72/44, HIET & Intralipid)
         </button>
         <button
           type="button"
@@ -400,7 +400,7 @@ export function NoctisToxicologySection({ onSendToChat }: NoctisToxicologySectio
         <div className="lg:col-span-5 space-y-4">
           <div className="rounded-xl border border-white/10 bg-black/40 p-4 space-y-4">
             <h3 className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-2">
-              <Sliders className="size-4" /> Toxidrome Physical Exam &amp; Vitals
+              <Sliders className="size-4" /> Toxidrome Physical Exam & Vitals
             </h3>
 
             {/* Vitals Strip */}

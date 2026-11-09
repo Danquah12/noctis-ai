@@ -307,7 +307,7 @@ Active Alarms: ${telemetry.activeAlarms.length > 0 ? telemetry.activeAlarms.map(
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-bold text-white/95">
-                Bedside Medical Device Telemetry &amp; Web Bluetooth IoMT Engine
+                Bedside Medical Device Telemetry & Web Bluetooth IoMT Engine
               </h3>
               <span className="rounded bg-cyan-500/20 px-2 py-0.5 text-[10px] font-mono font-bold text-cyan-300 border border-cyan-500/30">
                 GATT-IoMT-008

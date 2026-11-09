@@ -235,7 +235,7 @@ export function NoctisMtpSection({ onSendToChat }: NoctisMtpSectionProps) {
             </span>
           </div>
           <h2 className="mt-1.5 text-xl font-bold tracking-tight text-white flex items-center gap-2">
-            Massive Transfusion Protocol (MTP) &amp; Viscoelastic Hemostasis
+            Massive Transfusion Protocol (MTP) & Viscoelastic Hemostasis
           </h2>
           <p className="text-xs text-zinc-400 mt-0.5">
             Non-compensatory safety invariant gates: Exsanguinating crystalloid drowning veto, citrate hypocalcemia veto, delayed TXA harm veto, and trauma lethal triad of death.
@@ -573,7 +573,7 @@ export function NoctisMtpSection({ onSendToChat }: NoctisMtpSectionProps) {
           <strong className="text-zinc-200">1. CRASH-2 Trial 3-Hour TXA Cutoff:</strong> The randomized CRASH-2 trial demonstrated that Tranexamic Acid administered within 3 hours of trauma significantly reduced all-cause mortality and death due to bleeding. In contrast, when administered after 3 hours, TXA resulted in a 44% increase in the risk of fatal bleeding and occlusive thrombotic events. After 3 hours, TXA is strictly contraindicated.
         </p>
         <p className="leading-relaxed">
-          <strong className="text-zinc-200">2. Citrate Hypocalcemia &amp; Coagulation Arrest:</strong> Citrate preservative in PRBC and FFP packs binds free ionized calcium (Ca2+). Calcium is a critical cofactor in tenase and prothrombinase enzyme complexes, as well as cardiac excitation-contraction coupling. When iCa &lt; 0.9 mmol/L, refractory hypotension, arrhythmias, and non-correctable coagulopathy occur. 1 gram of Calcium Chloride IV is mandatory for every 4 units of blood products.
+          <strong className="text-zinc-200">2. Citrate Hypocalcemia & Coagulation Arrest:</strong> Citrate preservative in PRBC and FFP packs binds free ionized calcium (Ca2+). Calcium is a critical cofactor in tenase and prothrombinase enzyme complexes, as well as cardiac excitation-contraction coupling. When iCa &lt; 0.9 mmol/L, refractory hypotension, arrhythmias, and non-correctable coagulopathy occur. 1 gram of Calcium Chloride IV is mandatory for every 4 units of blood products.
         </p>
       </div>
     </div>

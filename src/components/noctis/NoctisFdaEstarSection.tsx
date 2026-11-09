@@ -110,7 +110,7 @@ Cybersecurity: CycloneDX SBOM, STRIDE threat modeling, FIPS 140-3 Level 3 assura
               </span>
             </div>
             <p className="text-[11px] text-white/50">
-              Automated Pre-Market Notification eSTAR XML &amp; PDF generation under 21 U.S.C. § 360j(o)(1)(E).
+              Automated Pre-Market Notification eSTAR XML & PDF generation under 21 U.S.C. § 360j(o)(1)(E).
             </p>
           </div>
         </div>
@@ -195,7 +195,7 @@ Cybersecurity: CycloneDX SBOM, STRIDE threat modeling, FIPS 140-3 Level 3 assura
               <div className="text-[10px] text-white/50">eSTAR Version {pkg.eStarVersion}</div>
             </div>
             <div className="rounded-lg bg-black/40 border border-white/10 p-2.5 space-y-0.5">
-              <div className="text-[10px] uppercase font-bold text-white/40">Product Code &amp; Class</div>
+              <div className="text-[10px] uppercase font-bold text-white/40">Product Code & Class</div>
               <div className="font-mono text-xs font-bold text-emerald-300">{pkg.submitter.productCode}</div>
               <div className="text-[10px] text-white/50">Class II / Non-Device CDS Exemption</div>
             </div>
@@ -260,7 +260,7 @@ Cybersecurity: CycloneDX SBOM, STRIDE threat modeling, FIPS 140-3 Level 3 assura
       {activeTab === "statutory" && (
         <div className="space-y-3">
           <div className="text-[11px] text-white/60">
-            The FDA January 2026 Clinical Decision Support Guidance establishes that software satisfying all four criteria under Section 520(o)(1)(E) of the FD&amp;C Act is not a medical device:
+            The FDA January 2026 Clinical Decision Support Guidance establishes that software satisfying all four criteria under Section 520(o)(1)(E) of the FD&C Act is not a medical device:
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
@@ -363,7 +363,7 @@ Cybersecurity: CycloneDX SBOM, STRIDE threat modeling, FIPS 140-3 Level 3 assura
       {activeTab === "cyber" && (
         <div className="space-y-3">
           <div className="text-[11px] text-white/60">
-            Compliance with Section 524B of the FD&amp;C Act (Ensuring Cybersecurity of Medical Devices):
+            Compliance with Section 524B of the FD&C Act (Ensuring Cybersecurity of Medical Devices):
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -387,7 +387,7 @@ Cybersecurity: CycloneDX SBOM, STRIDE threat modeling, FIPS 140-3 Level 3 assura
 
             <div className="rounded-xl border border-white/10 bg-black/40 p-3 space-y-1.5">
               <div className="flex items-center gap-1.5 text-emerald-300 font-semibold text-xs">
-                <ShieldCheck className="size-4" /> Threat Modeling &amp; Surveillance
+                <ShieldCheck className="size-4" /> Threat Modeling & Surveillance
               </div>
               <p className="text-[11px] text-white/60 leading-relaxed">
                 <strong>STRIDE</strong> threat modeling matrix, continuous post-market drift surveillance, and air-gapped containerization support.
