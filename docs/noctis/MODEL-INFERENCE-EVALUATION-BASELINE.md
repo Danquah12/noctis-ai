@@ -28,6 +28,15 @@ Build on the existing evaluation entry point with a versioned, held-out question
 
 **No paid model calls, transmission of private data to external providers or training jobs without explicit authorization.** Start with no-network tests and synthetic/public permitted examples; only run true model baselines once a configured evaluation provider, consented data, budget and independent grading mechanism are available.
 
+## Read-only baseline harness now available
+
+- Project-authored, fixed **held-out V1 corpus**: `scripts/fixtures/noctis-general-assistant-baseline-v1.json`, 12 synthetic question sets spanning conversation, instruction-following, multi-turn memory, math, coding, research/citations, tool use, cyber, health, legal and engineering. No user chat or protected records are included. Multimodal task inputs require a later consented fixture and are **not** covered by V1.
+- `node scripts/noctis-live-eval.mjs` performs **dry-run manifest inspection only** and makes zero model calls. `node --test scripts/noctis-live-eval.test.mjs scripts/noctis-desk-model-routing.test.mjs` runs network-free harness/routing checks.
+- Live evaluation must be specifically authorized because a configured Noctis backend may use paid model providers. Example for a **previously approved nonproduction local** server: `NOCTIS_EVAL_AUTHORIZED=YES NOCTIS_EVAL_URL=http://127.0.0.1:8080/api/noctis node scripts/noctis-live-eval.mjs --execute`. Do not run this command without authorization and confirmation of the backend's actual provider/cost settings.
+- Remote HTTPS evaluation additionally requires `NOCTIS_EVAL_ALLOW_REMOTE=YES`, explicit approval, and a legitimate owned evaluation endpoint. `NOCTIS_EVAL_API_KEY` supplies an HTTP bearer if needed. No credentials are written to reports.
+- Reports default to restricted files in the OS temporary directory with response hashes, lengths, basic latency and a returned model label marked **unverified**. `NOCTIS_EVAL_STORE_RESPONSES=YES` explicitly enables raw response retention; leave off unless reviewed. Mechanical numeric/phrase checks are clearly labeled and cannot replace human or execution-based grading. No overall accuracy or cross-model parity figure is produced.
+- Actual live requests remain **not run**, and response origin remains unverified until the model gateway and specialist handlers return trustworthy provider/route provenance.
+
 ## Model training: evidence requirements
 
 A genuine training run requires a trainable base model and its rights documented, dataset source/license/provenance and privacy filters, distinct train/dev/held-out partitions, reproducible SFT or preference-optimization configuration, job logs, adapter or checkpoint artifacts, evaluation against the frozen baseline and explicit release approval. Do not describe seed-memory loading, JSONL exports, API inference, passing application tests or template scores as model-weight training.
