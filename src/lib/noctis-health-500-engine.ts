@@ -431,8 +431,10 @@ export function calculateScorecard(
   // 9. Evidence & References (max 5)
   let evidenceScore = 0;
   let refCount = 0;
-  for (const ref of caseData.guidelineReferences) {
-    if (norm.includes(ref.organization.toLowerCase()) || norm.includes(ref.guidelineTitle.toLowerCase())) {
+  for (const ref of caseData.guidelineReferences || []) {
+    const org = (ref.organization || (ref as any).issuingOrganization || "").toLowerCase();
+    const title = (ref.guidelineTitle || (ref as any).guidelineName || "").toLowerCase();
+    if ((org && norm.includes(org)) || (title && norm.includes(title))) {
       refCount++;
     }
   }

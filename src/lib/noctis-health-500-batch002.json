@@ -1,0 +1,586 @@
+[
+  {
+    "benchmark": "NOCTIS-HEALTH-500",
+    "caseId": "NH-CARD-001",
+    "batchId": "BATCH-002",
+    "specialty": "CARDIOLOGY",
+    "clinicalCategory": "Acute Aortic Syndromes",
+    "difficulty": "EXPERT_COMPLEX",
+    "patientProfile": {
+      "ageYears": 61,
+      "biologicalSex": "MALE",
+      "pastMedicalHistory": ["Poorly controlled chronic hypertension", "Tobacco use (35 pack-years)"],
+      "currentMedications": ["Amlodipine 10mg daily (non-compliant)"],
+      "allergies": ["No known drug allergies (NKDA)"]
+    },
+    "initialPresentation": {
+      "chiefComplaint": "Sudden catastrophic anterior chest pain tearing through to the upper back",
+      "onsetAndTimeline": "Sudden onset 45 minutes prior to ED arrival",
+      "symptoms": ["maximal pain intensity at onset", "tearing interscapular pain", "diaphoresis", "nausea"],
+      "vitals": {
+        "bloodPressure": "188/104",
+        "heartRateBpm": 108,
+        "respiratoryRatePerMin": 24,
+        "spo2Percent": 96
+      }
+    },
+    "progressiveStages": [
+      {
+        "stageIndex": 1,
+        "stageName": "Hemodynamic & Physical Asymmetry",
+        "releasedFindings": [
+          "Significant 46 mmHg systolic blood pressure differential between right arm (188/104) and left arm (142/86).",
+          "Diminished left radial and femoral pulses.",
+          "New high-pitched early diastolic decrescendo murmur heard best along the right sternal border (acute aortic regurgitation)."
+        ],
+        "expectedClinicalRealignment": "Sudden tearing pain with pulse deficit and acute aortic regurgitation murmur establishes presumptive acute Stanford Type A aortic dissection; immediate contraindication to anticoagulation or antiplatelets."
+      },
+      {
+        "stageIndex": 2,
+        "stageName": "Diagnostic Imaging & Hemodynamic Goals",
+        "releasedFindings": [
+          "Urgent portable CXR reveals marked mediastinal widening (> 8 cm) and abnormal aortic knob contour.",
+          "ECG demonstrates sinus tachycardia with non-specific ST-T changes (excludes focal STEMI).",
+          "Emergent ECG-gated CT Angiography (CTA) of chest, abdomen, and pelvis demonstrates intimal flap originating 1.2 cm above the sinotubular junction extending through the aortic arch into the descending thoracic aorta."
+        ],
+        "expectedClinicalRealignment": "Confirmed Stanford Type A / DeBakey Type I aortic dissection; initiate urgent IV beta-blockade (Esmolol) targeting SBP 100-120 mmHg and HR < 60 bpm, followed by vasodilator if needed, with immediate emergent cardiothoracic surgery mobilization."
+      }
+    ],
+    "goldStandard": {
+      "primaryDiagnosis": "Acute Stanford Type A (DeBakey Type I) Aortic Dissection",
+      "icd10": "I71.01",
+      "clinicalRationale": "Sudden maximal tearing chest and back pain, pulse deficit, unequal upper extremity blood pressures, acute aortic regurgitation murmur, widened mediastinum, and CTA demonstrating ascending aortic intimal flap.",
+      "rankedDifferential": [
+        { "rank": 1, "condition": "Acute Aortic Dissection (Stanford Type A)", "tier": "TIER_1_PRIMARY_EMERGENCY", "probabilityPercent": 90, "dangerRating": "CRITICAL" },
+        { "rank": 2, "condition": "Acute Coronary Syndrome (STEMI/NSTEMI)", "tier": "TIER_2_MUST_NOT_MISS", "probabilityPercent": 6, "dangerRating": "CRITICAL" },
+        { "rank": 3, "condition": "Massive Pulmonary Embolism", "tier": "TIER_2_MUST_NOT_MISS", "probabilityPercent": 3, "dangerRating": "CRITICAL" },
+        { "rank": 4, "condition": "Spontaneous Pneumothorax", "tier": "TIER_3_ALTERNATIVE", "probabilityPercent": 1, "dangerRating": "HIGH" }
+      ],
+      "clinicalScores": [
+        {
+          "scoreName": "Aortic Dissection Detection Risk Score (ADD-RS)",
+          "scoreType": "DIAGNOSTIC",
+          "formula": "High-risk conditions (1) + High-risk pain features (1) + High-risk exam findings (1)",
+          "requiredInputs": ["Severe abrupt tearing pain", "Pulse deficit or BP differential > 20 mmHg", "Aortic regurgitation murmur"],
+          "expectedCalculation": "High-risk pain (1) + High-risk exam (1) = Score 2",
+          "expectedResult": "High Probability (ADD-RS >= 2, mandates emergent CTA)",
+          "missingDataBehavior": "Assign points only for verified high-risk categories."
+        }
+      ],
+      "expectedInvestigations": [
+        { "priority": "STAT", "testName": "ECG-gated CT Angiography of Chest, Abdomen, and Pelvis", "modality": "IMAGING", "rationale": "Definitive gold-standard for diagnosing aortic dissection, entry tear, and visceral malperfusion." },
+        { "priority": "STAT", "testName": "12-Lead Electrocardiogram", "modality": "BEDSIDE", "rationale": "Differentiate from STEMI and evaluate for RCA involvement / inferior ischemia." },
+        { "priority": "STAT", "testName": "Type and Crossmatch 6 Units PRBCs, FFP, Platelets", "modality": "LABORATORY", "rationale": "Immediate surgical preparation for emergent cardiopulmonary bypass." }
+      ],
+      "expectedManagement": {
+        "immediateInterventions": [
+          "IV Esmolol infusion titrated to HR < 60 bpm prior to vasodilator",
+          "IV Nitroprusside or Nicardipine if SBP remains > 120 mmHg after beta-blockade",
+          "Adequate IV opioid analgesia (Fentanyl) to blunt sympathetic surge"
+        ],
+        "definitiveTherapy": [
+          "Emergent open surgical repair with ascending aortic graft replacement and valve resuspension/replacement"
+        ],
+        "escalationLevel": "EMERGENCY_OR"
+      },
+      "safetyChecklist": {
+        "strictContraindications": [
+          "Thrombolytic therapy (tissue plasminogen activator)",
+          "Therapeutic anticoagulation (heparin, LMWH)",
+          "Vasodilator monotherapy without prior beta-blockade"
+        ],
+        "highRiskInteractions": [
+          "Giving hydralazine or nitroprusside alone causes reflex tachycardia and accelerates aortic rupture."
+        ]
+      },
+      "criticalFailures": [
+        {
+          "failureCode": "CF-CARD-001",
+          "description": "Administering heparin or thrombolytic for suspected ACS without ruling out aortic dissection",
+          "clinicalHarmPotential": "DEATH",
+          "overrideRule": "INSTANT_BENCHMARK_FAIL"
+        }
+      ]
+    },
+    "acceptanceCriteria": {
+      "minimumPassingScore": 85,
+      "requiredKeyFindings": ["Blood pressure asymmetry", "Acute aortic regurgitation murmur", "Ascending aorta involvement"],
+      "mandatoryActions": ["Withhold anticoagulation", "Beta-blockade before vasodilators", "Stat cardiothoracic surgery consult"]
+    },
+    "guidelineReferences": [
+      {
+        "organization": "American College of Cardiology / American Heart Association",
+        "guidelineTitle": "2022 ACC/AHA Guideline for the Diagnosis and Management of Aortic Disease",
+        "publicationYear": 2022
+      }
+    ]
+  },
+  {
+    "benchmark": "NOCTIS-HEALTH-500",
+    "caseId": "NH-CC-001",
+    "batchId": "BATCH-002",
+    "specialty": "CRITICAL_CARE",
+    "clinicalCategory": "Acute Respiratory Distress Syndrome",
+    "difficulty": "EXPERT_COMPLEX",
+    "patientProfile": {
+      "ageYears": 54,
+      "biologicalSex": "FEMALE",
+      "pastMedicalHistory": ["Alcohol use disorder", "GERD"],
+      "currentMedications": ["Omeprazole 20mg daily"],
+      "allergies": ["Penicillin (rash)"]
+    },
+    "initialPresentation": {
+      "chiefComplaint": "Severe acute respiratory distress 48 hours following an unwitnessed aspiration event",
+      "onsetAndTimeline": "Progressive tachypnea and hypoxia over past 24 hours",
+      "symptoms": ["severe dyspnea", "cyanosis", "accessory muscle use", "tachypnea"],
+      "vitals": {
+        "bloodPressure": "106/68",
+        "heartRateBpm": 124,
+        "respiratoryRatePerMin": 36,
+        "temperatureCelsius": 38.6,
+        "spo2Percent": 82
+      }
+    },
+    "progressiveStages": [
+      {
+        "stageIndex": 1,
+        "stageName": "Berlin Definition Criteria Confirmation",
+        "releasedFindings": [
+          "ABG on 100% Non-Rebreather: pH 7.28, PaCO2 48 mmHg, PaO2 54 mmHg, HCO3 22 mmol/L.",
+          "Patient is intubated: post-intubation PaO2 is 62 mmHg on FiO2 1.0 with PEEP 10 cmH2O (PaO2/FiO2 ratio = 62 mmHg).",
+          "Portable CXR: Diffuse, bilateral fluffy alveolar opacities sparing the costophrenic angles.",
+          "Bedside echocardiogram: Normal left ventricular ejection fraction (60%), normal left atrial size, no regional wall motion abnormalities, IVC collapsibility 40% (rules out cardiogenic pulmonary edema)."
+        ],
+        "expectedClinicalRealignment": "Meets Berlin definition for Severe ARDS (P/F ratio < 100 mmHg on PEEP >= 5 cmH2O within 7 days of acute insult with non-cardiogenic bilateral infiltrates)."
+      },
+      {
+        "stageIndex": 2,
+        "stageName": "Lung-Protective Ventilation & Adjunctive Rescue",
+        "releasedFindings": [
+          "Patient weight: 70 kg, predicted body weight (PBW): 52 kg.",
+          "Initial ventilator set to tidal volume 500 mL (9.6 mL/kg PBW), resulting in plateau pressure (Pplat) 36 cmH2O and driving pressure 24 cmH2O.",
+          "Hypoxia persists despite neuromuscular blockade infusion."
+        ],
+        "expectedClinicalRealignment": "Immediate reduction of tidal volume to ARDSNet protocol (4-6 mL/kg PBW, target 310 mL) to lower Pplat < 30 cmH2O and driving pressure < 15 cmH2O; mandatory initiation of prone positioning for >= 16 hours/day (PROSEVA trial)."
+      }
+    ],
+    "goldStandard": {
+      "primaryDiagnosis": "Severe Acute Respiratory Distress Syndrome (ARDS) secondary to aspiration pneumonitis",
+      "icd10": "J80",
+      "clinicalRationale": "Meets Berlin Definition for Severe ARDS: Acute onset within 1 week of clinical insult, bilateral infiltrates on chest imaging not fully explained by cardiac failure, and PaO2/FiO2 ratio = 62 mmHg (< 100 mmHg) with PEEP >= 5 cmH2O.",
+      "rankedDifferential": [
+        { "rank": 1, "condition": "Severe Acute Respiratory Distress Syndrome (ARDS)", "tier": "TIER_1_PRIMARY_EMERGENCY", "probabilityPercent": 88, "dangerRating": "CRITICAL" },
+        { "rank": 2, "condition": "Cardiogenic Pulmonary Edema / Flash Pulmonary Edema", "tier": "TIER_2_MUST_NOT_MISS", "probabilityPercent": 8, "dangerRating": "CRITICAL" },
+        { "rank": 3, "condition": "Diffuse Alveolar Hemorrhage", "tier": "TIER_3_ALTERNATIVE", "probabilityPercent": 2, "dangerRating": "HIGH" },
+        { "rank": 4, "condition": "Acute Interstitial Pneumonia (Hamman-Rich)", "tier": "TIER_3_ALTERNATIVE", "probabilityPercent": 2, "dangerRating": "HIGH" }
+      ],
+      "clinicalScores": [
+        {
+          "scoreName": "Berlin Definition ARDS Severity Classification",
+          "scoreType": "SEVERITY_PROGNOSTIC",
+          "formula": "PaO2 / FiO2 ratio on PEEP >= 5 cmH2O",
+          "requiredInputs": ["PaO2 = 62 mmHg", "FiO2 = 1.0", "PEEP = 10 cmH2O"],
+          "expectedCalculation": "62 / 1.0 = 62 mmHg",
+          "expectedResult": "Severe ARDS (P/F ratio <= 100 mmHg)",
+          "missingDataBehavior": "Cannot grade ARDS severity without arterial blood gas and exact ventilator FiO2 and PEEP."
+        }
+      ],
+      "expectedInvestigations": [
+        { "priority": "STAT", "testName": "Arterial Blood Gas (ABG)", "modality": "LABORATORY", "rationale": "Assess PaO2, oxygenation ratio, and acute respiratory acidosis." },
+        { "priority": "STAT", "testName": "Transthoracic Echocardiogram (TTE)", "modality": "IMAGING", "rationale": "Exclude cardiogenic etiology and evaluate right ventricular strain / cor pulmonale." }
+      ],
+      "expectedManagement": {
+        "immediateInterventions": [
+          "Low tidal volume ventilation: 4-6 mL/kg predicted body weight (310 mL)",
+          "Maintain plateau pressure Pplat <= 30 cmH2O and driving pressure <= 14 cmH2O",
+          "Early prone positioning for at least 16 consecutive hours daily"
+        ],
+        "definitiveTherapy": [
+          "Conservative fluid management after shock resolution",
+          "Evaluation for VV-ECMO if P/F < 80 mmHg persists"
+        ],
+        "escalationLevel": "ICU_ADMISSION"
+      },
+      "safetyChecklist": {
+        "strictContraindications": [
+          "High tidal volume ventilation (> 8 mL/kg PBW)",
+          "Excessive fluid boluses without hemodynamic responsiveness",
+          "Supine-only positioning in refractory severe ARDS"
+        ],
+        "highRiskInteractions": [
+          "Over-ventilation with large tidal volumes induces barotrauma and ventilator-induced lung injury (VILI)."
+        ]
+      },
+      "criticalFailures": [
+        {
+          "failureCode": "CF-CC-001",
+          "description": "Failing to adopt low-tidal-volume lung-protective ventilation in severe ARDS",
+          "clinicalHarmPotential": "DEATH",
+          "overrideRule": "INSTANT_BENCHMARK_FAIL"
+        }
+      ]
+    },
+    "acceptanceCriteria": {
+      "minimumPassingScore": 85,
+      "requiredKeyFindings": ["P/F ratio < 100", "Bilateral non-cardiogenic infiltrates", "Plateau pressure > 30 cmH2O"],
+      "mandatoryActions": ["Reduce tidal volume to 4-6 mL/kg PBW", "Prone positioning >= 16h", "ICU level care"]
+    },
+    "guidelineReferences": [
+      {
+        "organization": "European Society of Intensive Care Medicine",
+        "guidelineTitle": "ESICM Guidelines on Acute Respiratory Distress Syndrome 2023",
+        "publicationYear": 2023
+      }
+    ]
+  },
+  {
+    "benchmark": "NOCTIS-HEALTH-500",
+    "caseId": "NH-NEUR-001",
+    "batchId": "BATCH-002",
+    "specialty": "NEUROLOGY",
+    "clinicalCategory": "Posterior Circulation Acute Ischemic Stroke",
+    "difficulty": "EXPERT_COMPLEX",
+    "patientProfile": {
+      "ageYears": 68,
+      "biologicalSex": "MALE",
+      "pastMedicalHistory": ["Atrial fibrillation (not on anticoagulation)", "Hyperlipidemia", "Type 2 Diabetes"],
+      "currentMedications": ["Metformin 1000mg BID", "Atorvastatin 40mg daily"],
+      "allergies": ["No known drug allergies (NKDA)"]
+    },
+    "initialPresentation": {
+      "chiefComplaint": "Sudden acute vertigo, diplopia, dysarthria, and bilateral lower extremity weakness",
+      "onsetAndTimeline": "Witnessed acute onset 3 hours ago while eating lunch",
+      "symptoms": ["diplopia", "vertigo", "slurred speech", "ataxia", "fluctuating level of consciousness"],
+      "vitals": {
+        "bloodPressure": "172/96",
+        "heartRateBpm": 88,
+        "respiratoryRatePerMin": 18,
+        "spo2Percent": 98
+      }
+    },
+    "progressiveStages": [
+      {
+        "stageIndex": 1,
+        "stageName": "Posterior Circulation Localization & Deterioration",
+        "releasedFindings": [
+          "Neurologic exam: Skew deviation, bilateral horizontal and vertical nystagmus, bilateral cranial nerve VI and VII palsies, and bilateral Babinski signs.",
+          "NIHSS is 18.",
+          "Patient exhibits rapid fluctuation into somnolence, with bilateral pin-point pupils (pons localization)."
+        ],
+        "expectedClinicalRealignment": "Classic 'top of the basilar' / basilar artery occlusion syndrome; devastating high-mortality ischemic emergency requiring immediate neurovascular imaging and thrombectomy activation."
+      },
+      {
+        "stageIndex": 2,
+        "stageName": "CTA Confirmation & Extended Window Intervention",
+        "releasedFindings": [
+          "Non-contrast Head CT: No intracranial hemorrhage; subtle early hypoattenuation in the ventral pons; pc-ASPECTS score 8.",
+          "CT Angiography (CTA) of Head and Neck: Complete flow void / occlusion of the mid-to-distal basilar artery.",
+          "CT Perfusion: Preserved penumbra throughout posterior cerebral artery territories."
+        ],
+        "expectedClinicalRealignment": "Basilar artery occlusion confirmed; patient is within the 0-24 hour window for emergent mechanical thrombectomy (ATTENTION / BAOCHE trials); administer IV tenecteplase/alteplase if within 4.5h and rapidly mobilize neurointerventional team to cath lab."
+      }
+    ],
+    "goldStandard": {
+      "primaryDiagnosis": "Acute Basilar Artery Occlusion (Posterior Circulation Ischemic Stroke)",
+      "icd10": "I63.1",
+      "clinicalRationale": "Acute brainstem and cerebellar ischemic syndrome manifesting as vertigo, cranial nerve palsies, dysarthria, fluctuating somnolence, and pin-point pupils, confirmed by CTA demonstrating basilar artery occlusion.",
+      "rankedDifferential": [
+        { "rank": 1, "condition": "Acute Basilar Artery Occlusion", "tier": "TIER_1_PRIMARY_EMERGENCY", "probabilityPercent": 85, "dangerRating": "CRITICAL" },
+        { "rank": 2, "condition": "Brainstem Intracerebral Hemorrhage (Pontine Bleed)", "tier": "TIER_2_MUST_NOT_MISS", "probabilityPercent": 10, "dangerRating": "CRITICAL" },
+        { "rank": 3, "condition": "Acute Vestibular Neuritis", "tier": "TIER_3_ALTERNATIVE", "probabilityPercent": 3, "dangerRating": "MODERATE" },
+        { "rank": 4, "condition": "Wernicke's Encephalopathy", "tier": "TIER_3_ALTERNATIVE", "probabilityPercent": 2, "dangerRating": "HIGH" }
+      ],
+      "clinicalScores": [
+        {
+          "scoreName": "Posterior Circulation ASPECTS (pc-ASPECTS)",
+          "scoreType": "TREATMENT_ELIGIBILITY",
+          "formula": "10-point scale evaluating midbrain (2), pons (2), thalamus (2), occipital cortex (2), cerebellum (2)",
+          "requiredInputs": ["Pons hypodensity (loss of 2 points)"],
+          "expectedCalculation": "10 - 2 = 8",
+          "expectedResult": "pc-ASPECTS 8 (Favorable tissue for mechanical thrombectomy)",
+          "missingDataBehavior": "Requires non-contrast CT assessment of posterior fossa structures."
+        }
+      ],
+      "expectedInvestigations": [
+        { "priority": "STAT", "testName": "Non-Contrast Head CT and CT Angiography Head & Neck", "modality": "IMAGING", "rationale": "Rule out hemorrhage and confirm site of basilar occlusion." },
+        { "priority": "STAT", "testName": "CT Brain Perfusion", "modality": "IMAGING", "rationale": "Identify salvageable ischemic penumbra." }
+      ],
+      "expectedManagement": {
+        "immediateInterventions": [
+          "Immediate emergency activation of Endovascular Thrombectomy (EVT) team",
+          "IV Tenecteplase 0.25 mg/kg if within 4.5 hours and no contraindications",
+          "Airway protection / intubation if GCS drops or bulbar compromise worsens"
+        ],
+        "definitiveTherapy": [
+          "Mechanical thrombectomy (aspiration / stent retriever) within 24 hours of onset"
+        ],
+        "escalationLevel": "CATH_LAB"
+      },
+      "safetyChecklist": {
+        "strictContraindications": [
+          "Acute blood pressure lowering (SBP < 140 mmHg) in un-recanalized basilar occlusion",
+          "Delaying EVT team mobilization to observe IV thrombolytic response"
+        ],
+        "highRiskInteractions": [
+          "Iatrogenic hypotension collapses collateral flow through the circle of Willis and causes irreversible brainstem death."
+        ]
+      },
+      "criticalFailures": [
+        {
+          "failureCode": "CF-NEUR-001",
+          "description": "Dismissing posterior circulation stroke as benign peripheral vertigo or delaying EVT mobilization",
+          "clinicalHarmPotential": "DEATH",
+          "overrideRule": "INSTANT_BENCHMARK_FAIL"
+        }
+      ]
+    },
+    "acceptanceCriteria": {
+      "minimumPassingScore": 85,
+      "requiredKeyFindings": ["Basilar artery occlusion on CTA", "pc-ASPECTS >= 6", "Brainstem signs (pin-point pupils, cranial nerve palsies)"],
+      "mandatoryActions": ["Emergency EVT activation", "IV thrombolytic if within window", "Avoid acute hypotension"]
+    },
+    "guidelineReferences": [
+      {
+        "organization": "American Heart Association / American Stroke Association",
+        "guidelineTitle": "2023 AHA/ASA Focused Update on Mechanical Thrombectomy for Acute Ischemic Stroke",
+        "publicationYear": 2023
+      }
+    ]
+  },
+  {
+    "benchmark": "NOCTIS-HEALTH-500",
+    "caseId": "NH-ID-001",
+    "batchId": "BATCH-002",
+    "specialty": "INFECTIOUS_DISEASES",
+    "clinicalCategory": "Acute Bacterial Meningitis & Sepsis",
+    "difficulty": "EXPERT_COMPLEX",
+    "patientProfile": {
+      "ageYears": 19,
+      "biologicalSex": "FEMALE",
+      "pastMedicalHistory": ["College freshman living in dormitory", "Splenectomy at age 8 following motor vehicle crash"],
+      "currentMedications": ["None"],
+      "allergies": ["No known drug allergies (NKDA)"]
+    },
+    "initialPresentation": {
+      "chiefComplaint": "Severe explosive headache, photophobia, fever, and confusion",
+      "onsetAndTimeline": "Sudden escalation over past 8 hours",
+      "symptoms": ["fever", "nuchal rigidity", "confusion", "petechial rash on lower extremities"],
+      "vitals": {
+        "bloodPressure": "92/58",
+        "heartRateBpm": 132,
+        "temperatureCelsius": 39.8,
+        "respiratoryRatePerMin": 26,
+        "spo2Percent": 97
+      }
+    },
+    "progressiveStages": [
+      {
+        "stageIndex": 1,
+        "stageName": "Meningeal Signs & Overwhelming Post-Splenectomy Infection (OPSI)",
+        "releasedFindings": [
+          "Physical exam: Inability to touch chin to chest (severe nuchal rigidity), positive Kernig sign and positive Brudzinski sign.",
+          "Rapidly spreading non-blanching purpuric and petechial lesions over both thighs and trunk (purpura fulminans).",
+          "Patient is disoriented to time and place (GCS 13)."
+        ],
+        "expectedClinicalRealignment": "Suspected acute bacterial meningitis, likely Neisseria meningitidis or Streptococcus pneumoniae in an asplenic patient with septic shock and purpura fulminans; requires immediate empiric antibiotics and steroids within minutes."
+      },
+      {
+        "stageIndex": 2,
+        "stageName": "Laboratory & Pre-LP Antibiotic Prioritization",
+        "releasedFindings": [
+          "Serum WBC: 28,400/uL with 22% band forms; platelets 78,000/uL.",
+          "Serum Lactate: 5.2 mmol/L; INR 1.9.",
+          "CT Head is requested by nursing prior to lumbar puncture."
+        ],
+        "expectedClinicalRealignment": "CRITICAL SAFETY GATE: Never delay antimicrobial administration for imaging or lumbar puncture. Draw 2 blood cultures immediately, administer IV Ceftriaxone 2g + Vancomycin + Dexamethasone 10mg IV immediately (within 30 minutes); perform head CT and LP only after antibiotic infusion."
+      }
+    ],
+    "goldStandard": {
+      "primaryDiagnosis": "Acute Fulminant Meningococcal Meningitis with Septic Shock and Purpura Fulminans",
+      "icd10": "A39.0",
+      "clinicalRationale": "Classic triad of fever, altered mental status, and nuchal rigidity in a college student with asplenia, accompanied by purpura fulminans and septic shock.",
+      "rankedDifferential": [
+        { "rank": 1, "condition": "Acute Bacterial Meningitis (Neisseria meningitidis / Streptococcus pneumoniae)", "tier": "TIER_1_PRIMARY_EMERGENCY", "probabilityPercent": 92, "dangerRating": "CRITICAL" },
+        { "rank": 2, "condition": "Viral Meningoencephalitis (HSV-1 / Enterovirus)", "tier": "TIER_2_MUST_NOT_MISS", "probabilityPercent": 5, "dangerRating": "CRITICAL" },
+        { "rank": 3, "condition": "Rocky Mountain Spotted Fever", "tier": "TIER_3_ALTERNATIVE", "probabilityPercent": 2, "dangerRating": "HIGH" },
+        { "rank": 4, "condition": "Subarachnoid Hemorrhage", "tier": "TIER_3_ALTERNATIVE", "probabilityPercent": 1, "dangerRating": "CRITICAL" }
+      ],
+      "clinicalScores": [
+        {
+          "scoreName": "qSOFA Score",
+          "scoreType": "SEVERITY_PROGNOSTIC",
+          "formula": "RR >= 22 (1) + SBP <= 100 (1) + Altered mental status GCS < 15 (1)",
+          "requiredInputs": ["RR = 26", "SBP = 92", "GCS = 13"],
+          "expectedCalculation": "1 + 1 + 1 = 3 / 3",
+          "expectedResult": "High Risk for In-Hospital Sepsis Mortality (Score = 3)",
+          "missingDataBehavior": "Requires all three clinical vitals/mental status parameters."
+        }
+      ],
+      "expectedInvestigations": [
+        { "priority": "STAT", "testName": "Blood Cultures (2 sets) prior to antibiotics without delay", "modality": "LABORATORY", "rationale": "Isolate pathogen prior to antibiotic sterilization of blood." },
+        { "priority": "URGENT", "testName": "Lumbar Puncture (post-antibiotic and post-CT)", "modality": "BEDSIDE", "rationale": "CSF cell count, protein, glucose, Gram stain, and PCR." }
+      ],
+      "expectedManagement": {
+        "immediateInterventions": [
+          "IV Dexamethasone 10mg immediately prior to or with first dose of antibiotics",
+          "Empiric IV Ceftriaxone 2g + Vancomycin 15-20 mg/kg within 30 minutes of arrival",
+          "Droplet isolation precautions",
+          "Fluid resuscitation with 30 mL/kg balanced crystalloids for septic shock"
+        ],
+        "definitiveTherapy": [
+          "Targeted parenteral antibiotics tailored to CSF culture and antimicrobial susceptibility",
+          "Public health chemoprophylaxis for close contacts"
+        ],
+        "escalationLevel": "ICU_ADMISSION"
+      },
+      "safetyChecklist": {
+        "strictContraindications": [
+          "Delaying antimicrobial administration for CT imaging or lumbar puncture",
+          "Administering steroids hours after antibiotics have been started"
+        ],
+        "highRiskInteractions": [
+          "Every hour of delay in antibiotic administration for bacterial meningitis increases mortality by up to 12%."
+        ]
+      },
+      "criticalFailures": [
+        {
+          "failureCode": "CF-ID-001",
+          "description": "Delaying empiric antibiotics to obtain a head CT scan or perform lumbar puncture in acute bacterial meningitis",
+          "clinicalHarmPotential": "DEATH",
+          "overrideRule": "INSTANT_BENCHMARK_FAIL"
+        }
+      ]
+    },
+    "acceptanceCriteria": {
+      "minimumPassingScore": 85,
+      "requiredKeyFindings": ["Nuchal rigidity + fever + purpura fulminans", "Overwhelming sepsis in asplenic host", "qSOFA = 3"],
+      "mandatoryActions": ["Antibiotics and dexamethasone immediately without delay for CT/LP", "Droplet isolation", "ICU resuscitation"]
+    },
+    "guidelineReferences": [
+      {
+        "organization": "Infectious Diseases Society of America",
+        "guidelineTitle": "Infectious Diseases Society of America (IDSA) Guidelines for the Management of Bacterial Meningitis",
+        "publicationYear": 2024
+      }
+    ]
+  },
+  {
+    "benchmark": "NOCTIS-HEALTH-500",
+    "caseId": "NH-NEPH-001",
+    "batchId": "BATCH-002",
+    "specialty": "NEPHROLOGY",
+    "clinicalCategory": "Rhabdomyolysis & Acute Kidney Injury",
+    "difficulty": "EXPERT_COMPLEX",
+    "patientProfile": {
+      "ageYears": 72,
+      "biologicalSex": "FEMALE",
+      "pastMedicalHistory": ["Osteoarthritis", "Hypertension"],
+      "currentMedications": ["Lisinopril 20mg daily", "Hydrochlorothiazide 25mg daily"],
+      "allergies": ["Sulfa (hives)"]
+    },
+    "initialPresentation": {
+      "chiefComplaint": "Found down on the floor for approximately 18 hours after a fall; severe bilateral thigh pain",
+      "onsetAndTimeline": "Found by neighbor this morning; unable to rise from floor",
+      "symptoms": ["profound muscle weakness", "tense swollen thighs", "dark tea-colored urine", "confusion"],
+      "vitals": {
+        "bloodPressure": "98/62",
+        "heartRateBpm": 112,
+        "respiratoryRatePerMin": 20,
+        "spo2Percent": 96
+      }
+    },
+    "progressiveStages": [
+      {
+        "stageIndex": 1,
+        "stageName": "Myoglobinuria & Critical Electrolyte Derangement",
+        "releasedFindings": [
+          "Urinalysis dipstick: 3+ Blood; Microscopic urinalysis: 0-1 RBC/hpf (classic myoglobinuria pigment dissociation).",
+          "Serum Creatine Kinase (CK): 78,500 U/L (massive rhabdomyolysis).",
+          "Serum Potassium: 6.6 mmol/L with peaked, narrow T waves on 12-lead ECG.",
+          "Serum Creatinine: 3.8 mg/dL (baseline 0.9 mg/dL) with BUN 64 mg/dL."
+        ],
+        "expectedClinicalRealignment": "Severe rhabdomyolysis with pigment-induced acute tubular necrosis (ATN) and life-threatening hyperkalemia with ECG changes; emergent membrane stabilization with IV calcium gluconate followed by shifting and high-volume fluid resuscitation."
+      },
+      {
+        "stageIndex": 2,
+        "stageName": "Compartment Syndrome Evaluation & Fluid Protocol",
+        "releasedFindings": [
+          "Extremity exam reveals tense, woody swelling of right anterior thigh with severe pain on passive knee flexion and diminished light touch sensation.",
+          "Serum Calcium: 6.8 mg/dL (ionized calcium 0.88 mmol/L); Serum Phosphorus: 7.2 mg/dL.",
+          "Urine output via Foley catheter is only 15 mL over the first hour."
+        ],
+        "expectedClinicalRealignment": "Right thigh compartment syndrome secondary to crush injury; urgent orthopedic evaluation for compartment pressure measurement and emergent fasciotomy; avoid empiric calcium replacement for asymptomatic hypocalcemia (causes metastatic tissue calcification in rhabdomyolysis), but treat life-threatening hyperkalemia immediately; initiate aggressive isotonic IV crystalloid titration targeting urine output 200-300 mL/hr."
+      }
+    ],
+    "goldStandard": {
+      "primaryDiagnosis": "Crush Injury Rhabdomyolysis with Pigment-Induced Acute Tubular Necrosis and Thigh Compartment Syndrome",
+      "icd10": "M62.82",
+      "clinicalRationale": "Prolonged immobilization leading to massive myonecrosis (CK > 78,000 U/L), myoglobinuria (blood on dipstick without RBCs on microscopy), severe AKI (creatinine 3.8), hyperkalemia (6.6), and anterior thigh compartment syndrome.",
+      "rankedDifferential": [
+        { "rank": 1, "condition": "Rhabdomyolysis with Acute Tubular Necrosis", "tier": "TIER_1_PRIMARY_EMERGENCY", "probabilityPercent": 92, "dangerRating": "CRITICAL" },
+        { "rank": 2, "condition": "Acute Glomerulonephritis with Hematuria", "tier": "TIER_3_ALTERNATIVE", "probabilityPercent": 4, "dangerRating": "HIGH" },
+        { "rank": 3, "condition": "Hemolytic Anemia with Hemoglobinuria", "tier": "TIER_2_MUST_NOT_MISS", "probabilityPercent": 3, "dangerRating": "HIGH" },
+        { "rank": 4, "condition": "Deep Vein Thrombosis / Phlegmasia", "tier": "TIER_3_ALTERNATIVE", "probabilityPercent": 1, "dangerRating": "HIGH" }
+      ],
+      "clinicalScores": [
+        {
+          "scoreName": "McMahon Rhabdomyolysis Risk Score",
+          "scoreType": "SEVERITY_PROGNOSTIC",
+          "formula": "Age + Sex + Etiology + CK + Creatinine + Calcium + Phosphate + Bicarbonate",
+          "requiredInputs": ["CK > 40,000", "Creatinine 3.8", "Phosphate 7.2", "Calcium 6.8"],
+          "expectedCalculation": "High-risk category (Score > 6)",
+          "expectedResult": "High risk for requiring renal replacement therapy or mortality",
+          "missingDataBehavior": "Requires full chemistry profile including electrolytes and CK."
+        }
+      ],
+      "expectedInvestigations": [
+        { "priority": "STAT", "testName": "12-Lead Electrocardiogram", "modality": "BEDSIDE", "rationale": "Detect cardiotoxic hyperkalemic conduction changes." },
+        { "priority": "STAT", "testName": "Serum Creatine Kinase (CK) and Comprehensive Metabolic Panel", "modality": "LABORATORY", "rationale": "Quantify muscle breakdown, renal function, potassium, and calcium/phosphate." },
+        { "priority": "STAT", "testName": "Intra-compartmental Pressure Manometry (Stryker needle)", "modality": "BEDSIDE", "rationale": "Confirm compartment syndrome (delta pressure < 30 mmHg)." }
+      ],
+      "expectedManagement": {
+        "immediateInterventions": [
+          "IV Calcium Gluconate 10% (10-20 mL) for cardiac membrane stabilization due to K 6.6 with peaked T waves",
+          "Insulin 10 units IV + D50W 50 mL for potassium shift",
+          "Aggressive IV isotonic saline resuscitation targeting urine output 200-300 mL/hr",
+          "Immediate orthopedic surgical consult for emergent fasciotomy"
+        ],
+        "definitiveTherapy": [
+          "Surgical fasciotomy for compartment decompression",
+          "Hemodialysis if refractory hyperkalemia or anuria persists"
+        ],
+        "escalationLevel": "EMERGENCY_OR"
+      },
+      "safetyChecklist": {
+        "strictContraindications": [
+          "Routine IV calcium correction for asymptomatic hypocalcemia in rhabdomyolysis",
+          "Potassium-containing IV solutions (avoid Lactated Ringer's until hyperkalemia resolves)",
+          "NSAIDs, ACE inhibitors, or other nephrotoxins"
+        ],
+        "highRiskInteractions": [
+          "Administering calcium for early hypocalcemia without ECG changes precipitates widespread metastatic calcification in damaged skeletal muscle."
+        ]
+      },
+      "criticalFailures": [
+        {
+          "failureCode": "CF-NEPH-001",
+          "description": "Failing to treat hyperkalemic ECG changes with membrane stabilization before other measures",
+          "clinicalHarmPotential": "DEATH",
+          "overrideRule": "INSTANT_BENCHMARK_FAIL"
+        }
+      ]
+    },
+    "acceptanceCriteria": {
+      "minimumPassingScore": 85,
+      "requiredKeyFindings": ["CK > 70,000 U/L", "Dipstick blood without RBCs (myoglobinuria)", "Hyperkalemia with peaked T waves", "Compartment syndrome"],
+      "mandatoryActions": ["Immediate IV calcium for peaked T waves", "Aggressive IV hydration", "Emergency fasciotomy consult"]
+    },
+    "guidelineReferences": [
+      {
+        "organization": "Kidney Disease: Improving Global Outcomes",
+        "guidelineTitle": "KDIGO Clinical Practice Guideline for Acute Kidney Injury",
+        "publicationYear": 2022
+      }
+    ]
+  }
+]
