@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import {
   Activity,
+  BellRing,
   Dna,
   Network,
   Volume2,
@@ -102,6 +103,7 @@ import { NoctisBedsideTelemetrySection } from "./NoctisBedsideTelemetrySection";
 import { NoctisFdaEstarSection } from "./NoctisFdaEstarSection";
 import { NoctisHospitalMeshSection } from "./NoctisHospitalMeshSection";
 import { NoctisPgxSection } from "./NoctisPgxSection";
+import { NoctisEarlyWarningSection } from "./NoctisEarlyWarningSection";
 
 interface NoctisFrontierTabProps {
   onSendToChat?: (promptText: string) => void;
@@ -109,7 +111,7 @@ interface NoctisFrontierTabProps {
 }
 
 export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabProps) {
-  const [activeSubTab, setActiveSubTab] = useState<"health500" | "leaderboard" | "ambient" | "qlora" | "swarm" | "dicom" | "fhir" | "telemetry" | "estar" | "mesh" | "pgx" | "engineering" | "edge" | "specialist">("health500");
+  const [activeSubTab, setActiveSubTab] = useState<"health500" | "leaderboard" | "ambient" | "qlora" | "swarm" | "dicom" | "fhir" | "telemetry" | "estar" | "mesh" | "pgx" | "early-warning" | "engineering" | "edge" | "specialist">("health500");
   
   // Leaderboard State
   const [leaderboardData, setLeaderboardData] = useState<BenchmarkRunReport>(() => getDefaultLeaderboard());
@@ -1330,6 +1332,19 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
       {/* Track 11: Real-Time Pharmacogenomics (PGx) & Drug-Gene Safety Engine */}
       {activeSubTab === "pgx" && (
         <NoctisPgxSection onSendToChat={onSendToChat} />
+      )}
+
+      {/* Track 12: Clinical Deterioration & Early Warning Scoring (NEWS2 / qSOFA) */}
+      {activeSubTab === "early-warning" && (
+        <NoctisEarlyWarningSection
+          onSendToChat={onSendToChat}
+          onInjectVitalsToCase={(v) => {
+            setCustomVitalsOverride((prev) => ({
+              ...prev,
+              [selectedSpecialty]: v,
+            }));
+          }}
+        />
       )}
 
       {activeSubTab === "edge" && (
