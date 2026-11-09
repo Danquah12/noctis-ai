@@ -49,6 +49,9 @@ import {
   Thermometer,
   Droplets,
   Brain,
+  WifiOff,
+  Building2,
+  FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -136,6 +139,9 @@ import { NoctisTtmSection } from "./NoctisTtmSection";
 import { NoctisCrrtSection } from "./NoctisCrrtSection";
 import { NoctisVasoactiveSection } from "./NoctisVasoactiveSection";
 import { NoctisStrokeSection } from "./NoctisStrokeSection";
+import { NoctisAirgapSection } from "./NoctisAirgapSection";
+import { NoctisEhrBridgeSection } from "./NoctisEhrBridgeSection";
+import { NoctisFdaBinderSection } from "./NoctisFdaBinderSection";
 
 interface NoctisFrontierTabProps {
   onSendToChat?: (promptText: string) => void;
@@ -168,6 +174,9 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
     | "crrt"
     | "vaso"
     | "stroke"
+    | "airgap"
+    | "ehrbridge"
+    | "fdabinder"
     | "estar"
     | "mesh"
     | "pgx"
@@ -701,6 +710,42 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
           <Brain className="size-3.5 text-indigo-400" />
           Stroke Code &amp; EVT Reperfusion
           <span className="rounded bg-indigo-500/20 px-1 py-0.2 text-[9px] font-bold text-indigo-300">DAWN</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab("airgap")}
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
+            activeSubTab === "airgap" ? "bg-emerald-600 text-white shadow-sm ring-1 ring-emerald-400" : "bg-white/5 text-white/70 hover:bg-white/10"
+          )}
+        >
+          <WifiOff className="size-3.5 text-emerald-400" />
+          Sovereign Air-Gap Engine
+          <span className="rounded bg-emerald-500/20 px-1 py-0.2 text-[9px] font-bold text-emerald-300">ZERO-WAN</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab("ehrbridge")}
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
+            activeSubTab === "ehrbridge" ? "bg-sky-600 text-white shadow-sm ring-1 ring-sky-400" : "bg-white/5 text-white/70 hover:bg-white/10"
+          )}
+        >
+          <Building2 className="size-3.5 text-sky-400" />
+          EHR Bridge (SMART/FHIR)
+          <span className="rounded bg-sky-500/20 px-1 py-0.2 text-[9px] font-bold text-sky-300">EPIC</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab("fdabinder")}
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
+            activeSubTab === "fdabinder" ? "bg-amber-600 text-white shadow-sm ring-1 ring-amber-400" : "bg-white/5 text-white/70 hover:bg-white/10"
+          )}
+        >
+          <FileText className="size-3.5 text-amber-400" />
+          FDA 510(k) eSTAR Binder
+          <span className="rounded bg-amber-500/20 px-1 py-0.2 text-[9px] font-bold text-amber-300">ISO 14971</span>
         </button>
         <button
           type="button"
@@ -1787,6 +1832,21 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
       {/* Track 30: Comprehensive Stroke Code & Neurovascular Reperfusion Engine */}
       {activeSubTab === "stroke" && (
         <NoctisStrokeSection onSendToChat={onSendToChat} />
+      )}
+
+      {/* Frontier 1: Sovereign In-Browser WebGPU & Air-Gap Engine */}
+      {activeSubTab === "airgap" && (
+        <NoctisAirgapSection onSendToChat={onSendToChat} />
+      )}
+
+      {/* Frontier 3: Bi-Directional EHR Bridge (SMART-on-FHIR / Epic & Cerner) */}
+      {activeSubTab === "ehrbridge" && (
+        <NoctisEhrBridgeSection onSendToChat={onSendToChat} />
+      )}
+
+      {/* Frontier 4: FDA 510(k) / eSTAR & SaMD Comprehensive Regulatory Binder */}
+      {activeSubTab === "fdabinder" && (
+        <NoctisFdaBinderSection onSendToChat={onSendToChat} />
       )}
 
       {activeSubTab === "edge" && (
