@@ -14,6 +14,7 @@ import { NoctisCall } from "@/components/noctis/NoctisCall";
 import { NoctisCanvas } from "@/components/noctis/NoctisCanvas";
 import { NoctisPluginsTab } from "@/components/noctis/NoctisPluginsTab";
 import { NoctisForgeTab } from "@/components/noctis/NoctisForgeTab";
+import { NoctisFrontierTab } from "@/components/noctis/NoctisFrontierTab";
 import { NoctisSovereignFactoryStudio } from "@/components/noctis/NoctisSovereignFactoryStudio";
 import { DUAL_PLANE_SPECIFICATION, SQDEC_HIERARCHY } from "@/lib/noctis-sovereign-factory";
 import { NoctisConsoleTab } from "@/components/noctis/NoctisConsoleTab";
@@ -3412,7 +3413,7 @@ export function NoctisDesk() {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
   const [uploads, setUploads] = useState<Upload[]>([]);
-  const [desk, setDesk] = useState<"chat" | "study" | "forge" | "plugins" | "console" | "redteam">("chat");
+  const [desk, setDesk] = useState<"chat" | "study" | "forge" | "plugins" | "console" | "redteam" | "frontier">("chat");
   const [executorPlugin, setExecutorPlugin] = useState<DistributedPluginItem | null>(null);
   const [executorOpen, setExecutorOpen] = useState(false);
   const [studyTopic, setStudyTopic] = useState("");
@@ -6549,6 +6550,18 @@ export function NoctisDesk() {
           <span>Plugins & Systems</span>
           <span className="ml-auto rounded-full bg-sky-500/20 px-1.5 py-0.5 text-[10px] font-bold text-sky-300">50+</span>
         </button>
+        <button
+          type="button"
+          onClick={() => {
+            setDesk("frontier");
+            setMenu(false);
+          }}
+          className={item(desk === "frontier")}
+        >
+          <Cpu className="size-4 shrink-0 text-violet-400" />
+          <span>Frontier & Benchmarks</span>
+          <span className="ml-auto rounded-full bg-violet-500/20 px-1.5 py-0.5 text-[10px] font-bold text-violet-300">500+</span>
+        </button>
         <button type="button" onClick={() => openShelf("pictures")} className={item(shelf === "pictures")}>
           <Image className="size-4 shrink-0" />
           Pictures
@@ -7608,6 +7621,14 @@ export function NoctisDesk() {
                 }}
                 onClose={() => setDesk("chat")}
                 onOpenInCanvas={(title, md) => openInCanvas(title, md)}
+              />
+            ) : desk === "frontier" ? (
+              <NoctisFrontierTab
+                onSendToChat={(taskPrompt) => {
+                  setDesk("chat");
+                  void send(taskPrompt);
+                }}
+                onClose={() => setDesk("chat")}
               />
             ) : empty ? (
           <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
