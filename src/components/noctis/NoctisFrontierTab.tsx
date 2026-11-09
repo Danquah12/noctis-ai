@@ -97,7 +97,7 @@ interface NoctisFrontierTabProps {
 }
 
 export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabProps) {
-  const [activeSubTab, setActiveSubTab] = useState<"health500" | "leaderboard" | "ambient" | "qlora" | "swarm" | "dicom" | "fhir" | "engineering" | "edge" | "specialist">("health500");
+  const [activeSubTab, setActiveSubTab] = useState<"health500" | "leaderboard" | "ambient" | "qlora" | "swarm" | "dicom" | "fhir" | "telemetry" | "engineering" | "edge" | "specialist">("health500");
   
   // Leaderboard State
   const [leaderboardData, setLeaderboardData] = useState<BenchmarkRunReport>(() => getDefaultLeaderboard());
@@ -1274,8 +1274,9 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
 
       {activeSubTab === "fhir" && (
         <NoctisSmartFhirSection onSendToChat={onSendToChat} />
+      )}
 
-        {/* Track 8: Real-Time Bedside Medical Device Telemetry & Web Bluetooth IoMT Engine */}
+      {activeSubTab === "telemetry" && (
         <NoctisBedsideTelemetrySection
           onSendToChat={onSendToChat}
           onInjectVitalsToCase={(v) => {
