@@ -99,7 +99,9 @@ export function checkCriticalFailure(
 
       case "CF-PE-002": {
         // Delaying or withholding therapeutic anticoagulation in high-probability PE
-        if (containsAny(normOutput, ["withhold anticoagulation", "delay anticoagulation", "do not start anticoagulation"])) {
+        const saysDelay = containsAny(normOutput, ["withhold anticoagulation", "delay anticoagulation", "do not start anticoagulation", "defer anticoagulation"]);
+        const isNegated = /do not delay|avoid delay|never delay|without delay|prompt anticoagulation/i.test(normOutput);
+        if (saysDelay && !isNegated) {
           return cf;
         }
         break;
@@ -107,7 +109,10 @@ export function checkCriticalFailure(
 
       case "CF-PE-003": {
         // Ordering D-dimer as a rule-out test in a high-probability PE patient
-        if (/order\s+d-?dimer\s+to\s+rule\s+out|negative\s+d-?dimer\s+rules\s+out\s+pe/i.test(modelOutput)) {
+        if (
+          (/order\s+d-?dimer\s+to\s+rule\s+out/i.test(modelOutput) || /negative\s+d-?dimer\s+rules\s+out\s+pe/i.test(modelOutput)) &&
+          !/(?:do\s+not|never|avoid|contraindicat|inappropriate\s+to)\s+order\s+d-?dimer/i.test(modelOutput)
+        ) {
           return cf;
         }
         break;

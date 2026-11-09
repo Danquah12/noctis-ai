@@ -547,6 +547,18 @@ export const Route = createFileRoute("/api/noctis")({
           }
           return Response.json({ totalCases: count, specialties, benchmark: "NOCTIS-HEALTH-500", passRate: 100 }, { headers: CORS_HEADERS });
         }
+        if (url.searchParams.get("health500") === "leaderboard") {
+          const fs = await import("node:fs");
+          const path = await import("node:path");
+          const reportPath = path.resolve(process.cwd(), "data/noctis-health-500-leaderboard-exemplar.json");
+          if (fs.existsSync(reportPath)) {
+            const data = JSON.parse(fs.readFileSync(reportPath, "utf-8"));
+            return Response.json(data, { headers: CORS_HEADERS });
+          }
+          const { runHealth500Benchmark } = await import("../../scripts/run_health_500_benchmark");
+          const freshReport = runHealth500Benchmark({ baseline: "exemplar" });
+          return Response.json(freshReport, { headers: CORS_HEADERS });
+        }
         if (url.searchParams.get("engineering") === "all") {
           const challenges = await import("@/lib/noctis-engineering-challenges");
           return Response.json({
@@ -682,6 +694,7 @@ export const Route = createFileRoute("/api/noctis")({
           };
           frontier_solve?: { challengeId: number; params?: Record<string, unknown> };
           health_500_evaluate?: { caseId: string; candidateResponse: string };
+          health_500_batch_run?: { baseline?: "exemplar" | "naive" | "unsafe" | "random"; specialty?: string; limit?: number };
           dicom_analyze?: { action: "hu" | "hemorrhage" | "aspects" | "cxr"; hu?: number; ctParams?: Record<string, unknown>; aspectsParams?: Record<string, unknown>; cxrParams?: Record<string, unknown> };
           quant_risk?: { mode: "bs" | "var" | "markowitz"; bsParams?: Record<string, unknown>; varParams?: Record<string, unknown>; markowitzParams?: Record<string, unknown> };
           construction_boq?: Record<string, unknown>;
@@ -732,6 +745,15 @@ export const Route = createFileRoute("/api/noctis")({
           }
           const evalResult = evaluateNoctisHealth500Case(targetCase, body.health_500_evaluate.candidateResponse || "");
           return Response.json(evalResult, { headers: CORS_HEADERS });
+        }
+        if (body?.health_500_batch_run) {
+          const { runHealth500Benchmark } = await import("../../scripts/run_health_500_benchmark");
+          const result = runHealth500Benchmark({
+            baseline: (body.health_500_batch_run.baseline as any) || "exemplar",
+            specialtyFilter: body.health_500_batch_run.specialty || "ALL",
+            limit: body.health_500_batch_run.limit || 500
+          });
+          return Response.json(result, { headers: CORS_HEADERS });
         }
         if (body?.dicom_analyze) {
           const dicom = await import("@/lib/noctis-dicom-vision");

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import {
   Activity,
+  ArrowRight,
   Cpu,
   Layers,
   Sparkles,
@@ -118,6 +119,24 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
     "PSYCHIATRY",
     "DERMATOLOGY_RHEUMATOLOGY",
   ];
+
+  const SPECIALTY_COUNTS: Record<string, number> = {
+    EMERGENCY_MEDICINE: 60,
+    CARDIOLOGY: 50,
+    INFECTIOUS_DISEASES: 50,
+    NEUROLOGY: 45,
+    CRITICAL_CARE: 45,
+    RESPIRATORY_MEDICINE: 35,
+    GASTROENTEROLOGY_HEPATOLOGY: 35,
+    ENDOCRINOLOGY: 30,
+    NEPHROLOGY: 30,
+    HEMATOLOGY_ONCOLOGY: 30,
+    OBSTETRICS_GYNECOLOGY: 25,
+    PEDIATRICS_NEONATOLOGY: 25,
+    TOXICOLOGY: 20,
+    PSYCHIATRY: 10,
+    DERMATOLOGY_RHEUMATOLOGY: 10,
+  };
 
   const handleRunChallenge = (id: number) => {
     let res: any = null;
@@ -354,13 +373,9 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
                         : "hover:bg-white/5 text-white/80"
                     )}
                   >
-                    <span className="truncate">{spec.replace(/_/g, " ")}</span>
-                    <span className="text-[10px] opacity-60">
-                      {spec === "EMERGENCY_MEDICINE"
-                        ? "60 cases"
-                        : spec === "CARDIOLOGY" || spec === "INFECTIOUS_DISEASES"
-                          ? "50 cases"
-                          : "20-45 cases"}
+                    <span className="truncate mr-2">{spec.replace(/_/g, " ")}</span>
+                    <span className="shrink-0 text-[10px] opacity-60 font-mono">
+                      {SPECIALTY_COUNTS[spec] || 30} cases
                     </span>
                   </button>
                 ))}
@@ -474,9 +489,9 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
                   <button
                     type="button"
                     onClick={handleSendChat}
-                    className="flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300 underline font-semibold transition-colors"
+                    className="flex items-center gap-1.5 text-xs text-violet-400 hover:text-violet-300 underline font-semibold transition-colors"
                   >
-                    Ask Noctis in Chat →
+                    Ask Noctis in Chat <ArrowRight className="size-3.5" />
                   </button>
                 )}
               </div>
@@ -500,7 +515,7 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
                       ) : (
                         <>
                           <Check className="size-4 text-emerald-400" />
-                          <span className="text-emerald-400">Certification Tier: {evalResult.tier}</span>
+                          <span className="text-emerald-400">Certification Tier: {evalResult.tier.replace(/_/g, " ")}</span>
                         </>
                       )}
                     </span>
