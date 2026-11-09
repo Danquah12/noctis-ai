@@ -1,0 +1,178 @@
+{
+  "suite_id": "NOCTIS-GENERAL-ASSISTANT-BASELINE-V1",
+  "version": "1.0.0",
+  "split": "heldout",
+  "source": "Project-authored synthetic prompts, not user conversations",
+  "usage_rights": "Created for internal Noctis model evaluation",
+  "notice": "Open-ended responses require independent human or task-specific assessment; no answer key is inferred from model output.",
+  "cases": [
+    {
+      "id": "conversation-01",
+      "category": "conversation",
+      "turns": [
+        {
+          "role": "user",
+          "content": "Explain the difference between an observation and an inference using the example of a wet sidewalk. Use plain language."
+        }
+      ],
+      "grader": {
+        "type": "manual"
+      }
+    },
+    {
+      "id": "instructions-01",
+      "category": "instruction_following",
+      "turns": [
+        {
+          "role": "user",
+          "content": "Write exactly three short sentences about learning a new skill. Do not use a list or heading."
+        }
+      ],
+      "grader": {
+        "type": "manual"
+      }
+    },
+    {
+      "id": "context-01",
+      "category": "multi_turn",
+      "turns": [
+        {
+          "role": "user",
+          "content": "For this hypothetical story, the meeting is in Accra, Ghana."
+        },
+        {
+          "role": "assistant",
+          "content": "Understood. The story's meeting takes place in Accra."
+        },
+        {
+          "role": "user",
+          "content": "Which city is the meeting in? Reply in one sentence."
+        }
+      ],
+      "grader": {
+        "type": "contains_phrase",
+        "value": "Accra"
+      }
+    },
+    {
+      "id": "math-01",
+      "category": "reasoning_math",
+      "turns": [
+        {
+          "role": "user",
+          "content": "Calculate 17 multiplied by 19. Give the numeric result."
+        }
+      ],
+      "grader": {
+        "type": "numeric_token",
+        "value": "323"
+      }
+    },
+    {
+      "id": "math-02",
+      "category": "reasoning_math",
+      "turns": [
+        {
+          "role": "user",
+          "content": "A tank has 750 liters of water. It loses 15% of the original amount. How many liters remain? Show the arithmetic."
+        }
+      ],
+      "grader": {
+        "type": "numeric_token",
+        "value": "637.5"
+      }
+    },
+    {
+      "id": "code-01",
+      "category": "coding",
+      "turns": [
+        {
+          "role": "user",
+          "content": "Write a Python 3 function that returns the first non-repeated character in a string, or None if none exists. Include 3 unit tests."
+        }
+      ],
+      "grader": {
+        "type": "manual"
+      }
+    },
+    {
+      "id": "research-01",
+      "category": "research_citations",
+      "turns": [
+        {
+          "role": "user",
+          "content": "Find an official primary-source page explaining what the James Webb Space Telescope observes. Cite the exact source you used and distinguish retrieved facts from interpretation."
+        }
+      ],
+      "grader": {
+        "type": "manual"
+      }
+    },
+    {
+      "id": "tool-01",
+      "category": "tool_use",
+      "turns": [
+        {
+          "role": "user",
+          "content": "Use an exact calculation if available: what is 256 divided by 8? Explain whether a calculation was actually run."
+        }
+      ],
+      "grader": {
+        "type": "numeric_token",
+        "value": "32"
+      }
+    },
+    {
+      "id": "cyber-01",
+      "category": "specialist_cyber",
+      "turns": [
+        {
+          "role": "user",
+          "content": "Explain the difference between vulnerability scanning and penetration testing, and give an authorized defensive example of each."
+        }
+      ],
+      "grader": {
+        "type": "manual"
+      }
+    },
+    {
+      "id": "health-01",
+      "category": "specialist_health",
+      "turns": [
+        {
+          "role": "user",
+          "content": "In a fictional emergency case, a 67-year-old is confused, febrile and hypotensive. Identify the urgent escalation and immediate safety priorities without inventing missing measurements."
+        }
+      ],
+      "grader": {
+        "type": "manual"
+      }
+    },
+    {
+      "id": "law-01",
+      "category": "specialist_legal",
+      "turns": [
+        {
+          "role": "user",
+          "content": "Explain the difference between a statute and an agency regulation in U.S. federal law. Say how to verify current authoritative language."
+        }
+      ],
+      "grader": {
+        "type": "manual"
+      }
+    },
+    {
+      "id": "engineering-01",
+      "category": "specialist_engineering",
+      "turns": [
+        {
+          "role": "user",
+          "content": "For a hypothetical small microgrid with solar generation and batteries, describe the inputs required before sizing the storage system. Do not invent a load profile."
+        }
+      ],
+      "grader": {
+        "type": "manual"
+      }
+    }
+  ]
+}
