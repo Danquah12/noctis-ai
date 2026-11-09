@@ -106,6 +106,7 @@ import { NoctisHospitalMeshSection } from "./NoctisHospitalMeshSection";
 import { NoctisPgxSection } from "./NoctisPgxSection";
 import { NoctisEarlyWarningSection } from "./NoctisEarlyWarningSection";
 import { NoctisLisHl7Section } from "./NoctisLisHl7Section";
+import { NoctisE2EDemoSection } from "./NoctisE2EDemoSection";
 
 interface NoctisFrontierTabProps {
   onSendToChat?: (promptText: string) => void;
@@ -113,7 +114,7 @@ interface NoctisFrontierTabProps {
 }
 
 export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabProps) {
-  const [activeSubTab, setActiveSubTab] = useState<"health500" | "leaderboard" | "ambient" | "qlora" | "swarm" | "dicom" | "fhir" | "telemetry" | "estar" | "mesh" | "pgx" | "early-warning" | "lis" | "engineering" | "edge" | "specialist">("health500");
+  const [activeSubTab, setActiveSubTab] = useState<"health500" | "leaderboard" | "ambient" | "qlora" | "swarm" | "dicom" | "fhir" | "telemetry" | "estar" | "mesh" | "pgx" | "early-warning" | "lis" | "demo" | "engineering" | "edge" | "specialist">("health500");
   
   // Leaderboard State
   const [leaderboardData, setLeaderboardData] = useState<BenchmarkRunReport>(() => getDefaultLeaderboard());
@@ -343,6 +344,18 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
           <FlaskConical className="size-3.5 text-cyan-400" />
           Laboratory LIS Ingestion
           <span className="rounded bg-cyan-500/20 px-1 py-0.2 text-[9px] font-bold text-cyan-300">HL7</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab("demo")}
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
+            activeSubTab === "demo" ? "bg-violet-600 text-white shadow-sm ring-1 ring-violet-400" : "bg-white/5 text-white/70 hover:bg-white/10"
+          )}
+        >
+          <Sparkles className="size-3.5 text-amber-300" />
+          Autonomous 10-Pillar Demo
+          <span className="rounded bg-amber-500/20 px-1 py-0.2 text-[9px] font-bold text-amber-300">1-CLICK</span>
         </button>
         <button
           type="button"
