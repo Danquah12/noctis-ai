@@ -83,6 +83,7 @@ import { exportReferenceTableCsv, exportFhirR4DocumentBundle, downloadBlob, prin
 import { NoctisAmbientDictationSection } from "./NoctisAmbientDictationSection";
 import { NoctisQLoRASection } from "./NoctisQLoRASection";
 import { NoctisSpecialistSwarmSection } from "./NoctisSpecialistSwarmSection";
+import { NoctisDicomVisionSection } from "./NoctisDicomVisionSection";
 
 interface NoctisFrontierTabProps {
   onSendToChat?: (promptText: string) => void;
@@ -1139,55 +1140,7 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
       )}
 
       {activeSubTab === "dicom" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
-            <h3 className="text-sm font-bold text-violet-400 mb-2">Hounsfield Unit (HU) Tissue Radiodensity</h3>
-            <p className="text-xs text-white/60 mb-3">Map raw CT radiodensity attenuation coefficients to biological tissues.</p>
-            <div className="flex items-center gap-3 mb-3">
-              <input
-                type="number"
-                value={huInput}
-                onChange={(e) => {
-                  const val = Number(e.target.value);
-                  setHuInput(val);
-                  setHuOutput(classifyHounsfieldUnit(val));
-                }}
-                className="w-32 rounded-lg border border-white/10 bg-black/40 px-3 py-1.5 text-xs text-white font-mono focus:border-violet-500 focus:outline-none"
-              />
-              <span className="text-xs text-white/50">HU</span>
-            </div>
-            <div className="rounded-lg bg-white/5 p-3 text-xs">
-              <span className="text-white/60">Classified Tissue:</span>{" "}
-              <span className="font-mono font-bold text-emerald-400">{huOutput}</span>
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
-            <h3 className="text-sm font-bold text-violet-400 mb-2">ASPECTS 10-Point Stroke Penumbra</h3>
-            <p className="text-xs text-white/60 mb-3">Calculate MCA territory ischemic loss and mechanical thrombectomy eligibility.</p>
-            <input
-              type="text"
-              value={aspectsRegions}
-              onChange={(e) => setAspectsRegions(e.target.value)}
-              className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-1.5 text-xs text-white font-mono mb-3 focus:border-violet-500 focus:outline-none"
-            />
-            <button
-              type="button"
-              onClick={() => {
-                const list = aspectsRegions.split(",").map((s) => s.trim()).filter(Boolean);
-                setAspectsResult(calculateAspectsScore(list));
-              }}
-              className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold hover:bg-violet-500 mb-3"
-            >
-              Compute ASPECTS
-            </button>
-            {aspectsResult && (
-              <div className="rounded-lg bg-white/5 p-3 text-xs font-mono text-violet-200">
-                Score: {aspectsResult.score}/10 | Thrombectomy Eligible: {String(aspectsResult.eligibleForThrombectomy)} | Category: {aspectsResult.prognosticCategory}
-              </div>
-            )}
-          </div>
-        </div>
+        <NoctisDicomVisionSection onSendToChat={onSendToChat} />
       )}
 
       {activeSubTab === "edge" && (
