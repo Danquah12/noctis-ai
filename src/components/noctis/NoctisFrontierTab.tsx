@@ -186,6 +186,7 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
     | "engineering"
     | "edge"
     | "specialist"
+    | "advanced-training"
   >("health500");
   
   // Leaderboard State
@@ -438,6 +439,20 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
 
       {/* Sub-tab Navigation */}
       <div className="mb-6 flex flex-wrap gap-2 border-b border-white/10 pb-2">
+        <button
+          type="button"
+          onClick={() => setActiveSubTab("advanced-training")}
+          className={cn(
+            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
+            activeSubTab === "advanced-training"
+              ? "bg-gradient-to-r from-violet-600 via-purple-600 to-rose-600 text-white shadow-lg shadow-violet-600/30 ring-1 ring-rose-400/40"
+              : "bg-white/5 text-white/70 hover:bg-white/10"
+          )}
+        >
+          <Brain className="size-3.5 text-rose-300" />
+          <span>Next-Gen Training: Options A·B·C</span>
+          <span className="rounded bg-rose-500/20 px-1 py-0.2 text-[9px] font-bold text-rose-300">LIVE</span>
+        </button>
         <button
           type="button"
           onClick={() => setActiveSubTab("health500")}
@@ -866,6 +881,10 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
       </div>
 
       {/* Content Area */}
+      {activeSubTab === "advanced-training" && (
+        <NoctisAdvancedTrainingSection />
+      )}
+
       {activeSubTab === "health500" && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 lg:col-span-1">
