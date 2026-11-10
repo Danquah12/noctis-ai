@@ -1,4 +1,6 @@
 import { OPENAI_KEY } from "@/lib/openai-key.server";
+import { makeNoctisModelProvenance } from "@/lib/noctis-model-provenance.mjs";
+export type NoctisGatewayProvenance = ReturnType<typeof makeNoctisModelProvenance>;
 import { stripStatus } from "@/lib/evidence";
 import { studyBrief } from "@/lib/study-pass";
 import { formatMap, walkGraph } from "@/lib/knowledge-graph";
@@ -302,7 +304,7 @@ export interface BrainOptions {
 export async function modelChat(
   messages: { role: string; content: ModelContent }[],
   opts: { maxTokens?: number; temperature?: number; json?: boolean; brain?: BrainOptions } = {},
-): Promise<{ text: string } | { error: string }> {
+): Promise<{ text: string; provenance?: NoctisGatewayProvenance } | { error: string }> {
   const maxTokens = opts.maxTokens ?? 2048;
   const temperature = opts.temperature ?? 0.4;
   const json = opts.json === true;
@@ -317,6 +319,18 @@ export async function modelChat(
   // Priority 1: User-configured Client Brain (BYOK or chosen Provider)
   const clientBrain = opts.brain;
   const clientProvider = clientBrain?.provider;
+  let modelAttempts = 0;
+  const reportOrigin = (
+    respondingProvider: Parameters<typeof makeNoctisModelProvenance>[0]["respondingProvider"],
+    attemptedModel?: string,
+    providerReportedModel?: unknown,
+  ): NoctisGatewayProvenance => makeNoctisModelProvenance({
+    requestedProvider: clientProvider,
+    respondingProvider,
+    attemptedModel,
+    providerReportedModel,
+    attemptNumber: modelAttempts,
+  });
   const clientExplicitKey = clientBrain?.apiKey?.trim();
   const clientResolvedKey =
     clientExplicitKey ||
@@ -344,6 +358,7 @@ export async function modelChat(
           temperature,
           thinkingLevel: "medium",
         });
+        modelAttempts += 1;
         const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent?key=${encodeURIComponent(key)}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -361,7 +376,7 @@ export async function modelChat(
           const data = (await res.json());
           const parts = data.candidates?.[0]?.content?.parts as Array<{ text?: string }> | undefined;
           const text = parts?.map((part: { text?: string }) => part.text || "").join("").trim();
-          if (text) return { text };
+          if (text) return { text, provenance: reportOrigin("gemini", m, data.modelVersion) };
         }
       } catch {
         /* fall through to other providers */
@@ -390,6 +405,7 @@ export async function modelChat(
           : "gpt-4o");
 
       try {
+        modelAttempts += 1;
         const res = await fetch(endpoint, {
           method: "POST",
           redirect: "manual",
@@ -409,7 +425,7 @@ export async function modelChat(
         if (res.ok) {
           const data = (await res.json());
           const text = data.choices?.[0]?.message?.content?.trim();
-          if (text) return { text };
+          if (text) return { text, provenance: reportOrigin(provider === "groq" || provider === "xai" || provider === "custom" ? provider : "openai", model, data.model) };
         }
       } catch {
         /* fall through */
@@ -421,7 +437,8 @@ export async function modelChat(
     try {
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (custom.apiKey) headers.Authorization = `Bearer ${custom.apiKey}`;
-      const res = await fetch(custom.endpoint, {
+      modelAttempts += 1;
+        const res = await fetch(custom.endpoint, {
         method: "POST",
         headers,
         signal: AbortSignal.timeout(60000),
@@ -437,9 +454,9 @@ export async function modelChat(
         }),
       });
       if (res.ok) {
-        const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+        const data = (await res.json()) as { model?: string; choices?: { message?: { content?: string } }[] };
         const text = data.choices?.[0]?.message?.content?.trim();
-        if (text) return { text };
+        if (text) return { text, provenance: reportOrigin("custom", custom.model, data.model) };
       }
     } catch {
       /* try next provider */
@@ -450,6 +467,7 @@ export async function modelChat(
     const models = picture ? ["grok-2-vision-1212", "grok-4"] : ["grok-3", "grok-3-mini"];
     for (const model of models) {
       try {
+        modelAttempts += 1;
         const res = await fetch("https://api.x.ai/v1/chat/completions", {
           method: "POST",
           headers: { Authorization: `Bearer ${vibeKey}`, "Content-Type": "application/json" },
@@ -466,9 +484,9 @@ export async function modelChat(
           }),
         });
         if (!res.ok) continue;
-        const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+        const data = (await res.json()) as { model?: string; choices?: { message?: { content?: string } }[] };
         const text = data.choices?.[0]?.message?.content?.trim();
-        if (text) return { text };
+        if (text) return { text, provenance: reportOrigin("xai", model, data.model) };
       } catch {
         /* try the next model */
       }
@@ -484,7 +502,8 @@ export async function modelChat(
         temperature,
         thinkingLevel: "medium",
       });
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent?key=${encodeURIComponent(geminiKey)}`, {
+      modelAttempts += 1;
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent?key=${encodeURIComponent(geminiKey)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         signal: AbortSignal.timeout(60000),
@@ -498,9 +517,9 @@ export async function modelChat(
         }),
       });
       if (res.ok) {
-        const data = (await res.json()) as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
+        const data = (await res.json()) as { modelVersion?: string; candidates?: { content?: { parts?: { text?: string }[] } }[] };
         const text = data.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("").trim();
-        if (text) return { text };
+        if (text) return { text, provenance: reportOrigin("gemini", m, data.modelVersion) };
       }
     } catch {
       /* try next provider */
@@ -510,6 +529,7 @@ export async function modelChat(
   if (openai && packed.length) {
     for (const model of picture ? ["gpt-4o"] : ["gpt-4o", "gpt-4o-mini"]) {
       try {
+        modelAttempts += 1;
         const res = await fetch("https://api.openai.com/v1/chat/completions", {
           method: "POST",
           headers: { Authorization: `Bearer ${openai}`, "Content-Type": "application/json" },
@@ -526,9 +546,9 @@ export async function modelChat(
           }),
         });
         if (!res.ok) continue;
-        const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+        const data = (await res.json()) as { model?: string; choices?: { message?: { content?: string } }[] };
         const text = data.choices?.[0]?.message?.content?.trim();
-        if (text) return { text };
+        if (text) return { text, provenance: reportOrigin("openai", model, data.model) };
       } catch {
         /* try the next model */
       }
@@ -537,7 +557,8 @@ export async function modelChat(
   const groqKey = resolveGroqKey();
   if (groqKey && packed.length && !picture) {
     try {
-      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      modelAttempts += 1;
+        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
         headers: { Authorization: `Bearer ${groqKey}`, "Content-Type": "application/json" },
         signal: AbortSignal.timeout(60000),
@@ -553,9 +574,9 @@ export async function modelChat(
         }),
       });
       if (res.ok) {
-        const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+        const data = (await res.json()) as { model?: string; choices?: { message?: { content?: string } }[] };
         const text = data.choices?.[0]?.message?.content?.trim();
-        if (text) return { text };
+        if (text) return { text, provenance: reportOrigin("groq", "llama-3.3-70b-versatile", data.model) };
       }
     } catch {
       /* try local native complete */
@@ -566,7 +587,7 @@ export async function modelChat(
     const nativeText = await vibeNativeComplete(
       packed.map((message) => ({ role: message.role, content: textOf(message.content) })),
     );
-    if (nativeText?.text) return { text: nativeText.text };
+    if (nativeText?.text) return { text: nativeText.text, provenance: reportOrigin("local_native") };
   } catch {
     /* fallback failed */
   }

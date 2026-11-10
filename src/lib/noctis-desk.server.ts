@@ -21,6 +21,9 @@ import { vocabularyLine } from "@/lib/noctis-vocabulary";
 import { executionSheet } from "@/lib/noctis-execute";
 import { ledgerSheet } from "@/lib/noctis-ledger";
 import { extractInputs, retrievalReport, retainSources, scenarioText, strategySheet } from "@/lib/noctis-hard";
+import type { NoctisGatewayProvenance } from "@/lib/video-mind.server";
+
+type NoctisDeskReply = { text: string; provenance?: NoctisGatewayProvenance } | { error: string };
 
 export type VibeTurn = { role: "user" | "assistant"; content: string; images?: string[] };
 
@@ -929,7 +932,7 @@ export async function vibeReply(
   turns: VibeTurn[],
   keyOverride = "",
   style: { desk?: "chat" | "study"; think?: boolean; code?: boolean; skill?: string; depth?: "plain" | "deep"; level?: "beginner" | "intermediate" | "advanced" | "expert"; context?: string; language?: string; brain?: { provider?: string; apiKey?: string; model?: string; endpoint?: string } } = {},
-): Promise<{ text: string } | { error: string }> {
+): Promise<NoctisDeskReply> {
   const kept = retainSources(turns);
   const last = [...kept].reverse().find((turn) => turn.role === "user");
   const latest = (last?.content || "").replace(/\n--- [^\n]+ ---\n[\s\S]*$/g, "").replace(/\[Image:[^\]]*\]/g, "").trim();
@@ -948,14 +951,14 @@ export async function vibeReply(
   const reply = await composeVibeReply(kept, keyOverride, style);
   if (!("text" in reply) || reply.text.includes("Independent check") || reply.text.startsWith("## Vibe ") || (reply.text.trim().startsWith("{") && reply.text.trim().endsWith("}"))) return reply;
   const { attachHard } = await import("@/lib/noctis-hard");
-  return { text: attachHard(scenario, reply.text) };
+  return { text: attachHard(scenario, reply.text), provenance: reply.provenance };
 }
 
 async function composeVibeReply(
   turns: VibeTurn[],
   keyOverride = "",
   style: { desk?: "chat" | "study"; think?: boolean; code?: boolean; skill?: string; depth?: "plain" | "deep"; level?: "beginner" | "intermediate" | "advanced" | "expert"; context?: string; language?: string; brain?: { provider?: string; apiKey?: string; model?: string; endpoint?: string } } = {},
-): Promise<{ text: string } | { error: string }> {
+): Promise<NoctisDeskReply> {
   const skill = noctisSkill(style.skill || "talk");
   const last = [...turns].reverse().find((turn) => turn.role === "user");
   const question = (last?.content || "").replace(/\n--- [^\n]+ ---\n[\s\S]*$/g, "").replace(/\[Image:[^\]]*\]/g, "").trim();
@@ -1049,7 +1052,7 @@ async function composeVibeReply(
         { temperature: 0.2, maxTokens: 1200 }
       );
       if (!("error" in modelResult) && modelResult.text && modelResult.text.trim().length > 60) {
-        return { text: modelResult.text.trim() };
+        return { text: modelResult.text.trim(), provenance: modelResult.provenance };
       }
     } catch {}
 
@@ -1105,7 +1108,7 @@ async function composeVibeReply(
       if ("error" in result || !result.text.trim()) return { text: "The document was read, but no answer came back. Nothing was invented." };
       const draft = result.text.trim();
       const { stampBrain } = await import("@/lib/brain-stamp");
-      return { text: await stampBrain(draft, attached.slice(0, 12000), { strict: true }) };
+      return { text: await stampBrain(draft, attached.slice(0, 12000), { strict: true }), provenance: result.provenance };
     } catch {
       return { text: "The document was attached, but the reading did not finish. Nothing was invented." };
     }
@@ -1264,7 +1267,7 @@ async function composeVibeReply(
       { temperature: 0.5, maxTokens: 4096, brain: style.brain },
     );
     if ("error" in result) return result;
-    return { text: result.text };
+    return { text: result.text, provenance: result.provenance };
   }
   const stance = [
     style.desk === "study" && !wantsCode ? "The person is on the study board. Research the question and write study notes, what the opened pages say, references with only real links, practice, and what to study next. Do not stop at a definition. Do not invent a source." : "",
@@ -1356,7 +1359,7 @@ async function composeVibeReply(
   const { attachLedger } = await import("@/lib/noctis-ledger");
   const { attachHard } = await import("@/lib/noctis-hard");
   const finalOut = attachHard(scenario, attachLedger(scenario, await auditAnswer(scenario, sealed, record)));
-  return { text: finalOut };
+  return { text: finalOut, provenance: result.provenance };
 }
 
 async function vibeReplyWith(
