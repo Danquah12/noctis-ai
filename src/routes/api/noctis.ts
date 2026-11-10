@@ -261,6 +261,14 @@ export const Route = createFileRoute("/api/noctis")({
             { headers: CORS_HEADERS }
           );
         }
+        if (url.searchParams.get("plugin_protocols")) {
+          const mode = url.searchParams.get("plugin_protocols");
+          const { getEnterpriseProtocolsList, ENTERPRISE_PROTOCOL_REGISTRY } = await import("@/lib/noctis-enterprise-protocol-engine");
+          if (mode && mode in ENTERPRISE_PROTOCOL_REGISTRY) {
+            return Response.json(ENTERPRISE_PROTOCOL_REGISTRY[mode], { headers: CORS_HEADERS });
+          }
+          return Response.json({ protocols: getEnterpriseProtocolsList() }, { headers: CORS_HEADERS });
+        }
         if (url.searchParams.get("health") === "trace") {
           const { getRecentHealthExecutionTraces } = await import("@/lib/noctis-health-engine");
           return Response.json(
@@ -719,7 +727,15 @@ export const Route = createFileRoute("/api/noctis")({
           quant_risk?: { mode: "bs" | "var" | "markowitz"; bsParams?: Record<string, unknown>; varParams?: Record<string, unknown>; markowitzParams?: Record<string, unknown> };
           construction_boq?: Record<string, unknown>;
           diesel_diagnostics?: Record<string, unknown>;
+          enterprise_telemetry?: { plugin?: string; payload?: Record<string, unknown> } | Record<string, unknown>;
         } | null;
+        if (body?.enterprise_telemetry && typeof body.enterprise_telemetry === "object") {
+          const { parseEnterprisePayload } = await import("@/lib/noctis-enterprise-protocol-engine");
+          const plugin = (body.enterprise_telemetry as any).plugin || "auto";
+          const raw = (body.enterprise_telemetry as any).payload || body.enterprise_telemetry;
+          const parsed = parseEnterprisePayload(plugin, raw);
+          return Response.json(parsed, { headers: CORS_HEADERS });
+        }
         if (body?.frontier_solve) {
           const challenges = await import("@/lib/noctis-engineering-challenges");
           const challengeId = body.frontier_solve.challengeId;
