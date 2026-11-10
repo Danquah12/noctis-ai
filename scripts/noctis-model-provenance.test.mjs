@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import { makeNoctisModelProvenance as provenance } from "../src/lib/noctis-model-provenance.mjs";
+import { makeNoctisModelProvenance as provenance, readNoctisModelProvenance } from "../src/lib/noctis-model-provenance.mjs";
 
 test("records successful selected provider, attempted model and reported model without claiming independent verification", () => {
   const value = provenance({ requestedProvider: "gemini", respondingProvider: "gemini", attemptedModel: "gemini-test", providerReportedModel: "gemini-test-001", attemptNumber: 1 });
@@ -61,4 +61,21 @@ test("chat preserves gateway provenance through the final assistant response", (
   assert.match(source, /return \{ text: result\.text, provenance: result\.provenance \};/);
   assert.match(source, /return \{ text: finalOut, provenance: result\.provenance \};/);
   assert.match(source, /provenance: reply\.provenance/);
+});
+
+test("evaluation origin reader strips extra fields and never upgrades provider identity to verified", () => {
+  const value = provenance({ requestedProvider: "openai", respondingProvider: "openai", attemptedModel: "gpt-4o", providerReportedModel: "gpt-4o-2026", attemptNumber: 1 });
+  assert.deepEqual(readNoctisModelProvenance({ ...value, apiKey: "SECRET-NEVER-PERSIST", private_document: "PRIVATE" }), value);
+  assert.ok(!JSON.stringify(readNoctisModelProvenance({ ...value, apiKey: "SECRET-NEVER-PERSIST" })).includes("SECRET"));
+});
+test("evaluation origin reader rejects contradictory or unsupported route claims", () => {
+  const value = provenance({ respondingProvider: "local_native", attemptNumber: 0 });
+  assert.equal(readNoctisModelProvenance({ ...value, source_kind: "model_gateway" }), null);
+  assert.equal(readNoctisModelProvenance({ ...value, responding_provider: "unknown" }), null);
+  assert.equal(readNoctisModelProvenance({ ...value, protocol: "other" }), null);
+  assert.equal(readNoctisModelProvenance({ ...value, fallback_used: "no" }), null);
+});
+test("evaluation origin reader never trusts a remotely asserted verified model", () => {
+  const value = provenance({ respondingProvider: "gemini", attemptedModel: "gemini-3", attemptNumber: 1 });
+  assert.equal(readNoctisModelProvenance({ ...value, model_identity_independently_verified: true }).model_identity_independently_verified, false);
 });
