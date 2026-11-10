@@ -20,6 +20,7 @@
 
 const responders = new Set(["gemini", "openai", "groq", "xai", "custom", "local_native"]);
 
+/** @param {unknown} value */
 function safeLabel(value) {
   if (typeof value !== "string") return null;
   const text = value.trim();
