@@ -1,0 +1,50 @@
+# ============================================================================
+# NOCTIS SOVEREIGN AIR-GAPPED DEPLOYMENT SPECIFICATION
+# Architecture: Isolated Zero-Egress Medical Enclave
+# Standards: IEC 62304 Class C, NIST SP 800-190 Container Security
+# ============================================================================
+
+version: '3.8'
+
+services:
+  noctis-airgap-node:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.airgap
+    container_name: noctis-sovereign-enclave
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080" # Bound exclusively to localhost loopback
+    environment:
+      - NODE_ENV=production
+      - PORT=8080
+      - NOCTIS_SOVEREIGN_AIRGAP=true
+      - NO_WAN_EGRESS=1
+      - LOCAL_WEBGPU_ACCELERATION=1
+    networks:
+      - internal_medical_mesh
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=256m
+      - /app/node_modules/.vite-temp:rw,size=128m
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 4096M
+        reservations:
+          cpus: '1.0'
+          memory: 1024M
+
+networks:
+  internal_medical_mesh:
+    driver: bridge
+    internal: true # Hard network isolation: Zero WAN / Internet egress

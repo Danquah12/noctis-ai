@@ -256,11 +256,26 @@ export function evaluateTelemetryAlarms(v: BedsideVitalsTelemetry): TelemetryAla
  */
 export function generateWaveformFrame(
   phase: number,
-  type: "ECG" | "PLETH" | "CAPNO",
+  type: "ECG" | "PLETH" | "CAPNO" | "ALINE",
   heartRateBpm = 75
 ): number {
   const period = 60 / heartRateBpm;
   const t = (phase % period) / period; // 0.0 to 1.0
+
+  if (type === "ALINE") {
+    // Arterial line pulse pressure curve with dicrotic notch
+    if (t < 0.15) {
+      return Math.sin((t / 0.15) * (Math.PI / 2)); // steep systolic upstroke
+    } else if (t < 0.35) {
+      return 1.0 - 0.45 * Math.sin(((t - 0.15) / 0.20) * (Math.PI / 2));
+    } else if (t < 0.48) {
+      // Dicrotic notch and secondary aortic rebound wave
+      return 0.55 + 0.12 * Math.sin(((t - 0.35) / 0.13) * Math.PI);
+    } else {
+      // Diastolic runoff decay
+      return Math.max(0, 0.55 * (1 - (t - 0.48) / 0.52));
+    }
+  }
 
   if (type === "ECG") {
     // P wave (0.10 - 0.20)

@@ -6,6 +6,10 @@ import {
   analyzeHeadCtHemorrhage,
   calculateAspectsScore,
   analyzeChestRadiograph,
+  analyzePulmonaryEmbolismCtPa,
+  generateArterialLineWaveform,
+  calculatePulsePressureVariation,
+  generateCapnographyWaveform,
 } from "./noctis-dicom-vision.ts";
 
 test("NOCTIS MULTI-MODAL MEDICAL IMAGING & DICOM VISION (NMIE-VISION-001)", async (t) => {
@@ -76,5 +80,40 @@ test("NOCTIS MULTI-MODAL MEDICAL IMAGING & DICOM VISION (NMIE-VISION-001)", asyn
     assert.equal(cxr.ettPositionAdequate, false);
     assert.ok(cxr.clinicalImpression.includes("EMERGENT TENSION PNEUMOTHORAX"));
     assert.ok(cxr.clinicalImpression.includes("MALPOSITIONED ETT"));
+  });
+
+  await t.test("analyzePulmonaryEmbolismCtPa identifies high-risk saddle PE with RV strain requiring thrombolysis", () => {
+    const pe = analyzePulmonaryEmbolismCtPa({
+      observedClotText: "Large saddle pulmonary embolus straddling main pulmonary bifurcation extending into bilateral main branches",
+      rvDiameterMm: 46,
+      lvDiameterMm: 34,
+      paradoxicalSeptalBowing: true,
+      systolicBpMmHg: 84, // Hypotension -> High Risk Shock
+      elevatedTroponinOrBnp: true,
+    });
+
+    assert.equal(pe.peDetected, true);
+    assert.equal(pe.peLocation, "SADDLE");
+    assert.equal(pe.rvStrainPresent, true);
+    assert.equal(pe.rvLvRatio, 1.35);
+    assert.equal(pe.escRiskCategory, "HIGH_RISK_SHOCK");
+    assert.equal(pe.systemicThrombolysisIndicated, true);
+    assert.ok(pe.directives.some(d => d.includes("Alteplase")));
+  });
+
+  await t.test("calculatePulsePressureVariation determines fluid responsiveness (>13%) and arterial line waveform points", () => {
+    const responsive = calculatePulsePressureVariation(55, 38);
+    assert.equal(responsive.isFluidResponsive, true);
+    assert.ok(responsive.ppvPercent > 13.0);
+
+    const nonResponsive = calculatePulsePressureVariation(42, 39);
+    assert.equal(nonResponsive.isFluidResponsive, false);
+
+    // Waveform points
+    const p1 = generateArterialLineWaveform(0.1, 120, 80);
+    assert.ok(p1 > 80 && p1 <= 120);
+
+    const capnoNormal = generateCapnographyWaveform(0.5, 38, false);
+    assert.ok(capnoNormal > 30);
   });
 });

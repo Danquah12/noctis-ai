@@ -110,6 +110,8 @@ export function NoctisBedsideTelemetrySection({
     // Buffer of waveform points
     const ecgHistory: number[] = new Array(width).fill(0);
     const plethHistory: number[] = new Array(width).fill(0);
+    const alineHistory: number[] = new Array(width).fill(0);
+    const capnoHistory: number[] = new Array(width).fill(0);
     let sweepX = 0;
 
     const render = () => {
@@ -118,9 +120,13 @@ export function NoctisBedsideTelemetrySection({
       phaseRef.current += 0.016; // ~60fps
       const ecgVal = generateWaveformFrame(phaseRef.current, "ECG", telemetry.heartRateBpm);
       const plethVal = generateWaveformFrame(phaseRef.current, "PLETH", telemetry.heartRateBpm);
+      const alineVal = generateWaveformFrame(phaseRef.current, "ALINE", telemetry.heartRateBpm);
+      const capnoVal = generateWaveformFrame(phaseRef.current, "CAPNO", telemetry.heartRateBpm) / 45;
 
       ecgHistory[sweepX] = ecgVal;
       plethHistory[sweepX] = plethVal;
+      alineHistory[sweepX] = alineVal;
+      capnoHistory[sweepX] = capnoVal;
 
       // Dark ICU CRT Monitor Background
       ctx.fillStyle = "#05080c";
@@ -143,15 +149,15 @@ export function NoctisBedsideTelemetrySection({
       }
 
       // Channel 1: Lead II ECG (Green)
-      const ecgMidY = height * 0.28;
-      const ecgScale = height * 0.22;
+      const ecgMidY = height * 0.18;
+      const ecgScale = height * 0.12;
       ctx.strokeStyle = "#22c55e";
-      ctx.lineWidth = 1.8;
+      ctx.lineWidth = 1.6;
       ctx.shadowColor = "#22c55e";
       ctx.shadowBlur = 4;
       ctx.beginPath();
       for (let x = 0; x < width; x++) {
-        if (x === sweepX || x === sweepX + 1 || x === sweepX + 2) continue; // sweep erase bar
+        if (x === sweepX || x === sweepX + 1 || x === sweepX + 2) continue;
         const y = ecgMidY - ecgHistory[x] * ecgScale;
         if (x === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
@@ -159,16 +165,48 @@ export function NoctisBedsideTelemetrySection({
       ctx.stroke();
 
       // Channel 2: Plethysmogram (Cyan)
-      const plethMidY = height * 0.72;
-      const plethScale = height * 0.20;
+      const plethMidY = height * 0.44;
+      const plethScale = height * 0.11;
       ctx.strokeStyle = "#06b6d4";
-      ctx.lineWidth = 1.8;
+      ctx.lineWidth = 1.6;
       ctx.shadowColor = "#06b6d4";
       ctx.shadowBlur = 4;
       ctx.beginPath();
       for (let x = 0; x < width; x++) {
         if (x === sweepX || x === sweepX + 1 || x === sweepX + 2) continue;
         const y = plethMidY - plethHistory[x] * plethScale;
+        if (x === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+
+      // Channel 3: Arterial Line (Red)
+      const alineMidY = height * 0.70;
+      const alineScale = height * 0.11;
+      ctx.strokeStyle = "#f43f5e";
+      ctx.lineWidth = 1.6;
+      ctx.shadowColor = "#f43f5e";
+      ctx.shadowBlur = 4;
+      ctx.beginPath();
+      for (let x = 0; x < width; x++) {
+        if (x === sweepX || x === sweepX + 1 || x === sweepX + 2) continue;
+        const y = alineMidY - alineHistory[x] * alineScale;
+        if (x === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+
+      // Channel 4: Capnography (Amber)
+      const capnoMidY = height * 0.92;
+      const capnoScale = height * 0.10;
+      ctx.strokeStyle = "#f59e0b";
+      ctx.lineWidth = 1.6;
+      ctx.shadowColor = "#f59e0b";
+      ctx.shadowBlur = 4;
+      ctx.beginPath();
+      for (let x = 0; x < width; x++) {
+        if (x === sweepX || x === sweepX + 1 || x === sweepX + 2) continue;
+        const y = capnoMidY - capnoHistory[x] * capnoScale;
         if (x === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
       }
@@ -182,12 +220,18 @@ export function NoctisBedsideTelemetrySection({
       ctx.fillRect(sweepX, 0, 2, height);
 
       // Channel Labels
+      ctx.font = "bold 9px monospace";
       ctx.fillStyle = "#22c55e";
-      ctx.font = "bold 10px monospace";
-      ctx.fillText(`LEAD II · HR ${telemetry.heartRateBpm} BPM · 25 mm/s`, 12, 18);
+      ctx.fillText(`LEAD II · HR ${telemetry.heartRateBpm} BPM · 25 mm/s`, 12, 14);
 
       ctx.fillStyle = "#06b6d4";
-      ctx.fillText(`PLETH · SpO2 ${telemetry.spo2Percent}% · PI ${telemetry.perfusionIndexPercent || 4.2}%`, 12, height * 0.52);
+      ctx.fillText(`PLETH · SpO2 ${telemetry.spo2Percent}% · PI ${telemetry.perfusionIndexPercent || 4.2}%`, 12, height * 0.31);
+
+      ctx.fillStyle = "#f43f5e";
+      ctx.fillText(`ART LINE · BP ${telemetry.systolicMmHg}/${telemetry.diastolicMmHg} mmHg · PPV 8.4%`, 12, height * 0.57);
+
+      ctx.fillStyle = "#f59e0b";
+      ctx.fillText(`ETCO2 · ${telemetry.etco2MmHg || 38} mmHg · RR ${telemetry.respiratoryRatePerMin}/m`, 12, height * 0.81);
 
       sweepX = (sweepX + 2) % width;
       animationFrameRef.current = requestAnimationFrame(render);

@@ -372,3 +372,192 @@ export function analyzeChestRadiograph(findingsText: string, ettCarinaDistanceCm
     clinicalImpression: impressions.join(" ") || "No acute cardiopulmonary process or device malposition identified.",
   };
 }
+
+// ============================================================================
+// COMPUTED TOMOGRAPHY PULMONARY ANGIOGRAPHY (CT-PA) PE & RV STRAIN ENGINE
+// Standard: ESC Guidelines on Acute Pulmonary Embolism
+// ============================================================================
+
+export interface CtPaPulmonaryEmbolismResult {
+  peDetected: boolean;
+  peLocation: "SADDLE" | "LOBAR" | "SEGMENTAL" | "SUBSEGMENTAL" | "NEGATIVE";
+  rvDiameterMm: number;
+  lvDiameterMm: number;
+  rvLvRatio: number;
+  rvStrainPresent: boolean;
+  paradoxicalSeptalBowing: boolean;
+  escRiskCategory: "HIGH_RISK_SHOCK" | "INTERMEDIATE_HIGH" | "INTERMEDIATE_LOW" | "LOW_RISK";
+  systemicThrombolysisIndicated: boolean;
+  directives: string[];
+}
+
+export function analyzePulmonaryEmbolismCtPa(params: {
+  observedClotText: string;
+  rvDiameterMm: number;
+  lvDiameterMm: number;
+  paradoxicalSeptalBowing: boolean;
+  systolicBpMmHg: number;
+  elevatedTroponinOrBnp: boolean;
+}): CtPaPulmonaryEmbolismResult {
+  const text = params.observedClotText.toLowerCase();
+  let peLocation: CtPaPulmonaryEmbolismResult["peLocation"] = "NEGATIVE";
+
+  if (text.includes("saddle") || text.includes("main bifurcation")) {
+    peLocation = "SADDLE";
+  } else if (text.includes("lobar") || text.includes("main pulmonary")) {
+    peLocation = "LOBAR";
+  } else if (text.includes("segmental")) {
+    peLocation = "SEGMENTAL";
+  } else if (text.includes("subsegmental")) {
+    peLocation = "SUBSEGMENTAL";
+  }
+
+  const peDetected = peLocation !== "NEGATIVE";
+  const rvLvRatio = Number((params.rvDiameterMm / Math.max(1, params.lvDiameterMm)).toFixed(2));
+  const rvStrainPresent = rvLvRatio > 0.9 || params.paradoxicalSeptalBowing;
+
+  let escRiskCategory: CtPaPulmonaryEmbolismResult["escRiskCategory"] = "LOW_RISK";
+  let systemicThrombolysisIndicated = false;
+  const directives: string[] = [];
+
+  if (!peDetected) {
+    directives.push("No acute pulmonary arterial filling defect detected on contrast series.");
+  } else {
+    // Hemodynamic instability = High Risk
+    if (params.systolicBpMmHg < 90) {
+      escRiskCategory = "HIGH_RISK_SHOCK";
+      systemicThrombolysisIndicated = true;
+      directives.push("HIGH-RISK MASSIVE PE: Persistent systolic hypotension < 90 mmHg.");
+      directives.push("Administer systemic thrombolysis (Alteplase 100 mg IV over 2 hr or weight-adjusted tenecteplase) or emergent surgical/catheter embolectomy.");
+    } else if (rvStrainPresent && params.elevatedTroponinOrBnp) {
+      escRiskCategory = "INTERMEDIATE_HIGH";
+      directives.push("INTERMEDIATE-HIGH RISK SUBMASSIVE PE: Concomitant RV strain (RV/LV > 0.9) AND myocardial injury biomarker elevation.");
+      directives.push("Admit to ICU/Step-down telemetry. Initiate therapeutic weight-based anticoagulation (Enoxaparin or UFH drip) and alert PERT (Pulmonary Embolism Response Team).");
+    } else if (rvStrainPresent || params.elevatedTroponinOrBnp) {
+      escRiskCategory = "INTERMEDIATE_LOW";
+      directives.push("INTERMEDIATE-LOW RISK PE: Isolated RV strain or positive cardiac biomarkers.");
+      directives.push("Initiate therapeutic anticoagulation and maintain continuous pulse oximetry monitoring.");
+    } else {
+      escRiskCategory = "LOW_RISK";
+      directives.push("LOW RISK PE: Normal hemodynamics, RV/LV ratio <= 0.9, and negative cardiac biomarkers.");
+      directives.push("Eligible for therapeutic DOAC therapy (Apixaban or Rivaroxaban) and evaluation for early discharge.");
+    }
+  }
+
+  return {
+    peDetected,
+    peLocation,
+    rvDiameterMm: params.rvDiameterMm,
+    lvDiameterMm: params.lvDiameterMm,
+    rvLvRatio,
+    rvStrainPresent,
+    paradoxicalSeptalBowing: params.paradoxicalSeptalBowing,
+    escRiskCategory,
+    systemicThrombolysisIndicated,
+    directives,
+  };
+}
+
+// ============================================================================
+// CONTINUOUS BEDSIDE ARTERIAL LINE & CAPNOGRAPHY WAVEFORM GENERATION
+// ============================================================================
+
+/**
+ * Generates an arterial pressure waveform sample with systolic peak and dicrotic notch
+ */
+export function generateArterialLineWaveform(
+  phase: number,
+  systolicBp: number = 120,
+  diastolicBp: number = 80
+): number {
+  const cycle = phase % 1.0; // 0 to 1 cycle
+  const pulsePressure = systolicBp - diastolicBp;
+
+  if (cycle < 0.15) {
+    // Steep systolic upstroke
+    const t = cycle / 0.15;
+    return diastolicBp + pulsePressure * Math.sin((t * Math.PI) / 2);
+  } else if (cycle < 0.35) {
+    // Systolic decline towards dicrotic notch
+    const t = (cycle - 0.15) / 0.20;
+    const drop = pulsePressure * (1 - 0.4 * t);
+    return diastolicBp + drop;
+  } else if (cycle < 0.45) {
+    // Dicrotic notch and rebound wave (aortic valve closure)
+    const t = (cycle - 0.35) / 0.10;
+    const rebound = pulsePressure * 0.15 * Math.sin(t * Math.PI);
+    return diastolicBp + pulsePressure * 0.6 + rebound;
+  } else {
+    // Diastolic runoff exponential decay
+    const t = (cycle - 0.45) / 0.55;
+    const decay = pulsePressure * 0.6 * Math.exp(-3 * t);
+    return diastolicBp + decay;
+  }
+}
+
+/**
+ * Calculates dynamic Pulse Pressure Variation (PPV) for volume responsiveness in ventilated patients
+ * PPV = (PPmax - PPmin) / ((PPmax + PPmin) / 2) * 100
+ */
+export function calculatePulsePressureVariation(
+  maxPulsePressure: number,
+  minPulsePressure: number
+): {
+  ppvPercent: number;
+  isFluidResponsive: boolean;
+  interpretation: string;
+} {
+  const meanPp = (maxPulsePressure + minPulsePressure) / 2;
+  if (meanPp <= 0) {
+    return { ppvPercent: 0, isFluidResponsive: false, interpretation: "Invalid pulse pressure bounds" };
+  }
+
+  const ppvPercent = Number((((maxPulsePressure - minPulsePressure) / meanPp) * 100).toFixed(1));
+  const isFluidResponsive = ppvPercent > 13.0;
+
+  return {
+    ppvPercent,
+    isFluidResponsive,
+    interpretation: isFluidResponsive
+      ? `PPV ${ppvPercent}% > 13.0%: High likelihood of hemodynamic volume responsiveness. Fluid bolus indicated.`
+      : `PPV ${ppvPercent}% <= 13.0%: Patient on flat portion of Frank-Starling curve. Fluid non-responsive; consider inotropes/vasopressors.`,
+  };
+}
+
+/**
+ * Generates continuous end-tidal CO2 capnogram waveform
+ * If bronchospasm is true, creates classic obstructive 'shark-fin' alveolar upslope
+ */
+export function generateCapnographyWaveform(
+  phase: number,
+  etco2MmHg: number = 38,
+  bronchospasmSharkFin: boolean = false
+): number {
+  const cycle = phase % 1.0;
+
+  if (cycle < 0.25) {
+    // Phase I: Inspiratory baseline (0 mmHg CO2)
+    return 0;
+  } else if (cycle < 0.40) {
+    // Phase II: Expiratory upstroke
+    const t = (cycle - 0.25) / 0.15;
+    if (bronchospasmSharkFin) {
+      // Sluggish ascending slope (shark-fin)
+      return etco2MmHg * Math.pow(t, 2) * 0.65;
+    }
+    return etco2MmHg * Math.sin((t * Math.PI) / 2) * 0.85;
+  } else if (cycle < 0.75) {
+    // Phase III: Alveolar plateau
+    const t = (cycle - 0.40) / 0.35;
+    if (bronchospasmSharkFin) {
+      // Steep continuing rise to peak (shark-fin)
+      return etco2MmHg * (0.65 + 0.35 * t);
+    }
+    return etco2MmHg * (0.85 + 0.15 * t);
+  } else {
+    // Phase 0 / IV: Rapid inspiratory washout
+    const t = (cycle - 0.75) / 0.25;
+    return etco2MmHg * Math.exp(-8 * t);
+  }
+}
+
