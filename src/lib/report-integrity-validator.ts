@@ -1,4 +1,4 @@
-import { sha256Sync } from "./universal-crypto";
+import { sha256Sync } from "./universal-crypto.ts";
 
 export type SeverityLevel = "critical" | "high" | "medium" | "low" | "informational";
 export type ProofState = "confirmed" | "suspected" | "unreproduced" | "false_positive" | "mitigated";

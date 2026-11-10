@@ -5,7 +5,7 @@ import {
   type AuditReport,
   type CanonicalFinding,
   type CanonicalEvidence,
-} from "./report-integrity-validator";
+} from "./report-integrity-validator.ts";
 
 const mockEvidence: CanonicalEvidence[] = [
   {

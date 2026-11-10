@@ -952,6 +952,14 @@ export async function vibeReply(
     const sol = solveScienceQuestion(latest);
     return { text: formatScienceResponse(sol) };
   }
+
+  const { isSovereignInquiry, resolveSovereignResponse } = await import("@/lib/noctis-sovereign-grounding");
+  if (isSovereignInquiry(latest)) {
+    const sovereignText = resolveSovereignResponse(latest);
+    if (sovereignText) {
+      return { text: sovereignText };
+    }
+  }
   const reply = await composeVibeReply(kept, keyOverride, style);
   if (!("text" in reply) || reply.text.includes("Independent check") || reply.text.startsWith("## Vibe ") || (reply.text.trim().startsWith("{") && reply.text.trim().endsWith("}"))) return reply;
   const { attachHard } = await import("@/lib/noctis-hard");
@@ -1267,7 +1275,10 @@ async function composeVibeReply(
   const isolatedTurns = hasHardRows && scenario === question && last ? [last] : turns.slice(-24);
   const earlier = isolatedTurns.slice(0, -1).filter((turn) => turn.role === "user").map((turn) => turn.content).join("\n");
   const packet = [growthSheet(scenario), hourlyGrid(scenario), optimizeOptions(scenario), executionSheet(scenario), ledgerSheet(scenario), strategySheet(scenario), domainRules(question), vocabularyLine(question), authorityLine(question), memoryLines(question, style.context || ""), statedRules(isolatedTurns), persistedRules, rulesFromContext(style.context || ""), graphFromNotes(notes), uncertaintyLine(question), predictionLine(question), shockLine(question), decisionLine(question), optimizeLine(question), causalLine(question), askLine(question), consistencyLine(question, earlier), stakesLine(question), needsCurrent(question) ? "This can go out of date. Use a page opened for this message. If none was opened, say the current fact was not retrieved. Do not supply it from memory." : ""].filter(Boolean).join("\n\n");
+  const { buildSovereignSystemPromptContext } = await import("@/lib/noctis-sovereign-grounding");
+  const sovereignGrounding = buildSovereignSystemPromptContext();
   const messages: ChatMessage[] = [
+    { role: "system", content: sovereignGrounding },
     { role: "system", content: SYSTEM },
     { role: "system", content: `${pipe.route.note} ${reasonBrief(scenario)} The pipeline packet below was computed in code. Copy it. Do not replace a pipeline line with a guess. A feasibility sentence comes after the figures, never instead of them.` },
     ...(packet ? [{ role: "system" as const, content: packet }] : []),

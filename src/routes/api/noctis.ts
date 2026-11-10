@@ -227,6 +227,40 @@ export const Route = createFileRoute("/api/noctis")({
             { headers: { "cache-control": "no-store" } }
           );
         }
+        if (url.searchParams.get("sovereign")) {
+          const mode = url.searchParams.get("sovereign") || "portfolio";
+          const {
+            NOCTIS_16_SOVEREIGN_SUITES,
+            SQDEC_GOVERNANCE_MODEL,
+            DUAL_PLANE_SPECIFICATION,
+            ENTERPRISE_PLUGINS_PORTFOLIO,
+            resolveSovereignResponse,
+          } = await import("@/lib/noctis-sovereign-grounding");
+          if (mode === "sqdec") {
+            return Response.json(SQDEC_GOVERNANCE_MODEL, { headers: CORS_HEADERS });
+          }
+          if (mode === "dual_plane") {
+            return Response.json(DUAL_PLANE_SPECIFICATION, { headers: CORS_HEADERS });
+          }
+          if (mode === "plugins") {
+            return Response.json({ plugins: ENTERPRISE_PLUGINS_PORTFOLIO }, { headers: CORS_HEADERS });
+          }
+          if (mode === "markdown") {
+            return Response.json(
+              { markdown: resolveSovereignResponse("Show me the 16 sovereign suites") },
+              { headers: CORS_HEADERS }
+            );
+          }
+          return Response.json(
+            {
+              portfolio: NOCTIS_16_SOVEREIGN_SUITES,
+              sqdec: SQDEC_GOVERNANCE_MODEL,
+              dualPlane: DUAL_PLANE_SPECIFICATION,
+              enterprisePlugins: ENTERPRISE_PLUGINS_PORTFOLIO,
+            },
+            { headers: CORS_HEADERS }
+          );
+        }
         if (url.searchParams.get("health") === "trace") {
           const { getRecentHealthExecutionTraces } = await import("@/lib/noctis-health-engine");
           return Response.json(
