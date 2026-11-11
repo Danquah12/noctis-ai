@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ClipboardEvent } from "react";
 import { Link } from "@tanstack/react-router";
-import { Activity, AlertCircle, AlertTriangle, Info, ArrowUp, Bot, Boxes, Brain, Calendar, Cpu, Crosshair, EyeOff, Fingerprint, FileLock, Globe, Key, Layers, Lock, LogOut, Network, Sparkles, Stethoscope, Swords, Target, ShieldAlert, Terminal, WifiOff, Zap, ChevronDown, ChevronLeft, Code2, Copy, CornerDownLeft, FileText, GraduationCap, Image, Library, Mail, Menu, Mic, MoreHorizontal, PanelRight, PanelRightOpen, Pencil, Phone, PhoneOff, Plus, Printer, RotateCcw, Search, Square, SquarePen, Trash2, Users2, Video, Volume2, VolumeX, Wrench, X, TrendingUp, Scale, Atom, Landmark, Building2, Server, Microscope, FileCheck, Shield, CheckCircle2 } from "lucide-react";
+import { Activity, AlertCircle, AlertTriangle, Info, ArrowUp, Bot, Boxes, Brain, Calendar, Cpu, Crosshair, EyeOff, Fingerprint, FileLock, Globe, Key, Layers, Lock, LogOut, Network, Sparkles, Stethoscope, Swords, Target, ShieldAlert, Terminal, WifiOff, Zap, ChevronDown, ChevronLeft, Code2, Copy, CornerDownLeft, FileText, GraduationCap, Image, Library, Mail, Menu, Mic, MoreHorizontal, PanelLeftClose, PanelLeftOpen, PanelRight, PanelRightOpen, Pencil, Phone, PhoneOff, Plus, Printer, RotateCcw, Search, Square, SquarePen, Trash2, Users2, Video, Volume2, VolumeX, Wrench, X, TrendingUp, Scale, Atom, Landmark, Building2, Server, Microscope, FileCheck, Shield, CheckCircle2 } from "lucide-react";
 import { SOVEREIGN_SYSTEMS_PORTFOLIO } from "@/lib/noctis-sovereign-factory";
 import { askNoctis, drawVibe, hearVibe, sayVibe, trainVibe } from "@/lib/noctis-api";
 import { bringImagineFile, bringPortrait } from "@/lib/imagine-api";
@@ -3550,6 +3550,7 @@ export function NoctisDesk() {
   const [more, setMore] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [menu, setMenu] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [actionsOpen, setActionsOpen] = useState(false);
   const [skill, setSkill] = useState<NoctisSkillId | "">("");
   const [harmonicPlaying, setHarmonicPlaying] = useState(false);
@@ -3779,6 +3780,17 @@ export function NoctisDesk() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [addOpen, menu, skillsOpen]);
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && (event.key === "b" || event.key === "B")) {
+        event.preventDefault();
+        setSidebarOpen((v) => !v);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   useEffect(() => {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: "smooth" });
@@ -6434,7 +6446,14 @@ export function NoctisDesk() {
       {menu ? (
         <button type="button" aria-label="Close menu" className="fixed inset-0 z-20 bg-black/60 md:hidden" onClick={() => setMenu(false)} />
       ) : null}
-      <aside className={cn("vibe-rail z-30 h-full w-full max-w-[20rem] shrink-0 flex-col overflow-y-auto px-2 py-2 md:w-[440px] md:max-w-none", menu ? "fixed inset-y-0 left-0 flex" : "hidden md:flex")} style={{ background: canvas.light ? "#171717" : canvas.meta }}>
+      <aside
+        className={cn(
+          "vibe-rail z-30 h-full shrink-0 flex-col overflow-y-auto px-2 py-2 transition-all duration-200",
+          menu ? "fixed inset-y-0 left-0 flex w-full max-w-[20rem]" : "hidden",
+          sidebarOpen ? "md:flex md:w-[310px] lg:w-[340px]" : "md:hidden"
+        )}
+        style={{ background: canvas.light ? "#171717" : canvas.meta }}
+      >
         <div className="mb-2 flex items-center gap-1 px-1">
           {searching ? (
             <input
@@ -6460,6 +6479,15 @@ export function NoctisDesk() {
             className="grid size-9 shrink-0 place-items-center rounded-xl text-zinc-300 hover:bg-white/5"
           >
             {searching ? <X className="size-4" /> : <Search className="size-4" />}
+          </button>
+          <button
+            type="button"
+            aria-label="Collapse sidebar"
+            onClick={() => setSidebarOpen(false)}
+            className="hidden md:grid size-9 shrink-0 place-items-center rounded-xl text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition"
+            title="Collapse sidebar (Ctrl+B)"
+          >
+            <PanelLeftClose className="size-4" />
           </button>
         </div>
 
@@ -7324,8 +7352,9 @@ export function NoctisDesk() {
           </div>
         ) : null}
         <header className="relative z-30 flex h-14 shrink-0 items-center justify-between border-b border-white/10 bg-[#12151c] px-3 sm:px-4 gap-2">
-          {/* Left: Mobile Menu, Brand Mark & Prominent Atmosphere Palette */}
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          {/* Left: Mobile Menu, Sidebar Toggle, Brand & Atmosphere Palette */}
+          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+            {/* Mobile Menu */}
             <button
               type="button"
               aria-label="Open menu"
@@ -7335,8 +7364,19 @@ export function NoctisDesk() {
               <Menu className="size-5" />
             </button>
 
-            {/* Brand Mark with Search */}
-            <div className="flex items-center gap-2">
+            {/* Desktop Sidebar Toggle Button */}
+            <button
+              type="button"
+              aria-label={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+              onClick={() => setSidebarOpen((v) => !v)}
+              className="hidden md:grid size-8 place-items-center rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition"
+              title={sidebarOpen ? "Collapse sidebar (Ctrl+B)" : "Expand sidebar (Ctrl+B)"}
+            >
+              {sidebarOpen ? <PanelLeftClose className="size-4" /> : <PanelLeftOpen className="size-4" />}
+            </button>
+
+            {/* Brand Mark (Displayed when sidebar is collapsed, or on large screens) */}
+            <div className={cn("items-center gap-2", sidebarOpen ? "hidden 2xl:flex" : "flex")}>
               <span className="flex items-center gap-2">
                 <img
                   src="/brand/dstrike-logo.png"
@@ -7349,7 +7389,7 @@ export function NoctisDesk() {
                 type="button"
                 aria-label="Search chats"
                 onClick={() => {
-                  setMenu(true);
+                  setSidebarOpen(true);
                   setSearching(true);
                 }}
                 className="grid size-7 place-items-center rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition"
@@ -7359,8 +7399,8 @@ export function NoctisDesk() {
               </button>
             </div>
 
-            {/* Atmosphere Palette (Prominent Header Palette as shown in Image 1) */}
-            <div className="hidden md:flex items-center gap-2 rounded-xl bg-white/[0.04] px-2.5 py-1 border border-white/8 shadow-xs">
+            {/* Atmosphere Palette (Prominent Header Palette when sidebar is collapsed, or on wide screens) */}
+            <div className={cn("items-center gap-2 rounded-xl bg-white/[0.04] px-2.5 py-1 border border-white/8 shadow-xs", sidebarOpen ? "hidden 2xl:flex" : "hidden sm:flex")}>
               <div className="flex items-center gap-1.5">
                 <span className="text-[10px] font-semibold tracking-wider uppercase text-zinc-400">ATMOSPHERE PALETTE</span>
                 <span className="text-[10px] font-mono font-medium text-[#e4b86a] capitalize">{theme}</span>

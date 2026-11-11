@@ -173,7 +173,7 @@ export default function NoctisLiveCveTicker({ onSelectCve, className, centerSlot
 
         {/* Center Slot (e.g. Cryptographic Proof & SQDEC badge) */}
         {centerSlot ? (
-          <div className="hidden lg:flex items-center shrink-0 px-2">
+          <div className="flex items-center shrink-0 px-1 sm:px-2">
             {centerSlot}
           </div>
         ) : null}
