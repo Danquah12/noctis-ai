@@ -607,10 +607,10 @@ export function NoctisDkaSection({ onSendToChat }: NoctisDkaSectionProps) {
           Evidence-Based Endocrine Resuscitation Principles (FDA Non-Device CDS)
         </div>
         <p className="leading-relaxed">
-          <strong className="text-zinc-200">1. Potassium Safety Checkpoint:</strong> Insulin stimulates the $Na^+/K^+$-ATPase pump, rapidly translocating potassium from the extracellular space into skeletal muscle and hepatic cells. If insulin is started with a baseline serum potassium $&lt; 3.3\text{ mEq/L}$, it precipitates profound hypokalemia, lethal ventricular arrhythmias, and respiratory arrest. Insulin MUST be withheld until $K^+ \ge 3.3\text{ mEq/L}$.
+          <strong className="text-zinc-200">1. Potassium Safety Checkpoint:</strong> Insulin stimulates the Na⁺/K⁺-ATPase pump, rapidly translocating potassium from the extracellular space into skeletal muscle and hepatic cells. If insulin is started with a baseline serum potassium &lt; 3.3 mEq/L, it precipitates profound hypokalemia, lethal ventricular arrhythmias, and respiratory arrest. Insulin MUST be withheld until K⁺ ≥ 3.3 mEq/L.
         </p>
         <p className="leading-relaxed">
-          <strong className="text-zinc-200">2. Bicarbonate Paradoxical CNS Acidosis:</strong> Sodium bicarbonate administration in moderate DKA generates carbonic acid ($H_2CO_3$), which dissociates into $H_2O$ and $CO_2$. While charged bicarbonate ions cross the blood-brain barrier slowly, lipid-soluble $CO_2$ rapidly diffuses into the cerebrospinal fluid, reacting to form carbonic acid and causing paradoxical, worsening intracellular CNS acidosis. Bicarbonate is contraindicated unless $pH &lt; 6.90$.
+          <strong className="text-zinc-200">2. Bicarbonate Paradoxical CNS Acidosis:</strong> Sodium bicarbonate administration in moderate DKA generates carbonic acid (H₂CO₃), which dissociates into H₂O and CO₂. While charged bicarbonate ions cross the blood-brain barrier slowly, lipid-soluble CO₂ rapidly diffuses into the cerebrospinal fluid, reacting to form carbonic acid and causing paradoxical, worsening intracellular CNS acidosis. Bicarbonate is contraindicated unless pH &lt; 6.90.
         </p>
       </div>
     </div>
