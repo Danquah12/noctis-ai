@@ -283,6 +283,12 @@ export const Route = createFileRoute("/api/noctis")({
             { headers: CORS_HEADERS }
           );
         }
+        if (url.searchParams.get("sovereign_benchmark")) {
+          const mode = url.searchParams.get("sovereign_benchmark");
+          const { runSovereignBenchmarkSuite } = await import("@/lib/noctis-sovereign-benchmark");
+          const suiteFilter = mode === "all" || mode === "true" ? undefined : mode;
+          return Response.json(runSovereignBenchmarkSuite(suiteFilter || undefined), { headers: CORS_HEADERS });
+        }
         if (url.searchParams.get("health") === "trace") {
           const { getRecentHealthExecutionTraces } = await import("@/lib/noctis-health-engine");
           return Response.json(
