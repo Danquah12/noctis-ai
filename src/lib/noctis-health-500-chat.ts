@@ -1345,7 +1345,13 @@ export function isHealth500Query(question: string): boolean {
     /\b(noctis\s+health\s*500|health\s*500(?:\s+protocol|\s+benchmark)?)\b/i.test(q) ||
     /\bnh-[a-z]{2,4}-\d{3}\b/i.test(q) ||
     /\bevaluate\s+(?:patient\s+)?case\s+in\s+[a-z_]+/i.test(q) ||
-    /\bclinical\s+benchmark\s+case\b/i.test(q)
+    /\bclinical\s+benchmark\s+case\b/i.test(q) ||
+    /\b(cf-aor-001|cf-str-001|cf-dka-001|cf-app-002|cf-hyp-001)\b/i.test(q) ||
+    /\b(clinical\s+decision\s+support\s+safety\s+invariants?|cds\s+safety\s+invariants?)\b/i.test(q) ||
+    /\b(how\s+does\s+noctis\s+evaluate\s+this\s+order)\b/i.test(q) ||
+    /\b(resident\s+physician\s+wants\s+to\s+administer)\b/i.test(q) ||
+    (/\b(tearing\s+(?:substernal\s+)?chest\s+pain|interscapular)\b/i.test(q) &&
+      /\b(stemi|heparin|aspirin|dissection|bp\s+\d+|vital\s+signs)\b/i.test(q))
   );
 }
 
@@ -1429,6 +1435,41 @@ export function generateHealth500ConsultationDossier(
         break;
       }
       if (cf.failureCode === "CF-APP-002" && (lower.includes("enema") || lower.includes("laxative") || lower.includes("cathartic"))) {
+        cfTriggered = true;
+        cfDetails = { code: cf.failureCode, desc: cf.description, harm: cf.patientHarmRisk };
+        break;
+      }
+      if (cf.failureCode === "CF-AOR-001") {
+        const mentionsAnticoagOrAntiplatelet =
+          lower.includes("heparin") ||
+          lower.includes("aspirin") ||
+          lower.includes("plavix") ||
+          lower.includes("clopidogrel") ||
+          lower.includes("ticagrelor") ||
+          lower.includes("thromboly") ||
+          lower.includes("tpa") ||
+          lower.includes("tenecteplase") ||
+          lower.includes("cath lab");
+        const mentionsVasodilatorsWithoutBetaBlocker =
+          (lower.includes("nitroprusside") ||
+            lower.includes("nicardipine") ||
+            lower.includes("nitroglycerin") ||
+            lower.includes("hydralazine")) &&
+          !lower.includes("esmolol") &&
+          !lower.includes("labetalol") &&
+          !lower.includes("beta-block") &&
+          !lower.includes("betablock");
+        if (mentionsAnticoagOrAntiplatelet || mentionsVasodilatorsWithoutBetaBlocker) {
+          cfTriggered = true;
+          cfDetails = { code: cf.failureCode, desc: cf.description, harm: cf.patientHarmRisk };
+          break;
+        }
+      }
+      if (
+        cf.failureCode === "CF-HYP-001" &&
+        (lower.includes("insulin") || lower.includes("kayexalate") || lower.includes("dialysis")) &&
+        !lower.includes("calcium")
+      ) {
         cfTriggered = true;
         cfDetails = { code: cf.failureCode, desc: cf.description, harm: cf.patientHarmRisk };
         break;
@@ -1617,11 +1658,15 @@ export function handleNaturalHealth500Query(question: string): string | null {
 
   if (!targetCase) return null;
 
-  // 3. Check if user provided candidate reasoning
+  // 3. Check if user provided candidate reasoning or clinical orders
   let candidateText = "";
-  const candidatePrefixMatch = question.match(/(?:candidate\s+reasoning|candidate\s+diagnosis|candidate\s+response|candidate\s+output|evaluate\s+output|score\s+this)[:\s]+([\s\S]+)/i);
+  const candidatePrefixMatch = question.match(
+    /(?:candidate\s+reasoning|candidate\s+diagnosis|candidate\s+response|candidate\s+output|evaluate\s+output|score\s+this|resident\s+physician\s+wants\s+to|wants\s+to\s+administer)[:\s]+([\s\S]+)/i
+  );
   if (candidatePrefixMatch) {
     candidateText = candidatePrefixMatch[1].trim();
+  } else if (/administer|heparin|aspirin|thromboly|stemi\s+code/i.test(question)) {
+    candidateText = question;
   }
 
   return generateHealth500ConsultationDossier(targetCase, candidateText);

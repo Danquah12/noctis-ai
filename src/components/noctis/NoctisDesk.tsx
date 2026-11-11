@@ -7857,7 +7857,7 @@ export function NoctisDesk() {
                             <img key={shot} src={src} alt="" className="mb-3 max-h-80 rounded-2xl border border-white/10" />
                           ))}
                           <div className="space-y-3">
-                            {/autonomous|react loop|self-correct|5-pillar|ratelimiter|zerodayradar|cve-2024|merkle/i.test(turn.content) ? (
+                            {/(?:autonomous\s+(?:react\s+loop|closed-loop|engineering|code\s+repair)|ratelimiter\.ts|zerodayradar)/i.test(turn.content) ? (
                               <NoctisAgentStepper />
                             ) : null}
                             {/```|powershell|bash|terraform|set-aduser|remediation|dispatch|klist|audit passport|invariant|spoilage/i.test(turn.content) ? (

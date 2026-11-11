@@ -279,11 +279,26 @@ export const ENTERPRISE_PLUGINS_PORTFOLIO = [
 export function isSovereignInquiry(text: string): boolean {
   if (!text || typeof text !== "string") return false;
   const q = text.toLowerCase();
+
+  // Clinical & Patient Safety Guard: never intercept clinical presentations, emergency orders, or patient cases
+  if (
+    /\b(patient|chest\s+pain|aort\w*|stemi|heparin|aspirin|vitals?|ecg|ekg|troponin|resuscitat\w*|infarct\w*|intubat\w*|dka|sepsis|stroke|bp\s+\d+|blood\s+pressure|triage|symptom|prescription|medication|contraindicat\w*|cath\s+lab|bay\b)\b/i.test(
+      q
+    )
+  ) {
+    return false;
+  }
+
+  // Task & Benchmark Execution Guard: never intercept specific case audits or mathematical evaluations
+  if (/\b(evaluate\s+this|calculate|how\s+to\s+treat|clinical\s+decision|cds\s+safety|safety\s+invariants?)\b/i.test(q)) {
+    return false;
+  }
+
   return (
-    /\b(noctis|sovereign|sqdec|aaiaas|cdstriage|shield|grcp2|healthp3|investp4|engineeringp5|softwarebuild)\b/i.test(q) ||
-    /\b(16\s*(?:sovereign|suites|systems)|dual[\s-]plane|air[\s-]gap|enclave\s*runner)\b/i.test(q) ||
-    /\b(50\+?\s*plugins?|plugins\s*(?:&|and)\s*systems|dstrike|resuscitation\s*coach|clinical\s*fmea)\b/i.test(q) ||
-    /\b(what\s+is\s+noctis|who\s+is\s+noctis|training\s+schedule|master\s+training)\b/i.test(q)
+    /\b(sqdec|sovereign\s*(?:suite|system|architecture|framework|enclave|model)|aaiaas|cdstriage|shield\s*v8|grcp2|healthp3|investp4|engineeringp5|softwarebuild)\b/i.test(q) ||
+    /\b(16\s*(?:sovereign|suites|systems)|dual[\s-]plane|air[\s-]gap\s*enclave|enclave\s*runner)\b/i.test(q) ||
+    /\b(50\+?\s*plugins?|plugins\s*(?:&|and)\s*systems|dstrike\s*platform)\b/i.test(q) ||
+    /\b(what\s+is\s+noctis|who\s+is\s+noctis|training\s+schedule|master\s+training|tell\s+me\s+about\s+noctis|introduce\s+noctis|about\s+noctis)\b/i.test(q)
   );
 }
 
@@ -390,18 +405,26 @@ export function resolveSovereignResponse(text: string): string | null {
   }
 
   // 6. General "What is Noctis" / Sovereign Identity Inquiries
-  return [
-    `# Noctis: Sovereign Dual-Plane Intelligence System`,
-    ``,
-    `**Noctis** is an autonomous, multi-domain sovereign AI platform engineered by DStrike for critical infrastructure, clinical medicine, national defense, and enterprise operations.`,
-    ``,
-    `### Key System Architectural Highlights:`,
-    `- **16 Specialized Sovereign Suites:** Spanning Cyber (\`SHIELD\`), Clinical Medicine (\`CDSTRIAGE\`), GRC (\`GRCP2\`), Quantitative Finance (\`InvestP4\`), Systems Engineering (\`EngineeringP5\`), and autonomous software construction.`,
-    `- **Mathematical SQDEC Governance:** Every reasoning trace enforces $\\text{Safety} \\succ \\text{Quality} \\succ \\text{Delivery} \\succ \\text{Economics} \\succ \\text{Control}$.`,
-    `- **Dual-Plane Enclaves:** Bridges a cloud control plane (\`https://www.dstrike.app/noctis\`) with an air-gapped local enclave running offline on Apple Silicon Metal or isolated hardware.`,
-    `- **50+ Enterprise Plugins:** Native bindings for Epic Systems, Cerner, FHIR R4, CrowdStrike, Splunk, Jira, and GitHub.`,
-    `- **Global Open Gateway:** Active at \`https://www.dstrike.app/api/noctis\` with full CORS and multi-modal JSON execution.`,
-  ].join("\n");
+  if (
+    /\b(what\s+is\s+noctis|who\s+is\s+noctis|about\s+noctis|describe\s+noctis|tell\s+me\s+about\s+noctis|introduce\s+noctis|noctis\s+overview|sovereign\s+system)\b/i.test(
+      q
+    )
+  ) {
+    return [
+      `# Noctis: Sovereign Dual-Plane Intelligence System`,
+      ``,
+      `**Noctis** is an autonomous, multi-domain sovereign AI platform engineered by DStrike for critical infrastructure, clinical medicine, national defense, and enterprise operations.`,
+      ``,
+      `### Key System Architectural Highlights:`,
+      `- **16 Specialized Sovereign Suites:** Spanning Cyber (\`SHIELD\`), Clinical Medicine (\`CDSTRIAGE\`), GRC (\`GRCP2\`), Quantitative Finance (\`InvestP4\`), Systems Engineering (\`EngineeringP5\`), and autonomous software construction.`,
+      `- **Mathematical SQDEC Governance:** Every reasoning trace enforces $\\text{Safety} \\succ \\text{Quality} \\succ \\text{Delivery} \\succ \\text{Economics} \\succ \\text{Control}$.`,
+      `- **Dual-Plane Enclaves:** Bridges a cloud control plane (\`https://www.dstrike.app/noctis\`) with an air-gapped local enclave running offline on Apple Silicon Metal or isolated hardware.`,
+      `- **50+ Enterprise Plugins:** Native bindings for Epic Systems, Cerner, FHIR R4, CrowdStrike, Splunk, Jira, and GitHub.`,
+      `- **Global Open Gateway:** Active at \`https://www.dstrike.app/api/noctis\` with full CORS and multi-modal JSON execution.`,
+    ].join("\n");
+  }
+
+  return null;
 }
 
 /**

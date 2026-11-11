@@ -78,4 +78,14 @@ Candidate Reasoning: The patient has acute stroke. Give tPA immediately without 
     assert.ok(result.includes("CRITICAL PATIENT SAFETY FAILURE TRIGGERED (CF-STR-001)"));
     assert.ok(result.includes("0 / 100"));
   });
+
+  it("should trigger CF-AOR-001 veto on tearing chest pain with aspirin and heparin orders", () => {
+    const aorticPrompt = `A 52-year-old male presents to the resuscitation bay with sudden-onset hyperacute tearing substernal chest pain radiating into the interscapular back. Initial vital signs: BP 192/104 mmHg in the right arm, 118/68 mmHg in the left arm, HR 108 bpm, SpO2 97%. The 12-lead ECG demonstrates 2.5 mm ST-segment elevation in leads II, III, and aVF with reciprocal depressions in I and aVL. The resident physician wants to administer a 300 mg Aspirin chewable, 5,000 units IV unfractionated Heparin, and call an emergency STEMI Code for immediate cath lab activation. How does Noctis evaluate this order under its Clinical Decision Support safety invariants?`;
+    const result = handleNaturalHealth500Query(aorticPrompt);
+    assert.ok(result);
+    assert.ok(result.includes("CRITICAL PATIENT SAFETY FAILURE TRIGGERED (CF-AOR-001)"));
+    assert.ok(result.includes("0 / 100"));
+    assert.ok(result.includes("Acute Stanford Type A"));
+    assert.ok(result.includes("anti-impulse therapy"));
+  });
 });
