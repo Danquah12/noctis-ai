@@ -8,6 +8,7 @@ import { stripTypeScriptTypes } from "node:module";
 import { resolve } from "node:path";
 import { test } from "node:test";
 import { runInNewContext } from "node:vm";
+import { makeNoctisRouteProvenance } from "../src/lib/noctis-route-provenance.mjs";
 
 const sourceFile = process.env.NOCTIS_MODEL_ROUTING_SOURCE
   ? resolve(process.env.NOCTIS_MODEL_ROUTING_SOURCE)
@@ -28,7 +29,7 @@ const runnable = stripTypeScriptTypes(
   "async function run(env) {\n" +
   "const { design, resourcePlan, question, hasHardRows, seeing, strict, fresh,\n" +
   "recallTrainedAnswer, spoken, lessonBlock, TEACH, style, wantsCode,\n" +
-  "persistedRules, notes, turns, toChatMessage, gateway } = env;\n" +
+  "persistedRules, notes, turns, toChatMessage, gateway, makeNoctisRouteProvenance } = env;\n" +
   instrumented + "\nreturn { skipped: true };\n}",
   { mode: "strip" }
 );
@@ -42,7 +43,7 @@ function setup(brain, opts = {}, reply = { text: "Model reply" }) {
     hasHardRows: false, seeing: false, strict: false, fresh: false,
     recallTrainedAnswer: () => null, spoken: "English", lessonBlock: () => "",
     TEACH: "Base instruction", style: { brain }, wantsCode: false, persistedRules: "", notes: "",
-    turns, toChatMessage: turn => turn,
+    turns, toChatMessage: turn => turn, makeNoctisRouteProvenance,
     ...opts,
     gateway: { modelChat: async (messages, config) => { calls.push({ messages, config }); return reply; } },
   };
@@ -85,7 +86,9 @@ test("conversation history retains last 24 turns in order", async () => {
 });
 test("stored answer still short-circuits without model call", async () => {
   const h = setup({ provider: "openai" }, { recallTrainedAnswer: () => ({ answer: "Stored lesson" }) });
-  assert.equal((await h.invoke()).text, "Stored lesson");
+  const reply = await h.invoke();
+  assert.equal(reply.text, "Stored lesson");
+  assert.equal(reply.provenance?.source_kind, "stored_answer");
   assert.equal(h.calls.length, 0);
 });
 test("gateway error is propagated", async () => {

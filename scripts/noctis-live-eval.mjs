@@ -14,6 +14,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { readNoctisModelProvenance } from "../src/lib/noctis-model-provenance.mjs";
+import { readNoctisRouteProvenance } from "../src/lib/noctis-route-provenance.mjs";
 
 const suitePath = new URL("./fixtures/noctis-general-assistant-baseline-v1.json", import.meta.url);
 const rawSuite = readFileSync(suitePath, "utf8");
@@ -109,13 +110,16 @@ async function run() {
       const data = await response.json().catch(() => ({}));
       const answer = typeof data?.text === "string" ? data.text : "";
       const appOrigin = readNoctisModelProvenance(data?.provenance);
+      const routeOrigin = readNoctisRouteProvenance(data?.provenance);
       results.push({
         id: item.id, category: item.category, http_status: response.status,
         request_ok: response.ok && Boolean(answer), elapsed_ms: Math.round(performance.now() - started),
         response_sha256: answer ? sha256(answer) : null, response_characters: answer.length,
         returned_model_label_unverified: typeof data?.model === "string" ? data.model : null,
         gateway_origin_reported_by_application: Boolean(appOrigin),
-        application_reported_origin: appOrigin,
+        route_origin_reported_by_application: Boolean(routeOrigin),
+        response_origin_class: appOrigin ? appOrigin.source_kind : routeOrigin ? routeOrigin.source_kind : "unknown",
+        application_reported_origin: appOrigin || routeOrigin,
         actual_model_provenance_verified: false,
         check: response.ok && answer ? independentCheck(item, answer) : { status: "request_failed" },
         ...(process.env.NOCTIS_EVAL_STORE_RESPONSES === "YES" ? { response_text: answer } : {}),
@@ -134,6 +138,8 @@ async function run() {
     completed_requests: results.filter(r => r.request_ok).length,
     failed_requests: results.filter(r => !r.request_ok).length,
     gateway_origin_reported: results.filter(r => r.gateway_origin_reported_by_application).length,
+    route_origin_reported: results.filter(r => r.route_origin_reported_by_application).length,
+    origin_not_reported: results.filter(r => r.request_ok && !r.gateway_origin_reported_by_application && !r.route_origin_reported_by_application).length,
     mechanically_checked: results.filter(r => r.check.status.startsWith("mechanical_check_")).length,
     mechanical_passes: results.filter(r => r.check.status === "mechanical_check_pass").length,
     needs_manual_review: results.filter(r => r.check.status === "requires_manual_review").length,
@@ -142,7 +148,7 @@ async function run() {
     metadata: { ...manifest, started_at: begun, completed_at: new Date().toISOString(), origin: url,
       configured_provider: provider || null, configured_model: model || null, model_provenance_verified: false },
     stats,
-    note: "Gateway origin is reported by the Noctis application, not independently attested. Provider model identities remain unverified. Mechanical checks are narrow; open-ended cases are unscored. No overall intelligence claim is supported.",
+    note: "Response origin is application-reported, not independently attested. A non-model route may delegate to an internal model without gateway attribution; its route label is not proof of zero model use. Provider model identities remain unverified. Mechanical checks are narrow; open-ended cases are unscored. No overall intelligence claim is supported.",
     results,
   };
   const output = process.env.NOCTIS_EVAL_OUTPUT || join(tmpdir(), "noctis-eval-" + Date.now() + ".json");
