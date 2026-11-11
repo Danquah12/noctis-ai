@@ -1250,16 +1250,16 @@ export function runFollowUpIntelligence(
     return adaptSpecialistEngineOutput(currentQuestion, attachmentResponse, "NOCTIS-DOC-INTEL-001");
   }
 
-  // 00-b0. Noctis Sovereign Critical Care & Mechanical Ventilation Engine (NOCTIS-VENT-001)
-  const ventResponse = handleMechanicalVentilationQuery(currentQuestion);
-  if (ventResponse) {
-    return adaptSpecialistEngineOutput(currentQuestion, ventResponse, "NOCTIS-VENT-001");
-  }
-
-  // 00-b0.1. Noctis Sovereign Pediatric & Neonatal Critical Care Engine (NOCTIS-PED-NEO-001)
+  // 00-b0. Noctis Sovereign Pediatric & Neonatal Critical Care Engine (NOCTIS-PED-NEO-001)
   const pedNeoResponse = handlePediatricNeonatalEmergencyQuery(currentQuestion);
   if (pedNeoResponse) {
     return adaptSpecialistEngineOutput(currentQuestion, pedNeoResponse, "NOCTIS-PED-NEO-001");
+  }
+
+  // 00-b1. Noctis Sovereign Critical Care & Mechanical Ventilation Engine (NOCTIS-VENT-001)
+  const ventResponse = handleMechanicalVentilationQuery(currentQuestion);
+  if (ventResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, ventResponse, "NOCTIS-VENT-001");
   }
 
   // 00-b. Noctis Medical Record & Doctor Results Interpreter (NMRI - Labs, Doctor Notes, Prognosis, Biopsy, Imaging)
