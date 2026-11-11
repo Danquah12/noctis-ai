@@ -1,13 +1,12 @@
 // ============================================================================
-// NOCTIS SOVEREIGN OFFLINE SERVICE WORKER (AIR-GAP RESILIENCE v2)
+// NOCTIS SOVEREIGN OFFLINE SERVICE WORKER (AIR-GAP RESILIENCE v4)
 // Standard: W3C Service Workers & Cache API
 // Security: Offline Data Containment & Zero-WAN Interception
 // ============================================================================
 
-const CACHE_NAME = "noctis-sovereign-v2";
+const CACHE_NAME = "noctis-sovereign-v4";
+// Only immutable static assets — NEVER cache dynamic HTML shells with ephemeral asset hashes
 const STATIC_ASSETS = [
-  "/",
-  "/noctis",
   "/favicon.svg",
   "/brand/dstrike-logo.png",
   "/manifest.json",
@@ -56,7 +55,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Cache-first for static icons/brand, Network-first with cache fallback for pages
+  // Cache-first only for static icons and brand images
   if (
     url.pathname.startsWith("/brand/") ||
     url.pathname.endsWith(".svg") ||
@@ -69,16 +68,10 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Navigation requests: Network first, fall back to cached shell
+  // Navigation requests: ALWAYS network first to guarantee latest Vite hashed CSS and JS
   if (event.request.mode === "navigate") {
     event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-          return response;
-        })
-        .catch(() => caches.match(event.request).then((cached) => cached || caches.match("/noctis")))
+      fetch(event.request, { cache: "no-cache" }).catch(() => caches.match("/noctis"))
     );
   }
 });
