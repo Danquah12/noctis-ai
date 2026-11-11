@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import {
   Activity,
   BellRing,
@@ -52,6 +52,10 @@ import {
   WifiOff,
   Building2,
   FileText,
+  Search,
+  ChevronDown,
+  ChevronRight,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -143,51 +147,533 @@ import { NoctisAirgapSection } from "./NoctisAirgapSection";
 import { NoctisEhrBridgeSection } from "./NoctisEhrBridgeSection";
 import { NoctisFdaBinderSection } from "./NoctisFdaBinderSection";
 
+export type FrontierSubTab =
+  | "health500"
+  | "leaderboard"
+  | "ambient"
+  | "qlora"
+  | "swarm"
+  | "dicom"
+  | "fhir"
+  | "telemetry"
+  | "ecg"
+  | "vent"
+  | "ontology"
+  | "tox"
+  | "pals"
+  | "abx"
+  | "ob"
+  | "pocus"
+  | "pharm"
+  | "burn"
+  | "mtp"
+  | "dka"
+  | "ttm"
+  | "crrt"
+  | "vaso"
+  | "stroke"
+  | "airgap"
+  | "ehrbridge"
+  | "fdabinder"
+  | "estar"
+  | "mesh"
+  | "pgx"
+  | "early-warning"
+  | "lis"
+  | "demo"
+  | "engineering"
+  | "edge"
+  | "specialist"
+  | "advanced-training";
+
+export type FrontierCategory =
+  | "benchmarks"
+  | "acute-resus"
+  | "icu-monitoring"
+  | "pharma-safety"
+  | "ehr-systems";
+
+export interface CategoryMeta {
+  id: FrontierCategory;
+  name: string;
+  icon: React.ComponentType<{ className?: string }>;
+  count: number;
+  badge: string;
+}
+
+export interface FrontierModuleItem {
+  id: FrontierSubTab;
+  category: FrontierCategory;
+  name: string;
+  badge?: string;
+  badgeColor?: string;
+  icon: React.ComponentType<{ className?: string }>;
+  activeClass: string;
+  description: string;
+}
+
+export const FRONTIER_CATEGORIES: CategoryMeta[] = [
+  {
+    id: "benchmarks",
+    name: "Studio & Benchmarks",
+    icon: Award,
+    count: 7,
+    badge: "CORE",
+  },
+  {
+    id: "acute-resus",
+    name: "Acute Resuscitation",
+    icon: Zap,
+    count: 8,
+    badge: "STAT",
+  },
+  {
+    id: "icu-monitoring",
+    name: "ICU & Diagnostics",
+    icon: Activity,
+    count: 6,
+    badge: "TELEMETRY",
+  },
+  {
+    id: "pharma-safety",
+    name: "Pharma & Safety",
+    icon: ShieldAlert,
+    count: 8,
+    badge: "INVARIANTS",
+  },
+  {
+    id: "ehr-systems",
+    name: "EHR & Systems",
+    icon: Network,
+    count: 8,
+    badge: "INTEROP",
+  },
+];
+
+export const FRONTIER_MODULES: FrontierModuleItem[] = [
+  // 1. Studio & Benchmarks (7)
+  {
+    id: "advanced-training",
+    category: "benchmarks",
+    name: "Next-Gen Training: Options A·B·C",
+    badge: "LIVE",
+    badgeColor: "bg-rose-500/20 text-rose-300",
+    icon: Brain,
+    activeClass: "bg-gradient-to-r from-violet-600 via-purple-600 to-rose-600 text-white shadow-lg shadow-violet-600/30 ring-1 ring-rose-400/40",
+    description: "Curriculum expansion, autonomous self-play, and reinforcement learning.",
+  },
+  {
+    id: "health500",
+    category: "benchmarks",
+    name: "Health 500 Case Sandbox",
+    icon: Stethoscope,
+    activeClass: "bg-violet-600 text-white shadow-md",
+    description: "Interactive clinical evaluation of 500 multi-specialty cases.",
+  },
+  {
+    id: "leaderboard",
+    category: "benchmarks",
+    name: "500-Case Leaderboard & Models",
+    icon: Award,
+    activeClass: "bg-violet-600 text-white shadow-lg shadow-violet-600/20",
+    description: "Model accuracy, safety invariants, and comparative benchmarks.",
+  },
+  {
+    id: "engineering",
+    category: "benchmarks",
+    name: "Hard Engineering (NEC 001–020)",
+    icon: Zap,
+    activeClass: "bg-violet-600 text-white shadow-md",
+    description: "Multidisciplinary hard physics, fusion, propulsion, and SCADA challenges.",
+  },
+  {
+    id: "dicom",
+    category: "benchmarks",
+    name: "DICOM Vision & Neuroimaging",
+    icon: Microscope,
+    activeClass: "bg-violet-600 text-white shadow-md",
+    description: "CT/MRI/CXR Hounsfield units, hemorrhage, ASPECTS, and radiograph vision.",
+  },
+  {
+    id: "edge",
+    category: "benchmarks",
+    name: "WebGPU Edge Inference",
+    icon: Binary,
+    activeClass: "bg-violet-600 text-white shadow-md",
+    description: "Client-side browser WASM and WebGPU hardware acceleration.",
+  },
+  {
+    id: "specialist",
+    category: "benchmarks",
+    name: "Specialist Engines",
+    icon: TrendingUp,
+    activeClass: "bg-violet-600 text-white shadow-md",
+    description: "Quantitative risk, robotics forward kinematics, and regulatory checkers.",
+  },
+
+  // 2. Acute Resuscitation (8)
+  {
+    id: "pals",
+    category: "acute-resus",
+    name: "PALS Resuscitation (Broselow)",
+    badge: "PALS",
+    badgeColor: "bg-pink-500/20 text-pink-300",
+    icon: Baby,
+    activeClass: "bg-violet-600 text-white shadow-sm ring-1 ring-pink-400",
+    description: "Weight/length-based pediatric drug dosing and airway sizing.",
+  },
+  {
+    id: "pocus",
+    category: "acute-resus",
+    name: "POCUS & Resuscitation (E-FAST/RUSH)",
+    badge: "POCUS",
+    badgeColor: "bg-sky-500/20 text-sky-300",
+    icon: Scan,
+    activeClass: "bg-sky-600 text-white shadow-sm ring-1 ring-sky-400",
+    description: "Point-of-care ultrasound trauma and shock protocol navigator.",
+  },
+  {
+    id: "burn",
+    category: "acute-resus",
+    name: "Acute Burn & Inhalation (Parkland)",
+    badge: "BURN",
+    badgeColor: "bg-orange-500/20 text-orange-300",
+    icon: Flame,
+    activeClass: "bg-orange-600 text-white shadow-sm ring-1 ring-orange-400",
+    description: "Parkland/Brooke fluid resuscitation and airway inhalation injury.",
+  },
+  {
+    id: "mtp",
+    category: "acute-resus",
+    name: "Massive Transfusion (MTP/TEG)",
+    badge: "1:1:1",
+    badgeColor: "bg-rose-500/20 text-rose-300",
+    icon: Droplet,
+    activeClass: "bg-red-600 text-white shadow-sm ring-1 ring-rose-400",
+    description: "1:1:1 blood product ratio balancing and TEG/ROTEM coagulopathy.",
+  },
+  {
+    id: "dka",
+    category: "acute-resus",
+    name: "DKA & HHS Resuscitation",
+    badge: "ADA",
+    badgeColor: "bg-violet-500/20 text-violet-300",
+    icon: Activity,
+    activeClass: "bg-violet-600 text-white shadow-sm ring-1 ring-violet-400",
+    description: "ADA 2024 fluid, potassium, and two-bag insulin titration solver.",
+  },
+  {
+    id: "ttm",
+    category: "acute-resus",
+    name: "TTM & Neuroprognostication",
+    badge: "TTM2",
+    badgeColor: "bg-cyan-500/20 text-cyan-300",
+    icon: Thermometer,
+    activeClass: "bg-cyan-600 text-white shadow-sm ring-1 ring-cyan-400",
+    description: "Targeted temperature management and multimodal post-arrest neuro scoring.",
+  },
+  {
+    id: "stroke",
+    category: "acute-resus",
+    name: "Stroke Code & EVT Reperfusion",
+    badge: "DAWN",
+    badgeColor: "bg-indigo-500/20 text-indigo-300",
+    icon: Brain,
+    activeClass: "bg-indigo-600 text-white shadow-sm ring-1 ring-indigo-400",
+    description: "DAWN/DEFUSE-3 thrombectomy window, ASPECTS, and tPA eligibility.",
+  },
+  {
+    id: "vaso",
+    category: "acute-resus",
+    name: "Vasoactive & Inotropes (VIS)",
+    badge: "VIS",
+    badgeColor: "bg-rose-500/20 text-rose-300",
+    icon: Zap,
+    activeClass: "bg-rose-600 text-white shadow-sm ring-1 ring-rose-400",
+    description: "Vasoactive-Inotropic Score titration and receptor affinity matrix.",
+  },
+
+  // 3. ICU & Diagnostics (6)
+  {
+    id: "ecg",
+    category: "icu-monitoring",
+    name: "12-Lead ECG & VCG Arrhythmia",
+    badge: "12L",
+    badgeColor: "bg-rose-500/20 text-rose-300",
+    icon: HeartPulse,
+    activeClass: "bg-violet-600 text-white shadow-sm",
+    description: "STEMI mimics, vectorcardiography, and complex rhythm vector analysis.",
+  },
+  {
+    id: "vent",
+    category: "icu-monitoring",
+    name: "Critical Care Ventilation",
+    badge: "ARDSNet",
+    badgeColor: "bg-sky-500/20 text-sky-300",
+    icon: Wind,
+    activeClass: "bg-violet-600 text-white shadow-sm ring-1 ring-sky-400",
+    description: "ARDSNet 6 mL/kg PBW, driving pressure, and APRV/asynchrony solver.",
+  },
+  {
+    id: "crrt",
+    category: "icu-monitoring",
+    name: "CRRT & KDIGO AKI",
+    badge: "KDIGO",
+    badgeColor: "bg-teal-500/20 text-teal-300",
+    icon: Droplets,
+    activeClass: "bg-teal-600 text-white shadow-sm ring-1 ring-teal-400",
+    description: "KDIGO staging, effluent dose titration, and regional citrate balance.",
+  },
+  {
+    id: "early-warning",
+    category: "icu-monitoring",
+    name: "NEWS2 / qSOFA Scoring",
+    badge: "ALERT",
+    badgeColor: "bg-amber-500/20 text-amber-300",
+    icon: BellRing,
+    activeClass: "bg-violet-600 text-white shadow-sm",
+    description: "Real-time hemodynamic deterioration alerts and sepsis escalation.",
+  },
+  {
+    id: "telemetry",
+    category: "icu-monitoring",
+    name: "Bedside IoMT Telemetry",
+    badge: "BLE",
+    badgeColor: "bg-rose-500/20 text-rose-300",
+    icon: Activity,
+    activeClass: "bg-violet-600 text-white shadow-sm",
+    description: "Low-latency Bluetooth LE & MQTT vital signs streaming bridge.",
+  },
+  {
+    id: "lis",
+    category: "icu-monitoring",
+    name: "Laboratory LIS Ingestion",
+    badge: "HL7",
+    badgeColor: "bg-cyan-500/20 text-cyan-300",
+    icon: FlaskConical,
+    activeClass: "bg-violet-600 text-white shadow-sm",
+    description: "HL7 v2.5.1 ORU^R01 parsing and LOINC critical panic value triaging.",
+  },
+
+  // 4. Pharma & Safety (8)
+  {
+    id: "abx",
+    category: "pharma-safety",
+    name: "Antimicrobial & Sepsis",
+    badge: "IDSA",
+    badgeColor: "bg-teal-500/20 text-teal-300",
+    icon: Bug,
+    activeClass: "bg-teal-600 text-white shadow-sm ring-1 ring-teal-400",
+    description: "IDSA stewardship, antibiogram susceptibility, and renal dosing.",
+  },
+  {
+    id: "pharm",
+    category: "pharma-safety",
+    name: "Pharmacology Matrix & QTc",
+    badge: "QTc",
+    badgeColor: "bg-amber-500/20 text-amber-300",
+    icon: Pill,
+    activeClass: "bg-amber-600 text-white shadow-sm ring-1 ring-amber-400",
+    description: "CPIC pharmacogenomics, CYP interactions, and Tisdale QTc risk.",
+  },
+  {
+    id: "pgx",
+    category: "pharma-safety",
+    name: "PGx Drug-Gene Engine",
+    badge: "CPIC",
+    badgeColor: "bg-teal-500/20 text-teal-300",
+    icon: Dna,
+    activeClass: "bg-violet-600 text-white shadow-sm",
+    description: "CYP2D6, CYP2C19, TPMT, and HLA-B allele metabolizer dosing.",
+  },
+  {
+    id: "tox",
+    category: "pharma-safety",
+    name: "Clinical Toxicology & Toxidromes",
+    badge: "TOX",
+    badgeColor: "bg-amber-500/20 text-amber-300",
+    icon: Skull,
+    activeClass: "bg-violet-600 text-white shadow-sm ring-1 ring-amber-400",
+    description: "Toxidrome pattern recognizer, Rumack-Matthew APAP nomogram, and antidotes.",
+  },
+  {
+    id: "ob",
+    category: "pharma-safety",
+    name: "Obstetric & Neonatal (NRP)",
+    badge: "NRP",
+    badgeColor: "bg-rose-500/20 text-rose-300",
+    icon: Heart,
+    activeClass: "bg-rose-600 text-white shadow-sm ring-1 ring-pink-400",
+    description: "ACOG postpartum hemorrhage, preeclampsia magnesium, and NRP algorithms.",
+  },
+  {
+    id: "swarm",
+    category: "pharma-safety",
+    name: "Specialist Swarm Council",
+    badge: "SWARM",
+    badgeColor: "bg-emerald-500/20 text-emerald-300",
+    icon: Users,
+    activeClass: "bg-violet-600 text-white shadow-sm",
+    description: "4-agent clinical deliberation council with safety invariant vetoes.",
+  },
+  {
+    id: "fdabinder",
+    category: "pharma-safety",
+    name: "FDA 510(k) eSTAR Binder",
+    badge: "ISO 14971",
+    badgeColor: "bg-amber-500/20 text-amber-300",
+    icon: FileText,
+    activeClass: "bg-amber-600 text-white shadow-sm ring-1 ring-amber-400",
+    description: "21 CFR § 807.87 technical dossier and ISO 14971 clinical risk management.",
+  },
+  {
+    id: "estar",
+    category: "pharma-safety",
+    name: "FDA 510(k) eSTAR Builder",
+    badge: "FDA",
+    badgeColor: "bg-emerald-500/20 text-emerald-300",
+    icon: FileCheck,
+    activeClass: "bg-violet-600 text-white shadow-sm",
+    description: "Automated substantial equivalence predicates and software level of concern.",
+  },
+
+  // 5. EHR & Systems (8)
+  {
+    id: "fhir",
+    category: "ehr-systems",
+    name: "SMART on FHIR EHR Connector",
+    badge: "R4",
+    badgeColor: "bg-blue-500/20 text-blue-300",
+    icon: Link2,
+    activeClass: "bg-violet-600 text-white shadow-sm",
+    description: "SMART on FHIR R4 OAuth2 launch and clinical resource ingestion.",
+  },
+  {
+    id: "ehrbridge",
+    category: "ehr-systems",
+    name: "EHR Bridge (SMART/FHIR)",
+    badge: "EPIC",
+    badgeColor: "bg-sky-500/20 text-sky-300",
+    icon: Building2,
+    activeClass: "bg-sky-600 text-white shadow-sm ring-1 ring-sky-400",
+    description: "Bi-directional Epic MyChart and Cerner Millennium sandbox bridge.",
+  },
+  {
+    id: "ontology",
+    category: "ehr-systems",
+    name: "Clinical Ontologies & Crosswalk",
+    badge: "USCDI",
+    badgeColor: "bg-teal-500/20 text-teal-300",
+    icon: Layers,
+    activeClass: "bg-violet-600 text-white shadow-sm ring-1 ring-teal-400",
+    description: "SNOMED-CT, RxNorm, ICD-10-CM, and LOINC semantic crosswalks.",
+  },
+  {
+    id: "airgap",
+    category: "ehr-systems",
+    name: "Sovereign Air-Gap Engine",
+    badge: "ZERO-WAN",
+    badgeColor: "bg-emerald-500/20 text-emerald-300",
+    icon: WifiOff,
+    activeClass: "bg-emerald-600 text-white shadow-sm ring-1 ring-emerald-400",
+    description: "Zero-WAN air-gapped cryptographic enclave and local attestation.",
+  },
+  {
+    id: "mesh",
+    category: "ehr-systems",
+    name: "Hospital Mesh Sync",
+    badge: "CRDT",
+    badgeColor: "bg-indigo-500/20 text-indigo-300",
+    icon: Network,
+    activeClass: "bg-violet-600 text-white shadow-sm",
+    description: "Peer-to-peer conflict-free replicated data types for offline wards.",
+  },
+  {
+    id: "ambient",
+    category: "ehr-systems",
+    name: "Ambient Dictation & Speech-to-Dossier",
+    badge: "LIVE",
+    badgeColor: "bg-rose-500/20 text-rose-300",
+    icon: Mic,
+    activeClass: "bg-violet-600 text-white shadow-sm",
+    description: "Microphone streaming, real-time SOAP note drafting, and audio synth.",
+  },
+  {
+    id: "qlora",
+    category: "ehr-systems",
+    name: "QLoRA Fine-Tuning & Dataset Forge",
+    icon: Cpu,
+    activeClass: "bg-violet-600 text-white shadow-sm",
+    description: "Quantized low-rank adapter generation and clinical synthetic datasets.",
+  },
+  {
+    id: "demo",
+    category: "ehr-systems",
+    name: "Autonomous 10-Pillar Demo",
+    badge: "1-CLICK",
+    badgeColor: "bg-amber-500/20 text-amber-300",
+    icon: Sparkles,
+    activeClass: "bg-violet-600 text-white shadow-sm ring-1 ring-violet-400",
+    description: "One-click end-to-end execution of all 10 clinical and safety subsystems.",
+  },
+];
+
 interface NoctisFrontierTabProps {
   onSendToChat?: (promptText: string) => void;
   onClose?: () => void;
 }
 
 export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabProps) {
-  const [activeSubTab, setActiveSubTab] = useState<
-    | "health500"
-    | "leaderboard"
-    | "ambient"
-    | "qlora"
-    | "swarm"
-    | "dicom"
-    | "fhir"
-    | "telemetry"
-    | "ecg"
-    | "vent"
-    | "ontology"
-    | "tox"
-    | "pals"
-    | "abx"
-    | "ob"
-    | "pocus"
-    | "pharm"
-    | "burn"
-    | "mtp"
-    | "dka"
-    | "ttm"
-    | "crrt"
-    | "vaso"
-    | "stroke"
-    | "airgap"
-    | "ehrbridge"
-    | "fdabinder"
-    | "estar"
-    | "mesh"
-    | "pgx"
-    | "early-warning"
-    | "lis"
-    | "demo"
-    | "engineering"
-    | "edge"
-    | "specialist"
-    | "advanced-training"
-  >("health500");
+  const [activeSubTab, setActiveSubTab] = useState<FrontierSubTab>("health500");
+
+  // Active module lookup & category state
+  const currentModule = useMemo(
+    () => FRONTIER_MODULES.find((m) => m.id === activeSubTab) || FRONTIER_MODULES[1],
+    [activeSubTab]
+  );
+
+  const [activeCategory, setActiveCategory] = useState<FrontierCategory>(() => currentModule.category);
+
+  // Sync category when activeSubTab changes externally
+  useEffect(() => {
+    if (currentModule.category !== activeCategory) {
+      setActiveCategory(currentModule.category);
+    }
+  }, [currentModule.category, activeCategory]);
+
+  // Dropdown / Search state
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    }
+    if (isDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [isDropdownOpen]);
+
+  const filteredModules = useMemo(() => {
+    if (!searchQuery.trim()) return FRONTIER_MODULES;
+    const q = searchQuery.toLowerCase();
+    return FRONTIER_MODULES.filter(
+      (m) =>
+        m.name.toLowerCase().includes(q) ||
+        (m.badge && m.badge.toLowerCase().includes(q)) ||
+        (m.description && m.description.toLowerCase().includes(q))
+    );
+  }, [searchQuery]);
+
+  const activeCategoryModules = useMemo(
+    () => FRONTIER_MODULES.filter((m) => m.category === activeCategory),
+    [activeCategory]
+  );
   
   // Leaderboard State
   const [leaderboardData, setLeaderboardData] = useState<BenchmarkRunReport>(() => getDefaultLeaderboard());
@@ -437,447 +923,204 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
         )}
       </div>
 
-      {/* Sub-tab Navigation */}
-      <div className="mb-6 flex flex-wrap gap-2 border-b border-white/10 pb-2">
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("advanced-training")}
-          className={cn(
-            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
-            activeSubTab === "advanced-training"
-              ? "bg-gradient-to-r from-violet-600 via-purple-600 to-rose-600 text-white shadow-lg shadow-violet-600/30 ring-1 ring-rose-400/40"
-              : "bg-white/5 text-white/70 hover:bg-white/10"
-          )}
-        >
-          <Brain className="size-3.5 text-rose-300" />
-          <span>Next-Gen Training: Options A·B·C</span>
-          <span className="rounded bg-rose-500/20 px-1 py-0.2 text-[9px] font-bold text-rose-300">LIVE</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("health500")}
-          className={cn(
-            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
-            activeSubTab === "health500" ? "bg-violet-600 text-white" : "bg-white/5 text-white/70 hover:bg-white/10"
-          )}
-        >
-          <Stethoscope className="size-3.5" />
-          Health 500 Case Sandbox
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("leaderboard")}
-          className={cn(
-            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
-            activeSubTab === "leaderboard" ? "bg-violet-600 text-white shadow-lg shadow-violet-600/20" : "bg-white/5 text-white/70 hover:bg-white/10"
-          )}
-        >
-          <Award className="size-3.5 text-amber-400" />
-          500-Case Leaderboard & Models
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("ambient")}
-          className={cn(
-            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
-            activeSubTab === "ambient" ? "bg-violet-600 text-white shadow-sm" : "bg-white/5 text-white/70 hover:bg-white/10"
-          )}
-        >
-          <Mic className="size-3.5 text-rose-400" />
-          Ambient Dictation & Speech-to-Dossier
-          <span className="rounded bg-rose-500/20 px-1 py-0.2 text-[9px] font-bold text-rose-300">LIVE</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("qlora")}
-          className={cn(
-            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
-            activeSubTab === "qlora" ? "bg-violet-600 text-white shadow-sm" : "bg-white/5 text-white/70 hover:bg-white/10"
-          )}
-        >
-          <Cpu className="size-3.5 text-cyan-400" />
-          QLoRA Fine-Tuning & Dataset Forge
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("swarm")}
-          className={cn(
-            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
-            activeSubTab === "swarm" ? "bg-violet-600 text-white shadow-sm" : "bg-white/5 text-white/70 hover:bg-white/10"
-          )}
-        >
-          <Users className="size-3.5 text-emerald-400" />
-          Specialist Swarm Council
-          <span className="rounded bg-emerald-500/20 px-1 py-0.2 text-[9px] font-bold text-emerald-300">SWARM</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("fhir")}
-          className={cn(
-            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
-            activeSubTab === "fhir" ? "bg-violet-600 text-white shadow-sm" : "bg-white/5 text-white/70 hover:bg-white/10"
-          )}
-        >
-          <Link2 className="size-3.5 text-blue-400" />
-          SMART on FHIR EHR Connector
-          <span className="rounded bg-blue-500/20 px-1 py-0.2 text-[9px] font-bold text-blue-300">R4</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("telemetry")}
-          className={cn(
-            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
-            activeSubTab === "telemetry" ? "bg-violet-600 text-white shadow-sm" : "bg-white/5 text-white/70 hover:bg-white/10"
-          )}
-        >
-          <Activity className="size-3.5 text-rose-400" />
-          Bedside IoMT Telemetry
-          <span className="rounded bg-rose-500/20 px-1 py-0.2 text-[9px] font-bold text-rose-300">BLE</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("ecg")}
-          className={cn(
-            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
-            activeSubTab === "ecg" ? "bg-violet-600 text-white shadow-sm" : "bg-white/5 text-white/70 hover:bg-white/10"
-          )}
-        >
-          <HeartPulse className="size-3.5 text-rose-400" />
-          12-Lead ECG & VCG Arrhythmia
-          <span className="rounded bg-rose-500/20 px-1 py-0.2 text-[9px] font-bold text-rose-300">12L</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("vent")}
-          className={cn(
-            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
-            activeSubTab === "vent" ? "bg-violet-600 text-white shadow-sm ring-1 ring-sky-400" : "bg-white/5 text-white/70 hover:bg-white/10"
-          )}
-        >
-          <Wind className="size-3.5 text-sky-400" />
-          Critical Care Ventilation
-          <span className="rounded bg-sky-500/20 px-1 py-0.2 text-[9px] font-bold text-sky-300">ARDSNet</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("ontology")}
-          className={cn(
-            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
-            activeSubTab === "ontology" ? "bg-violet-600 text-white shadow-sm ring-1 ring-teal-400" : "bg-white/5 text-white/70 hover:bg-white/10"
-          )}
-        >
-          <Layers className="size-3.5 text-teal-400" />
-          Clinical Ontologies & Crosswalk
-          <span className="rounded bg-teal-500/20 px-1 py-0.2 text-[9px] font-bold text-teal-300">USCDI</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("tox")}
-          className={cn(
-            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
-            activeSubTab === "tox" ? "bg-violet-600 text-white shadow-sm ring-1 ring-amber-400" : "bg-white/5 text-white/70 hover:bg-white/10"
-          )}
-        >
-          <Skull className="size-3.5 text-amber-400" />
-          Clinical Toxicology & Toxidromes
-          <span className="rounded bg-amber-500/20 px-1 py-0.2 text-[9px] font-bold text-amber-300">TOX</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("pals")}
-          className={cn(
-            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
-            activeSubTab === "pals" ? "bg-violet-600 text-white shadow-sm ring-1 ring-pink-400" : "bg-white/5 text-white/70 hover:bg-white/10"
-          )}
-        >
-          <Baby className="size-3.5 text-pink-400" />
-          PALS Resuscitation (Broselow)
-          <span className="rounded bg-pink-500/20 px-1 py-0.2 text-[9px] font-bold text-pink-300">PALS</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("abx")}
-          className={cn(
-            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
-            activeSubTab === "abx" ? "bg-teal-600 text-white shadow-sm ring-1 ring-teal-400" : "bg-white/5 text-white/70 hover:bg-white/10"
-          )}
-        >
-          <Bug className="size-3.5 text-teal-400" />
-          Antimicrobial & Sepsis
-          <span className="rounded bg-teal-500/20 px-1 py-0.2 text-[9px] font-bold text-teal-300">IDSA</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("ob")}
-          className={cn(
-            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
-            activeSubTab === "ob" ? "bg-rose-600 text-white shadow-sm ring-1 ring-pink-400" : "bg-white/5 text-white/70 hover:bg-white/10"
-          )}
-        >
-          <Heart className="size-3.5 text-rose-400" />
-          Obstetric & Neonatal (NRP)
-          <span className="rounded bg-rose-500/20 px-1 py-0.2 text-[9px] font-bold text-rose-300">NRP</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("pocus")}
-          className={cn(
-            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
-            activeSubTab === "pocus" ? "bg-sky-600 text-white shadow-sm ring-1 ring-sky-400" : "bg-white/5 text-white/70 hover:bg-white/10"
-          )}
-        >
-          <Scan className="size-3.5 text-sky-400" />
-          POCUS & Resuscitation (E-FAST/RUSH)
-          <span className="rounded bg-sky-500/20 px-1 py-0.2 text-[9px] font-bold text-sky-300">POCUS</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("pharm")}
-          className={cn(
-            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
-            activeSubTab === "pharm" ? "bg-amber-600 text-white shadow-sm ring-1 ring-amber-400" : "bg-white/5 text-white/70 hover:bg-white/10"
-          )}
-        >
-          <Pill className="size-3.5 text-amber-400" />
-          Pharmacology Matrix & QTc
-          <span className="rounded bg-amber-500/20 px-1 py-0.2 text-[9px] font-bold text-amber-300">QTc</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("burn")}
-          className={cn(
-            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
-            activeSubTab === "burn" ? "bg-orange-600 text-white shadow-sm ring-1 ring-orange-400" : "bg-white/5 text-white/70 hover:bg-white/10"
-          )}
-        >
-          <Flame className="size-3.5 text-orange-400" />
-          Acute Burn & Inhalation (Parkland)
-          <span className="rounded bg-orange-500/20 px-1 py-0.2 text-[9px] font-bold text-orange-300">BURN</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("mtp")}
-          className={cn(
-            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
-            activeSubTab === "mtp" ? "bg-red-600 text-white shadow-sm ring-1 ring-rose-400" : "bg-white/5 text-white/70 hover:bg-white/10"
-          )}
-        >
-          <Droplet className="size-3.5 text-rose-400" />
-          Massive Transfusion (MTP/TEG)
-          <span className="rounded bg-rose-500/20 px-1 py-0.2 text-[9px] font-bold text-rose-300">1:1:1</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("dka")}
-          className={cn(
-            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
-            activeSubTab === "dka" ? "bg-violet-600 text-white shadow-sm ring-1 ring-violet-400" : "bg-white/5 text-white/70 hover:bg-white/10"
-          )}
-        >
-          <Activity className="size-3.5 text-violet-400" />
-          DKA & HHS Resuscitation
-          <span className="rounded bg-violet-500/20 px-1 py-0.2 text-[9px] font-bold text-violet-300">ADA</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("ttm")}
-          className={cn(
-            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
-            activeSubTab === "ttm" ? "bg-cyan-600 text-white shadow-sm ring-1 ring-cyan-400" : "bg-white/5 text-white/70 hover:bg-white/10"
-          )}
-        >
-          <Thermometer className="size-3.5 text-cyan-400" />
-          TTM & Neuroprognostication
-          <span className="rounded bg-cyan-500/20 px-1 py-0.2 text-[9px] font-bold text-cyan-300">TTM2</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("crrt")}
-          className={cn(
-            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
-            activeSubTab === "crrt" ? "bg-teal-600 text-white shadow-sm ring-1 ring-teal-400" : "bg-white/5 text-white/70 hover:bg-white/10"
-          )}
-        >
-          <Droplets className="size-3.5 text-teal-400" />
-          CRRT & KDIGO AKI
-          <span className="rounded bg-teal-500/20 px-1 py-0.2 text-[9px] font-bold text-teal-300">KDIGO</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("vaso")}
-          className={cn(
-            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
-            activeSubTab === "vaso" ? "bg-rose-600 text-white shadow-sm ring-1 ring-rose-400" : "bg-white/5 text-white/70 hover:bg-white/10"
-          )}
-        >
-          <Zap className="size-3.5 text-rose-400" />
-          Vasoactive & Inotropes (VIS)
-          <span className="rounded bg-rose-500/20 px-1 py-0.2 text-[9px] font-bold text-rose-300">VIS</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("stroke")}
-          className={cn(
-            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
-            activeSubTab === "stroke" ? "bg-indigo-600 text-white shadow-sm ring-1 ring-indigo-400" : "bg-white/5 text-white/70 hover:bg-white/10"
-          )}
-        >
-          <Brain className="size-3.5 text-indigo-400" />
-          Stroke Code & EVT Reperfusion
-          <span className="rounded bg-indigo-500/20 px-1 py-0.2 text-[9px] font-bold text-indigo-300">DAWN</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("airgap")}
-          className={cn(
-            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
-            activeSubTab === "airgap" ? "bg-emerald-600 text-white shadow-sm ring-1 ring-emerald-400" : "bg-white/5 text-white/70 hover:bg-white/10"
-          )}
-        >
-          <WifiOff className="size-3.5 text-emerald-400" />
-          Sovereign Air-Gap Engine
-          <span className="rounded bg-emerald-500/20 px-1 py-0.2 text-[9px] font-bold text-emerald-300">ZERO-WAN</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("ehrbridge")}
-          className={cn(
-            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
-            activeSubTab === "ehrbridge" ? "bg-sky-600 text-white shadow-sm ring-1 ring-sky-400" : "bg-white/5 text-white/70 hover:bg-white/10"
-          )}
-        >
-          <Building2 className="size-3.5 text-sky-400" />
-          EHR Bridge (SMART/FHIR)
-          <span className="rounded bg-sky-500/20 px-1 py-0.2 text-[9px] font-bold text-sky-300">EPIC</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("fdabinder")}
-          className={cn(
-            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
-            activeSubTab === "fdabinder" ? "bg-amber-600 text-white shadow-sm ring-1 ring-amber-400" : "bg-white/5 text-white/70 hover:bg-white/10"
-          )}
-        >
-          <FileText className="size-3.5 text-amber-400" />
-          FDA 510(k) eSTAR Binder
-          <span className="rounded bg-amber-500/20 px-1 py-0.2 text-[9px] font-bold text-amber-300">ISO 14971</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("early-warning")}
-          className={cn(
-            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
-            activeSubTab === "early-warning" ? "bg-violet-600 text-white shadow-sm" : "bg-white/5 text-white/70 hover:bg-white/10"
-          )}
-        >
-          <BellRing className="size-3.5 text-amber-400" />
-          NEWS2 / qSOFA Scoring
-          <span className="rounded bg-amber-500/20 px-1 py-0.2 text-[9px] font-bold text-amber-300">ALERT</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("lis")}
-          className={cn(
-            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
-            activeSubTab === "lis" ? "bg-violet-600 text-white shadow-sm" : "bg-white/5 text-white/70 hover:bg-white/10"
-          )}
-        >
-          <FlaskConical className="size-3.5 text-cyan-400" />
-          Laboratory LIS Ingestion
-          <span className="rounded bg-cyan-500/20 px-1 py-0.2 text-[9px] font-bold text-cyan-300">HL7</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("demo")}
-          className={cn(
-            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
-            activeSubTab === "demo" ? "bg-violet-600 text-white shadow-sm ring-1 ring-violet-400" : "bg-white/5 text-white/70 hover:bg-white/10"
-          )}
-        >
-          <Sparkles className="size-3.5 text-amber-300" />
-          Autonomous 10-Pillar Demo
-          <span className="rounded bg-amber-500/20 px-1 py-0.2 text-[9px] font-bold text-amber-300">1-CLICK</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("pgx")}
-          className={cn(
-            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
-            activeSubTab === "pgx" ? "bg-violet-600 text-white shadow-sm" : "bg-white/5 text-white/70 hover:bg-white/10"
-          )}
-        >
-          <Dna className="size-3.5 text-teal-400" />
-          PGx Drug-Gene Engine
-          <span className="rounded bg-teal-500/20 px-1 py-0.2 text-[9px] font-bold text-teal-300">CPIC</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("estar")}
-          className={cn(
-            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
-            activeSubTab === "estar" ? "bg-violet-600 text-white shadow-sm" : "bg-white/5 text-white/70 hover:bg-white/10"
-          )}
-        >
-          <FileCheck className="size-3.5 text-emerald-400" />
-          FDA 510(k) eSTAR Builder
-          <span className="rounded bg-emerald-500/20 px-1 py-0.2 text-[9px] font-bold text-emerald-300">FDA</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("mesh")}
-          className={cn(
-            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
-            activeSubTab === "mesh" ? "bg-violet-600 text-white shadow-sm" : "bg-white/5 text-white/70 hover:bg-white/10"
-          )}
-        >
-          <Network className="size-3.5 text-indigo-400" />
-          Hospital Mesh Sync
-          <span className="rounded bg-indigo-500/20 px-1 py-0.2 text-[9px] font-bold text-indigo-300">CRDT</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("engineering")}
-          className={cn(
-            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
-            activeSubTab === "engineering" ? "bg-violet-600 text-white" : "bg-white/5 text-white/70 hover:bg-white/10"
-          )}
-        >
-          <Zap className="size-3.5" />
-          Hard Engineering (NEC 001–020)
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("dicom")}
-          className={cn(
-            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
-            activeSubTab === "dicom" ? "bg-violet-600 text-white" : "bg-white/5 text-white/70 hover:bg-white/10"
-          )}
-        >
-          <Microscope className="size-3.5" />
-          DICOM Vision & Neuroimaging
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("edge")}
-          className={cn(
-            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
-            activeSubTab === "edge" ? "bg-violet-600 text-white" : "bg-white/5 text-white/70 hover:bg-white/10"
-          )}
-        >
-          <Binary className="size-3.5" />
-          WebGPU Edge Inference
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveSubTab("specialist")}
-          className={cn(
-            "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors",
-            activeSubTab === "specialist" ? "bg-violet-600 text-white" : "bg-white/5 text-white/70 hover:bg-white/10"
-          )}
-        >
-          <TrendingUp className="size-3.5" />
-          Specialist Engines
-        </button>
+      {/* 2-Tier Frontier Studio Navigation (Option A) */}
+      <div className="mb-6 flex flex-col gap-3 border-b border-white/10 pb-4">
+        {/* Tier 1: Category Segmented Bar + Quick-Jump Dropdown */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          {/* 5 Primary Categories */}
+          <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.03] p-1.5 backdrop-blur-md">
+            {FRONTIER_CATEGORIES.map((cat) => {
+              const Icon = cat.icon;
+              const isActive = activeCategory === cat.id;
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => {
+                    setActiveCategory(cat.id);
+                    if (currentModule.category !== cat.id) {
+                      const firstInCat = FRONTIER_MODULES.find((m) => m.category === cat.id);
+                      if (firstInCat) setActiveSubTab(firstInCat.id);
+                    }
+                  }}
+                  className={cn(
+                    "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all",
+                    isActive
+                      ? "bg-violet-600 text-white shadow-md shadow-violet-600/30 ring-1 ring-violet-400"
+                      : "text-white/70 hover:bg-white/5 hover:text-white"
+                  )}
+                >
+                  <Icon className={cn("size-3.5", isActive ? "text-white" : "text-violet-400")} />
+                  <span>{cat.name}</span>
+                  <span
+                    className={cn(
+                      "rounded-full px-1.5 py-0.2 text-[10px] font-bold",
+                      isActive
+                        ? "bg-white/20 text-white"
+                        : "bg-white/10 text-white/60"
+                    )}
+                  >
+                    {cat.count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Quick-Jump Dropdown Searcher */}
+          <div className="relative" ref={dropdownRef}>
+            <button
+              type="button"
+              onClick={() => setIsDropdownOpen((prev) => !prev)}
+              className="flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs font-medium text-white/90 hover:bg-white/10 hover:border-violet-500/50 transition-all shadow-sm"
+            >
+              <Search className="size-3.5 text-violet-400" />
+              <span className="hidden sm:inline text-white/60">Module:</span>
+              <span className="font-semibold text-white max-w-[140px] truncate sm:max-w-[200px]">
+                {currentModule.name}
+              </span>
+              <ChevronDown
+                className={cn("size-3.5 text-white/50 transition-transform", isDropdownOpen && "rotate-180")}
+              />
+            </button>
+
+            {/* Dropdown Menu */}
+            {isDropdownOpen && (
+              <div className="absolute right-0 top-full mt-2 z-50 w-80 sm:w-96 rounded-2xl border border-white/20 bg-zinc-950/95 p-3 shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150">
+                <div className="relative mb-2">
+                  <Search className="absolute left-2.5 top-2.5 size-3.5 text-white/40" />
+                  <input
+                    type="text"
+                    autoFocus
+                    placeholder="Search 37 modules (e.g. stroke, burn, ecg, qlora)..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full rounded-lg border border-white/10 bg-white/5 py-1.5 pl-8 pr-7 text-xs text-white placeholder-white/40 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-2 top-2 text-white/40 hover:text-white"
+                    >
+                      <X className="size-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                <div className="max-h-72 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
+                  {filteredModules.length === 0 ? (
+                    <div className="py-6 text-center text-xs text-white/50">
+                      No modules matching &quot;{searchQuery}&quot;
+                    </div>
+                  ) : (
+                    filteredModules.map((mod) => {
+                      const Icon = mod.icon;
+                      const isCurrent = activeSubTab === mod.id;
+                      const catMeta = FRONTIER_CATEGORIES.find((c) => c.id === mod.category);
+                      return (
+                        <button
+                          key={mod.id}
+                          type="button"
+                          onClick={() => {
+                            setActiveSubTab(mod.id);
+                            setActiveCategory(mod.category);
+                            setIsDropdownOpen(false);
+                            setSearchQuery("");
+                          }}
+                          className={cn(
+                            "flex w-full items-start gap-2.5 rounded-lg p-2 text-left text-xs transition-colors",
+                            isCurrent
+                              ? "bg-violet-600/30 text-white border border-violet-500/40"
+                              : "hover:bg-white/5 text-white/80"
+                          )}
+                        >
+                          <Icon className={cn("size-4 shrink-0 mt-0.5", isCurrent ? "text-violet-300" : "text-white/60")} />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-semibold text-white truncate">{mod.name}</span>
+                              {mod.badge && (
+                                <span className={cn("rounded px-1 py-0.2 text-[9px] font-bold shrink-0", mod.badgeColor || "bg-white/10 text-white/70")}>
+                                  {mod.badge}
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[10px] text-white/50 truncate">
+                              {catMeta?.name} · {mod.description}
+                            </div>
+                          </div>
+                          {isCurrent && <Check className="size-3.5 text-violet-400 shrink-0 mt-1" />}
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+
+                <div className="mt-2 border-t border-white/10 pt-2 text-[10px] text-white/40 flex items-center justify-between">
+                  <span>37 Modules Available</span>
+                  <span>Press ESC or click outside to close</span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Tier 2: Category Active Pills Sub-Bar (Single Clean Row) */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-0.5 scrollbar-thin scrollbar-thumb-white/10">
+          {activeCategoryModules.map((mod) => {
+            const Icon = mod.icon;
+            const isCurrent = activeSubTab === mod.id;
+            return (
+              <button
+                key={mod.id}
+                type="button"
+                onClick={() => setActiveSubTab(mod.id)}
+                className={cn(
+                  "flex items-center gap-2 shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all",
+                  isCurrent
+                    ? mod.activeClass
+                    : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
+                )}
+              >
+                <Icon className="size-3.5" />
+                <span>{mod.name}</span>
+                {mod.badge && (
+                  <span
+                    className={cn(
+                      "rounded px-1 py-0.2 text-[9px] font-bold",
+                      mod.badgeColor || "bg-white/10 text-white/80"
+                    )}
+                  >
+                    {mod.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Breadcrumb Context Indicator */}
+        <div className="flex items-center justify-between text-[11px] text-white/50 px-1 pt-1">
+          <div className="flex items-center gap-1.5">
+            <span className="text-white/40">Studio</span>
+            <ChevronRight className="size-3 text-white/30" />
+            <span className="text-violet-400 font-medium">
+              {FRONTIER_CATEGORIES.find((c) => c.id === activeCategory)?.name}
+            </span>
+            <ChevronRight className="size-3 text-white/30" />
+            <span className="text-white font-semibold flex items-center gap-1">
+              {currentModule.name}
+              {currentModule.badge && (
+                <span className={cn("rounded px-1 text-[9px] font-bold", currentModule.badgeColor || "bg-white/10 text-white/80")}>
+                  {currentModule.badge}
+                </span>
+              )}
+            </span>
+          </div>
+          <span className="hidden md:inline text-white/40 text-[10px]">
+            {currentModule.description}
+          </span>
+        </div>
       </div>
 
       {/* Content Area */}
