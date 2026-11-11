@@ -269,6 +269,20 @@ export const Route = createFileRoute("/api/noctis")({
           }
           return Response.json({ protocols: getEnterpriseProtocolsList() }, { headers: CORS_HEADERS });
         }
+        if (url.searchParams.get("consensus")) {
+          const mode = url.searchParams.get("consensus");
+          const { PREDEFINED_CROSS_DOMAIN_SCENARIOS, simulateCrossDomainScenario } = await import("@/lib/noctis-cross-domain-consensus");
+          if (mode && mode in PREDEFINED_CROSS_DOMAIN_SCENARIOS) {
+            return Response.json(simulateCrossDomainScenario(mode), { headers: CORS_HEADERS });
+          }
+          return Response.json(
+            {
+              protocol: "Noctis Autonomous Cross-Domain Consensus Swarm (Phase 4)",
+              availableScenarios: Object.keys(PREDEFINED_CROSS_DOMAIN_SCENARIOS),
+            },
+            { headers: CORS_HEADERS }
+          );
+        }
         if (url.searchParams.get("health") === "trace") {
           const { getRecentHealthExecutionTraces } = await import("@/lib/noctis-health-engine");
           return Response.json(
@@ -729,7 +743,23 @@ export const Route = createFileRoute("/api/noctis")({
           diesel_diagnostics?: Record<string, unknown>;
           enterprise_telemetry?: { plugin?: string; payload?: Record<string, unknown> } | Record<string, unknown>;
           ingest?: unknown;
+          consensus_incident?: {
+            scenario?: string;
+            title?: string;
+            description?: string;
+            severity?: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
+            domainsInvolved?: string[];
+            telemetryPayload?: Record<string, unknown>;
+          };
         } | null;
+        if (body?.consensus_incident) {
+          const { runCrossDomainConsensus, simulateCrossDomainScenario, PREDEFINED_CROSS_DOMAIN_SCENARIOS } = await import("@/lib/noctis-cross-domain-consensus");
+          if (body.consensus_incident.scenario && body.consensus_incident.scenario in PREDEFINED_CROSS_DOMAIN_SCENARIOS) {
+            return Response.json(simulateCrossDomainScenario(body.consensus_incident.scenario), { headers: CORS_HEADERS });
+          }
+          const result = runCrossDomainConsensus(body.consensus_incident as any);
+          return Response.json(result, { headers: CORS_HEADERS });
+        }
         if (body?.ingest) {
           const { ingestUniversalTelemetry } = await import("@/lib/noctis-universal-ingestor");
           const result = ingestUniversalTelemetry(body.ingest);
