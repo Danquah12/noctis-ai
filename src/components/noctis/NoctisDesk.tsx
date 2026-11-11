@@ -7369,10 +7369,11 @@ export function NoctisDesk() {
               type="button"
               aria-label={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
               onClick={() => setSidebarOpen((v) => !v)}
-              className="hidden md:grid size-8 place-items-center rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition"
+              className="hidden md:flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 px-2.5 py-1.5 text-xs text-zinc-300 hover:text-white transition shadow-xs cursor-pointer"
               title={sidebarOpen ? "Collapse sidebar (Ctrl+B)" : "Expand sidebar (Ctrl+B)"}
             >
-              {sidebarOpen ? <PanelLeftClose className="size-4" /> : <PanelLeftOpen className="size-4" />}
+              {sidebarOpen ? <PanelLeftClose className="size-4 text-zinc-400" /> : <PanelLeftOpen className="size-4 text-[#e4b86a]" />}
+              <span className="text-[11px] font-medium hidden lg:inline">{sidebarOpen ? "Close panel" : "Sidebar"}</span>
             </button>
 
             {/* Brand Mark (Displayed when sidebar is collapsed, or on large screens) */}
@@ -7525,7 +7526,7 @@ export function NoctisDesk() {
               type="button"
               onClick={() => setAgentBuilderModalOpen(true)}
               className={cn(
-                "hidden md:inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition border border-white/5",
+                "inline-flex items-center gap-1 rounded-full px-2 sm:px-2.5 py-1 text-xs text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition border border-white/5",
                 activeCustomAgent
                   ? "bg-[#e4b86a]/15 text-[#e4b86a] border-[#e4b86a]/30 font-semibold"
                   : agentBuilderModalOpen
@@ -7535,46 +7536,46 @@ export function NoctisDesk() {
               title="Specialist Agent Builder (Noctis GPTs)"
             >
               <Bot className="size-3.5" />
-              <span className="hidden lg:inline">{activeCustomAgent ? `${activeCustomAgent.avatarEmoji} ${activeCustomAgent.name}` : "Agents"}</span>
+              <span className="hidden xl:inline">{activeCustomAgent ? `${activeCustomAgent.avatarEmoji} ${activeCustomAgent.name}` : "Agents"}</span>
             </button>
             <button
               type="button"
               onClick={() => setVaultModalOpen(true)}
               className={cn(
-                "hidden lg:inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition border border-white/5",
+                "inline-flex items-center gap-1 rounded-full px-2 sm:px-2.5 py-1 text-xs text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition border border-white/5",
                 vaultModalOpen ? "bg-[#3a3a3a] text-purple-400" : ""
               )}
               title="Encrypted Vault Backup"
             >
               <Lock className="size-3.5" />
-              <span>Vault</span>
+              <span className="hidden xl:inline">Vault</span>
             </button>
             <button
               type="button"
               onClick={() => setMemoryModalOpen(true)}
               className={cn(
-                "hidden xl:inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition border border-white/5",
+                "inline-flex items-center gap-1 rounded-full px-2 sm:px-2.5 py-1 text-xs text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition border border-white/5",
                 memoryModalOpen ? "bg-[#3a3a3a] text-[#e4b86a]" : ""
               )}
               title="Personal Memory & Custom Instructions"
             >
               <Brain className="size-3.5" />
-              <span>Memory</span>
+              <span className="hidden xl:inline">Memory</span>
             </button>
             <button
               type="button"
               onClick={() => setWorkspaceExplorerOpen(true)}
               className={cn(
-                "hidden xl:inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition border border-white/5",
+                "inline-flex items-center gap-1 rounded-full px-2 sm:px-2.5 py-1 text-xs text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition border border-white/5",
                 workspaceExplorerOpen ? "bg-[#3a3a3a] text-[#e4b86a]" : ""
               )}
               title="Project Workspace & Files"
             >
               <Library className="size-3.5" />
-              <span>Projects</span>
+              <span className="hidden xl:inline">Projects</span>
             </button>
 
-            <div className="h-4 w-px bg-white/10 hidden md:block mx-0.5" />
+            <div className="h-4 w-px bg-white/10 hidden sm:block mx-0.5" />
 
             {/* Phone call (mobile) & Sign out (desktop) */}
             <button
@@ -7590,10 +7591,10 @@ export function NoctisDesk() {
               onClick={handleSignOut}
               disabled={signingOut}
               title="Sign out of Noctis and DStrike"
-              className="hidden md:inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium text-zinc-400 hover:bg-rose-500/20 hover:text-rose-200 transition border border-white/10 hover:border-rose-500/30 disabled:opacity-50 touch-manipulation"
+              className="inline-flex items-center gap-1 rounded-full px-2 sm:px-2.5 py-1 text-xs font-medium text-zinc-400 hover:bg-rose-500/20 hover:text-rose-200 transition border border-white/10 hover:border-rose-500/30 disabled:opacity-50 touch-manipulation"
             >
               <LogOut className="size-3.5 shrink-0 text-zinc-400" />
-              <span className="hidden lg:inline">{signingOut ? "Signing out..." : "Log out"}</span>
+              <span className="hidden xl:inline">{signingOut ? "Signing out..." : "Log out"}</span>
             </button>
           </div>
         </header>
