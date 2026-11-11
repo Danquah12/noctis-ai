@@ -163,6 +163,30 @@ export const NOCTIS_MASTER_TRAINING_QUESTIONS: MasterTrainingItem[] = [
     hits: 30,
     at: "2026-11-11T15:30:00.000Z",
   },
+  {
+    question: "A 32-year-old trauma patient with penetrating abdominal injury presents with SBP 82 mmHg, HR 128 bpm, positive abdominal FAST exam, and TEG LY30 of 14.2%. Calculate the ABC score, specify the MTP ratio, and identify the mandatory hemostatic directives and safety vetoes.",
+    answer: "### Massive Transfusion Protocol (MTP) & Viscoelastic Resuscitation\n1. **Assessment of Blood Consumption (ABC) Score:**\n   - Penetrating mechanism (+1), SBP $\\le 90\\text{ mmHg}$ (+1), HR $\\ge 120\\text{ bpm}$ (+1), Positive FAST (+1) = **4/4 points (High Probability $\\ge 2$)**.\n   - **Action:** Activate MTP immediately. Transfuse uncrossed pRBCs, FFP, and Platelets in a strict **1:1:1 balanced ratio** (PROPPR trial).\n2. **TEG-Guided Directed Resuscitation:**\n   - **LY30 = 14.2% (Normal $< 3.0\\%$):** Confirms severe hyperfibrinolysis (trauma-induced coagulopathy). Administer Tranexamic Acid (TXA) **$1.0\\text{ g}$ IV bolus over 10 minutes**, followed by $1.0\\text{ g}$ infusion over 8 hours (CRASH-2 protocol).\n3. **Safety Invariants Enforced:**\n   - **CF-HEM-001 (Delayed TXA Mortality Veto):** TXA administered $> 3\\text{ hours}$ post-injury increases all-cause mortality and is contraindicated.\n   - **CF-HEM-002 (Hypocalcemic Vasoplegia Veto):** Transfusing $> 4\\text{ units}$ of citrated blood products without ionized calcium monitoring precipitates lethal hypocalcemic electromechanical dissociation. Target ionized $\\text{Ca}^{2+} \\ge 1.15\\text{ mmol/L}$ with empiric Calcium Chloride $1\\text{ g}$ IV per MTP cooler.",
+    domain: "healthcare",
+    model: "noctis-hem-2026",
+    hits: 30,
+    at: "2026-11-11T16:00:00.000Z",
+  },
+  {
+    question: "An 80 kg patient sustains 50% TBSA deep thermal burns 2 hours prior to arrival. Calculate the 24-hour Parkland resuscitation volume, specify the infusion rate for the remaining 6 hours of the first window, evaluate fluid creep risk if 22 L are infused, and formulate the abdominal compartment syndrome decompression directive.",
+    answer: "### Severe Burn Resuscitation (Parkland) & Abdominal Compartment Syndrome\n1. **Parkland Formula Resuscitation (ABA 2026 / ISBI Guidelines):**\n   - **24-Hour Total:** $4\\text{ mL} \\times 80\\text{ kg} \\times 50\\%\\ \\text{TBSA} = \\mathbf{16,000\\text{ mL}}$ Lactated Ringer's.\n   - **First 8-Hour Window:** $50\\% = 8,000\\text{ mL}$. Because 2 hours elapsed prior to arrival, the remaining $8,000\\text{ mL}$ must be infused over the remaining **6 hours** = **$1,333\\text{ mL/hr}$**.\n   - **Subsequent 16 Hours:** Remaining $8,000\\text{ mL}$ infused at **$500\\text{ mL/hr}$**.\n   - **Urine Output Endpoint:** Titrate to maintain **$0.5\\text{--}1.0\\text{ mL/kg/h}$** ($40\\text{--}80\\text{ mL/h}$). Never run fluids at fixed rates without hourly titration.\n2. **Fluid Creep Toxicity:**\n   - Infusing $22,000\\text{ mL}$ in 80 kg = **$275\\text{ mL/kg}$** ($> 250\\text{ mL/kg}$ threshold), dramatically triggering secondary Abdominal Compartment Syndrome (ACS), pulmonary edema, and orbital compartment syndrome.\n3. **Abdominal Compartment Syndrome (ACS) Decompression Directive:**\n   - Intra-abdominal pressure (IAP) $> 20\\text{ mmHg}$ with new organ failure (oliguria, elevated Pplat) mandates **emergent surgical decompressive laparotomy** (WSACS 2026 guidelines). Target $\\text{APP} = \\text{MAP} - \\text{IAP} \\ge 60\\text{ mmHg}$.",
+    domain: "healthcare",
+    model: "noctis-trauma-2026",
+    hits: 30,
+    at: "2026-11-11T16:00:00.000Z",
+  },
+  {
+    question: "A ventilator-associated pneumonia sputum culture grows Klebsiella pneumoniae producing New Delhi metallo-beta-lactamase (NDM-1) with high MICs to Meropenem (> 32) and Ceftazidime-avibactam (> 64). Detail the IDSA 2026 synergy prescription, contrast with KPC-2 therapy, and evaluate beta-lactam extended infusion PK/PD.",
+    answer: "### DTR-GNR Carbapenem Resistance & Beta-Lactam PK/PD Synergy\n1. **NDM-1 Synergy Protocol (CZA + Aztreonam):**\n   - **Resistance Mechanism:** NDM is a Class B Metallo-Beta-Lactamase (MBL) containing zinc ions that hydrolyze all beta-lactams EXCEPT monobactams (Aztreonam). However, NDM-producing strains almost always co-express Class A or C beta-lactamases (CTX-M, AmpC) that hydrolyze Aztreonam.\n   - **Synergy Prescription:** **Ceftazidime-avibactam (2.5 g IV q8h)** PLUS **Aztreonam (2.0 g IV q8h)** administered concurrently (or Cefiderocol 2.0 g IV q8h 3h infusion). Avibactam protects Aztreonam by inhibiting co-carried serine beta-lactamases, allowing Aztreonam to bind PBP-3 and kill the organism.\n2. **Contrast with KPC-2:**\n   - KPC is a Class A Serine Carbapenemase. Ceftazidime-avibactam (CZA) or Meropenem-vaborbactam monotherapy is fully bactericidal without adding Aztreonam.\n3. **Beta-Lactam PK/PD Optimization:**\n   - Beta-lactams exhibit time-dependent bactericidal killing ($fT > \\text{MIC} \\ge 60\\text{--}100\\%$). Intermittent 30-minute infusions fail in septic hyperdynamic clearance. All beta-lactams must be administered via **extended 3- to 4-hour infusions or continuous 24-hour infusions**.",
+    domain: "healthcare",
+    model: "noctis-id-2026",
+    hits: 30,
+    at: "2026-11-11T16:00:00.000Z",
+  },
 
   // =========================================================================
   // 2. ENGINEERING CHALLENGE 001 (NEC-SMARTCITY-001)

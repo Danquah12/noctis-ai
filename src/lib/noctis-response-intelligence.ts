@@ -11,6 +11,9 @@ import { handleNaturalToxicologyEmergencyQuery } from "./noctis-toxicology.ts";
 import { handleNaturalNeuroIcuQuery } from "./noctis-neuro-intensive-care.ts";
 import { handleNaturalHemodynamicsQuery } from "./noctis-advanced-hemodynamics.ts";
 import { handleNaturalNephrologyCrrtQuery } from "./noctis-nephrology-crrt.ts";
+import { handleNaturalHematologyHemostasisQuery } from "./noctis-icu-hematology-hemostasis.ts";
+import { handleNaturalTraumaBurnsQuery } from "./noctis-trauma-burns-surgical.ts";
+import { handleNaturalIdSepsisQuery } from "./noctis-infectious-disease-sepsis.ts";
 import { handleNaturalHealth500Query } from "./noctis-health-500-chat.ts";
 import { handleNaturalPatientDiagnosticQuery } from "./noctis-patient-diagnosis.ts";
 import { handleNaturalSpecialistClinicalQuery } from "./noctis-specialist-router.ts";
@@ -1288,6 +1291,24 @@ export function runFollowUpIntelligence(
   const nephroResponse = handleNaturalNephrologyCrrtQuery(currentQuestion);
   if (nephroResponse) {
     return adaptSpecialistEngineOutput(currentQuestion, nephroResponse, "NOCTIS-NEPHRO-CRRT-001");
+  }
+
+  // 00-b1.5. Noctis Sovereign ICU Hematology, Transfusion Medicine & Hemostasis Engine (NOCTIS-HEM-TRANS-001)
+  const hemTransResponse = handleNaturalHematologyHemostasisQuery(currentQuestion);
+  if (hemTransResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, hemTransResponse, "NOCTIS-HEM-TRANS-001");
+  }
+
+  // 00-b1.6. Noctis Sovereign Trauma, Burns & Surgical Critical Care Engine (NOCTIS-TRAUMA-BURNS-001)
+  const traumaBurnsResponse = handleNaturalTraumaBurnsQuery(currentQuestion);
+  if (traumaBurnsResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, traumaBurnsResponse, "NOCTIS-TRAUMA-BURNS-001");
+  }
+
+  // 00-b1.7. Noctis Sovereign Infectious Disease & Antimicrobial Frontiers Engine (NOCTIS-ID-SEPSIS-001)
+  const idSepsisResponse = handleNaturalIdSepsisQuery(currentQuestion);
+  if (idSepsisResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, idSepsisResponse, "NOCTIS-ID-SEPSIS-001");
   }
 
   // 00-b. Noctis Medical Record & Doctor Results Interpreter (NMRI - Labs, Doctor Notes, Prognosis, Biopsy, Imaging)

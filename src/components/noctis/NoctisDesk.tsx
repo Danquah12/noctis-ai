@@ -7324,8 +7324,8 @@ export function NoctisDesk() {
           </div>
         ) : null}
         <header className="relative z-30 flex h-14 shrink-0 items-center justify-between border-b border-white/10 bg-[#12151c] px-3 sm:px-4 gap-2">
-          {/* Left: Mobile menu, Model Picker & Dual-Plane Enclave Badge */}
-          <div className="flex items-center gap-2 shrink-0">
+          {/* Left: Mobile Menu, Brand Mark & Prominent Atmosphere Palette */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <button
               type="button"
               aria-label="Open menu"
@@ -7334,27 +7334,74 @@ export function NoctisDesk() {
             >
               <Menu className="size-5" />
             </button>
+
+            {/* Brand Mark with Search */}
+            <div className="flex items-center gap-2">
+              <span className="flex items-center gap-2">
+                <img
+                  src="/brand/dstrike-logo.png"
+                  alt="DSTRIKE"
+                  className="h-6 w-auto max-w-[80px] shrink-0 rounded bg-white p-0.5 object-contain shadow-xs"
+                />
+                <span className="font-semibold tracking-tight text-[15px] text-zinc-200 hidden sm:inline">Noctis</span>
+              </span>
+              <button
+                type="button"
+                aria-label="Search chats"
+                onClick={() => {
+                  setMenu(true);
+                  setSearching(true);
+                }}
+                className="grid size-7 place-items-center rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition"
+                title="Search consultations and clinical records"
+              >
+                <Search className="size-3.5" />
+              </button>
+            </div>
+
+            {/* Atmosphere Palette (Prominent Header Palette as shown in Image 1) */}
+            <div className="hidden md:flex items-center gap-2 rounded-xl bg-white/[0.04] px-2.5 py-1 border border-white/8 shadow-xs">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-semibold tracking-wider uppercase text-zinc-400">ATMOSPHERE PALETTE</span>
+                <span className="text-[10px] font-mono font-medium text-[#e4b86a] capitalize">{theme}</span>
+              </div>
+              <div className="flex items-center gap-1 rounded-full bg-black/40 p-0.5 border border-white/10">
+                {CANVASES.map((row) => {
+                  const isActive = theme === row.id;
+                  return (
+                    <button
+                      key={row.id}
+                      type="button"
+                      aria-label={row.label}
+                      aria-pressed={isActive}
+                      title={`${row.label}: ${row.blurb}`}
+                      onClick={() => setTheme(row.id)}
+                      className={cn(
+                        "group relative grid size-5 place-items-center rounded-full transition-all duration-200 touch-manipulation",
+                        isActive ? "scale-110" : "hover:scale-105 opacity-70 hover:opacity-100"
+                      )}
+                      style={{
+                        boxShadow: isActive
+                          ? `0 0 0 2px ${row.accent}, 0 0 8px ${row.accent}80`
+                          : "0 0 0 1px rgba(255,255,255,0.2)"
+                      }}
+                    >
+                      <span className="size-3.5 rounded-full transition-transform" style={{ background: row.swatch }} />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Center: Model Picker + Mode Switcher (Chat | Board | Canvas) */}
+          <div className="flex items-center gap-2 justify-center shrink-0">
             <NoctisModelPicker
               onOpenBrainModal={() => setBrainModalOpen(true)}
               onSelectDesk={(d) => setDesk(d)}
               onSelectEngine={(key) => handleSelectEngine(key)}
               onOpenCapabilities={() => setCapabilityMatrixOpen(true)}
             />
-            <button
-              type="button"
-              onClick={() => setDualPlaneModalOpen(true)}
-              title="Inspect Dual-Plane Sovereign Architecture and Zero-Trust Governance"
-              className="hidden lg:inline-flex items-center gap-1.5 rounded-full bg-white/[0.05] hover:bg-white/[0.08] px-2.5 py-1 text-xs transition border border-white/10 cursor-pointer shadow-xs"
-            >
-              <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="font-semibold text-emerald-300 text-[11px]">Dual-Plane:</span>
-              <span className="text-zinc-300 text-[11px]">Enclave [Air-Gapped]</span>
-              <span className="rounded bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 text-[9px] font-mono font-bold">SQDEC P1</span>
-            </button>
-          </div>
-
-          {/* Center: Dedicated Mode Switcher (Chat | Board | Canvas) */}
-          <div className="flex items-center justify-center shrink-0">
             <div className="inline-flex shrink-0 items-center rounded-full bg-[#1e232e] p-1 text-xs sm:text-sm ring-1 ring-white/10 shadow-inner">
               <button
                 type="button"
@@ -7515,19 +7562,33 @@ export function NoctisDesk() {
         <NoctisLiveCveTicker
           onSelectCve={(cveId, prompt) => void send(prompt)}
           centerSlot={
-            <button
-              type="button"
-              onClick={() => {
-                setFactoryStudioTab("proof");
-                setFactoryStudioOpen(true);
-              }}
-              title="Open Cryptographic Proof-of-Execution & SQDEC Priority Stack"
-              className="inline-flex items-center gap-1.5 rounded-full bg-emerald-950/60 hover:bg-emerald-900/70 px-2.5 py-0.5 text-xs transition border border-emerald-500/40 cursor-pointer shadow-xs text-emerald-300"
-            >
-              <Shield className="size-3 text-emerald-400 shrink-0" />
-              <span className="font-bold text-[11px] font-sans">Proof & SQDEC</span>
-              <span className="rounded bg-emerald-500/25 text-emerald-200 px-1 py-0.2 text-[9px] font-mono font-bold">SHA-256</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setDualPlaneModalOpen(true)}
+                title="Inspect Dual-Plane Sovereign Architecture and Zero-Trust Governance"
+                className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.05] hover:bg-white/[0.08] px-2.5 py-0.5 text-xs transition border border-white/10 cursor-pointer shadow-xs"
+              >
+                <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="font-semibold text-emerald-300 text-[11px]">Dual-Plane:</span>
+                <span className="text-zinc-300 text-[11px] hidden xl:inline">Control [Noctis Ultra] —</span>
+                <span className="text-zinc-300 text-[11px]">Enclave [Air-Gapped]</span>
+                <span className="rounded bg-emerald-500/20 text-emerald-300 px-1 py-0.2 text-[9px] font-mono font-bold">SQDEC P1</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setFactoryStudioTab("proof");
+                  setFactoryStudioOpen(true);
+                }}
+                title="Open Cryptographic Proof-of-Execution & SQDEC Priority Stack"
+                className="inline-flex items-center gap-1.5 rounded-full bg-emerald-950/60 hover:bg-emerald-900/70 px-2.5 py-0.5 text-xs transition border border-emerald-500/40 cursor-pointer shadow-xs text-emerald-300"
+              >
+                <Shield className="size-3 text-emerald-400 shrink-0" />
+                <span className="font-bold text-[11px] font-sans">Proof & SQDEC</span>
+                <span className="rounded bg-emerald-500/25 text-emerald-200 px-1 py-0.2 text-[9px] font-mono font-bold">SHA-256</span>
+              </button>
+            </div>
           }
           rightSlot={
             <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 border-l border-white/10 pl-2">
@@ -7538,7 +7599,7 @@ export function NoctisDesk() {
                 className="inline-flex shrink-0 items-center gap-1 sm:gap-1.5 rounded-full bg-white/5 hover:bg-rose-500/20 px-2 sm:px-2.5 py-0.5 text-xs font-medium text-zinc-300 hover:text-rose-200 transition border border-white/10 hover:border-rose-500/30 touch-manipulation shadow-xs"
               >
                 <Trash2 className="size-3 text-zinc-400" />
-                <span className="hidden sm:inline text-[11px] font-sans">Clear chat</span>
+                <span className="hidden sm:inline text-[11px] font-sans">Clear previous chat</span>
                 <span className="sm:hidden text-[10px]">Clear</span>
               </button>
               <img
