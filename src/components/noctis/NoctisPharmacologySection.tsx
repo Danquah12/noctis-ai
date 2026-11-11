@@ -613,7 +613,7 @@ export function NoctisPharmacologySection({ onSendToChat }: NoctisPharmacologySe
           Evidence-Based Clinical Pharmacology Principles (FDA Non-Device CDS)
         </div>
         <p className="leading-relaxed">
-          <strong className="text-zinc-200">1. IKr Blockade & Torsades de Pointes:</strong> Delayed rectifier potassium channels ($I_{Kr}$) mediate myocardial repolarization (Phase 3). Stacking multiple CredibleMeds Known Risk drugs or administering them in the presence of hypokalemia ($K^+ \le 3.5$) creates severe repolarization dispersion, triggering early afterdepolarizations (EADs) and degenerate polymorphic ventricular tachycardia (Torsades de Pointes).
+          <strong className="text-zinc-200">1. IKr Blockade & Torsades de Pointes:</strong> Delayed rectifier potassium channels (IKr) mediate myocardial repolarization (Phase 3). Stacking multiple CredibleMeds Known Risk drugs or administering them in the presence of hypokalemia (K⁺ ≤ 3.5 mEq/L) creates severe repolarization dispersion, triggering early afterdepolarizations (EADs) and degenerate polymorphic ventricular tachycardia (Torsades de Pointes).
         </p>
         <p className="leading-relaxed">
           <strong className="text-zinc-200">2. PXR Nuclear Receptor Hyperinduction:</strong> Rifampin acts as a potent agonist of the Pregnane X Receptor (PXR), profoundly upregulating transcription of CYP3A4 and P-glycoprotein (MDR1). Co-administration with critical narrow-therapeutic-index substrates (Tacrolimus, Cyclosporine, DOACs) drops circulating drug concentrations by 80% to 90%, precipitating hyperacute allograft rejection or fatal stroke.
