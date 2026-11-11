@@ -6,6 +6,7 @@ import { buildRicIntelligenceReport } from "./noctis-ric.ts";
 import { buildSovereignSystemsFactoryReport } from "./noctis-sovereign-factory.ts";
 import { handleNaturalHealthQuery } from "./noctis-health-engine.ts";
 import { handleMechanicalVentilationQuery } from "./noctis-critical-care-vent.ts";
+import { handlePediatricNeonatalEmergencyQuery } from "./noctis-pediatric-neonatal-critical-care.ts";
 import { handleNaturalHealth500Query } from "./noctis-health-500-chat.ts";
 import { handleNaturalPatientDiagnosticQuery } from "./noctis-patient-diagnosis.ts";
 import { handleNaturalSpecialistClinicalQuery } from "./noctis-specialist-router.ts";
@@ -1253,6 +1254,12 @@ export function runFollowUpIntelligence(
   const ventResponse = handleMechanicalVentilationQuery(currentQuestion);
   if (ventResponse) {
     return adaptSpecialistEngineOutput(currentQuestion, ventResponse, "NOCTIS-VENT-001");
+  }
+
+  // 00-b0.1. Noctis Sovereign Pediatric & Neonatal Critical Care Engine (NOCTIS-PED-NEO-001)
+  const pedNeoResponse = handlePediatricNeonatalEmergencyQuery(currentQuestion);
+  if (pedNeoResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, pedNeoResponse, "NOCTIS-PED-NEO-001");
   }
 
   // 00-b. Noctis Medical Record & Doctor Results Interpreter (NMRI - Labs, Doctor Notes, Prognosis, Biopsy, Imaging)
