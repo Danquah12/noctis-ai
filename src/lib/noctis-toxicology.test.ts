@@ -7,6 +7,11 @@ import {
   classifyToxidrome,
   evaluateToxicologyCase,
   formatToxicologySpokenSummary,
+  evaluateToxicAlcoholMethanolEthyleneGlycol,
+  evaluateTcaSodiumChannelBlockerToxicity,
+  evaluateCyanideAndCarbonMonoxidePoisoning,
+  evaluateCrotalineEnvenomation,
+  handleNaturalToxicologyEmergencyQuery,
   TOX_PRESET_APAP_DELAYED,
   TOX_PRESET_CCB_SHOCK,
   TOX_PRESET_SEROTONIN_SYNDROME,
@@ -95,5 +100,114 @@ describe("Noctis Clinical Toxicology & Emergency Toxidrome Engine", () => {
     assert.ok(spoken.includes("Rumack-Matthew treatment threshold is"));
     assert.ok(spoken.includes("CF-TOX-002"));
     assert.ok(spoken.includes("N-ACETYLCYSTEINE"));
+  });
+
+  it("evaluates toxic alcohol (methanol) with exact Osmolal Gap, Fomepizole, and EXTRIP criteria", () => {
+    // 70 kg patient with methanol ingestion:
+    // Na 140, Glu 90, BUN 14, EtOH 0, Measured Osm 340, Cl 100, HCO3 8, pH 7.10
+    // Calc Osm = 2(140) + 90/18 + 14/2.8 + 0 = 280 + 5 + 5 = 290 mOsm/kg
+    // Osm Gap = 340 - 290 = 50 mOsm/kg (Elevated > 10, and >= 50 EXTRIP trigger)
+    // Anion Gap = 140 - (100 + 8) = 32 mEq/L
+    const res = evaluateToxicAlcoholMethanolEthyleneGlycol({
+      substance: "METHANOL",
+      weightKg: 70,
+      measuredOsmolalityMOsmKg: 340,
+      sodiumMeqL: 140,
+      glucoseMgDl: 90,
+      bunMgDl: 14,
+      ethanolMgDl: 0,
+      chlorideMeqL: 100,
+      bicarbonateMeqL: 8,
+      arterialPh: 7.10,
+      measuredToxicAlcoholMgDl: 65,
+      visualSymptomsReported: true,
+    });
+
+    assert.strictEqual(res.calculatedOsmolalityMOsmKg, 290);
+    assert.strictEqual(res.osmolalGapMOsmKg, 50);
+    assert.strictEqual(res.anionGapMeqL, 32);
+    assert.strictEqual(res.osmolalGapElevated, true);
+    assert.strictEqual(res.highAnionGapAcidosisDetected, true);
+    assert.strictEqual(res.fomepizoleProtocol.loadingDoseMg, 1050); // 70 * 15 = 1050 mg
+    assert.strictEqual(res.fomepizoleProtocol.maintenanceDoseMg, 700); // 70 * 10 = 700 mg
+    assert.ok(res.coFactorTherapy.some((c) => c.includes("Folinic Acid")));
+    assert.strictEqual(res.extripDialysisRecommendation.dialysisMandatory, true);
+    assert.strictEqual(res.extripDialysisRecommendation.urgencyTier, "EMERGENT_HEMODIALYSIS_NOW");
+  });
+
+  it("evaluates TCA overdose, stratifies QRS and aVR risk, orders NaHCO3, and vetoes Physostigmine", () => {
+    const res = evaluateTcaSodiumChannelBlockerToxicity({
+      patientWeightKg: 70,
+      qrsDurationMs: 165, // > 160 ms -> Ventricular arrhythmia high risk
+      terminalRAvrMm: 4.0, // >= 3.0 mm -> Conduction block
+      rOverSRatioAvr: 0.9,
+      systolicBpMmHg: 80,
+      heartRateBpm: 130,
+      seizuresReported: true,
+      ventricularDysrhythmiaPresent: false,
+    });
+
+    assert.strictEqual(res.ecgRiskStratification.qrsRiskCategory, "VENTRICULAR_ARRHYTHMIA_HIGH_RISK");
+    assert.strictEqual(res.ecgRiskStratification.aVrTerminalRWaveRisk, "HIGH_RISK_CONDUCTION_BLOCK");
+    assert.strictEqual(res.sodiumBicarbonateProtocol.indicated, true);
+    assert.strictEqual(res.sodiumBicarbonateProtocol.bolusDoseMeq, 105); // 70 * 1.5 = 105 mEq
+    assert.ok(res.strictSafetyVetoes.some((v) => v.includes("CF-TOX-005") && v.includes("Physostigmine")));
+    assert.ok(res.strictSafetyVetoes.some((v) => v.includes("CLASS IA / IC")));
+  });
+
+  it("evaluates Cyanide & Carbon Monoxide poisoning with Hydroxocobalamin and Hyperbaric Oxygen indications", () => {
+    const res = evaluateCyanideAndCarbonMonoxidePoisoning({
+      exposureScenario: "SMOKE_INHALATION_FIRE",
+      carboxyhemoglobinPercent: 28, // >= 25% -> HBO indicated
+      serumLactateMmolL: 11.2, // >= 8.0 -> Cyanide suspected
+      lossOfConsciousnessOrSyncope: true,
+      neurologicDeficitsPresent: true,
+      isPregnant: false,
+    });
+
+    assert.strictEqual(res.cyanideToxicitySuspected, true);
+    assert.strictEqual(res.hydroxocobalaminProtocol.indicated, true);
+    assert.ok(res.hydroxocobalaminProtocol.adultDose.includes("5.0 grams IV"));
+    assert.strictEqual(res.carbonMonoxideManagement.hyperbaricOxygenIndicated, true);
+    assert.ok(res.carbonMonoxideManagement.hboCriteriaMet.length >= 2);
+  });
+
+  it("evaluates Crotaline snake envenomation, doses CroFab, and vetoes tourniquets/incisions", () => {
+    const res = evaluateCrotalineEnvenomation({
+      snakeType: "RATTLESNAKE",
+      patientWeightKg: 80,
+      timeSinceBiteHours: 3,
+      localSwellingProgression: "RAPIDLY_PROGRESSING_PAST_MAJOR_JOINT",
+      plateletCount10e9L: 65,
+      fibrinogenMgDl: 90, // < 100 -> Severe coagulopathy
+      ptInr: 2.1,
+      systemicSignsPresent: true,
+    });
+
+    assert.strictEqual(res.envenomationSeverity, "SEVERE");
+    assert.strictEqual(res.antivenomProtocol.indicated, true);
+    assert.strictEqual(res.antivenomProtocol.initialLoadingVials, 6);
+    assert.ok(res.strictSafetyVetoes.some((v) => v.includes("CF-TOX-006") && v.includes("Tourniquets")));
+  });
+
+  it("routes natural language emergency toxicology queries accurately", () => {
+    const methQuery = "A 70 kg patient ingested windshield wiper fluid. Measured osmolality 340, Na 140, Glu 90, BUN 14, pH 7.10, with visual blurring. Calculate osmolal gap and evaluate Fomepizole and dialysis.";
+    const methRes = handleNaturalToxicologyEmergencyQuery(methQuery);
+    assert.ok(methRes);
+    assert.ok(methRes.includes("NOCTIS-TOX-001"));
+    assert.ok(methRes.includes("Fomepizole"));
+    assert.ok(methRes.includes("EXTRIP"));
+
+    const tcaQuery = "Patient with amitriptyline TCA overdose has QRS duration 165 ms, terminal R wave in aVR 4mm, and BP 80/50. What is the sodium bicarbonate protocol?";
+    const tcaRes = handleNaturalToxicologyEmergencyQuery(tcaQuery);
+    assert.ok(tcaRes);
+    assert.ok(tcaRes.includes("Sodium Bicarbonate"));
+    assert.ok(tcaRes.includes("Physostigmine"));
+
+    const snakeQuery = "Patient with rattlesnake pit viper bite has rapidly progressing swelling past the elbow and low fibrinogen. How many vials of CroFab antivenom should be given and can a tourniquet be used?";
+    const snakeRes = handleNaturalToxicologyEmergencyQuery(snakeQuery);
+    assert.ok(snakeRes);
+    assert.ok(snakeRes.includes("CroFab"));
+    assert.ok(snakeRes.includes("HARMFUL INTERVENTIONS VETO"));
   });
 });

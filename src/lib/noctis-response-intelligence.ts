@@ -7,6 +7,7 @@ import { buildSovereignSystemsFactoryReport } from "./noctis-sovereign-factory.t
 import { handleNaturalHealthQuery } from "./noctis-health-engine.ts";
 import { handleMechanicalVentilationQuery } from "./noctis-critical-care-vent.ts";
 import { handlePediatricNeonatalEmergencyQuery } from "./noctis-pediatric-neonatal-critical-care.ts";
+import { handleNaturalToxicologyEmergencyQuery } from "./noctis-toxicology.ts";
 import { handleNaturalHealth500Query } from "./noctis-health-500-chat.ts";
 import { handleNaturalPatientDiagnosticQuery } from "./noctis-patient-diagnosis.ts";
 import { handleNaturalSpecialistClinicalQuery } from "./noctis-specialist-router.ts";
@@ -1260,6 +1261,12 @@ export function runFollowUpIntelligence(
   const ventResponse = handleMechanicalVentilationQuery(currentQuestion);
   if (ventResponse) {
     return adaptSpecialistEngineOutput(currentQuestion, ventResponse, "NOCTIS-VENT-001");
+  }
+
+  // 00-b1.1. Noctis Sovereign Clinical Toxicology & Emergency Antidote Engine (NOCTIS-TOX-001)
+  const toxResponse = handleNaturalToxicologyEmergencyQuery(currentQuestion);
+  if (toxResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, toxResponse, "NOCTIS-TOX-001");
   }
 
   // 00-b. Noctis Medical Record & Doctor Results Interpreter (NMRI - Labs, Doctor Notes, Prognosis, Biopsy, Imaging)
