@@ -555,24 +555,29 @@ export function evaluateHealthSafetyGateway(params: {
     /\b(headache|papilledema|blurred\s+vision|vision|scotoma|encephalopathy|confusion|chest\s+pain|shortness\s+of\s+breath|pulmonary\s+edema|aortic\s+dissection|renal\s+failure)\b/i.test(
       q
     );
-  const isMedicalEmergency =
-    isSevereHyperkalemiaEmergency ||
-    isHypertensiveEmergency ||
-    isAcuteCoronaryChestEmergency ||
-    isAcuteStrokeOrNeurologicalEmergency ||
-    isMarkedBradycardiaEmergency ||
-    isTest011To019Emergency ||
-    isHypoxemiaTachypneaShockConfusionEmergency ||
-    isSepticShockOrVitalSignInstabilityEmergency ||
-    isDkaOrHhsEmergency ||
-    isAnaphylaxisOrAirwayEmergency ||
-    isObstetricEmergency ||
-    isAcuteGiBleedOrHemorrhageEmergency ||
-    isAcuteMeningitisEmergency ||
-    isAcuteOverdoseOrToxEmergency ||
-    /\b(facial\s+droop|slurred\s+speech\s+and\s+weakness|anaphylaxis|throat\s+closing|unresponsive|spo2\s*<\s*88|severe\s+bleeding)\b/i.test(
+  const isVentOrIntubatedPatient =
+    /\b(intubated|ventilator|volume\s+control|pressure\s+control|peep|pplat|ppeak|driving\s+pressure|recruitment\s+maneuver|tidal\s+volume)\b/i.test(
       q
     );
+  const isMedicalEmergency =
+    !isVentOrIntubatedPatient &&
+    (isSevereHyperkalemiaEmergency ||
+      isHypertensiveEmergency ||
+      isAcuteCoronaryChestEmergency ||
+      isAcuteStrokeOrNeurologicalEmergency ||
+      isMarkedBradycardiaEmergency ||
+      isTest011To019Emergency ||
+      isHypoxemiaTachypneaShockConfusionEmergency ||
+      isSepticShockOrVitalSignInstabilityEmergency ||
+      isDkaOrHhsEmergency ||
+      isAnaphylaxisOrAirwayEmergency ||
+      isObstetricEmergency ||
+      isAcuteGiBleedOrHemorrhageEmergency ||
+      isAcuteMeningitisEmergency ||
+      isAcuteOverdoseOrToxEmergency ||
+      /\b(facial\s+droop|slurred\s+speech\s+and\s+weakness|anaphylaxis|throat\s+closing|unresponsive|spo2\s*<\s*88|severe\s+bleeding)\b/i.test(
+        q
+      ));
   const hasStaleStableSummaryConflict =
     isMedicalEmergency &&
     /\b(patient\s+stable|routine\s+follow-up|three-?month-?old|3-?month-?old|months?\s+ago[\s\S]{0,80}stable|stable\s+note)\b/i.test(
@@ -6085,6 +6090,15 @@ export function handlePhysicianDiagnosticQuery(question: string): string | null 
     !/\b(\d{1,3}\s*(?:-|\s+)?(?:year|yr|yo|y\/o))\b/i.test(q)
   ) {
     return buildPhysicianDiagnosticEngineReport();
+  }
+
+  // Bypass outpatient physician syndromic atlas for intensive mechanical ventilation scenarios
+  const isVentOrIntubatedPatient =
+    /\b(intubated|ventilator|volume\s+control|pressure\s+control|peep|pplat|ppeak|driving\s+pressure|recruitment\s+maneuver|tidal\s+volume)\b/i.test(
+      q
+    );
+  if (isVentOrIntubatedPatient) {
+    return null;
   }
 
   // B. Score all syndrome clusters in NOCTIS_PHYSICIAN_DIAGNOSTIC_ATLAS against the patient presentation

@@ -13,6 +13,7 @@
 
 import { evaluateNoctisHealth500Case } from "./noctis-health-500-engine.ts";
 import type { NoctisHealth500Case, ClinicalSpecialty } from "./noctis-health-500-schema.ts";
+import { handleMechanicalVentilationQuery } from "./noctis-critical-care-vent.ts";
 
 export interface BenchmarkFlagshipSummary {
   caseId: string;
@@ -1663,6 +1664,9 @@ ${scorecardSection}
  * Natural language chat handler for Noctis Health 500 queries.
  */
 export function handleNaturalHealth500Query(question: string): string | null {
+  const ventSol = handleMechanicalVentilationQuery(question);
+  if (ventSol) return ventSol;
+
   if (!isHealth500Query(question)) return null;
 
   // 1. Detect if specific case ID is given (e.g. NH-EM-004, NH-CARD-001)

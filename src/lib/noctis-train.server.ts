@@ -634,9 +634,27 @@ function load(): TrainingPair[] {
 }
 
 export function inferDomain(text: string): string {
-  if (/\b(cve|bola|idor|xss|csrf|ssrf|sqli|nist|cisa|siem|soc|zero trust|phish|malware|ransomware|cvss|firewall|burp|wireshark|splunk|iam|oauth|jwt|aibom|ctem)\b/i.test(text)) return "cybersecurity";
+  if (
+    /\b(ards|ventilator|tidal|pbw|stemi|aortic|dka|hypokalemia|hyperkalemia|insulin|potassium|pneumonia|loinc|icd-10|resuscitation|ecg|blood pressure|troponin|sepsis|meningitis|curb-65|qsofa)\b/i.test(
+      text
+    )
+  )
+    return "medicine";
+  if (
+    /\b(cve|bola|idor|xss|csrf|ssrf|sqli|nist|cisa|siem|soc|zero trust|phish|malware|ransomware|cvss|firewall|burp|wireshark|splunk|iam|oauth|jwt|aibom|ctem|tcache|safe-linking)\b/i.test(
+      text
+    )
+  )
+    return "cybersecurity";
+  if (
+    /\b(var|cornish-fisher|black-scholes|portfolio|delta-hedge|put option|futures|liquidity|skewness|kurtosis|hedging)\b/i.test(
+      text
+    )
+  )
+    return "finance";
+  if (/\b(fedramp|poa&m|800-53|800-37|fips|bell-lapadula|rmf|3pao)\b/i.test(text)) return "grc";
   if (/\b(bible|scripture|verse|psalm|gospel|genesis|john|matthew|romans|kjv)\b/i.test(text)) return "bible";
-  if (/\b(kwh|mwh|gwh|twh|mw|gw|ohm|voltage|current|circuit|battery|generator|microgrid|factor of safety|si units)\b/i.test(text)) return "engineering";
+  if (/\b(kwh|mwh|gwh|twh|mw|gw|ohm|voltage|current|circuit|battery|generator|microgrid|factor of safety|si units|boussinesq|smr|nuclear|dnbr|vis-viva|hohmann)\b/i.test(text)) return "engineering";
   if (/\b(photosynthesis|newton|hypothesis|molecule|dna|cell|gravity|physics|chemistry|biology)\b/i.test(text)) return "science";
   if (/\b(resume|career|interview|salary|job|cert|certification|help desk|cissp|security\+|cysa\+)\b/i.test(text)) return "career";
   return "general";

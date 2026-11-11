@@ -962,6 +962,24 @@ export async function vibeReply(
   }
   const reply = await composeVibeReply(kept, keyOverride, style);
   if (!("text" in reply) || reply.text.includes("Independent check") || reply.text.startsWith("## Vibe ") || (reply.text.trim().startsWith("{") && reply.text.trim().endsWith("}"))) return reply;
+
+  // Autonomous Continuous Self-Training & Epistemic Gap Synthesis
+  try {
+    const { rememberAnswer, rememberRule, inferDomain } = await import("@/lib/noctis-train.server");
+    if (reply && "text" in reply && reply.text && reply.text.length > 60 && !reply.text.includes("could not finish")) {
+      const domain = inferDomain(latest);
+      rememberAnswer(latest, reply.text, "noctis-continuous-learner", domain);
+
+      // Auto-extract rule if a critical clinical invariant, override, or guideline violation was resolved:
+      if (/(?:override|wrong weight metric|predicted body weight|safety invariant|rule fails|absolute contraindication|hard safety veto|do not wait|ecmo criteria|winter['’]?s formula)/i.test(reply.text)) {
+        const keyRuleMatch = reply.text.match(/(?:ARDS ventilation targets[^.\n]+|using the actual \d+ kg gives a false limit[^.\n]+|do not administer[^.\n]+|mandatory IV[^.\n]+|PBW formula[^.\n]+|Alveolar distending pressure is measured strictly by Plateau Pressure[^.\n]+|increasing the respiratory rate from \d+ to \d+ will drastically shorten expiratory time[^.\n]+|never administer continuous neuromuscular blockade without first confirming deep[^.\n]+|in severe metabolic acidosis.*Winter['’]?s formula[^.\n]+|tension pneumothorax.*immediate decompression[^.\n]+|EOLIA trial criteria.*VV-ECMO[^.\n]+)/i);
+        if (keyRuleMatch?.[0]) {
+          void rememberRule(keyRuleMatch[0].trim(), domain);
+        }
+      }
+    }
+  } catch {}
+
   const { attachHard } = await import("@/lib/noctis-hard");
   return { text: attachHard(scenario, reply.text) };
 }
