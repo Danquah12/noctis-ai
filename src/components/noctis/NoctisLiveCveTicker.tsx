@@ -63,9 +63,11 @@ const DEFAULT_KEV_TICKER: LiveCveEntry[] = [
 export interface NoctisLiveCveTickerProps {
   onSelectCve?: (cveId: string, prompt: string) => void;
   className?: string;
+  centerSlot?: React.ReactNode;
+  rightSlot?: React.ReactNode;
 }
 
-export default function NoctisLiveCveTicker({ onSelectCve, className }: NoctisLiveCveTickerProps) {
+export default function NoctisLiveCveTicker({ onSelectCve, className, centerSlot, rightSlot }: NoctisLiveCveTickerProps) {
   const [entries] = useState<LiveCveEntry[]>(DEFAULT_KEV_TICKER);
   const [activeIdx, setActiveIdx] = useState(0);
   const [expanded, setExpanded] = useState(false);
@@ -124,7 +126,7 @@ export default function NoctisLiveCveTicker({ onSelectCve, className }: NoctisLi
       )}
     >
       {/* Collapsed Strip */}
-      <div className="flex h-9 items-center justify-between px-3 sm:px-4 text-xs font-mono">
+      <div className="flex h-10 items-center justify-between px-3 sm:px-4 text-xs font-mono gap-2">
         <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
           {/* Live Pulse Indicator */}
           <button
@@ -162,15 +164,22 @@ export default function NoctisLiveCveTicker({ onSelectCve, className }: NoctisLi
                   RANSOMWARE
                 </span>
               ) : null}
-              <span className="hidden lg:inline text-[11px] text-amber-300/80 shrink-0">
+              <span className="hidden xl:inline text-[11px] text-amber-300/80 shrink-0">
                 EPSS: {current.epssPercentile}%
               </span>
             </button>
           </div>
         </div>
 
-        {/* Controls: Manual Input + Investigate Button + Drawer Toggle */}
-        <div className="flex items-center gap-2 shrink-0 pl-2">
+        {/* Center Slot (e.g. Cryptographic Proof & SQDEC badge) */}
+        {centerSlot ? (
+          <div className="hidden lg:flex items-center shrink-0 px-2">
+            {centerSlot}
+          </div>
+        ) : null}
+
+        {/* Controls: Manual Input + Investigate Button + Drawer Toggle + Right Slot */}
+        <div className="flex items-center gap-2 shrink-0 pl-1">
           <form onSubmit={handleManualSubmit} className="flex items-center gap-1.5">
             <div className="relative flex items-center">
               <Search className="pointer-events-none absolute left-2 size-3 text-zinc-500" />
@@ -179,13 +188,13 @@ export default function NoctisLiveCveTicker({ onSelectCve, className }: NoctisLi
                 value={manualCve}
                 onChange={(e) => setManualCve(e.target.value)}
                 placeholder="CVE-YYYY-NNNN"
-                className="h-6 w-28 sm:w-36 md:w-44 rounded-full border border-white/15 bg-white/5 pl-6 pr-2 text-[11px] font-mono text-zinc-100 placeholder:text-zinc-500 focus:border-[#e4b86a] focus:bg-[#121622] focus:outline-none transition uppercase"
+                className="h-6 w-24 sm:w-32 md:w-40 rounded-full border border-white/15 bg-white/5 pl-6 pr-2 text-[11px] font-mono text-zinc-100 placeholder:text-zinc-500 focus:border-[#e4b86a] focus:bg-[#121622] focus:outline-none transition uppercase"
                 title="Enter any CVE value and press Enter or click Investigate"
               />
             </div>
             <button
               type="submit"
-              className="inline-flex h-6 items-center gap-1 rounded-full bg-[#e4b86a] hover:bg-[#d4a85a] text-[#1a1408] px-2.5 text-[11px] font-sans font-bold shadow-sm transition active:scale-95 cursor-pointer whitespace-nowrap"
+              className="inline-flex h-6 items-center gap-1 rounded-full bg-[#e4b86a] hover:bg-[#d4a85a] text-[#1a1408] px-2 sm:px-2.5 text-[11px] font-sans font-bold shadow-sm transition active:scale-95 cursor-pointer whitespace-nowrap"
               title="Investigate this CVE (or press Enter)"
             >
               <span>Investigate</span>
@@ -200,6 +209,11 @@ export default function NoctisLiveCveTicker({ onSelectCve, className }: NoctisLi
           >
             {expanded ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
           </button>
+          {rightSlot ? (
+            <div className="flex items-center shrink-0">
+              {rightSlot}
+            </div>
+          ) : null}
         </div>
       </div>
 

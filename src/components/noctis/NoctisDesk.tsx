@@ -6466,8 +6466,8 @@ export function NoctisDesk() {
         {/* Background Atmosphere Palettes — Inside Menu Drawer for Mobile & Desktop */}
         <div className="mb-2 rounded-2xl bg-white/[0.04] p-2.5 border border-white/8 shadow-xs">
           <div className="mb-2 flex items-center justify-between px-0.5">
-            <span className="text-[11px] font-semibold tracking-wider uppercase text-zinc-400">Atmosphere Palette</span>
-            <span className="text-[11px] font-medium text-[#e4b86a] capitalize">{theme}</span>
+            <span className="text-[10px] font-semibold tracking-wider uppercase text-zinc-400">Atmosphere Palette</span>
+            <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-full bg-white/5 text-[#e4b86a] border border-white/10 capitalize">{theme}</span>
           </div>
           <div className="flex items-center justify-between gap-1 rounded-xl bg-black/30 p-1.5 border border-white/5">
             {CANVASES.map((row) => {
@@ -7323,29 +7323,45 @@ export function NoctisDesk() {
             </div>
           </div>
         ) : null}
-        <header className="relative z-30 flex h-14 shrink-0 items-center justify-center border-b border-white/10 bg-[#12151c]">
-          <button
-            type="button"
-            aria-label="Open menu"
-            onClick={() => setMenu(true)}
-            className="absolute left-3 grid size-9 place-items-center rounded-xl text-zinc-300 hover:bg-white/5 md:hidden"
-          >
-            <Menu className="size-5" />
-          </button>
-          <div ref={topHeaderRef} className="flex items-center gap-2 max-w-[calc(100%-6.5rem)] sm:max-w-[calc(100%-7.5rem)] overflow-x-auto no-scrollbar scroll-smooth">
+        <header className="relative z-30 flex h-14 shrink-0 items-center justify-between border-b border-white/10 bg-[#12151c] px-3 sm:px-4 gap-2">
+          {/* Left: Mobile menu, Model Picker & Dual-Plane Enclave Badge */}
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              aria-label="Open menu"
+              onClick={() => setMenu(true)}
+              className="grid size-9 place-items-center rounded-xl text-zinc-300 hover:bg-white/5 md:hidden"
+            >
+              <Menu className="size-5" />
+            </button>
             <NoctisModelPicker
               onOpenBrainModal={() => setBrainModalOpen(true)}
               onSelectDesk={(d) => setDesk(d)}
               onSelectEngine={(key) => handleSelectEngine(key)}
               onOpenCapabilities={() => setCapabilityMatrixOpen(true)}
             />
-            <div className="inline-flex shrink-0 items-center rounded-full bg-[#2a2a2a] p-1 text-sm ring-1 ring-white/10">
+            <button
+              type="button"
+              onClick={() => setDualPlaneModalOpen(true)}
+              title="Inspect Dual-Plane Sovereign Architecture and Zero-Trust Governance"
+              className="hidden lg:inline-flex items-center gap-1.5 rounded-full bg-white/[0.05] hover:bg-white/[0.08] px-2.5 py-1 text-xs transition border border-white/10 cursor-pointer shadow-xs"
+            >
+              <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="font-semibold text-emerald-300 text-[11px]">Dual-Plane:</span>
+              <span className="text-zinc-300 text-[11px]">Enclave [Air-Gapped]</span>
+              <span className="rounded bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 text-[9px] font-mono font-bold">SQDEC P1</span>
+            </button>
+          </div>
+
+          {/* Center: Dedicated Mode Switcher (Chat | Board | Canvas) */}
+          <div className="flex items-center justify-center shrink-0">
+            <div className="inline-flex shrink-0 items-center rounded-full bg-[#1e232e] p-1 text-xs sm:text-sm ring-1 ring-white/10 shadow-inner">
               <button
                 type="button"
                 onClick={() => setDesk("chat")}
                 className={cn(
-                  "rounded-full px-3.5 py-1.5 transition",
-                  desk === "chat" ? "bg-[#3a3a3a] text-white" : "text-zinc-400 hover:text-zinc-200"
+                  "rounded-full px-3.5 py-1 text-xs sm:text-sm font-medium transition",
+                  desk === "chat" ? "bg-white/15 text-white shadow-xs font-semibold" : "text-zinc-400 hover:text-zinc-200"
                 )}
               >
                 Chat
@@ -7354,8 +7370,8 @@ export function NoctisDesk() {
                 type="button"
                 onClick={() => setDesk("study")}
                 className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 transition",
-                  desk === "study" ? "bg-[#3a3a3a] text-[#e4b86a]" : "text-zinc-400 hover:text-zinc-200"
+                  "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1 text-xs sm:text-sm font-medium transition",
+                  desk === "study" ? "bg-white/15 text-[#e4b86a] shadow-xs font-semibold" : "text-zinc-400 hover:text-zinc-200"
                 )}
               >
                 <GraduationCap className="size-3.5" />
@@ -7371,139 +7387,134 @@ export function NoctisDesk() {
                   setCanvasOpen((o) => !o);
                 }}
                 className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 transition",
-                  canvasOpen ? "bg-[#3a3a3a] text-[#e4b86a]" : "text-zinc-400 hover:text-zinc-200"
+                  "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1 text-xs sm:text-sm font-medium transition",
+                  canvasOpen ? "bg-white/15 text-[#e4b86a] shadow-xs font-semibold" : "text-zinc-400 hover:text-zinc-200"
                 )}
               >
                 <PanelRight className="size-3.5" />
                 Canvas
                 {canvasContent ? <span className="size-1.5 rounded-full bg-[#e4b86a]" /> : null}
               </button>
-              <button
-                type="button"
-                onClick={() => setCapabilityMatrixOpen(true)}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ml-0.5",
-                  capabilityMatrixOpen
-                    ? "bg-[#e4b86a] text-[#1a1408]"
-                    : "bg-gradient-to-r from-amber-500/15 via-rose-500/15 to-cyan-500/15 border border-amber-500/30 text-amber-300 hover:border-amber-400 hover:text-white"
-                )}
-                title="Sovereign Capability Matrix: 16 Autonomous Engines"
-              >
-                <Cpu className="size-3.5 text-amber-400" />
-                <span>Capabilities</span>
-                <span className="rounded-full bg-amber-400/20 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">
-                  16
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setBrainModalOpen(true)}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ml-0.5",
-                  brainModalOpen
-                    ? "bg-[#e4b86a] text-[#1a1408]"
-                    : "bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 hover:border-emerald-400 hover:text-white"
-                )}
-                title="Sovereign Brain & Provider Gateway: Google Gemini, Groq, OpenAI, Ollama"
-              >
-                <Brain className="size-3.5 text-emerald-400" />
-                <span>Brain</span>
-                <span className="rounded-full bg-emerald-400/20 px-1.5 py-0.5 text-[10px] font-bold text-emerald-300">
-                  BYOK
-                </span>
-              </button>
-            </div>
-
-            <div className="flex items-center gap-1 shrink-0">
-              <button
-                type="button"
-                onClick={() => setAgentBuilderModalOpen(true)}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition",
-                  activeCustomAgent
-                    ? "bg-[#e4b86a]/15 text-[#e4b86a] border border-[#e4b86a]/30 font-semibold"
-                    : agentBuilderModalOpen
-                    ? "bg-[#3a3a3a] text-[#e4b86a]"
-                    : ""
-                )}
-                title="Specialist Agent Builder (Noctis GPTs)"
-              >
-                <Bot className="size-3.5" />
-                <span>{activeCustomAgent ? `${activeCustomAgent.avatarEmoji} ${activeCustomAgent.name}` : "Agents"}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setVaultModalOpen(true)}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition",
-                  vaultModalOpen ? "bg-[#3a3a3a] text-purple-400" : ""
-                )}
-                title="Encrypted Vault Backup"
-              >
-                <Lock className="size-3.5" />
-                <span>Vault</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setMemoryModalOpen(true)}
-                className={cn(
-                  "hidden sm:inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition",
-                  memoryModalOpen ? "bg-[#3a3a3a] text-[#e4b86a]" : ""
-                )}
-                title="Personal Memory & Custom Instructions"
-              >
-                <Brain className="size-3.5" />
-                <span>Memory</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setWorkspaceExplorerOpen(true)}
-                className={cn(
-                  "hidden sm:inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition",
-                  workspaceExplorerOpen ? "bg-[#3a3a3a] text-[#e4b86a]" : ""
-                )}
-                title="Project Workspace & Files"
-              >
-                <Library className="size-3.5" />
-                <span>Projects</span>
-              </button>
             </div>
           </div>
-          <button
-            type="button"
-            aria-label="Call someone"
-            onClick={openCall}
-            className="absolute right-3 grid size-10 place-items-center rounded-full text-zinc-300 ring-1 ring-white/10 hover:bg-white/5 md:hidden"
-          >
-            <Phone className="size-5" />
-          </button>
-          <button
-            type="button"
-            onClick={handleSignOut}
-            disabled={signingOut}
-            title="Sign out of Noctis and DStrike"
-            className="absolute right-3 hidden items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-zinc-400 hover:bg-rose-500/20 hover:text-rose-200 transition border border-white/10 hover:border-rose-500/30 md:inline-flex disabled:opacity-50 touch-manipulation"
-          >
-            <LogOut className="size-3.5 shrink-0 text-zinc-400" />
-            <span>{signingOut ? "Signing out..." : "Log out"}</span>
-          </button>
-        </header>
-        <NoctisLiveCveTicker onSelectCve={(cveId, prompt) => void send(prompt)} />
-        <div className="flex h-11 shrink-0 items-center justify-between border-b border-white/10 px-2.5 sm:px-4 bg-[#0e1118] gap-2">
-          <div className="flex items-center gap-1.5 sm:gap-2">
+
+          {/* Right: Studio Capabilities, Brain, Agents, Utilities & Logout */}
+          <div className="flex items-center gap-1.5 shrink-0">
             <button
               type="button"
-              onClick={() => setDualPlaneModalOpen(true)}
-              title="Inspect Dual-Plane Sovereign Architecture and Zero-Trust Governance"
-              className="flex items-center gap-2 rounded-full bg-white/5 hover:bg-white/10 px-2.5 py-1 text-xs transition border border-white/10 cursor-pointer shadow-xs text-left"
+              onClick={() => setCapabilityMatrixOpen(true)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-2.5 sm:px-3 py-1 text-xs font-semibold transition",
+                capabilityMatrixOpen
+                  ? "bg-[#e4b86a] text-[#1a1408]"
+                  : "bg-amber-500/10 border border-amber-500/25 text-amber-300 hover:border-amber-400 hover:text-white"
+              )}
+              title="Sovereign Capability Matrix: 16 Autonomous Engines"
             >
-              <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="font-semibold text-emerald-300">Dual-Plane:</span>
-              <span className="hidden sm:inline text-zinc-400">Control [Noctis Ultra] ──</span>
-              <span className="text-zinc-200">Enclave [Air-Gapped]</span>
-              <span className="hidden md:inline rounded bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 text-[9px] font-mono font-bold">SQDEC P1</span>
+              <Cpu className="size-3.5 text-amber-400" />
+              <span className="hidden sm:inline">Capabilities</span>
+              <span className="rounded-full bg-amber-400/20 px-1.5 py-0.2 text-[10px] font-bold text-amber-300">
+                16
+              </span>
             </button>
+            <button
+              type="button"
+              onClick={() => setBrainModalOpen(true)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-2.5 sm:px-3 py-1 text-xs font-semibold transition",
+                brainModalOpen
+                  ? "bg-[#e4b86a] text-[#1a1408]"
+                  : "bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 hover:border-emerald-400 hover:text-white"
+              )}
+              title="Sovereign Brain & Provider Gateway: Google Gemini, Groq, OpenAI, Ollama"
+            >
+              <Brain className="size-3.5 text-emerald-400" />
+              <span className="hidden sm:inline">Brain</span>
+              <span className="rounded-full bg-emerald-400/20 px-1.5 py-0.2 text-[10px] font-bold text-emerald-300">
+                BYOK
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setAgentBuilderModalOpen(true)}
+              className={cn(
+                "hidden md:inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition border border-white/5",
+                activeCustomAgent
+                  ? "bg-[#e4b86a]/15 text-[#e4b86a] border-[#e4b86a]/30 font-semibold"
+                  : agentBuilderModalOpen
+                  ? "bg-[#3a3a3a] text-[#e4b86a]"
+                  : ""
+              )}
+              title="Specialist Agent Builder (Noctis GPTs)"
+            >
+              <Bot className="size-3.5" />
+              <span className="hidden lg:inline">{activeCustomAgent ? `${activeCustomAgent.avatarEmoji} ${activeCustomAgent.name}` : "Agents"}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setVaultModalOpen(true)}
+              className={cn(
+                "hidden lg:inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition border border-white/5",
+                vaultModalOpen ? "bg-[#3a3a3a] text-purple-400" : ""
+              )}
+              title="Encrypted Vault Backup"
+            >
+              <Lock className="size-3.5" />
+              <span>Vault</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setMemoryModalOpen(true)}
+              className={cn(
+                "hidden xl:inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition border border-white/5",
+                memoryModalOpen ? "bg-[#3a3a3a] text-[#e4b86a]" : ""
+              )}
+              title="Personal Memory & Custom Instructions"
+            >
+              <Brain className="size-3.5" />
+              <span>Memory</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setWorkspaceExplorerOpen(true)}
+              className={cn(
+                "hidden xl:inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition border border-white/5",
+                workspaceExplorerOpen ? "bg-[#3a3a3a] text-[#e4b86a]" : ""
+              )}
+              title="Project Workspace & Files"
+            >
+              <Library className="size-3.5" />
+              <span>Projects</span>
+            </button>
+
+            <div className="h-4 w-px bg-white/10 hidden md:block mx-0.5" />
+
+            {/* Phone call (mobile) & Sign out (desktop) */}
+            <button
+              type="button"
+              aria-label="Call someone"
+              onClick={openCall}
+              className="grid size-8 place-items-center rounded-full text-zinc-300 ring-1 ring-white/10 hover:bg-white/5 md:hidden"
+            >
+              <Phone className="size-4" />
+            </button>
+            <button
+              type="button"
+              onClick={handleSignOut}
+              disabled={signingOut}
+              title="Sign out of Noctis and DStrike"
+              className="hidden md:inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium text-zinc-400 hover:bg-rose-500/20 hover:text-rose-200 transition border border-white/10 hover:border-rose-500/30 disabled:opacity-50 touch-manipulation"
+            >
+              <LogOut className="size-3.5 shrink-0 text-zinc-400" />
+              <span className="hidden lg:inline">{signingOut ? "Signing out..." : "Log out"}</span>
+            </button>
+          </div>
+        </header>
+
+        {/* Sovereign Threat Radar & Live Intelligence Ribbon (Unified Row 2) */}
+        <NoctisLiveCveTicker
+          onSelectCve={(cveId, prompt) => void send(prompt)}
+          centerSlot={
             <button
               type="button"
               onClick={() => {
@@ -7511,33 +7522,33 @@ export function NoctisDesk() {
                 setFactoryStudioOpen(true);
               }}
               title="Open Cryptographic Proof-of-Execution & SQDEC Priority Stack"
-              className="flex items-center gap-1.5 rounded-full bg-emerald-950/50 hover:bg-emerald-900/60 px-2.5 sm:px-3 py-1 text-xs transition border border-emerald-500/40 cursor-pointer shadow-xs text-left text-emerald-300"
+              className="inline-flex items-center gap-1.5 rounded-full bg-emerald-950/60 hover:bg-emerald-900/70 px-2.5 py-0.5 text-xs transition border border-emerald-500/40 cursor-pointer shadow-xs text-emerald-300"
             >
-              <Shield className="size-3.5 text-emerald-400 shrink-0" />
-              <span className="font-bold">Proof & SQDEC</span>
-              <span className="hidden sm:inline rounded bg-emerald-500/25 text-emerald-200 px-1.5 py-0.2 text-[9px] font-mono font-bold">SHA-256</span>
+              <Shield className="size-3 text-emerald-400 shrink-0" />
+              <span className="font-bold text-[11px] font-sans">Proof & SQDEC</span>
+              <span className="rounded bg-emerald-500/25 text-emerald-200 px-1 py-0.2 text-[9px] font-mono font-bold">SHA-256</span>
             </button>
-          </div>
-
-          {/* Clear Previous Chat & Scaled Compact Logo for Mobile and Desktop */}
-          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-            <button
-              type="button"
-              onClick={clearHistory}
-              title="Clear previous chat history and start fresh"
-              className="inline-flex shrink-0 items-center gap-1 sm:gap-1.5 rounded-full bg-white/10 hover:bg-rose-500/20 px-2.5 sm:px-3 py-1 text-xs font-medium text-zinc-300 hover:text-rose-200 transition border border-white/10 hover:border-rose-500/30 touch-manipulation shadow-xs"
-            >
-              <Trash2 className="size-3 sm:size-3.5 text-zinc-400" />
-              <span className="hidden sm:inline">Clear previous chat</span>
-              <span className="sm:hidden">Clear</span>
-            </button>
-            <img
-              src="/brand/dstrike-logo.png"
-              alt="DSTRIKE"
-              className="hidden md:block h-5 w-auto max-w-[54px] shrink-0 rounded bg-white/90 px-1.5 py-0.5 object-contain shadow-xs"
-            />
-          </div>
-        </div>
+          }
+          rightSlot={
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 border-l border-white/10 pl-2">
+              <button
+                type="button"
+                onClick={clearHistory}
+                title="Clear previous chat history and start fresh"
+                className="inline-flex shrink-0 items-center gap-1 sm:gap-1.5 rounded-full bg-white/5 hover:bg-rose-500/20 px-2 sm:px-2.5 py-0.5 text-xs font-medium text-zinc-300 hover:text-rose-200 transition border border-white/10 hover:border-rose-500/30 touch-manipulation shadow-xs"
+              >
+                <Trash2 className="size-3 text-zinc-400" />
+                <span className="hidden sm:inline text-[11px] font-sans">Clear chat</span>
+                <span className="sm:hidden text-[10px]">Clear</span>
+              </button>
+              <img
+                src="/brand/dstrike-logo.png"
+                alt="DSTRIKE"
+                className="hidden md:block h-4.5 w-auto max-w-[50px] shrink-0 rounded bg-white/90 px-1 py-0.5 object-contain shadow-xs"
+              />
+            </div>
+          }
+        />
         {shelf === "chats" && listed.length ? (
           <div className="border-b border-white/10 px-3 py-2 md:hidden">
             <div className="mb-1 flex items-center justify-between">
