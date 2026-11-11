@@ -14,6 +14,10 @@ import { handleNaturalNephrologyCrrtQuery } from "./noctis-nephrology-crrt.ts";
 import { handleNaturalHematologyHemostasisQuery } from "./noctis-icu-hematology-hemostasis.ts";
 import { handleNaturalTraumaBurnsQuery } from "./noctis-trauma-burns-surgical.ts";
 import { handleNaturalIdSepsisQuery } from "./noctis-infectious-disease-sepsis.ts";
+import { handleNaturalCardioMcsQuery } from "./noctis-cardiology-mcs.ts";
+import { handleNaturalEndocrinologyQuery } from "./noctis-endocrinology-crises.ts";
+import { handleNaturalObstetricsQuery } from "./noctis-obstetrics-critical-care.ts";
+import { handleNaturalPulmRvQuery } from "./noctis-pulmonary-rv-failure.ts";
 import { handleNaturalHealth500Query } from "./noctis-health-500-chat.ts";
 import { handleNaturalPatientDiagnosticQuery } from "./noctis-patient-diagnosis.ts";
 import { handleNaturalSpecialistClinicalQuery } from "./noctis-specialist-router.ts";
@@ -1309,6 +1313,30 @@ export function runFollowUpIntelligence(
   const idSepsisResponse = handleNaturalIdSepsisQuery(currentQuestion);
   if (idSepsisResponse) {
     return adaptSpecialistEngineOutput(currentQuestion, idSepsisResponse, "NOCTIS-ID-SEPSIS-001");
+  }
+
+  // 00-b1.8. Noctis Sovereign Advanced Cardiology, Mechanical Circulatory Support & Refractory Shock (NOCTIS-CARDIO-MCS-001)
+  const cardioMcsResponse = handleNaturalCardioMcsQuery(currentQuestion);
+  if (cardioMcsResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, cardioMcsResponse, "NOCTIS-CARDIO-MCS-001");
+  }
+
+  // 00-b1.9. Noctis Sovereign Critical Care Endocrinology & Endocrine Crises Engine (NOCTIS-ENDO-CRISIS-001)
+  const endoResponse = handleNaturalEndocrinologyQuery(currentQuestion);
+  if (endoResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, endoResponse, "NOCTIS-ENDO-CRISIS-001");
+  }
+
+  // 00-b1.10. Noctis Sovereign Critical Care Obstetrics Engine (NOCTIS-OB-CRIT-001)
+  const obResponse = handleNaturalObstetricsQuery(currentQuestion);
+  if (obResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, obResponse, "NOCTIS-OB-CRIT-001");
+  }
+
+  // 00-b1.11. Noctis Sovereign Acute RV Failure, Massive PE & Status Asthmaticus Engine (NOCTIS-PULM-RV-001)
+  const pulmRvResponse = handleNaturalPulmRvQuery(currentQuestion);
+  if (pulmRvResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, pulmRvResponse, "NOCTIS-PULM-RV-001");
   }
 
   // 00-b. Noctis Medical Record & Doctor Results Interpreter (NMRI - Labs, Doctor Notes, Prognosis, Biopsy, Imaging)
