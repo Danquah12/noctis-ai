@@ -1346,10 +1346,11 @@ export function isHealth500Query(question: string): boolean {
     /\bnh-[a-z]{2,4}-\d{3}\b/i.test(q) ||
     /\bevaluate\s+(?:patient\s+)?case\s+in\s+[a-z_]+/i.test(q) ||
     /\bclinical\s+benchmark\s+case\b/i.test(q) ||
-    /\b(cf-aor-001|cf-str-001|cf-dka-001|cf-app-002|cf-hyp-001)\b/i.test(q) ||
+    /\b(cf-aor-001|cf-str-001|cf-dka-001|cf-app-002|cf-hyp-001|cf-ard-001)\b/i.test(q) ||
     /\b(clinical\s+decision\s+support\s+safety\s+invariants?|cds\s+safety\s+invariants?)\b/i.test(q) ||
     /\b(how\s+does\s+noctis\s+evaluate\s+this\s+order)\b/i.test(q) ||
-    /\b(resident\s+physician\s+wants\s+to\s+administer)\b/i.test(q) ||
+    /\b(resident\s+(?:physician\s+)?wants\s+to\s+(?:administer|increase))\b/i.test(q) ||
+    /\b(ards|ventilator|tidal\s+volume|pplat|peep|driving\s+pressure|lung-protective)\b/i.test(q) ||
     (/\b(tearing\s+(?:substernal\s+)?chest\s+pain|interscapular)\b/i.test(q) &&
       /\b(stemi|heparin|aspirin|dissection|bp\s+\d+|vital\s+signs)\b/i.test(q))
   );
@@ -1360,10 +1361,12 @@ export function isHealth500Query(question: string): boolean {
  */
 export function resolveSpecialtyFromQuery(query: string): ClinicalSpecialty {
   const q = query.toUpperCase();
+  if (/\b(?:ARDS|VENTILAT\w*|PEEP|PPLAT|DRIVING\s+PRESSURE|INTUBAT\w*|TIDAL\s+VOLUME|PBW|LUNG-PROTECTIVE)\b/i.test(q))
+    return "CRITICAL_CARE";
   if (/\b(?:NEURO\w*|STROKE\w*|NIHSS|LVO|BRAIN)\b/i.test(q)) return "NEUROLOGY";
   if (/\b(?:CARDIO\w*|AORTIC\w*|HEART\w*|STEMI|CHEST\s+PAIN)\b/i.test(q)) return "CARDIOLOGY";
-  if (/\b(?:INFECT\w*|MENING\w*|SEPSIS|BACTER\w*)\b/i.test(q)) return "INFECTIOUS_DISEASES";
-  if (/\b(?:CRITIC\w*|ICU|ARDS)\b/i.test(q)) return "CRITICAL_CARE";
+  if (/\b(?:MENING\w*|LUMBAR\s+PUNCTURE|PURPURA|PETECHIA\w*|MENINGOCOCC\w*)\b/i.test(q)) return "INFECTIOUS_DISEASES";
+  if (/\b(?:CRITIC\w*|ICU)\b/i.test(q)) return "CRITICAL_CARE";
   if (/\b(?:GASTRO\w*|HEPAT\w*|VARIC\w*|LIVER|CIRRHOSIS)\b/i.test(q)) return "GASTROENTEROLOGY_HEPATOLOGY";
   if (/\b(?:RESPIR\w*|PULM\w*|EMBOL\w*|\bPE\b)\b/i.test(q)) return "RESPIRATORY_MEDICINE";
   if (/\b(?:NEPHRO\w*|HYPERKALEM\w*|KIDNEY\w*|RENAL|DIALYSIS)\b/i.test(q)) return "NEPHROLOGY";
@@ -1375,6 +1378,7 @@ export function resolveSpecialtyFromQuery(query: string): ClinicalSpecialty {
   if (/\b(?:PSYCH\w*|NMS|CATATONIA)\b/i.test(q)) return "PSYCHIATRY";
   if (/\b(?:DERM\w*|RHEUM\w*|SJS|\bTEN\b|LUPUS)\b/i.test(q)) return "DERMATOLOGY_RHEUMATOLOGY";
   if (/\b(?:EMERG\w*|TRAUMA\w*|APPENDIC\w*|ALVARADO)\b/i.test(q)) return "EMERGENCY_MEDICINE";
+  if (/\b(?:INFECT\w*|SEPSIS)\b/i.test(q)) return "INFECTIOUS_DISEASES";
   return "EMERGENCY_MEDICINE";
 }
 
@@ -1473,6 +1477,24 @@ export function generateHealth500ConsultationDossier(
         cfTriggered = true;
         cfDetails = { code: cf.failureCode, desc: cf.description, harm: cf.patientHarmRisk };
         break;
+      }
+      if (cf.failureCode === "CF-ARD-001") {
+        const mentionsHighVt =
+          lower.includes("650") ||
+          lower.includes("increase the tidal volume") ||
+          lower.includes("increase tidal") ||
+          lower.includes("increase vt") ||
+          lower.includes("high tidal") ||
+          (lower.includes("tidal volume") && (lower.includes("increase") || lower.includes("raise")));
+        const ignoresPlateauLimit =
+          lower.includes("blow off") ||
+          lower.includes("treat the respiratory acidosis") ||
+          lower.includes("treat acidosis");
+        if (mentionsHighVt || ignoresPlateauLimit) {
+          cfTriggered = true;
+          cfDetails = { code: cf.failureCode, desc: cf.description, harm: cf.patientHarmRisk };
+          break;
+        }
       }
     }
 
@@ -1661,11 +1683,11 @@ export function handleNaturalHealth500Query(question: string): string | null {
   // 3. Check if user provided candidate reasoning or clinical orders
   let candidateText = "";
   const candidatePrefixMatch = question.match(
-    /(?:candidate\s+reasoning|candidate\s+diagnosis|candidate\s+response|candidate\s+output|evaluate\s+output|score\s+this|resident\s+physician\s+wants\s+to|wants\s+to\s+administer)[:\s]+([\s\S]+)/i
+    /(?:candidate\s+reasoning|candidate\s+diagnosis|candidate\s+response|candidate\s+output|evaluate\s+output|score\s+this|resident\s+(?:physician\s+)?wants\s+to|wants\s+to\s+(?:administer|increase))[:\s]+([\s\S]+)/i
   );
   if (candidatePrefixMatch) {
     candidateText = candidatePrefixMatch[1].trim();
-  } else if (/administer|heparin|aspirin|thromboly|stemi\s+code/i.test(question)) {
+  } else if (/administer|heparin|aspirin|thromboly|stemi\s+code|increase.*tidal|blow off|treat.*acidosis/i.test(question)) {
     candidateText = question;
   }
 

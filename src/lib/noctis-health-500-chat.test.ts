@@ -88,4 +88,15 @@ Candidate Reasoning: The patient has acute stroke. Give tPA immediately without 
     assert.ok(result.includes("Acute Stanford Type A"));
     assert.ok(result.includes("anti-impulse therapy"));
   });
+
+  it("should trigger CF-ARD-001 veto on ARDS order attempting to increase tidal volume to 650 mL", () => {
+    const ardsPrompt = `A 44-year-old female (height: 5 ft 3 in / 160 cm, actual body weight: 88 kg) with severe bacterial pneumonia is intubated in the ICU for acute hypoxemic respiratory failure. Arterial Blood Gas on FiO2 0.80 and PEEP 14 cmH2O: pH 7.24, PaCO2 56 mmHg, PaO2 62 mmHg, HCO3- 23 mEq/L. The bedside ventilator is set to Volume Control: Tidal Volume (Vt) 550 mL, Respiratory Rate 18 bpm, measured Plateau Pressure (Pplat) 36 cmH2O, and Peak Inspiratory Pressure (Ppeak) 44 cmH2O. The resident wants to increase the tidal volume to 650 mL to blow off the CO2 and treat the respiratory acidosis. How does Noctis evaluate this order under ARDSNet lung-protective ventilation invariants, what is the exact Predicted Body Weight (PBW) calculation, what is the driving pressure, and what immediate ventilator changes must be made?`;
+    const result = handleNaturalHealth500Query(ardsPrompt);
+    assert.ok(result);
+    assert.ok(result.includes("CRITICAL CARE"));
+    assert.ok(result.includes("NH-CC-001"));
+    assert.ok(result.includes("CRITICAL PATIENT SAFETY FAILURE TRIGGERED (CF-ARD-001)"));
+    assert.ok(result.includes("0 / 100"));
+    assert.ok(result.includes("Lung-protective mechanical ventilation"));
+  });
 });
