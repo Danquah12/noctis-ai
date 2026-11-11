@@ -22,8 +22,11 @@ import { executionSheet } from "@/lib/noctis-execute";
 import { ledgerSheet } from "@/lib/noctis-ledger";
 import { extractInputs, retrievalReport, retainSources, scenarioText, strategySheet } from "@/lib/noctis-hard";
 import type { NoctisGatewayProvenance } from "@/lib/video-mind.server";
+import { makeNoctisRouteProvenance } from "@/lib/noctis-route-provenance.mjs";
 
-type NoctisDeskReply = { text: string; provenance?: NoctisGatewayProvenance } | { error: string };
+type NoctisRouteProvenance = ReturnType<typeof makeNoctisRouteProvenance>;
+
+type NoctisDeskReply = { text: string; provenance?: NoctisGatewayProvenance | NoctisRouteProvenance } | { error: string };
 
 export type VibeTurn = { role: "user" | "assistant"; content: string; images?: string[] };
 
@@ -941,12 +944,12 @@ export async function vibeReply(
     console.info(JSON.stringify({ vibeTask: true, turns: kept.length, scenarioChars: scenario.length, inputs: extractInputs(scenario).length, titled: /STRESS TEST/i.test(scenario) }));
   }
   const report = retrievalReport(kept, latest);
-  if (report) return { text: report };
+  if (report) return { text: report, provenance: makeNoctisRouteProvenance("source_retrieval_report") };
 
   if (/\b(schwarzschild|de broglie|henderson-?hasselbalch|lorentz factor|relativistic lorentz|melting temp.*(?:dna|primer)|dna.*melting temp|hubble.*recession|event horizon radius)\b/i.test(latest)) {
     const { solveScienceQuestion, formatScienceResponse } = await import("@/lib/noctis-universal-science-engine");
     const sol = solveScienceQuestion(latest);
-    return { text: formatScienceResponse(sol) };
+    return { text: formatScienceResponse(sol), provenance: makeNoctisRouteProvenance("science_formula_solver") };
   }
   const reply = await composeVibeReply(kept, keyOverride, style);
   if (!("text" in reply) || reply.text.includes("Independent check") || reply.text.startsWith("## Vibe ") || (reply.text.trim().startsWith("{") && reply.text.trim().endsWith("}"))) return reply;
@@ -970,7 +973,7 @@ async function composeVibeReply(
     /\b(python|java|c\+\+|c#|javascript|typescript|golang|rust|html|css|sql\s+injection|sqli|owasp|bola|bopla|bfla|ssrf|csrf|clickjacking|cors|xxe|ssti|smuggling|deserialization|websockets|cswsh|prototype\s+pollution|graphql|nosql|portswigger|etc\/passwd|win\.ini|php:\/\/filter|unit\s*test|unittest|pytest|junit|risk\s+management\s+lifecycle|risk\s+management\s+engine|risk\s+intelligence|domain\s+certification\s+engine|800-37|800-30|iso\s*31000|400[\s-]*question|evaluation\s+suite|evaluation\s+runner|benchmark\s+suite|benchmark\s+runner|eval:noctis)\b/i.test(question) ||
     /\b(write|create|generate|build|implement|train|design|make|develop|code|run|execute)\b[\s\S]{0,90}\b(code|script|program|function|class|test|tasks?|c\s+code|c\s+program|c\s+script|web\s*page|webpage|website|web\s*site|landing\s*page|html\s*page|web\s*app|homepage|home\s*page|portal|dashboard|portfolio|storefront|site|benchmark|evaluation)\b/i.test(question);
   const math = onlyMath(question);
-  if (math) return { text: math };
+  if (math) return { text: math, provenance: makeNoctisRouteProvenance("inline_math") };
   const orchestrationDirective = buildRouteDirective(question);
   const trainCmd = question.match(/^(?:train(?:\s+vibe)?|teach\s+vibe)\s*:\s*([\s\S]+?)\s*(?:\|\||=>|->)\s*([\s\S]+)$/i);
   if (trainCmd) {
@@ -1016,7 +1019,7 @@ async function composeVibeReply(
     if (cveMatch) {
       const { resolveCveIntelligenceLive, formatCveResponse } = await import("@/lib/noctis-cve-knowledge");
       const profile = await resolveCveIntelligenceLive(cveMatch[1], fullQuestion);
-      return { text: formatCveResponse(profile) };
+      return { text: formatCveResponse(profile), provenance: makeNoctisRouteProvenance("cve_intelligence") };
     }
 
     const { runFollowUpIntelligence } = await import("@/lib/noctis-response-intelligence");
@@ -1063,14 +1066,14 @@ async function composeVibeReply(
   if (!attached && spoken.toLowerCase() === "english" && !engineeringDesign(question) && !resourcePlan(question) && !hasHardRows) {
     const trainedHit = recallTrainedAnswer(question);
     if (trainedHit && (trainedHit.score >= 0.58 || trainedHit.model === "user-taught" || trainedHit.model === "vibe-trained" || trainedHit.model === "api-trained")) {
-      return { text: trainedHit.answer };
+      return { text: trainedHit.answer, provenance: makeNoctisRouteProvenance("approved_qa_memory") };
     }
   }
   const { askedLevel, depthStance } = await import("@/lib/depth");
   const depth = askedLevel(question) ?? style.level ?? (style.depth === "deep" ? "advanced" : "beginner");
   const { scienceLab } = await import("@/lib/science-lab");
   const lab = scienceLab(question);
-  if (lab) return { text: lab };
+  if (lab) return { text: lab, provenance: makeNoctisRouteProvenance("science_lab") };
   if (/\b(?:30-minute lesson|create a lesson)\b/i.test(question)) {
     const { curatedCard } = await import("@/lib/knowledge-engine");
     const { teacherPack } = await import("@/lib/teacher-pack");
@@ -1091,7 +1094,7 @@ async function composeVibeReply(
   if (attached && /\b(explain this|quiz me|find contradictions|chapter\s+\d+|flashcards|teach me this)\b/i.test(question)) {
     const chapter = question.match(/chapter\s+(\d+)/i);
     if (chapter && !new RegExp(`chapter\\s+${chapter[1]}\\b`, "i").test(attached)) {
-      return { text: `Chapter ${chapter[1]} is not in the attached document. It was not summarized.` };
+      return { text: `Chapter ${chapter[1]} is not in the attached document. It was not summarized.`, provenance: makeNoctisRouteProvenance("missing_chapter_response") };
     }
     try {
       const { modelChat } = await import("@/lib/video-mind.server");
@@ -1118,7 +1121,7 @@ async function composeVibeReply(
   if ((skill.id === "calculate" || skill.id === "work" || work) && work) {
     const body = skill.id === "calculate" && !/show (the |your )?work/i.test(question) ? work.short : work.full;
     const stamped = `${body}\n\nEvidence strength: High\nCompared: the expression was computed.\nContradictions: none.\n\nSources\n- Calculator\nEvidence\nThe number was computed from the expression, not recalled.\nRelated documents\n- None retrieved\nLast verified\n${new Date().toISOString().slice(0, 10)}\nConfidence\nHigh`;
-    if (spoken.toLowerCase() === "english") return { text: stamped };
+    if (spoken.toLowerCase() === "english") return { text: stamped, provenance: makeNoctisRouteProvenance("calculation_engine") };
     try {
       const { modelChat } = await import("@/lib/video-mind.server");
       const result = await modelChat(
@@ -1231,20 +1234,20 @@ async function composeVibeReply(
   };
   if (strict && ground.trim().length < 40) {
     const fallbackTrained = recallTrainedAnswer(question);
-    if (fallbackTrained) return { text: fallbackTrained.answer };
+    if (fallbackTrained) return { text: fallbackTrained.answer, provenance: makeNoctisRouteProvenance("approved_qa_memory") };
     if (!fresh) {
       const { curatedCard } = await import("@/lib/knowledge-engine");
       const card = curatedCard(question);
-      if (card) return { text: [card.sentence, ...card.steps].join("\n\n") };
+      if (card) return { text: [card.sentence, ...card.steps].join("\n\n"), provenance: makeNoctisRouteProvenance("knowledge_card") };
     }
-    return { text: await seal("Not in the record. No source was opened, so this was not guessed.") };
+    return { text: await seal("Not in the record. No source was opened, so this was not guessed."), provenance: makeNoctisRouteProvenance("missing_source_response") };
   }
   const persistedRules = storedRulesBlock();
   const plain = !design && !resourcePlan(question) && !hasHardRows && !seeing && !strict && !fresh;
   if (plain) {
     const directTrained = recallTrainedAnswer(question);
     if (directTrained && spoken.toLowerCase() === "english") {
-      return { text: directTrained.answer };
+      return { text: directTrained.answer, provenance: makeNoctisRouteProvenance("approved_qa_memory") };
     }
     const prior = lessonBlock(question);
     const taught: ChatMessage[] = [
