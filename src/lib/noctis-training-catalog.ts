@@ -139,6 +139,30 @@ export const NOCTIS_MASTER_TRAINING_QUESTIONS: MasterTrainingItem[] = [
     hits: 29,
     at: "2026-11-11T15:00:00.000Z",
   },
+  {
+    question: "A severe traumatic brain injury patient has MAP 80 mmHg, ICP 32 mmHg, an acute unilateral fixed and dilated right pupil, and is receiving D5W. Calculate Cerebral Perfusion Pressure (CPP), identify the herniation syndrome and immediate osmotherapy choice, and detail the active fluid safety veto.",
+    answer: "### Neuro-Intensive Care ICP Crisis & Uncal Herniation Protocol\n1. **Cerebral Perfusion Pressure (CPP) Calculation:**\n   $$\\text{CPP} = \\text{MAP} - \\text{ICP} = 80 - 32 = \\mathbf{48\\text{ mmHg}}$$\n   - Target CPP is **60–70 mmHg** (Brain Trauma Foundation). A CPP of $48\\text{ mmHg}$ creates critical cerebral ischemia and secondary brain death.\n2. **Herniation Syndrome & Osmotherapy Directive:**\n   - **Diagnosis:** Imminent transtentorial uncal herniation with ipsilateral CN III compression (blown pupil).\n   - **Emergent Osmotherapy:** Administer **$30\\text{ mL}$ of 23.4% Hypertonic Saline IV push** over 10-15 minutes via central catheter (or $250\\text{ mL}$ of 3% Hypertonic Saline if 23.4% unavailable). Target serum sodium $145\\text{--}155\\text{ mEq/L}$. Do NOT delay treatment for repeat CT imaging.\n3. **Hypotonic Fluid Veto (CF-NEURO-001):**\n   - D5W is iso-osmolar in the bag but rapidly metabolized to free water, creating hypotonic plasma that crosses the injured blood-brain barrier along osmotic gradients, precipitating catastrophic brain swelling and fatal herniation. Immediately replace with 0.9% Normal Saline.",
+    domain: "healthcare",
+    model: "noctis-neuro-2026",
+    hits: 30,
+    at: "2026-11-11T15:30:00.000Z",
+  },
+  {
+    question: "A patient with acute anterior myocardial infarction has BP 80/50 mmHg, HR 112 bpm, CVP 16 mmHg, mPAP 34 mmHg, sPAP 42, dPAP 26, PCWP 24 mmHg, CO 3.0 L/min (BSA 1.9 m2), and lactate 4.2 mmol/L on Dobutamine and Phenylephrine. Calculate SVR, CI, CPO, and PAPI, classify the SCAI shock stage, and identify the pharmacological safety vetoes.",
+    answer: "### Advanced Hemodynamics & Cardiogenic Shock Profile\n1. **Hemodynamic Calculations:**\n   - $\\text{MAP} = 50 + \\frac{80 - 50}{3} = \\mathbf{60.0\\text{ mmHg}}$\n   - $\\text{Cardiac Index (CI)} = \\frac{3.0}{1.9} = \\mathbf{1.58\\text{ L/min/m}^2}$ (Severe cardiogenic shock $< 2.2$)\n   - $\\text{SVR} = \\frac{(60 - 16) \\times 80}{3.0} = \\mathbf{1,173\\text{ dyn}\\cdot\\text{s}\\cdot\\text{cm}^{-5}}$\n   - $\\text{Cardiac Power Output (CPO)} = \\frac{60 \\times 3.0}{451} = \\mathbf{0.40\\text{ Watts}}$ ($< 0.6\\text{ W}$ cutoff confers $> 50\\%$ in-hospital mortality on medical therapy)\n   - $\\text{PAPI} = \\frac{42 - 26}{16} = \\mathbf{1.00}$ (Borderline RV dysfunction)\n   - **SCAI Staging:** **Stage D (Deteriorating Cardiogenic Shock)**\n2. **Safety Invariants Vetoed:**\n   - **CF-HEMO-001 (Dobutamine Vasoplegia Veto):** Dobutamine induces beta-2 peripheral vasodilation; using it in SBP $< 85\\text{ mmHg}$ without Norepinephrine precipitates vascular collapse.\n   - **CF-HEMO-002 (Phenylephrine Afterload Veto):** Phenylephrine pure alpha-1 vasoconstriction spikes LV afterload without inotropic support, collapsing CPO.\n3. **Action:** Replace Phenylephrine with Norepinephrine; escalate to emergent Mechanical Circulatory Support (Impella CP).",
+    domain: "healthcare",
+    model: "noctis-hemo-2026",
+    hits: 30,
+    at: "2026-11-11T15:30:00.000Z",
+  },
+  {
+    question: "A 70 kg critically ill patient on CVVHDF (dialysate 1,000 mL/h, replacement 600 mL/h, net UF 150 mL/h) with regional citrate anticoagulation develops severe metabolic acidosis (pH 7.22) with total calcium 11.2 mg/dL and systemic ionized calcium 0.90 mmol/L. Calculate the delivered effluent dose and total-to-ionized calcium ratio, diagnose the complication, and state the mandatory action.",
+    answer: "### CRRT Dosing & Citrate Lock Toxicity Analysis\n1. **Effluent Dose Calculation:**\n   $$\\text{Delivered Effluent Dose} = \\frac{1000 + 600 + 150}{70} = \\frac{1750}{70} = \\mathbf{25.0\\text{ mL/kg/h}}$$\n   - Exactly matches the KDIGO/ATN/RENAL target window ($20\\text{--}25\\text{ mL/kg/h}$ delivered).\n2. **Total-to-Ionized Calcium Ratio & Citrate Lock Diagnosis:**\n   $$\\text{Total Ca (mmol/L)} = 11.2\\text{ mg/dL} \\times 0.25 = 2.80\\text{ mmol/L}$$\n   $$\\text{Ratio} = \\frac{2.80}{0.90} = \\mathbf{3.11}$$\n   - A ratio $\\ge 2.5$ accompanied by worsening metabolic acidosis and systemic ionized hypocalcemia confirms **Citrate Lock / Citrate Accumulation Toxicity** (failure of hepatic mitochondrial oxidation of citrate to bicarbonate).\n3. **Mandatory Action (CF-NEPHRO-001):**\n   - **STOP pre-filter citrate infusion immediately**.\n   - Administer Calcium Chloride $1.0\\text{ g}$ IV over 10 minutes to correct refractory systemic hypocalcemia.\n   - Convert CRRT circuit to systemic heparin anticoagulation or no anticoagulation.",
+    domain: "healthcare",
+    model: "noctis-nephro-2026",
+    hits: 30,
+    at: "2026-11-11T15:30:00.000Z",
+  },
 
   // =========================================================================
   // 2. ENGINEERING CHALLENGE 001 (NEC-SMARTCITY-001)

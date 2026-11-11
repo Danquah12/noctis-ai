@@ -8,6 +8,9 @@ import { handleNaturalHealthQuery } from "./noctis-health-engine.ts";
 import { handleMechanicalVentilationQuery } from "./noctis-critical-care-vent.ts";
 import { handlePediatricNeonatalEmergencyQuery } from "./noctis-pediatric-neonatal-critical-care.ts";
 import { handleNaturalToxicologyEmergencyQuery } from "./noctis-toxicology.ts";
+import { handleNaturalNeuroIcuQuery } from "./noctis-neuro-intensive-care.ts";
+import { handleNaturalHemodynamicsQuery } from "./noctis-advanced-hemodynamics.ts";
+import { handleNaturalNephrologyCrrtQuery } from "./noctis-nephrology-crrt.ts";
 import { handleNaturalHealth500Query } from "./noctis-health-500-chat.ts";
 import { handleNaturalPatientDiagnosticQuery } from "./noctis-patient-diagnosis.ts";
 import { handleNaturalSpecialistClinicalQuery } from "./noctis-specialist-router.ts";
@@ -1267,6 +1270,24 @@ export function runFollowUpIntelligence(
   const toxResponse = handleNaturalToxicologyEmergencyQuery(currentQuestion);
   if (toxResponse) {
     return adaptSpecialistEngineOutput(currentQuestion, toxResponse, "NOCTIS-TOX-001");
+  }
+
+  // 00-b1.2. Noctis Sovereign Neuro-Intensive Care & Neurological Emergencies Engine (NOCTIS-NEURO-ICU-001)
+  const neuroIcuResponse = handleNaturalNeuroIcuQuery(currentQuestion);
+  if (neuroIcuResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, neuroIcuResponse, "NOCTIS-NEURO-ICU-001");
+  }
+
+  // 00-b1.3. Noctis Sovereign Advanced Hemodynamics & Shock Phenotyping Engine (NOCTIS-HEMO-001)
+  const hemoResponse = handleNaturalHemodynamicsQuery(currentQuestion);
+  if (hemoResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, hemoResponse, "NOCTIS-HEMO-001");
+  }
+
+  // 00-b1.4. Noctis Sovereign Nephrology & CRRT Dialysis Engine (NOCTIS-NEPHRO-CRRT-001)
+  const nephroResponse = handleNaturalNephrologyCrrtQuery(currentQuestion);
+  if (nephroResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, nephroResponse, "NOCTIS-NEPHRO-CRRT-001");
   }
 
   // 00-b. Noctis Medical Record & Doctor Results Interpreter (NMRI - Labs, Doctor Notes, Prognosis, Biopsy, Imaging)
