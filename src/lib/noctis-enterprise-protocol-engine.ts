@@ -59,7 +59,7 @@ export const ENTERPRISE_PROTOCOL_REGISTRY: Record<string, EnterpriseProtocolSpec
     defaultProtocol: "FHIR_R4_JSON",
     targetSovereignSuite: "noctis-health",
     sqdecPillar: "Safety",
-    signatureKeys: ["resourceType", "entry", "status", "subject", "code"],
+    signatureKeys: ["resourceType", "entry", "status", "subject", "code", "patientId", "criticalAlarm", "panicValue"],
     samplePayloadSummary: "FHIR R4 Bundle containing Patient, Encounter, and Observation resources.",
   },
   cerner_millennium: {
@@ -289,7 +289,7 @@ export function detectEnterpriseProtocol(payload: Record<string, unknown>): Ente
       }
     }
     // High-confidence heuristic matches
-    if (spec.pluginId === "epic_fhir" && payload.resourceType === "Bundle") score += 3;
+    if (spec.pluginId === "epic_fhir" && (payload.resourceType || payload.patientId)) score += 3;
     if (spec.pluginId === "crowdstrike_falcon" && payload.detection_id) score += 3;
     if (spec.pluginId === "splunk_hec" && (payload.event || payload.sourcetype)) score += 3;
     if (spec.pluginId === "cisa_kev_radar" && payload.cveID) score += 4;

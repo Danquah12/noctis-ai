@@ -728,7 +728,13 @@ export const Route = createFileRoute("/api/noctis")({
           construction_boq?: Record<string, unknown>;
           diesel_diagnostics?: Record<string, unknown>;
           enterprise_telemetry?: { plugin?: string; payload?: Record<string, unknown> } | Record<string, unknown>;
+          ingest?: unknown;
         } | null;
+        if (body?.ingest) {
+          const { ingestUniversalTelemetry } = await import("@/lib/noctis-universal-ingestor");
+          const result = ingestUniversalTelemetry(body.ingest);
+          return Response.json(result, { headers: CORS_HEADERS });
+        }
         if (body?.enterprise_telemetry && typeof body.enterprise_telemetry === "object") {
           const { parseEnterprisePayload } = await import("@/lib/noctis-enterprise-protocol-engine");
           const plugin = (body.enterprise_telemetry as any).plugin || "auto";
