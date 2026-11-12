@@ -840,6 +840,12 @@ export const Route = createFileRoute("/api/noctis")({
           });
 
           if ("text" in reply) {
+            // Validate on the API boundary: never serialize arbitrary internal
+            // provenance fields (credentials, prompts, raw provider responses).
+            const { sanitizeNoctisPublicResponseProvenance } = await import("@/lib/noctis-public-response-provenance.mjs");
+            const publicProvenance = sanitizeNoctisPublicResponseProvenance(
+              "provenance" in reply ? reply.provenance : undefined
+            );
             const promptChars = turns.map((t) => t.content).join(" ").length;
             const completionChars = reply.text.length;
             const promptTokens = Math.max(1, Math.ceil(promptChars / 4));
@@ -847,6 +853,7 @@ export const Route = createFileRoute("/api/noctis")({
             return Response.json(
               {
                 text: reply.text,
+                ...(publicProvenance ? { provenance: publicProvenance } : {}),
                 model: typeof body?.model === "string" ? body.model : targetBrain?.provider ? `Noctis (${targetBrain.provider})` : "Noctis Ultra",
                 usage: {
                   prompt_tokens: promptTokens,
