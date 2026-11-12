@@ -1959,7 +1959,13 @@ $$\\mathbf{i} = ${rStar} + ${pi} + 0.5(${pi} - ${piStar}) + 0.5(${yGap}) = \\mat
   }
 
   // 9. Tokamak Plasma Confinement & Fusion Energy (Track 7)
-  if (p.includes("tokamak") || p.includes("fusion") || p.includes("lawson") || p.includes("greenwald") || (p.includes("plasma") && (p.includes("confinement") || p.includes("divertor") || p.includes("quench")))) {
+  if (
+    /\btokamaks?\b/i.test(p) ||
+    (/\bfusion\b/i.test(p) && !/\btransfusion\b/i.test(p)) ||
+    /\blawson\b/i.test(p) ||
+    /\bgreenwald\b/i.test(p) ||
+    (/\bplasma\b/i.test(p) && (/\bconfinement\b/i.test(p) || /\bdivertor\b/i.test(p) || /\bquench\b/i.test(p) || /\bmhd\b/i.test(p)))
+  ) {
     const quenchMatch = prompt.match(/(\d+)\s*mv/i);
     const isQuenchExceeded = p.includes("exceeds 100") || (quenchMatch && Number(quenchMatch[1]) >= 100);
     const quenchVoltage = isQuenchExceeded ? (quenchMatch ? Number(quenchMatch[1]) : 120) : 25;
