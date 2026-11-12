@@ -552,6 +552,17 @@ export const Route = createFileRoute("/api/noctis")({
             formatContinuousTrainingMarkdown,
           } = await import("@/lib/noctis-continuous-trainer");
           const mode = url.searchParams.get("continuous_train") || url.searchParams.get("mode") || "status";
+          if (mode === "full" || mode === "exhaustive" || mode === "complete") {
+            const { runCompleteExhaustiveTrainingRun, formatCompleteTrainingRunMarkdown } = await import("@/lib/noctis-continuous-trainer");
+            const result = runCompleteExhaustiveTrainingRun(3);
+            return Response.json(
+              {
+                result,
+                markdown: formatCompleteTrainingRunMarkdown(result),
+              },
+              { headers: { "cache-control": "no-store" } }
+            );
+          }
           if (mode === "run" || mode === "epoch") {
             const summary = executeContinuousTrainingEpoch();
             return Response.json(

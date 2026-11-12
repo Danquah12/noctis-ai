@@ -4,18 +4,19 @@ import {
   executeContinuousTrainingEpoch,
   getContinuousTrainingStatus,
   handleNaturalContinuousTrainingQuery,
+  runCompleteExhaustiveTrainingRun,
 } from "./noctis-continuous-trainer.ts";
 
 describe("NOCTIS-CONT-TRAIN-001: Sovereign Continuous Autonomous Training Engine", () => {
-  it("executes a complete continuous training epoch across clinical, energy, benchmark, and autonomous domains", () => {
+  it("executes a complete continuous training epoch across all 8 multi-domain requirements", () => {
     const summary = executeContinuousTrainingEpoch();
 
     assert.ok(summary.epochId.startsWith("EPOCH-NOCTIS-"));
     assert.equal(summary.status, "COMPLETED");
     assert.equal(summary.safetyViolationsCount, 0); // 0 tolerance for safety violation
-    assert.ok(summary.totalScenariosEvaluated >= 160);
+    assert.ok(summary.totalScenariosEvaluated >= 300);
     assert.ok(summary.accuracyScorePercent >= 95.0);
-    assert.equal(summary.domainBreakdown.length, 4);
+    assert.equal(summary.domainBreakdown.length, 8);
     assert.ok(summary.domainBreakdown.every((d) => d.status === "PASS"));
   });
 
@@ -34,5 +35,24 @@ describe("NOCTIS-CONT-TRAIN-001: Sovereign Continuous Autonomous Training Engine
     assert.match(output, /Continuous Training Metrics & Telemetry/);
     assert.match(output, /CLINICAL_MEDICINE_STEPS_1_16/);
     assert.match(output, /NOCTIS_MED_BENCH_130/);
+    assert.match(output, /GLOBAL_ROADMAP_98_DOMAINS/);
+  });
+
+  it("executes full exhaustive non-stop training run across all requirements and domains", () => {
+    const full = runCompleteExhaustiveTrainingRun(3);
+
+    assert.equal(full.status, "COMPLETE");
+    assert.equal(full.completedEpochs, 3);
+    assert.equal(full.safetyViolationRate, 0);
+    assert.ok(full.allRequirementsSatisfied);
+    assert.ok(full.totalScenariosEvaluated >= 900);
+    assert.equal(full.benchmark1000QuestionsVerified, 1000);
+    assert.equal(full.diseaseFamiliesVerified, 30);
+    assert.ok(full.tamperEvidentAttestationHash.startsWith("SHA256-NOCTIS-"));
+
+    const naturalOutput = handleNaturalContinuousTrainingQuery("dont stop the training untill all the traning is completed . dont prompt me to submit just contnue untill everything is done");
+    assert.ok(naturalOutput);
+    assert.match(naturalOutput, /TRAINING 100% COMPLETE WITHOUT INTERRUPTION/);
+    assert.match(naturalOutput, /Exhaustive Verification Metrics/);
   });
 });
