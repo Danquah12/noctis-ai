@@ -1013,10 +1013,12 @@ export function handleNaturalToxicologyEmergencyQuery(question: string): string 
     /\b(calcium\s+channel\s+blocker|beta-blocker|ccb|diltiazem|verapamil|amlodipine|metoprolol|propranolol)\b/i.test(q) &&
     /\b(hiet|high-dose\s+insulin|insulin\s+euglycemia|intralipid|lipid\s+emulsion|glucagon|bradycardia|shock)\b/i.test(q);
 
-  // 7. Organophosphates / Cholinergic
+  // 7. Organophosphates / Cholinergic / Toxidrome
   const isCholinergicQuery =
-    /\b(organophosphate|sarin|nerve\s+agent|malathion|cholinergic|dumbels|sludge)\b/i.test(q) &&
-    /\b(atropine|pralidoxime|2-pam|bronchorrhea|fasciculations)\b/i.test(q);
+    (/\b(organophosphate|sarin|nerve\s+agent|malathion|cholinergic|dumbels|sludge|pesticide|insecticide)\b/i.test(q) &&
+      /\b(atropine|pralidoxime|2-pam|bronchorrhea|fasciculations|miosis|salivation|lacrimation|urination|defecation|wheezing|antidote|toxidrome)\b/i.test(q)) ||
+    (/\b(miosis|salivation|lacrimation|urination|defecation)\b/i.test(q) &&
+      /\b(wheezing|bronchorrhea|secretions|pesticide|antidote|toxidrome)\b/i.test(q));
 
   if (
     !isToxicAlcoholQuery &&
@@ -1123,6 +1125,11 @@ export function handleNaturalToxicologyEmergencyQuery(question: string): string 
     });
 
     return formatCrotalineReport(report);
+  }
+
+  // Execute Cholinergic / Organophosphate Engine
+  if (isCholinergicQuery) {
+    return formatCholinergicOrganophosphateReport(q, weightKg);
   }
 
   // Fallback to general comprehensive case evaluation
@@ -1295,6 +1302,50 @@ function formatCaseEvalReport(report: ToxicologyEvaluationReport): string {
     md += `- **Treatment Threshold Line (150-Line):** ${report.rumackMatthew.treatmentThresholdMcgPerMl} mcg/mL\n`;
     md += `- **Treatment Indication:** \`${report.rumackMatthew.treatmentIndicated ? "YES - IV NAC MANDATORY" : "NO"}\`\n\n`;
   }
+
+  return md;
+}
+
+export function formatCholinergicOrganophosphateReport(_query: string, _weightKg: number = 70): string {
+  let md = `### Noctis Clinical Toxicology & Emergency Toxidrome Resuscitation Engine (NOCTIS-TOX-001)\n`;
+  md += `**Subsystem Domain:** CLINICAL_TOXICOLOGY_EMERGENCY · **Standards:** ACMT, AAPCC, CHEMM Guidelines\n\n`;
+  md += `**Detected Toxidrome:** \`CHOLINERGIC CRISIS (MUSCARINIC & NICOTINIC HYPERSTIMULATION)\`\n`;
+  md += `**Diagnostic Confidence:** \`HIGH\` · **Etiology:** Organophosphate or Carbamate Acetylcholinesterase Inhibitor Exposure\n\n`;
+
+  md += `#### 1. Pathophysiology & Hallmark Toxidrome Phenotype\n`;
+  md += `- **Primary Mechanism:** Irreversible (organophosphates) or reversible (carbamates) inhibition of acetylcholinesterase (AChE), producing pathological accumulation of acetylcholine at parasympathetic muscarinic neuroeffector junctions, autonomic ganglia, and neuromuscular nicotinic motor endplates.\n`;
+  md += `- **Muscarinic Overstimulation (DUMBELS / SLUDGE Triad & Cascade):**\n`;
+  md += `  * **Miosis:** Pinpoint pupils (pupillary sphincter muscle hyperconstriction)\n`;
+  md += `  * **Salivation & Lacrimation:** Excessive secretory hyperstimulation\n`;
+  md += `  * **Urination & Defecation:** Detrusor contraction and hyperactive gastrointestinal peristalsis / diarrhea\n`;
+  md += `  * **Bronchorrhea & Bronchospasm:** Copious pulmonary tracheobronchial secretions with severe wheezing — *the primary mechanism of asphyxiation, respiratory arrest, and mortality*\n`;
+  md += `  * **Bradycardia:** Profound nodal conduction slowing and hypotension\n`;
+  md += `- **Nicotinic Overstimulation (MTWTF Mnemonic):** Muscle fasciculations, Tremors, Weakness, Tachycardia (ganglionic), Flaccid diaphragmatic paralysis.\n`;
+  md += `- **Central Nervous System Toxicity:** Agitation, delirium, seizures, and central apnea.\n\n`;
+
+  md += `#### 2. Targeted Emergency Antidote Resuscitation Protocol\n`;
+  md += `1. **Muscarinic Receptor Antagonist — Atropine Sulfate (FIRST-LINE STAT):**\n`;
+  md += `   * **Initial Bolus:** Administer **Atropine 2.0 to 4.0 mg IV bolus** immediately (Pediatrics: 0.05 mg/kg IV; minimum 0.1 mg).\n`;
+  md += `   * **Aggressive Dose Escalation:** If tracheobronchial secretions and bronchospasm do not resolve within 3 to 5 minutes, **double the dose** (e.g., 2 mg → 4 mg → 8 mg → 16 mg IV bolus) every 3 to 5 minutes.\n`;
+  md += `   * **Therapeutic Endpoints for Full Atropinization:**\n`;
+  md += `     - Clear tracheobronchial secretions on auscultation ("drying of the lung fields")\n`;
+  md += `     - Resolution of wheezing and adequate oxygenation ($SpO_2 > 90\%$ on room air/supplemental $O_2$)\n`;
+  md += `     - Heart rate > 80 bpm and systolic blood pressure > 90 mmHg\n`;
+  md += `     - *(Note: Pupillary miosis is NOT an endpoint for stopping atropine; pulmonary dryness and oxygenation take absolute priority)*\n`;
+  md += `   * **Continuous Infusion Maintenance:** Once stabilized, initiate a continuous IV infusion of atropine at **10% to 20% of the total cumulative loading dose per hour**.\n\n`;
+
+  md += `2. **Acetylcholinesterase Reactivator — Pralidoxime Chloride (2-PAM):**\n`;
+  md += `   * **Clinical Indication:** Organophosphate poisoning with nicotinic signs (skeletal muscle fasciculations, diaphragm weakness) or severe systemic toxicity.\n`;
+  md += `   * **Loading Infusion:** Administer **Pralidoxime 1.0 to 2.0 g IV** in 100 mL $0.9\\%$ Normal Saline infused over 15 to 30 minutes (Pediatrics: 20 to 50 mg/kg, max 2.0 g).\n`;
+  md += `   * **Continuous Maintenance Infusion:** Follow immediately with a continuous maintenance infusion of **400 to 500 mg/hr** (Pediatrics: 10 to 20 mg/kg/hr) for at least 24 to 48 hours until neuromuscular strength is recovered.\n`;
+  md += `   * **Covalent "Aging" Critical Window:** Pralidoxime must be initiated early before organophosphate-enzyme covalent dealkylation ("aging") occurs, which renders the acetylcholinesterase permanently refractory to oxime reactivation.\n\n`;
+
+  md += `3. **Neuroprotection & Anticonvulsant Therapy — Benzodiazepines:**\n`;
+  md += `   * **Administration:** Administer **Diazepam 5 to 10 mg IV** or **Midazolam 5 mg IV** (or Lorazepam 2 to 4 mg IV) early for agitation, fasciculations, or seizures to mitigate excitotoxic central nervous system damage.\n\n`;
+
+  md += `#### 3. 🚨 Sovereign Non-Compensatory Safety Invariants & Precautions\n`;
+  md += `- **🚨 HAZMAT DECONTAMINATION INVARIANT:** All contaminated garments must be immediately removed and double-bagged outside the critical resuscitation bay. Copious soap-and-water skin and hair washing with healthcare personnel in Level C PPE (chemical-resistant suits, nitrile double-gloves, respiratory protection) is mandatory to prevent secondary cross-contamination.\n`;
+  md += `- **🚨 SUCCINYLCHOLINE CONTRAINDICATION VETO:** Succinylcholine is strictly contraindicated if rapid-sequence intubation (RSI) is required. Succinylcholine relies on plasma pseudocholinesterase for metabolism, which is inhibited by organophosphates; administration produces prolonged, hours-long flaccid paralysis. Use non-depolarizing agents (e.g., Rocuronium at adjusted doses) if airway control is emergent.\n`;
 
   return md;
 }

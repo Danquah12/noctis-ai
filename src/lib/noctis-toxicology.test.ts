@@ -209,5 +209,14 @@ describe("Noctis Clinical Toxicology & Emergency Toxidrome Engine", () => {
     assert.ok(snakeRes);
     assert.ok(snakeRes.includes("CroFab"));
     assert.ok(snakeRes.includes("HARMFUL INTERVENTIONS VETO"));
+
+    const cholQuery = "A patient presents with miosis, salivation, lacrimation, urination, defecation, and wheezing after pesticide exposure. What toxidrome is present and what antidote is administered?";
+    const cholRes = handleNaturalToxicologyEmergencyQuery(cholQuery);
+    assert.ok(cholRes);
+    assert.ok(cholRes.includes("NOCTIS-TOX-001"));
+    assert.ok(cholRes.includes("CHOLINERGIC CRISIS"));
+    assert.ok(cholRes.includes("Atropine"));
+    assert.ok(cholRes.includes("Pralidoxime"));
+    assert.ok(cholRes.includes("SUCCINYLCHOLINE CONTRAINDICATION VETO"));
   });
 });
