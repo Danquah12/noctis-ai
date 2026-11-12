@@ -556,35 +556,62 @@ export const Route = createFileRoute("/api/noctis")({
             formatContinuousTrainingMarkdown,
           } = await import("@/lib/noctis-continuous-trainer");
           const mode = url.searchParams.get("continuous_train") || url.searchParams.get("mode") || "status";
+          const isVerboseReq =
+            mode === "verbose" ||
+            url.searchParams.get("verbose") === "1" ||
+            url.searchParams.get("verbose") === "true";
+
           if (mode === "full" || mode === "exhaustive" || mode === "complete") {
             const { runCompleteExhaustiveTrainingRun, formatCompleteTrainingRunMarkdown } = await import("@/lib/noctis-continuous-trainer");
             const result = runCompleteExhaustiveTrainingRun(3);
             return Response.json(
               {
                 result,
+                verboseLogs: result.latestSummary.verboseLogs,
+                verboseEvents: result.latestSummary.verboseEvents,
                 markdown: formatCompleteTrainingRunMarkdown(result),
               },
-              { headers: { "cache-control": "no-store" } }
+              { headers: { "cache-control": "no-store", ...CORS_HEADERS } }
+            );
+          }
+          if (isVerboseReq) {
+            const summary = executeContinuousTrainingEpoch({ verbose: true });
+            return Response.json(
+              {
+                mode: "verbose",
+                epochSummary: summary,
+                totalDurationMs: summary.totalDurationMs,
+                verboseLogs: summary.verboseLogs,
+                verboseEvents: summary.verboseEvents,
+                markdown: formatContinuousTrainingMarkdown(summary, { verbose: true }),
+              },
+              { headers: { "cache-control": "no-store", ...CORS_HEADERS } }
             );
           }
           if (mode === "run" || mode === "epoch") {
-            const summary = executeContinuousTrainingEpoch();
+            const summary = executeContinuousTrainingEpoch({ verbose: true });
             return Response.json(
               {
                 epochSummary: summary,
+                totalDurationMs: summary.totalDurationMs,
+                verboseLogs: summary.verboseLogs,
+                verboseEvents: summary.verboseEvents,
                 markdown: formatContinuousTrainingMarkdown(summary),
               },
-              { headers: { "cache-control": "no-store" } }
+              { headers: { "cache-control": "no-store", ...CORS_HEADERS } }
             );
           }
           const status = getContinuousTrainingStatus();
+          const latest = status.history[0] || null;
           return Response.json(
             {
               status,
-              latestEpoch: status.history[0] || null,
-              markdown: status.history[0] ? formatContinuousTrainingMarkdown(status.history[0]) : null,
+              latestEpoch: latest,
+              verboseLogs: latest?.verboseLogs || [],
+              verboseEvents: latest?.verboseEvents || [],
+              markdown: latest ? formatContinuousTrainingMarkdown(latest) : null,
             },
-            { headers: { "cache-control": "no-store" } }
+            { headers: { "cache-control": "no-store", ...CORS_HEADERS } }
           );
         }
         if (url.searchParams.get("training") === "dpo-jsonl") {
