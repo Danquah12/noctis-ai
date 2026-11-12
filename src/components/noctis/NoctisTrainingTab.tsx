@@ -63,7 +63,7 @@ interface NoctisTrainingTabProps {
 export function NoctisTrainingTab({ onSendToChat, onClose }: NoctisTrainingTabProps) {
   const [loading, setLoading] = useState(false);
   const [summary, setSummary] = useState<ContinuousTrainingEpochSummary | null>(null);
-  const [filterCategory, setFilterCategory] = useState<"ALL" | "FRONTIER" | "CLINICAL" | "GLOBAL">("ALL");
+  const [filterCategory, setFilterCategory] = useState<"ALL" | "IT" | "FRONTIER" | "CLINICAL" | "GLOBAL">("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<VerboseEpochEvent | null>(null);
@@ -116,6 +116,9 @@ export function NoctisTrainingTab({ onSendToChat, onClose }: NoctisTrainingTabPr
     if (!matchesSearch) return false;
 
     if (filterCategory === "ALL") return true;
+    if (filterCategory === "IT") {
+      return evt.step >= 28 && evt.step <= 37;
+    }
     if (filterCategory === "CLINICAL") {
       return evt.step === 1 || evt.step === 3 || evt.step === 12;
     }
@@ -247,9 +250,9 @@ export function NoctisTrainingTab({ onSendToChat, onClose }: NoctisTrainingTabPr
               <Layers className="size-4 text-sky-400" />
             </div>
             <div className="mt-2 text-2xl font-bold tracking-tight text-white sm:text-3xl">
-              {summary ? summary.totalScenariosEvaluated.toLocaleString() : "2,158"}
+              {summary ? summary.totalScenariosEvaluated.toLocaleString() : "2,408"}
             </div>
-            <div className="mt-1 text-[11px] text-zinc-400">Across 27 Subsystem Domains</div>
+            <div className="mt-1 text-[11px] text-zinc-400">Across 37 Subsystem Domains</div>
           </div>
 
           <div className="rounded-xl border border-white/10 bg-[#161b26] p-3.5 sm:p-4 shadow-sm">
@@ -263,7 +266,7 @@ export function NoctisTrainingTab({ onSendToChat, onClose }: NoctisTrainingTabPr
             <div className="mt-1 text-[11px] text-emerald-400/80">
               {summary
                 ? `${summary.totalInvariantsVerified} / ${summary.totalScenariosEvaluated} Verified`
-                : "2,158 / 2,158 Verified"}
+                : "2,408 / 2,408 Verified"}
             </div>
           </div>
 
@@ -301,7 +304,17 @@ export function NoctisTrainingTab({ onSendToChat, onClose }: NoctisTrainingTabPr
                 filterCategory === "ALL" ? "bg-white/15 text-white" : "text-zinc-400 hover:text-white"
               )}
             >
-              All (27)
+              All (37)
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterCategory("IT")}
+              className={cn(
+                "rounded px-2.5 py-1 font-medium transition cursor-pointer",
+                filterCategory === "IT" ? "bg-white/15 text-white" : "text-zinc-400 hover:text-white"
+              )}
+            >
+              IT Systems (10)
             </button>
             <button
               type="button"

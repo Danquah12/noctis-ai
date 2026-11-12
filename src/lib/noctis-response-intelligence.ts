@@ -36,6 +36,7 @@ import { automotiveDiagnosticGadget } from "./noctis-automotive-engine.ts";
 import { handleNaturalAutonomousTrainingQuery } from "./noctis-autonomous-trainer.ts";
 import { handleNaturalContinuousTrainingQuery } from "./noctis-continuous-trainer.ts";
 import { handleNaturalFrontierTracksQuery } from "./noctis-frontier-tracks.ts";
+import { handleNaturalInformationTechnologyQuery } from "./noctis-it-master-engine.ts";
 import { architectIntelligenceGadget } from "./noctis-architect-engine.ts";
 import { handleNaturalCyberSecurityQuery, isCyberSecurityOrSocQuery } from "./noctis-cyber-engine.ts";
 import { isAttackPathOrExploitabilityQuery } from "./noctis-attack-path-engine.ts";
@@ -1254,6 +1255,12 @@ export function runFollowUpIntelligence(
   const frontierResponse = handleNaturalFrontierTracksQuery(currentQuestion);
   if (frontierResponse) {
     return adaptSpecialistEngineOutput(currentQuestion, frontierResponse, "NOCTIS-FRONTIER-TRACKS-001");
+  }
+
+  // 00-it. Noctis Sovereign Information Technology Master Engine (NOCTIS-IT-MASTER-001)
+  const itResponse = handleNaturalInformationTechnologyQuery(currentQuestion);
+  if (itResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, itResponse, "NOCTIS-IT-MASTER-001");
   }
 
   // 00-continuous-train. Noctis Sovereign Continuous Autonomous Training Engine (NOCTIS-CONT-TRAIN-001)

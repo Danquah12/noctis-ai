@@ -54,6 +54,7 @@ import { runNoctisDefenseAcceptanceTests } from "./noctis-defense-subsystem.ts";
 import { calculateMonteCarloVaR } from "./noctis-quant-risk.ts";
 import { auditPlcStructuredText } from "./noctis-robotics-scada.ts";
 import { generateAllFrontierTrackScenarios } from "./noctis-frontier-tracks.ts";
+import { generateAllInformationTechnologyScenarios } from "./noctis-it-master-engine.ts";
 
 export interface VerboseEpochEvent {
   step: number;
@@ -144,7 +145,7 @@ export function executeContinuousTrainingEpoch(options?: { verbose?: boolean }):
       detail,
     };
     verboseEvents.push(evt);
-    const logLine = `[NOCTIS-DAEMON] [STEP ${String(stepNum).padStart(2, "0")}/27] ${domain.padEnd(36)} : ${scenariosCount} scenarios, ${invariantsPassed} passed (${roundedMs}ms) -> ${status}`;
+    const logLine = `[NOCTIS-DAEMON] [STEP ${String(stepNum).padStart(2, "0")}/37] ${domain.padEnd(36)} : ${scenariosCount} scenarios, ${invariantsPassed} passed (${roundedMs}ms) -> ${status}`;
     verboseLogs.push(logLine);
     if (isVerbose) {
       console.log(logLine);
@@ -718,11 +719,184 @@ export function executeContinuousTrainingEpoch(options?: { verbose?: boolean }):
   });
   recordDomain(27, "SIXG_TERAHERTZ_TELECOM", track15Tests.length, track15Passed, performance.now() - t0_tr15, "Track 15: 300 GHz terahertz molecular absorption, massive MIMO beamforming, sub-100 microsecond URLLC");
 
+  // Load Information Technology Master Suite (10 Domains, 250 Scenarios)
+  const itTests = generateAllInformationTechnologyScenarios();
+
+  // 28. IT Domain 1: Cloud Architecture & Distributed Systems (25 scenarios)
+  const t0_it1 = performance.now();
+  const it1Tests = itTests.filter((t) => t.domain === "CLOUD_DISTRIBUTED_SYSTEMS");
+  let it1Passed = 0;
+  for (const t of it1Tests) {
+    if (t.evaluator().passed) it1Passed++;
+  }
+  totalScenarios += it1Tests.length;
+  totalInvariants += it1Passed;
+  domainBreakdown.push({
+    domain: "IT_CLOUD_DISTRIBUTED_SYSTEMS",
+    scenariosCount: it1Tests.length,
+    invariantsPassed: it1Passed,
+    status: it1Passed === it1Tests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(28, "IT_CLOUD_DISTRIBUTED_SYSTEMS", it1Tests.length, it1Passed, performance.now() - t0_it1, "IT Track 1: Raft consensus majority, cluster quorum, split-brain isolation, Kubernetes pod disruption budgets");
+
+  // 29. IT Domain 2: Enterprise Networking & Core Protocols (25 scenarios)
+  const t0_it2 = performance.now();
+  const it2Tests = itTests.filter((t) => t.domain === "ENTERPRISE_NETWORKING");
+  let it2Passed = 0;
+  for (const t of it2Tests) {
+    if (t.evaluator().passed) it2Passed++;
+  }
+  totalScenarios += it2Tests.length;
+  totalInvariants += it2Passed;
+  domainBreakdown.push({
+    domain: "IT_ENTERPRISE_NETWORKING",
+    scenariosCount: it2Tests.length,
+    invariantsPassed: it2Passed,
+    status: it2Passed === it2Tests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(29, "IT_ENTERPRISE_NETWORKING", it2Tests.length, it2Passed, performance.now() - t0_it2, "IT Track 2: BGP route flap dampening (RFC 2439), RPKI route validation, IPv6 dual-stack, TCP BBR congestion dynamics");
+
+  // 30. IT Domain 3: Database Systems & Data Engineering (25 scenarios)
+  const t0_it3 = performance.now();
+  const it3Tests = itTests.filter((t) => t.domain === "DATABASES_DATA_ENGINEERING");
+  let it3Passed = 0;
+  for (const t of it3Tests) {
+    if (t.evaluator().passed) it3Passed++;
+  }
+  totalScenarios += it3Tests.length;
+  totalInvariants += it3Passed;
+  domainBreakdown.push({
+    domain: "IT_DATABASES_DATA_ENGINEERING",
+    scenariosCount: it3Tests.length,
+    invariantsPassed: it3Passed,
+    status: it3Passed === it3Tests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(30, "IT_DATABASES_DATA_ENGINEERING", it3Tests.length, it3Passed, performance.now() - t0_it3, "IT Track 3: PostgreSQL Serializable Snapshot Isolation (SSI), write-skew elimination, Apache Kafka event streaming");
+
+  // 31. IT Domain 4: DevOps, CI/CD & Site Reliability Engineering (25 scenarios)
+  const t0_it4 = performance.now();
+  const it4Tests = itTests.filter((t) => t.domain === "DEVOPS_SRE_OBSERVABILITY");
+  let it4Passed = 0;
+  for (const t of it4Tests) {
+    if (t.evaluator().passed) it4Passed++;
+  }
+  totalScenarios += it4Tests.length;
+  totalInvariants += it4Passed;
+  domainBreakdown.push({
+    domain: "IT_DEVOPS_SRE_OBSERVABILITY",
+    scenariosCount: it4Tests.length,
+    invariantsPassed: it4Passed,
+    status: it4Passed === it4Tests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(31, "IT_DEVOPS_SRE_OBSERVABILITY", it4Tests.length, it4Passed, performance.now() - t0_it4, "IT Track 4: Google SRE multi-window error budgets, OpenTelemetry distributed tracing, automated canary rollouts");
+
+  // 32. IT Domain 5: Software Architecture, Systems Design & Compilers (25 scenarios)
+  const t0_it5 = performance.now();
+  const it5Tests = itTests.filter((t) => t.domain === "SOFTWARE_ARCH_COMPILERS");
+  let it5Passed = 0;
+  for (const t of it5Tests) {
+    if (t.evaluator().passed) it5Passed++;
+  }
+  totalScenarios += it5Tests.length;
+  totalInvariants += it5Passed;
+  domainBreakdown.push({
+    domain: "IT_SOFTWARE_ARCH_COMPILERS",
+    scenariosCount: it5Tests.length,
+    invariantsPassed: it5Passed,
+    status: it5Passed === it5Tests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(32, "IT_SOFTWARE_ARCH_COMPILERS", it5Tests.length, it5Passed, performance.now() - t0_it5, "IT Track 5: Amdahl's Law speedup boundaries, Domain-Driven Design (DDD), CQRS event sourcing replay invariants");
+
+  // 33. IT Domain 6: Operating Systems & Linux Kernel Internals (25 scenarios)
+  const t0_it6 = performance.now();
+  const it6Tests = itTests.filter((t) => t.domain === "OPERATING_SYSTEMS_KERNEL");
+  let it6Passed = 0;
+  for (const t of it6Tests) {
+    if (t.evaluator().passed) it6Passed++;
+  }
+  totalScenarios += it6Tests.length;
+  totalInvariants += it6Passed;
+  domainBreakdown.push({
+    domain: "IT_OPERATING_SYSTEMS_KERNEL",
+    scenariosCount: it6Tests.length,
+    invariantsPassed: it6Passed,
+    status: it6Passed === it6Tests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(33, "IT_OPERATING_SYSTEMS_KERNEL", it6Tests.length, it6Passed, performance.now() - t0_it6, "IT Track 6: Linux eBPF verifier DAG execution safety, cgroups v2 memory limits, NUMA-aware scheduling invariants");
+
+  // 34. IT Domain 7: Identity, Access & Cryptographic Security (25 scenarios)
+  const t0_it7 = performance.now();
+  const it7Tests = itTests.filter((t) => t.domain === "IDENTITY_ACCESS_SECURITY");
+  let it7Passed = 0;
+  for (const t of it7Tests) {
+    if (t.evaluator().passed) it7Passed++;
+  }
+  totalScenarios += it7Tests.length;
+  totalInvariants += it7Passed;
+  domainBreakdown.push({
+    domain: "IT_IDENTITY_ACCESS_SECURITY",
+    scenariosCount: it7Tests.length,
+    invariantsPassed: it7Passed,
+    status: it7Passed === it7Tests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(34, "IT_IDENTITY_ACCESS_SECURITY", it7Tests.length, it7Passed, performance.now() - t0_it7, "IT Track 7: RFC 7636 PKCE S256 verification, zero client secret leaks, WebAuthn/FIDO2 hardware credentials");
+
+  // 35. IT Domain 8: AI/MLOps Infrastructure (25 scenarios)
+  const t0_it8 = performance.now();
+  const it8Tests = itTests.filter((t) => t.domain === "AIML_INFRASTRUCTURE_MLOPS");
+  let it8Passed = 0;
+  for (const t of it8Tests) {
+    if (t.evaluator().passed) it8Passed++;
+  }
+  totalScenarios += it8Tests.length;
+  totalInvariants += it8Passed;
+  domainBreakdown.push({
+    domain: "IT_AIML_INFRASTRUCTURE_MLOPS",
+    scenariosCount: it8Tests.length,
+    invariantsPassed: it8Passed,
+    status: it8Passed === it8Tests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(35, "IT_AIML_INFRASTRUCTURE_MLOPS", it8Tests.length, it8Passed, performance.now() - t0_it8, "IT Track 8: LLM serving KV-cache sizing, PagedAttention fragmentation bounds, GPU cluster VRAM allocation");
+
+  // 36. IT Domain 9: ITSM, Business Continuity & Disaster Recovery (25 scenarios)
+  const t0_it9 = performance.now();
+  const it9Tests = itTests.filter((t) => t.domain === "ITSM_DISASTER_RECOVERY");
+  let it9Passed = 0;
+  for (const t of it9Tests) {
+    if (t.evaluator().passed) it9Passed++;
+  }
+  totalScenarios += it9Tests.length;
+  totalInvariants += it9Passed;
+  domainBreakdown.push({
+    domain: "IT_ITSM_DISASTER_RECOVERY",
+    scenariosCount: it9Tests.length,
+    invariantsPassed: it9Passed,
+    status: it9Passed === it9Tests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(36, "IT_ITSM_DISASTER_RECOVERY", it9Tests.length, it9Passed, performance.now() - t0_it9, "IT Track 9: ISO 22301 RTO/RPO disaster recovery SLA compliance, 3-2-1 immutable backup air-gap verification");
+
+  // 37. IT Domain 10: High-Performance Storage & File Systems (25 scenarios)
+  const t0_it10 = performance.now();
+  const it10Tests = itTests.filter((t) => t.domain === "STORAGE_FILESYSTEMS");
+  let it10Passed = 0;
+  for (const t of it10Tests) {
+    if (t.evaluator().passed) it10Passed++;
+  }
+  totalScenarios += it10Tests.length;
+  totalInvariants += it10Passed;
+  domainBreakdown.push({
+    domain: "IT_STORAGE_FILESYSTEMS",
+    scenariosCount: it10Tests.length,
+    invariantsPassed: it10Passed,
+    status: it10Passed === it10Tests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(37, "IT_STORAGE_FILESYSTEMS", it10Tests.length, it10Passed, performance.now() - t0_it10, "IT Track 10: Storage rebuild URE failure math, RAID-5 catastrophic failure veto, ZFS ZIL power loss protection");
+
   const totalDurationMs = Math.round((performance.now() - epochStartTime) * 100) / 100;
   const accuracy = Math.round((totalInvariants / totalScenarios) * 1000) / 10;
   const nextScheduled = new Date(Date.now() + continuousState.intervalMinutes * 60 * 1000).toISOString();
 
-  const finishLog = `[NOCTIS-DAEMON] ${epochId} COMPLETED in ${totalDurationMs}ms | Domains: 27 | Scenarios: ${totalScenarios} | Invariants: ${totalInvariants}/${totalScenarios} | Violations: ${safetyViolations} | Accuracy: ${accuracy}%`;
+  const finishLog = `[NOCTIS-DAEMON] ${epochId} COMPLETED in ${totalDurationMs}ms | Domains: 37 | Scenarios: ${totalScenarios} | Invariants: ${totalInvariants}/${totalScenarios} | Violations: ${safetyViolations} | Accuracy: ${accuracy}%`;
   verboseLogs.push(finishLog);
   if (isVerbose) {
     console.log(finishLog);
