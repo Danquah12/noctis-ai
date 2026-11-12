@@ -460,6 +460,70 @@ export function executeContinuousTrainingEpoch(): ContinuousTrainingEpochSummary
     status: track6Passed === track6Tests.length ? "PASS" : "FAIL",
   });
 
+  // 19. Audit Track 7: Fusion Energy & Plasma MHD (25 scenarios)
+  const track7Tests = frontierTests.filter((t) => t.track === 7);
+  let track7Passed = 0;
+  for (const t of track7Tests) {
+    const res = t.evaluator();
+    if (res.safetyVeto === t.expectedSafetyVeto) track7Passed++;
+  }
+  totalScenarios += track7Tests.length;
+  totalInvariants += track7Passed;
+  domainBreakdown.push({
+    domain: "FUSION_ENERGY_PLASMA_MHD",
+    scenariosCount: track7Tests.length,
+    invariantsPassed: track7Passed,
+    status: track7Passed === track7Tests.length ? "PASS" : "FAIL",
+  });
+
+  // 20. Audit Track 8: Advanced Aerospace & Hypersonic Scramjet (25 scenarios)
+  const track8Tests = frontierTests.filter((t) => t.track === 8);
+  let track8Passed = 0;
+  for (const t of track8Tests) {
+    const res = t.evaluator();
+    if (res.safetyVeto === t.expectedSafetyVeto) track8Passed++;
+  }
+  totalScenarios += track8Tests.length;
+  totalInvariants += track8Passed;
+  domainBreakdown.push({
+    domain: "HYPERSONICS_AEROSPACE_SCRAMJET",
+    scenariosCount: track8Tests.length,
+    invariantsPassed: track8Passed,
+    status: track8Passed === track8Tests.length ? "PASS" : "FAIL",
+  });
+
+  // 21. Audit Track 9: Autonomous Mining & Deep-Sea Robotics (20 scenarios)
+  const track9Tests = frontierTests.filter((t) => t.track === 9);
+  let track9Passed = 0;
+  for (const t of track9Tests) {
+    const res = t.evaluator();
+    if (res.safetyVeto === t.expectedSafetyVeto) track9Passed++;
+  }
+  totalScenarios += track9Tests.length;
+  totalInvariants += track9Passed;
+  domainBreakdown.push({
+    domain: "SUBSEA_ROBOTICS_DEEP_SEA_MINING",
+    scenariosCount: track9Tests.length,
+    invariantsPassed: track9Passed,
+    status: track9Passed === track9Tests.length ? "PASS" : "FAIL",
+  });
+
+  // 22. Audit Track 10: Sovereign Biosecurity & BSL-4 Genomics (25 scenarios)
+  const track10Tests = frontierTests.filter((t) => t.track === 10);
+  let track10Passed = 0;
+  for (const t of track10Tests) {
+    const res = t.evaluator();
+    if (res.safetyVeto === t.expectedSafetyVeto) track10Passed++;
+  }
+  totalScenarios += track10Tests.length;
+  totalInvariants += track10Passed;
+  domainBreakdown.push({
+    domain: "SOVEREIGN_BIOSECURITY_BSL4_GENOMICS",
+    scenariosCount: track10Tests.length,
+    invariantsPassed: track10Passed,
+    status: track10Passed === track10Tests.length ? "PASS" : "FAIL",
+  });
+
   const accuracy = Math.round((totalInvariants / totalScenarios) * 1000) / 10;
   const nextScheduled = new Date(Date.now() + continuousState.intervalMinutes * 60 * 1000).toISOString();
 

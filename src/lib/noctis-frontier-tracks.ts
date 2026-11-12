@@ -592,12 +592,295 @@ export function evaluateGreenAmmoniaMarinePropulsion(input: GreenAmmoniaEngineIn
 }
 
 // ----------------------------------------------------------------------------
+// TRACK 7: FUSION ENERGY & PLASMA MAGNETOHYDRODYNAMICS (MHD)
+// ----------------------------------------------------------------------------
+
+export interface TokamakPlasmaInput {
+  majorRadiusM: number;
+  minorRadiusM: number;
+  toroidalFieldTesla: number;
+  plasmaCurrentMA: number;
+  electronDensity10e19M3: number;
+  coreTempKeV: number;
+  divertorHeatFluxMWm2: number;
+  energyConfinementTimeS: number;
+  elongationKappa?: number;
+  quenchVoltageMv?: number;
+}
+
+export interface TokamakPlasmaResult {
+  greenwaldDensityLimit: number;
+  greenwaldFraction: number;
+  safetyFactorQ95: number;
+  lawsonTripleProductKeVSm3: number;
+  fusionEnergyGainQEstimated: number;
+  divertorLimitExceeded: boolean;
+  plasmaStabilityStatus: "STABLE_CONFINED" | "GREENWALD_DENSITY_BREACH" | "KINK_INSTABILITY_RISK" | "DIVERTOR_ABLATION_RISK" | "DISRUPTION_MITIGATION_REQUIRED";
+  safetyVeto: boolean;
+  vetoReason?: string;
+}
+
+export function evaluateTokamakConfinementStability(input: TokamakPlasmaInput): TokamakPlasmaResult {
+  const kappa = input.elongationKappa || 1.8;
+  const a = input.minorRadiusM;
+  const R = input.majorRadiusM;
+  const Ip = input.plasmaCurrentMA;
+  const Bt = input.toroidalFieldTesla;
+
+  const nGreenwald = Ip / (Math.PI * Math.pow(a, 2));
+  const greenwaldFraction = Math.round((input.electronDensity10e19M3 / 10 / nGreenwald) * 100) / 100;
+
+  const q95 = Math.round(((5 * Math.pow(a, 2) * Bt) / (R * Ip)) * ((1 + Math.pow(kappa, 2)) / 2) * 100) / 100;
+
+  const tripleProduct = (input.electronDensity10e19M3 * 1e19 * input.coreTempKeV * input.energyConfinementTimeS) / 1e21;
+  const estimatedQ = Math.round((tripleProduct / 0.3) * 10) / 10;
+
+  let safetyVeto = false;
+  let vetoReason: string | undefined;
+  let status: TokamakPlasmaResult["plasmaStabilityStatus"] = "STABLE_CONFINED";
+
+  if (input.quenchVoltageMv && input.quenchVoltageMv > 100) {
+    safetyVeto = true;
+    status = "DISRUPTION_MITIGATION_REQUIRED";
+    vetoReason = `CRITICAL MAGNET QUENCH: Superconducting coil voltage drop (${input.quenchVoltageMv} mV > 100 mV). Immediate fast dump resistor energy extraction triggered.`;
+  } else if (input.divertorHeatFluxMWm2 > 10.0) {
+    safetyVeto = true;
+    status = "DIVERTOR_ABLATION_RISK";
+    vetoReason = `DIVERTOR THERMAL LIMIT BREACH: Divertor heat flux (${input.divertorHeatFluxMWm2} MW/m² > 10.0 MW/m²). Impurity radiative neon seeding mandated.`;
+  } else if (greenwaldFraction > 1.0) {
+    safetyVeto = true;
+    status = "GREENWALD_DENSITY_BREACH";
+    vetoReason = `GREENWALD DISRUPTION HAZARD: Density fraction (f_G = ${greenwaldFraction} > 1.00). Unstable edge cooling triggers major thermal quench.`;
+  } else if (q95 < 2.0) {
+    safetyVeto = true;
+    status = "KINK_INSTABILITY_RISK";
+    vetoReason = `MAGNETIC KINK INSTABILITY: Safety factor q95 (${q95} < 2.0). External kink mode induces destructive plasma wall collision.`;
+  }
+
+  return {
+    greenwaldDensityLimit: Math.round(nGreenwald * 100) / 100,
+    greenwaldFraction,
+    safetyFactorQ95: q95,
+    lawsonTripleProductKeVSm3: Math.round(tripleProduct * 100) / 100,
+    fusionEnergyGainQEstimated: estimatedQ,
+    divertorLimitExceeded: input.divertorHeatFluxMWm2 > 10.0,
+    plasmaStabilityStatus: status,
+    safetyVeto,
+    vetoReason,
+  };
+}
+
+// ----------------------------------------------------------------------------
+// TRACK 8: ADVANCED AEROSPACE & HYPERSONIC AERODYNAMICS
+// ----------------------------------------------------------------------------
+
+export interface HypersonicScramjetInput {
+  machNumber: number;
+  altitudeKm: number;
+  dynamicPressureKPa: number;
+  inletStaticPressureRatio: number;
+  isolatorShockMarginCm: number;
+  tpsStagnationTempC: number;
+  gLoadUnits: number;
+}
+
+export interface HypersonicScramjetResult {
+  inletUnstartRisk: boolean;
+  aerothermalStagnationHeatFluxMWm2: number;
+  thermalProtectionMarginC: number;
+  flightCorridorStatus: "NOMINAL_HYPERSONIC" | "INLET_UNSTART_ABORT" | "TPS_ABLATION_LIMIT" | "STRUCTURAL_OVERLOAD";
+  safetyVeto: boolean;
+  vetoReason?: string;
+}
+
+export function evaluateHypersonicScramjetStability(input: HypersonicScramjetInput): HypersonicScramjetResult {
+  const heatFluxMWm2 = Math.round((Math.pow(input.machNumber / 5, 3.2) * (input.dynamicPressureKPa / 50) * 2.8) * 100) / 100;
+  const tpsMaxTempC = 2200;
+  const tpsMarginC = tpsMaxTempC - input.tpsStagnationTempC;
+
+  let safetyVeto = false;
+  let vetoReason: string | undefined;
+  let status: HypersonicScramjetResult["flightCorridorStatus"] = "NOMINAL_HYPERSONIC";
+
+  if (input.inletStaticPressureRatio > 3.5 || input.isolatorShockMarginCm < 5.0) {
+    safetyVeto = true;
+    status = "INLET_UNSTART_ABORT";
+    vetoReason = `CRITICAL INLET UNSTART: Shock train margin (${input.isolatorShockMarginCm} cm < 5.0 cm, pressure ratio ${input.inletStaticPressureRatio} > 3.5). Immediate 5ms fuel cutoff & boundary layer bleed required.`;
+  } else if (input.tpsStagnationTempC > tpsMaxTempC) {
+    safetyVeto = true;
+    status = "TPS_ABLATION_LIMIT";
+    vetoReason = `TPS THERMAL FAILURE: Leading edge temperature (${input.tpsStagnationTempC}°C > ${tpsMaxTempC}°C). Structural ceramic nose-cone burnout hazard.`;
+  } else if (input.gLoadUnits > 12.0) {
+    safetyVeto = true;
+    status = "STRUCTURAL_OVERLOAD";
+    vetoReason = `STRUCTURAL OVERLOAD: Measured acceleration (${input.gLoadUnits}g > 12.0g aeroelastic design limit). Pitch relaxation commanded.`;
+  }
+
+  return {
+    inletUnstartRisk: input.inletStaticPressureRatio > 3.5 || input.isolatorShockMarginCm < 5.0,
+    aerothermalStagnationHeatFluxMWm2: heatFluxMWm2,
+    thermalProtectionMarginC: tpsMarginC,
+    flightCorridorStatus: status,
+    safetyVeto,
+    vetoReason,
+  };
+}
+
+// ----------------------------------------------------------------------------
+// TRACK 9: AUTONOMOUS MINING & DEEP-SEA SUBSEA ROBOTICS
+// ----------------------------------------------------------------------------
+
+export interface DeepSeaSubseaRovInput {
+  depthMeters: number;
+  hydrostaticPressureMpa: number;
+  hullPressureVesselIntegrityPercent: number;
+  usblAcousticPingLatencyMs: number;
+  tetherTensionPercentMbl: number;
+  benthicPlumeTurbidityNtu: number;
+  waterIngressSensorTriggered?: boolean;
+}
+
+export interface DeepSeaSubseaRovResult {
+  ambientHydrostaticPressureMpa: number;
+  crushDepthMarginPercent: number;
+  navigationPrecisionMeters: number;
+  environmentalPlumeCompliant: boolean;
+  subseaOperationStatus: "OPERATIONAL" | "EMERGENCY_BUOYANCY_ASCENT" | "TETHER_STRESS_ABORT" | "PLUME_EXCEEDANCE_HALT";
+  safetyVeto: boolean;
+  vetoReason?: string;
+}
+
+export function evaluateDeepSeaSubseaRov(input: DeepSeaSubseaRovInput): DeepSeaSubseaRovResult {
+  const nominalPressureMpa = Math.round((input.depthMeters * 0.01005) * 10) / 10;
+  const crushDepthMargin = Math.round(input.hullPressureVesselIntegrityPercent - (input.depthMeters / 6000) * 15);
+  const navPrecisionMeters = Math.round((input.usblAcousticPingLatencyMs * 0.0015 * 1.2) * 100) / 100;
+
+  let safetyVeto = false;
+  let vetoReason: string | undefined;
+  let status: DeepSeaSubseaRovResult["subseaOperationStatus"] = "OPERATIONAL";
+
+  if (input.waterIngressSensorTriggered || input.hullPressureVesselIntegrityPercent < 95.0) {
+    safetyVeto = true;
+    status = "EMERGENCY_BUOYANCY_ASCENT";
+    vetoReason = `SUBSEA HULL BREACH DETECTED: Hull integrity (${input.hullPressureVesselIntegrityPercent}%) or water ingress triggered at ${input.depthMeters}m depth. Pyrotechnic drop-weight emergency ascent initiated.`;
+  } else if (input.tetherTensionPercentMbl > 80.0) {
+    safetyVeto = true;
+    status = "TETHER_STRESS_ABORT";
+    vetoReason = `TETHER TENSION OVERLOAD: Umbilical load (${input.tetherTensionPercentMbl}% MBL > 80.0%). Dynamic station-keeping freeze to prevent severance.`;
+  } else if (input.benthicPlumeTurbidityNtu > 15.0) {
+    safetyVeto = true;
+    status = "PLUME_EXCEEDANCE_HALT";
+    vetoReason = `ISA BENTHIC ENVIRONMENTAL VETO: Plume turbidity (${input.benthicPlumeTurbidityNtu} NTU > 15.0 NTU statutory threshold). Collector suction auto-throttled.`;
+  }
+
+  return {
+    ambientHydrostaticPressureMpa: nominalPressureMpa,
+    crushDepthMarginPercent: crushDepthMargin,
+    navigationPrecisionMeters: navPrecisionMeters,
+    environmentalPlumeCompliant: input.benthicPlumeTurbidityNtu <= 15.0,
+    subseaOperationStatus: status,
+    safetyVeto,
+    vetoReason,
+  };
+}
+
+// ----------------------------------------------------------------------------
+// TRACK 10: SOVEREIGN BIOSECURITY & PATHOGEN GENOMIC SURVEILLANCE
+// ----------------------------------------------------------------------------
+
+export interface Bsl4ContainmentInput {
+  roomNegativePressurePa: number;
+  anteroomNegativePressurePa: number;
+  corridorNegativePressurePa: number;
+  hepaExhaustVelocityMs: number;
+  chemicalShowerInterlockEngaged: boolean;
+  positivePressureSuitBreach: boolean;
+  pathogenTier: "TIER_1_SELECT_AGENT" | "RISK_GROUP_4" | "RISK_GROUP_3";
+}
+
+export interface Bsl4ContainmentResult {
+  pressureCascadeDifferentialPa: number;
+  containmentInvariantsPassed: boolean;
+  biosecurityAlarmLevel: "NORMAL" | "PRESSURE_CASCADE_WARNING" | "CRITICAL_CONTAINMENT_LOCKDOWN";
+  safetyVeto: boolean;
+  vetoReason?: string;
+}
+
+export function evaluateBsl4BiocontainmentInvariants(input: Bsl4ContainmentInput): Bsl4ContainmentResult {
+  const cascadeDiff = Math.abs(input.roomNegativePressurePa - input.anteroomNegativePressurePa);
+
+  let safetyVeto = false;
+  let vetoReason: string | undefined;
+  let alarm: Bsl4ContainmentResult["biosecurityAlarmLevel"] = "NORMAL";
+
+  if (input.positivePressureSuitBreach) {
+    safetyVeto = true;
+    alarm = "CRITICAL_CONTAINMENT_LOCKDOWN";
+    vetoReason = "CRITICAL BSL-4 OCCUPATIONAL BREACH: Positive pressure suit pressure drop detected. Auto-isolation valve locked and decontamination shower prepared.";
+  } else if (input.roomNegativePressurePa > -25.0) {
+    safetyVeto = true;
+    alarm = "CRITICAL_CONTAINMENT_LOCKDOWN";
+    vetoReason = `NEGATIVE PRESSURE FAILURE: Primary laboratory pressure (${input.roomNegativePressurePa} Pa > -25 Pa). Inward airflow barrier lost; secondary redundant exhaust fans engaged within 200ms.`;
+  } else if (!input.chemicalShowerInterlockEngaged) {
+    safetyVeto = true;
+    alarm = "PRESSURE_CASCADE_WARNING";
+    vetoReason = "DECONTAMINATION AIRLOCK BREACH: Chemical dunk tank or shower interlock bypassed while processing Tier 1 Select Agent.";
+  }
+
+  return {
+    pressureCascadeDifferentialPa: cascadeDiff,
+    containmentInvariantsPassed: !safetyVeto,
+    biosecurityAlarmLevel: alarm,
+    safetyVeto,
+    vetoReason,
+  };
+}
+
+export interface GeneSynthesisScreeningInput {
+  targetOligoSequence: string;
+  selectAgentHomologyPercent: number;
+  isDualUseToxin: boolean;
+  customerInstitutionalCredentialsVerified: boolean;
+  cdcExportPermitNumber?: string;
+}
+
+export interface GeneSynthesisScreeningResult {
+  synthesisPermitted: boolean;
+  screeningVerdict: "CERTIFIED_CLEAR" | "SELECT_AGENT_EMBARGO" | "DUAL_USE_TOXIN_RESTRICTION";
+  safetyVeto: boolean;
+  vetoReason?: string;
+}
+
+export function evaluateGeneSynthesisBiosecurity(input: GeneSynthesisScreeningInput): GeneSynthesisScreeningResult {
+  let safetyVeto = false;
+  let vetoReason: string | undefined;
+  let verdict: GeneSynthesisScreeningResult["screeningVerdict"] = "CERTIFIED_CLEAR";
+
+  if (input.isDualUseToxin && !input.customerInstitutionalCredentialsVerified) {
+    safetyVeto = true;
+    verdict = "DUAL_USE_TOXIN_RESTRICTION";
+    vetoReason = "BIOSECURITY HARD VETO: Target sequence encodes regulated dual-use protein toxin without certified institutional clearance.";
+  } else if (input.selectAgentHomologyPercent >= 80.0 && (!input.customerInstitutionalCredentialsVerified || !input.cdcExportPermitNumber)) {
+    safetyVeto = true;
+    verdict = "SELECT_AGENT_EMBARGO";
+    vetoReason = `SELECT AGENT SCREENING EMBARGO: Sequence exhibits ${input.selectAgentHomologyPercent}% homology to regulated Tier 1 Select Agent lacking CDC/APHIS authorization. Physical oligo synthesis blocked.`;
+  }
+
+  return {
+    synthesisPermitted: !safetyVeto,
+    screeningVerdict: verdict,
+    safetyVeto,
+    vetoReason,
+  };
+}
+
+// ----------------------------------------------------------------------------
 // 140 MULTI-TRACK STANDARDIZED TEST SCENARIOS
 // ----------------------------------------------------------------------------
 
 export interface FrontierScenarioTest {
   id: string;
-  track: 1 | 2 | 3 | 4 | 5 | 6;
+  track: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
   name: string;
   category: string;
   evaluator: () => { safetyVeto: boolean; [key: string]: any };
@@ -777,6 +1060,141 @@ export function generateAllFrontierTrackScenarios(): FrontierScenarioTest[] {
             engineLoadPercent: 75,
             scrDeNoxTempC: 360,
             unburntAmmoniaSlipPpm: 2.5 + (i % 3) * 0.5,
+          });
+        }
+      },
+      expectedSafetyVeto: false,
+    });
+  }
+
+  // Track 7: Fusion Energy & Plasma MHD (25 scenarios)
+  for (let i = 1; i <= 25; i++) {
+    tests.push({
+      id: `TRACK7-FUSION-${String(i).padStart(3, "0")}`,
+      track: 7,
+      name: i <= 15 ? `Tokamak Confinement Stability Sweep #${i}` : `Superconducting Coil Quench Gate #${i - 15}`,
+      category: i <= 15 ? "PLASMA_MHD_EQUILIBRIUM" : "MAGNETIC_CONFINEMENT_SAFETY",
+      evaluator: () => {
+        if (i <= 15) {
+          return evaluateTokamakConfinementStability({
+            majorRadiusM: 6.2,
+            minorRadiusM: 2.0,
+            toroidalFieldTesla: 5.3,
+            plasmaCurrentMA: 15.0,
+            electronDensity10e19M3: 8.0 + (i % 5) * 0.4,
+            coreTempKeV: 15.0 + (i % 3) * 1.5,
+            divertorHeatFluxMWm2: 6.5 + (i % 4) * 0.8,
+            energyConfinementTimeS: 3.5,
+          });
+        } else {
+          return evaluateTokamakConfinementStability({
+            majorRadiusM: 6.2,
+            minorRadiusM: 2.0,
+            toroidalFieldTesla: 5.3,
+            plasmaCurrentMA: 15.0,
+            electronDensity10e19M3: 8.5,
+            coreTempKeV: 16.0,
+            divertorHeatFluxMWm2: 7.0,
+            energyConfinementTimeS: 3.6,
+            quenchVoltageMv: 15 + i * 2,
+          });
+        }
+      },
+      expectedSafetyVeto: false,
+    });
+  }
+
+  // Track 8: Advanced Aerospace & Hypersonics (25 scenarios)
+  for (let i = 1; i <= 25; i++) {
+    tests.push({
+      id: `TRACK8-HYPERSONIC-${String(i).padStart(3, "0")}`,
+      track: 8,
+      name: i <= 15 ? `Scramjet Aerothermal Flight Corridor #${i}` : `Inlet Shock Train Stability Gate #${i - 15}`,
+      category: i <= 15 ? "SCRAMJET_COMBUSTION" : "SHOCKWAVE_BOUNDARY_LAYER",
+      evaluator: () => {
+        if (i <= 15) {
+          return evaluateHypersonicScramjetStability({
+            machNumber: 6.0 + (i % 6) * 0.5,
+            altitudeKm: 28 + (i % 5) * 2,
+            dynamicPressureKPa: 45 + (i % 4) * 5,
+            inletStaticPressureRatio: 2.2 + (i % 4) * 0.2,
+            isolatorShockMarginCm: 12.0 + (i % 5),
+            tpsStagnationTempC: 1500 + i * 20,
+            gLoadUnits: 4.5 + (i % 3) * 0.5,
+          });
+        } else {
+          return evaluateHypersonicScramjetStability({
+            machNumber: 8.0,
+            altitudeKm: 32,
+            dynamicPressureKPa: 50,
+            inletStaticPressureRatio: 2.5,
+            isolatorShockMarginCm: 10.0 + (i % 4),
+            tpsStagnationTempC: 1750,
+            gLoadUnits: 5.0,
+          });
+        }
+      },
+      expectedSafetyVeto: false,
+    });
+  }
+
+  // Track 9: Deep-Sea Robotics & Autonomous Mining (20 scenarios)
+  for (let i = 1; i <= 20; i++) {
+    tests.push({
+      id: `TRACK9-SUBSEA-${String(i).padStart(3, "0")}`,
+      track: 9,
+      name: i <= 10 ? `Deep-Sea Pressure Vessel Integrity #${i}` : `Benthic Plume & Tether Load Gate #${i - 10}`,
+      category: i <= 10 ? "HYDROSTATIC_PRESSURE_VESSEL" : "BENTHIC_SCADA_NAVIGATION",
+      evaluator: () => {
+        if (i <= 10) {
+          return evaluateDeepSeaSubseaRov({
+            depthMeters: 2000 + i * 350,
+            hydrostaticPressureMpa: (2000 + i * 350) * 0.01005,
+            hullPressureVesselIntegrityPercent: 99.5 - (i % 3) * 0.2,
+            usblAcousticPingLatencyMs: 120 + i * 10,
+            tetherTensionPercentMbl: 40 + i * 1.5,
+            benthicPlumeTurbidityNtu: 8.0 + (i % 4) * 1.2,
+          });
+        } else {
+          return evaluateDeepSeaSubseaRov({
+            depthMeters: 4500,
+            hydrostaticPressureMpa: 45.2,
+            hullPressureVesselIntegrityPercent: 98.8,
+            usblAcousticPingLatencyMs: 250,
+            tetherTensionPercentMbl: 55 + (i % 5) * 3,
+            benthicPlumeTurbidityNtu: 9.5 + (i % 3) * 1.5,
+          });
+        }
+      },
+      expectedSafetyVeto: false,
+    });
+  }
+
+  // Track 10: Sovereign Biosecurity & BSL-4 Genomics (25 scenarios)
+  for (let i = 1; i <= 25; i++) {
+    tests.push({
+      id: `TRACK10-BIOSEC-${String(i).padStart(3, "0")}`,
+      track: 10,
+      name: i <= 15 ? `BSL-4 Negative Pressure Cascade Audit #${i}` : `Tier 1 Select Agent Oligo Screening Gate #${i - 15}`,
+      category: i <= 15 ? "BSL4_BIOCONTAINMENT" : "GENOMIC_BIOSECURITY",
+      evaluator: () => {
+        if (i <= 15) {
+          return evaluateBsl4BiocontainmentInvariants({
+            roomNegativePressurePa: -55 - (i % 5) * 2,
+            anteroomNegativePressurePa: -35 - (i % 3) * 2,
+            corridorNegativePressurePa: -15,
+            hepaExhaustVelocityMs: 2.2,
+            chemicalShowerInterlockEngaged: true,
+            positivePressureSuitBreach: false,
+            pathogenTier: "TIER_1_SELECT_AGENT",
+          });
+        } else {
+          return evaluateGeneSynthesisBiosecurity({
+            targetOligoSequence: "ATGCGATCGATCGATCGATCGATCGATCGATCGATC",
+            selectAgentHomologyPercent: 40 + (i % 4) * 8,
+            isDualUseToxin: false,
+            customerInstitutionalCredentialsVerified: true,
+            cdcExportPermitNumber: `CDC-PERMIT-2026-${1000 + i}`,
           });
         }
       },
@@ -1117,6 +1535,138 @@ $$\\mathbf{i} = ${rStar} + ${pi} + 0.5(${pi} - ${piStar}) + 0.5(${yGap}) = \\mat
     }
 
     return output || null;
+  }
+
+  // 9. Tokamak Plasma Confinement & Fusion Energy (Track 7)
+  if (p.includes("tokamak") || p.includes("fusion") || p.includes("lawson") || p.includes("greenwald") || (p.includes("plasma") && (p.includes("confinement") || p.includes("divertor") || p.includes("quench")))) {
+    const res = evaluateTokamakConfinementStability({
+      majorRadiusM: 6.2,
+      minorRadiusM: 2.0,
+      toroidalFieldTesla: 5.3,
+      plasmaCurrentMA: 15.0,
+      electronDensity10e19M3: 9.0,
+      coreTempKeV: 15.5,
+      divertorHeatFluxMWm2: 8.2,
+      energyConfinementTimeS: 3.5,
+      elongationKappa: 1.85,
+    });
+
+    return `### Noctis Fusion Energy & Plasma Magnetohydrodynamics Engine (NOCTIS-FUSION-MHD-001)
+**Subsystem Domain:** \`FUSION_ENERGY_PLASMA_MHD\` · **Standards:** ITER Physics Basis, IAEA Nuclear Fusion, IEEE 2800
+
+#### 1. Magnetic Confinement Geometry & Plasma Stability
+- **Tokamak Configuration:** Major Radius $R_0 = 6.2\\text{ m}$, Minor Radius $a = 2.0\\text{ m}$, Elongation $\\kappa = 1.85$
+- **Toroidal Magnetic Field ($B_t$):** **\`5.30 Tesla\`** · **Plasma Current ($I_p$):** **\`15.0 MA\`**
+- **Safety Factor ($q_{95}$):** **\`${res.safetyFactorQ95}\`** (Threshold $q_{95} \\ge 2.0$ verified; external kink modes suppressed)
+- **Greenwald Density Fraction ($f_G$):** **\`${res.greenwaldFraction}\`** (Statutory density limit $n_G = ${res.greenwaldDensityLimit} \\times 10^{20}\\text{ m}^{-3}$)
+
+#### 2. Lawson Criterion & Fusion Energy Gain
+- **Lawson Triple Product ($n \\cdot T \\cdot \\tau_E$):** **\`${res.lawsonTripleProductKeVSm3} \\times 10^{21} \\text{ keV}\\cdot\\text{s/m}^3\`**
+- **Estimated Fusion Energy Gain ($Q$):** **\`Q \\approx ${res.fusionEnergyGainQEstimated}\`** ($Q > 10$ burning plasma regime)
+- **Divertor Peak Heat Flux:** **\`8.20 MW/m²\`** (Within water-cooled tungsten monoblock limit of $10.0\\text{ MW/m}^2$)
+
+#### 3. Sovereign Safety Invariants & Quench Interlocks
+- **Superconducting Magnet Quench Detection:** Baseline coil voltage drop monitored at $10\\text{ kHz}$. Voltage threshold $>100\\text{ mV}$ triggers automated sub-second discharge into cryogenic dump resistors.
+- **Disruption Mitigation System (DMS):** Massive Gas Injection (MGI) and shattered pellet injection (SPI) primed for pre-emptive thermal quench mitigation.`;
+  }
+
+  // 10. Hypersonic Flight, Scramjet Propulsion & Aerodynamics (Track 8)
+  if (p.includes("scramjet") || p.includes("hypersonic") || p.includes("inlet unstart") || p.includes("shock train") || (p.includes("mach") && (p.includes("aerothermal") || p.includes("stagnation") || p.includes("tps")))) {
+    const machMatch = prompt.match(/\bmach\s*(\d+(?:\.\d+)?)/i);
+    const mach = machMatch ? Number(machMatch[1]) : 7.0;
+
+    const res = evaluateHypersonicScramjetStability({
+      machNumber: mach,
+      altitudeKm: 30.0,
+      dynamicPressureKPa: 50.0,
+      inletStaticPressureRatio: 2.4,
+      isolatorShockMarginCm: 14.5,
+      tpsStagnationTempC: 1650,
+      gLoadUnits: 5.2,
+    });
+
+    return `### Noctis Hypersonic Aerodynamics & Scramjet Propulsion Engine (NOCTIS-AERO-HYPER-001)
+**Subsystem Domain:** \`HYPERSONICS_AEROSPACE_SCRAMJET\` · **Standards:** AIAA Hypersonic S-131, NASA TM-104000
+
+#### 1. Hypersonic Aerothermodynamic Flight Corridor
+- **Flight Velocity:** **\`Mach ${mach.toFixed(1)}\`** at **\`30.0 km\`** Altitude
+- **Freestream Dynamic Pressure ($q_\\infty$):** **\`50.0 kPa\`** (Optimal scramjet airbreathing dynamic corridor $30\\text{--}75\\text{ kPa}$)
+- **Stagnation Point Aerothermal Heat Flux:** **\`${res.aerothermalStagnationHeatFluxMWm2} MW/m²\`**
+- **Leading Edge TPS Temperature:** **\`1,650°C\`** (Thermal margin to UHTC ablation ceiling: **\`+${res.thermalProtectionMarginC}°C\`**)
+
+#### 2. Scramjet Isolator & Shock Train Stability
+- **Inlet Static Pressure Ratio ($P_\\text{isolator}/P_\\text{inlet}$):** **\`2.40\`** (Safe margin $< 3.50$)
+- **Isolator Shock Train Margin:** **\`14.5 cm\`** forward of combustor entrance
+- **Inlet Unstart Risk:** **\`NEGATIVE (NOMINAL SUPERSONIC COMPRESSION)\`**
+- **Vehicle Structural Load:** **\`5.2g\`** (Design limit: $12.0\\text{g}$)
+
+#### 3. Sovereign Fail-Safe Action Directives
+- **Sub-5ms Fuel Bleed Abort:** In the event of an impending shock expulsion (inlet unstart), millisecond-response bypass valves and fuel throttle cutoffs engage automatically to prevent catastrophic adverse pitch-moment transients.`;
+  }
+
+  // 11. Autonomous Deep-Sea Subsea Robotics & Mining (Track 9)
+  if (p.includes("subsea") || p.includes("deep-sea") || p.includes("deep sea") || p.includes("benthic") || p.includes("nodule") || (p.includes("rov") && (p.includes("depth") || p.includes("pressure") || p.includes("tether")))) {
+    const depthMatch = prompt.match(/(\d{3,5})\s*m(?:eters)?/i);
+    const depth = depthMatch ? Number(depthMatch[1]) : 5000;
+
+    const res = evaluateDeepSeaSubseaRov({
+      depthMeters: depth,
+      hydrostaticPressureMpa: depth * 0.01005,
+      hullPressureVesselIntegrityPercent: 99.2,
+      usblAcousticPingLatencyMs: 220,
+      tetherTensionPercentMbl: 48.0,
+      benthicPlumeTurbidityNtu: 8.5,
+      waterIngressSensorTriggered: false,
+    });
+
+    return `### Noctis Subsea Robotics & Deep-Sea SCADA Engine (NOCTIS-ROBOTICS-SUBSEA-001)
+**Subsystem Domain:** \`SUBSEA_ROBOTICS_DEEP_SEA_MINING\` · **Standards:** DNV-GL-ST-E402, ISA Polymetallic Regulations
+
+#### 1. Deep-Ocean Hydrostatic Telemetry
+- **Operational Depth:** **\`${depth} meters\`** (Abyssal Plain Hydrodynamics)
+- **Ambient Hydrostatic Pressure:** **\`${res.ambientHydrostaticPressureMpa} MPa\`** (approx. ${(res.ambientHydrostaticPressureMpa * 9.869).toFixed(0)} atmospheres)
+- **Titanium/Ceramic Pressure Vessel Margin:** **\`+${res.crushDepthMarginPercent}%\`** structurally certified
+- **USBL Acoustic Navigation Resolution:** **\`±${res.navigationPrecisionMeters} meters\`** (Doppler Velocity Log fusion)
+
+#### 2. Tether Dynamics & Environmental Safeguards
+- **Umbilical Tether Tension:** **\`48.0% MBL\`** (Maximum Breaking Load limit: $80.0\\%$)
+- **Measured Benthic Turbidity Plume:** **\`8.5 NTU\`**
+- **International Seabed Authority (ISA) Threshold:** **\`15.0 NTU\`**
+- **Environmental Compliance:** **\`COMPLIANT (PASSED)\`**
+
+#### 3. Emergency Safety Invariants
+- **Pyrotechnic Positive-Buoyancy Jettison:** Water ingress sensors or structural micro-strain failure immediately trigger sacrificial ballast weight release for unpowered buoyant surface ascent.`;
+  }
+
+  // 12. Sovereign Biosecurity, BSL-4 Containment & DNA Screening (Track 10)
+  if (p.includes("bsl-4") || p.includes("bsl4") || p.includes("biocontainment") || p.includes("select agent") || p.includes("oligo synthesis") || p.includes("gene synthesis screening") || (p.includes("negative pressure") && p.includes("cascade"))) {
+    const res = evaluateBsl4BiocontainmentInvariants({
+      roomNegativePressurePa: -60.0,
+      anteroomNegativePressurePa: -38.0,
+      corridorNegativePressurePa: -15.0,
+      hepaExhaustVelocityMs: 2.4,
+      chemicalShowerInterlockEngaged: true,
+      positivePressureSuitBreach: false,
+      pathogenTier: "TIER_1_SELECT_AGENT",
+    });
+
+    return `### Noctis Sovereign Biosecurity & Containment Engine (NOCTIS-BIOSEC-BSL4-001)
+**Subsystem Domain:** \`SOVEREIGN_BIOSECURITY_BSL4_GENOMICS\` · **Standards:** CDC/NIH BMBL 6th Ed, ISO 35001, GSSN Guidance
+
+#### 1. BSL-4 High-Containment Invariant Telemetry
+- **Directional Airflow Gradient (Negative Pressure Cascade):**
+  - Primary Suit Laboratory: **\`-60.0 Pa\`**
+  - Decontamination Anteroom: **\`-38.0 Pa\`**
+  - Outer Clean Corridor: **\`-15.0 Pa\`**
+- **Intersuite Pressure Differential:** **\`${res.pressureCascadeDifferentialPa.toFixed(1)} Pa\`** (Mandate: $\\ge 15.0\\text{ Pa}$ inward envelope)
+- **Exhaust Air HEPA Filtration:** Dual inline HEPA with **\`2.4 m/s\`** certified face velocity (99.997% retention at $0.3\\,\\mu\\text{m}$)
+- **Airlock Status:** Chemical shower and pneumatic door gasket interlocks **\`FULLY ENGAGED\`**
+
+#### 2. Physical & Genomic Biosecurity Directives
+- **Positive-Pressure Suit Integrity:** Continuous differential pressure verified; automatic isolation dampers primed.
+- **Gene Synthesis Screening Protocol:**
+  - Mandatory screening of all oligo orders against CDC/APHIS Select Agents & Toxins List.
+  - Hard automated block on sequences exhibiting $\\ge 80\\%$ homology to regulated virulent pathogens or dual-use chimeric toxins lacking authenticated institutional clearance and export licenses.`;
   }
 
   return null;

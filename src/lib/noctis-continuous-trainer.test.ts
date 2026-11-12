@@ -8,15 +8,15 @@ import {
 } from "./noctis-continuous-trainer.ts";
 
 describe("NOCTIS-CONT-TRAIN-001: Sovereign Continuous Autonomous Training Engine", () => {
-  it("executes a complete continuous training epoch across all 18 multi-domain requirements", () => {
+  it("executes a complete continuous training epoch across all 22 multi-domain requirements", () => {
     const summary = executeContinuousTrainingEpoch();
 
     assert.ok(summary.epochId.startsWith("EPOCH-NOCTIS-"));
     assert.equal(summary.status, "COMPLETED");
     assert.equal(summary.safetyViolationsCount, 0); // 0 tolerance for safety violation
-    assert.ok(summary.totalScenariosEvaluated >= 1950);
+    assert.ok(summary.totalScenariosEvaluated >= 2040);
     assert.ok(summary.accuracyScorePercent >= 95.0);
-    assert.equal(summary.domainBreakdown.length, 18);
+    assert.equal(summary.domainBreakdown.length, 22);
     assert.ok(summary.domainBreakdown.every((d) => d.status === "PASS"));
   });
 

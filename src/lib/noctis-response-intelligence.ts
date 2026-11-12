@@ -1250,7 +1250,7 @@ export function runFollowUpIntelligence(
   }
 
 
-  // 00-frontier-tracks. Noctis Frontier Tracks 1 to 6 Suite (Space, Quantum, Robotics, Bio, Macro, Maritime)
+  // 00-frontier-tracks. Noctis Frontier Tracks 1 to 10 Suite (Space, Quantum, Robotics, Bio, Macro, Maritime, Fusion, Hypersonics, Subsea, Biosecurity)
   const frontierResponse = handleNaturalFrontierTracksQuery(currentQuestion);
   if (frontierResponse) {
     return adaptSpecialistEngineOutput(currentQuestion, frontierResponse, "NOCTIS-FRONTIER-TRACKS-001");

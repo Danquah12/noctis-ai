@@ -13,6 +13,11 @@ import {
   evaluateWholesaleCbdcSettlement,
   evaluateColregsAutonomousAvoidance,
   evaluateGreenAmmoniaMarinePropulsion,
+  evaluateTokamakConfinementStability,
+  evaluateHypersonicScramjetStability,
+  evaluateDeepSeaSubseaRov,
+  evaluateBsl4BiocontainmentInvariants,
+  evaluateGeneSynthesisBiosecurity,
   generateAllFrontierTrackScenarios,
 } from "./noctis-frontier-tracks.ts";
 
@@ -171,9 +176,122 @@ describe("Noctis Frontier Tracks 1 to 6 Suite", () => {
     assert.ok(ammonia.co2ReductionPercent >= 75);
   });
 
-  test("generates and verifies all 140 multi-track scenarios across Tracks 1 to 6", () => {
+  test("Track 7: Fusion Energy & Plasma Magnetohydrodynamics (MHD)", () => {
+    const fusion = evaluateTokamakConfinementStability({
+      majorRadiusM: 6.2,
+      minorRadiusM: 2.0,
+      toroidalFieldTesla: 5.3,
+      plasmaCurrentMA: 15.0,
+      electronDensity10e19M3: 9.0,
+      coreTempKeV: 15.5,
+      divertorHeatFluxMWm2: 8.2,
+      energyConfinementTimeS: 3.5,
+      elongationKappa: 1.85,
+    });
+    assert.strictEqual(fusion.safetyVeto, false);
+    assert.ok(fusion.safetyFactorQ95 >= 2.0);
+    assert.ok(fusion.greenwaldFraction <= 1.0);
+    assert.ok(fusion.fusionEnergyGainQEstimated > 5.0);
+
+    // Hard quench veto
+    const quench = evaluateTokamakConfinementStability({
+      majorRadiusM: 6.2,
+      minorRadiusM: 2.0,
+      toroidalFieldTesla: 5.3,
+      plasmaCurrentMA: 15.0,
+      electronDensity10e19M3: 9.0,
+      coreTempKeV: 15.5,
+      divertorHeatFluxMWm2: 8.2,
+      energyConfinementTimeS: 3.5,
+      quenchVoltageMv: 180, // > 100 mV
+    });
+    assert.strictEqual(quench.safetyVeto, true);
+    assert.strictEqual(quench.plasmaStabilityStatus, "DISRUPTION_MITIGATION_REQUIRED");
+  });
+
+  test("Track 8: Advanced Aerospace & Hypersonic Scramjet", () => {
+    const hyper = evaluateHypersonicScramjetStability({
+      machNumber: 7.0,
+      altitudeKm: 30.0,
+      dynamicPressureKPa: 50.0,
+      inletStaticPressureRatio: 2.4,
+      isolatorShockMarginCm: 14.5,
+      tpsStagnationTempC: 1650,
+      gLoadUnits: 5.2,
+    });
+    assert.strictEqual(hyper.safetyVeto, false);
+    assert.strictEqual(hyper.inletUnstartRisk, false);
+    assert.ok(hyper.thermalProtectionMarginC > 0);
+
+    // Inlet unstart veto
+    const unstart = evaluateHypersonicScramjetStability({
+      machNumber: 7.0,
+      altitudeKm: 30.0,
+      dynamicPressureKPa: 50.0,
+      inletStaticPressureRatio: 4.2, // > 3.5
+      isolatorShockMarginCm: 2.1, // < 5.0 cm
+      tpsStagnationTempC: 1650,
+      gLoadUnits: 5.2,
+    });
+    assert.strictEqual(unstart.safetyVeto, true);
+    assert.strictEqual(unstart.flightCorridorStatus, "INLET_UNSTART_ABORT");
+  });
+
+  test("Track 9: Autonomous Mining & Deep-Sea Subsea Robotics", () => {
+    const rov = evaluateDeepSeaSubseaRov({
+      depthMeters: 5000,
+      hydrostaticPressureMpa: 50.25,
+      hullPressureVesselIntegrityPercent: 99.2,
+      usblAcousticPingLatencyMs: 220,
+      tetherTensionPercentMbl: 48.0,
+      benthicPlumeTurbidityNtu: 8.5,
+      waterIngressSensorTriggered: false,
+    });
+    assert.strictEqual(rov.safetyVeto, false);
+    assert.strictEqual(rov.environmentalPlumeCompliant, true);
+    assert.ok(rov.crushDepthMarginPercent > 50);
+
+    // Hull breach emergency ascent veto
+    const breach = evaluateDeepSeaSubseaRov({
+      depthMeters: 5000,
+      hydrostaticPressureMpa: 50.25,
+      hullPressureVesselIntegrityPercent: 92.0, // < 95%
+      usblAcousticPingLatencyMs: 220,
+      tetherTensionPercentMbl: 48.0,
+      benthicPlumeTurbidityNtu: 8.5,
+      waterIngressSensorTriggered: true,
+    });
+    assert.strictEqual(breach.safetyVeto, true);
+    assert.strictEqual(breach.subseaOperationStatus, "EMERGENCY_BUOYANCY_ASCENT");
+  });
+
+  test("Track 10: Sovereign Biosecurity & BSL-4 Containment", () => {
+    const bsl4 = evaluateBsl4BiocontainmentInvariants({
+      roomNegativePressurePa: -60.0,
+      anteroomNegativePressurePa: -38.0,
+      corridorNegativePressurePa: -15.0,
+      hepaExhaustVelocityMs: 2.4,
+      chemicalShowerInterlockEngaged: true,
+      positivePressureSuitBreach: false,
+      pathogenTier: "TIER_1_SELECT_AGENT",
+    });
+    assert.strictEqual(bsl4.safetyVeto, false);
+    assert.strictEqual(bsl4.containmentInvariantsPassed, true);
+    assert.ok(bsl4.pressureCascadeDifferentialPa >= 15.0);
+
+    const oligoBlock = evaluateGeneSynthesisBiosecurity({
+      targetOligoSequence: "ATGCATGCATGCATGCATGCATGCATGCATGC",
+      selectAgentHomologyPercent: 92.5, // > 80%
+      isDualUseToxin: true,
+      customerInstitutionalCredentialsVerified: false,
+    });
+    assert.strictEqual(oligoBlock.safetyVeto, true);
+    assert.strictEqual(oligoBlock.synthesisPermitted, false);
+  });
+
+  test("generates and verifies all 235 multi-track scenarios across Tracks 1 to 10", () => {
     const scenarios = generateAllFrontierTrackScenarios();
-    assert.strictEqual(scenarios.length, 140);
+    assert.strictEqual(scenarios.length, 235);
 
     let passedInvariants = 0;
     for (const sc of scenarios) {
@@ -182,6 +300,6 @@ describe("Noctis Frontier Tracks 1 to 6 Suite", () => {
         passedInvariants++;
       }
     }
-    assert.strictEqual(passedInvariants, 140);
+    assert.strictEqual(passedInvariants, 235);
   });
 });
