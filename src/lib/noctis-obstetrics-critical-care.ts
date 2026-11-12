@@ -263,24 +263,26 @@ export function evaluateMaternalCardiacArrest(input: MaternalCardiacArrestEvalua
 
 export function handleNaturalObstetricsQuery(prompt: string): string | null {
   const p = prompt.toLowerCase();
+  const hasAfe = /\bafe\b/i.test(p);
+  const hasPph = /\bpph\b/i.test(p);
   const isOb =
     p.includes("preeclampsia") ||
     p.includes("eclampsia") ||
     p.includes("magnesium") ||
     p.includes("postpartum hemorrhage") ||
-    p.includes("pph") ||
+    hasPph ||
     p.includes("methergine") ||
     p.includes("carboprost") ||
     p.includes("hemabate") ||
     p.includes("resuscitative hysterotomy") ||
     p.includes("perimortem cesarean") ||
     p.includes("amniotic fluid embolism") ||
-    p.includes("afe");
+    hasAfe;
 
   if (!isOb) return null;
 
   // Case 1: Postpartum Hemorrhage & Uterotonics
-  if (p.includes("postpartum hemorrhage") || p.includes("pph") || p.includes("methergine") || p.includes("carboprost") || p.includes("hemabate")) {
+  if (p.includes("postpartum hemorrhage") || hasPph || p.includes("methergine") || p.includes("carboprost") || p.includes("hemabate")) {
     const isMethergineInHtn = p.includes("methergine") && (p.includes("hypertens") || p.includes("preeclamp") || p.includes("bp"));
     const isCarboprostInAsthma = (p.includes("carboprost") || p.includes("hemabate")) && (p.includes("asthma") || p.includes("wheez"));
 
@@ -296,14 +298,14 @@ export function handleNaturalObstetricsQuery(prompt: string): string | null {
   }
 
   // Case 2: Maternal Arrest / PMCD / AFE
-  if (p.includes("perimortem") || p.includes("hysterotomy") || p.includes("maternal cardiac arrest") || p.includes("afe") || p.includes("amniotic fluid")) {
+  if (p.includes("perimortem") || p.includes("hysterotomy") || p.includes("maternal cardiac arrest") || hasAfe || p.includes("amniotic fluid")) {
     const res = evaluateMaternalCardiacArrest({
       gestationalAgeWeeks: 32,
       arrestDurationMinutes: 4.5,
       roscAchieved: false,
       uterineDisplacementManualActive: true,
       perimortemCesareanInitiated: false,
-      afeSuspected: p.includes("afe") || p.includes("amniotic"),
+      afeSuspected: hasAfe || p.includes("amniotic"),
     });
     return formatObMarkdown(res);
   }

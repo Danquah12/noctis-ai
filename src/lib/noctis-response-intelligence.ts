@@ -35,6 +35,7 @@ import { handleNaturalPredictiveIntelligenceQuery } from "./noctis-predictive-in
 import { automotiveDiagnosticGadget } from "./noctis-automotive-engine.ts";
 import { handleNaturalAutonomousTrainingQuery } from "./noctis-autonomous-trainer.ts";
 import { handleNaturalContinuousTrainingQuery } from "./noctis-continuous-trainer.ts";
+import { handleNaturalFrontierTracksQuery } from "./noctis-frontier-tracks.ts";
 import { architectIntelligenceGadget } from "./noctis-architect-engine.ts";
 import { handleNaturalCyberSecurityQuery, isCyberSecurityOrSocQuery } from "./noctis-cyber-engine.ts";
 import { isAttackPathOrExploitabilityQuery } from "./noctis-attack-path-engine.ts";
@@ -1248,6 +1249,12 @@ export function runFollowUpIntelligence(
     return adaptSpecialistEngineOutput(currentQuestion, canaryResponse, "NOCTIS-CANARY-001");
   }
 
+
+  // 00-frontier-tracks. Noctis Frontier Tracks 1 to 6 Suite (Space, Quantum, Robotics, Bio, Macro, Maritime)
+  const frontierResponse = handleNaturalFrontierTracksQuery(currentQuestion);
+  if (frontierResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, frontierResponse, "NOCTIS-FRONTIER-TRACKS-001");
+  }
 
   // 00-continuous-train. Noctis Sovereign Continuous Autonomous Training Engine (NOCTIS-CONT-TRAIN-001)
   const continuousTrainingResponse = handleNaturalContinuousTrainingQuery(currentQuestion);

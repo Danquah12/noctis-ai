@@ -5177,9 +5177,9 @@ export function extractClinicalParametersFromText(question: string): ExtractedCl
       ? Number((((Number(tempFMatch[1]) - 32) * 5) / 9).toFixed(1))
       : undefined;
 
-  // Heart rate
+  // Heart rate (ensure hr is not part of a rate unit like kg/hr or km/hr)
   const hrMatch =
-    q.match(/\b(?:hr|heart\s+rate|pulse)\s*(?:is|of|=|:)?\s*(\d{2,3})\s*(?:bpm|\/min)?\b/i) ||
+    q.match(/(?<![\/a-zA-Z])(?:hr|heart\s+rate|pulse)\s*(?:is|of|=|:)?\s*(\d{2,3})\s*(?:bpm|\/min)?\b/i) ||
     q.match(/\b(\d{2,3})\s*bpm\b/i) ||
     q.match(/\bshock\s+index\s+(?:of\s+)?0\.96\b/i);
   const heartRateBpm =
