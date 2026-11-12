@@ -15,6 +15,7 @@ import { NoctisCanvas } from "@/components/noctis/NoctisCanvas";
 import { NoctisPluginsTab } from "@/components/noctis/NoctisPluginsTab";
 import { NoctisForgeTab } from "@/components/noctis/NoctisForgeTab";
 import { NoctisFrontierTab } from "@/components/noctis/NoctisFrontierTab";
+import { NoctisTrainingTab } from "@/components/noctis/NoctisTrainingTab";
 import { NoctisSovereignFactoryStudio } from "@/components/noctis/NoctisSovereignFactoryStudio";
 import { DUAL_PLANE_SPECIFICATION, SQDEC_HIERARCHY } from "@/lib/noctis-sovereign-factory";
 import { NoctisConsoleTab } from "@/components/noctis/NoctisConsoleTab";
@@ -3413,7 +3414,7 @@ export function NoctisDesk() {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
   const [uploads, setUploads] = useState<Upload[]>([]);
-  const [desk, setDesk] = useState<"chat" | "study" | "forge" | "plugins" | "console" | "redteam" | "frontier">("chat");
+  const [desk, setDesk] = useState<"chat" | "study" | "forge" | "plugins" | "console" | "redteam" | "frontier" | "training">("chat");
   const [executorPlugin, setExecutorPlugin] = useState<DistributedPluginItem | null>(null);
   const [executorOpen, setExecutorOpen] = useState(false);
   const [studyTopic, setStudyTopic] = useState("");
@@ -5809,11 +5810,11 @@ export function NoctisDesk() {
                 type="button"
                 onClick={() => {
                   setTrainOpen(false);
-                  setDesk("frontier");
+                  setDesk("training");
                 }}
                 className="rounded-full bg-emerald-500/20 border border-emerald-500/40 px-2.5 py-1 text-[11px] font-semibold text-emerald-300 hover:bg-emerald-500/30 cursor-pointer"
               >
-                Global Daemon (1,813 Scenarios)
+                Continuous Daemon (2,158 Scenarios)
               </button>
               <button
                 type="button"
@@ -6599,6 +6600,18 @@ export function NoctisDesk() {
           <Cpu className="size-4 shrink-0 text-violet-400" />
           <span>Frontier & Benchmarks</span>
           <span className="ml-auto rounded-full bg-violet-500/20 px-1.5 py-0.5 text-[10px] font-bold text-violet-300">500+</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setDesk("training");
+            setMenu(false);
+          }}
+          className={item(desk === "training")}
+        >
+          <Activity className="size-4 shrink-0 text-emerald-400" />
+          <span>Continuous Daemon</span>
+          <span className="ml-auto rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-bold text-emerald-300">2,158</span>
         </button>
         <button type="button" onClick={() => openShelf("pictures")} className={item(shelf === "pictures")}>
           <Image className="size-4 shrink-0" />
@@ -7747,6 +7760,14 @@ export function NoctisDesk() {
               />
             ) : desk === "frontier" ? (
               <NoctisFrontierTab
+                onSendToChat={(taskPrompt) => {
+                  setDesk("chat");
+                  void send(taskPrompt);
+                }}
+                onClose={() => setDesk("chat")}
+              />
+            ) : desk === "training" ? (
+              <NoctisTrainingTab
                 onSendToChat={(taskPrompt) => {
                   setDesk("chat");
                   void send(taskPrompt);
