@@ -22,6 +22,7 @@ import { handleNaturalOncologyQuery } from "./noctis-oncology-immunotherapy.ts";
 import { handleNaturalGastroQuery } from "./noctis-gastro-hepatology.ts";
 import { handleNaturalRheumatologyQuery } from "./noctis-rheumatology-autoimmune.ts";
 import { handleNaturalPgxQuery } from "./noctis-pharmacogenomics-cpic.ts";
+import { handleNaturalEnergyQuery } from "./noctis-energy-grid.ts";
 import { handleNaturalHealth500Query } from "./noctis-health-500-chat.ts";
 import { handleNaturalPatientDiagnosticQuery } from "./noctis-patient-diagnosis.ts";
 import { handleNaturalSpecialistClinicalQuery } from "./noctis-specialist-router.ts";
@@ -1365,6 +1366,12 @@ export function runFollowUpIntelligence(
   const pgxResponse = handleNaturalPgxQuery(currentQuestion);
   if (pgxResponse) {
     return adaptSpecialistEngineOutput(currentQuestion, pgxResponse, "NOCTIS-PGX-CPIC-001");
+  }
+
+  // 00-b1.16. Noctis Sovereign Energy & Smart Grid Resilience Engine (NOCTIS-ENERGY-GRID-001)
+  const energyResponse = handleNaturalEnergyQuery(currentQuestion);
+  if (energyResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, energyResponse, "NOCTIS-ENERGY-GRID-001");
   }
 
   // 00-b. Noctis Medical Record & Doctor Results Interpreter (NMRI - Labs, Doctor Notes, Prognosis, Biopsy, Imaging)

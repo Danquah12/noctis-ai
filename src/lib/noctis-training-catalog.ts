@@ -251,6 +251,14 @@ export const NOCTIS_MASTER_TRAINING_QUESTIONS: MasterTrainingItem[] = [
     hits: 30,
     at: "2026-11-11T18:00:00.000Z",
   },
+  {
+    question: "A stationary Battery Energy Storage System (BESS) experiences cell temperatures of 58 °C during peak dispatch, and an islanded distribution feeder fails to trip after 2.8 seconds. State the non-compensatory energy safety vetoes under NFPA 855 and IEEE 1547.",
+    answer: "### Smart Grid & Energy Storage Safety Invariants\n1. **BESS Thermal Runaway Emergency Veto (CF-ENERGY-001):**\n   - Maximum cell temperature $\\ge 55^\\circ\\text{C}$ violates NFPA 855 and UL 9540A safety envelopes. Continued charging or discharging induces solid electrolyte interphase (SEI) decomposition and violent exothermic thermal runaway. **OPEN DC CONTACTOR IMMEDIATELY**; inhibit charge/discharge and initiate fire suppression standby.\n2. **IEEE 1547 Anti-Islanding Trip Time Veto (CF-ENERGY-004):**\n   - Under grid power loss, the distributed generation resource must trip within **$\\le 2.0\\text{ seconds}$**. A trip delay of $2.8\\text{ s}$ violates IEEE 1547 Clause 8.1, posing lethal electrocution risks to utility line workers and out-of-phase reclosing destruction.",
+    domain: "engineering",
+    model: "noctis-energy-2026",
+    hits: 30,
+    at: "2026-11-11T19:00:00.000Z",
+  },
 
   // =========================================================================
   // 2. ENGINEERING CHALLENGE 001 (NEC-SMARTCITY-001)
