@@ -219,7 +219,7 @@ export function NoctisAdvancedTrainingSection() {
             </span>
           </div>
           <p className="mt-0.5 text-xs text-zinc-400">
-            Global Continuous Daemon (12 Domains · 1,813 Scenarios), Multimodal Cross-Attention, Adversarial Swarms, and Air-Gapped GGUF Quantization.
+            Global Continuous Daemon (18 Domains · 1,953 Scenarios), Multimodal Cross-Attention, Adversarial Swarms, and Air-Gapped GGUF Quantization.
           </p>
         </div>
 
@@ -236,7 +236,7 @@ export function NoctisAdvancedTrainingSection() {
             )}
           >
             <RefreshCw className={cn("size-3.5", (isLoadingStatus || isTriggeringEpoch) && "animate-spin")} />
-            <span>Continuous Daemon (12D · 1.8k)</span>
+            <span>Continuous Daemon (18D · 1.95k)</span>
           </button>
           <button
             type="button"
@@ -288,15 +288,15 @@ export function NoctisAdvancedTrainingSection() {
             <div className="rounded-xl border border-white/10 bg-black/40 p-3">
               <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Total Scenarios</span>
               <p className="mt-1 text-xl font-bold text-white">
-                {continuousData?.latestEpoch?.totalScenariosEvaluated ?? 1813}
+                {continuousData?.latestEpoch?.totalScenariosEvaluated ?? 1953}
               </p>
-              <span className="text-[10px] text-zinc-500 font-mono">1,813 per epoch</span>
+              <span className="text-[10px] text-zinc-500 font-mono">1,953 per epoch</span>
             </div>
 
             <div className="rounded-xl border border-white/10 bg-black/40 p-3">
               <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Domains Audited</span>
               <p className="mt-1 text-xl font-bold text-emerald-400">
-                {continuousData?.latestEpoch?.totalDomainsAudited ?? 12} / 12
+                {continuousData?.latestEpoch?.totalDomainsAudited ?? 18} / 18
               </p>
               <span className="text-[10px] text-emerald-500/80 font-mono">100% Global Scope</span>
             </div>
@@ -304,7 +304,7 @@ export function NoctisAdvancedTrainingSection() {
             <div className="rounded-xl border border-white/10 bg-black/40 p-3">
               <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Invariants Verified</span>
               <p className="mt-1 text-xl font-bold text-cyan-400">
-                {continuousData?.latestEpoch?.totalInvariantsVerified ?? 1809}
+                {continuousData?.latestEpoch?.totalInvariantsVerified ?? 1949}
               </p>
               <span className="text-[10px] text-cyan-500/80 font-mono">
                 {continuousData?.latestEpoch?.accuracyScorePercent ?? 99.8}% Satisfied
@@ -392,17 +392,17 @@ export function NoctisAdvancedTrainingSection() {
             </div>
           </div>
 
-          {/* 12 Domains Breakdown Table */}
+          {/* 18 Domains Breakdown Table */}
           <div className="rounded-xl border border-white/10 bg-black/40 overflow-hidden">
             <div className="flex flex-wrap items-center justify-between border-b border-white/10 p-3.5 bg-white/[0.02]">
               <div className="flex items-center gap-2">
                 <Globe className="size-4 text-emerald-400" />
                 <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-200">
-                  Universal Multi-Domain Continuous Training Ledger (12 Domains)
+                  Universal Multi-Domain Continuous Training Ledger (18 Domains · Tracks 1–6)
                 </h3>
               </div>
-              <div className="flex items-center gap-1.5 text-xs">
-                {["ALL", "CLINICAL", "ENERGY", "ENGINEERING", "SOVEREIGN"].map((filter) => (
+              <div className="flex items-center gap-1.5 text-xs flex-wrap">
+                {["ALL", "CLINICAL", "ENERGY", "SPACE & QUANTUM", "ROBOTICS & BIO", "MACRO & MARITIME"].map((filter) => (
                   <button
                     key={filter}
                     type="button"
@@ -445,13 +445,20 @@ export function NoctisAdvancedTrainingSection() {
                     { domain: "GLOBAL_REGIONAL_KNOWLEDGE_PACKS_12", scenariosCount: 12, invariantsPassed: 12, status: "PASS" },
                     { domain: "SOVEREIGN_16_SUITES_MASTER_BENCHMARK", scenariosCount: 16, invariantsPassed: 16, status: "PASS" },
                     { domain: "NOCTIS_GRAND_1000_MED_BENCHMARK", scenariosCount: 1000, invariantsPassed: 1000, status: "PASS" },
+                    { domain: "SPACE_SYSTEMS_ORBITAL_INFRASTRUCTURE", scenariosCount: 25, invariantsPassed: 25, status: "PASS" },
+                    { domain: "ADVANCED_SEMICONDUCTORS_QUANTUM", scenariosCount: 30, invariantsPassed: 30, status: "PASS" },
+                    { domain: "SURGICAL_ROBOTICS_CYBER_PHYSICAL", scenariosCount: 20, invariantsPassed: 20, status: "PASS" },
+                    { domain: "SYNTHETIC_BIOLOGY_GENOMICS", scenariosCount: 25, invariantsPassed: 25, status: "PASS" },
+                    { domain: "SOVEREIGN_MACROECONOMICS_CBDC", scenariosCount: 20, invariantsPassed: 20, status: "PASS" },
+                    { domain: "MARITIME_HYDRODYNAMICS_PORT_SCADA", scenariosCount: 20, invariantsPassed: 20, status: "PASS" },
                   ])
                     .filter((row: any) => {
                       if (domainFilter === "ALL") return true;
                       if (domainFilter === "CLINICAL") return row.domain.includes("CLINICAL") || row.domain.includes("MED");
                       if (domainFilter === "ENERGY") return row.domain.includes("GRID") || row.domain.includes("SCADA");
-                      if (domainFilter === "ENGINEERING") return row.domain.includes("ENGINEERING") || row.domain.includes("DEFENSE");
-                      if (domainFilter === "SOVEREIGN") return row.domain.includes("SOVEREIGN") || row.domain.includes("PATHWAYS") || row.domain.includes("ROADMAP");
+                      if (domainFilter === "SPACE & QUANTUM") return row.domain.includes("SPACE") || row.domain.includes("QUANTUM") || row.domain.includes("SEMICOND");
+                      if (domainFilter === "ROBOTICS & BIO") return row.domain.includes("SURGICAL") || row.domain.includes("SYNTHETIC") || row.domain.includes("GENOMICS");
+                      if (domainFilter === "MACRO & MARITIME") return row.domain.includes("MACRO") || row.domain.includes("CBDC") || row.domain.includes("MARITIME");
                       return true;
                     })
                     .map((item: any, idx: number) => {

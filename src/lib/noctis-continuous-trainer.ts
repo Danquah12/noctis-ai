@@ -53,6 +53,7 @@ import {
 import { runNoctisDefenseAcceptanceTests } from "./noctis-defense-subsystem.ts";
 import { calculateMonteCarloVaR } from "./noctis-quant-risk.ts";
 import { auditPlcStructuredText } from "./noctis-robotics-scada.ts";
+import { generateAllFrontierTrackScenarios } from "./noctis-frontier-tracks.ts";
 
 export interface ContinuousTrainingEpochSummary {
   epochId: string;
@@ -358,6 +359,105 @@ export function executeContinuousTrainingEpoch(): ContinuousTrainingEpochSummary
     scenariosCount: grandBench.totalQuestions,
     invariantsPassed: grandBench.passedCount,
     status: grandBench.safetyGatesPassed ? "PASS" : "FAIL",
+  });
+
+  // Load Frontier Tracks 1 to 6 Suite (140 scenarios)
+  const frontierTests = generateAllFrontierTrackScenarios();
+
+  // 13. Audit Track 1: Space Systems & Orbital Infrastructure (25 scenarios)
+  const track1Tests = frontierTests.filter((t) => t.track === 1);
+  let track1Passed = 0;
+  for (const t of track1Tests) {
+    const res = t.evaluator();
+    if (res.safetyVeto === t.expectedSafetyVeto) track1Passed++;
+  }
+  totalScenarios += track1Tests.length;
+  totalInvariants += track1Passed;
+  domainBreakdown.push({
+    domain: "SPACE_SYSTEMS_ORBITAL_INFRASTRUCTURE",
+    scenariosCount: track1Tests.length,
+    invariantsPassed: track1Passed,
+    status: track1Passed === track1Tests.length ? "PASS" : "FAIL",
+  });
+
+  // 14. Audit Track 2: Advanced Semiconductors & Quantum Systems (30 scenarios)
+  const track2Tests = frontierTests.filter((t) => t.track === 2);
+  let track2Passed = 0;
+  for (const t of track2Tests) {
+    const res = t.evaluator();
+    if (res.safetyVeto === t.expectedSafetyVeto) track2Passed++;
+  }
+  totalScenarios += track2Tests.length;
+  totalInvariants += track2Passed;
+  domainBreakdown.push({
+    domain: "ADVANCED_SEMICONDUCTORS_QUANTUM",
+    scenariosCount: track2Tests.length,
+    invariantsPassed: track2Passed,
+    status: track2Passed === track2Tests.length ? "PASS" : "FAIL",
+  });
+
+  // 15. Audit Track 3: Autonomous Surgical Robotics & Cyber-Physical Systems (20 scenarios)
+  const track3Tests = frontierTests.filter((t) => t.track === 3);
+  let track3Passed = 0;
+  for (const t of track3Tests) {
+    const res = t.evaluator();
+    if (res.safetyVeto === t.expectedSafetyVeto) track3Passed++;
+  }
+  totalScenarios += track3Tests.length;
+  totalInvariants += track3Passed;
+  domainBreakdown.push({
+    domain: "SURGICAL_ROBOTICS_CYBER_PHYSICAL",
+    scenariosCount: track3Tests.length,
+    invariantsPassed: track3Passed,
+    status: track3Passed === track3Tests.length ? "PASS" : "FAIL",
+  });
+
+  // 16. Audit Track 4: Synthetic Biology & Genomic Engineering (25 scenarios)
+  const track4Tests = frontierTests.filter((t) => t.track === 4);
+  let track4Passed = 0;
+  for (const t of track4Tests) {
+    const res = t.evaluator();
+    if (res.safetyVeto === t.expectedSafetyVeto) track4Passed++;
+  }
+  totalScenarios += track4Tests.length;
+  totalInvariants += track4Passed;
+  domainBreakdown.push({
+    domain: "SYNTHETIC_BIOLOGY_GENOMICS",
+    scenariosCount: track4Tests.length,
+    invariantsPassed: track4Passed,
+    status: track4Passed === track4Tests.length ? "PASS" : "FAIL",
+  });
+
+  // 17. Audit Track 5: Sovereign Macroeconomics, Central Banking & Wholesale CBDC (20 scenarios)
+  const track5Tests = frontierTests.filter((t) => t.track === 5);
+  let track5Passed = 0;
+  for (const t of track5Tests) {
+    const res = t.evaluator();
+    if (res.safetyVeto === t.expectedSafetyVeto) track5Passed++;
+  }
+  totalScenarios += track5Tests.length;
+  totalInvariants += track5Passed;
+  domainBreakdown.push({
+    domain: "SOVEREIGN_MACROECONOMICS_CBDC",
+    scenariosCount: track5Tests.length,
+    invariantsPassed: track5Passed,
+    status: track5Passed === track5Tests.length ? "PASS" : "FAIL",
+  });
+
+  // 18. Audit Track 6: Maritime Hydrodynamics & Green Port SCADA (20 scenarios)
+  const track6Tests = frontierTests.filter((t) => t.track === 6);
+  let track6Passed = 0;
+  for (const t of track6Tests) {
+    const res = t.evaluator();
+    if (res.safetyVeto === t.expectedSafetyVeto) track6Passed++;
+  }
+  totalScenarios += track6Tests.length;
+  totalInvariants += track6Passed;
+  domainBreakdown.push({
+    domain: "MARITIME_HYDRODYNAMICS_PORT_SCADA",
+    scenariosCount: track6Tests.length,
+    invariantsPassed: track6Passed,
+    status: track6Passed === track6Tests.length ? "PASS" : "FAIL",
   });
 
   const accuracy = Math.round((totalInvariants / totalScenarios) * 1000) / 10;
