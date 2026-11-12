@@ -5809,6 +5809,16 @@ export function NoctisDesk() {
                 type="button"
                 onClick={() => {
                   setTrainOpen(false);
+                  setDesk("frontier");
+                }}
+                className="rounded-full bg-emerald-500/20 border border-emerald-500/40 px-2.5 py-1 text-[11px] font-semibold text-emerald-300 hover:bg-emerald-500/30 cursor-pointer"
+              >
+                Global Daemon (1,813 Scenarios)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setTrainOpen(false);
                   void send("Run the automated 400-question Noctis Evaluation & Benchmark Suite (Noctis Cyber, Noctis Risk, Engineering & Math, and Research & 15 Knowledge Divisions)");
                 }}
                 className="rounded-full bg-[#e4b86a] px-2.5 py-1 text-[11px] font-semibold text-[#1a1408] hover:opacity-90"
