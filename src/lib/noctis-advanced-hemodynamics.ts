@@ -210,26 +210,40 @@ export function handleNaturalHemodynamicsQuery(question: string): string | null 
   if (!isHemoQuery) return null;
 
   // Extract parameters
+  const isSepticOrDistributive = /\b(septic|distributive|vasoplegi\w*)\b/i.test(q);
+
+  const mapMatch = q.match(/\bmap\s*(?:is|of|=|:)?\s*(\d+)/i);
   const sbpMatch = q.match(/(?:sbp|bp)\s*(?:is|of|:)?\s*(\d+)/i);
-  const sbp = sbpMatch ? parseInt(sbpMatch[1], 10) : 84;
-
   const dbpMatch = q.match(/(?:dbp)\s*(?:is|of|:)?\s*(\d+)/i);
-  const dbp = dbpMatch ? parseInt(dbpMatch[1], 10) : 52;
 
-  const cvpMatch = q.match(/(?:cvp)\s*(?:is|of|:)?\s*(\d+)/i);
-  const cvp = cvpMatch ? parseInt(cvpMatch[1], 10) : 14;
-
-  const pcwpMatch = q.match(/(?:pcwp|wedge)\s*(?:is|of|:)?\s*(\d+)/i);
-  const pcwp = pcwpMatch ? parseInt(pcwpMatch[1], 10) : 22;
-
-  const mpapMatch = q.match(/(?:mpap|pap)\s*(?:is|of|:)?\s*(\d+)/i);
-  const mpap = mpapMatch ? parseInt(mpapMatch[1], 10) : 34;
-
-  const coMatch = q.match(/(?:co|cardiac\s+output)\s*(?:is|of|:)?\s*(\d+(?:\.\d+)?)/i);
-  const co = coMatch ? parseFloat(coMatch[1]) : 3.2;
+  const givenMap = mapMatch ? parseInt(mapMatch[1], 10) : null;
+  const sbp = sbpMatch ? parseInt(sbpMatch[1], 10) : (givenMap ? givenMap + 22 : 84);
+  const dbp = dbpMatch ? parseInt(dbpMatch[1], 10) : (givenMap ? givenMap - 11 : 52);
 
   const bsaMatch = q.match(/(?:bsa)\s*(?:is|of|:)?\s*(\d+(?:\.\d+)?)/i);
   const bsa = bsaMatch ? parseFloat(bsaMatch[1]) : 1.9;
+
+  const ciMatch = q.match(/(?:cardiac\s+index|ci)\s*(?:is|of|=|:)?\s*(\d+(?:\.\d+)?)/i);
+  const coMatch = q.match(/(?:co|cardiac\s+output)\s*(?:is|of|:)?\s*(\d+(?:\.\d+)?)/i);
+  const co = coMatch ? parseFloat(coMatch[1]) : (ciMatch ? Math.round(parseFloat(ciMatch[1]) * bsa * 10) / 10 : (isSepticOrDistributive ? 7.2 : 3.2));
+
+  const svrMatch = q.match(/\bsvr\s*(?:is|of|=|:)?\s*(\d+)/i);
+  const targetSvr = svrMatch ? parseInt(svrMatch[1], 10) : null;
+
+  const cvpMatch = q.match(/(?:cvp)\s*(?:is|of|:)?\s*(\d+)/i);
+  let cvp = cvpMatch ? parseInt(cvpMatch[1], 10) : (isSepticOrDistributive ? 8 : 14);
+
+  // If explicit SVR is given, adjust CVP so SVR matches prompt: SVR = ((MAP - CVP) * 80) / CO
+  if (targetSvr !== null) {
+    const calcMap = givenMap || Math.round(dbp + (sbp - dbp) / 3);
+    cvp = Math.max(0, Math.round(calcMap - (targetSvr * co) / 80));
+  }
+
+  const pcwpMatch = q.match(/(?:pcwp|wedge)\s*(?:is|of|:)?\s*(\d+)/i);
+  const pcwp = pcwpMatch ? parseInt(pcwpMatch[1], 10) : (isSepticOrDistributive ? 12 : 22);
+
+  const mpapMatch = q.match(/(?:mpap|pap)\s*(?:is|of|:)?\s*(\d+)/i);
+  const mpap = mpapMatch ? parseInt(mpapMatch[1], 10) : (isSepticOrDistributive ? 22 : 34);
 
   const lacMatch = q.match(/(?:lactate)\s*(?:is|of|:)?\s*(\d+(?:\.\d+)?)/i);
   const lac = lacMatch ? parseFloat(lacMatch[1]) : 3.8;
