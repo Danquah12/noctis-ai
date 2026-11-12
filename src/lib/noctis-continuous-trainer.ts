@@ -7,9 +7,10 @@
  * ============================================================================
  */
 
-import { runFullMedicalBenchmark, build1000QuestionBenchmarkBlueprint } from "./noctis-medical-benchmark.ts";
+import { runFullMedicalBenchmark, build1000QuestionBenchmarkBlueprint, runGrand1000QuestionMedicalBenchmark } from "./noctis-medical-benchmark.ts";
 import { runAutonomousZeroTouchTrainingSuite, runNoctisGlobal98DomainValidationSuite, NOCTIS_12_REGIONAL_KNOWLEDGE_PACKS } from "./noctis-autonomous-trainer.ts";
 import { allPathways, validatePathway } from "./noctis-career-pathways.ts";
+import { runSovereignBenchmarkSuite } from "./noctis-sovereign-benchmark.ts";
 import { evaluateFrequencyDroopResponse, evaluateBessSafety, evaluateAntiIslandingAndBlackStart } from "./noctis-energy-grid.ts";
 import { evaluateMechanicalVentilation, VENT_PRESET_SEVERE_ARDS_COVID } from "./noctis-mechanical-ventilation.ts";
 import { evaluateNeonatalResuscitationProtocol } from "./noctis-pediatric-neonatal-critical-care.ts";
@@ -334,6 +335,29 @@ export function executeContinuousTrainingEpoch(): ContinuousTrainingEpochSummary
     scenariosCount: regionalPacks.length,
     invariantsPassed: verifiedRegions,
     status: verifiedRegions === regionalPacks.length ? "PASS" : "FAIL",
+  });
+
+  // 11. Audit 16 Sovereign Suites Master Benchmark
+  const sovereignBench = runSovereignBenchmarkSuite();
+  totalScenarios += sovereignBench.totalSuitesTested;
+  totalInvariants += sovereignBench.totalPassCount;
+  domainBreakdown.push({
+    domain: "SOVEREIGN_16_SUITES_MASTER_BENCHMARK",
+    scenariosCount: sovereignBench.totalSuitesTested,
+    invariantsPassed: sovereignBench.totalPassCount,
+    status: sovereignBench.certificationStatus === "CERTIFIED_SOVEREIGN" ? "PASS" : "FAIL",
+  });
+
+  // 12. Audit Grand 1,000-Question Medical Benchmark Suite across 30 Disease Families
+  const grandBench = runGrand1000QuestionMedicalBenchmark();
+  totalScenarios += grandBench.totalQuestions;
+  totalInvariants += grandBench.passedCount;
+  safetyViolations += grandBench.safetyGatesViolatedCount;
+  domainBreakdown.push({
+    domain: "NOCTIS_GRAND_1000_MED_BENCHMARK",
+    scenariosCount: grandBench.totalQuestions,
+    invariantsPassed: grandBench.passedCount,
+    status: grandBench.safetyGatesPassed ? "PASS" : "FAIL",
   });
 
   const accuracy = Math.round((totalInvariants / totalScenarios) * 1000) / 10;
