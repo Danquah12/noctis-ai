@@ -18,6 +18,10 @@ import { handleNaturalCardioMcsQuery } from "./noctis-cardiology-mcs.ts";
 import { handleNaturalEndocrinologyQuery } from "./noctis-endocrinology-crises.ts";
 import { handleNaturalObstetricsQuery } from "./noctis-obstetrics-critical-care.ts";
 import { handleNaturalPulmRvQuery } from "./noctis-pulmonary-rv-failure.ts";
+import { handleNaturalOncologyQuery } from "./noctis-oncology-immunotherapy.ts";
+import { handleNaturalGastroQuery } from "./noctis-gastro-hepatology.ts";
+import { handleNaturalRheumatologyQuery } from "./noctis-rheumatology-autoimmune.ts";
+import { handleNaturalPgxQuery } from "./noctis-pharmacogenomics-cpic.ts";
 import { handleNaturalHealth500Query } from "./noctis-health-500-chat.ts";
 import { handleNaturalPatientDiagnosticQuery } from "./noctis-patient-diagnosis.ts";
 import { handleNaturalSpecialistClinicalQuery } from "./noctis-specialist-router.ts";
@@ -1337,6 +1341,30 @@ export function runFollowUpIntelligence(
   const pulmRvResponse = handleNaturalPulmRvQuery(currentQuestion);
   if (pulmRvResponse) {
     return adaptSpecialistEngineOutput(currentQuestion, pulmRvResponse, "NOCTIS-PULM-RV-001");
+  }
+
+  // 00-b1.12. Noctis Sovereign Oncology & Immunotherapy Engine (NOCTIS-ONC-IRAE-001)
+  const oncResponse = handleNaturalOncologyQuery(currentQuestion);
+  if (oncResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, oncResponse, "NOCTIS-ONC-IRAE-001");
+  }
+
+  // 00-b1.13. Noctis Sovereign Gastroenterology & Hepatology Engine (NOCTIS-GI-HEP-001)
+  const gastroResponse = handleNaturalGastroQuery(currentQuestion);
+  if (gastroResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, gastroResponse, "NOCTIS-GI-HEP-001");
+  }
+
+  // 00-b1.14. Noctis Sovereign Rheumatology & Autoimmune Emergencies Engine (NOCTIS-RHEUM-EMERG-001)
+  const rheumResponse = handleNaturalRheumatologyQuery(currentQuestion);
+  if (rheumResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, rheumResponse, "NOCTIS-RHEUM-EMERG-001");
+  }
+
+  // 00-b1.15. Noctis Sovereign Clinical Pharmacogenomics & CPIC Engine (NOCTIS-PGX-CPIC-001)
+  const pgxResponse = handleNaturalPgxQuery(currentQuestion);
+  if (pgxResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, pgxResponse, "NOCTIS-PGX-CPIC-001");
   }
 
   // 00-b. Noctis Medical Record & Doctor Results Interpreter (NMRI - Labs, Doctor Notes, Prognosis, Biopsy, Imaging)

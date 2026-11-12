@@ -219,6 +219,38 @@ export const NOCTIS_MASTER_TRAINING_QUESTIONS: MasterTrainingItem[] = [
     hits: 30,
     at: "2026-11-11T17:00:00.000Z",
   },
+  {
+    question: "A patient with Burkitt lymphoma develops Tumor Lysis Syndrome with uric acid 11.2 mg/dL, potassium 6.4 mEq/L, and creatinine 2.4 mg/dL. Why is urinary alkalinization with sodium bicarbonate vetoed, why is Rasburicase contraindicated in G6PD deficiency, and what is the irAE steroid taper duration rule?",
+    answer: "### Oncology, Tumor Lysis Syndrome & irAE Management\n1. **Urinary Alkalinization Nephrocalcinosis Veto (CF-ONC-001):**\n   - Sodium bicarbonate alkalinization decreases calcium-phosphate solubility ($[\\text{Ca}] \\times [\\text{PO}_4]$ product $> 60$), inducing widespread calcium phosphate crystal precipitation in renal tubules, acute tubular necrosis, and worsened hypocalcemia. Alkalinization is **VETOED**.\n2. **Rasburicase G6PD Hemolysis Veto (CF-ONC-002):**\n   - Rasburicase converts uric acid to allantoin and hydrogen peroxide ($H_2O_2$). In G6PD deficiency, absence of glutathione antioxidant defense triggers fulminant acute intravascular hemolysis and methemoglobinemia. Treat hyperuricemia with high-dose Allopurinol instead.\n3. **irAE Slow Steroid Taper Invariant (CF-ONC-004):**\n   - For high-grade immune checkpoint inhibitor toxicities (colitis, pneumonitis, myocarditis), corticosteroids must be tapered **slowly over AT LEAST 4 TO 6 WEEKS**. Abbreviated tapers (< 4 weeks) trigger severe rebound autoimmunity due to prolonged receptor occupancy of anti-PD-1 antibodies.",
+    domain: "healthcare",
+    model: "noctis-onc-2026",
+    hits: 30,
+    at: "2026-11-11T18:00:00.000Z",
+  },
+  {
+    question: "A patient with decompensated cirrhosis presents with tense ascites and fever. Detail the mandatory paracentesis rule, calculate SBP albumin dosing, state why liberal transfusion is vetoed in variceal hemorrhage, and explain why beta-blockers must be held.",
+    answer: "### Decompensated Cirrhosis, SBP & Acute Variceal Bleed\n1. **Diagnostic Paracentesis Mandate (CF-GI-001):**\n   - In decompensated cirrhosis with new ascites, fever, or encephalopathy, diagnostic paracentesis **must precede antibiotics** to obtain cell count/differential (PMN $\\ge 250/\\mu\\text{L}$ confirms SBP).\n2. **SBP Albumin Protocol (CF-GI-002):**\n   - Administer **IV Albumin $1.5\\text{ g/kg}$ within 6 hours**, followed by **$1.0\\text{ g/kg}$ on Day 3** alongside Ceftriaxone. Albumin expansion prevents circulatory dysfunction and hepatorenal syndrome, reducing mortality from $29\\%$ to $10\\%$.\n3. **Liberal Transfusion Portal Hypertension Veto (CF-GI-003):**\n   - Over-transfusion to $\\text{Hb} > 9\\text{--}10\\text{ g/dL}$ elevates portal pressure, dislodges clots, and increases rebleeding mortality. Maintain a **restrictive threshold (target Hb $7.0\\text{--}9.0\\text{ g/dL}$)**.\n4. **Beta-Blocker Invariant (CF-GI-004):**\n   - Propranolol/Carvedilol must be **HELD during active hemorrhage** to prevent blunting compensatory tachycardia and precipitating refractory shock.",
+    domain: "healthcare",
+    model: "noctis-gi-2026",
+    hits: 30,
+    at: "2026-11-11T18:00:00.000Z",
+  },
+  {
+    question: "A patient with rheumatoid arthritis is scheduled for Rituximab and a patient with diffuse scleroderma develops acute BP 180/115 with AKI. State the mandatory biologic pre-treatment screening veto and the Scleroderma Renal Crisis management rules.",
+    answer: "### Rheumatology & Autoimmune Systemic Emergencies\n1. **Biologic Latent Infection Screening Mandate (CF-RHEUM-001):**\n   - Initiating biologics (anti-TNF, Rituximab, JAK inhibitors) without documented negative Latent TB screening (IGRA) and Hepatitis B serology (HBsAg, anti-HBc) is **STRICTLY VETOED**. Anti-CD20 in anti-HBc positive patients triggers fatal fulminant HBV reactivation; Entecavir prophylaxis is mandatory.\n2. **Scleroderma Renal Crisis (SRC) Invariants:**\n   - **High-Dose Steroid Veto (CF-RHEUM-004):** Prednisone $> 15\\text{ mg/day}$ in diffuse cutaneous systemic sclerosis precipitates SRC.\n   - **ACE Inhibitor Mandate (CF-RHEUM-005):** Short-acting Captopril is the ONLY proven life-saving disease-modifying therapy for SRC hyperreninemia; rapidly titrate Captopril to reverse renal cortical vasospasm.",
+    domain: "healthcare",
+    model: "noctis-rheum-2026",
+    hits: 30,
+    at: "2026-11-11T18:00:00.000Z",
+  },
+  {
+    question: "A post-PCI patient is a CYP2C19 *2/*2 poor metabolizer, an oncology patient has DPYD activity score 0, and an HIV patient is HLA-B*57:01 positive. Detail the CPIC pharmacogenomic safety vetoes and substitute regimens.",
+    answer: "### Actionable Clinical Pharmacogenomics (CPIC Invariants)\n1. **CYP2C19 Clopidogrel Resistance Veto (CF-PGX-001):**\n   - CYP2C19 *2 loss-of-function allele impairs bioactivation of Clopidogrel prodrug into active thiol metabolite, causing stent thrombosis. **VETO CLOPIDOGREL**. Switch to Ticagrelor $90\\text{ mg}$ BID or Prasugrel $10\\text{ mg}$ daily.\n2. **DPYD Poor Metabolizer 5-FU Fatal Toxicity Veto (CF-PGX-002):**\n   - DPYD Activity Score 0 indicates complete DPD enzyme deficiency. Standard 5-FU or Capecitabine causes fatal toxic accumulation, severe pancytopenia, and death ($> 50\\%$ mortality). Fluoropyrimidines are **STRICTLY CONTRAINDICATED**.\n3. **HLA-B*57:01 Abacavir Hypersensitivity Veto (CF-PGX-004):**\n   - Abacavir in *HLA-B\\*57:01* causes life-threatening multisystem Abacavir Hypersensitivity Reaction (AHR). **NEVER PRESCRIBE ABACAVIR**; substitute Tenofovir/Emtricitabine.",
+    domain: "healthcare",
+    model: "noctis-pgx-2026",
+    hits: 30,
+    at: "2026-11-11T18:00:00.000Z",
+  },
 
   // =========================================================================
   // 2. ENGINEERING CHALLENGE 001 (NEC-SMARTCITY-001)
