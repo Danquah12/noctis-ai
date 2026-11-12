@@ -2146,10 +2146,21 @@ $$\\mathbf{i} = ${rStar} + ${pi} + 0.5(${pi} - ${piStar}) + 0.5(${yGap}) = \\mat
   }
 
   // 13. Nuclear Fission SMRs & Gen-IV Reactor Physics (Track 11)
-  if (p.includes("smr") || (p.includes("nuclear") && (p.includes("reactor") || p.includes("fission") || p.includes("scram") || p.includes("keff") || p.includes("dnbr")))) {
-    const keffMatch = prompt.match(/\bkeff\s*=\s*(1\.\d+)/i) || prompt.match(/\b(1\.\d{3,5})\b/i);
-    const dnbrMatch = prompt.match(/\bdnbr\s*=\s*(\d+(?:\.\d+)?)/i);
-    const periodMatch = prompt.match(/(?:period)\s*(?:is|=|of)?\s*(\d+(?:\.\d+)?)\s*s/i);
+  if (
+    p.includes("smr") ||
+    p.includes("small modular reactor") ||
+    p.includes("fast reactor") ||
+    p.includes("reactor physics") ||
+    p.includes("gen-iv") ||
+    p.includes("gen iv") ||
+    p.includes("keff") ||
+    p.includes("dnbr") ||
+    p.includes("doppler temperature") ||
+    (p.includes("nuclear") && (p.includes("reactor") || p.includes("fission") || p.includes("scram") || p.includes("keff") || p.includes("dnbr")))
+  ) {
+    const keffMatch = prompt.match(/\bkeff\s*(?:reaches|is|=|of)?\s*(1\.\d+)/i) || prompt.match(/\b(1\.\d{3,5})\b/i);
+    const dnbrMatch = prompt.match(/\bdnbr\s*(?:reaches|is|=|of)?\s*(\d+(?:\.\d+)?)/i);
+    const periodMatch = prompt.match(/(?:period)\s*(?:is|=|of|reaches)?\s*(\d+(?:\.\d+)?)\s*s/i);
 
     const keff = keffMatch ? Number(keffMatch[1]) : (p.includes("1.002") ? 1.0025 : 1.0005);
     const dnbr = dnbrMatch ? Number(dnbrMatch[1]) : 2.10;
@@ -2254,7 +2265,7 @@ $$\\mathbf{i} = ${rStar} + ${pi} + 0.5(${pi} - ${piStar}) + 0.5(${yGap}) = \\mat
 
 #### 1. Quantum Key Distribution Telemetry
 - **QKD Protocol:** **\`BB84 Decoy-State Photon Transmission\`** over 35 km Dark Fiber
-- **Quantum Bit Error Rate (QBER):** **\`${qber.toFixed(1)}%\`** (Privacy amplification threshold: $\\le 11.0\\%$)
+- **Quantum Bit Error Rate (QBER):** **\`${qber.toFixed(1)}%\`** (Shor-Preskill privacy amplification ceiling: $\\le 11.0\\%$)
 - **Asymptotic Secure Key Rate:** **\`${res.asymptoticSecureKeyRateBps} bps\`**
 - **Eavesdropping Flag:** **\`${res.eavesdroppingDetected ? "POSITIVE (ATTACK IN PROGRESS)" : "NEGATIVE (SECURE QUANTUM CHANNEL)"}\`**
 
