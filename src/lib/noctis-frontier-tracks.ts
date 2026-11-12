@@ -2161,13 +2161,15 @@ $$\\mathbf{i} = ${rStar} + ${pi} + 0.5(${pi} - ${piStar}) + 0.5(${yGap}) = \\mat
     const keffMatch = prompt.match(/\bkeff\s*(?:reaches|is|=|of)?\s*(1\.\d+)/i) || prompt.match(/\b(1\.\d{3,5})\b/i);
     const dnbrMatch = prompt.match(/\bdnbr\s*(?:reaches|is|=|of)?\s*(\d+(?:\.\d+)?)/i);
     const periodMatch = prompt.match(/(?:period)\s*(?:is|=|of|reaches)?\s*(\d+(?:\.\d+)?)\s*s/i);
+    const pwrMatch = prompt.match(/(\d+(?:\.\d+)?)\s*(?:mwt|mwth|mw)\b/i);
 
     const keff = keffMatch ? Number(keffMatch[1]) : (p.includes("1.002") ? 1.0025 : 1.0005);
     const dnbr = dnbrMatch ? Number(dnbrMatch[1]) : 2.10;
     const period = periodMatch ? Number(periodMatch[1]) : 45.0;
+    const thermalPower = pwrMatch ? Number(pwrMatch[1]) : 160;
 
     const res = evaluateSmrNuclearReactorPhysics({
-      thermalPowerMWt: 160,
+      thermalPowerMWt: thermalPower,
       coreInletTempC: 290,
       coreOutletTempC: 320,
       effectiveMultiplicationFactorKeff: keff,
@@ -2180,7 +2182,7 @@ $$\\mathbf{i} = ${rStar} + ${pi} + 0.5(${pi} - ${piStar}) + 0.5(${yGap}) = \\mat
 
     let nuclearDirective = "";
     if (res.safetyVeto && res.reactorSafetyStatus === "SCRAM_PROMPT_CRITICAL") {
-      nuclearDirective = `\n\n🚨 **CRITICAL SAFETY VETO: PROMPT SUPERCRITICAL EXCURSION SCRAM**\n- **Reactivity State:** $k_\\text{eff} = \\mathbf{${keff.toFixed(4)}} \\ge 1.002$ or Reactor Period $\\mathbf{${period.toFixed(1)}\\text{s}} < 5.0\\text{s}$.\n- **Failure Mechanism:** Prompt neutron chain reaction bypasses delayed neutron regulation ($\beta_\\text{eff}$), producing microsecond thermal spikes.\n- **Mandated Safety Action:** Gravity-driven boron/B4C control rod insertion **\`SCRAM in < 1.8 seconds\`** and passive RVACS natural circulation loop engagement.`;
+      nuclearDirective = `\n\n🚨 **CRITICAL SAFETY VETO: PROMPT SUPERCRITICAL EXCURSION SCRAM**\n- **Reactivity State:** $k_\\text{eff} = \\mathbf{${keff.toFixed(4)}} \\ge 1.002$ or Reactor Period $\\mathbf{${period.toFixed(1)}\\text{s}} < 5.0\\text{s}$.\n- **Failure Mechanism:** Prompt neutron chain reaction bypasses delayed neutron regulation ($\\beta_\\text{eff}$), producing microsecond thermal spikes.\n- **Mandated Safety Action:** Gravity-driven boron/B4C control rod insertion **\`SCRAM in < 1.8 seconds\`** and passive RVACS natural circulation loop engagement.`;
     } else if (res.safetyVeto && res.reactorSafetyStatus === "DNBR_THERMAL_LIMIT") {
       nuclearDirective = `\n\n🚨 **THERMAL HYDRAULIC VETO: DNBR CRITICAL LIMIT BREACH**\n- **DNBR Telemetry:** $\\mathbf{${dnbr.toFixed(2)}} \\le 1.30$ critical threshold.\n- **Failure Mode:** Departure from nucleate boiling risks cladding vapor film dryout and core melt.\n- **Mandated Safety Action:** Automated turbine bypass and emergency coolant injection pump actuation.`;
     } else {
@@ -2191,7 +2193,7 @@ $$\\mathbf{i} = ${rStar} + ${pi} + 0.5(${pi} - ${piStar}) + 0.5(${yGap}) = \\mat
 **Subsystem Domain:** \`NUCLEAR_FISSION_SMR_GEN4\` · **Standards:** US NRC 10 CFR Part 50/52, IAEA SSR-2/1, ASME Section III
 
 #### 1. Reactor Core Thermal Hydraulics & Inherent Safety
-- **Core Thermal Power:** **\`160 MWt\`** (Inlet: $290^\\circ\\text{C}$ · Outlet: $320^\\circ\\text{C}$ · $\\Delta T = 30^\\circ\\text{C}$)
+- **Core Thermal Power:** **\`${thermalPower} MWt\`** (Inlet: $290^\\circ\\text{C}$ · Outlet: $320^\\circ\\text{C}$ · $\\Delta T = 30^\\circ\\text{C}$)
 - **Doppler Temperature Coefficient:** **\`-3.2 pcm/°C\`** (Inherent self-regulating negative reactivity feedback verified)
 - **Departure from Nucleate Boiling Ratio (DNBR):** **\`${dnbr.toFixed(2)}\`** (Mandate: $> 1.30$)
 - **Passive Decay Heat Removal:** RVACS natural circulation thermosiphon loops certified Fukushima-proof under total station blackout
