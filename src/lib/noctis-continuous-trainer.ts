@@ -524,6 +524,86 @@ export function executeContinuousTrainingEpoch(): ContinuousTrainingEpochSummary
     status: track10Passed === track10Tests.length ? "PASS" : "FAIL",
   });
 
+  // 23. Audit Track 11: Nuclear Fission SMRs & Gen-IV Reactors (25 scenarios)
+  const track11Tests = frontierTests.filter((t) => t.track === 11);
+  let track11Passed = 0;
+  for (const t of track11Tests) {
+    const res = t.evaluator();
+    if (res.safetyVeto === t.expectedSafetyVeto) track11Passed++;
+  }
+  totalScenarios += track11Tests.length;
+  totalInvariants += track11Passed;
+  domainBreakdown.push({
+    domain: "NUCLEAR_FISSION_SMR_GEN4",
+    scenariosCount: track11Tests.length,
+    invariantsPassed: track11Passed,
+    status: track11Passed === track11Tests.length ? "PASS" : "FAIL",
+  });
+
+  // 24. Audit Track 12: Autonomous Drone Swarm Defense & Electronic Warfare (25 scenarios)
+  const track12Tests = frontierTests.filter((t) => t.track === 12);
+  let track12Passed = 0;
+  for (const t of track12Tests) {
+    const res = t.evaluator();
+    if (res.safetyVeto === t.expectedSafetyVeto) track12Passed++;
+  }
+  totalScenarios += track12Tests.length;
+  totalInvariants += track12Passed;
+  domainBreakdown.push({
+    domain: "AUTONOMOUS_DRONE_SWARM_DEFENSE",
+    scenariosCount: track12Tests.length,
+    invariantsPassed: track12Passed,
+    status: track12Passed === track12Tests.length ? "PASS" : "FAIL",
+  });
+
+  // 25. Audit Track 13: Quantum Cryptography & QKD (20 scenarios)
+  const track13Tests = frontierTests.filter((t) => t.track === 13);
+  let track13Passed = 0;
+  for (const t of track13Tests) {
+    const res = t.evaluator();
+    if (res.safetyVeto === t.expectedSafetyVeto) track13Passed++;
+  }
+  totalScenarios += track13Tests.length;
+  totalInvariants += track13Passed;
+  domainBreakdown.push({
+    domain: "QUANTUM_CRYPTOGRAPHY_QKD",
+    scenariosCount: track13Tests.length,
+    invariantsPassed: track13Passed,
+    status: track13Passed === track13Tests.length ? "PASS" : "FAIL",
+  });
+
+  // 26. Audit Track 14: Agrigenomics & Vertical Farming Biospheres (20 scenarios)
+  const track14Tests = frontierTests.filter((t) => t.track === 14);
+  let track14Passed = 0;
+  for (const t of track14Tests) {
+    const res = t.evaluator();
+    if (res.safetyVeto === t.expectedSafetyVeto) track14Passed++;
+  }
+  totalScenarios += track14Tests.length;
+  totalInvariants += track14Passed;
+  domainBreakdown.push({
+    domain: "AGRIGENOMICS_VERTICAL_FARMING",
+    scenariosCount: track14Tests.length,
+    invariantsPassed: track14Passed,
+    status: track14Passed === track14Tests.length ? "PASS" : "FAIL",
+  });
+
+  // 27. Audit Track 15: 6G Terahertz & Quantum Telecommunications (20 scenarios)
+  const track15Tests = frontierTests.filter((t) => t.track === 15);
+  let track15Passed = 0;
+  for (const t of track15Tests) {
+    const res = t.evaluator();
+    if (res.safetyVeto === t.expectedSafetyVeto) track15Passed++;
+  }
+  totalScenarios += track15Tests.length;
+  totalInvariants += track15Passed;
+  domainBreakdown.push({
+    domain: "SIXG_TERAHERTZ_TELECOM",
+    scenariosCount: track15Tests.length,
+    invariantsPassed: track15Passed,
+    status: track15Passed === track15Tests.length ? "PASS" : "FAIL",
+  });
+
   const accuracy = Math.round((totalInvariants / totalScenarios) * 1000) / 10;
   const nextScheduled = new Date(Date.now() + continuousState.intervalMinutes * 60 * 1000).toISOString();
 

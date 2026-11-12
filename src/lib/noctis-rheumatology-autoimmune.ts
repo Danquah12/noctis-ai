@@ -159,7 +159,7 @@ export function evaluateSclerodermaRenalCrisis(input: SclerodermaEvaluation): Rh
 export function handleNaturalRheumatologyQuery(prompt: string): string | null {
   const p = prompt.toLowerCase();
   const isMatch =
-    p.includes("biologic") ||
+    /\bbiologics?\b/i.test(p) ||
     p.includes("rituximab") ||
     p.includes("infliximab") ||
     p.includes("latent tb") ||
@@ -172,7 +172,7 @@ export function handleNaturalRheumatologyQuery(prompt: string): string | null {
   if (!isMatch) return null;
 
   // Case 1: Biologic Screening / Latent Infection
-  if (p.includes("biologic") || p.includes("latent tb") || (p.includes("rituximab") && p.includes("hep"))) {
+  if (/\bbiologics?\b/i.test(p) || p.includes("latent tb") || (p.includes("rituximab") && p.includes("hep"))) {
     const isUnscreened = p.includes("without screening") || p.includes("skip tb") || p.includes("skip hep");
     const isCorePosNoProph = p.includes("anti-hbc positive") && (p.includes("without entecavir") || p.includes("no antiviral"));
 

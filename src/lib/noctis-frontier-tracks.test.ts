@@ -18,6 +18,11 @@ import {
   evaluateDeepSeaSubseaRov,
   evaluateBsl4BiocontainmentInvariants,
   evaluateGeneSynthesisBiosecurity,
+  evaluateSmrNuclearReactorPhysics,
+  evaluateDroneSwarmCuasDefense,
+  evaluateQuantumCryptographySecurity,
+  evaluateVerticalFarmingBiosphereCea,
+  evaluateSixGTerahertzTelecom,
   generateAllFrontierTrackScenarios,
 } from "./noctis-frontier-tracks.ts";
 
@@ -289,9 +294,9 @@ describe("Noctis Frontier Tracks 1 to 6 Suite", () => {
     assert.strictEqual(oligoBlock.synthesisPermitted, false);
   });
 
-  test("generates and verifies all 235 multi-track scenarios across Tracks 1 to 10", () => {
+  test("generates and verifies all 345 multi-track scenarios across Tracks 1 to 15", () => {
     const scenarios = generateAllFrontierTrackScenarios();
-    assert.strictEqual(scenarios.length, 235);
+    assert.strictEqual(scenarios.length, 345);
 
     let passedInvariants = 0;
     for (const sc of scenarios) {
@@ -300,6 +305,143 @@ describe("Noctis Frontier Tracks 1 to 6 Suite", () => {
         passedInvariants++;
       }
     }
-    assert.strictEqual(passedInvariants, 235);
+    assert.strictEqual(passedInvariants, 345);
+  });
+
+  test("Track 11: Nuclear Fission SMRs & Gen-IV Reactor Physics", () => {
+    const smr = evaluateSmrNuclearReactorPhysics({
+      thermalPowerMWt: 160,
+      coreInletTempC: 290,
+      coreOutletTempC: 320,
+      effectiveMultiplicationFactorKeff: 1.0005,
+      dopplerReactivityCoeffPcmPerC: -3.2,
+      departureFromNucleateBoilingRatioDnbr: 2.10,
+      controlRodInsertionTimeSeconds: 1.2,
+      reactorPeriodSeconds: 45,
+    });
+    assert.strictEqual(smr.safetyVeto, false);
+    assert.strictEqual(smr.promptCriticalityRisk, false);
+    assert.ok(smr.dnbrMarginPercent > 50);
+
+    // Prompt supercritical SCRAM veto
+    const scram = evaluateSmrNuclearReactorPhysics({
+      thermalPowerMWt: 160,
+      coreInletTempC: 290,
+      coreOutletTempC: 320,
+      effectiveMultiplicationFactorKeff: 1.0025, // >= 1.002
+      dopplerReactivityCoeffPcmPerC: -3.2,
+      departureFromNucleateBoilingRatioDnbr: 2.10,
+      controlRodInsertionTimeSeconds: 1.2,
+      reactorPeriodSeconds: 3.2, // < 5.0s
+    });
+    assert.strictEqual(scram.safetyVeto, true);
+    assert.strictEqual(scram.reactorSafetyStatus, "SCRAM_PROMPT_CRITICAL");
+  });
+
+  test("Track 12: Autonomous Drone Swarm Defense & Electronic Warfare", () => {
+    const cuas = evaluateDroneSwarmCuasDefense({
+      targetCount: 10,
+      targetRadarCrossSectionM2: 0.015,
+      targetRangeMeters: 750,
+      laserDwellTimeMs: 1200,
+      laserPowerKw: 50,
+      cryptoIffMode5Valid: false,
+      satelliteDeconflictionClear: true,
+      civilianCollateralDistanceMeters: 350,
+    });
+    assert.strictEqual(cuas.safetyVeto, false);
+    assert.strictEqual(cuas.swarmInterdictionStatus, "ENGAGEMENT_AUTHORIZED");
+    assert.ok(cuas.interceptProbabilityPercent >= 80);
+
+    // IFF Mode 5 friendly veto
+    const friendly = evaluateDroneSwarmCuasDefense({
+      targetCount: 1,
+      targetRadarCrossSectionM2: 0.02,
+      targetRangeMeters: 750,
+      laserDwellTimeMs: 1200,
+      laserPowerKw: 50,
+      cryptoIffMode5Valid: true, // Friendly
+      satelliteDeconflictionClear: true,
+      civilianCollateralDistanceMeters: 350,
+    });
+    assert.strictEqual(friendly.safetyVeto, true);
+    assert.strictEqual(friendly.swarmInterdictionStatus, "IFF_FRIENDLY_VETO");
+  });
+
+  test("Track 13: Quantum Cryptography, Post-Quantum & QKD", () => {
+    const qkd = evaluateQuantumCryptographySecurity({
+      protocol: "BB84_DECOY_STATE",
+      quantumBitErrorRateQberPercent: 3.5,
+      rawKeyRateBps: 15000,
+      fiberDistanceKm: 35,
+      physicalTamperSensorTriggered: false,
+    });
+    assert.strictEqual(qkd.safetyVeto, false);
+    assert.strictEqual(qkd.eavesdroppingDetected, false);
+    assert.ok(qkd.asymptoticSecureKeyRateBps > 10000);
+
+    // QBER > 11% eavesdropping abort
+    const spy = evaluateQuantumCryptographySecurity({
+      protocol: "BB84_DECOY_STATE",
+      quantumBitErrorRateQberPercent: 13.8, // > 11.0%
+      rawKeyRateBps: 15000,
+      fiberDistanceKm: 35,
+      physicalTamperSensorTriggered: false,
+    });
+    assert.strictEqual(spy.safetyVeto, true);
+    assert.strictEqual(spy.cryptographicStatus, "QBER_EAVESDROPPING_ABORT");
+  });
+
+  test("Track 14: Agrigenomics & Vertical Farming Biospheres", () => {
+    const cea = evaluateVerticalFarmingBiosphereCea({
+      vaporPressureDeficitKPa: 1.02,
+      dissolvedOxygenMgL: 7.2,
+      co2ConcentrationPpm: 1200,
+      photosyntheticFluxPpfd: 480,
+      nutrientEcMsCm: 1.9,
+      nutrientPh: 5.9,
+      humanOccupancyActive: false,
+    });
+    assert.strictEqual(cea.safetyVeto, false);
+    assert.strictEqual(cea.vpdStatus, "OPTIMAL");
+    assert.strictEqual(cea.rootZoneHealthStatus, "HEALTHY_AEROBIC");
+
+    // Hypoxia root rot veto
+    const hypoxia = evaluateVerticalFarmingBiosphereCea({
+      vaporPressureDeficitKPa: 1.02,
+      dissolvedOxygenMgL: 3.8, // < 5.0 mg/L
+      co2ConcentrationPpm: 1200,
+      photosyntheticFluxPpfd: 480,
+      nutrientEcMsCm: 1.9,
+      nutrientPh: 5.9,
+      humanOccupancyActive: false,
+    });
+    assert.strictEqual(hypoxia.safetyVeto, true);
+    assert.strictEqual(hypoxia.rootZoneHealthStatus, "HYPOXIA_ROOT_ROT_ALERT");
+  });
+
+  test("Track 15: 6G Terahertz & Quantum Telecommunications", () => {
+    const tel = evaluateSixGTerahertzTelecom({
+      carrierFrequencyGhz: 140,
+      airInterfaceLatencyMs: 0.28,
+      beamformingArrayElements: 1024,
+      sarExposureWKg: 0.45,
+      e911EmergencyPreemptionActive: false,
+      channelPacketErrorRate: 1e-6,
+    });
+    assert.strictEqual(tel.safetyVeto, false);
+    assert.strictEqual(tel.urllcCompliant, true);
+
+    // E911 sovereign preemption
+    const e911 = evaluateSixGTerahertzTelecom({
+      carrierFrequencyGhz: 140,
+      airInterfaceLatencyMs: 0.28,
+      beamformingArrayElements: 1024,
+      sarExposureWKg: 0.45,
+      e911EmergencyPreemptionActive: true,
+      channelPacketErrorRate: 1e-6,
+    });
+    assert.strictEqual(e911.safetyVeto, true);
+    assert.strictEqual(e911.networkPreemptionStatus, "E911_SOVEREIGN_PREEMPTION");
   });
 });

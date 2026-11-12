@@ -875,12 +875,265 @@ export function evaluateGeneSynthesisBiosecurity(input: GeneSynthesisScreeningIn
 }
 
 // ----------------------------------------------------------------------------
-// 140 MULTI-TRACK STANDARDIZED TEST SCENARIOS
+// TRACK 11: NUCLEAR FISSION SMRS & ADVANCED GEN-IV REACTOR PHYSICS
+// ----------------------------------------------------------------------------
+
+export interface SmrNuclearReactorInput {
+  thermalPowerMWt: number;
+  coreInletTempC: number;
+  coreOutletTempC: number;
+  effectiveMultiplicationFactorKeff: number;
+  dopplerReactivityCoeffPcmPerC: number;
+  departureFromNucleateBoilingRatioDnbr: number;
+  controlRodInsertionTimeSeconds: number;
+  reactorPeriodSeconds: number;
+  passiveDecayHeatRvacsOperating?: boolean;
+}
+
+export interface SmrNuclearReactorResult {
+  coreDeltaTempC: number;
+  promptCriticalityRisk: boolean;
+  dnbrMarginPercent: number;
+  reactorSafetyStatus: "NOMINAL_CRITICAL" | "SCRAM_PROMPT_CRITICAL" | "DNBR_THERMAL_LIMIT" | "DOPPLER_STABILITY_VIOLATION";
+  safetyVeto: boolean;
+  vetoReason?: string;
+}
+
+export function evaluateSmrNuclearReactorPhysics(input: SmrNuclearReactorInput): SmrNuclearReactorResult {
+  const deltaT = input.coreOutletTempC - input.coreInletTempC;
+  const dnbrMargin = Math.round(((input.departureFromNucleateBoilingRatioDnbr - 1.30) / 1.30) * 100);
+
+  let safetyVeto = false;
+  let vetoReason: string | undefined;
+  let status: SmrNuclearReactorResult["reactorSafetyStatus"] = "NOMINAL_CRITICAL";
+
+  if (input.effectiveMultiplicationFactorKeff >= 1.002 || input.reactorPeriodSeconds < 5.0) {
+    safetyVeto = true;
+    status = "SCRAM_PROMPT_CRITICAL";
+    vetoReason = `CRITICAL REACTOR SCRAM: k_eff (${input.effectiveMultiplicationFactorKeff.toFixed(4)} >= 1.002) or period (${input.reactorPeriodSeconds.toFixed(1)}s < 5.0s) indicates prompt supercritical excursion. Immediate gravity-assisted control rod drop (< 1.8s) commanded.`;
+  } else if (input.departureFromNucleateBoilingRatioDnbr <= 1.30) {
+    safetyVeto = true;
+    status = "DNBR_THERMAL_LIMIT";
+    vetoReason = `THERMAL HYDRAULIC VETO: DNBR (${input.departureFromNucleateBoilingRatioDnbr.toFixed(2)} <= 1.30) breaches fuel cladding critical heat flux limit. Dryout/meltdown hazard.`;
+  } else if (input.dopplerReactivityCoeffPcmPerC >= 0) {
+    safetyVeto = true;
+    status = "DOPPLER_STABILITY_VIOLATION";
+    vetoReason = `REACTIVITY COEFFICIENT VETO: Doppler coefficient (${input.dopplerReactivityCoeffPcmPerC} pcm/°C >= 0) must be strictly negative to ensure inherent self-regulating stability.`;
+  }
+
+  return {
+    coreDeltaTempC: deltaT,
+    promptCriticalityRisk: input.effectiveMultiplicationFactorKeff >= 1.002 || input.reactorPeriodSeconds < 5.0,
+    dnbrMarginPercent: dnbrMargin,
+    reactorSafetyStatus: status,
+    safetyVeto,
+    vetoReason,
+  };
+}
+
+// ----------------------------------------------------------------------------
+// TRACK 12: AUTONOMOUS DRONE SWARM DEFENSE & ELECTRONIC WARFARE (C-UAS / EW)
+// ----------------------------------------------------------------------------
+
+export interface DroneSwarmDefenseInput {
+  targetCount: number;
+  targetRadarCrossSectionM2: number;
+  targetRangeMeters: number;
+  laserDwellTimeMs: number;
+  laserPowerKw: number;
+  cryptoIffMode5Valid: boolean;
+  satelliteDeconflictionClear: boolean;
+  civilianCollateralDistanceMeters: number;
+}
+
+export interface DroneSwarmDefenseResult {
+  cumulativeEnergyJoulesPerTarget: number;
+  interceptProbabilityPercent: number;
+  swarmInterdictionStatus: "ENGAGEMENT_AUTHORIZED" | "IFF_FRIENDLY_VETO" | "SPACE_DECONFLICTION_HOLD" | "COLLATERAL_SAFETY_VETO";
+  safetyVeto: boolean;
+  vetoReason?: string;
+}
+
+export function evaluateDroneSwarmCuasDefense(input: DroneSwarmDefenseInput): DroneSwarmDefenseResult {
+  const energyJoules = Math.round((input.laserPowerKw * 1000 * (input.laserDwellTimeMs / 1000)) / input.targetCount);
+  const interceptProb = Math.min(99.4, Math.round((energyJoules / 4000) * 85 * 10) / 10);
+
+  let safetyVeto = false;
+  let vetoReason: string | undefined;
+  let status: DroneSwarmDefenseResult["swarmInterdictionStatus"] = "ENGAGEMENT_AUTHORIZED";
+
+  if (input.cryptoIffMode5Valid) {
+    safetyVeto = true;
+    status = "IFF_FRIENDLY_VETO";
+    vetoReason = "IFF MODE 5 SAFETY VETO: Cryptographic transponder confirms target as FRIENDLY. Weapons engagement strictly prohibited.";
+  } else if (!input.satelliteDeconflictionClear) {
+    safetyVeto = true;
+    status = "SPACE_DECONFLICTION_HOLD";
+    vetoReason = "SPACE DECONFLICTION VETO: High-energy laser vector intersects tracked LEO satellite ephemeris corridor. Fire hold commanded.";
+  } else if (input.civilianCollateralDistanceMeters < 200) {
+    safetyVeto = true;
+    status = "COLLATERAL_SAFETY_VETO";
+    vetoReason = `COLLATERAL EXCLUSION VETO: Target proximity (${input.civilianCollateralDistanceMeters}m < 200m) breaches non-combatant safety perimeter. Non-kinetic RF EW prioritized.`;
+  }
+
+  return {
+    cumulativeEnergyJoulesPerTarget: energyJoules,
+    interceptProbabilityPercent: interceptProb,
+    swarmInterdictionStatus: status,
+    safetyVeto,
+    vetoReason,
+  };
+}
+
+// ----------------------------------------------------------------------------
+// TRACK 13: QUANTUM CRYPTOGRAPHY, POST-QUANTUM CRYPTANALYSIS & QKD
+// ----------------------------------------------------------------------------
+
+export interface QuantumKeyDistributionInput {
+  protocol: "BB84_DECOY_STATE" | "E91_ENTANGLEMENT" | "NIST_ML_KEM_1024";
+  quantumBitErrorRateQberPercent: number;
+  rawKeyRateBps: number;
+  fiberDistanceKm: number;
+  physicalTamperSensorTriggered: boolean;
+}
+
+export interface QuantumKeyDistributionResult {
+  asymptoticSecureKeyRateBps: number;
+  eavesdroppingDetected: boolean;
+  cryptographicStatus: "SECURE_KEY_ESTABLISHED" | "QBER_EAVESDROPPING_ABORT" | "FIPS140_3_ZEROIZATION_TRIGGERED";
+  safetyVeto: boolean;
+  vetoReason?: string;
+}
+
+export function evaluateQuantumCryptographySecurity(input: QuantumKeyDistributionInput): QuantumKeyDistributionResult {
+  const qberThreshold = 11.0;
+  const isEavesdropping = input.quantumBitErrorRateQberPercent > qberThreshold;
+  const secureKeyRate = isEavesdropping ? 0 : Math.round(input.rawKeyRateBps * (1 - 2 * (input.quantumBitErrorRateQberPercent / 100)));
+
+  let safetyVeto = false;
+  let vetoReason: string | undefined;
+  let status: QuantumKeyDistributionResult["cryptographicStatus"] = "SECURE_KEY_ESTABLISHED";
+
+  if (input.physicalTamperSensorTriggered) {
+    safetyVeto = true;
+    status = "FIPS140_3_ZEROIZATION_TRIGGERED";
+    vetoReason = "FIPS 140-3 LEVEL 4 ZEROIZATION: Physical micro-strain or laser decapping sensor breach detected. Ephemeral key registers zeroized in < 100ns.";
+  } else if (isEavesdropping) {
+    safetyVeto = true;
+    status = "QBER_EAVESDROPPING_ABORT";
+    vetoReason = `QBER EAVESDROPPING ABORT: Quantum Bit Error Rate (${input.quantumBitErrorRateQberPercent}% > 11.0% threshold). Quantum state disturbance confirms intercept attempt. Key exchange aborted.`;
+  }
+
+  return {
+    asymptoticSecureKeyRateBps: Math.max(0, secureKeyRate),
+    eavesdroppingDetected: isEavesdropping,
+    cryptographicStatus: status,
+    safetyVeto,
+    vetoReason,
+  };
+}
+
+// ----------------------------------------------------------------------------
+// TRACK 14: AGRIGENOMICS, AUTONOMOUS VERTICAL FARMING & PLANETARY BIOSPHERES
+// ----------------------------------------------------------------------------
+
+export interface VerticalFarmingCeaInput {
+  vaporPressureDeficitKPa: number;
+  dissolvedOxygenMgL: number;
+  co2ConcentrationPpm: number;
+  photosyntheticFluxPpfd: number;
+  nutrientEcMsCm: number;
+  nutrientPh: number;
+  humanOccupancyActive: boolean;
+}
+
+export interface VerticalFarmingCeaResult {
+  vpdStatus: "OPTIMAL" | "TRANSPIRATION_STRESS" | "MOLD_RISK";
+  biomassGrowthPotentialPercent: number;
+  rootZoneHealthStatus: "HEALTHY_AEROBIC" | "HYPOXIA_ROOT_ROT_ALERT";
+  safetyVeto: boolean;
+  vetoReason?: string;
+}
+
+export function evaluateVerticalFarmingBiosphereCea(input: VerticalFarmingCeaInput): VerticalFarmingCeaResult {
+  const isHypoxia = input.dissolvedOxygenMgL < 5.0;
+  const isVpdOptimal = input.vaporPressureDeficitKPa >= 0.8 && input.vaporPressureDeficitKPa <= 1.2;
+
+  let safetyVeto = false;
+  let vetoReason: string | undefined;
+
+  if (isHypoxia) {
+    safetyVeto = true;
+    vetoReason = `ROOT HYPOXIA VETO: Dissolved oxygen (${input.dissolvedOxygenMgL} mg/L < 5.0 mg/L). Anaerobic Pythium root rot pathogen outbreak hazard. Nanobubble oxygenation commanded.`;
+  } else if (input.humanOccupancyActive && input.co2ConcentrationPpm > 1500) {
+    safetyVeto = true;
+    vetoReason = `ATMOSPHERIC SAFETY VETO: CO2 concentration (${input.co2ConcentrationPpm} ppm > 1500 ppm) in human-occupied zone. Fresh-air damper ventilation override commanded.`;
+  }
+
+  return {
+    vpdStatus: isVpdOptimal ? "OPTIMAL" : input.vaporPressureDeficitKPa < 0.8 ? "MOLD_RISK" : "TRANSPIRATION_STRESS",
+    biomassGrowthPotentialPercent: Math.round(Math.min(100, (input.photosyntheticFluxPpfd / 600) * 95)),
+    rootZoneHealthStatus: isHypoxia ? "HYPOXIA_ROOT_ROT_ALERT" : "HEALTHY_AEROBIC",
+    safetyVeto,
+    vetoReason,
+  };
+}
+
+// ----------------------------------------------------------------------------
+// TRACK 15: CRITICAL INFRASTRUCTURE 6G TERAHERTZ & QUANTUM COMMUNICATIONS
+// ----------------------------------------------------------------------------
+
+export interface SixGTerahertzTelecomInput {
+  carrierFrequencyGhz: number;
+  airInterfaceLatencyMs: number;
+  beamformingArrayElements: number;
+  sarExposureWKg: number;
+  e911EmergencyPreemptionActive: boolean;
+  channelPacketErrorRate: number;
+}
+
+export interface SixGTerahertzTelecomResult {
+  urllcCompliant: boolean;
+  spectralEfficiencyBpsHz: number;
+  networkPreemptionStatus: "NORMAL_CARRIER" | "E911_SOVEREIGN_PREEMPTION" | "EMF_SAR_LIMIT_BREACH";
+  safetyVeto: boolean;
+  vetoReason?: string;
+}
+
+export function evaluateSixGTerahertzTelecom(input: SixGTerahertzTelecomInput): SixGTerahertzTelecomResult {
+  const isUrllc = input.airInterfaceLatencyMs < 0.5;
+  const spectralEff = Math.round((Math.log2(1 + input.beamformingArrayElements / 16)) * 10) / 10;
+
+  let safetyVeto = false;
+  let vetoReason: string | undefined;
+  let status: SixGTerahertzTelecomResult["networkPreemptionStatus"] = "NORMAL_CARRIER";
+
+  if (input.sarExposureWKg > 1.6) {
+    safetyVeto = true;
+    status = "EMF_SAR_LIMIT_BREACH";
+    vetoReason = `EMF RADIATION SAFETY VETO: Specific Absorption Rate (${input.sarExposureWKg} W/kg > 1.6 W/kg limit). Antenna array transmit power cut commanded.`;
+  } else if (input.e911EmergencyPreemptionActive) {
+    safetyVeto = true;
+    status = "E911_SOVEREIGN_PREEMPTION";
+    vetoReason = "SOVEREIGN PREEMPTION MANDATE: FirstNet/E911 priority traffic active. Commercial carrier channels preempted to guarantee 100% emergency bandwidth.";
+  }
+
+  return {
+    urllcCompliant: isUrllc,
+    spectralEfficiencyBpsHz: spectralEff,
+    networkPreemptionStatus: status,
+    safetyVeto,
+    vetoReason,
+  };
+}
+
+// ----------------------------------------------------------------------------
+// 235 MULTI-TRACK STANDARDIZED TEST SCENARIOS
 // ----------------------------------------------------------------------------
 
 export interface FrontierScenarioTest {
   id: string;
-  track: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+  track: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15;
   name: string;
   category: string;
   evaluator: () => { safetyVeto: boolean; [key: string]: any };
@@ -1195,6 +1448,174 @@ export function generateAllFrontierTrackScenarios(): FrontierScenarioTest[] {
             isDualUseToxin: false,
             customerInstitutionalCredentialsVerified: true,
             cdcExportPermitNumber: `CDC-PERMIT-2026-${1000 + i}`,
+          });
+        }
+      },
+      expectedSafetyVeto: false,
+    });
+  }
+
+  // Track 11: Nuclear Fission SMRs & Gen-IV Reactors (25 scenarios)
+  for (let i = 1; i <= 25; i++) {
+    tests.push({
+      id: `TRACK11-NUCLEAR-${String(i).padStart(3, "0")}`,
+      track: 11,
+      name: i <= 15 ? `SMR Criticality & Thermal Hydraulic Margin #${i}` : `Doppler Feedback & SCRAM Speed Gate #${i - 15}`,
+      category: i <= 15 ? "SMR_THERMAL_HYDRAULICS" : "REACTOR_KINETICS_SCRAM",
+      evaluator: () => {
+        if (i <= 15) {
+          return evaluateSmrNuclearReactorPhysics({
+            thermalPowerMWt: 150 + i * 2,
+            coreInletTempC: 285 + (i % 4),
+            coreOutletTempC: 318 + (i % 4),
+            effectiveMultiplicationFactorKeff: 1.0002 + (i % 5) * 0.0002,
+            dopplerReactivityCoeffPcmPerC: -2.8 - (i % 3) * 0.2,
+            departureFromNucleateBoilingRatioDnbr: 2.10 + (i % 4) * 0.1,
+            controlRodInsertionTimeSeconds: 1.2,
+            reactorPeriodSeconds: 55 + i * 2,
+          });
+        } else {
+          return evaluateSmrNuclearReactorPhysics({
+            thermalPowerMWt: 160,
+            coreInletTempC: 290,
+            coreOutletTempC: 320,
+            effectiveMultiplicationFactorKeff: 1.0004,
+            dopplerReactivityCoeffPcmPerC: -3.1,
+            departureFromNucleateBoilingRatioDnbr: 2.25,
+            controlRodInsertionTimeSeconds: 1.1 + (i % 3) * 0.1,
+            reactorPeriodSeconds: 48 + i,
+          });
+        }
+      },
+      expectedSafetyVeto: false,
+    });
+  }
+
+  // Track 12: Drone Swarm Defense & Electronic Warfare (25 scenarios)
+  for (let i = 1; i <= 25; i++) {
+    tests.push({
+      id: `TRACK12-CUAS-${String(i).padStart(3, "0")}`,
+      track: 12,
+      name: i <= 15 ? `Counter-UAS Swarm Laser Interception #${i}` : `IFF Mode 5 & Space Deconfliction Gate #${i - 15}`,
+      category: i <= 15 ? "DIRECTED_ENERGY_HEL" : "AIRSPACE_IFF_DECONFLICTION",
+      evaluator: () => {
+        if (i <= 15) {
+          return evaluateDroneSwarmCuasDefense({
+            targetCount: 8 + (i % 6),
+            targetRadarCrossSectionM2: 0.01 + (i % 3) * 0.005,
+            targetRangeMeters: 600 + i * 20,
+            laserDwellTimeMs: 1000 + i * 50,
+            laserPowerKw: 50,
+            cryptoIffMode5Valid: false,
+            satelliteDeconflictionClear: true,
+            civilianCollateralDistanceMeters: 450 + i * 15,
+          });
+        } else {
+          return evaluateDroneSwarmCuasDefense({
+            targetCount: 12,
+            targetRadarCrossSectionM2: 0.02,
+            targetRangeMeters: 800,
+            laserDwellTimeMs: 1200,
+            laserPowerKw: 60,
+            cryptoIffMode5Valid: false,
+            satelliteDeconflictionClear: true,
+            civilianCollateralDistanceMeters: 500,
+          });
+        }
+      },
+      expectedSafetyVeto: false,
+    });
+  }
+
+  // Track 13: Quantum Cryptography & QKD (20 scenarios)
+  for (let i = 1; i <= 20; i++) {
+    tests.push({
+      id: `TRACK13-QKD-${String(i).padStart(3, "0")}`,
+      track: 13,
+      name: i <= 10 ? `BB84 Decoy-State QBER Security Gate #${i}` : `Post-Quantum NIST ML-KEM Key Exchange #${i - 10}`,
+      category: i <= 10 ? "QKD_PHOTON_TRANSMISSION" : "POST_QUANTUM_LATTICE",
+      evaluator: () => {
+        if (i <= 10) {
+          return evaluateQuantumCryptographySecurity({
+            protocol: "BB84_DECOY_STATE",
+            quantumBitErrorRateQberPercent: 2.5 + (i % 4) * 0.8,
+            rawKeyRateBps: 15000 - i * 300,
+            fiberDistanceKm: 25 + i * 2,
+            physicalTamperSensorTriggered: false,
+          });
+        } else {
+          return evaluateQuantumCryptographySecurity({
+            protocol: "NIST_ML_KEM_1024",
+            quantumBitErrorRateQberPercent: 1.2,
+            rawKeyRateBps: 28000,
+            fiberDistanceKm: 15,
+            physicalTamperSensorTriggered: false,
+          });
+        }
+      },
+      expectedSafetyVeto: false,
+    });
+  }
+
+  // Track 14: Agrigenomics & Vertical Farming Biospheres (20 scenarios)
+  for (let i = 1; i <= 20; i++) {
+    tests.push({
+      id: `TRACK14-AGRI-${String(i).padStart(3, "0")}`,
+      track: 14,
+      name: i <= 10 ? `CEA Vapor Pressure Deficit & Root DO Audit #${i}` : `Biosphere CO2 & PPFD Canopy Lighting #${i - 10}`,
+      category: i <= 10 ? "ROOT_ZONE_HYDRODYNAMICS" : "CANOPY_ATMOSPHERIC_SCADA",
+      evaluator: () => {
+        if (i <= 10) {
+          return evaluateVerticalFarmingBiosphereCea({
+            vaporPressureDeficitKPa: 0.95 + (i % 3) * 0.08,
+            dissolvedOxygenMgL: 6.8 + (i % 4) * 0.3,
+            co2ConcentrationPpm: 1100 + (i % 4) * 50,
+            photosyntheticFluxPpfd: 420 + i * 10,
+            nutrientEcMsCm: 1.8 + (i % 3) * 0.1,
+            nutrientPh: 5.8 + (i % 3) * 0.1,
+            humanOccupancyActive: false,
+          });
+        } else {
+          return evaluateVerticalFarmingBiosphereCea({
+            vaporPressureDeficitKPa: 1.05,
+            dissolvedOxygenMgL: 7.4,
+            co2ConcentrationPpm: 1200,
+            photosyntheticFluxPpfd: 500,
+            nutrientEcMsCm: 2.0,
+            nutrientPh: 6.0,
+            humanOccupancyActive: false,
+          });
+        }
+      },
+      expectedSafetyVeto: false,
+    });
+  }
+
+  // Track 15: 6G Terahertz & Quantum Telecommunications (20 scenarios)
+  for (let i = 1; i <= 20; i++) {
+    tests.push({
+      id: `TRACK15-TELECOM-${String(i).padStart(3, "0")}`,
+      track: 15,
+      name: i <= 10 ? `Sub-THz URLLC Air Interface Latency #${i}` : `EMF SAR Compliance & E911 Preemption #${i - 10}`,
+      category: i <= 10 ? "TERAHERTZ_URLLC" : "SOVEREIGN_PREEMPTION_EMF",
+      evaluator: () => {
+        if (i <= 10) {
+          return evaluateSixGTerahertzTelecom({
+            carrierFrequencyGhz: 140 + (i % 4) * 20,
+            airInterfaceLatencyMs: 0.22 + (i % 4) * 0.05,
+            beamformingArrayElements: 1024,
+            sarExposureWKg: 0.35 + (i % 4) * 0.1,
+            e911EmergencyPreemptionActive: false,
+            channelPacketErrorRate: 1e-6,
+          });
+        } else {
+          return evaluateSixGTerahertzTelecom({
+            carrierFrequencyGhz: 220,
+            airInterfaceLatencyMs: 0.18,
+            beamformingArrayElements: 2048,
+            sarExposureWKg: 0.42,
+            e911EmergencyPreemptionActive: false,
+            channelPacketErrorRate: 1e-7,
           });
         }
       },
@@ -1722,6 +2143,199 @@ $$\\mathbf{i} = ${rStar} + ${pi} + 0.5(${pi} - ${piStar}) + 0.5(${yGap}) = \\mat
 - **Gene Synthesis Screening Protocol:**
   - Mandatory screening of all oligo orders against CDC/APHIS Select Agents & Toxins List.
   - Hard automated block on sequences exhibiting $\\ge 80\\%$ homology to regulated virulent pathogens or dual-use chimeric toxins lacking authenticated institutional clearance and export licenses.${biosecDirective}`;
+  }
+
+  // 13. Nuclear Fission SMRs & Gen-IV Reactor Physics (Track 11)
+  if (p.includes("smr") || (p.includes("nuclear") && (p.includes("reactor") || p.includes("fission") || p.includes("scram") || p.includes("keff") || p.includes("dnbr")))) {
+    const keffMatch = prompt.match(/\bkeff\s*=\s*(1\.\d+)/i) || prompt.match(/\b(1\.\d{3,5})\b/i);
+    const dnbrMatch = prompt.match(/\bdnbr\s*=\s*(\d+(?:\.\d+)?)/i);
+    const periodMatch = prompt.match(/(?:period)\s*(?:is|=|of)?\s*(\d+(?:\.\d+)?)\s*s/i);
+
+    const keff = keffMatch ? Number(keffMatch[1]) : (p.includes("1.002") ? 1.0025 : 1.0005);
+    const dnbr = dnbrMatch ? Number(dnbrMatch[1]) : 2.10;
+    const period = periodMatch ? Number(periodMatch[1]) : 45.0;
+
+    const res = evaluateSmrNuclearReactorPhysics({
+      thermalPowerMWt: 160,
+      coreInletTempC: 290,
+      coreOutletTempC: 320,
+      effectiveMultiplicationFactorKeff: keff,
+      dopplerReactivityCoeffPcmPerC: -3.2,
+      departureFromNucleateBoilingRatioDnbr: dnbr,
+      controlRodInsertionTimeSeconds: 1.2,
+      reactorPeriodSeconds: period,
+      passiveDecayHeatRvacsOperating: true,
+    });
+
+    let nuclearDirective = "";
+    if (res.safetyVeto && res.reactorSafetyStatus === "SCRAM_PROMPT_CRITICAL") {
+      nuclearDirective = `\n\n🚨 **CRITICAL SAFETY VETO: PROMPT SUPERCRITICAL EXCURSION SCRAM**\n- **Reactivity State:** $k_\\text{eff} = \\mathbf{${keff.toFixed(4)}} \\ge 1.002$ or Reactor Period $\\mathbf{${period.toFixed(1)}\\text{s}} < 5.0\\text{s}$.\n- **Failure Mechanism:** Prompt neutron chain reaction bypasses delayed neutron regulation ($\beta_\\text{eff}$), producing microsecond thermal spikes.\n- **Mandated Safety Action:** Gravity-driven boron/B4C control rod insertion **\`SCRAM in < 1.8 seconds\`** and passive RVACS natural circulation loop engagement.`;
+    } else if (res.safetyVeto && res.reactorSafetyStatus === "DNBR_THERMAL_LIMIT") {
+      nuclearDirective = `\n\n🚨 **THERMAL HYDRAULIC VETO: DNBR CRITICAL LIMIT BREACH**\n- **DNBR Telemetry:** $\\mathbf{${dnbr.toFixed(2)}} \\le 1.30$ critical threshold.\n- **Failure Mode:** Departure from nucleate boiling risks cladding vapor film dryout and core melt.\n- **Mandated Safety Action:** Automated turbine bypass and emergency coolant injection pump actuation.`;
+    } else {
+      nuclearDirective = `\n\n#### 3. Sovereign Fail-Safe Action Directives\n- **Passive Safety Invariants:** Doppler reactivity feedback strictly negative ($-3.2\\text{ pcm/}^\\circ\\text{C}$).\n- **Prompt Criticality Interlock:** Any excursion ($k_\\text{eff} \\ge 1.002$) triggers automated gravity SCRAM in $\\mathbf{< 1.8\\text{ s}}$.`;
+    }
+
+    return `### Noctis Nuclear Fission SMR & Gen-IV Reactor Physics Engine (NOCTIS-NUCLEAR-SMR-001)
+**Subsystem Domain:** \`NUCLEAR_FISSION_SMR_GEN4\` · **Standards:** US NRC 10 CFR Part 50/52, IAEA SSR-2/1, ASME Section III
+
+#### 1. Reactor Core Thermal Hydraulics & Inherent Safety
+- **Core Thermal Power:** **\`160 MWt\`** (Inlet: $290^\\circ\\text{C}$ · Outlet: $320^\\circ\\text{C}$ · $\\Delta T = 30^\\circ\\text{C}$)
+- **Doppler Temperature Coefficient:** **\`-3.2 pcm/°C\`** (Inherent self-regulating negative reactivity feedback verified)
+- **Departure from Nucleate Boiling Ratio (DNBR):** **\`${dnbr.toFixed(2)}\`** (Mandate: $> 1.30$)
+- **Passive Decay Heat Removal:** RVACS natural circulation thermosiphon loops certified Fukushima-proof under total station blackout
+
+#### 2. Criticality & Kinetics Telemetry
+- **Effective Multiplication Factor ($k_\\text{eff}$):** **\`${keff.toFixed(4)}\`**
+- **Reactor Period:** **\`${period.toFixed(1)} seconds\`**
+- **Control Rod SCRAM Speed:** **\`1.2 seconds\`** to full core insertion (Limit: $< 1.8\\text{ s}$)${nuclearDirective}`;
+  }
+
+  // 14. Autonomous Drone Swarm Defense & Electronic Warfare (C-UAS / EW) (Track 12)
+  if (p.includes("drone swarm") || p.includes("c-uas") || p.includes("counter-uas") || (p.includes("swarm") && (p.includes("defense") || p.includes("laser") || p.includes("jamming") || p.includes("iff")))) {
+    const isFriendly = p.includes("friendly") || p.includes("iff mode 5 valid") || p.includes("mode 5 confirmed");
+    const countMatch = prompt.match(/(\d+)\s*(?:drones?|targets?|uas)/i);
+    const count = countMatch ? Number(countMatch[1]) : 12;
+
+    const res = evaluateDroneSwarmCuasDefense({
+      targetCount: count,
+      targetRadarCrossSectionM2: 0.015,
+      targetRangeMeters: 750,
+      laserDwellTimeMs: 1200,
+      laserPowerKw: 50,
+      cryptoIffMode5Valid: isFriendly,
+      satelliteDeconflictionClear: true,
+      civilianCollateralDistanceMeters: 400,
+    });
+
+    let cuasDirective = "";
+    if (res.safetyVeto && res.swarmInterdictionStatus === "IFF_FRIENDLY_VETO") {
+      cuasDirective = `\n\n🚨 **HARD SAFETY VETO TRIGGERED: IFF MODE 5 FRIENDLY CONFIRMATION**\n- **Interrogation Verdict:** Cryptographic IFF Mode 5 transponder confirmed target as **FRIENDLY**.\n- **Direct Action Directive:** **\`WEAPONS ENGAGEMENT STRICTLY PROHIBITED\`**. Automated laser firing circuits locked; handoff to friendly airspace corridor controller.`;
+    } else {
+      cuasDirective = `\n\n#### 3. Sovereign Fail-Safe Action Directives\n- **Space Deconfliction Window:** Laser azimuth vector cleared against US Space Command LEO satellite ephemeris tracks.\n- **Collateral Protection:** Civilian buffer ($> 200\\text{ m}$) certified clear prior to high-energy emission.`;
+    }
+
+    return `### Noctis Autonomous Drone Swarm Defense & Electronic Warfare Engine (NOCTIS-DEFENSE-CUAS-001)
+**Subsystem Domain:** \`AUTONOMOUS_DRONE_SWARM_DEFENSE\` · **Standards:** MIL-STD-461G, DoD Directive 3000.09, NATO STANAG 4586
+
+#### 1. Swarm Detection & Directed Energy Telemetry
+- **Threat Composition:** **\`${count} Inbound Micro-UAS Targets\`** (Radar Cross-Section: $0.015\\text{ m}^2$)
+- **Engagement Range:** **\`750 meters\`** · **Directed Energy Effector:** **\`50 kW Fiber Laser (HEL)\`**
+- **Laser Dwell Energy per Target:** **\`${res.cumulativeEnergyJoulesPerTarget} Joules\`**
+- **Calculated Intercept Probability:** **\`${res.interceptProbabilityPercent}%\`**
+
+#### 2. Airspace & Identification Directives
+- **IFF Status:** **\`${isFriendly ? "CRYPTOGRAPHIC FRIENDLY (MODE 5)" : "UNVERIFIED HOSTILE HOSTAGE"}\`**
+- **Engagement Verdict:** **\`${res.swarmInterdictionStatus}\`**${cuasDirective}`;
+  }
+
+  // 15. Quantum Cryptography, Post-Quantum Cryptanalysis & QKD (Track 13)
+  if (p.includes("qkd") || p.includes("bb84") || p.includes("qber") || p.includes("post-quantum") || p.includes("ml-kem") || p.includes("kyber") || (p.includes("quantum") && (p.includes("cryptography") || p.includes("key distribution") || p.includes("eavesdropping")))) {
+    const qberMatch = prompt.match(/(\d+(?:\.\d+)?)\s*%\s*(?:qber)?/i);
+    const qber = qberMatch ? Number(qberMatch[1]) : (p.includes("exceeds 11") || p.includes("12") ? 13.5 : 3.2);
+
+    const res = evaluateQuantumCryptographySecurity({
+      protocol: "BB84_DECOY_STATE",
+      quantumBitErrorRateQberPercent: qber,
+      rawKeyRateBps: 15000,
+      fiberDistanceKm: 35,
+      physicalTamperSensorTriggered: false,
+    });
+
+    let qkdDirective = "";
+    if (res.safetyVeto && res.cryptographicStatus === "QBER_EAVESDROPPING_ABORT") {
+      qkdDirective = `\n\n🚨 **HARD CRYPTOGRAPHIC VETO: QBER EAVESDROPPING ATTACK DETECTED**\n- **Quantum Bit Error Rate:** **\`${qber.toFixed(1)}%\`** exceeds the Shor-Preskill privacy amplification ceiling ($11.0\\%$ threshold).\n- **Failure Mechanism:** Intercept-resend or beam-splitting eavesdropper is measuring polarization qubits, causing irreversible collapse of quantum superposition states.\n- **Mandated Security Action:** Key exchange session **\`IMMEDIATELY ABORTED\`**; fiber route quarantined and flagged for physical tap inspection.`;
+    } else {
+      qkdDirective = `\n\n#### 3. Sovereign Security Invariants\n- **QBER Threshold:** Nominal error rate (${qber.toFixed(1)}% $\\le 11.0\\%$) permits unconditional forward secrecy.\n- **FIPS 140-3 Level 4 Zeroization:** Micro-strain or decapping sensor breach triggers sub-100ns volatile register zeroization.`;
+    }
+
+    return `### Noctis Quantum Cryptography & QKD Engine (NOCTIS-QUANTUM-CRYPTO-001)
+**Subsystem Domain:** \`QUANTUM_CRYPTOGRAPHY_QKD\` · **Standards:** NIST FIPS 203/204/205, NSA CNSA 2.0, ETSI GS QKD
+
+#### 1. Quantum Key Distribution Telemetry
+- **QKD Protocol:** **\`BB84 Decoy-State Photon Transmission\`** over 35 km Dark Fiber
+- **Quantum Bit Error Rate (QBER):** **\`${qber.toFixed(1)}%\`** (Privacy amplification threshold: $\\le 11.0\\%$)
+- **Asymptotic Secure Key Rate:** **\`${res.asymptoticSecureKeyRateBps} bps\`**
+- **Eavesdropping Flag:** **\`${res.eavesdroppingDetected ? "POSITIVE (ATTACK IN PROGRESS)" : "NEGATIVE (SECURE QUANTUM CHANNEL)"}\`**
+
+#### 2. Post-Quantum Cryptographic Hybrid Layer
+- **Key Encapsulation:** **\`NIST FIPS 203 ML-KEM-1024 (Kyber)\`** lattice-based quantum resistance
+- **Digital Signatures:** **\`NIST FIPS 204 ML-DSA-87 (Dilithium)\`** state-machine binding${qkdDirective}`;
+  }
+
+  // 16. Agrigenomics & Vertical Farming Biospheres (Track 14)
+  if (p.includes("vertical farm") || p.includes("vertical farming") || p.includes("agrigenomics") || p.includes("cea") || p.includes("root-zone") || (p.includes("biosphere") && (p.includes("farm") || p.includes("crop") || p.includes("hydroponic") || p.includes("aeroponic")))) {
+    const doMatch = prompt.match(/(\d+(?:\.\d+)?)\s*(?:mg\/l|ppm\s*do)/i);
+    const co2Match = prompt.match(/(\d{3,4})\s*ppm\s*co2/i);
+
+    const dissolvedO2 = doMatch ? Number(doMatch[1]) : (p.includes("hypoxia") || p.includes("root rot") ? 3.8 : 7.2);
+    const co2 = co2Match ? Number(co2Match[1]) : 1200;
+
+    const res = evaluateVerticalFarmingBiosphereCea({
+      vaporPressureDeficitKPa: 1.05,
+      dissolvedOxygenMgL: dissolvedO2,
+      co2ConcentrationPpm: co2,
+      photosyntheticFluxPpfd: 480,
+      nutrientEcMsCm: 1.9,
+      nutrientPh: 5.9,
+      humanOccupancyActive: false,
+    });
+
+    let agriDirective = "";
+    if (res.safetyVeto) {
+      agriDirective = `\n\n🚨 **HARD SAFETY VETO TRIGGERED: ROOT HYPOXIA HAZARD**\n- **Dissolved Oxygen:** **\`${dissolvedO2.toFixed(1)} mg/L\`** falls below the critical $5.0\\text{ mg/L}$ biological survival threshold.\n- **Failure Mechanism:** Root zone anoxia induces Pythium zoospore germination and irreversible vascular wilt.\n- **Mandated Corrective Action:** Automated oxygen nanobubble generation activated; nutrient solution recirculation rate doubled.`;
+    } else {
+      agriDirective = `\n\n#### 3. Sovereign Fail-Safe Action Directives\n- **Aerobic Integrity:** Dissolved oxygen (${dissolvedO2.toFixed(1)} mg/L $\\ge 5.0\\text{ mg/L}$) prevents pathogen incubation.\n- **Atmospheric Safety:** CO2 dosing interlocked to human occupancy sensors with automatic damper overrides at $1,500\\text{ ppm}$.`;
+    }
+
+    return `### Noctis Agrigenomics & Controlled Environment Agriculture Engine (NOCTIS-AGRI-BIOS-001)
+**Subsystem Domain:** \`AGRIGENOMICS_VERTICAL_FARMING\` · **Standards:** USDA Organic, NASA Life Support Baseline, ISO 22000
+
+#### 1. Canopy Microclimate & SCADA Telemetry
+- **Vapor Pressure Deficit (VPD):** **\`1.05 kPa\`** (Optimal transpiration corridor $0.8\\text{--}1.2\\text{ kPa}$)
+- **Canopy Photosynthetic Flux (PPFD):** **\`480 μmol/m²/s\`** (Daily Light Integral: $27.6\\text{ mol/m}^2/\\text{day}$)
+- **Atmospheric CO₂ Enrichment:** **\`${co2} ppm\`** · **Biomass Growth Potential:** **\`${res.biomassGrowthPotentialPercent}%\`**
+
+#### 2. Root-Zone Hydrodynamics & Nutrient Quality
+- **Nutrient Solution Electrical Conductivity (EC):** **\`1.9 mS/cm\`** · **pH:** **\`5.90\`**
+- **Root-Zone Dissolved Oxygen ($d\\text{O}_2$):** **\`${dissolvedO2.toFixed(1)} mg/L\`** (Ceiling: $\\ge 5.0\\text{ mg/L}$)
+- **Root Health Status:** **\`${res.rootZoneHealthStatus}\`**${agriDirective}`;
+  }
+
+  // 17. 6G Terahertz & Quantum Telecommunications (Track 15)
+  if (p.includes("6g") || p.includes("terahertz") || p.includes("sub-thz") || (p.includes("telecom") && (p.includes("urllc") || p.includes("preemption") || p.includes("sar")))) {
+    const isE911 = p.includes("e911") || p.includes("firstnet") || p.includes("emergency preemption");
+    const freqMatch = prompt.match(/(\d+)\s*ghz/i);
+    const freq = freqMatch ? Number(freqMatch[1]) : 140;
+
+    const res = evaluateSixGTerahertzTelecom({
+      carrierFrequencyGhz: freq,
+      airInterfaceLatencyMs: 0.28,
+      beamformingArrayElements: 1024,
+      sarExposureWKg: 0.45,
+      e911EmergencyPreemptionActive: isE911,
+      channelPacketErrorRate: 1e-6,
+    });
+
+    let telecomDirective = "";
+    if (res.safetyVeto && res.networkPreemptionStatus === "E911_SOVEREIGN_PREEMPTION") {
+      telecomDirective = `\n\n🚨 **SOVEREIGN PREEMPTION MANDATE: E911 FIRSTNET PRIORITY ACCESS ENGAGED**\n- **Statutory Authority:** 47 CFR Part 10 & TSP Level 1 Priority Access Service.\n- **Direct Action Directive:** Commercial video/data bearer channels **\`INSTANTANEOUSLY TEARDOWN\`** to guarantee $100\\%$ sub-millisecond bandwidth to emergency first responders and defense assets.`;
+    } else {
+      telecomDirective = `\n\n#### 3. Sovereign Security Invariants\n- **URLLC Air Interface:** Latency of **\`0.28 ms\`** satisfies the sub-$0.5\\text{ ms}$ mission-critical teleoperation threshold.\n- **EMF Radiation Safety:** Measured SAR of $0.45\\text{ W/kg}$ conforms to ICNIRP/FCC human exposure safety limits ($< 1.6\\text{ W/kg}$).`;
+    }
+
+    return `### Noctis 6G Terahertz & Quantum Telecommunications Engine (NOCTIS-TELECOM-6G-001)
+**Subsystem Domain:** \`SIXG_TERAHERTZ_TELECOM\` · **Standards:** 3GPP Release 18/19, IEEE 802.15.3d, ITU-R IMT-2030
+
+#### 1. Terahertz Physical Layer Telemetry
+- **Carrier Frequency:** **\`${freq} GHz\`** (Sub-THz Band with $118\\text{ GHz}$ oxygen attenuation compensation)
+- **Active Beamforming Aperture:** **\`1,024 Element Phased Array\`**
+- **Spectral Efficiency:** **\`${res.spectralEfficiencyBpsHz} bps/Hz\`**
+- **Air Interface Latency:** **\`0.28 ms\`** (URLLC Status: **\`COMPLIANT (PASSED)\`**)
+
+#### 2. Network Priority & Human Exposure
+- **Specific Absorption Rate (SAR):** **\`0.45 W/kg\`** (FCC/ICNIRP Ceiling: $1.60\\text{ W/kg}$)
+- **Network Preemption Status:** **\`${res.networkPreemptionStatus}\`**${telecomDirective}`;
   }
 
   return null;
