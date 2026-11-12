@@ -545,6 +545,33 @@ export const Route = createFileRoute("/api/noctis")({
             { headers: { "cache-control": "no-store" } }
           );
         }
+        if (url.searchParams.get("continuous_train") || url.searchParams.get("training") === "continuous") {
+          const {
+            executeContinuousTrainingEpoch,
+            getContinuousTrainingStatus,
+            formatContinuousTrainingMarkdown,
+          } = await import("@/lib/noctis-continuous-trainer");
+          const mode = url.searchParams.get("continuous_train") || url.searchParams.get("mode") || "status";
+          if (mode === "run" || mode === "epoch") {
+            const summary = executeContinuousTrainingEpoch();
+            return Response.json(
+              {
+                epochSummary: summary,
+                markdown: formatContinuousTrainingMarkdown(summary),
+              },
+              { headers: { "cache-control": "no-store" } }
+            );
+          }
+          const status = getContinuousTrainingStatus();
+          return Response.json(
+            {
+              status,
+              latestEpoch: status.history[0] || null,
+              markdown: status.history[0] ? formatContinuousTrainingMarkdown(status.history[0]) : null,
+            },
+            { headers: { "cache-control": "no-store" } }
+          );
+        }
         if (url.searchParams.get("training") === "dpo-jsonl") {
           const { exportAutonomousDpoJsonl } = await import("@/lib/noctis-autonomous-trainer");
           const dpoJsonl = exportAutonomousDpoJsonl();

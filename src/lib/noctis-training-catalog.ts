@@ -326,5 +326,17 @@ export const NOCTIS_MASTER_TRAINING_QUESTIONS: MasterTrainingItem[] = [
     model: "noctis-def-2026",
     hits: 30,
     at: "2026-11-07T13:00:00.000Z",
+  },
+
+  // =========================================================================
+  // 5. AUTONOMOUS CONTINUOUS TRAINING & INVARIANT AUDITING (TRAIN-CONT-001)
+  // =========================================================================
+  {
+    question: "Can we automate the training for Noctis so it runs continuously for all requirements?",
+    answer: "### Noctis Sovereign Continuous Training Engine (NOCTIS-CONT-TRAIN-001)\n- **Autonomous Architecture:** Noctis features an automated continuous self-play and invariant-auditing daemon that executes scheduled training epochs across all requirements.\n- **Scope of Coverage:**\n  1. **All 16 Clinical Subspecialty Engines:** Mechanical ventilation, neonatal resuscitation, toxicology, neuro-ICU, nephrology/CRRT, transfusion medicine, trauma/burns, sepsis, MCS cardiology, endocrine crises, obstetrics, pulmonary RV failure, oncology irAE/TLS, GI/hepatology MELD, rheumatology biologics, and CPIC pharmacogenomics.\n  2. **130-Question Medical Benchmark Suite:** Comprehensive multi-discipline clinical safety gates with zero tolerance for toxic or hallucinatory suggestions.\n  3. **Smart Grid & Clean Energy Resilience:** Frequency droop governing, IEEE 1547 anti-islanding, and NFPA 855 BESS thermal runaway prevention.\n  4. **Autonomous 20-Focus Area Curriculum:** NIST AI RMF, multi-agent red-teaming, quant finance, and cyber defense.\n- **Deterministic Governance:** Every epoch records total scenarios evaluated, invariants satisfied, and cryptographic attestation hashes to ensure perpetual zero-regression operation.",
+    domain: "general",
+    model: "noctis-cont-train-2026",
+    hits: 50,
+    at: "2026-11-12T01:00:00.000Z",
   }
 ];

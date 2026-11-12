@@ -34,6 +34,7 @@ import { handleNaturalVerifiedExecutionQuery } from "./noctis-verified-execution
 import { handleNaturalPredictiveIntelligenceQuery } from "./noctis-predictive-intelligence.ts";
 import { automotiveDiagnosticGadget } from "./noctis-automotive-engine.ts";
 import { handleNaturalAutonomousTrainingQuery } from "./noctis-autonomous-trainer.ts";
+import { handleNaturalContinuousTrainingQuery } from "./noctis-continuous-trainer.ts";
 import { architectIntelligenceGadget } from "./noctis-architect-engine.ts";
 import { handleNaturalCyberSecurityQuery, isCyberSecurityOrSocQuery } from "./noctis-cyber-engine.ts";
 import { isAttackPathOrExploitabilityQuery } from "./noctis-attack-path-engine.ts";
@@ -1247,6 +1248,12 @@ export function runFollowUpIntelligence(
     return adaptSpecialistEngineOutput(currentQuestion, canaryResponse, "NOCTIS-CANARY-001");
   }
 
+
+  // 00-continuous-train. Noctis Sovereign Continuous Autonomous Training Engine (NOCTIS-CONT-TRAIN-001)
+  const continuousTrainingResponse = handleNaturalContinuousTrainingQuery(currentQuestion);
+  if (continuousTrainingResponse) {
+    return adaptSpecialistEngineOutput(currentQuestion, continuousTrainingResponse, "NOCTIS-CONT-TRAIN-001");
+  }
 
   // 00-0. Noctis Zero-Human-Intervention 20-Area Autonomous Training & Curriculum Engine (NOCTIS-AUTO-TRAIN-20D)
   const autonomousTrainingResponse = handleNaturalAutonomousTrainingQuery(currentQuestion);
