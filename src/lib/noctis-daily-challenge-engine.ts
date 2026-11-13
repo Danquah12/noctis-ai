@@ -135,6 +135,53 @@ export const DAILY_CHALLENGE_CATALOG: ChallengeDefinition[] = [
     expectedInvariant: "Exact KV Cache Formula: 2 * b * s * l * h * d * 2 bytes calculated in gigabytes",
     severity: "high",
     connectInTab: "pulserooms"
+  },
+
+  // 4. ADVANCED IT MASTER SUITES
+  {
+    id: "CHALLENGE-ADV-HPC-01",
+    sourceSuite: "CONTINUOUS_DAEMON",
+    domain: "HIGH_PERFORMANCE_COMPUTING_GPU_CLUSTER",
+    question: "In an 8,192-GPU cluster running multi-node LLM pre-training, why does tensor parallel (TP) across nodes cause severe throughput collapse over RoCEv2, and what InfiniBand/RoCEv2 lossless congestion control primitives are required?",
+    expectedInvariant: "TP requires intra-node NVLink (>900 GB/s) due to extreme all-reduce frequency; RoCEv2 requires PFC (Priority Flow Control) and ECN (Explicit Congestion Notification) to prevent buffer drops",
+    severity: "critical",
+    connectInTab: "pulserooms"
+  },
+  {
+    id: "CHALLENGE-ADV-PQC-02",
+    sourceSuite: "CONTINUOUS_DAEMON",
+    domain: "QUANTUM_COMPUTING_POST_QUANTUM_CRYPTOGRAPHY",
+    question: "Under NIST FIPS 203 (ML-KEM) and CNSA 2.0 timeline, why must RSA-2048 and ECDH P-256 be retired against Shor's algorithm, and what is the maximum tolerable QBER before QKD aborts under Shor-Preskill?",
+    expectedInvariant: "Shor's algorithm solves discrete log and prime factorization in polynomial time; QBER ceiling is strictly <= 11.0% under Shor-Preskill privacy amplification",
+    severity: "critical",
+    connectInTab: "pulserooms"
+  },
+  {
+    id: "CHALLENGE-ADV-ICS-03",
+    sourceSuite: "CONTINUOUS_DAEMON",
+    domain: "INDUSTRIAL_CONTROL_SYSTEMS_OT_SCADA",
+    question: "Under the Purdue Enterprise Reference Architecture (ISA-95), what network boundary protects Level 0-2 (DCS/PLC) from Level 4/5 (Enterprise), and can Safety Instrumented Systems (SIS SIL-3) share a controller with DCS?",
+    expectedInvariant: "Industrial DMZ (IDMZ Level 3.5) with jump-host bastion; SIS SIL-3 controllers must be physically segregated and never co-mingled with DCS",
+    severity: "critical",
+    connectInTab: "pulserooms"
+  },
+  {
+    id: "CHALLENGE-ADV-5G-04",
+    sourceSuite: "CONTINUOUS_DAEMON",
+    domain: "TELECOMMUNICATIONS_5G_STANDALONE_CORE",
+    question: "In 3GPP Rel 18 5G Standalone and O-RAN fronthaul, what is the maximum time error (|TE|) permitted by ITU-T G.8275.1 PTP telecom profiles for beamforming, and what is the URLLC user-plane latency budget?",
+    expectedInvariant: "Max absolute time error |TE| <= 130 ns for Category B fronthaul; URLLC user-plane latency <= 1.0 ms",
+    severity: "critical",
+    connectInTab: "pulserooms"
+  },
+  {
+    id: "CHALLENGE-ADV-ZKP-05",
+    sourceSuite: "CONTINUOUS_DAEMON",
+    domain: "ZERO_KNOWLEDGE_PROOF_VERIFIABLE_COMPUTING",
+    question: "In verifiable computation, compare zk-SNARKs (Groth16/PLONK) vs zk-STARKs regarding trusted setup requirements, quantum resistance, and proof sizes.",
+    expectedInvariant: "Groth16 requires trusted setup ceremonies and is broken by Shor's algorithm; STARKs rely on collision-resistant hash functions (FRI) with no trusted setup and post-quantum security",
+    severity: "high",
+    connectInTab: "pulserooms"
   }
 ];
 

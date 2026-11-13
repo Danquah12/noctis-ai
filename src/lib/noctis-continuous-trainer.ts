@@ -55,6 +55,7 @@ import { calculateMonteCarloVaR } from "./noctis-quant-risk.ts";
 import { auditPlcStructuredText } from "./noctis-robotics-scada.ts";
 import { generateAllFrontierTrackScenarios } from "./noctis-frontier-tracks.ts";
 import { generateAllInformationTechnologyScenarios } from "./noctis-it-master-engine.ts";
+import { generateAllAdvancedItScenarios } from "./noctis-advanced-it-master-engine.ts";
 
 export interface VerboseEpochEvent {
   step: number;
@@ -145,7 +146,7 @@ export function executeContinuousTrainingEpoch(options?: { verbose?: boolean }):
       detail,
     };
     verboseEvents.push(evt);
-    const logLine = `[NOCTIS-DAEMON] [STEP ${String(stepNum).padStart(2, "0")}/37] ${domain.padEnd(36)} : ${scenariosCount} scenarios, ${invariantsPassed} passed (${roundedMs}ms) -> ${status}`;
+    const logLine = `[NOCTIS-DAEMON] [STEP ${String(stepNum).padStart(2, "0")}/42] ${domain.padEnd(36)} : ${scenariosCount} scenarios, ${invariantsPassed} passed (${roundedMs}ms) -> ${status}`;
     verboseLogs.push(logLine);
     if (isVerbose) {
       console.log(logLine);
@@ -892,11 +893,104 @@ export function executeContinuousTrainingEpoch(options?: { verbose?: boolean }):
   });
   recordDomain(37, "IT_STORAGE_FILESYSTEMS", it10Tests.length, it10Passed, performance.now() - t0_it10, "IT Track 10: Storage rebuild URE failure math, RAID-5 catastrophic failure veto, ZFS ZIL power loss protection");
 
+  // Advanced IT Master Tracks (Domains 38 - 42: 125 scenarios)
+  const advancedItTests = generateAllAdvancedItScenarios();
+
+  // 38. Advanced IT Domain 1: High-Performance Computing & GPU Clusters (25 scenarios)
+  const t0_adv1 = performance.now();
+  const adv1Tests = advancedItTests.filter((t) => t.domainId === "HIGH_PERFORMANCE_COMPUTING_GPU_CLUSTER");
+  let adv1Passed = 0;
+  for (const t of adv1Tests) {
+    const res = t.execute();
+    if (res.passed || res.safetyVetoes.length > 0) adv1Passed++;
+  }
+  totalScenarios += adv1Tests.length;
+  totalInvariants += adv1Passed;
+  domainBreakdown.push({
+    domain: "IT_HPC_GPU_CLUSTER",
+    scenariosCount: adv1Tests.length,
+    invariantsPassed: adv1Passed,
+    status: adv1Passed === adv1Tests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(38, "IT_HPC_GPU_CLUSTER", adv1Tests.length, adv1Passed, performance.now() - t0_adv1, "Advanced IT Track 1: RoCEv2/InfiniBand PFC/ECN, NCCL ring AllReduce bandwidth, cross-node TP communication veto");
+
+  // 39. Advanced IT Domain 2: Post-Quantum Cryptography & Quantum Computing (25 scenarios)
+  const t0_adv2 = performance.now();
+  const adv2Tests = advancedItTests.filter((t) => t.domainId === "QUANTUM_COMPUTING_POST_QUANTUM_CRYPTOGRAPHY");
+  let adv2Passed = 0;
+  for (const t of adv2Tests) {
+    const res = t.execute();
+    if (res.passed || res.safetyVetoes.length > 0) adv2Passed++;
+  }
+  totalScenarios += adv2Tests.length;
+  totalInvariants += adv2Passed;
+  domainBreakdown.push({
+    domain: "IT_QUANTUM_PQC",
+    scenariosCount: adv2Tests.length,
+    invariantsPassed: adv2Passed,
+    status: adv2Passed === adv2Tests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(39, "IT_QUANTUM_PQC", adv2Tests.length, adv2Passed, performance.now() - t0_adv2, "Advanced IT Track 2: NIST FIPS 203 ML-KEM, FIPS 204 ML-DSA, Shor classical key retirement, QBER <= 11% ceiling");
+
+  // 40. Advanced IT Domain 3: Industrial Control Systems, OT & SCADA (25 scenarios)
+  const t0_adv3 = performance.now();
+  const adv3Tests = advancedItTests.filter((t) => t.domainId === "INDUSTRIAL_CONTROL_SYSTEMS_OT_SCADA");
+  let adv3Passed = 0;
+  for (const t of adv3Tests) {
+    const res = t.execute();
+    if (res.passed || res.safetyVetoes.length > 0) adv3Passed++;
+  }
+  totalScenarios += adv3Tests.length;
+  totalInvariants += adv3Passed;
+  domainBreakdown.push({
+    domain: "IT_ICS_OT_SCADA",
+    scenariosCount: adv3Tests.length,
+    invariantsPassed: adv3Passed,
+    status: adv3Passed === adv3Tests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(40, "IT_ICS_OT_SCADA", adv3Tests.length, adv3Passed, performance.now() - t0_adv3, "Advanced IT Track 3: Purdue ISA-95 IDMZ 3.5, SIS SIL-3 physical isolation, Modbus DPI unauthorized write interlock");
+
+  // 41. Advanced IT Domain 4: Telecommunications & 5G Standalone Core (25 scenarios)
+  const t0_adv4 = performance.now();
+  const adv4Tests = advancedItTests.filter((t) => t.domainId === "TELECOMMUNICATIONS_5G_STANDALONE_CORE");
+  let adv4Passed = 0;
+  for (const t of adv4Tests) {
+    const res = t.execute();
+    if (res.passed || res.safetyVetoes.length > 0) adv4Passed++;
+  }
+  totalScenarios += adv4Tests.length;
+  totalInvariants += adv4Passed;
+  domainBreakdown.push({
+    domain: "IT_TELECOM_5G_STANDALONE",
+    scenariosCount: adv4Tests.length,
+    invariantsPassed: adv4Passed,
+    status: adv4Passed === adv4Tests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(41, "IT_TELECOM_5G_STANDALONE", adv4Tests.length, adv4Passed, performance.now() - t0_adv4, "Advanced IT Track 4: 3GPP Rel 18 SBA mTLS, O-RAN PTP synchronization |TE| <= 130ns, URLLC sub-1ms SLA");
+
+  // 42. Advanced IT Domain 5: Zero-Knowledge Proofs & Verifiable Computing (25 scenarios)
+  const t0_adv5 = performance.now();
+  const adv5Tests = advancedItTests.filter((t) => t.domainId === "ZERO_KNOWLEDGE_PROOF_VERIFIABLE_COMPUTING");
+  let adv5Passed = 0;
+  for (const t of adv5Tests) {
+    const res = t.execute();
+    if (res.passed || res.safetyVetoes.length > 0) adv5Passed++;
+  }
+  totalScenarios += adv5Tests.length;
+  totalInvariants += adv5Passed;
+  domainBreakdown.push({
+    domain: "IT_ZERO_KNOWLEDGE_PROOFS",
+    scenariosCount: adv5Tests.length,
+    invariantsPassed: adv5Passed,
+    status: adv5Passed === adv5Tests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(42, "IT_ZERO_KNOWLEDGE_PROOFS", adv5Tests.length, adv5Passed, performance.now() - t0_adv5, "Advanced IT Track 5: zk-SNARK Groth16 trusted setup, PLONK permutation check, STARK FRI transparent verification");
+
   const totalDurationMs = Math.round((performance.now() - epochStartTime) * 100) / 100;
   const accuracy = Math.round((totalInvariants / totalScenarios) * 1000) / 10;
   const nextScheduled = new Date(Date.now() + continuousState.intervalMinutes * 60 * 1000).toISOString();
 
-  const finishLog = `[NOCTIS-DAEMON] ${epochId} COMPLETED in ${totalDurationMs}ms | Domains: 37 | Scenarios: ${totalScenarios} | Invariants: ${totalInvariants}/${totalScenarios} | Violations: ${safetyViolations} | Accuracy: ${accuracy}%`;
+  const finishLog = `[NOCTIS-DAEMON] ${epochId} COMPLETED in ${totalDurationMs}ms | Domains: 42 | Scenarios: ${totalScenarios} | Invariants: ${totalInvariants}/${totalScenarios} | Violations: ${safetyViolations} | Accuracy: ${accuracy}%`;
   verboseLogs.push(finishLog);
   if (isVerbose) {
     console.log(finishLog);
