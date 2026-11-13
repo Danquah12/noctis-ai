@@ -196,6 +196,26 @@ export const PREDEFINED_CROSS_DOMAIN_SCENARIOS: Record<string, CrossDomainIncide
     },
     detectedProtocols: ["aws_guardduty", "splunk_hec", "epic_fhir"],
   },
+  hybrid_ot_5g_pqc_cascade: {
+    incidentId: "INC-HYBRID-INFRA-005",
+    title: "Critical Infrastructure Hybrid Cascading Threat: OT SCADA Pressure Surge + 5G Core Desync + Post-Quantum Key Harvesting",
+    description: "Nation-state actor triggers synchronized multi-vector exploit: unauthorized Modbus write excursion on gas pipeline compressor (1,480 PSI), GPS spoofing inducing 5G fronthaul phase desynchronization (|TE| = 420 ns), and quantum harvest exfiltration of unmigrated RSA TLS session buffers.",
+    severity: "CRITICAL",
+    triggerSuiteId: "noctis-infrastructure",
+    domainsInvolved: ["noctis-infrastructure", "noctis-cyber", "noctis-defense", "noctis-engineering"],
+    telemetryPayload: {
+      scadaCompressorRpm: 12400,
+      scadaPressurePsi: 1480, // Safe limit: 1200 PSI
+      scadaModbusFunctionCode: "0x06 Write Single Register",
+      purdueLevelInvolved: 1,
+      ptpTimeErrorNanoseconds: 420, // Limit: <= 130 ns
+      ptpClockState: "FREE_RUN_HOLDOVER",
+      tlsKeyExchangeAlgorithm: "RSA_2048",
+      qkdQberPercent: 14.8, // Shor-Preskill ceiling: <= 11%
+      safetyTripEngaged: false
+    },
+    detectedProtocols: ["modbus_tcp", "ptp_g8275_1", "tls_1_3"]
+  },
 };
 
 /**
@@ -266,10 +286,19 @@ export function runCrossDomainConsensus(
         break;
 
       case "noctis-infrastructure":
-        finding = `SCADA / OT Grid Integrity: Monitor PLC operational status and network perimeter isolation.`;
-        risk = 88;
+        finding = `SCADA / OT Grid Integrity: Monitor PLC operational status, Purdue Model boundaries, and overpressure shutdown systems.`;
+        risk = 92;
         actions.push("Switch SCADA PLCs to manual/islanding operation mode.");
         actions.push("Sever internet-facing management gateways while preserving local Modbus loop.");
+        if (input.description.toLowerCase().includes("pressure") || input.description.toLowerCase().includes("modbus") || input.description.toLowerCase().includes("compressor")) {
+          veto = {
+            triggered: true,
+            invariantId: "INV-SCADA-SAFETY-001",
+            reason: "Immediate hardwired Safety Instrumented System (SIS SIL-3) mechanical trip required to vent overpressure before pipeline rupture.",
+          };
+          status = "CONDITIONAL";
+          actions.unshift("[MANDATORY] Trigger hardwired SIS SIL-3 blowdown valve trip independently of DCS logic (<1.8s).");
+        }
         break;
 
       case "noctis-defense":

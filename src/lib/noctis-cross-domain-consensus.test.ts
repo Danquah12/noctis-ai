@@ -58,6 +58,27 @@ describe("Noctis Cross-Domain Consensus Swarm (Phase 4)", () => {
     assert.ok(result.vetoesExercised.some((v) => v.invariantId === "INV-ITAR-INTEGRITY-001"));
   });
 
+  it("arbitrates hybrid critical infrastructure incident (OT pressure surge + 5G desync + PQC harvesting)", () => {
+    const result = simulateCrossDomainScenario("hybrid_ot_5g_pqc_cascade");
+
+    assert.equal(result.severity, "CRITICAL");
+    assert.equal(result.governingSqdecPillar, "Safety");
+    assert.equal(result.participatingSuites.length, 4);
+
+    // Verify infrastructure safety veto was triggered
+    const infraAssessment = result.round1Assessments.find((a) => a.suiteId === "noctis-infrastructure");
+    assert.ok(infraAssessment);
+    assert.equal(infraAssessment.invariantVeto.triggered, true);
+    assert.equal(infraAssessment.invariantVeto.invariantId, "INV-SCADA-SAFETY-001");
+
+    // Verify consensus attestation and SHA-256 seal
+    assert.equal(result.consensusStatus, "ARBITRATED_OVERRIDE");
+    assert.ok(result.vetoesExercised.some((v) => v.invariantId === "INV-SCADA-SAFETY-001"));
+    assert.equal(result.consensusAttestationSha256.length, 64);
+    assert.match(result.auditSignature, /^SIG-NOCTIS-SWARM-[0-9A-F]{16}$/);
+    assert.ok(result.unifiedActionDirectives.length >= 5);
+  });
+
   it("evaluates custom cross-domain incident dynamically", () => {
     const customIncident: CrossDomainIncidentInput = {
       title: "SCADA Water Treatment Chlorine Anomaly",
