@@ -12,14 +12,17 @@ const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,79}$/;
 const HEX_HASH = /^[a-f0-9]{64}$/i;
 const REVIEW_KINDS = new Set(["independent_review", "deterministic_test"]);
 
+/** @param {unknown} value @returns {string} */
 export function normalizeNoctisPrompt(value) {
   return typeof value === "string" ? value.normalize("NFKC").trim().replace(/\s+/g, " ").toLowerCase() : "";
 }
 
+/** @param {string} value @returns {string} */
 export function sha256NoctisDataset(value) {
   return createHash("sha256").update(value, "utf8").digest("hex");
 }
 
+/** @param {unknown} value @returns {boolean} */
 function isHttpsUrl(value) {
   if (typeof value !== "string") return false;
   try {
@@ -30,6 +33,7 @@ function isHttpsUrl(value) {
 }
 
 // Conservative blockers only, not a substitute for privacy review or DLP.
+/** @param {string} value @returns {boolean} */
 function containsSensitivePattern(value) {
   return /\b(?:sk-[A-Za-z0-9_-]{12,}|gh[pousr]_[A-Za-z0-9_]{16,}|AKIA[0-9A-Z]{16})\b/.test(value) ||
     /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/.test(value) ||
@@ -37,6 +41,7 @@ function containsSensitivePattern(value) {
     /\b(?:\+?1[-.\s]?)?\(?[2-9]\d{2}\)?[-.\s]?[2-9]\d{2}[-.\s]?\d{4}\b/.test(value);
 }
 
+/** @param {any} source */
 function sourceIssue(source) {
   if (!source || typeof source.id !== "string" || !ID_PATTERN.test(source.id)) return "source_id_invalid";
   if (source.kind !== "public_open" && source.kind !== "project_authored") return "source_kind_not_allowed";
@@ -59,6 +64,7 @@ function sourceIssue(source) {
   return null;
 }
 
+/** @param {any} row */
 function exampleIssue(row) {
   if (!row || typeof row.id !== "string" || typeof row.source_id !== "string" ||
       !ID_PATTERN.test(row.id) || !ID_PATTERN.test(row.source_id)) return "example_id_invalid";
@@ -84,6 +90,8 @@ function exampleIssue(row) {
  * Returns only accepted examples with provenance, plus sanitized rejected IDs/reasons.
  * Exact duplicate prompts across sources are quarantined rather than allowing leakage.
  * Reserved evaluator prompts are NEVER admitted into the training dataset at any split.
+ * @param {{sources: any[], examples: any[]}} input
+ * @param {{reservedHeldoutPrompts?: string[]}} [options]
  */
 export function prepareNoctisInternalDataset(input, options = {}) {
   if (!input || !Array.isArray(input.sources) || !Array.isArray(input.examples)) {
@@ -112,6 +120,7 @@ export function prepareNoctisInternalDataset(input, options = {}) {
   const reserved = new Set((options.reservedHeldoutPrompts || []).map(normalizeNoctisPrompt).filter(Boolean));
   const promptSeen = new Map();
   const idSeen = new Set();
+  /** @type {Record<"train" | "development" | "heldout", any[]>} */
   const splits = { train: [], development: [], heldout: [] };
   for (const row of input.examples) {
     const id = ID_PATTERN.test(row?.id || "") ? row.id : "invalid-example";
