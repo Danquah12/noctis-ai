@@ -25,8 +25,7 @@ function isHttpsUrl(value) {
   try {
     const parsed = new URL(value);
     return parsed.protocol === "https:" && Boolean(parsed.hostname) &&
-      !parsed.username && !parsed.password && !parsed.searchParams.has("token") &&
-      !parsed.searchParams.has("api_key");
+      !parsed.username && !parsed.password && !parsed.search && !parsed.hash;
   } catch { return false; }
 }
 
@@ -39,7 +38,7 @@ function containsSensitivePattern(value) {
 }
 
 function sourceIssue(source) {
-  if (!source || !ID_PATTERN.test(source.id || "")) return "source_id_invalid";
+  if (!source || typeof source.id !== "string" || !ID_PATTERN.test(source.id)) return "source_id_invalid";
   if (source.kind !== "public_open" && source.kind !== "project_authored") return "source_kind_not_allowed";
   if (source.kind === "public_open" && (!PUBLIC_LICENSES.has(source.license_id) || !isHttpsUrl(source.origin_url))) {
     return "public_source_license_or_uri_invalid";
@@ -61,7 +60,8 @@ function sourceIssue(source) {
 }
 
 function exampleIssue(row) {
-  if (!row || !ID_PATTERN.test(row.id || "") || !ID_PATTERN.test(row.source_id || "")) return "example_id_invalid";
+  if (!row || typeof row.id !== "string" || typeof row.source_id !== "string" ||
+      !ID_PATTERN.test(row.id) || !ID_PATTERN.test(row.source_id)) return "example_id_invalid";
   if (row.from_user_conversation === true || row.private_record === true ||
       row.customer_data === true || row.contains_personal_data === true) return "private_example_forbidden";
   if (typeof row.prompt !== "string" || typeof row.completion !== "string" ||
@@ -71,7 +71,8 @@ function exampleIssue(row) {
   if (!row.validation || !REVIEW_KINDS.has(row.validation.kind) ||
       row.validation.passed !== true ||
       !ID_PATTERN.test(row.validation.verified_by || "") ||
-      typeof row.validation.reference !== "string" || row.validation.reference.trim().length < 4) {
+      typeof row.validation.reference !== "string" ||
+      !ID_PATTERN.test(row.validation.reference) || row.validation.reference.length < 4) {
     return "independent_validation_required";
   }
   return null;
@@ -92,6 +93,7 @@ export function prepareNoctisInternalDataset(input, options = {}) {
     throw new RangeError("Input batch exceeds offline preparation bounds.");
   }
   const sourceMap = new Map();
+  const blockedSourceIds = new Set();
   const rejected = [];
   for (const source of input.sources) {
     const issue = sourceIssue(source);
@@ -99,8 +101,9 @@ export function prepareNoctisInternalDataset(input, options = {}) {
       rejected.push({ id: ID_PATTERN.test(source?.id || "") ? source.id : "invalid-source", code: issue });
       continue;
     }
-    if (sourceMap.has(source.id)) {
+    if (sourceMap.has(source.id) || blockedSourceIds.has(source.id)) {
       sourceMap.delete(source.id);
+      blockedSourceIds.add(source.id);
       rejected.push({ id: source.id, code: "duplicate_source_id" });
       continue;
     }
