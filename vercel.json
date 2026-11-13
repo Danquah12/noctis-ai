@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/noctis?daily_challenge=1",
+      "schedule": "0 11 * * *"
+    }
+  ]
+}
