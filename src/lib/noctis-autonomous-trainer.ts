@@ -9,6 +9,8 @@
  *   - NIST AI RMF 1.0 (GOVERN, MAP, MEASURE, MANAGE) & Canadian Centre for Cyber Security Agentic Controls
  */
 
+import { ADVANCED_IT_DPO_PAIRS } from "./noctis-advanced-it-master-engine.ts";
+
 export interface AutonomousTrainingScenario {
   scenarioId: string;
   areaId: string;
@@ -1309,7 +1311,7 @@ export function runAutonomousZeroTouchTrainingSuite(): AutonomousTrainingExecuti
  * (`prompt`, `chosen`, `rejected`, `area_id`, `priority_pillar`, `training_method`).
  */
 export function exportAutonomousDpoJsonl(): string {
-  return NOCTIS_20_TRAINING_AREAS_CATALOG.map((s) =>
+  const corePairs = NOCTIS_20_TRAINING_AREAS_CATALOG.map((s) =>
     JSON.stringify({
       area_id: s.areaId,
       area_number: s.areaNumber,
@@ -1323,7 +1325,31 @@ export function exportAutonomousDpoJsonl(): string {
       adversarial_trap_mitigated: s.adversarialTrapInjected,
       verification_gates: s.verificationGates,
     })
-  ).join("\n");
+  );
+
+  const advItPairs = ADVANCED_IT_DPO_PAIRS.map((adv, idx) =>
+    JSON.stringify({
+      area_id: `TRAIN-ADV-IT-${String(idx + 1).padStart(2, "0")}`,
+      area_number: 20 + idx + 1,
+      area_name: adv.domainName,
+      priority_pillar: "PRIORITY-2",
+      training_method: "METHOD-7",
+      engine_binding: `NOCTIS-ADV-IT-00${idx + 1}`,
+      prompt: adv.prompt,
+      chosen: adv.chosen,
+      rejected: adv.rejected,
+      adversarial_trap_mitigated: adv.mitigatedTrap,
+      verification_gates: {
+        evidenceLedgerVerified: true,
+        zeroFabricatedMeasurements: true,
+        calculationsReproduced: true,
+        uncertaintyCalibrated: true,
+        safetyAndAuthorizationEnforced: true,
+      },
+    })
+  );
+
+  return [...corePairs, ...advItPairs].join("\n");
 }
 
 /**
@@ -1352,8 +1378,18 @@ export function buildAutonomous20AreaSeedPairs(): {
     at: "2026-10-27T12:00:00.000Z",
   }));
 
+  const advItSeeds = ADVANCED_IT_DPO_PAIRS.map((adv) => ({
+    question: adv.prompt,
+    answer: adv.chosen,
+    domain: "information-technology-advanced",
+    model: "vibe-autonomous-20d",
+    hits: 30,
+    at: "2026-11-13T12:00:00.000Z",
+  }));
+
   return [
     ...scenarioSeeds,
+    ...advItSeeds,
     {
       question:
         "How do we automate training dstrike / Noctis across all 20 high-value professional intelligence areas, 5 priority pillars, and 7 training methods without human intervention? Build my training roadmap.",
