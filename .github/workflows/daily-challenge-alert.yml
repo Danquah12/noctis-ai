@@ -1,0 +1,20 @@
+name: Noctis 6AM Daily Challenge & ConnectIn Alert
+
+on:
+  schedule:
+    # 06:00 AM EST = 11:00 UTC
+    - cron: '0 11 * * *'
+  workflow_dispatch:
+
+jobs:
+  run-daily-challenge:
+    name: Run Challenge & Dispatch ConnectIn Alert
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Noctis Daily Challenge
+        run: |
+          echo "Executing Noctis Daily Challenge & Alert Dispatcher..."
+          RESPONSE=$(curl -s -X GET "https://www.dstrike.app/api/noctis?daily_challenge=1")
+          echo "Response: $RESPONSE"
+          STATUS=$(echo "$RESPONSE" | grep -o '"status":"[^"]*"' | head -n 1)
+          echo "Status: $STATUS"
