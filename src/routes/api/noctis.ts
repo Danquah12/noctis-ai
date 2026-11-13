@@ -614,6 +614,15 @@ export const Route = createFileRoute("/api/noctis")({
             { headers: { "cache-control": "no-store", ...CORS_HEADERS } }
           );
         }
+        if (url.searchParams.get("daily_challenge") || url.searchParams.get("challenge") === "daily") {
+          const { executeDailyChallengeWorkflow } = await import("@/lib/noctis-daily-challenge-engine");
+          const seed = url.searchParams.get("seed") ? parseInt(url.searchParams.get("seed")!) : undefined;
+          const connectInUrl = url.searchParams.get("connectin_url") || "https://conectln.com";
+          const summary = await executeDailyChallengeWorkflow({ seed, connectInUrl });
+          return Response.json(summary, {
+            headers: { "cache-control": "no-store", ...CORS_HEADERS }
+          });
+        }
         if (url.searchParams.get("training") === "dpo-jsonl") {
           const { exportAutonomousDpoJsonl } = await import("@/lib/noctis-autonomous-trainer");
           const dpoJsonl = exportAutonomousDpoJsonl();
