@@ -360,3 +360,616 @@ export function handleNaturalRmfGrcQuery(question: string): string | null {
 
   return s.join("\n");
 }
+
+// ============================================================================
+// FULL DETERMINISTIC 7-STEP RMF LIFECYCLE EVALUATION ENGINES
+// Standard: NIST SP 800-37 Rev. 2, NIST SP 800-53 Rev. 5, FIPS 199/200, DoDI 8510.01
+// ============================================================================
+
+export type ImpactLevel = "LOW" | "MODERATE" | "HIGH";
+export type AuthorizationType = "ATO" | "ATO_WITH_CONDITIONS" | "DATO" | "IATT" | "CATO";
+
+export interface RmfPrepareInput {
+  systemName: string;
+  authorizingOfficialAssigned: boolean;
+  issoAssigned: boolean;
+  issmAssigned: boolean;
+  securityControlAssessorIndependent: boolean;
+  systemBoundaryDefined: boolean;
+  hardwareSoftwareInventoryComplete: boolean;
+  riskToleranceDocumented: boolean;
+}
+
+export interface RmfPrepareResult {
+  engineId: "NOCTIS-RMF-PREPARE-001";
+  step: "STEP_0_PREPARE";
+  passed: boolean;
+  safetyVetoes: string[];
+  recommendations: string[];
+  preparednessScorePercent: number;
+}
+
+export function evaluateRmfPrepareStep(input: RmfPrepareInput): RmfPrepareResult {
+  const safetyVetoes: string[] = [];
+  const recommendations: string[] = [];
+  let points = 0;
+
+  if (!input.authorizingOfficialAssigned) {
+    safetyVetoes.push("CRITICAL_GOVERNANCE_VETO: An Authorizing Official (AO) with formal risk-acceptance delegation must be officially designated before system engineering begins (NIST SP 800-37 Task P-1).");
+  } else points += 20;
+
+  if (!input.securityControlAssessorIndependent) {
+    safetyVetoes.push("CONFLICT_OF_INTEREST_VETO: The Security Control Assessor (SCA) must be independent of the system owner and ISSO to ensure uncompromised assessment integrity (NIST SP 800-37 Task P-2).");
+  } else points += 20;
+
+  if (!input.systemBoundaryDefined) {
+    safetyVetoes.push("AUTHORIZATION_BOUNDARY_VETO: Authorization boundary must be formally documented with explicit data flow diagrams and interconnection inventories (NIST SP 800-37 Task P-11).");
+  } else points += 20;
+
+  if (!input.hardwareSoftwareInventoryComplete) {
+    safetyVetoes.push("INVENTORY_DEFICIENCY_VETO: Hardware, software, and firmware components must be inventoried down to version and serial identifiers (NIST SP 800-37 Task P-12).");
+  } else points += 20;
+
+  if (!input.riskToleranceDocumented) {
+    recommendations.push("Document formal organizational risk tolerance and risk framing statement (NIST SP 800-37 Task P-3).");
+  } else points += 20;
+
+  return {
+    engineId: "NOCTIS-RMF-PREPARE-001",
+    step: "STEP_0_PREPARE",
+    passed: safetyVetoes.length === 0,
+    safetyVetoes,
+    recommendations,
+    preparednessScorePercent: points
+  };
+}
+
+// ----------------------------------------------------------------------------
+// STEP 1: CATEGORIZE (FIPS 199 / NIST SP 800-60 / CNSSI 1253)
+// ----------------------------------------------------------------------------
+export interface Fips199Input {
+  systemName: string;
+  confidentialityImpact: ImpactLevel;
+  integrityImpact: ImpactLevel;
+  availabilityImpact: ImpactLevel;
+  informationTypes: string[];
+  isNationalSecuritySystem?: boolean;
+}
+
+export interface Fips199Result {
+  engineId: "NOCTIS-RMF-CATEGORIZE-001";
+  step: "STEP_1_CATEGORIZE";
+  passed: boolean;
+  securityCategorizationExpression: string; // e.g., "SC = {(confidentiality, HIGH), (integrity, MODERATE), (availability, MODERATE)}"
+  overallImpact: ImpactLevel; // High-Water Mark
+  governingStandard: "FIPS 199 / FIPS 200" | "CNSSI 1253 (NSS)";
+  safetyVetoes: string[];
+  mandatoryOverlays: string[];
+}
+
+export function evaluateFips199SecurityCategorization(input: Fips199Input): Fips199Result {
+  const safetyVetoes: string[] = [];
+  const mandatoryOverlays: string[] = [];
+
+  const rank: Record<ImpactLevel, number> = { LOW: 1, MODERATE: 2, HIGH: 3 };
+  const maxRank = Math.max(
+    rank[input.confidentialityImpact],
+    rank[input.integrityImpact],
+    rank[input.availabilityImpact]
+  );
+
+  const overallImpact: ImpactLevel = maxRank === 3 ? "HIGH" : maxRank === 2 ? "MODERATE" : "LOW";
+  const expression = `SC = {(confidentiality, ${input.confidentialityImpact}), (integrity, ${input.integrityImpact}), (availability, ${input.availabilityImpact})}`;
+
+  // Check for CUI or ITAR or Classified data requirements
+  const hasItar = input.informationTypes.some(t => /itar|export|defense|classified/i.test(t));
+  const hasCui = input.informationTypes.some(t => /cui|controlled unclassified|pii|phi/i.test(t));
+
+  if (hasItar && input.confidentialityImpact !== "HIGH") {
+    safetyVetoes.push("FIPS_199_CATEGORIZATION_ERROR: Systems processing ITAR or export-controlled defense technical data mandate a minimum Confidentiality rating of HIGH under CNSSI 1253.");
+  }
+
+  if (hasCui && input.confidentialityImpact === "LOW") {
+    safetyVetoes.push("FIPS_199_CATEGORIZATION_ERROR: Controlled Unclassified Information (CUI) requires at least MODERATE Confidentiality under 32 CFR Part 2002 and NIST SP 800-171.");
+  }
+
+  if (input.isNationalSecuritySystem) {
+    mandatoryOverlays.push("CNSSI 1253 National Security Systems Overlay");
+  }
+  if (hasCui) {
+    mandatoryOverlays.push("NIST SP 800-171 CUI / Defense Industrial Base Overlay");
+  }
+
+  return {
+    engineId: "NOCTIS-RMF-CATEGORIZE-001",
+    step: "STEP_1_CATEGORIZE",
+    passed: safetyVetoes.length === 0,
+    securityCategorizationExpression: expression,
+    overallImpact,
+    governingStandard: input.isNationalSecuritySystem ? "CNSSI 1253 (NSS)" : "FIPS 199 / FIPS 200",
+    safetyVetoes,
+    mandatoryOverlays
+  };
+}
+
+// ----------------------------------------------------------------------------
+// STEP 2: SELECT (NIST SP 800-53B & TAILORING)
+// ----------------------------------------------------------------------------
+export interface ControlBaselineInput {
+  overallImpact: ImpactLevel;
+  cloudDeploymentModel: "IaaS" | "PaaS" | "SaaS" | "OnPrem";
+  targetEnvironment: "FedRAMP" | "DoD" | "Civilian" | "Commercial";
+  dodImpactLevel?: "IL2" | "IL4" | "IL5" | "IL6";
+  commonControlsInheritedFromCsp: string[];
+}
+
+export interface ControlBaselineResult {
+  engineId: "NOCTIS-RMF-SELECT-001";
+  step: "STEP_2_SELECT";
+  passed: boolean;
+  baselineName: string;
+  totalControlsEstimated: number;
+  inheritedControlsCount: number;
+  customerResponsibilityControlsCount: number;
+  safetyVetoes: string[];
+  tailoringDirectives: string[];
+}
+
+export function evaluateControlBaselineSelection(input: ControlBaselineInput): ControlBaselineResult {
+  const safetyVetoes: string[] = [];
+  const tailoringDirectives: string[] = [];
+
+  let baselineName = `NIST SP 800-53 Rev. 5 ${input.overallImpact} Baseline`;
+  let totalControls = input.overallImpact === "HIGH" ? 392 : input.overallImpact === "MODERATE" ? 262 : 124;
+
+  if (input.targetEnvironment === "FedRAMP") {
+    baselineName = `FedRAMP Rev. 5 ${input.overallImpact} Baseline`;
+    totalControls += input.overallImpact === "HIGH" ? 29 : input.overallImpact === "MODERATE" ? 18 : 6;
+  } else if (input.targetEnvironment === "DoD") {
+    const il = input.dodImpactLevel || (input.overallImpact === "HIGH" ? "IL5" : "IL4");
+    baselineName = `DoD Cloud Computing SRG ${il} Baseline`;
+    if (il === "IL5" || il === "IL6") {
+      totalControls += 35; // FedRAMP+ DoD CC SRG enhancements
+    }
+  }
+
+  // Validate inheritance integrity
+  const inheritedCount = input.commonControlsInheritedFromCsp.length;
+  if (input.cloudDeploymentModel === "OnPrem" && inheritedCount > 0) {
+    safetyVetoes.push("INHERITANCE_ERROR: On-premises private data centers cannot inherit physical or hypervisor controls (PE/MA) from public cloud service providers.");
+  }
+
+  const customerControls = Math.max(0, totalControls - inheritedCount);
+
+  tailoringDirectives.push(`Assigned baseline: ${baselineName} (${totalControls} controls)`);
+  tailoringDirectives.push(`Inherited from CSP: ${inheritedCount} common controls (Customer Responsibility Matrix - CRM)`);
+  tailoringDirectives.push(`System-Specific & Hybrid Controls to Implement: ${customerControls}`);
+
+  return {
+    engineId: "NOCTIS-RMF-SELECT-001",
+    step: "STEP_2_SELECT",
+    passed: safetyVetoes.length === 0,
+    baselineName,
+    totalControlsEstimated: totalControls,
+    inheritedControlsCount: inheritedCount,
+    customerResponsibilityControlsCount: customerControls,
+    safetyVetoes,
+    tailoringDirectives
+  };
+}
+
+// ----------------------------------------------------------------------------
+// STEP 3: IMPLEMENT (SSP & OSCAL VALIDATION)
+// ----------------------------------------------------------------------------
+export interface SspImplementationInput {
+  implementedControlsCount: number;
+  totalRequiredControlsCount: number;
+  hasPlaceholderOrTbdStatements: boolean;
+  oscalSchemaValidated: boolean;
+  stigComplianceRatePercent: number; // DISA STIG compliance
+}
+
+export interface SspImplementationResult {
+  engineId: "NOCTIS-RMF-IMPLEMENT-001";
+  step: "STEP_3_IMPLEMENT";
+  passed: boolean;
+  implementationCoveragePercent: number;
+  safetyVetoes: string[];
+  remediationTasks: string[];
+}
+
+export function evaluateSspImplementationReadiness(input: SspImplementationInput): SspImplementationResult {
+  const safetyVetoes: string[] = [];
+  const remediationTasks: string[] = [];
+
+  const coverage = Math.round((input.implementedControlsCount / input.totalRequiredControlsCount) * 100);
+
+  if (input.hasPlaceholderOrTbdStatements) {
+    safetyVetoes.push("CRITICAL_SSP_VETO: System Security Plan (SSP) contains unverified 'TBD' or placeholder implementation statements. Every control must describe actual operational mechanisms.");
+  }
+
+  if (coverage < 95) {
+    safetyVetoes.push(`SSP_COVERAGE_VETO: Implementation coverage is ${coverage}% (Threshold: ≥ 95%). Remaining controls must be implemented or documented in formal pre-assessment POA&M.`);
+  }
+
+  if (input.stigComplianceRatePercent < 90) {
+    safetyVetoes.push(`DISA_STIG_DEFICIENCY: Host operating systems and container base images must achieve ≥ 90% STIG benchmark compliance (Current: ${input.stigComplianceRatePercent}%).`);
+  }
+
+  if (!input.oscalSchemaValidated) {
+    remediationTasks.push("Convert legacy Word/Excel SSP into machine-readable NIST OSCAL 1.1 JSON format for automated eMASS ingest.");
+  }
+
+  return {
+    engineId: "NOCTIS-RMF-IMPLEMENT-001",
+    step: "STEP_3_IMPLEMENT",
+    passed: safetyVetoes.length === 0,
+    implementationCoveragePercent: coverage,
+    safetyVetoes,
+    remediationTasks
+  };
+}
+
+// ----------------------------------------------------------------------------
+// STEP 4: ASSESS (NIST SP 800-53A Rev. 5 & 3PAO METHODS)
+// ----------------------------------------------------------------------------
+export interface ScaAssessmentInput {
+  examineMethodExecuted: boolean;
+  interviewMethodExecuted: boolean;
+  testMethodExecuted: boolean;
+  criticalVulnerabilitiesCount: number;
+  highVulnerabilitiesCount: number;
+  penetrationTestingCompleted: boolean;
+}
+
+export interface ScaAssessmentResult {
+  engineId: "NOCTIS-RMF-ASSESS-001";
+  step: "STEP_4_ASSESS";
+  passed: boolean;
+  methodsVerified: ("Examine" | "Interview" | "Test")[];
+  sarRecommendation: "RECOMMEND_ATO" | "RECOMMEND_CONDITIONAL" | "RECOMMEND_DATO";
+  safetyVetoes: string[];
+}
+
+export function evaluateSecurityControlAssessment(input: ScaAssessmentInput): ScaAssessmentResult {
+  const safetyVetoes: string[] = [];
+  const methods: ("Examine" | "Interview" | "Test")[] = [];
+
+  if (input.examineMethodExecuted) methods.push("Examine");
+  if (input.interviewMethodExecuted) methods.push("Interview");
+  if (input.testMethodExecuted) methods.push("Test");
+
+  if (methods.length < 3) {
+    safetyVetoes.push("ASSESSMENT_INCOMPLETE_VETO: Under NIST SP 800-53A Rev. 5, security control assessments require all three methods (Examine, Interview, and Test) to be executed.");
+  }
+
+  if (!input.penetrationTestingCompleted) {
+    safetyVetoes.push("PENETRATION_TEST_MANDATE: FedRAMP and DoD systems mandate independent red-team penetration testing prior to SAR submission.");
+  }
+
+  let sarRecommendation: "RECOMMEND_ATO" | "RECOMMEND_CONDITIONAL" | "RECOMMEND_DATO" = "RECOMMEND_ATO";
+  if (input.criticalVulnerabilitiesCount > 0) {
+    sarRecommendation = "RECOMMEND_DATO";
+    safetyVetoes.push(`CRITICAL_VULNERABILITY_VETO: ${input.criticalVulnerabilitiesCount} critical unmitigated vulnerabilities detected. Authorizing Official must issue DATO until remediated.`);
+  } else if (input.highVulnerabilitiesCount > 0) {
+    sarRecommendation = "RECOMMEND_CONDITIONAL";
+  }
+
+  return {
+    engineId: "NOCTIS-RMF-ASSESS-001",
+    step: "STEP_4_ASSESS",
+    passed: safetyVetoes.length === 0,
+    methodsVerified: methods,
+    sarRecommendation,
+    safetyVetoes
+  };
+}
+
+// ----------------------------------------------------------------------------
+// STEP 5: AUTHORIZE (AUTHORIZATION PACKAGE & ATO / cATO DETERMINATION)
+// ----------------------------------------------------------------------------
+export interface AuthorizationDecisionInput {
+  hasSsp: boolean;
+  hasSar: boolean;
+  hasPoam: boolean;
+  hasContingencyPlanAndTest: boolean;
+  openCriticalPoamCount: number;
+  openHighPoamCount: number;
+  isContinuousAtoRequested: boolean;
+  automatedDevSecOpsPipelineActive?: boolean;
+  continuousMonitoringTelemetryActive?: boolean;
+  csspServiceLevelAgreementActive?: boolean;
+}
+
+export interface AuthorizationDecisionResult {
+  engineId: "NOCTIS-RMF-AUTHORIZE-001";
+  step: "STEP_5_AUTHORIZE";
+  authorizationDecision: AuthorizationType;
+  passed: boolean;
+  safetyVetoes: string[];
+  rationale: string;
+}
+
+export function evaluateAuthorizationDecisionPackage(input: AuthorizationDecisionInput): AuthorizationDecisionResult {
+  const safetyVetoes: string[] = [];
+
+  if (!input.hasSsp || !input.hasSar || !input.hasPoam || !input.hasContingencyPlanAndTest) {
+    safetyVetoes.push("AUTHORIZATION_PACKAGE_DEFICIENCY: Complete eMASS package requires SSP, SAR, POA&M, and Contingency Plan Test Report.");
+  }
+
+  if (input.openCriticalPoamCount > 0) {
+    safetyVetoes.push(`DATO_MANDATE: System has ${input.openCriticalPoamCount} open critical findings. AO cannot accept severe existential mission risk.`);
+    return {
+      engineId: "NOCTIS-RMF-AUTHORIZE-001",
+      step: "STEP_5_AUTHORIZE",
+      authorizationDecision: "DATO",
+      passed: false,
+      safetyVetoes,
+      rationale: "Denial of Authority to Operate (DATO) issued due to unresolved critical severity findings."
+    };
+  }
+
+  // Evaluate cATO (Continuous ATO)
+  if (input.isContinuousAtoRequested) {
+    const hasPipeline = input.automatedDevSecOpsPipelineActive ?? false;
+    const hasConMon = input.continuousMonitoringTelemetryActive ?? false;
+    const hasCssp = input.csspServiceLevelAgreementActive ?? false;
+
+    if (!hasPipeline || !hasConMon || !hasCssp) {
+      safetyVetoes.push("cATO_CRITERIA_UNMET: Continuous ATO requires 3 mandatory pillars: (1) Hardened DevSecOps pipelines with automated gating, (2) Real-time continuous telemetry monitoring, and (3) Active DoD CSSP alignment (DoD CIO cATO Memo 2022).");
+      return {
+        engineId: "NOCTIS-RMF-AUTHORIZE-001",
+        step: "STEP_5_AUTHORIZE",
+        authorizationDecision: "ATO_WITH_CONDITIONS",
+        passed: false,
+        safetyVetoes,
+        rationale: "Fails cATO criteria. Fallback to standard 1-year conditional ATO granted with manual milestones."
+      };
+    }
+
+    return {
+      engineId: "NOCTIS-RMF-AUTHORIZE-001",
+      step: "STEP_5_AUTHORIZE",
+      authorizationDecision: "CATO",
+      passed: true,
+      safetyVetoes: [],
+      rationale: "Continuous Authority to Operate (cATO) granted based on automated DevSecOps validation and live telemetry."
+    };
+  }
+
+  if (input.openHighPoamCount > 0) {
+    return {
+      engineId: "NOCTIS-RMF-AUTHORIZE-001",
+      step: "STEP_5_AUTHORIZE",
+      authorizationDecision: "ATO_WITH_CONDITIONS",
+      passed: true,
+      safetyVetoes: [],
+      rationale: `Authority to Operate with Conditions granted. ${input.openHighPoamCount} High findings must be resolved within 30-day statutory SLA.`
+    };
+  }
+
+  return {
+    engineId: "NOCTIS-RMF-AUTHORIZE-001",
+    step: "STEP_5_AUTHORIZE",
+    authorizationDecision: "ATO",
+    passed: true,
+    safetyVetoes: [],
+    rationale: "Full 3-Year Authority to Operate (ATO) granted with zero high or critical residual risk."
+  };
+}
+
+// ----------------------------------------------------------------------------
+// STEP 6: MONITOR (CONTINUOUS MONITORING & POA&M MANAGEMENT)
+// ----------------------------------------------------------------------------
+export interface ContinuousMonitoringInput {
+  vulnerabilityScanFrequencyDays: number;
+  poamItems: {
+    id: string;
+    severity: "HIGH" | "MODERATE" | "LOW";
+    daysOpen: number;
+    hasTechnicalRemediationProof: boolean;
+  }[];
+}
+
+export interface ContinuousMonitoringResult {
+  engineId: "NOCTIS-RMF-MONITOR-001";
+  step: "STEP_6_MONITOR";
+  passed: boolean;
+  slaBreachesCount: number;
+  paperClosuresVetoedCount: number;
+  safetyVetoes: string[];
+}
+
+export function evaluateContinuousMonitoringAndPoam(input: ContinuousMonitoringInput): ContinuousMonitoringResult {
+  const safetyVetoes: string[] = [];
+  let slaBreaches = 0;
+  let paperClosures = 0;
+
+  if (input.vulnerabilityScanFrequencyDays > 30) {
+    safetyVetoes.push("CONMON_CADENCE_VETO: Vulnerability scanning must be conducted at least monthly (≤ 30 days) under NIST SP 800-53 Rev. 5 RA-5.");
+  }
+
+  for (const item of input.poamItems) {
+    const maxDays = item.severity === "HIGH" ? 30 : item.severity === "MODERATE" ? 90 : 180;
+    if (item.daysOpen > maxDays) {
+      slaBreaches++;
+      safetyVetoes.push(`POA&M_SLA_BREACH: Item ${item.id} (${item.severity}) has been open for ${item.daysOpen} days (Maximum SLA: ${maxDays} days).`);
+    }
+
+    if (!item.hasTechnicalRemediationProof) {
+      paperClosures++;
+      safetyVetoes.push(`NON_PAPER_CLOSURE_VETO: Item ${item.id} closure attempted without technical verification proof (merged code or clean re-scan).`);
+    }
+  }
+
+  return {
+    engineId: "NOCTIS-RMF-MONITOR-001",
+    step: "STEP_6_MONITOR",
+    passed: safetyVetoes.length === 0,
+    slaBreachesCount: slaBreaches,
+    paperClosuresVetoedCount: paperClosures,
+    safetyVetoes
+  };
+}
+
+// ----------------------------------------------------------------------------
+// 25 DETERMINISTIC RMF SCENARIOS FOR CONTINUOUS VALIDATION & AUDIT
+// ----------------------------------------------------------------------------
+export interface RmfScenario {
+  id: string;
+  step: string;
+  name: string;
+  execute: () => { passed: boolean; safetyVetoes: string[] };
+}
+
+export function generateAllRmfScenarios(): RmfScenario[] {
+  const scenarios: RmfScenario[] = [];
+
+  // Scenarios 1-4: Step 0 Prepare
+  for (let i = 1; i <= 4; i++) {
+    scenarios.push({
+      id: `NOCTIS-RMF-SCN-PREP-${String(i).padStart(2, "0")}`,
+      step: "STEP_0_PREPARE",
+      name: `RMF Governance & Stakeholder Alignment #${i}`,
+      execute: () => {
+        const isConflict = i === 2;
+        return evaluateRmfPrepareStep({
+          systemName: `Enterprise-Cloud-Core-0${i}`,
+          authorizingOfficialAssigned: true,
+          issoAssigned: true,
+          issmAssigned: true,
+          securityControlAssessorIndependent: !isConflict,
+          systemBoundaryDefined: true,
+          hardwareSoftwareInventoryComplete: true,
+          riskToleranceDocumented: true
+        });
+      }
+    });
+  }
+
+  // Scenarios 5-8: Step 1 Categorize (FIPS 199)
+  for (let i = 1; i <= 4; i++) {
+    scenarios.push({
+      id: `NOCTIS-RMF-SCN-CAT-${String(i).padStart(2, "0")}`,
+      step: "STEP_1_CATEGORIZE",
+      name: `FIPS 199 High-Water Mark Categorization #${i}`,
+      execute: () => {
+        const isNss = i === 4;
+        return evaluateFips199SecurityCategorization({
+          systemName: `Mission-App-0${i}`,
+          confidentialityImpact: i === 1 ? "HIGH" : "MODERATE",
+          integrityImpact: "MODERATE",
+          availabilityImpact: "LOW",
+          informationTypes: isNss ? ["ITAR_TECHNICAL_DATA"] : ["CUI_SPECIFIED"],
+          isNationalSecuritySystem: isNss
+        });
+      }
+    });
+  }
+
+  // Scenarios 9-12: Step 2 Select
+  for (let i = 1; i <= 4; i++) {
+    scenarios.push({
+      id: `NOCTIS-RMF-SCN-SEL-${String(i).padStart(2, "0")}`,
+      step: "STEP_2_SELECT",
+      name: `Control Baseline Allocation & Tailoring #${i}`,
+      execute: () => {
+        return evaluateControlBaselineSelection({
+          overallImpact: i === 1 ? "HIGH" : "MODERATE",
+          cloudDeploymentModel: "IaaS",
+          targetEnvironment: i % 2 === 0 ? "DoD" : "FedRAMP",
+          dodImpactLevel: "IL5",
+          commonControlsInheritedFromCsp: ["PE-1", "PE-2", "PE-3", "MA-1", "MA-2"]
+        });
+      }
+    });
+  }
+
+  // Scenarios 13-16: Step 3 Implement
+  for (let i = 1; i <= 4; i++) {
+    scenarios.push({
+      id: `NOCTIS-RMF-SCN-IMP-${String(i).padStart(2, "0")}`,
+      step: "STEP_3_IMPLEMENT",
+      name: `SSP Implementation Readiness & OSCAL Verification #${i}`,
+      execute: () => {
+        const hasTbd = i === 3;
+        return evaluateSspImplementationReadiness({
+          implementedControlsCount: hasTbd ? 200 : 255,
+          totalRequiredControlsCount: 262,
+          hasPlaceholderOrTbdStatements: hasTbd,
+          oscalSchemaValidated: true,
+          stigComplianceRatePercent: hasTbd ? 78 : 96
+        });
+      }
+    });
+  }
+
+  // Scenarios 17-20: Step 4 Assess
+  for (let i = 1; i <= 4; i++) {
+    scenarios.push({
+      id: `NOCTIS-RMF-SCN-ASS-${String(i).padStart(2, "0")}`,
+      step: "STEP_4_ASSESS",
+      name: `3PAO Examine/Interview/Test Assessment #${i}`,
+      execute: () => {
+        const hasCrit = i === 4;
+        return evaluateSecurityControlAssessment({
+          examineMethodExecuted: true,
+          interviewMethodExecuted: true,
+          testMethodExecuted: true,
+          criticalVulnerabilitiesCount: hasCrit ? 1 : 0,
+          highVulnerabilitiesCount: i === 2 ? 2 : 0,
+          penetrationTestingCompleted: true
+        });
+      }
+    });
+  }
+
+  // Scenarios 21-23: Step 5 Authorize
+  for (let i = 1; i <= 3; i++) {
+    scenarios.push({
+      id: `NOCTIS-RMF-SCN-AUTH-${String(i).padStart(2, "0")}`,
+      step: "STEP_5_AUTHORIZE",
+      name: `Authorizing Official ATO/cATO Determination #${i}`,
+      execute: () => {
+        return evaluateAuthorizationDecisionPackage({
+          hasSsp: true,
+          hasSar: true,
+          hasPoam: true,
+          hasContingencyPlanAndTest: true,
+          openCriticalPoamCount: 0,
+          openHighPoamCount: i === 2 ? 1 : 0,
+          isContinuousAtoRequested: i === 3,
+          automatedDevSecOpsPipelineActive: true,
+          continuousMonitoringTelemetryActive: true,
+          csspServiceLevelAgreementActive: true
+        });
+      }
+    });
+  }
+
+  // Scenarios 24-25: Step 6 Monitor
+  for (let i = 1; i <= 2; i++) {
+    scenarios.push({
+      id: `NOCTIS-RMF-SCN-MON-${String(i).padStart(2, "0")}`,
+      step: "STEP_6_MONITOR",
+      name: `Continuous Monitoring & POA&M SLA Enforcement #${i}`,
+      execute: () => {
+        const hasBreach = i === 2;
+        return evaluateContinuousMonitoringAndPoam({
+          vulnerabilityScanFrequencyDays: 14,
+          poamItems: [
+            {
+              id: "POAM-2026-001",
+              severity: "HIGH",
+              daysOpen: hasBreach ? 45 : 18,
+              hasTechnicalRemediationProof: !hasBreach
+            }
+          ]
+        });
+      }
+    });
+  }
+
+  return scenarios;
+}
+

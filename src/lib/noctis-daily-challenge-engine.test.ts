@@ -46,4 +46,12 @@ test("NOCTIS-CHALLENGE-ALERT-001: Daily Challenge Engine", async (t) => {
     assert.equal(result.invariantStatus, "PASS");
     assert.ok(result.fullResponseText.includes("3") || result.fullResponseText.includes("Quorum") || result.fullResponseText.includes("Raft"));
   });
+
+  await t.test("executes RMF Step 1 CNSSI 1253 ITAR challenge in Noctis chat engine", async () => {
+    const rmfChallenge = DAILY_CHALLENGE_CATALOG.find(c => c.id === "CHALLENGE-RMF-STEP-01")!;
+    const result = await runChallengeInChat(rmfChallenge);
+
+    assert.equal(result.invariantStatus, "PASS");
+    assert.ok(result.fullResponseText.includes("CNSSI 1253") || result.fullResponseText.includes("HIGH") || result.fullResponseText.includes("FIPS 199"));
+  });
 });

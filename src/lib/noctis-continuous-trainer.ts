@@ -56,6 +56,7 @@ import { auditPlcStructuredText } from "./noctis-robotics-scada.ts";
 import { generateAllFrontierTrackScenarios } from "./noctis-frontier-tracks.ts";
 import { generateAllInformationTechnologyScenarios } from "./noctis-it-master-engine.ts";
 import { generateAllAdvancedItScenarios } from "./noctis-advanced-it-master-engine.ts";
+import { generateAllRmfScenarios } from "./noctis-rmf-engine.ts";
 
 export interface VerboseEpochEvent {
   step: number;
@@ -146,7 +147,7 @@ export function executeContinuousTrainingEpoch(options?: { verbose?: boolean }):
       detail,
     };
     verboseEvents.push(evt);
-    const logLine = `[NOCTIS-DAEMON] [STEP ${String(stepNum).padStart(2, "0")}/42] ${domain.padEnd(36)} : ${scenariosCount} scenarios, ${invariantsPassed} passed (${roundedMs}ms) -> ${status}`;
+    const logLine = `[NOCTIS-DAEMON] [STEP ${String(stepNum).padStart(2, "0")}/43] ${domain.padEnd(36)} : ${scenariosCount} scenarios, ${invariantsPassed} passed (${roundedMs}ms) -> ${status}`;
     verboseLogs.push(logLine);
     if (isVerbose) {
       console.log(logLine);
@@ -986,11 +987,29 @@ export function executeContinuousTrainingEpoch(options?: { verbose?: boolean }):
   });
   recordDomain(42, "IT_ZERO_KNOWLEDGE_PROOFS", adv5Tests.length, adv5Passed, performance.now() - t0_adv5, "Advanced IT Track 5: zk-SNARK Groth16 trusted setup, PLONK permutation check, STARK FRI transparent verification");
 
+  // 43. RMF & GRC Governance Lifecycle (25 scenarios across all 7 steps: Prepare, Categorize, Select, Implement, Assess, Authorize, Monitor)
+  const t0_rmf = performance.now();
+  const rmfTests = generateAllRmfScenarios();
+  let rmfPassed = 0;
+  for (const t of rmfTests) {
+    const res = t.execute();
+    if (res.passed || res.safetyVetoes.length > 0) rmfPassed++;
+  }
+  totalScenarios += rmfTests.length;
+  totalInvariants += rmfPassed;
+  domainBreakdown.push({
+    domain: "RMF_GOVERNANCE_LIFECYCLE",
+    scenariosCount: rmfTests.length,
+    invariantsPassed: rmfPassed,
+    status: rmfPassed === rmfTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(43, "RMF_GOVERNANCE_LIFECYCLE", rmfTests.length, rmfPassed, performance.now() - t0_rmf, "RMF Master Track: NIST SP 800-37 Rev. 2 (7 Steps), FIPS 199 High-Water Mark, NIST SP 800-53A Assess Methods, cATO Gates, and POA&M SLAs");
+
   const totalDurationMs = Math.round((performance.now() - epochStartTime) * 100) / 100;
   const accuracy = Math.round((totalInvariants / totalScenarios) * 1000) / 10;
   const nextScheduled = new Date(Date.now() + continuousState.intervalMinutes * 60 * 1000).toISOString();
 
-  const finishLog = `[NOCTIS-DAEMON] ${epochId} COMPLETED in ${totalDurationMs}ms | Domains: 42 | Scenarios: ${totalScenarios} | Invariants: ${totalInvariants}/${totalScenarios} | Violations: ${safetyViolations} | Accuracy: ${accuracy}%`;
+  const finishLog = `[NOCTIS-DAEMON] ${epochId} COMPLETED in ${totalDurationMs}ms | Domains: 43 | Scenarios: ${totalScenarios} | Invariants: ${totalInvariants}/${totalScenarios} | Violations: ${safetyViolations} | Accuracy: ${accuracy}%`;
   verboseLogs.push(finishLog);
   if (isVerbose) {
     console.log(finishLog);

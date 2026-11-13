@@ -182,6 +182,35 @@ export const DAILY_CHALLENGE_CATALOG: ChallengeDefinition[] = [
     expectedInvariant: "Groth16 requires trusted setup ceremonies and is broken by Shor's algorithm; STARKs rely on collision-resistant hash functions (FRI) with no trusted setup and post-quantum security",
     severity: "high",
     connectInTab: "pulserooms"
+  },
+
+  // 5. RMF & GRC SOVEREIGN LIFECYCLE (NIST SP 800-37 / 800-53 REV. 5, FIPS 199, cATO)
+  {
+    id: "CHALLENGE-RMF-STEP-01",
+    sourceSuite: "CONTINUOUS_DAEMON",
+    domain: "RMF_GOVERNANCE_LIFECYCLE",
+    question: "Under NIST SP 800-37 Rev. 2 and FIPS 199, an ITAR defense subsystem is categorized with Confidentiality: MODERATE, Integrity: LOW, and Availability: MODERATE. Why does CNSSI 1253 reject this categorization, and what is the mandatory high-water mark impact baseline?",
+    expectedInvariant: "CNSSI 1253 mandates Confidentiality = HIGH for ITAR/export-controlled data; FIPS 199 High-Water Mark enforces overall impact = max(C,I,A) = HIGH",
+    severity: "critical",
+    connectInTab: "pulserooms"
+  },
+  {
+    id: "CHALLENGE-RMF-CATO-02",
+    sourceSuite: "CONTINUOUS_DAEMON",
+    domain: "RMF_GOVERNANCE_LIFECYCLE",
+    question: "Under DoD CIO Memo (Feb 2022) Continuous Authorization to Operate (cATO), why does an annual 365-day security review fail cATO compliance, and what are the 3 mandatory operational pillars required for continuous deployment?",
+    expectedInvariant: "cATO requires continuous automated gating; 3 mandatory pillars: 1. Continuous DevSecOps pipeline telemetry (SAST/DAST/SBOM gating), 2. Active continuous monitoring (ConMon) threat posture, 3. Tier-1 Cyber Security Service Provider (CSSP) active alignment",
+    severity: "critical",
+    connectInTab: "pulserooms"
+  },
+  {
+    id: "CHALLENGE-RMF-POAM-03",
+    sourceSuite: "CONTINUOUS_DAEMON",
+    domain: "RMF_GOVERNANCE_LIFECYCLE",
+    question: "Under NIST SP 800-37 Rev. 2 Step 6 and FedRAMP SLAs, a High-severity vulnerability finding on an internet-facing API remains open at day 35. Can the ISSO close this POA&M with an administrative policy memo, and what is the statutory SLA?",
+    expectedInvariant: "Administrative/paper closure is prohibited under GRC-GATE-01; High severity SLA is strictly <= 30 calendar days and closure requires re-scanned code commit or engineering patch verification",
+    severity: "critical",
+    connectInTab: "pulserooms"
   }
 ];
 

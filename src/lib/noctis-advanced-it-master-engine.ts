@@ -652,3 +652,146 @@ export function exportAdvancedItDpoPairs(): AdvancedItDpoPair[] {
   return ADVANCED_IT_DPO_PAIRS;
 }
 
+// ----------------------------------------------------------------------------
+// NATURAL LANGUAGE ROUTER FOR ADVANCED IT QUERIES
+// ----------------------------------------------------------------------------
+export function handleNaturalAdvancedItQuery(prompt: string): string | null {
+  const p = prompt.toLowerCase();
+
+  const isAdvIt =
+    /\b(gpu cluster|tensor parallel|nvlink|rocev2|infiniband|pfc|ecn|post[- ]quantum|pqc|ml-kem|kyber|ml-dsa|dilithium|slh-dsa|sphincs|cnsa 2\.0|shor['’]?s algorithm|qber|bb84|decoy state|purdue model|isa-95|industrial control|scada|plc|dcs|sis sil|modbus|dnp3|iec 62443|5g standalone|5g core|upf|smf|amf|o-ran|fronthaul|ptp|g\.8275\.1|urllc|network slice|zero knowledge|zk[- ]snark|zk[- ]stark|groth16|plonk|fri protocol|trusted setup|toxic waste|permutation check)\b/i.test(p);
+
+  if (!isAdvIt) return null;
+
+  // 1. HPC GPU Cluster & Distributed Pre-training
+  if (p.includes("gpu") || p.includes("tensor parallel") || p.includes("rocev2") || p.includes("infiniband") || p.includes("nvlink")) {
+    const res = evaluateHpcGpuClusterTopology({
+      totalGpus: 8192,
+      gpusPerNode: 8,
+      intraNodeInterconnect: "NVLINK_V4",
+      interNodeFabric: p.includes("roce") ? "ROCE_V2_400G" : "INFINIBAND_NDR_400G",
+      tensorParallelDegree: p.includes("across nodes") || p.includes("cross-node") ? 8 : 4,
+      pipelineParallelDegree: 8,
+      dataParallelDegree: 256,
+      rocePfcEnabled: !p.includes("disable pfc"),
+      roceEcnEnabled: !p.includes("disable ecn")
+    });
+    let md = `### Noctis Sovereign HPC GPU Cluster & Interconnect Engine (${res.engineId})\n`;
+    md += `**Subsystem Domain:** \`${res.domain}\` · **Standards:** ${res.standardsReferenced.join(" · ")}\n\n`;
+    md += `#### 1. Cluster Scale & Interconnect Topology\n`;
+    md += `- **Scale:** \`${res.calculations.totalGpus}\` GPUs across \`${res.calculations.totalNodes}\` nodes (\`${res.calculations.gpusPerNode}\` GPUs/node)\n`;
+    md += `- **Intra-Node Fabric:** \`${res.calculations.intraNodeInterconnect}\` (\`${res.calculations.intraNodeBandwidthGbps}\` Gbps per GPU)\n`;
+    md += `- **Inter-Node Fabric:** \`${res.calculations.interNodeFabric}\` (\`${res.calculations.interNodeBandwidthGbps}\` Gbps per NIC)\n\n`;
+    if (res.safetyVetoes.length > 0) {
+      md += `#### 🚨 SAFETY VETOES TRIGGERED\n`;
+      for (const v of res.safetyVetoes) md += `- **${v}**\n`;
+      md += `\n`;
+    }
+    md += `#### 2. Architecture Directives\n`;
+    for (const r of res.recommendations) md += `- ${r}\n`;
+    return md;
+  }
+
+  // 2. Post-Quantum Cryptography & QKD
+  if (p.includes("quantum") || p.includes("pqc") || p.includes("kyber") || p.includes("dilithium") || p.includes("qkd") || p.includes("shor")) {
+    const res = evaluatePostQuantumSecurity({
+      keyExchangeAlgorithm: p.includes("kyber") ? "ML_KEM_1024" : "RSA_2048",
+      digitalSignatureAlgorithm: p.includes("dilithium") ? "ML_DSA_87" : "ECDSA_P256",
+      hybridClassicalPqcEnabled: true,
+      qkdLinkDistanceKm: 35,
+      measuredQberPercent: 3.2
+    });
+    let md = `### Noctis Post-Quantum Cryptographic & QKD Sentinel Engine (${res.engineId})\n`;
+    md += `**Subsystem Domain:** \`${res.domain}\` · **Standards:** ${res.standardsReferenced.join(" · ")}\n\n`;
+    md += `#### 1. Quantum Vulnerability & Algorithm Profile\n`;
+    md += `- **Key Exchange:** \`${res.calculations.keyExchangeAlgorithm}\` · **Shor Vulnerable:** \`${res.calculations.keyExchangeVulnerableToShor ? "CRITICAL YES" : "NO (POST-QUANTUM RESISTANT)"}\`\n`;
+    md += `- **Signatures:** \`${res.calculations.signatureAlgorithm}\` · **Shor Vulnerable:** \`${res.calculations.signatureVulnerableToShor ? "CRITICAL YES" : "NO (POST-QUANTUM RESISTANT)"}\`\n`;
+    md += `- **Quantum Channel QBER:** \`${res.calculations.measuredQberPercent}%\` (Shor-Preskill Ceiling: \`${res.calculations.qberShorPreskillCeilingPercent}%\`)\n\n`;
+    if (res.safetyVetoes.length > 0) {
+      md += `#### 🚨 SAFETY VETOES TRIGGERED\n`;
+      for (const v of res.safetyVetoes) md += `- **${v}**\n`;
+      md += `\n`;
+    }
+    md += `#### 2. Architecture Directives\n`;
+    for (const r of res.recommendations) md += `- ${r}\n`;
+    return md;
+  }
+
+  // 3. Industrial Control Systems / OT SCADA
+  if (p.includes("purdue") || p.includes("scada") || p.includes("plc") || p.includes("dcs") || p.includes("sis") || p.includes("sil-3") || p.includes("modbus")) {
+    const res = evaluateOtPurdueArchitectureSecurity({
+      purdueLevel: "LEVEL_1_BASIC_CONTROL",
+      idmzLevel35Enforced: !p.includes("bypass idmz"),
+      sisSafetyControllerSegregated: !p.includes("share controller"),
+      fieldbusProtocol: "MODBUS_TCP",
+      secureModbusTlsEnabled: p.includes("tls"),
+      airGapOrDataDiodePresent: true
+    });
+    let md = `### Noctis Industrial Control Systems (ICS/SCADA) Safety Engine (${res.engineId})\n`;
+    md += `**Subsystem Domain:** \`${res.domain}\` · **Standards:** ${res.standardsReferenced.join(" · ")}\n\n`;
+    md += `#### 1. Purdue Model (ISA-95 / IEC 62443) Safety Architecture\n`;
+    md += `- **Industrial DMZ (Level 3.5):** \`${res.calculations.idmzEnforced ? "ENFORCED" : "CRITICAL GAP"}\`\n`;
+    md += `- **Safety Instrumented System (SIS SIL-3):** \`${res.calculations.sisSegregated ? "PHYSICALLY SEGREGATED" : "FATAL CO-MINGLING"}\`\n\n`;
+    if (res.safetyVetoes.length > 0) {
+      md += `#### 🚨 SAFETY VETOES TRIGGERED\n`;
+      for (const v of res.safetyVetoes) md += `- **${v}**\n`;
+      md += `\n`;
+    }
+    md += `#### 2. Architecture Directives\n`;
+    for (const r of res.recommendations) md += `- ${r}\n`;
+    return md;
+  }
+
+  // 4. 5G Standalone Core & Fronthaul
+  if (p.includes("5g") || p.includes("fronthaul") || p.includes("urllc") || p.includes("o-ran") || p.includes("ptp") || p.includes("g.8275.1")) {
+    const res = evaluate5gCoreSliceAndSync({
+      sliceType: "URLLC",
+      userPlaneLatencyTargetMs: 0.8,
+      measuredUserPlaneLatencyMs: 0.85,
+      fronthaulCategory: "CATEGORY_B",
+      ptpProfile: "ITU_T_G_8275_1",
+      measuredTimeErrorNs: 65,
+      ranSplits: "SPLIT_7_2X"
+    });
+    let md = `### Noctis 5G Standalone Core & O-RAN Fronthaul Synchronization Engine (${res.engineId})\n`;
+    md += `**Subsystem Domain:** \`${res.domain}\` · **Standards:** ${res.standardsReferenced.join(" · ")}\n\n`;
+    md += `#### 1. 3GPP Rel 18 Slicing & Sub-Nanosecond Telemetry\n`;
+    md += `- **Network Slice:** \`${res.calculations.sliceType}\` · **URLLC Latency Target:** \`${res.calculations.latencyTargetMs} ms\`\n`;
+    md += `- **O-RAN Sync Profile:** \`${res.calculations.ptpProfile}\` · **Measured Time Error:** \`${res.calculations.measuredTimeErrorNs} ns\` (Max: \`${res.calculations.maxAllowedTimeErrorNs} ns\`)\n\n`;
+    if (res.safetyVetoes.length > 0) {
+      md += `#### 🚨 SAFETY VETOES TRIGGERED\n`;
+      for (const v of res.safetyVetoes) md += `- **${v}**\n`;
+      md += `\n`;
+    }
+    md += `#### 2. Architecture Directives\n`;
+    for (const r of res.recommendations) md += `- ${r}\n`;
+    return md;
+  }
+
+  // 5. Zero-Knowledge Proofs & Verifiable Computing
+  if (p.includes("zk") || p.includes("snark") || p.includes("stark") || p.includes("groth16") || p.includes("plonk") || p.includes("fri")) {
+    const res = evaluateZkProofSoundness({
+      proofSystem: p.includes("stark") ? "ZK_STARK_FRI" : p.includes("plonk") ? "PLONK" : "GROTH16",
+      trustedSetupType: p.includes("stark") ? "TRANSPARENT_NO_SETUP" : "POWERS_OF_TAU_MULTI_PARTY",
+      trustedSetupParticipantCount: 200,
+      plonkPermutationCheckEnforced: true,
+      circuitConstraintsCount: 250000
+    });
+    let md = `### Noctis Zero-Knowledge Cryptographic Soundness Engine (${res.engineId})\n`;
+    md += `**Subsystem Domain:** \`${res.domain}\` · **Standards:** ${res.standardsReferenced.join(" · ")}\n\n`;
+    md += `#### 1. Cryptographic Soundness & Proof Verification\n`;
+    md += `- **Proof System:** \`${res.calculations.proofSystem}\` · **Quantum Resistant:** \`${res.calculations.quantumResistant ? "YES" : "NO (BROKEN BY SHOR)"}\`\n`;
+    md += `- **Setup Category:** \`${res.calculations.trustedSetupType}\`\n\n`;
+    if (res.safetyVetoes.length > 0) {
+      md += `#### 🚨 SAFETY VETOES TRIGGERED\n`;
+      for (const v of res.safetyVetoes) md += `- **${v}**\n`;
+      md += `\n`;
+    }
+    md += `#### 2. Architecture Directives\n`;
+    for (const r of res.recommendations) md += `- ${r}\n`;
+    return md;
+  }
+
+  return null;
+}
+
