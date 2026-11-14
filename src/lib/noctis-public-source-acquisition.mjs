@@ -14,6 +14,7 @@ const COMMIT = /^[a-f0-9]{40}$/i;
 const MIME_TYPES = new Set(["text/plain", "application/json", "application/x-ndjson", "application/jsonl"]);
 export const NOCTIS_MAX_SOURCE_BYTES = 2 * 1024 * 1024;
 
+/** @param {unknown} value @returns {URL|null} */
 function sourceUrl(value) {
   if (typeof value !== "string" || value.length > 800) return null;
   try {
@@ -34,13 +35,14 @@ function sourceUrl(value) {
  * @param {unknown} manifest
  */
 export function planNoctisPublicSourceAcquisition(manifest) {
-  if (!manifest || typeof manifest !== "object" || !Array.isArray(manifest.sources) ||
-      manifest.sources.length === 0 || manifest.sources.length > 8) {
+  const supplied = /** @type {{sources?: any[]}|null} */ (manifest);
+  if (!supplied || !Array.isArray(supplied.sources) ||
+      supplied.sources.length === 0 || supplied.sources.length > 8) {
     throw new Error("Expected 1-8 separately approved public sources.");
   }
   const planned = [];
   const ids = new Set();
-  for (const src of manifest.sources) {
+  for (const src of supplied.sources) {
     if (!src || !SOURCE_ID.test(src.id || "") || ids.has(src.id)) {
       throw new Error("Source ID missing, unsafe, or repeated.");
     }
