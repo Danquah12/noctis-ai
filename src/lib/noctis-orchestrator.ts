@@ -1,5 +1,5 @@
-import { hardProblem } from "@/lib/worked-figures";
-import { needsCurrent } from "@/lib/noctis-checks";
+import { hardProblem } from "./worked-figures.ts";
+import { needsCurrent } from "./noctis-checks.ts";
 
 export type VibeIntent = "arithmetic" | "engineering" | "science" | "bible" | "cyber" | "current" | "teach" | "general";
 export type VibeTool = "calculator" | "reason" | "library" | "web" | "specialist";
@@ -40,7 +40,7 @@ export function routeQuestion(question: string): VibeRoute {
   const arithmetic = /(?:^|\s)[\d,.]+\s*[×x*+\-/÷]\s*[\d,.]+/.test(question) || /\b(calculate|compute|evaluate)\b/i.test(question);
   const engineering = /\b(design|size|sizing|strategy|resilien|survival|microgrid|inverter|battery|solar|peak demand|outage)\b/i.test(question) && /\b(kw|mw|gw|tw|kwh|mwh|gwh|twh|household|load|battery|solar|inverter|budget)\b/i.test(question);
   const bible = /\b(bible|verse|scripture|psalm|gospel|ephesians|genesis|matthew)\b/i.test(question);
-  const cyber = /\b(cve-\d|vulnerab|malware|phish|exploit)\b/i.test(question);
+  const cyber = /\b(?:cve-\d{4}-\d{4,7}|vulnerab\w*|malware|phish\w*|exploit\w*)\b/i.test(question);
   const science = /\b(hypothesis|experiment|molecule|physics|chemist|biology|gravity)\b/i.test(question);
   const current = needsCurrent(question) || /\b(today|current|latest|who is the|price|unemployment)\b/i.test(question);
   const teach = /\b(teach me|quiz me|practice)\b/i.test(question);
@@ -61,4 +61,17 @@ export function routeQuestion(question: string): VibeRoute {
   if (current) return { intent: "current", tool: "web", verify: false, note: "Route: current fact. Use a retrieved source. If none was opened, say so." };
   if (teach) return { intent: "teach", tool: "specialist", verify: false, note: "Route: teaching. Explain, then one check. Do not only search." };
   return { intent: "general", tool: "reason", verify: false, note: "Route: general. Answer the question. Do not add a tool result that was not computed." };
+}
+
+/**
+ * Converts the deterministic intent classification into a model instruction.
+ * This is guidance only: it never claims a tool was executed or a source was opened.
+ */
+export function buildRouteDirective(question: string): string {
+  const route = routeQuestion(question);
+  return [
+    `Orchestration decision: intent=${route.intent}; preferred_tool=${route.tool}; verification_required=${route.verify}.`,
+    route.note,
+    "This is a routing recommendation, not evidence that a tool ran. Never claim a tool result unless the corresponding integration actually returned it.",
+  ].join(" ");
 }

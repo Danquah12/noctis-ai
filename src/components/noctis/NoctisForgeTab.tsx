@@ -496,10 +496,10 @@ export function NoctisForgeTab({ onSendToChat, onClose, onOpenInCanvas }: Noctis
       .then((data) => {
         const text = data?.text || "";
         // Match all codeblocks robustly across Windows CRLF and unix LF, with any language tag
-        const allCodeBlocks = Array.from(text.matchAll(/```(?:[a-zA-Z0-9_-]+)?\r?\n([\s\S]*?)```/g));
+        const allCodeBlocks: RegExpExecArray[] = Array.from(text.matchAll(/```(?:[a-zA-Z0-9_-]+)?\r?\n([\s\S]*?)```/g));
         
         // Find best typescript/javascript or full code block
-        const tsBlocks = allCodeBlocks.filter((b) => /import\s|export\s|function\s|class\s|const\s|interface\s/i.test(b[1]));
+        const tsBlocks = allCodeBlocks.filter((b) => /import\s|export\s|function\s|class\s|const\s|interface\s/i.test(b[1] ?? ""));
         let generatedCode = (tsBlocks[0] || allCodeBlocks[0])?.[1]?.trim();
         let generatedTests = (tsBlocks[1] || allCodeBlocks[1])?.[1]?.trim();
 

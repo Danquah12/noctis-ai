@@ -990,7 +990,7 @@ interface CanonicalBookExegeticalProfile {
 function getCanonicalBookProfile(targetPassage: string, genre: BibleTemplateSelection["detectedGenre"]): CanonicalBookExegeticalProfile {
   const p = targetPassage.toLowerCase();
 
-  if (/\b(john\s*3|john\s*1|john\s*10|john\s*14|john\s*15|john\s*20|matthew|mark|luke|john|acts)\b/i.test(p) || genre === "Gospel_Parable") {
+  if (/\b(john\s*3|john\s*1|john\s*10|john\s*14|john\s*15|john\s*20|matthew|mark|luke|john|acts)\b/i.test(p) || genre === "Historical_Narrative_Gospel") {
     return {
       divisionTitle: "Division 5 — The Gospels & Acts (The Person, Ministry, Death & Resurrection of Jesus the Messiah)",
       historicalContext:

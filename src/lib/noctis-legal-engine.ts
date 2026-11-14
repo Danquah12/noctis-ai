@@ -592,7 +592,7 @@ Potential Regulatory Exposure:
 
 export function buildAdministrativeLawDossier(): string {
   const preamble = formatAttorneyPreamble(
-    "APPELLATE_ADVOCACY",
+    "LITIGATION_ADVOCACY",
     "Judicial Review of Federal Agency Action — Administrative Procedure Act § 706 Challenge",
     "Supreme Court of the United States · Title 5 U.S.C. · D.C. Circuit Jurisprudence"
   );

@@ -139,6 +139,8 @@ interface DiagnosticConditionRule {
   isMustNotMiss: boolean;
   requiredSymptomMatches: RegExp[];
   bonusSymptomMatches: { regex: RegExp; points: number }[];
+  supportingEvidenceBase?: string[];
+  goldStandardTesting?: string[];
   penaltySymptomMatches: { regex: RegExp; points: number }[];
   clinicalRationaleTemplate: string;
   goldStandardDiagnosticTests: string[];
@@ -181,6 +183,14 @@ const CLINICAL_DIAGNOSTIC_RULES: DiagnosticConditionRule[] = [
       "Serum beta-hydroxybutyrate and urine ketones",
       "STAT serum potassium (mandatory safety gate prior to IV insulin)"
     ],
+    clinicalRationaleTemplate: "Evaluate suspected DKA using documented hyperglycemia, ketonemia, metabolic acidosis and precipitating factors; do not infer diagnosis without confirmatory laboratory evidence.",
+    goldStandardDiagnosticTests: [
+      "STAT Comprehensive Metabolic Panel with anion gap",
+      "Venous or arterial blood gas",
+      "Serum beta-hydroxybutyrate and urine ketones",
+      "STAT serum potassium before IV insulin"
+    ],
+    questionsForPhysician: ["Has the patient missed recent insulin doses or experienced an acute infection or illness?"],
     discriminativeQuestion: {
       promptText: "Has the patient missed any recent insulin doses or experienced an acute infection/illness?",
       clinicalObjective: "Identify precipitating triggers for acute metabolic decompensation (omission, infection, pump failure)",
@@ -1412,12 +1422,11 @@ To achieve rapid, guideline-directed confirmation or exclusion without cognitive
   } else if (!isAbdominal && !isStroke) {
     // DYNAMIC GENERAL PRESENTATION SECTION (Avoids ACS Fallback)
     const vitalsList: string[] = [];
-    if (dossier.patientData.vitals.bloodPressure) vitalsList.push(`BP: ${dossier.patientData.vitals.bloodPressure}`);
-    else if (dossier.patientData.vitals.systolicBp) vitalsList.push(`BP: ${dossier.patientData.vitals.systolicBp}/${dossier.patientData.vitals.diastolicBp} mmHg`);
+    if (dossier.patientData.vitals.systolicBp !== undefined) vitalsList.push(`BP: ${dossier.patientData.vitals.systolicBp}/${dossier.patientData.vitals.diastolicBp ?? "not recorded"} mmHg`);
     if (dossier.patientData.vitals.heartRate) vitalsList.push(`HR: ${dossier.patientData.vitals.heartRate} bpm`);
     if (dossier.patientData.vitals.respiratoryRate) vitalsList.push(`RR: ${dossier.patientData.vitals.respiratoryRate}/min`);
     if (dossier.patientData.vitals.temperatureC) vitalsList.push(`Temp: ${dossier.patientData.vitals.temperatureC}°C`);
-    if (dossier.patientData.vitals.oxygenSaturation) vitalsList.push(`SpO2: ${dossier.patientData.vitals.oxygenSaturation}%`);
+    if (dossier.patientData.vitals.spo2) vitalsList.push(`SpO2: ${dossier.patientData.vitals.spo2}%`);
     if (dossier.patientData.vitals.bloodGlucoseMgDl) vitalsList.push(`Glucose: ${dossier.patientData.vitals.bloodGlucoseMgDl} mg/dL`);
 
     sections.push(`## 1. Clinical Assessment of the Presentation

@@ -347,6 +347,26 @@ function turnsForApi(
   return list;
 }
 
+
+// Explicitly unavailable until a real video-generation provider is connected.
+async function startImagine(_input: { data: { prompt: string; words: string; kind?: string | null; image?: string } }): Promise<{ error: string }> {
+  return { error: "Film generation is not connected to a provider in this build." };
+}
+
+async function readImagine(_input: { data: { requestId: string } }): Promise<{ status: "failed"; error: string }> {
+  return { status: "failed", error: "Film generation is not connected to a provider in this build." };
+}
+
+async function loadImg(src: string): Promise<HTMLImageElement | null> {
+  if (typeof window === "undefined") return null;
+  return new Promise((resolve) => {
+    const image = document.createElement("img");
+    image.onload = () => resolve(image);
+    image.onerror = () => resolve(null);
+    image.src = src;
+  });
+}
+
 function userFace(turn: Turn) {
   const files = [...turn.content.matchAll(/^--- (.+?) ---$/gm)].map((hit) => hit[1] || "File");
   const shots = [...turn.content.matchAll(/\[Image: ([^\]]+)\]/g)].map((hit) => hit[1] || "Image");
@@ -359,7 +379,7 @@ function sayAloud(text: string): boolean {
   try {
     const brainConfig = getBrainConfig();
     const activeBrain = getActiveKeyAndModel(brainConfig);
-    const userOpenAiKey = activeBrain.provider === "openai" ? activeBrain.key : "";
+    const userOpenAiKey = activeBrain.provider === "openai" ? activeBrain.apiKey : "";
     void speakNoctisVoice(text, "alloy", { apiKey: userOpenAiKey });
     return true;
   } catch {
@@ -3479,7 +3499,7 @@ export function NoctisDesk() {
       case "war_room": setWarRoomModalOpen(true); break;
       case "digital_twin": setDigitalTwinModalOpen(true); break;
       case "holodeck": setHolodeckModalOpen(true); break;
-      case "auto_remediation": setAutoRemediationModalOpen(true); break;
+      case "auto_remediation": setRemediationModalOpen(true); break;
       case "defense" as any: setDefenseModalOpen(true); break;
       case "science" as any: setScienceModalOpen(true); break;
       case "pqc": setPqcModalOpen(true); break;
@@ -3528,7 +3548,7 @@ export function NoctisDesk() {
           desk: "chat",
           skill: "write",
           think: false,
-          speaks: "English",
+          language: "English",
         },
       });
       const picked = pickAnswer(res);
@@ -4659,7 +4679,7 @@ export function NoctisDesk() {
       try {
         const brainConfig = getBrainConfig();
         const activeBrain = getActiveKeyAndModel(brainConfig);
-        const userOpenAiKey = activeBrain.provider === "openai" ? activeBrain.key : "";
+        const userOpenAiKey = activeBrain.provider === "openai" ? activeBrain.apiKey : "";
         await speakNoctisVoice(answer, voicePersona, {
           apiKey: userOpenAiKey,
         });
@@ -5077,7 +5097,7 @@ export function NoctisDesk() {
     }
     if (plugin.id === "sovereign_voice") {
       setDesk("chat");
-      void startVoice();
+      setError("The voice-session plugin is not connected to a voice handler in this build.");
       return;
     }
     setExecutorPlugin(plugin);
@@ -5212,7 +5232,7 @@ export function NoctisDesk() {
       ),
       action: () => {
         setAddOpen(false);
-        setSkill("news");
+        setSkill("search");
         setActivePlugin("web_search");
         box.current?.focus();
       },
@@ -5478,7 +5498,6 @@ export function NoctisDesk() {
       ),
       action: () => {
         setAddOpen(false);
-        setActivePlugin("report_validator");
         if (!draft.trim()) setDraft("Execute the Noctis Report Integrity Validator (NOCTIS-VALIDATOR-001) on the canonical findings");
         box.current?.focus();
       },
@@ -7101,7 +7120,7 @@ export function NoctisDesk() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => { setMenu(false); setAutoRemediationModalOpen(true); }}
+                    onClick={() => { setMenu(false); setRemediationModalOpen(true); }}
                     className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
                   >
                     <Wrench className="size-3.5 text-purple-400 shrink-0" />
@@ -7120,7 +7139,7 @@ export function NoctisDesk() {
             </div>
 
             <div className="flex items-center justify-between px-3 pb-1 border-t border-white/5 pt-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">{shelf === "pictures" ? "Pictures" : "Recent conversations"}</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">{"Recent conversations"}</p>
               {shelf === "chats" && listed.length ? (
                 <button type="button" onClick={clearHistory} className="text-xs text-zinc-500 hover:text-zinc-100">
                   Clear
@@ -7186,7 +7205,7 @@ export function NoctisDesk() {
               })
             ) : (
               <p className="px-3 py-2 text-sm text-zinc-500">
-                {shelf === "pictures" ? "No picture chats yet." : query.trim() ? "No matches." : "No chats yet."}
+                {query.trim() ? "No matches." : "No chats yet."}
               </p>
             )}
             </div>
@@ -7354,7 +7373,7 @@ export function NoctisDesk() {
             </div>
             <div className="flex flex-1 flex-col items-center justify-center px-4 py-6 overflow-y-auto">
               <NoctisVoiceVisualizer
-                phase={voicePhase}
+                phase={voicePhase === "think" ? "transcribe" : voicePhase}
                 spokenText={voiceSaid}
                 responseText={voiceReply}
                 audioLevel={voiceAudioLevel}
@@ -8040,7 +8059,7 @@ export function NoctisDesk() {
                                     const rawAnswer = turn.content;
                                     const brainConfig = getBrainConfig();
                                     const activeBrain = getActiveKeyAndModel(brainConfig);
-                                    const userOpenAiKey = activeBrain.provider === "openai" ? activeBrain.key : "";
+                                    const userOpenAiKey = activeBrain.provider === "openai" ? activeBrain.apiKey : "";
                                     void speakNoctisVoice(rawAnswer, voicePersona, {
                                       apiKey: userOpenAiKey,
                                       onStart: () => setReadingTurnIndex(index),

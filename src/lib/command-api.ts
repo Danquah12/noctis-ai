@@ -327,8 +327,6 @@ export const registerClinicMember = createServerFn({ method: "POST" })
     const { recordActivity } = await import("@/lib/activity.server");
     await recordActivity({
       userId: saved[0].id,
-      who: display,
-      email: saved[0].email,
       action: "account",
       detail: `Created account (${saved[0].email})`,
       surface: "clinic",
@@ -360,17 +358,18 @@ export const rememberSignedInAccount = createServerFn({ method: "POST" })
     const { recordActivity } = await import("@/lib/activity.server");
     await recordActivity({
       userId: who.id,
-      who: name,
-      email: who.email,
       action: "sign-in",
       detail: `Signed in (${who.email})`,
       surface: "clinic",
     }).catch(() => undefined);
     try {
       const { setCookie } = await import("@tanstack/react-start/server");
-      const { MEMBER_COOKIE, signMemberCookie } = await import("@/lib/auth/member-cookie.server");
-      const val = signMemberCookie({ id: who.id, email: who.email, name });
-      setCookie(MEMBER_COOKIE, val, {
+      const { buildMemberSetCookie } = await import("@/lib/auth/member-cookie.server");
+      const cookiePair = buildMemberSetCookie({ id: who.id, email: who.email, name }).split(";", 1)[0];
+      const separator = cookiePair.indexOf("=");
+      const cookieName = cookiePair.slice(0, separator);
+      const val = cookiePair.slice(separator + 1);
+      setCookie(cookieName, val, {
         path: "/",
         httpOnly: true,
         secure: true,

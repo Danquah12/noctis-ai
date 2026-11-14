@@ -456,7 +456,7 @@ export function NoctisPatientDiagnosisModal({
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(bundle, null, 2));
     const downloadAnchor = document.createElement("a");
     downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", `noctis-fhir-r4-${completeDossier.dossierId.toLowerCase()}.json`);
+    downloadAnchor.setAttribute("download", `noctis-fhir-r4-${completeDossier.encounterId.toLowerCase()}.json`);
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
@@ -1134,24 +1134,24 @@ Please provide comprehensive physician-grade clinical decision support:
                       <div className="flex items-start justify-between gap-3">
                         <div className="space-y-1">
                           <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-blue-500/10 text-blue-300 border border-blue-500/20">
-                            Targets: {q.targetCondition}
+                            Targets: {q.associatedDifferential}
                           </span>
                           <h4 className="text-sm font-semibold text-white pt-1">
-                            {q.questionText}
+                            {q.promptText}
                           </h4>
                           <p className="text-xs text-neutral-400">
-                            {q.discriminativeRationale}
+                            {q.clinicalObjective}
                           </p>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-2 pt-1">
-                        {q.options.map((opt) => {
+                        {(q.options ?? []).map((opt) => {
                           const isSelected = currentAnswer === opt;
                           return (
                             <button
                               key={opt}
-                              onClick={() => handleAnswerAdaptive(q.questionId, opt, q.questionText)}
+                              onClick={() => handleAnswerAdaptive(q.questionId, opt, q.promptText)}
                               className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                                 isSelected
                                   ? "bg-blue-600 border-blue-500 text-white"
