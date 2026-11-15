@@ -7,11 +7,21 @@
  * ============================================================================
  */
 
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import { executeContinuousTrainingEpoch, formatContinuousTrainingMarkdown } from "../src/lib/noctis-continuous-trainer.ts";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const args = process.argv.slice(2);
 const isRemote = args.includes("--remote");
-const isOnce = args.includes("--once") || !args.includes("--loop");
+const isOnce = args.includes("--once");
+const isLoop = args.includes("--loop") || !isOnce;
+const intervalArgIdx = args.indexOf("--interval");
+const intervalSec = intervalArgIdx !== -1 && args[intervalArgIdx + 1] ? parseInt(args[intervalArgIdx + 1], 10) : 30;
+const statusFilePath = path.join(__dirname, "..", "data", "continuous-daemon-live.json");
 const remoteUrl = process.env.NOCTIS_ENDPOINT || "https://www.dstrike.app/api/noctis?continuous_train=verbose";
 
 const c = {
@@ -54,21 +64,51 @@ async function runEpoch() {
     const summary = executeContinuousTrainingEpoch({ verbose: true });
     console.log(`\n${c.bold}${c.green}--- EPOCH AUDIT COMPLETE ---${c.reset}`);
     console.log(`Epoch ID:            ${c.bold}${summary.epochId}${c.reset}`);
-    console.log(`Domains Audited:     ${c.bold}${summary.totalDomainsAudited} / 27${c.reset}`);
+    console.log(`Domains Audited:     ${c.bold}${summary.totalDomainsAudited} domains${c.reset}`);
     console.log(`Scenarios Evaluated: ${c.bold}${summary.totalScenariosEvaluated}${c.reset}`);
     console.log(`Invariants Passed:   ${c.bold}${summary.totalInvariantsVerified} / ${summary.totalScenariosEvaluated}${c.reset}`);
     console.log(`Safety Violations:   ${c.bold}${summary.safetyViolationsCount === 0 ? c.green + "0 (ZERO VIOLATIONS)" : c.red + summary.safetyViolationsCount}${c.reset}`);
     console.log(`Accuracy Score:      ${c.bold}${c.green}${summary.accuracyScorePercent}%${c.reset}`);
     console.log(`Total Execution:     ${c.bold}${summary.totalDurationMs}ms${c.reset}`);
     console.log(`Next Scheduled:      ${c.dim}${summary.nextScheduledEpochTime}${c.reset}\n`);
+
+    let cumulativeEpochs = 1;
+    let totalEvaluatedSoFar = summary.totalScenariosEvaluated;
+    if (fs.existsSync(statusFilePath)) {
+      try {
+        const prev = JSON.parse(fs.readFileSync(statusFilePath, "utf8"));
+        cumulativeEpochs = (prev.cumulativeEpochs || 0) + 1;
+        totalEvaluatedSoFar = (prev.totalEvaluatedSoFar || 0) + summary.totalScenariosEvaluated;
+      } catch {}
+    }
+    const liveStatus = {
+      daemonState: "RUNNING_AUTONOMOUS",
+      cumulativeEpochs,
+      totalEvaluatedSoFar,
+      latestEpochId: summary.epochId,
+      timestamp: new Date().toISOString(),
+      domainsAudited: summary.totalDomainsAudited,
+      scenariosPerEpoch: summary.totalScenariosEvaluated,
+      invariantsVerified: summary.totalInvariantsVerified,
+      accuracyScorePercent: summary.accuracyScorePercent,
+      safetyViolations: summary.safetyViolationsCount,
+      intervalSeconds: intervalSec
+    };
+    fs.writeFileSync(statusFilePath, JSON.stringify(liveStatus, null, 2));
   }
 }
 
 async function main() {
   await runEpoch();
-  if (!isOnce) {
-    console.log(`${c.yellow}[DAEMON] Standing by for next recurring epoch (every 15 min)...${c.reset}`);
-    setInterval(runEpoch, 15 * 60 * 1000);
+  if (isLoop) {
+    console.log(`${c.yellow}[DAEMON] Standing by for next recurring epoch (every ${intervalSec}s) until asked to stop...${c.reset}`);
+    setInterval(async () => {
+      try {
+        await runEpoch();
+      } catch (err) {
+        console.error(`${c.red}[DAEMON ERROR]${c.reset}`, err);
+      }
+    }, intervalSec * 1000);
   }
 }
 
