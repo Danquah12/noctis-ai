@@ -140,6 +140,83 @@ def load_noctis_data(base_dir):
         })
 
     print(f"[+] Loaded {len(engineering_challenges)} multidisciplinary engineering challenges")
+
+    # 4. Ingest Complete 6-Step RMF / NIST SP 800-37 Rev. 2 Lifecycle Training Corpus
+    rmf_lifecycle_scenarios = [
+        # Step 0: Prepare
+        ("RMF-STEP-001", "RMF Step 0 (Prepare) - Organizational Risk Governance & Key Roles",
+         "A new defense cloud program establishes its RMF governance framework. What key stakeholder roles are mandatory, how must independence of the Security Control Assessor (SCA) be enforced, and what artifact establishes risk tolerance?",
+         "Mandatory roles: Authorizing Official (AO), Information System Security Officer (ISSO), Information System Security Manager (ISSM), and independent Security Control Assessor (SCA). Per NIST SP 800-37 Rev. 2, the SCA must be organizationally independent of system development to eliminate conflicts of interest. Risk tolerance is codified via the Risk Management Strategy (RMS) and System Security Plan (SSP) governance boundary."),
+        
+        ("RMF-STEP-002", "RMF Step 0 (Prepare) - System Boundary Definition & Asset Inventory",
+         "How is the authorization boundary defined under NIST SP 800-37 Rev. 2 for a hybrid Kubernetes cluster consuming FedRAMP High CSP services, and what inventory completeness threshold is mandated?",
+         "The authorization boundary encompasses all hardware, software, container pods, microservices, and management control planes under direct system ownership. External CSP services (IaaS/PaaS) are classified as leveraged/inherited common controls. Inventory completeness mandates 100% accounting of all active endpoints, internal IP space, container base images, and CI/CD pipeline infrastructure with zero unmapped shadow IT."),
+
+        # Step 1: Categorize
+        ("RMF-STEP-003", "RMF Step 1 (Categorize) - FIPS 199 High-Water Mark & ITAR Impact",
+         "A military aerospace mission system processes CUI Specified and ITAR technical defense designs. If confidentiality impact is High, integrity is Moderate, and availability is Low, what is the system's overarching FIPS 199 security categorization, and what special overlay applies?",
+         "Under FIPS 199, the security categorization follows the High-Water Mark principle: SC = {(Confidentiality, HIGH), (Integrity, MODERATE), (Availability, LOW)} -> Overarching FIPS 199 Categorization is HIGH. Because ITAR technical data and defense capabilities are involved, the system is designated a National Security System (NSS) requiring the CNSSI 1253 NSS Overlay with heightened non-repudiation and cryptographic segregation."),
+
+        ("RMF-STEP-004", "RMF Step 1 (Categorize) - NIST SP 800-60 Information Type Mapping",
+         "How does an agency systematically identify security categories for government healthcare and financial management workloads under NIST SP 800-60 Vol. II?",
+         "NIST SP 800-60 Vol. II maps government missions to information types (e.g., C.2.4.1 Health Care Administration, C.2.2.1 Financial Management). Provisional CIA impacts are assigned based on statutory impact (HIPAA, Privacy Act, Federal Financial Management Improvement Act). Workloads with ePHI mandate Confidentiality: HIGH, Integrity: HIGH, Availability: MODERATE, escalating base controls to NIST SP 800-53 High baseline."),
+
+        # Step 2: Select
+        ("RMF-STEP-005", "RMF Step 2 (Select) - NIST SP 800-53 Rev. 5 Control Baseline & FedRAMP High Overlay",
+         "What is the baseline allocation process for a FIPS 199 High system on NIST SP 800-53 Rev. 5, and how are inherited common controls vs customer responsibilities partitioned in FedRAMP High?",
+         "Selection initializes with the NIST SP 800-53 Rev. 5 High Baseline (400+ controls and enhancements). In FedRAMP High, physical and environmental (PE), maintenance (MA), and underlying hypervisor infrastructure (SC-7, MP-6) are documented as Inherited Common Controls from the CSP. Customer responsibilities cover identity/MFA (IA-2), access control (AC-2/AC-3/AC-6), data encryption key management (SC-12/SC-13/SC-28), and audit logging (AU-2/AU-6/AU-12) via a Customer Responsibility Matrix (CRM)."),
+
+        ("RMF-STEP-006", "RMF Step 2 (Select) - Tailoring & Compensating Controls",
+         "When can a NIST SP 800-53 Rev. 5 control be tailored out or substituted with a compensating control, and what documentation is required?",
+         "Tailoring is permitted when specific operational environments make a control technically infeasible or when risk is mitigated by an equivalent countermeasure. A formal Compensating Control Justification must be documented in the SSP, demonstrating that the compensating mechanism provides equal or greater protection, does not introduce new unmitigated risks, and has been approved by the Authorizing Official (AO)."),
+
+        # Step 3: Implement
+        ("RMF-STEP-007", "RMF Step 3 (Implement) - STIG Hardening & OSCAL SSP Representation",
+         "How are NIST SP 800-53 Rev. 5 security controls implemented in cloud infrastructure, and how does NIST OSCAL transform compliance documentation?",
+         "Implementation translates control requirements into technical configurations (DISA STIGs, CIS Benchmarks, Kubernetes NSA/CISA hardening) and automated Infrastructure as Code (Terraform/Ansible). NIST Open Security Controls Assessment Language (OSCAL) replaces static Word/Excel SSPs with machine-readable XML/JSON/YAML models, binding control implementation statements directly to component definitions and automated compliance validation tests."),
+
+        ("RMF-STEP-008", "RMF Step 3 (Implement) - Zero Trust Architecture (NIST SP 800-207) Integration",
+         "How does RMF Step 3 enforce Zero Trust principles across access enforcement (AC-3) and identification/authentication (IA-2)?",
+         "Under NIST SP 800-207, implicit perimeter trust is eliminated. Implementation mandates: (1) Phishing-resistant FIDO2/WebAuthn or CAC/PIV MFA on every request (IA-2), (2) Dynamic context-aware policy enforcement points (PEPs) intercepting all API traffic (AC-3), (3) Microsegmentation and mTLS encryption in transit (SC-8/SC-13), and (4) Continuous behavioral telemetry feeding the Policy Decision Point (PDP)."),
+
+        # Step 4: Assess
+        ("RMF-STEP-009", "RMF Step 4 (Assess) - NIST SP 800-53A Rev. 5 Assessment Methods",
+         "Detail the three mandatory assessment methods under NIST SP 800-53A Rev. 5: Examine, Interview, and Test. How are they applied during a 3PAO security assessment?",
+         "1. EXAMINE: Rigorous review of technical artifacts, architectural diagrams, STIG benchmark scan outputs, GitOps commits, and cryptographic certificates. 2. INTERVIEW: Structured technical inquiry with ISSOs, cloud architects, and SecOps engineers to verify operational control adherence. 3. TEST: Active execution of vulnerability scanners, pen-testing, authenticated configuration audits, and automated fault-injection to empirically verify control effectiveness."),
+
+        ("RMF-STEP-010", "RMF Step 4 (Assess) - Security Assessment Report (SAR) & Risk Determination",
+         "What constitutes a Security Assessment Report (SAR), and what threshold of unmitigated findings prevents an SCA recommendation for authorization?",
+         "The SAR documents all findings, vulnerabilities, and control deficiencies discovered during assessment. Unmitigated CAT I (Critical/High) vulnerabilities, open plain-text credential exposures, or absent multi-factor authentication on privileged interfaces preclude a favorable SCA authorization recommendation until fully remediated or mitigated by an approved compensating control."),
+
+        # Step 5: Authorize
+        ("RMF-STEP-011", "RMF Step 5 (Authorize) - Authorizing Official (AO) Package & Continuous ATO (cATO)",
+         "What artifacts comprise the formal authorization package submitted to the AO in eMASS, and what are the three mandatory pillars required to grant a DoD Continuous ATO (cATO)?",
+         "The eMASS authorization package requires: (1) System Security Plan (SSP), (2) Security Assessment Report (SAR), and (3) Plan of Action & Milestones (POA&M). For a DoD continuous ATO (cATO), Memo mandates 3 distinct pillars: Pillar 1: Continuous Automated DevSecOps Testing (SAST/DAST/SCA gated CI/CD), Pillar 2: Active Continuous Monitoring (real-time telemetry and posture feeds to eMASS/CSAM), and Pillar 3: Active Cybersecurity Service Provider (CSSP) SLA with 24/7 Tier-3 SOC monitoring."),
+
+        ("RMF-STEP-012", "RMF Step 5 (Authorize) - Risk Acceptance vs Authorization Denial",
+         "What legal and statutory accountability does an Authorizing Official (AO) incur when signing an ATO, and under what conditions is an ATO Denied (DATO)?",
+         "The AO assumes explicit statutory accountability under FISMA (44 U.S.C. § 3554) for accepting the operational risk to agency missions, assets, and individuals. An ATO is Denied (DATO) or revoked if critical unmitigated vulnerabilities threaten national security, if data exfiltration risks exceed agency risk tolerance, or if the system fails to demonstrate baseline compliance with non-negotiable statutory mandates."),
+
+        # Step 6: Monitor
+        ("RMF-STEP-013", "RMF Step 6 (Monitor) - Statutory POA&M Remediation SLAs",
+         "What are the non-negotiable statutory POA&M remediation timelines for Critical, High, Moderate, and Low findings under federal RMF guidelines, and what occurs upon an SLA breach?",
+         "Statutory POA&M SLAs: CRITICAL: <= 15 calendar days; HIGH: <= 30 calendar days; MODERATE: <= 90 calendar days; LOW: <= 180 calendar days. Upon an unresolved High or Critical SLA breach, the vulnerability is escalated to the Authorizing Official, requiring immediate executive review, compensating control deployment, or initiation of system operational shutdown/ATO revocation."),
+
+        ("RMF-STEP-014", "RMF Step 6 (Monitor) - Continuous Monitoring (ConMon) & Re-authorization Triggers",
+         "What operational events trigger an out-of-cycle re-authorization or major RMF reassessment during Step 6 (Continuous Monitoring)?",
+         "Re-authorization is triggered by: (1) Significant architectural changes (major cloud migration, network boundary overhaul), (2) Introduction of new high-risk information types (e.g. upgrading to classified or ITAR data), (3) Major security incident or catastrophic data breach, (4) Systematic failure of continuous monitoring controls, or (5) Statutory 3-year recurring review cycle if not operating under an approved cATO.")
+    ]
+
+    for code, title, desc, sol in rmf_lifecycle_scenarios:
+        prompt = f"RMF Regulatory Standard {code}: {title}\n{desc}\nProvide authoritative compliance evaluation, statutory references, and risk determination."
+        completion = f"### Authoritative RMF Lifecycle Assessment for {code}: {title}\n\n{sol}\n\n**Regulatory & Statutory Invariants**: Enforced under NIST SP 800-37 Rev. 2, NIST SP 800-53 Rev. 5, FIPS 199/200, FedRAMP High, DoD cATO Memo, and FISMA statutory compliance mandates."
+        data.append({
+            "prompt": prompt,
+            "completion": completion,
+            "category": "RMF_LIFECYCLE_COMPLIANCE"
+        })
+
+    print(f"[+] Loaded {len(rmf_lifecycle_scenarios)} authoritative RMF lifecycle compliance scenarios")
     print(f"[+] Total consolidated training pairs: {len(data)}")
     return data
 
