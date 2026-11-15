@@ -16,14 +16,17 @@ const ID = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,79}$/;
 const SOURCE_STATUS = "ACQUIRED_UNREVIEWED_CONTENT_NOT_TRAINING_DATA";
 const MAX_CANDIDATES = 2000;
 
+/** @param {Uint8Array} bytes */
 function sha256(bytes) {
   return createHash("sha256").update(bytes).digest("hex");
 }
+/** @param {unknown} value */
 function validDate(value) {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const d = new Date(value + "T00:00:00Z");
   return Number.isFinite(d.getTime()) && d.toISOString().slice(0, 10) === value;
 }
+/** @param {unknown} ok @param {string} code */
 function requireCheck(ok, code) {
   if (!ok) throw new Error("Reviewed source bridge blocked: " + code);
 }
@@ -44,7 +47,7 @@ export function prepareNoctisReviewedPublicBundle(bundle, options = {}) {
     sourceBytesById.size === plan.sources.length, "source_files_missing_or_extra");
   requireCheck(Array.isArray(candidates) &&
     candidates.length > 0 && candidates.length <= MAX_CANDIDATES, "reviewed_candidates_required");
-  requireCheck(plan.sources.length === new Set(plan.sources.map(s => s.id)).size, "source_ids_repeated");
+  requireCheck(plan.sources.length === new Set(plan.sources.map((/** @type {any} */ s) => s.id)).size, "source_ids_repeated");
 
   const catalogById = new Map(catalog.sources.map(s => [s.id, s]));
   const acquiredById = new Map();
@@ -126,7 +129,7 @@ export function prepareNoctisReviewedPublicBundle(bundle, options = {}) {
     const codes = [...new Set(prepared.summary.rejected.map(r => r.code))].sort();
     throw new Error("Reviewed source bridge blocked: preparation_rejected_" + codes.join("_"));
   }
-  for (const split of ["train", "development", "heldout"]) {
+  for (const split of /** @type {Array<"train"|"development"|"heldout">} */ (["train", "development", "heldout"])) {
     for (const row of prepared.splits[split]) {
       row.provenance = { ...row.provenance, ...evidenceByExample.get(row.id) };
     }
