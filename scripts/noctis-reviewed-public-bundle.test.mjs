@@ -8,14 +8,14 @@ import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { prepareNoctisReviewedPublicBundle } from "../src/lib/noctis-reviewed-public-bundle.mjs";
 
-const URL = "https://raw.githubusercontent.com/reviewed-owner/reviewed-repo/0123456789abcdef0123456789abcdef01234567/corpus.txt";
+const SOURCE_URL = "https://raw.githubusercontent.com/reviewed-owner/reviewed-repo/0123456789abcdef0123456789abcdef01234567/corpus.txt";
 const TEXT = "Open educational reference: groundwater moves through porous rock into rivers during the water cycle.";
 const BYTES = Buffer.from(TEXT, "utf8");
 const hash = value => createHash("sha256").update(value).digest("hex");
 const sha = hash(BYTES);
 const source = () => ({
   id: "public-water-1", kind: "public_open", license_id: "CC0-1.0",
-  origin_url: URL, training_allowed: true, approved: true, usage_rights: "model_training",
+  origin_url: SOURCE_URL, training_allowed: true, approved: true, usage_rights: "model_training",
   reviewed_by: "source-reviewer", license_review_reference: "rights-review-2026",
   license_reviewed_by: "license-reviewer", license_reviewed_on: "2026-11-14",
   expected_sha256: sha,
@@ -24,7 +24,7 @@ const acquired = () => ({
   schema: "noctis.public.source.acquisition.v1",
   sources: [{
     id: "public-water-1", file: "source-1.txt", sha256: sha,
-    byte_count: BYTES.length, media_type: "text/plain", origin_url: URL,
+    byte_count: BYTES.length, media_type: "text/plain", origin_url: SOURCE_URL,
     license_id: "CC0-1.0", usage_rights: "model_training",
     license_review_reference: "rights-review-2026", attribution_required: false,
     status: "ACQUIRED_UNREVIEWED_CONTENT_NOT_TRAINING_DATA",
