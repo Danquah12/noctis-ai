@@ -49,7 +49,7 @@ export function prepareNoctisReviewedPublicBundle(bundle, options = {}) {
     candidates.length > 0 && candidates.length <= MAX_CANDIDATES, "reviewed_candidates_required");
   requireCheck(plan.sources.length === new Set(plan.sources.map((/** @type {any} */ s) => s.id)).size, "source_ids_repeated");
 
-  const catalogById = new Map(catalog.sources.map(s => [s.id, s]));
+  const catalogById = new Map(catalog.sources.map((/** @type {any} */ s) => [s.id, s]));
   const acquiredById = new Map();
   for (const record of acquisition.sources) {
     requireCheck(record && ID.test(record.id || "") && !acquiredById.has(record.id),
@@ -73,7 +73,7 @@ export function prepareNoctisReviewedPublicBundle(bundle, options = {}) {
     requireCheck(bytes instanceof Uint8Array && bytes.byteLength > 0 &&
       bytes.byteLength === rec.byte_count &&
       bytes.byteLength <= NOCTIS_MAX_SOURCE_BYTES, "source_bytes_invalid");
-    requireCheck(sha256(bytes) === planned.expected_sha256, "acquired_content_digest_mismatch");
+    requireCheck(sha256(/** @type {Uint8Array} */ (bytes)) === planned.expected_sha256, "acquired_content_digest_mismatch");
     let text;
     try { text = new TextDecoder("utf-8", { fatal: true }).decode(bytes); }
     catch { throw new Error("Reviewed source bridge blocked: source_not_utf8"); }
@@ -110,6 +110,9 @@ export function prepareNoctisReviewedPublicBundle(bundle, options = {}) {
       evidence_byte_start: e.byte_start,
       evidence_byte_end: e.byte_end,
       review_date: v.reviewed_on,
+      example_reviewed_by: v.verified_by,
+      source_reviewed_by: source.reviewed_by,
+      license_review_reference: source.license_review_reference,
     });
     examples.push({
       id: candidate.id, source_id: candidate.source_id,
