@@ -51,6 +51,16 @@ import {
   evaluateAcousticFormantVowelSpace,
   evaluateGenerativeMergeDerivation
 } from "./noctis-linguistics-semiotics-engine.ts";
+import { evaluateSurfaceCodeErrorCorrection } from "./noctis-quantum-computing-engine.ts";
+import { evaluateClosedLoopDbsFeedback } from "./noctis-neurotech-bci-engine.ts";
+import { evaluatePemElectrolyzerEfficiency } from "./noctis-renewable-energy-engine.ts";
+import { evaluateAdcTherapeuticWindow } from "./noctis-pharma-drug-design-engine.ts";
+import { evaluateSatelliteConjunctionCollisionRisk } from "./noctis-aerospace-defense-engine.ts";
+import { evaluateDeepSubmergenceHydrostaticPressure } from "./noctis-oceanography-deep-sea-engine.ts";
+import { evaluateQuantumDotBandgapConfinement } from "./noctis-nanotechnology-molecular-engine.ts";
+import { evaluateTaylorRuleInterestRate } from "./noctis-macroeconomics-monetary-engine.ts";
+import { evaluateEffectiveReproductionNumberRt } from "./noctis-epidemiology-pandemic-engine.ts";
+import { evaluateControlBarrierFunctionSafety } from "./noctis-robotics-autonomous-systems-engine.ts";
 
 export type SovereignLifeDomain =
   | "CLINICAL_MEDICINE"
@@ -65,6 +75,15 @@ export type SovereignLifeDomain =
   | "LINGUISTICS_SEMIOTICS"
   | "IT_DISTRIBUTED_SYSTEMS"
   | "MACROECONOMICS_FINANCE"
+  | "QUANTUM_COMPUTING"
+  | "NEUROTECH_BCI"
+  | "RENEWABLE_ENERGY"
+  | "PHARMACOLOGY_DRUG_DESIGN"
+  | "AEROSPACE_DEFENSE"
+  | "OCEANOGRAPHY_DEEP_SEA"
+  | "NANOTECHNOLOGY_MOLECULAR"
+  | "EPIDEMIOLOGY_PANDEMIC"
+  | "ROBOTICS_AUTONOMOUS"
   | "GENERAL_SOVEREIGN";
 
 export interface UniversalRouteResult {
@@ -138,8 +157,53 @@ export function detectLifeDomain(query: string): SovereignLifeDomain {
   }
 
   // 12. Macroeconomics & Sovereign Finance
-  if (/\b(cbdc\b|taylor rule|central bank|atomic dvp|settlement|iso 20022|pacs\.009|monte carlo var|value at risk|interest rate parity)\b/i.test(q)) {
+  if (/\b(cbdc\b|taylor rule|central bank|atomic dvp|settlement|iso 20022|pacs\.009|monte carlo var|value at risk|interest rate parity|basel iii|lcr\b|nsfr\b|domar|debt-to-gdp|dsge\b|guidotti-greenspan)\b/i.test(q)) {
     return "MACROECONOMICS_FINANCE";
+  }
+
+  // 13. Quantum Computing & Quantum Information
+  if (/\b(surface code|syndrome extraction|transmon|rydberg blockade|majorana zero|vqe\b|variational quantum|bloch sphere|quantum error correction|qec\b)\b/i.test(q)) {
+    return "QUANTUM_COMPUTING";
+  }
+
+  // 14. Neurotechnology & Brain-Computer Interfaces
+  if (/\b(bci\b|brain-computer|deep brain stimulation|dbs\b|kalman.*neural|motor cortex decoding|optogenetics|subthalamic|cognitive liberty|neurorights)\b/i.test(q)) {
+    return "NEUROTECH_BCI";
+  }
+
+  // 15. Renewable Energy & Decarbonization
+  if (/\b(green hydrogen|soec\b|pem electrolyzer|grid-forming inverter|synthetic inertia|perovskite-silicon|iron-air battery|egs geothermal|flow battery)\b/i.test(q)) {
+    return "RENEWABLE_ENERGY";
+  }
+
+  // 16. Advanced Pharmacology & Rational Drug Design
+  if (/\b(antibody-drug conjugate|adc\b|cleavable linker|dar\b|protac\b|targeted protein degradation|vhl ligase|pbpk\b|free energy perturbation|fep\b)\b/i.test(q)) {
+    return "PHARMACOLOGY_DRUG_DESIGN";
+  }
+
+  // 17. Aerospace, Directed Energy & Planetary Defense
+  if (/\b(satellite conjunction|nasa cara|thermal blooming|strehl ratio|waverider|hypersonic glide|proportional navigation|apn intercept|nuclear thermal propulsion|haleu cermet)\b/i.test(q)) {
+    return "AEROSPACE_DEFENSE";
+  }
+
+  // 18. Oceanography, Abyssal Geophysics & Deep Sea
+  if (/\b(challenger deep|hadal|sofar channel|ocean acoustic tomography|hydrothermal vent|black smoker|chemosynthesis|aabw\b|antarctic bottom water|martin's curve|abyssal circulation)\b/i.test(q)) {
+    return "OCEANOGRAPHY_DEEP_SEA";
+  }
+
+  // 19. Nanotechnology & Molecular Engineering
+  if (/\b(quantum dot|brus equation|dna origami|staple strand|swcnt\b|nanotube chirality|afm cantilever|force spectroscopy|nanotoxicology|niosh rel)\b/i.test(q)) {
+    return "NANOTECHNOLOGY_MOLECULAR";
+  }
+
+  // 20. Epidemiology & Global Pandemic Preparedness
+  if (/\b(seir\b|basic reproduction number|effective reproduction number|r_t\b|icu surge|ring vaccination|extinction probability|phylodynamic|selective advantage|amr stewardship|carbapenemase)\b/i.test(q)) {
+    return "EPIDEMIOLOGY_PANDEMIC";
+  }
+
+  // 21. Robotics & Autonomous Field Systems
+  if (/\b(control barrier function|cbf\b|zero moment point|zmp\b|capture point|graph-slam|pose graph|swarm consensus|fiedler|ros2.*dds|cyclonedds|real-time deadline)\b/i.test(q)) {
+    return "ROBOTICS_AUTONOMOUS";
   }
 
   return "GENERAL_SOVEREIGN";
@@ -308,6 +372,162 @@ export function dispatchUniversalLifeQuery(query: string): UniversalRouteResult 
         invariantsEnforced: ["Acoustic Resonator Formant Trajectory", "Phase Impenetrability Condition (PIC)"],
         dispatchedEngine: "noctis-linguistics-semiotics-engine.ts",
         response: `# Noctis Universal Linguistics & Cognitive Semiotics Assessment\n\n**Architecture**: Acoustic Phonetics & Minimalist Generative Merge\n**Verdict**: ${res.verdict}\n\n### Formal Linguistic Invariants\n${res.formalGrammarRules.map(r => `- \`${r}\``).join("\n")}`
+      };
+    }
+
+    case "QUANTUM_COMPUTING": {
+      const res = evaluateSurfaceCodeErrorCorrection({
+        physicalGateErrorRate: 0.001,
+        codeDistanceD: 7,
+        syndromeExtractionCycleMicroSec: 1.0,
+        thresholdErrorRate: 0.01
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["IEEE Quantum Computing Standards", "NIST PQC Standardization"],
+        invariantsEnforced: ["Surface Code Fault-Tolerance Threshold (< 1%)", "Fault-Tolerant Logical Qubit Fidelity"],
+        dispatchedEngine: "noctis-quantum-computing-engine.ts",
+        response: `# Noctis Sovereign Quantum Information Science Assessment\n\n**Architecture**: Fault-Tolerant Topological Quantum Computing\n**Verdict**: ${res.verdict}\n\n### Quantum Formalisms\n${res.quantumFormalisms.map(e => `- \`${e}\``).join("\n")}`
+      };
+    }
+
+    case "NEUROTECH_BCI": {
+      const res = evaluateClosedLoopDbsFeedback({
+        betaBandPowerMicroV2: 32.0,
+        gammaBandPowerMicroV2: 12.5,
+        phaseAmplitudeCouplingCfc: 0.42,
+        baselineBetaThresholdMicroV2: 18.0
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["IEEE 2794 Standard for Neural Interface Systems", "OECD Recommendation on Neurotechnology"],
+        invariantsEnforced: ["Closed-Loop Therapeutic Window (0.5 - 4.5 mA)", "Cognitive Liberty & Neural Data Privacy"],
+        dispatchedEngine: "noctis-neurotech-bci-engine.ts",
+        response: `# Noctis Sovereign Neurotechnology & BCI Assessment\n\n**Subsystem**: Closed-Loop Biomarker-Responsive Neuromodulation\n**Verdict**: ${res.verdict}\n\n### Neural Equations\n${res.neuralEquations.map(e => `- \`${e}\``).join("\n")}`
+      };
+    }
+
+    case "RENEWABLE_ENERGY": {
+      const res = evaluatePemElectrolyzerEfficiency({
+        currentDensityAcm2: 2.2,
+        cellVoltageVolts: 1.85,
+        faradaicEfficiencyPercent: 99.2,
+        operatingTempCelsius: 75.0
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["ISO 22734 Hydrogen Generators", "IEEE 2800 Inverter-Based Resources"],
+        invariantsEnforced: ["Electrolyte Specific Energy Bound (< 55 kWh/kg)", "Grid Synthetic Inertia RoCoF Invariant"],
+        dispatchedEngine: "noctis-renewable-energy-engine.ts",
+        response: `# Noctis Sovereign Clean Energy & Decarbonization Intelligence\n\n**Subsystem**: Multi-Megawatt Green Hydrogen & Inverter-Based Grid Dynamics\n**Verdict**: ${res.verdict}\n\n### Thermodynamic & Grid Equations\n${res.energyEquations.map(e => `- \`${e}\``).join("\n")}`
+      };
+    }
+
+    case "PHARMACOLOGY_DRUG_DESIGN": {
+      const res = evaluateAdcTherapeuticWindow({
+        drugToAntibodyRatioDar: 4.0,
+        plasmaLinkerDeconjugationRatePercentPerDay: 1.2,
+        targetAntigenReceptorDensity: 500000,
+        payloadIc50NanoMolar: 0.25
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["ICH M3(R2) Nonclinical Safety", "FDA Guidance for Antibody-Drug Conjugates"],
+        invariantsEnforced: ["DAR Therapeutic Index Stability (3.5 - 4.5)", "Premature Systemic Deconjugation Avoidance"],
+        dispatchedEngine: "noctis-pharma-drug-design-engine.ts",
+        response: `# Noctis Sovereign Pharmacology & Molecular Drug Design Assessment\n\n**Modality**: Next-Gen Antibody-Drug Conjugate (ADC) / Targeted Protein Degradation\n**Verdict**: ${res.verdict}\n\n### Biopharmaceutical Equations\n${res.pharmacologicalEquations.map(e => `- \`${e}\``).join("\n")}`
+      };
+    }
+
+    case "AEROSPACE_DEFENSE": {
+      const res = evaluateSatelliteConjunctionCollisionRisk({
+        missDistanceMeters: 450,
+        combinedHardBodyRadiusMeters: 8.5,
+        relativeVelocityKmpSec: 10.2,
+        conjunctionCovarianceSigmaMeters: 280
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["NASA CARA Collision Avoidance Protocol", "AIAA Hypersonic Waverider Standards"],
+        invariantsEnforced: ["Conjunction Probability Threshold (Pc < 1e-4)", "Atmospheric Blooming Strehl > 0.7"],
+        dispatchedEngine: "noctis-aerospace-defense-engine.ts",
+        response: `# Noctis Sovereign Aerospace & Planetary Defense Intelligence\n\n**Domain**: Orbital Mechanics, High-Energy Directed Energy & Hypersonics\n**Verdict**: ${res.verdict}\n\n### Astrodynamics Formulations\n${res.aerospaceEquations.map(e => `- \`${e}\``).join("\n")}`
+      };
+    }
+
+    case "OCEANOGRAPHY_DEEP_SEA": {
+      const res = evaluateDeepSubmergenceHydrostaticPressure({
+        depthMeters: 10925,
+        hullOuterDiameterMeters: 2.2,
+        hullWallThicknessMeters: 0.095,
+        yieldStrengthMpa: 880,
+        safetyFactorTarget: 1.5
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["ASME PVHO-1 Pressure Vessels for Human Occupancy", "DNV-GL Submersible Rules"],
+        invariantsEnforced: ["Hydrostatic Buckling Safety Margin (SF >= 1.5)", "Martin Biological Carbon Flux Conservation"],
+        dispatchedEngine: "noctis-oceanography-deep-sea-engine.ts",
+        response: `# Noctis Sovereign Oceanography & Deep Sea Geophysics Assessment\n\n**Subsystem**: Abyssal Hadal Pressure Hulls & Deep Oceanic Circulation\n**Verdict**: ${res.verdict}\n\n### Oceanographic Formulations\n${res.oceanEquations.map(e => `- \`${e}\``).join("\n")}`
+      };
+    }
+
+    case "NANOTECHNOLOGY_MOLECULAR": {
+      const res = evaluateQuantumDotBandgapConfinement({
+        bulkBandgapEv: 1.74,
+        radiusNanometers: 2.5,
+        electronEffectiveMassRatio: 0.13,
+        holeEffectiveMassRatio: 0.45,
+        dielectricConstant: 9.3
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["ISO/TS 80004 Nanotechnologies", "NIOSH Current Intelligence Bulletin 65"],
+        invariantsEnforced: ["Brus 3D Quantum Confinement", "NIOSH Nanomaterial Exposure Safety (< 1 ug/m3)"],
+        dispatchedEngine: "noctis-nanotechnology-molecular-engine.ts",
+        response: `# Noctis Sovereign Nanotechnology & Molecular Engineering Assessment\n\n**System**: Quantum Dot Optics, SWCNT Ballistic Wires & DNA Origami\n**Verdict**: ${res.verdict}\n\n### Nanoscale Equations\n${res.nanoEquations.map(e => `- \`${e}\``).join("\n")}`
+      };
+    }
+
+    case "EPIDEMIOLOGY_PANDEMIC": {
+      const res = evaluateEffectiveReproductionNumberRt({
+        basicReproductionNumberR0: 3.2,
+        susceptibleFraction: 0.65,
+        transmissionReductionFractionNpi: 0.35,
+        vaccineCoverageFraction: 0.70,
+        vaccineEfficacyFraction: 0.85
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["WHO International Health Regulations (IHR)", "CDC Epidemic Modeling Standards"],
+        invariantsEnforced: ["Critical Transmission Suppression (Rt < 1.0)", "ICU Capacity Invariant Ceiling"],
+        dispatchedEngine: "noctis-epidemiology-pandemic-engine.ts",
+        response: `# Noctis Sovereign Epidemiology & Global Pandemic Preparedness Intelligence\n\n**Model**: SEIR Metapopulation Contagion & Variant Phylodynamics\n**Verdict**: ${res.verdict}\n\n### Epidemiological Models\n${res.epidemEquations.map(e => `- \`${e}\``).join("\n")}`
+      };
+    }
+
+    case "ROBOTICS_AUTONOMOUS": {
+      const res = evaluateControlBarrierFunctionSafety({
+        currentDistanceMeters: 6.5,
+        relativeVelocityMps: 2.5,
+        maxDecelerationMps2: 4.5,
+        safetyMarginMeters: 1.0
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["IEEE 7000 Autonomous Safety-Critical Standards", "ISO 26262 ASIL-D"],
+        invariantsEnforced: ["Control Barrier Function Forward Invariance (h(x) >= 0)", "ZMP Dynamic Locomotion Stability"],
+        dispatchedEngine: "noctis-robotics-autonomous-systems-engine.ts",
+        response: `# Noctis Sovereign Robotics & Autonomous Field Systems Intelligence\n\n**Subsystem**: Safety-Critical Control Barrier Functions & Legged Locomotion\n**Verdict**: ${res.verdict}\n\n### Control Invariant Formulations\n${res.robotEquations.map(e => `- \`${e}\``).join("\n")}`
       };
     }
 

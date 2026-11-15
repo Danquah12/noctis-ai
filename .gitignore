@@ -23,3 +23,4 @@ backups
 .pglite
 pglite.data
 *.local
+__pycache__/

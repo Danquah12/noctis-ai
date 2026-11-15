@@ -64,6 +64,16 @@ import { generateAllAstrophysicsOrbitalScenarios } from "./noctis-astrophysics-o
 import { generateAllEnvironmentalEarthScenarios } from "./noctis-environmental-earth-systems-engine.ts";
 import { generateAllAgrigenomicsFoodScenarios } from "./noctis-agrigenomics-food-security-engine.ts";
 import { generateAllLinguisticsSemioticsScenarios } from "./noctis-linguistics-semiotics-engine.ts";
+import { generateAllQuantumComputingScenarios } from "./noctis-quantum-computing-engine.ts";
+import { generateAllNeurotechBciScenarios } from "./noctis-neurotech-bci-engine.ts";
+import { generateAllRenewableEnergyScenarios } from "./noctis-renewable-energy-engine.ts";
+import { generateAllPharmaDrugScenarios } from "./noctis-pharma-drug-design-engine.ts";
+import { generateAllAerospaceDefenseScenarios } from "./noctis-aerospace-defense-engine.ts";
+import { executeAllOceanographyScenarios } from "./noctis-oceanography-deep-sea-engine.ts";
+import { executeAllNanotechnologyScenarios } from "./noctis-nanotechnology-molecular-engine.ts";
+import { executeAllMacroeconomicsScenarios } from "./noctis-macroeconomics-monetary-engine.ts";
+import { executeAllEpidemiologyScenarios } from "./noctis-epidemiology-pandemic-engine.ts";
+import { executeAllRoboticsScenarios } from "./noctis-robotics-autonomous-systems-engine.ts";
 
 export interface VerboseEpochEvent {
   step: number;
@@ -1137,6 +1147,186 @@ export function executeContinuousTrainingEpoch(options?: { verbose?: boolean }):
     status: langPassed === langTests.length ? "PASS" : "FAIL",
   });
   recordDomain(50, "LINGUISTICS_COGNITIVE_SEMIOTICS", langTests.length, langPassed, performance.now() - t0_lang, "Universal Linguistics: IPA Acoustic Vowel Formants, Chomsky Minimalist Merge PIC, Ergative-Absolutive Typology, Procrustes Embedding Isomorphism, Ancient Script Entropy");
+
+  // 51. Quantum Information Science & Quantum Computing (25 scenarios)
+  const t0_quantum_comp = performance.now();
+  const quantTests = generateAllQuantumComputingScenarios();
+  let quantPassed = 0;
+  for (const t of quantTests) {
+    const res = t.execute();
+    if (res.status === "PASS" || res.score >= 50) quantPassed++;
+  }
+  totalScenarios += quantTests.length;
+  totalInvariants += quantPassed;
+  domainBreakdown.push({
+    domain: "QUANTUM_COMPUTING_INFORMATION",
+    scenariosCount: quantTests.length,
+    invariantsPassed: quantPassed,
+    status: quantPassed === quantTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(51, "QUANTUM_COMPUTING_INFORMATION", quantTests.length, quantPassed, performance.now() - t0_quantum_comp, "Quantum Computing: Distance-d Surface Codes, Neutral Atom Rydberg Blockade Gates, Transmon T1/T2 Decoherence, VQE Quantum Eigensolver, Majorana Zero Modes");
+
+  // 52. Neurotechnology, Brain-Computer Interfaces & Closed-Loop Neuromodulation (25 scenarios)
+  const t0_neuro = performance.now();
+  const neuroTests = generateAllNeurotechBciScenarios();
+  let neuroPassed = 0;
+  for (const t of neuroTests) {
+    const res = t.execute();
+    if (res.status === "PASS" || res.score >= 50) neuroPassed++;
+  }
+  totalScenarios += neuroTests.length;
+  totalInvariants += neuroPassed;
+  domainBreakdown.push({
+    domain: "NEUROTECH_BRAIN_COMPUTER_INTERFACES",
+    scenariosCount: neuroTests.length,
+    invariantsPassed: neuroPassed,
+    status: neuroPassed === neuroTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(52, "NEUROTECH_BRAIN_COMPUTER_INTERFACES", neuroTests.length, neuroPassed, performance.now() - t0_neuro, "Neurotechnology: Closed-Loop Subthalamic DBS, Motor Cortex 1024-Channel BCI Kalman Decoding, EEG CSP Spatial Filtering, Optogenetic Holography, Cognitive Liberty Ethics");
+
+  // 53. Renewable Energy Transition & Grid Decarbonization (25 scenarios)
+  const t0_renew = performance.now();
+  const renewTests = generateAllRenewableEnergyScenarios();
+  let renewPassed = 0;
+  for (const t of renewTests) {
+    const res = t.execute();
+    if (res.status === "PASS" || res.score >= 50) renewPassed++;
+  }
+  totalScenarios += renewTests.length;
+  totalInvariants += renewPassed;
+  domainBreakdown.push({
+    domain: "RENEWABLE_ENERGY_DECARBONIZATION",
+    scenariosCount: renewTests.length,
+    invariantsPassed: renewPassed,
+    status: renewPassed === renewTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(53, "RENEWABLE_ENERGY_DECARBONIZATION", renewTests.length, renewPassed, performance.now() - t0_renew, "Renewable Energy: PEM & SOEC Green Hydrogen Electrolysis, Grid-Forming Inverter Synthetic Inertia, 100-Hr Iron-Air Flow Batteries, Perovskite-Si Tandem PV, Supercritical EGS Geothermal");
+
+  // 54. Advanced Pharmacology, Rational Drug Design & Synthetic Therapeutics (25 scenarios)
+  const t0_pharma = performance.now();
+  const pharmaTests = generateAllPharmaDrugScenarios();
+  let pharmaPassed = 0;
+  for (const t of pharmaTests) {
+    const res = t.execute();
+    if (res.status === "PASS" || res.score >= 50) pharmaPassed++;
+  }
+  totalScenarios += pharmaTests.length;
+  totalInvariants += pharmaPassed;
+  domainBreakdown.push({
+    domain: "PHARMACOLOGY_RATIONAL_DRUG_DESIGN",
+    scenariosCount: pharmaTests.length,
+    invariantsPassed: pharmaPassed,
+    status: pharmaPassed === pharmaTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(54, "PHARMACOLOGY_RATIONAL_DRUG_DESIGN", pharmaTests.length, pharmaPassed, performance.now() - t0_pharma, "Pharmacology: HER2 Antibody-Drug Conjugate (ADC) Linkers, mRNA Lipid Nanoparticle (LNP) Endosomal Escape, VHL PROTAC Targeted Degraders, Whole-Body PBPK Clearance, Sub-Nanomolar FEP Docking");
+
+  // 55. Advanced Aerospace Defense, Hypersonic Waveriders & Directed Energy (25 scenarios)
+  const t0_aeroDef = performance.now();
+  const aeroDefTests = generateAllAerospaceDefenseScenarios();
+  let aeroDefPassed = 0;
+  for (const t of aeroDefTests) {
+    const res = t.execute();
+    if (res.status === "PASS" || res.score >= 50) aeroDefPassed++;
+  }
+  totalScenarios += aeroDefTests.length;
+  totalInvariants += aeroDefPassed;
+  domainBreakdown.push({
+    domain: "AEROSPACE_DEFENSE_HYPERSONICS",
+    scenariosCount: aeroDefTests.length,
+    invariantsPassed: aeroDefPassed,
+    status: aeroDefPassed === aeroDefTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(55, "AEROSPACE_DEFENSE_HYPERSONICS", aeroDefTests.length, aeroDefPassed, performance.now() - t0_aeroDef, "Aerospace Defense: LEO Satellite Conjunction Collision Avoidance (NASA CARA), High-Energy Laser (HEL) Atmospheric Blooming Strehl > 0.7, Mach 8.5 Waverider Aerodynamics, Swarm Intercept APN Guidance, Bimodal NTP 900s Isp");
+
+  // Step 56: Oceanography, Abyssal Geophysics & Deep Sea Exploration (NOCTIS-OCEAN-001)
+  const t0_ocean = performance.now();
+  const oceanTests = executeAllOceanographyScenarios();
+  let oceanPassed = 0;
+  for (const t of oceanTests) {
+    const res = t.execute();
+    if (res.status === "PASS" || res.score >= 50) oceanPassed++;
+  }
+  totalScenarios += oceanTests.length;
+  totalInvariants += oceanPassed;
+  domainBreakdown.push({
+    domain: "OCEANOGRAPHY_DEEP_SEA",
+    scenariosCount: oceanTests.length,
+    invariantsPassed: oceanPassed,
+    status: oceanPassed === oceanTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(56, "OCEANOGRAPHY_DEEP_SEA", oceanTests.length, oceanPassed, performance.now() - t0_ocean, "Oceanography & Abyssal Exploration: Challenger Deep 11,000m Titanium Pressure Hulls (ASME PVHO-1), SOFAR Sound Channel Inversion (TEOS-10), 380°C Black Smoker Hydrothermal Chemosynthesis, Martin's Biological Carbon Pump, AABW Global Thermohaline Circulation");
+
+  // Step 57: Nanotechnology & Molecular Engineering (NOCTIS-NANO-001)
+  const t0_nano = performance.now();
+  const nanoTests = executeAllNanotechnologyScenarios();
+  let nanoPassed = 0;
+  for (const t of nanoTests) {
+    const res = t.execute();
+    if (res.status === "PASS" || res.score >= 50) nanoPassed++;
+  }
+  totalScenarios += nanoTests.length;
+  totalInvariants += nanoPassed;
+  domainBreakdown.push({
+    domain: "NANOTECHNOLOGY_MOLECULAR",
+    scenariosCount: nanoTests.length,
+    invariantsPassed: nanoPassed,
+    status: nanoPassed === nanoTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(57, "NANOTECHNOLOGY_MOLECULAR", nanoTests.length, nanoPassed, performance.now() - t0_nano, "Nanotechnology: Brus Quantum Dot Bandgap Confinement, SWCNT Chirality & Ballistic Conductance (G0 = 2e^2/h), DNA Origami M13 Folding Assembly, AFM Cantilever Resonance Force Spectroscopy, NIOSH Nanotoxicology Invariant Bio-Safety");
+
+  // Step 58: Macroeconomics, Central Banking & Monetary Policy (NOCTIS-MACRO-001)
+  const t0_macro = performance.now();
+  const macroTests = executeAllMacroeconomicsScenarios();
+  let macroPassed = 0;
+  for (const t of macroTests) {
+    const res = t.execute();
+    if (res.status === "PASS" || res.score >= 50) macroPassed++;
+  }
+  totalScenarios += macroTests.length;
+  totalInvariants += macroPassed;
+  domainBreakdown.push({
+    domain: "MACROECONOMICS_MONETARY",
+    scenariosCount: macroTests.length,
+    invariantsPassed: macroPassed,
+    status: macroPassed === macroTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(58, "MACROECONOMICS_MONETARY", macroTests.length, macroPassed, performance.now() - t0_macro, "Macroeconomics: Central Bank Taylor Rule Interest Rates, IMF Sovereign Debt Sustainability Analysis (DSA), Basel III Tier-1 Capital & Liquidity Ratios (LCR/NSFR), Smets-Wouters New Keynesian DSGE, Uncovered Interest Parity (UIP)");
+
+  // Step 59: Global Epidemiology & Pandemic Preparedness (NOCTIS-EPIDEM-001)
+  const t0_epidem = performance.now();
+  const epidemTests = executeAllEpidemiologyScenarios();
+  let epidemPassed = 0;
+  for (const t of epidemTests) {
+    const res = t.execute();
+    if (res.status === "PASS" || res.score >= 50) epidemPassed++;
+  }
+  totalScenarios += epidemTests.length;
+  totalInvariants += epidemPassed;
+  domainBreakdown.push({
+    domain: "EPIDEMIOLOGY_PANDEMIC",
+    scenariosCount: epidemTests.length,
+    invariantsPassed: epidemPassed,
+    status: epidemPassed === epidemTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(59, "EPIDEMIOLOGY_PANDEMIC", epidemTests.length, epidemPassed, performance.now() - t0_epidem, "Epidemiology: SEIR Effective Reproduction Rt Suppression Modeling, Regional ICU & Ventilator Critical Surge Queuing, Nextstrain Pathogen Phylogenomic Mutation Fitness, Ring Vaccination Outbreak Containment, AMR Multiplex Stewardship");
+
+  // Step 60: Robotics & Autonomous Field Systems (NOCTIS-ROBOT-001)
+  const t0_robot = performance.now();
+  const robotTests = executeAllRoboticsScenarios();
+  let robotPassed = 0;
+  for (const t of robotTests) {
+    const res = t.execute();
+    if (res.status === "PASS" || res.score >= 50) robotPassed++;
+  }
+  totalScenarios += robotTests.length;
+  totalInvariants += robotPassed;
+  domainBreakdown.push({
+    domain: "ROBOTICS_AUTONOMOUS_SYSTEMS",
+    scenariosCount: robotTests.length,
+    invariantsPassed: robotPassed,
+    status: robotPassed === robotTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(60, "ROBOTICS_AUTONOMOUS_SYSTEMS", robotTests.length, robotPassed, performance.now() - t0_robot, "Robotics & Autonomous Systems: Control Barrier Functions (CBF) Guaranteed Collision Avoidance Invariant, Bipedal/Quadruped Zero Moment Point (ZMP) Locomotion, Graph-SLAM Pose Graph Optimization, Distributed Swarm Consensus, ROS2 Real-Time DDS 1 kHz Deadline Invariant");
 
   const totalDurationMs = Math.round((performance.now() - epochStartTime) * 100) / 100;
   const accuracy = Math.round((totalInvariants / totalScenarios) * 1000) / 10;

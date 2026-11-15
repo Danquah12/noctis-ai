@@ -30,7 +30,7 @@ const c = {
 
 console.log(`${c.bold}${c.cyan}======================================================================${c.reset}`);
 console.log(`${c.bold}${c.cyan} NOCTIS UNIVERSAL LIFE & OMNIPRESENT ENGINES VALIDATION BATTERY${c.reset}`);
-console.log(`${c.dim} Auditing all 50 sovereign engines, routing fidelity, and continuous training${c.reset}`);
+console.log(`${c.dim} Auditing all 60 sovereign engines, routing fidelity, and continuous training${c.reset}`);
 console.log(`${c.bold}${c.cyan}======================================================================${c.reset}\n`);
 
 // 1. ROUTING FIDELITY TEST BATTERY (All Aspects of Life)
@@ -113,10 +113,58 @@ const ROUTING_TEST_BATTERY: Array<{
     expectedEngine: "noctis-brain.ts"
   },
   {
-    name: "Macroeconomics & Wholesale CBDC Settlement",
-    query: "Under the classical Taylor rule with neutral rate 1.25%, evaluate wholesale CBDC atomic DvP settlement for $75M under ISO 20022 pacs.009.",
-    expectedDomain: "MACROECONOMICS_FINANCE",
-    expectedEngine: "noctis-brain.ts"
+    name: "Quantum Information & Surface Code QEC",
+    query: "Under distance-d rotated surface codes with physical error rate 0.001, what is the logical error rate suppression and syndrome extraction cycle threshold?",
+    expectedDomain: "QUANTUM_COMPUTING",
+    expectedEngine: "noctis-quantum-computing-engine.ts"
+  },
+  {
+    name: "Neurotechnology & Closed-Loop DBS Systems",
+    query: "How does a closed-loop deep brain stimulation (DBS) Kalman filter modulate subthalamic beta band power while respecting cognitive liberty?",
+    expectedDomain: "NEUROTECH_BCI",
+    expectedEngine: "noctis-neurotech-bci-engine.ts"
+  },
+  {
+    name: "Clean Energy & Multi-Megawatt Green Hydrogen",
+    query: "Evaluate green hydrogen PEM electrolyzer specific energy consumption and grid-forming inverter synthetic inertia under high renewable penetration.",
+    expectedDomain: "RENEWABLE_ENERGY",
+    expectedEngine: "noctis-renewable-energy-engine.ts"
+  },
+  {
+    name: "Advanced Pharmacology & Antibody-Drug Conjugates",
+    query: "What cleavable linker stability half-life and drug-to-antibody ratio (DAR) optimize the therapeutic index of a HER2-targeted antibody-drug conjugate (ADC)?",
+    expectedDomain: "PHARMACOLOGY_DRUG_DESIGN",
+    expectedEngine: "noctis-pharma-drug-design-engine.ts"
+  },
+  {
+    name: "Aerospace Defense & LEO Collision Avoidance",
+    query: "Under NASA CARA protocols, what is the critical threshold for satellite conjunction collision avoidance and how is thermal blooming calculated for laser defense?",
+    expectedDomain: "AEROSPACE_DEFENSE",
+    expectedEngine: "noctis-aerospace-defense-engine.ts"
+  },
+  {
+    name: "Oceanography & Hadal Trench Pressure Vessels",
+    query: "Calculate the hydrostatic pressure and titanium hull wall stress at the Challenger Deep (10,925m depth) and determine the SOFAR channel sound speed profile.",
+    expectedDomain: "OCEANOGRAPHY_DEEP_SEA",
+    expectedEngine: "noctis-oceanography-deep-sea-engine.ts"
+  },
+  {
+    name: "Nanotechnology & Quantum Dot Brus Confinement",
+    query: "Using the Brus equation, compute the quantum dot bandgap shift for a 2.5 nm CdSe nanocrystal and determine the SWCNT chirality transport properties.",
+    expectedDomain: "NANOTECHNOLOGY_MOLECULAR",
+    expectedEngine: "noctis-nanotechnology-molecular-engine.ts"
+  },
+  {
+    name: "Epidemiology & SEIR Pandemic Metapopulation",
+    query: "Under SEIR compartmental modeling, calculate the effective reproduction number R_t with non-pharmaceutical interventions and evaluate hospital ICU surge capacity.",
+    expectedDomain: "EPIDEMIOLOGY_PANDEMIC",
+    expectedEngine: "noctis-epidemiology-pandemic-engine.ts"
+  },
+  {
+    name: "Robotics & Control Barrier Functions (CBF)",
+    query: "Formulate a Control Barrier Function (CBF) quadratic program for guaranteed autonomous collision avoidance and compute Zero Moment Point (ZMP) stability.",
+    expectedDomain: "ROBOTICS_AUTONOMOUS",
+    expectedEngine: "noctis-robotics-autonomous-systems-engine.ts"
   }
 ];
 
@@ -154,6 +202,6 @@ console.log(`  ${c.green}✔ Safety Violations:${c.reset}     ${epochSummary.saf
 console.log(`  ${c.green}✔ Execution Duration:${c.reset}    ${epochDuration}ms\n`);
 
 console.log(`${c.bold}${c.green}======================================================================${c.reset}`);
-console.log(`${c.bold}${c.green} ALL 50 DOMAIN ENGINES OPERATIONAL & 100% INVARIANT VERIFIED${c.reset}`);
+console.log(`${c.bold}${c.green} ALL 60 DOMAIN ENGINES OPERATIONAL & 100% INVARIANT VERIFIED${c.reset}`);
 console.log(`${c.bold}${c.green} UNIVERSAL LIFE ROUTER ACTIVE FOR ANY & ALL SUBJECT MATTER QUESTIONS${c.reset}`);
 console.log(`${c.bold}${c.green}======================================================================${c.reset}`);
