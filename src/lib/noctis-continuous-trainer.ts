@@ -57,6 +57,13 @@ import { generateAllFrontierTrackScenarios } from "./noctis-frontier-tracks.ts";
 import { generateAllInformationTechnologyScenarios } from "./noctis-it-master-engine.ts";
 import { generateAllAdvancedItScenarios } from "./noctis-advanced-it-master-engine.ts";
 import { generateAllRmfScenarios } from "./noctis-rmf-engine.ts";
+import { generateAllLawJurisprudenceScenarios } from "./noctis-law-jurisprudence-engine.ts";
+import { generateAllCivilStructuralScenarios } from "./noctis-civil-structural-engine.ts";
+import { generateAllMaterialsMetallurgyScenarios } from "./noctis-materials-metallurgy-engine.ts";
+import { generateAllAstrophysicsOrbitalScenarios } from "./noctis-astrophysics-orbital-engine.ts";
+import { generateAllEnvironmentalEarthScenarios } from "./noctis-environmental-earth-systems-engine.ts";
+import { generateAllAgrigenomicsFoodScenarios } from "./noctis-agrigenomics-food-security-engine.ts";
+import { generateAllLinguisticsSemioticsScenarios } from "./noctis-linguistics-semiotics-engine.ts";
 
 export interface VerboseEpochEvent {
   step: number;
@@ -1005,11 +1012,137 @@ export function executeContinuousTrainingEpoch(options?: { verbose?: boolean }):
   });
   recordDomain(43, "RMF_GOVERNANCE_LIFECYCLE", rmfTests.length, rmfPassed, performance.now() - t0_rmf, "RMF Master Track: NIST SP 800-37 Rev. 2 (7 Steps), FIPS 199 High-Water Mark, NIST SP 800-53A Assess Methods, cATO Gates, and POA&M SLAs");
 
+  // 44. Law, Constitutional Jurisprudence & Global Regulatory (25 scenarios)
+  const t0_law = performance.now();
+  const lawTests = generateAllLawJurisprudenceScenarios();
+  let lawPassed = 0;
+  for (const t of lawTests) {
+    const res = t.execute();
+    if (res.status === "PASS" || res.score >= 50) lawPassed++;
+  }
+  totalScenarios += lawTests.length;
+  totalInvariants += lawPassed;
+  domainBreakdown.push({
+    domain: "LAW_JURISPRUDENCE_REGULATORY",
+    scenariosCount: lawTests.length,
+    invariantsPassed: lawPassed,
+    status: lawPassed === lawTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(44, "LAW_JURISPRUDENCE_REGULATORY", lawTests.length, lawPassed, performance.now() - t0_law, "Sovereign Jurisprudence: APA Arbitrary/Capricious Review, LOAC Geneva Distinction/Proportionality, SEC 10b-5, Patent Alice/Mayo, Sherman Act §2");
+
+  // 45. Civil Infrastructure, Structural Engineering & Seismic Dynamics (25 scenarios)
+  const t0_civil = performance.now();
+  const civilTests = generateAllCivilStructuralScenarios();
+  let civilPassed = 0;
+  for (const t of civilTests) {
+    const res = t.execute();
+    if (res.status === "PASS" || res.score >= 50) civilPassed++;
+  }
+  totalScenarios += civilTests.length;
+  totalInvariants += civilPassed;
+  domainBreakdown.push({
+    domain: "CIVIL_INFRASTRUCTURE_STRUCTURAL",
+    scenariosCount: civilTests.length,
+    invariantsPassed: civilPassed,
+    status: civilPassed === civilTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(45, "CIVIL_INFRASTRUCTURE_STRUCTURAL", civilTests.length, civilPassed, performance.now() - t0_civil, "Civil Engineering: ASCE 7-22 Seismic Base Shear ELF, Geotechnical Liquefaction CRR/CSR, Suspension Bridge Aeroelastic Flutter, ACI 318 Concrete, Dam Hydrology PMF");
+
+  // 46. Advanced Materials Science, Metallurgy & Superconductors (25 scenarios)
+  const t0_mat = performance.now();
+  const matTests = generateAllMaterialsMetallurgyScenarios();
+  let matPassed = 0;
+  for (const t of matTests) {
+    const res = t.execute();
+    if (res.status === "PASS" || res.score >= 50) matPassed++;
+  }
+  totalScenarios += matTests.length;
+  totalInvariants += matPassed;
+  domainBreakdown.push({
+    domain: "MATERIALS_SCIENCE_METALLURGY",
+    scenariosCount: matTests.length,
+    invariantsPassed: matPassed,
+    status: matPassed === matTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(46, "MATERIALS_SCIENCE_METALLURGY", matTests.length, matPassed, performance.now() - t0_mat, "Materials Science: CMSX-4 Larson-Miller Creep Rupture, YBCO High-Tc Vortex Pinning, CFRP Hashin Failure Criteria, Monolayer MoS2 2D Nano, Ti-6Al-4V Additive Melt-Pool");
+
+  // 47. Astrophysics, Three-Body Orbital Mechanics & Space Weather (25 scenarios)
+  const t0_astro = performance.now();
+  const astroTests = generateAllAstrophysicsOrbitalScenarios();
+  let astroPassed = 0;
+  for (const t of astroTests) {
+    const res = t.execute();
+    if (res.status === "PASS" || res.score >= 50) astroPassed++;
+  }
+  totalScenarios += astroTests.length;
+  totalInvariants += astroPassed;
+  domainBreakdown.push({
+    domain: "ASTROPHYSICS_ORBITAL_DEFENSE",
+    scenariosCount: astroTests.length,
+    invariantsPassed: astroPassed,
+    status: astroPassed === astroTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(47, "ASTROPHYSICS_ORBITAL_DEFENSE", astroTests.length, astroPassed, performance.now() - t0_astro, "Astrophysics & Space Defense: CR3BP Sun-Earth L2 Halo Stationkeeping, CME Solar Storm GIC Grid Coupling, Chandrasekhar Mass Degeneracy Limit, 3.5PN Gravitational Waves, Asteroid Keyholes");
+
+  // 48. Environmental Science, Climatology & Planetary Earth Systems (25 scenarios)
+  const t0_earth = performance.now();
+  const earthTests = generateAllEnvironmentalEarthScenarios();
+  let earthPassed = 0;
+  for (const t of earthTests) {
+    const res = t.execute();
+    if (res.status === "PASS" || res.score >= 50) earthPassed++;
+  }
+  totalScenarios += earthTests.length;
+  totalInvariants += earthPassed;
+  domainBreakdown.push({
+    domain: "ENVIRONMENTAL_EARTH_SYSTEMS",
+    scenariosCount: earthTests.length,
+    invariantsPassed: earthPassed,
+    status: earthPassed === earthTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(48, "ENVIRONMENTAL_EARTH_SYSTEMS", earthTests.length, earthPassed, performance.now() - t0_earth, "Earth Systems & Climate: AMOC Thermohaline Stommel Bifurcation, Tropical Cyclone Carnot MPI, Aragonite Saturation pH, Rothermel Wildfire, MICI Glaciology");
+
+  // 49. Agrigenomics, Soil Microbiome & Global Food Security (25 scenarios)
+  const t0_agri = performance.now();
+  const agriTests = generateAllAgrigenomicsFoodScenarios();
+  let agriPassed = 0;
+  for (const t of agriTests) {
+    const res = t.execute();
+    if (res.status === "PASS" || res.score >= 50) agriPassed++;
+  }
+  totalScenarios += agriTests.length;
+  totalInvariants += agriPassed;
+  domainBreakdown.push({
+    domain: "AGRIGENOMICS_FOOD_SECURITY",
+    scenariosCount: agriTests.length,
+    invariantsPassed: agriPassed,
+    status: agriPassed === agriTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(49, "AGRIGENOMICS_FOOD_SECURITY", agriTests.length, agriPassed, performance.now() - t0_agri, "Agrigenomics & Food Security: C4 Photosynthesis Rubisco Suppression, Rhizobia Symbiotic N2 Fixation, CRISPR Salinity Tolerance, Aeroponics Stoichiometry, FAO Grain Stock Resilience");
+
+  // 50. Universal Linguistics, Cognitive Semiotics & Language Systems (25 scenarios)
+  const t0_lang = performance.now();
+  const langTests = generateAllLinguisticsSemioticsScenarios();
+  let langPassed = 0;
+  for (const t of langTests) {
+    const res = t.execute();
+    if (res.status === "PASS" || res.score >= 50) langPassed++;
+  }
+  totalScenarios += langTests.length;
+  totalInvariants += langPassed;
+  domainBreakdown.push({
+    domain: "LINGUISTICS_COGNITIVE_SEMIOTICS",
+    scenariosCount: langTests.length,
+    invariantsPassed: langPassed,
+    status: langPassed === langTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(50, "LINGUISTICS_COGNITIVE_SEMIOTICS", langTests.length, langPassed, performance.now() - t0_lang, "Universal Linguistics: IPA Acoustic Vowel Formants, Chomsky Minimalist Merge PIC, Ergative-Absolutive Typology, Procrustes Embedding Isomorphism, Ancient Script Entropy");
+
   const totalDurationMs = Math.round((performance.now() - epochStartTime) * 100) / 100;
   const accuracy = Math.round((totalInvariants / totalScenarios) * 1000) / 10;
   const nextScheduled = new Date(Date.now() + continuousState.intervalMinutes * 60 * 1000).toISOString();
 
-  const finishLog = `[NOCTIS-DAEMON] ${epochId} COMPLETED in ${totalDurationMs}ms | Domains: 43 | Scenarios: ${totalScenarios} | Invariants: ${totalInvariants}/${totalScenarios} | Violations: ${safetyViolations} | Accuracy: ${accuracy}%`;
+  const finishLog = `[NOCTIS-DAEMON] ${epochId} COMPLETED in ${totalDurationMs}ms | Domains: ${domainBreakdown.length} | Scenarios: ${totalScenarios} | Invariants: ${totalInvariants}/${totalScenarios} | Violations: ${safetyViolations} | Accuracy: ${accuracy}%`;
   verboseLogs.push(finishLog);
   if (isVerbose) {
     console.log(finishLog);
