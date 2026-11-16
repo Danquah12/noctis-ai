@@ -75,9 +75,9 @@ Then verify the *exact PR-head commit* using the repository's existing CI. The p
 ## Boundaries and next work
 
 - The bridge verifies file identity and review attestations; it does not independently establish licenses, detect all personal/private material, prove the answer's correctness, or validate a cited passage's logical support.
-- Exact prompt checking does not prevent paraphrase/semantic leakage, overlapping source passages or contamination from external pretrained sources. The split is not yet source-group-aware.
+- Exact prompt checking does not prevent paraphrase/semantic leakage, overlapping source passages or contamination from external pretrained sources. The split becomes source-group-aware in stacked draft PR #10; this mitigates related examples landing across partitions but does not prove that distinct sources are independent. See `DATASET-LEAKAGE-CONTROLS.md`.
 - **No GPU, weights, adapters, training runs, checkpoints, model scores, new cloud resources or paid provider requests** are produced by this work.
 - The main branch continues to evolve separately. Its purported continuous-training counters, its ChatML exports and its current QLoRA script must not be confused with actual model-weight training. Do not rebase the unmerged PR chain onto main without inspecting divergence and conflicts.
 - The pre-existing M3 MicroVM provider and simulator tests remain unchanged. Simulator success does not verify live cloud isolation.
 
-Next: add source-group-aware and near-duplicate leakage checks to the offline dataset preparer; independently audit a real rights-cleared source; then perform an authorized live-model baseline and specify a reproducible model-training backend after selecting and validating a trainable foundation model.
+Next: independently audit a real rights-cleared source and sufficient distinct source groups, add independently verified semantic and answer-level contamination assessment beyond PR #10's lexical checks, then perform an authorized live-model baseline and specify a reproducible model-training backend after selecting and validating a trainable foundation model.

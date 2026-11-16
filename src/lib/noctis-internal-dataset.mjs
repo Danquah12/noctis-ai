@@ -5,6 +5,7 @@
  * Nothing from end-user chats or private customer records may enter this pipeline.
  */
 import { createHash } from "node:crypto";
+import { auditNoctisDatasetSplitLeakage, isNoctisLexicalNearDuplicate } from "./noctis-dataset-leakage.mjs";
 
 const PUBLIC_LICENSES = new Set(["CC0-1.0", "CC-BY-4.0", "MIT", "Apache-2.0"]);
 const INTERNAL_LICENSE = "NOCTIS-ORIGINAL";
@@ -54,6 +55,12 @@ function sourceIssue(source) {
   if (source.kind === "project_authored" && source.origin_url && !isHttpsUrl(source.origin_url)) {
     return "project_source_uri_invalid";
   }
+  if (source.dataset_group_id !== undefined && !ID_PATTERN.test(source.dataset_group_id || "")) {
+    return "source_group_invalid";
+  }
+  if (source.expected_sha256 !== undefined && !HEX_HASH.test(source.expected_sha256 || "")) {
+    return "source_digest_invalid";
+  }
   if (source.training_allowed !== true || source.approved !== true ||
       !ID_PATTERN.test(source.reviewed_by || "") || source.usage_rights !== "model_training") {
     return "source_not_approved_for_training";
@@ -85,10 +92,12 @@ function exampleIssue(row) {
 }
 
 /**
- * Deterministic, prompt-grouped train/development/heldout partitions.
+ * Deterministic, source-grouped train/development/heldout partitions.
  *
  * Returns only accepted examples with provenance, plus sanitized rejected IDs/reasons.
- * Exact duplicate prompts across sources are quarantined rather than allowing leakage.
+ * Exact duplicate prompts across sources are quarantined; lexical cross-split
+ * overlap fails closed. Grouping is by explicit dataset_group_id when present,
+ * else pinned content digest (if provided), else stable source ID.
  * Reserved evaluator prompts are NEVER admitted into the training dataset at any split.
  * @param {{sources: any[], examples: any[]}} input
  * @param {{reservedHeldoutPrompts?: string[]}} [options]
@@ -117,7 +126,8 @@ export function prepareNoctisInternalDataset(input, options = {}) {
     }
     sourceMap.set(source.id, source);
   }
-  const reserved = new Set((options.reservedHeldoutPrompts || []).map(normalizeNoctisPrompt).filter(Boolean));
+  const reservedPrompts = (options.reservedHeldoutPrompts || []).filter(x => typeof x === "string" && x.trim());
+  const reserved = new Set(reservedPrompts.map(normalizeNoctisPrompt).filter(Boolean));
   const promptSeen = new Map();
   const idSeen = new Set();
   /** @type {Record<"train" | "development" | "heldout", any[]>} */
@@ -132,6 +142,9 @@ export function prepareNoctisInternalDataset(input, options = {}) {
     if (!source) { rejected.push({ id, code: "source_unapproved_or_missing" }); continue; }
     const normalizedPrompt = normalizeNoctisPrompt(row.prompt);
     if (reserved.has(normalizedPrompt)) { rejected.push({ id, code: "reserved_evaluation_prompt" }); continue; }
+    if (reservedPrompts.some(value => isNoctisLexicalNearDuplicate(row.prompt, value))) {
+      rejected.push({ id, code: "reserved_evaluation_lexical_overlap" }); continue;
+    }
     const normalizedCompletion = row.completion.normalize("NFKC").trim().replace(/\s+/g, " ");
     if (promptSeen.has(normalizedPrompt)) {
       rejected.push({ id, code: promptSeen.get(normalizedPrompt) === normalizedCompletion
@@ -139,8 +152,10 @@ export function prepareNoctisInternalDataset(input, options = {}) {
       continue;
     }
     promptSeen.set(normalizedPrompt, normalizedCompletion);
-    const fingerprint = sha256NoctisDataset(normalizedPrompt);
-    const bucket = Number.parseInt(fingerprint.slice(0, 8), 16) / 0x100000000;
+    const groupKey = source.dataset_group_id ? "group:" + source.dataset_group_id :
+      source.expected_sha256 ? "digest:" + source.expected_sha256.toLowerCase() : "source:" + source.id;
+    const groupFingerprint = sha256NoctisDataset(groupKey);
+    const bucket = Number.parseInt(groupFingerprint.slice(0, 8), 16) / 0x100000000;
     const split = bucket < 0.8 ? "train" : bucket < 0.9 ? "development" : "heldout";
     splits[split].push({
       id: row.id,
@@ -148,6 +163,7 @@ export function prepareNoctisInternalDataset(input, options = {}) {
       completion: row.completion.trim(),
       provenance: {
         source_id: source.id,
+        source_group_sha256: groupFingerprint,
         source_kind: source.kind,
         license_id: source.license_id,
         origin_url: source.origin_url || null,
@@ -158,6 +174,9 @@ export function prepareNoctisInternalDataset(input, options = {}) {
       },
     });
   }
+  // Fail closed if reviewed examples from independent groups look like
+  // overlapping questions across training/evaluation partitions.
+  const leakageAudit = auditNoctisDatasetSplitLeakage(splits);
   return {
     schema: "noctis.internal.dataset.v1",
     splits,
@@ -166,6 +185,8 @@ export function prepareNoctisInternalDataset(input, options = {}) {
       counts: { train: splits.train.length, development: splits.development.length, heldout: splits.heldout.length },
       rejected_count: rejected.length,
       rejected,
+      leakage_audit: leakageAudit,
+      partition_strategy: "source_group_sha256_v1",
       note: "Prepared examples only. No neural model training, live evaluation, license verification, or privacy guarantee.",
     },
   };
