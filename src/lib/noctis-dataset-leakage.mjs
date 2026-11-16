@@ -63,7 +63,8 @@ export function isNoctisLexicalNearDuplicate(a, b) {
  * @returns {{checked: number, cross_split_lexical_pairs: number}}
  */
 export function auditNoctisDatasetSplitLeakage(splits) {
-  if (!splits || !["train", "development", "heldout"].every(name => Array.isArray(splits[name]))) {
+  if (!splits || !/** @type {Array<"train"|"development"|"heldout">} */ (["train", "development", "heldout"])
+    .every(name => Array.isArray(splits[name]))) {
     throw new TypeError("Expected three Noctis dataset partitions.");
   }
   /** @type {Map<string, number[]>} */
