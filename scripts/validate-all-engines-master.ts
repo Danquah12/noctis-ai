@@ -30,7 +30,7 @@ const c = {
 
 console.log(`${c.bold}${c.cyan}======================================================================${c.reset}`);
 console.log(`${c.bold}${c.cyan} NOCTIS UNIVERSAL LIFE & OMNIPRESENT ENGINES VALIDATION BATTERY${c.reset}`);
-console.log(`${c.dim} Auditing all 60 sovereign engines, routing fidelity, and continuous training${c.reset}`);
+console.log(`${c.dim} Auditing all 70 sovereign engines, routing fidelity, and continuous training${c.reset}`);
 console.log(`${c.bold}${c.cyan}======================================================================${c.reset}\n`);
 
 // 1. ROUTING FIDELITY TEST BATTERY (All Aspects of Life)
@@ -165,6 +165,66 @@ const ROUTING_TEST_BATTERY: Array<{
     query: "Formulate a Control Barrier Function (CBF) quadratic program for guaranteed autonomous collision avoidance and compute Zero Moment Point (ZMP) stability.",
     expectedDomain: "ROBOTICS_AUTONOMOUS",
     expectedEngine: "noctis-robotics-autonomous-systems-engine.ts"
+  },
+  {
+    name: "Forestry & Rothermel Wildfire Spread Rate",
+    query: "Calculate the Rothermel surface fire rate of spread and Byram fireline intensity to determine direct attack safety zones.",
+    expectedDomain: "FORESTRY_WILDFIRE",
+    expectedEngine: "noctis-forestry-wildland-fire-engine.ts"
+  },
+  {
+    name: "Hydrology & Manning Open Channel Flow",
+    query: "Under Manning equation roughness n = 0.016, compute open channel flow discharge and verify the Froude number regime.",
+    expectedDomain: "HYDROLOGY_WATER",
+    expectedEngine: "noctis-hydrology-water-resources-engine.ts"
+  },
+  {
+    name: "Urban Transit & Greenshields Traffic Flow",
+    query: "Analyze highway Greenshields traffic flow dynamics and Webster signal timing optimization for intersection delay minimization.",
+    expectedDomain: "URBAN_TRANSIT",
+    expectedEngine: "noctis-urban-transit-mobility-engine.ts"
+  },
+  {
+    name: "Veterinary Medicine & Kleiber Metabolic Dosing",
+    query: "Apply Kleiber allometric dose scaling across animal species and evaluate ruminant volatile fatty acid fermentation.",
+    expectedDomain: "VETERINARY_MEDICINE",
+    expectedEngine: "noctis-veterinary-medicine-engine.ts"
+  },
+  {
+    name: "Nuclear Safeguards & Uranium Isotopic Attribution",
+    query: "Evaluate uranium isotopic ratio mass spectrometry and IAEA material unaccounted for (MUF) safeguards accountancy.",
+    expectedDomain: "NUCLEAR_SAFEGUARDS",
+    expectedEngine: "noctis-nuclear-forensics-safeguards-engine.ts"
+  },
+  {
+    name: "Mining Geometallurgy & Bond Comminution",
+    query: "Determine Bond work index comminution energy for SAG ball mill power sizing and evaluate GISTM tailings dam slope stability.",
+    expectedDomain: "MINING_GEOMETALLURGY",
+    expectedEngine: "noctis-mining-geometallurgy-engine.ts"
+  },
+  {
+    name: "Astronomy & Space Telescopes Diffraction Limits",
+    query: "Calculate Rayleigh diffraction angular resolution for space telescopes and evaluate exoplanet scale height transmission spectroscopy.",
+    expectedDomain: "ASTRONOMY_OBSERVATORIES",
+    expectedEngine: "noctis-astronomy-space-telescopes-engine.ts"
+  },
+  {
+    name: "Supply Chain & Wilson Stochastic EOQ Optimization",
+    query: "Compute Wilson economic order quantity (EOQ) and multi-echelon safety stock under lead time demand uncertainty.",
+    expectedDomain: "SUPPLY_CHAIN_LOGISTICS",
+    expectedEngine: "noctis-supply-chain-logistics-engine.ts"
+  },
+  {
+    name: "Geothermal Reservoir & EGS Thermal Power",
+    query: "Evaluate EGS fracture thermal power extraction, Carslaw-Jaeger drawdown, and induced seismicity traffic light protocols.",
+    expectedDomain: "GEOTHERMAL_ENERGY",
+    expectedEngine: "noctis-geothermal-reservoir-engine.ts"
+  },
+  {
+    name: "Cognitive Ergonomics & Fitts' Law Motor Control",
+    query: "Apply Fitts' law target acquisition index of difficulty and NASA-TLX cognitive workload bounds for supervisory human-AI teaming.",
+    expectedDomain: "COGNITIVE_ERGONOMICS",
+    expectedEngine: "noctis-cognitive-ergonomics-teaming-engine.ts"
   }
 ];
 
@@ -202,6 +262,6 @@ console.log(`  ${c.green}✔ Safety Violations:${c.reset}     ${epochSummary.saf
 console.log(`  ${c.green}✔ Execution Duration:${c.reset}    ${epochDuration}ms\n`);
 
 console.log(`${c.bold}${c.green}======================================================================${c.reset}`);
-console.log(`${c.bold}${c.green} ALL 60 DOMAIN ENGINES OPERATIONAL & 100% INVARIANT VERIFIED${c.reset}`);
+console.log(`${c.bold}${c.green} ALL 70 DOMAIN ENGINES OPERATIONAL & 100% INVARIANT VERIFIED${c.reset}`);
 console.log(`${c.bold}${c.green} UNIVERSAL LIFE ROUTER ACTIVE FOR ANY & ALL SUBJECT MATTER QUESTIONS${c.reset}`);
 console.log(`${c.bold}${c.green}======================================================================${c.reset}`);

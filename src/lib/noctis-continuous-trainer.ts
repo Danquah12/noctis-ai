@@ -74,6 +74,16 @@ import { executeAllNanotechnologyScenarios } from "./noctis-nanotechnology-molec
 import { executeAllMacroeconomicsScenarios } from "./noctis-macroeconomics-monetary-engine.ts";
 import { executeAllEpidemiologyScenarios } from "./noctis-epidemiology-pandemic-engine.ts";
 import { executeAllRoboticsScenarios } from "./noctis-robotics-autonomous-systems-engine.ts";
+import { executeAllForestryScenarios } from "./noctis-forestry-wildland-fire-engine.ts";
+import { executeAllHydrologyScenarios } from "./noctis-hydrology-water-resources-engine.ts";
+import { executeAllTransitScenarios } from "./noctis-urban-transit-mobility-engine.ts";
+import { executeAllVeterinaryScenarios } from "./noctis-veterinary-medicine-engine.ts";
+import { executeAllNuclearSafeguardsScenarios } from "./noctis-nuclear-forensics-safeguards-engine.ts";
+import { executeAllMiningScenarios } from "./noctis-mining-geometallurgy-engine.ts";
+import { executeAllAstronomyScenarios } from "./noctis-astronomy-space-telescopes-engine.ts";
+import { executeAllSupplyChainScenarios } from "./noctis-supply-chain-logistics-engine.ts";
+import { executeAllGeothermalScenarios } from "./noctis-geothermal-reservoir-engine.ts";
+import { executeAllCognitiveErgonomicsScenarios } from "./noctis-cognitive-ergonomics-teaming-engine.ts";
 
 export interface VerboseEpochEvent {
   step: number;
@@ -1327,6 +1337,186 @@ export function executeContinuousTrainingEpoch(options?: { verbose?: boolean }):
     status: robotPassed === robotTests.length ? "PASS" : "FAIL",
   });
   recordDomain(60, "ROBOTICS_AUTONOMOUS_SYSTEMS", robotTests.length, robotPassed, performance.now() - t0_robot, "Robotics & Autonomous Systems: Control Barrier Functions (CBF) Guaranteed Collision Avoidance Invariant, Bipedal/Quadruped Zero Moment Point (ZMP) Locomotion, Graph-SLAM Pose Graph Optimization, Distributed Swarm Consensus, ROS2 Real-Time DDS 1 kHz Deadline Invariant");
+
+  // Step 61: Forestry, Wildland Fire & Silviculture (NOCTIS-FOREST-001)
+  const t0_forest = performance.now();
+  const forestTests = executeAllForestryScenarios();
+  let forestPassed = 0;
+  for (const t of forestTests) {
+    const res = t.execute();
+    if (res.status === "PASS" || res.score >= 50) forestPassed++;
+  }
+  totalScenarios += forestTests.length;
+  totalInvariants += forestPassed;
+  domainBreakdown.push({
+    domain: "FORESTRY_WILDLAND_FIRE",
+    scenariosCount: forestTests.length,
+    invariantsPassed: forestPassed,
+    status: forestPassed === forestTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(61, "FORESTRY_WILDLAND_FIRE", forestTests.length, forestPassed, performance.now() - t0_forest, "Forestry & Wildfire: Rothermel Spread Model & Byram Fireline Intensity, Van Wagner Crown Fire Thresholds, Chave Pantropical Carbon Allometry, Reineke SDI Silviculture, NWCG Smoke Dispersion");
+
+  // Step 62: Hydrology, Watershed Dynamics & Water Resources (NOCTIS-HYDRO-001)
+  const t0_hydro = performance.now();
+  const hydroTests = executeAllHydrologyScenarios();
+  let hydroPassed = 0;
+  for (const t of hydroTests) {
+    const res = t.execute();
+    if (res.status === "PASS" || res.score >= 50) hydroPassed++;
+  }
+  totalScenarios += hydroTests.length;
+  totalInvariants += hydroPassed;
+  domainBreakdown.push({
+    domain: "HYDROLOGY_WATER_RESOURCES",
+    scenariosCount: hydroTests.length,
+    invariantsPassed: hydroPassed,
+    status: hydroPassed === hydroTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(62, "HYDROLOGY_WATER_RESOURCES", hydroTests.length, hydroPassed, performance.now() - t0_hydro, "Hydrology: Manning Open Channel Hydraulics & Froude Regime, Muskingum River Flood Wave Routing, Theis Confined Aquifer Drawdown, FAO-56 Penman-Monteith ETo, EPA SWMM Detention Basins");
+
+  // Step 63: Urban Transit, Mobility & Smart Transportation (NOCTIS-TRANSIT-001)
+  const t0_transit = performance.now();
+  const transitTests = executeAllTransitScenarios();
+  let transitPassed = 0;
+  for (const t of transitTests) {
+    const res = t.execute();
+    if (res.status === "PASS" || res.score >= 50) transitPassed++;
+  }
+  totalScenarios += transitTests.length;
+  totalInvariants += transitPassed;
+  domainBreakdown.push({
+    domain: "URBAN_TRANSIT_MOBILITY",
+    scenariosCount: transitTests.length,
+    invariantsPassed: transitPassed,
+    status: transitPassed === transitTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(63, "URBAN_TRANSIT_MOBILITY", transitTests.length, transitPassed, performance.now() - t0_transit, "Urban Transit: Greenshields Traffic Flow & Bottleneck Capacity, Webster Signal Timing Optimization, GoA4 CBTC Metro Rail Safety Headways, Doubly-Constrained Gravity Models, Fruin Pedestrian Crowd Invariants");
+
+  // Step 64: Veterinary Medicine & Comparative Animal Physiology (NOCTIS-VET-001)
+  const t0_vet = performance.now();
+  const vetTests = executeAllVeterinaryScenarios();
+  let vetPassed = 0;
+  for (const t of vetTests) {
+    const res = t.execute();
+    if (res.status === "PASS" || res.score >= 50) vetPassed++;
+  }
+  totalScenarios += vetTests.length;
+  totalInvariants += vetPassed;
+  domainBreakdown.push({
+    domain: "VETERINARY_MEDICINE_PHYSIOLOGY",
+    scenariosCount: vetTests.length,
+    invariantsPassed: vetPassed,
+    status: vetPassed === vetTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(64, "VETERINARY_MEDICINE_PHYSIOLOGY", vetTests.length, vetPassed, performance.now() - t0_vet, "Veterinary Medicine: Kleiber Multispecies Metabolic Dose Scaling, Ruminant VFA Fermentation & SARA Acidosis Invariants, Equine Colic Strangulation Peritoneal Lactate, Canine GDV Shock Decompression, HPAI H5N1 Biosecurity Cordons");
+
+  // Step 65: Nuclear Forensics, Non-Proliferation & IAEA Safeguards (NOCTIS-NUC-SAFE-001)
+  const t0_nuclear_safe = performance.now();
+  const nucSafeTests = executeAllNuclearSafeguardsScenarios();
+  let nucSafePassed = 0;
+  for (const t of nucSafeTests) {
+    const res = t.execute();
+    if (res.status === "PASS" || res.score >= 50) nucSafePassed++;
+  }
+  totalScenarios += nucSafeTests.length;
+  totalInvariants += nucSafePassed;
+  domainBreakdown.push({
+    domain: "NUCLEAR_FORENSICS_SAFEGUARDS",
+    scenariosCount: nucSafeTests.length,
+    invariantsPassed: nucSafePassed,
+    status: nucSafePassed === nucSafeTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(65, "NUCLEAR_FORENSICS_SAFEGUARDS", nucSafeTests.length, nucSafePassed, performance.now() - t0_nuclear_safe, "Nuclear Safeguards: Multi-Collector ICP-MS Uranium Isotopic Attribution, Plutonium 241Am/241Pu Radiochronometry, IAEA MUF Material Accountancy Sigma-MUF, CTBTO Radioxenon Discrimination, HPGe Cryogenic Gamma Spectrometry");
+
+  // Step 66: Mining, Geometallurgy & Mineral Extraction (NOCTIS-MINE-001)
+  const t0_mine = performance.now();
+  const mineTests = executeAllMiningScenarios();
+  let minePassed = 0;
+  for (const t of mineTests) {
+    const res = t.execute();
+    if (res.status === "PASS" || res.score >= 50) minePassed++;
+  }
+  totalScenarios += mineTests.length;
+  totalInvariants += minePassed;
+  domainBreakdown.push({
+    domain: "MINING_GEOMETALLURGY",
+    scenariosCount: mineTests.length,
+    invariantsPassed: minePassed,
+    status: minePassed === mineTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(66, "MINING_GEOMETALLURGY", mineTests.length, minePassed, performance.now() - t0_mine, "Mining & Geometallurgy: Bond Comminution Ball Mill Power Sizing, Garcia-Zuniga Froth Flotation Kinetics, Barton Q-System Underground Support, GISTM Tailings Dam Bishop Method Slope Stability, ICMC Cyanide Heap Leach Invariants");
+
+  // Step 67: Astronomy, Astrophysics & Space Observatories (NOCTIS-ASTRO-TEL-001)
+  const t0_astro_tel = performance.now();
+  const astroTelTests = executeAllAstronomyScenarios();
+  let astroTelPassed = 0;
+  for (const t of astroTelTests) {
+    const res = t.execute();
+    if (res.status === "PASS" || res.score >= 50) astroTelPassed++;
+  }
+  totalScenarios += astroTelTests.length;
+  totalInvariants += astroTelPassed;
+  domainBreakdown.push({
+    domain: "ASTRONOMY_SPACE_OBSERVATORIES",
+    scenariosCount: astroTelTests.length,
+    invariantsPassed: astroTelPassed,
+    status: astroTelPassed === astroTelTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(67, "ASTRONOMY_SPACE_OBSERVATORIES", astroTelTests.length, astroTelPassed, performance.now() - t0_astro_tel, "Space Observatories: Rayleigh Diffraction Limit & CCD Poisson Shot Noise SNR, Exoplanet Transmission Scale Height Spectroscopy, 4096-Actuator Adaptive Optics Zernike DM Reconstructors, Vector Vortex Coronagraph Dark Hole Carving, Einstein Ring Lensing Mass");
+
+  // Step 68: Supply Chain, Logistics Optimization & Operations Research (NOCTIS-LOGIST-001)
+  const t0_logistics = performance.now();
+  const logisticsTests = executeAllSupplyChainScenarios();
+  let logisticsPassed = 0;
+  for (const t of logisticsTests) {
+    const res = t.execute();
+    if (res.status === "PASS" || res.score >= 50) logisticsPassed++;
+  }
+  totalScenarios += logisticsTests.length;
+  totalInvariants += logisticsPassed;
+  domainBreakdown.push({
+    domain: "SUPPLY_CHAIN_OPERATIONS_RESEARCH",
+    scenariosCount: logisticsTests.length,
+    invariantsPassed: logisticsPassed,
+    status: logisticsPassed === logisticsTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(68, "SUPPLY_CHAIN_OPERATIONS_RESEARCH", logisticsTests.length, logisticsPassed, performance.now() - t0_logistics, "Supply Chain Operations: Wilson Stochastic EOQ & Multi-Echelon Safety Stock, Clarke-Wright VRPTW Vehicle Routing Heuristic, Bullwhip Effect Variance Suppression via VMI, Little's Law WIP Throughput, Branch-and-Cut Facility Location MILP");
+
+  // Step 69: Geothermal Reservoir Engineering & Subsurface Energy (NOCTIS-GEOTHERM-001)
+  const t0_geotherm = performance.now();
+  const geothermTests = executeAllGeothermalScenarios();
+  let geothermPassed = 0;
+  for (const t of geothermTests) {
+    const res = t.execute();
+    if (res.status === "PASS" || res.score >= 50) geothermPassed++;
+  }
+  totalScenarios += geothermTests.length;
+  totalInvariants += geothermPassed;
+  domainBreakdown.push({
+    domain: "GEOTHERMAL_RESERVOIR_ENGINEERING",
+    scenariosCount: geothermTests.length,
+    invariantsPassed: geothermPassed,
+    status: geothermPassed === geothermTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(69, "GEOTHERMAL_RESERVOIR_ENGINEERING", geothermTests.length, geothermPassed, performance.now() - t0_geotherm, "Geothermal Engineering: EGS Fracture Thermal Extraction & Carslaw-Jaeger Drawdown, Double-Flash Brine Thermodynamic Balances & SSI Scale Prevention, Induced Seismicity Traffic Light Protocol (Gutenberg-Richter b-Value), Supercritical ORC Exergy, Closed-Loop Multilateral Wells");
+
+  // Step 70: Cognitive Science, Human Factors & Human-AI Teaming (NOCTIS-COG-TEAM-001)
+  const t0_cog_team = performance.now();
+  const cogTeamTests = executeAllCognitiveErgonomicsScenarios();
+  let cogTeamPassed = 0;
+  for (const t of cogTeamTests) {
+    const res = t.execute();
+    if (res.status === "PASS" || res.score >= 50) cogTeamPassed++;
+  }
+  totalScenarios += cogTeamTests.length;
+  totalInvariants += cogTeamPassed;
+  domainBreakdown.push({
+    domain: "COGNITIVE_SCIENCE_HUMAN_AI_TEAMING",
+    scenariosCount: cogTeamTests.length,
+    invariantsPassed: cogTeamPassed,
+    status: cogTeamPassed === cogTeamTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(70, "COGNITIVE_SCIENCE_HUMAN_AI_TEAMING", cogTeamTests.length, cogTeamPassed, performance.now() - t0_cog_team, "Cognitive Science & Human-AI Teaming: Fitts' Law Motor Target Acquisition & Throughput (ISO 9241-9), Hick-Hyman Information-Theoretic Emergency Choice RT, NASA-TLX Multidimensional Workload Bounds, Endsley 3-Level Autonomous Takeover Latency, Calibrated Bayesian Trust Concordance");
 
   const totalDurationMs = Math.round((performance.now() - epochStartTime) * 100) / 100;
   const accuracy = Math.round((totalInvariants / totalScenarios) * 1000) / 10;

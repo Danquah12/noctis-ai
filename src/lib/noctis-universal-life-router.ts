@@ -61,6 +61,16 @@ import { evaluateQuantumDotBandgapConfinement } from "./noctis-nanotechnology-mo
 import { evaluateTaylorRuleInterestRate } from "./noctis-macroeconomics-monetary-engine.ts";
 import { evaluateEffectiveReproductionNumberRt } from "./noctis-epidemiology-pandemic-engine.ts";
 import { evaluateControlBarrierFunctionSafety } from "./noctis-robotics-autonomous-systems-engine.ts";
+import { evaluateWildlandFireSpreadAndIntensity } from "./noctis-forestry-wildland-fire-engine.ts";
+import { evaluateManningOpenChannelFlow } from "./noctis-hydrology-water-resources-engine.ts";
+import { evaluateGreenshieldsTrafficFlow } from "./noctis-urban-transit-mobility-engine.ts";
+import { evaluateMultispeciesMetabolicDrugDose } from "./noctis-veterinary-medicine-engine.ts";
+import { evaluateUraniumEnrichmentAttribution } from "./noctis-nuclear-forensics-safeguards-engine.ts";
+import { evaluateBondComminutionEnergy } from "./noctis-mining-geometallurgy-engine.ts";
+import { evaluateTelescopeResolutionAndSnr } from "./noctis-astronomy-space-telescopes-engine.ts";
+import { evaluateEoqAndSafetyStock } from "./noctis-supply-chain-logistics-engine.ts";
+import { evaluateEgsThermalPowerAndDrawdown } from "./noctis-geothermal-reservoir-engine.ts";
+import { evaluateFittsLawTargetAcquisition } from "./noctis-cognitive-ergonomics-teaming-engine.ts";
 
 export type SovereignLifeDomain =
   | "CLINICAL_MEDICINE"
@@ -84,6 +94,16 @@ export type SovereignLifeDomain =
   | "NANOTECHNOLOGY_MOLECULAR"
   | "EPIDEMIOLOGY_PANDEMIC"
   | "ROBOTICS_AUTONOMOUS"
+  | "FORESTRY_WILDFIRE"
+  | "HYDROLOGY_WATER"
+  | "URBAN_TRANSIT"
+  | "VETERINARY_MEDICINE"
+  | "NUCLEAR_SAFEGUARDS"
+  | "MINING_GEOMETALLURGY"
+  | "ASTRONOMY_OBSERVATORIES"
+  | "SUPPLY_CHAIN_LOGISTICS"
+  | "GEOTHERMAL_ENERGY"
+  | "COGNITIVE_ERGONOMICS"
   | "GENERAL_SOVEREIGN";
 
 export interface UniversalRouteResult {
@@ -127,7 +147,7 @@ export function detectLifeDomain(query: string): SovereignLifeDomain {
   }
 
   // 6. Environmental Science, Climatology & Earth Systems
-  if (/\b(amoc\b|thermohaline|stommel|maximum potential intensity|mpi\b|cyclone|hurricane thermodynamics|aragonite saturation|ocean acidification|rothermel|wildfire spread|mici\b|ice sheet|grounding line|ipcc\b)\b/i.test(q)) {
+  if (/\b(amoc\b|thermohaline|stommel|maximum potential intensity|mpi\b|cyclone|hurricane thermodynamics|aragonite saturation|ocean acidification|mici\b|ice sheet|grounding line|ipcc\b)\b/i.test(q)) {
     return "ENVIRONMENTAL_EARTH";
   }
 
@@ -204,6 +224,56 @@ export function detectLifeDomain(query: string): SovereignLifeDomain {
   // 21. Robotics & Autonomous Field Systems
   if (/\b(control barrier function|cbf\b|zero moment point|zmp\b|capture point|graph-slam|pose graph|swarm consensus|fiedler|ros2.*dds|cyclonedds|real-time deadline)\b/i.test(q)) {
     return "ROBOTICS_AUTONOMOUS";
+  }
+
+  // 22. Forestry, Wildland Fire & Silviculture
+  if (/\b(rothermel|byram|fireline intensity|crown fire|canopy bulk density|chave\b|allometric.*biomass|reineke sdi|stand density index|prescribed fire|ventilation index)\b/i.test(q)) {
+    return "FORESTRY_WILDFIRE";
+  }
+
+  // 23. Hydrology, Watershed Dynamics & Water Resources
+  if (/\b(manning.*roughness|open channel flow|froude number|muskingum|flood routing|theis.*aquifer|cone of depression|penman-monteith|evapotranspiration|swmm\b|detention basin)\b/i.test(q)) {
+    return "HYDROLOGY_WATER";
+  }
+
+  // 24. Urban Transit, Mobility & Smart Transportation
+  if (/\b(greenshields|traffic flow|jam density|webster.*signal|optimal cycle|cbtc\b|moving block|rail headway|gravity model.*trip|fruin\b|pedestrian level-of-service)\b/i.test(q)) {
+    return "URBAN_TRANSIT";
+  }
+
+  // 25. Veterinary Medicine & Comparative Animal Physiology
+  if (/\b(kleiber|allometric dose|species metabolic|rumen.*fermentation|volatile fatty acid|sara\b.*acidosis|equine colic|peritoneal lactate|gdv\b|gastric dilatation|hpai\b|avian influenza)\b/i.test(q)) {
+    return "VETERINARY_MEDICINE";
+  }
+
+  // 26. Nuclear Forensics, Non-Proliferation & IAEA Safeguards
+  if (/\b(uranium isotopic|235u|238u enrichment|plutonium.*chronometry|241pu|241am|muf\b|material unaccounted|iaea safeguards|ctbt|radioxenon|hpge\b)\b/i.test(q)) {
+    return "NUCLEAR_SAFEGUARDS";
+  }
+
+  // 27. Mining, Geometallurgy & Mineral Extraction
+  if (/\b(bond work index|comminution|ball mill power|froth flotation|garcia-zuniga|barton q|tailings dam|gistm\b|cyanide heap leach|elsner)\b/i.test(q)) {
+    return "MINING_GEOMETALLURGY";
+  }
+
+  // 28. Astronomy, Astrophysics & Space Observatories
+  if (/\b(rayleigh diffraction|angular resolution.*telescope|poisson shot noise|exoplanet.*scale height|adaptive optics|zernike deformable|coronagraph|dark hole|einstein ring)\b/i.test(q)) {
+    return "ASTRONOMY_OBSERVATORIES";
+  }
+
+  // 29. Global Supply Chain, Logistics Optimization & Operations Research
+  if (/\b(economic order quantity|eoq\b|safety stock|reorder point|clarke-wright|vrptw\b|vehicle routing|bullwhip effect|variance amplification|little's law|wip.*throughput|milp.*facility location)\b/i.test(q)) {
+    return "SUPPLY_CHAIN_LOGISTICS";
+  }
+
+  // 30. Geothermal Reservoir Engineering & Subsurface Energy Systems
+  if (/\b(egs\b.*fracture|geothermal drawdown|carslaw-jaeger|double-flash.*geothermal|silica saturation index|induced seismicity.*traffic light|gutenberg-richter|orc exergy|closed-loop geothermal)\b/i.test(q)) {
+    return "GEOTHERMAL_ENERGY";
+  }
+
+  // 31. Cognitive Science, Human Factors & Human-AI Teaming
+  if (/\b(fitts' law|fitts law|index of difficulty|hick-hyman|choice reaction time|nasa-tlx|cognitive workload|yerkes-dodson|endsley|situational awareness|takeover transition|human-ai trust)\b/i.test(q)) {
+    return "COGNITIVE_ERGONOMICS";
   }
 
   return "GENERAL_SOVEREIGN";
@@ -528,6 +598,184 @@ export function dispatchUniversalLifeQuery(query: string): UniversalRouteResult 
         invariantsEnforced: ["Control Barrier Function Forward Invariance (h(x) >= 0)", "ZMP Dynamic Locomotion Stability"],
         dispatchedEngine: "noctis-robotics-autonomous-systems-engine.ts",
         response: `# Noctis Sovereign Robotics & Autonomous Field Systems Intelligence\n\n**Subsystem**: Safety-Critical Control Barrier Functions & Legged Locomotion\n**Verdict**: ${res.verdict}\n\n### Control Invariant Formulations\n${res.robotEquations.map(e => `- \`${e}\``).join("\n")}`
+      };
+    }
+
+    case "FORESTRY_WILDFIRE": {
+      const res = evaluateWildlandFireSpreadAndIntensity({
+        fuelModelType: "Fuel Model 10",
+        fuelMoistureContentPercent: 6.0,
+        midflameWindSpeedKph: 25,
+        slopeDegrees: 15,
+        fuelLoadKgM2: 1.2,
+        heatYieldKjKg: 18600
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["NWCG PMS 437", "NFPA 1143", "USDA Forest Service Standards"],
+        invariantsEnforced: ["Rothermel Surface Fire Spread Rate", "Van Wagner Crown Transition Threshold"],
+        dispatchedEngine: "noctis-forestry-wildland-fire-engine.ts",
+        response: `# Noctis Sovereign Forestry & Wildfire Intelligence\n\n**Subsystem**: Rothermel Fire Behavior & Silvicultural Stand Dynamics\n**Verdict**: ${res.verdict}\n\n### Forestry Formulations\n${res.forestryEquations.map(e => `- \`${e}\``).join("\n")}`
+      };
+    }
+
+    case "HYDROLOGY_WATER": {
+      const res = evaluateManningOpenChannelFlow({
+        channelWidthMeters: 5.0,
+        waterDepthMeters: 2.0,
+        sideSlopeZ: 1.5,
+        bedSlopeMPerM: 0.002,
+        manningRoughnessN: 0.016
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["USACE EM 1110-2-1601", "FAO-56 Irrigation Drainage", "EPA SWMM Standards"],
+        invariantsEnforced: ["Manning Open Channel Continuity", "Theis Groundwater Drawdown Invariant"],
+        dispatchedEngine: "noctis-hydrology-water-resources-engine.ts",
+        response: `# Noctis Sovereign Hydrology & Water Resources Engineering\n\n**Subsystem**: Open Channel Hydraulics & Watershed Flood Wave Dynamics\n**Verdict**: ${res.verdict}\n\n### Hydrologic Formulations\n${res.hydroEquations.map(e => `- \`${e}\``).join("\n")}`
+      };
+    }
+
+    case "URBAN_TRANSIT": {
+      const res = evaluateGreenshieldsTrafficFlow({
+        freeFlowSpeedKph: 100,
+        jamDensityVehPerKm: 140,
+        observedDensityVehPerKm: 50
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["TRB Highway Capacity Manual (HCM 7th)", "IEEE 1474 CBTC Rail Standards"],
+        invariantsEnforced: ["Greenshields Traffic Parabolic Equilibrium", "Webster Signal Delay Minimization"],
+        dispatchedEngine: "noctis-urban-transit-mobility-engine.ts",
+        response: `# Noctis Sovereign Urban Transit & Smart Mobility Intelligence\n\n**Subsystem**: Macroscopic Traffic Flow & Automated CBTC Rail Transit\n**Verdict**: ${res.verdict}\n\n### Mobility Equations\n${res.transitEquations.map(e => `- \`${e}\``).join("\n")}`
+      };
+    }
+
+    case "VETERINARY_MEDICINE": {
+      const res = evaluateMultispeciesMetabolicDrugDose({
+        humanStandardDoseMg: 500,
+        humanWeightKg: 70,
+        targetAnimalWeightKg: 35,
+        speciesSpecificClearanceFactor: 1.0
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["FDA-CVM Guidance #191", "WOAH Terrestrial Animal Health Code"],
+        invariantsEnforced: ["Kleiber Allometric Metabolic Scaling (M^0.75)", "Rumen Fermentation SARA Safeguards"],
+        dispatchedEngine: "noctis-veterinary-medicine-engine.ts",
+        response: `# Noctis Sovereign Veterinary Medicine & Animal Physiology\n\n**Subsystem**: Multispecies Allometric Pharmacology & Critical Care\n**Verdict**: ${res.verdict}\n\n### Veterinary Formulations\n${res.vetEquations.map(e => `- \`${e}\``).join("\n")}`
+      };
+    }
+
+    case "NUCLEAR_SAFEGUARDS": {
+      const res = evaluateUraniumEnrichmentAttribution({
+        u235AtomicPercent: 4.5,
+        u234ToU235Ratio: 0.008,
+        u236ToU235Ratio: 0.0001
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["IAEA INFCIRC/153 Comprehensive Safeguards", "CTBTO IMS Standards"],
+        invariantsEnforced: ["Bateman Radioisotopic Chronometry", "IAEA MUF Material Accountancy Sigma Test"],
+        dispatchedEngine: "noctis-nuclear-forensics-safeguards-engine.ts",
+        response: `# Noctis Sovereign Nuclear Forensics & IAEA Safeguards\n\n**Subsystem**: Uranium Isotopic Attribution & Radiochronometric Dating\n**Verdict**: ${res.verdict}\n\n### Nuclear Equations\n${res.nuclearEquations.map(e => `- \`${e}\``).join("\n")}`
+      };
+    }
+
+    case "MINING_GEOMETALLURGY": {
+      const res = evaluateBondComminutionEnergy({
+        feedSizeMicronsF80: 9500,
+        productSizeMicronsP80: 75,
+        bondWorkIndexKwhPerTonne: 14.5,
+        throughputTonnesPerHour: 1200
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["GISTM Global Tailings Standard", "SME Mineral Processing Standards"],
+        invariantsEnforced: ["Bond Third Theory Comminution Power Sizing", "Bishop Slope Stability FoS Invariant"],
+        dispatchedEngine: "noctis-mining-geometallurgy-engine.ts",
+        response: `# Noctis Sovereign Mining, Geometallurgy & Extraction Intelligence\n\n**Subsystem**: Comminution Energy Balances & Tailings Dam Stability\n**Verdict**: ${res.verdict}\n\n### Mining Equations\n${res.miningEquations.map(e => `- \`${e}\``).join("\n")}`
+      };
+    }
+
+    case "ASTRONOMY_OBSERVATORIES": {
+      const res = evaluateTelescopeResolutionAndSnr({
+        apertureDiameterMeters: 6.5,
+        wavelengthNanometers: 2000,
+        targetFluxPhotonsPerSecM2: 120,
+        integrationTimeSeconds: 1800,
+        opticalThroughput: 0.45,
+        detectorDarkCurrentEPerPixSec: 0.001,
+        readNoiseElectrons: 4.0
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["NASA Astrophysics SMD Standards", "STScI Observatory Guidelines"],
+        invariantsEnforced: ["Rayleigh Criterion Diffraction Limit", "Poisson Photon Shot Noise SNR Limit"],
+        dispatchedEngine: "noctis-astronomy-space-telescopes-engine.ts",
+        response: `# Noctis Sovereign Astronomy & Space Observatories Intelligence\n\n**Subsystem**: Diffraction-Limited Optics & Exoplanet Transit Spectroscopy\n**Verdict**: ${res.verdict}\n\n### Observatory Equations\n${res.astroEquations.map(e => `- \`${e}\``).join("\n")}`
+      };
+    }
+
+    case "SUPPLY_CHAIN_LOGISTICS": {
+      const res = evaluateEoqAndSafetyStock({
+        annualDemandUnits: 100000,
+        orderCostPerOrder: 250,
+        holdingCostPerUnitYear: 8.0,
+        leadTimeDays: 14,
+        dailyDemandStandardDeviation: 40,
+        serviceLevelZScore: 2.33
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["APICS / ASCM CSCP Standards", "CSCMP Supply Chain Network Guidelines"],
+        invariantsEnforced: ["Wilson Stochastic Economic Order Quantity", "Little's Law WIP Throughput Invariant"],
+        dispatchedEngine: "noctis-supply-chain-logistics-engine.ts",
+        response: `# Noctis Sovereign Supply Chain & Logistics Optimization\n\n**Subsystem**: Multi-Echelon Stochastic Inventory & VRPTW Fleet Routing\n**Verdict**: ${res.verdict}\n\n### Operations Research Formulations\n${res.logisticsEquations.map(e => `- \`${e}\``).join("\n")}`
+      };
+    }
+
+    case "GEOTHERMAL_ENERGY": {
+      const res = evaluateEgsThermalPowerAndDrawdown({
+        productionFlowRateKgPerSec: 80,
+        reservoirTemperatureCelsius: 240,
+        injectionTemperatureCelsius: 65,
+        fractureHeatTransferAreaM2: 2.0e6,
+        rockThermalConductivityWPerMK: 2.8,
+        productionYears: 20
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["DOE Geothermal Technologies Office (GTO)", "ASME PTC 52 Geothermal Code"],
+        invariantsEnforced: ["Carslaw-Jaeger Thermal Drawdown Bound (< 20C)", "Induced Seismicity Traffic Light Protocol"],
+        dispatchedEngine: "noctis-geothermal-reservoir-engine.ts",
+        response: `# Noctis Sovereign Geothermal Reservoir Engineering Intelligence\n\n**Subsystem**: Enhanced Geothermal Systems (EGS) & Subsurface Thermodynamics\n**Verdict**: ${res.verdict}\n\n### Geothermal Formulations\n${res.geothermEquations.map(e => `- \`${e}\``).join("\n")}`
+      };
+    }
+
+    case "COGNITIVE_ERGONOMICS": {
+      const res = evaluateFittsLawTargetAcquisition({
+        targetDistanceMm: 240,
+        targetWidthMm: 20,
+        empiricalInterceptA: 140,
+        empiricalSlopeB: 120
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["ISO 9241-9 Ergonomics Standards", "FAA HF-STD-001B", "DoD Ethical AI"],
+        invariantsEnforced: ["Fitts' Law Motor Pointing Ergonomics", "Endsley 3-Level Autonomous Takeover Bound"],
+        dispatchedEngine: "noctis-cognitive-ergonomics-teaming-engine.ts",
+        response: `# Noctis Sovereign Cognitive Science & Human-AI Teaming\n\n**Subsystem**: Neuromuscular Motor Ergonomics & Supervisory Takeover Dynamics\n**Verdict**: ${res.verdict}\n\n### Cognitive Formulations\n${res.cognitiveEquations.map(e => `- \`${e}\``).join("\n")}`
       };
     }
 
