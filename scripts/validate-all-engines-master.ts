@@ -30,7 +30,7 @@ const c = {
 
 console.log(`${c.bold}${c.cyan}======================================================================${c.reset}`);
 console.log(`${c.bold}${c.cyan} NOCTIS UNIVERSAL LIFE & OMNIPRESENT ENGINES VALIDATION BATTERY${c.reset}`);
-console.log(`${c.dim} Auditing all 70 sovereign engines, routing fidelity, and continuous training${c.reset}`);
+console.log(`${c.dim} Auditing all 80 sovereign engines, routing fidelity, and continuous training${c.reset}`);
 console.log(`${c.bold}${c.cyan}======================================================================${c.reset}\n`);
 
 // 1. ROUTING FIDELITY TEST BATTERY (All Aspects of Life)
@@ -225,6 +225,66 @@ const ROUTING_TEST_BATTERY: Array<{
     query: "Apply Fitts' law target acquisition index of difficulty and NASA-TLX cognitive workload bounds for supervisory human-AI teaming.",
     expectedDomain: "COGNITIVE_ERGONOMICS",
     expectedEngine: "noctis-cognitive-ergonomics-teaming-engine.ts"
+  },
+  {
+    name: "Post-Quantum Cryptography & ML-KEM Lattice",
+    query: "Evaluate NIST FIPS 203 ML-KEM Kyber lattice-based key encapsulation and PLONK zk-SNARK polynomial commitments.",
+    expectedDomain: "POST_QUANTUM_CRYPTO",
+    expectedEngine: "noctis-cryptography-pqc-engine.ts"
+  },
+  {
+    name: "Telecommunications & 6G Terahertz Shannon Capacity",
+    query: "Compute the Shannon-Hartley channel capacity and SNR at 140 GHz D-Band with reconfigurable intelligent surface (RIS) beamforming.",
+    expectedDomain: "TELECOM_6G_PHOTONICS",
+    expectedEngine: "noctis-telecom-photonics-6g-engine.ts"
+  },
+  {
+    name: "Climate Intervention & Stratospheric Aerosols",
+    query: "Calculate stratospheric aerosol injection radiative forcing and direct air capture solid-amine VTSA desorption heat.",
+    expectedDomain: "CLIMATE_INTERVENTION",
+    expectedEngine: "noctis-climate-intervention-srm-engine.ts"
+  },
+  {
+    name: "Defense Avionics & Stealth Radar Cross-Section",
+    query: "Under the radar range equation, compute detection range against a VLO stealth target with 0.0001 m2 RCS and DRFM repeat jamming.",
+    expectedDomain: "DEFENSE_AVIONICS_RADAR",
+    expectedEngine: "noctis-defense-avionics-radar-engine.ts"
+  },
+  {
+    name: "Forensic Science & CODIS STR DNA Match Probability",
+    query: "Evaluate CODIS 20-locus STR DNA profile random match probability and AFIS minutiae friction ridge matching.",
+    expectedDomain: "FORENSIC_CRIMINALISTICS",
+    expectedEngine: "noctis-forensic-science-biometrics-engine.ts"
+  },
+  {
+    name: "Architectural Acoustics & Sabine Reverberation",
+    query: "Determine Sabine room reverberation RT60 and speech transmission index (STI) for concert hall acoustic clarity.",
+    expectedDomain: "ARCHITECTURAL_ACOUSTICS",
+    expectedEngine: "noctis-architectural-acoustics-engine.ts"
+  },
+  {
+    name: "Biomedical Engineering & Arterial Womersley Flow",
+    query: "Calculate the arterial Womersley number for pulsatile blood flow and prosthetic heart valve turbulent shear hemolysis index.",
+    expectedDomain: "BIOMEDICAL_HEMODYNAMICS",
+    expectedEngine: "noctis-biomedical-hemodynamics-engine.ts"
+  },
+  {
+    name: "Chemical Process Engineering & CSTR/PFR Kinetics",
+    query: "Compare continuous stirred tank (CSTR) vs plug flow reactor (PFR) conversion and Semenov thermal explosion runaway limits.",
+    expectedDomain: "CHEMICAL_ENGINEERING",
+    expectedEngine: "noctis-chemical-reactor-process-engine.ts"
+  },
+  {
+    name: "Microelectronics & High-NA EUV Photolithography",
+    query: "Determine High-NA EUV photolithography Rayleigh resolution limits and Gate-All-Around (GAA) nanosheet subthreshold swing.",
+    expectedDomain: "SEMICONDUCTOR_LITHOGRAPHY",
+    expectedEngine: "noctis-semiconductor-photolithography-engine.ts"
+  },
+  {
+    name: "Astrobiology & Atmospheric Biosignature Disequilibrium",
+    query: "Evaluate exoplanet Earth Similarity Index (ESI) and atmospheric methane plus oxygen thermodynamic disequilibrium biosignatures.",
+    expectedDomain: "ASTROBIOLOGY_HABITABILITY",
+    expectedEngine: "noctis-astrobiology-biosignatures-engine.ts"
   }
 ];
 
@@ -262,6 +322,6 @@ console.log(`  ${c.green}✔ Safety Violations:${c.reset}     ${epochSummary.saf
 console.log(`  ${c.green}✔ Execution Duration:${c.reset}    ${epochDuration}ms\n`);
 
 console.log(`${c.bold}${c.green}======================================================================${c.reset}`);
-console.log(`${c.bold}${c.green} ALL 70 DOMAIN ENGINES OPERATIONAL & 100% INVARIANT VERIFIED${c.reset}`);
+console.log(`${c.bold}${c.green} ALL 80 DOMAIN ENGINES OPERATIONAL & 100% INVARIANT VERIFIED${c.reset}`);
 console.log(`${c.bold}${c.green} UNIVERSAL LIFE ROUTER ACTIVE FOR ANY & ALL SUBJECT MATTER QUESTIONS${c.reset}`);
 console.log(`${c.bold}${c.green}======================================================================${c.reset}`);

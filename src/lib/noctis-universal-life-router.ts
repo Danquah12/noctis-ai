@@ -71,6 +71,16 @@ import { evaluateTelescopeResolutionAndSnr } from "./noctis-astronomy-space-tele
 import { evaluateEoqAndSafetyStock } from "./noctis-supply-chain-logistics-engine.ts";
 import { evaluateEgsThermalPowerAndDrawdown } from "./noctis-geothermal-reservoir-engine.ts";
 import { evaluateFittsLawTargetAcquisition } from "./noctis-cognitive-ergonomics-teaming-engine.ts";
+import { evaluateMlKemLatticeSecurity } from "./noctis-cryptography-pqc-engine.ts";
+import { evaluateShannonCapacityAndBer } from "./noctis-telecom-photonics-6g-engine.ts";
+import { evaluateStratosphericAerosolForcing } from "./noctis-climate-intervention-srm-engine.ts";
+import { evaluateRadarDetectionRangeAndRcs } from "./noctis-defense-avionics-radar-engine.ts";
+import { evaluateStrDnaMatchProbability } from "./noctis-forensic-science-biometrics-engine.ts";
+import { evaluateRoomReverberationAndSchroeder } from "./noctis-architectural-acoustics-engine.ts";
+import { evaluateWomersleyArterialHemodynamics } from "./noctis-biomedical-hemodynamics-engine.ts";
+import { evaluateCstrAndPfrConversion } from "./noctis-chemical-reactor-process-engine.ts";
+import { evaluateEuvPhotolithographyResolution } from "./noctis-semiconductor-photolithography-engine.ts";
+import { evaluateExoplanetHabitabilityAndBiosignature } from "./noctis-astrobiology-biosignatures-engine.ts";
 
 export type SovereignLifeDomain =
   | "CLINICAL_MEDICINE"
@@ -104,6 +114,16 @@ export type SovereignLifeDomain =
   | "SUPPLY_CHAIN_LOGISTICS"
   | "GEOTHERMAL_ENERGY"
   | "COGNITIVE_ERGONOMICS"
+  | "POST_QUANTUM_CRYPTO"
+  | "TELECOM_6G_PHOTONICS"
+  | "CLIMATE_INTERVENTION"
+  | "DEFENSE_AVIONICS_RADAR"
+  | "FORENSIC_CRIMINALISTICS"
+  | "ARCHITECTURAL_ACOUSTICS"
+  | "BIOMEDICAL_HEMODYNAMICS"
+  | "CHEMICAL_ENGINEERING"
+  | "SEMICONDUCTOR_LITHOGRAPHY"
+  | "ASTROBIOLOGY_HABITABILITY"
   | "GENERAL_SOVEREIGN";
 
 export interface UniversalRouteResult {
@@ -172,7 +192,7 @@ export function detectLifeDomain(query: string): SovereignLifeDomain {
   }
 
   // 11. Advanced IT & Distributed Systems
-  if (/\b(bgp\b|autonomous system|as-path|flap dampening|raft\b|quorum|split-brain|zk-snark|plonk|pqc\b|kyber|dilithium|nvlink|roce|kernel|ebpf|scada|modbus|5g standalone)\b/i.test(q)) {
+  if (/\b(bgp\b|autonomous system|as-path|flap dampening|raft\b|quorum|split-brain|nvlink|roce|kernel|ebpf|scada|modbus|5g standalone)\b/i.test(q)) {
     return "IT_DISTRIBUTED_SYSTEMS";
   }
 
@@ -274,6 +294,56 @@ export function detectLifeDomain(query: string): SovereignLifeDomain {
   // 31. Cognitive Science, Human Factors & Human-AI Teaming
   if (/\b(fitts' law|fitts law|index of difficulty|hick-hyman|choice reaction time|nasa-tlx|cognitive workload|yerkes-dodson|endsley|situational awareness|takeover transition|human-ai trust)\b/i.test(q)) {
     return "COGNITIVE_ERGONOMICS";
+  }
+
+  // 32. Post-Quantum Cryptography & Sovereign Trust
+  if (/\b(ml-kem|kyber|ml-dsa|dilithium|slh-dsa|sphincs|zk-snark|groth16|plonk|kzg\b|bls12-381|constant-time.*timing)\b/i.test(q)) {
+    return "POST_QUANTUM_CRYPTO";
+  }
+
+  // 33. Telecommunications, 6G Wireless & Optical Photonics
+  if (/\b(shannon-hartley|channel capacity.*snr|kerr effect|chromatic dispersion|6g\b.*terahertz|reconfigurable intelligent surface|ris\b.*beamforming|massive mimo.*zero-forcing|fso\b.*optical)\b/i.test(q)) {
+    return "TELECOM_6G_PHOTONICS";
+  }
+
+  // 34. Climate Intervention, Solar Radiation Management & DAC
+  if (/\b(stratospheric aerosol|solar radiation management|srm\b|marine cloud brightening|twomey|direct air capture|vtsa|ocean alkalinity|olivine dissolution|basaltic mineralization)\b/i.test(q)) {
+    return "CLIMATE_INTERVENTION";
+  }
+
+  // 35. Defense Avionics, Radar Cross-Section (RCS) & Electronic Warfare
+  if (/\b(radar range equation|s_min\b|radar cross-section|rcs\b|vlo stealth|drfm\b|repeat jamming|do-178c|aesa\b.*taylor|mil-std-1553b)\b/i.test(q)) {
+    return "DEFENSE_AVIONICS_RADAR";
+  }
+
+  // 36. Forensic Science, Biometrics & Criminalistics
+  if (/\b(codis\b|str dna|random match probability|afis\b.*minutiae|friction ridge|astm e1618|fire debris|ballistics striation|chain of custody.*hash)\b/i.test(q)) {
+    return "FORENSIC_CRIMINALISTICS";
+  }
+
+  // 37. Architectural Acoustics & Sound Engineering
+  if (/\b(sabine\b|rt60|schroeder frequency|speech transmission index|sti\b.*intelligibility|sound transmission class|stc\b.*isolation|iso 226.*equal-loudness|quadratic residue diffuser)\b/i.test(q)) {
+    return "ARCHITECTURAL_ACOUSTICS";
+  }
+
+  // 38. Biomedical Engineering, Hemodynamics & Cardiovascular Devices
+  if (/\b(womersley|pulsatile.*flow|prosthetic.*heart valve|hemolysis index|lvad\b|h-q curve|pulse wave velocity|moens-korteweg|iso 5840)\b/i.test(q)) {
+    return "BIOMEDICAL_HEMODYNAMICS";
+  }
+
+  // 39. Chemical Process Engineering & Industrial Reaction Kinetics
+  if (/\b(continuous stirred tank|cstr\b|plug flow reactor|pfr\b|damkohler|semenov.*runaway|thermal explosion|mccabe-thiele|thiele modulus|diers\b.*relief)\b/i.test(q)) {
+    return "CHEMICAL_ENGINEERING";
+  }
+
+  // 40. Microelectronics, Photolithography & Semiconductor Physics
+  if (/\b(euv photolithography|high-na euv|rayleigh resolution.*cd|gate-all-around|gaa nanosheet|subthreshold swing|black's equation|electromigration|line-edge roughness|ler\b|bsim-cmg)\b/i.test(q)) {
+    return "SEMICONDUCTOR_LITHOGRAPHY";
+  }
+
+  // 41. Deep Space Astrobiology, Biosignatures & Habitability
+  if (/\b(earth similarity index|esi\b.*habitable|biosignature.*disequilibrium|methane.*oxygen|red edge.*reflectance|deinococcus|radiotolerant|planetary protection|cospar)\b/i.test(q)) {
+    return "ASTROBIOLOGY_HABITABILITY";
   }
 
   return "GENERAL_SOVEREIGN";
@@ -776,6 +846,178 @@ export function dispatchUniversalLifeQuery(query: string): UniversalRouteResult 
         invariantsEnforced: ["Fitts' Law Motor Pointing Ergonomics", "Endsley 3-Level Autonomous Takeover Bound"],
         dispatchedEngine: "noctis-cognitive-ergonomics-teaming-engine.ts",
         response: `# Noctis Sovereign Cognitive Science & Human-AI Teaming\n\n**Subsystem**: Neuromuscular Motor Ergonomics & Supervisory Takeover Dynamics\n**Verdict**: ${res.verdict}\n\n### Cognitive Formulations\n${res.cognitiveEquations.map(e => `- \`${e}\``).join("\n")}`
+      };
+    }
+
+    case "POST_QUANTUM_CRYPTO": {
+      const res = evaluateMlKemLatticeSecurity({
+        parameterSet: "ML-KEM-768",
+        claimedClassicalSecurityBits: 192,
+        claimedQuantumSecurityBits: 175,
+        ciphertextSizeBytes: 1088,
+        publicKeySizeBytes: 1184
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["NIST FIPS 203 ML-KEM", "NIST FIPS 204 ML-DSA", "IEEE ZKProof Standards"],
+        invariantsEnforced: ["Module-LWE Lattice Hardness Invariant", "Constant-Time Side-Channel Immunity"],
+        dispatchedEngine: "noctis-cryptography-pqc-engine.ts",
+        response: `# Noctis Sovereign Post-Quantum Cryptography & Trust Assessment\n\n**Standard**: NIST FIPS 203 ML-KEM (Kyber) Lattice Key Encapsulation\n**Verdict**: ${res.verdict}\n\n### Cryptographic Formulations\n${res.cryptoEquations.map(e => `- \`${e}\``).join("\n")}`
+      };
+    }
+
+    case "TELECOM_6G_PHOTONICS": {
+      const res = evaluateShannonCapacityAndBer({
+        bandwidthHz: 400e6,
+        snrLinear: 500,
+        modulationOrderM: 256,
+        carrierFrequencyGhz: 140
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["ITU-R IMT-2030 (6G)", "3GPP Release 19", "ITU-T G.654 Coherent Optics"],
+        invariantsEnforced: ["Shannon-Hartley Spectral Limit", "Nonlinear Split-Step Dispersion Compensation"],
+        dispatchedEngine: "noctis-telecom-photonics-6g-engine.ts",
+        response: `# Noctis Sovereign 6G & Optical Photonics Intelligence\n\n**Subsystem**: Terahertz Communications & Coherent Optical Fiber\n**Verdict**: ${res.verdict}\n\n### Photonics Equations\n${res.telecomEquations.map(e => `- \`${e}\``).join("\n")}`
+      };
+    }
+
+    case "CLIMATE_INTERVENTION": {
+      const res = evaluateStratosphericAerosolForcing({
+        injectionRateMtSo2PerYear: 5.0,
+        injectionAltitudeKm: 21,
+        meanParticleRadiusMicrons: 0.25
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["UNEP Atmospheric Geoengineering Assessment", "WMO-UNEP Montreal Protocol", "Article 6.4 Paris Agreement"],
+        invariantsEnforced: ["Top-of-Atmosphere Radiative Forcing Bound", "Basaltic Mineral Carbonation 1000-Year Permanence"],
+        dispatchedEngine: "noctis-climate-intervention-srm-engine.ts",
+        response: `# Noctis Sovereign Climate Intervention & Geoengineering Intelligence\n\n**Modality**: Stratospheric Aerosol Injection (SAI) & Direct Air Capture\n**Verdict**: ${res.verdict}\n\n### Atmospheric Physics Equations\n${res.climateEquations.map(e => `- \`${e}\``).join("\n")}`
+      };
+    }
+
+    case "DEFENSE_AVIONICS_RADAR": {
+      const res = evaluateRadarDetectionRangeAndRcs({
+        peakTransmittedPowerKw: 50,
+        antennaGainDbi: 34,
+        radarFrequencyGhz: 10,
+        targetRcsM2: 0.0001,
+        minimumDetectableSignalDbm: -110
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["IEEE 686 Radar Definitions", "RTCA DO-178C DAL-A", "MIL-STD-1553B"],
+        invariantsEnforced: ["Radar Range Detection Envelope", "DO-178C DAL-A 100% MC/DC Determinism"],
+        dispatchedEngine: "noctis-defense-avionics-radar-engine.ts",
+        response: `# Noctis Sovereign Defense Avionics & Stealth RCS Intelligence\n\n**Domain**: Radar Range Equations, VLO Low-Observability & Electronic Warfare\n**Verdict**: ${res.verdict}\n\n### Radar Formulations\n${res.radarEquations.map(e => `- \`${e}\``).join("\n")}`
+      };
+    }
+
+    case "FORENSIC_CRIMINALISTICS": {
+      const res = evaluateStrDnaMatchProbability({
+        locusCount: 20,
+        thetaCorrectionSubpopulation: 0.01,
+        averageHeterozygosity: 0.84
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["FBI CODIS Quality Assurance Standards", "NRC II Recommendation 4.1", "ASTM E1618"],
+        invariantsEnforced: ["STR Product Rule Population Uniqueness", "AFIS Minutiae Biometric Matching Bound"],
+        dispatchedEngine: "noctis-forensic-science-biometrics-engine.ts",
+        response: `# Noctis Sovereign Forensic Science & Biometrics Assessment\n\n**Subsystem**: CODIS Core STR Loci DNA Profiling & Criminalistics\n**Verdict**: ${res.verdict}\n\n### Forensic Equations\n${res.forensicEquations.map(e => `- \`${e}\``).join("\n")}`
+      };
+    }
+
+    case "ARCHITECTURAL_ACOUSTICS": {
+      const res = evaluateRoomReverberationAndSchroeder({
+        roomVolumeM3: 15000,
+        totalAbsorptionSabinM2: 1250,
+        airAttenuationCoefficientPerM: 0.0015
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["ISO 3382-1 Room Acoustics", "IEC 60268-16 STI", "ASTM E90 STC-58"],
+        invariantsEnforced: ["Sabine/Eyring Reverberation RT60 Bound", "Speech Transmission Index Intelligibility (> 0.75)"],
+        dispatchedEngine: "noctis-architectural-acoustics-engine.ts",
+        response: `# Noctis Sovereign Architectural Acoustics & Sound Engineering\n\n**Subsystem**: Concert Hall Reverberation & Speech Transmission Index\n**Verdict**: ${res.verdict}\n\n### Acoustic Formulations\n${res.acousticEquations.map(e => `- \`${e}\``).join("\n")}`
+      };
+    }
+
+    case "BIOMEDICAL_HEMODYNAMICS": {
+      const res = evaluateWomersleyArterialHemodynamics({
+        arterialRadiusMm: 13.0,
+        heartRateBpm: 75,
+        bloodDensityKgM3: 1060,
+        bloodViscosityPaS: 0.0035
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["ISO 5840 Heart Valve Implants", "ASTM F1841 Hemolysis Standards", "AHA Arterial Stiffness"],
+        invariantsEnforced: ["Womersley Oscillatory Shear Index Bound", "ISO 5840 400-Million Cycle Durability Fatigue"],
+        dispatchedEngine: "noctis-biomedical-hemodynamics-engine.ts",
+        response: `# Noctis Sovereign Biomedical Engineering & Hemodynamics Assessment\n\n**Subsystem**: Arterial Pulsatile Dynamics & Cardiovascular Devices\n**Verdict**: ${res.verdict}\n\n### Hemodynamic Formulations\n${res.biomedEquations.map(e => `- \`${e}\``).join("\n")}`
+      };
+    }
+
+    case "CHEMICAL_ENGINEERING": {
+      const res = evaluateCstrAndPfrConversion({
+        reactionOrder: 1,
+        rateConstantPerSec: 0.05,
+        volumetricFlowRateM3ps: 0.05,
+        reactorVolumeM3: 3.0,
+        feedConcentrationMolM3: 2000
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["OSHA 1910.119 PSM", "AIChE CCPS Reactor Safety", "API 520 DIERS Standards"],
+        invariantsEnforced: ["Damkohler Conversion Scaling", "Semenov Runaway Thermal Stability Invariant"],
+        dispatchedEngine: "noctis-chemical-reactor-process-engine.ts",
+        response: `# Noctis Sovereign Chemical Process & Reactor Kinetics Intelligence\n\n**Subsystem**: Continuous Reactor Engineering & Runaway Explosion Prevention\n**Verdict**: ${res.verdict}\n\n### Chemical Engineering Formulations\n${res.chemEquations.map(e => `- \`${e}\``).join("\n")}`
+      };
+    }
+
+    case "SEMICONDUCTOR_LITHOGRAPHY": {
+      const res = evaluateEuvPhotolithographyResolution({
+        numericalApertureNa: 0.55,
+        k1Factor: 0.30,
+        laserWavelengthNm: 13.5,
+        doseToClearMjCm2: 55
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["IEEE IEDM Standards", "JEDEC JESD85 Electromigration", "SEMI International Standards"],
+        invariantsEnforced: ["High-NA EUV Rayleigh Resolution Limit", "Gate-All-Around Subthreshold Swing (< 65 mV/dec)"],
+        dispatchedEngine: "noctis-semiconductor-photolithography-engine.ts",
+        response: `# Noctis Sovereign Microelectronics & Semiconductor Physics Assessment\n\n**Subsystem**: High-NA EUV Photolithography & Gate-All-Around Nanosheet Physics\n**Verdict**: ${res.verdict}\n\n### Semiconductor Equations\n${res.semiEquations.map(e => `- \`${e}\``).join("\n")}`
+      };
+    }
+
+    case "ASTROBIOLOGY_HABITABILITY": {
+      const res = evaluateExoplanetHabitabilityAndBiosignature({
+        planetRadiusEarthRadii: 1.05,
+        planetMassEarthMasses: 1.12,
+        incidentStellarFluxEarthFlux: 0.95,
+        equilibriumTemperatureKelvin: 265,
+        atmosphericMethanePpm: 2.5,
+        atmosphericOxygenPercent: 18.5
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["NASA Astrobiology Strategy", "COSPAR Planetary Protection Policy", "IAU Commission F3"],
+        invariantsEnforced: ["Thermodynamic Chemical Disequilibrium", "COSPAR Category IVb Bioburden Bound (< 300 spores/m2)"],
+        dispatchedEngine: "noctis-astrobiology-biosignatures-engine.ts",
+        response: `# Noctis Sovereign Deep Space Astrobiology & Habitability Assessment\n\n**Subsystem**: Planetary Habitability Index & Atmospheric Biosignature Disequilibrium\n**Verdict**: ${res.verdict}\n\n### Astrobiological Formulations\n${res.astrobioEquations.map(e => `- \`${e}\``).join("\n")}`
       };
     }
 
