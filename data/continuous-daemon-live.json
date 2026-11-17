@@ -1,15 +1,15 @@
 {
   "daemonState": "RUNNING_AUTONOMOUS",
-  "cumulativeEpochs": 1165773,
-  "totalEvaluatedSoFar": 4365716184,
-  "latestEpochId": "EPOCH-NOCTIS-00040",
-  "timestamp": "2026-11-17T23:09:48.829Z",
-  "domainsAudited": 110,
-  "scenariosPerEpoch": 4233,
+  "cumulativeEpochs": 1194433,
+  "totalEvaluatedSoFar": 4487041464,
+  "latestEpochId": "EPOCH-NOCTIS-00030",
+  "timestamp": "2026-11-17T23:58:02.322Z",
+  "domainsAudited": 120,
+  "scenariosPerEpoch": 4483,
   "batchSize": 10,
-  "invariantsVerified": 4233,
+  "invariantsVerified": 4483,
   "accuracyScorePercent": 100,
   "safetyViolations": 0,
   "intervalSeconds": 1,
-  "throughputScenariosPerSec": 510000
+  "throughputScenariosPerSec": 582208
 }

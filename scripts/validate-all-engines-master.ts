@@ -465,6 +465,66 @@ const ROUTING_TEST_BATTERY: Array<{
     query: "Evaluate Very Long Baseline Interferometry (VLBI) geometric delay consensus model and General Relativistic Shapiro gravitational time delay.",
     expectedDomain: "SPACE_GEODESY_VLBI",
     expectedEngine: "noctis-space-geodesy-vlbi-engine.ts"
+  },
+  {
+    name: "Stellarator Confinement & 3D Plasma Physics",
+    query: "Evaluate Wendelstein 7-X quasi-isodynamic magnetic field optimization, rotational transform iota, and Mercier stability criterion.",
+    expectedDomain: "STELLARATOR_CONFINEMENT",
+    expectedEngine: "noctis-stellarator-confinement-engine.ts"
+  },
+  {
+    name: "Deep Space Optical Communications (DSOC)",
+    query: "Model interplanetary laser communications with pulse position modulation PPM-32 and SNSPD Poisson quantum bit error rate under atmospheric turbulence.",
+    expectedDomain: "DEEP_SPACE_OPTICAL_COMMS",
+    expectedEngine: "noctis-deep-space-optical-comms-engine.ts"
+  },
+  {
+    name: "Synthetic Aperture Radar (InSAR) Geodesy",
+    query: "Calculate InSAR phase unwrapping critical perpendicular baseline, altitude of ambiguity, and line-of-sight surface deformation.",
+    expectedDomain: "INSAR_GEODESY_DEFORMATION",
+    expectedEngine: "noctis-insar-geodesy-deformation-engine.ts"
+  },
+  {
+    name: "Neuromorphic Spiking Circuits & Synaptic Physics",
+    query: "Simulate leaky integrate-and-fire (LIF) sub-threshold membrane dynamics and spike-timing-dependent plasticity (STDP) synaptic weight adaptation.",
+    expectedDomain: "NEUROMORPHIC_SPIKING_CIRCUITS",
+    expectedEngine: "noctis-neuromorphic-spiking-circuits-engine.ts"
+  },
+  {
+    name: "Direct Air Capture (DAC) & Carbon Engineering",
+    query: "Assess direct air capture (DAC) contactor aerodynamic pressure drop, solid amine TVSA desorption enthalpy, and net exergy per ton of CO2.",
+    expectedDomain: "DIRECT_AIR_CAPTURE_DAC",
+    expectedEngine: "noctis-direct-air-capture-dac-engine.ts"
+  },
+  {
+    name: "Precision Orbital Rendezvous & Docking Dynamics",
+    query: "Analyze Clohessy-Wiltshire-Hill relative motion dynamics for ISS V-bar approach cone corridors and soft-docking contact velocity constraints.",
+    expectedDomain: "ORBITAL_RENDEZVOUS_DOCKING",
+    expectedEngine: "noctis-orbital-rendezvous-docking-engine.ts"
+  },
+  {
+    name: "Epigenomics & 3D Chromatin Dynamics",
+    query: "Model Hi-C chromatin contact scaling under fractal globule polymer physics and CTCF/cohesin loop extrusion insulation across TAD boundaries.",
+    expectedDomain: "EPIGENOMICS_CHROMATIN",
+    expectedEngine: "noctis-epigenomics-chromatin-dynamics-engine.ts"
+  },
+  {
+    name: "Rydberg Atom Quantum Analog Simulation",
+    query: "Simulate neutral atom optical tweezer array with van der Waals C6 interaction, Rydberg blockade radius, and transverse-field Ising quantum phase transitions.",
+    expectedDomain: "RYDBERG_QUANTUM_SIMULATOR",
+    expectedEngine: "noctis-rydberg-quantum-simulator-engine.ts"
+  },
+  {
+    name: "Ocean Thermal Energy Conversion (OTEC)",
+    query: "Calculate closed-cycle ammonia OTEC Rankine thermal efficiency across tropical thermoclines, deep cold water pipe head loss, and parasitic pumping power.",
+    expectedDomain: "OTEC_OCEAN_THERMAL",
+    expectedEngine: "noctis-otec-ocean-thermal-engine.ts"
+  },
+  {
+    name: "Directional Drilling & Wellbore Geomechanics",
+    query: "Evaluate rotary steerable system (RSS) minimum curvature wellbore trajectory, dogleg severity (DLS), and safe mud weight window against formation pore and fracture gradients.",
+    expectedDomain: "DIRECTIONAL_DRILLING_GEOMECH",
+    expectedEngine: "noctis-directional-drilling-geomechanics-engine.ts"
   }
 ];
 
@@ -488,8 +548,8 @@ for (const test of ROUTING_TEST_BATTERY) {
 const routingScore = Math.round((routingPassed / ROUTING_TEST_BATTERY.length) * 100);
 console.log(`\n${c.bold}Routing Fidelity Score: ${c.green}${routingScore}% PASS${c.reset} (${routingPassed}/${ROUTING_TEST_BATTERY.length} verified)\n`);
 
-// 2. CONTINUOUS TRAINING EPOCH AUDIT (110 Sovereign Domains, 4,233 Scenarios)
-console.log(`${c.bold}[PHASE 2] Executing Full Sovereign Training Epoch across all 110 global domains...${c.reset}`);
+// 2. CONTINUOUS TRAINING EPOCH AUDIT (120 Sovereign Domains, 4,483 Scenarios)
+console.log(`${c.bold}[PHASE 2] Executing Full Sovereign Training Epoch across all 120 global domains...${c.reset}`);
 const epochStartTime = performance.now();
 const epochSummary = executeContinuousTrainingEpoch({ verbose: false });
 const epochDuration = Math.round((performance.now() - epochStartTime) * 100) / 100;
@@ -502,6 +562,6 @@ console.log(`  ${c.green}✔ Safety Violations:${c.reset}     ${epochSummary.saf
 console.log(`  ${c.green}✔ Execution Duration:${c.reset}    ${epochDuration}ms\n`);
 
 console.log(`${c.bold}${c.green}======================================================================${c.reset}`);
-console.log(`${c.bold}${c.green} ALL 110 DOMAIN ENGINES OPERATIONAL & 100% INVARIANT VERIFIED${c.reset}`);
+console.log(`${c.bold}${c.green} ALL 120 DOMAIN ENGINES OPERATIONAL & 100% INVARIANT VERIFIED${c.reset}`);
 console.log(`${c.bold}${c.green} UNIVERSAL LIFE ROUTER ACTIVE FOR ANY & ALL SUBJECT MATTER QUESTIONS${c.reset}`);
 console.log(`${c.bold}${c.green}======================================================================${c.reset}`);

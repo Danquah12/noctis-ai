@@ -111,6 +111,16 @@ import { evaluateQuantumOptomechanics } from "./noctis-quantum-optomechanics-coo
 import { evaluateHydroTurbineAndWaterHammer } from "./noctis-hydro-turbine-water-hammer-engine.ts";
 import { evaluateCryoRocketPropellantStorage } from "./noctis-cryo-rocket-propellant-engine.ts";
 import { evaluateSpaceGeodesyAndVlbi } from "./noctis-space-geodesy-vlbi-engine.ts";
+import { evaluateStellaratorConfinement } from "./noctis-stellarator-confinement-engine.ts";
+import { evaluateDeepSpaceOpticalLink } from "./noctis-deep-space-optical-comms-engine.ts";
+import { evaluateInSarInterferometry } from "./noctis-insar-geodesy-deformation-engine.ts";
+import { evaluateNeuromorphicCircuits } from "./noctis-neuromorphic-spiking-circuits-engine.ts";
+import { evaluateDirectAirCapture } from "./noctis-direct-air-capture-dac-engine.ts";
+import { evaluateOrbitalRendezvous } from "./noctis-orbital-rendezvous-docking-engine.ts";
+import { evaluateEpigenomicsAndChromatin } from "./noctis-epigenomics-chromatin-dynamics-engine.ts";
+import { evaluateRydbergQuantumSimulation } from "./noctis-rydberg-quantum-simulator-engine.ts";
+import { evaluateOtecPowerPlant } from "./noctis-otec-ocean-thermal-engine.ts";
+import { evaluateDirectionalDrilling } from "./noctis-directional-drilling-geomechanics-engine.ts";
 
 export type SovereignLifeDomain =
   | "CLINICAL_MEDICINE"
@@ -184,6 +194,16 @@ export type SovereignLifeDomain =
   | "HYDRO_TURBINE_HAMMER"
   | "CRYO_ROCKET_PROPELLANT"
   | "SPACE_GEODESY_VLBI"
+  | "STELLARATOR_CONFINEMENT"
+  | "DEEP_SPACE_OPTICAL_COMMS"
+  | "INSAR_GEODESY_DEFORMATION"
+  | "NEUROMORPHIC_SPIKING_CIRCUITS"
+  | "DIRECT_AIR_CAPTURE_DAC"
+  | "ORBITAL_RENDEZVOUS_DOCKING"
+  | "EPIGENOMICS_CHROMATIN"
+  | "RYDBERG_QUANTUM_SIMULATOR"
+  | "OTEC_OCEAN_THERMAL"
+  | "DIRECTIONAL_DRILLING_GEOMECH"
   | "GENERAL_SOVEREIGN";
 
 export interface UniversalRouteResult {
@@ -262,7 +282,7 @@ export function detectLifeDomain(query: string): SovereignLifeDomain {
   }
 
   // 13. Quantum Computing & Quantum Information
-  if (/\b(surface code|syndrome extraction|transmon|rydberg blockade|majorana zero|vqe\b|variational quantum|bloch sphere|quantum error correction|qec\b)\b/i.test(q)) {
+  if (/\b(surface code|syndrome extraction|transmon|majorana zero|vqe\b|variational quantum|bloch sphere|quantum error correction|qec\b)\b/i.test(q)) {
     return "QUANTUM_COMPUTING";
   }
 
@@ -367,7 +387,7 @@ export function detectLifeDomain(query: string): SovereignLifeDomain {
   }
 
   // 34. Climate Intervention, Solar Radiation Management & DAC
-  if (/\b(stratospheric aerosol|solar radiation management|srm\b|marine cloud brightening|twomey|direct air capture|vtsa|ocean alkalinity|olivine dissolution|basaltic mineralization)\b/i.test(q)) {
+  if (/\b(stratospheric aerosol|solar radiation management|srm\b|marine cloud brightening|twomey|vtsa|ocean alkalinity|olivine dissolution|basaltic mineralization)\b/i.test(q)) {
     return "CLIMATE_INTERVENTION";
   }
 
@@ -554,6 +574,56 @@ export function detectLifeDomain(query: string): SovereignLifeDomain {
   // 71. Space Geodesy & VLBI Relativistic Astrometry
   if (/\b(space geodesy|very long baseline interferometry|vlbi\b|shapiro gravitational delay|shapiro delay|itrf\b|tectonic plate drift.*vlbi|iers conventions|ppn gamma)\b/i.test(q)) {
     return "SPACE_GEODESY_VLBI";
+  }
+
+  // 72. Stellarator Confinement & 3D Plasma Physics
+  if (/\b(stellarator|wendelstein\s*7-x|w7-x|rotational transform|iota\b.*q|quasi-isodynamic|quasi-axisymmetric|boozer coordinates|mercier criterion.*stellarator|neoclassical transport.*1\/nu)\b/i.test(q)) {
+    return "STELLARATOR_CONFINEMENT";
+  }
+
+  // 73. Deep Space Optical Communications (DSOC)
+  if (/\b(deep space optical|dsoc\b|interplanetary laser|pulse position modulation|ppm-\d+|snspd\b|single-photon detector|fried parameter.*turbulence|pointing jitter.*microradian)\b/i.test(q)) {
+    return "DEEP_SPACE_OPTICAL_COMMS";
+  }
+
+  // 74. Synthetic Aperture Radar (InSAR) Geodesy & Surface Deformation
+  if (/\b(insar\b|interferometric sar|sentinel-1.*insar|nisar\b|altitude of ambiguity|perpendicular baseline.*insar|cramer-rao.*phase variance|phase unwrapping.*los displacement)\b/i.test(q)) {
+    return "INSAR_GEODESY_DEFORMATION";
+  }
+
+  // 75. Neuromorphic Spiking Circuits & Synaptic Physics
+  if (/\b(neuromorphic|leaky integrate-and-fire|lif neuron|spike-timing-dependent plasticity|stdp\b|loihi|truenorth|sub-threshold conduction|femtojoule.*synapse)\b/i.test(q)) {
+    return "NEUROMORPHIC_SPIKING_CIRCUITS";
+  }
+
+  // 76. Direct Air Capture (DAC) & Carbon Removal
+  if (/\b(direct air capture|dac\b.*co2|climeworks|temperature-vacuum swing|tvsa\b|solid amine sorbent|air contactor.*pressure drop|gj\/t-co2|desorption enthalpy.*co2)\b/i.test(q)) {
+    return "DIRECT_AIR_CAPTURE_DAC";
+  }
+
+  // 77. Precision Orbital Rendezvous & Docking Dynamics
+  if (/\b(orbital rendezvous|clohessy-wiltshire|hill's equations|cwh\b|v-bar approach|r-bar approach|soft docking|docking cone|collision avoidance maneuver|cam\b.*retrograde)\b/i.test(q)) {
+    return "ORBITAL_RENDEZVOUS_DOCKING";
+  }
+
+  // 78. Epigenomics & 3D Chromatin Dynamics
+  if (/\b(epigenomics|hi-c.*chromatin|fractal globule.*s\^-1|cohesin loop extrusion|ctcf boundary insulation|topologically associating domain|tad boundary|h3k27ac.*enhancer)\b/i.test(q)) {
+    return "EPIGENOMICS_CHROMATIN";
+  }
+
+  // 79. Rydberg Atom Quantum Analog Simulation
+  if (/\b(rydberg atom|rydberg blockade|optical tweezer array|c6.*van der waals|transverse-field ising|z2 ordered phase|quera aquila|rydberg quantum)\b/i.test(q)) {
+    return "RYDBERG_QUANTUM_SIMULATOR";
+  }
+
+  // 80. Ocean Thermal Energy Conversion (OTEC)
+  if (/\b(otec\b|ocean thermal energy|closed-cycle ammonia.*otec|cold water pipe.*cwp|seawater thermocline.*delta t|rankine.*otec|parasitic pumping.*otec)\b/i.test(q)) {
+    return "OTEC_OCEAN_THERMAL";
+  }
+
+  // 81. Directional Drilling & Wellbore Geomechanics
+  if (/\b(directional drilling|rotary steerable system|rss\b.*drilling|dogleg severity|dls\b.*30m|minimum curvature method|pore pressure.*fracture gradient.*mud|bha buckling)\b/i.test(q)) {
+    return "DIRECTIONAL_DRILLING_GEOMECH";
   }
 
   return "GENERAL_SOVEREIGN";
@@ -1795,6 +1865,208 @@ export function dispatchUniversalLifeQuery(query: string): UniversalRouteResult 
         invariantsEnforced: ["VLBI Geometric Delay Consensus Formulation", "Shapiro General Relativistic Gravitational Delay", "ITRF Plate Tectonic Motion & EOP Parameters"],
         dispatchedEngine: "noctis-space-geodesy-vlbi-engine.ts",
         response: `# Noctis Sovereign Space Geodesy & VLBI Astrometry\n\n**Diagnostic**: ${res.diagnostic}\n- Max Geometric Delay: ${res.geometricDelayMicroseconds.toFixed(1)} us\n- Shapiro Relativistic Delay: ${res.shapiroGravitationalDelayPicoseconds.toFixed(1)} ps (GR Concordance: ${res.ppnGammaConcordance})\n- Tectonic Drift: ${res.baselineDriftMillimetersPerDecade.toFixed(1)} mm/decade\n- Angular Resolution: ${res.angularResolutionMilliarcseconds.toFixed(2)} mas`
+      };
+    }
+
+    case "STELLARATOR_CONFINEMENT": {
+      const res = evaluateStellaratorConfinement({
+        majorRadiusR0Meters: 5.5,
+        minorRadiusAMeters: 0.53,
+        averageToroidalFieldTesla: 2.5,
+        rotationalTransformIota: 0.86,
+        numberOfFieldPeriods: 5,
+        plasmaBetaPercent: 2.8,
+        coreElectronTempKeV: 4.5,
+        corePlasmaDensity10_20M3: 1.2
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["IAEA Fusion Energy Standards", "IPP Greifswald W7-X Physics Baseline", "DOE Fusion Energy Sciences"],
+        invariantsEnforced: ["Quasi-Symmetric 3D Magnetic Surfaces", "Mercier Localized Ideal MHD Stability (D_I > 0)", "Neoclassical Radial Flux Bounds"],
+        dispatchedEngine: "noctis-stellarator-confinement-engine.ts",
+        response: `# Noctis Sovereign Stellarator Confinement & 3D Plasma Physics\n\n**Diagnostic**: ${res.diagnostic}\n- Rotational Transform iota: ${res.rotationalTransformIota.toFixed(3)} (q_eq=${res.equivalentSafetyFactorQ.toFixed(2)})\n- Resonance Free: ${res.isRationalResonanceAvoided}\n- Mercier Stability: ${res.mercierStabilityCriterion}\n- Confinement Time tau_E: ${res.confinementEnergyTimeSec.toFixed(3)} s`
+      };
+    }
+
+    case "DEEP_SPACE_OPTICAL_COMMS": {
+      const res = evaluateDeepSpaceOpticalLink({
+        distanceAstronomicalUnits: 1.1,
+        laserWavelengthNm: 1550,
+        transmitPowerWatts: 5.0,
+        transmitterApertureDiameterM: 0.22,
+        groundReceiverApertureDiameterM: 5.1,
+        pointingJitterMicroradians: 0.8,
+        ppmOrderM: 32,
+        slotWidthNanoseconds: 2.0
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["CCSDS 141.0-B-1 Optical Communications", "NASA DSOC Flight Operations", "IEEE Aerospace & Electronic Systems"],
+        invariantsEnforced: ["Free-Space Photon-Counting Propagation", "Sub-Microradian Pointing Jitter Loss Budget", "Atmospheric Turbulence Fried Parameter Strehl Ratio"],
+        dispatchedEngine: "noctis-deep-space-optical-comms-engine.ts",
+        response: `# Noctis Sovereign Deep Space Optical Communications (DSOC)\n\n**Diagnostic**: ${res.diagnostic}\n- Path Loss: ${res.freeSpacePathLossDb.toFixed(1)} dB\n- Photons Per Bit: ${res.photonsPerBit.toFixed(2)}\n- SNSPD Poisson BER: ${res.quantumPoissonBer.toExponential(2)}\n- Throughput: ${res.dataRateMbps.toFixed(2)} Mbps`
+      };
+    }
+
+    case "INSAR_GEODESY_DEFORMATION": {
+      const res = evaluateInSarInterferometry({
+        radarWavelengthCm: 5.55,
+        satelliteAltitudeKm: 693.0,
+        incidenceAngleDegrees: 38.0,
+        perpendicularBaselineMeters: 45.0,
+        slantRangeResolutionMeters: 4.0,
+        temporalDecorrelationDays: 12,
+        surfaceDeformationRateMmYear: 32.0
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["ESA Sentinel-1 Mission Standards", "NASA-ISRO SAR (NISAR) Handbook", "CEOS Calibration & Validation Working Group"],
+        invariantsEnforced: ["Subcritical Perpendicular Baseline Criteria", "Interferometric Coherence Threshold (gamma >= 0.35)", "Cramer-Rao Phase Noise Bounds"],
+        dispatchedEngine: "noctis-insar-geodesy-deformation-engine.ts",
+        response: `# Noctis Sovereign Synthetic Aperture Radar (InSAR) Geodesy\n\n**Diagnostic**: ${res.diagnostic}\n- Critical Baseline B_perp,crit: ${res.criticalPerpendicularBaselineMeters.toFixed(0)} m (Subcritical: ${res.isBaselineSubcritical})\n- Altitude of Ambiguity h_a: ${res.altitudeOfAmbiguityMeters.toFixed(1)} m\n- Coherence gamma: ${res.interferometricCoherence.toFixed(2)} (Unwrap Feasible: ${res.isPhaseUnwrappingFeasible})\n- Line-of-Sight Displacement: ${res.lineOfSightDisplacementMm.toFixed(2)} mm`
+      };
+    }
+
+    case "NEUROMORPHIC_SPIKING_CIRCUITS": {
+      const res = evaluateNeuromorphicCircuits({
+        membraneCapacitancePicofarads: 2.5,
+        leakConductanceNanosiemens: 12.0,
+        restingPotentialMillivolts: -70.0,
+        thresholdPotentialMillivolts: -50.0,
+        resetPotentialMillivolts: -75.0,
+        inputSynapticCurrentPicoamps: 350.0,
+        refractoryPeriodMilliseconds: 2.0,
+        stdpTimeDeltaMs: 5.0
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["IEEE Transactions on Neural Networks", "Intel Loihi 2 Architecture Specification", "BrainScaleS Physical Emulation Benchmark"],
+        invariantsEnforced: ["Leaky Integrate-and-Fire Sub-Threshold Dynamics", "Spike-Timing-Dependent Plasticity (STDP) Weight Updates", "Sub-50 fJ Ultra-Low-Power Silicon Energy Bounds"],
+        dispatchedEngine: "noctis-neuromorphic-spiking-circuits-engine.ts",
+        response: `# Noctis Sovereign Neuromorphic Circuits & Synaptic Physics\n\n**Diagnostic**: ${res.diagnostic}\n- Membrane Time Constant tau_m: ${res.membraneTimeConstantMs.toFixed(1)} ms\n- Firing Rate: ${res.firingRateHz.toFixed(1)} Hz\n- STDP Delta W: ${res.stdpWeightChangePercent.toFixed(2)}%\n- Energy Per Spike: ${res.energyPerSpikeFemtojoules.toFixed(1)} fJ (Low-Power: ${res.isUltraLowPowerCompliant})`
+      };
+    }
+
+    case "DIRECT_AIR_CAPTURE_DAC": {
+      const res = evaluateDirectAirCapture({
+        ambientCo2ConcentrationPpm: 420.0,
+        ambientTemperatureCelsius: 15.0,
+        ambientPressureKPa: 101.3,
+        contactorAirFaceVelocityMs: 1.5,
+        contactorDepthMeters: 0.40,
+        sorbentCo2WorkingCapacityMmolG: 2.1,
+        desorptionTemperatureCelsius: 100.0,
+        desorptionEnthalpyKjMol: 78.0
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["ISO 14064-2 Greenhouse Gases", "IEA Direct Air Capture Technology Roadmap", "NETL DAC Standard Assessment"],
+        invariantsEnforced: ["Thermodynamic Minimum Separation Work (Second Law)", "Darcy-Forchheimer Contactor Aerodynamic Pressure Drop", "TVSA Thermal Desorption Exergy Bounds"],
+        dispatchedEngine: "noctis-direct-air-capture-dac-engine.ts",
+        response: `# Noctis Sovereign Direct Air Capture (DAC) & Carbon Engineering\n\n**Diagnostic**: ${res.diagnostic}\n- Inlet p_CO2: ${res.inletCo2PartialPressurePa.toFixed(1)} Pa\n- Contactor Delta P: ${res.contactorPressureDropPascals.toFixed(1)} Pa\n- Fan Electrical: ${res.fanElectricalEnergyKwhPerTonCo2.toFixed(1)} kWh/t-CO2\n- Thermal Desorption: ${res.thermalDesorptionEnergyGjPerTonCo2.toFixed(2)} GJ/t-CO2 (Target Met: ${res.isThermodynamicTargetMet})`
+      };
+    }
+
+    case "ORBITAL_RENDEZVOUS_DOCKING": {
+      const res = evaluateOrbitalRendezvous({
+        targetOrbitAltitudeKm: 415.0,
+        initialRadialOffsetXMeters: 1.2,
+        initialAlongTrackOffsetYMeters: -250.0,
+        initialCrossTrackOffsetZMeters: 0.8,
+        approachCorridorType: "V_BAR",
+        closingVelocityMs: 0.06,
+        dockingDistanceMeters: 1.5
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["NASA SP-2005-4403 Rendezvous Proximity Operations", "International Docking System Standard (IDSS)", "ESA Automated Transfer Vehicle Operations"],
+        invariantsEnforced: ["Clohessy-Wiltshire-Hill Relative Motion Dynamics", "Docking Approach Cone Angular Constraints", "Contact Soft-Capture Velocity Limits (<= 0.10 m/s)"],
+        dispatchedEngine: "noctis-orbital-rendezvous-docking-engine.ts",
+        response: `# Noctis Sovereign Precision Orbital Rendezvous & Docking\n\n**Diagnostic**: ${res.diagnostic}\n- Approach Cone Angle: ${res.corridorHalfAngleDegrees.toFixed(1)} deg (In Corridor: ${res.isWithinApproachCorridor})\n- Closing Velocity: ${res.contactVelocityMs.toFixed(3)} m/s (Soft Docking: ${res.isSoftDockingConditionMet})\n- CW Two-Impulse Delta V: ${res.twoImpulseDeltaVMs.toFixed(2)} m/s\n- CAM Delta V: ${res.collisionAvoidanceDeltaVMs.toFixed(2)} m/s`
+      };
+    }
+
+    case "EPIGENOMICS_CHROMATIN": {
+      const res = evaluateEpigenomicsAndChromatin({
+        genomicDistanceKilobases: 150.0,
+        ctcfBindingAffinityPicomolar: 40.0,
+        cohesinExtrusionSpeedBpS: 850.0,
+        cohesinResidenceTimeMinutes: 28.0,
+        h3k27acEnhancerEnrichmentFoldChange: 8.5,
+        chromatinAccessibilityAtacScore: 65.0
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["4D Nucleome Consortium (4DN) Guidelines", "NIH Epigenomics Roadmap Standards", "ENCODE Quality Metrics"],
+        invariantsEnforced: ["Fractal Globule Hi-C Scaling (P(s) ~ s^-1)", "CTCF/Cohesin Loop Extrusion Processivity", "TAD Insulated Neighborhood Boundary Stability"],
+        dispatchedEngine: "noctis-epigenomics-chromatin-dynamics-engine.ts",
+        response: `# Noctis Sovereign Epigenomics & Chromatin Dynamics\n\n**Diagnostic**: ${res.diagnostic}\n- Scaling Exponent gamma: ${res.contactProbabilityScalingExponentGamma.toFixed(2)} (Fractal Globule)\n- Mean Loop Extrusion Length: ${res.meanLoopExtrusionLengthKb.toFixed(0)} kb\n- TAD Boundary Stability: ${res.isTadBoundaryInsulationStable}\n- Chromatin State: ${res.chromatinStateClassification}`
+      };
+    }
+
+    case "RYDBERG_QUANTUM_SIMULATOR": {
+      const res = evaluateRydbergQuantumSimulation({
+        principalQuantumNumberN: 70,
+        rabiFrequencyMegaRadS: 15.0,
+        laserDetuningMegaRadS: 12.0,
+        interatomicSeparationMicrons: 4.5
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["NIST Quantum Information Science Program", "QuEra Aquila Hardware Architecture", "IEEE Transactions on Quantum Engineering"],
+        invariantsEnforced: ["Van der Waals Dipole-Dipole Interaction (C_6 / R^6)", "Rydberg Blockade Suppression Criterion", "Transverse-Field Ising Many-Body Hamiltonian"],
+        dispatchedEngine: "noctis-rydberg-quantum-simulator-engine.ts",
+        response: `# Noctis Sovereign Rydberg Atom Quantum Analog Simulation\n\n**Diagnostic**: ${res.diagnostic}\n- Blockade Radius R_b: ${res.rydbergBlockadeRadiusMicrons.toFixed(2)} um\n- Blockade Energy Shift V(R)/h: ${res.blockadeShiftEnergyMhz.toFixed(1)} MHz\n- Blockade Satisfied: ${res.isBlockadeCriterionSatisfied}\n- Quantum Phase: ${res.quantumSimulationPhase}`
+      };
+    }
+
+    case "OTEC_OCEAN_THERMAL": {
+      const res = evaluateOtecPowerPlant({
+        surfaceWarmSeawaterTempC: 27.5,
+        deepColdSeawaterTempC: 4.8,
+        coldWaterPipeDepthMeters: 950.0,
+        coldWaterPipeDiameterMeters: 2.5,
+        warmWaterFlowRateM3S: 22.0,
+        coldWaterFlowRateM3S: 14.0,
+        grossTurbineOutputMWe: 3.5
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["IEC 62600-20 Marine Energy OTEC Guidelines", "ASME PTC 46 Overall Plant Performance", "US DOE Water Power Technologies"],
+        invariantsEnforced: ["Closed-Cycle Ammonia Rankine Thermocline Invariant (Delta T >= 20C)", "Cold Water Pipe Darcy-Weisbach Hydraulic Friction", "Net Positive Power Generation (Parasitic Fraction <= 35%)"],
+        dispatchedEngine: "noctis-otec-ocean-thermal-engine.ts",
+        response: `# Noctis Sovereign Ocean Thermal Energy Conversion (OTEC)\n\n**Diagnostic**: ${res.diagnostic}\n- Delta T: ${res.temperatureDifferenceDeltaTCelsius.toFixed(1)} C (Carnot: ${res.carnotIdealEfficiencyPercent.toFixed(2)}%, Rankine: ${res.grossRankineThermalEfficiencyPercent.toFixed(2)}%)\n- CWP Head Loss: ${res.coldWaterPipingHeadLossMeters.toFixed(2)} m\n- Gross Power: 3.5 MWe -> Parasitic: ${res.parasiticPumpingPowerMWe.toFixed(2)} MWe (${res.parasiticLossFractionPercent.toFixed(1)}%)\n- Net Electrical Power: ${res.netElectricalPowerMWe.toFixed(2)} MWe (Viable: ${res.isNetPositivePowerVerified})`
+      };
+    }
+
+    case "DIRECTIONAL_DRILLING_GEOMECH": {
+      const res = evaluateDirectionalDrilling({
+        measuredDepthMeters: 5200.0,
+        inclinationAngleDegrees: 88.5,
+        azimuthAngleDegrees: 180.0,
+        courseLengthMeters: 30.0,
+        previousInclinationDegrees: 87.2,
+        previousAzimuthDegrees: 179.0,
+        formationPorePressureEcdPpg: 10.5,
+        formationFractureGradientEcdPpg: 15.8,
+        drillingMudDensityEcdPpg: 12.0
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["API Spec 7-1 Rotary Drilling Equipment", "API RP 13B Field Testing Drilling Fluids", "IADC Drilling Manual"],
+        invariantsEnforced: ["Minimum Curvature 3D Trajectory Formulation", "Dogleg Severity Fatigue Bounds (DLS <= 10 deg/30m)", "Hydrostatic Mud Weight Safe Geomechanical Window"],
+        dispatchedEngine: "noctis-directional-drilling-geomechanics-engine.ts",
+        response: `# Noctis Sovereign Directional Drilling & Wellbore Geomechanics\n\n**Diagnostic**: ${res.diagnostic}\n- Dogleg Severity: ${res.doglegSeverityDegPer30Meters.toFixed(2)} deg/30m (DLS Safe: ${res.isDoglegSeverityWithinLimits})\n- Mud Window Margins: Pore +${res.porePressureMarginPpg.toFixed(2)} ppg, Frac +${res.fractureMarginPpg.toFixed(2)} ppg (Window Safe: ${res.isMudWeightWithinSafeDrillingWindow})\n- TVD: ${res.trueVerticalDepthEstimateM.toFixed(0)} m\n- BHA Buckling SF: ${res.bhaBucklingSafetyFactor.toFixed(2)}`
       };
     }
 
