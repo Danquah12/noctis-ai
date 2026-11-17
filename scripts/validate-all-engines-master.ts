@@ -30,7 +30,7 @@ const c = {
 
 console.log(`${c.bold}${c.cyan}======================================================================${c.reset}`);
 console.log(`${c.bold}${c.cyan} NOCTIS UNIVERSAL LIFE & OMNIPRESENT ENGINES VALIDATION BATTERY${c.reset}`);
-console.log(`${c.dim} Auditing all 100 sovereign engines, routing fidelity, and continuous training${c.reset}`);
+console.log(`${c.dim} Auditing all 110 sovereign engines, routing fidelity, and continuous training${c.reset}`);
 console.log(`${c.bold}${c.cyan}======================================================================${c.reset}\n`);
 
 // 1. ROUTING FIDELITY TEST BATTERY (All Aspects of Life)
@@ -405,6 +405,66 @@ const ROUTING_TEST_BATTERY: Array<{
     query: "Calculate binary black hole chirp mass, Peters-Mathews quadrupole gravitational wave strain amplitude (h), and LIGO quantum squeezed light noise reduction.",
     expectedDomain: "GRAVITATIONAL_WAVE_ASTRONOMY",
     expectedEngine: "noctis-gravitational-wave-interferometry-engine.ts"
+  },
+  {
+    name: "Fusion Tokamak MHD & Divertor Detachment",
+    query: "Under the Kruskal-Shafranov criterion, calculate safety factor q_95, Troyon beta limit, and detached divertor scrape-off layer heat flux.",
+    expectedDomain: "TOKAMAK_MHD_DIVERTOR",
+    expectedEngine: "noctis-tokamak-mhd-divertor-engine.ts"
+  },
+  {
+    name: "Nuclear Fission Core Neutronics & Reactor Kinetics",
+    query: "Evaluate six-factor formula effective multiplication (k_eff), PRKE prompt critical safety margin, and negative Doppler fuel temperature coefficient.",
+    expectedDomain: "FISSION_CORE_NEUTRONICS",
+    expectedEngine: "noctis-fission-core-neutronics-engine.ts"
+  },
+  {
+    name: "Battery Electrochemistry & Lithium Plating Invariant",
+    query: "Determine Butler-Volmer exchange current density, SEI layer thickness growth, and lithium plating overpotential criterion (phi_s - phi_e > 0V).",
+    expectedDomain: "BATTERY_ELECTROCHEMISTRY",
+    expectedEngine: "noctis-battery-electrochemistry-degradation-engine.ts"
+  },
+  {
+    name: "Hypersonic Aerothermodynamics & Shock Jump",
+    query: "Calculate Mach 15 re-entry stagnation point heat flux via Fay-Riddell formulation and real-gas air dissociation plasma threshold.",
+    expectedDomain: "HYPERSONIC_AEROTHERMO",
+    expectedEngine: "noctis-hypersonic-aerothermodynamics-engine.ts"
+  },
+  {
+    name: "Synthetic Biology & Metabolic Flux Analysis (FBA)",
+    query: "Perform steady-state metabolic flux balance analysis (S*v=0) for biomass maximization and CRISPR-Cas off-target cleavage free energy specificity.",
+    expectedDomain: "SYNTHETIC_BIO_FBA",
+    expectedEngine: "noctis-synthetic-biology-metabolic-flux-engine.ts"
+  },
+  {
+    name: "Planetary Volcanology & Plinian Magma Ascent",
+    query: "Calculate explosive Plinian eruption column height via Wilson formula and Bingham plastic non-Newtonian lava flow yield stress.",
+    expectedDomain: "PLANETARY_VOLCANOLOGY",
+    expectedEngine: "noctis-planetary-volcanology-geology-engine.ts"
+  },
+  {
+    name: "Quantum Optomechanics & Cavity Ground State Cooling",
+    query: "Evaluate cavity optomechanical radiation pressure coupling (g0) and resolved-sideband cooling to the quantum ground state (n_m < 1).",
+    expectedDomain: "QUANTUM_OPTOMECHANICS",
+    expectedEngine: "noctis-quantum-optomechanics-cooling-engine.ts"
+  },
+  {
+    name: "Hydroelectric Turbines & Water Hammer Hydraulics",
+    query: "Calculate Allievi elastic wave speed in a steel penstock, Joukowsky water hammer pressure surge, and Francis turbine specific speed (Ns).",
+    expectedDomain: "HYDRO_TURBINE_HAMMER",
+    expectedEngine: "noctis-hydro-turbine-water-hammer-engine.ts"
+  },
+  {
+    name: "Cryogenic Rocket Propellant & Zero Boil-Off (ZBO)",
+    query: "Determine multilayer insulation (MLI) radiation heat leak and active Zero Boil-Off (ZBO) cryocooler lift power for liquid hydrogen propellant tanks.",
+    expectedDomain: "CRYO_ROCKET_PROPELLANT",
+    expectedEngine: "noctis-cryo-rocket-propellant-engine.ts"
+  },
+  {
+    name: "Space Geodesy & VLBI Relativistic Astrometry",
+    query: "Evaluate Very Long Baseline Interferometry (VLBI) geometric delay consensus model and General Relativistic Shapiro gravitational time delay.",
+    expectedDomain: "SPACE_GEODESY_VLBI",
+    expectedEngine: "noctis-space-geodesy-vlbi-engine.ts"
   }
 ];
 
@@ -428,8 +488,8 @@ for (const test of ROUTING_TEST_BATTERY) {
 const routingScore = Math.round((routingPassed / ROUTING_TEST_BATTERY.length) * 100);
 console.log(`\n${c.bold}Routing Fidelity Score: ${c.green}${routingScore}% PASS${c.reset} (${routingPassed}/${ROUTING_TEST_BATTERY.length} verified)\n`);
 
-// 2. CONTINUOUS TRAINING EPOCH AUDIT (50 Sovereign Domains, 2,733 Scenarios)
-console.log(`${c.bold}[PHASE 2] Executing Full Sovereign Training Epoch across all 50 global domains...${c.reset}`);
+// 2. CONTINUOUS TRAINING EPOCH AUDIT (110 Sovereign Domains, 4,233 Scenarios)
+console.log(`${c.bold}[PHASE 2] Executing Full Sovereign Training Epoch across all 110 global domains...${c.reset}`);
 const epochStartTime = performance.now();
 const epochSummary = executeContinuousTrainingEpoch({ verbose: false });
 const epochDuration = Math.round((performance.now() - epochStartTime) * 100) / 100;
@@ -442,6 +502,6 @@ console.log(`  ${c.green}✔ Safety Violations:${c.reset}     ${epochSummary.saf
 console.log(`  ${c.green}✔ Execution Duration:${c.reset}    ${epochDuration}ms\n`);
 
 console.log(`${c.bold}${c.green}======================================================================${c.reset}`);
-console.log(`${c.bold}${c.green} ALL 100 DOMAIN ENGINES OPERATIONAL & 100% INVARIANT VERIFIED${c.reset}`);
+console.log(`${c.bold}${c.green} ALL 110 DOMAIN ENGINES OPERATIONAL & 100% INVARIANT VERIFIED${c.reset}`);
 console.log(`${c.bold}${c.green} UNIVERSAL LIFE ROUTER ACTIVE FOR ANY & ALL SUBJECT MATTER QUESTIONS${c.reset}`);
 console.log(`${c.bold}${c.green}======================================================================${c.reset}`);

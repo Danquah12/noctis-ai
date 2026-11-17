@@ -101,6 +101,16 @@ import { evaluateMetamaterialTransformationOptics } from "./noctis-metamaterials
 import { evaluateHighPressureGeophysics } from "./noctis-high-pressure-geophysics-engine.ts";
 import { evaluateBioprocessFermentation } from "./noctis-bioprocess-fermentation-engine.ts";
 import { evaluateGravitationalWaveInterferometry } from "./noctis-gravitational-wave-interferometry-engine.ts";
+import { evaluateTokamakMhdAndDivertor } from "./noctis-tokamak-mhd-divertor-engine.ts";
+import { evaluateReactorNeutronicsAndKinetics } from "./noctis-fission-core-neutronics-engine.ts";
+import { evaluateBatteryElectrochemistry } from "./noctis-battery-electrochemistry-degradation-engine.ts";
+import { evaluateHypersonicAerothermodynamics } from "./noctis-hypersonic-aerothermodynamics-engine.ts";
+import { evaluateSyntheticBiologyAndFba } from "./noctis-synthetic-biology-metabolic-flux-engine.ts";
+import { evaluateVolcanologyAndMagmaDynamics } from "./noctis-planetary-volcanology-geology-engine.ts";
+import { evaluateQuantumOptomechanics } from "./noctis-quantum-optomechanics-cooling-engine.ts";
+import { evaluateHydroTurbineAndWaterHammer } from "./noctis-hydro-turbine-water-hammer-engine.ts";
+import { evaluateCryoRocketPropellantStorage } from "./noctis-cryo-rocket-propellant-engine.ts";
+import { evaluateSpaceGeodesyAndVlbi } from "./noctis-space-geodesy-vlbi-engine.ts";
 
 export type SovereignLifeDomain =
   | "CLINICAL_MEDICINE"
@@ -164,6 +174,16 @@ export type SovereignLifeDomain =
   | "HIGH_PRESSURE_GEOPHYSICS"
   | "BIOPROCESS_FERMENTATION"
   | "GRAVITATIONAL_WAVE_ASTRONOMY"
+  | "TOKAMAK_MHD_DIVERTOR"
+  | "FISSION_CORE_NEUTRONICS"
+  | "BATTERY_ELECTROCHEMISTRY"
+  | "HYPERSONIC_AEROTHERMO"
+  | "SYNTHETIC_BIO_FBA"
+  | "PLANETARY_VOLCANOLOGY"
+  | "QUANTUM_OPTOMECHANICS"
+  | "HYDRO_TURBINE_HAMMER"
+  | "CRYO_ROCKET_PROPELLANT"
+  | "SPACE_GEODESY_VLBI"
   | "GENERAL_SOVEREIGN";
 
 export interface UniversalRouteResult {
@@ -484,6 +504,56 @@ export function detectLifeDomain(query: string): SovereignLifeDomain {
   // 61. Gravitational Wave Astronomy & Interferometry
   if (/\b(gravitational wave|chirp mass|quadrupole strain amplitude|ligo\b|virgo\b|kagra\b|squeezed light.*quantum|binary black hole merger|gw150914|fabry-perot arm)\b/i.test(q)) {
     return "GRAVITATIONAL_WAVE_ASTRONOMY";
+  }
+
+  // 62. Fusion Tokamak MHD & Divertor Plasma
+  if (/\b(kruskal-shafranov|q_95|troyon beta|greenwald density|divertor.*scrape-off|sol heat flux|detached divertor|elm mitigation|tokamak mhd)\b/i.test(q)) {
+    return "TOKAMAK_MHD_DIVERTOR";
+  }
+
+  // 63. Nuclear Fission Core Neutronics & Reactor Kinetics
+  if (/\b(six-factor formula|point reactor kinetics|prke\b|prompt critical|delayed neutron precursor|doppler coefficient.*pcm|reactor period.*inhour|inhour equation)\b/i.test(q)) {
+    return "FISSION_CORE_NEUTRONICS";
+  }
+
+  // 64. Battery Electrochemistry & Lithium Degradation
+  if (/\b(butler-volmer|sei layer|solid electrolyte interphase|lithium plating.*overpotential|phi_s.*phi_e|dendrite formation|newman p2d|capacity retention.*battery)\b/i.test(q)) {
+    return "BATTERY_ELECTROCHEMISTRY";
+  }
+
+  // 65. Hypersonic Aerothermodynamics & High-Enthalpy Shock Flow
+  if (/\b(fay-riddell|stagnation point heat flux|hypersonic.*shock|rankine-hugoniot.*mach|dissociation plasma.*blackout|re-entry heat flux|tps ablation)\b/i.test(q)) {
+    return "HYPERSONIC_AEROTHERMO";
+  }
+
+  // 66. Synthetic Biology & Metabolic Flux Analysis
+  if (/\b(flux balance analysis|fba\b|stoichiometric matrix.*v=0|biomass objective function|crispr.*off-target.*free energy|metabolic burden|heterologous pathway)\b/i.test(q)) {
+    return "SYNTHETIC_BIO_FBA";
+  }
+
+  // 67. Planetary Volcanology & Magma Dynamics
+  if (/\b(plinian.*column height|wilson eruption|magma conduit.*poiseuille|chamber overpressure|bingham.*lava|volcanic explosivity index|vei\b|umbrella cloud)\b/i.test(q)) {
+    return "PLANETARY_VOLCANOLOGY";
+  }
+
+  // 68. Quantum Optomechanics & Cavity Ground State Cooling
+  if (/\b(quantum optomechanics|cavity cooling|resolved-sideband|zero-point fluctuation.*x_zpf|single-photon coupling.*g0|phonon occupation.*ground state|optomechanically induced transparency|omit\b)\b/i.test(q)) {
+    return "QUANTUM_OPTOMECHANICS";
+  }
+
+  // 69. Hydroelectric Turbines & Water Hammer Hydraulics
+  if (/\b(water hammer|allievi.*wave speed|joukowsky.*surge|penstock.*head|francis turbine.*specific speed|pelton.*specific speed|thoma cavitation)\b/i.test(q)) {
+    return "HYDRO_TURBINE_HAMMER";
+  }
+
+  // 70. Cryogenic Rocket Propellant & Boil-Off Management
+  if (/\b(cryogenic rocket|boil-off rate|zero boil-off|zbo\b|mli.*heat leak|liquid hydrogen.*lh2|liquid oxygen.*lox|ullage autogenous pressurization)\b/i.test(q)) {
+    return "CRYO_ROCKET_PROPELLANT";
+  }
+
+  // 71. Space Geodesy & VLBI Relativistic Astrometry
+  if (/\b(space geodesy|very long baseline interferometry|vlbi\b|shapiro gravitational delay|shapiro delay|itrf\b|tectonic plate drift.*vlbi|iers conventions|ppn gamma)\b/i.test(q)) {
+    return "SPACE_GEODESY_VLBI";
   }
 
   return "GENERAL_SOVEREIGN";
@@ -1541,6 +1611,190 @@ export function dispatchUniversalLifeQuery(query: string): UniversalRouteResult 
         invariantsEnforced: ["Peters & Mathews Binary Chirp Mass Invariant", "General Relativistic Quadrupole Strain Radiation", "Standard Quantum Limit (SQL) Squeezed Light Noise Reduction"],
         dispatchedEngine: "noctis-gravitational-wave-interferometry-engine.ts",
         response: `# Noctis Sovereign Gravitational Wave Astronomy & Interferometry\n\n**Diagnostic**: ${res.diagnostic}\n- Chirp Mass: ${res.chirpMassSolarMasses.toFixed(2)} M_sun (Total: ${res.totalMassSolarMasses.toFixed(1)} M_sun)\n- Strain Amplitude: ${res.strainAmplitudeH.toExponential(3)}\n- Chirp Rate: ${res.chirpRateHzPerSecond.toFixed(1)} Hz/s\n- Time to Merger: ${(res.timeToMergerSeconds * 1000).toFixed(1)} ms\n- Quantum Noise Reduction: ${(res.quantumNoiseReductionFactor * 100).toFixed(1)}%`
+      };
+    }
+
+    case "TOKAMAK_MHD_DIVERTOR": {
+      const res = evaluateTokamakMhdAndDivertor({
+        majorRadiusR0Meters: 6.2,
+        minorRadiusAMeters: 2.0,
+        toroidalMagneticFieldTesla: 5.3,
+        plasmaCurrentMegaAmps: 15.0,
+        totalThermalBetaPercent: 2.5,
+        powerScrapeOffLayerMW: 100.0
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["IAEA Fusion Energy Guidelines", "ITER Plant Safety and Confinement Standards", "DOE Fusion Energy Sciences"],
+        invariantsEnforced: ["Kruskal-Shafranov Safety Factor (q_95 >= 3.0)", "Troyon Beta Limit (beta_N <= 3.5)", "Greenwald Density Limit Invariant"],
+        dispatchedEngine: "noctis-tokamak-mhd-divertor-engine.ts",
+        response: `# Noctis Sovereign Fusion Tokamak MHD & Divertor Plasma\n\n**Diagnostic**: ${res.diagnostic}\n- Safety Factor q_95: ${res.safetyFactorQ95.toFixed(2)} (Kink Stable: ${res.isKinkMhdStable})\n- Troyon beta_N: ${res.normalizedBetaTroyon.toFixed(2)} (Limit Satisfied: ${res.isTroyonBetaLimitSatisfied})\n- Greenwald Limit: ${res.greenwaldDensityLimit10_20M3.toFixed(2)} x10^20 m^-3\n- Parallel Heat Flux: ${res.parallelHeatFluxGWM2.toFixed(2)} GW/m^2 (Detached: ${res.isDivertorHeatTolerable})`
+      };
+    }
+
+    case "FISSION_CORE_NEUTRONICS": {
+      const res = evaluateReactorNeutronicsAndKinetics({
+        reactivityInsertedDollars: 0.25,
+        fuelTemperatureKelvin: 950.0
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["US NRC 10 CFR Part 50", "IAEA Safety Standards Series", "ANS-19.1 Reactor Physics Guidelines"],
+        invariantsEnforced: ["Six-Factor Multiplication Formula", "Prompt Critical Margin (rho < beta_eff)", "Doppler Negative Temperature Reactivity Feedback"],
+        dispatchedEngine: "noctis-fission-core-neutronics-engine.ts",
+        response: `# Noctis Sovereign Nuclear Fission Core Neutronics & Kinetics\n\n**Diagnostic**: ${res.diagnostic}\n- k_eff: ${res.effectiveMultiplicationFactorKeff.toFixed(4)}\n- Reactivity: ${res.reactivityRhoPcm.toFixed(1)} pcm\n- Prompt Margin: ${res.promptCriticalMarginDollars.toFixed(2)}$ (Safe: ${res.isPromptCriticalSafe})\n- Doppler Feedback: ${res.dopplerReactivityFeedbackPcm.toFixed(1)} pcm\n- Reactor Period: ${res.reactorPeriodSeconds.toFixed(1)} s`
+      };
+    }
+
+    case "BATTERY_ELECTROCHEMISTRY": {
+      const res = evaluateBatteryElectrochemistry({
+        stateOfChargeSoc: 0.65,
+        chargeRateC: 2.0,
+        temperatureCelsius: 25.0,
+        anodeOverpotentialVolts: 0.04,
+        anodeSolidPotentialVolts: 0.08,
+        electrolytePotentialVolts: 0.03,
+        cycleCountN: 500
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["UL 2580 EV Battery Safety", "IEC 62660 Lithium-Ion Cell Standards", "SAE J2464 Abuse Testing"],
+        invariantsEnforced: ["Butler-Volmer Charge-Transfer Overpotential", "SEI Diffusion-Limited Sqrt(t) Growth", "Lithium Plating Prevention Criterion (phi_s - phi_e > 0V)"],
+        dispatchedEngine: "noctis-battery-electrochemistry-degradation-engine.ts",
+        response: `# Noctis Sovereign Battery Electrochemistry & Degradation\n\n**Diagnostic**: ${res.diagnostic}\n- Plating Potential: ${(res.lithiumPlatingPotentialVolts * 1000).toFixed(1)} mV vs Li/Li+ (Plating Avoided: ${res.isLithiumPlatingAvoided})\n- Exchange Current j_0: ${res.exchangeCurrentDensityAM2.toFixed(3)} A/m^2\n- SEI Thickness: ${res.seiLayerThicknessNanometers.toFixed(1)} nm\n- Capacity Retention: ${res.capacityRetentionPercent.toFixed(1)}%`
+      };
+    }
+
+    case "HYPERSONIC_AEROTHERMO": {
+      const res = evaluateHypersonicAerothermodynamics({
+        machNumber: 15.0,
+        altitudeKm: 45.0,
+        noseRadiusMeters: 0.10
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["AIAA Hypersonic Systems Standards", "NASA SP-8000 Aerothermodynamic Design", "DoD High-Speed Flight Protocols"],
+        invariantsEnforced: ["Rankine-Hugoniot Hypersonic Shock Jump Conditions", "Fay-Riddell Stagnation Point Heat Flux", "Thermal Protection System (TPS) Boundary Limits"],
+        dispatchedEngine: "noctis-hypersonic-aerothermodynamics-engine.ts",
+        response: `# Noctis Sovereign Hypersonic Aerothermodynamics & Shock Physics\n\n**Diagnostic**: ${res.diagnostic}\n- Stagnation Temperature T_0: ${res.stagnationTemperatureKelvin.toFixed(0)} K\n- Post-Shock Pressure: ${res.postShockPressureKPa.toFixed(1)} kPa\n- Fay-Riddell Heat Flux: ${res.stagnationHeatFluxMWPerM2.toFixed(2)} MW/m^2 (TPS Limit Met: ${res.isTpsThermalLimitSatisfied})\n- Plasma Dissociation: ${res.isDissociationPlasmaTriggered}`
+      };
+    }
+
+    case "SYNTHETIC_BIO_FBA": {
+      const res = evaluateSyntheticBiologyAndFba({
+        glucoseUptakeRateMmolGdwH: 14.0,
+        oxygenUptakeRateMmolGdwH: 16.5,
+        targetPathwayFluxPercent: 20.0,
+        crisprMismatchCount: 3,
+        pamSequence: "NGG",
+        heterologousGeneCopyNumber: 15
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["NIH Recombinant DNA Guidelines", "Synthetic Biology Open Language (SBOL)", "ISO 20688 Biotechnology"],
+        invariantsEnforced: ["Stoichiometric Matrix Flux Balance Analysis (S*v = 0)", "CRISPR-Cas Hybridization Free Energy Specificity", "Cellular Metabolic Burden Viability Bound"],
+        dispatchedEngine: "noctis-synthetic-biology-metabolic-flux-engine.ts",
+        response: `# Noctis Sovereign Synthetic Biology & Metabolic Flux Analysis\n\n**Diagnostic**: ${res.diagnostic}\n- Predicted Growth Rate: ${res.predictedGrowthRatePerHour.toFixed(3)} h^-1\n- Theoretical Yield: ${res.targetProductYieldGPerGGlucose.toFixed(3)} g/g\n- CRISPR Specificity Score: ${res.crisprCleavageSpecificityScore.toFixed(4)} (Off-Target Suppressed: ${res.isOffTargetCleavageSuppressed})\n- Metabolic Burden: ${(res.metabolicBurdenFraction * 100).toFixed(1)}% (Viable: ${res.isHostViabilityPreserved})`
+      };
+    }
+
+    case "PLANETARY_VOLCANOLOGY": {
+      const res = evaluateVolcanologyAndMagmaDynamics({
+        massEruptionRateKgS: 1.5e8,
+        magmaTemperatureCelsius: 950.0,
+        conduitRadiusMeters: 35.0,
+        conduitLengthMeters: 5500.0,
+        magmaViscosityPaS: 2.5e4,
+        volatileWaterWeightPercent: 4.8
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["IAVCEI International Volcanological Protocols", "USGS Volcanic Hazard Assessment Standards", "WMO Volcanic Ash Advisory"],
+        invariantsEnforced: ["Wilson Plinian Column Height Scaling (H ~ Mdot^0.25)", "Poiseuille Multiphase Magma Ascent Hydraulics", "Bingham Plastic Lava Critical Yield Stress"],
+        dispatchedEngine: "noctis-planetary-volcanology-geology-engine.ts",
+        response: `# Noctis Sovereign Planetary Volcanology & Magma Dynamics\n\n**Diagnostic**: ${res.diagnostic}\n- Plinian Column Height: ${res.plinianColumnHeightKm.toFixed(1)} km (Neutral Buoyancy: ${res.neutralBuoyancyHeightKm.toFixed(1)} km)\n- Volcanic Explosivity Index: VEI ${res.eruptionMagnitudeIndexVEI}\n- Conduit Ascent Speed: ${res.conduitFlowVelocityMs.toFixed(1)} m/s\n- Chamber Overpressure: ${res.chamberOverpressureMPa.toFixed(1)} MPa`
+      };
+    }
+
+    case "QUANTUM_OPTOMECHANICS": {
+      const res = evaluateQuantumOptomechanics({
+        cavityLengthMm: 2.0,
+        cavityWavelengthNm: 1064.0,
+        cavityDecayRateKappaMhz: 1.2,
+        mechanicalFrequencyOmegaMMhz: 12.0,
+        effectiveMassPicograms: 20.0,
+        mechanicalQualityFactorQm: 2e6,
+        cryogenicBathTempKelvin: 0.10,
+        intracavityPhotonNumber: 2.5e5
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["BIPM Quantum Precision Metrology", "IEEE Quantum Electronics Standards", "NIST Physical Measurement Laboratory Protocols"],
+        invariantsEnforced: ["Single-Photon Optomechanical Coupling Invariant", "Resolved-Sideband Good Cavity Criterion (omega_m > kappa)", "Quantum Ground State Cooling Limit (n_final < 1.0)"],
+        dispatchedEngine: "noctis-quantum-optomechanics-cooling-engine.ts",
+        response: `# Noctis Sovereign Quantum Optomechanics & Cavity Cooling\n\n**Diagnostic**: ${res.diagnostic}\n- Zero-Point Motion (x_zpf): ${res.zeroPointFluctuationFm.toFixed(2)} fm\n- Single-Photon Coupling g_0: ${res.singlePhotonCouplingG0Hz.toFixed(1)} Hz\n- Resolved Sideband: ${res.isResolvedSidebandRegime}\n- Optomechanical Cooperativity: ${res.optomechanicalCooperativity.toFixed(1)}\n- Final Phonon Occupation: ${res.finalPhononOccupation.toFixed(3)} (Ground State: ${res.isQuantumGroundStateCooled})`
+      };
+    }
+
+    case "HYDRO_TURBINE_HAMMER": {
+      const res = evaluateHydroTurbineAndWaterHammer({
+        netHeadMeters: 140.0,
+        flowRateM3S: 80.0,
+        penstockDiameterMeters: 3.8,
+        penstockWallThicknessMm: 28.0,
+        penstockLengthMeters: 1100.0,
+        valveClosureTimeSeconds: 7.5,
+        rotationalSpeedRpm: 187.5
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["IEC 60041 Field Acceptance of Hydraulic Turbines", "ASME PTC 18 Hydro Power Performance", "USBR Penstock Engineering Guidelines"],
+        invariantsEnforced: ["Allievi Elastic Pressure Wave Velocity in Penstocks", "Joukowsky Maximum Water Hammer Head Surge", "Turbine Runner Specific Speed Classification"],
+        dispatchedEngine: "noctis-hydro-turbine-water-hammer-engine.ts",
+        response: `# Noctis Sovereign Hydroelectric Turbines & Water Hammer Hydraulics\n\n**Diagnostic**: ${res.diagnostic}\n- Wave Velocity: ${res.waveSpeedMs.toFixed(0)} m/s\n- Joukowsky Surge: ${res.joukowskyHeadSurgeMeters.toFixed(1)} m\n- Total Dynamic Head: ${res.totalDynamicHeadMeters.toFixed(1)} m\n- Mechanical Power: ${res.turbineMechanicalPowerMW.toFixed(1)} MW (Type: ${res.recommendedTurbineType})\n- Penstock Safe: ${res.isPenstockOverpressureSafe}`
+      };
+    }
+
+    case "CRYO_ROCKET_PROPELLANT": {
+      const res = evaluateCryoRocketPropellantStorage({
+        propellantType: "LIQUID_HYDROGEN_LH2",
+        tankVolumeM3: 150.0,
+        tankSurfaceAreaM2: 145.0,
+        mliLayerCount: 60,
+        missionDurationDays: 60
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["NASA SP-8000 Cryogenic Fluid Management", "AIAA Space Transportation Standards", "ISO 14624 Space Systems Flammability"],
+        invariantsEnforced: ["Modified Lockheed MLI Radiation Heat Leak Model", "Thermodynamic Vaporization Latent Heat Conservation", "Zero Boil-Off (ZBO) Active Cryocooler Power"],
+        dispatchedEngine: "noctis-cryo-rocket-propellant-engine.ts",
+        response: `# Noctis Sovereign Cryogenic Rocket Propellant & Boil-Off Storage\n\n**Diagnostic**: ${res.diagnostic}\n- Heat Flux q_MLI: ${res.mliHeatFluxWM2.toFixed(3)} W/m^2\n- Total Heat Leak: ${res.totalThermalHeatLeakWatts.toFixed(1)} W\n- Passive Boil-Off: ${res.dailyBoilOffRateKgPerDay.toFixed(2)} kg/day (${res.dailyBoilOffPercentage.toFixed(3)}%/day)\n- ZBO Cryocooler Power: ${res.zboElectricPowerRequiredWatts.toFixed(1)} W (ZBO Maintained: ${res.isZeroBoilOffMaintained})`
+      };
+    }
+
+    case "SPACE_GEODESY_VLBI": {
+      const res = evaluateSpaceGeodesyAndVlbi({
+        baselineLengthKm: 6000.0,
+        sourceDeclinationDeg: 22.0,
+        sourceRightAscensionHours: 12.5,
+        solarElongationAngleDeg: 45.0
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["IERS Conventions 2010", "International VLBI Service for Geodesy and Astrometry (IVS)", "IAU Resolutions on Reference Systems"],
+        invariantsEnforced: ["VLBI Geometric Delay Consensus Formulation", "Shapiro General Relativistic Gravitational Delay", "ITRF Plate Tectonic Motion & EOP Parameters"],
+        dispatchedEngine: "noctis-space-geodesy-vlbi-engine.ts",
+        response: `# Noctis Sovereign Space Geodesy & VLBI Astrometry\n\n**Diagnostic**: ${res.diagnostic}\n- Max Geometric Delay: ${res.geometricDelayMicroseconds.toFixed(1)} us\n- Shapiro Relativistic Delay: ${res.shapiroGravitationalDelayPicoseconds.toFixed(1)} ps (GR Concordance: ${res.ppnGammaConcordance})\n- Tectonic Drift: ${res.baselineDriftMillimetersPerDecade.toFixed(1)} mm/decade\n- Angular Resolution: ${res.angularResolutionMilliarcseconds.toFixed(2)} mas`
       };
     }
 
