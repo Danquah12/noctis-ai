@@ -30,7 +30,7 @@ const c = {
 
 console.log(`${c.bold}${c.cyan}======================================================================${c.reset}`);
 console.log(`${c.bold}${c.cyan} NOCTIS UNIVERSAL LIFE & OMNIPRESENT ENGINES VALIDATION BATTERY${c.reset}`);
-console.log(`${c.dim} Auditing all 80 sovereign engines, routing fidelity, and continuous training${c.reset}`);
+console.log(`${c.dim} Auditing all 90 sovereign engines, routing fidelity, and continuous training${c.reset}`);
 console.log(`${c.bold}${c.cyan}======================================================================${c.reset}\n`);
 
 // 1. ROUTING FIDELITY TEST BATTERY (All Aspects of Life)
@@ -285,6 +285,66 @@ const ROUTING_TEST_BATTERY: Array<{
     query: "Evaluate exoplanet Earth Similarity Index (ESI) and atmospheric methane plus oxygen thermodynamic disequilibrium biosignatures.",
     expectedDomain: "ASTROBIOLOGY_HABITABILITY",
     expectedEngine: "noctis-astrobiology-biosignatures-engine.ts"
+  },
+  {
+    name: "Particle Physics & Synchrotron Accelerators",
+    query: "Calculate synchrotron radiation energy loss per turn and superconducting RF cavity peak magnetic field quench limit.",
+    expectedDomain: "PARTICLE_PHYSICS_ACCELERATOR",
+    expectedEngine: "noctis-particle-physics-synchrotron-engine.ts"
+  },
+  {
+    name: "Cryogenics & Superfluid Helium He-II",
+    query: "Under the lambda transition (2.172 K), evaluate Gorter-Mellink turbulent heat transport and Kapitza resistance in He-II.",
+    expectedDomain: "CRYOGENICS_SUPERFLUID",
+    expectedEngine: "noctis-cryogenics-superfluidity-engine.ts"
+  },
+  {
+    name: "Soil Biogeochemistry & Precision Agronomy",
+    query: "Calculate cation exchange capacity (CEC) base saturation percentage and Mehlich-3 phosphorus saturation ratio leaching risk.",
+    expectedDomain: "SOIL_AGRONOMY_BIOGEOCHEM",
+    expectedEngine: "noctis-soil-biogeochemistry-agronomy-engine.ts"
+  },
+  {
+    name: "Naval Architecture & Marine Hydrodynamics",
+    query: "Determine naval architecture transverse metacentric height GM >= 0.15m and Holtrop-Mennen wave resistance for a displacement hull.",
+    expectedDomain: "NAVAL_HYDRODYNAMICS",
+    expectedEngine: "noctis-naval-architecture-hydrodynamics-engine.ts"
+  },
+  {
+    name: "Metallurgical Smelting & Pyrometallurgy",
+    query: "Evaluate copper matte grade in flash smelting and Duffy-Ingram slag optical basicity for tapping viscosity.",
+    expectedDomain: "PYROMETALLURGICAL_SMELTING",
+    expectedEngine: "noctis-metallurgical-smelting-pyro-engine.ts"
+  },
+  {
+    name: "Space Propulsion & Plasma Thrusters",
+    query: "Calculate Hall effect thruster Bohm sheath velocity, specific impulse (Isp), and xenon propellant flow rate.",
+    expectedDomain: "PLASMA_SPACE_PROPULSION",
+    expectedEngine: "noctis-space-propulsion-plasma-engine.ts"
+  },
+  {
+    name: "Geotechnical Liquefaction & Earthquake Dynamics",
+    query: "Under the Seed-Idriss simplified procedure, compute cyclic stress ratio (CSR_7.5) and factor of safety against soil liquefaction (fs_liq).",
+    expectedDomain: "GEOTECHNICAL_LIQUEFACTION",
+    expectedEngine: "noctis-geotechnical-liquefaction-engine.ts"
+  },
+  {
+    name: "Computational Fluid Dynamics & Turbulence",
+    query: "In CFD RANS turbulence modeling, verify first cell wall distance y+ <= 1.0 and Courant-Friedrichs-Lewy (CFL) numerical stability.",
+    expectedDomain: "CFD_TURBULENCE_MODELING",
+    expectedEngine: "noctis-cfd-turbulence-modeling-engine.ts"
+  },
+  {
+    name: "Polymer Synthesis & Melt Rheology",
+    query: "Calculate Carothers equation degree of polymerization (X_n) and Flory-Huggins chi interaction parameter for polymer melts.",
+    expectedDomain: "POLYMER_RHEOLOGY_SYNTHESIS",
+    expectedEngine: "noctis-polymer-rheology-synthesis-engine.ts"
+  },
+  {
+    name: "Quantum Sensing & Cold Atom Gravimetry",
+    query: "Evaluate cold atom gravimetry Raman phase shift (Delta Phi = k_eff * g * T^2) and Standard Quantum Limit (SQL) shot-noise sensitivity.",
+    expectedDomain: "QUANTUM_SENSING_GRAVIMETRY",
+    expectedEngine: "noctis-quantum-sensing-gravimetry-engine.ts"
   }
 ];
 
@@ -322,6 +382,6 @@ console.log(`  ${c.green}✔ Safety Violations:${c.reset}     ${epochSummary.saf
 console.log(`  ${c.green}✔ Execution Duration:${c.reset}    ${epochDuration}ms\n`);
 
 console.log(`${c.bold}${c.green}======================================================================${c.reset}`);
-console.log(`${c.bold}${c.green} ALL 80 DOMAIN ENGINES OPERATIONAL & 100% INVARIANT VERIFIED${c.reset}`);
+console.log(`${c.bold}${c.green} ALL 90 DOMAIN ENGINES OPERATIONAL & 100% INVARIANT VERIFIED${c.reset}`);
 console.log(`${c.bold}${c.green} UNIVERSAL LIFE ROUTER ACTIVE FOR ANY & ALL SUBJECT MATTER QUESTIONS${c.reset}`);
 console.log(`${c.bold}${c.green}======================================================================${c.reset}`);

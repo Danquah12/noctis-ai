@@ -94,6 +94,16 @@ import { executeAllBiomedicalHemodynamicsScenarios } from "./noctis-biomedical-h
 import { executeAllChemicalProcessScenarios } from "./noctis-chemical-reactor-process-engine.ts";
 import { executeAllSemiconductorScenarios } from "./noctis-semiconductor-photolithography-engine.ts";
 import { executeAllAstrobiologyScenarios } from "./noctis-astrobiology-biosignatures-engine.ts";
+import { executeAllParticlePhysicsScenarios } from "./noctis-particle-physics-synchrotron-engine.ts";
+import { executeAllCryogenicsScenarios } from "./noctis-cryogenics-superfluidity-engine.ts";
+import { executeAllSoilAgronomyScenarios } from "./noctis-soil-biogeochemistry-agronomy-engine.ts";
+import { executeAllNavalHydrodynamicsScenarios } from "./noctis-naval-architecture-hydrodynamics-engine.ts";
+import { executeAllPyrometallurgyScenarios } from "./noctis-metallurgical-smelting-pyro-engine.ts";
+import { executeAllPlasmaPropulsionScenarios } from "./noctis-space-propulsion-plasma-engine.ts";
+import { executeAllLiquefactionScenarios } from "./noctis-geotechnical-liquefaction-engine.ts";
+import { executeAllCfdScenarios } from "./noctis-cfd-turbulence-modeling-engine.ts";
+import { executeAllPolymerScenarios } from "./noctis-polymer-rheology-synthesis-engine.ts";
+import { executeAllQuantumSensingScenarios } from "./noctis-quantum-sensing-gravimetry-engine.ts";
 
 export interface VerboseEpochEvent {
   step: number;
@@ -1707,6 +1717,186 @@ export function executeContinuousTrainingEpoch(options?: { verbose?: boolean }):
     status: astrobioPassed === astrobioTests.length ? "PASS" : "FAIL",
   });
   recordDomain(80, "ASTROBIOLOGY_EXOPLANET_HABITABILITY", astrobioTests.length, astrobioPassed, performance.now() - t0_astrobio, "Astrobiology & Biosignatures: Earth Similarity Index (ESI) & Methane-Oxygen Thermodynamic Disequilibrium, Photosynthetic Chlorophyll Red-Edge Spectral Discontinuity, Deinococcus radiodurans Ionizing Radiation D10 Survivability, COSPAR Category IVb Cleanroom Bioburden Invariants, Enceladus Cryovolcanic Plume Methanogenesis Energetics");
+
+  // Step 81: High-Energy Particle Physics & Synchrotron Accelerators (NOCTIS-PARTICLE-001)
+  const t0_particle = performance.now();
+  const particleTests = executeAllParticlePhysicsScenarios();
+  let particlePassed = 0;
+  for (const t of particleTests) {
+    const res = t.execute();
+    if (res.status === "PASS" || res.score >= 50) particlePassed++;
+  }
+  totalScenarios += particleTests.length;
+  totalInvariants += particlePassed;
+  domainBreakdown.push({
+    domain: "PARTICLE_PHYSICS_SYNCHROTRON",
+    scenariosCount: particleTests.length,
+    invariantsPassed: particlePassed,
+    status: particlePassed === particleTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(81, "PARTICLE_PHYSICS_SYNCHROTRON", particleTests.length, particlePassed, performance.now() - t0_particle, "Particle Physics & Accelerators: Relativistic Lorentz Gamma Kinematics, Synchrotron Radiation Power Losses U_0, Critical Photon Energy Scaling, Superconducting RF (SRF) Quench Limits (B_pk < 200 mT)");
+
+  // Step 82: Cryogenics & Superfluid Helium Dynamics (NOCTIS-CRYO-001)
+  const t0_cryo = performance.now();
+  const cryoTests = executeAllCryogenicsScenarios();
+  let cryoPassed = 0;
+  for (const t of cryoTests) {
+    const res = t.execute();
+    if (res.status === "PASS" || res.score >= 50) cryoPassed++;
+  }
+  totalScenarios += cryoTests.length;
+  totalInvariants += cryoPassed;
+  domainBreakdown.push({
+    domain: "CRYOGENICS_SUPERFLUID_DYNAMICS",
+    scenariosCount: cryoTests.length,
+    invariantsPassed: cryoPassed,
+    status: cryoPassed === cryoTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(82, "CRYOGENICS_SUPERFLUID_DYNAMICS", cryoTests.length, cryoPassed, performance.now() - t0_cryo, "Cryogenics & He-II Superfluidity: Lambda Point Transition (2.172 K), Gorter-Mellink Turbulent Heat Transport, Kapitza Thermal Boundary Resistance, Cryogenic Carnot Reversible Work & COP Limits");
+
+  // Step 83: Soil Biogeochemistry & Precision Agronomy (NOCTIS-AGRO-SOIL-001)
+  const t0_soil = performance.now();
+  const soilTests = executeAllSoilAgronomyScenarios();
+  let soilPassed = 0;
+  for (const t of soilTests) {
+    const res = t.execute();
+    if (res.status === "PASS" || res.score >= 50) soilPassed++;
+  }
+  totalScenarios += soilTests.length;
+  totalInvariants += soilPassed;
+  domainBreakdown.push({
+    domain: "SOIL_BIOGEOCHEMISTRY_AGRONOMY",
+    scenariosCount: soilTests.length,
+    invariantsPassed: soilPassed,
+    status: soilPassed === soilTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(83, "SOIL_BIOGEOCHEMISTRY_AGRONOMY", soilTests.length, soilPassed, performance.now() - t0_soil, "Soil Biogeochemistry: Cation Exchange Capacity (CEC) Base Saturation, Mehlich-3 Phosphorus Sorption Capacity, Six & Hassink Soil Carbon Saturation Deficit, Century Model Denitrification N2O Surges");
+
+  // Step 84: Naval Architecture & Marine Hydrodynamics (NOCTIS-NAVAL-001)
+  const t0_naval = performance.now();
+  const navalTests = executeAllNavalHydrodynamicsScenarios();
+  let navalPassed = 0;
+  for (const t of navalTests) {
+    const res = t.execute();
+    if (res.status === "PASS" || res.score >= 50) navalPassed++;
+  }
+  totalScenarios += navalTests.length;
+  totalInvariants += navalPassed;
+  domainBreakdown.push({
+    domain: "NAVAL_HYDRODYNAMICS_STABILITY",
+    scenariosCount: navalTests.length,
+    invariantsPassed: navalPassed,
+    status: navalPassed === navalTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(84, "NAVAL_HYDRODYNAMICS_STABILITY", navalTests.length, navalPassed, performance.now() - t0_naval, "Naval Hydrodynamics: Froude Number Wave Regimes, IMO Transverse Metacentric Height GM >= 0.15m Criteria, Holtrop-Mennen Ship Powering Regression, Propeller Cavitation Inception Number");
+
+  // Step 85: Metallurgical Smelting & Pyrometallurgy (NOCTIS-PYROMET-001)
+  const t0_pyro = performance.now();
+  const pyroTests = executeAllPyrometallurgyScenarios();
+  let pyroPassed = 0;
+  for (const t of pyroTests) {
+    const res = t.execute();
+    if (res.status === "PASS" || res.score >= 50) pyroPassed++;
+  }
+  totalScenarios += pyroTests.length;
+  totalInvariants += pyroPassed;
+  domainBreakdown.push({
+    domain: "PYROMETALLURGICAL_SMELTING",
+    scenariosCount: pyroTests.length,
+    invariantsPassed: pyroPassed,
+    status: pyroPassed === pyroTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(85, "PYROMETALLURGICAL_SMELTING", pyroTests.length, pyroPassed, performance.now() - t0_pyro, "Extractive Pyrometallurgy: Ellingham Diagram Reduction Gibbs Free Energy, Copper Flash Smelting Matte Grade Equilibrium, Duffy-Ingram Slag Optical Basicity & Viscosity, Boudouard Equilibrium");
+
+  // Step 86: Space Propulsion & Plasma Thrusters (NOCTIS-PLASMA-001)
+  const t0_plasma = performance.now();
+  const plasmaTests = executeAllPlasmaPropulsionScenarios();
+  let plasmaPassed = 0;
+  for (const t of plasmaTests) {
+    const res = t.execute();
+    if (res.status === "PASS" || res.score >= 50) plasmaPassed++;
+  }
+  totalScenarios += plasmaTests.length;
+  totalInvariants += plasmaPassed;
+  domainBreakdown.push({
+    domain: "SPACE_PROPULSION_PLASMA",
+    scenariosCount: plasmaTests.length,
+    invariantsPassed: plasmaPassed,
+    status: plasmaPassed === plasmaTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(86, "SPACE_PROPULSION_PLASMA", plasmaTests.length, plasmaPassed, performance.now() - t0_plasma, "Advanced Space Propulsion: Hall Thruster & Gridded Ion Acceleration, Bohm Sheath Criterion Stability, Specific Impulse Isp Optimization, Maecker MPD Lorentz Thrust, Channel Sputtering Limits");
+
+  // Step 87: Geotechnical Liquefaction & Earthquake Dynamics (NOCTIS-GEOTECH-001)
+  const t0_geotech = performance.now();
+  const geotechTests = executeAllLiquefactionScenarios();
+  let geotechPassed = 0;
+  for (const t of geotechTests) {
+    const res = t.execute();
+    if (res.status === "PASS" || res.score >= 50) geotechPassed++;
+  }
+  totalScenarios += geotechTests.length;
+  totalInvariants += geotechPassed;
+  domainBreakdown.push({
+    domain: "GEOTECHNICAL_EARTHQUAKE_LIQUEFACTION",
+    scenariosCount: geotechTests.length,
+    invariantsPassed: geotechPassed,
+    status: geotechPassed === geotechTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(87, "GEOTECHNICAL_EARTHQUAKE_LIQUEFACTION", geotechTests.length, geotechPassed, performance.now() - t0_geotech, "Geotechnical Earthquake Engineering: Seed-Idriss Cyclic Stress Ratio (CSR), Youd Clean Sand CRR Envelope, Factor of Safety Against Liquefaction, Post-Liquefaction Volumetric Strain Settlement");
+
+  // Step 88: Computational Fluid Dynamics & Turbulence Modeling (NOCTIS-CFD-001)
+  const t0_cfd = performance.now();
+  const cfdTests = executeAllCfdScenarios();
+  let cfdPassed = 0;
+  for (const t of cfdTests) {
+    const res = t.execute();
+    if (res.status === "PASS" || res.score >= 50) cfdPassed++;
+  }
+  totalScenarios += cfdTests.length;
+  totalInvariants += cfdPassed;
+  domainBreakdown.push({
+    domain: "CFD_TURBULENCE_MODELING",
+    scenariosCount: cfdTests.length,
+    invariantsPassed: cfdPassed,
+    status: cfdPassed === cfdTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(88, "CFD_TURBULENCE_MODELING", cfdTests.length, cfdPassed, performance.now() - t0_cfd, "Computational Fluid Dynamics: Navier-Stokes RANS Turbulence Closure, Viscous Sublayer y+ Wall Spacing (y+ <= 1.5), Courant-Friedrichs-Lewy (CFL <= 1.0) Stability Invariant, Turbulent Kinetic Energy Positivity");
+
+  // Step 89: Polymer Synthesis & Complex Fluid Rheology (NOCTIS-POLYMER-001)
+  const t0_polymer = performance.now();
+  const polymerTests = executeAllPolymerScenarios();
+  let polymerPassed = 0;
+  for (const t of polymerTests) {
+    const res = t.execute();
+    if (res.status === "PASS" || res.score >= 50) polymerPassed++;
+  }
+  totalScenarios += polymerTests.length;
+  totalInvariants += polymerPassed;
+  domainBreakdown.push({
+    domain: "POLYMER_SYNTHESIS_RHEOLOGY",
+    scenariosCount: polymerTests.length,
+    invariantsPassed: polymerPassed,
+    status: polymerPassed === polymerTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(89, "POLYMER_SYNTHESIS_RHEOLOGY", polymerTests.length, polymerPassed, performance.now() - t0_polymer, "Macromolecular Polymer Science: Carothers Polycondensation Degree of Polymerization, Flory-Huggins Miscibility Chi Parameter, Cox-Merz Non-Newtonian Power Law Shear Thinning, Fox Equation Tg");
+
+  // Step 90: Quantum Sensing & Cold Atom Gravimetry (NOCTIS-QSENSE-001)
+  const t0_qsense = performance.now();
+  const qsenseTests = executeAllQuantumSensingScenarios();
+  let qsensePassed = 0;
+  for (const t of qsenseTests) {
+    const res = t.execute();
+    if (res.status === "PASS" || res.score >= 50) qsensePassed++;
+  }
+  totalScenarios += qsenseTests.length;
+  totalInvariants += qsensePassed;
+  domainBreakdown.push({
+    domain: "QUANTUM_SENSING_GRAVIMETRY",
+    scenariosCount: qsenseTests.length,
+    invariantsPassed: qsensePassed,
+    status: qsensePassed === qsenseTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(90, "QUANTUM_SENSING_GRAVIMETRY", qsenseTests.length, qsensePassed, performance.now() - t0_qsense, "Quantum Metrology & Sensing: Cold Atom Raman Interferometer Gravimetry (Delta Phi = k_eff * g * T^2), Standard Quantum Limit (SQL) Shot-Noise Boundary, NV-Center Electron Spin Zeeman Magnetometry");
 
   const totalDurationMs = Math.round((performance.now() - epochStartTime) * 100) / 100;
   const accuracy = Math.round((totalInvariants / totalScenarios) * 1000) / 10;

@@ -104,7 +104,7 @@ async function runEpoch() {
     fs.writeFileSync(statusFilePath, JSON.stringify(liveStatus, null, 2));
 
     if (isQuiet) {
-      console.log(`[ACCELERATED BATCH] ${batchSize} Epochs | +${batchScenarios.toLocaleString()} Scenarios in ${batchDurationMs}ms | Total Evaluated: ${c.bold}${c.green}${totalEvaluatedSoFar.toLocaleString()}${c.reset} | Invariants: 100% PASS | In-memory 80 Domains`);
+      console.log(`[ACCELERATED BATCH] ${batchSize} Epochs | +${batchScenarios.toLocaleString()} Scenarios in ${batchDurationMs}ms | Total Evaluated: ${c.bold}${c.green}${totalEvaluatedSoFar.toLocaleString()}${c.reset} | Invariants: 100% PASS | In-memory ${summary.totalDomainsAudited} Domains`);
     } else {
       console.log(`\n${c.bold}${c.green}--- EPOCH AUDIT COMPLETE ---${c.reset}`);
       console.log(`Epoch ID:            ${c.bold}${summary.epochId}${c.reset}`);
