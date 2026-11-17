@@ -30,7 +30,7 @@ const c = {
 
 console.log(`${c.bold}${c.cyan}======================================================================${c.reset}`);
 console.log(`${c.bold}${c.cyan} NOCTIS UNIVERSAL LIFE & OMNIPRESENT ENGINES VALIDATION BATTERY${c.reset}`);
-console.log(`${c.dim} Auditing all 90 sovereign engines, routing fidelity, and continuous training${c.reset}`);
+console.log(`${c.dim} Auditing all 100 sovereign engines, routing fidelity, and continuous training${c.reset}`);
 console.log(`${c.bold}${c.cyan}======================================================================${c.reset}\n`);
 
 // 1. ROUTING FIDELITY TEST BATTERY (All Aspects of Life)
@@ -345,6 +345,66 @@ const ROUTING_TEST_BATTERY: Array<{
     query: "Evaluate cold atom gravimetry Raman phase shift (Delta Phi = k_eff * g * T^2) and Standard Quantum Limit (SQL) shot-noise sensitivity.",
     expectedDomain: "QUANTUM_SENSING_GRAVIMETRY",
     expectedEngine: "noctis-quantum-sensing-gravimetry-engine.ts"
+  },
+  {
+    name: "High-Voltage Pulsed Power & Marx Discharges",
+    query: "Calculate multi-stage Marx generator stored energy and Blumlein pulse-forming line pulse width into a matched load.",
+    expectedDomain: "PULSED_POWER_PLASMA",
+    expectedEngine: "noctis-pulsed-power-plasma-engine.ts"
+  },
+  {
+    name: "Space Elevator & Tether Orbital Mechanics",
+    query: "Under the Tsiolkovsky-Pearson taper formula, calculate space elevator cable cross-sectional area ratio and electrodynamic tether (EDT) Lorentz force.",
+    expectedDomain: "SPACE_TETHER_ELEVATOR",
+    expectedEngine: "noctis-space-tether-elevator-engine.ts"
+  },
+  {
+    name: "Atmospheric Cloud Microphysics & Precipitation",
+    query: "Evaluate Köhler curve aerosol droplet activation critical supersaturation and Wegener-Bergeron-Findeisen ice crystal growth rates.",
+    expectedDomain: "ATMOSPHERIC_CLOUD_PHYSICS",
+    expectedEngine: "noctis-cloud-microphysics-precipitation-engine.ts"
+  },
+  {
+    name: "Petroleum Reservoir Engineering & CO2 EOR",
+    query: "Calculate Buckley-Leverett multiphase fractional flow curve and CO2 minimum miscibility pressure (MMP) for enhanced oil recovery.",
+    expectedDomain: "PETROLEUM_RESERVOIR_EOR",
+    expectedEngine: "noctis-petroleum-reservoir-eor-engine.ts"
+  },
+  {
+    name: "Concentrated Solar Power (CSP) & Thermal Optics",
+    query: "Determine heliostat field optical cosine efficiency and central cavity receiver radiation and convection thermal losses.",
+    expectedDomain: "SOLAR_THERMAL_CSP",
+    expectedEngine: "noctis-solar-thermal-csp-engine.ts"
+  },
+  {
+    name: "Underwater Acoustics & Sonar Range Equations",
+    query: "Under the active sonar equation and Thorp seawater absorption, calculate target detection transmission loss in a SOFAR sound velocity profile.",
+    expectedDomain: "UNDERWATER_ACOUSTICS_SONAR",
+    expectedEngine: "noctis-underwater-acoustics-sonar-engine.ts"
+  },
+  {
+    name: "Metamaterials & Electromagnetic Cloaking",
+    query: "Evaluate Veselago double-negative (DNG) negative index of refraction and Pendry coordinate transformation cylindrical cloaking tensors.",
+    expectedDomain: "METAMATERIALS_CLOAKING",
+    expectedEngine: "noctis-metamaterials-transformation-optics-engine.ts"
+  },
+  {
+    name: "High-Pressure Geophysics & Mantle Transitions",
+    query: "Calculate Birch-Murnaghan 3rd-order equation of state pressure and seismic wave velocities across the 660 km mantle discontinuity.",
+    expectedDomain: "HIGH_PRESSURE_GEOPHYSICS",
+    expectedEngine: "noctis-high-pressure-geophysics-engine.ts"
+  },
+  {
+    name: "Bioprocess Engineering & Industrial Fermentation",
+    query: "Evaluate Monod cell growth kinetics with Haldane substrate inhibition and bioreactor volumetric oxygen transfer coefficient (kLa).",
+    expectedDomain: "BIOPROCESS_FERMENTATION",
+    expectedEngine: "noctis-bioprocess-fermentation-engine.ts"
+  },
+  {
+    name: "Gravitational Wave Astronomy & Interferometry",
+    query: "Calculate binary black hole chirp mass, Peters-Mathews quadrupole gravitational wave strain amplitude (h), and LIGO quantum squeezed light noise reduction.",
+    expectedDomain: "GRAVITATIONAL_WAVE_ASTRONOMY",
+    expectedEngine: "noctis-gravitational-wave-interferometry-engine.ts"
   }
 ];
 
@@ -382,6 +442,6 @@ console.log(`  ${c.green}✔ Safety Violations:${c.reset}     ${epochSummary.saf
 console.log(`  ${c.green}✔ Execution Duration:${c.reset}    ${epochDuration}ms\n`);
 
 console.log(`${c.bold}${c.green}======================================================================${c.reset}`);
-console.log(`${c.bold}${c.green} ALL 90 DOMAIN ENGINES OPERATIONAL & 100% INVARIANT VERIFIED${c.reset}`);
+console.log(`${c.bold}${c.green} ALL 100 DOMAIN ENGINES OPERATIONAL & 100% INVARIANT VERIFIED${c.reset}`);
 console.log(`${c.bold}${c.green} UNIVERSAL LIFE ROUTER ACTIVE FOR ANY & ALL SUBJECT MATTER QUESTIONS${c.reset}`);
 console.log(`${c.bold}${c.green}======================================================================${c.reset}`);

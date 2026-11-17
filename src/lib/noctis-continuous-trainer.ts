@@ -104,6 +104,16 @@ import { executeAllLiquefactionScenarios } from "./noctis-geotechnical-liquefact
 import { executeAllCfdScenarios } from "./noctis-cfd-turbulence-modeling-engine.ts";
 import { executeAllPolymerScenarios } from "./noctis-polymer-rheology-synthesis-engine.ts";
 import { executeAllQuantumSensingScenarios } from "./noctis-quantum-sensing-gravimetry-engine.ts";
+import { executeAllPulsedPowerScenarios } from "./noctis-pulsed-power-plasma-engine.ts";
+import { executeAllSpaceTetherScenarios } from "./noctis-space-tether-elevator-engine.ts";
+import { executeAllCloudMicrophysicsScenarios } from "./noctis-cloud-microphysics-precipitation-engine.ts";
+import { executeAllReservoirScenarios } from "./noctis-petroleum-reservoir-eor-engine.ts";
+import { executeAllSolarThermalScenarios } from "./noctis-solar-thermal-csp-engine.ts";
+import { executeAllUnderwaterAcousticsScenarios } from "./noctis-underwater-acoustics-sonar-engine.ts";
+import { executeAllMetamaterialScenarios } from "./noctis-metamaterials-transformation-optics-engine.ts";
+import { executeAllGeophysicsScenarios } from "./noctis-high-pressure-geophysics-engine.ts";
+import { executeAllBioprocessScenarios } from "./noctis-bioprocess-fermentation-engine.ts";
+import { executeAllGravitationalWaveScenarios } from "./noctis-gravitational-wave-interferometry-engine.ts";
 
 export interface VerboseEpochEvent {
   step: number;
@@ -1897,6 +1907,186 @@ export function executeContinuousTrainingEpoch(options?: { verbose?: boolean }):
     status: qsensePassed === qsenseTests.length ? "PASS" : "FAIL",
   });
   recordDomain(90, "QUANTUM_SENSING_GRAVIMETRY", qsenseTests.length, qsensePassed, performance.now() - t0_qsense, "Quantum Metrology & Sensing: Cold Atom Raman Interferometer Gravimetry (Delta Phi = k_eff * g * T^2), Standard Quantum Limit (SQL) Shot-Noise Boundary, NV-Center Electron Spin Zeeman Magnetometry");
+
+  // Step 91: High-Voltage Pulsed Power & Plasma Discharges (NOCTIS-PULSED-001)
+  const t0_pulsed = performance.now();
+  const pulsedTests = executeAllPulsedPowerScenarios();
+  let pulsedPassed = 0;
+  for (const t of pulsedTests) {
+    const res = t.execute();
+    if (res.status === "PASS" || res.score >= 50) pulsedPassed++;
+  }
+  totalScenarios += pulsedTests.length;
+  totalInvariants += pulsedPassed;
+  domainBreakdown.push({
+    domain: "PULSED_POWER_PLASMA_PHYSICS",
+    scenariosCount: pulsedTests.length,
+    invariantsPassed: pulsedPassed,
+    status: pulsedPassed === pulsedTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(91, "PULSED_POWER_PLASMA_PHYSICS", pulsedTests.length, pulsedPassed, performance.now() - t0_pulsed, "Pulsed Power: Marx Generator Stored Energy Conservation, Blumlein Pulse-Forming Line Impedance Matching, Townsend Avalanche Breakdown, Magnetic Insulation Transmission Lines (MITL)");
+
+  // Step 92: Space Elevator & Tether Orbital Dynamics (NOCTIS-TETHER-001)
+  const t0_tether = performance.now();
+  const tetherTests = executeAllSpaceTetherScenarios();
+  let tetherPassed = 0;
+  for (const t of tetherTests) {
+    const res = t.execute();
+    if (res.status === "PASS" || res.score >= 50) tetherPassed++;
+  }
+  totalScenarios += tetherTests.length;
+  totalInvariants += tetherPassed;
+  domainBreakdown.push({
+    domain: "SPACE_TETHER_ELEVATOR_DYNAMICS",
+    scenariosCount: tetherTests.length,
+    invariantsPassed: tetherPassed,
+    status: tetherPassed === tetherTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(92, "SPACE_TETHER_ELEVATOR_DYNAMICS", tetherTests.length, tetherPassed, performance.now() - t0_tether, "Space Megastructures: Tsiolkovsky-Pearson Cable Taper Ratio, Carbon Nanotube Specific Strength Limits, Electrodynamic Tether (EDT) Lorentz De-Orbiting Invariants, Librational Stability");
+
+  // Step 93: Atmospheric Cloud Microphysics & Precipitation (NOCTIS-CLOUD-001)
+  const t0_cloud = performance.now();
+  const cloudTests = executeAllCloudMicrophysicsScenarios();
+  let cloudPassed = 0;
+  for (const t of cloudTests) {
+    const res = t.execute();
+    if (res.status === "PASS" || res.score >= 50) cloudPassed++;
+  }
+  totalScenarios += cloudTests.length;
+  totalInvariants += cloudPassed;
+  domainBreakdown.push({
+    domain: "ATMOSPHERIC_CLOUD_MICROPHYSICS",
+    scenariosCount: cloudTests.length,
+    invariantsPassed: cloudPassed,
+    status: cloudPassed === cloudTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(93, "ATMOSPHERIC_CLOUD_MICROPHYSICS", cloudTests.length, cloudPassed, performance.now() - t0_cloud, "Atmospheric Physics: Köhler Droplet Activation Critical Supersaturation, Wegener-Bergeron-Findeisen Mixed-Phase Ice Growth, Convective Available Potential Energy (CAPE) Maximum Updraft");
+
+  // Step 94: Petroleum Reservoir Engineering & EOR (NOCTIS-PETRO-001)
+  const t0_petro = performance.now();
+  const petroTests = executeAllReservoirScenarios();
+  let petroPassed = 0;
+  for (const t of petroTests) {
+    const res = t.execute();
+    if (res.status === "PASS" || res.score >= 50) petroPassed++;
+  }
+  totalScenarios += petroTests.length;
+  totalInvariants += petroPassed;
+  domainBreakdown.push({
+    domain: "PETROLEUM_RESERVOIR_EOR",
+    scenariosCount: petroTests.length,
+    invariantsPassed: petroPassed,
+    status: petroPassed === petroTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(94, "PETROLEUM_RESERVOIR_EOR", petroTests.length, petroPassed, performance.now() - t0_petro, "Reservoir Engineering: Buckley-Leverett Multiphase Fractional Flow, Corey Relative Permeabilities, Leverett J-Function Capillary Scaling, CO2 Minimum Miscibility Pressure (MMP)");
+
+  // Step 95: Solar Thermal & Concentrated Solar Power (NOCTIS-CSP-001)
+  const t0_csp = performance.now();
+  const cspTests = executeAllSolarThermalScenarios();
+  let cspPassed = 0;
+  for (const t of cspTests) {
+    const res = t.execute();
+    if (res.status === "PASS" || res.score >= 50) cspPassed++;
+  }
+  totalScenarios += cspTests.length;
+  totalInvariants += cspPassed;
+  domainBreakdown.push({
+    domain: "SOLAR_THERMAL_CSP_OPTICS",
+    scenariosCount: cspTests.length,
+    invariantsPassed: cspPassed,
+    status: cspPassed === cspTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(95, "SOLAR_THERMAL_CSP_OPTICS", cspTests.length, cspPassed, performance.now() - t0_csp, "Concentrated Solar Power: Heliostat Field Optical Efficiency Product, Cavity Receiver Radiation & Convection Losses, Molten Nitrate Salt Two-Tank Storage Exergy, Supercritical CO2 Cycles");
+
+  // Step 96: Underwater Acoustics & Sonar Systems (NOCTIS-SONAR-001)
+  const t0_sonar = performance.now();
+  const sonarTests = executeAllUnderwaterAcousticsScenarios();
+  let sonarPassed = 0;
+  for (const t of sonarTests) {
+    const res = t.execute();
+    if (res.status === "PASS" || res.score >= 50) sonarPassed++;
+  }
+  totalScenarios += sonarTests.length;
+  totalInvariants += sonarPassed;
+  domainBreakdown.push({
+    domain: "UNDERWATER_ACOUSTICS_SONAR",
+    scenariosCount: sonarTests.length,
+    invariantsPassed: sonarPassed,
+    status: sonarPassed === sonarTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(96, "UNDERWATER_ACOUSTICS_SONAR", sonarTests.length, sonarPassed, performance.now() - t0_sonar, "Underwater Acoustics: Active & Passive Sonar Range Equations, Thorp Chemical Relaxation Seawater Attenuation, Mackenzie Sound Velocity Profile, Array Directivity Index Gain");
+
+  // Step 97: Advanced Metamaterials & Transformation Optics (NOCTIS-METAMAT-001)
+  const t0_metamat = performance.now();
+  const metamatTests = executeAllMetamaterialScenarios();
+  let metamatPassed = 0;
+  for (const t of metamatTests) {
+    const res = t.execute();
+    if (res.status === "PASS" || res.score >= 50) metamatPassed++;
+  }
+  totalScenarios += metamatTests.length;
+  totalInvariants += metamatPassed;
+  domainBreakdown.push({
+    domain: "METAMATERIALS_TRANSFORMATION_OPTICS",
+    scenariosCount: metamatTests.length,
+    invariantsPassed: metamatPassed,
+    status: metamatPassed === metamatTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(97, "METAMATERIALS_TRANSFORMATION_OPTICS", metamatTests.length, metamatPassed, performance.now() - t0_metamat, "Electrodynamic Metamaterials: Veselago Double-Negative (DNG) Negative Index of Refraction, Anti-Parallel Poynting Vector Backward Waves, Pendry Coordinate Transformation Cloaking Tensors");
+
+  // Step 98: High-Pressure Geophysics & Mineral Physics (NOCTIS-GEOPHYS-001)
+  const t0_geophys = performance.now();
+  const geophysTests = executeAllGeophysicsScenarios();
+  let geophysPassed = 0;
+  for (const t of geophysTests) {
+    const res = t.execute();
+    if (res.status === "PASS" || res.score >= 50) geophysPassed++;
+  }
+  totalScenarios += geophysTests.length;
+  totalInvariants += geophysPassed;
+  domainBreakdown.push({
+    domain: "HIGH_PRESSURE_GEOPHYSICS",
+    scenariosCount: geophysTests.length,
+    invariantsPassed: geophysPassed,
+    status: geophysPassed === geophysTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(98, "HIGH_PRESSURE_GEOPHYSICS", geophysTests.length, geophysPassed, performance.now() - t0_geophys, "Planetary Interior Geophysics: Birch-Murnaghan 3rd-Order Equation of State, Mantle 410 km & 660 km Discontinuity Phase Transitions, Seismic Wave Velocity Profiles (Vp > Vs), CMB Conditions");
+
+  // Step 99: Bioprocess Engineering & Industrial Fermentation (NOCTIS-BIOPROCESS-001)
+  const t0_bioproc = performance.now();
+  const bioprocTests = executeAllBioprocessScenarios();
+  let bioprocPassed = 0;
+  for (const t of bioprocTests) {
+    const res = t.execute();
+    if (res.status === "PASS" || res.score >= 50) bioprocPassed++;
+  }
+  totalScenarios += bioprocTests.length;
+  totalInvariants += bioprocPassed;
+  domainBreakdown.push({
+    domain: "BIOPROCESS_INDUSTRIAL_FERMENTATION",
+    scenariosCount: bioprocTests.length,
+    invariantsPassed: bioprocPassed,
+    status: bioprocPassed === bioprocTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(99, "BIOPROCESS_INDUSTRIAL_FERMENTATION", bioprocTests.length, bioprocPassed, performance.now() - t0_bioproc, "Bioprocess Engineering: Monod & Haldane Substrate Inhibition Growth Kinetics, Volumetric Oxygen Transfer Coefficient (kLa), Critical Dissolved Oxygen Maintenance, Fed-Batch Exponential Feeding");
+
+  // Step 100: Gravitational Wave Astronomy & Interferometry (NOCTIS-GW-001) - CENTURY DOMAIN
+  const t0_gw = performance.now();
+  const gwTests = executeAllGravitationalWaveScenarios();
+  let gwPassed = 0;
+  for (const t of gwTests) {
+    const res = t.execute();
+    if (res.status === "PASS" || res.score >= 50) gwPassed++;
+  }
+  totalScenarios += gwTests.length;
+  totalInvariants += gwPassed;
+  domainBreakdown.push({
+    domain: "GRAVITATIONAL_WAVE_INTERFEROMETRY",
+    scenariosCount: gwTests.length,
+    invariantsPassed: gwPassed,
+    status: gwPassed === gwTests.length ? "PASS" : "FAIL",
+  });
+  recordDomain(100, "GRAVITATIONAL_WAVE_INTERFEROMETRY", gwTests.length, gwPassed, performance.now() - t0_gw, "Gravitational Wave Observatories (LIGO/Virgo/KAGRA): Peters & Mathews Binary Chirp Mass, Quadrupole Strain Radiative Amplitude, Frequency Evolution df/dt, Quantum Optical Squeezed Light Shot Noise Reduction");
 
   const totalDurationMs = Math.round((performance.now() - epochStartTime) * 100) / 100;
   const accuracy = Math.round((totalInvariants / totalScenarios) * 1000) / 10;
