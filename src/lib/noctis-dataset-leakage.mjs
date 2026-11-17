@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 /**
  * Conservative, offline lexical contamination checks for reviewed Noctis datasets.
  * No inference, semantic embeddings, network requests, or model training.
@@ -9,6 +11,15 @@ const MIN_WORDS = 8;
 const MAX_SHINGLES_PER_PROMPT = 128;
 const MAX_SHINGLE_POSTINGS = 512;
 const MAX_CANDIDATES_PER_PROMPT = 4096;
+// Long, substantive answers are checked for exact copying across partitions.
+// Short boilerplate answers remain intentionally exempt to limit false positives.
+const MIN_EXACT_ANSWER_WORDS = 24;
+const MIN_EXACT_ANSWER_CHARS = 120;
+
+/** @param {string[]} words */
+function exactTextDigest(words) {
+  return createHash("sha256").update(words.join(" "), "utf8").digest("hex");
+}
 
 /** @param {unknown} text @returns {string[]} */
 export function noctisLeakageWords(text) {
@@ -69,12 +80,37 @@ export function auditNoctisDatasetSplitLeakage(splits) {
   }
   /** @type {Map<string, number[]>} */
   const postings = new Map();
+  /** @type {Map<string, string>} */
+  const exactPromptSplits = new Map();
+  /** @type {Map<string, string>} */
+  const substantiveAnswerSplits = new Map();
   /** @type {Array<{split: string, prompt: string}>} */
   const previous = [];
   let overlapCount = 0;
   for (const split of ["train", "development", "heldout"]) {
     for (const item of splits[/** @type {"train" | "development" | "heldout"} */ (split)]) {
       const words = noctisLeakageWords(item.prompt);
+      // Cover short and very long exact questions missed by bounded n-gram checks.
+      // Store hashes only; never include the source text in thrown errors.
+      if (words.length) {
+        const digest = exactTextDigest(words);
+        const earlierSplit = exactPromptSplits.get(digest);
+        if (earlierSplit && earlierSplit !== split) {
+          throw new Error("Noctis dataset blocked: cross_split_exact_prompt_overlap");
+        }
+        exactPromptSplits.set(digest, split);
+      }
+      const completionWords = noctisLeakageWords(item.completion);
+      if (typeof item.completion === "string" &&
+          item.completion.length >= MIN_EXACT_ANSWER_CHARS &&
+          completionWords.length >= MIN_EXACT_ANSWER_WORDS) {
+        const digest = exactTextDigest(completionWords);
+        const earlierSplit = substantiveAnswerSplits.get(digest);
+        if (earlierSplit && earlierSplit !== split) {
+          throw new Error("Noctis dataset blocked: cross_split_exact_completion_overlap");
+        }
+        substantiveAnswerSplits.set(digest, split);
+      }
       if (words.length < MIN_WORDS || words.length > 128) continue;
       const shingles = trigrams(words);
       const candidates = new Set();

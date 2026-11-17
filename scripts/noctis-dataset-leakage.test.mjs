@@ -126,3 +126,52 @@ test("overloaded lexical index fails closed rather than quietly dropping candida
     train,development:[],heldout:[],
   }), /lexical_index_capacity_requires_independent_review/);
 });
+
+
+test("identical short questions cannot cross into held-out partitions", () => {
+  assert.throws(() => auditNoctisDatasetSplitLeakage({
+    train:[{prompt:"What is gravity?"}],
+    development:[],
+    heldout:[{prompt:" WHAT  is gravity ! "}],
+  }), /cross_split_exact_prompt_overlap/);
+});
+
+test("identical long prompts are checked even beyond lexical shingle bounds", () => {
+  const longPrompt = Array.from({length:140}, (_, i) => "token" + i).join(" ");
+  assert.throws(() => auditNoctisDatasetSplitLeakage({
+    train:[{prompt:longPrompt}],
+    development:[{prompt:longPrompt}],
+    heldout:[],
+  }), /cross_split_exact_prompt_overlap/);
+});
+
+test("a long identical completion on different questions is blocked across splits", () => {
+  const answer = "A verified independent explanation describes all relevant assumptions, " +
+    "then walks through the underlying evidence, identifies each intermediate " +
+    "calculation, states uncertainty, checks the conclusion against a second " +
+    "method, and discusses the relevant limitations before recommending any action.";
+  assert.ok(answer.split(/\s+/).length >= 24);
+  assert.throws(() => auditNoctisDatasetSplitLeakage({
+    train:[{prompt:"Explain scenario alpha.",completion:answer}],
+    development:[],
+    heldout:[{prompt:"Explain scenario beta.",completion:answer}],
+  }), /cross_split_exact_completion_overlap/);
+});
+
+test("short common answers and reuse within one partition are not falsely blocked", () => {
+  const example = {prompt:"Summarize an internal source.",completion:"See cited evidence."};
+  assert.deepEqual(auditNoctisDatasetSplitLeakage({
+    train:[example,example],development:[],
+    heldout:[{prompt:"Summarize a different source.",completion:"See cited evidence."}],
+  }), {checked:3,cross_split_lexical_pairs:0});
+});
+
+test("exact-overlap failures do not disclose prompt or answer contents", () => {
+  const confidentialMarker = "unique synthetic marker for error sanitization";
+  const question = "What is gravity? " + confidentialMarker;
+  assert.throws(() => auditNoctisDatasetSplitLeakage({
+    train:[{prompt:question}],development:[{prompt:question}],heldout:[],
+  }), error => error instanceof Error &&
+    /cross_split_exact_prompt_overlap/.test(error.message) &&
+    !error.message.includes(confidentialMarker));
+});
