@@ -150,7 +150,7 @@ test("a long identical completion on different questions is blocked across split
     "then walks through the underlying evidence, identifies each intermediate " +
     "calculation, states uncertainty, checks the conclusion against a second " +
     "method, and discusses the relevant limitations before recommending any action.";
-  assert.ok(answer.split(/\\s+/).length >= 24);
+  assert.ok(answer.split(/\s+/).length >= 24);
   assert.throws(() => auditNoctisDatasetSplitLeakage({
     train:[{prompt:"Explain scenario alpha.",completion:answer}],
     development:[],
