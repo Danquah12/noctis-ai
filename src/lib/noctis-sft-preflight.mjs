@@ -47,9 +47,9 @@ export function buildNoctisSftPreflight(splits) {
   }
   const ids = new Set();
   const sourceGroups = new Map();
-  const promptFingerprints = { train: [], development: [], heldout: [] };
+  const promptFingerprints = /** @type {Record<"train"|"development"|"heldout", string[]>} */ ({ train: [], development: [], heldout: [] });
   const licenseIds = new Set();
-  const training = { train: [], development: [] };
+  const training = /** @type {Record<"train"|"development", Array<{messages: Array<{role: string, content: string}>}>>} */ ({ train: [], development: [] });
   for (const split of SPLITS) {
     for (const item of splits[split]) {
       const p = item?.provenance;
