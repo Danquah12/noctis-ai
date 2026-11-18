@@ -98,7 +98,7 @@ def main():
         cuda_available = False
         gpu_vram_gb = 0
 
-    if args.dry_run or not cuda_available or gpu_vram_gb < 10.0:
+    if args.dry_run or not cuda_available or gpu_vram_gb < 12.0:
         print("\n[+] DRY-RUN & ENVIRONMENT VALIDATION SUMMARY:")
         print(f"    - Dataset integrity verified: {train_count} ChatML records valid.")
         print(f"    - Target modules and hyperparameter schedule locked.")
@@ -115,10 +115,9 @@ def main():
         AutoModelForCausalLM,
         AutoTokenizer,
         BitsAndBytesConfig,
-        TrainingArguments,
     )
     from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
-    from trl import SFTTrainer
+    from trl import SFTTrainer, SFTConfig
 
     # 1. 4-bit Quantization Configuration
     bnb_config = BitsAndBytesConfig(
@@ -161,8 +160,12 @@ def main():
     train_data = raw_train.map(lambda ex: format_chatml_for_sft(ex, tokenizer))
     eval_data = raw_eval.map(lambda ex: format_chatml_for_sft(ex, tokenizer))
 
-    # 5. Training Arguments
-    training_args = TrainingArguments(
+    # 5. Current TRL API: SFTConfig owns text field and sequence length.
+    # Pin dependencies in the GPU image and fail explicitly if incompatible.
+    import inspect
+    if "processing_class" not in inspect.signature(SFTTrainer.__init__).parameters:
+        raise RuntimeError("Incompatible TRL version: expected SFTTrainer(processing_class=...). Pin a supported TRL release.")
+    training_args = SFTConfig(
         output_dir=output_dir,
         num_train_epochs=args.epochs,
         per_device_train_batch_size=args.batch_size,
@@ -180,16 +183,16 @@ def main():
         bf16=torch.cuda.is_bf16_supported(),
         optim="paged_adamw_8bit",
         report_to="none",
+        dataset_text_field="text",
+        max_length=args.max_seq_length,
+        packing=False,
     )
 
-    # 6. Initialize Trainer
     trainer = SFTTrainer(
         model=model,
         train_dataset=train_data,
         eval_dataset=eval_data,
-        dataset_text_field="text",
-        max_seq_length=args.max_seq_length,
-        tokenizer=tokenizer,
+        processing_class=tokenizer,
         args=training_args,
     )
 
@@ -208,7 +211,7 @@ def main():
     eval_loss_history = [log["eval_loss"] for log in trainer.state.log_history if "eval_loss" in log]
 
     initial_loss = train_loss_history[0] if train_loss_history else 0.0
-    final_loss = train_result.training_loss
+    final_loss = train_loss_history[-1] if train_loss_history else 0.0
     loss_reduction_pct = ((initial_loss - final_loss) / max(1e-5, initial_loss)) * 100.0 if initial_loss else 0.0
 
     initial_val_loss = eval_loss_history[0] if eval_loss_history else 0.0
@@ -216,7 +219,7 @@ def main():
     val_loss_reduction_pct = ((initial_val_loss - final_val_loss) / max(1e-5, initial_val_loss)) * 100.0 if initial_val_loss else 0.0
 
     divergence = final_val_loss - final_loss if (final_val_loss and final_loss) else 0.0
-    is_generalization_valid = loss_reduction_pct >= 45.0 and divergence <= 0.20
+    is_generalization_valid = bool(train_loss_history and eval_loss_history) and final_val_loss <= initial_val_loss and final_loss <= initial_loss
 
     # Save training report
     report_file = os.path.join(repo_root, "data", "noctis-training-run-report.md")
@@ -237,7 +240,7 @@ def main():
 | Final Validation Loss | {final_val_loss:.4f} | Generalizing | RECORDED |
 | **Relative Validation Loss Reduction** | **{val_loss_reduction_pct:.1f}%** | **>= 35.0%** | {'PASS' if val_loss_reduction_pct >= 35.0 else 'MARGINAL'} |
 | **Validation Loss Divergence Gap** | **{divergence:.4f}** | **<= 0.2000** | {'PASS (No Overfitting)' if divergence <= 0.20 else 'OVERFITTING_DETECTED'} |
-| **Optimization Verdict** | **AUTHENTIC WEIGHT LEARNING** | **VERIFIED** | {'APPROVED' if is_generalization_valid else 'INVESTIGATE'} |
+| **Optimization Verdict** | **CHECKPOINT TRAINED; INDEPENDENT BENCHMARK STILL REQUIRED** | **PROVISIONAL** | {'READY_FOR_INDEPENDENT_EVALUATION' if is_generalization_valid else 'INVESTIGATE'} |
 """
     with open(report_file, "w", encoding="utf-8") as f:
         f.write(report)
