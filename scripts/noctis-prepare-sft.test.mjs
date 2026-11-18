@@ -12,7 +12,7 @@ const sha = x => createHash("sha256").update(x).digest("hex");
 function fixture(dir) {
   const items = {};
   for (const [split, id] of [["train", "a"], ["development", "b"], ["heldout", "c"]]) {
-    const prompt = "Explain distinct principle " + id + " for this offline synthetic test.";
+    const prompt = { train: "Explain evaporation, condensation and precipitation in the water cycle.", development: "Describe the role of a transistor in a switching circuit.", heldout: "Outline political changes during the French Revolution in Europe." }[split];
     const completion = "Independently checked synthetic answer " + id + " for testing.";
     items[split] = [{
       id, prompt, completion, split,
@@ -84,7 +84,7 @@ test("authorized export writes only training and development in separate private
     const train = JSON.parse(readFileSync(join(outputDir, "train.jsonl"), "utf8").trim());
     assert.equal(train.messages[0].role, "user");
     assert.equal(train.messages[1].role, "assistant");
-    assert.ok(!readFileSync(join(outputDir, "train.jsonl"), "utf8").includes("principle c"));
+    assert.ok(!readFileSync(join(outputDir, "train.jsonl"), "utf8").includes("French Revolution"));
   } finally {
     if (outputDir) rmSync(outputDir, { recursive: true, force: true });
     rmSync(dir, { recursive: true, force: true });
