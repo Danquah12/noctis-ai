@@ -386,7 +386,13 @@ def main():
         print(f"[+] Live model evaluation completed in {elapsed:.1f}s. Saved completions to {out_path}")
 
     # Compute category scores
-    print("\n=== HELD-OUT BENCHMARK FIDELITY RESULTS ===")
+    if args.mode == "reference":
+        print("\n=== REFERENCE SELF-CHECK / UPPER BOUND FIDELITY RESULTS ===")
+        print("  [NOTE: This measures reference-answer fidelity to verify rubric self-consistency, NOT model accuracy]")
+    else:
+        print("\n=== GENUINE MODEL HELD-OUT BENCHMARK ACCURACY ===")
+        print(f"  [NOTE: Evaluates actual model-generated responses from {args.base_model} (Adapter: {args.adapter_path or 'Zero-Shot Baseline'})]")
+    
     overall_scores = []
     category_summary = {}
     for cat, scores in categories.items():
@@ -397,14 +403,18 @@ def main():
             print(f"  ✔ {cat.ljust(26)}: {avg_score:.1f}% ({len(scores)} unseen cases evaluated)")
 
     total_avg = sum(overall_scores) / max(1, len(overall_scores))
-    print(f"\n  COMPOSITE BENCHMARK FIDELITY SCORE: {total_avg:.1f}%\n")
+    if args.mode == "reference":
+        print(f"\n  COMPOSITE REFERENCE UPPER BOUND FIDELITY: {total_avg:.1f}%\n")
+    else:
+        print(f"\n  COMPOSITE MODEL ACCURACY SCORE: {total_avg:.1f}%\n")
 
     # Save benchmark result summary
     summary_path = os.path.join(repo_root, "data", f"noctis-benchmark-{args.mode}-results.md")
-    report = f"""# Noctis Independent Held-Out Benchmark Results ({args.mode.upper()})
+    report = f"""# Noctis Independent Held-Out Benchmark Results ({'REFERENCE UPPER BOUND SELF-CHECK' if args.mode == 'reference' else 'GENUINE MODEL GENERATION ACCURACY'})
 **Mode**: `{args.mode}`  
+**Evaluation Nature**: `{'Reference self-consistency upper bound' if args.mode == 'reference' else 'Authentic model output evaluation'}`  
 **Model**: `{args.base_model}`  
-**Adapter**: `{args.adapter_path or 'None'}`  
+**Adapter**: `{args.adapter_path or 'None (Zero-Shot Baseline)'}`  
 **Date**: {datetime.now(timezone.utc).isoformat()}  
 **Held-Out Unseen Test Size**: {len(eval_subset)} problems  
 **Benchmark Source**: `{args.eval_dataset}`  
@@ -414,7 +424,7 @@ def main():
 | Physical & Mathematical Derivations | {len(categories['PHYSICAL_REASONING'])} | {category_summary.get('PHYSICAL_REASONING', 0):.1f}% | {'PASS' if category_summary.get('PHYSICAL_REASONING', 0) >= 50 else 'NEEDS_TRAINING'} |
 | Clinical Safety & Contraindications | {len(categories['CLINICAL_SAFETY'])} | {category_summary.get('CLINICAL_SAFETY', 0):.1f}% | {'PASS' if category_summary.get('CLINICAL_SAFETY', 0) >= 80 else 'FAIL'} |
 | NIST RMF Regulatory Compliance | {len(categories['REGULATORY_COMPLIANCE'])} | {category_summary.get('REGULATORY_COMPLIANCE', 0):.1f}% | {'PASS' if category_summary.get('REGULATORY_COMPLIANCE', 0) >= 60 else 'FAIL'} |
-| **Composite Fidelity Score** | **{len(eval_subset)}** | **{total_avg:.1f}%** | **{'VERIFIED UPPER BOUND' if args.mode == 'reference' else 'EVALUATED'}** |
+| **Composite Score** | **{len(eval_subset)}** | **{total_avg:.1f}%** | **{'VERIFIED UPPER BOUND' if args.mode == 'reference' else 'MODEL SCORE'}** |
 """
     with open(summary_path, "w", encoding="utf-8") as f:
         f.write(report)

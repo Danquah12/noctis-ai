@@ -26,8 +26,8 @@ echo " Timestamp:      $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
 echo " Working Dir:    $(pwd)"
 echo "======================================================================"
 
-# Step 0: Pre-flight Hardware Verification (Strict, no '|| true')
-echo "[+] Step 0/5: Hardware and CUDA Environment Check..."
+# Step 0: Pre-flight Hardware Verification (Strict, aborts on failure)
+echo "[+] Step 0/6: Hardware and CUDA Environment Check..."
 if ! command -v nvidia-smi &> /dev/null; then
     echo "[-] ERROR: nvidia-smi not found. A CUDA-capable GPU is required."
     exit 1
@@ -37,7 +37,7 @@ nvidia-smi --query-gpu=name,memory.total,memory.free,driver_version --format=csv
 
 # Step 1: Install & Verify Pinned ML Dependencies
 echo ""
-echo "[+] Step 1/5: Installing pinned ML dependencies from requirements-gpu.txt..."
+echo "[+] Step 1/6: Installing pinned ML dependencies from requirements-gpu.txt..."
 python -m pip install -q --upgrade pip
 if [ -f "requirements-gpu.txt" ]; then
     python -m pip install -q -r requirements-gpu.txt
@@ -59,9 +59,19 @@ print(f'TRL:          {trl.__version__}')
 print(f'bitsandbytes: {bitsandbytes.__version__}')
 "
 
-# Step 2: Establish Pre-Training Foundation Model Baseline (Locked 250 Held-Out Cases)
+# Step 2: GPU Training Smoke Test (Model Initialization, Optimizer Steps, Weight Update & Reload)
 echo ""
-echo "[+] Step 2/5: Establishing genuine baseline on unmodified Qwen2.5-7B-Instruct..."
+echo "[+] Step 2/6: Executing GPU training smoke test (3 steps with weight verification)..."
+timeout 600s python scripts/train_unsloth_sft.py \
+  --base-model Qwen/Qwen2.5-7B-Instruct \
+  --smoke-test \
+  --output-dir ./models/smoke-test-adapter
+
+echo "[+] GPU initialization, optimizer update, and adapter reload verified."
+
+# Step 3: Establish Pre-Training Foundation Model Baseline (Locked 250 Held-Out Cases)
+echo ""
+echo "[+] Step 3/6: Establishing genuine baseline on unmodified Qwen2.5-7B-Instruct..."
 echo "    Executing 250 benchmark queries with strict 45-minute timeout..."
 timeout 2700s python scripts/eval_held_out_benchmark.py \
   --mode model \
@@ -74,12 +84,17 @@ if [ ! -f "data/noctis-baseline-qwen7b-responses.jsonl" ]; then
     exit 1
 fi
 BASELINE_LINES=$(wc -l < data/noctis-baseline-qwen7b-responses.jsonl)
-echo "[+] Baseline evaluation complete. Generated ${BASELINE_LINES} responses."
+if [ "${BASELINE_LINES}" -ne 250 ]; then
+    echo "[-] ERROR: Baseline evaluation yielded ${BASELINE_LINES} responses. Expected exactly 250."
+    exit 1
+fi
+echo "[+] Baseline evaluation complete: exactly 250 responses generated and scored."
 
-# Step 3: Execute Authentic Supervised Fine-Tuning (QLoRA)
+# Step 4: Execute Authentic Supervised Fine-Tuning (QLoRA)
 echo ""
-echo "[+] Step 3/5: Executing authentic supervised fine-tuning (QLoRA) on Qwen2.5-7B..."
-echo "    Target: 3 Epochs, Rank 16, Alpha 32, LoRA targets: q,k,v,o,gate,up,down proj"
+echo "[+] Step 4/6: Executing authentic supervised fine-tuning (QLoRA) on Qwen2.5-7B..."
+echo "    Target: 3 Epochs, Rank 16, Alpha 32, Max Seq Length 2048"
+echo "    Linear targets: q, k, v, o, gate, up, down proj"
 echo "    Executing training with strict 120-minute timeout..."
 timeout 7200s python scripts/train_unsloth_sft.py \
   --base-model Qwen/Qwen2.5-7B-Instruct \
@@ -87,11 +102,14 @@ timeout 7200s python scripts/train_unsloth_sft.py \
   --batch-size 2 \
   --grad-accum 8 \
   --lr 2e-4 \
+  --lora-r 16 \
+  --lora-alpha 32 \
+  --max-seq-length 2048 \
   --output-dir ./models/noctis-7b-v1.0-adapter
 
-# Step 4: Evaluate Post-Training Noctis Checkpoint on the Same Held-Out Benchmark
+# Step 5: Evaluate Post-Training Noctis Checkpoint on the Same Locked 250-Case Benchmark
 echo ""
-echo "[+] Step 4/5: Evaluating fine-tuned Noctis adapter checkpoint on locked 250 cases..."
+echo "[+] Step 5/6: Evaluating fine-tuned Noctis adapter checkpoint on locked 250 cases..."
 echo "    Executing evaluation with strict 45-minute timeout..."
 timeout 2700s python scripts/eval_held_out_benchmark.py \
   --mode model \
@@ -105,11 +123,15 @@ if [ ! -f "data/noctis-trained-qwen7b-responses.jsonl" ]; then
     exit 1
 fi
 POST_LINES=$(wc -l < data/noctis-trained-qwen7b-responses.jsonl)
-echo "[+] Post-training evaluation complete. Generated ${POST_LINES} responses."
+if [ "${POST_LINES}" -ne 250 ]; then
+    echo "[-] ERROR: Post-training evaluation yielded ${POST_LINES} responses. Expected exactly 250."
+    exit 1
+fi
+echo "[+] Post-training evaluation complete: exactly 250 responses generated and scored."
 
-# Step 5: Deliverable Verification, Checksums, and Packaging
+# Step 6: Deliverable Verification, Checksums, and Packaging
 echo ""
-echo "[+] Step 5/5: Verifying deliverable integrity and packaging archive..."
+echo "[+] Step 6/6: Verifying deliverable integrity, generating checksums, and packaging archive..."
 
 # Verify adapter weights file exists and is substantial (> 50MB)
 WEIGHTS_FILE="./models/noctis-7b-v1.0-adapter/adapter_model.safetensors"
@@ -141,6 +163,7 @@ sha256sum \
   "./data/noctis-baseline-qwen7b-responses.jsonl" \
   "./data/noctis-trained-qwen7b-responses.jsonl" \
   "./data/noctis-training-run-report.md" \
+  "./data/noctis-benchmark-model-results.md" \
   > "${CHECKSUM_FILE}"
 
 cat "${CHECKSUM_FILE}"
@@ -153,16 +176,25 @@ tar -czvf "${ARCHIVE_FILE}" \
   ./data/noctis-baseline-qwen7b-responses.jsonl \
   ./data/noctis-trained-qwen7b-responses.jsonl \
   ./data/noctis-training-run-report.md \
+  ./data/noctis-benchmark-model-results.md \
   "${CHECKSUM_FILE}" \
   "${LOG_FILE}"
 
 ARCHIVE_SIZE=$(du -sh "${ARCHIVE_FILE}" | cut -f1)
 
+# Ensure checkpoint artifacts and logs are copied to durable storage before container shutdown
+if [ -d "/workspace" ] && [ "$(pwd)" != "/workspace" ]; then
+    echo "[+] Syncing deliverables to /workspace/deliverables for persistence across pod restarts..."
+    mkdir -p "/workspace/deliverables"
+    cp -r "${DELIVERABLES_DIR}/"* "/workspace/deliverables/"
+fi
+
 echo ""
 echo "======================================================================"
 echo " NOCTIS TRAINING & EVALUATION PILOT COMPLETED SUCCESSFULLY"
-echo " Run Identifier:     ${RUN_ID}"
+echo " Run Identifier:       ${RUN_ID}"
 echo " Deliverables Archive: ${ARCHIVE_FILE} (${ARCHIVE_SIZE})"
-echo " Checksums:          ${CHECKSUM_FILE}"
-echo " Run Log:            ${LOG_FILE}"
+echo " Checksums:            ${CHECKSUM_FILE}"
+echo " Run Log:              ${LOG_FILE}"
+echo " Deliverables copied to persistent storage."
 echo "======================================================================"
