@@ -12,7 +12,7 @@ Input must be the private directory produced with explicit authorization by scri
 
 Only train.jsonl and development.jsonl are returned or exported as ChatML messages. Heldout rows participate in integrity checks but **no heldout messages are returned, exported, used for training or used for tuning choices**. The report contains only counts and fingerprints for the sealed heldout. Keep an independently frozen external benchmark outside the tuning process.
 
-A known interface limitation: upstream dataset preparation currently trims saved prompt/completion text but computes the example digest from the original untrimmed input. Such rows fail this stricter bridge fingerprint check. Reconcile canonical hashing in the upstream preparer and regenerate those exports instead of bypassing or weakening the preflight.
+This branch also corrects the upstream preparer to fingerprint the actual stored, trimmed prompt/completion fields. Previously prepared exports with leading/trailing whitespace and pre-fix digests must be regenerated; the bridge intentionally rejects their mismatched fingerprints rather than bypassing integrity checks. This canonicalization is verified with a network-free regression test.
 
 ## Offline invocation
 
@@ -33,7 +33,7 @@ Inputs must be private regular files with restrictive permissions (0600) under a
 ## Required next tasks
 
 1. Audit PR #12's independent pilot, repair its provenance and split contract, and compare candidate base models under their actual license and operational constraints; do not silently select its default model.
-2. Independently verify permissions/quality for real approved source groups and populate train/development/heldout; all must be nonempty. Fix upstream canonical example fingerprint drift.
+2. Independently verify permissions/quality for real approved source groups and populate train/development/heldout; all must be nonempty. Regenerate any old whitespace-affected exports after the canonical fingerprint correction.
 3. Run the existing live-model evaluation only after specific authorization for provider calls or costs. Use frozen, independently graded criteria across general assistant and specialist capabilities, including abstentions, factuality and tool execution evidence.
 4. After explicit authorization of a paid or GPU job, implement reproducible SFT: pin model revision/tokenizer and Python libraries, record training config/seed, job status, dataset provenance, checkpoint/adapters and hashes, and resume/recovery.
 5. Compare genuine candidate model completions with the same untouched baseline. No parity claim with ChatGPT, Gemini or Grok without comparable evidence.
