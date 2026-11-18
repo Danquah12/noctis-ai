@@ -168,7 +168,7 @@ export function prepareNoctisInternalDataset(input, options = {}) {
         license_id: source.license_id,
         origin_url: source.origin_url || null,
         attribution_required: source.license_id === "CC-BY-4.0",
-        example_sha256: sha256NoctisDataset(row.prompt + "\n" + row.completion),
+        example_sha256: sha256NoctisDataset(row.prompt.trim() + "\n" + row.completion.trim()),
         validation_kind: row.validation.kind,
         validation_reference: row.validation.reference.trim(),
       },
