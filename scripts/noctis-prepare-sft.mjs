@@ -10,7 +10,7 @@ import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { buildNoctisSftPreflight } from "../src/lib/noctis-sft-preflight.mjs";
 
-const NAMES = ["train", "development", "heldout"];
+const NAMES = /** @type {Array<"train"|"development"|"heldout">} */ (["train", "development", "heldout"]);
 const LIMIT_BYTES = 50_000_000;
 
 function privateFile(path) {
@@ -43,7 +43,7 @@ function main() {
       !original.summary?.counts) {
     throw new Error("Input blocked: not an authorized Noctis internal dataset export.");
   }
-  const splits = {};
+  const splits = /** @type {Record<"train"|"development"|"heldout", any[]>} */ ({ train: [], development: [], heldout: [] });
   for (const name of NAMES) {
     const data = privateFile(join(inputDir, name + ".jsonl"));
     const lines = data.split("\n").filter(Boolean);
