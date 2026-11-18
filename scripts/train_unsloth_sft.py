@@ -86,7 +86,7 @@ def main():
         eval_count = sum(1 for _ in f)
     print(f"[+] Loaded {train_count} training examples and {eval_count} validation examples.")
 
-    # Check for PyTorch & CUDA availability
+    # Reject split leakage before allocating GPU memory or loading model weights.\n    from audit_noctis_splits import audit\n    audit(train_file, eval_file)\n\n    # Check for PyTorch & CUDA availability
     try:
         import torch
         cuda_available = torch.cuda.is_available()
