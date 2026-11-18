@@ -326,17 +326,17 @@ export default function NoctisTerminal({
         output = (
           <div className="space-y-1.5 text-xs font-mono text-zinc-300">
             <p className="text-[#e4b86a] font-bold">[LIVE GITHUB PR PACKAGE GENERATED]</p>
-            <p className="text-emerald-400 font-semibold">Branch: <span className="text-zinc-200">{prPackage.branch}</span></p>
-            <p>Title: <span className="text-zinc-100 font-semibold">{prPackage.title}</span></p>
-            <p>Commit SHA: <span className="text-cyan-400 font-mono">{prPackage.commitSha.slice(0, 16)}...</span></p>
-            <p>Passport Seal: <span className="text-purple-400 break-all">{prPackage.passportDigest.slice(0, 32)}...</span></p>
+            <p className="text-emerald-400 font-semibold">Branch: <span className="text-zinc-200">{prPackage.branchName}</span></p>
+            <p>Title: <span className="text-zinc-100 font-semibold">{prPackage.prTitle}</span></p>
+            <p>Commit SHA: <span className="text-cyan-400 font-mono">{prPackage.commitSeal.slice(0, 16)}...</span></p>
+            <p>Passport Seal: <span className="text-purple-400 break-all">{prPackage.passportId.slice(0, 32)}...</span></p>
             <div className="bg-black/40 border border-white/10 rounded p-2 text-zinc-400">
               <p className="text-emerald-300 font-semibold mb-1">Unified Diff Summary:</p>
               <pre className="overflow-x-auto text-[11px] text-zinc-300 font-mono">{prPackage.unifiedDiff.slice(0, 300)}...</pre>
             </div>
             <div className="pt-1">
               <a
-                href={prPackage.compareUrl}
+                href={prPackage.prUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#e4b86a] text-black font-semibold hover:bg-[#d4a85a] transition text-xs"

@@ -9,6 +9,7 @@ export interface EcosystemApp {
   status: "ONLINE" | "STANDALONE" | "PROD_ACTIVE" | "INTEGRATED";
   vercelUrl: string; // Guaranteed global Vercel production URL
   mirrorVercelUrl?: string;
+  mirrors?: string[];
   customDomain?: string;
   localPort?: number;
   localPath?: string;

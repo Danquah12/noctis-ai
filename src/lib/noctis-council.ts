@@ -161,12 +161,12 @@ export function getAllAvailableCouncilMembers(): CouncilMember[] {
   const custom = getCustomAgents().map((agent) => ({
     id: agent.id,
     name: agent.name,
-    role: agent.role,
+    role: agent.baseEngine,
     engineId: `CUSTOM-${agent.id.toUpperCase().slice(0, 8)}`,
     avatarEmoji: agent.avatarEmoji || "🤖",
     color: "#6366f1", // Indigo
     domain: "custom" as const,
-    corePrinciple: agent.description,
+    corePrinciple: agent.tagline,
   }));
 
   return [...OFFICIAL_COUNCIL_MEMBERS, ...custom];

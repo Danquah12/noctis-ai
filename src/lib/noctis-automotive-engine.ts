@@ -27,6 +27,9 @@ export type VehiclePowertrainCategory =
 
 export type DiagnosticConclusionState = "possible_cause" | "most_likely_cause" | "confirmed_cause" | "unverified";
 
+export type AutomotiveSubsystemId = SubsystemTaxonomyEntry["id"];
+export type EpistemicDiagnosticState = "strong_candidate" | "possible_cause";
+
 export interface SubsystemTaxonomyEntry {
   id: string;
   domain: string;

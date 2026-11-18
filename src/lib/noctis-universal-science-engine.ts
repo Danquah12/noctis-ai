@@ -596,7 +596,7 @@ export function runUniversalScienceAcceptanceTests(): Array<{
   status: "PASS" | "FAIL";
   executionTimeMs: number;
 }> {
-  const tests = [];
+  const tests: Array<{ testId: string; name: string; expectedInvariant: string; observedValue: string; status: "PASS" | "FAIL"; executionTimeMs: number }> = [];
 
   // NSC-UNIV-001: Speed of Light Exact Invariant
   tests.push({

@@ -115,8 +115,10 @@ describe("Noctis Recommendation 3: HL7 FHIR R4 & Printable Doctor Visit Brief", 
     onsetTiming: "30 minutes ago",
     associatedSymptoms: ["diaphoresis (profuse sweating)"],
     pastMedicalHistory: ["Hypertension (High Blood Pressure)"],
+    currentMedications: [],
+    allergies: [],
     vitals: { systolicBp: 154, diastolicBp: 96, heartRate: 98, spo2: 96, temperatureC: 37.0 },
-    explicitMissingFields: [],
+    explicitMissingFields: ["Current medications not provided", "Allergies not provided"],
   });
 
   it("generates a valid HL7 FHIR R4 Bundle with Patient, Observation, and Condition resources", () => {

@@ -1,0 +1,76 @@
+# Noctis Training Implementation Log
+
+## Milestone 1 — Governed submission and quarantine
+
+**Branch:** `noctis/training-foundation`  
+**Pull request:** [#1](https://github.com/Danquah12/noctis-ai/pull/1)
+
+### Implemented in this branch
+
+- Added additive migration `0014_noctis_learning_governance.sql`.
+- Added provenance/review metadata to training pairs.
+- Added source, claim, and audit tables.
+- Added approval-state metadata to training rules.
+- Removed the startup/hydration SQL deletion of `vibe`, `vibe-native`, and `vibe-gadget` training records.
+- Database hydration now loads only records marked both verified and approved.
+- User/model-taught examples are saved as unverified and quarantined.
+- User-taught examples and rules are excluded from active retrieval and fine-tuning JSONL export until approval.
+- Added per-user authentication requirement and rate limiting to the training endpoint.
+- Recorded submitter identity and audit events for new pair/rule submissions.
+- Added status counts for approved and quarantined pairs.
+- Added an owner-only, active-MFA reviewer gate, pending-submission queue, and audited approve/reject actions for pairs and rules.
+- Returned submission IDs to the submitter so a record can be referenced for review.
+- Limited ordinary status output to approved recent questions so quarantined submissions are not disclosed to every signed-in user.
+
+### Important behavior change
+
+A user teaching Noctis no longer causes the submitted answer to become active knowledge immediately. It is accepted as a quarantined submission. This avoids treating an unsupported answer as verified merely because it was submitted.
+
+### Milestone 2 — Evidence and evaluation persistence contracts
+
+- Added additive migration `0015_noctis_evidence_evaluation.sql` for immutable source chunks, retrieval traces, provider/model response provenance, evaluation runs, and per-case results.
+- Added `docs/noctis-training/EVIDENCE-AND-EVALUATION.md` with the source lifecycle, evidence rules, live-model evaluation protocol, security/privacy requirements, and implementation order.
+- These are schema and design foundations only. Source ingestion, retrieval instrumentation, provider telemetry, and the live evaluator are not yet wired into runtime.
+
+## Milestone 3 — Quarantined source submission and owner review API
+
+- Added server-only text-source registration with size bounds, SHA-256 source/chunk hashes, stable chunk locators, duplicate detection, and quarantined persistence.
+- Source submission does not fetch a URL, call an LLM, extract claims, approve material, or add it to training exports.
+- Added an authenticated and rate-limited source submission server function.
+- Added owner/MFA-only pending source queue and approve/reject actions with reviewer identity and audit records.
+- Source approval is blocked unless publisher and license/terms metadata are present. This is a metadata gate, not a legal determination that the license permits model training.
+- Partial chunk-write failures trigger best-effort cleanup.
+- Source retrieval is not yet connected to the answer-generation path; approved sources are not automatically used by Noctis.
+
+## Milestone 4 — Approved public evidence retrieval
+
+- Added an authenticated, rate-limited evidence retrieval server function.
+- Retrieval is restricted to approved sources classified as public; internal, confidential, restricted, and quarantined sources are excluded.
+- Added parameterized lexical candidate search and bounded top-result ranking by query-term overlap.
+- Results carry source/chunk identifiers, source metadata, hashes, stable chunk locators, and excerpts.
+- Every returned citation is persisted in the retrieval trace table with request/user identity, query hash, rank, score, and selection status.
+- Documented that the lexical overlap score is not semantic relevance, confidence, or proof of truth.
+- This retrieval endpoint is not yet connected to answer generation. Prompt-injection defenses, claim-level evidence mapping, contradiction detection, semantic retrieval, and citation entailment validation remain future work.
+
+## Not yet implemented
+
+- Source upload and source-version ingestion service.
+- Claim extraction with exact source locators.
+- Domain-specific approval policies.
+- Retrieval trace and provider/model provenance.
+- Independent live-model evaluation harness.
+- Fine-tuning pipeline and provider training jobs.
+
+### Validation status
+
+- GitHub Actions CI has been triggered repeatedly; the latest observed run failed at `npm ci` before TypeScript checks or build could run. See the PR checks for current status.
+- No local TypeScript test, build, migration, database write, or model training job has been executed in the user's environment.
+- The migration has been committed but **has not been applied to any database**.
+- No production branch merge or deployment has occurred.
+
+### Safety notes
+
+- The changes are isolated on the feature branch.
+- The migration is additive and does not delete training records.
+- Legacy user/model-taught records are moved to quarantine and marked unverified.
+- The existing built-in seed corpus remains part of the application code; this milestone does not claim that all seed content has been independently source-validated.

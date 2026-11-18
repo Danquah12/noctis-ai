@@ -6,9 +6,9 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 import {
   appNameFromHost,
-  createHeadInjector,
+  createHeadInjector as createHeadInjectorImpl,
   grokXCreatorHeadTags,
-  injectGrokPwaHead,
+  injectGrokPwaHead as injectGrokPwaHeadImpl,
   isDocumentPath,
   isInstallQuery,
   publicAppHost,
@@ -20,6 +20,12 @@ import {
 import { renderInstallPage } from "./grok-pwa-plugin.mjs";
 
 const TEMPLATE_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+
+// Keep generic platform-chrome tests isolated from this repository's Noctis
+// identity and public/ assets. Filesystem-discovery tests pass an explicit cwd.
+const EMPTY_TEST_ROOT = mkdtempSync(join(tmpdir(), "grok-pwa-empty-"));
+const injectGrokPwaHead = (html, ctx = {}) => injectGrokPwaHeadImpl(html, { cwd: EMPTY_TEST_ROOT, ...ctx });
+const createHeadInjector = (ctx = {}) => createHeadInjectorImpl({ cwd: EMPTY_TEST_ROOT, ...ctx });
 
 test("injects before </head>", () => {
   const out = injectGrokPwaHead("<html><head><title>x</title></head><body></body></html>");

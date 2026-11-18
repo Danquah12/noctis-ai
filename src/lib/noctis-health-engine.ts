@@ -394,6 +394,9 @@ export const NOCTIS_HEALTH_USER_ENVIRONMENTS: HealthUserEnvironmentSpec[] = [
  * Section 4: The Clinical Safety Engine / Health Safety Gateway
  * Evaluates every incoming health request before execution and every proposed answer before delivery.
  */
+export type HealthAudienceRole = HealthUserEnvironmentRole;
+export type HealthSafetyUrgencyLevel = HealthSafetyGatewayDecision["urgency"];
+
 export interface HealthSafetyGatewayDecision {
   requestId: string;
   userEnvironmentRole: HealthUserEnvironmentRole;
@@ -2666,7 +2669,7 @@ export interface NhArch001DocumentContract {
   uploaded_by_user_id: string;
   active_role: HealthAudienceRole;
   operating_environment: NoctisOperatingEnvironmentId;
-  document_type: SupportedMedicalDocumentType;
+  document_type: SupportedHealthDocumentType;
   mime_type: string;
   storage_uri: string;
   sha256: string;
@@ -3200,8 +3203,8 @@ export function buildNhArch001SampleContracts(): {
       tenant_id: "tenant_us_personal",
       patient_id: "pat_01JXYZ_1042",
       uploaded_by_user_id: "usr_01JXYZ_1042",
-      active_role: "patient",
-      operating_environment: "NOCTIS_PERSONAL_HEALTH",
+      active_role: "patient_member",
+      operating_environment: "Noctis Personal Health",
       document_type: "laboratory_report",
       mime_type: "application/pdf",
       storage_uri: "s3://noctis-health-prod-docs/tenant_us_personal/doc_01JXYZ_PATH_1042.pdf",
@@ -3251,7 +3254,7 @@ export function buildNhArch001SampleContracts(): {
       evidence_sources: [
         {
           source_id: "SRC-KDIGO-CKD-2024",
-          source_type: "CLINICAL_PRACTICE_GUIDELINE",
+          source_type: "clinical_guideline",
           title: "KDIGO 2024 Clinical Practice Guideline for the Evaluation and Management of Chronic Kidney Disease",
           publisher: "Kidney Disease: Improving Global Outcomes (KDIGO)",
           publication_date: "2024-04-01",
@@ -3443,8 +3446,7 @@ export function runNhArch001VerificationSuite(): {
   // Check 3: Safety — Emergency chest pain pre-empts model & blocks dosing instructions
   const emergencyGate = evaluateHealthSafetyGateway({
     question: "I have crushing chest pain radiating to my left arm and shortness of breath.",
-    activeRole: "patient",
-    operatingEnvironment: "Noctis Personal Health",
+    userRole: "patient_member",
   });
 
   // Check 4: Provenance — Workflow state machine blocks client or unverified transition to `completed`
@@ -5426,7 +5428,7 @@ export function extractClinicalParametersFromText(question: string): ExtractedCl
 
 export interface ClinicalRegressionTestResult {
   testId: string;
-  suite: "RESPIRATORY_ENGINE_RESP_001_010" | "TROPICAL_FEBRILE_NH_TROP_001_007";
+  suite: "RESPIRATORY_ENGINE_RESP_001_010" | "TROPICAL_FEBRILE_NH_TROP_001_007" | "CLINICAL_FAILURE_TRAPS_031_036";
   title: string;
   requirementTested: string;
   measuredOutputSummary: string;
@@ -6754,7 +6756,7 @@ export function runNhClin002ChallengeSuite(): {
       inputSummary: "meds=['lisinopril','spironolactone','metformin','ibuprofen'], doses=missing, eGFR=33.8, K+=6.4",
       expectedBehavior:
         "Flags 3 high-priority Medication Safety Alerts (ACEi+MRA hyperkalemia, NSAID+ACEi+MRA 'Triple Whammy', Metformin in G3b/acute illness) without autonomous prescribing/discontinuation or claiming confirmed drug-induced injury",
-      measuredOutput: `Alerts=${medSafety.alerts.length} (${medSafety.alerts.map((a) => a.alertId).join(", ")}), AutonomousOrderBlocked=true`,
+      measuredOutput: `Alerts=${medSafety.alerts.length} (${medSafety.alerts.map((a) => a.sourceId).join(", ")}), AutonomousOrderBlocked=true`,
       passed: medSafety.alerts.length === 3,
     },
     {
@@ -7487,7 +7489,7 @@ export function runNhEng004AdversarialSuite(): {
         developerOverrideFlag: true,
       },
       expectedResult: "Enforce non-compensatory veto ('releaseAllowed: false', 'status: BLOCKED_CRITICAL_VETO'); developer override cannot bypass a failing critical clinical safety gate.",
-      actualExecutedResult: `releaseAllowed=${adv8DeveloperReleaseVeto.releaseAllowed}, status="${adv8DeveloperReleaseVeto.status}", reason="${adv8DeveloperReleaseVeto.blockingReason}"`,
+      actualExecutedResult: `releaseAllowed=${adv8DeveloperReleaseVeto.releaseAllowed}, status="${adv8DeveloperReleaseVeto.status}", reason="${adv8DeveloperReleaseVeto.blockingReasons.join('; ')}"`,
       auditEventId: "aud-release-veto-nh-eng-004-08",
       releaseBlockingCondition: "Mandatory Release Rule #4 (Non-Compensatory Critical Veto): Any critical clinical safety failure unconditionally blocks release.",
       passed:
@@ -8059,13 +8061,15 @@ export async function executeV1HealthHttpRequest(request: Request): Promise<Resp
     if (endpoint === "patient-observations") {
       const patientId = url.searchParams.get("patient_id") || "patient-1042";
       const requesterId = url.searchParams.get("requester_id") || "public_anonymous";
-      const userRole =
-        (url.searchParams.get("user_role") as
-          | "public_user"
-          | "patient_member"
-          | "clinician_verified"
-          | "research_analyst"
-          | "admin_security") || "patient_member";
+      const requestedRole = url.searchParams.get("user_role") || "patient_member";
+      const roleMap: Record<string, HealthUserEnvironmentRole> = {
+        public_user: "public_general",
+        patient_member: "patient_member",
+        clinician_verified: "healthcare_professional",
+        research_analyst: "medical_researcher",
+        admin_security: "healthcare_organization_admin",
+      };
+      const userRole = roleMap[requestedRole] || "patient_member";
 
       const safetyGate = evaluateHealthSafetyGateway({
         question: `GET /api/v1/health?endpoint=patient-observations&patient_id=${patientId}`,
@@ -8177,26 +8181,33 @@ export async function executeV1HealthHttpRequest(request: Request): Promise<Resp
     }
 
     if (endpoint === "reviews") {
+      const rawRoles: unknown[] = Array.isArray(body.accountHolderRoles) ? body.accountHolderRoles : ["clinician"];
+      const accountHolderRoles = rawRoles
+        .map((role) => role === "caregiver_proxy" ? "caregiver" : role)
+        .filter((role): role is "patient" | "caregiver" | "clinician" | "researcher" | "administrator" =>
+          role === "patient" || role === "caregiver" || role === "clinician" || role === "researcher" || role === "administrator"
+        );
+      const requestedEnvironment = typeof body.activeOperatingEnvironment === "string" ? body.activeOperatingEnvironment : "";
+      const activeOperatingEnvironment: NoctisOperatingEnvironmentId =
+        requestedEnvironment === "Noctis Personal" ? "Noctis Personal Health" :
+        requestedEnvironment === "Noctis Clinical" || requestedEnvironment === "Noctis Research" || requestedEnvironment === "Noctis Personal Health"
+          ? requestedEnvironment
+          : "Noctis Health Public";
+      const requestedAction = body.actionType;
+      if (requestedAction !== "explain_treatment" && requestedAction !== "draft_order" && requestedAction !== "submit_order") {
+        return jsonResponse(400, { error: "Unsupported clinical action type; use explain_treatment, draft_order, or submit_order." });
+      }
       const authResult = evaluateClinicalActionAuthorization({
-        accountHolderRoles: Array.isArray(body.accountHolderRoles)
-          ? (body.accountHolderRoles as ("patient" | "caregiver_proxy" | "clinician" | "researcher")[])
-          : ["clinician"],
-        activeOperatingEnvironment:
-          (body.activeOperatingEnvironment as "Noctis Personal" | "Noctis Clinical" | "Noctis Research") ||
-          "Noctis Clinical",
-        actionType:
-          (body.actionType as
-            | "view_personal_record"
-            | "draft_clinical_note"
-            | "draft_order"
-            | "approve_and_sign_order"
-            | "submit_order") || "draft_order",
+        accountHolderRoles,
+        activeOperatingEnvironment,
+        actionType: requestedAction,
         professionalAuthVerified: Boolean(body.professionalAuthVerified),
         clinicianSignedOff: Boolean(body.clinicianSignedOff),
       });
+      const auditEventId = crypto.randomUUID();
 
       appendHealthAuditChainEvent({
-        audit_event_id: authResult.auditEventId,
+        audit_event_id: auditEventId,
         event_type: "CLINICAL_ACTION_GATE",
         actor_id: String(body.requester_id || "clinician-1042"),
         actor_role: String(body.activeOperatingEnvironment || "Noctis Clinical"),
@@ -8204,7 +8215,7 @@ export async function executeV1HealthHttpRequest(request: Request): Promise<Resp
         payload: authResult,
       });
 
-      return jsonResponse(authResult.allowed ? 200 : 403, authResult);
+      return jsonResponse(authResult.allowed ? 200 : 403, { ...authResult, auditEventId });
     }
 
     return jsonResponse(400, {
@@ -8570,6 +8581,7 @@ export function runChestPain58YoAndTop5DeliverablesSuite(): {
     requester_role: "clinician",
     source_type: "user_upload",
     purpose: "clinician_review",
+    requested_outputs: ["plain_language_summary", "extracted_findings", "questions_for_clinician", "source_provenance"],
     parse_dynamic_only: true,
     raw_text_override:
       "Serum Creatinine: 148.5 umol/L (Ref: 53-106 umol/L). Potassium: 6.4 mmol/L. [UNREADABLE_IMMUNOFLUORESCENCE_PAGE_3]. Page 1: Surgical margins negative. Page 2: Positive deep surgical margin.",
@@ -8627,7 +8639,7 @@ export function runChestPain58YoAndTop5DeliverablesSuite(): {
         "NH-CLIN-002-AT-06 (ACEi + MRA + NSAID + Metformin)",
         "H-009 (Unapproved Order Block)",
       ],
-      measuredProof: `Nitroglycerin="${medSafetyResult.decisions[1].decisionStatus}", NSAID="${medSafetyResult.decisions[2].decisionStatus}", autonomousOrderAllowed=${unapprovedOrderGate.allowed} (status="${unapprovedOrderGate.workflowState}")`,
+      measuredProof: `Nitroglycerin="${medSafetyResult.decisions[1].decisionStatus}", NSAID="${medSafetyResult.decisions[2].decisionStatus}", autonomousOrderAllowed=${unapprovedOrderGate.allowed} (status="${(unapprovedOrderGate.allowed ? "ALLOWED" : "BLOCKED")}")`,
       passed:
         medSafetyResult.autonomousPrescriptionBlocked === true &&
         medSafetyResult.decisions[1].decisionStatus === "HELD_MISSING_BP_AND_PDE5_SCREEN" &&
@@ -11311,7 +11323,7 @@ function buildEmergencyHandoffInternal(
   const strokeOnsetMatch = effectiveEncounterSource.match(/\b(\d{1,3}\s*(?:minutes?|mins?|hours?|hrs?)(?:\s+ago)?|last\s+known\s+well[^\n.,;]{1,40})\b/i);
   const strokeOnsetStr = strokeOnsetMatch ? strokeOnsetMatch[0] : (isTest010 ? "~25 minutes reported by caregiver" : "acute symptom onset");
   const curGlucose = curLabs.find((x) => x.analyte === "glucose");
-  const hasExplicitSpo2OrTemp = typeof v.spo2 === "number" || typeof v.tempC === "number" || /\b(oxygen\s+saturation|spo2|temp(?:erature)?)\b/i.test(effectiveEncounterSource);
+  const hasExplicitSpo2OrTemp = typeof v.spo2Pct === "number" || typeof v.tempC === "number" || /\b(oxygen\s+saturation|spo2|temp(?:erature)?)\b/i.test(effectiveEncounterSource);
   const spo2Match =
     effectiveEncounterSource.match(/(?:oxygen\s+saturation|spo2|o2\s+sat\w*)\D{0,12}(\d{2,3})\s*%/i) ||
     (isTest014
@@ -11476,7 +11488,7 @@ function buildEmergencyHandoffInternal(
     );
     if (hasExplicitSpo2OrTemp) {
       const vitalsDesc = [
-        typeof v.spo2 === "number" ? `oxygen saturation (${v.spo2}% on room air)` : "",
+        typeof v.spo2Pct === "number" ? `oxygen saturation (${v.spo2Pct}% on room air)` : "",
         typeof v.tempC === "number" ? `temperature (${v.tempC}°C)` : "",
       ].filter(Boolean).join(" and ");
       concerns.push(
@@ -12325,7 +12337,7 @@ function buildEmergencyHandoffInternal(
             `An uncertain or unverified exact symptom-onset / last-known-well time (${strokeOnsetStr}) does NOT justify withholding stroke-team activation or delaying emergency evaluation.`,
           normal_spo2_and_temperature_note:
             hasExplicitSpo2OrTemp
-              ? `Normal vitals (${[typeof v.spo2 === "number" ? `oxygen saturation ${v.spo2}% on room air` : "", typeof v.tempC === "number" ? `temperature ${v.tempC}°C` : ""].filter(Boolean).join(" and ")}) do NOT exclude acute stroke.`
+              ? `Normal vitals (${[typeof v.spo2Pct === "number" ? `oxygen saturation ${v.spo2Pct}% on room air` : "", typeof v.tempC === "number" ? `temperature ${v.tempC}°C` : ""].filter(Boolean).join(" and ")}) do NOT exclude acute stroke.`
               : "Normal vital signs do NOT exclude acute stroke.",
           instruction:
             "Call 911 now for immediate EMS stroke-team transport to a stroke-capable hospital. Do not administer aspirin or extra antihypertensive medication before brain imaging and emergency stroke evaluation.",
@@ -13038,7 +13050,7 @@ export function runTest014R2AcceptanceGate(customPrompt?: string) {
 
 export function runLiveClinicalTest009Suite() {
   const output = buildEmergencyHandoffSections(LIVE_CLINICAL_TEST_009_EXACT_INPUT);
-  const full = handleNaturalHealthQuery(LIVE_CLINICAL_TEST_009_EXACT_INPUT);
+  const full = handleNaturalHealthQuery(LIVE_CLINICAL_TEST_009_EXACT_INPUT) ?? "";
   const jsonText = (output.match(/```json\n([\s\S]*?)\n```/) || [])[1] || "";
   let parsed: Record<string, unknown> | null = null;
   try { parsed = JSON.parse(jsonText); } catch { parsed = null; }

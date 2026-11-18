@@ -844,7 +844,7 @@ export function runDeveloperAcceptanceTests(
 export function buildArchitecturalBlueprintSvg(
   brief: ArchitecturalBrief,
   ripple: RippleChangeImpact,
-  profile: JurisdictionRuleProfile,
+  profile: JurisdictionCodeProfile,
   grossConditionedSqFt: number,
   baselineCostUsd: number,
   lotCoveragePct: number,
@@ -1210,7 +1210,7 @@ export function buildInteractiveHouseDesignHtml(
   brief: ArchitecturalBrief,
   spaces: IfcSpaceRoom[],
   ripple: RippleChangeImpact,
-  profile: JurisdictionRuleProfile,
+  profile: JurisdictionCodeProfile,
   grossConditionedSqFt: number,
   baselineCostUsd: number,
   lotCoveragePct: number,

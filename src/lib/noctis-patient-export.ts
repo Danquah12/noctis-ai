@@ -182,7 +182,7 @@ export function generatePrintableDoctorVisitBriefHtml(options: DoctorVisitBriefE
     const prob = d.probabilityPct ?? (d as any).probabilityScore ?? 50;
     const cat = d.category || (d as any).tier || "PRIMARY_HYPOTHESIS";
     const tests = d.goldStandardDiagnosticTests?.join(", ") || (d as any).goldStandardTesting || "Standard diagnostic workup";
-    const isPrimary = cat === "PRIMARY_HYPOTHESIS" || cat === "TIER_1_PRIMARY";
+    const isPrimary = cat === "PRIMARY_HYPOTHESIS" || cat === "MUST_NOT_MISS_RULEOUT";
     return `
     <div style="margin-bottom: 8px; padding: 8px 12px; background: #f8fafc; border-left: 4px solid ${isPrimary ? "#ef4444" : "#3b82f6"}; border-radius: 4px;">
       <div style="display: flex; justify-content: space-between; font-weight: 600; color: #0f172a;">

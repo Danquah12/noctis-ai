@@ -16,7 +16,7 @@ export type ExamCategory =
 export type FreeResource = {
   name: string;
   url: string;
-  type: "official_free" | "textbook" | "video_course" | "practice_bank" | "community";
+  type: "official_free" | "textbook" | "open_textbook" | "video_course" | "practice_bank" | "community";
   description: string;
 };
 

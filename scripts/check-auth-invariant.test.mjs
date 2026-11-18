@@ -90,9 +90,11 @@ test("only a divergence warns the smoke verdict", () => {
   }
 });
 
-test("the build side resolves the template's shipped app-env", () => {
-  assert.equal(buildAuthEnabled(projectRoot(), {}), false);
-  assert.equal(buildAuthEnabled(projectRoot(), { VITE_AUTH_ENABLED: "true" }), true);
+test("the build side resolves app-env from the supplied workspace and honors overrides", () => {
+  const root = mkdtempSync(join(tmpdir(), "auth-build-env-"));
+  assert.equal(buildAuthEnabled(root, {}), true);
+  assert.equal(buildAuthEnabled(root, { VITE_AUTH_ENABLED: "false" }), false);
+  assert.equal(buildAuthEnabled(root, { VITE_AUTH_ENABLED: "true" }), true);
 });
 
 test("the CLI reports rather than silently passing when run via a symlink", async () => {

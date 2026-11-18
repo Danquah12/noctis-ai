@@ -58,6 +58,7 @@ export type TrainingPair = {
   model: string;
   hits?: number;
   at: string;
+  approvalStatus?: "quarantined" | "approved" | "rejected" | "deprecated" | "legacy_review_required";
 };
 
 const FILE = path.join(process.cwd(), "data", "vibe-training.json");
@@ -608,7 +609,7 @@ let dbHydrating: Promise<void> | null = null;
 function load(): TrainingPair[] {
   const map = new Map<string, TrainingPair>();
   for (const seed of SEED_CORPUS) {
-    map.set(seed.question.toLowerCase(), { ...seed });
+    map.set(seed.question.toLowerCase(), { ...seed, approvalStatus: "approved" });
   }
   try {
     const raw = JSON.parse(readFileSync(FILE, "utf8")) as unknown;
@@ -624,6 +625,7 @@ function load(): TrainingPair[] {
           model: item.model || "vibe-native",
           hits: typeof item.hits === "number" ? item.hits : 1,
           at: item.at || new Date().toISOString(),
+          approvalStatus: item.approvalStatus || (item.model === "vibe-seed" ? "approved" : "quarantined"),
         });
       }
     }
@@ -710,11 +712,7 @@ export async function hydrateFromDb(): Promise<void> {
     try {
       const { getSql } = await import("@/lib/db");
       const sql = await getSql();
-      await sql`
-        delete from vibe_training_pair
-        where model in ('vibe', 'vibe-native', 'vibe-gadget')
-      `.catch(() => undefined);
-      const rows = await sql<{
+       const rows = await sql<{
         id: string;
         question: string;
         answer: string;
@@ -722,20 +720,16 @@ export async function hydrateFromDb(): Promise<void> {
         model: string;
         hits: number;
         updated_at: string;
+        approval_status: TrainingPair["approvalStatus"];
       }>`
-        select id, question, answer, domain, model, hits, updated_at::text as updated_at
+        select id, question, answer, domain, model, hits, updated_at::text as updated_at, approval_status
         from vibe_training_pair
         where verified = true
-          and model not in ('vibe', 'vibe-native', 'vibe-gadget')
+          and approval_status = 'approved'
         order by updated_at desc
         limit 500
       `;
-      for (let i = pairs.length - 1; i >= 0; i -= 1) {
-        if (pairs[i]?.model === "vibe" || pairs[i]?.model === "vibe-native" || pairs[i]?.model === "vibe-gadget") {
-          pairs.splice(i, 1);
-        }
-      }
-      for (const row of rows.reverse()) {
+       for (const row of rows.reverse()) {
         const key = row.question.toLowerCase().trim();
         const idx = pairs.findIndex((p) => p.question.toLowerCase().trim() === key);
         const item: TrainingPair = {
@@ -746,12 +740,15 @@ export async function hydrateFromDb(): Promise<void> {
           model: row.model || "vibe-seed",
           hits: Number(row.hits) || 1,
           at: row.updated_at || new Date().toISOString(),
+          approvalStatus: row.approval_status || "approved",
         };
         if (idx >= 0) pairs[idx] = item;
         else pairs.push(item);
       }
       const ruleRows = await sql<{ rule: string }>`
-        select rule from vibe_training_rule order by created_at desc limit 24
+        select rule from vibe_training_rule
+        where approval_status = 'approved'
+        order by created_at desc limit 24
       `;
       for (const r of ruleRows.reverse()) {
         if (r.rule && !rulesMem.includes(r.rule)) rulesMem.push(r.rule);
@@ -760,8 +757,8 @@ export async function hydrateFromDb(): Promise<void> {
         for (const seed of SEED_CORPUS) {
           const id = pairId(seed.question);
           await sql`
-            insert into vibe_training_pair (id, question, answer, domain, model, hits, verified)
-            values (${id}, ${seed.question}, ${seed.answer}, ${seed.domain || "general"}, ${seed.model}, ${seed.hits || 1}, true)
+            insert into vibe_training_pair (id, question, answer, domain, model, hits, verified, approval_status)
+            values (${id}, ${seed.question}, ${seed.answer}, ${seed.domain || "general"}, ${seed.model}, ${seed.hits || 1}, true, 'approved')
             on conflict (id) do nothing
           `.catch(() => undefined);
         }
@@ -776,7 +773,7 @@ export async function hydrateFromDb(): Promise<void> {
   return dbHydrating;
 }
 
-export function rememberAnswer(question: string, answer: string, model = "vibe-native", domain?: string) {
+export function rememberAnswer(question: string, answer: string, model = "vibe-native", domain?: string, submittedBy?: string) {
   const asked = question.replace(/\s+/g, " ").trim().slice(0, 600);
   const said = answer.split(/\n\s*Claim standing:/i)[0]?.trim().slice(0, 6000) || answer.trim().slice(0, 6000);
   const isExplicitTrain = model === "user-taught" || model === "vibe-trained" || model === "api-trained";
@@ -797,6 +794,7 @@ export function rememberAnswer(question: string, answer: string, model = "vibe-n
     model,
     hits: prevHits + 1,
     at: new Date().toISOString(),
+    approvalStatus: "quarantined",
   };
   if (same >= 0) pairs.splice(same, 1);
   pairs.push(next);
@@ -808,14 +806,21 @@ export function rememberAnswer(question: string, answer: string, model = "vibe-n
       const { getSql } = await import("@/lib/db");
       const sql = await getSql();
       await sql`
-        insert into vibe_training_pair (id, question, answer, domain, model, hits, verified, updated_at)
-        values (${id}, ${asked}, ${said}, ${resolvedDomain}, ${next.model}, 1, true, now())
+        insert into vibe_training_pair (id, question, answer, domain, model, hits, verified, approval_status, submitted_by, updated_at)
+        values (${id}, ${asked}, ${said}, ${resolvedDomain}, ${next.model}, 1, false, 'quarantined', ${submittedBy || null}, now())
         on conflict (id) do update set
           answer = excluded.answer,
           domain = excluded.domain,
           model = excluded.model,
           hits = vibe_training_pair.hits + 1,
+          verified = false,
+          approval_status = 'quarantined',
+          submitted_by = excluded.submitted_by,
           updated_at = now()
+      `;
+      await sql`
+        insert into noctis_learning_audit (id, actor_id, action, target_type, target_id, reason)
+        values (${pairId(`audit:pair:${id}:${Date.now()}`)}, ${submittedBy || "system"}, 'training_pair_submitted', 'training_pair', ${id}, 'Submitted for independent review')
       `;
     } catch {
       /* non-blocking DB write */
@@ -827,6 +832,7 @@ export async function trainPair(
   question: string,
   answer: string,
   modelOrDomain = "user-taught",
+  submittedBy?: string,
 ): Promise<{ ok: boolean; question: string; answer: string; reason?: string; pair?: TrainingPair }> {
   const asked = question.replace(/\s+/g, " ").trim().slice(0, 600);
   const said = answer.trim().slice(0, 6000);
@@ -834,7 +840,7 @@ export async function trainPair(
     return { ok: false, question: asked, answer: said, reason: "Provide a question (at least 4 chars) and an answer (at least 12 chars)." };
   }
   await hydrateFromDb();
-  rememberAnswer(asked, said, modelOrDomain);
+  rememberAnswer(asked, said, modelOrDomain, undefined, submittedBy);
   const pair = pairs.find((p) => p.question.toLowerCase() === asked.toLowerCase());
   return { ok: true, question: asked, answer: said, pair };
 }
@@ -953,27 +959,112 @@ export async function executeZeroTouchAutonomous20AreaTraining(options?: {
   };
 }
 
-export async function rememberRule(ruleText: string, domain = "general"): Promise<{ ok: boolean; rule: string; reason?: string }> {
+export async function rememberRule(ruleText: string, domain = "general", submittedBy?: string): Promise<{ ok: boolean; rule: string; reason?: string }> {
   const clean = ruleText.replace(/\s+/g, " ").trim().slice(0, 240);
   if (clean.length < 6) return { ok: false, rule: "", reason: "Rule must be at least 6 characters." };
   await hydrateFromDb();
-  const idx = rulesMem.findIndex((r) => r.toLowerCase() === clean.toLowerCase());
-  if (idx >= 0) rulesMem.splice(idx, 1);
-  rulesMem.push(clean);
-  if (rulesMem.length > 24) rulesMem.splice(0, rulesMem.length - 24);
+  // Newly submitted rules remain quarantined until an authorized reviewer approves them.
   const id = pairId(`rule:${clean}`);
   try {
     const { getSql } = await import("@/lib/db");
     const sql = await getSql();
     await sql`
-      insert into vibe_training_rule (id, rule, domain)
-      values (${id}, ${clean}, ${domain})
-      on conflict (id) do update set rule = excluded.rule, created_at = now()
+      insert into vibe_training_rule (id, rule, domain, approval_status, submitted_by)
+      values (${id}, ${clean}, ${domain}, 'quarantined', ${submittedBy || null})
+      on conflict (id) do update set rule = excluded.rule, approval_status = 'quarantined', submitted_by = excluded.submitted_by, created_at = now()
+    `;
+    await sql`
+      insert into noctis_learning_audit (id, actor_id, action, target_type, target_id, reason)
+      values (${pairId(`audit:rule:${id}:${Date.now()}`)}, ${submittedBy || "system"}, 'training_rule_submitted', 'training_rule', ${id}, 'Submitted for independent review')
     `;
   } catch {
     /* non-blocking */
   }
   return { ok: true, rule: clean };
+}
+
+export async function pendingTrainingSubmissions(limit = 100, tenantId?: string) {
+  await hydrateFromDb();
+  const safeLimit = Math.max(1, Math.min(200, Math.floor(limit)));
+  const { getSql } = await import("@/lib/db");
+  const sql = await getSql();
+  const pairsPending = await sql<{
+    id: string; question: string; answer: string; domain: string;
+    submitted_by: string | null; created_at: string; approval_status: string;
+  }>`
+    select id, question, answer, domain, submitted_by, created_at::text as created_at, approval_status
+    from vibe_training_pair
+    where approval_status in ('quarantined', 'legacy_review_required')
+      and (${tenantId ?? null}::text is null and tenant_id is null
+        or tenant_id = ${tenantId ?? null})
+    order by created_at desc limit ${safeLimit}
+  `;
+  const rulesPending = await sql<{
+    id: string; rule: string; domain: string; submitted_by: string | null;
+    created_at: string; approval_status: string;
+  }>`
+    select id, rule, domain, submitted_by, created_at::text as created_at, approval_status
+    from vibe_training_rule
+    where approval_status in ('quarantined', 'legacy_review_required')
+    order by created_at desc limit ${safeLimit}
+  `;
+  return { pairs: pairsPending, rules: rulesPending };
+}
+
+export async function reviewTrainingSubmission(params: {
+  kind: "pair" | "rule";
+  id: string;
+  decision: "approved" | "rejected";
+  reviewerId: string;
+  reason: string;
+}): Promise<{ ok: boolean; kind: string; id: string; decision: string }> {
+  const id = params.id.trim().slice(0, 160);
+  const reason = params.reason.replace(/\\s+/g, " ").trim().slice(0, 500);
+  if (!id || !reason) throw new Error("A submission ID and review reason are required.");
+  await hydrateFromDb();
+  const { getSql } = await import("@/lib/db");
+  const sql = await getSql();
+  if (params.kind === "pair") {
+    const rows = await sql<{ id: string }>`
+      update vibe_training_pair
+      set approval_status = ${params.decision},
+          verified = ${params.decision === "approved"},
+          reviewed_by = ${params.reviewerId},
+          reviewed_at = now(),
+          approval_reason = ${reason},
+          updated_at = now()
+      where id = ${id}
+      returning id
+    `;
+    if (!rows.length) throw new Error("Training pair was not found.");
+    const pair = pairs.find((item) => item.id === id);
+    if (pair) pair.approvalStatus = params.decision;
+  } else {
+    const rows = await sql<{ id: string; rule: string }>`
+      update vibe_training_rule
+      set approval_status = ${params.decision},
+          reviewed_by = ${params.reviewerId},
+          reviewed_at = now(),
+          approval_reason = ${reason},
+          created_at = now()
+      where id = ${id}
+      returning id, rule
+    `;
+    if (!rows.length) throw new Error("Training rule was not found.");
+    const rule = rows[0]!.rule;
+    const existing = rulesMem.findIndex((item) => item.toLowerCase() === rule.toLowerCase());
+    if (params.decision === "approved" && existing < 0) {
+      rulesMem.push(rule);
+      if (rulesMem.length > 24) rulesMem.splice(0, rulesMem.length - 24);
+    } else if (params.decision === "rejected" && existing >= 0) {
+      rulesMem.splice(existing, 1);
+    }
+  }
+  await sql`
+    insert into noctis_learning_audit (id, actor_id, action, target_type, target_id, reason)
+    values (${pairId(`audit:review:${params.kind}:${id}:${Date.now()}`)}, ${params.reviewerId}, ${params.decision === "approved" ? "learning_submission_approved" : "learning_submission_rejected"}, ${params.kind === "pair" ? "training_pair" : "training_rule"}, ${id}, ${reason})
+  `;
+  return { ok: true, kind: params.kind, id, decision: params.decision };
 }
 
 export function storedRulesBlock(): string {
@@ -1020,7 +1111,7 @@ export function recallTrainedAnswer(question: string): { answer: string; questio
   const q = question.trim();
   if (q.length < 6 || hasScenarioNumbers(q)) return null;
   const ranked = pairs
-    .filter((pair) => pair.model !== "vibe" && pair.model !== "vibe-native" && pair.model !== "vibe-gadget" && pair.model !== "vibe-rag")
+    .filter((pair) => pair.approvalStatus === "approved" && pair.model !== "vibe" && pair.model !== "vibe-native" && pair.model !== "vibe-gadget" && pair.model !== "vibe-rag")
     .map((pair) => {
       const sim = similarityScore(q, pair.question);
       return { pair, ...sim };
@@ -1041,6 +1132,7 @@ export function lessonBlock(question: string) {
   const asked = words(question);
   if (!asked.size) return "";
   const ranked = pairs
+    .filter((pair) => pair.approvalStatus === "approved")
     .map((pair) => {
       const sim = similarityScore(question, pair.question);
       return { pair, shared: sim.shared, ratio: sim.ratio };
@@ -1059,7 +1151,9 @@ export async function trainingStatus() {
   await hydrateFromDb();
   const byDomain: Record<string, number> = {};
   let userTaughtPairs = 0;
+  let quarantinedPairs = 0;
   for (const pair of pairs) {
+    if (pair.approvalStatus !== "approved") quarantinedPairs += 1;
     const d = pair.domain || inferDomain(pair.question);
     byDomain[d] = (byDomain[d] || 0) + 1;
     if (pair.model === "user-taught" || pair.model === "vibe-trained" || pair.model === "api-trained") {
@@ -1069,18 +1163,22 @@ export async function trainingStatus() {
   return {
     totalPairs: pairs.length,
     userTaughtPairs,
+    quarantinedPairs,
+    approvedPairs: pairs.length - quarantinedPairs,
     totalRules: rulesMem.length,
     rulesCount: rulesMem.length,
     dbConnected: dbHydrated,
     byDomain,
-    recent: pairs.slice(-8).reverse().map((p) => ({
+    recent: pairs.filter((p) => p.approvalStatus === "approved").slice(-8).reverse().map((p) => ({
+      id: p.id,
       question: p.question,
       domain: p.domain || inferDomain(p.question),
       model: p.model,
       hits: p.hits ?? 1,
       at: p.at,
+      approvalStatus: "approved",
     })),
-    recentQuestions: pairs.slice(-8).reverse().map((p) => p.question),
+    recentQuestions: pairs.filter((p) => p.approvalStatus === "approved").slice(-8).reverse().map((p) => p.question),
     rules: rulesMem.slice(-12),
   };
 }
@@ -1090,6 +1188,7 @@ export async function exportTrainingJsonl(): Promise<string> {
   const systemPrompt =
     "You are Vibe, the self-trained teaching and verification engine inside Noctis. Start with the direct answer in the first sentence, organize multi-part explanations with clear headings or markdown tables, and never invent citations or unverified numbers.";
   return pairs
+    .filter((pair) => pair.approvalStatus === "approved")
     .map((pair) =>
       JSON.stringify({
         messages: [
@@ -1297,8 +1396,8 @@ async function fetchWikiDirect(question: string): Promise<string> {
       return `${idx + 1}. **What are the key facts and highlights of ${p.title}?**\n   - *Answer:* ${s.join(" ") || p.extract.slice(0, 300)}`;
     });
 
-    const mode = classifyAdaptiveMode(rawQuestion);
-    const customDiag = generateDynamicDiagram(rawQuestion, pages[0]?.title || "");
+    const mode = classifyAdaptiveMode(question);
+    const customDiag = generateDynamicDiagram(question, pages[0]?.title || "");
     const mermaidBlock = customDiag
       ? `\`\`\`mermaid\n${customDiag.mermaid}\n\`\`\``
       : pages.length >= 2
@@ -1320,7 +1419,7 @@ async function fetchWikiDirect(question: string): Promise<string> {
       )
       .join("\n");
     const compTable = `| Entity / Subtopic | Verified Summary | Traceable Reference |\n| :--- | :--- | :--- |\n${compRows}`;
-    const check = verifyResponseIntegrity(rawQuestion, studySections.join("\n"), Boolean(mermaidBlock), false);
+    const check = verifyResponseIntegrity(question, studySections.join("\n"), Boolean(mermaidBlock), false);
 
     return [
       `## Study notes (\`Adaptive Mode: ${mode}\`)\n${studySections.join("\n\n")}`,

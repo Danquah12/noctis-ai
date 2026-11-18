@@ -135,6 +135,11 @@ async function requireStaff(userId: string, roles?: StaffRole[]) {
   return row;
 }
 
+/** Owner-only gate for approving Noctis learning submissions; requires active MFA. */
+export async function requireNoctisLearningReviewer(userId: string) {
+  return requireStaff(userId, ["owner"]);
+}
+
 export const deskRegister = createServerFn({ method: "POST" })
   .validator((input: { name: string; email: string; password: string }) => ({
     name: String(input?.name ?? "").trim().slice(0, 80),

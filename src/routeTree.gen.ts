@@ -35,6 +35,7 @@ import { Route as StudyRouteImport } from './routes/study'
 import { Route as WorkRouteImport } from './routes/work'
 import { Route as YouRouteImport } from './routes/you'
 import { Route as ApiNoctisRouteImport } from './routes/api/noctis'
+import { Route as ApiV1HealthRouteImport } from './routes/api/v1.health'
 import { Route as ApiShareCardRouteImport } from './routes/api/share-card'
 import { Route as ApiVideoRouteImport } from './routes/api/video'
 import { Route as ApiVoipRouteImport } from './routes/api/voip'
@@ -220,6 +221,11 @@ const YouRoute = YouRouteImport.update({
 const ApiNoctisRoute = ApiNoctisRouteImport.update({
   id: '/api/noctis',
   path: '/api/noctis',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1HealthRoute = ApiV1HealthRouteImport.update({
+  id: '/api/v1/health',
+  path: '/api/v1/health',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiShareCardRoute = ApiShareCardRouteImport.update({
@@ -535,6 +541,7 @@ export interface FileRoutesByFullPath {
   '/work': typeof WorkRoute
   '/you': typeof YouRoute
   '/api/noctis': typeof ApiNoctisRoute
+  '/api/v1/health': typeof ApiV1HealthRoute
   '/api/share-card': typeof ApiShareCardRoute
   '/api/video': typeof ApiVideoRoute
   '/api/voip': typeof ApiVoipRoute
@@ -1035,6 +1042,7 @@ export interface RootRouteChildren {
   WorkRoute: typeof WorkRoute
   YouRoute: typeof YouRoute
   ApiNoctisRoute: typeof ApiNoctisRoute
+  ApiV1HealthRoute: typeof ApiV1HealthRoute
   ApiShareCardRoute: typeof ApiShareCardRoute
   ApiVideoRoute: typeof ApiVideoRoute
   ApiVoipRoute: typeof ApiVoipRoute
@@ -1225,6 +1233,13 @@ declare module '@tanstack/react-router' {
       path: '/api/noctis'
       fullPath: '/api/noctis'
       preLoaderRoute: typeof ApiNoctisRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/health': {
+      id: '/api/v1/health'
+      path: '/api/v1/health'
+      fullPath: '/api/v1/health'
+      preLoaderRoute: typeof ApiV1HealthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/share-card': {
@@ -1783,6 +1798,7 @@ const rootRouteChildren: RootRouteChildren = {
   WorkRoute: WorkRoute,
   YouRoute: YouRoute,
   ApiNoctisRoute: ApiNoctisRoute,
+  ApiV1HealthRoute: ApiV1HealthRoute,
   ApiShareCardRoute: ApiShareCardRoute,
   ApiVideoRoute: ApiVideoRoute,
   ApiVoipRoute: ApiVoipRoute,

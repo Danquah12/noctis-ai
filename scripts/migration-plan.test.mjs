@@ -56,9 +56,14 @@ test("non-.sql entries are dropped (readdir also yields the auth/ directory)", (
   assert.deepEqual(pendingMigrations(["auth", "README.md"], []), []);
 });
 
-test("the auth schema ships outside the globbed directory", () => {
+test("root migration discovery ignores nested auth sources and includes root migrations", () => {
   const migrationsDir = join(projectRoot(), "migrations");
-  assert.deepEqual(pendingMigrations(readdirSync(migrationsDir), []), []);
+  const rootEntries = readdirSync(migrationsDir);
+  const pending = pendingMigrations(rootEntries, []);
+  assert.ok(pending.length > 0);
+  assert.ok(pending.every(({ path }) => isMigrationFile(path) && !path.includes("/")));
+  assert.ok(pending.some(({ name }) => name === "0014_noctis_learning_governance.sql"));
+  assert.ok(pending.some(({ name }) => name === "0015_noctis_evidence_evaluation.sql"));
   assert.ok(readdirSync(join(migrationsDir, "auth")).includes("0001_auth.sql"));
 });
 

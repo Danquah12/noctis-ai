@@ -129,21 +129,63 @@ export const sayVibe = createServerFn({ method: "POST" })
   });
 
 export const trainVibe = createServerFn({ method: "POST" })
-  .validator((input: { action?: unknown; question?: unknown; answer?: unknown; rule?: unknown }) => ({
-    action: input?.action === "train" || input?.action === "rule" || input?.action === "export" ? input.action : ("status" as const),
+  .validator((input: { action?: unknown; question?: unknown; answer?: unknown; rule?: unknown; kind?: unknown; id?: unknown; reason?: unknown }) => ({
+    action: input?.action === "train" || input?.action === "rule" || input?.action === "export" || input?.action === "approve" || input?.action === "reject" || input?.action === "pending" ? input.action : ("status" as const),
     question: typeof input?.question === "string" ? input.question.trim().slice(0, 800) : "",
     answer: typeof input?.answer === "string" ? input.answer.trim().slice(0, 6000) : "",
     rule: typeof input?.rule === "string" ? input.rule.trim().slice(0, 320) : "",
+    kind: (input?.kind === "pair" || input?.kind === "rule" ? input.kind : "pair") as "pair" | "rule",
+    id: typeof input?.id === "string" ? input.id.trim().slice(0, 160) : "",
+    reason: typeof input?.reason === "string" ? input.reason.trim().slice(0, 500) : "",
   }))
   .handler(async ({ data }) => {
-    const { trainPair, rememberRule, trainingStatus, exportTrainingJsonl } = await import("@/lib/noctis-train.server");
+    const { requireUserId } = await import("@/lib/auth/verify.server");
+    const { callerKey, guardRate } = await import("@/lib/security.server");
+    const userId = await requireUserId();
+    await guardRate(`noctis-training:${callerKey(userId)}`, 10, 10 * 60 * 1000);
+    const { rememberRule, trainingStatus, exportTrainingJsonl, reviewTrainingSubmission, pendingTrainingSubmissions } = await import("@/lib/noctis-train.server");
+    if (data.action === "pending") {
+      const { requireNoctisLearningReviewer } = await import("@/lib/admin-api");
+      await requireNoctisLearningReviewer(userId);
+      return { ok: true, pending: await pendingTrainingSubmissions(100, userId) };
+    }
+    if (data.action === "approve" || data.action === "reject") {
+      const { requireNoctisLearningReviewer } = await import("@/lib/admin-api");
+      await requireNoctisLearningReviewer(userId);
+      const decision = data.action === "approve" ? "approved" : "rejected";
+      if (data.kind === "pair") {
+        const { getNoctisTrainingDatabase } = await import("@/lib/noctis-training-db-adapter.server");
+        const { reviewNoctisTrainingExample } = await import("@/lib/noctis-training-data-persistence.server");
+        const { randomUUID } = await import("node:crypto");
+        const review = await reviewNoctisTrainingExample(await getNoctisTrainingDatabase(), {
+          tenantId: userId, actorId: userId, pairId: data.id, decision, reason: data.reason,
+          at: new Date().toISOString(), auditId: randomUUID(),
+        });
+        if (!review.ok) return { ok: false, reason: review.code, status: await trainingStatus() };
+        return { ok: true, kind: "pair", id: data.id, decision, status: await trainingStatus() };
+      }
+      const review = await reviewTrainingSubmission({
+        kind: "rule", id: data.id, decision, reviewerId: userId, reason: data.reason,
+      });
+      return { ...review, status: await trainingStatus() };
+    }
     if (data.action === "train") {
-      const res = await trainPair(data.question, data.answer, "user-taught");
+      const { getNoctisTrainingDatabase } = await import("@/lib/noctis-training-db-adapter.server");
+      const { submitNoctisTrainingExample } = await import("@/lib/noctis-training-data-persistence.server");
+      const { randomUUID } = await import("node:crypto");
+      const submissionId = randomUUID();
+      const result = await submitNoctisTrainingExample(await getNoctisTrainingDatabase(), {
+        tenantId: userId, actorId: userId, pairId: submissionId,
+        question: data.question, answer: data.answer, domain: "general", model: "user-taught",
+        at: new Date().toISOString(), auditId: randomUUID(),
+      });
       const status = await trainingStatus();
-      return { ok: res.ok, reason: res.reason || "", status };
+      return result.ok
+        ? { ok: true, reason: "Saved durably as a quarantined candidate. It is not active training data.", submissionId, status }
+        : { ok: false, reason: result.code, submissionId: "", status };
     }
     if (data.action === "rule") {
-      const res = await rememberRule(data.rule);
+      const res = await rememberRule(data.rule, "general", userId);
       const status = await trainingStatus();
       return { ok: res.ok, reason: res.reason || "", status };
     }
@@ -166,6 +208,10 @@ export const testBrainConnection = createServerFn({ method: "POST" })
     };
   })
   .handler(async ({ data }) => {
+    const { requireUserId } = await import("@/lib/auth/verify.server");
+    const userId = await requireUserId();
+    const { callerKey, guardRate } = await import("@/lib/security.server");
+    await guardRate(`noctis-model-test:${callerKey(userId)}`, 5, 10 * 60 * 1000);
     if (!data.apiKey && data.provider !== "custom") {
       return { ok: false, error: "Please enter an API key." };
     }
@@ -184,3 +230,102 @@ export const testBrainConnection = createServerFn({ method: "POST" })
       return { ok: false, error: msg };
     }
   });
+
+/**
+ * Submit text as quarantined Noctis source material. No URL is fetched and no
+ * content becomes active knowledge until an authorized reviewer approves it.
+ */
+export const submitNoctisSource = createServerFn({ method: "POST" })
+  .validator((input: {
+    title?: unknown; domain?: unknown; content?: unknown; canonicalUri?: unknown;
+    publisher?: unknown; jurisdiction?: unknown; sourceVersion?: unknown; license?: unknown;
+    classification?: unknown;
+  }) => ({
+    title: typeof input?.title === "string" ? input.title.slice(0, 240) : "",
+    domain: typeof input?.domain === "string" ? input.domain.slice(0, 80) : "",
+    content: typeof input?.content === "string" ? input.content.slice(0, 500_000) : "",
+    canonicalUri: typeof input?.canonicalUri === "string" ? input.canonicalUri.slice(0, 1000) : "",
+    publisher: typeof input?.publisher === "string" ? input.publisher.slice(0, 200) : "",
+    jurisdiction: typeof input?.jurisdiction === "string" ? input.jurisdiction.slice(0, 120) : "",
+    sourceVersion: typeof input?.sourceVersion === "string" ? input.sourceVersion.slice(0, 120) : "",
+    license: typeof input?.license === "string" ? input.license.slice(0, 240) : "",
+    classification: ["public", "internal", "confidential", "restricted"].includes(String(input?.classification))
+      ? input.classification as "public" | "internal" | "confidential" | "restricted"
+      : "public" as const,
+  }))
+  .handler(async ({ data }) => {
+    const { requireUserId } = await import("@/lib/auth/verify.server");
+    const { callerKey, guardRate } = await import("@/lib/security.server");
+    const userId = await requireUserId();
+    await guardRate(`noctis-source-submit:${callerKey(userId)}`, 5, 10 * 60 * 1000);
+    const { registerNoctisTextSource } = await import("@/lib/noctis-source-ingestion.server");
+    return registerNoctisTextSource(data, userId);
+  });
+
+/** Owner/MFA-only source review queue and approval/rejection actions. */
+export const manageNoctisSources = createServerFn({ method: "POST" })
+  .validator((input: { action?: unknown; sourceId?: unknown; reason?: unknown }) => ({
+    action: input?.action === "approve" || input?.action === "reject" ? input.action : "pending",
+    sourceId: typeof input?.sourceId === "string" ? input.sourceId.trim().slice(0, 160) : "",
+    reason: typeof input?.reason === "string" ? input.reason.trim().slice(0, 500) : "",
+  }))
+  .handler(async ({ data }) => {
+    const { requireUserId } = await import("@/lib/auth/verify.server");
+    const userId = await requireUserId();
+    const { requireNoctisLearningReviewer } = await import("@/lib/admin-api");
+    await requireNoctisLearningReviewer(userId);
+    const { pendingNoctisSources, reviewNoctisSource } = await import("@/lib/noctis-source-ingestion.server");
+    if (data.action === "pending") return { ok: true, pending: await pendingNoctisSources() };
+    return reviewNoctisSource({
+      sourceId: data.sourceId,
+      decision: data.action === "approve" ? "approved" : "rejected",
+      reviewerId: userId,
+      reason: data.reason,
+    });
+  });
+
+/**
+ * Evidence lookup for server-side Noctis workflows. This endpoint returns
+ * citations/snippets only; callers must not represent lexical matches as
+ * semantic relevance or as proof that a claim is true.
+ */
+export const retrieveNoctisEvidence = createServerFn({ method: "POST" })
+  .validator((input: { query?: unknown; domain?: unknown; limit?: unknown }) => ({
+    query: typeof input?.query === "string" ? input.query.trim().slice(0, 2000) : "",
+    domain: typeof input?.domain === "string" ? input.domain.trim().slice(0, 80) : "",
+    limit: typeof input?.limit === "number" && Number.isFinite(input.limit)
+      ? Math.max(1, Math.min(10, Math.trunc(input.limit)))
+      : 5,
+  }))
+  .handler(async ({ data }) => {
+    const { requireUserId } = await import("@/lib/auth/verify.server");
+    const { callerKey, guardRate } = await import("@/lib/security.server");
+    const userId = await requireUserId();
+    await guardRate(`noctis-evidence:${callerKey(userId)}`, 30, 10 * 60 * 1000);
+    if (data.query.length < 3) throw new Error("Enter at least 3 characters to search evidence.");
+    const { retrieveApprovedNoctisEvidence } = await import("@/lib/noctis-evidence-retrieval.server");
+    return retrieveApprovedNoctisEvidence({
+      query: data.query,
+      domain: data.domain,
+      userId,
+      limit: data.limit,
+    });
+  });
+
+
+/**
+ * Return the descriptive engine registry to authenticated clients.
+ * This endpoint exposes metadata only; it does not execute specialist engines.
+ */
+export const getNoctisEngineRegistry = createServerFn({ method: "GET" })
+  .handler(async () => {
+    const { requireUserId } = await import("@/lib/auth/verify.server");
+    await requireUserId();
+    const { listNoctisEngines } = await import("@/lib/noctis-engine-registry");
+    return {
+      engines: listNoctisEngines(),
+      executionEnabled: false,
+      note: "Registry metadata only. Engine execution is not enabled by this endpoint.",
+    };
+  });
+

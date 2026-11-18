@@ -207,7 +207,6 @@ export const CANONICAL_TRUTH_BUNDLES: Record<string, TruthLedgerBundle> = {
   },
 
   "bundle-cyber-ransomware": {
-    id: "bundle-cyber-ransomware",
     bundleId: "LEDGER-AUDIT-CYBER-2026-99341",
     timestamp: "2026-10-31T07:45:00.000Z",
     documentTitle: "Active Directory Intrusion & Ransomware Incursion Forensic Audit",

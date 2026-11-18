@@ -574,7 +574,7 @@ export function NoctisSovereignFactoryStudio({
         operationalImpact = "Empowers autonomous agents to invoke verified deterministic tools with typed interfaces and bounded execution timeouts.";
         keyPoints = sys.capabilities.map((c) => ({
           label: c.name,
-          value: `${c.description} [Execution: ${c.toolType}, Timeout: ${c.executionTimeoutMs}ms]`,
+          value: `${c.description} [Execution mode: ${c.executionMode}]`,
         }));
         break;
       case 5:
@@ -708,15 +708,15 @@ export function NoctisSovereignFactoryStudio({
 
   const openLifecycleDeepDive = (action: LifecycleAction) => {
     const descriptions: Record<LifecycleAction, { desc: string; transition: string; gates: string }> = {
-      CREATE: { desc: "Instantiates system manifest, registers identity, assigns tenant IDs, and allocates isolated enclave memory.", transition: "DRAFT → INITIALIZED", gates: "System Registry Schema Validation" },
-      CONFIGURE: { desc: "Applies environment variables, fine-tunes RAG thresholds, configures RBAC policies, and mounts encrypted storage volumes.", transition: "INITIALIZED → CONFIGURED", gates: "Configuration Integrity Check" },
-      TEST: { desc: "Executes automated unit and integration suites, measuring regression preservation and benchmark target alignment.", transition: "CONFIGURED → TESTED", gates: "100% Invariant Test Pass Rate" },
-      VALIDATE: { desc: "Enforces hard-fail invariant checks, boundary validation, and security compliance attestations.", transition: "TESTED → VALIDATED", gates: "Non-Compensatory Compliance Attestation" },
-      DEPLOY: { desc: "Spins up live enclave replicas, mounts persistent databases, and establishes low-latency event bus endpoints.", transition: "VALIDATED → DEPLOYED (RUNNING)", gates: "Container Health Probe Handshake" },
-      MONITOR: { desc: "Streams real-time metrics, telemetry graphs, latency measurements, and anomaly alarms.", transition: "RUNNING → MONITORED", gates: "Continuous Telemetry Heartbeat" },
-      UPGRADE: { desc: "Performs blue/green zero-downtime rolling upgrades with automated rollback fallback triggers.", transition: "RUNNING → UPGRADED", gates: "Blue/Green Parity Attestation" },
-      ROLLBACK: { desc: "Instantly reverts system state and binaries to previous cryptographically verified release.", transition: "DEGRADED → RESTORED", gates: "Prior Snapshot Cryptographic Verification" },
-      RETIRE: { desc: "Safely drains active connections, archives persistent audit trails to SHA-256 evidence vault, and releases memory resources.", transition: "RUNNING → RETIRED", gates: "Audit Vault Final Seal" },
+      Create: { desc: "Instantiates system manifest, registers identity, assigns tenant IDs, and allocates isolated enclave memory.", transition: "DRAFT → INITIALIZED", gates: "System Registry Schema Validation" },
+      Configure: { desc: "Applies environment variables, fine-tunes RAG thresholds, configures RBAC policies, and mounts encrypted storage volumes.", transition: "INITIALIZED → CONFIGURED", gates: "Configuration Integrity Check" },
+      Test: { desc: "Executes automated unit and integration suites, measuring regression preservation and benchmark target alignment.", transition: "CONFIGURED → TESTED", gates: "100% Invariant Test Pass Rate" },
+      Validate: { desc: "Enforces hard-fail invariant checks, boundary validation, and security compliance attestations.", transition: "TESTED → VALIDATED", gates: "Non-Compensatory Compliance Attestation" },
+      Deploy: { desc: "Spins up live enclave replicas, mounts persistent databases, and establishes low-latency event bus endpoints.", transition: "VALIDATED → DEPLOYED (RUNNING)", gates: "Container Health Probe Handshake" },
+      Monitor: { desc: "Streams real-time metrics, telemetry graphs, latency measurements, and anomaly alarms.", transition: "RUNNING → MONITORED", gates: "Continuous Telemetry Heartbeat" },
+      Upgrade: { desc: "Performs blue/green zero-downtime rolling upgrades with automated rollback fallback triggers.", transition: "RUNNING → UPGRADED", gates: "Blue/Green Parity Attestation" },
+      Rollback: { desc: "Instantly reverts system state and binaries to previous cryptographically verified release.", transition: "DEGRADED → RESTORED", gates: "Prior Snapshot Cryptographic Verification" },
+      Retire: { desc: "Safely drains active connections, archives persistent audit trails to SHA-256 evidence vault, and releases memory resources.", transition: "RUNNING → RETIRED", gates: "Audit Vault Final Seal" },
     };
 
     const d = descriptions[action];
@@ -776,11 +776,10 @@ export function NoctisSovereignFactoryStudio({
       keyPoints: [
         { label: "Template Identifier", value: tpl.id },
         { label: "Archetype Category", value: tpl.archetype },
-        { label: "Suggested Runtime", value: tpl.suggestedRuntime },
-        { label: "Context Memory Tier", value: `${(tpl.memoryTier / 1000).toFixed(0)}k persistent context window` },
-        { label: "Pre-Configured Capabilities", value: tpl.defaultCapabilities },
+        { label: "Recommended Model", value: tpl.recommendedModel },
+        { label: "Domain", value: tpl.domain },
       ],
-      tags: tpl.defaultCapabilities,
+      tags: [tpl.domain, tpl.archetype],
       actionLabel: "Select Template",
       onAction: () => {
         setSelectedTemplateId(tpl.id);
@@ -1796,15 +1795,15 @@ export function NoctisSovereignFactoryStudio({
                 <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-2">
                   {(
                     [
-                      "CREATE",
-                      "CONFIGURE",
-                      "TEST",
-                      "VALIDATE",
-                      "DEPLOY",
-                      "MONITOR",
-                      "UPGRADE",
-                      "ROLLBACK",
-                      "RETIRE",
+                      "Create",
+                      "Configure",
+                      "Test",
+                      "Validate",
+                      "Deploy",
+                      "Monitor",
+                      "Upgrade",
+                      "Rollback",
+                      "Retire",
                     ] as LifecycleAction[]
                   ).map((act) => {
                     const gov = LIFECYCLE_GOVERNANCE_MAP[act];
@@ -2555,7 +2554,7 @@ export function NoctisSovereignFactoryStudio({
                           <p className="text-xs text-zinc-400 mt-1.5 leading-relaxed">{tpl.description}</p>
                         </div>
                         <div className="mt-3 pt-2 border-t border-white/5 flex items-center justify-between text-[11px] text-zinc-500 font-mono">
-                          <span>Runtime: {tpl.suggestedRuntime}</span>
+                          <span>Model: {tpl.recommendedModel}</span>
                           <span className="text-sky-400 group-hover:underline">Deep Dive →</span>
                         </div>
                       </div>

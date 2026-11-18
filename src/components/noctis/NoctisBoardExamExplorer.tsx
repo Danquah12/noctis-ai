@@ -128,7 +128,7 @@ export function NoctisBoardExamExplorer({
       // 3. Fallback high-yield blueprint tailored to the active exam
       setLiveQuiz({
         exam: examName,
-        domain: topic || (activeExam?.domain || "Clinical & Technical Mastery Blueprint"),
+        domain: topic || (activeExam?.categoryLabel || "Clinical & Technical Mastery Blueprint"),
         vignette: `During a standardized ${examName} examination simulation, the examinee is presented with a patient/system presenting acute instability and conflicting diagnostic telemetry. The candidate must evaluate competing priorities, verify governing protocols, and enact immediate stabilization while eliminating high-frequency test-trap distractors.`,
         question: `Under current ${examName} examination criteria, what is the mandatory first-order action?`,
         options: {

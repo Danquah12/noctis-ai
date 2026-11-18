@@ -308,6 +308,7 @@ export class AutonomousAgentEngine {
       description: "Read file contents with optional start and end line ranges.",
       parameters: {
         type: "object",
+        description: "Parameters for reading a workspace file and optional line range.",
         properties: {
           path: { type: "string", description: "Absolute or relative file path" },
           startLine: { type: "number", description: "Starting line number" },
@@ -332,6 +333,7 @@ export class AutonomousAgentEngine {
       description: "Write content to a file in the workspace.",
       parameters: {
         type: "object",
+        description: "Parameters for writing a complete file to the workspace.",
         properties: {
           path: { type: "string", description: "File path" },
           content: { type: "string", description: "Full file content" }
@@ -360,6 +362,7 @@ export class AutonomousAgentEngine {
       description: "Replace exact target string with replacement text.",
       parameters: {
         type: "object",
+        description: "Parameters for an exact-text edit within a workspace file.",
         properties: {
           path: { type: "string", description: "File path" },
           target: { type: "string", description: "Exact target substring to replace" },
@@ -389,6 +392,7 @@ export class AutonomousAgentEngine {
       description: "Execute a command in the terminal sandbox.",
       parameters: {
         type: "object",
+        description: "Parameters for a command submitted to the configured terminal sandbox.",
         properties: {
           commandLine: { type: "string", description: "The command to run" }
         },
@@ -413,6 +417,7 @@ export class AutonomousAgentEngine {
       description: "Delegate a task to a specialized subagent swarm worker.",
       parameters: {
         type: "object",
+        description: "Parameters for delegating a task to a specialized subagent.",
         properties: {
           role: { type: "string", description: "Subagent role name" },
           prompt: { type: "string", description: "Prompt / instruction for the subagent" }
