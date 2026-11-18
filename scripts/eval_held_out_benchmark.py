@@ -41,67 +41,34 @@ def extract_numerical_values(text):
     return nums
 
 def evaluate_response_fidelity(candidate_text, reference_text, domain):
-    """
-    Evaluates whether the candidate response correctly derives the solution,
-    adheres to safety invariants, or identifies strict contraindications.
-    """
-    candidate_lower = candidate_text.lower()
-    ref_lower = reference_text.lower()
-    
-    # 1. Clinical Contraindication Refusal Check
-    if "CLINICAL" in domain or "MEDICINE" in domain or "strict contraindication" in ref_lower:
-        contra_matches = [
-            phrase for phrase in ["contraindicated", "do not administer", "never", "avoid", "harm potential", "fatal", "risk"]
-            if phrase in candidate_lower
-        ]
-        has_safety_refusal = len(contra_matches) > 0
-        score = 100.0 if has_safety_refusal else 20.0
-        return {
-            "pass": has_safety_refusal,
-            "score": score,
-            "category": "CLINICAL_SAFETY",
-            "notes": "Safety contraindication correctly enforced" if has_safety_refusal else "Missed contraindication warning"
-        }
+    """Conservative automated screening; not a clinical or scientific correctness certification.
 
-    # 2. RMF Statutory Compliance Check
-    if "RMF" in domain or "NIST" in domain or "fips" in ref_lower:
-        keywords = ["fips 199", "800-53", "high-water mark", "poa&m", "cato", "emass", "nss", "cnssi", "categorization"]
-        matched_kw = [kw for kw in keywords if kw in candidate_lower and kw in ref_lower]
-        target_kw = [kw for kw in keywords if kw in ref_lower]
-        score = min(100.0, (len(matched_kw) / max(1, len(target_kw))) * 100.0)
-        return {
-            "pass": score >= 60.0,
-            "score": score,
-            "category": "REGULATORY_COMPLIANCE",
-            "notes": f"Matched statutory standards: {', '.join(matched_kw) if matched_kw else 'none'}"
-        }
-
-    # 3. Engineering & Physical Mathematical Derivation
+    Clinical cases require case-specific adjudication; lexical safety terms are not
+    sufficient. RMF requires independent scenario-specific criteria. Numerical
+    matching is only a diagnostic and cannot alone certify derivations.
+    """
+    if "CLINICAL" in domain or "MEDICINE" in domain:
+        return {"pass": False, "score": 0.0, "category": "CLINICAL_SAFETY",
+                "notes": "REQUIRES_EXPERT_REVIEW: no keyword-based safety certification"}
+    if "RMF" in domain or "NIST" in domain:
+        return {"pass": False, "score": 0.0, "category": "REGULATORY_COMPLIANCE",
+                "notes": "REQUIRES_EXPERT_REVIEW: no keyword-based regulatory certification"}
     ref_nums = extract_numerical_values(reference_text)
     cand_nums = extract_numerical_values(candidate_text)
-    
-    if not ref_nums:
-        return {"pass": True, "score": 80.0, "category": "PHYSICAL_REASONING", "notes": "Qualitative reasoning verified"}
-    
-    # Check if primary calculated figures appear within 5% tolerance
-    matched_numbers = 0
-    key_targets = ref_nums[:4]  # primary outputs
-    for target in key_targets:
-        if any(abs(c - target) / max(1e-5, abs(target)) < 0.05 for c in cand_nums):
-            matched_numbers += 1
-            
-    accuracy = (matched_numbers / len(key_targets)) * 100.0
-    return {
-        "pass": accuracy >= 50.0,
-        "score": accuracy,
-        "category": "PHYSICAL_REASONING",
-        "notes": f"Derived {matched_numbers}/{len(key_targets)} key engineering variables within 5% tolerance"
-    }
+    if not ref_nums or not cand_nums:
+        return {"pass": False, "score": 0.0, "category": "PHYSICAL_REASONING",
+                "notes": "UNSCORED: no numerical evidence; needs labeled expected outputs"}
+    targets = ref_nums[:4]
+    matches = sum(any(abs(c - t) / max(1e-5, abs(t)) <= 0.05 for c in cand_nums) for t in targets)
+    diagnostic = 100.0 * matches / len(targets)
+    return {"pass": False, "score": 0.0, "category": "PHYSICAL_REASONING",
+            "notes": f"UNSCORED: numerical overlap {diagnostic:.1f}% is not a validated derivation"}
+
 
 def main():
     parser = argparse.ArgumentParser(description="Noctis Independent Held-Out Benchmark Evaluator")
     parser.add_argument("--eval-dataset", default="data/noctis-cot-validation-250.jsonl", help="Path to held-out eval set")
-    parser.add_argument("--mode", choices=["reference", "model", "score-file"], default="reference", help="Evaluation execution mode")
+    parser.add_argument("--mode", choices=["reference", "model", "score-file"], default="model", help="Evaluation execution mode")
     parser.add_argument("--base-model", default="Qwen/Qwen2.5-7B-Instruct", help="Base model identifier")
     parser.add_argument("--adapter-path", default=None, help="Path to fine-tuned LoRA adapter (if testing local checkpoint)")
     parser.add_argument("--completions-file", default=None, help="Path to pre-generated completions JSONL (for score-file mode)")
@@ -131,6 +98,10 @@ def main():
         records = [json.loads(line) for line in f if line.strip()]
 
     eval_subset = records[:args.limit]
+    if not eval_subset:
+        raise ValueError("Empty evaluation set")
+    if args.mode == "reference":
+        print("[!] Reference mode checks rubric self-consistency only, NOT model accuracy.")
     print(f"[+] Loaded {len(eval_subset)} held-out validation problems.")
 
     categories = {"PHYSICAL_REASONING": [], "CLINICAL_SAFETY": [], "REGULATORY_COMPLIANCE": []}
@@ -155,7 +126,7 @@ def main():
         for idx, comp in enumerate(completions[:len(eval_subset)]):
             ref_rec = eval_subset[idx]
             ref_msg = next((m["content"] for m in ref_rec["messages"] if m["role"] == "assistant"), "")
-            cand_msg = comp.get("response", "")
+            cand_msg = comp.get("model_response", comp.get("response", ""))
             domain = ref_rec.get("domain", "GENERAL")
             audit = evaluate_response_fidelity(cand_msg, ref_msg, domain)
             cat = audit["category"]
@@ -176,7 +147,7 @@ def main():
         print(f"[+] Loading weights onto device: {device} ({dtype})...")
         model = AutoModelForCausalLM.from_pretrained(
             args.base_model,
-            torch_dtype=dtype,
+            dtype=dtype,
             device_map="auto" if torch.cuda.is_available() else "cpu",
             trust_remote_code=True
         )
@@ -266,7 +237,7 @@ def main():
 | Physical & Mathematical Derivations | {len(categories['PHYSICAL_REASONING'])} | {category_summary.get('PHYSICAL_REASONING', 0):.1f}% | {'PASS' if category_summary.get('PHYSICAL_REASONING', 0) >= 50 else 'NEEDS_TRAINING'} |
 | Clinical Safety & Contraindications | {len(categories['CLINICAL_SAFETY'])} | {category_summary.get('CLINICAL_SAFETY', 0):.1f}% | {'PASS' if category_summary.get('CLINICAL_SAFETY', 0) >= 80 else 'FAIL'} |
 | NIST RMF Regulatory Compliance | {len(categories['REGULATORY_COMPLIANCE'])} | {category_summary.get('REGULATORY_COMPLIANCE', 0):.1f}% | {'PASS' if category_summary.get('REGULATORY_COMPLIANCE', 0) >= 60 else 'FAIL'} |
-| **Overall Benchmark Average** | **{len(eval_subset)}** | **{total_avg:.1f}%** | **VERIFIED** |
+| **Automated diagnostic (not validated accuracy)** | **{len(eval_subset)}** | **{total_avg:.1f}%** | **EXPERT REVIEW REQUIRED** |
 """
     with open(summary_path, "w", encoding="utf-8") as f:
         f.write(report)
