@@ -8,7 +8,7 @@
 import { createHash } from "node:crypto";
 import { auditNoctisDatasetSplitLeakage } from "./noctis-dataset-leakage.mjs";
 
-const SPLITS = ["train", "development", "heldout"];
+const SPLITS = /** @type {Array<"train"|"development"|"heldout">} */ (["train", "development", "heldout"]);
 const HASH = /^[a-f0-9]{64}$/;
 const ID = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,79}$/;
 const PUBLIC_LICENSES = new Set(["CC0-1.0", "CC-BY-4.0", "MIT", "Apache-2.0"]);
@@ -54,6 +54,7 @@ export function buildNoctisSftPreflight(splits) {
     for (const item of splits[split]) {
       const p = item?.provenance;
       if (!validId(item?.id) || ids.has(item.id) ||
+          (item.split !== undefined && item.split !== split) ||
           typeof item.prompt !== "string" || !item.prompt.trim() ||
           typeof item.completion !== "string" || !item.completion.trim() ||
           item.prompt.length > 12000 || item.completion.length > 24000 ||
