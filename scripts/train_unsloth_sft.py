@@ -154,11 +154,28 @@ def main():
     model.print_trainable_parameters()
 
     # 4. Load Datasets
+    # The external 250-question benchmark is a LOCKED TEST SET.
+    # Never use it for validation loss, checkpoint selection, or early stopping.
     raw_train = load_dataset("json", data_files=train_file, split="train")
-    raw_eval = load_dataset("json", data_files=eval_file, split="train")
-
-    train_data = raw_train.map(lambda ex: format_chatml_for_sft(ex, tokenizer))
-    eval_data = raw_eval.map(lambda ex: format_chatml_for_sft(ex, tokenizer))
+    import hashlib
+    import re
+    def split_group(row):
+        prompt = next((m.get("content", "") for m in row["messages"] if m.get("role") == "user"), "")
+        clinical_case = re.search(r"NH-[A-Z]+-\\d+", prompt.upper())
+        if clinical_case:
+            return clinical_case.group(0)
+        # Group numerically varied variants of the same synthetic question template.
+        return re.sub(r"\\b\\d+(?:\\.\\d+)?\\b", "<N>", prompt.lower())
+    groups = [split_group(raw_train[i]) for i in range(len(raw_train))]
+    eval_indices = [i for i, g in enumerate(groups)
+                    if int(hashlib.sha256(g.encode()).hexdigest()[:8], 16) % 10 == 0]
+    train_indices = [i for i in range(len(raw_train)) if i not in set(eval_indices)]
+    if not eval_indices or not train_indices:
+        raise ValueError("Grouped training/validation split is empty; revise split policy.")
+    train_data = raw_train.select(train_indices).map(lambda ex: format_chatml_for_sft(ex, tokenizer))
+    eval_data = raw_train.select(eval_indices).map(lambda ex: format_chatml_for_sft(ex, tokenizer))
+    print(f"[+] Internal grouped split: {len(train_data)} train / {len(eval_data)} validation.")
+    print("[+] External 250-case test set remains untouched until final evaluation.")
 
     # 5. Current TRL API: SFTConfig owns text field and sequence length.
     # Pin dependencies in the GPU image and fail explicitly if incompatible.
