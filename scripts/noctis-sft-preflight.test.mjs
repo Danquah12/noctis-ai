@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { test } from "node:test";
 import { buildNoctisSftPreflight } from "../src/lib/noctis-sft-preflight.mjs";
+import { prepareNoctisInternalDataset } from "../src/lib/noctis-internal-dataset.mjs";
 
 const sha = s => createHash("sha256").update(s).digest("hex");
 const row = (id, group, prompt, overrides = {}) => {
@@ -127,4 +128,34 @@ test("returned manifests are stable for row-order changes", () => {
   s.train.reverse();
   const second = buildNoctisSftPreflight(s);
   assert.deepEqual(first.manifest, second.manifest);
+});
+
+test("serialized approved examples carry a fingerprint of the actual trimmed export", () => {
+  const p = "  Explain a tested algorithm.  ";
+  const c = "  A reviewed answer with explicit, deterministic behavior.  ";
+  const data = prepareNoctisInternalDataset({
+    sources: [{
+      id: "original", kind: "project_authored", license_id: "NOCTIS-ORIGINAL",
+      usage_rights: "model_training", training_allowed: true, approved: true,
+      reviewed_by: "source-reviewer",
+    }],
+    examples: [{
+      id: "prepared-1", source_id: "original", prompt: p, completion: c,
+      validation: {
+        kind: "independent_review", passed: true,
+        verified_by: "answer-reviewer", reference: "internal-test-2026",
+      },
+    }],
+  });
+  const saved = Object.values(data.splits).flat()[0];
+  assert.ok(saved);
+  assert.equal(saved.prompt, p.trim());
+  assert.equal(saved.completion, c.trim());
+  assert.equal(saved.provenance.example_sha256, sha(saved.prompt + "\n" + saved.completion));
+});
+
+test("row split metadata must match the containing partition", () => {
+  const s = sample();
+  s.train[0].split = "heldout";
+  assert.throws(() => buildNoctisSftPreflight(s), /invalid_or_unverifiable/);
 });
