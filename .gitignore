@@ -24,3 +24,17 @@ backups
 pglite.data
 *.local
 __pycache__/
+
+# Machine Learning Checkpoints & Weights
+models/
+lora-weights/
+checkpoints/
+runs/
+wandb/
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.gguf
+*.onnx
+nohup.out
