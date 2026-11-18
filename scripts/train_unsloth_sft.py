@@ -182,43 +182,74 @@ def main():
     print(f"[+] Internal grouped split: {len(train_data)} train / {len(eval_data)} internal validation.")
     print("[+] External 250-case benchmark remains completely locked until independent post-training evaluation.")
 
-    # 5. Training Arguments with Cross-Version Compatibility
+    # 5. SFTConfig Interface (Standard in modern TRL 0.11+)
     bf16_supported = torch.cuda.is_available() and torch.cuda.is_bf16_supported()
-    args_dict = dict(
-        output_dir=output_dir,
-        num_train_epochs=args.epochs,
-        per_device_train_batch_size=args.batch_size,
-        gradient_accumulation_steps=args.grad_accum,
-        learning_rate=args.lr,
-        lr_scheduler_type="cosine",
-        warmup_ratio=0.03,
-        logging_steps=10,
-        save_strategy="steps",
-        save_steps=100,
-        save_total_limit=2,
-        fp16=not bf16_supported,
-        bf16=bf16_supported,
-        optim="paged_adamw_8bit" if torch.cuda.is_available() else "adamw_torch",
-        report_to="none",
-    )
     try:
-        training_args = TrainingArguments(eval_strategy="steps", eval_steps=50, **args_dict)
-    except TypeError:
-        training_args = TrainingArguments(evaluation_strategy="steps", eval_steps=50, **args_dict)
+        from trl import SFTConfig
+        training_args = SFTConfig(
+            output_dir=output_dir,
+            num_train_epochs=args.epochs,
+            per_device_train_batch_size=args.batch_size,
+            gradient_accumulation_steps=args.grad_accum,
+            learning_rate=args.lr,
+            lr_scheduler_type="cosine",
+            warmup_ratio=0.03,
+            logging_steps=10,
+            save_strategy="steps",
+            save_steps=100,
+            save_total_limit=2,
+            fp16=not bf16_supported,
+            bf16=bf16_supported,
+            optim="paged_adamw_8bit" if torch.cuda.is_available() else "adamw_torch",
+            report_to="none",
+            dataset_text_field="text",
+            max_seq_length=args.max_seq_length,
+            packing=False,
+            eval_strategy="steps",
+            eval_steps=50,
+        )
+    except (ImportError, TypeError):
+        args_dict = dict(
+            output_dir=output_dir,
+            num_train_epochs=args.epochs,
+            per_device_train_batch_size=args.batch_size,
+            gradient_accumulation_steps=args.grad_accum,
+            learning_rate=args.lr,
+            lr_scheduler_type="cosine",
+            warmup_ratio=0.03,
+            logging_steps=10,
+            save_strategy="steps",
+            save_steps=100,
+            save_total_limit=2,
+            fp16=not bf16_supported,
+            bf16=bf16_supported,
+            optim="paged_adamw_8bit" if torch.cuda.is_available() else "adamw_torch",
+            report_to="none",
+        )
+        try:
+            training_args = TrainingArguments(eval_strategy="steps", eval_steps=50, **args_dict)
+        except TypeError:
+            training_args = TrainingArguments(evaluation_strategy="steps", eval_steps=50, **args_dict)
 
-    # 6. Initialize Trainer with Cross-Version Compatibility
-    trainer_kwargs = dict(
-        model=model,
-        train_dataset=train_data,
-        eval_dataset=eval_data,
-        dataset_text_field="text",
-        max_seq_length=args.max_seq_length,
-        args=training_args,
-    )
+    # 6. Initialize Trainer
     try:
-        trainer = SFTTrainer(tokenizer=tokenizer, **trainer_kwargs)
+        trainer = SFTTrainer(
+            model=model,
+            train_dataset=train_data,
+            eval_dataset=eval_data,
+            processing_class=tokenizer,
+            args=training_args,
+        )
     except TypeError:
-        trainer = SFTTrainer(processing_class=tokenizer, **trainer_kwargs)
+        trainer = SFTTrainer(
+            model=model,
+            train_dataset=train_data,
+            eval_dataset=eval_data,
+            dataset_text_field="text",
+            max_seq_length=args.max_seq_length,
+            tokenizer=tokenizer,
+            args=training_args,
+        )
 
     print("[+] Starting authentic GPU model weight training...")
     start_time = time.time()

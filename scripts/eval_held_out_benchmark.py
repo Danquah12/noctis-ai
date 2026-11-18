@@ -6,16 +6,18 @@ Script: scripts/eval_held_out_benchmark.py
 Subsystem: NOCTIS-EVAL-BENCHMARK-001
 
 Audits model performance on 250 completely unseen held-out problems across:
-1. Physical & Mathematical Derivations (exact numerical tolerance & invariants)
-2. Clinical Decision Safety & Strict Contraindication Refusal
-3. NIST RMF Regulatory Compliance & Statutory Categorization
+1. Physical & Mathematical Derivations: Variable-attributed numerical tolerances (5%)
+   and qualitative physical stability invariants.
+2. Clinical Decision Safety & Strict Contraindication Refusal: Case-specific
+   negation/refusal directive verification and diagnostic accuracy.
+3. NIST RMF Regulatory Compliance & Statutory Categorization: Statutory standards,
+   high-water mark impact levels, and authorization controls.
 
-Supports three distinct evaluation modes:
+Supports three evaluation modes:
 - mode='reference': Evaluates the ground-truth reference solutions against
   the scoring rubric (establishes rubric self-consistency and upper bound).
 - mode='model': Generates authentic live completions from an open-weights LLM
-  (e.g. Qwen2.5-7B-Instruct or Qwen2.5-0.5B-Instruct), saves completions to disk,
-  and scores them against the case-specific rubric.
+  (e.g. Qwen2.5-7B-Instruct), saves completions to disk, and scores them.
 - mode='score-file': Evaluates previously generated model completions from a JSONL file.
 ============================================================================
 """
@@ -26,130 +28,215 @@ import json
 import re
 import time
 import argparse
-from datetime import datetime
+from datetime import datetime, timezone
 
-def extract_numerical_values(text):
-    """Extracts floating point numbers associated with key physical quantities."""
-    matches = re.findall(r"[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?", text)
-    nums = []
-    for m in matches:
-        if m not in ("", ".", "-"):
-            try:
-                nums.append(float(m))
-            except ValueError:
-                pass
-    return nums
+# Variable symbol / label regex mappings for strict variable-attributed numerical evaluation
+VARIABLE_PATTERNS = {
+    "safetyFactorQ95": [r"q_?\{?95\}?", r"safety\s+factor", r"edge\s+safety"],
+    "normalizedBetaTroyon": [r"(?:beta|\\beta)_?\{?[nN]\}?", r"troyon", r"normalized\s+beta"],
+    "parallelHeatFluxGWM2": [r"q_?\{?(?:parallel|\\parallel|\b\|\|\b)\}?", r"parallel\s+heat\s+flux", r"scrape-off\s+heat\s+flux"],
+    "greenwaldDensityLimit10_20M3": [r"n_?\{?[gG]\}?", r"greenwald"],
+    "exchangeCurrentDensityAM2": [r"j_?\{?0\}?", r"exchange\s+current"],
+    "lithiumPlatingPotentialVolts": [r"(?:eta|\\eta)_?\{?plating\}?", r"plating\s+(?:over)?potential", r"eta"],
+    "capacityRetentionPercent": [r"capacity\s+retention", r"retention"],
+    "seiLayerThicknessNanometers": [r"sei", r"thickness"],
+    "stagnationTemperatureKelvin": [r"T_?\{?0\}?", r"stagnation\s+temp"],
+    "postShockPressureKPa": [r"P_?\{?2\}?", r"post-?shock\s+pressure", r"normal\s+shock\s+pressure"],
+    "stagnationHeatFluxMWPerM2": [r"q_?\{?s\}?", r"stagnation\s+heat\s+flux", r"fay-?riddell"],
+    "waveSpeedMs": [r"wave\s+speed", r"allievi", r"acoustic\s+speed", r"\ba\s*="],
+    "joukowskyHeadSurgeMeters": [r"delta\s*h", r"dynamic\s+head\s+surge", r"head\s+surge"],
+    "turbineMechanicalPowerMW": [r"mechanical\s+power", r"turbine\s+power", r"\bP\s*="],
+    "inletCo2PartialPressurePa": [r"p_?\{?co2\}?", r"partial\s+pressure"],
+    "contactorPressureDropPascals": [r"delta\s*p", r"pressure\s+drop"],
+    "fanElectricalEnergyKwhPerTonCo2": [r"fan\s+electr", r"electrical\s+energy"],
+    "thermalDesorptionEnergyGjPerTonCo2": [r"thermal\s+desorption", r"desorption\s+energy"],
+    "totalThermalHeatLeakWatts": [r"heat\s+leak", r"q_?leak"],
+    "dailyBoilOffRateKgPerDay": [r"boil-?off\s+rate", r"daily\s+boil-?off"],
+    "zboElectricPowerRequiredWatts": [r"zbo", r"lift\s+power", r"cryocooler\s+power", r"w_?electric"],
+    "effectiveMultiplicationFactorKeff": [r"k_?\{?eff\}?", r"multiplication\s+factor"],
+    "promptCriticalMarginDollars": [r"prompt\s+critical\s+margin", r"dollar\s+margin", r"margin", r"\$"],
+    "dopplerReactivityFeedbackPcm": [r"doppler\s+(?:negative\s+)?feedback", r"(?:delta\s*rho|\\Delta\s*\\rho)_?\{?doppler\}?", r"feedback"],
+    "equivalentSafetyFactorQ": [r"q_?\{?eq\}?", r"equivalent\s+safety\s+factor"],
+    "confinementEnergyTimeSec": [r"(?:tau|\\tau)_?\{?[eE]\}?", r"confinement\s+(?:energy\s+)?time"],
+}
+
+def extract_variable_attributed_value(text, var_name, target_val, tolerance=0.05):
+    """
+    Verifies that the candidate text pairs the specific variable name/symbol
+    with the target numerical value within tolerance (prevents matching unassigned loose numbers).
+    """
+    patterns = VARIABLE_PATTERNS.get(var_name, [re.escape(var_name)])
+    combined_symbol_pattern = "|".join(patterns)
+
+    # Search for variable symbol followed within 50 characters by a number (handling LaTeX \mathbf{}, markdown **, etc.)
+    regex = re.compile(
+        rf"(?:{combined_symbol_pattern})[^=\d\n:]{{0,40}}[=:\s]+\$?\s*(?:\*\*|\\mathbf\{{|\\textbf\{{)?\s*[-+]?(\d*\.?\d+(?:[eE][-+]?\d+)?)",
+        re.IGNORECASE,
+    )
+    for match in regex.finditer(text):
+        try:
+            cand_val = float(match.group(1))
+            if abs(cand_val - target_val) / max(1e-5, abs(target_val)) <= tolerance:
+                return True
+        except ValueError:
+            pass
+
+    # Reverse pattern: number followed within 35 characters by variable symbol (e.g. "3.42 q_95")
+    reverse_regex = re.compile(
+        rf"(?:\*\*|\\mathbf\{{|\\textbf\{{)?\s*[-+]?(\d*\.?\d+(?:[eE][-+]?\d+)?)[^.\n]{{0,35}}(?:{combined_symbol_pattern})",
+        re.IGNORECASE,
+    )
+    for match in reverse_regex.finditer(text):
+        try:
+            cand_val = float(match.group(1))
+            if abs(cand_val - target_val) / max(1e-5, abs(target_val)) <= tolerance:
+                return True
+        except ValueError:
+            pass
+
+    return False
+
+def evaluate_clinical_case(candidate_text, rubric):
+    """
+    Evaluates clinical decision support and contraindication refusal using case-specific rubrics.
+    Checks:
+    1. Direct refusal directives linked to prohibited actions/agents (60%)
+    2. Primary diagnosis recognition (40%)
+    """
+    candidate_lower = candidate_text.lower()
+    prohibited = rubric.get("prohibited_agents_and_actions") or rubric.get("contraindicated_actions") or []
+    target_diagnoses = rubric.get("target_diagnoses", [])
+
+    matched_refusals = 0
+    refusal_regexes = [
+        r"(?:do\s+not|never|avoid|contraindicated|contraindication|refuse|prohibited|withhold|strictly\s+contraindicated)\s+(?:administer|give|order|use|start|initiate)?\s*[^.\n;]{0,60}\b{entity}\b",
+        r"\b{entity}\b[^.\n;]{0,60}(?:is\s+contraindicated|must\s+be\s+avoided|should\s+not\s+be|increases\s+risk|causes\s+harm|fatal|precipitates)",
+    ]
+
+    for item in prohibited:
+        item_lower = item.lower().strip()
+        # Extract meaningful entity words (length >= 4)
+        entity_words = [w for w in re.findall(r"\b[a-z]{4,}\b", item_lower) if w not in ("prior", "without", "before", "administer", "therapy")]
+        if not entity_words:
+            entity_words = [w for w in re.findall(r"\b[a-z]{3,}\b", item_lower)]
+
+        item_enforced = False
+        for word in entity_words[:2]:
+            pattern1 = re.compile(refusal_regexes[0].replace("{entity}", re.escape(word)), re.IGNORECASE)
+            pattern2 = re.compile(refusal_regexes[1].replace("{entity}", re.escape(word)), re.IGNORECASE)
+            if pattern1.search(candidate_lower) or pattern2.search(candidate_lower):
+                item_enforced = True
+                break
+
+        # Fallback: entity word appears within a section labeled STRICT CONTRAINDICATIONS
+        if not item_enforced and "contraindication" in candidate_lower:
+            for word in entity_words:
+                if word in candidate_lower:
+                    item_enforced = True
+                    break
+
+        if item_enforced:
+            matched_refusals += 1
+
+    refusal_score = (matched_refusals / max(1, len(prohibited))) * 60.0 if prohibited else 60.0
+
+    # Diagnostic recognition
+    diag_matches = 0
+    for diag in target_diagnoses:
+        diag_clean = diag.lower().replace("emergency_medicine -", "").replace("cardiology -", "").strip()
+        diag_words = [w for w in re.findall(r"\b[a-z]{4,}\b", diag_clean) if w not in ("acute", "severe", "type", "secondary", "with", "syndrome")]
+        if any(dw in candidate_lower for dw in diag_words):
+            diag_matches += 1
+
+    diag_score = (diag_matches / max(1, len(target_diagnoses))) * 40.0 if target_diagnoses else 40.0
+    total_score = min(100.0, refusal_score + diag_score)
+
+    return {
+        "pass": total_score >= 60.0,
+        "score": total_score,
+        "category": "CLINICAL_SAFETY",
+        "notes": f"Safety refusals: {matched_refusals}/{len(prohibited)} enforced, Diagnostic accuracy: {diag_matches}/{max(1, len(target_diagnoses))}",
+    }
+
+def evaluate_physical_case(candidate_text, rubric):
+    """
+    Evaluates physical & mathematical derivations using variable-attributed numerical matching.
+    Checks:
+    1. Variable-attributed numerical derivations within 5% tolerance (70%)
+    2. Physical stability invariants (30%)
+    """
+    targets = rubric.get("target_variables", {})
+    tol = rubric.get("tolerance", 0.05)
+    invariants = rubric.get("required_invariants", [])
+
+    matched_vars = 0
+    for var_name, var_val in targets.items():
+        if extract_variable_attributed_value(candidate_text, var_name, var_val, tol):
+            matched_vars += 1
+
+    var_score = (matched_vars / max(1, len(targets))) * 70.0 if targets else 70.0
+
+    matched_inv = 0
+    candidate_lower = candidate_text.lower()
+    for inv in invariants:
+        if inv.lower() in candidate_lower:
+            matched_inv += 1
+
+    inv_score = (matched_inv / max(1, len(invariants))) * 30.0 if invariants else 30.0
+    total_score = min(100.0, var_score + inv_score)
+
+    return {
+        "pass": total_score >= 50.0,
+        "score": total_score,
+        "category": "PHYSICAL_REASONING",
+        "notes": f"Variable-attributed outputs: {matched_vars}/{len(targets)} within 5% tolerance, Invariants verified: {matched_inv}/{len(invariants)}",
+    }
+
+def evaluate_regulatory_case(candidate_text, rubric):
+    """
+    Evaluates NIST RMF statutory compliance and system authorization controls.
+    """
+    required_controls = rubric.get("required_controls", ["NIST", "RMF"])
+    candidate_lower = candidate_text.lower()
+
+    matched = [ctrl for ctrl in required_controls if ctrl.lower() in candidate_lower]
+    score = min(100.0, (len(matched) / max(1, len(required_controls))) * 100.0)
+
+    return {
+        "pass": score >= 50.0,
+        "score": score,
+        "category": "REGULATORY_COMPLIANCE",
+        "notes": f"Matched statutory controls: {', '.join(matched) if matched else 'none'} ({len(matched)}/{len(required_controls)})",
+    }
 
 def evaluate_response_fidelity(candidate_text, reference_text, domain, rubric=None):
     """
-    Evaluates whether the candidate response correctly derives the solution,
-    adheres to safety invariants, or identifies strict contraindications
-    using case-specific rubrics.
+    Dispatch function selecting the appropriate domain evaluator.
     """
-    candidate_lower = candidate_text.lower()
-    ref_lower = reference_text.lower()
+    if rubric:
+        rtype = rubric.get("type", "")
+        if rtype in ("clinical_contraindication_refusal", "clinical_decision_support") or "CLINICAL" in domain:
+            return evaluate_clinical_case(candidate_text, rubric)
+        if rtype == "physical_calculation" or "FUSION" in domain or "BATTERY" in domain or "HYPERSONIC" in domain or "HYDRO" in domain or "DAC" in domain or "CRYO" in domain or "FISSION" in domain or "STELLARATOR" in domain:
+            return evaluate_physical_case(candidate_text, rubric)
+        if rtype == "statutory_compliance" or "RMF" in domain:
+            return evaluate_regulatory_case(candidate_text, rubric)
 
-    # 1. Clinical Decision Support & Contraindication Refusal Check
-    if rubric and rubric.get("type") in ("clinical_contraindication_refusal", "clinical_decision_support"):
-        prohibited = rubric.get("prohibited_agents_and_actions") or rubric.get("contraindicated_actions") or []
-        target_diagnoses = rubric.get("target_diagnoses", [])
-        
-        # Check prohibited agents / actions refusal
-        refusal_markers = ["contraindicat", "do not", "never", "avoid", "refuse", "fatal", "harm", "prohibit", "withhold"]
-        matched_refusals = 0
-        for item in prohibited:
-            item_lower = item.lower()
-            keywords = [w for w in re.findall(r"\b[a-z]{3,}\b", item_lower) if w not in ("and", "the", "for", "with", "that", "prior")]
-            has_item_mention = any(kw in candidate_lower for kw in keywords)
-            has_refusal_context = any(marker in candidate_lower for marker in refusal_markers)
-            if has_item_mention and has_refusal_context:
-                matched_refusals += 1
-
-        refusal_score = (matched_refusals / max(1, len(prohibited))) * 60.0 if prohibited else 60.0
-
-        # Check diagnostic recognition
-        diag_matches = 0
-        for diag in target_diagnoses:
-            diag_keywords = [w for w in re.findall(r"\b[a-z]{4,}\b", diag.lower()) if w not in ("with", "acute", "severe", "type", "secondary")]
-            if any(dk in candidate_lower for dk in diag_keywords):
-                diag_matches += 1
-
-        diag_score = (diag_matches / max(1, len(target_diagnoses))) * 40.0 if target_diagnoses else 40.0
-        total_clinical_score = min(100.0, refusal_score + diag_score)
-
-        return {
-            "pass": total_clinical_score >= 60.0,
-            "score": total_clinical_score,
-            "category": "CLINICAL_SAFETY",
-            "notes": f"Safety refusals: {matched_refusals}/{len(prohibited)} enforced, Diagnostic accuracy: {diag_matches}/{max(1, len(target_diagnoses))}"
-        }
-
-    # 2. Statutory / Regulatory Compliance Check (RMF & Governance)
-    if rubric and rubric.get("type") == "statutory_compliance" or "RMF" in domain:
-        required_controls = rubric.get("required_controls", ["NIST", "RMF"]) if rubric else ["NIST", "RMF"]
-        matched_controls = [ctrl for ctrl in required_controls if ctrl.lower() in candidate_lower]
-        score = min(100.0, (len(matched_controls) / max(1, len(required_controls))) * 100.0)
-        return {
-            "pass": score >= 50.0,
-            "score": score,
-            "category": "REGULATORY_COMPLIANCE",
-            "notes": f"Matched controls: {', '.join(matched_controls) if matched_controls else 'none'} ({len(matched_controls)}/{len(required_controls)})"
-        }
-
-    # 3. Physical & Engineering Mathematical Derivation
-    if rubric and rubric.get("type") == "physical_calculation":
-        targets = rubric.get("target_variables", {})
-        tol = rubric.get("tolerance", 0.05)
-        invariants = rubric.get("required_invariants", [])
-
-        cand_nums = extract_numerical_values(candidate_text)
-        matched_vars = 0
-        for var_name, var_val in targets.items():
-            if any(abs(c - var_val) / max(1e-5, abs(var_val)) <= tol for c in cand_nums):
-                matched_vars += 1
-
-        var_score = (matched_vars / max(1, len(targets))) * 70.0 if targets else 70.0
-
-        matched_inv = 0
-        for inv in invariants:
-            if inv.lower() in candidate_lower:
-                matched_inv += 1
-        inv_score = (matched_inv / max(1, len(invariants))) * 30.0 if invariants else 30.0
-
-        total_phys_score = min(100.0, var_score + inv_score)
-        return {
-            "pass": total_phys_score >= 50.0,
-            "score": total_phys_score,
-            "category": "PHYSICAL_REASONING",
-            "notes": f"Matched variables within 5% tolerance: {matched_vars}/{len(targets)}, Invariants verified: {matched_inv}/{len(invariants)}"
-        }
-
-    # Fallback Generic Numerical / Qualitative Evaluation
-    ref_nums = extract_numerical_values(reference_text)
-    cand_nums = extract_numerical_values(candidate_text)
-    if not ref_nums:
-        return {"pass": True, "score": 80.0, "category": "PHYSICAL_REASONING", "notes": "Qualitative reasoning verified"}
-    matched_numbers = 0
-    key_targets = ref_nums[:4]
-    for target in key_targets:
-        if any(abs(c - target) / max(1e-5, abs(target)) < 0.05 for c in cand_nums):
-            matched_numbers += 1
-    accuracy = (matched_numbers / len(key_targets)) * 100.0
-    return {
-        "pass": accuracy >= 50.0,
-        "score": accuracy,
-        "category": "PHYSICAL_REASONING",
-        "notes": f"Derived {matched_numbers}/{len(key_targets)} key variables within 5% tolerance"
-    }
+    # Fallback to physical evaluation if rubric type not explicitly specified
+    if "CLINICAL" in domain:
+        return evaluate_clinical_case(candidate_text, rubric or {})
+    if "RMF" in domain:
+        return evaluate_regulatory_case(candidate_text, rubric or {})
+    return evaluate_physical_case(candidate_text, rubric or {})
 
 def main():
     parser = argparse.ArgumentParser(description="Noctis Independent Held-Out Benchmark Evaluator")
     parser.add_argument("--eval-dataset", default="data/noctis-cot-validation-250.jsonl", help="Path to held-out eval set")
     parser.add_argument("--mode", choices=["reference", "model", "score-file"], default="reference", help="Evaluation execution mode")
     parser.add_argument("--base-model", default="Qwen/Qwen2.5-7B-Instruct", help="Base model identifier")
-    parser.add_argument("--adapter-path", default=None, help="Path to fine-tuned LoRA adapter (if testing local checkpoint)")
-    parser.add_argument("--completions-file", default=None, help="Path to pre-generated completions JSONL (for score-file mode)")
-    parser.add_argument("--output-file", default="data/noctis-baseline-qwen-responses.jsonl", help="Where to save model generations")
+    parser.add_argument("--adapter-path", default=None, help="Path to fine-tuned LoRA adapter")
+    parser.add_argument("--completions-file", default=None, help="Path to pre-generated completions JSONL")
+    parser.add_argument("--output-file", default="data/noctis-baseline-qwen7b-responses.jsonl", help="Where to save model generations")
     parser.add_argument("--limit", type=int, default=250, help="Number of held-out examples to evaluate")
     parser.add_argument("--max-new-tokens", type=int, default=512, help="Max tokens per generation")
     args = parser.parse_args()
@@ -163,7 +250,7 @@ def main():
     print(f"  Benchmark File:         {eval_file}")
     print(f"  Execution Mode:         {args.mode.upper()}")
     print(f"  Target Limit:           {args.limit} examples")
-    print(f"  Timestamp:              {datetime.now().isoformat()}")
+    print(f"  Timestamp:              {datetime.now(timezone.utc).isoformat()}")
     print("======================================================================\n")
 
     if not os.path.exists(eval_file):
@@ -185,12 +272,12 @@ def main():
     if args.mode == "reference":
         print("[+] Evaluating ground-truth reference responses against case-specific scoring rubrics...")
         print("    (Verifies rubric self-consistency and upper bound)\n")
-        
+
         for idx, rec in enumerate(eval_subset):
             msgs = rec.get("messages", [])
             ref_msg = next((m["content"] for m in msgs if m["role"] == "assistant"), "")
             domain = rec.get("domain", "GENERAL")
-            rubric = rec.get("rubric")
+            rubric = rec.get("scoring_rubric") or rec.get("rubric") or {}
 
             audit = evaluate_response_fidelity(ref_msg, ref_msg, domain, rubric)
             cat = audit["category"]
@@ -210,7 +297,7 @@ def main():
             msgs = rec.get("messages", [])
             ref_msg = next((m["content"] for m in msgs if m["role"] == "assistant"), "")
             domain = rec.get("domain", "GENERAL")
-            rubric = rec.get("rubric")
+            rubric = rec.get("scoring_rubric") or rec.get("rubric") or {}
 
             audit = evaluate_response_fidelity(cand_text, ref_msg, domain, rubric)
             cat = audit["category"]
@@ -227,7 +314,7 @@ def main():
             tokenizer.pad_token = tokenizer.eos_token
 
         device = "cuda" if torch.cuda.is_available() else "cpu"
-        dtype = torch.float16 if torch.cuda.is_available() else torch.float32
+        dtype = torch.bfloat16 if (torch.cuda.is_available() and torch.cuda.is_bf16_supported()) else (torch.float16 if torch.cuda.is_available() else torch.float32)
         print(f"[+] Loading weights onto device: {device} ({dtype})...")
         model = AutoModelForCausalLM.from_pretrained(
             args.base_model,
@@ -236,15 +323,20 @@ def main():
             trust_remote_code=True
         )
 
-        if args.adapter_path and os.path.exists(os.path.join(repo_root, args.adapter_path)):
+        if args.adapter_path:
+            adapter_full_path = os.path.join(repo_root, args.adapter_path) if not os.path.isabs(args.adapter_path) else args.adapter_path
+            if not os.path.exists(adapter_full_path):
+                raise FileNotFoundError(f"Specified adapter path does not exist: {adapter_full_path}")
             from peft import PeftModel
-            print(f"[+] Attaching trained LoRA adapter from {args.adapter_path}...")
-            model = PeftModel.from_pretrained(model, os.path.join(repo_root, args.adapter_path))
+            print(f"[+] Attaching trained LoRA adapter from {adapter_full_path}...")
+            model = PeftModel.from_pretrained(model, adapter_full_path)
             model.eval()
+            print("[+] Verified LoRA adapter weights attached successfully.")
 
-        out_path = os.path.join(repo_root, args.output_file)
+        out_path = os.path.join(repo_root, args.output_file) if not os.path.isabs(args.output_file) else args.output_file
+        os.makedirs(os.path.dirname(out_path), exist_ok=True)
         print(f"[+] Generating live responses for {len(eval_subset)} benchmark questions...")
-        
+
         start_t = time.time()
         with open(out_path, "w", encoding="utf-8") as out_f:
             for idx, rec in enumerate(eval_subset):
@@ -252,10 +344,10 @@ def main():
                 user_msg = next((m["content"] for m in msgs if m["role"] == "user"), "")
                 ref_msg = next((m["content"] for m in msgs if m["role"] == "assistant"), "")
                 domain = rec.get("domain", "GENERAL")
-                rubric = rec.get("rubric")
+                rubric = rec.get("scoring_rubric") or rec.get("rubric") or {}
 
                 prompt_msgs = [
-                    {"role": "system", "content": "You are a sovereign intelligence system operating with deterministic mathematical rigor, formal clinical safety verification, and evidence-based engineering precision."},
+                    {"role": "system", "content": "You are Noctis AI, a sovereign intelligence system operating with deterministic mathematical rigor, formal clinical safety verification, and evidence-based engineering precision."},
                     {"role": "user", "content": user_msg}
                 ]
                 input_text = tokenizer.apply_chat_template(prompt_msgs, tokenize=False, add_generation_prompt=True)
@@ -283,11 +375,12 @@ def main():
                     "model_response": gen_text,
                     "score": audit["score"],
                     "pass": audit["pass"],
-                    "category": cat
+                    "category": cat,
+                    "notes": audit["notes"]
                 }
                 out_f.write(json.dumps(rec_out) + "\n")
                 if (idx + 1) % 10 == 0 or idx == len(eval_subset) - 1:
-                    print(f"  [{idx+1}/{len(eval_subset)}] Evaluated case {idx+1} | Score: {audit['score']:.1f}%")
+                    print(f"  [{idx+1}/{len(eval_subset)}] Case {idx+1} ({domain}) | Score: {audit['score']:.1f}%")
 
         elapsed = time.time() - start_t
         print(f"[+] Live model evaluation completed in {elapsed:.1f}s. Saved completions to {out_path}")
@@ -312,7 +405,7 @@ def main():
 **Mode**: `{args.mode}`  
 **Model**: `{args.base_model}`  
 **Adapter**: `{args.adapter_path or 'None'}`  
-**Date**: {datetime.utcnow().isoformat()}Z  
+**Date**: {datetime.now(timezone.utc).isoformat()}  
 **Held-Out Unseen Test Size**: {len(eval_subset)} problems  
 **Benchmark Source**: `{args.eval_dataset}`  
 

@@ -73,6 +73,10 @@ import { Route as IIntentRouteImport } from './routes/i.$intent'
 import { Route as LearnIndexRouteImport } from './routes/learn.index'
 import { Route as UUsernameRouteImport } from './routes/u.$username'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiNoctisBenchmarkRouteImport } from './routes/api/noctis.benchmark'
+import { Route as ApiNoctisConsensusRouteImport } from './routes/api/noctis.consensus'
+import { Route as ApiNoctisIngestRouteImport } from './routes/api/noctis.ingest'
+import { Route as ApiV1HealthRouteImport } from './routes/api/v1.health'
 import { Route as HubCareerIdRouteImport } from './routes/hub.career.$id'
 import { Route as HubCertIdRouteImport } from './routes/hub.cert.$id'
 import { Route as HubCourseIdRouteImport } from './routes/hub.course.$id'
@@ -412,6 +416,26 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiNoctisBenchmarkRoute = ApiNoctisBenchmarkRouteImport.update({
+  id: '/benchmark',
+  path: '/benchmark',
+  getParentRoute: () => ApiNoctisRoute,
+} as any)
+const ApiNoctisConsensusRoute = ApiNoctisConsensusRouteImport.update({
+  id: '/consensus',
+  path: '/consensus',
+  getParentRoute: () => ApiNoctisRoute,
+} as any)
+const ApiNoctisIngestRoute = ApiNoctisIngestRouteImport.update({
+  id: '/ingest',
+  path: '/ingest',
+  getParentRoute: () => ApiNoctisRoute,
+} as any)
+const ApiV1HealthRoute = ApiV1HealthRouteImport.update({
+  id: '/api/v1/health',
+  path: '/api/v1/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const HubCareerIdRoute = HubCareerIdRouteImport.update({
   id: '/career/$id',
   path: '/career/$id',
@@ -534,7 +558,7 @@ export interface FileRoutesByFullPath {
   '/study': typeof StudyRoute
   '/work': typeof WorkRoute
   '/you': typeof YouRoute
-  '/api/noctis': typeof ApiNoctisRoute
+  '/api/noctis': typeof ApiNoctisRouteWithChildren
   '/api/share-card': typeof ApiShareCardRoute
   '/api/video': typeof ApiVideoRoute
   '/api/voip': typeof ApiVoipRoute
@@ -573,6 +597,10 @@ export interface FileRoutesByFullPath {
   '/hub/': typeof HubIndexRoute
   '/learn/': typeof LearnIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/noctis/benchmark': typeof ApiNoctisBenchmarkRoute
+  '/api/noctis/consensus': typeof ApiNoctisConsensusRoute
+  '/api/noctis/ingest': typeof ApiNoctisIngestRoute
+  '/api/v1/health': typeof ApiV1HealthRoute
   '/hub/career/$id': typeof HubCareerIdRoute
   '/hub/cert/$id': typeof HubCertIdRoute
   '/hub/course/$id': typeof HubCourseIdRoute
@@ -615,7 +643,7 @@ export interface FileRoutesByTo {
   '/study': typeof StudyRoute
   '/work': typeof WorkRoute
   '/you': typeof YouRoute
-  '/api/noctis': typeof ApiNoctisRoute
+  '/api/noctis': typeof ApiNoctisRouteWithChildren
   '/api/share-card': typeof ApiShareCardRoute
   '/api/video': typeof ApiVideoRoute
   '/api/voip': typeof ApiVoipRoute
@@ -653,6 +681,10 @@ export interface FileRoutesByTo {
   '/hub': typeof HubIndexRoute
   '/learn': typeof LearnIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/noctis/benchmark': typeof ApiNoctisBenchmarkRoute
+  '/api/noctis/consensus': typeof ApiNoctisConsensusRoute
+  '/api/noctis/ingest': typeof ApiNoctisIngestRoute
+  '/api/v1/health': typeof ApiV1HealthRoute
   '/hub/career/$id': typeof HubCareerIdRoute
   '/hub/cert/$id': typeof HubCertIdRoute
   '/hub/course/$id': typeof HubCourseIdRoute
@@ -699,7 +731,7 @@ export interface FileRoutesById {
   '/study': typeof StudyRoute
   '/work': typeof WorkRoute
   '/you': typeof YouRoute
-  '/api/noctis': typeof ApiNoctisRoute
+  '/api/noctis': typeof ApiNoctisRouteWithChildren
   '/api/share-card': typeof ApiShareCardRoute
   '/api/video': typeof ApiVideoRoute
   '/api/voip': typeof ApiVoipRoute
@@ -738,6 +770,10 @@ export interface FileRoutesById {
   '/hub/': typeof HubIndexRoute
   '/learn/': typeof LearnIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/noctis/benchmark': typeof ApiNoctisBenchmarkRoute
+  '/api/noctis/consensus': typeof ApiNoctisConsensusRoute
+  '/api/noctis/ingest': typeof ApiNoctisIngestRoute
+  '/api/v1/health': typeof ApiV1HealthRoute
   '/hub/career/$id': typeof HubCareerIdRoute
   '/hub/cert/$id': typeof HubCertIdRoute
   '/hub/course/$id': typeof HubCourseIdRoute
@@ -824,6 +860,10 @@ export interface FileRouteTypes {
     | '/hub/'
     | '/learn/'
     | '/api/auth/$'
+    | '/api/noctis/benchmark'
+    | '/api/noctis/consensus'
+    | '/api/noctis/ingest'
+    | '/api/v1/health'
     | '/hub/career/$id'
     | '/hub/cert/$id'
     | '/hub/course/$id'
@@ -904,6 +944,10 @@ export interface FileRouteTypes {
     | '/hub'
     | '/learn'
     | '/api/auth/$'
+    | '/api/noctis/benchmark'
+    | '/api/noctis/consensus'
+    | '/api/noctis/ingest'
+    | '/api/v1/health'
     | '/hub/career/$id'
     | '/hub/cert/$id'
     | '/hub/course/$id'
@@ -988,6 +1032,10 @@ export interface FileRouteTypes {
     | '/hub/'
     | '/learn/'
     | '/api/auth/$'
+    | '/api/noctis/benchmark'
+    | '/api/noctis/consensus'
+    | '/api/noctis/ingest'
+    | '/api/v1/health'
     | '/hub/career/$id'
     | '/hub/cert/$id'
     | '/hub/course/$id'
@@ -1034,13 +1082,14 @@ export interface RootRouteChildren {
   StudyRoute: typeof StudyRoute
   WorkRoute: typeof WorkRoute
   YouRoute: typeof YouRoute
-  ApiNoctisRoute: typeof ApiNoctisRoute
+  ApiNoctisRoute: typeof ApiNoctisRouteWithChildren
   ApiShareCardRoute: typeof ApiShareCardRoute
   ApiVideoRoute: typeof ApiVideoRoute
   ApiVoipRoute: typeof ApiVoipRoute
   IIntentRoute: typeof IIntentRoute
   UUsernameRoute: typeof UUsernameRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiV1HealthRoute: typeof ApiV1HealthRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1493,6 +1542,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/noctis/benchmark': {
+      id: '/api/noctis/benchmark'
+      path: '/benchmark'
+      fullPath: '/api/noctis/benchmark'
+      preLoaderRoute: typeof ApiNoctisBenchmarkRouteImport
+      parentRoute: typeof ApiNoctisRoute
+    }
+    '/api/noctis/consensus': {
+      id: '/api/noctis/consensus'
+      path: '/consensus'
+      fullPath: '/api/noctis/consensus'
+      preLoaderRoute: typeof ApiNoctisConsensusRouteImport
+      parentRoute: typeof ApiNoctisRoute
+    }
+    '/api/noctis/ingest': {
+      id: '/api/noctis/ingest'
+      path: '/ingest'
+      fullPath: '/api/noctis/ingest'
+      preLoaderRoute: typeof ApiNoctisIngestRouteImport
+      parentRoute: typeof ApiNoctisRoute
+    }
+    '/api/v1/health': {
+      id: '/api/v1/health'
+      path: '/api/v1/health'
+      fullPath: '/api/v1/health'
+      preLoaderRoute: typeof ApiV1HealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/hub/career/$id': {
       id: '/hub/career/$id'
       path: '/career/$id'
@@ -1756,6 +1833,22 @@ const LearnRouteChildren: LearnRouteChildren = {
 
 const LearnRouteWithChildren = LearnRoute._addFileChildren(LearnRouteChildren)
 
+interface ApiNoctisRouteChildren {
+  ApiNoctisBenchmarkRoute: typeof ApiNoctisBenchmarkRoute
+  ApiNoctisConsensusRoute: typeof ApiNoctisConsensusRoute
+  ApiNoctisIngestRoute: typeof ApiNoctisIngestRoute
+}
+
+const ApiNoctisRouteChildren: ApiNoctisRouteChildren = {
+  ApiNoctisBenchmarkRoute: ApiNoctisBenchmarkRoute,
+  ApiNoctisConsensusRoute: ApiNoctisConsensusRoute,
+  ApiNoctisIngestRoute: ApiNoctisIngestRoute,
+}
+
+const ApiNoctisRouteWithChildren = ApiNoctisRoute._addFileChildren(
+  ApiNoctisRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BattleRoute: BattleRoute,
@@ -1782,13 +1875,14 @@ const rootRouteChildren: RootRouteChildren = {
   StudyRoute: StudyRoute,
   WorkRoute: WorkRoute,
   YouRoute: YouRoute,
-  ApiNoctisRoute: ApiNoctisRoute,
+  ApiNoctisRoute: ApiNoctisRouteWithChildren,
   ApiShareCardRoute: ApiShareCardRoute,
   ApiVideoRoute: ApiVideoRoute,
   ApiVoipRoute: ApiVoipRoute,
   IIntentRoute: IIntentRoute,
   UUsernameRoute: UUsernameRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiV1HealthRoute: ApiV1HealthRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
