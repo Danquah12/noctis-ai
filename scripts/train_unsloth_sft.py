@@ -199,14 +199,23 @@ def main():
         eval_steps=50,
     )
 
-    # 6. Initialize Trainer
-    trainer = SFTTrainer(
-        model=model,
-        train_dataset=train_data,
-        eval_dataset=eval_data if not args.smoke_test else None,
-        processing_class=tokenizer,
-        args=training_args,
-    )
+    # 6. Initialize Trainer (supports both trl tokenizer and processing_class argument conventions)
+    try:
+        trainer = SFTTrainer(
+            model=model,
+            train_dataset=train_data,
+            eval_dataset=eval_data if not args.smoke_test else None,
+            tokenizer=tokenizer,
+            args=training_args,
+        )
+    except TypeError:
+        trainer = SFTTrainer(
+            model=model,
+            train_dataset=train_data,
+            eval_dataset=eval_data if not args.smoke_test else None,
+            processing_class=tokenizer,
+            args=training_args,
+        )
 
     # Snapshot initial trainable weights before optimization
     initial_weights = {}
