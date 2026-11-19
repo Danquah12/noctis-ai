@@ -308,10 +308,12 @@ export async function modelChat(
       ? resolveGroqKey()
       : clientProvider === "xai"
       ? resolveXaiKey()
+      : clientProvider === "ollama" || clientProvider === "vllm" || clientProvider === "noctis-local"
+      ? "local-bearer-token"
       : "");
 
-  if (clientResolvedKey && clientProvider && clientProvider !== "noctis") {
-    const key = clientResolvedKey;
+  if ((clientResolvedKey || clientProvider === "ollama" || clientProvider === "vllm" || clientProvider === "noctis-local") && clientProvider && clientProvider !== "noctis") {
+    const key = clientResolvedKey || "local-bearer-token";
     const provider = clientProvider;
     const userModel = clientBrain?.model?.trim();
 
@@ -351,6 +353,12 @@ export async function modelChat(
           ? "https://api.groq.com/openai/v1/chat/completions"
           : provider === "xai"
           ? "https://api.x.ai/v1/chat/completions"
+          : provider === "ollama"
+          ? `${(clientBrain?.endpoint || process.env.OLLAMA_HOST || "http://localhost:11434").replace(/\/+$/, "")}/v1/chat/completions`
+          : provider === "vllm"
+          ? `${(clientBrain?.endpoint || process.env.VLLM_HOST || "http://localhost:8000").replace(/\/+$/, "")}/v1/chat/completions`
+          : provider === "noctis-local"
+          ? `${(clientBrain?.endpoint || process.env.NOCTIS_LOCAL_INFERENCE_URL || "http://localhost:8000").replace(/\/+$/, "")}/v1/chat/completions`
           : provider === "custom" && clientBrain?.endpoint
           ? (clientBrain.endpoint.endsWith("/chat/completions") ? clientBrain.endpoint : `${clientBrain.endpoint.replace(/\/+$/, "")}/chat/completions`)
           : "https://api.openai.com/v1/chat/completions";
@@ -361,6 +369,10 @@ export async function modelChat(
           ? "llama-3.3-70b-versatile"
           : provider === "xai"
           ? "grok-3-mini"
+          : provider === "ollama"
+          ? "noctis-7b"
+          : provider === "vllm" || provider === "noctis-local"
+          ? "noctis-7b-v1.0"
           : provider === "custom"
           ? "llama3.2"
           : "gpt-4o");

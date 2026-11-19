@@ -3617,7 +3617,7 @@ export function handleNaturalHealthQuery(
     /\b(build|develop|create|code|design|website|web\s*site|tourism|tourist|travel\s+guide|itinerary|attractions|hotel|sightseeing|regions?\s+of\s+ghana|frontend|backend)\b/i.test(
       q
     ) &&
-    !/\b(fever|chills|patient|diagnos[eb]|sickness|illness|malaria|infection|disease|symptoms?|clinical|medical|hospital|doctor|physician|health\s+app|health\s+website)\b/i.test(
+    !/\b(fever|chills|patient|diagnos[eb]|sickness|illness|malaria|infection|disease|symptoms?|clinical|medical|hospital|doctor|physician|health\s+app|health\s+website|nh[-_\s]*arch|component\s+architecture)\b/i.test(
       q
     )
   ) {
