@@ -37,7 +37,17 @@ function run() {
   const { rejected, ...summary } = result.summary;
   const byCode = {};
   for (const item of rejected) byCode[item.code] = (byCode[item.code] || 0) + 1;
+  // Fingerprint exact on-disk JSONL bytes before writing. These hashes provide
+  // integrity checks across offline preparation steps, not a signature or
+  // independent license/privacy approval.
+  const splitBytes = Object.fromEntries(["train", "development", "heldout"].map(split => {
+    const rows = result.splits[split].map(item => JSON.stringify({ ...item, split }));
+    return [split, rows.length ? rows.join("\n") + "\n" : ""];
+  }));
+  const splitHashes = Object.fromEntries(Object.entries(splitBytes).map(([split, body]) =>
+    [split, createHash("sha256").update(body, "utf8").digest("hex")]));
   const report = {
+    split_sha256: splitHashes,
     mode: writes ? "exported_private_local_files" : "dry_run_no_file_writes",
     schema: result.schema, summary,
     reject_codes: byCode,
@@ -51,8 +61,7 @@ function run() {
   }
   const dir = mkdtempSync(join(tmpdir(), "noctis-private-data-"));
   for (const split of ["train", "development", "heldout"]) {
-    const rows = result.splits[split].map(item => JSON.stringify({ ...item, split }));
-    writeFileSync(join(dir, split + ".jsonl"), rows.length ? rows.join("\n") + "\n" : "", {
+    writeFileSync(join(dir, split + ".jsonl"), splitBytes[split], {
       encoding: "utf8", mode: 0o600, flag: "wx",
     });
   }
