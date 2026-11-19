@@ -6,12 +6,15 @@
  * Refuses file writes unless specifically authorized.
  */
 import { lstatSync, readFileSync, mkdtempSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { buildNoctisSftPreflight } from "../src/lib/noctis-sft-preflight.mjs";
 
 const NAMES = /** @type {Array<"train"|"development"|"heldout">} */ (["train", "development", "heldout"]);
 const LIMIT_BYTES = 50_000_000;
+const HASH = /^[a-f0-9]{64}$/;
+const sha256 = value => createHash("sha256").update(value, "utf8").digest("hex");
 
 function privateFile(path) {
   const st = lstatSync(path);
@@ -43,9 +46,19 @@ function main() {
       !original.summary?.counts) {
     throw new Error("Input blocked: not an authorized Noctis internal dataset export.");
   }
+  if (!HASH.test(original.input_sha256 || "") ||
+      !original.split_sha256 ||
+      NAMES.some(name => !HASH.test(original.split_sha256[name] || ""))) {
+    throw new Error("Input blocked: missing_or_invalid_source_split_digests.");
+  }
   const splits = /** @type {Record<"train"|"development"|"heldout", any[]>} */ ({ train: [], development: [], heldout: [] });
   for (const name of NAMES) {
     const data = privateFile(join(inputDir, name + ".jsonl"));
+    // Verify the exact JSONL bytes, not just per-example hashes. This also
+    // detects changes to heldout records without exporting heldout contents.
+    if (sha256(data) !== original.split_sha256[name]) {
+      throw new Error("Input blocked: source_split_checksum_mismatch.");
+    }
     const lines = data.split("\n").filter(Boolean);
     if (lines.length > 200000 || original.summary.counts[name] !== lines.length) {
       throw new Error("Input blocked: declared dataset count mismatch.");
@@ -53,7 +66,11 @@ function main() {
     splits[name] = lines.map(line => JSON.parse(line));
   }
   const candidate = buildNoctisSftPreflight(splits);
+  const trainingBytes = Object.fromEntries(["train", "development"].map(name =>
+    [name, candidate[name].map(item => JSON.stringify(item)).join("\n") + "\n"]));
   const report = {
+    train_file_sha256: sha256(trainingBytes.train),
+    development_file_sha256: sha256(trainingBytes.development),
     ...candidate.manifest,
     schema: candidate.schema,
     input_manifest_sha256: original.input_sha256,
@@ -66,8 +83,7 @@ function main() {
   }
   const outputDir = mkdtempSync(join(tmpdir(), "noctis-sft-private-"));
   for (const name of ["train", "development"]) {
-    const rows = candidate[name].map(item => JSON.stringify(item));
-    writeFileSync(join(outputDir, name + ".jsonl"), rows.join("\n") + "\n", {
+    writeFileSync(join(outputDir, name + ".jsonl"), trainingBytes[name], {
       encoding: "utf8", mode: 0o600, flag: "wx",
     });
   }
