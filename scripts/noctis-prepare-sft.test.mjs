@@ -104,10 +104,10 @@ test("CLI refuses tampered examples and inconsistent declared partition counts",
     writeFileSync(join(dir, "train.jsonl"), JSON.stringify(rows.train[0]) + "\n", { mode: 0o600 });
     assert.equal(run(dir, false, false).status, 2);
     fixture(dir);
-    writeFileSync(join(dir, "manifest.json"), JSON.stringify({
-      schema: "noctis.internal.dataset.v1", mode: "exported_private_local_files",
-      summary: { counts: { train: 99, development: 1, heldout: 1 } },
-    }), { mode: 0o600 });
+    const manifestPath = join(dir, "manifest.json");
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    manifest.summary.counts.train = 99;
+    writeFileSync(manifestPath, JSON.stringify(manifest), { mode: 0o600 });
     assert.match(run(dir, false, false).stderr, /count mismatch/);
   } finally { rmSync(dir, { force: true, recursive: true }); }
 });
