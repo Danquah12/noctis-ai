@@ -1,6 +1,7 @@
 /** Synthetic-only, no-network CLI tests. Never access user data or model providers. */
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { mkdtempSync, readFileSync, writeFileSync, statSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -54,6 +55,12 @@ test("authorized synthetic exports use a private OS temporary directory", () => 
   const output = report.output_directory;
   try {
     assert.ok(output.startsWith(tmpdir()));
+    const onDiskManifest = JSON.parse(readFileSync(join(output, "manifest.json"), "utf8"));
+    for (const split of ["train", "development", "heldout"]) {
+      const exactBytes = readFileSync(join(output, split + ".jsonl"), "utf8");
+      assert.equal(onDiskManifest.split_sha256[split],
+        createHash("sha256").update(exactBytes, "utf8").digest("hex"));
+    }
     const rows = ["train", "development", "heldout"]
       .flatMap(name => readFileSync(join(output, name + ".jsonl"), "utf8").trim().split("\n").filter(Boolean));
     assert.equal(rows.length, 1);
