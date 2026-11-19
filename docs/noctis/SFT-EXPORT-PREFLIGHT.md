@@ -39,3 +39,18 @@ Inputs must be private regular files with restrictive permissions (0600) under a
 5. Compare genuine candidate model completions with the same untouched baseline. No parity claim with ChatGPT, Gemini or Grok without comparable evidence.
 
 This milestone adds **only an offline schema/compatibility boundary and controlled local export**. It neither executes the QLoRA trainer nor proves model improvement, neural updates, live cloud isolation, or production readiness. No merge, deployment or migration authorized.
+
+
+## 2026-11-19 — Bit-for-bit private export integrity gate
+
+The internal preparation CLI now records `split_sha256` for the exact UTF-8 bytes of each train, development and heldout JSONL file. The SFT CLI verifies all three digests before parsing examples, including the sealed heldout file, and refuses missing/invalid/mismatched checksums. Its separate ChatML export manifest records `train_file_sha256` and `development_file_sha256` computed from the exact output bytes. These hashes enable reproducible offline handoff checks without exposing heldout answers to the trainer.
+
+**Breaking safety gate:** Old private internal exports lacking `split_sha256` must be regenerated from approved, reviewed inputs; do not forge missing digests or bypass integrity checks. The original dataset input SHA remains an unverified source fingerprint because the original source document is not supplied to this handoff boundary.
+
+**What this does not prove:** SHA-256 verifies consistency against the *local manifest*, not authenticity of that manifest, lawful training rights, reviewer independence, privacy completeness, dataset correctness or intelligence gains. A party able to rewrite both files and their manifest can recompute hashes. Signed manifests and independent rights/quality verification are future controls; this step does not authorize a GPU job.
+
+### Independent GPU pilot compatibility audit
+
+[Draft PR #12](https://github.com/Danquah12/noctis-ai/pull/12) remains separate from this stacked branch. In the inspected `scripts/train_unsloth_sft.py`, `--dataset` defaults to a generated synthetic file and `--eval-dataset` defaults to 250 benchmark examples; it reads the latter's line count but creates its own train/evaluation split from `--dataset`. It **does not consume** the reviewed SFT export manifest or a separately supplied development JSONL. Likewise `scripts/run_gpu_pilot.sh` launches GPU smoke tests, model inference and training if executed. Do not run that shell script automatically, and do not use synthetic benchmark self-scoring as evidence of real assistant performance.
+
+**Required before any train job:** Independently verify candidate model/revision and licenses; make the Python trainer explicitly consume the verified train/development ChatML pair and manifest; require a separate execution approval; pin tokenizer, dependency versions and seed; record actual optimizer steps, checkpoints, adapter hashes and job outputs; and evaluate on a separately locked, independently graded benchmark. No paid provider requests, private-record transfers or GPU training are authorized by this patch.
