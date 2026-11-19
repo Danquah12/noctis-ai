@@ -72,8 +72,8 @@ echo "[+] GPU initialization, optimizer update, and adapter reload verified."
 # Step 3: Establish Pre-Training Foundation Model Baseline (Locked 250 Held-Out Cases)
 echo ""
 echo "[+] Step 3/6: Establishing genuine baseline on unmodified Qwen2.5-7B-Instruct..."
-echo "    Executing 250 benchmark queries with strict 45-minute timeout..."
-timeout 2700s python scripts/eval_held_out_benchmark.py \
+echo "    Executing 250 benchmark queries (resumable, strict 75-minute timeout)..."
+timeout 4500s python scripts/eval_held_out_benchmark.py \
   --mode model \
   --base-model Qwen/Qwen2.5-7B-Instruct \
   --limit 250 \
@@ -110,8 +110,8 @@ timeout 7200s python scripts/train_unsloth_sft.py \
 # Step 5: Evaluate Post-Training Noctis Checkpoint on the Same Locked 250-Case Benchmark
 echo ""
 echo "[+] Step 5/6: Evaluating fine-tuned Noctis adapter checkpoint on locked 250 cases..."
-echo "    Executing evaluation with strict 45-minute timeout..."
-timeout 2700s python scripts/eval_held_out_benchmark.py \
+echo "    Executing evaluation (resumable, strict 75-minute timeout)..."
+timeout 4500s python scripts/eval_held_out_benchmark.py \
   --mode model \
   --base-model Qwen/Qwen2.5-7B-Instruct \
   --adapter-path ./models/noctis-7b-v1.0-adapter \

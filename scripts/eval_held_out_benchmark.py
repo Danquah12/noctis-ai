@@ -335,52 +335,83 @@ def main():
 
         out_path = os.path.join(repo_root, args.output_file) if not os.path.isabs(args.output_file) else args.output_file
         os.makedirs(os.path.dirname(out_path), exist_ok=True)
-        print(f"[+] Generating live responses for {len(eval_subset)} benchmark questions...")
+
+        existing_completions = {}
+        if os.path.exists(out_path):
+            try:
+                with open(out_path, "r", encoding="utf-8") as f:
+                    for line in f:
+                        line_str = line.strip()
+                        if line_str:
+                            c_obj = json.loads(line_str)
+                            cid = c_obj.get("id")
+                            if cid and "model_response" in c_obj:
+                                existing_completions[cid] = c_obj
+            except Exception:
+                existing_completions = {}
+
+        if existing_completions:
+            print(f"[+] Found {len(existing_completions)} cached completions in {out_path}. Resuming from remaining cases...")
 
         start_t = time.time()
-        with open(out_path, "w", encoding="utf-8") as out_f:
+        # Open in append mode if resuming, else write mode
+        write_mode = "a" if existing_completions else "w"
+        out_f = open(out_path, write_mode, encoding="utf-8")
+
+        try:
             for idx, rec in enumerate(eval_subset):
+                cid = rec.get("id", f"case-{idx}")
                 msgs = rec.get("messages", [])
                 user_msg = next((m["content"] for m in msgs if m["role"] == "user"), "")
                 ref_msg = next((m["content"] for m in msgs if m["role"] == "assistant"), "")
                 domain = rec.get("domain", "GENERAL")
                 rubric = rec.get("scoring_rubric") or rec.get("rubric") or {}
 
-                prompt_msgs = [
-                    {"role": "system", "content": "You are Noctis AI, a sovereign intelligence system operating with deterministic mathematical rigor, formal clinical safety verification, and evidence-based engineering precision."},
-                    {"role": "user", "content": user_msg}
-                ]
-                input_text = tokenizer.apply_chat_template(prompt_msgs, tokenize=False, add_generation_prompt=True)
-                inputs = tokenizer([input_text], return_tensors="pt").to(device)
+                is_cached = cid in existing_completions
+                if is_cached:
+                    gen_text = existing_completions[cid]["model_response"]
+                else:
+                    prompt_msgs = [
+                        {"role": "system", "content": "You are Noctis AI, a sovereign intelligence system operating with deterministic mathematical rigor, formal clinical safety verification, and evidence-based engineering precision."},
+                        {"role": "user", "content": user_msg}
+                    ]
+                    input_text = tokenizer.apply_chat_template(prompt_msgs, tokenize=False, add_generation_prompt=True)
+                    inputs = tokenizer([input_text], return_tensors="pt").to(device)
 
-                with torch.no_grad():
-                    gen_ids = model.generate(
-                        **inputs,
-                        max_new_tokens=args.max_new_tokens,
-                        do_sample=False,
-                        pad_token_id=tokenizer.pad_token_id
-                    )
-                new_tokens = gen_ids[0][len(inputs.input_ids[0]):]
-                gen_text = tokenizer.decode(new_tokens, skip_special_tokens=True)
+                    with torch.no_grad():
+                        gen_ids = model.generate(
+                            **inputs,
+                            max_new_tokens=args.max_new_tokens,
+                            do_sample=False,
+                            pad_token_id=tokenizer.pad_token_id
+                        )
+                    new_tokens = gen_ids[0][len(inputs.input_ids[0]):]
+                    gen_text = tokenizer.decode(new_tokens, skip_special_tokens=True)
 
                 audit = evaluate_response_fidelity(gen_text, ref_msg, domain, rubric)
                 cat = audit["category"]
                 if cat in categories:
                     categories[cat].append(audit["score"])
 
-                rec_out = {
-                    "id": rec.get("id", f"case-{idx}"),
-                    "domain": domain,
-                    "prompt": user_msg,
-                    "model_response": gen_text,
-                    "score": audit["score"],
-                    "pass": audit["pass"],
-                    "category": cat,
-                    "notes": audit["notes"]
-                }
-                out_f.write(json.dumps(rec_out) + "\n")
+                if not is_cached:
+                    rec_out = {
+                        "id": cid,
+                        "domain": domain,
+                        "prompt": user_msg,
+                        "model_response": gen_text,
+                        "score": audit["score"],
+                        "pass": audit["pass"],
+                        "category": cat,
+                        "notes": audit["notes"]
+                    }
+                    out_f.write(json.dumps(rec_out) + "\n")
+                    out_f.flush()
+
                 if (idx + 1) % 10 == 0 or idx == len(eval_subset) - 1:
-                    print(f"  [{idx+1}/{len(eval_subset)}] Case {idx+1} ({domain}) | Score: {audit['score']:.1f}%")
+                    status = " [resumed from cache]" if is_cached else ""
+                    print(f"  [{idx+1}/{len(eval_subset)}] Case {idx+1} ({domain}) | Score: {audit['score']:.1f}%{status}")
+        finally:
+            out_f.close()
 
         elapsed = time.time() - start_t
         print(f"[+] Live model evaluation completed in {elapsed:.1f}s. Saved completions to {out_path}")
