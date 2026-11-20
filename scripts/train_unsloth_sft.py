@@ -15,6 +15,29 @@ import argparse
 import hashlib
 import re
 
+# PyTorch 2.6+ Checkpoint Unpickling Compatibility
+try:
+    import torch
+    import numpy as np
+    if hasattr(torch, "serialization") and hasattr(torch.serialization, "add_safe_globals"):
+        safe_types = []
+        if hasattr(np, "_core") and hasattr(np._core, "multiarray"):
+            safe_types.append(np._core.multiarray._reconstruct)
+        if hasattr(np, "ndarray"):
+            safe_types.append(np.ndarray)
+        if hasattr(np, "dtype"):
+            safe_types.append(np.dtype)
+        if safe_types:
+            torch.serialization.add_safe_globals(safe_types)
+    _real_torch_load = torch.load
+    def _compat_torch_load(*args, **kwargs):
+        if "weights_only" not in kwargs:
+            kwargs["weights_only"] = False
+        return _real_torch_load(*args, **kwargs)
+    torch.load = _compat_torch_load
+except Exception:
+    pass
+
 def format_chatml_for_sft(example, tokenizer):
     """
     Formats ChatML messages into the exact prompt-completion format
