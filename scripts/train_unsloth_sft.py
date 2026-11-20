@@ -157,6 +157,7 @@ def main():
         device_map="auto",
         trust_remote_code=True,
     )
+    model.config.use_cache = False
     model = prepare_model_for_kbit_training(model)
 
     # Configure PEFT LoRA
@@ -169,6 +170,9 @@ def main():
         task_type="CAUSAL_LM",
     )
     model = get_peft_model(model, peft_config)
+    if hasattr(model, "enable_input_require_grads"):
+        model.enable_input_require_grads()
+    model.train()
     model.print_trainable_parameters()
 
     # 4. Load Datasets & Establish Grouped Internal Validation
@@ -270,6 +274,10 @@ def main():
     resume_target = args.resume_from_checkpoint if args.resume_from_checkpoint else None
     if resume_target:
         print(f"[+] Resuming training directly from checkpoint: {resume_target}")
+    model.config.use_cache = False
+    if hasattr(model, "enable_input_require_grads"):
+        model.enable_input_require_grads()
+    model.train()
     train_result = trainer.train(resume_from_checkpoint=resume_target)
     elapsed = time.time() - start_time
     print(f"\n[+] Training loop finished in {elapsed:.1f} seconds.")
