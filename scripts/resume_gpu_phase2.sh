@@ -31,7 +31,8 @@ git pull origin main
 # Step 1: Check dependencies
 echo ""
 echo "[+] Step 1/4: Checking dependencies..."
-pip install -q "transformers==4.45.2" "trl==0.11.4" peft accelerate bitsandbytes datasets liger-kernel
+pip uninstall -y -q liger-kernel 2>/dev/null || true
+pip install -q "transformers==4.45.2" "trl==0.11.4" peft accelerate bitsandbytes datasets
 
 # Step 2: Resume Training from checkpoint-2100
 echo ""
