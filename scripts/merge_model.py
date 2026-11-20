@@ -1,5 +1,11 @@
 import os
 import torch
+
+try:
+    import torch.distributed.tensor
+except ImportError:
+    pass
+
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from peft import PeftModel
 
