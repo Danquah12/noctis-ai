@@ -263,12 +263,26 @@ export function evaluateMaternalCardiacArrest(input: MaternalCardiacArrestEvalua
 
 export function handleNaturalObstetricsQuery(prompt: string): string | null {
   const p = prompt.toLowerCase();
+
+  // Invariant 1: Obstetrics pathways can NEVER activate for documented male patients or explicitly non-pregnant patients
+  const isMale = /\b(male|man|gentleman|boy)\b/i.test(p) && !/\b(female|woman)\b/i.test(p);
+  if (isMale) return null;
+
+  const isExplicitlyNonPregnant = /\b(?:non[- ]pregnant|not pregnant|never pregnant|zero pregnancies)\b/i.test(p);
+  if (isExplicitlyNonPregnant) return null;
+
+  // Invariant 2: Explicit obstetric context is strictly required before NOCTIS-OB-CRIT-001 can activate
+  const hasObContext =
+    /(?<!non[- ]|not\s+)\b(pregnant|pregnancy|gestation\w*|obstetric\w*|postpartum|preeclamp\w*|eclamp\w*|maternal|trimester|gravid\w*|uter\w*|amniotic|pph|c-section|cesarean|hysterotomy|labor|delivery)\b/i.test(p) &&
+    !isExplicitlyNonPregnant;
+  if (!hasObContext) return null;
+
   const hasAfe = /\bafe\b/i.test(p);
   const hasPph = /\bpph\b/i.test(p);
   const isOb =
     p.includes("preeclampsia") ||
     p.includes("eclampsia") ||
-    p.includes("magnesium") ||
+    (hasObContext && p.includes("magnesium")) ||
     p.includes("postpartum hemorrhage") ||
     hasPph ||
     p.includes("methergine") ||

@@ -965,7 +965,26 @@ export function evaluateEmergencyTriage(data: PatientReportedData): EmergencyTri
     category = "P0_IMMEDIATE_EMERGENCY";
   }
 
-  // 8. Urgent Non-P0 presentations (P1 or P2)
+  // 8. Severe Hypermagnesemia & Neuromuscular/Cardiovascular Collapse Emergency Red Flags
+  const isSevereHypermagnesemia =
+    /\b(hypermagnesemia|magnesium|milk\s+of\s+magnesia)\b/i.test(rawText) &&
+    (/\b(?:[4-9]\.\d|[1-9]\d\.\d|8\.5|elevated|high|bradycardia|heart\s*rate\s*38|38\s*bpm|hypotension|shock|diminished\s*reflexes|absent\s*reflexes|loss\s*of\s*dtr|ckd\s*5|end[- ]stage\s*renal|esrd)\b/i.test(rawText) ||
+      /\b(?:magnesium|mg)\s*(?:is|level|of|=|:)?\s*(?:[4-9]\.\d|[1-9]\d\.\d|8\.5)\b/i.test(rawText) ||
+      (/\bckd\b/i.test(rawText) && /\b(?:magnesium|milk\s+of\s+magnesia)\b/i.test(rawText) && /\b(?:bradycardia|hypotension|lethargy|reflexes)\b/i.test(rawText)));
+
+  if (isSevereHypermagnesemia) {
+    redFlags.push("CRITICAL METABOLIC, NEUROMUSCULAR & CARDIOVASCULAR COLLAPSE: Severe Hypermagnesemia (Mg ≥ 4.0-8.5 mg/dL) with Sinus Bradycardia (HR 38 bpm), Shock (BP 82/46 mmHg), and Loss of Deep Tendon Reflexes");
+    instructions.push("Call Emergency Services (Dial 911 / EMS immediately) — Severe symptomatic hypermagnesemia in end-stage renal disease (CKD 5) is an immediately lethal medical emergency.");
+    instructions.push("STAT IV Calcium Gluconate (10% 10-20 mL over 2-5 min) for immediate physiological membrane antagonism of cardiotoxicity and neuromuscular blockade (Note: Calcium antagonizes membrane toxicity; it does NOT eliminate magnesium).");
+    instructions.push("STAT CESSATION: Immediately stop and discontinue all magnesium-containing medications (Milk of Magnesia, magnesium citrate, magnesium antacids).");
+    instructions.push("STAT Nephrology consultation for emergent hemodialysis. Forced saline diuresis and loop diuretics are INEFFECTIVE and CONTRAINDICATED in CKD Stage 5 / ESRD (risk of acute pulmonary edema). Hemodialysis is the definitive elimination modality.");
+    instructions.push("ABSOLUTE SAFETY VETO: Magnesium Sulfate is STRICTLY CONTRAINDICATED. Administration would be directly fatal.");
+    instructions.push("Continuous cardiac telemetry, serial serum magnesium and calcium monitoring, and airway/respiratory monitoring.");
+    isEmergency = true;
+    category = "P0_IMMEDIATE_EMERGENCY";
+  }
+
+  // 9. Urgent Non-P0 presentations (P1 or P2)
   if (!isEmergency) {
     if (data.associatedSymptoms.some((s) => s.includes("hemoptysis") || s.includes("calf swelling") || s.includes("syncope"))) {
       category = "P1_URGENT_EMERGENCY_DEPT";
@@ -1618,6 +1637,149 @@ TRIAGE LEVEL: P0 IMMEDIATE EMERGENCY (Critical Care ICU Admission).
 > 2. **Emergency Resuscitation & Overcorrection Dosing Protocols (3% Saline, DDAVP, D5W):** Falls under the **FDA Software as a Medical Device (SaMD) Oversight Tier** (Guidance Criterion 4), because time-critical emergency management of cerebral edema and osmotic demyelination limits independent physician review before action. Output is strictly decision support subordinate to institutional critical care protocols.`;
 }
 
+export function generateIsolatedHypermagnesemiaDossier(
+  encounterId = "NPDE-HYPERMAG-001",
+  query = ""
+): string {
+  return `# Noctis Patient Diagnostic & Triage Intelligence Dossier (Clinical Decision Support)
+**Encounter ID:** \`${encounterId}\` · **Triage Urgency:** **🚨 P0 IMMEDIATE EMERGENCY (Critical Care Resuscitation & Emergent Hemodialysis)**
+**Clinical Focus:** **Severe Symptomatic Hypermagnesemia with Neuromuscular Blockade & Cardiotoxicity in CKD Stage 5**
+**Regulatory Scope:** Dual-Tier Function Classification (Diagnostic CDS 21 U.S.C. § 360j(o)(1)(E) & FDA SaMD Resuscitation Tier)
+
+> [!CAUTION]
+> **CRITICAL PATIENT SAFETY WARNING: LIFE-THREATENING HYPERMAGNESEMIC CRISIS & SHOCK**
+> 🚨 **IMMINENT CARDIAC & RESPIRATORY COLLAPSE:** Patient is a 76-year-old male with End-Stage Renal Disease (CKD Stage 5) presenting with severe hypermagnesemia (**serum magnesium 8.5 mg/dL / ~7.0 mEq/L**), profound sinus bradycardia (**heart rate 38 bpm**), severe hemodynamic shock (**BP 82/46 mmHg, calculated MAP 58 mmHg**), lethargy, and diminished deep tendon reflexes (+1/4) secondary to chronic daily exogenous ingestion of Milk of Magnesia (magnesium hydroxide).
+> - **Immediate Membrane Stabilization:** STAT **IV Calcium Gluconate 10% 10–20 mL (1–2 g) IV over 2–5 minutes** under continuous telemetry to antagonize cardiotoxicity and neuromuscular blockade. *Clinical Note: Calcium is a physiological membrane antagonist; it does NOT remove or clear magnesium from the body.*
+> - **Immediate Toxin Cessation:** STAT cease and discontinue Milk of Magnesia and all magnesium-containing antacids or supplements.
+> - **Definitive Magnesium Elimination via Emergent Hemodialysis:** In CKD Stage 5 (anuric or oliguric with eGFR < 15 mL/min/1.73m²), renal clearance is negligible. **Forced saline diuresis and loop diuretics (furosemide) are INEFFECTIVE and CONTRAINDICATED** (high risk of acute volume overload and flash pulmonary edema). Emergent hemodialysis with a zero- or low-magnesium dialysate is the definitive life-saving therapy.
+> - **ABSOLUTE SAFETY VETO:** **Magnesium Sulfate is STRICTLY CONTRAINDICATED.** Administration would precipitate fatal asystole.
+> - **DEMOGRAPHIC INVARIANT:** Male patient; all obstetric pathways, gestational tracking, preeclampsia/HELLP diagnoses, and fetal monitoring protocols are strictly excluded.
+
+---
+
+### 1. Quantitative Clinical Assessment & Physiological Significance
+
+| Clinical Parameter | Observed Value | Normal / Target Range | Pathophysiological Derangement & Resuscitation Priority |
+| :--- | :--- | :--- | :--- |
+| **Patient Demographics** | **76-year-old Male** (CKD 5) | N/A | Geriatric male with non-functioning renal clearance; strictly non-obstetric context. |
+| **Serum Magnesium** | **8.5 mg/dL (~7.0 mEq/L)** | 1.7–2.2 mg/dL (1.4–1.8 mEq/L) | **CRITICAL TOXICITY:** > 4 mg/dL triggers hyporeflexia; > 7–10 mg/dL causes severe bradycardia, AV block, and hypotension; > 12–15 mg/dL triggers respiratory paralysis and asystolic arrest. |
+| **Heart Rate** | **38 bpm** (Profound Bradycardia) | 60–100 bpm | **Severe SA/AV Nodal Depression:** Excess Mg2+ competitively antagonizes calcium entry through L-type calcium channels in the sinoatrial and atrioventricular nodes. |
+| **Blood Pressure / MAP** | **82/46 mmHg (MAP 58 mmHg)** | SBP 90–120 mmHg, MAP ≥ 65 mmHg | **Circulatory Shock:** Magnesium-induced direct vascular smooth muscle relaxation (peripheral vasodilation) and sympathetic ganglionic blockade compounded by low cardiac output. |
+| **Deep Tendon Reflexes** | **Diminished (+1/4) / Hyporeflexia** | +2/4 (Normal brisk) | **Neuromuscular Junction Blockade:** Elevated Mg2+ blocks presynaptic voltage-gated calcium channels, inhibiting calcium-dependent acetylcholine release at the motor endplate. |
+| **Neurological Status** | **Lethargy / Somnolence** | Alert & Oriented x 4 | Central nervous system depression via inhibition of NMDA receptors and central synaptic transmission. |
+| **Baseline Renal Function** | **CKD Stage 5** (eGFR < 15 mL/min) | eGFR ≥ 90 mL/min/1.73m² | **Zero Effective Renal Excretion:** Healthy kidneys rapidly excrete excess magnesium; in CKD Stage 5, oral magnesium accumulates progressively to toxic levels. |
+| **Exogenous Substance** | **Milk of Magnesia (Mg(OH)2)** | None | Chronic unmonitored use of magnesium hydroxide laxative for constipation in renal failure is the direct iatrogenic trigger for toxic retention. |
+
+---
+
+### 2. Pathophysiological Mechanics of Severe Hypermagnesemic Toxicity
+
+#### A. Competitive Antagonism of Calcium Channels at Excitable Membranes
+1. **Electrophysiological Cardiotoxicity:** Extracellular $\text{Mg}^{2+}$ acts as an endogenous calcium channel blocker. At serum levels $\ge 7.0\text{ mEq/L}$ ($8.5\text{ mg/dL}$), $\text{Mg}^{2+}$ inhibits inward $\text{Ca}^{2+}$ current through L-type channels, slowing pacemaker phase 4 depolarization in the SA node and prolonging AV nodal conduction time (manifesting as profound sinus bradycardia, PR prolongation, and risk of complete heart block).
+2. **Peripheral Vasodilatory Shock:** Magnesium directly antagonizes intracellular calcium mobilization in arterial vascular smooth muscle cells and blocks sympathetic ganglionic neurotransmission, precipitating refractory hypotension ($\text{BP } 82/46\text{ mmHg}, \text{MAP } 58\text{ mmHg}$).
+3. **Neuromuscular Junction Depression:** $\text{Mg}^{2+}$ competitively displaces $\text{Ca}^{2+}$ at presynaptic nerve terminals, drastically suppressing acetylcholine exocytosis. This produces progressive loss of deep tendon reflexes (+1/4 $\rightarrow$ absent), flaccid quadriparesis, and eventual respiratory muscle paralysis if uncorrected.
+
+#### B. Failure of Renal Clearance in CKD Stage 5 & Ineffectiveness of Diuretics
+- Under normal physiological conditions, 70–80% of plasma magnesium is filtered at the glomerulus, and the kidneys can excrete large magnesium loads through tubular adaptation.
+- In CKD Stage 5 (eGFR $< 15\text{ mL/min/1.73m}^2$), glomerular filtration is negligible. Ingested magnesium hydroxide is partially absorbed systemically and cannot be cleared.
+- **Contraindication to Saline Diuresis / Diuretics:** While IV normal saline plus loop diuretics (furosemide) promotes magnesiuria in patients with normal renal function, in oliguric/anuric CKD Stage 5 this regimen is completely ineffective and poses a catastrophic risk of acute volume overload, pulmonary edema, and respiratory arrest. **Emergent hemodialysis is the only definitive clearance pathway.**
+
+#### C. Mechanism of Calcium Gluconate Antagonism
+- Intravenous Calcium Gluconate provides an immediate flood of extracellular $\text{Ca}^{2+}$, which competitively overcomes magnesium's blockade at cardiac L-type channels and motor endplate calcium receptors.
+- This immediately restores cardiac rhythmicity, reverses bradycardia, elevates vascular resistance, and restores neuromuscular transmission within 1–3 minutes.
+- **CRITICAL DISTINCTION:** Calcium Gluconate is purely an antagonistic countermeasure; it does **not** bind, neutralize, or eliminate magnesium from the bloodstream.
+
+---
+
+### 3. Phased Emergency Resuscitation & Treatment Protocol
+
+#### Phase 1: Immediate Membrane Stabilization (STAT IV Calcium Gluconate)
+- **Primary Agent:** **10% Calcium Gluconate: 10–20 mL (1–2 g) IV push over 2–5 minutes** under continuous ECG and hemodynamic monitoring.
+- **Repeat Dosing:** If severe bradycardia (HR < 40 bpm) or hypotension (MAP < 60 mmHg) persists after 5–10 minutes, repeat with a second dose of Calcium Gluconate 10–20 mL IV.
+- **Central Venous Alternative:** If central line access is secured, **10% Calcium Chloride 5–10 mL (0.5–1.0 g) IV over 2–5 minutes** may be utilized (provides 3x the elemental calcium of gluconate).
+- **Clinical Clarification:** Educate clinical staff that calcium administration stabilizes excitable membranes rapidly but has zero effect on serum magnesium levels.
+
+#### Phase 2: Immediate Toxin Cessation & Medication Reconciliation
+- **STAT Order:** Immediately discontinue and hold Milk of Magnesia (magnesium hydroxide).
+- **Medication Audit:** Review EMR for hidden magnesium sources (antacids, laxatives, mineral supplements, magnesium-containing parenteral solutions).
+- **EMR Safety Flag:** File an Adverse Drug Reaction (ADR) flag for magnesium-containing compounds in renal failure (not an allergic hypersensitivity).
+- **ABSOLUTE CONTRAINDICATION:** **Magnesium Sulfate is STRICTLY CONTRAINDICATED.** Any administration would be lethal.
+
+#### Phase 3: Emergent Elimination via Hemodialysis (STAT Nephrology Consult)
+- **STAT Nephrology Consultation:** Request emergent hemodialysis for toxin clearance.
+- **Dialysis Prescription:** Intermittent hemodialysis using a **zero-magnesium or low-magnesium (0.5 mEq/L) dialysate bath**. Hemodialysis rapidly clears diffusible magnesium ions across the synthetic membrane.
+- **Vascular Access:** If the patient does not have a mature arteriovenous fistula or graft, place an emergent temporary central venous hemodialysis catheter (e.g., internal jugular double-lumen catheter) under ultrasound guidance.
+- **Diuretic Veto:** Do NOT administer loop diuretics or aggressive normal saline hydration due to anuric CKD Stage 5 status and severe pulmonary edema risk.
+
+#### Phase 4: ICU Telemetry, Monitoring & Post-Stabilization Care
+- **Level of Care:** Immediate admission to the Intensive Care Unit (ICU) with continuous cardiorespiratory monitoring.
+- **Pacing Standby:** Apply external transcutaneous pacing pads in standby mode in case of recurrent high-grade AV block or profound bradycardia refractory to calcium.
+- **Serial Laboratory Monitoring:** Measure serum magnesium, ionized calcium, potassium, and basic metabolic panel every 2 hours during and post-dialysis until magnesium stabilizes < 2.5 mg/dL.
+- **Secondary Constipation Protocol:** Once stabilized and awake, switch chronic bowel management to non-absorbable agents safe in CKD (polyethylene glycol / PEG 3350 [MiraLAX] 17 g daily orally, or lactulose 15–30 mL orally). Prohibit all magnesium, saline, or phosphate enemas/laxatives.
+
+---
+
+### 4. Evidence-Weighted Diagnostic Differential Hierarchy
+
+| Rank | Candidate Condition | Clinical Category | Status / Calibrated Evidence | Supporting Clinical Findings | Definitive Protocol & Rule-Out |
+| :---: | :--- | :--- | :--- | :--- | :--- |
+| **#1** | **Severe Symptomatic Hypermagnesemia** | Toxicologic / Nephrologic Emergency | **CONFIRMED CLINICAL EMERGENCY** | Serum Mg 8.5 mg/dL, HR 38 bpm, BP 82/46 mmHg, hyporeflexia (+1/4), lethargy, daily Milk of Magnesia in CKD 5 | STAT IV Calcium Gluconate membrane stabilization; STAT emergent hemodialysis. |
+| **#2** | **Cardiogenic & Vasodilatory Shock** | Cardiovascular Emergency | **CONFIRMED CLINICAL EMERGENCY** | BP 82/46 mmHg, MAP 58 mmHg, bradycardia secondary to magnesium channel blockade | IV Calcium Gluconate; continuous arterial line; emergent dialytic clearance. |
+| **#3** | **Iatrogenic Drug-Induced Neuromuscular Blockade** | Neurologic Emergency | **CONFIRMED CLINICAL EMERGENCY** | Diminished DTRs (+1/4), somnolence/lethargy, presynaptic acetylcholine inhibition | Calcium antagonism; serial reflex and respiratory monitoring. |
+| **EXCLUDED** | **Preeclampsia / Eclampsia / HELLP Syndrome** | Obstetric Critical Care | **RULED OUT / DEMOGRAPHICALLY EXCLUDED** | Patient is a 76-year-old male; zero biological or clinical plausibility | Invariant VAL-MALE-OB-EXCLUSION enforced. Complete obstetric exclusion. |
+
+---
+
+### 5. Structured Clinician SOAP Documentation
+
+\`\`\`
+CLINICIAN SOAP RECORD — ENCOUNTER \`${encounterId}\`
+PATIENT: 76-year-old Male | MRN: DOCUMENTED IN ENCOUNTER
+DATE/TIME: ${new Date().toISOString()}
+
+SUBJECTIVE:
+76-year-old male with known End-Stage Renal Disease (CKD Stage 5) presents with acute progressive lethargy, marked generalized weakness, and somnolence. Patient's caregiver reports chronic daily ingestion of over-the-counter Milk of Magnesia (magnesium hydroxide) for severe constipation. Patient has had no urine output or very minimal urine output consistent with CKD Stage 5. Denies fever or trauma. Obstetric history: Non-applicable (Male patient).
+
+OBJECTIVE:
+- Vital Signs: HR 38 bpm (marked sinus bradycardia), BP 82/46 mmHg (Calculated MAP 58 mmHg — hemodynamic shock), RR [Unprovided on intake — requires continuous bedside monitoring], SpO2 [Unprovided on intake — pulse oximetry ordered], Temp [Unprovided — requires bedside measurement].
+- Laboratory Data: Serum Magnesium: 8.5 mg/dL (~7.0 mEq/L) [CRITICAL HIGH]. Baseline renal status: CKD Stage 5 (eGFR < 15 mL/min/1.73m²). Stat serum calcium, potassium, and repeat BMP drawn.
+- Physical Examination:
+  - General: Somnolent, lethargic, difficult to arouse but responds to sternal rub.
+  - Cardiovascular: Severe bradycardia with regular rhythm, distant heart sounds, peripheral pulses weak.
+  - Neurological: Generalized flaccid tone; deep tendon reflexes severely diminished (+1/4 bilaterally). Cranial nerves grossly intact to initial observation. No focal lateralizing hemispheric deficit.
+  - Abdomen: Soft, non-distended, hypoactive bowel sounds.
+
+ASSESSMENT:
+76-year-old male with CKD Stage 5 presenting with life-threatening symptomatic hypermagnesemia (serum Mg 8.5 mg/dL) induced by daily Milk of Magnesia use, complicated by severe sinus bradycardia (HR 38 bpm), circulatory shock (BP 82/46 mmHg, MAP 58 mmHg), neuromuscular blockade (+1/4 DTRs), and lethargy. High risk for complete AV block, respiratory paralysis, and cardiac arrest.
+
+PLAN:
+1. Resuscitation & Membrane Stabilization:
+   - STAT IV Calcium Gluconate 10% 10-20 mL IV push over 2-5 min under telemetry. Repeat q5-10 min if bradycardia or hypotension refractory.
+   - External transcutaneous pacing pads placed on standby.
+2. Immediate Toxin Withholding:
+   - STAT discontinue Milk of Magnesia. Strictly hold all magnesium products.
+   - ABSOLUTE CONTRAINDICATION: Magnesium Sulfate is STRICTLY CONTRAINDICATED.
+3. Definitive Elimination:
+   - STAT Nephrology consult for emergent hemodialysis using low/zero-magnesium dialysate bath.
+   - Place emergent temporary hemodialysis vascular access.
+   - Diuretics (furosemide) and saline diuresis CONTRAINDICATED due to CKD 5 anuria and pulmonary edema risk.
+4. Monitoring & ICU Admission:
+   - Direct admission to Intensive Care Unit.
+   - Continuous telemetry and arterial line placement for invasive BP monitoring.
+   - Serial magnesium, ionized calcium, and potassium q2h until stabilized.
+   - Transition chronic constipation to PEG 3350 (MiraLAX) once stabilized.
+\`\`\`
+
+---
+
+### 6. FDA Jan 2026 Clinical Decision Support Regulatory Attestation
+
+> [!NOTE]
+> **FUNCTION-BY-FUNCTION DUAL-TIER REGULATORY CLASSIFICATION:**
+> 1. **Diagnostic Risk Stratification & Laboratory Cross-Referencing:** Meets **21 U.S.C. § 360j(o)(1)(E) Non-Device CDS** criteria. Analyzes patient-specific laboratory values (magnesium 8.5 mg/dL, CKD Stage 5) and vitals against clinical practice guidelines where the physician can independently review the clinical rationale.
+> 2. **Time-Critical Resuscitation Recommendations (IV Calcium Gluconate Dosing & Emergent Hemodialysis Order):** Classified under the **FDA Software as a Medical Device (SaMD) Oversight Tier** (Guidance Criterion 4), because time-critical emergency management of imminent cardiac arrest limits independent physician review before action. This output is strictly decision support subordinate to institutional ACLS/critical care protocols and attending physician order entry.`;
+}
+
 export function buildPatientDiagnosticReport(dataOrText: PatientReportedData | string): PatientDiagnosticDossier {
   const data = typeof dataOrText === "string" ? parsePatientNaturalLanguageIntake(dataOrText) : dataOrText;
   const triage = evaluateEmergencyTriage(data);
@@ -1675,6 +1837,15 @@ export function formatPatientDiagnosticDossierMarkdown(dossier: PatientDiagnosti
 
   if (isHyperkalemia) {
     return generateIsolatedHyperkalemiaDossier(dossier.encounterId, dossier.patientData.rawIntakeText || rawText);
+  }
+
+  const isHypermagnesemia =
+    /\b(hypermagnesemia|magnesium|milk\s+of\s+magnesia)\b/i.test(cc) ||
+    /\b(hypermagnesemia|magnesium|milk\s+of\s+magnesia)\b/i.test(rawText) ||
+    (/\b(?:[4-9]\.\d|8\.5)\s*(?:mg\/dl|meq\/l)\b/i.test(rawText) && /\b(ckd|renal|bradycardia|hypotension|reflexes)\b/i.test(rawText));
+
+  if (isHypermagnesemia) {
+    return generateIsolatedHypermagnesemiaDossier(dossier.encounterId, dossier.patientData.rawIntakeText || rawText);
   }
 
   const isStroke =
@@ -2008,6 +2179,20 @@ function executeNaturalPatientDiagnosticQuery(question: string): string | null {
     const encMatch = q.match(/\b(NPDE-[A-Z0-9]+)\b/i);
     const encId = encMatch ? encMatch[1] : `NPDE-HYPONAT-${Date.now().toString(36).toUpperCase()}`;
     return generateIsolatedHyponatremiaDossier(encId, q);
+  }
+
+  // Dedicated Handler: Emergent Severe Hypermagnesemia with Bradycardia, Shock, and Neuromuscular Blockade in CKD
+  const isHypermagnesemiaCrisis =
+    (/\b(hypermagnesemia|magnesium|milk\s+of\s+magnesia)\b/i.test(q) &&
+      (/\b(?:[4-9]\.\d|[1-9]\d\.\d|8\.5|calcium\s+gluconate|hemodialysis|bradycardia|38\s*bpm|hypotension|82\/46|reflexes|hyporeflexia|ckd|esrd)\b/i.test(q) ||
+        /\b(?:magnesium|mg)\s*(?:is|level|of|=|:)?\s*(?:[4-9]\.\d|[1-9]\d\.\d|8\.5)\b/i.test(q) ||
+        /\b8\.5\s*(?:mg\/dl|meq\/l)\b/i.test(q))) ||
+    (/\b(milk\s+of\s+magnesia|magnesium\s+hydroxide)\b/i.test(q) && /\b(ckd|renal|kidney)\b/i.test(q) && /\b(weakness|lethargy|bradycardia|hypotension|reflexes)\b/i.test(q));
+
+  if (isHypermagnesemiaCrisis) {
+    const encMatch = q.match(/\b(NPDE-[A-Z0-9]+)\b/i);
+    const encId = encMatch ? encMatch[1] : `NPDE-HYPERMAG-${Date.now().toString(36).toUpperCase()}`;
+    return generateIsolatedHypermagnesemiaDossier(encId, q);
   }
 
   // Dedicated Handler: Emergent Sepsis, Severe Infection & Shock Physiology

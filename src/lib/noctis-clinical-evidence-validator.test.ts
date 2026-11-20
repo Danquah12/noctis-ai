@@ -62,4 +62,28 @@ deep tendon reflexes preserved to mildly depressed.
     assert.ok(result.violations.some((v) => v.ruleId === "VAL-FDA-DUAL-TIER"));
     assert.match(result.sanitizedDossier, /Dual-Tier Function Classification/);
   });
+
+  it("VAL-MALE-OB-EXCLUSION: vetos obstetric diagnoses and engines for male patients", () => {
+    const rawInput = "76-year-old male with CKD stage 5 and hypermagnesemia";
+    const dossier = "Diagnosis: Preeclampsia with severe features and HELLP syndrome. Gestational age: 34 weeks. Engine: NOCTIS-OB-CRIT-001";
+
+    const result = validateClinicalEvidenceIntegrity(dossier, rawInput);
+    assert.equal(result.isValid, false);
+    assert.ok(result.violations.some((v) => v.ruleId === "VAL-MALE-OB-EXCLUSION"));
+    assert.match(result.sanitizedDossier, /Male Patient: Obstetric Conditions Strictly Excluded/);
+    assert.match(result.sanitizedDossier, /NOT APPLICABLE — MALE PATIENT/);
+    assert.doesNotMatch(result.sanitizedDossier, /NOCTIS-OB-CRIT-001/);
+  });
+
+  it("VAL-HYPERMAG-VETO: intercepts and vetos magnesium sulfate administration in hypermagnesemia", () => {
+    const rawInput = "76yo male with CKD 5 and serum magnesium 8.5 mg/dL";
+    const dossier = "Plan: Administer IV Magnesium Sulfate 4g loading dose immediately.";
+
+    const result = validateClinicalEvidenceIntegrity(dossier, rawInput);
+    assert.equal(result.isValid, false);
+    assert.ok(result.violations.some((v) => v.ruleId === "VAL-HYPERMAG-VETO"));
+    assert.match(result.sanitizedDossier, /ABSOLUTE CONTRAINDICATION: Magnesium Sulfate is STRICTLY CONTRAINDICATED/);
+    assert.match(result.sanitizedDossier, /STAT IV Calcium Gluconate/);
+    assert.doesNotMatch(result.sanitizedDossier, /Administer IV Magnesium Sulfate 4g/);
+  });
 });

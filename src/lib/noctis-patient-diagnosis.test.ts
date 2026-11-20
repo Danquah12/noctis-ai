@@ -10,6 +10,8 @@ import {
   formatPatientDiagnosticDossierMarkdown,
   handleNaturalPatientDiagnosticQuery,
 } from "./noctis-patient-diagnosis.ts";
+import { handleNaturalObstetricsQuery } from "./noctis-obstetrics-critical-care.ts";
+import { runFollowUpIntelligence } from "./noctis-response-intelligence.ts";
 
 describe("Noctis Patient Diagnostic & Triage Intelligence Engine (NPDE)", () => {
   it("extracts patient clinical entities, OPQRST parameters, and explicitly tracks missing fields without fabricating data", () => {
@@ -293,5 +295,110 @@ describe("Noctis Patient Diagnostic & Triage Intelligence Engine (NPDE)", () => 
     assert.match(res, /450\s*mL\/hour/i); // Matching urinary losses
     assert.match(res, /118\s*(?:to|–|-)\s*120\s*mmol\/L/i); // Safe 24-hour target Na
     assert.match(res, /every\s+1\s*hour/i); // Serial sodium checks
+  });
+
+  it("enforces P0 Emergency Gate and IV Calcium / Emergent Hemodialysis protocol for severe hypermagnesemia in CKD Stage 5", () => {
+    const scenario =
+      "76-year-old male with CKD stage 5 presents with lethargy and diminished deep tendon reflexes. Serum magnesium is 8.5 mg/dL (~7.0 mEq/L). Vitals show HR 38 bpm (sinus bradycardia) and BP 82/46 mmHg (MAP 58 mmHg). Caregiver reports daily Milk of Magnesia for chronic constipation.";
+
+    const res = handleNaturalPatientDiagnosticQuery(scenario);
+    assert.ok(res !== null);
+
+    // 1. Triage & Clinical Focus
+    assert.match(res, /P0 IMMEDIATE EMERGENCY/);
+    assert.match(res, /Severe Symptomatic Hypermagnesemia/i);
+    assert.match(res, /8\.5\s*mg\/dL/);
+
+    // 2. Resuscitation & Membrane Stabilization (IV Calcium Gluconate)
+    assert.match(res, /Calcium Gluconate/i);
+    assert.match(res, /10%\s*(?:10|10–20)\s*mL/i);
+    assert.match(res, /membrane antagonist|membrane stabilization/i);
+    assert.match(res, /does NOT remove|does NOT clear|does not eliminate/i); // Explicitly notes calcium does not clear magnesium
+
+    // 3. Toxin Cessation & Elimination
+    assert.match(res, /Milk of Magnesia/i);
+    assert.match(res, /hemodialysis/i);
+    assert.match(res, /diuretics.*contraindicated|ineffective.*diuretics|pulmonary edema/i); // Contraindicates saline diuresis/diuretics in CKD 5
+
+    // 4. Fatal Interaction Veto (Magnesium Sulfate Veto)
+    assert.match(res, /Magnesium Sulfate is STRICTLY CONTRAINDICATED|STRICTLY CONTRAINDICATED.*Magnesium Sulfate/i);
+
+    // 5. Strict Negative Checks (Zero Obstetric Hallucination)
+    assert.doesNotMatch(res, /34 weeks/i);
+    assert.doesNotMatch(res, /gestational age/i);
+    assert.doesNotMatch(res, /preeclampsia with severe features/i);
+    assert.doesNotMatch(res, /HELLP syndrome.*active/i);
+    assert.doesNotMatch(res, /fetal heart/i);
+  });
+
+  it("Adversarial Test 1: Hard demographic gating isolates obstetrics from male and non-pregnant patients", () => {
+    const malePrompt =
+      "76-year-old male with CKD stage 5 presents with lethargy, magnesium 8.5 mg/dL, HR 38 bpm, BP 82/46 mmHg, on daily Milk of Magnesia.";
+    const pregPrompt =
+      "28-year-old pregnant female at 34 weeks gestation presents with preeclampsia, BP 172/114 mmHg, severe headache, visual disturbances, and hyperreflexia.";
+    const nonPregFemalePrompt =
+      "65-year-old female with CKD stage 5, non-pregnant, presents with lethargy, magnesium 8.5 mg/dL, HR 38 bpm, BP 82/46 mmHg, on Milk of Magnesia.";
+
+    // Male patient: NOCTIS-OB-CRIT-001 must return null immediately
+    const maleOb = handleNaturalObstetricsQuery(malePrompt);
+    assert.equal(maleOb, null);
+
+    // Male patient: response intelligence routes to hypermagnesemia / patient diagnosis, NOT obstetrics
+    const maleRes = runFollowUpIntelligence([], malePrompt);
+    assert.ok(maleRes !== null);
+    assert.match(maleRes, /Hypermagnesemia/i);
+    assert.doesNotMatch(maleRes, /NOCTIS-OB-CRIT-001/);
+    assert.doesNotMatch(maleRes, /34 weeks/i);
+
+    // Pregnant female: NOCTIS-OB-CRIT-001 activates appropriately
+    const pregOb = handleNaturalObstetricsQuery(pregPrompt);
+    assert.ok(pregOb !== null);
+    assert.match(pregOb, /NOCTIS-OB-CRIT-001/);
+    assert.match(pregOb, /Preeclampsia/i);
+
+    // Non-pregnant female: NOCTIS-OB-CRIT-001 must return null (lacks explicit obstetric context)
+    const nonPregOb = handleNaturalObstetricsQuery(nonPregFemalePrompt);
+    assert.equal(nonPregOb, null);
+  });
+
+  it("Adversarial Test 2: Medication indication opposites (MgSO4 indicated in Preeclampsia vs strictly vetoed in Hypermagnesemia)", () => {
+    const preeclampsiaPrompt =
+      "30-year-old pregnant female at 32 weeks gestation with severe preeclampsia and impending eclampsia.";
+    const hypermagPrompt =
+      "76-year-old male with CKD stage 5, severe lethargy, serum magnesium 8.5 mg/dL, HR 38 bpm, BP 82/46 mmHg.";
+
+    // Preeclampsia: Magnesium Sulfate is indicated for seizure prophylaxis
+    const obRes = handleNaturalObstetricsQuery(preeclampsiaPrompt);
+    assert.ok(obRes !== null);
+    assert.match(obRes, /Magnesium Sulfate/i);
+
+    // Hypermagnesemia: Magnesium Sulfate is strictly contraindicated and vetoed
+    const hypermagRes = handleNaturalPatientDiagnosticQuery(hypermagPrompt);
+    assert.ok(hypermagRes !== null);
+    assert.match(hypermagRes, /Magnesium Sulfate is STRICTLY CONTRAINDICATED/i);
+    assert.match(hypermagRes, /Calcium Gluconate/i);
+  });
+
+  it("Adversarial Test 3: Sequential context isolation (Zero cross-encounter contamination)", () => {
+    // Turn 1: Process obstetric emergency query
+    const obTurn = handleNaturalObstetricsQuery(
+      "Pregnant female at 34 weeks gestation with severe preeclampsia and proteinuria."
+    );
+    assert.ok(obTurn !== null);
+    assert.match(obTurn, /NOCTIS-OB-CRIT-001/);
+
+    // Turn 2: Immediately process male hypermagnesemia query
+    const maleTurn = handleNaturalPatientDiagnosticQuery(
+      "76-year-old male with CKD stage 5, lethargy, serum magnesium 8.5 mg/dL, HR 38 bpm, BP 82/46 mmHg, on Milk of Magnesia."
+    );
+    assert.ok(maleTurn !== null);
+
+    // Verify zero leakage from Turn 1 into Turn 2
+    assert.doesNotMatch(maleTurn, /34 weeks/i);
+    assert.doesNotMatch(maleTurn, /gestational age/i);
+    assert.doesNotMatch(maleTurn, /proteinuria/i);
+    assert.doesNotMatch(maleTurn, /NOCTIS-OB-CRIT-001/);
+    assert.match(maleTurn, /76-year-old Male/i);
+    assert.match(maleTurn, /Hypermagnesemia/i);
   });
 });

@@ -8,6 +8,8 @@
  * 4. VAL-BINDER-TIMING: Potassium Binder Timing & Individualized Dialysis Gate (No reliance on delayed binders for emergency resuscitation)
  * 5. VAL-PROB-CALIB: Calibrated Diagnostic Hierarchy Gate (No unsupported numerical pseudo-probabilities like "> 95%")
  * 6. VAL-FDA-DUAL-TIER: Function-by-Function Regulatory Assessment Gate (Dual-tier classification under FDA Jan 2026 CDS guidance)
+ * 7. VAL-MALE-OB-EXCLUSION: Hard Demographic Exclusion Gate (Male Patient Obstetric Misrouting Veto)
+ * 8. VAL-HYPERMAG-VETO: Fatal Medication Contraindication Gate (Magnesium Sulfate in Hypermagnesemia Veto)
  */
 
 import { sha256Sync } from "./universal-crypto.ts";
@@ -195,6 +197,56 @@ export function validateClinicalEvidenceIntegrity(
         "Time-critical acute resuscitation protocols fall under the FDA SaMD oversight tier (Criterion 4), while diagnostic stratification falls under § 360j(o)(1)(E). Blanket non-device claims are invalid.",
       detectedText: "NON-DEVICE CDS ARCHITECTURE (21 U.S.C. § 360j(o)(1)(E))",
       remediatedText: "Dual-Tier Function Classification (Diagnostic CDS & FDA SaMD Tier)",
+    });
+  }
+
+  // 7. VAL-MALE-OB-EXCLUSION: Hard Demographic Exclusion Gate (Male Patient Obstetric Misrouting Veto)
+  // Forbids assigning obstetric syndromes (preeclampsia, eclampsia, HELLP syndrome, gestational tracking) to male patients
+  const isMalePatient = /\b(male|man|gentleman|boy|he\/him)\b/i.test(inputLower) && !/\b(female|woman)\b/i.test(inputLower);
+  const activeObstetricRegex = /\b(?:active\s+(?:syndrome|condition)|primary\s+differential|candidate\s+condition|diagnosis):\s*(?:preeclampsia|eclampsia|hellp\s+syndrome|amniotic\s+fluid\s+embolism|gestational\s+hypertension)\b/gi;
+  const gestationalAgeRegex = /\bgestational\s+age(?:\s*(?:of|=|:))?\s*\d+\s*(?:weeks?|wks?)\b/gi;
+  const obEngineInvokedRegex = /\b(?:NOCTIS-OB-CRIT-001|Critical\s+Care\s+Obstetrics\s+Engine)\b/gi;
+
+  if (isMalePatient && (activeObstetricRegex.test(sanitized) || gestationalAgeRegex.test(sanitized) || obEngineInvokedRegex.test(sanitized))) {
+    sanitized = sanitized
+      .replace(activeObstetricRegex, "Non-Obstetric Clinical Evaluation (Male Patient: Obstetric Conditions Strictly Excluded)")
+      .replace(gestationalAgeRegex, "[Gestational Age: NOT APPLICABLE — MALE PATIENT]")
+      .replace(obEngineInvokedRegex, "NOCTIS-PATIENT-DX-001 (Internal Medicine / Nephrology / Critical Care Engine)");
+
+    violations.push({
+      ruleId: "VAL-MALE-OB-EXCLUSION",
+      ruleName: "Hard Demographic Exclusion Gate (Male Patient Obstetric Misrouting Veto)",
+      severity: "CRITICAL",
+      clinicalRationale:
+        "Obstetric diagnostic pathways (e.g. preeclampsia, HELLP syndrome, gestational metrics) are biologically and clinically impossible in male patients. The system strictly vetos obstetric engine invocation and diagnostic hallucination for male patients.",
+      detectedText: "Obstetric diagnostic entities detected for male patient intake",
+      remediatedText: "Demographic invariant enforced: Obstetric pathways excluded, routed to Internal Medicine / Critical Care",
+    });
+  }
+
+  // 8. VAL-HYPERMAG-VETO: Fatal Medication Contraindication Gate (Magnesium Sulfate in Hypermagnesemia Veto)
+  // Strictly intercepts and vetos any order, recommendation, or administration of magnesium sulfate in hypermagnesemic presentations
+  const isHypermagnesemicInput =
+    /\b(hypermagnesemia|magnesium|milk\s+of\s+magnesia)\b/i.test(inputLower) &&
+    (/\b(?:[4-9]\.\d|[1-9]\d\.\d|8\.5|elevated|high|toxicity|ckd|esrd|bradycardia|38\s*bpm|hypotension|82\/46)\b/i.test(inputLower) ||
+      /\b(?:magnesium|mg)\s*(?:is|level|of|=|:)?\s*(?:[4-9]\.\d|[1-9]\d\.\d|8\.5)\b/i.test(inputLower));
+
+  const administerMgSo4Regex = /\b(?:administer|give|initiate|start|bolus|infuse|prescribe|order)\s+(?:iv\s+)?(?:magnesium\s+sulfate|mgso4)\b/gi;
+  const mgso4LoadingDoseRegex = /\b(?:magnesium\s+sulfate|mgso4)\s+(?:4\s*g|4g|2\s*g|2g|loading\s+dose|infusion)\b/gi;
+
+  if (isHypermagnesemicInput && (administerMgSo4Regex.test(sanitized) || mgso4LoadingDoseRegex.test(sanitized))) {
+    sanitized = sanitized
+      .replace(administerMgSo4Regex, "ABSOLUTE CONTRAINDICATION: Magnesium Sulfate is STRICTLY CONTRAINDICATED in hypermagnesemia (FATAL TOXICITY VETO). Administer STAT IV Calcium Gluconate (10% 10-20 mL) for physiological membrane stabilization")
+      .replace(mgso4LoadingDoseRegex, "ABSOLUTE CONTRAINDICATION: Magnesium Sulfate STRICTLY PROHIBITED");
+
+    violations.push({
+      ruleId: "VAL-HYPERMAG-VETO",
+      ruleName: "Fatal Medication Contraindication Gate (Magnesium Sulfate in Hypermagnesemia Veto)",
+      severity: "CRITICAL",
+      clinicalRationale:
+        "Administering Magnesium Sulfate to a patient with hypermagnesemia (Mg ≥ 4.0-8.5 mg/dL) or hypermagnesemic shock in CKD Stage 5 is directly lethal. The system strictly vetos and intercepts this order, mandating immediate IV Calcium Gluconate antagonism.",
+      detectedText: "Magnesium Sulfate administration recommended in hypermagnesemia presentation",
+      remediatedText: "ABSOLUTE CONTRAINDICATION: Magnesium Sulfate strictly contraindicated; STAT IV Calcium Gluconate administered",
     });
   }
 

@@ -73,4 +73,26 @@ describe("Noctis Epistemic Circuit Breaker & Kill-Switch (NOCTIS-CIRCUIT-001)", 
     const unrelated = "How is the weather today?";
     assert.equal(handleNaturalCircuitBreakerQuery(unrelated), null);
   });
+
+  test("trips clinical safety invariant on male patient obstetric hallucination", () => {
+    const maleOb = "76-year-old male with preeclampsia and HELLP syndrome at 34 weeks gestational age.";
+    const state = evaluateCircuitBreaker(maleOb);
+
+    assert.equal(state.tripped, true);
+    const medInv = state.evaluations.find((e) => e.type === "CLINICAL_SAFETY");
+    assert.equal(medInv?.passed, false);
+    assert.equal(medInv?.name.includes("Demographic Obstetric Exclusion"), true);
+    assert.equal(state.correctedText?.includes("CIRCUIT BREAKER DEMOGRAPHIC INTERCEPT"), true);
+  });
+
+  test("trips clinical safety invariant on magnesium sulfate administration in hypermagnesemia", () => {
+    const dangerousMag = "Patient with severe hypermagnesemia and serum magnesium 8.5 mg/dL. Administer IV magnesium sulfate 4g loading dose.";
+    const state = evaluateCircuitBreaker(dangerousMag);
+
+    assert.equal(state.tripped, true);
+    const medInv = state.evaluations.find((e) => e.type === "CLINICAL_SAFETY");
+    assert.equal(medInv?.passed, false);
+    assert.equal(medInv?.name.includes("Hypermagnesemia Magnesium Sulfate"), true);
+    assert.equal(state.correctedText?.includes("CIRCUIT BREAKER MEDICATION INTERCEPT"), true);
+  });
 });
