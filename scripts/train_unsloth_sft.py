@@ -176,29 +176,40 @@ def main():
     bf16_supported = torch.cuda.is_available() and torch.cuda.is_bf16_supported()
     max_steps = 3 if args.smoke_test else (args.max_steps if args.max_steps > 0 else -1)
 
-    training_args = SFTConfig(
-        output_dir=output_dir,
-        num_train_epochs=1 if args.smoke_test else args.epochs,
-        max_steps=max_steps,
-        per_device_train_batch_size=args.batch_size,
-        gradient_accumulation_steps=1 if args.smoke_test else args.grad_accum,
-        learning_rate=args.lr,
-        lr_scheduler_type="cosine",
-        warmup_ratio=0.03,
-        logging_steps=1 if args.smoke_test else 10,
-        save_strategy="no" if args.smoke_test else "steps",
-        save_steps=100,
-        save_total_limit=2,
-        fp16=not bf16_supported,
-        bf16=bf16_supported,
-        optim="paged_adamw_8bit" if torch.cuda.is_available() else "adamw_torch",
-        report_to="none",
-        dataset_text_field="text",
-        max_seq_length=args.max_seq_length,
-        packing=False,
-        eval_strategy="no" if args.smoke_test else "steps",
-        eval_steps=50,
-    )
+    sft_kwargs = {
+        "output_dir": output_dir,
+        "num_train_epochs": 1 if args.smoke_test else args.epochs,
+        "max_steps": max_steps,
+        "per_device_train_batch_size": args.batch_size,
+        "gradient_accumulation_steps": 1 if args.smoke_test else args.grad_accum,
+        "learning_rate": args.lr,
+        "lr_scheduler_type": "cosine",
+        "warmup_ratio": 0.03,
+        "logging_steps": 1 if args.smoke_test else 10,
+        "save_strategy": "no" if args.smoke_test else "steps",
+        "save_steps": 100,
+        "save_total_limit": 2,
+        "fp16": not bf16_supported,
+        "bf16": bf16_supported,
+        "optim": "paged_adamw_8bit" if torch.cuda.is_available() else "adamw_torch",
+        "report_to": "none",
+        "dataset_text_field": "text",
+        "max_seq_length": args.max_seq_length,
+        "packing": False,
+        "eval_strategy": "no" if args.smoke_test else "steps",
+        "eval_steps": 50,
+    }
+
+    try:
+        training_args = SFTConfig(**sft_kwargs)
+    except TypeError as e:
+        # If running on newer/different TRL version, strip kwargs that SFTConfig rejects
+        import inspect
+        sig = inspect.signature(SFTConfig.__init__)
+        accepted = set(sig.parameters.keys())
+        filtered = {k: v for k, v in sft_kwargs.items() if k in accepted or accepted == {"kwargs"}}
+        print(f"[!] Warning: SFTConfig constructor mismatch ({e}). Using filtered configuration.")
+        training_args = SFTConfig(**filtered)
 
     # 6. Initialize Trainer (supports both trl tokenizer and processing_class argument conventions)
     try:
