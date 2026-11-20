@@ -211,23 +211,30 @@ def main():
         print(f"[!] Warning: SFTConfig constructor mismatch ({e}). Using filtered configuration.")
         training_args = SFTConfig(**filtered)
 
-    # 6. Initialize Trainer (supports both trl tokenizer and processing_class argument conventions)
-    try:
-        trainer = SFTTrainer(
-            model=model,
-            train_dataset=train_data,
-            eval_dataset=eval_data if not args.smoke_test else None,
-            tokenizer=tokenizer,
-            args=training_args,
-        )
-    except TypeError:
-        trainer = SFTTrainer(
-            model=model,
-            train_dataset=train_data,
-            eval_dataset=eval_data if not args.smoke_test else None,
-            processing_class=tokenizer,
-            args=training_args,
-        )
+    # 6. Initialize Trainer
+    import trl
+    print(f"[+] Active TRL version: {trl.__version__}")
+    trainer = None
+    last_err = None
+    for param_name in ["tokenizer", "processing_class"]:
+        try:
+            kwargs = {
+                "model": model,
+                "train_dataset": train_data,
+                "eval_dataset": eval_data if not args.smoke_test else None,
+                "args": training_args,
+                param_name: tokenizer,
+            }
+            trainer = SFTTrainer(**kwargs)
+            print(f"[+] SFTTrainer initialized successfully using '{param_name}'.")
+            break
+        except TypeError as err:
+            last_err = err
+            print(f"[!] SFTTrainer init with '{param_name}' raised: {err}")
+            continue
+
+    if trainer is None:
+        raise last_err
 
     # Snapshot initial trainable weights before optimization
     initial_weights = {}
