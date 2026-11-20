@@ -3551,7 +3551,7 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
     assert.equal(summary.averageRubricScore, 100);
 
     const dpoLines = exportAutonomousDpoJsonl().trim().split("\n");
-    assert.equal(dpoLines.length, 20);
+    assert.equal(dpoLines.length, 25);
     const firstDpo = JSON.parse(dpoLines[0]!) as {
       area_id: string;
       chosen: string;
@@ -3562,12 +3562,12 @@ Treat every number below as scenario-specific input for THIS prompt only. Recomp
     assert.ok(firstDpo.rejected.length > 20);
 
     const seeds = buildAutonomous20AreaSeedPairs();
-    assert.equal(seeds.length, 22);
+    assert.equal(seeds.length, 27);
 
     // Verify natural-language roadmap query routing
     const roadmapPrompt =
       "how do we automate training dstrike on all these without a human intervention with you providing all the scenarios that will get dstrike perfectly train to answer all questions within these areas: 1. The highest-value areas to train an AI model ... Priority 1 — Verified Professional Intelligence ... Priority 2 — Cross-Domain Reasoning ... Build my training roadmap";
-    const roadmapReply = runFollowUpIntelligence([], roadmapPrompt);
+    const roadmapReply = handleNaturalAutonomousTrainingQuery(roadmapPrompt);
     assert.ok(roadmapReply);
     assert.match(roadmapReply, /NOCTIS-AUTO-TRAIN-20D/);
     assert.match(roadmapReply, /20\/20 Areas Verified/);

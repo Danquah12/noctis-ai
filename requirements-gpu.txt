@@ -1,0 +1,11 @@
+# Pinned Machine Learning Dependencies for Noctis Phase 1 Pilot QLoRA SFT
+# CUDA 12.4 / Ubuntu 22.04 / Python 3.11 Environment
+torch==2.4.0
+transformers==4.45.2
+trl==0.11.4
+peft==0.13.2
+accelerate==0.34.2
+bitsandbytes==0.44.0
+datasets==3.0.1
+sentencepiece==0.2.0
+rich>=13.0.0

@@ -960,6 +960,17 @@ export async function vibeReply(
       return { text: sovereignText };
     }
   }
+
+  // Unified Sovereign Tool Orchestrator (16 Core Deterministic Computational Engines)
+  try {
+    const { orchestrateSovereignQuery } = await import("@/lib/noctis-tool-orchestrator");
+    const toolResult = orchestrateSovereignQuery(latest);
+    if (toolResult.handled && toolResult.formattedMarkdown) {
+      return { text: toolResult.formattedMarkdown };
+    }
+  } catch {
+    /* Fallback to LLM / standard synthesis if tool execution errors */
+  }
   const reply = await composeVibeReply(kept, keyOverride, style);
   if (!("text" in reply) || reply.text.includes("Independent check") || reply.text.startsWith("## Vibe ") || (reply.text.trim().startsWith("{") && reply.text.trim().endsWith("}"))) return reply;
 

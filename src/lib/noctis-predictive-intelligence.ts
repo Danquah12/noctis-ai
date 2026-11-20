@@ -2475,7 +2475,7 @@ export function buildPredictiveIntelligenceReport(): string {
   };
 
   return [
-    `## Noctis Predictive Intelligence Platform — 15 Engines Overview`,
+    `## Noctis Predictive Intelligence Platform (NOCTIS-PRED-001) — 15 Engines Overview`,
     `\`\`\`noctis-dashboard\n${JSON.stringify(platformDashboard)}\n\`\`\``,
     `### 1. The 15 Prediction Engines\n| # | Engine Name | Forecasting Approach | Governance Track | Key Safety & Accuracy Guardrail |\n| :--- | :--- | :--- | :--- | :--- |\n${enginesTable}`,
     `### 2. Platform Verification Summary\n| Check | Criterion | Verified Result | Status |\n| :--- | :--- | :--- | :--- |\n${acRows}`,

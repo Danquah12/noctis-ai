@@ -4,7 +4,7 @@
 // Regulatory: 21 U.S.C. § 360j(o)(1)(E) FDA Non-Device Clinical Decision Support
 // ============================================================================
 
-import { createHash } from "node:crypto";
+import { sha256Sync } from "./universal-crypto";
 
 export interface AirgapAuditLogEntry {
   timestamp: string;
@@ -113,7 +113,7 @@ export class NoctisAirgapEnforcer {
   ): AirgapIntegritySeal {
     const timestamp = new Date().toISOString();
     const digestData = `${encounterId}::${clinicalDomain}::${timestamp}::${clinicalOutput}::ZERO_WAN_VERIFIED`;
-    const hash = createHash("sha256").update(digestData).digest("hex");
+    const hash = sha256Sync(digestData);
 
     return {
       sealId: `SEAL-AIRGAP-${hash.slice(0, 12).toUpperCase()}`,
