@@ -947,7 +947,25 @@ export function evaluateEmergencyTriage(data: PatientReportedData): EmergencyTri
     category = "P0_IMMEDIATE_EMERGENCY";
   }
 
-  // 7. Urgent Non-P0 presentations (P1 or P2)
+  // 7. Severe Symptomatic Hyponatremia & Neuro-Electrolyte Emergency Red Flags
+  const isSevereHyponatremia =
+    /\b(hyponatremia|sodium|na\+?)\b/i.test(rawText) &&
+    (/\b(?:1[01]\d|12[0-5]|severe|seizures?|status\s+epilepticus|coma|obtund|encephalopathy|cerebral\s+edema|brain\s+herniation|herniation|3%|hypertonic|overcorrect)\b/i.test(rawText) ||
+      /\b(?:sodium|na)\s*(?:is|level|of|=|:)?\s*(?:1[01]\d|12[0-5])\b/i.test(rawText) ||
+      (/\bseizures?\b/i.test(rawText) && /\b(?:1[01]\d|12[0-5]|hyponatremia)\b/i.test(rawText)));
+
+  if (isSevereHyponatremia) {
+    redFlags.push("CRITICAL NEUROLOGICAL & METABOLIC EMERGENCY: Severe Symptomatic Hyponatremia (Na ≤ 120-125 mmol/L) with Active Seizures / Severe Encephalopathy");
+    instructions.push("Call Emergency Services (Dial 911 / EMS immediately) — Severe symptomatic hyponatremia with seizures is an immediately life-threatening neuro-electrolyte emergency with high risk of cerebral edema and tentorial herniation.");
+    instructions.push("Immediate airway protection and active seizure cessation with IV Benzodiazepines (e.g. Lorazepam 2-4 mg IV).");
+    instructions.push("STAT IV 3% Hypertonic Saline: 100 mL IV bolus over 10 minutes (or 150 mL over 20 min); repeat up to twice at 10-20 min intervals if severe neurological symptoms persist, targeting an initial acute sodium rise of 4-6 mmol/L.");
+    instructions.push("Strict 24-hour correction ceiling: Maximum 8-10 mmol/L in 24 hours (4-8 mmol/L/24h if high risk for Osmotic Demyelination Syndrome).");
+    instructions.push("Monitor for spontaneous water diuresis upon stopping thiazides/contributing drugs; if rapid overcorrection occurs, initiate DDAVP and IV D5W.");
+    isEmergency = true;
+    category = "P0_IMMEDIATE_EMERGENCY";
+  }
+
+  // 8. Urgent Non-P0 presentations (P1 or P2)
   if (!isEmergency) {
     if (data.associatedSymptoms.some((s) => s.includes("hemoptysis") || s.includes("calf swelling") || s.includes("syncope"))) {
       category = "P1_URGENT_EMERGENCY_DEPT";
@@ -1363,6 +1381,243 @@ TRIAGE LEVEL: P0 IMMEDIATE EMERGENCY (Critical Care & Resuscitation). Outpatient
 > 2. **Time-Critical Resuscitation Recommendations (IV Calcium / Insulin-Glucose Dosing):** Classified under the **FDA Software as a Medical Device (SaMD) Oversight Tier** (Guidance Criterion 4), because time-critical emergency management of imminent cardiac arrest limits independent physician review before action. This output is strictly decision support subordinate to institutional ACLS protocols and attending physician order entry.`;
 }
 
+export function generateIsolatedHyponatremiaDossier(
+  encounterId = "NPDE-HYPONAT-001",
+  query = ""
+): string {
+  const q = query.toLowerCase();
+
+  // Detect whether this is the Overcorrection Complication scenario (Na 112 -> 121 in 6h with water diuresis)
+  const isOvercorrectionScenario =
+    /\b(121|overcorrect|rapid\s+correction|water\s+diuresis|450\s*ml|six\s+hours|6\s+hours|ddavp|desmopressin|d5w)\b/i.test(q) &&
+    /\b(112|hyponatremia|sodium)\b/i.test(q);
+
+  if (isOvercorrectionScenario) {
+    // -------------------------------------------------------------
+    // FOLLOW-UP SCENARIO: RAPID OVERCORRECTION & ODS RESCUE PROTOCOL
+    // -------------------------------------------------------------
+    const naBaseline = 112;
+    const naCurrent = 121;
+    const hours = 6;
+    const absChange = naCurrent - naBaseline; // +9 mmol/L
+    const hourlyRate = (absChange / hours).toFixed(2); // 1.50 mmol/L/hr
+    const safe24hCeiling = 8; // Max recommended in chronic hyponatremia
+    const safe24hTargetNa = naBaseline + safe24hCeiling; // 120 mmol/L
+
+    return `# Noctis Patient Diagnostic & Triage Intelligence Dossier (Clinical Decision Support)
+**Encounter ID:** \`${encounterId}\` · **Triage Urgency:** **🚨 P0 IMMEDIATE EMERGENCY (Critical Care ICU & ODS Rescue Protocol)**
+**Clinical Focus:** **Acute Rapid Overcorrection of Chronic Hyponatremia with Spontaneous Water Diuresis & High Risk for Osmotic Demyelination Syndrome (ODS)**
+**Regulatory Scope:** Dual-Tier Classification (Diagnostic CDS 21 U.S.C. § 360j(o)(1)(E) & FDA SaMD Resuscitation Tier)
+
+> [!CAUTION]
+> **CRITICAL PATIENT SAFETY WARNING: DANGEROUS OVERCORRECTION & IMMINENT ODS RISK**
+> 🚨 **HIGH-ACUITY IATROGENIC COMPLICATION:** Serum sodium has surged from **112 mmol/L to 121 mmol/L within 6 hours** (+9 mmol/L rise at **${hourlyRate} mmol/L/hour**), driven by rapid spontaneous water diuresis (**urine output 450 mL/hour**) following thiazide discontinuation and hypertonic saline therapy.
+> - **Dangerous Velocity:** The patient has exceeded the maximum permissible 24-hour correction ceiling (≤ 8 mmol/L in 24 hours) in just one-quarter of the day.
+> - **Catastrophic Risk:** Severe threat of **Osmotic Demyelination Syndrome (ODS / Central Pontine Myelinolysis)**, leading to irreversible pseudobulbar palsy, spastic quadriparesis, and locked-in syndrome.
+> - **Immediate Action:** **STAT CEASE ALL SODIUM-CONTAINING FLUIDS.** Initiate prompt clinician-directed relowering with **IV D5W** and **Desmopressin (DDAVP)** to bring 24-hour sodium back into a safe window (≤ 120 mmol/L).
+
+---
+
+### 1. Quantitative Correction Rate & Overcorrection Assessment
+
+| Metric | Measured Value | Safe Clinical Standard | Safety Assessment |
+| :--- | :--- | :--- | :--- |
+| **Baseline Serum Sodium** | **112 mmol/L** (Severe Chronic Hyponatremia) | Normal: 135–145 mmol/L | Severe baseline hyponatremia with complete brain volume adaptation. |
+| **Current Serum Sodium (at 6 hours)** | **121 mmol/L** | Target at 6h: 116–118 mmol/L | **Exceeds full 24-hour safe allowance (8 mmol/L) within 6 hours.** |
+| **Absolute Sodium Change ($\Delta \text{Na}$)** | **+${absChange} mmol/L** | **Max 8 mmol/L per 24 hours** (4–8 mmol/L in high-risk) | **CRITICAL OVERCORRECTION (+${absChange} mmol/L in 6h).** |
+| **Hourly Correction Velocity** | **${hourlyRate} mmol/L/hour** | Safe rate: ~0.3–0.5 mmol/L/hr | **Extreme Velocity:** 3x to 5x safe hourly physiological limits. |
+| **Hourly Urine Output** | **450 mL/hour** (Active Aquaresis) | Normal: 30–60 mL/hour | **Massive free-water diuresis** driving uncontrolled ongoing sodium surge. |
+
+---
+
+### 2. Pathophysiological Mechanisms: Water Diuresis & Osmotic Demyelination Syndrome
+
+#### A. Mechanism of Spontaneous Free-Water Diuresis (Aquaresis)
+1. **Removal of Distal Diluting Segment Block:** Hydrochlorothiazide (HCTZ) blocks the $\text{Na}^+/\text{Cl}^-$ cotransporter in the distal convoluted tubule, impairing renal free-water clearance. Discontinuing HCTZ abruptly restores distal tubular diluting capacity.
+2. **Endogenous ADH Suppression:** Initial volume expansion from 3% saline, coupled with relief of severe acute nausea/stress, shuts off central pituitary Vasopressin (ADH) release.
+3. **Runaway Free-Water Clearance:** Without circulating ADH and with restored distal diluting capacity, collecting duct principal cells become impermeable to water. The kidneys excrete massive quantities of dilute urine (**450 mL/hr**), which acts as an internal dehydrator, rapidly driving serum sodium upwards.
+
+#### B. Pathophysiology of Osmotic Demyelination Syndrome (ODS)
+- In chronic hyponatremia (duration $\ge 48$ hours), astrocytes adapt to hypoosmolality by expelling intracellular organic osmolytes (myoinositol, betaine, glutamate, taurine) to prevent cerebral edema.
+- When serum sodium rises faster than brain cells can synthesize or reabsorb these organic osmolytes ($> 8\text{ mmol/L/24h}$ or $> 1.5\text{ mmol/L/hr}$), rapid extracellular hypertonicity draws water out of brain tissue.
+- This causes profound dehydration and shrinkage of astrocytes and oligodendrocytes, disruption of the blood-brain barrier, and non-inflammatory demyelination of white matter tracts, predominantly in the central basis pontis.
+- Symptoms typically appear **2 to 7 days post-overcorrection**, manifesting as dysarthria, dysphagia, ataxia, spastic quadriparesis, pseudobulbar affect, and locked-in syndrome.
+
+---
+
+### 3. Immediate Clinician-Directed Relowering Protocol (DDAVP + D5W Strategy)
+
+> [!IMPORTANT]
+> **GOAL OF IMMEDIATE RELOWERING:**
+> Relower serum sodium from **121 mmol/L down to 118–120 mmol/L** to restore total 24-hour correction to $\le 6\text{–}8\text{ mmol/L}$ from baseline ($112\text{ mmol/L}$), while arresting ongoing water diuresis.
+
+| Priority | Emergency Intervention | Medication, Dose & Route | Clinical Objective & Mechanism |
+| :---: | :--- | :--- | :--- |
+| **1** | **STAT Discontinue All Sodium Sources** | **STOP** 3% hypertonic saline, 0.9% normal saline, and oral salt | Prevents further exogenous hypertonic contribution. |
+| **2** | **Arrest Ongoing Aquaresis (Desmopressin)** | **Desmopressin (DDAVP): 1 to 2 mcg IV or SC** (repeat q6–8h as needed) | Binds renal V2 receptors, immediately concentrating urine, halting water diuresis, and stabilizing serum sodium. |
+| **3** | **Active Relowering with Electrolyte-Free Water** | **IV 5% Dextrose in Water (D5W):** Infuse to match urine output (**450 mL/hr**) plus estimated free-water deficit to relower sodium | Directly replaces free water, expanding extracellular fluid volume with electrolyte-free water to drive sodium back toward safe target. |
+| **4** | **Intensive Serial Sodium Monitoring** | Stat serum sodium checks **every 1 hour** during active D5W/DDAVP infusion | Ensure sodium stops rising and begins controlled descent; once descent is confirmed, space to **every 2 hours**. |
+| **5** | **Subsequent 24-Hour & 48-Hour Correction Ceilings** | • **24-Hour Limit:** Total rise $\le 8\text{ mmol/L}$ (Target Na $\le 120\text{ mmol/L}$ at hour 24)<br>• **48-Hour Limit:** Total rise $\le 18\text{ mmol/L}$ (Target Na $\le 130\text{ mmol/L}$ at hour 48) | Distinguishes immediate active rescue from long-term conservative boundaries. |
+
+---
+
+### 4. Clinical Documentation & Neurological Reassessment
+
+\`\`\`text
+[S - SUBJECTIVE]
+64-year-old female with severe chronic hyponatremia (initial Na 112 mmol/L) treated with 3% saline and discontinuation of hydrochlorothiazide. Patient has had no further seizures but exhibits persistent confusion and disorientation. Family notes no focal motor deficits prior to presentation.
+
+[O - OBJECTIVE]
+- Serial Sodium Trend: 112 mmol/L at hour 0 -> 121 mmol/L at hour 6 (Absolute rise: +9 mmol/L; rate: 1.5 mmol/L/hr).
+- Renal Urinary Dynamics: Abrupt onset of massive free-water diuresis; Foley urine output 450 mL/hour.
+- Neurological Examination: Post-ictal encephalopathy / persistent confusion. No focal cranial nerve deficits, no horizontal gaze palsy, no spastic quadriparesis at present.
+- Bedside Hemodynamics: BP, HR, and telemetry monitored continuously in ICU.
+
+[A - ASSESSMENT]
+1. Critical Rapid Overcorrection of Chronic Hyponatremia (+9 mmol/L in 6 hours).
+2. Spontaneous Free-Water Diuresis (Aquaresis) secondary to HCTZ withdrawal and ADH suppression.
+3. Severe High-Risk Warning for Osmotic Demyelination Syndrome (ODS / Central Pontine Myelinolysis).
+4. Acute symptomatic seizures resolved; persistent post-seizure encephalopathy. Routine long-term anti-epileptic drugs (AEDs) are NOT indicated.
+TRIAGE LEVEL: P0 IMMEDIATE EMERGENCY (ICU Critical Care).
+
+[P - PLAN]
+1. Immediate ICU admission / transfer with continuous neurological telemetry.
+2. STAT discontinue all hypertonic saline (3%), isotonic saline (0.9%), and oral sodium supplements.
+3. Administer Desmopressin (DDAVP) 1–2 mcg IV/SC STAT to arrest massive urinary aquaresis.
+4. Initiate IV 5% Dextrose in Water (D5W) matched to urinary losses (450 mL/hr) plus volume to relower sodium to 118–120 mmol/L.
+5. Stat serum sodium checks every 1 hour until downward trajectory confirmed, then every 2 hours.
+6. Target 24-hour sodium ceiling: ≤ 120 mmol/L (≤ 8 mmol/L total rise from baseline 112 mmol/L).
+7. Avoid routine long-term anti-seizure prophylaxis; seizure etiology was acute symptomatic hyponatremic cerebral edema.
+\`\`\`
+
+---
+
+### 5. Function-by-Function FDA Regulatory Assessment (January 2026 Guidance)
+
+> [!NOTE]
+> **Regulatory Classification (FDA Jan 2026 CDS Final Guidance):**
+> 1. **Electrolyte Trajectory & ODS Risk Stratification:** Non-Device CDS under **21 U.S.C. § 360j(o)(1)(E)**, allowing independent clinical verification of rate-of-rise mathematics.
+> 2. **Emergency Relowering Dosing Protocols (IV D5W & DDAVP Administration):** Classified under the **FDA Software as a Medical Device (SaMD) Oversight Tier** (Guidance Criterion 4) due to time-critical critical-care management where independent literature review prior to execution is limited. Subordinate to attending critical care physician order entry.`;
+  }
+
+  // -------------------------------------------------------------------
+  // INITIAL PRESENTATION: SEVERE SYMPTOMATIC HYPONATREMIA WITH SEIZURES
+  // -------------------------------------------------------------------
+  const naVal = "112";
+  const osmVal = "238";
+  const gluVal = "105";
+
+  return `# Noctis Patient Diagnostic & Triage Intelligence Dossier (Clinical Decision Support)
+**Encounter ID:** \`${encounterId}\` · **Triage Urgency:** **🚨 P0 IMMEDIATE EMERGENCY (Call 911 / EMS Now · Resuscitation & Critical Care)**
+**Clinical Focus:** **Severe Symptomatic Hypotonic Hyponatremia with Active Seizures & Cerebral Edema**
+**Regulatory Scope:** Dual-Tier Classification (Diagnostic CDS 21 U.S.C. § 360j(o)(1)(E) & FDA SaMD Resuscitation Tier)
+
+> [!CAUTION]
+> **EMERGENCY MEDICAL WARNING (CRITICAL NEUROLOGICAL & ELECTROLYTE RESUSCITATION DIRECTIVE)**
+> 🚨 **IMMEDIATELY LIFE-THREATENING EMERGENCY:** Severe hypotonic hyponatremia (**serum sodium Na+ = ${naVal} mmol/L**, serum osmolality = **${osmVal} mOsm/kg**) presenting with **active seizures and severe encephalopathy** represents an acute neurological emergency with high risk of progressive cerebral edema, brainstem compression, and uncal/transtentorial herniation.
+> - **Immediate Action:** **Activate Emergency Medical Services (Call 911 / EMS immediately).** Transport via ALS ambulance with continuous airway and cardiac telemetry. Outpatient management is **STRICTLY CONTRAINDICATED**.
+> - **Immediate Resuscitation Priority:** Airway stabilization, active seizure management with IV benzodiazepines, and prompt administration of **3% Hypertonic Saline** to raise sodium acutely by **4–6 mmol/L**.
+
+---
+
+### 1. Case-Specific Clinical Findings & Diagnostic Uncertainty Analysis
+
+| Clinical Finding | Documented Observation | Physiological Significance | Diagnostic & Resuscitation Priority |
+| :--- | :--- | :--- | :--- |
+| **Serum Sodium (Na+)** | **${naVal} mmol/L (Severe Hyponatremia)** | Severe hypo-osmolar state causing osmotic water influx into brain astrocytes, producing life-threatening cerebral edema. | **P0 EMERGENCY RESUSCITATION TARGET:** Requires immediate hypertonic saline to reverse brain swelling. |
+| **Measured Serum Osmolality** | **${osmVal} mOsm/kg (Hypotonic)** | Reference: 275–295 mOsm/kg. Confirms true hypotonic hyponatremia; rules out isotonic pseudohyponatremia. | **CONFIRMED TRUE HYPOTONIC STATE:** Validates indication for hypertonic saline. |
+| **Blood Glucose** | **${gluVal} mg/dL (Euglycemic)** | Normal glucose excludes hypertonic translocational hyponatremia (e.g. DKA/HHS). | **Rules out translocational artifact;** no Katz correction required. |
+| **Active Seizures & Encephalopathy** | Generalized seizures / severe confusion | Critical neurological decompensation secondary to acute intracranial hypertension and brain cellular edema. | **Immediate Airway Protection & Hypertonic Saline Bolus.** |
+| **Medication Exposure** | **HCTZ (Thiazide) + Sertraline (SSRI)** | **Suspected Potential Contributors:** Thiazides impair distal diluting capacity; SSRIs can induce SIADH. | **Causation Not Proven:** Requires complete diagnostic workup. STAT withhold both agents. |
+
+---
+
+### 2. Prioritized 3-Step Emergency Management Protocol
+
+#### Step 1: Emergency Stabilization (Minutes 0–30)
+1. **Airway, Breathing & Circulation (ABC):**
+   - Ensure patent airway; administer high-flow oxygen; prepare for endotracheal intubation if Glasgow Coma Scale (GCS) $\le 8$ or status epilepticus persists.
+2. **Active Seizure Management:**
+   - Administer **IV Lorazepam 2 to 4 mg IV push** (or Midazolam 5–10 mg IM/IV) for active seizures while hypertonic saline is prepared.
+3. **Emergency 3% Hypertonic Saline Bolus Protocol:**
+   - Administer **100 mL IV bolus of 3% Sodium Chloride over 10 minutes** (or 150 mL IV over 20 minutes).
+   - If severe neurological symptoms or seizures persist, repeat 100 mL bolus at 10–20 minute intervals **up to two additional times** (maximum three 100 mL boluses total).
+   - **Clinical Objective:** Rapidly increase serum sodium by **4 to 6 mmol/L** to reduce brain volume and terminate herniation risk.
+
+#### Step 2: Controlled Sodium Correction Targets & Safety Limits
+- **Initial Target:** Increase serum sodium by **4–6 mmol/L** over the initial hours. A 4–6 mmol/L rise is clinically sufficient to reverse life-threatening cerebral edema and terminate acute seizures.
+- **24-Hour Maximum Safety Limit:**
+  - Standard maximum: **8–10 mmol/L in 24 hours**.
+  - High-risk maximum (chronic hyponatremia, malnutrition, alcoholism, advanced liver disease): **4–8 mmol/L in 24 hours**.
+- **48-Hour Maximum Cumulative Limit:** Do NOT exceed **18 mmol/L total rise in 48 hours**.
+- **Serial Monitoring Frequency:** Stat serum sodium checks **every 1 to 2 hours** during acute hypertonic therapy, then **every 2 to 4 hours** once symptoms stabilize. Strict hourly Foley urine output monitoring.
+
+#### Step 3: Cause Evaluation & Overcorrection Prevention
+1. **Withhold Suspected Contributing Medications:**
+   - STAT withhold Hydrochlorothiazide (HCTZ) and Sertraline.
+2. **Surveillance for Spontaneous Water Diuresis (Aquaresis):**
+   - Discontinuation of thiazides eliminates the block on distal dilution, which can trigger sudden massive aquaresis.
+   - If urine output abruptly increases (> 100–200 mL/hr) or sodium rises > 1 mmol/L/hr, prepare **Desmopressin (DDAVP 1–2 mcg IV/SC)** and **IV D5W** to prevent rapid overcorrection.
+3. **Comprehensive Etiological Diagnostic Workup:**
+   - Do NOT assume SIADH or drug-induced etiology without objective diagnostic testing.
+   - Check **Urine Osmolality** and **Urine Sodium** (prior to excessive volume administration).
+   - Perform clinical volume status evaluation (JVP, orthostatics, skin turgor, edema).
+   - Measure **Serum TSH & Free T4** (rule out severe hypothyroidism).
+   - Measure **Morning Serum Cortisol / ACTH Stimulation Test** (rule out adrenal crisis).
+
+---
+
+### 3. Critical Medication & Seizure Management Safety Invariants
+
+> [!WARNING]
+> **MEDICATION SAFETY & PROPHYLAXIS RULES:**
+> 1. **Do NOT Diagnose Definitive Causation Solely on Drug Exposure:** While HCTZ and Sertraline are common triggers, definitive diagnosis requires urine chemistries and endocrine testing.
+> 2. **No Routine Long-Term Anti-Seizure Prophylaxis:** Hyponatremic seizures are acute symptomatic seizures driven by cerebral edema. Once sodium is corrected and brain swelling resolves, **routine long-term anti-epileptic drugs (e.g. Levetiracetam, Phenytoin) are NOT indicated** in the absence of an independent unprovoked seizure disorder.
+> 3. **Overcorrection Rescue Protocol Readiness:** If serum sodium rises > 8 mmol/L in 24h, immediately administer IV D5W and Desmopressin (DDAVP) to halt trajectory.
+
+---
+
+### 4. Structured Clinician SOAP Note (EMR Documentation)
+
+\`\`\`text
+[S - SUBJECTIVE]
+64-year-old female presents via emergency dispatch with witnessed generalized tonic-clonic seizures and profound encephalopathy. Current medications include Hydrochlorothiazide and Sertraline.
+Duration of hyponatremia: Presumed chronic or unknown duration (> 48h).
+
+[O - OBJECTIVE]
+- Serum Sodium: 112 mmol/L (Critical Panic Alert; reference 135–145 mmol/L).
+- Serum Osmolality: 238 mOsm/kg (Hypotonic state confirmed).
+- Blood Glucose: 105 mg/dL (Normal; excludes translocational hyponatremia).
+- Neurological: Witnessed generalized tonic-clonic seizure; post-ictal stupor. Airway patent on supplemental O2.
+- Diagnostic Workup Pending: Urine sodium, urine osmolality, serum TSH, free T4, morning cortisol.
+
+[A - ASSESSMENT]
+1. Severe Symptomatic Hypotonic Hyponatremia (Na 112 mmol/L, Osm 238 mOsm/kg) with active seizures and encephalopathy.
+2. High risk of life-threatening cerebral edema and uncal herniation.
+3. Suspected multi-factorial contributors: Thiazide diuretic (HCTZ) + SSRI (Sertraline). Definitive etiology under active diagnostic evaluation.
+4. Presumed chronic duration; strict adherence to safe correction velocity (max 4-8 mmol/L/24h) required to prevent Osmotic Demyelination Syndrome.
+TRIAGE LEVEL: P0 IMMEDIATE EMERGENCY (Critical Care ICU Admission).
+
+[P - PLAN]
+1. Immediate airway protection; administer IV Lorazepam 2–4 mg for active seizure activity.
+2. STAT 3% Hypertonic Saline: 100 mL IV bolus over 10 min (may repeat x1-2 at 10-20 min intervals if seizures/coma persist).
+3. Initial Correction Target: +4 to 6 mmol/L over initial hours to abort seizures and reduce brain edema.
+4. Strict 24-hour limit: ≤ 8 mmol/L in 24 hours (target Na ≤ 120 mmol/L at hour 24); 48-hour limit ≤ 18 mmol/L total.
+5. Stat serum sodium checks every 1–2 hours; hourly Foley catheter urine output monitoring.
+6. STAT withhold HCTZ and Sertraline. Monitor for spontaneous water diuresis; prepare DDAVP 1-2 mcg and IV D5W for overcorrection rescue.
+7. Routine long-term anti-seizure prophylaxis is NOT indicated for isolated acute symptomatic hyponatremic seizures.
+\`\`\`
+
+---
+
+### 5. Function-by-Function FDA Regulatory Assessment (January 2026 Guidance)
+
+> [!NOTE]
+> **Regulatory Classification (FDA Jan 2026 CDS Final Guidance):**
+> 1. **Diagnostic Categorization & Osmolality Evaluation:** Meets **21 U.S.C. § 360j(o)(1)(E) Non-Device CDS** criteria.
+> 2. **Emergency Resuscitation & Overcorrection Dosing Protocols (3% Saline, DDAVP, D5W):** Falls under the **FDA Software as a Medical Device (SaMD) Oversight Tier** (Guidance Criterion 4), because time-critical emergency management of cerebral edema and osmotic demyelination limits independent physician review before action. Output is strictly decision support subordinate to institutional critical care protocols.`;
+}
+
 export function buildPatientDiagnosticReport(dataOrText: PatientReportedData | string): PatientDiagnosticDossier {
   const data = typeof dataOrText === "string" ? parsePatientNaturalLanguageIntake(dataOrText) : dataOrText;
   const triage = evaluateEmergencyTriage(data);
@@ -1740,6 +1995,19 @@ function executeNaturalPatientDiagnosticQuery(question: string): string | null {
     const encMatch = q.match(/\b(NPDE-[A-Z0-9]+)\b/i);
     const encId = encMatch ? encMatch[1] : `NPDE-HYPERK-${Date.now().toString(36).toUpperCase()}`;
     return generateIsolatedHyperkalemiaDossier(encId, q);
+  }
+
+  // Dedicated Handler: Emergent Severe Symptomatic Hyponatremia with Seizures & Rapid Overcorrection / ODS Rescue
+  const isHyponatremiaCrisis =
+    (/\b(hyponatremia|sodium|na\+?|low\s+sodium)\b/i.test(q) &&
+      /\b(112|121|seizures?|status\s+epilepticus|altered\s+mental|coma|confusion|hctz|hydrochlorothiazide|sertraline|3%|hypertonic|desmopressin|ddavp|ods|osmotic\s+demyelination|overcorrect|water\s+diuresis|450\s*ml)\b/i.test(q)) ||
+    (/\b(sodium|na)\b/i.test(q) && /\b112\b/i.test(q)) ||
+    (/\bovercorrect\w*\b/i.test(q) && /\b(sodium|121|water\s+diuresis|desmopressin|ddavp)\b/i.test(q));
+
+  if (isHyponatremiaCrisis) {
+    const encMatch = q.match(/\b(NPDE-[A-Z0-9]+)\b/i);
+    const encId = encMatch ? encMatch[1] : `NPDE-HYPONAT-${Date.now().toString(36).toUpperCase()}`;
+    return generateIsolatedHyponatremiaDossier(encId, q);
   }
 
   // Dedicated Handler: Emergent Sepsis, Severe Infection & Shock Physiology

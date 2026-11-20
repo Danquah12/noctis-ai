@@ -247,4 +247,51 @@ describe("Noctis Patient Diagnostic & Triage Intelligence Engine (NPDE)", () => 
     assert.doesNotMatch(res, /Likelihood:\s*> 95%/i);
     assert.match(res, /21 U\.S\.C\. § 360j\(o\)\(1\)\(E\)/);
   });
+
+  it('enforces P0 Emergency Gate and 3% hypertonic saline emergency protocol for severe hyponatremia with seizures', () => {
+    const scenario =
+      "64-year-old female presents with witnessed generalized seizures, severe encephalopathy, serum sodium 112 mmol/L, serum osmolality 238 mOsm/kg, and glucose 105 mg/dL, on HCTZ and sertraline.";
+
+    const data = parsePatientNaturalLanguageIntake(scenario);
+    assert.equal(data.ageYears, 64);
+    assert.equal(data.biologicalSex, "female");
+
+    const triage = evaluateEmergencyTriage(data);
+    assert.equal(triage.isEmergency, true);
+    assert.equal(triage.triageCategory, "P0_IMMEDIATE_EMERGENCY");
+    assert.ok(triage.triggeredRedFlags.some((f) => /Hyponatremia/i.test(f)));
+    assert.ok(triage.actionableInstructions.some((i) => /Hypertonic Saline/i.test(i)));
+
+    const res = handleNaturalPatientDiagnosticQuery(scenario);
+    assert.ok(res !== null);
+    assert.match(res, /P0 IMMEDIATE EMERGENCY/);
+    assert.match(res, /3%\s*Hypertonic Saline/i);
+    assert.match(res, /4\s*(?:to|–|-)\s*6\s*mmol\/L/i); // Initial target
+    assert.match(res, /8\s*(?:to|–|-)\s*10\s*mmol\/L/i); // 24-hour limit
+    assert.match(res, /18\s*mmol\/L/i); // 48-hour limit
+    assert.match(res, /every\s+1\s*(?:to|–|-)\s*2\s*hours/i); // Monitoring frequency
+    assert.match(res, /Desmopressin|DDAVP/i); // Overcorrection readiness
+    assert.match(res, /water diuresis|aquaresis/i);
+    assert.match(res, /NOT indicated/i); // No routine long-term AEDs
+    assert.doesNotMatch(res, /seizures stop within five minutes/i); // Zero fabrication
+  });
+
+  it('manages the severe hyponatremia overcorrection complication and ODS rescue with DDAVP and D5W', () => {
+    const scenario =
+      "A 64-year-old female with presumed chronic hyponatremia presents with seizures and sodium 112 mmol/L. Following emergency 3% saline treatment and discontinuation of hydrochlorothiazide, her sodium increases to 121 mmol/L within six hours. Urine output abruptly increases to 450 mL/hour. She is no longer seizing but remains confused.";
+
+    const res = handleNaturalPatientDiagnosticQuery(scenario);
+    assert.ok(res !== null);
+    assert.match(res, /P0 IMMEDIATE EMERGENCY/);
+    assert.match(res, /\+9\s*mmol\/L/); // Absolute sodium change
+    assert.match(res, /1\.5(?:0)?\s*mmol\/L\/hour/i); // Hourly rate
+    assert.match(res, /CRITICAL OVERCORRECTION/i);
+    assert.match(res, /Osmotic Demyelination Syndrome|ODS/i);
+    assert.match(res, /Central Pontine Myelinolysis/i);
+    assert.match(res, /Desmopressin|DDAVP/i); // DDAVP to halt aquaresis
+    assert.match(res, /D5W/i); // Free water replacement
+    assert.match(res, /450\s*mL\/hour/i); // Matching urinary losses
+    assert.match(res, /118\s*(?:to|–|-)\s*120\s*mmol\/L/i); // Safe 24-hour target Na
+    assert.match(res, /every\s+1\s*hour/i); // Serial sodium checks
+  });
 });
