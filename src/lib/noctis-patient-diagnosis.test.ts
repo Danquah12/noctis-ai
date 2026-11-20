@@ -235,10 +235,16 @@ describe("Noctis Patient Diagnostic & Triage Intelligence Engine (NPDE)", () => 
     assert.match(res, /Calcium Gluconate/i);
     assert.match(res, /Regular Insulin/i);
     assert.match(res, /D50W/i);
-    assert.match(res, /Hemodialysis/i);
-    assert.match(res, /STAT DISCONTINUE/i);
+    assert.match(res, /Dialysis/i);
+    assert.match(res, /STAT WITHHOLD/i);
     assert.match(res, /Lisinopril/i);
     assert.match(res, /Spironolactone/i);
+    assert.match(res, /post-stabilization reassessment/i);
+    assert.match(res, /Adverse Drug Reaction/i);
+    assert.doesNotMatch(res, /place electronic allergy alert/i);
+    assert.doesNotMatch(res, /Patient denies chest pain/i);
+    assert.doesNotMatch(res, /deep tendon reflexes preserved/i);
+    assert.doesNotMatch(res, /Likelihood:\s*> 95%/i);
     assert.match(res, /21 U\.S\.C\. § 360j\(o\)\(1\)\(E\)/);
   });
 });

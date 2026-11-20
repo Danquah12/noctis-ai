@@ -15,6 +15,7 @@ import {
   evaluateTreatmentSafety,
   type PatientClinicalEncounter,
 } from "./noctis-clinical-engine.ts";
+import { validateClinicalEvidenceIntegrity } from "./noctis-clinical-evidence-validator.ts";
 /**
  * Noctis Patient Diagnostic & Clinical Decision Support Engine (NPDE)
  *
@@ -1240,16 +1241,29 @@ export function generateIsolatedHyperkalemiaDossier(
     ? (hasPeakedT ? "Widened QRS complexes & tall peaked T waves" : "Widened QRS complexes (intraventricular conduction delay)")
     : "Tall peaked T waves & PR prolongation";
 
+  // Check if chest pain or syncope was actually provided in the query text
+  const mentionsChestPain = /\b(chest\s+pain|angina|chest\s+pressure)\b/i.test(q);
+  const mentionsSyncope = /\b(syncope|passed\s+out|blacked\s+out|loss\s+of\s+consciousness)\b/i.test(q);
+  const mentionsReflexes = /\b(reflex(?:es)?|dtr|deep\s+tendon)\b/i.test(q);
+
+  const chestPainSyncopeDocumentation = mentionsChestPain || mentionsSyncope
+    ? `Chest pain / syncope status: ${mentionsChestPain ? "Chest pain reported" : "No chest pain"} · ${mentionsSyncope ? "Syncope reported" : "No syncope"}`
+    : "[Chest pain / syncope status: UNDOCUMENTED ON INTAKE — REQUIRES IMMEDIATE BEDSIDE RULE-OUT]";
+
+  const neuroReflexDocumentation = mentionsReflexes
+    ? "Reflexes: Documented in intake."
+    : "[Physical Examination: Generalized muscle weakness documented by history; formal motor power grading and deep tendon reflexes UNMEASURED / NOT PROVIDED — REQUIRES BED-SIDE PHYSICAL EXAMINATION]";
+
   return `# Noctis Patient Diagnostic & Triage Intelligence Dossier (Clinical Decision Support)
 **Encounter ID:** \`${encounterId}\` · **Triage Urgency:** **🚨 P0 IMMEDIATE EMERGENCY (Call 911 / EMS Now · Resuscitation & Critical Care)**
-**Statutory Classification:** Clinical Decision Support Software under **21 U.S.C. § 360j(o)(1)(E)** (Section 520(o)(1)(E) FD&C Act).
+**Regulatory Scope:** Dual-Tier Function Classification (Diagnostic CDS 21 U.S.C. § 360j(o)(1)(E) & FDA SaMD Resuscitation Tier)
 
 > [!CAUTION]
 > **EMERGENCY MEDICAL WARNING (911 LOCKOUT DIRECTIVE — CARDIAC ARREST RISK)**
-> 🚨 **CRITICAL LIFE THREAT:** The clinical presentation of severe hyperkalemia (**serum potassium K+ = ${kVal} mmol/L**), electrophysiologic cardiotoxicity (**${ecgFindings}**), acute generalized muscle weakness, and baseline CKD Stage 4 (eGFR ${egfrVal} mL/min/1.73m²) on dual RAAS/aldosterone blockade represents a **Hyperkalemic Cardiotoxic Emergency**.
+> 🚨 **CRITICAL LIFE THREAT:** The clinical presentation of severe hyperkalemia (**serum potassium K+ = ${kVal} mmol/L**), electrophysiologic cardiotoxicity (**${ecgFindings}**), acute generalized muscle weakness, and baseline CKD Stage 4 (eGFR ${egfrVal} mL/min/1.73m²) on concurrent RAAS/aldosterone blockade represents a **Hyperkalemic Cardiotoxic Emergency**.
 > - **Fatal Electrophysiological Risk:** Immediate danger of progression to sine-wave pattern, ventricular tachycardia, ventricular fibrillation, and fatal asystolic cardiac arrest.
-> - **Immediate Action:** **Activate Emergency Medical Services (Call 911 / EMS immediately).** Transport via Advanced Life Support (ALS) ambulance with continuous cardiac monitoring. Outpatient or primary care consultation is **STRICTLY CONTRAINDICATED**.
-> - **Resuscitation Imperative:** Immediate IV Calcium Gluconate (membrane stabilization), IV Regular Insulin + D50W (intracellular shifting), emergent nephrology consultation for hemodialysis, and immediate cessation of Lisinopril, Spironolactone, and potassium chloride.
+> - **Immediate Action:** **Activate Emergency Medical Services (Call 911 / EMS immediately).** Transport via Advanced Life Support (ALS) ambulance with continuous cardiac telemetry. Outpatient or next-day consultation is **STRICTLY CONTRAINDICATED**.
+> - **Acute Phase Directive:** Immediate IV Calcium Gluconate (membrane stabilization), IV Regular Insulin + D50W (intracellular shifting), urgent nephrology evaluation for emergent dialysis, and immediate withholding of Lisinopril, Spironolactone, and potassium chloride.
 
 ---
 
@@ -1260,8 +1274,8 @@ export function generateIsolatedHyperkalemiaDossier(
 | **Serum Potassium (K+)** | **${kVal} mmol/L (Severe Hyperkalemia)** | Normal reference range: 3.5–5.0 mmol/L. Severe elevation (> 6.5–7.0 mmol/L) partially depolarizes cardiac myocyte resting membrane potential, inactivating voltage-gated sodium channels and severely slowing phase 0 intracardiac conduction. | **CRITICAL RESUSCITATION TARGET:** Requires immediate membrane protection and total body elimination. |
 | **12-Lead ECG Findings** | **${ecgFindings}** | Manifestation of cardiotoxicity: peaked symmetrical T waves (accelerated repolarization) followed by QRS widening (slowed intraventricular conduction). Imminent precursor to sinoventricular rhythm, ventricular fibrillation, and asystole. | **STAT 12-LEAD ECG & CONTINUOUS TELEMETRY:** Mandatory continuously monitored bedside defibrillator. |
 | **Acute Generalized Weakness** | Bilateral skeletal muscle weakness | Prolonged membrane depolarization inactivates skeletal muscle sodium channels, causing refractory neuromuscular inexcitability and ascending flaccid paresis. | Secondary neurological marker confirming severe systemic electrophysiologic toxicity. |
-| **Renal Function (Baseline)** | **CKD Stage 4 (eGFR ${egfrVal} mL/min/1.73m²)** | Markedly impaired distal nephron potassium filtration and excretion. Residual nephrons are overwhelmed and cannot clear potassium load. | High risk for recurrent/refractory hyperkalemia; strong indication for emergent hemodialysis. |
-| **Medication Regimen** | **Lisinopril + Spironolactone + KCl** | **Iatrogenic "Triple Hazard" for Hyperkalemia:** ACE inhibitor inhibits angiotensin II-mediated aldosterone release; Spironolactone blocks mineralocorticoid receptors in cortical collecting tubule principal cells; oral KCl supplies exogenous potassium. | **MANDATORY MEDICATION VETO:** Immediate and permanent cessation of Lisinopril, Spironolactone, and potassium supplementation. |
+| **Renal Function (Baseline)** | **CKD Stage 4 (eGFR ${egfrVal} mL/min/1.73m²)** | Markedly impaired distal nephron potassium filtration and excretion. Residual nephrons are overwhelmed and cannot clear potassium load. | High risk for recurrent/refractory hyperkalemia; strong indication for urgent nephrology evaluation. |
+| **Medication Regimen** | **Lisinopril + Spironolactone + KCl** | **Iatrogenic "Triple Hazard" for Hyperkalemia:** ACE inhibitor inhibits angiotensin II-mediated aldosterone release; Spironolactone blocks mineralocorticoid receptors in cortical collecting tubule principal cells; oral KCl supplies exogenous potassium. | **ACUTE MEDICATION WITHHOLD:** Immediately withhold Lisinopril, Spironolactone, and KCl during acute crisis; re-evaluate post-stabilization. |
 
 ---
 
@@ -1273,39 +1287,39 @@ The emergency management of hyperkalemia with cardiotoxicity proceeds through th
 | :---: | :--- | :--- | :--- | :--- |
 | **1** | **Myocardial Membrane Stabilization (FIRST LINE)** | **IV Calcium Gluconate 10%:** 10–20 mL (1–2 g) IV over 2–5 minutes.<br>*(Alternatively: IV Calcium Chloride 10% 5–10 mL if in cardiac arrest or profound shock via large-bore/central line).* | **Onset: 1–3 minutes.** Increases cardiac threshold potential, restoring the normal gradient between resting membrane potential and threshold potential without changing serum potassium. | **IMMEDIATE CARDIOPROTECTION:** Reverses QRS widening on ECG. Repeat dose in 5–10 minutes if ECG abnormalities persist. |
 | **2** | **Intracellular Potassium Shifting (SECOND LINE)** | **IV Regular Insulin + Dextrose (D50W):**<br>• Regular Insulin 10 units IV bolus<br>• 50 mL of 50% Dextrose (D50W, 25 g glucose) IV push over 5 minutes.<br><br>**Nebulized Albuterol:** 10–20 mg in 4 mL normal saline nebulized over 15 minutes. | **Onset: 15–30 minutes.**<br>• Insulin activates $Na^+/K^+$-ATPase pumps in skeletal muscle.<br>• Albuterol stimulates beta-2 adrenergic receptors.<br>Both drive potassium from extracellular fluid into cells, lowering serum K+ by 0.5–1.2 mmol/L for 2–4 hours. | **BRIDGE TO ELIMINATION:** Does NOT eliminate potassium from body. Monitor blood glucose q30–60 min to prevent severe hypoglycemia. |
-| **3** | **Definitive Total-Body Elimination (THIRD LINE)** | **1. Emergent Hemodialysis (HD):** Stat Nephrology consult; cannulate emergent dialysis access.<br><br>**2. Gastrointestinal Potassium Binders:**<br>• **Sodium Zirconium Cyclosilicate (Lokelma / SZC):** 10 g PO TID.<br>• Or **Patiromer (Veltassa):** 8.4 g PO daily.<br><br>**3. Loop Diuretics (if non-anuric):**<br>• IV Furosemide 40–80 mg IV push. | **Onset:**<br>• Hemodialysis: Immediate clearance (removes 25–50 mEq K+/hr).<br>• Lokelma: Onset ~1 hour.<br>• Patiromer: Onset ~4–7 hours. | **DEFINITIVE REMOVAL:** Hemodialysis is the definitive gold standard in CKD Stage 4 with refractory cardiotoxic hyperkalemia. |
+| **3** | **Definitive Elimination & Urgent Dialysis Evaluation (THIRD LINE)** | **1. Urgent Nephrology Consultation for Emergent Dialysis Evaluation:** Indications include hyperkalemia refractory to medical shifting/stabilization, severe refractory acidemia, or anuria/volume overload. Dialysis initiation is individualized based on patient response to acute pharmacotherapy.<br><br>**2. Adjunctive Gastrointestinal Potassium Binders:**<br>• **Sodium Zirconium Cyclosilicate (Lokelma / SZC):** 10 g PO TID.<br>• Or **Patiromer (Veltassa):** 8.4 g PO daily.<br><br>**3. Loop Diuretics (if non-anuric):**<br>• IV Furosemide 40–80 mg IV push. | **Onset:**<br>• Hemodialysis: Immediate clearance when initiated.<br>• Lokelma: Onset ~1 hour.<br>• Patiromer: Onset ~4–7 hours. | ⚠️ **DELAYED ONSET WARNING:** Potassium binders are delayed-onset adjunctive elimination agents and must **NEVER** substitute for immediate emergency membrane stabilization or acute shifting. |
 
 ---
 
-### 3. Mandatory Medication Discontinuation & Iatrogenic Toxicity Veto
+### 3. Medication Discontinuation & Post-Stabilization Reassessment Logic
 
 > [!WARNING]
-> **MEDICATION SAFETY CONTRAINDICATION & VETO ENFORCEMENT:**
-> The following prescribed agents are directly responsible for impairing potassium homeostasis and must be **IMMEDIATELY DISCONTINUED**:
+> **MEDICATION SAFETY & REASSESSMENT PROTOCOL:**
+> Withholding potassium-raising agents during acute severe hyperkalemia is clinically mandatory, but decisions regarding long-term continuation require individualized post-stabilization reassessment rather than permanent automatic contraindication.
 
-| Medication | Class & Pharmacological Mechanism | Clinical Directive | Toxicity Warning |
+| Medication | Class & Pharmacological Mechanism | Acute Phase Directive | Post-Stabilization Reassessment |
 | :--- | :--- | :--- | :--- |
-| **Lisinopril** | Angiotensin-Converting Enzyme (ACE) Inhibitor | **STAT DISCONTINUE** | Decreases angiotensin II and aldosterone production, directly preventing distal tubule potassium excretion. |
-| **Spironolactone** | Mineralocorticoid Receptor Antagonist (MRA) | **STAT DISCONTINUE** | Competitively antagonizes aldosterone receptors in cortical collecting duct principal cells; absolute contraindication when eGFR < 30 mL/min and K+ > 5.0 mmol/L. |
-| **Potassium Chloride (KCl)** | Exogenous Potassium Supplementation | **STAT VETO & DISCONTINUE** | Exogenous potassium administration in the setting of severe impaired renal clearance is immediately lethal. |
-| **NSAIDs (Ibuprofen, Naproxen)** | Non-Steroidal Anti-Inflammatory Drugs | **STRICTLY CONTRAINDICATED** | Inhibit renal prostaglandins, blunting renin release and precipitating acute hyporeninemic hypoaldosteronism and AKI. |
+| **Lisinopril** | Angiotensin-Converting Enzyme (ACE) Inhibitor | **STAT WITHHOLD** | **Do NOT automatically label permanently contraindicated.** Once acute hyperkalemia and renal function have normalized, re-evaluate cardiovascular and renal indications with Nephrology/Cardiology. Resumption at a lower dose or alongside a non-absorbed potassium binder may be considered based on GDMT guidelines. |
+| **Spironolactone** | Mineralocorticoid Receptor Antagonist (MRA) | **STAT WITHHOLD** | **Temporarily discontinue during acute episode.** Re-evaluate post-stabilization; if continued MRA therapy is indicated for heart failure or CKD progression, consider reassessment of eGFR/potassium trajectory or non-steroidal MRA alternatives (e.g., Finerenone) per multidisciplinary consensus. |
+| **Potassium Chloride (KCl)** | Exogenous Potassium Supplementation | **STAT DISCONTINUE** | Discontinue oral potassium supplementation while hyperkalemic. Do not resume without documented hypokalemia and specialist oversight. |
+| **NSAIDs (Ibuprofen, Naproxen)** | Non-Steroidal Anti-Inflammatory Drugs | **STRICTLY AVOID** | Strongly avoid NSAIDs in CKD Stage 4 as they blunt renal prostaglandin synthesis, exacerbating hyporeninemic hypoaldosteronism and accelerating renal functional decline. |
 
 ---
 
-### 4. Evidence-Weighted Differential Diagnosis Hierarchy
+### 4. Calibrated Evidence-Weighted Diagnostic Hierarchy
 
 1. **Severe Hyperkalemia with Active Cardiotoxicity & Impending Malignant Dysrhythmia** *(ICD-10: E87.5)*
-   - *Tier:* 🚨 **TIER 1: PRIMARY EMERGENCY** (Likelihood: **> 95%**)
-   - *Clinical Rationale:* Serum potassium ${kVal} mmol/L accompanied by ${ecgFindings} and generalized weakness represents life-threatening electrophysiologic hyperkalemia.
+   - *Diagnostic Status:* 🚨 **CONFIRMED CLINICAL EMERGENCY**
+   - *Clinical Evidence:* Empirically verified by objective laboratory finding (serum potassium ${kVal} mmol/L) accompanied by documented electrophysiologic cardiotoxicity (${ecgFindings}) and generalized muscle weakness.
 2. **Drug-Induced Hyperkalemia in Chronic Kidney Disease Stage 4** *(ICD-10: N18.4 / T50.995A)*
-   - *Tier:* 🚨 **TIER 1: PRIMARY ETIOLOGICAL MECHANISM**
-   - *Clinical Rationale:* Synergistic potassium retention driven by concurrent Lisinopril, Spironolactone, and potassium chloride in a patient with severely reduced renal functional reserve (eGFR ${egfrVal} mL/min/1.73m²).
+   - *Diagnostic Status:* 🚨 **PRIMARY CONTRIBUTING ETIOLOGY**
+   - *Clinical Evidence:* Synergistic potassium retention driven by concurrent Lisinopril, Spironolactone, and potassium chloride in a patient with severely reduced renal functional reserve (eGFR ${egfrVal} mL/min/1.73m²).
 3. **Acute Kidney Injury (AKI) Superimposed on CKD (Acute-on-Chronic Renal Failure)** *(ICD-10: N17.9)*
-   - *Tier:* ⚠️ **TIER 2: MUST-NOT-MISS RULE-OUT**
-   - *Clinical Rationale:* Acute prerenal azotemia or intrinsic renal insult superimposed on CKD Stage 4 precipitously collapses fractional potassium excretion.
+   - *Diagnostic Status:* ⚠️ **MUST-NOT-MISS RULE-OUT**
+   - *Clinical Evidence:* Acute prerenal azotemia or intrinsic renal insult superimposed on CKD Stage 4 precipitously collapses fractional potassium excretion; requires urgent comparison to baseline creatinine.
 4. **Metabolic Acidosis with Hyperkalemic Transcellular Shift** *(ICD-10: E87.2)*
-   - *Tier:* ⚠️ **TIER 2: MUST-NOT-MISS RULE-OUT**
-   - *Clinical Rationale:* Uremic non-anion gap or high-anion gap metabolic acidosis causes cellular hydrogen ion uptake in exchange for extracellular potassium extrusion, compounding hyperkalemia.
+   - *Diagnostic Status:* ⚠️ **MUST-NOT-MISS RULE-OUT**
+   - *Clinical Evidence:* Uremic non-anion gap or high-anion gap metabolic acidosis causes cellular hydrogen ion uptake in exchange for extracellular potassium extrusion, compounding hyperkalemia.
 
 ---
 
@@ -1313,18 +1327,20 @@ The emergency management of hyperkalemia with cardiotoxicity proceeds through th
 
 \`\`\`text
 [S - SUBJECTIVE]
-${ageStr} ${sexStr} with known Chronic Kidney Disease Stage 4 (baseline eGFR ${egfrVal} mL/min/1.73m²) presents with acute generalized muscle weakness. Current medication regimen includes Lisinopril, Spironolactone, and potassium chloride supplements. Patient denies chest pain or syncope but reports profound weakness and fatigue.
+${ageStr} ${sexStr} with known Chronic Kidney Disease Stage 4 (baseline eGFR ${egfrVal} mL/min/1.73m²) presents with acute generalized muscle weakness. Current medication regimen includes Lisinopril, Spironolactone, and potassium chloride supplements.
+${chestPainSyncopeDocumentation}
 
 [O - OBJECTIVE]
 - Serum Potassium: ${kVal} mmol/L (Critical Alert Value; reference 3.5–5.0 mmol/L).
 - Baseline Renal Function: CKD Stage 4 (eGFR ${egfrVal} mL/min/1.73m²).
 - 12-Lead ECG: ${ecgFindings}. Conduction delay observed; no current sine-wave pattern.
-- Physical Examination: Bilateral symmetrical skeletal muscle weakness, deep tendon reflexes preserved to mildly depressed. Hemodynamics awaiting bedside verification.
+- ${neuroReflexDocumentation}
+- Bedside Hemodynamics: Awaiting immediate bedside measurement upon ED arrival.
 
 [A - ASSESSMENT]
-1. Critical Severe Hyperkalemia (K+ = ${kVal} mmol/L) with active cardiotoxicity (QRS widening / peaked T waves).
+1. Critical Severe Hyperkalemia (K+ = ${kVal} mmol/L) with active cardiotoxicity (${ecgFindings}).
 2. High risk of imminent ventricular fibrillation, sinoventricular conduction arrest, or asystole.
-3. Iatrogenic drug-induced potassium retention secondary to Lisinopril + Spironolactone + KCl in CKD Stage 4.
+3. Contributing etiology: Drug-induced potassium retention secondary to Lisinopril + Spironolactone + KCl in CKD Stage 4.
 TRIAGE LEVEL: P0 IMMEDIATE EMERGENCY (Critical Care & Resuscitation). Outpatient care strictly contraindicated.
 
 [P - PLAN]
@@ -1332,19 +1348,19 @@ TRIAGE LEVEL: P0 IMMEDIATE EMERGENCY (Critical Care & Resuscitation). Outpatient
 2. Immediate continuous cardiac telemetry, pulse oximetry, and non-invasive blood pressure monitoring.
 3. Phase 1 Membrane Stabilization: IV Calcium Gluconate 10% 10–20 mL (1–2 g) IV over 2–5 min STAT. Re-evaluate ECG in 5 min.
 4. Phase 2 Intracellular Shift: IV Regular Insulin 10 units + 50 mL D50W IV push STAT over 5 min, followed by nebulized Albuterol 10–20 mg.
-5. Phase 3 Elimination & Dialysis: STAT Nephrology consultation for emergent hemodialysis evaluation. Administer Sodium Zirconium Cyclosilicate (Lokelma) 10 g PO.
-6. Medication Reconciliation: STAT discontinue and withhold Lisinopril, Spironolactone, and KCl. Place electronic allergy alert for potassium-sparing agents.
+5. Phase 3 Elimination & Dialysis Evaluation: STAT Nephrology consultation for emergent dialysis evaluation based on clinical response to medical therapy. Administer Sodium Zirconium Cyclosilicate (Lokelma) 10 g PO as delayed adjunctive elimination.
+6. Medication Safety Reconciliation: STAT withhold Lisinopril, Spironolactone, and KCl during acute crisis. Place an electronic EMR Adverse Drug Reaction (ADR) / Contraindication Flag for hyperkalemia risk (do NOT file as an immune-mediated allergy). Individualized post-stabilization reassessment required before considering resumption.
 \`\`\`
 
 ---
 
-### 6. FDA Regulatory Assessment (21 U.S.C. § 360j(o)(1)(E))
+### 6. Function-by-Function FDA Regulatory Assessment (January 2026 Guidance)
 
 > [!NOTE]
-> **Regulatory Disclosure & Guidance Compliance:**
-> This software output provides clinical decision support. Under Section 520(o)(1)(E) of the FD&C Act (21 U.S.C. § 360j(o)(1)(E)) and the FDA Updated Clinical Decision Support Software Final Guidance (January 2026):
-> - Software providing time-critical recommendations for acute life-threatening metabolic crises (such as severe cardiotoxic hyperkalemia) is classified under active clinical decision support requiring emergency provider oversight.
-> - Recommendations are non-binding and must be verified by licensed emergency and critical care clinicians.`;
+> **Function-by-Function Regulatory Classification (FDA Jan 2026 CDS Final Guidance):**
+> Rather than a blanket non-device statutory assertion, Noctis evaluates its outputs under a function-by-function framework:
+> 1. **Diagnostic Risk Stratification & Laboratory Cross-Referencing:** Meets **21 U.S.C. § 360j(o)(1)(E) Non-Device CDS** criteria. It analyzes patient-specific laboratory values and ECG findings against established clinical guidelines where the healthcare professional can independently review the clinical rationale.
+> 2. **Time-Critical Resuscitation Recommendations (IV Calcium / Insulin-Glucose Dosing):** Classified under the **FDA Software as a Medical Device (SaMD) Oversight Tier** (Guidance Criterion 4), because time-critical emergency management of imminent cardiac arrest limits independent physician review before action. This output is strictly decision support subordinate to institutional ACLS protocols and attending physician order entry.`;
 }
 
 export function buildPatientDiagnosticReport(dataOrText: PatientReportedData | string): PatientDiagnosticDossier {
@@ -1692,7 +1708,7 @@ The patient presents with ${dossier.patientData.chiefComplaint || "an acute clin
   return sections.join("\n");
 }
 
-export function handleNaturalPatientDiagnosticQuery(question: string): string | null {
+function executeNaturalPatientDiagnosticQuery(question: string): string | null {
   const q = question.trim();
 
   // 0. ENCOUNTER CONTAMINATION & CROSS-SCENARIO INTEGRITY GATE
@@ -2054,4 +2070,11 @@ When serum lipase is elevated without evidence of pancreatic inflammation, clini
   }
 
   return null;
+}
+
+export function handleNaturalPatientDiagnosticQuery(question: string): string | null {
+  const q = question.trim();
+  const rawResponse = executeNaturalPatientDiagnosticQuery(q);
+  if (!rawResponse) return null;
+  return validateClinicalEvidenceIntegrity(rawResponse, q).sanitizedDossier;
 }
