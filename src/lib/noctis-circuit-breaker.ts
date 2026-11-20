@@ -100,7 +100,7 @@ export function evaluateCircuitBreaker(candidateText: string): CircuitBreakerSta
   // 2. Invariant: Clinical Safety Thresholds
   // Detects dangerous advice: e.g. normalising Potassium K+ > 6.0 without emergency escalation
   const potassiumMatch = text.match(/(?:potassium|k\+?)\s*(?:is|=|:)?\s*(\d+(?:\.\d+)?)\s*(?:mmol\/l|meq\/l)?/i);
-  const dischargeMatch = /\b(?:discharge|safe to go home|non-urgent|normal finding|routine follow-up)\b/i.test(text);
+  const dischargeMatch = /\b(?:discharge|safe to go home|non-urgent|normal finding|routine follow-up|p3\s*routine|primary care consultation|outpatient consultation)\b/i.test(text);
 
   if (potassiumMatch) {
     const kVal = parseFloat(potassiumMatch[1]);

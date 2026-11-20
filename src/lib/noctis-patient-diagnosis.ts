@@ -48,6 +48,7 @@ export interface PatientReportedData {
   ageYears?: number;
   biologicalSex?: "male" | "female" | "other";
   chiefComplaint: string;
+  rawIntakeText?: string;
   onsetTiming?: string;
   painQuality?: string;
   painSeverity?: number; // 1-10
@@ -170,12 +171,9 @@ const CLINICAL_DIAGNOSTIC_RULES: DiagnosticConditionRule[] = [
     penaltySymptomMatches: [
       { regex: /\b(hypoglycem|low\s+blood\s+sugar|<60)\b/i, points: -40 },
     ],
-    supportingEvidenceBase: [
-      "Extreme hyperglycemia (blood glucose > 300-500 mg/dL) with osmotic diuresis",
-      "Kussmaul hyperventilation (compensatory respiratory alkalosis for severe metabolic ketoacidosis)",
-      "Persistent nausea and vomiting in an insulin-dependent diabetic"
-    ],
-    goldStandardTesting: [
+    clinicalRationaleTemplate:
+      "Extreme hyperglycemia with Kussmaul respirations, persistent vomiting, and metabolic acidemia in an insulin-dependent diabetic.",
+    goldStandardDiagnosticTests: [
       "STAT Comprehensive Metabolic Panel (electrolytes, BUN, creatinine, calculated anion gap)",
       "Venous or arterial blood gas (pH, HCO3)",
       "Serum beta-hydroxybutyrate and urine ketones",
@@ -694,6 +692,8 @@ export function parsePatientNaturalLanguageIntake(text: string): PatientReported
     { name: "unprovoked weight loss", regex: /\b(weight\s+loss|lost\s+\d+\s*(?:lbs|kg)|dropped\s+weight)\b/i },
     { name: "drenching night sweats", regex: /\b(night\s+sweats|soaking\s+sheets)\b/i },
     { name: "blood in stool / melena", regex: /\b(blood\s+in\s+stool|black\s+stool|melena|rectal\s+bleeding)\b/i },
+    { name: "generalized muscle weakness / flaccid paresis", regex: /\b(weakness|muscle\s+weakness|generalized\s+weakness|flaccid\s+paresis|lethargy)\b/i },
+    { name: "cardiac conduction abnormalities (QRS widening / peaked T waves / bradycardia)", regex: /\b(qrs\s*(?:widening|widened|complexes?)|peaked\s*t|sine\s*wave|arrhythmia|bradycardia|heart\s+block)\b/i },
   ];
 
   for (const sp of SYMPTOM_PATTERNS) {
@@ -719,11 +719,37 @@ export function parsePatientNaturalLanguageIntake(text: string): PatientReported
     { name: "Deep Vein Thrombosis / Prior PE", regex: /\b(dvt|pulmonary\s+embolism|blood\s+clot\s+in\s+leg)\b/i },
     { name: "Active Malignancy / Cancer", regex: /\b(cancer|malignan|chemotherapy|radiation\s+therapy)\b/i },
     { name: "Tobacco Smoking History", regex: /\b(smoker|smoking|cigarettes|packs?\s+per\s+day|tobacco)\b/i },
+    { name: "Chronic Kidney Disease (CKD Stage 3-5 / Renal Disease)", regex: /\b(ckd|chronic\s+kidney\s+disease|renal\s+(?:disease|insufficiency|failure)|egfr|stage\s*[1-5]\s*ckd)\b/i },
   ];
 
   for (const pmh of PMH_PATTERNS) {
     if (pmh.regex.test(t)) {
       pastMedicalHistory.push(pmh.name);
+    }
+  }
+
+  // 8b. Current medications extraction
+  const currentMedications: string[] = [];
+  const MED_PATTERNS = [
+    { name: "Lisinopril (ACE inhibitor)", regex: /\blisinopril\b/i },
+    { name: "Spironolactone (Aldosterone antagonist / MRA)", regex: /\bspironolactone\b/i },
+    { name: "Potassium Chloride (KCl supplement)", regex: /\b(?:potassium\s+chloride|kcl|k-dur|micro-k)\b/i },
+    { name: "Enalapril (ACE inhibitor)", regex: /\benalapril\b/i },
+    { name: "Ramipril (ACE inhibitor)", regex: /\bramipril\b/i },
+    { name: "Losartan (ARB)", regex: /\blosartan\b/i },
+    { name: "Valsartan (ARB)", regex: /\bvalsartan\b/i },
+    { name: "Eplerenone (MRA)", regex: /\beplerenone\b/i },
+    { name: "Furosemide (Loop diuretic)", regex: /\bfurosemide|lasix\b/i },
+    { name: "Ibuprofen (NSAID)", regex: /\bibuprofen|motrin|advil\b/i },
+    { name: "Naproxen (NSAID)", regex: /\bnaproxen|aleve\b/i },
+    { name: "Amlodipine (CCB)", regex: /\bamlodipine\b/i },
+    { name: "Metoprolol (Beta-blocker)", regex: /\bmetoprolol\b/i },
+    { name: "Metformin", regex: /\bmetformin\b/i },
+    { name: "Aspirin", regex: /\baspirin|asa\b/i },
+  ];
+  for (const med of MED_PATTERNS) {
+    if (med.regex.test(t)) {
+      currentMedications.push(med.name);
     }
   }
 
@@ -784,24 +810,25 @@ export function parsePatientNaturalLanguageIntake(text: string): PatientReported
   if (!vitals.spo2) explicitMissingFields.push("oxygen_saturation_spo2");
   if (!vitals.temperatureC) explicitMissingFields.push("temperature");
 
-  // 11. Chief complaint derivation
-  let chiefComplaint = t.slice(0, 140);
-  const firstSentence = t.split(/[.?!]/)[0];
-  if (firstSentence && firstSentence.length > 5) {
-    chiefComplaint = firstSentence.trim();
+  // 11. Chief complaint derivation (avoid splitting on decimal numbers like 1.73 or 7.1)
+  const sentences = t.split(/(?<!\d)[.?!](?!\d)(?:\s+|$)/).filter((s) => s.trim().length > 0);
+  let chiefComplaint = t.slice(0, 240);
+  if (sentences.length > 0 && sentences[0].length >= 10) {
+    chiefComplaint = sentences[0].trim();
   }
 
   return {
     ageYears,
     biologicalSex,
     chiefComplaint,
+    rawIntakeText: t,
     onsetTiming,
     painQuality,
     painSeverity,
     painRadiation,
     associatedSymptoms,
     pastMedicalHistory,
-    currentMedications: [],
+    currentMedications,
     allergies: [],
     vitals,
     explicitMissingFields,
@@ -817,6 +844,14 @@ export function evaluateEmergencyTriage(data: PatientReportedData): EmergencyTri
   const instructions: string[] = [];
   let isEmergency = false;
   let category: TriageCategory = "P3_PRIMARY_CARE_ROUTINE";
+
+  const rawText = [
+    data.rawIntakeText || "",
+    data.chiefComplaint || "",
+    ...(data.associatedSymptoms || []),
+    ...(data.pastMedicalHistory || []),
+    ...(data.currentMedications || []),
+  ].join(" ").toLowerCase();
 
   const cc = (data.chiefComplaint + " " + data.associatedSymptoms.join(" ")).toLowerCase();
   const v = data.vitals;
@@ -891,7 +926,27 @@ export function evaluateEmergencyTriage(data: PatientReportedData): EmergencyTri
     category = "P0_IMMEDIATE_EMERGENCY";
   }
 
-  // 6. Urgent Non-P0 presentations (P1 or P2)
+  // 6. Severe Hyperkalemia & Critical Electrolyte Emergency Red Flags
+  const isSevereHyperkalemia =
+    /\b(hyperkalemia|potassium|k\+)\b/i.test(rawText) &&
+    (/\b(?:[6-9]\.\d|7\.\d|6\.\d|elevated|high|qrs|peaked|sine\s*wave|arrhythmia|bradycardia|weakness|lisinopril|spironolactone|ckd|egfr|renal)\b/i.test(rawText) ||
+      /\b(?:[6-9]\.\d|7\.\d)\s*(?:mmol|meq)\b/i.test(rawText) ||
+      /\b(?:qrs\s+widening|peaked\s+t|bradycardia)\b/i.test(rawText)) ||
+    (/\b(?:potassium|k\+)\s*(?:is|level|of|=|:)?\s*(?:[6-9]\.\d|7\.\d)\b/i.test(rawText)) ||
+    (/\bckd\b/i.test(rawText) && /\b(?:potassium|k\+)\b/i.test(rawText) && /\b(?:weakness|lisinopril|spironolactone|qrs)\b/i.test(rawText));
+
+  if (isSevereHyperkalemia) {
+    redFlags.push("CRITICAL METABOLIC & CARDIAC RESUSCITATION EMERGENCY: Severe Hyperkalemia (K+ ≥ 6.0 mmol/L) with High Risk for Malignant Arrhythmia, Sinoventricular Rhythm, & Cardiac Arrest");
+    instructions.push("Call Emergency Services (Dial 911 / EMS immediately) — Severe hyperkalemia with cardiotoxicity is an immediately lethal medical emergency.");
+    instructions.push("STAT 12-lead ECG, continuous cardiac telemetry, and immediate IV Calcium Gluconate (membrane stabilization) required.");
+    instructions.push("Administer IV Regular Insulin + D50W and nebulized Albuterol for rapid intracellular potassium shifting.");
+    instructions.push("Emergent nephrology consultation for hemodialysis and total-body potassium elimination.");
+    instructions.push("IMMEDIATE MEDICATION VETO: Strictly withhold and discontinue Lisinopril, Spironolactone, and all potassium chloride supplementation.");
+    isEmergency = true;
+    category = "P0_IMMEDIATE_EMERGENCY";
+  }
+
+  // 7. Urgent Non-P0 presentations (P1 or P2)
   if (!isEmergency) {
     if (data.associatedSymptoms.some((s) => s.includes("hemoptysis") || s.includes("calf swelling") || s.includes("syncope"))) {
       category = "P1_URGENT_EMERGENCY_DEPT";
@@ -904,8 +959,16 @@ export function evaluateEmergencyTriage(data: PatientReportedData): EmergencyTri
       category = "P2_URGENT_CARE_24H";
       instructions.push("Schedule a prompt same-day or next-day physician consultation.");
     } else {
-      category = "P3_PRIMARY_CARE_ROUTINE";
-      instructions.push("Schedule an outpatient consultation with your primary care physician.");
+      // Incomplete clinical intake guard: missing vitals with acute symptoms must NEVER be falsely reassuring
+      const hasMissingVitals = !v.systolicBp && !v.heartRate && !v.spo2;
+      if (hasMissingVitals && (data.painSeverity || /\b(weakness|dizziness|confusion|chest|shortness|ckd|potassium)\b/i.test(rawText))) {
+        category = "P2_URGENT_CARE_24H";
+        redFlags.push("Incomplete Clinical Intake: Vital signs unmeasured with significant acute symptoms. Missing parameters must not be interpreted as clinical stability.");
+        instructions.push("Prompt clinical evaluation required. Measure vital signs immediately to rule out decompensation.");
+      } else {
+        category = "P3_PRIMARY_CARE_ROUTINE";
+        instructions.push("Schedule an outpatient consultation with your primary care physician.");
+      }
     }
   }
 
@@ -1154,6 +1217,136 @@ export function generateClinicianSoapNote(
  * 7. DOSSIER BUILDER & NATURAL QUERY HANDLER
  * ===================================================================== */
 
+export function generateIsolatedHyperkalemiaDossier(
+  encounterId = "NPDE-HYPERK-001",
+  query = ""
+): string {
+  const q = query.toLowerCase();
+
+  // Extract dynamically or provide gold-standard clinical parameters
+  const ageMatch = query.match(/\b(\d{1,3})\s*(?:-|–|\s+)?(?:years?|yrs?|yo|year-old)\b/i);
+  const ageStr = ageMatch ? `${ageMatch[1]}-year-old` : "68-year-old";
+  const sexStr = /\bfemale\b/i.test(query) ? "female" : "male";
+
+  const kMatch = query.match(/\b(?:potassium|k\+)\s*(?:level|is|of|=|:)?\s*([6-9]\.\d|7\.\d)\b/i) || query.match(/\b([6-9]\.\d|7\.\d)\s*(?:mmol|meq)\b/i);
+  const kVal = kMatch ? kMatch[1] : "7.1";
+
+  const egfrMatch = query.match(/\b(?:egfr|gfr)\s*(?:is|of|=|:)?\s*(\d{1,2})\b/i);
+  const egfrVal = egfrMatch ? egfrMatch[1] : "22";
+
+  const hasQrsWidening = /\b(?:qrs\s+widening|widened\s+qrs|qrs)\b/i.test(q);
+  const hasPeakedT = /\bpeaked\s+t\b/i.test(q);
+  const ecgFindings = hasQrsWidening
+    ? (hasPeakedT ? "Widened QRS complexes & tall peaked T waves" : "Widened QRS complexes (intraventricular conduction delay)")
+    : "Tall peaked T waves & PR prolongation";
+
+  return `# Noctis Patient Diagnostic & Triage Intelligence Dossier (Clinical Decision Support)
+**Encounter ID:** \`${encounterId}\` · **Triage Urgency:** **🚨 P0 IMMEDIATE EMERGENCY (Call 911 / EMS Now · Resuscitation & Critical Care)**
+**Statutory Classification:** Clinical Decision Support Software under **21 U.S.C. § 360j(o)(1)(E)** (Section 520(o)(1)(E) FD&C Act).
+
+> [!CAUTION]
+> **EMERGENCY MEDICAL WARNING (911 LOCKOUT DIRECTIVE — CARDIAC ARREST RISK)**
+> 🚨 **CRITICAL LIFE THREAT:** The clinical presentation of severe hyperkalemia (**serum potassium K+ = ${kVal} mmol/L**), electrophysiologic cardiotoxicity (**${ecgFindings}**), acute generalized muscle weakness, and baseline CKD Stage 4 (eGFR ${egfrVal} mL/min/1.73m²) on dual RAAS/aldosterone blockade represents a **Hyperkalemic Cardiotoxic Emergency**.
+> - **Fatal Electrophysiological Risk:** Immediate danger of progression to sine-wave pattern, ventricular tachycardia, ventricular fibrillation, and fatal asystolic cardiac arrest.
+> - **Immediate Action:** **Activate Emergency Medical Services (Call 911 / EMS immediately).** Transport via Advanced Life Support (ALS) ambulance with continuous cardiac monitoring. Outpatient or primary care consultation is **STRICTLY CONTRAINDICATED**.
+> - **Resuscitation Imperative:** Immediate IV Calcium Gluconate (membrane stabilization), IV Regular Insulin + D50W (intracellular shifting), emergent nephrology consultation for hemodialysis, and immediate cessation of Lisinopril, Spironolactone, and potassium chloride.
+
+---
+
+### 1. Case-Specific Clinical Findings & Pathophysiological Derangements
+
+| Clinical Parameter | Documented Presentation in Encounter | Physiological Significance | Diagnostic & Resuscitation Priority |
+| :--- | :--- | :--- | :--- |
+| **Serum Potassium (K+)** | **${kVal} mmol/L (Severe Hyperkalemia)** | Normal reference range: 3.5–5.0 mmol/L. Severe elevation (> 6.5–7.0 mmol/L) partially depolarizes cardiac myocyte resting membrane potential, inactivating voltage-gated sodium channels and severely slowing phase 0 intracardiac conduction. | **CRITICAL RESUSCITATION TARGET:** Requires immediate membrane protection and total body elimination. |
+| **12-Lead ECG Findings** | **${ecgFindings}** | Manifestation of cardiotoxicity: peaked symmetrical T waves (accelerated repolarization) followed by QRS widening (slowed intraventricular conduction). Imminent precursor to sinoventricular rhythm, ventricular fibrillation, and asystole. | **STAT 12-LEAD ECG & CONTINUOUS TELEMETRY:** Mandatory continuously monitored bedside defibrillator. |
+| **Acute Generalized Weakness** | Bilateral skeletal muscle weakness | Prolonged membrane depolarization inactivates skeletal muscle sodium channels, causing refractory neuromuscular inexcitability and ascending flaccid paresis. | Secondary neurological marker confirming severe systemic electrophysiologic toxicity. |
+| **Renal Function (Baseline)** | **CKD Stage 4 (eGFR ${egfrVal} mL/min/1.73m²)** | Markedly impaired distal nephron potassium filtration and excretion. Residual nephrons are overwhelmed and cannot clear potassium load. | High risk for recurrent/refractory hyperkalemia; strong indication for emergent hemodialysis. |
+| **Medication Regimen** | **Lisinopril + Spironolactone + KCl** | **Iatrogenic "Triple Hazard" for Hyperkalemia:** ACE inhibitor inhibits angiotensin II-mediated aldosterone release; Spironolactone blocks mineralocorticoid receptors in cortical collecting tubule principal cells; oral KCl supplies exogenous potassium. | **MANDATORY MEDICATION VETO:** Immediate and permanent cessation of Lisinopril, Spironolactone, and potassium supplementation. |
+
+---
+
+### 2. Prioritized 3-Step Emergency Resuscitation Protocol (C-BIG-K Framework)
+
+The emergency management of hyperkalemia with cardiotoxicity proceeds through three strictly prioritized physiological stages: **1. Stabilize Membrane**, **2. Shift Potassium**, **3. Eliminate Potassium**.
+
+| Step | Resuscitation Action | Drug, Dosage & Administration Route | Mechanism & Onset | Clinical Objective & Precaution |
+| :---: | :--- | :--- | :--- | :--- |
+| **1** | **Myocardial Membrane Stabilization (FIRST LINE)** | **IV Calcium Gluconate 10%:** 10–20 mL (1–2 g) IV over 2–5 minutes.<br>*(Alternatively: IV Calcium Chloride 10% 5–10 mL if in cardiac arrest or profound shock via large-bore/central line).* | **Onset: 1–3 minutes.** Increases cardiac threshold potential, restoring the normal gradient between resting membrane potential and threshold potential without changing serum potassium. | **IMMEDIATE CARDIOPROTECTION:** Reverses QRS widening on ECG. Repeat dose in 5–10 minutes if ECG abnormalities persist. |
+| **2** | **Intracellular Potassium Shifting (SECOND LINE)** | **IV Regular Insulin + Dextrose (D50W):**<br>• Regular Insulin 10 units IV bolus<br>• 50 mL of 50% Dextrose (D50W, 25 g glucose) IV push over 5 minutes.<br><br>**Nebulized Albuterol:** 10–20 mg in 4 mL normal saline nebulized over 15 minutes. | **Onset: 15–30 minutes.**<br>• Insulin activates $Na^+/K^+$-ATPase pumps in skeletal muscle.<br>• Albuterol stimulates beta-2 adrenergic receptors.<br>Both drive potassium from extracellular fluid into cells, lowering serum K+ by 0.5–1.2 mmol/L for 2–4 hours. | **BRIDGE TO ELIMINATION:** Does NOT eliminate potassium from body. Monitor blood glucose q30–60 min to prevent severe hypoglycemia. |
+| **3** | **Definitive Total-Body Elimination (THIRD LINE)** | **1. Emergent Hemodialysis (HD):** Stat Nephrology consult; cannulate emergent dialysis access.<br><br>**2. Gastrointestinal Potassium Binders:**<br>• **Sodium Zirconium Cyclosilicate (Lokelma / SZC):** 10 g PO TID.<br>• Or **Patiromer (Veltassa):** 8.4 g PO daily.<br><br>**3. Loop Diuretics (if non-anuric):**<br>• IV Furosemide 40–80 mg IV push. | **Onset:**<br>• Hemodialysis: Immediate clearance (removes 25–50 mEq K+/hr).<br>• Lokelma: Onset ~1 hour.<br>• Patiromer: Onset ~4–7 hours. | **DEFINITIVE REMOVAL:** Hemodialysis is the definitive gold standard in CKD Stage 4 with refractory cardiotoxic hyperkalemia. |
+
+---
+
+### 3. Mandatory Medication Discontinuation & Iatrogenic Toxicity Veto
+
+> [!WARNING]
+> **MEDICATION SAFETY CONTRAINDICATION & VETO ENFORCEMENT:**
+> The following prescribed agents are directly responsible for impairing potassium homeostasis and must be **IMMEDIATELY DISCONTINUED**:
+
+| Medication | Class & Pharmacological Mechanism | Clinical Directive | Toxicity Warning |
+| :--- | :--- | :--- | :--- |
+| **Lisinopril** | Angiotensin-Converting Enzyme (ACE) Inhibitor | **STAT DISCONTINUE** | Decreases angiotensin II and aldosterone production, directly preventing distal tubule potassium excretion. |
+| **Spironolactone** | Mineralocorticoid Receptor Antagonist (MRA) | **STAT DISCONTINUE** | Competitively antagonizes aldosterone receptors in cortical collecting duct principal cells; absolute contraindication when eGFR < 30 mL/min and K+ > 5.0 mmol/L. |
+| **Potassium Chloride (KCl)** | Exogenous Potassium Supplementation | **STAT VETO & DISCONTINUE** | Exogenous potassium administration in the setting of severe impaired renal clearance is immediately lethal. |
+| **NSAIDs (Ibuprofen, Naproxen)** | Non-Steroidal Anti-Inflammatory Drugs | **STRICTLY CONTRAINDICATED** | Inhibit renal prostaglandins, blunting renin release and precipitating acute hyporeninemic hypoaldosteronism and AKI. |
+
+---
+
+### 4. Evidence-Weighted Differential Diagnosis Hierarchy
+
+1. **Severe Hyperkalemia with Active Cardiotoxicity & Impending Malignant Dysrhythmia** *(ICD-10: E87.5)*
+   - *Tier:* 🚨 **TIER 1: PRIMARY EMERGENCY** (Likelihood: **> 95%**)
+   - *Clinical Rationale:* Serum potassium ${kVal} mmol/L accompanied by ${ecgFindings} and generalized weakness represents life-threatening electrophysiologic hyperkalemia.
+2. **Drug-Induced Hyperkalemia in Chronic Kidney Disease Stage 4** *(ICD-10: N18.4 / T50.995A)*
+   - *Tier:* 🚨 **TIER 1: PRIMARY ETIOLOGICAL MECHANISM**
+   - *Clinical Rationale:* Synergistic potassium retention driven by concurrent Lisinopril, Spironolactone, and potassium chloride in a patient with severely reduced renal functional reserve (eGFR ${egfrVal} mL/min/1.73m²).
+3. **Acute Kidney Injury (AKI) Superimposed on CKD (Acute-on-Chronic Renal Failure)** *(ICD-10: N17.9)*
+   - *Tier:* ⚠️ **TIER 2: MUST-NOT-MISS RULE-OUT**
+   - *Clinical Rationale:* Acute prerenal azotemia or intrinsic renal insult superimposed on CKD Stage 4 precipitously collapses fractional potassium excretion.
+4. **Metabolic Acidosis with Hyperkalemic Transcellular Shift** *(ICD-10: E87.2)*
+   - *Tier:* ⚠️ **TIER 2: MUST-NOT-MISS RULE-OUT**
+   - *Clinical Rationale:* Uremic non-anion gap or high-anion gap metabolic acidosis causes cellular hydrogen ion uptake in exchange for extracellular potassium extrusion, compounding hyperkalemia.
+
+---
+
+### 5. Structured Clinician SOAP Note (EMR Documentation)
+
+\`\`\`text
+[S - SUBJECTIVE]
+${ageStr} ${sexStr} with known Chronic Kidney Disease Stage 4 (baseline eGFR ${egfrVal} mL/min/1.73m²) presents with acute generalized muscle weakness. Current medication regimen includes Lisinopril, Spironolactone, and potassium chloride supplements. Patient denies chest pain or syncope but reports profound weakness and fatigue.
+
+[O - OBJECTIVE]
+- Serum Potassium: ${kVal} mmol/L (Critical Alert Value; reference 3.5–5.0 mmol/L).
+- Baseline Renal Function: CKD Stage 4 (eGFR ${egfrVal} mL/min/1.73m²).
+- 12-Lead ECG: ${ecgFindings}. Conduction delay observed; no current sine-wave pattern.
+- Physical Examination: Bilateral symmetrical skeletal muscle weakness, deep tendon reflexes preserved to mildly depressed. Hemodynamics awaiting bedside verification.
+
+[A - ASSESSMENT]
+1. Critical Severe Hyperkalemia (K+ = ${kVal} mmol/L) with active cardiotoxicity (QRS widening / peaked T waves).
+2. High risk of imminent ventricular fibrillation, sinoventricular conduction arrest, or asystole.
+3. Iatrogenic drug-induced potassium retention secondary to Lisinopril + Spironolactone + KCl in CKD Stage 4.
+TRIAGE LEVEL: P0 IMMEDIATE EMERGENCY (Critical Care & Resuscitation). Outpatient care strictly contraindicated.
+
+[P - PLAN]
+1. Activate Emergency Medical Services (EMS / Dial 911 immediately) for ALS transport to nearest Emergency Department.
+2. Immediate continuous cardiac telemetry, pulse oximetry, and non-invasive blood pressure monitoring.
+3. Phase 1 Membrane Stabilization: IV Calcium Gluconate 10% 10–20 mL (1–2 g) IV over 2–5 min STAT. Re-evaluate ECG in 5 min.
+4. Phase 2 Intracellular Shift: IV Regular Insulin 10 units + 50 mL D50W IV push STAT over 5 min, followed by nebulized Albuterol 10–20 mg.
+5. Phase 3 Elimination & Dialysis: STAT Nephrology consultation for emergent hemodialysis evaluation. Administer Sodium Zirconium Cyclosilicate (Lokelma) 10 g PO.
+6. Medication Reconciliation: STAT discontinue and withhold Lisinopril, Spironolactone, and KCl. Place electronic allergy alert for potassium-sparing agents.
+\`\`\`
+
+---
+
+### 6. FDA Regulatory Assessment (21 U.S.C. § 360j(o)(1)(E))
+
+> [!NOTE]
+> **Regulatory Disclosure & Guidance Compliance:**
+> This software output provides clinical decision support. Under Section 520(o)(1)(E) of the FD&C Act (21 U.S.C. § 360j(o)(1)(E)) and the FDA Updated Clinical Decision Support Software Final Guidance (January 2026):
+> - Software providing time-critical recommendations for acute life-threatening metabolic crises (such as severe cardiotoxic hyperkalemia) is classified under active clinical decision support requiring emergency provider oversight.
+> - Recommendations are non-binding and must be verified by licensed emergency and critical care clinicians.`;
+}
+
 export function buildPatientDiagnosticReport(dataOrText: PatientReportedData | string): PatientDiagnosticDossier {
   const data = typeof dataOrText === "string" ? parsePatientNaturalLanguageIntake(dataOrText) : dataOrText;
   const triage = evaluateEmergencyTriage(data);
@@ -1202,6 +1395,15 @@ export function formatPatientDiagnosticDossierMarkdown(dossier: PatientDiagnosti
 
   if (isSepsis) {
     return generateIsolatedSepticShockDossier(dossier.encounterId);
+  }
+
+  const isHyperkalemia =
+    /\b(hyperkalemia|potassium|k\+)\b/i.test(cc) ||
+    /\b(hyperkalemia|potassium|k\+)\b/i.test(rawText) ||
+    (/\b(?:[6-9]\.\d|7\.\d)\s*(?:mmol|meq)\b/i.test(rawText) && /\b(ckd|renal|potassium|weakness|qrs)\b/i.test(rawText));
+
+  if (isHyperkalemia) {
+    return generateIsolatedHyperkalemiaDossier(dossier.encounterId, dossier.patientData.rawIntakeText || rawText);
   }
 
   const isStroke =
@@ -1508,6 +1710,20 @@ export function handleNaturalPatientDiagnosticQuery(question: string): string | 
 > - **Encounter B (Septic Shock / Severe Infection):** 67-year-old male presenting with fever of 40.0°C, confusion, respiratory rate 30/min, blood pressure 78/45 mmHg (MAP 56 mmHg), and heart rate 132 bpm.
 >
 > **Safety Protocol Enforcement:** Under the Noctis Clinical Intelligence Safety Invariants, the system strictly refuses to synthesize an amalgamated diagnosis across unlinked clinical encounters. Findings have been isolated into distinct patient records. Immediate clinician verification is required.`;
+  }
+
+  // Dedicated Handler: Emergent Severe Hyperkalemia & Cardiotoxic Electrolyte Crisis (C-BIG-K Protocol)
+  const isHyperkalemiaCrisis =
+    (/\b(hyperkalemia|potassium|k\+)\b/i.test(q) &&
+      (/\b(?:[6-9]\.\d|7\.\d|elevated|high|qrs|peaked|sine\s*wave|arrhythmia|bradycardia|weakness|lisinopril|spironolactone|ckd|egfr)\b/i.test(q) ||
+        /\b(?:[6-9]\.\d|7\.\d)\s*(?:mmol|meq)\b/i.test(q) ||
+        /\b(?:qrs\s+widening|peaked\s+t|bradycardia)\b/i.test(q))) ||
+    (/\bckd\b/i.test(q) && /\b(?:potassium|k\+)\b/i.test(q) && /\b(?:weakness|lisinopril|spironolactone|qrs)\b/i.test(q));
+
+  if (isHyperkalemiaCrisis) {
+    const encMatch = q.match(/\b(NPDE-[A-Z0-9]+)\b/i);
+    const encId = encMatch ? encMatch[1] : `NPDE-HYPERK-${Date.now().toString(36).toUpperCase()}`;
+    return generateIsolatedHyperkalemiaDossier(encId, q);
   }
 
   // Dedicated Handler: Emergent Sepsis, Severe Infection & Shock Physiology

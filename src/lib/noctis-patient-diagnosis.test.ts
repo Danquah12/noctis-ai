@@ -202,4 +202,43 @@ describe("Noctis Patient Diagnostic & Triage Intelligence Engine (NPDE)", () => 
     assert.doesNotMatch(res, /Central Chest Discomfort/);
     assert.doesNotMatch(res, /154\/96\s*mmHg/);
   });
+
+  it('enforces P0 Emergency Gate and C-BIG-K resuscitation protocol for severe hyperkalemia in CKD Stage 4', () => {
+    const scenario =
+      "68-year-old male with CKD stage 4 (eGFR 22 mL/min/1.73m2), potassium 7.1 mmol/L, ECG QRS widening, generalized muscle weakness, on Lisinopril, Spironolactone, and potassium chloride.";
+
+    // 1. Verify intake parser does not chop on decimal point 1.73m2
+    const data = parsePatientNaturalLanguageIntake(scenario);
+    assert.equal(data.ageYears, 68);
+    assert.equal(data.biologicalSex, "male");
+    assert.ok(data.chiefComplaint.length > 30);
+    assert.doesNotMatch(data.chiefComplaint, /eGFR 22 mL\/min\/1$/); // Must not truncate at decimal point
+    assert.ok(data.pastMedicalHistory.some((p) => /Chronic Kidney Disease/i.test(p)));
+    assert.ok(data.currentMedications.some((m) => /Lisinopril/i.test(m)));
+    assert.ok(data.currentMedications.some((m) => /Spironolactone/i.test(m)));
+    assert.ok(data.currentMedications.some((m) => /Potassium Chloride/i.test(m)));
+
+    // 2. Verify deterministic triage is strictly P0 IMMEDIATE EMERGENCY (never P3 Routine)
+    const triage = evaluateEmergencyTriage(data);
+    assert.equal(triage.isEmergency, true);
+    assert.equal(triage.triageCategory, "P0_IMMEDIATE_EMERGENCY");
+    assert.notEqual(triage.triageCategory, "P3_PRIMARY_CARE_ROUTINE");
+    assert.ok(triage.triggeredRedFlags.some((f) => /Hyperkalemia/i.test(f)));
+    assert.ok(triage.actionableInstructions.some((i) => /Calcium Gluconate/i.test(i)));
+    assert.ok(triage.actionableInstructions.some((i) => /Insulin/i.test(i)));
+
+    // 3. Verify handleNaturalPatientDiagnosticQuery generates dedicated hyperkalemia dossier
+    const res = handleNaturalPatientDiagnosticQuery(scenario);
+    assert.ok(res !== null);
+    assert.match(res, /P0 IMMEDIATE EMERGENCY/);
+    assert.doesNotMatch(res, /P3 ROUTINE CLINICAL/);
+    assert.match(res, /Calcium Gluconate/i);
+    assert.match(res, /Regular Insulin/i);
+    assert.match(res, /D50W/i);
+    assert.match(res, /Hemodialysis/i);
+    assert.match(res, /STAT DISCONTINUE/i);
+    assert.match(res, /Lisinopril/i);
+    assert.match(res, /Spironolactone/i);
+    assert.match(res, /21 U\.S\.C\. § 360j\(o\)\(1\)\(E\)/);
+  });
 });
