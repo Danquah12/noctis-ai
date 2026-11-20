@@ -10,7 +10,7 @@
  * 5. Calibrated Abstention (Refuses to fabricate unprovided patient data or guess unknown labs)
  */
 
-import { createHash } from "node:crypto";
+import { sha256Sync } from "./universal-crypto";
 
 export interface AuthoritativeChunk {
   chunkId: string;
@@ -46,7 +46,7 @@ export interface GroundingVerificationResult {
 }
 
 function computeSha256(text: string): string {
-  return createHash("sha256").update(text).digest("hex");
+  return sha256Sync(text);
 }
 
 /**
