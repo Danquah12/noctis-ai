@@ -1371,13 +1371,23 @@ async function vibeReplyWith(
   messages: ChatMessage[],
   model: string,
 ): Promise<{ text: string } | { error: string }> {
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+  const base = (
+    serverSecret("NOCTIS_LLM_URL") ||
+    serverSecret("OPENAI_BASE_URL") ||
+    process.env.VLLM_HOST ||
+    "https://api.openai.com/v1"
+  ).replace(/\/+$/, "");
+  const endpoint = base.endsWith("/chat/completions") ? base : `${base}/chat/completions`;
+  const res = await fetch(endpoint, {
     method: "POST",
-    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    headers: {
+      ...(key ? { Authorization: `Bearer ${key}` } : {}),
+      "Content-Type": "application/json",
+    },
     signal: AbortSignal.timeout(60000),
-    body: JSON.stringify({ model, temperature: 0, max_tokens: 2048, messages }),
+    body: JSON.stringify({ model: model || "noctis-7b-v2.0", temperature: 0, max_tokens: 2048, messages }),
   });
-  if (!res.ok) return { error: "Model did not return an answer." };
+  if (!res.ok) return { error: `Model endpoint (${endpoint}) returned status ${res.status}.` };
   const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
   const text = data.choices?.[0]?.message?.content?.trim();
   return text ? { text } : { error: "Model response came back empty." };
