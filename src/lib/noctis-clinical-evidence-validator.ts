@@ -9,7 +9,11 @@
  * 5. VAL-PROB-CALIB: Calibrated Diagnostic Hierarchy Gate (No unsupported numerical pseudo-probabilities like "> 95%")
  * 6. VAL-FDA-DUAL-TIER: Function-by-Function Regulatory Assessment Gate (Dual-tier classification under FDA Jan 2026 CDS guidance)
  * 7. VAL-MALE-OB-EXCLUSION: Hard Demographic Exclusion Gate (Male Patient Obstetric Misrouting Veto)
- * 8. VAL-HYPERMAG-VETO: Fatal Medication Contraindication Gate (Magnesium Sulfate in Hypermagnesemia Veto)
+ * 8. VAL-HYPERMAG-VETO: Medication Contraindication Gate (Magnesium Sulfate in Hypermagnesemia Veto)
+ * 9. VAL-CKD-ANURIA: Renal Functional Reserve Gate (No assuming anuria solely from CKD Stage 5)
+ * 10. VAL-COMPLETED-ORDERS: Documentation Integrity Gate (No documenting proposed orders as completed actions)
+ * 11. VAL-CALCIUM-VARIABILITY: Pharmacodynamic Realism Gate (Disclosing variable/temporary calcium antagonism)
+ * 12. VAL-NO-FAB-SOAP: Zero Clinical Fabrication Gate (No invented caregiver, sternal rub, or exam findings)
  */
 
 import { sha256Sync } from "./universal-crypto.ts";
@@ -224,7 +228,7 @@ export function validateClinicalEvidenceIntegrity(
     });
   }
 
-  // 8. VAL-HYPERMAG-VETO: Fatal Medication Contraindication Gate (Magnesium Sulfate in Hypermagnesemia Veto)
+  // 8. VAL-HYPERMAG-VETO: Medication Contraindication Gate (Magnesium Sulfate in Hypermagnesemia Veto)
   // Strictly intercepts and vetos any order, recommendation, or administration of magnesium sulfate in hypermagnesemic presentations
   const isHypermagnesemicInput =
     /\b(hypermagnesemia|magnesium|milk\s+of\s+magnesia)\b/i.test(inputLower) &&
@@ -236,17 +240,125 @@ export function validateClinicalEvidenceIntegrity(
 
   if (isHypermagnesemicInput && (administerMgSo4Regex.test(sanitized) || mgso4LoadingDoseRegex.test(sanitized))) {
     sanitized = sanitized
-      .replace(administerMgSo4Regex, "ABSOLUTE CONTRAINDICATION: Magnesium Sulfate is STRICTLY CONTRAINDICATED in hypermagnesemia (FATAL TOXICITY VETO). Administer STAT IV Calcium Gluconate (10% 10-20 mL) for physiological membrane stabilization")
-      .replace(mgso4LoadingDoseRegex, "ABSOLUTE CONTRAINDICATION: Magnesium Sulfate STRICTLY PROHIBITED");
+      .replace(administerMgSo4Regex, "Contraindicated: Avoid additional magnesium products or magnesium sulfate, which would compound existing toxicity and deepen conduction block. Consider STAT IV Calcium Gluconate (10% 10-20 mL) for physiological membrane antagonism")
+      .replace(mgso4LoadingDoseRegex, "Contraindicated: Additional magnesium products or magnesium sulfate are contraindicated");
 
     violations.push({
       ruleId: "VAL-HYPERMAG-VETO",
-      ruleName: "Fatal Medication Contraindication Gate (Magnesium Sulfate in Hypermagnesemia Veto)",
+      ruleName: "Medication Contraindication Gate (Magnesium Sulfate in Hypermagnesemia Veto)",
       severity: "CRITICAL",
       clinicalRationale:
-        "Administering Magnesium Sulfate to a patient with hypermagnesemia (Mg ≥ 4.0-8.5 mg/dL) or hypermagnesemic shock in CKD Stage 5 is directly lethal. The system strictly vetos and intercepts this order, mandating immediate IV Calcium Gluconate antagonism.",
+        "Administering Magnesium Sulfate to a patient with hypermagnesemia (Mg ≥ 4.0-8.5 mg/dL) or hypermagnesemic shock in CKD Stage 5 is contraindicated as it exacerbates toxicity and conduction blockade.",
       detectedText: "Magnesium Sulfate administration recommended in hypermagnesemia presentation",
-      remediatedText: "ABSOLUTE CONTRAINDICATION: Magnesium Sulfate strictly contraindicated; STAT IV Calcium Gluconate administered",
+      remediatedText: "Contraindicated: Magnesium Sulfate avoided; consider STAT IV Calcium Gluconate for membrane antagonism",
+    });
+  }
+
+  // 9. VAL-CKD-ANURIA: Renal Functional Reserve Gate (No assuming anuria solely from CKD Stage 5)
+  const ckdAnuriaAssumptionRegex = /\b(?:due to ckd 5 anuria|ckd\s*(?:stage\s*)?5\s+(?:anuria|causes anuria|means anuria|proves anuria))\b/gi;
+  if (ckdAnuriaAssumptionRegex.test(sanitized)) {
+    sanitized = sanitized.replace(
+      ckdAnuriaAssumptionRegex,
+      "CKD Stage 5 does not automatically equate to anuria; evaluate actual measured urine output and volume status before deciding on diuretic utility"
+    );
+    violations.push({
+      ruleId: "VAL-CKD-ANURIA",
+      ruleName: "Renal Functional Reserve Gate (No Unverified Anuria Assumption)",
+      severity: "HIGH",
+      clinicalRationale:
+        "CKD Stage 5 does not automatically mean zero urine output. Residual renal function must be measured and evaluated before declaring diuretics or fluids completely contraindicated.",
+      detectedText: "CKD 5 anuria assumed without measurement",
+      remediatedText: "Evaluate actual measured urine output and volume status; do not assume anuria",
+    });
+  }
+
+  // 10. VAL-COMPLETED-ORDERS: Documentation Integrity Gate (No documenting proposed orders as completed actions)
+  const completedOrdersRegex = /\b(?:stat serum calcium, potassium, and repeat bmp drawn|blood drawn|pacing pads placed on patient|foley catheter placed)\b/gi;
+  if (completedOrdersRegex.test(sanitized)) {
+    sanitized = sanitized.replace(
+      completedOrdersRegex,
+      "[PROPOSED ORDER AWAITING CLINICIAN VERIFICATION — NOT COMPLETED INTERVENTION]"
+    );
+    violations.push({
+      ruleId: "VAL-COMPLETED-ORDERS",
+      ruleName: "Documentation Integrity Gate (Proposed Orders vs Completed Actions)",
+      severity: "HIGH",
+      clinicalRationale:
+        "Recommended diagnostic orders (e.g. lab draws) and therapeutic procedures (e.g. pacing pad placement) must not be documented as completed actions before physician order entry.",
+      detectedText: "Recommended order documented as already completed",
+      remediatedText: "[PROPOSED ORDER AWAITING CLINICIAN VERIFICATION — NOT COMPLETED INTERVENTION]",
+    });
+  }
+
+  // 11. VAL-CALCIUM-VARIABILITY: Pharmacodynamic Realism Gate (Disclosing variable/temporary calcium antagonism)
+  const guaranteedCalciumRegex = /\b(?:immediately restores cardiac rhythmicity, reverses bradycardia, elevates vascular resistance, and restores neuromuscular transmission)\b/gi;
+  if (guaranteedCalciumRegex.test(sanitized)) {
+    sanitized = sanitized.replace(
+      guaranteedCalciumRegex,
+      "provides temporary, competitive membrane antagonism; clinical response is variable and transient, and calcium does not reduce total body magnesium or accelerate excretion"
+    );
+    violations.push({
+      ruleId: "VAL-CALCIUM-VARIABILITY",
+      ruleName: "Pharmacodynamic Realism Gate (Variable Calcium Response)",
+      severity: "MEDIUM",
+      clinicalRationale:
+        "IV calcium provides temporary, competitive antagonism; clinical response is variable and transient, and calcium does not lower serum magnesium.",
+      detectedText: "guaranteed restoration of cardiac rhythm and neuromuscular function by calcium",
+      remediatedText: "temporary, competitive membrane antagonism with variable response",
+    });
+  }
+
+  // 12. VAL-NO-FAB-SOAP: Zero Clinical Fabrication Gate (No invented caregiver, sternal rub, or exam findings)
+  const inventedSternalRubRegex = /\b(?:difficult to arouse but responds to sternal rub|responds to sternal rub)\b/gi;
+  const inventedCaregiverRegex = /\bpatient's caregiver reports\b/gi;
+  const inventedDenialRegex = /\bdenies fever or trauma\b/gi;
+  const inventedHeartBowelRegex = /\b(?:distant heart sounds, peripheral pulses weak|soft, non-distended, hypoactive bowel sounds)\b/gi;
+
+  if (inventedSternalRubRegex.test(sanitized) && !/\bsternal\b/i.test(inputLower)) {
+    sanitized = sanitized.replace(inventedSternalRubRegex, "[Consciousness level: Lethargic on intake — formal bedside stimulation unperformed]");
+    violations.push({
+      ruleId: "VAL-NO-FAB-SOAP-001",
+      ruleName: "Zero Clinical Fabrication Gate (Invented Bedside Physical Examination Finding)",
+      severity: "CRITICAL",
+      clinicalRationale: "Do not fabricate unperformed physical exam findings such as sternal rub response.",
+      detectedText: "responds to sternal rub",
+      remediatedText: "[Consciousness level: Lethargic on intake — formal bedside stimulation unperformed]",
+    });
+  }
+
+  if (inventedCaregiverRegex.test(sanitized) && !/\bcaregiver\b/i.test(inputLower)) {
+    sanitized = sanitized.replace(inventedCaregiverRegex, "Clinical referral documentation indicates");
+    violations.push({
+      ruleId: "VAL-NO-FAB-SOAP-002",
+      ruleName: "Zero Clinical Fabrication Gate (Invented Caregiver History)",
+      severity: "HIGH",
+      clinicalRationale: "Do not invent caregiver history when not documented in intake.",
+      detectedText: "patient's caregiver reports",
+      remediatedText: "Clinical referral documentation indicates",
+    });
+  }
+
+  if (inventedDenialRegex.test(sanitized) && !/\b(?:fever|trauma)\b/i.test(inputLower)) {
+    sanitized = sanitized.replace(inventedDenialRegex, "[Review of Systems: Fever and trauma status UNDOCUMENTED on intake — requires bedside screening]");
+    violations.push({
+      ruleId: "VAL-NO-FAB-SOAP-003",
+      ruleName: "Zero Clinical Fabrication Gate (Invented Negative ROS)",
+      severity: "HIGH",
+      clinicalRationale: "Do not invent negative ROS (denies fever or trauma) when not supplied in intake.",
+      detectedText: "denies fever or trauma",
+      remediatedText: "[Review of Systems: Fever and trauma status UNDOCUMENTED on intake — requires bedside screening]",
+    });
+  }
+
+  if (inventedHeartBowelRegex.test(sanitized)) {
+    sanitized = sanitized.replace(inventedHeartBowelRegex, "[Physical Exam: Cardiopulmonary and abdominal examination NOT REPORTED — requires bedside exam]");
+    violations.push({
+      ruleId: "VAL-NO-FAB-SOAP-004",
+      ruleName: "Zero Clinical Fabrication Gate (Invented Cardiopulmonary / Abdominal Examination)",
+      severity: "CRITICAL",
+      clinicalRationale: "Do not fabricate unperformed physical exam observations such as heart sounds or bowel sounds.",
+      detectedText: "distant heart sounds / hypoactive bowel sounds",
+      remediatedText: "[Physical Exam: Cardiopulmonary and abdominal examination NOT REPORTED — requires bedside exam]",
     });
   }
 

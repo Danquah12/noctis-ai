@@ -144,8 +144,8 @@ export function evaluateCircuitBreaker(candidateText: string): CircuitBreakerSta
       passed: false,
       severity: "CRITICAL",
       observedValue: "Magnesium sulfate administration ordered during hypermagnesemic state",
-      expectedConstraint: "Magnesium sulfate is strictly contraindicated in hypermagnesemia (lethal asystolic toxicity)",
-      mathematicalProof: "VIOLATION: Exogenous magnesium administration during hypermagnesemia precipitates lethal cardiac arrest. STAT IV Calcium Gluconate required.",
+      expectedConstraint: "Magnesium sulfate is contraindicated in hypermagnesemia (compounds cardiotoxicity and shock)",
+      mathematicalProof: "VIOLATION: Exogenous magnesium administration during active hypermagnesemia exacerbates AV conduction block and vasodilation. STAT IV Calcium Gluconate indicated.",
     });
   } else {
     evaluations.push({
@@ -274,8 +274,8 @@ export function evaluateCircuitBreaker(candidateText: string): CircuitBreakerSta
           fix = fix.replace(/\b(?:preeclampsia|eclampsia|hellp\s+syndrome)\b/gi, "Severe Hypermagnesemia / Internal Medicine Emergency (Obstetric Diagnosis Demographically Excluded for Male Patient)");
           fix += "\n\n> [!CAUTION]\n> **CIRCUIT BREAKER DEMOGRAPHIC INTERCEPT:** Male patient detected. Obstetric diagnoses and management pathways are physiologically impossible and strictly vetoed.";
         } else if (inv.name.includes("Hypermagnesemia Magnesium Sulfate")) {
-          fix = fix.replace(/\b(?:administer|give|start|infuse|bolus|order|prescribe)\s+(?:iv\s+)?(?:magnesium\s+sulfate|mgso4)\b/gi, "ABSOLUTE CONTRAINDICATION: Magnesium Sulfate is STRICTLY CONTRAINDICATED in hypermagnesemia. Administer STAT IV Calcium Gluconate (10% 10-20 mL)");
-          fix += "\n\n> [!CAUTION]\n> **CIRCUIT BREAKER MEDICATION INTERCEPT:** Fatal medication contraindication intercepted. Magnesium Sulfate in hypermagnesemia causes lethal asystole. Order replaced with STAT IV Calcium Gluconate.";
+          fix = fix.replace(/\b(?:administer|give|start|infuse|bolus|order|prescribe)\s+(?:iv\s+)?(?:magnesium\s+sulfate|mgso4)\b/gi, "CONTRAINDICATION: Magnesium Sulfate is contraindicated in hypermagnesemia. Administer STAT IV Calcium Gluconate (10% 10-20 mL)");
+          fix += "\n\n> [!CAUTION]\n> **CIRCUIT BREAKER MEDICATION INTERCEPT:** Medication contraindication intercepted. Magnesium Sulfate in hypermagnesemia worsens toxic conduction blockade and shock. Order replaced with STAT IV Calcium Gluconate.";
         } else {
           fix += "\n\n> [!CAUTION]\n> **CIRCUIT BREAKER INTERCEPT:** Clinical safety threshold violated. Emergency medical escalation enforced.";
         }
