@@ -44,6 +44,7 @@ def main():
     parser.add_argument("--lora-alpha", type=int, default=32, help="LoRA alpha scaling factor (default: 32)")
     parser.add_argument("--max-seq-length", type=int, default=2048, help="Maximum sequence token length (default: 2048)")
     parser.add_argument("--max-steps", type=int, default=-1, help="Max training steps (overrides epochs if > 0)")
+    parser.add_argument("--resume-from-checkpoint", type=str, default=None, help="Resume training from a specific checkpoint directory")
     parser.add_argument("--smoke-test", action="store_true", help="Execute 3-step training test with weight update, save, and reload verification")
     parser.add_argument("--dry-run", action="store_true", help="Compile and validate setup without starting GPU training loop")
     args = parser.parse_args()
@@ -225,7 +226,10 @@ def main():
 
     print(f"[+] Starting authentic GPU training (Mode: {'SMOKE TEST 3 STEPS' if args.smoke_test else 'FULL SFT'})...")
     start_time = time.time()
-    train_result = trainer.train()
+    resume_target = args.resume_from_checkpoint if args.resume_from_checkpoint else None
+    if resume_target:
+        print(f"[+] Resuming training directly from checkpoint: {resume_target}")
+    train_result = trainer.train(resume_from_checkpoint=resume_target)
     elapsed = time.time() - start_time
     print(f"\n[+] Training loop finished in {elapsed:.1f} seconds.")
 
