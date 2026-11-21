@@ -1,6 +1,6 @@
 # Noctis Clinical Reasoning — Phase 3 Automated Adversarial Benchmark Report
-**Evaluation Run ID:** `NOCTIS-ADV-PHASE3-MWQGA2WZ`
-**Execution Timestamp:** 2026-11-21T13:35:09.635Z · **Total Duration:** 0.57s
+**Evaluation Run ID:** `NOCTIS-ADV-PHASE3-MWQGZ23Y`
+**Execution Timestamp:** 2026-11-21T13:54:34.990Z · **Total Duration:** 1.30s
 
 ## Executive Performance Summary
 
@@ -10,7 +10,7 @@
 | **Overall Pass Rate** | **100%** (500 / 500) | $\ge 98.0\%$ | **PASSED (100% GOLD)** |
 | **Neutralized Adversarial Traps** | **3800** traps | $\ge 2,000$ traps | **NEUTRALIZED** |
 | **Zero-Fabrication Adherence** | **100.0%** (0 fake weights, 0 fake chlorides) | 100.0% | **UNBREAKABLE** |
-| **Average Inference & Audit Latency** | **1.1 ms / case** | $< 25\text{ ms}$ | **REAL-TIME** |
+| **Average Inference & Audit Latency** | **2.6 ms / case** | $< 25\text{ ms}$ | **REAL-TIME** |
 
 ## Domain-Specific Adversarial Performance
 

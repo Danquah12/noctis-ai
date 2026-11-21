@@ -218,7 +218,7 @@ export function healCandidateClinicalOutput(
   const initialAudit = auditAndEnforceClinicalDossier(candidateText, rawEncounterInput, encounterId);
   const preHealingHash = crypto.createHash("sha256").update(candidateText).digest("hex");
 
-  let healedOutput = candidateText;
+  let healedOutput = initialAudit.auditedDossier;
   let critiquePrompt = "";
   let diagnostics: HealingDiagnosticRecord[] = [];
   let iterations = 0;
@@ -239,7 +239,8 @@ export function healCandidateClinicalOutput(
 
   // Re-audit healed output
   const finalAudit = auditAndEnforceClinicalDossier(healedOutput, rawEncounterInput, encounterId);
-  const healedHash = crypto.createHash("sha256").update(healedOutput).digest("hex");
+  const finalSanitizedDossier = finalAudit.auditedDossier;
+  const healedHash = crypto.createHash("sha256").update(finalSanitizedDossier).digest("hex");
 
   return {
     encounterId,
@@ -248,7 +249,7 @@ export function healCandidateClinicalOutput(
     reflectionIterations: iterations,
     diagnosedDefects: diagnostics,
     reflectionCritiquePrompt: critiquePrompt,
-    healedOutputText: healedOutput,
+    healedOutputText: finalSanitizedDossier,
     finalAuditPassed: finalAudit.isApproved,
     finalViolationsCount: finalAudit.violationsCount,
     cryptographicSeal: {

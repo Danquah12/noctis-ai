@@ -17,6 +17,8 @@ import {
 } from "./noctis-clinical-engine.ts";
 import { validateClinicalEvidenceIntegrity } from "./noctis-clinical-evidence-validator.ts";
 import { auditAndEnforceClinicalDossier } from "./noctis-clinical-preflight-auditor.ts";
+import { healCandidateClinicalOutput } from "./noctis-self-healing-reflection.ts";
+import { arbitrateClinicalConsensus } from "./noctis-clinical-consensus.ts";
 import { generateBrashDigoxinMalaEmergencyDossier } from "./noctis-brash-digoxin-engine.ts";
 /**
  * Noctis Patient Diagnostic & Clinical Decision Support Engine (NPDE)
@@ -2697,9 +2699,12 @@ When serum lipase is elevated without evidence of pancreatic inflammation, clini
 
 export function handleNaturalPatientDiagnosticQuery(question: string): string | null {
   const q = question.trim();
+  if (/\b(?:consensus|tri-specialist|specialist\s+swarm|multi-specialist)\b/i.test(q)) {
+    return arbitrateClinicalConsensus(q).synthesizedClinicalReport;
+  }
   const rawResponse = executeNaturalPatientDiagnosticQuery(q);
   if (!rawResponse) return null;
-  return auditAndEnforceClinicalDossier(rawResponse, q).auditedDossier;
+  return healCandidateClinicalOutput(rawResponse, q).healedOutputText;
 }
 
 export { generateBrashDigoxinMalaEmergencyDossier } from "./noctis-brash-digoxin-engine.ts";

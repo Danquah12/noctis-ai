@@ -24,10 +24,11 @@
     "test:phase3": "node --experimental-strip-types scripts/run-phase3-adversarial-suite.ts",
     "test:phase4": "node --experimental-strip-types scripts/test-phase4-self-healing.ts",
     "test:external": "node --experimental-strip-types scripts/run-external-clinical-benchmarks.ts",
+    "test:step5": "node --experimental-strip-types scripts/test-step5-pipeline-readiness.ts",
     "test:research": "node --experimental-strip-types scripts/test-deep-research.ts",
     "ingest:specs": "npx tsx scripts/ingest-noctis-specs.ts",
     "check:auth": "node scripts/check-auth-invariant.mjs",
-    "test": "node --test 'scripts/**/*.test.mjs' && node --experimental-strip-types --test src/lib/app-data/app-data.test.ts src/lib/app-data/readiness-schedule.test.ts src/lib/auth/gate-identity.test.ts src/lib/auth/sign-in-gate.test.ts src/lib/noctis-limits.test.ts src/lib/noctis-vuln.test.ts src/lib/noctis-clinical-integrity-benchmark.test.ts src/lib/noctis-clinical-scratchpad.test.ts",
+    "test": "node --test 'scripts/**/*.test.mjs' && node --experimental-strip-types --test src/lib/app-data/app-data.test.ts src/lib/app-data/readiness-schedule.test.ts src/lib/auth/gate-identity.test.ts src/lib/auth/sign-in-gate.test.ts src/lib/noctis-limits.test.ts src/lib/noctis-vuln.test.ts src/lib/noctis-clinical-integrity-benchmark.test.ts src/lib/noctis-clinical-scratchpad.test.ts src/lib/noctis-fhir-exporter.test.ts src/lib/noctis-streaming-telemetry.test.ts src/lib/noctis-voice-resuscitation.test.ts src/lib/noctis-samd-regulatory.test.ts",
     "lint": "eslint .",
     "format": "prettier --write ."
   },
