@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ClipboardEvent } from "react";
+import { useEffect, useRef, useState, lazy, Suspense, type ClipboardEvent } from "react";
 import { Link } from "@tanstack/react-router";
 import { Activity, AlertCircle, AlertTriangle, Info, ArrowUp, Bot, Boxes, Brain, Calendar, Cpu, Crosshair, EyeOff, Fingerprint, FileLock, Globe, Key, Layers, Lock, LogOut, Network, Sparkles, Stethoscope, Swords, Target, ShieldAlert, Terminal, WifiOff, Zap, ChevronDown, ChevronLeft, Code2, Copy, CornerDownLeft, FileText, GraduationCap, Image, Library, Mail, Menu, Mic, MoreHorizontal, PanelLeftClose, PanelLeftOpen, PanelRight, PanelRightOpen, Pencil, Phone, PhoneOff, Plus, Printer, RotateCcw, Search, Square, SquarePen, Trash2, Users2, Video, Volume2, VolumeX, Wrench, X, TrendingUp, Scale, Atom, Landmark, Building2, Server, Microscope, FileCheck, Shield, CheckCircle2 } from "lucide-react";
 import { SOVEREIGN_SYSTEMS_PORTFOLIO } from "@/lib/noctis-sovereign-factory";
@@ -12,16 +12,16 @@ import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { cn } from "@/lib/utils";
 import { NoctisCall } from "@/components/noctis/NoctisCall";
 import { NoctisCanvas } from "@/components/noctis/NoctisCanvas";
-import { NoctisPluginsTab } from "@/components/noctis/NoctisPluginsTab";
-import { NoctisForgeTab } from "@/components/noctis/NoctisForgeTab";
-import { NoctisFrontierTab } from "@/components/noctis/NoctisFrontierTab";
-import { NoctisTrainingTab } from "@/components/noctis/NoctisTrainingTab";
-import { NoctisSovereignFactoryStudio } from "@/components/noctis/NoctisSovereignFactoryStudio";
 import { DUAL_PLANE_SPECIFICATION, SQDEC_HIERARCHY } from "@/lib/noctis-sovereign-factory";
-import { NoctisConsoleTab } from "@/components/noctis/NoctisConsoleTab";
-import { NoctisRedTeamTab } from "@/components/noctis/NoctisRedTeamTab";
 import { NoctisShelfPluginSection } from "@/components/noctis/NoctisShelfPluginSection";
-import { NoctisPluginExecutorModal } from "@/components/noctis/NoctisPluginExecutorModal";
+const NoctisPluginsTab = lazy(() => import("@/components/noctis/NoctisPluginsTab").then((m) => ({ default: m.NoctisPluginsTab })));
+const NoctisForgeTab = lazy(() => import("@/components/noctis/NoctisForgeTab").then((m) => ({ default: m.NoctisForgeTab })));
+const NoctisFrontierTab = lazy(() => import("@/components/noctis/NoctisFrontierTab").then((m) => ({ default: m.NoctisFrontierTab })));
+const NoctisTrainingTab = lazy(() => import("@/components/noctis/NoctisTrainingTab").then((m) => ({ default: m.NoctisTrainingTab })));
+const NoctisSovereignFactoryStudio = lazy(() => import("@/components/noctis/NoctisSovereignFactoryStudio").then((m) => ({ default: m.NoctisSovereignFactoryStudio })));
+const NoctisConsoleTab = lazy(() => import("@/components/noctis/NoctisConsoleTab").then((m) => ({ default: m.NoctisConsoleTab })));
+const NoctisRedTeamTab = lazy(() => import("@/components/noctis/NoctisRedTeamTab").then((m) => ({ default: m.NoctisRedTeamTab })));
+const NoctisPluginExecutorModal = lazy(() => import("@/components/noctis/NoctisPluginExecutorModal").then((m) => ({ default: m.NoctisPluginExecutorModal })));
 import { DISTRIBUTED_PLUGINS, getPluginsForShelf, type DistributedPluginItem } from "@/lib/noctis-distributed-plugins";
 import { NoctisCodeInterpreter } from "@/components/noctis/NoctisCodeInterpreter";
 import { NoctisThinkingAccordion, CitationBadge } from "@/components/noctis/NoctisThinkingAccordion";
@@ -31,7 +31,7 @@ import NoctisBlastRadiusStrip from "@/components/noctis/NoctisBlastRadiusStrip";
 import { NoctisVoiceVisualizer } from "@/components/noctis/NoctisVoiceVisualizer";
 import { NoctisVoiceSelectorModal } from "@/components/noctis/NoctisVoiceSelectorModal";
 import { NoctisWorkspaceExplorer, getActiveProjectContext } from "@/components/noctis/NoctisWorkspaceExplorer";
-import { NoctisDeepResearchModal } from "@/components/noctis/NoctisDeepResearchModal";
+const NoctisDeepResearchModal = lazy(() => import("@/components/noctis/NoctisDeepResearchModal").then((m) => ({ default: m.NoctisDeepResearchModal })));
 import { NoctisModelPicker } from "@/components/noctis/NoctisModelPicker";
 import { NoctisBrainModal } from "@/components/noctis/NoctisBrainModal";
 import { getBrainConfig, getActiveKeyAndModel } from "@/lib/noctis-brain";
@@ -48,7 +48,7 @@ import { NoctisAirGapModal } from "@/components/noctis/NoctisAirGapModal";
 import { NoctisHolodeckModal } from "@/components/noctis/NoctisHolodeckModal";
 import { NoctisAutoRemediationModal } from "@/components/noctis/NoctisAutoRemediationModal";
 import { NoctisDefenseModal } from "@/components/noctis/NoctisDefenseModal";
-import { NoctisScienceModal } from "@/components/noctis/NoctisScienceModal";
+const NoctisScienceModal = lazy(() => import("@/components/noctis/NoctisScienceModal").then((m) => ({ default: m.NoctisScienceModal })));
 import { NoctisCircuitBreakerModal } from "@/components/noctis/NoctisCircuitBreakerModal";
 import { NoctisCrisisNegotiationModal } from "@/components/noctis/NoctisCrisisNegotiationModal";
 import { NoctisSteganographyModal } from "@/components/noctis/NoctisSteganographyModal";
@@ -57,7 +57,7 @@ import { NoctisPqcModal } from "@/components/noctis/NoctisPqcModal";
 import { NoctisZkProofModal } from "@/components/noctis/NoctisZkProofModal";
 import { NoctisLexModal } from "@/components/noctis/NoctisLexModal";
 import { NoctisCanaryModal } from "@/components/noctis/NoctisCanaryModal";
-import { NoctisPatientDiagnosisModal } from "@/components/noctis/NoctisPatientDiagnosisModal";
+const NoctisPatientDiagnosisModal = lazy(() => import("@/components/noctis/NoctisPatientDiagnosisModal").then((m) => ({ default: m.NoctisPatientDiagnosisModal })));
 import { NoctisCapabilityMatrixModal, type SovereignEngineKey } from "@/components/noctis/NoctisCapabilityMatrixModal";
 import { getActiveCustomAgent, getActiveCustomAgentContext, type NoctisCustomAgent } from "@/lib/noctis-custom-agents";
 import { NoctisMemoryModal, getNoctisPersonalizedContext } from "@/components/noctis/NoctisMemoryModal";
@@ -84,7 +84,7 @@ import { GOALS } from "@/lib/learn";
 import { markDna, readNoctisContext } from "@/components/noctis/NoctisContext";
 import { formatContext, markMission, routeActions } from "@/lib/noctis-os";
 import { studyAsks } from "@/lib/study-pass";
-import { NoctisBoardExamExplorer } from "@/components/noctis/NoctisBoardExamExplorer";
+const NoctisBoardExamExplorer = lazy(() => import("@/components/noctis/NoctisBoardExamExplorer").then((m) => ({ default: m.NoctisBoardExamExplorer })));
 import { leaveHall } from "@/lib/auth/client";
 import { textFromDocx, textFromPdf, textFromRtf } from "@/lib/read-document";
 import { saveShareLink } from "@/lib/share-link";
@@ -7721,62 +7721,74 @@ export function NoctisDesk() {
         <div className="flex min-h-0 flex-1 overflow-hidden">
           <div className={cn("flex flex-col min-h-0 min-w-0 transition-all duration-200", canvasOpen ? "w-full md:w-1/2 lg:w-[46%] border-r border-white/10" : "w-full")}>
             {desk === "plugins" ? (
-              <NoctisPluginsTab
-                onLaunchPrompt={(promptText) => {
-                  setDesk("chat");
-                  void send(promptText);
-                }}
-                onSelectPlugin={(p) => {
-                  const dist = DISTRIBUTED_PLUGINS.find((dp) => dp.id === p.id) ?? {
-                    ...p,
-                    shelves: ["more" as const],
-                    sampleAction: `Use ${p.name} to `,
-                  };
-                  handleUsePlugin(dist);
-                }}
-                onClose={() => setDesk("chat")}
-              />
+              <Suspense fallback={<div className="flex-1 flex items-center justify-center p-8 text-zinc-400">Loading Plugin Ecosystem...</div>}>
+                <NoctisPluginsTab
+                  onLaunchPrompt={(promptText) => {
+                    setDesk("chat");
+                    void send(promptText);
+                  }}
+                  onSelectPlugin={(p) => {
+                    const dist = DISTRIBUTED_PLUGINS.find((dp) => dp.id === p.id) ?? {
+                      ...p,
+                      shelves: ["more" as const],
+                      sampleAction: `Use ${p.name} to `,
+                    };
+                    handleUsePlugin(dist);
+                  }}
+                  onClose={() => setDesk("chat")}
+                />
+              </Suspense>
             ) : desk === "redteam" ? (
-              <NoctisRedTeamTab
-                onSendToChat={(taskPrompt) => {
-                  setDesk("chat");
-                  void send(taskPrompt);
-                }}
-                onClose={() => setDesk("chat")}
-              />
+              <Suspense fallback={<div className="flex-1 flex items-center justify-center p-8 text-zinc-400">Loading Red Team Lab...</div>}>
+                <NoctisRedTeamTab
+                  onSendToChat={(taskPrompt) => {
+                    setDesk("chat");
+                    void send(taskPrompt);
+                  }}
+                  onClose={() => setDesk("chat")}
+                />
+              </Suspense>
             ) : desk === "console" ? (
-              <NoctisConsoleTab
-                onSendToChat={(taskPrompt) => {
-                  setDesk("chat");
-                  void send(taskPrompt);
-                }}
-                onClose={() => setDesk("chat")}
-              />
+              <Suspense fallback={<div className="flex-1 flex items-center justify-center p-8 text-zinc-400">Loading Sovereign Console...</div>}>
+                <NoctisConsoleTab
+                  onSendToChat={(taskPrompt) => {
+                    setDesk("chat");
+                    void send(taskPrompt);
+                  }}
+                  onClose={() => setDesk("chat")}
+                />
+              </Suspense>
             ) : desk === "forge" ? (
-              <NoctisForgeTab
-                onSendToChat={(taskPrompt) => {
-                  setDesk("chat");
-                  void send(taskPrompt);
-                }}
-                onClose={() => setDesk("chat")}
-                onOpenInCanvas={(title, md) => openInCanvas(title, md)}
-              />
+              <Suspense fallback={<div className="flex-1 flex items-center justify-center p-8 text-zinc-400">Loading Architecture Forge...</div>}>
+                <NoctisForgeTab
+                  onSendToChat={(taskPrompt) => {
+                    setDesk("chat");
+                    void send(taskPrompt);
+                  }}
+                  onClose={() => setDesk("chat")}
+                  onOpenInCanvas={(title, md) => openInCanvas(title, md)}
+                />
+              </Suspense>
             ) : desk === "frontier" ? (
-              <NoctisFrontierTab
-                onSendToChat={(taskPrompt) => {
-                  setDesk("chat");
-                  void send(taskPrompt);
-                }}
-                onClose={() => setDesk("chat")}
-              />
+              <Suspense fallback={<div className="flex-1 flex items-center justify-center p-8 text-zinc-400">Loading Frontier Clinical Lab...</div>}>
+                <NoctisFrontierTab
+                  onSendToChat={(taskPrompt) => {
+                    setDesk("chat");
+                    void send(taskPrompt);
+                  }}
+                  onClose={() => setDesk("chat")}
+                />
+              </Suspense>
             ) : desk === "training" ? (
-              <NoctisTrainingTab
-                onSendToChat={(taskPrompt) => {
-                  setDesk("chat");
-                  void send(taskPrompt);
-                }}
-                onClose={() => setDesk("chat")}
-              />
+              <Suspense fallback={<div className="flex-1 flex items-center justify-center p-8 text-zinc-400">Loading Autonomous Training Studio...</div>}>
+                <NoctisTrainingTab
+                  onSendToChat={(taskPrompt) => {
+                    setDesk("chat");
+                    void send(taskPrompt);
+                  }}
+                  onClose={() => setDesk("chat")}
+                />
+              </Suspense>
             ) : empty ? (
           <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
             <div className="pointer-events-none absolute inset-0 bg-[#0d1117]" />
@@ -7918,16 +7930,18 @@ export function NoctisDesk() {
                 <>
                   {desk === "study" ? (
                     <div className="w-full max-w-4xl px-2 my-2">
-                      <NoctisBoardExamExplorer
-                        onSend={(prompt) => void send(prompt)}
-                        onSelectExam={(exam) => {
-                          setStudyTopic(exam.name);
-                          setRoutes(studyAsks(exam.name));
-                          try {
-                            sessionStorage.setItem("noctis-study", exam.name);
-                          } catch {}
-                        }}
-                      />
+                      <Suspense fallback={<div className="p-4 text-xs text-zinc-400">Loading Clinical Exam Suite...</div>}>
+                        <NoctisBoardExamExplorer
+                          onSend={(prompt) => void send(prompt)}
+                          onSelectExam={(exam) => {
+                            setStudyTopic(exam.name);
+                            setRoutes(studyAsks(exam.name));
+                            try {
+                              sessionStorage.setItem("noctis-study", exam.name);
+                            } catch {}
+                          }}
+                        />
+                      </Suspense>
                     </div>
                   ) : null}
                 </>
@@ -7974,17 +7988,19 @@ export function NoctisDesk() {
             <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto">
               <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6">
                 {desk === "study" ? (
-                  <NoctisBoardExamExplorer
-                    compact
-                    onSend={(prompt) => void send(prompt)}
-                    onSelectExam={(exam) => {
-                      setStudyTopic(exam.name);
-                      setRoutes(studyAsks(exam.name));
-                      try {
-                        sessionStorage.setItem("noctis-study", exam.name);
-                      } catch {}
-                    }}
-                  />
+                  <Suspense fallback={<div className="p-4 text-xs text-zinc-400">Loading Clinical Exam Suite...</div>}>
+                    <NoctisBoardExamExplorer
+                      compact
+                      onSend={(prompt) => void send(prompt)}
+                      onSelectExam={(exam) => {
+                        setStudyTopic(exam.name);
+                        setRoutes(studyAsks(exam.name));
+                        try {
+                          sessionStorage.setItem("noctis-study", exam.name);
+                        } catch {}
+                      }}
+                    />
+                  </Suspense>
                 ) : null}
                 {shelf === "pictures" ? <p className="text-center text-xs text-zinc-500">Describe the next picture below.</p> : null}
                 {shelf === "library" ? <p className="text-center text-xs text-zinc-500">Answers come from the library notes, with the source named.</p> : null}
@@ -8261,13 +8277,17 @@ export function NoctisDesk() {
         onClose={() => setWorkspaceExplorerOpen(false)}
         onAttachFileToChat={(file) => setDraft((cur) => cur ? `${cur}\n\n[File: ${file.name}]\n${file.content}` : `[File: ${file.name}]\n${file.content}`)}
       />
-      <NoctisDeepResearchModal
-        open={deepResearchModalOpen}
-        onClose={() => setDeepResearchModalOpen(false)}
-        initialTopic={draft}
-        onOpenInCanvas={openInCanvas}
-        onInsertToChat={(text) => setDraft(text)}
-      />
+      {deepResearchModalOpen && (
+        <Suspense fallback={null}>
+          <NoctisDeepResearchModal
+            open={deepResearchModalOpen}
+            onClose={() => setDeepResearchModalOpen(false)}
+            initialTopic={draft}
+            onOpenInCanvas={openInCanvas}
+            onInsertToChat={(text) => setDraft(text)}
+          />
+        </Suspense>
+      )}
       <NoctisVaultModal
         open={vaultModalOpen}
         onClose={() => setVaultModalOpen(false)}
@@ -8347,12 +8367,16 @@ export function NoctisDesk() {
         onOpenInCanvas={(md, title) => openInCanvas(title || "Noctis Defense Intelligence Briefing", md)}
         onInsertToChat={(text) => setDraft(text)}
       />
-      <NoctisScienceModal
-        open={scienceModalOpen}
-        onClose={() => setScienceModalOpen(false)}
-        onOpenInCanvas={(md, title) => openInCanvas(title || "Noctis Science Research Dossier", md)}
-        onInsertToChat={(text) => setDraft(text)}
-      />
+      {scienceModalOpen && (
+        <Suspense fallback={null}>
+          <NoctisScienceModal
+            open={scienceModalOpen}
+            onClose={() => setScienceModalOpen(false)}
+            onOpenInCanvas={(md, title) => openInCanvas(title || "Noctis Science Research Dossier", md)}
+            onInsertToChat={(text) => setDraft(text)}
+          />
+        </Suspense>
+      )}
       <NoctisCircuitBreakerModal
         open={circuitBreakerModalOpen}
         onClose={() => setCircuitBreakerModalOpen(false)}
@@ -8401,35 +8425,43 @@ export function NoctisDesk() {
         onOpenInCanvas={(md, title) => openInCanvas(title || "Canary Tripwire Alert", md)}
         onInsertToChat={(text) => setDraft(text)}
       />
-            <NoctisPatientDiagnosisModal
-        open={patientDiagnosisModalOpen}
-        onClose={() => setPatientDiagnosisModalOpen(false)}
-        onSend={(prompt) => {
-          setPatientDiagnosisModalOpen(false);
-          setDraft(prompt);
-          void send(prompt);
-        }}
-      />
-<NoctisSovereignFactoryStudio
-        isOpen={factoryStudioOpen}
-        onLaunchChat={(prompt) => {
-          setFactoryStudioOpen(false);
-          setDesk("chat");
-          setDraft(prompt);
-          setTimeout(() => box.current?.focus(), 80);
-        }}
-        initialSystemId={factoryStudioSystemId}
-        initialTab={factoryStudioTab}
-        onClose={() => setFactoryStudioOpen(false)}
-        onSelectSystem={(s, autoBuild) => {
-          const text = `Inspect architectural invariants and deploy ${s.identity.name}`;
-          setDraft(text);
-          setFactoryStudioOpen(false);
-          if (autoBuild) {
-            setDesk("forge");
-          }
-        }}
-      />
+      {patientDiagnosisModalOpen && (
+        <Suspense fallback={null}>
+          <NoctisPatientDiagnosisModal
+            open={patientDiagnosisModalOpen}
+            onClose={() => setPatientDiagnosisModalOpen(false)}
+            onSend={(prompt) => {
+              setPatientDiagnosisModalOpen(false);
+              setDraft(prompt);
+              void send(prompt);
+            }}
+          />
+        </Suspense>
+      )}
+      {factoryStudioOpen && (
+        <Suspense fallback={null}>
+          <NoctisSovereignFactoryStudio
+            isOpen={factoryStudioOpen}
+            onLaunchChat={(prompt) => {
+              setFactoryStudioOpen(false);
+              setDesk("chat");
+              setDraft(prompt);
+              setTimeout(() => box.current?.focus(), 80);
+            }}
+            initialSystemId={factoryStudioSystemId}
+            initialTab={factoryStudioTab}
+            onClose={() => setFactoryStudioOpen(false)}
+            onSelectSystem={(s, autoBuild) => {
+              const text = `Inspect architectural invariants and deploy ${s.identity.name}`;
+              setDraft(text);
+              setFactoryStudioOpen(false);
+              if (autoBuild) {
+                setDesk("forge");
+              }
+            }}
+          />
+        </Suspense>
+      )}
       {/* DUAL-PLANE SOVEREIGN ARCHITECTURE & ZERO-TRUST GOVERNANCE MODAL */}
       {dualPlaneModalOpen && (
         <div
@@ -8568,17 +8600,21 @@ export function NoctisDesk() {
         title="Choose Reading & Speaking Voice"
         actionLabel="Set Reading Voice"
       />
-      <NoctisPluginExecutorModal
-        plugin={executorPlugin}
-        open={executorOpen}
-        onClose={() => setExecutorOpen(false)}
-        onExecuteInChat={(prompt) => {
-          setDesk("chat");
-          setShelf("chats");
-          void send(prompt);
-        }}
-        onOpenInCanvas={(title, md) => openInCanvas(title, md)}
-      />
+      {executorOpen && (
+        <Suspense fallback={null}>
+          <NoctisPluginExecutorModal
+            plugin={executorPlugin}
+            open={executorOpen}
+            onClose={() => setExecutorOpen(false)}
+            onExecuteInChat={(prompt) => {
+              setDesk("chat");
+              setShelf("chats");
+              void send(prompt);
+            }}
+            onOpenInCanvas={(title, md) => openInCanvas(title, md)}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

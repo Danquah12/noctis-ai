@@ -106,7 +106,8 @@ import {
 import { calculateEdgeModelProfile } from "@/lib/noctis-edge-runner";
 import { FLAGSHIP_BENCHMARK_CASES, type BenchmarkFlagshipSummary } from "@/lib/noctis-health-500-chat";
 import type { ClinicalSpecialty } from "@/lib/noctis-health-500-schema";
-import { getDefaultLeaderboard, runHealth500Benchmark, type BenchmarkRunReport } from "@/lib/noctis-health-500-runner";
+import leaderboardDefault from "@/lib/noctis-health-500-leaderboard.json" with { type: "json" };
+import type { BenchmarkRunReport } from "@/lib/noctis-health-500-runner";
 import {
   exportReferenceTableCsv,
   exportFhirR4DocumentBundle,
@@ -116,7 +117,7 @@ import {
 } from "@/lib/noctis-clinical-export";
 import { speakNoctisVoice, stopCurrentVoicePlayback } from "@/lib/noctis-voice";
 import { NoctisAmbientDictationSection } from "./NoctisAmbientDictationSection";
-import { NoctisQLoRASection } from "./NoctisQLoRASection";
+const NoctisQLoRASection = React.lazy(() => import("./NoctisQLoRASection").then((m) => ({ default: m.NoctisQLoRASection })));
 import { NoctisSpecialistSwarmSection } from "./NoctisSpecialistSwarmSection";
 import { NoctisDicomVisionSection } from "./NoctisDicomVisionSection";
 import { NoctisSmartFhirSection } from "./NoctisSmartFhirSection";
@@ -676,7 +677,7 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
   );
   
   // Leaderboard State
-  const [leaderboardData, setLeaderboardData] = useState<BenchmarkRunReport>(() => getDefaultLeaderboard());
+  const [leaderboardData, setLeaderboardData] = useState<BenchmarkRunReport>(() => leaderboardDefault as unknown as BenchmarkRunReport);
   const [selectedLeaderboardSpec, setSelectedLeaderboardSpec] = useState<string>("ALL");
   const [benchmarkRunnerBaseline, setBenchmarkRunnerBaseline] = useState<"exemplar" | "naive" | "unsafe">("exemplar");
   const [isBenchmarking, setIsBenchmarking] = useState(false);
@@ -1554,10 +1555,11 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
           },
         ];
 
-        const handleRunLiveAudit = (baseline: "exemplar" | "naive" | "unsafe") => {
+        const handleRunLiveAudit = async (baseline: "exemplar" | "naive" | "unsafe") => {
           setIsBenchmarking(true);
           setBenchmarkRunnerBaseline(baseline);
           try {
+            const { runHealth500Benchmark } = await import("@/lib/noctis-health-500-runner");
             const res = runHealth500Benchmark({
               baseline,
               specialtyFilter: selectedLeaderboardSpec,
@@ -1886,7 +1888,9 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
       )}
 
       {activeSubTab === "qlora" && (
-        <NoctisQLoRASection />
+        <React.Suspense fallback={<div className="p-8 text-center text-zinc-400">Loading Autonomous QLoRA Specialist Forge...</div>}>
+          <NoctisQLoRASection />
+        </React.Suspense>
       )}
 
       {activeSubTab === "swarm" && (
