@@ -1975,7 +1975,12 @@ export function formatPatientDiagnosticDossierMarkdown(dossier: PatientDiagnosti
     ((dossier.patientData.vitals.temperatureC ?? 0) >= 38.5 && (dossier.patientData.vitals.systolicBp ?? 120) <= 90);
 
   if (isSepsis) {
-    return generateIsolatedSepticShockDossier(dossier.encounterId);
+    return generateIsolatedSepticShockDossier(dossier.encounterId, dossier.patientData.rawIntakeText || rawText, {
+      ageYears: dossier.patientData.demographics?.age,
+      biologicalSex: dossier.patientData.demographics?.gender as any,
+      vitals: dossier.patientData.vitals,
+      chiefComplaint: dossier.patientData.chiefComplaint,
+    });
   }
 
   const isHyperkalemia =
@@ -2345,14 +2350,17 @@ function executeNaturalPatientDiagnosticQuery(question: string): string | null {
 
   // Dedicated Handler: Emergent Sepsis, Severe Infection & Shock Physiology
   const isSepsisOrShock =
-    /\b(septic\s+shock|urosepsis|bacteremia|severe\s+sepsis)\b/i.test(q) ||
+    /\b(septic\s+shock|urosepsis|bacteremia|severe\s+sepsis|sepsis)\b/i.test(q) ||
+    (/\b(fever(?:\s+of)?\s*(?:3[89]|40)|(?:3[89]|40)\.?\d*°?\s*c)\b/i.test(q) &&
+      /\b(confusion|altered\s+mental|resuscitation)\b/i.test(q) &&
+      (/\b(?:bp\s*)?[678]\d\s*\/\s*\d{2}\b/i.test(q) || /\b(?:hypotension|tachycardia|shock)\b/i.test(q))) ||
     (/\b(fever(?:\s+of)?\s*40|40\s*°?c)\b/i.test(q) && /\b(confusion|rr\s*30|bp\s*78|78\/45|hr\s*132)\b/i.test(q)) ||
-    (/\b(confusion|altered\s+mental)\b/i.test(q) && /\b(78\/45|bp\s*78|hypotension)\b/i.test(q) && /\b(fever|temp|temperature)\b/i.test(q));
+    (/\b(confusion|altered\s+mental)\b/i.test(q) && /\b(78\/45|bp\s*78|84\/52|hypotension)\b/i.test(q) && /\b(fever|temp|temperature)\b/i.test(q));
 
   if (isSepsisOrShock) {
     const encMatch = q.match(/\b(NPDE-[A-Z0-9]+)\b/i);
     const encId = encMatch ? encMatch[1] : `NPDE-SEPSIS-${Date.now().toString(36).toUpperCase()}`;
-    return generateIsolatedSepticShockDossier(encId);
+    return generateIsolatedSepticShockDossier(encId, q);
   }
 
   // Dedicated Handler: Emergent Diabetic Ketoacidosis (DKA) Resuscitation Protocol

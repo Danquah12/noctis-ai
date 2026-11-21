@@ -2053,7 +2053,14 @@ $$\\mathbf{i} = ${rStar} + ${pi} + 0.5(${pi} - ${piStar}) + 0.5(${yGap}) = \\mat
   }
 
   // 11. Autonomous Deep-Sea Subsea Robotics & Mining (Track 9)
-  if (p.includes("subsea") || p.includes("deep-sea") || p.includes("deep sea") || p.includes("benthic") || p.includes("nodule") || (p.includes("rov") && (p.includes("depth") || p.includes("pressure") || p.includes("tether")))) {
+  if (
+    p.includes("subsea") ||
+    p.includes("deep-sea") ||
+    p.includes("deep sea") ||
+    p.includes("benthic") ||
+    p.includes("nodule") ||
+    (/\b(rov|auv|submersible)\b/i.test(prompt) && (p.includes("depth") || p.includes("hydrostatic") || p.includes("tether") || p.includes("ocean floor") || p.includes("seabed")))
+  ) {
     const depthMatch = prompt.match(/(\d{3,5})\s*m(?:eters)?/i);
     const turbMatch = prompt.match(/(\d+(?:\.\d+)?)\s*ntu/i);
     const tensionMatch = prompt.match(/(\d+(?:\.\d+)?)\s*%\s*(?:mbl|tension)/i);

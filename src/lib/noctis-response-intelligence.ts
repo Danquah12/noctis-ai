@@ -1252,6 +1252,18 @@ export function runFollowUpIntelligence(
   }
 
 
+  // 00-clin-priority. High-assurance safety gate: Prioritize Clinical Patient Diagnostic & Triage Intelligence
+  // Ensures emergency patient encounters, acute vitals, and resuscitation prompts are never intercepted by industrial/frontier tracks
+  const isLikelyClinicalEncounter =
+    /\b(patient|female|male|years?-old|yo|y\/o|triage|resuscitation|symptom|presents? with|blood pressure|\b(?:bp|hr|rr|spo2)\b|cardiac|ecg|troponin|chest pain|cough|fever|dyspnea|hypotension|tachycardia|bradycardia|potassium|hyperkalemia|sodium|hyponatremia|magnesium|calcium|creatinine|egfr|ckd|stroke|sepsis|shock|infection)\b/i.test(currentQuestion);
+
+  if (isLikelyClinicalEncounter) {
+    const clinicalEarlyDiag = handleNaturalPatientDiagnosticQuery(currentQuestion);
+    if (clinicalEarlyDiag) {
+      return clinicalEarlyDiag;
+    }
+  }
+
   // 00-frontier-tracks. Noctis Frontier Tracks 1 to 10 Suite (Space, Quantum, Robotics, Bio, Macro, Maritime, Fusion, Hypersonics, Subsea, Biosecurity)
   const frontierResponse = handleNaturalFrontierTracksQuery(currentQuestion);
   if (frontierResponse) {

@@ -387,12 +387,58 @@ export function evaluateTimeCriticalTreatmentSafety(scenario: "SEPSIS_ANTIBIOTIC
  * 5. SEPSIS & SHOCK DOSSIER GENERATOR
  * Builds the gold-standard, isolated clinical report for the 67yo male with septic shock.
  */
-export function generateIsolatedSepticShockDossier(encounterId = "NPDE-MW564VII"): string {
-  const sbp = 78;
-  const dbp = 45;
+export function generateIsolatedSepticShockDossier(
+  encounterId = "NPDE-MW564VII",
+  rawInput?: string,
+  patientData?: {
+    ageYears?: number;
+    biologicalSex?: "male" | "female" | "other" | string;
+    chiefComplaint?: string;
+    vitals?: {
+      systolicBp?: number;
+      diastolicBp?: number;
+      heartRate?: number;
+      respiratoryRate?: number;
+      temperatureC?: number;
+      oxygenSaturation?: number;
+    };
+  }
+): string {
+  const text = rawInput || "";
+
+  // Parse blood pressure
+  const bpMatch = text.match(/\b(?:bp\s*(?:is|:)?\s*)?(\d{2,3})\s*\/\s*(\d{2,3})\b/i);
+  const sbp = patientData?.vitals?.systolicBp ?? (bpMatch ? parseInt(bpMatch[1], 10) : 78);
+  const dbp = patientData?.vitals?.diastolicBp ?? (bpMatch ? parseInt(bpMatch[2], 10) : 45);
+
+  // Parse temperature
+  const tempMatch = text.match(/\b(?:temp(?:erature)?\s*(?:is|:)?\s*)?(\d{2}(?:\.\d+)?)\s*°?\s*c\b/i);
+  const tempC = patientData?.vitals?.temperatureC ?? (tempMatch ? parseFloat(tempMatch[1]) : 40.0);
+
+  // Parse heart rate
+  const hrMatch = text.match(/\b(?:hr|heart\s*rate|pulse)\s*(?:is|:)?\s*(\d{2,3})\s*(?:bpm|beats)?\b/i) || text.match(/\b(\d{2,3})\s*bpm\b/i);
+  const hr = patientData?.vitals?.heartRate ?? (hrMatch ? parseInt(hrMatch[1], 10) : 132);
+
+  // Parse respiratory rate
+  const rrMatch = text.match(/\b(?:rr|respiratory\s*rate|breaths?)\s*(?:is|:)?\s*(\d{1,2})\s*(?:\/min|bpm)?\b/i) || text.match(/\b(\d{1,2})\s*(?:\/min|\s*breaths\s*\/\s*min)\b/i);
+  const rr = patientData?.vitals?.respiratoryRate ?? (rrMatch ? parseInt(rrMatch[1], 10) : 30);
+
+  // Parse age
+  const ageMatch = text.match(/\b(\d{1,3})\s*(?:-|–|\s+)?(?:years?|yrs?|yo|y\/o|year-old|yr-old)\b/i);
+  const ageYears = patientData?.ageYears ?? (ageMatch ? parseInt(ageMatch[1], 10) : 67);
+
+  // Parse biological sex
+  const isFemale = patientData?.biologicalSex === "female" || /\b(female|woman|lady)\b/i.test(text);
+  const isMale = !isFemale && (patientData?.biologicalSex === "male" || /\b(male|man|gentleman)\b/i.test(text));
+  const genderStr = isFemale ? "female" : isMale ? "male" : "patient";
+
+  // Contextual features
+  const hasCough = /\bcough\b/i.test(text);
+  const hasNursingHome = /\bnursing\s+home\b/i.test(text);
+
   const map = calculateValidatedMAP(sbp, dbp);
-  const qsofa = calculateValidatedQSOFA({ respiratoryRate: 30, systolicBp: 78, hasAlteredMentation: true });
-  const curb65 = calculateValidatedCURB65({ confusion: true, respiratoryRate: 30, systolicBp: 78, diastolicBp: 45, ageYears: 67 });
+  const qsofa = calculateValidatedQSOFA({ respiratoryRate: rr, systolicBp: sbp, hasAlteredMentation: true });
+  const curb65 = calculateValidatedCURB65({ confusion: true, respiratoryRate: rr, systolicBp: sbp, diastolicBp: dbp, ageYears: ageYears });
   const sepsis3 = evaluateSepsis3Criteria({ hasSuspectedInfection: true, mapMmHg: map.mapMmHg, isOnVasopressors: false, hasReceivedAdequateFluidResuscitation: false });
 
   return `# Noctis Patient Diagnostic & Triage Intelligence Dossier (Clinical Decision Support)
@@ -401,7 +447,7 @@ export function generateIsolatedSepticShockDossier(encounterId = "NPDE-MW564VII"
 
 > [!CAUTION]
 > **EMERGENCY MEDICAL WARNING (IMMEDIATE RESUSCITATION DIRECTIVE)**
-> 🚨 **CRITICAL LIFE THREAT:** The patient exhibits severe circulatory failure (MAP ${map.mapMmHg} mmHg), altered mental status (confusion), tachypnea (RR 30/min), and hyperpyrexia (40.0°C). This constellation represents **Undifferentiated Shock with Suspected Severe Infection**.
+> 🚨 **CRITICAL LIFE THREAT:** The patient exhibits severe circulatory failure (MAP ${map.mapMmHg} mmHg), altered mental status (confusion), tachypnea (RR ${rr}/min), and pyrexia (${tempC.toFixed(1)}°C)${hasCough ? " with acute cough" : ""}${hasNursingHome ? " in a nursing home resident" : ""}. This constellation represents **Undifferentiated Shock with Suspected Severe Infection**.
 > - **Immediate Action:** Activate Emergency Medical Services (EMS) / Code Sepsis immediately.
 > - **Time-Critical Imperative:** Immediate resuscitation in an Emergency Department and Critical Care / Intensive Care Unit.
 
@@ -412,11 +458,11 @@ export function generateIsolatedSepticShockDossier(encounterId = "NPDE-MW564VII"
 | Parameter | Documented Observation | Physiological Significance | Diagnostic & Resuscitation Priority |
 | :--- | :--- | :--- | :--- |
 | **Blood Pressure** | **${sbp}/${dbp} mmHg** (MAP = **${map.mapMmHg} mmHg**) | Severe circulatory shock; systemic hypoperfusion with loss of vital organ autoregulation | **Critical Deficit:** Target MAP ≥ 65 mmHg via rapid IV crystalloids and early norepinephrine |
-| **Body Temperature** | **40.0°C (Hyperpyrexia)** | Systemic inflammatory cytokine release; high bacterial/viral metabolic demand | Confirms acute infectious/inflammatory driver; rule out bacteremia |
+| **Body Temperature** | **${tempC.toFixed(1)}°C (${tempC >= 39.0 ? "Hyperpyrexia" : "Fever / Pyrexia"})** | Systemic inflammatory cytokine release; high bacterial/viral metabolic demand | Confirms acute infectious/inflammatory driver; rule out bacteremia |
 | **Mental Status** | **Confusion (Altered Mentation)** | Acute cerebral hypoperfusion and septic encephalopathy | High-risk organ dysfunction marker; contributes to qSOFA |
-| **Respiratory Rate** | **30 breaths/min (Tachypnea)** | Compensatory respiratory alkalosis for lactic acidosis; possible pulmonary focus | Primary clinical sign of metabolic stress and impending respiratory failure |
-| **Heart Rate** | **132 bpm (Marked Tachycardia)** | Reflex sympathetic discharge to preserve cardiac output in vasoplegic/distributive shock | Indicates significant physiological decompensation |
-| **Duration** | **3 days** | Subacute worsening of untreated primary focus leading to decompensated shock | Screen for evolving deep-seated source (pneumonia, pyelonephritis, peritonitis) |
+| **Respiratory Rate** | **${rr} breaths/min (Tachypnea)** | Compensatory respiratory alkalosis for lactic acidosis; possible pulmonary focus | Primary clinical sign of metabolic stress and impending respiratory failure |
+| **Heart Rate** | **${hr} bpm (${hr >= 100 ? "Marked Tachycardia" : "Tachycardia"})** | Reflex sympathetic discharge to preserve cardiac output in vasoplegic/distributive shock | Indicates significant physiological decompensation |
+${hasCough ? `| **Respiratory Symptoms** | **Acute Cough** | Localizing pulmonary sign indicative of lower respiratory tract infection / pneumonia | Obtain bedside portable chest X-ray and sputum cultures |\n` : ""}${hasNursingHome ? `| **Care Setting** | **Nursing Home Resident** | High colonization rates with multidrug-resistant pathogens (MRSA, Pseudomonas) | Mandates broad-spectrum empiric antimicrobial coverage |\n` : ""}| **Duration** | **Acute presentation** | Rapid decompensation of primary infectious focus leading to distributive shock | Immediate initiation of Surviving Sepsis Campaign Hour-1 bundle |
 
 ---
 
@@ -424,15 +470,15 @@ export function generateIsolatedSepticShockDossier(encounterId = "NPDE-MW564VII"
 
 #### quick Sequential Organ Failure Assessment (qSOFA)
 - **Score:** **3 / 3 Criteria Present**
-  - Respiratory Rate ≥ 22/min: **Present (30/min) [+1]**
-  - Systolic BP ≤ 100 mmHg: **Present (78 mmHg) [+1]**
+  - Respiratory Rate ≥ 22/min: **Present (${rr}/min) [+1]**
+  - Systolic BP ≤ 100 mmHg: **Present (${sbp} mmHg) [+1]**
   - Altered Mentation: **Present (Confusion) [+1]**
 - **Methodological Status:** **HIGH-RISK WARNING SCORE FOR IN-HOSPITAL MORTALITY & ORGAN DYSFUNCTION**
 - *Safety Invariant:* ${qsofa.safetyInvariant}
 
 #### Mean Arterial Pressure (MAP)
-\\[ MAP = \\frac{SBP + 2(DBP)}{3} = \\frac{78 + 2(45)}{3} = 56\\text{ mmHg} \\]
-- **Current MAP:** **56 mmHg**
+\\[ MAP = \\frac{SBP + 2(DBP)}{3} = \\frac{${sbp} + 2(${dbp})}{3} = ${map.mapMmHg}\\text{ mmHg} \\]
+- **Current MAP:** **${map.mapMmHg} mmHg**
 - **Assessment:** **Severely reduced perfusion pressure.** Perfusion to cerebral, renal, and splanchnic beds is compromised. Urgent fluid resuscitation and vasopressor assessment required.
 
 #### Sepsis-3 Septic Shock Assessment
@@ -441,7 +487,7 @@ export function generateIsolatedSepticShockDossier(encounterId = "NPDE-MW564VII"
 
 #### CURB-65 Assessment (Pneumonia Severity)
 - **Status:** **Incomplete Calculation (Missing Serum Urea/BUN).**
-- *Available Criteria:* Confusion (+1), Respiratory rate ≥ 30 (+1), Low BP (+1), Age ≥ 65 (+1).
+- *Available Criteria:* Confusion (+1), Respiratory rate ≥ 30 (${rr >= 30 ? "+1" : "Borderline/High"}), Low BP (+1), Age ≥ 65 (+1).
 - *Clinical Directive:* ${curb65.clinicalDirective}
 
 ---
@@ -450,21 +496,21 @@ export function generateIsolatedSepticShockDossier(encounterId = "NPDE-MW564VII"
 
 *Diagnostic percentages are removed in accordance with evidence standards; probabilities are not presented as arbitrary numbers without a validated prediction model.*
 
-1. **Undifferentiated Sepsis with Shock Physiology (Source Undetermined)** *(ICD-10: R65.20 / R57.2)*
+1. **Undifferentiated Sepsis with Shock Physiology (Source: ${hasCough ? "Severe Pneumonia / Lower Respiratory Focus" : "Undetermined"})** *(ICD-10: R65.20 / R57.2)*
    - *Tier:* 🚨 **TIER 1: PRIMARY EMERGENCY**
-   - *Rationale:* Hyperpyrexia (40°C), tachypnea, severe hypotension (MAP 56), and confusion in an elderly male indicate severe systemic infection with distributive shock.
-2. **Severe Community-Acquired Pneumonia (CAP)** *(ICD-10: J18.9)*
+   - *Rationale:* Pyrexia (${tempC.toFixed(1)}°C), tachypnea (${rr}/min), tachycardia (${hr} bpm), severe hypotension (MAP ${map.mapMmHg} mmHg), and acute confusion in an elderly ${genderStr}${hasNursingHome ? " from a nursing home" : ""} indicate severe systemic infection with distributive shock.
+2. **Severe Community-Acquired Pneumonia (CAP) / Nursing Home-Acquired Pneumonia (HAP)** *(ICD-10: J18.9)*
    - *Tier:* ⚠️ **TIER 2: MUST-NOT-MISS**
-   - *Rationale:* Tachypnea (30/min) and high fever in an elderly male strongly support a pulmonary focus, but focal pulmonary findings await physical exam and imaging.
+   - *Rationale:* Tachypnea (${rr}/min), pyrexia (${tempC.toFixed(1)}°C), and ${hasCough ? "documented cough" : "respiratory symptoms"} in an elderly ${genderStr} strongly support a pulmonary focus. In nursing home residents, coverage for MRSA and Pseudomonas aeruginosa is indicated.
 3. **Urosepsis / Complicated Urinary Tract Infection** *(ICD-10: N39.0 / A41.9)*
    - *Tier:* ⚠️ **TIER 2: MUST-NOT-MISS**
-   - *Rationale:* Most frequent source of occult bacteremic sepsis and delirium in older male patients.
+   - *Rationale:* Most frequent occult source of bacteremic sepsis and delirium in institutionalized older patients.
 4. **Intra-Abdominal Sepsis / Peritonitis** *(ICD-10: K65.0)*
    - *Tier:* ⚠️ **TIER 2: MUST-NOT-MISS**
    - *Rationale:* Occult perforation, biliary sepsis (cholangitis), or mesenteric ischemia can present with sudden delirium and shock.
 5. **Acute Bacterial Meningitis / Encephalitis** *(ICD-10: G00.9)*
    - *Tier:* ⚠️ **TIER 2: MUST-NOT-MISS**
-   - *Rationale:* Combination of 40°C fever and confusion mandates screening for nuchal rigidity and central nervous system infection.
+   - *Rationale:* Combination of ${tempC.toFixed(1)}°C fever and confusion mandates screening for nuchal rigidity and central nervous system infection.
 6. **Non-Infectious Shock Etiologies (Rule-Out)**
    - *Cardiogenic Shock:* Acute MI with pump failure.
    - *Obstructive Shock:* Massive Pulmonary Embolism or Cardiac Tamponade.
