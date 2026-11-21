@@ -716,6 +716,8 @@ export function validateCrossSectionClinicalConsistency(
     const ageRegex = /\b(\d{1,3})\s*(?:-|–|\s+)?(?:years?|yrs?|yo|year-old)\b/gi;
     for (const m of dossierText.matchAll(ageRegex)) {
       const ageVal = parseInt(m[1], 10);
+      const ctx = dossierText.slice(Math.max(0, (m.index ?? 0) - 25), Math.min(dossierText.length, (m.index ?? 0) + m[0].length + 25));
+      if (/[≥><=]|threshold|curb-?65|criteria|cutoff|scale/i.test(ctx)) continue;
       if (ageVal !== scratchpad.demographics.patientAgeYears) {
         violations.push({
           item: "Patient Demographics (Age)",

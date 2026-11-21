@@ -13,6 +13,8 @@
  * and 21 U.S.C. § 360j(o)(1)(E) (Section 520(o)(1)(E) FD&C Act).
  */
 
+import { buildClinicalScratchpad } from "./noctis-clinical-scratchpad.ts";
+
 export interface ClinicalObservation {
   observationId: string;
   encounterId: string;
@@ -407,9 +409,35 @@ export function generateIsolatedSepticShockDossier(
   const text = rawInput || "";
 
   // Parse blood pressure
-  const bpMatch = text.match(/\b(?:bp\s*(?:is|:)?\s*)?(\d{2,3})\s*\/\s*(\d{2,3})\b/i);
-  const sbp = patientData?.vitals?.systolicBp ?? (bpMatch ? parseInt(bpMatch[1], 10) : 78);
-  const dbp = patientData?.vitals?.diastolicBp ?? (bpMatch ? parseInt(bpMatch[2], 10) : 44);
+  let parsedSbp: number | undefined = patientData?.vitals?.systolicBp;
+  let parsedDbp: number | undefined = patientData?.vitals?.diastolicBp;
+  if (parsedSbp === undefined || parsedDbp === undefined) {
+    const bpExplicitMatch = text.match(/\b(?:bp|blood\s*pressure)\s*[:=]?\s*(\d{2,3})\s*\/\s*(\d{2,3})\b/i);
+    if (bpExplicitMatch) {
+      const s = parseInt(bpExplicitMatch[1], 10);
+      const d = parseInt(bpExplicitMatch[2], 10);
+      if (s >= 40 && s <= 280 && d >= 20 && d <= 180) {
+        parsedSbp = s;
+        parsedDbp = d;
+      }
+    }
+    if (parsedSbp === undefined || parsedDbp === undefined) {
+      const allSlash = [...text.matchAll(/\b(\d{2,3})\s*\/\s*(\d{2,3})(?:\s*mmHg)?\b/gi)];
+      for (const m of allSlash) {
+        const s = parseInt(m[1], 10);
+        const d = parseInt(m[2], 10);
+        const ctx = text.slice(m.index ?? 0, (m.index ?? 0) + m[0].length + 5);
+        if (/mg|tab/i.test(ctx)) continue;
+        if (s >= 40 && s <= 280 && d >= 20 && d <= 180) {
+          parsedSbp = s;
+          parsedDbp = d;
+          break;
+        }
+      }
+    }
+  }
+  const sbp = parsedSbp ?? 78;
+  const dbp = parsedDbp ?? 44;
 
   // Parse temperature
   const tempMatch = text.match(/\b(?:temp(?:erature)?\s*(?:is|:)?\s*)?(\d{2}(?:\.\d+)?)\s*°?\s*c\b/i);
@@ -453,6 +481,10 @@ export function generateIsolatedSepticShockDossier(
   const lactateMatch = text.match(/\b(?:lactate|lactic\s*acid)\s*(?:is|of|=|:)?\s*(\d+(?:\.\d+)?)\s*(?:mmol\/l)?\b/i);
   const lactate = lactateMatch ? parseFloat(lactateMatch[1]) : undefined;
 
+  const kMatch = text.match(/\b(?:potassium|k\+?)\s*(?:is|of|=|:)?\s*([2-9]\.\d+)\s*(?:mmol\/l|meq\/l)?\b/i);
+  const kVal = kMatch ? parseFloat(kMatch[1]) : undefined;
+  const kDisplay = kVal !== undefined ? `${kVal} mmol/L` : "[UNMEASURED / STAT LAB REQUIRED]";
+
   const consolidationMatch = text.match(/\b(right\s+lower-?lobe\s+consolidation|rll\s+consolidation|left\s+lower-?lobe\s+consolidation|lll\s+consolidation|consolidation|infiltrate)\b/i);
   const consolidationText = consolidationMatch ? consolidationMatch[0] : (/\bcough\b/i.test(text) ? "suspected lower respiratory infection" : "Undifferentiated Severe Infection");
 
@@ -464,13 +496,24 @@ export function generateIsolatedSepticShockDossier(
 
   const exactMapVal = (sbp + 2 * dbp) / 3;
   const exactMapStr = exactMapVal.toFixed(1);
+  const isMapTargetMet = exactMapVal >= 65.0;
+  const mapMarginMmHg = Math.abs(exactMapVal - 65.0).toFixed(1);
+
+  const qsofaTachypnea = rr >= 22;
+  const qsofaHypotension = sbp <= 100;
+  const qsofaMentation = true;
+  const qsofaScore = (qsofaTachypnea ? 1 : 0) + (qsofaHypotension ? 1 : 0) + (qsofaMentation ? 1 : 0);
+
+  const curbConfusion = true;
+  const curbRr = rr >= 30;
+  const curbBp = sbp < 90 || dbp <= 60;
+  const curbAge = ageYears >= 65;
+  const knownCurb65Score = (curbConfusion ? 1 : 0) + (curbRr ? 1 : 0) + (curbBp ? 1 : 0) + (curbAge ? 1 : 0);
+
   const map = calculateValidatedMAP(sbp, dbp);
   const qsofa = calculateValidatedQSOFA({ respiratoryRate: rr, systolicBp: sbp, hasAlteredMentation: true });
   const curb65 = calculateValidatedCURB65({ confusion: true, respiratoryRate: rr, systolicBp: sbp, diastolicBp: dbp, ageYears: ageYears });
   const sepsis3 = evaluateSepsis3Criteria({ hasSuspectedInfection: true, mapMmHg: Math.round(exactMapVal), isOnVasopressors: false, hasReceivedAdequateFluidResuscitation: false });
-
-  const meetsRrCurb65 = rr >= 30;
-  const knownCurb65Score = 1 + 1 + (ageYears >= 65 ? 1 : 0) + (meetsRrCurb65 ? 1 : 0);
 
   const spo2Display = spo2 !== undefined ? `${spo2}%` : "[UNMEASURED]";
   const efDisplay = ef !== undefined ? `${ef}%` : "[NOT DOCUMENTED]";
@@ -490,7 +533,7 @@ export function generateIsolatedSepticShockDossier(
 
 > [!CAUTION]
 > **EMERGENCY MEDICAL WARNING (IMMEDIATE RESUSCITATION DIRECTIVE — SHOCK WITH SUSPECTED SEVERE INFECTION)**
-> 🚨 **CRITICAL LIFE THREAT:** The patient exhibits severe circulatory failure (MAP ${exactMapStr} mmHg), acute delirium/confusion, marked tachycardia (${hr} bpm), tachypnea (RR ${rr}/min), hypoxemia (SpO2 ${spo2Display}), and marked fever (${tempC.toFixed(1)}°C) secondary to **${consolidationText} (Pneumonia)** in a ${ageYears}-year-old ${genderStr}${hasNursingHome ? " nursing home resident" : " patient"}${comorbText ? ` with severe comorbidities (**${comorbText}**)` : ""}.
+> 🚨 **CRITICAL LIFE THREAT:** The patient exhibits ${isMapTargetMet ? `distributive shock physiology with systemic perfusion pressure currently maintained (MAP ${exactMapStr} mmHg)` : `severe circulatory failure (MAP ${exactMapStr} mmHg)`}, acute delirium/confusion, marked tachycardia (${hr} bpm), tachypnea (RR ${rr}/min), hypoxemia (SpO2 ${spo2Display}), and marked fever (${tempC.toFixed(1)}°C) secondary to **${consolidationText} (Pneumonia)** in a ${ageYears}-year-old ${genderStr}${hasNursingHome ? " nursing home resident" : " patient"}${comorbText ? ` with severe comorbidities (**${comorbText}**)` : ""}.
 > - **Immediate Action:** Activate Emergency Medical Services (EMS) / Code Sepsis immediately for resuscitation bay placement.
 > - **Time-Critical Imperative:** Immediate resuscitation in an Emergency Department and Critical Care / Intensive Care Unit. Outpatient management is strictly contraindicated.
 
@@ -500,7 +543,7 @@ export function generateIsolatedSepticShockDossier(
 
 | Parameter | Documented Observation | Physiological Significance | Diagnostic & Resuscitation Priority |
 | :--- | :--- | :--- | :--- |
-| **Blood Pressure** | **${sbp}/${dbp} mmHg** (MAP = **${exactMapStr} mmHg**) | Profound circulatory failure / distributive vasoplegia; loss of vital organ autoregulation. | **Critical Deficit:** Target MAP ≥ 65 mmHg via titrated small fluid boluses and early Norepinephrine. |
+| **Blood Pressure** | **${sbp}/${dbp} mmHg** (MAP = **${exactMapStr} mmHg**) | ${isMapTargetMet ? "Systemic perfusion pressure target met (MAP ≥ 65.0 mmHg)." : "Profound circulatory failure / distributive vasoplegia; loss of vital organ autoregulation."} | ${isMapTargetMet ? `Target met: +${mapMarginMmHg} mmHg reserve. Vasopressors on standby.` : "Critical Deficit: Target MAP ≥ 65 mmHg via titrated small fluid boluses and early Norepinephrine."} |
 | **Heart Rate** | **${hr} bpm (Marked Tachycardia)** | Sympathetic compensatory tachycardia to sustain cardiac output in vasoplegic shock. | Continuous cardiac telemetry; high myocardial oxygen demand on a failing ventricle (EF ${efDisplay}). |
 | **Body Temperature** | **${tempC.toFixed(1)}°C (Fever / Marked Pyrexia)** | Systemic inflammatory response; hypermetabolic bacterial demand. *(Note: 39.1°C is fever/pyrexia, not hyperpyrexia)*. | Confirms acute systemic infection; obtain two sets of blood cultures STAT. |
 | **Respiratory Rate** | **${rr} breaths/min (Tachypnea)** | Significant respiratory distress / metabolic compensation. Satisfies qSOFA (+1). Does NOT meet CURB-65 ≥ 30 threshold. | Primary clinical sign of respiratory distress and systemic metabolic stress. |
@@ -509,6 +552,7 @@ export function generateIsolatedSepticShockDossier(
 | **Cardiac Comorbidity** | **HFrEF (EF ${efDisplay})** | Severe baseline systolic dysfunction; extreme susceptibility to iatrogenic pulmonary edema. | **Fluid Hazard:** Standard 30 mL/kg crystalloids (~2,000 mL) contraindicated; requires individualized fluid aliquots. |
 | **Renal Function** | **CKD ${ckdDisplay}, Creatinine ${crDisplay}** | Advanced renal impairment with acute-on-chronic kidney injury and impaired drug clearance. | Mandates strict renal dose adjustments for all maintenance antimicrobials and Foley catheter output tracking. |
 | **Serum Lactate** | **${lacDisplay} (Hyperlactatemia Evaluation)** | Severe tissue hypoperfusion, cellular dysoxia, and accelerated anaerobic metabolism. | Serial lactate monitoring every 2–4 hours to quantify resuscitation clearance. Blood gas needed for acid-base diagnosis. |
+| **Serum Potassium** | **${kDisplay}** | ${kVal !== undefined ? (kVal >= 6.0 ? "Severe hyperkalemia with cardiotoxicity risk." : (kVal >= 3.5 && kVal <= 5.0) ? "Normal serum potassium; Calcium Gluconate NOT INDICATED FOR HYPERKALEMIA." : "Hypokalemia; potassium repletion required.") : "Electrolyte monitoring required."} | ${kVal !== undefined ? (kVal >= 6.0 ? "STAT IV Calcium Gluconate for membrane stabilization." : (kVal >= 3.5 && kVal <= 5.0) ? "Maintain normal potassium range; Calcium Gluconate not indicated." : "IV KCl repletion.") : "STAT basic metabolic panel."} |
 | **Chest Radiograph** | **${consolidationText}** | Dense radiographic alveolar consolidation confirming lower respiratory tract infection / pneumonia focus. | Sputum Gram stain/culture; monitor for bilateral infiltrates or hydrostatic congestion. |
 | **Prior Admissions** | **${hospitalizationMatch ? "Hospitalization documented with antimicrobial exposure" : "Hospitalization 45 days earlier with IV ceftriaxone"}** | Prior hospitalization and broad-spectrum antimicrobial exposure within 90 days. | Major risk factor for multidrug-resistant pathogens (*Pseudomonas aeruginosa*, *MRSA*, *ESBL*). |
 | **Care Setting** | **${hasNursingHome ? "Nursing Home Resident" : "Institutional / Community Exposure"}** | Institutional exposure contributing to epidemiological risk profile alongside local antibiograms. | Factor in antimicrobial selection alongside severity and prior microbiology; avoid blanket universal regimens. |
@@ -518,26 +562,28 @@ export function generateIsolatedSepticShockDossier(
 ### 2. Clinical Scoring & Algorithmic Validation
 
 #### quick Sequential Organ Failure Assessment (qSOFA)
-- **Score:** **3 / 3 Criteria Present (Maximum Severity Tier)**
-  - Respiratory Rate ≥ 22/min: **Present (${rr}/min) [+1]**
-  - Systolic BP ≤ 100 mmHg: **Present (${sbp} mmHg) [+1]**
+- **Score:** **${qsofaScore} / 3 Criteria Present ${qsofaScore >= 2 ? "(Maximum Severity Tier)" : "(Low Risk Tier)"}**
+  - Respiratory Rate ≥ 22/min: **${qsofaTachypnea ? `Present (${rr}/min) [+1]` : `Absent (${rr}/min) [0]`}**
+  - Systolic BP ≤ 100 mmHg: **${qsofaHypotension ? `Present (${sbp} mmHg) [+1]` : `Absent (${sbp} mmHg) [0]`}**
   - Altered Mentation: **Present (Acute Confusion) [+1]**
 - **Methodological Status:** **HIGH-RISK WARNING SCORE FOR IN-HOSPITAL MORTALITY & ICU ADMISSION**
 - *Safety Invariant:* ${qsofa.safetyInvariant}
 
 #### Mean Arterial Pressure (MAP)
 \\[ MAP = \\frac{SBP + 2(DBP)}{3} = \\frac{${sbp} + 2(${dbp})}{3} = ${exactMapStr}\\text{ mmHg} \\]
-- **Current MAP:** **${map.mapMmHg} mmHg**
-- **Assessment:** **Severely reduced perfusion pressure.** Perfusion to cerebral, renal, and coronary vascular beds is critically compromised. Early vasopressor therapy required.
+- **Current MAP:** **${exactMapStr} mmHg**
+- **Assessment:** ${isMapTargetMet
+  ? `**Target met (+${mapMarginMmHg} mmHg reserve).** Systemic perfusion pressure is currently maintained above the 65.0 mmHg threshold without immediate vasopressor initiation.`
+  : `**Severely reduced perfusion pressure (deficit of ${mapMarginMmHg} mmHg below 65.0 mmHg target).** Perfusion to cerebral, renal, and coronary vascular beds is critically compromised. Early vasopressor therapy required.`}
 
 #### CURB-65 Assessment (Pneumonia Severity)
 - **Known Documented Score:** **${knownCurb65Score} / 4 Criteria Evaluated** *(Final CURB-65: ${knownCurb65Score} or ${knownCurb65Score + 1} points pending Serum BUN/Urea)*
   - **C — Confusion (Acute Delirium / Altered Mentation):** **Present [+1]**
   - **U — Urea (BUN > 19 mg/dL / > 7 mmol/L):** **Pending / Unmeasured [Pending]**
-  - **R — Respiratory Rate ≥ 30 breaths/min:** ${meetsRrCurb65 ? `**Present (${rr}/min) [+1]**` : `**Absent (Documented RR is ${rr}/min; does NOT meet the ≥ 30 threshold) [0]**`}
-  - **B — Blood Pressure (SBP < 90 or DBP ≤ 60 mmHg):** **Present (${sbp}/${dbp} mmHg) [+1]**
-  - **65 — Age ≥ 65 years:** **Present (${ageYears} years) [+1]**
-- **Methodological Evaluation:** Documented known score is **${knownCurb65Score} points** (High-Risk Mortality Tier, predicted 30-day mortality > 14–27%).
+  - **R — Respiratory Rate ≥ 30 breaths/min:** ${curbRr ? `**Present (${rr}/min) [+1]**` : `**Absent (Documented RR is ${rr}/min; does NOT meet the ≥ 30 threshold) [0]**`}
+  - **B — Blood Pressure (SBP < 90 or DBP ≤ 60 mmHg):** ${curbBp ? `**Present (${sbp}/${dbp} mmHg) [+1]**` : `**Absent (Documented BP is ${sbp}/${dbp} mmHg; does NOT meet SBP < 90 or DBP ≤ 60 threshold) [0]**`}
+  - **65 — Age ≥ 65 years:** ${curbAge ? `**Present (${ageYears} years) [+1]**` : `**Absent (Documented age is ${ageYears} years; does NOT meet the ≥ 65 threshold) [0]**`}
+- **Methodological Evaluation:** Documented known score is **${knownCurb65Score} points** (${knownCurb65Score >= 3 ? "High-Risk Mortality Tier, predicted 30-day mortality > 14–27%" : knownCurb65Score >= 2 ? "Intermediate-Risk Tier, hospital admission indicated" : "Low-Risk Tier"}).
 - **Clinical Directive:** CURB-65 cannot be fully calculated because Serum Blood Urea Nitrogen (BUN) / Urea is unmeasured. However, ${knownCurb65Score} clinical criteria are already documented. Outpatient management is strictly contraindicated; immediate ICU-level admission and resuscitation required.
 
 #### Sepsis-3 Septic Shock Assessment
@@ -632,5 +678,11 @@ export function generateIsolatedSepticShockDossier(
 > This software output provides clinical decision support. Under Section 520(o)(1)(E) of the FD&C Act (21 U.S.C. § 360j(o)(1)(E)) and the FDA Updated Clinical Decision Support Software Final Guidance (January 2026):
 > - **Time-Critical Emergency Limitations:** Software functions providing time-critical recommendations for acute, life-threatening conditions (e.g. septic shock, stroke, myocardial infarction) generally do **not** qualify as non-device CDS because the urgency of the clinical scenario precludes independent physician review of the underlying evidence before action must be taken.
 > - **Platform Functions:** Noctis Health does not make a blanket claim of Non-Device CDS status across its entire architecture. Each clinical module, patient-facing triage function, and clinician decision support tool is evaluated independently for regulatory classification with qualified medical device regulatory counsel.
+
+---
+
+### 7. Neuro-Symbolic Scratchpad Verification Trail
+
+${buildClinicalScratchpad(text, encounterId).markdownScratchpadSummary}
 `;
 }

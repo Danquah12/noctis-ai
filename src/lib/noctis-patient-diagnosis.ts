@@ -2377,8 +2377,6 @@ function executeNaturalPatientDiagnosticQuery(question: string, explicitEncounte
     (/\b(milk\s+of\s+magnesia|magnesium\s+hydroxide)\b/i.test(q) && /\b(ckd|renal|kidney)\b/i.test(q) && /\b(weakness|lethargy|bradycardia|hypotension|reflexes)\b/i.test(q));
 
   if (isHypermagnesemiaCrisis) {
-    const encMatch = q.match(/\b(NPDE-[A-Z0-9]+)\b/i);
-    const encId = encMatch ? encMatch[1] : `NPDE-HYPERMAG-${Date.now().toString(36).toUpperCase()}`;
     return generateIsolatedHypermagnesemiaDossier(encId, q);
   }
 
@@ -2392,9 +2390,18 @@ function executeNaturalPatientDiagnosticQuery(question: string, explicitEncounte
     (/\b(confusion|altered\s+mental)\b/i.test(q) && /\b(78\/45|bp\s*78|84\/52|hypotension)\b/i.test(q) && /\b(fever|temp|temperature)\b/i.test(q));
 
   if (isSepsisOrShock) {
-    const encMatch = q.match(/\b(NPDE-[A-Z0-9]+)\b/i);
-    const encId = encMatch ? encMatch[1] : `NPDE-SEPSIS-${Date.now().toString(36).toUpperCase()}`;
-    return generateIsolatedSepticShockDossier(encId, q);
+    return generateIsolatedSepticShockDossier(encId, q, {
+      ageYears: context.demographics.age ?? undefined,
+      biologicalSex: context.demographics.sex !== "indeterminate" ? context.demographics.sex : undefined,
+      vitals: {
+        systolicBp: context.vitals.systolicBp ?? undefined,
+        diastolicBp: context.vitals.diastolicBp ?? undefined,
+        heartRate: context.vitals.heartRateBpm ?? undefined,
+        respiratoryRate: context.vitals.respiratoryRatePerMin ?? undefined,
+        temperatureC: context.vitals.temperatureCelsius ?? undefined,
+        oxygenSaturation: context.vitals.oxygenSaturationPercent ?? undefined,
+      }
+    });
   }
 
   // Dedicated Handler: Emergent Diabetic Ketoacidosis (DKA) Resuscitation Protocol
@@ -2404,8 +2411,6 @@ function executeNaturalPatientDiagnosticQuery(question: string, explicitEncounte
     (/\b(blood\s+sugar|glucose)\b/i.test(q) && /\b(540|[3-9]\d{2})\b/i.test(q) && /\b(vomiting|nausea|kussmaul|breathing)\b/i.test(q));
 
   if (isDkaScenario) {
-    const encMatch = q.match(/\b(NPDE-[A-Z0-9]+)\b/i);
-    const encId = encMatch ? encMatch[1] : `NPDE-DKA-${Date.now().toString(36).toUpperCase()}`;
 
     return `# Noctis Patient Diagnostic & Triage Intelligence Dossier (Clinical Decision Support)
 **Encounter ID:** \`${encId}\` · **Triage Urgency:** **🚨 P0 IMMEDIATE EMERGENCY (Call 911 / EMS Now · Resuscitation & ICU)**
