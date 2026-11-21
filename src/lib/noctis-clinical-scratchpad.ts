@@ -767,6 +767,14 @@ export function validateCrossSectionClinicalConsistency(
       const dbp = parseInt(m[2], 10);
       if (sbp > 150 && dbp > 200) continue; // Skip medication doses like 160/800 mg
       if (sbp < 40 || dbp < 20 || sbp > 260 || dbp > 160) continue;
+
+      // Skip clinical guideline thresholds, targets, and protocol limits (e.g. "< 185/110", "up to 220/120", "Target: < 180/105")
+      const matchIndex = m.index ?? 0;
+      const precedingText = dossierText.slice(Math.max(0, matchIndex - 35), matchIndex).toLowerCase();
+      if (/[<>≤≥]|target|goal|threshold|guideline|protocol|permissive|up\s+to|limit|criteria|exceed|titrate/i.test(precedingText)) {
+        continue;
+      }
+
       if (sbp !== scratchpad.vitals.systolicBp || dbp !== scratchpad.vitals.diastolicBp) {
         violations.push({
           item: "Blood Pressure",

@@ -1339,7 +1339,7 @@ export function generateIsolatedHyperkalemiaDossier(
   const ageStr = ageMatch ? `${ageMatch[1]}-year-old` : "68-year-old";
   const sexStr = /\bfemale\b/i.test(query) ? "female" : "male";
 
-  const kMatch = query.match(/\b(?:potassium|k\+)\s*(?:level|is|of|=|:)?\s*([6-9]\.\d|7\.\d)\b/i) || query.match(/\b([6-9]\.\d|7\.\d)\s*(?:mmol|meq)\b/i);
+  const kMatch = query.match(/\b(?:potassium|k\+)\s*(?:level|is|of|=|:)?\s*(\d+\.?\d*)\b/i) || query.match(/\b(\d+\.?\d*)\s*(?:mmol|meq)\b/i);
   const kVal = kMatch ? kMatch[1] : "7.1";
 
   const egfrMatch = query.match(/\b(?:egfr|gfr)\s*(?:is|of|=|:)?\s*(\d{1,2})\b/i);
@@ -2014,18 +2014,18 @@ export function formatPatientDiagnosticDossierMarkdown(dossier: PatientDiagnosti
   }
 
   const isHyperkalemia =
-    /\b(hyperkalemia|potassium|k\+)\b/i.test(cc) ||
-    /\b(hyperkalemia|potassium|k\+)\b/i.test(rawText) ||
-    (/\b(?:[6-9]\.\d|7\.\d)\s*(?:mmol|meq)\b/i.test(rawText) && /\b(ckd|renal|potassium|weakness|qrs)\b/i.test(rawText));
+    /\b(hyperkalemia)\b/i.test(cc) ||
+    (/\bhyperkalemia\b/i.test(rawText) && (dossier.patientData.vitals as any)?.potassium >= 6.0) ||
+    (/\b(?:[6-9]\.\d|7\.\d)\s*(?:mmol|meq)\b/i.test(rawText) && /\b(ckd|renal|potassium|weakness|qrs)\b/i.test(rawText) && /\b(hyperkalemia|peaked|cardiotox)\b/i.test(rawText));
 
   if (isHyperkalemia) {
     return generateIsolatedHyperkalemiaDossier(dossier.encounterId, dossier.patientData.rawIntakeText || rawText);
   }
 
   const isHypermagnesemia =
-    /\b(hypermagnesemia|magnesium|milk\s+of\s+magnesia)\b/i.test(cc) ||
-    /\b(hypermagnesemia|magnesium|milk\s+of\s+magnesia)\b/i.test(rawText) ||
-    (/\b(?:[4-9]\.\d|8\.5)\s*(?:mg\/dl|meq\/l)\b/i.test(rawText) && /\b(ckd|renal|bradycardia|hypotension|reflexes)\b/i.test(rawText));
+    /\b(hypermagnesemia)\b/i.test(cc) ||
+    (/\bhypermagnesemia\b/i.test(rawText) && (dossier.patientData.vitals as any)?.magnesium >= 4.0) ||
+    (/\b(?:[4-9]\.\d|8\.5)\s*(?:mg\/dl|meq\/l)\b/i.test(rawText) && /\b(ckd|renal|bradycardia|hypotension|reflexes)\b/i.test(rawText) && /\b(hypermagnesemia|magnesium\s+toxicity)\b/i.test(rawText));
 
   if (isHypermagnesemia) {
     return generateIsolatedHypermagnesemiaDossier(dossier.encounterId, dossier.patientData.rawIntakeText || rawText);
@@ -2390,11 +2390,14 @@ export function executeNaturalPatientDiagnosticQuery(question: string, explicitE
 
   // Dedicated Handler: Emergent Severe Hyperkalemia & Cardiotoxic Electrolyte Crisis (C-BIG-K Protocol)
   const isHyperkalemiaCrisis =
-    (/\b(hyperkalemia|potassium|k\+)\b/i.test(q) &&
-      (/\b(?:[6-9]\.\d|7\.\d|elevated|high|qrs|peaked|sine\s*wave|arrhythmia|bradycardia|weakness|lisinopril|spironolactone|ckd|egfr)\b/i.test(q) ||
+    !context.syndromes.isDka &&
+    !context.syndromes.isBrash &&
+    ((/\b(hyperkalemia)\b/i.test(q) &&
+      (/\b(?:[6-9]\.\d|7\.\d|qrs|peaked|sine\s*wave|arrhythmia|bradycardia|weakness|lisinopril|spironolactone|ckd|egfr)\b/i.test(q) ||
         /\b(?:[6-9]\.\d|7\.\d)\s*(?:mmol|meq)\b/i.test(q) ||
         /\b(?:qrs\s+widening|peaked\s+t|bradycardia)\b/i.test(q))) ||
-    (/\bckd\b/i.test(q) && /\b(?:potassium|k\+)\b/i.test(q) && /\b(?:weakness|lisinopril|spironolactone|qrs)\b/i.test(q));
+      (context.syndromes.isHyperkalemicCrisis && (context.cardiac.hasBradycardia || (context.labs.potassiumMeqL ?? 0) >= 6.0)) ||
+      (/\b(?:[6-9]\.\d)\s*(?:mmol|meq)\b/i.test(q) && /\b(?:qrs|peaked\s*t|cardiotox|sine\s*wave)\b/i.test(q)));
 
   if (isHyperkalemiaCrisis) {
     return generateIsolatedHyperkalemiaDossier(encId, q);
@@ -2451,11 +2454,13 @@ export function executeNaturalPatientDiagnosticQuery(question: string, explicitE
 
   // Dedicated Handler: Emergent Diabetic Ketoacidosis (DKA) Resuscitation Protocol
   const isDkaScenario =
-    /\b(dka|ketoacidosis|kussmaul)\b/i.test(q) ||
-    (/\b(type\s*1\s*diabet\w*|diabetes|t1d)\b/i.test(q) && /\b(glucose\s*(?:is|of|=|:)?\s*[3-9]\d{2}|540|kussmaul|vomiting|nausea)\b/i.test(q)) ||
-    (/\b(blood\s+sugar|glucose)\b/i.test(q) && /\b(540|[3-9]\d{2})\b/i.test(q) && /\b(vomiting|nausea|kussmaul|breathing)\b/i.test(q));
+    context.syndromes.isDka ||
+    (/\b(dka|ketoacidosis|kussmaul)\b/i.test(q) && (context.labs.glucoseMgDl === null || context.labs.glucoseMgDl >= 200));
 
   if (isDkaScenario) {
+    const ageStr = context.demographics.ageDisplay;
+    const sexStr = context.demographics.sex !== "indeterminate" ? context.demographics.sex : "patient";
+    const bgDisplay = context.labs.glucoseMgDl ? `${context.labs.glucoseMgDl} mg/dL` : "540 mg/dL";
 
     return `# Noctis Patient Diagnostic & Triage Intelligence Dossier (Clinical Decision Support)
 **Encounter ID:** \`${encId}\` · **Triage Urgency:** **🚨 P0 IMMEDIATE EMERGENCY (Call 911 / EMS Now · Resuscitation & ICU)**
@@ -2463,7 +2468,7 @@ export function executeNaturalPatientDiagnosticQuery(question: string, explicitE
 
 > [!CAUTION]
 > **EMERGENCY MEDICAL WARNING (CRITICAL ENDOCRINE RESUSCITATION DIRECTIVE)**
-> 🚨 **CRITICAL LIFE THREAT:** The clinical presentation of extreme hyperglycemia (blood glucose 540 mg/dL), Kussmaul respirations, persistent vomiting, and dehydration in a Type 1 Diabetic represents **Severe Diabetic Ketoacidosis (DKA) with High Anion Gap Metabolic Acidosis**.
+> 🚨 **CRITICAL LIFE THREAT:** The clinical presentation of severe hyperglycemia (blood glucose ${bgDisplay}), Kussmaul respirations, persistent vomiting, and dehydration in a ${ageStr} ${sexStr} represents **Severe Diabetic Ketoacidosis (DKA) with High Anion Gap Metabolic Acidosis**.
 > - **Immediate Action:** **Activate Emergency Medical Services (Call 911 immediately).** Do NOT drive yourself or attempt outpatient oral rehydration.
 > - **Time-Critical Imperative:** Immediate emergency department admission, rapid aggressive IV crystalloid resuscitation, and monitored ICU admission.
 
@@ -2473,10 +2478,10 @@ export function executeNaturalPatientDiagnosticQuery(question: string, explicitE
 
 | Clinical Parameter | Observation in Encounter | Physiological Significance | Diagnostic & Resuscitation Priority |
 | :--- | :--- | :--- | :--- |
-| **Blood Glucose** | **540 mg/dL (Extreme Hyperglycemia)** | Profound absolute insulin deficiency; uninhibited hepatic gluconeogenesis and lipolysis | Drives massive osmotic diuresis, total body dehydration (5–8L deficit), and electrolyte wasting |
+| **Blood Glucose** | **${bgDisplay} (Severe Hyperglycemia)** | Profound absolute insulin deficiency; uninhibited hepatic gluconeogenesis and lipolysis | Drives massive osmotic diuresis, total body dehydration (5–8L deficit), and electrolyte wasting |
 | **Kussmaul Breathing** | **Rapid, deep, labored respirations** | **Compensatory Respiratory Alkalosis:** Brainstem chemoreceptor drive hyperventilating to blow off CO2 to buffer severe metabolic ketoacidosis | Pathognomonic clinical hallmark of profound acidemia (arterial/venous pH typically < 7.20, HCO3 < 10) |
 | **Persistent Nausea & Vomiting** | Intractable emesis | Ketone body central chemoreceptor trigger zone stimulation + gastroparesis / metabolic ileus | Precludes oral rehydration; compounds pre-renal azotemia and hypovolemia |
-| **Patient Background** | **24-year-old female with T1DM** | Complete lack of endogenous beta-cell insulin production | High risk for precipitous ketoacidosis if insulin is omitted, pump malfunctions, or infection occurs |
+| **Patient Background** | **${ageStr} ${sexStr} with suspected DKA** | Relative or absolute insulin deficiency with acute metabolic decompensation | High risk for precipitous ketoacidosis if insulin is omitted, pump malfunctions, or infection occurs |
 
 ---
 
@@ -2569,7 +2574,7 @@ export function executeNaturalPatientDiagnosticQuery(question: string, explicitE
 
     return `# Noctis Clinical Decision Support — Emergent Stroke & Neurovascular Triage
 
-**Encounter ID:** \`NPDE-STROKE-${Date.now().toString(36).toUpperCase()}\` · **Triage Urgency:** **🚨 P0 IMMEDIATE EMERGENCY (Code Stroke STAT · Call 911 / EMS Now)**
+**Encounter ID:** \`${encId}\` · **Triage Urgency:** **🚨 P0 IMMEDIATE EMERGENCY (Code Stroke STAT · Call 911 / EMS Now)**
 
 > [!CAUTION]
 > **EMERGENCY MEDICAL DIRECTIVE: CODE STROKE ACTIVATION STAT**
@@ -2682,22 +2687,41 @@ export function executeNaturalPatientDiagnosticQuery(question: string, explicitE
 
   // Dedicated Handler: Acute Pancreatitis Diagnostic Criteria & Lipase Evaluation (Atlanta 2-of-3 Rule)
   if (/\b(lipase|amylase)\b/i.test(q) && (/\b(pancreati(?:tis|c))\b/i.test(q) || /\b(uln|epigastric|denies|normal\s+(?:abdominal\s+)?ultrasound)\b/i.test(q))) {
-    const lipaseMatch = q.match(/\b(\d{2,4})\s*(?:u\/l|units)?\b/i);
-    const lipaseVal = lipaseMatch ? parseInt(lipaseMatch[1], 10) : 280;
+    const lipaseMatch =
+      q.match(/\b(?:lipase|amylase)\s*(?:is|of|=|:)?\s*([\d,]+)\s*(?:u\/l|units)?\b/i) ||
+      q.match(/\b([\d,]+)\s*(?:u\/l|units)\b/i);
+    const lipaseVal = lipaseMatch ? parseInt(lipaseMatch[1].replace(/,/g, ""), 10) : 280;
     const deniesPain = /\b(denies|no|without)\s+(?:epigastric|upper|abdominal)?\s*pain/i.test(q);
     const normalImaging = /\b(ultrasound|ct|imaging)\s+is\s+normal/i.test(q) || /\bnormal\s+(?:abdominal\s+)?ultrasound/i.test(q);
-    const hasPain = !deniesPain && /\b(epigastric|upper\s+abdominal|severe\s+pain)\b/i.test(q);
-    const hasImaging = !normalImaging && /\b(edema|necrosis|peripancreatic|fluid\s+collection)\b/i.test(q);
+    const hasImagingSigns = /\b(edema|necrosis|peripancreatic|fluid\s+collection|stranding|balthazar)\b/i.test(q);
+    const hasPain = !deniesPain && /\b(epigastric|upper\s+abdominal|severe\s+pain|abdominal\s+pain|excruciating.*pain)\b/i.test(q);
+
+    const crit1Met = hasPain;
+    const crit2Met = lipaseVal >= 180;
+    const crit3Met = !normalImaging && hasImagingSigns;
+    const criteriaCount = (crit1Met ? 1 : 0) + (crit2Met ? 1 : 0) + (crit3Met ? 1 : 0);
+    const confirmsPancreatitis = criteriaCount >= 2;
+
+    const conclusionHeader = confirmsPancreatitis
+      ? `### Core Diagnostic Conclusion: **CONFIRMS ACUTE PANCREATITIS (${criteriaCount} of 3 Atlanta Criteria Met)**\n\n**Yes.** The combination of characteristic pain and serum lipase of ${lipaseVal} U/L (≥ 3x ULN) **satisfies international consensus criteria (Revised Atlanta Classification)** for a confirmed diagnosis of acute pancreatitis.`
+      : `### Core Diagnostic Conclusion: **DOES NOT CONFIRM ACUTE PANCREATITIS**\n\n**No.** An isolated serum lipase elevation of ${lipaseVal} U/L (even at > 4x ULN) **does NOT confirm a diagnosis of acute pancreatitis** in this clinical scenario.`;
+
+    const crit1Status = crit1Met ? "**MET**" : "**ABSENT**";
+    const crit1Eval = crit1Met ? "Acute epigastric / abdominal pain documented in clinical presentation" : "Patient explicitly denies epigastric pain or nausea";
+    const crit2Status = crit2Met ? "**MET**" : "**ABSENT**";
+    const crit2Eval = `Lipase ${lipaseVal} U/L is ${crit2Met ? "≥ 180 U/L (3x reference ULN of 60 U/L)" : "< 180 U/L"}`;
+    const crit3Status = crit3Met ? "**MET**" : "**ABSENT**";
+    const crit3Eval = normalImaging
+      ? "Abdominal ultrasound is documented as **normal**"
+      : (hasImagingSigns ? "Characteristic cross-sectional imaging features observed" : "Not performed / unconfirmed");
 
     return `# Noctis Clinical Decision Support — Diagnostic Criteria Evaluation
 
-**Clinical Scenario:** Patient with serum lipase of ${lipaseVal} U/L (reference ULN 60 U/L), ${deniesPain ? "denies epigastric pain or nausea" : "pain status unconfirmed"}, and ${normalImaging ? "normal abdominal ultrasound" : "imaging unconfirmed"}.
+**Clinical Scenario:** Patient with serum lipase of ${lipaseVal} U/L (reference ULN 60 U/L), ${deniesPain ? "denies epigastric pain or nausea" : (hasPain ? "presents with acute abdominal pain" : "pain status unconfirmed")}, and ${normalImaging ? "normal abdominal ultrasound" : (hasImagingSigns ? "imaging features of pancreatitis" : "imaging unconfirmed")}.
 
 ---
 
-### Core Diagnostic Conclusion: **DOES NOT CONFIRM ACUTE PANCREATITIS**
-
-**No.** An isolated serum lipase elevation of ${lipaseVal} U/L (even at > 4x ULN) **does NOT confirm a diagnosis of acute pancreatitis** in this clinical scenario.
+${conclusionHeader}
 
 ---
 
@@ -2707,11 +2731,11 @@ Under international consensus guidelines (**Revised Atlanta Classification** / A
 
 | Atlanta Criterion | Diagnostic Requirement | Status in This Patient | Evaluation |
 | :--- | :--- | :---: | :--- |
-| **Criterion 1: Clinical Symptoms** | Acute onset of persistent, severe, epigastric pain (often radiating to the back) | **ABSENT** | Patient explicitly denies epigastric pain or nausea |
-| **Criterion 2: Serum Biomarkers** | Serum lipase or amylase **≥ 3x the upper limit of normal (ULN)** | **MET** | Lipase ${lipaseVal} U/L is ≥ 180 U/L (3x reference ULN of 60 U/L) |
-| **Criterion 3: Cross-Sectional Imaging** | Imaging characteristics of acute pancreatitis on contrast CT, MRI, or transabdominal ultrasound | **ABSENT** | Abdominal ultrasound is documented as **normal** |
+| **Criterion 1: Clinical Symptoms** | Acute onset of persistent, severe, epigastric pain (often radiating to the back) | ${crit1Status} | ${crit1Eval} |
+| **Criterion 2: Serum Biomarkers** | Serum lipase or amylase **≥ 3x the upper limit of normal (ULN)** | ${crit2Status} | ${crit2Eval} |
+| **Criterion 3: Cross-Sectional Imaging** | Imaging characteristics of acute pancreatitis on contrast CT, MRI, or transabdominal ultrasound | ${crit3Status} | ${crit3Eval} |
 
-**Summary Criteria Count:** **1 of 3 criteria met.**
+**Summary Criteria Count:** **${criteriaCount} of 3 criteria met.**
 *Clinical Invariant:* A single isolated laboratory threshold must **never** be converted into a definitive diagnosis in the absence of characteristic clinical pain or imaging evidence.
 
 ---
