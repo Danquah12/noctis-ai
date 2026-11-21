@@ -341,24 +341,28 @@ export function buildImmutablePatientContext(
   let wintersExpectedHighMmHg: number | null = null;
   let isWintersComputable = false;
   let wintersInterpretation = "";
-  if (bicarbonateMeqL !== null && paco2MmHg !== null) {
+  if (bicarbonateMeqL !== null) {
     isWintersComputable = true;
     wintersExpectedMidpointMmHg = 1.5 * bicarbonateMeqL + 8;
     wintersExpectedLowMmHg = wintersExpectedMidpointMmHg - 2;
     wintersExpectedHighMmHg = wintersExpectedMidpointMmHg + 2;
 
-    if (paco2MmHg >= wintersExpectedLowMmHg && paco2MmHg <= wintersExpectedHighMmHg) {
-      wintersInterpretation = `Expected PaCO2 is ${wintersExpectedLowMmHg}–${wintersExpectedHighMmHg} mmHg (${wintersExpectedMidpointMmHg} ± 2 mmHg). Measured PaCO2 of ${paco2MmHg} mmHg demonstrates adequate respiratory compensation.`;
-    } else if (paco2MmHg > wintersExpectedHighMmHg) {
-      const dev = (paco2MmHg - wintersExpectedHighMmHg).toFixed(1);
-      wintersInterpretation = `Expected PaCO2 is ${wintersExpectedLowMmHg}–${wintersExpectedHighMmHg} mmHg. Measured PaCO2 of ${paco2MmHg} mmHg is ${dev} mmHg above upper limit (relative hypoventilation / secondary respiratory acidosis).`;
+    if (paco2MmHg !== null) {
+      if (paco2MmHg >= wintersExpectedLowMmHg && paco2MmHg <= wintersExpectedHighMmHg) {
+        wintersInterpretation = `Expected PaCO2 is ${wintersExpectedLowMmHg}–${wintersExpectedHighMmHg} mmHg (${wintersExpectedMidpointMmHg} ± 2 mmHg). Measured PaCO2 of ${paco2MmHg} mmHg demonstrates adequate respiratory compensation.`;
+      } else if (paco2MmHg > wintersExpectedHighMmHg) {
+        const dev = (paco2MmHg - wintersExpectedHighMmHg).toFixed(1);
+        wintersInterpretation = `Expected PaCO2 is ${wintersExpectedLowMmHg}–${wintersExpectedHighMmHg} mmHg. Measured PaCO2 of ${paco2MmHg} mmHg is ${dev} mmHg above upper limit (relative hypoventilation / secondary respiratory acidosis).`;
+      } else {
+        const dev = (wintersExpectedLowMmHg - paco2MmHg).toFixed(1);
+        wintersInterpretation = `Expected PaCO2 is ${wintersExpectedLowMmHg}–${wintersExpectedHighMmHg} mmHg. Measured PaCO2 of ${paco2MmHg} mmHg is ${dev} mmHg below expected range (superimposed respiratory alkalosis).`;
+      }
     } else {
-      const dev = (wintersExpectedLowMmHg - paco2MmHg).toFixed(1);
-      wintersInterpretation = `Expected PaCO2 is ${wintersExpectedLowMmHg}–${wintersExpectedHighMmHg} mmHg. Measured PaCO2 of ${paco2MmHg} mmHg is ${dev} mmHg below expected range (superimposed respiratory alkalosis).`;
+      wintersInterpretation = `Expected compensatory PaCO2 is ${wintersExpectedLowMmHg}–${wintersExpectedHighMmHg} mmHg (${wintersExpectedMidpointMmHg} ± 2 mmHg) based on measured HCO3- of ${bicarbonateMeqL} mmol/L. Actual respiratory compensation cannot be evaluated because arterial blood gas (PaCO2) was not measured.`;
     }
   } else {
     isWintersComputable = false;
-    wintersInterpretation = "Winter's formula cannot be computed without measured bicarbonate and PaCO2.";
+    wintersInterpretation = "Winter's formula cannot be computed without measured bicarbonate.";
   }
 
   // AKI Ratios

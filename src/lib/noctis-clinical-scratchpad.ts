@@ -356,7 +356,7 @@ export function buildClinicalScratchpad(
     } else if (crFoldRatio >= 1.5 || crAbsoluteRiseMgDl >= 0.3) {
       establishedStage = 1;
       creatinineCriteriaStage = 1;
-      stageRationale = `KDIGO Stage 1 (Serum creatinine increased 1.5–1.9× baseline: ${crFoldRatio}× or rise ≥ 0.3 mg/dL).`;
+      stageRationale = `KDIGO Stage 1 AKI (Provisional: Serum creatinine increased 1.5–1.9× baseline: ${crFoldRatio}× or rise ≥ 0.3 mg/dL; formal acute staging provisional pending confirmation that rise occurred within qualifying acute window).`;
     }
   } else if (creatinineMgDl !== null && baselineCreatinineMgDl === null) {
     establishedStage = "indeterminate";
@@ -447,55 +447,68 @@ export function buildClinicalScratchpad(
 
   // D. Winter's Formula (INV-005: Calibrated Acid-Base Interpretation)
   let wintersFormula: WintersFormulaResult;
-  if (bicarbonateMeqL !== null && paco2MmHg !== null) {
+  if (bicarbonateMeqL !== null) {
     const midpoint = 1.5 * bicarbonateMeqL + 8;
     const low = midpoint - 2;
     const high = midpoint + 2;
-    const deviation = paco2MmHg - high;
 
-    if (paco2MmHg >= low && paco2MmHg <= high) {
-      wintersFormula = {
-        isComputable: true,
-        measuredPaco2MmHg: paco2MmHg,
-        expectedPaco2MidpointMmHg: midpoint,
-        expectedPaco2RangeLowMmHg: low,
-        expectedPaco2RangeHighMmHg: high,
-        deviationMmHg: 0,
-        interpretationCategory: "PURE_METABOLIC_ACIDOSIS_ADEQUATE_COMPENSATION",
-        calibratedClinicalInterpretation: `Expected PaCO2 is ${low}–${high} mmHg (${midpoint} ± 2 mmHg). Measured PaCO2 of ${paco2MmHg} mmHg falls within expected range, demonstrating adequate respiratory compensation.`,
-      };
-    } else if (paco2MmHg > high && paco2MmHg <= high + 2) {
-      wintersFormula = {
-        isComputable: true,
-        measuredPaco2MmHg: paco2MmHg,
-        expectedPaco2MidpointMmHg: midpoint,
-        expectedPaco2RangeLowMmHg: low,
-        expectedPaco2RangeHighMmHg: high,
-        deviationMmHg: deviation,
-        interpretationCategory: "BORDERLINE_COMPENSATION_RELATIVE_HYPOVENTILATION",
-        calibratedClinicalInterpretation: `Expected PaCO2 is ${low}–${high} mmHg (${midpoint} ± 2 mmHg). Measured PaCO2 of ${paco2MmHg} mmHg is ${deviation} mmHg above the predicted upper limit. This minimal difference falls within normal biological and measurement variability, representing possible inadequate respiratory compensation / borderline relative hypoventilation rather than an unsupported definitive diagnosis of a second respiratory acid-base disorder. Clinical reassessment is prompted, especially in altered mental status and shock.`,
-      };
-    } else if (paco2MmHg > high + 2) {
-      wintersFormula = {
-        isComputable: true,
-        measuredPaco2MmHg: paco2MmHg,
-        expectedPaco2MidpointMmHg: midpoint,
-        expectedPaco2RangeLowMmHg: low,
-        expectedPaco2RangeHighMmHg: high,
-        deviationMmHg: deviation,
-        interpretationCategory: "SUPERIMPOSED_RESPIRATORY_ACIDOSIS",
-        calibratedClinicalInterpretation: `Expected PaCO2 is ${low}–${high} mmHg (${midpoint} ± 2 mmHg). Measured PaCO2 of ${paco2MmHg} mmHg is significantly elevated (${deviation} mmHg above upper limit), confirming a superimposed primary respiratory acidosis.`,
-      };
+    if (paco2MmHg !== null) {
+      const deviation = paco2MmHg - high;
+      if (paco2MmHg >= low && paco2MmHg <= high) {
+        wintersFormula = {
+          isComputable: true,
+          measuredPaco2MmHg: paco2MmHg,
+          expectedPaco2MidpointMmHg: midpoint,
+          expectedPaco2RangeLowMmHg: low,
+          expectedPaco2RangeHighMmHg: high,
+          deviationMmHg: 0,
+          interpretationCategory: "PURE_METABOLIC_ACIDOSIS_ADEQUATE_COMPENSATION",
+          calibratedClinicalInterpretation: `Expected PaCO2 is ${low}–${high} mmHg (${midpoint} ± 2 mmHg). Measured PaCO2 of ${paco2MmHg} mmHg falls within expected range, demonstrating adequate respiratory compensation.`,
+        };
+      } else if (paco2MmHg > high && paco2MmHg <= high + 2) {
+        wintersFormula = {
+          isComputable: true,
+          measuredPaco2MmHg: paco2MmHg,
+          expectedPaco2MidpointMmHg: midpoint,
+          expectedPaco2RangeLowMmHg: low,
+          expectedPaco2RangeHighMmHg: high,
+          deviationMmHg: deviation,
+          interpretationCategory: "BORDERLINE_COMPENSATION_RELATIVE_HYPOVENTILATION",
+          calibratedClinicalInterpretation: `Expected PaCO2 is ${low}–${high} mmHg (${midpoint} ± 2 mmHg). Measured PaCO2 of ${paco2MmHg} mmHg is ${deviation} mmHg above the predicted upper limit. This minimal difference falls within normal biological and measurement variability, representing possible inadequate respiratory compensation / borderline relative hypoventilation rather than an unsupported definitive diagnosis of a second respiratory acid-base disorder. Clinical reassessment is prompted, especially in altered mental status and shock.`,
+        };
+      } else if (paco2MmHg > high + 2) {
+        wintersFormula = {
+          isComputable: true,
+          measuredPaco2MmHg: paco2MmHg,
+          expectedPaco2MidpointMmHg: midpoint,
+          expectedPaco2RangeLowMmHg: low,
+          expectedPaco2RangeHighMmHg: high,
+          deviationMmHg: deviation,
+          interpretationCategory: "SUPERIMPOSED_RESPIRATORY_ACIDOSIS",
+          calibratedClinicalInterpretation: `Expected PaCO2 is ${low}–${high} mmHg (${midpoint} ± 2 mmHg). Measured PaCO2 of ${paco2MmHg} mmHg is significantly elevated (${deviation} mmHg above upper limit), confirming a superimposed primary respiratory acidosis.`,
+        };
+      } else {
+        wintersFormula = {
+          isComputable: true,
+          measuredPaco2MmHg: paco2MmHg,
+          expectedPaco2MidpointMmHg: midpoint,
+          expectedPaco2RangeLowMmHg: low,
+          expectedPaco2RangeHighMmHg: high,
+          deviationMmHg: paco2MmHg - low,
+          interpretationCategory: "SUPERIMPOSED_RESPIRATORY_ALKALOSIS",
+          calibratedClinicalInterpretation: `Expected PaCO2 is ${low}–${high} mmHg (${midpoint} ± 2 mmHg). Measured PaCO2 of ${paco2MmHg} mmHg is below predicted range, suggesting a superimposed primary respiratory alkalosis.`,
+        };
+      }
     } else {
       wintersFormula = {
         isComputable: true,
-        measuredPaco2MmHg: paco2MmHg,
+        measuredPaco2MmHg: null,
         expectedPaco2MidpointMmHg: midpoint,
         expectedPaco2RangeLowMmHg: low,
         expectedPaco2RangeHighMmHg: high,
-        deviationMmHg: paco2MmHg - low,
-        interpretationCategory: "SUPERIMPOSED_RESPIRATORY_ALKALOSIS",
-        calibratedClinicalInterpretation: `Expected PaCO2 is ${low}–${high} mmHg (${midpoint} ± 2 mmHg). Measured PaCO2 of ${paco2MmHg} mmHg is below predicted range, suggesting a superimposed primary respiratory alkalosis.`,
+        deviationMmHg: null,
+        interpretationCategory: "EXPECTED_RANGE_CALCULATED_MEASURED_PACO2_PENDING" as any,
+        calibratedClinicalInterpretation: `Expected compensatory PaCO2 is ${low}–${high} mmHg (${midpoint} ± 2 mmHg) based on measured HCO3- of ${bicarbonateMeqL} mmol/L. Actual respiratory compensation cannot be evaluated because PaCO2 was not measured.`,
       };
     }
   } else {
@@ -507,7 +520,7 @@ export function buildClinicalScratchpad(
       expectedPaco2RangeHighMmHg: null,
       deviationMmHg: null,
       interpretationCategory: "UNCOMPUTABLE",
-      calibratedClinicalInterpretation: "Winter's formula cannot be computed without measured bicarbonate and PaCO2.",
+      calibratedClinicalInterpretation: "Winter's formula cannot be computed without measured bicarbonate.",
     };
   }
 
@@ -554,8 +567,11 @@ export function buildClinicalScratchpad(
   if (/\b(?:hfref|heart\s+failure|ef\s*(?:is|of|=|:)?\s*(?:[1-3]\d|25|30)%?|ejection\s+fraction\s*(?:is|of|=|:)?\s*(?:[1-3]\d|25|30)%?)\b/i.test(q)) {
     highRiskConditions.push("Reduced Ejection Fraction (HFrEF, EF ≤ 35%)");
   }
-  if (/\b(?:ckd|chronic\s+kidney\s+disease)\s*(?:stage\s*)?[45]\b/i.test(q) || (creatinineMgDl && creatinineMgDl >= 3.0)) {
-    highRiskConditions.push("Advanced Renal Failure (CKD Stage 4/5 or Severe AKI)");
+  const hasDocumentedCkd = /\b(?:ckd|chronic\s+kidney\s+disease)\s*(?:stage\s*)?[45]\b/i.test(q);
+  if (hasDocumentedCkd) {
+    highRiskConditions.push("Advanced Chronic Kidney Disease (CKD Stage 4/5)");
+  } else if (creatinineMgDl && creatinineMgDl >= 3.0) {
+    highRiskConditions.push(`Severe Acute Renal Impairment (Creatinine ${creatinineMgDl} mg/dL)`);
   }
   if (urineOutputMl !== null && urineOutputMl <= 150) {
     highRiskConditions.push("Profound Oliguria");
@@ -568,8 +584,9 @@ export function buildClinicalScratchpad(
   // Retain boolean for backwards compat but define semantics accurately:
   const standard30mLPerKgContraindicated = highRiskFluidOverload;
 
+  const conditionsSummary = highRiskConditions.length > 0 ? highRiskConditions.join("; ") : "Documented clinical risk factors";
   const individualizedResuscitationGuidance = highRiskFluidOverload
-    ? "Flag high risk of fluid overload (HFrEF EF ≤ 30% and CKD Stage 4). Do not automatically prohibit or veto fluids solely because of HFrEF or CKD, but do not administer unmonitored blanket 30 mL/kg crystalloids. Individualize resuscitation using bedside clinical examination, dynamic fluid responsiveness, lung ultrasound (POCUS for pulmonary congestion/B-lines), and early vasopressor consideration (Norepinephrine). Anuria is NOT documented and must not be invented."
+    ? `Flag high risk of fluid overload (${conditionsSummary}). Do not automatically prohibit or veto fluids solely because of risk factors, but do not administer unmonitored blanket 30 mL/kg crystalloids. Individualize resuscitation using bedside clinical examination, dynamic fluid responsiveness, lung ultrasound (POCUS for pulmonary congestion/B-lines), and early vasopressor consideration (Norepinephrine). Anuria is NOT documented and must not be invented.`
     : "Standard crystalloid resuscitation permissible with serial hemodynamic and fluid responsiveness monitoring.";
 
   const fluidSafety: FluidResuscitationSafetyResult = {
@@ -967,6 +984,90 @@ export function validateCrossSectionClinicalConsistency(
         sectionA: `Documented Intake Labs (${scratchpad.labs.urineOutputMl} mL / ${scratchpad.labs.urineOutputDurationHours || 8}h oliguria)`,
         sectionB: "Dossier Narrative / Recommendations",
         issue: `Patient has documented urine output (${scratchpad.labs.urineOutputMl} mL), but was falsely described as anuric.`,
+      });
+    }
+  }
+
+  // Check 11: Contradictory Fluid Recommendations between Narrative and Scratchpad
+  const fluidApproachText = scratchpad.derivedCalculations.fluidSafety?.recommendedResuscitationApproach || "";
+  const scratchpadPermitsFluids = /Standard crystalloid resuscitation permissible/i.test(fluidApproachText);
+  if (scratchpadPermitsFluids) {
+    if (
+      /\b(?:standard\s+30\s*ml\/kg.*(?:strictly\s+contraindicated|prohibited)|30\s*ml\/kg\s+crystalloids.*contraindicated)\b/i.test(dossierText) &&
+      !/\b(?:documented\s+ef\s*<=?\s*40|known\s+hfref|known\s+severe\s+heart\s+failure)\b/i.test(scratchpad.rawInputText)
+    ) {
+      violations.push({
+        item: "Fluid Management Contradiction",
+        sectionA: `Scratchpad Assessment ("${fluidApproachText}")`,
+        sectionB: "Dossier Narrative",
+        issue: "Contradictory fluid recommendations: Main report declares standard fluid resuscitation strictly contraindicated based on unsupported heart failure, while scratchpad permits standard crystalloid resuscitation.",
+      });
+    }
+  }
+
+  // Check 12: Unsupported Cardiac & Renal Disease Claims (Zero Fabrication Gate)
+  const hasCardiacInInput = /\b(?:hfref|heart\s+failure|ejection\s+fraction|ef\s*\d{1,2}%?)\b/i.test(scratchpad.rawInputText);
+  if (!hasCardiacInInput && /\b(?:hfre\s*f|severe\s+baseline\s+systolic\s+dysfunction|decompensated\s+heart\s+failure)\b/i.test(dossierText)) {
+    violations.push({
+      item: "Unsupported Cardiac Comorbidity (HFrEF)",
+      sectionA: "Documented Intake (Zero documented heart failure or EF)",
+      sectionB: "Dossier Narrative",
+      issue: "Main report asserts HFrEF or systolic dysfunction without documented clinical evidence in intake.",
+    });
+  }
+
+  const hasCkdInInput =
+    /\b(?:ckd|chronic\s+kidney\s+disease|stage\s*[345]\s*ckd)\b/i.test(scratchpad.rawInputText) ||
+    Boolean(scratchpad.labs?.baselineCreatinineMgDl && scratchpad.labs.baselineCreatinineMgDl >= 1.4);
+  if (!hasCkdInInput && /\b(?:advanced\s+renal\s+impairment\s+with\s+acute-on-chronic|pre-existing\s+ckd|ckd\s+stage\s*[345])\b/i.test(dossierText)) {
+    violations.push({
+      item: "Unsupported Chronic Kidney Disease (CKD)",
+      sectionA: "Documented Intake (Zero documented CKD)",
+      sectionB: "Dossier Narrative",
+      issue: "Main report asserts pre-existing CKD or acute-on-chronic kidney injury without documented clinical evidence in intake.",
+    });
+  }
+
+  const hasConsolidationInInput = /\b(?:consolidation|infiltrate|pneumonia|rll|lll)\b/i.test(scratchpad.rawInputText);
+  if (!hasConsolidationInInput && /\b(?:dense\s+(?:radiographic\s+)?alveolar\s+consolidation|chest\s+radiograph.*dense.*consolidation)\b/i.test(dossierText)) {
+    violations.push({
+      item: "Unsupported Imaging Finding (Dense Alveolar Consolidation)",
+      sectionA: "Documented Intake (No chest radiograph performed)",
+      sectionB: "Dossier Narrative",
+      issue: "Main report asserts dense radiographic alveolar consolidation without an imaging study in intake.",
+    });
+  }
+
+  const hasPriorHospInInput = /\b(?:hospitaliz\w*|admitted)\b/i.test(scratchpad.rawInputText);
+  if (!hasPriorHospInInput && /\b(?:hospitalization\s+45\s+days\s+earlier|ceftriaxone\s+within\s+(?:the\s+past\s+)?90\s+days)\b/i.test(dossierText)) {
+    violations.push({
+      item: "Unsupported Prior Hospitalization / Antimicrobial Exposure",
+      sectionA: "Documented Intake (Zero documented prior admissions)",
+      sectionB: "Dossier Narrative",
+      issue: "Main report asserts hospitalization 45 days earlier with IV ceftriaxone without documented evidence in intake.",
+    });
+  }
+
+  // Check 13: Demographic Sex & Clinical Reasoning Consistency
+  if (scratchpad.demographics.patientSex === "male") {
+    if (/\b(?:in\s+older\s+female\s+patients|older\s+female|female\s+patient)\b/i.test(dossierText)) {
+      violations.push({
+        item: "Demographic Sex Contradiction",
+        sectionA: "Documented Intake (Male patient)",
+        sectionB: "Dossier Narrative",
+        issue: "Patient is male, but dossier narrative asserts or discusses female patient characteristics.",
+      });
+    }
+  }
+
+  // Check 14: Winter's Formula Calculation Integrity
+  if (scratchpad.labs.bicarbonateMeqL !== null) {
+    if (/\b(?:winter's\s+formula\s+cannot\s+be\s+computed\s+without\s+measured\s+bicarbonate)\b/i.test(dossierText)) {
+      violations.push({
+        item: "Winter's Formula Calculation Integrity",
+        sectionA: `Documented Intake (Bicarbonate: ${scratchpad.labs.bicarbonateMeqL} mmol/L)`,
+        sectionB: "Dossier Scratchpad / Narrative",
+        issue: `Bicarbonate is documented as ${scratchpad.labs.bicarbonateMeqL} mmol/L, but dossier claims Winter's formula cannot be computed without measured bicarbonate.`,
       });
     }
   }

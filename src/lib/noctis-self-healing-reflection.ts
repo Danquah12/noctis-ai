@@ -24,6 +24,7 @@ import { generateDkaSepticShockEmergencyDossier } from "./noctis-dka-sepsis-engi
 import { generateBrashDigoxinMalaEmergencyDossier } from "./noctis-brash-digoxin-engine.ts";
 import { generateIsolatedHematologyTmaDossier } from "./noctis-hematology-tma-engine.ts";
 import { generateCrit044MultiOrganEmergencyDossier } from "./noctis-pe-hemorrhage-hit-engine.ts";
+import { generateIsolatedAcutePancreatitisDossier } from "./noctis-acute-pancreatitis-engine.ts";
 
 export interface HealingDiagnosticRecord {
   gateId: string;
@@ -253,10 +254,16 @@ export function healCandidateClinicalOutput(
           /\b(apixaban|melena|black\s+stools)\b/i.test(rawEncounterInput) &&
           /\b(68\/40|rv\s+dilation|popliteal|dvt)\b/i.test(rawEncounterInput));
 
+      const isPancreatitis =
+        (/\b(pancreat\w*|lipase|amylase)\b/i.test(rawEncounterInput) && (/\b(epigastr\w*|back|vomiting|guarding|distension|shock|hypotension|sirs)\b/i.test(rawEncounterInput) || ctx.vitals.systolicBp !== null)) ||
+        (/\b(?:lipase|amylase)\s*(?:is|of|=|:)?\s*[\d,]+\b/i.test(rawEncounterInput) && /\b(?:u\/l|units)\b/i.test(rawEncounterInput));
+
       if (isCrit044) {
         healedOutput = generateCrit044MultiOrganEmergencyDossier(encounterId, rawEncounterInput);
       } else if (isTma) {
         healedOutput = generateIsolatedHematologyTmaDossier(encounterId, rawEncounterInput);
+      } else if (isPancreatitis) {
+        healedOutput = generateIsolatedAcutePancreatitisDossier(encounterId, rawEncounterInput);
       } else if (ctx.syndromes.isDka || ctx.syndromes.primarySyndrome === "DKA_SEPSIS_MULTISYSTEM") {
         healedOutput = generateDkaSepticShockEmergencyDossier(ctx);
       } else if (ctx.syndromes.isBrash || ctx.syndromes.isDigoxinToxicity) {

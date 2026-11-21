@@ -8,6 +8,7 @@ import {
 } from "./noctis-clinical-validation-engine.ts";
 import { generateIsolatedHematologyTmaDossier } from "./noctis-hematology-tma-engine.ts";
 import { generateCrit044MultiOrganEmergencyDossier } from "./noctis-pe-hemorrhage-hit-engine.ts";
+import { generateIsolatedAcutePancreatitisDossier } from "./noctis-acute-pancreatitis-engine.ts";
 import {
   assessAcuteAbdominalPain,
   calculateAlvaradoScore,
@@ -2428,14 +2429,24 @@ export function executeNaturalPatientDiagnosticQuery(question: string, explicitE
     return generateIsolatedHypermagnesemiaDossier(encId, q);
   }
 
+  // Dedicated Handler: Emergent Acute Pancreatitis & Severe SIRS Shock Resuscitation
+  const isAcutePancreatitisCrisis =
+    (/\b(pancreat\w*|lipase|amylase)\b/i.test(q) && (/\b(epigastr\w*|back|vomiting|guarding|distension|shock|hypotension|sirs)\b/i.test(q) || context.vitals.systolicBp !== null)) ||
+    (/\b(?:lipase|amylase)\s*(?:is|of|=|:)?\s*[\d,]+\b/i.test(q) && /\b(?:u\/l|units)\b/i.test(q));
+
+  if (isAcutePancreatitisCrisis) {
+    return generateIsolatedAcutePancreatitisDossier(encId, q);
+  }
+
   // Dedicated Handler: Emergent Sepsis, Severe Infection & Shock Physiology
   const isSepsisOrShock =
-    /\b(septic\s+shock|urosepsis|bacteremia|severe\s+sepsis|sepsis)\b/i.test(q) ||
-    (/\b(fever(?:\s+of)?\s*(?:3[89]|40)|(?:3[89]|40)\.?\d*°?\s*c)\b/i.test(q) &&
-      /\b(confusion|altered\s+mental|resuscitation)\b/i.test(q) &&
-      (/\b(?:bp\s*)?[678]\d\s*\/\s*\d{2}\b/i.test(q) || /\b(?:hypotension|tachycardia|shock)\b/i.test(q))) ||
-    (/\b(fever(?:\s+of)?\s*40|40\s*°?c)\b/i.test(q) && /\b(confusion|rr\s*30|bp\s*78|78\/45|hr\s*132)\b/i.test(q)) ||
-    (/\b(confusion|altered\s+mental)\b/i.test(q) && /\b(78\/45|bp\s*78|84\/52|hypotension)\b/i.test(q) && /\b(fever|temp|temperature)\b/i.test(q));
+    !isAcutePancreatitisCrisis &&
+    (/\b(septic\s+shock|urosepsis|bacteremia|severe\s+sepsis|sepsis)\b/i.test(q) ||
+      ((/\b(fever(?:\s+of)?\s*(?:3[89]|40)|(?:3[89]|40)\.?\d*°?\s*c)\b/i.test(q) || (context.vitals.temperatureCelsius !== null && context.vitals.temperatureCelsius >= 38.0)) &&
+        /\b(confusion|altered\s+mental|delirium|encephalopathy|disoriented)\b/i.test(q) &&
+        (/\b(?:bp\s*)?[678]\d\s*\/\s*\d{2}\b/i.test(q) || /\b(?:hypotension|tachycardia|shock)\b/i.test(q))) ||
+      (/\b(fever(?:\s+of)?\s*40|40\s*°?c)\b/i.test(q) && /\b(confusion|rr\s*30|bp\s*78|78\/45|hr\s*132)\b/i.test(q)) ||
+      (/\b(confusion|altered\s+mental)\b/i.test(q) && /\b(78\/45|bp\s*78|84\/52|hypotension)\b/i.test(q) && /\b(fever|temp|temperature)\b/i.test(q)));
 
   if (isSepsisOrShock) {
     return generateIsolatedSepticShockDossier(encId, q, {
@@ -2804,4 +2815,5 @@ export function handleNaturalPatientDiagnosticQuery(question: string, explicitEn
 
 export { generateBrashDigoxinMalaEmergencyDossier } from "./noctis-brash-digoxin-engine.ts";
 export { generateDkaSepticShockEmergencyDossier } from "./noctis-dka-sepsis-engine.ts";
+export { generateIsolatedAcutePancreatitisDossier } from "./noctis-acute-pancreatitis-engine.ts";
 export { buildImmutablePatientContext } from "./noctis-patient-context.ts";

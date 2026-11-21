@@ -63,6 +63,7 @@ async function runComprehensiveClinicalAudit() {
   console.log("[TEST 1/4] Evaluating Encounter NPDE-INTAKE-MWQTY5OT (56yo F TMA / TTP Case)...");
   const res1 = handleNaturalPatientDiagnosticQuery(PROMPT_56F_HEMATOLOGY, "NPDE-INTAKE-MWQTY5OT");
   assert.ok(res1, "Response must exist");
+  console.log("RES1 FULL:\n", res1);
 
   // 1A. Provenance & Identity
   assert.ok(res1.includes("NPDE-INTAKE-MWQTY5OT"), "Must preserve authoritative Encounter ID NPDE-INTAKE-MWQTY5OT");
