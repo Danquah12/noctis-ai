@@ -516,6 +516,63 @@ export function validateClinicalEvidenceIntegrity(
     }
   }
 
+  // 18. VAL-WEIGHT-FABRICATION: Prohibition on Fabricated Patient Body Weight
+  const mentionsWeight = /\b(?:weight|\bkg\b|\blbs?\b|weighs)\b/i.test(inputLower);
+  if (!mentionsWeight) {
+    const inventedWeightRegex = /\b(?:assuming\s+(?:an?\s+)?(?:average\s+)?(?:adult\s+)?(?:weight\s+of\s+)?70\s*kg|70\s*kg\s*(?:adult|patient)|0\.18\s*ml\/kg\/h)\b/gi;
+    if (inventedWeightRegex.test(sanitized)) {
+      sanitized = sanitized.replace(
+        inventedWeightRegex,
+        "[Patient body weight UNMEASURED / NOT PROVIDED — weight-normalized calculations deferred]"
+      );
+      violations.push({
+        ruleId: "VAL-WEIGHT-FABRICATION",
+        ruleName: "Zero Clinical Fabrication Gate (Invented Patient Weight)",
+        severity: "CRITICAL",
+        clinicalRationale: "Patient weight was not provided in intake; calculating weight-dependent doses or urine output per kg with an assumed 70 kg weight is strictly prohibited.",
+        detectedText: "assuming 70 kg weight",
+        remediatedText: "[Patient body weight UNMEASURED / NOT PROVIDED]",
+      });
+    }
+  }
+
+  // 19. VAL-CHLORIDE-SUBSTITUTION: Prohibition on Substituted Reference Electrolytes for Anion Gap
+  const mentionsChloride = /\b(?:chloride|cl\s*[-=:]?\s*\d+)\b/i.test(inputLower);
+  if (!mentionsChloride) {
+    const substitutedChlorideRegex = /\b(?:estimated\s+anion\s+gap\s*[:=]?\s*19|assuming\s+(?:normal\s+)?reference\s+chloride|chloride\s*(?:≈|~|\bof\b)?\s*98)\b/gi;
+    if (substitutedChlorideRegex.test(sanitized)) {
+      sanitized = sanitized.replace(
+        substitutedChlorideRegex,
+        "[Serum Chloride UNMEASURED — Anion Gap CANNOT be calculated]"
+      );
+      violations.push({
+        ruleId: "VAL-CHLORIDE-SUBSTITUTION",
+        ruleName: "Zero Clinical Fabrication Gate (Substituted Electrolyte in Anion Gap)",
+        severity: "CRITICAL",
+        clinicalRationale: "Chloride was not measured; substituting a hypothetical reference value (e.g. 98 mmol/L) to calculate an anion gap is prohibited.",
+        detectedText: "substituted chloride 98 mmol/L for anion gap",
+        remediatedText: "[Serum Chloride UNMEASURED — Anion Gap CANNOT be calculated]",
+      });
+    }
+  }
+
+  // 20. VAL-WINTERS-BORDERLINE-CALIBRATION: Calibrated Acid-Base Interpretation Gate
+  const dogmaticWintersRegex = /\bdefinitive(?:ly)?\s+(?:superimposed\s+)?(?:secondary\s+)?respiratory\s+acidosis\b/gi;
+  if (dogmaticWintersRegex.test(sanitized)) {
+    sanitized = sanitized.replace(
+      dogmaticWintersRegex,
+      "possible inadequate respiratory compensation / borderline relative hypoventilation"
+    );
+    violations.push({
+      ruleId: "VAL-WINTERS-BORDERLINE-CALIBRATION",
+      ruleName: "Calibrated Acid-Base Interpretation Gate (Borderline Winter's Deviation)",
+      severity: "HIGH",
+      clinicalRationale: "A 1 mmHg deviation above Winter's formula upper limit is within biological/measurement variability and must not be declared a definitive secondary respiratory acidosis.",
+      detectedText: "definitive respiratory acidosis",
+      remediatedText: "possible inadequate respiratory compensation / borderline relative hypoventilation",
+    });
+  }
+
   const timestamp = new Date().toISOString();
   const auditSeal = sha256Sync(`VALIDATOR::violations=${violations.length}::ts=${timestamp}`);
 

@@ -312,30 +312,47 @@ Perform a comprehensive, immediate clinical safety audit of this patient.`;
     assert.match(result, /BRASH\s+Syndrome/i);
     assert.match(result, /Digoxin\s+Toxicity/i);
 
-    // 2. Calculations
+    // 2. Calculations & Exact KDIGO Staging
     assert.match(result, /\b48\.0\s*mmHg\b/); // MAP
     assert.match(result, /\+2\.5\s*mg\/dL/i); // Creatinine rise
     assert.match(result, /2\.09\s*×|2\.09x/i); // Fold change
-    assert.match(result, /KDIGO.*(?:Stage\s*3|STAGE\s*3)/i); // KDIGO 3
+    assert.match(result, /Stage\s*2/i); // Recognized Stage 2 by fold ratio
+    assert.match(result, /conditional/i); // Conditional Stage 3 by acute rise criteria
+    assert.doesNotMatch(result, /\b0\.18\s*ml\/kg\/h\b/i); // No fabricated weight-normalized urine output
+
+    // 3. Chloride & Anion Gap: Refusal to fabricate
     assert.match(result, /Chloride.*UNMEASURED/i); // Unmeasured chloride transparency
+    assert.match(result, /Anion\s+Gap\s+CANNOT\s+be\s+calculated/i); // Refusal to fabricate
+    assert.doesNotMatch(result, /Estimated\s+Anion\s+Gap.*19/i); // No substituted chloride 98 or 19 mEq/L
+
+    // 4. Winter's formula calibrated interpretation
     assert.match(result, /Winter's.*26\s*(?:±|\\pm|\+\/-)\s*2/i); // Winter's formula
-    assert.match(result, /superimposed acute respiratory acidosis|relative hypoventilation/i);
+    assert.match(result, /possible.*inadequate\s+respiratory\s+compensation|borderline\s+relative\s+hypoventilation/i);
+    assert.doesNotMatch(result, /definitive.*secondary\s+respiratory\s+acidosis/i);
 
-    // 3. Medication interactions
+    // 5. Medication interactions & Suspected MALA
     assert.match(result, /Trimethoprim.*ENaC/i);
-    assert.match(result, /MALA|mitochondrial complex I/i);
+    assert.match(result, /suspected.*Metformin-Associated\s+Lactic\s+Acidosis|suspected\s+MALA/i);
+    assert.match(result, /hypoperfusion.*shock/i); // Concurrent shock hypoperfusion etiology
 
-    // 4. Resuscitation & Stone Heart Myth
+    // 6. Resuscitation & Calcium/DigiFab Nuance
     assert.match(result, /DigiFab|Digibind/i);
-    assert.match(result, /2\.5\s*vials/i);
+    assert.match(result, /weight.*unmeasured|weight-based.*deferred/i); // Did not invent 70 kg
+    assert.doesNotMatch(result, /2\.5\s*vials/i); // Did not calculate 2.5 vials using fake weight
     assert.match(result, /DO NOT WITHHOLD IV CALCIUM/i);
-    assert.match(result, /stone heart.*myth/i);
+    assert.match(result, /stone heart/i);
 
-    // 5. Dialysis & CRRT
-    assert.match(result, /CRRT.*STRONGLY PREFERRED/i);
+    // 7. Dialysis: Nuanced Modality Assessment
+    assert.match(result, /CRRT/i);
+    assert.match(result, /intermittent\s+hemodialysis|IHD/i);
     assert.match(result, /POORLY DIALYZABLE/i); // Digoxin dialyzability
+    assert.doesNotMatch(result, /IHD.*catastrophic/i); // Nuanced, not dogmatic
 
-    // 6. Complete structured SOAP documentation
+    // 8. Zero Clinical Fabrication in SOAP Documentation
     assert.match(result, /CLINICAL ENCOUNTER DOCUMENTATION: EMERGENCY ADMISSION SOAP NOTE/i);
+    assert.doesNotMatch(result, /GCS\s*13/i); // No invented GCS 13
+    assert.doesNotMatch(result, /breath sounds clear/i); // No invented breath sounds
+    assert.doesNotMatch(result, /peripheral pulses weak and thready/i); // No invented pulses
+    assert.doesNotMatch(result, /70\s*kg/i); // No invented patient weight
   });
 });
