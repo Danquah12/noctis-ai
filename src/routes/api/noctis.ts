@@ -287,6 +287,17 @@ export const Route = createFileRoute("/api/noctis")({
             { headers: CORS_HEADERS }
           );
         }
+        if (url.searchParams.get("clinical_consensus")) {
+          const { arbitrateClinicalConsensus } = await import("@/lib/noctis-clinical-consensus");
+          const q = url.searchParams.get("q") || "A 78-year-old male with CKD stage 4, heart failure with reduced ejection fraction (EF 30%), atrial fibrillation, and type 2 diabetes presents to the emergency department with profound weakness, confusion, dizziness, and reduced urine output over the past 24 hours. Blood pressure 68/38 mmHg, Heart rate 29 bpm, Respiratory rate 28/min, Potassium 7.3 mmol/L, Creatinine 4.8 mg/dL, Baseline creatinine 2.3 mg/dL, Bicarbonate 12 mmol/L, Arterial pH 7.12, PaCO2 29 mmHg, Lactate 6.8 mmol/L, Digoxin level 3.6 ng/mL, Urine output 100 mL over 8 hours.";
+          return Response.json(arbitrateClinicalConsensus(q), { headers: CORS_HEADERS });
+        }
+        if (url.searchParams.get("clinical_heal")) {
+          const { healCandidateClinicalOutput } = await import("@/lib/noctis-self-healing-reflection");
+          const candidate = url.searchParams.get("candidate") || "";
+          const prompt = url.searchParams.get("prompt") || "";
+          return Response.json(healCandidateClinicalOutput(candidate, prompt), { headers: CORS_HEADERS });
+        }
         if (url.searchParams.get("sovereign_benchmark")) {
           const mode = url.searchParams.get("sovereign_benchmark");
           const { runSovereignBenchmarkSuite } = await import("@/lib/noctis-sovereign-benchmark");
@@ -826,6 +837,15 @@ export const Route = createFileRoute("/api/noctis")({
           construction_boq?: Record<string, unknown>;
           diesel_diagnostics?: Record<string, unknown>;
           enterprise_telemetry?: { plugin?: string; payload?: Record<string, unknown> } | Record<string, unknown>;
+          clinical_consensus?: {
+            prompt: string;
+            encounterId?: string;
+          };
+          clinical_heal?: {
+            candidateText: string;
+            rawEncounterInput: string;
+            encounterId?: string;
+          };
           ingest?: unknown;
           consensus_incident?: {
             scenario?: string;
@@ -842,6 +862,23 @@ export const Route = createFileRoute("/api/noctis")({
             return Response.json(simulateCrossDomainScenario(body.consensus_incident.scenario), { headers: CORS_HEADERS });
           }
           const result = runCrossDomainConsensus(body.consensus_incident as any);
+          return Response.json(result, { headers: CORS_HEADERS });
+        }
+        if (body?.clinical_consensus) {
+          const { arbitrateClinicalConsensus } = await import("@/lib/noctis-clinical-consensus");
+          const result = arbitrateClinicalConsensus(
+            body.clinical_consensus.prompt,
+            body.clinical_consensus.encounterId
+          );
+          return Response.json(result, { headers: CORS_HEADERS });
+        }
+        if (body?.clinical_heal) {
+          const { healCandidateClinicalOutput } = await import("@/lib/noctis-self-healing-reflection");
+          const result = healCandidateClinicalOutput(
+            body.clinical_heal.candidateText,
+            body.clinical_heal.rawEncounterInput,
+            body.clinical_heal.encounterId
+          );
           return Response.json(result, { headers: CORS_HEADERS });
         }
         if (body?.ingest) {

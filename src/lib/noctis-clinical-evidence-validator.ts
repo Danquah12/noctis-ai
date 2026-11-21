@@ -460,7 +460,7 @@ export function validateClinicalEvidenceIntegrity(
   const isSepsisEncounter = /\b(?:sepsis|septic\s+shock|fever|temperature\s*39|bp\s*78|84\/52|78\/44)\b/i.test(inputLower);
   if (isSepsisEncounter) {
     // Check HFrEF / EF preservation
-    if (/\bef\s*25\b/i.test(inputLower) && !/\bef\s*25%?\b/i.test(sanitized)) {
+    if (/\bef\s*25\b/i.test(inputLower) && !/\bef\s*25(?:%|\b)/i.test(sanitized)) {
       violations.push({
         ruleId: "VAL-SEPSIS-FACT-PRESERVATION-001",
         ruleName: "Input-to-Output Reconciliation Gate (HFrEF EF 25% Omission)",
@@ -493,7 +493,7 @@ export function validateClinicalEvidenceIntegrity(
       });
     }
     // Check SpO2 89% preservation
-    if (/\b(?:spo2|o2\s*sat)\s*89\b/i.test(inputLower) && !/\b89%\b/i.test(sanitized)) {
+    if (/\b(?:spo2|o2\s*sat)\s*89\b/i.test(inputLower) && !/\b89%/i.test(sanitized)) {
       violations.push({
         ruleId: "VAL-SEPSIS-FACT-PRESERVATION-004",
         ruleName: "Input-to-Output Reconciliation Gate (SpO2 89% Omission)",
