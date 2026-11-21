@@ -21,24 +21,36 @@ echo " Timestamp:      $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
 echo " Working Dir:    $(pwd)"
 echo "======================================================================"
 
+# Step 0: Temporarily stop inference server to reclaim 15GB VRAM
+echo "[+] Step 0/4: Reclaiming GPU VRAM from background inference..."
+pkill -f "serve_model.py" || true
+sleep 2
+
 # Step 1: Verify Dependencies
-echo "[+] Step 1/3: Checking DPO dependencies..."
+echo ""
+echo "[+] Step 1/4: Checking DPO dependencies..."
 pip install -q "transformers==4.45.2" "trl==0.11.4" peft accelerate bitsandbytes datasets rich
 
 # Step 2: Run DPO Alignment
 echo ""
-echo "[+] Step 2/3: Executing Direct Preference Optimization..."
+echo "[+] Step 2/4: Executing Direct Preference Optimization..."
 python scripts/train_clinical_dpo.py \
   --model-path ./models/noctis-7b-v2.0-merged \
   --dataset data/noctis-dpo-clinical-safety.jsonl \
   --output-dir ./models/noctis-7b-v3.0-dpo \
   --epochs 1 \
-  --batch-size 2 \
-  --grad-accum 8 \
+  --batch-size 1 \
+  --grad-accum 16 \
   --lr 5e-6 \
   --beta 0.1 \
   --lora-r 16 \
   --lora-alpha 32
+
+# Step 3: Relaunch inference server in background
+echo ""
+echo "[+] Step 3/4: Relaunching Noctis inference server..."
+nohup python scripts/serve_model.py > deliverables/serve-active.log 2>&1 &
+sleep 5
 
 echo "======================================================================"
 echo " NOCTIS PHASE 3 DPO ALIGNMENT SUCCESSFUL!"
