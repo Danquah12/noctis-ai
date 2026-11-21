@@ -139,9 +139,28 @@ export function buildClinicalScratchpad(
     patientSex = "male";
   }
 
-  const weightMatch = q.match(/\b(?:weight|weighs|wt)\s*[:=]?\s*(\d{2,3}(?:\.\d+)?)\s*(?:kg|kilos|kilograms)\b/i) ||
-    q.match(/\b(\d{2,3}(?:\.\d+)?)\s*kg\b/i);
-  const patientWeightKg = weightMatch ? parseFloat(weightMatch[1]) : null;
+  let patientWeightKg: number | null = null;
+  const isWeightExplicitlyMissing = /\b(?:weight\s*(?:is\s*)?(?:not\s*provided|unmeasured|missing|unknown|not\s*measured)|no\s*weight\s*(?:is\s*)?provided)\b/i.test(q);
+  if (!isWeightExplicitlyMissing) {
+    const explicitWeightMatch = q.match(/\b(?:actual\s+)?(?:patient\s+)?(?:body\s+)?(?:weight|weighs|wt)\s*[:=]?\s*(\d{2,3}(?:\.\d+)?)\s*(?:kg|kilos|kilograms)\b/i);
+    if (explicitWeightMatch) {
+      const pre = q.slice(Math.max(0, (explicitWeightMatch.index ?? 0) - 40), explicitWeightMatch.index ?? 0);
+      if (!/\b(?:assuming|assume|hypothetical|standard|reference|arbitrary|if)\b/i.test(pre)) {
+        patientWeightKg = parseFloat(explicitWeightMatch[1]);
+      }
+    } else {
+      const allKg = [...q.matchAll(/\b(\d{2,3}(?:\.\d+)?)\s*kg\b/gi)];
+      for (const m of allKg) {
+        const idx = m.index ?? 0;
+        const pre = q.slice(Math.max(0, idx - 40), idx);
+        if (/\b(?:assuming|assume|hypothetical|standard|reference|arbitrary|nominal|ideal|per)\b/i.test(pre)) {
+          continue; // skip assumption trap like "assuming a standard 70 kg weight"
+        }
+        patientWeightKg = parseFloat(m[1]);
+        break;
+      }
+    }
+  }
 
   // 2. Vitals
   const bpMatch = q.match(/\b(\d{2,3})\s*\/\s*(\d{2,3})\s*mmHg\b/i) ||
@@ -179,8 +198,12 @@ export function buildClinicalScratchpad(
   const naMatch = q.match(/\b(?:sodium|na\+?)\s*[:=]?\s*(\d{3})\b/i);
   const sodiumMeqL = naMatch ? parseFloat(naMatch[1]) : null;
 
-  const clMatch = q.match(/\b(?:chloride|cl\s*[-=:]?)\s*[:=]?\s*(\d{2,3})\b/i);
-  const chlorideMeqL = clMatch ? parseFloat(clMatch[1]) : null;
+  let chlorideMeqL: number | null = null;
+  const isChlorideExplicitlyMissing = /\b(?:chloride|cl)\s*(?:is\s*)?(?:unmeasured|not\s*measured|missing|not\s*available|unknown)\b/i.test(q);
+  if (!isChlorideExplicitlyMissing) {
+    const clMatch = q.match(/\b(?:chloride|cl\s*[-=:]?)\s*[:=]?\s*(\d{2,3})\b/i);
+    chlorideMeqL = clMatch ? parseFloat(clMatch[1]) : null;
+  }
 
   const baseCrMatch = q.match(/\bbaseline\s+(?:creatinine|cr)\s*[:=]?\s*(\d+\.\d+)\b/i);
   const baselineCreatinineMgDl = baseCrMatch ? parseFloat(baseCrMatch[1]) : null;

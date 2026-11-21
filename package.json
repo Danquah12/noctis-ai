@@ -21,6 +21,7 @@
     "test:pde": "node --experimental-strip-types scripts/test-pde.ts",
     "test:dpo": "node --experimental-strip-types scripts/test-phase2-dpo-dataset.ts",
     "test:phase1": "node --experimental-strip-types scripts/test-phase1-clinical-gate.ts",
+    "test:phase3": "node --experimental-strip-types scripts/run-phase3-adversarial-suite.ts",
     "test:research": "node --experimental-strip-types scripts/test-deep-research.ts",
     "ingest:specs": "npx tsx scripts/ingest-noctis-specs.ts",
     "check:auth": "node scripts/check-auth-invariant.mjs",
