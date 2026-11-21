@@ -16,6 +16,7 @@ import {
   type PatientClinicalEncounter,
 } from "./noctis-clinical-engine.ts";
 import { validateClinicalEvidenceIntegrity } from "./noctis-clinical-evidence-validator.ts";
+import { auditAndEnforceClinicalDossier } from "./noctis-clinical-preflight-auditor.ts";
 import { generateBrashDigoxinMalaEmergencyDossier } from "./noctis-brash-digoxin-engine.ts";
 /**
  * Noctis Patient Diagnostic & Clinical Decision Support Engine (NPDE)
@@ -2698,7 +2699,7 @@ export function handleNaturalPatientDiagnosticQuery(question: string): string | 
   const q = question.trim();
   const rawResponse = executeNaturalPatientDiagnosticQuery(q);
   if (!rawResponse) return null;
-  return validateClinicalEvidenceIntegrity(rawResponse, q).sanitizedDossier;
+  return auditAndEnforceClinicalDossier(rawResponse, q).auditedDossier;
 }
 
 export { generateBrashDigoxinMalaEmergencyDossier } from "./noctis-brash-digoxin-engine.ts";

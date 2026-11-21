@@ -11,6 +11,8 @@
  * ============================================================================
  */
 
+import { buildClinicalScratchpad, type NeuroSymbolicClinicalScratchpad } from "./noctis-clinical-scratchpad.ts";
+
 export interface BrashDigoxinClinicalFindings {
   encounterId: string;
   patientAge: string;
@@ -164,23 +166,41 @@ export function generateBrashDigoxinMalaEmergencyDossier(
   encounterId = "NPDE-BRASH-DIG-001",
   query = ""
 ): string {
+  const scratchpad = buildClinicalScratchpad(query, encounterId);
   const enc = parseBrashDigoxinIntake(query, encounterId);
 
-  // Exact Mathematical Calculations:
+  // Exact Mathematical Calculations from Neuro-Symbolic Scratchpad:
   // 1. Mean Arterial Pressure (MAP)
-  const mapCalculated = (enc.vitals.systolicBp + 2 * enc.vitals.diastolicBp) / 3;
+  const mapCalculated = scratchpad.derivedCalculations.meanArterialPressureMmHg !== null
+    ? scratchpad.derivedCalculations.meanArterialPressureMmHg
+    : (enc.vitals.systolicBp + 2 * enc.vitals.diastolicBp) / 3;
   const mapFormatted = mapCalculated.toFixed(1); // 48.0 mmHg
 
   // 2. Creatinine Increase
-  const crAbsoluteIncrease = (enc.labs.creatinineMgDl - enc.labs.baselineCreatinineMgDl).toFixed(1); // +2.5 mg/dL
-  const crFoldIncrease = (enc.labs.creatinineMgDl / enc.labs.baselineCreatinineMgDl).toFixed(2); // 2.09x
+  const crAbsoluteIncrease = scratchpad.derivedCalculations.kdigoAki.crAbsoluteRiseMgDl !== null
+    ? (scratchpad.derivedCalculations.kdigoAki.crAbsoluteRiseMgDl >= 0
+        ? `+${scratchpad.derivedCalculations.kdigoAki.crAbsoluteRiseMgDl.toFixed(1)}`
+        : `${scratchpad.derivedCalculations.kdigoAki.crAbsoluteRiseMgDl.toFixed(1)}`)
+    : (enc.labs.creatinineMgDl - enc.labs.baselineCreatinineMgDl).toFixed(1); // +2.5 mg/dL
+
+  const crFoldIncrease = scratchpad.derivedCalculations.kdigoAki.crFoldRatio !== null
+    ? `${scratchpad.derivedCalculations.kdigoAki.crFoldRatio.toFixed(2)}x`
+    : (enc.labs.creatinineMgDl / enc.labs.baselineCreatinineMgDl).toFixed(2); // 2.09x
 
   // 3. Winter's Formula for Metabolic Acidosis Compensation:
   // Expected PaCO2 = 1.5 * [HCO3-] + 8 +/- 2
-  const wintersMidpoint = 1.5 * enc.labs.bicarbonateMeqL + 8; // 1.5 * 12 + 8 = 26 mmHg
-  const wintersLow = wintersMidpoint - 2; // 24 mmHg
-  const wintersHigh = wintersMidpoint + 2; // 28 mmHg
-  const measuredPaco2 = enc.labs.paco2MmHg; // 29 mmHg
+  const wintersMidpoint = scratchpad.derivedCalculations.wintersFormula.expectedPaco2MidpointMmHg !== null
+    ? scratchpad.derivedCalculations.wintersFormula.expectedPaco2MidpointMmHg
+    : (1.5 * enc.labs.bicarbonateMeqL + 8); // 26 mmHg
+  const wintersLow = scratchpad.derivedCalculations.wintersFormula.expectedPaco2RangeLowMmHg !== null
+    ? scratchpad.derivedCalculations.wintersFormula.expectedPaco2RangeLowMmHg
+    : (wintersMidpoint - 2); // 24 mmHg
+  const wintersHigh = scratchpad.derivedCalculations.wintersFormula.expectedPaco2RangeHighMmHg !== null
+    ? scratchpad.derivedCalculations.wintersFormula.expectedPaco2RangeHighMmHg
+    : (wintersMidpoint + 2); // 28 mmHg
+  const measuredPaco2 = scratchpad.derivedCalculations.wintersFormula.measuredPaco2MmHg !== null
+    ? scratchpad.derivedCalculations.wintersFormula.measuredPaco2MmHg
+    : enc.labs.paco2MmHg; // 29 mmHg
 
   return `# Noctis Patient Diagnostic & Triage Intelligence Dossier (Clinical Decision Support)
 **Encounter ID:** \`${enc.encounterId}\` · **Triage Urgency:** **🚨 P0 IMMEDIATE EMERGENCY (Call 911 / EMS Now · Resuscitation & Critical Care)**
@@ -535,5 +555,9 @@ PLAN (P) [PROPOSED RESUSCITATION ORDERS — REQUIRES INDEPENDENT LICENSED PHYSIC
 > - **Diagnostic Risk Stratification & Clinical Calculations (MAP, Winter's formula, KDIGO staging):** Intended to align with Non-Device CDS criteria under 21 U.S.C. § 360j(o)(1)(E), enabling clinicians to independently review the basis, mathematical derivations, and clinical references behind every recommendation.
 > - **Time-Critical Resuscitation & Antidote Decision Support:** Pertains to acute care resuscitation scenarios that may trigger Software as a Medical Device (SaMD) oversight considerations.
 > *Notice:* Regulatory applicability is contextual and cannot be definitively determined by automated software self-classification; institutional compliance and regulatory counsel review are required prior to clinical deployment.
+
+---
+
+${scratchpad.markdownScratchpadSummary}
 `;
 }
