@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { auditDpoReadiness, analyzeDpoRows } from './noctis-dpo-readiness.mjs';
@@ -63,3 +63,10 @@ test('unreadable or absent inputs block without fetching or writing', () => fixt
   const r = auditDpoReadiness({ ...f, heldout: 'data/missing.jsonl' });
   assert.ok(r.issues.includes('heldout_missing_or_unsafe')); assert.equal(r.status, 'blocked');
 }));
+
+test('model publication requires an explicit CLI flag rather than an ambient HF_TOKEN', () => {
+  const source = readFileSync(new URL('./train_clinical_dpo.py', import.meta.url), 'utf8');
+  assert.match(source, /if args\.push_to_hub:\s*\n/);
+  assert.doesNotMatch(source, /if args\.push_to_hub\s+or\s+/);
+  assert.doesNotMatch(source, /if\s+os\.getenv\(\s*["']HF_TOKEN/);
+});
