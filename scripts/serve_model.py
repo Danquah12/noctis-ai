@@ -1,18 +1,33 @@
 import os
+import time
+import json
+from threading import Thread
 import torch
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-from transformers import AutoModelForCausalLM, AutoTokenizer
-import time
+from transformers import AutoModelForCausalLM, AutoTokenizer, TextIteratorStreamer
 
-app = FastAPI(title="Noctis AI Inference Server")
+app = FastAPI(title="Noctis AI Inference Server — Real-Time Streaming")
+
+# Enable CORS for web clients
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 model_dir = os.environ.get("NOCTIS_MODEL_DIR", "./models/noctis-7b-v2.0-merged")
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 print(f"[+] Loading Noctis model from {model_dir} on {device}...")
 tokenizer = AutoTokenizer.from_pretrained(model_dir, trust_remote_code=True)
+if tokenizer.pad_token is None:
+    tokenizer.pad_token = tokenizer.eos_token
+
 model = AutoModelForCausalLM.from_pretrained(
     model_dir,
     torch_dtype=torch.bfloat16 if device == "cuda" else torch.float32,
@@ -20,11 +35,17 @@ model = AutoModelForCausalLM.from_pretrained(
     trust_remote_code=True,
 )
 model.eval()
-print("[✓] Noctis Inference Engine Ready!")
+print("[✓] Noctis Inference Engine Ready with Real-Time SSE Token Streaming!")
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "model": model_dir, "device": device}
+    return {
+        "status": "ok",
+        "model": model_dir,
+        "device": device,
+        "streaming_supported": True,
+        "api_spec": "OpenAI-compatible v1",
+    }
 
 @app.post("/v1/chat/completions")
 async def chat_completions(request: Request):
@@ -32,6 +53,7 @@ async def chat_completions(request: Request):
     messages = data.get("messages", [])
     max_tokens = data.get("max_tokens", 2048)
     temperature = data.get("temperature", 0.0)
+    stream = data.get("stream", False)
 
     prompt = tokenizer.apply_chat_template(
         messages,
@@ -40,7 +62,64 @@ async def chat_completions(request: Request):
     )
     
     inputs = tokenizer(prompt, return_tensors="pt").to(device)
-    
+
+    # 1. Real-Time Token Streaming Mode (ChatGPT-style SSE)
+    if stream:
+        streamer = TextIteratorStreamer(
+            tokenizer,
+            skip_prompt=True,
+            skip_special_tokens=True
+        )
+        generation_kwargs = dict(
+            **inputs,
+            streamer=streamer,
+            max_new_tokens=max_tokens,
+            do_sample=temperature > 0,
+            temperature=temperature if temperature > 0 else None,
+            pad_token_id=tokenizer.eos_token_id,
+        )
+        thread = Thread(target=model.generate, kwargs=generation_kwargs)
+        thread.start()
+
+        def sse_event_stream():
+            created = int(time.time())
+            chat_id = f"chatcmpl-noctis-{created}"
+            for new_text in streamer:
+                chunk = {
+                    "id": chat_id,
+                    "object": "chat.completion.chunk",
+                    "created": created,
+                    "model": "noctis-7b-v2.0",
+                    "choices": [
+                        {
+                            "index": 0,
+                            "delta": {"content": new_text},
+                            "finish_reason": None,
+                        }
+                    ],
+                }
+                yield f"data: {json.dumps(chunk)}\n\n"
+            
+            # Final completion chunk
+            stop_chunk = {
+                "id": chat_id,
+                "object": "chat.completion.chunk",
+                "created": created,
+                "model": "noctis-7b-v2.0",
+                "choices": [
+                    {
+                        "index": 0,
+                        "delta": {},
+                        "finish_reason": "stop",
+                    }
+                ],
+            }
+            yield f"data: {json.dumps(stop_chunk)}\n\n"
+            yield "data: [DONE]\n\n"
+
+        return StreamingResponse(sse_event_stream(), media_type="text/event-stream")
+
+    # 2. Standard Synchronous Batch Mode
     with torch.no_grad():
         outputs = model.generate(
             **inputs,

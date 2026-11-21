@@ -1256,6 +1256,68 @@ export function generateClinicianSoapNote(
  * 7. DOSSIER BUILDER & NATURAL QUERY HANDLER
  * ===================================================================== */
 
+export function generateElectrolyteTrajectorySvg(
+  analyte: "MAGNESIUM" | "POTASSIUM" | "SODIUM",
+  currentVal: number | string,
+  targetVal: number | string,
+  unit = "mg/dL"
+): string {
+  const isMg = analyte === "MAGNESIUM";
+  const isK = analyte === "POTASSIUM";
+
+  const title = isMg
+    ? `Serum Magnesium Clearance Trajectory (${unit})`
+    : isK
+    ? `Serum Potassium Shifting & Elimination Curve (${unit})`
+    : `Sodium Correction & ODS Safety Ceiling (${unit})`;
+
+  const normalRange = isMg ? "1.7 – 2.2" : isK ? "3.5 – 5.0" : "135 – 145";
+  const dangerLimit = isMg ? "≥ 4.0 mg/dL" : isK ? "≥ 6.0 mmol/L" : "≤ 120 mmol/L";
+
+  return `
+<svg viewBox="0 0 650 200" width="100%" height="200" xmlns="http://www.w3.org/2000/svg" style="background:#0f172a;border-radius:8px;font-family:system-ui,-apple-system,sans-serif;margin:12px 0;">
+  <!-- Grid Lines -->
+  <line x1="60" y1="30" x2="620" y2="30" stroke="#334155" stroke-dasharray="3,3" />
+  <line x1="60" y1="75" x2="620" y2="75" stroke="#334155" stroke-dasharray="3,3" />
+  <line x1="60" y1="120" x2="620" y2="120" stroke="#334155" stroke-dasharray="3,3" />
+  <line x1="60" y1="165" x2="620" y2="165" stroke="#475569" stroke-width="1.5" />
+  
+  <!-- Y-Axis Labels -->
+  <text x="50" y="34" fill="#ef4444" font-size="11" text-anchor="end" font-weight="bold">${currentVal} (Intake)</text>
+  <text x="50" y="79" fill="#f59e0b" font-size="11" text-anchor="end">${dangerLimit}</text>
+  <text x="50" y="124" fill="#10b981" font-size="11" text-anchor="end">${targetVal} (Target)</text>
+  <text x="50" y="169" fill="#94a3b8" font-size="11" text-anchor="end">Normal (${normalRange})</text>
+  
+  <!-- X-Axis Labels -->
+  <text x="80" y="185" fill="#94a3b8" font-size="11" text-anchor="middle">0m (STAT)</text>
+  <text x="180" y="185" fill="#94a3b8" font-size="11" text-anchor="middle">15m (Ca++ / Shifting)</text>
+  <text x="320" y="185" fill="#94a3b8" font-size="11" text-anchor="middle">60m (Diuresis/Peak)</text>
+  <text x="460" y="185" fill="#94a3b8" font-size="11" text-anchor="middle">120m (Dialysis Start)</text>
+  <text x="580" y="185" fill="#94a3b8" font-size="11" text-anchor="middle">240m (Stabilized)</text>
+
+  <!-- Trajectory Shading / Safe Zone -->
+  <rect x="60" y="115" width="560" height="20" fill="#10b981" opacity="0.12" />
+
+  <!-- Trajectory Curve Path -->
+  <path d="M 80 34 Q 180 50, 320 85 T 460 115 T 580 125" fill="none" stroke="#38bdf8" stroke-width="3" stroke-linecap="round" />
+  
+  <!-- Critical Data Points -->
+  <circle cx="80" cy="34" r="5" fill="#ef4444" stroke="#ffffff" stroke-width="1.5" />
+  <circle cx="180" cy="52" r="4" fill="#f59e0b" />
+  <circle cx="320" cy="85" r="4" fill="#38bdf8" />
+  <circle cx="460" cy="115" r="4" fill="#10b981" />
+  <circle cx="580" cy="125" r="5" fill="#10b981" stroke="#ffffff" stroke-width="1.5" />
+
+  <!-- Header & Legend -->
+  <text x="80" y="18" fill="#f8fafc" font-size="12" font-weight="bold">${title}</text>
+  <rect x="420" y="6" width="10" height="10" fill="#38bdf8" rx="2" />
+  <text x="435" y="15" fill="#94a3b8" font-size="10">Expected Response Curve</text>
+  <rect x="540" y="6" width="10" height="10" fill="#10b981" opacity="0.4" rx="2" />
+  <text x="555" y="15" fill="#94a3b8" font-size="10">Target Window</text>
+</svg>
+`;
+}
+
 export function generateIsolatedHyperkalemiaDossier(
   encounterId = "NPDE-HYPERK-001",
   query = ""
@@ -1318,6 +1380,8 @@ export function generateIsolatedHyperkalemiaDossier(
 ---
 
 ### 2. Prioritized 3-Step Emergency Resuscitation Protocol (C-BIG-K Framework)
+
+${generateElectrolyteTrajectorySvg("POTASSIUM", kVal, "4.5", "mmol/L")}
 
 The emergency management of hyperkalemia with cardiotoxicity proceeds through three strictly prioritized physiological stages: **1. Stabilize Membrane**, **2. Shift Potassium**, **3. Eliminate Potassium**.
 
@@ -1734,6 +1798,8 @@ ${diureticFluidAnalysis}
 ---
 
 ### 3. Proposed Emergency Orders & Clinical Decision Support Protocol
+
+${generateElectrolyteTrajectorySvg("MAGNESIUM", "8.5", "2.0", "mg/dL")}
 
 > [!NOTE]
 > **ORDER ENTRY CLARIFICATION:** The following are **proposed orders and decision support considerations** for attending physician review and order entry. They do NOT represent completed procedures.
