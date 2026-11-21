@@ -15,6 +15,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { generatePreferenceDataset } from "../src/lib/noctis-qlora-pipeline.ts";
+import { generateNegativeConstraintDpoPairs } from "./negative_constraint_generator.ts";
 
 export interface ContrastiveDpoRow {
   id: string;
@@ -163,7 +164,15 @@ Intake: 22-year-old male presents with sudden-onset severe right lower quadrant 
 export function buildCompleteDpoDataset(): ContrastiveDpoRow[] {
   const dataset: ContrastiveDpoRow[] = [...HIGH_YIELD_AUDIT_CASES];
 
-  // Synthesize cases from Noctis Health 500 gold standards
+  // 1. Synthesize 500 expert negative-constraint pairs targeting omission and gate violations
+  try {
+    const negConstraints = generateNegativeConstraintDpoPairs();
+    dataset.push(...negConstraints);
+  } catch (err) {
+    console.warn("[!] Warning: Could not generate negative-constraint pairs:", err);
+  }
+
+  // 2. Synthesize cases from Noctis Health 500 gold standards
   try {
     const health500 = generatePreferenceDataset();
     for (const item of health500) {

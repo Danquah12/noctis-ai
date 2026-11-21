@@ -30,7 +30,9 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Noctis DPO Alignment Engine")
     parser.add_argument("--model-path", default="./models/noctis-7b-v2.0-merged", help="Base or SFT merged model path")
     parser.add_argument("--dataset", default="data/noctis-dpo-clinical-safety.jsonl", help="Path to DPO JSONL dataset")
-    parser.add_argument("--output-dir", default="./models/noctis-7b-v3.0-dpo", help="Output directory for aligned model")
+    parser.add_argument("--output-dir", default="./models/noctis-7b-clinical-v3.1-dpo", help="Output directory for aligned model")
+    parser.add_argument("--hub-model-id", default="noctis-ai/noctis-7b-clinical-v3.1", help="Target Hugging Face Hub repository identifier")
+    parser.add_argument("--push-to-hub", action="store_true", help="Push model adapter and tokenizer to Hugging Face Hub")
     parser.add_argument("--epochs", type=int, default=1, help="Number of DPO epochs (1-2 recommended)")
     parser.add_argument("--batch-size", type=int, default=1, help="Per-device batch size (1 recommended for DPO memory)")
     parser.add_argument("--grad-accum", type=int, default=16, help="Gradient accumulation steps")
@@ -149,8 +151,18 @@ def main():
     trainer.save_model(args.output_dir)
     tokenizer.save_pretrained(args.output_dir)
 
+    # 9. Optional Hugging Face Hub Publishing
+    if args.push_to_hub or (os.getenv("HF_TOKEN") and args.hub_model_id):
+        try:
+            print(f"[+] Publishing aligned weights to Hugging Face Hub ({args.hub_model_id})...")
+            trainer.push_to_hub(args.hub_model_id, commit_message="Upload Noctis 7B Clinical v3.1 DPO Weights (1,004 Contrastive Safety Pairs)")
+            tokenizer.push_to_hub(args.hub_model_id)
+            print(f"[✓] Published successfully: https://huggingface.co/{args.hub_model_id}")
+        except Exception as e:
+            print(f"[!] Hugging Face Hub upload skipped or pending authorization ({e}). Local weights saved in {args.output_dir}.")
+
     print("==========================================================")
-    print(f"[✓] PHASE 3 DPO ALIGNMENT COMPLETE! Saved to {args.output_dir}")
+    print(f"[✓] PHASE 2 DPO ALIGNMENT COMPLETE! Saved to {args.output_dir}")
     print("==========================================================")
 
 if __name__ == "__main__":

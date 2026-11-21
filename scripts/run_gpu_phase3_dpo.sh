@@ -37,7 +37,8 @@ echo "[+] Step 2/4: Executing Direct Preference Optimization..."
 python scripts/train_clinical_dpo.py \
   --model-path ./models/noctis-7b-v2.0-merged \
   --dataset data/noctis-dpo-clinical-safety.jsonl \
-  --output-dir ./models/noctis-7b-v3.0-dpo \
+  --output-dir ./models/noctis-7b-clinical-v3.1-dpo \
+  --hub-model-id noctis-ai/noctis-7b-clinical-v3.1 \
   --epochs 1 \
   --batch-size 1 \
   --grad-accum 16 \
