@@ -98,6 +98,9 @@ function RootDocument() {
         <style
           dangerouslySetInnerHTML={{
             __html: `
+              *, *::before, *::after {
+                box-sizing: border-box;
+              }
               html, body {
                 background-color: #0b1220;
                 color: #f4f4f5;
@@ -108,7 +111,26 @@ function RootDocument() {
                 overflow: hidden;
               }
               img { max-width: 100%; height: auto; }
-              button { font-family: inherit; }
+              button {
+                font-family: inherit;
+                background-color: rgba(255, 255, 255, 0.04);
+                color: #f4f4f5;
+                border: 1px solid rgba(255, 255, 255, 0.12);
+                border-radius: 6px;
+                padding: 4px 8px;
+                cursor: pointer;
+              }
+              button:hover {
+                background-color: rgba(255, 255, 255, 0.08);
+              }
+              input, textarea, select {
+                font-family: inherit;
+                background-color: #141c2a;
+                color: #f4f4f5;
+                border: 1px solid rgba(255, 255, 255, 0.15);
+                border-radius: 6px;
+                padding: 6px 10px;
+              }
               .hidden { display: none !important; }
               @media (min-width: 768px) {
                 .md\\:flex { display: flex !important; }
@@ -123,7 +145,7 @@ function RootDocument() {
         />
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem("vibetok-theme");if(t==="black"||t==="night"||t==="day")t="midnight";else if(t==="ink")t="nordic";else if(t==="paper")t="white";else if(t==="ember")t="sand";if(t!=="midnight"&&t!=="white"&&t!=="nordic"&&t!=="emerald"&&t!=="sand")t="midnight";var r=document.documentElement;r.dataset.theme=t;if(t==="white"||t==="sand")r.classList.remove("dark");else r.classList.add("dark");var c={midnight:"#0b1220",white:"#f7f8fa",nordic:"#071525",emerald:"#06140f",sand:"#e9dcc8"};var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("content",c[t]||c.midnight);var l=localStorage.getItem("vibetok-lang");if(l){r.lang=l==="zh"?"zh-Hans":l;r.dir=l==="ar"?"rtl":"ltr";}}catch(e){}})();(function(){try{if("serviceWorker" in navigator){navigator.serviceWorker.getRegistrations().then(function(regs){for(var r of regs)r.unregister();});}if("caches" in window){caches.keys().then(function(keys){for(var k of keys)caches.delete(k);});}}catch(e){}})();(function(){var k="vt-preload-15";function moduleFail(msg){return /dynamically imported module|module script failed|Importing a module script failed|error loading dynamically imported module/i.test(msg);}function again(){try{if(sessionStorage.getItem(k))return false;sessionStorage.setItem(k,"1");}catch(e){return false;}var u=new URL(location.href);u.searchParams.set("v",String(Date.now()));location.replace(u.toString());return true;}window.addEventListener("vite:preloadError",function(e){var msg=String((e.payload&&(e.payload.message||e.payload))||"");if(!moduleFail(msg)){e.preventDefault();return;}if(again())e.preventDefault();});window.addEventListener("unhandledrejection",function(e){var msg=String((e.reason&&(e.reason.message||e.reason))||"");if(!moduleFail(msg))return;if(again())e.preventDefault();});window.addEventListener("error",function(e){var el=e&&e.target;if(el&&el.tagName==="LINK"&&el.rel==="stylesheet"){try{if(!sessionStorage.getItem("noctis_css_heal")){sessionStorage.setItem("noctis_css_heal","1");location.reload();}}catch(err){location.reload();}}},true);})();`,
+            __html: `(function(){try{var t=localStorage.getItem("vibetok-theme");if(t==="black"||t==="night"||t==="day")t="midnight";else if(t==="ink")t="nordic";else if(t==="paper")t="white";else if(t==="ember")t="sand";if(t!=="midnight"&&t!=="white"&&t!=="nordic"&&t!=="emerald"&&t!=="sand")t="midnight";var r=document.documentElement;r.dataset.theme=t;if(t==="white"||t==="sand")r.classList.remove("dark");else r.classList.add("dark");var c={midnight:"#0b1220",white:"#f7f8fa",nordic:"#071525",emerald:"#06140f",sand:"#e9dcc8"};var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("content",c[t]||c.midnight);var l=localStorage.getItem("vibetok-lang");if(l){r.lang=l==="zh"?"zh-Hans":l;r.dir=l==="ar"?"rtl":"ltr";}}catch(e){}})();(function(){try{if("serviceWorker" in navigator){navigator.serviceWorker.getRegistrations().then(function(regs){for(var r of regs)r.unregister();});}if("caches" in window){caches.keys().then(function(keys){for(var k of keys)caches.delete(k);});}}catch(e){}})();(function(){function forceFreshReload(){try{if("caches" in window){caches.keys().then(function(ks){for(var k of ks)caches.delete(k);});}var u=new URL(location.href);u.searchParams.set("v",String(Date.now()));location.replace(u.toString());return true;}catch(e){location.reload();return true;}}function moduleFail(msg){return /dynamically imported module|module script failed|Importing a module script failed|error loading dynamically imported module/i.test(msg);}window.addEventListener("vite:preloadError",function(e){var msg=String((e.payload&&(e.payload.message||e.payload))||"");if(!moduleFail(msg))return;forceFreshReload();});window.addEventListener("unhandledrejection",function(e){var msg=String((e.reason&&(e.reason.message||e.reason))||"");if(!moduleFail(msg))return;forceFreshReload();});window.addEventListener("error",function(e){var el=e&&e.target;if(el&&el.tagName==="LINK"&&el.rel==="stylesheet"){var last=parseInt(sessionStorage.getItem("noctis_css_heal_ts")||"0",10);if(Date.now()-last>10000){sessionStorage.setItem("noctis_css_heal_ts",String(Date.now()));forceFreshReload();}}},true);function verifyStylesApplied(){try{var testEl=document.createElement("div");testEl.className="hidden";document.body.appendChild(testEl);var cs=window.getComputedStyle(testEl);var applied=cs.display==="none";document.body.removeChild(testEl);if(!applied){var last=parseInt(sessionStorage.getItem("noctis_css_heal_ts")||"0",10);if(Date.now()-last>12000){sessionStorage.setItem("noctis_css_heal_ts",String(Date.now()));forceFreshReload();}}}catch(err){}}if(document.readyState==="complete"||document.readyState==="interactive"){setTimeout(verifyStylesApplied,600);}else{window.addEventListener("DOMContentLoaded",function(){setTimeout(verifyStylesApplied,600);});}})();`,
           }}
         />
       </head>
