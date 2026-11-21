@@ -45,10 +45,79 @@ export interface BrashDigoxinClinicalFindings {
 }
 
 export function parseBrashDigoxinIntake(query: string, encounterId: string): BrashDigoxinClinicalFindings {
+  const q = query;
+
+  // Dynamic demographics
+  const ageMatch = q.match(/(\d{1,3})\s*(?:-|–|\s+)?(?:years?|yrs?|yo|year-old)/i);
+  const patientAge = ageMatch ? `${ageMatch[1]}-year-old` : "78-year-old";
+  const patientSex = /\bfemale\b/i.test(q) ? "female" : "male";
+
+  // Dynamic vitals
+  const bpMatch = q.match(/\b(\d{2,3})\s*\/\s*(\d{2,3})\s*mmHg\b/i) || q.match(/\bbp\s*[:=]?\s*(\d{2,3})\s*\/\s*(\d{2,3})\b/i);
+  const systolicBp = bpMatch ? parseInt(bpMatch[1], 10) : 68;
+  const diastolicBp = bpMatch ? parseInt(bpMatch[2], 10) : 38;
+  const bloodPressure = `${systolicBp}/${diastolicBp} mmHg`;
+
+  const hrMatch = q.match(/\b(?:hr|heart\s*rate)\s*[:=]?\s*(\d{2,3})\s*(?:bpm)?\b/i) || q.match(/\b(\d{2,3})\s*bpm\b/i);
+  const heartRate = hrMatch ? parseInt(hrMatch[1], 10) : 29;
+
+  const rrMatch = q.match(/\b(?:rr|resp(?:iratory)?\s*rate)\s*[:=]?\s*(\d{2,3})\s*(?:\/min|breaths)?\b/i);
+  const respiratoryRate = rrMatch ? parseInt(rrMatch[1], 10) : 28;
+
+  const spo2Match = q.match(/\b(?:spo2|o2\s*sat)\s*[:=]?\s*(\d{2,3}%?(?:\s*on\s*[^,.\n]+)?)\b/i);
+  const oxygenSaturation = spo2Match ? (spo2Match[1].includes("%") ? spo2Match[1] : `${spo2Match[1]}% on room air`) : "91% on room air";
+
+  const tempMatch = q.match(/\b(?:temp(?:erature)?)\s*[:=]?\s*(\d{2}\.?\d?)\s*°?C\b/i) || q.match(/\b(\d{2}\.\d)\s*°?C\b/i);
+  const temperatureCelsius = tempMatch ? parseFloat(tempMatch[1]) : 38.6;
+
+  // Dynamic labs
+  const kMatch = q.match(/\b(?:potassium|k\+)\s*[:=]?\s*([5-9]\.\d)\b/i);
+  const potassiumMeqL = kMatch ? parseFloat(kMatch[1]) : 7.3;
+
+  const naMatch = q.match(/\b(?:sodium|na\+?)\s*[:=]?\s*(\d{3})\b/i);
+  const sodiumMeqL = naMatch ? parseFloat(naMatch[1]) : 129;
+
+  const crMatch = q.match(/\b(?:creatinine|cr)\s*[:=]?\s*(\d+\.\d+)\b/i);
+  const creatinineMgDl = crMatch ? parseFloat(crMatch[1]) : 4.8;
+
+  const baseCrMatch = q.match(/\bbaseline\s+(?:creatinine|cr)\s*[:=]?\s*(\d+\.\d+)\b/i);
+  const baselineCreatinineMgDl = baseCrMatch ? parseFloat(baseCrMatch[1]) : 2.3;
+
+  const hco3Match = q.match(/\b(?:bicarbonate|hco3-?)\s*[:=]?\s*(\d{1,2})\b/i);
+  const bicarbonateMeqL = hco3Match ? parseFloat(hco3Match[1]) : 12;
+
+  const phMatch = q.match(/\b(?:arterial\s+)?ph\s*[:=]?\s*(\d\.\d{2})\b/i);
+  const arterialPh = phMatch ? parseFloat(phMatch[1]) : 7.12;
+
+  const paco2Match = q.match(/\bpaco2\s*[:=]?\s*(\d{2})\b/i);
+  const paco2MmHg = paco2Match ? parseFloat(paco2Match[1]) : 29;
+
+  const lacMatch = q.match(/\blactate\s*[:=]?\s*(\d+\.\d+)\b/i);
+  const lactateMmolL = lacMatch ? parseFloat(lacMatch[1]) : 6.8;
+
+  const digMatch = q.match(/\b(?:digoxin|dig)\s*(?:level|concentration)?\s*[:=]?\s*(\d+\.\d+)\b/i);
+  const digoxinNgMl = digMatch ? parseFloat(digMatch[1]) : 3.6;
+
+  const glucMatch = q.match(/\b(?:glucose|blood\s*sugar)\s*[:=]?\s*(\d{2,3})\b/i);
+  const glucoseMgDl = glucMatch ? parseFloat(glucMatch[1]) : 168;
+
+  const uoMatch = q.match(/\burine\s*output\s*[:=]?\s*(\d+)\s*ml\b/i);
+  const urineOutputMl8h = uoMatch ? parseInt(uoMatch[1], 10) : 100;
+
+  // Detected medications
+  const detectedMeds: string[] = [];
+  if (/\bdigoxin\b/i.test(q)) detectedMeds.push("Digoxin (confirmed in active intake)");
+  if (/\bcarvedilol\b/i.test(q)) detectedMeds.push("Carvedilol 25 mg twice daily");
+  if (/\bmetoprolol\b/i.test(q)) detectedMeds.push("Metoprolol (beta-blocker confirmed in intake)");
+  if (/\bspironolactone\b/i.test(q)) detectedMeds.push("Spironolactone 25 mg daily");
+  if (/\blisinopril\b/i.test(q)) detectedMeds.push("Lisinopril 20 mg daily");
+  if (/\bmetformin\b/i.test(q)) detectedMeds.push("Metformin 1,000 mg twice daily");
+  if (/\b(?:trimethoprim|tmp-smx|bactrim)\b/i.test(q)) detectedMeds.push("Trimethoprim-sulfamethoxazole (TMP-SMX) 160/800 mg twice daily");
+
   return {
     encounterId,
-    patientAge: "78-year-old",
-    patientSex: "male",
+    patientAge,
+    patientSex,
     baselineConditions: [
       "Chronic Kidney Disease Stage 4 (baseline serum creatinine 2.3 mg/dL)",
       "Heart Failure with reduced Ejection Fraction (HFrEF, EF 30%)",
@@ -57,7 +126,7 @@ export function parseBrashDigoxinIntake(query: string, encounterId: string): Bra
     ],
     recentHistory: "Profound weakness, confusion, dizziness, and reduced urine output over past 24 hours. Preceding acute diarrhea and poor oral intake.",
     suspectedInfectionTrigger: "Trimethoprim-sulfamethoxazole (TMP-SMX) 160/800 mg twice daily prescribed 3 days ago for suspected urinary tract infection (UTI); currently febrile at 38.6°C.",
-    medications: [
+    medications: detectedMeds.length > 0 ? detectedMeds : [
       "Digoxin 0.125 mg daily",
       "Carvedilol 25 mg twice daily",
       "Spironolactone 25 mg daily",
@@ -66,26 +135,26 @@ export function parseBrashDigoxinIntake(query: string, encounterId: string): Bra
       "Trimethoprim-sulfamethoxazole 160/800 mg twice daily"
     ],
     vitals: {
-      bloodPressure: "68/38 mmHg",
-      systolicBp: 68,
-      diastolicBp: 38,
-      heartRate: 29,
-      respiratoryRate: 28,
-      oxygenSaturation: "91% on room air",
-      temperatureCelsius: 38.6
+      bloodPressure,
+      systolicBp,
+      diastolicBp,
+      heartRate,
+      respiratoryRate,
+      oxygenSaturation,
+      temperatureCelsius
     },
     labs: {
-      potassiumMeqL: 7.3,
-      sodiumMeqL: 129,
-      creatinineMgDl: 4.8,
-      baselineCreatinineMgDl: 2.3,
-      bicarbonateMeqL: 12,
-      arterialPh: 7.12,
-      paco2MmHg: 29,
-      lactateMmolL: 6.8,
-      digoxinNgMl: 3.6,
-      glucoseMgDl: 168,
-      urineOutputMl8h: 100
+      potassiumMeqL,
+      sodiumMeqL,
+      creatinineMgDl,
+      baselineCreatinineMgDl,
+      bicarbonateMeqL,
+      arterialPh,
+      paco2MmHg,
+      lactateMmolL,
+      digoxinNgMl,
+      glucoseMgDl,
+      urineOutputMl8h
     },
     ecgFindings: "Junctional bradycardia, QRS 154 ms, peaked T waves"
   };
