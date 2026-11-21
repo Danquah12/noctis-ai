@@ -32,22 +32,22 @@ export function generateIsolatedHematologyTmaDossier(
 
   const { demographics, vitals, hematology, coagulation, renalMetabolic, medications, scores } = facts;
 
-  const ageStr = demographics.ageYears ? `${demographics.ageYears}` : "56";
-  const sexStr = demographics.sex !== "indeterminate" ? demographics.sex : "female";
-  const bpStr = vitals.bloodPressureString ?? "92/58 mmHg";
-  const mapStr = vitals.meanArterialPressureMmHg !== null ? vitals.meanArterialPressureMmHg.toFixed(1) : "69.3";
-  const hrStr = vitals.heartRateBpm !== null ? `${vitals.heartRateBpm}` : "124";
-  const rrStr = vitals.respiratoryRatePerMin !== null ? `${vitals.respiratoryRatePerMin}` : "26";
-  const tempStr = vitals.temperatureCelsius !== null ? `${vitals.temperatureCelsius.toFixed(1)}` : "39.2";
-  const spo2Str = vitals.oxygenSaturationPct !== null ? `${vitals.oxygenSaturationPct}%` : "93%";
-  const crStr = renalMetabolic.creatinineMgDl !== null ? `${renalMetabolic.creatinineMgDl}` : "3.6";
-  const baseCrStr = renalMetabolic.baselineCreatinineMgDl !== null ? `${renalMetabolic.baselineCreatinineMgDl}` : "1.6";
-  const crRatioStr = renalMetabolic.creatinineFoldRatio !== null ? `${renalMetabolic.creatinineFoldRatio}` : "2.25";
-  const lacStr = renalMetabolic.lactateMmolL !== null ? `${renalMetabolic.lactateMmolL}` : "4.9";
-  const kStr = renalMetabolic.potassiumMeqL !== null ? `${renalMetabolic.potassiumMeqL}` : "4.9";
-  const pltStr = hematology.plateletCountPerUl !== null ? `${hematology.plateletCountPerUl.toLocaleString()}` : "18,000";
-  const hbStr = hematology.hemoglobinGDl !== null ? `${hematology.hemoglobinGDl}` : "7.2";
-  const inrStr = coagulation.inr !== null ? `${coagulation.inr}` : "3.8";
+  const ageStr = demographics.ageYears !== null ? `${demographics.ageYears}` : "[UNSPECIFIED AGE]";
+  const sexStr = demographics.sex !== "indeterminate" ? demographics.sex : "patient";
+  const bpStr = vitals.bloodPressureString ?? "[UNMEASURED BP]";
+  const mapStr = vitals.meanArterialPressureMmHg !== null ? vitals.meanArterialPressureMmHg.toFixed(1) : "[UNMEASURED MAP]";
+  const hrStr = vitals.heartRateBpm !== null ? `${vitals.heartRateBpm}` : "[UNMEASURED HR]";
+  const rrStr = vitals.respiratoryRatePerMin !== null ? `${vitals.respiratoryRatePerMin}` : "[UNMEASURED RR]";
+  const tempStr = vitals.temperatureCelsius !== null ? `${vitals.temperatureCelsius.toFixed(1)}` : "[UNMEASURED TEMP]";
+  const spo2Str = vitals.oxygenSaturationPct !== null ? `${vitals.oxygenSaturationPct}%` : "[UNMEASURED SPO2]";
+  const crStr = renalMetabolic.creatinineMgDl !== null ? `${renalMetabolic.creatinineMgDl}` : "[UNMEASURED CR]";
+  const baseCrStr = renalMetabolic.baselineCreatinineMgDl !== null ? `${renalMetabolic.baselineCreatinineMgDl}` : "[UNMEASURED BASELINE CR]";
+  const crRatioStr = renalMetabolic.creatinineFoldRatio !== null ? `${renalMetabolic.creatinineFoldRatio}` : "[UNCOMPUTABLE]";
+  const lacStr = renalMetabolic.lactateMmolL !== null ? `${renalMetabolic.lactateMmolL}` : "[UNMEASURED LACTATE]";
+  const kStr = renalMetabolic.potassiumMeqL !== null ? `${renalMetabolic.potassiumMeqL}` : "[UNMEASURED K+]";
+  const pltStr = hematology.plateletCountPerUl !== null ? `${hematology.plateletCountPerUl.toLocaleString()}` : "[UNMEASURED PLT]";
+  const hbStr = hematology.hemoglobinGDl !== null ? `${hematology.hemoglobinGDl}` : "[UNMEASURED HB]";
+  const inrStr = coagulation.inr !== null ? `${coagulation.inr}` : "[UNMEASURED INR]";
 
   const lines: string[] = [];
 
@@ -85,25 +85,44 @@ export function generateIsolatedHematologyTmaDossier(
   // Section 2: Clinical Calculations & Scoring
   lines.push(`### 2. Clinical Calculations & Deterministic Risk Scoring`);
   lines.push(`#### Calculation 1: Mean Arterial Pressure (MAP) & Perfusion Physiology`);
-  lines.push(`$$\\text{MAP} = \\frac{\\text{SBP} + 2(\\text{DBP})}{3} = \\frac{92 + 2(58)}{3} = \\frac{208}{3} = \\mathbf{69.3\\text{ mmHg}}$$`);
-  lines.push(`- **Perfusion Status:** Macrovascular perfusion target is achieved (MAP 69.3 mmHg >= 65.0 mmHg, +4.3 mmHg margin). However, **adequate macrovascular blood pressure does NOT establish adequate cellular tissue perfusion** in the presence of severe lactic acidosis (Lactate ${lacStr} mmol/L) and acute delirium. Resuscitation must target microvascular patency and cellular perfusion rather than relying solely on macrovascular pressure.\n`);
+  if (vitals.systolicBp !== null && vitals.diastolicBp !== null) {
+    const sbp = vitals.systolicBp;
+    const dbp = vitals.diastolicBp;
+    const numerator = sbp + 2 * dbp;
+    lines.push(`$$\\text{MAP} = \\frac{\\text{SBP} + 2(\\text{DBP})}{3} = \\frac{${sbp} + 2(${dbp})}{3} = \\frac{${numerator}}{3} = \\mathbf{${mapStr}\\text{ mmHg}}$$`);
+    lines.push(`- **Perfusion Status:** Macrovascular perfusion target is ${vitals.meanArterialPressureMmHg !== null && vitals.meanArterialPressureMmHg >= 65 ? "achieved" : "sub-target"} (MAP ${mapStr} mmHg). However, **adequate macrovascular blood pressure does NOT establish adequate cellular tissue perfusion** in the presence of severe lactic acidosis (Lactate ${lacStr} mmol/L) and acute delirium. Resuscitation must target microvascular patency and cellular perfusion rather than relying solely on macrovascular pressure.\n`);
+  } else {
+    lines.push(`$$\\text{MAP} = \\text{Uncomputable (Blood pressure unmeasured)}$$\n`);
+  }
 
   lines.push(`#### Calculation 2: Calibrated KDIGO AKI Staging`);
-  lines.push(`$$\\text{Creatinine Fold Ratio} = \\frac{3.6}{1.6} = \\mathbf{2.25\\times\\text{ baseline}}$$`);
-  lines.push(`- **Established KDIGO Stage:** **KDIGO AKI STAGE 2** ($2.0\\text{--}2.9\\times$ baseline).`);
-  lines.push(`- **Stage 3 Evaluation:** Current serum creatinine is 3.6 mg/dL. Because current creatinine does NOT reach the absolute threshold of $\\ge 4.0\\text{ mg/dL}$ and fold ratio ($2.25\\times$) is strictly $< 3.0\\times$, **KDIGO Stage 3 is NOT met** and cannot be suggested for the supplied values.\n`);
+  if (renalMetabolic.creatinineMgDl !== null && renalMetabolic.baselineCreatinineMgDl !== null) {
+    lines.push(`$$\\text{Creatinine Fold Ratio} = \\frac{${renalMetabolic.creatinineMgDl}}{${renalMetabolic.baselineCreatinineMgDl}} = \\mathbf{${crRatioStr}\\times\\text{ baseline}}$$`);
+    lines.push(`- **Established KDIGO Stage:** **${renalMetabolic.kdigoAkiStage ? `KDIGO AKI STAGE ${renalMetabolic.kdigoAkiStage}` : "Indeterminate Stage"}** (${crRatioStr}x baseline).`);
+    lines.push(`- **Stage 3 Evaluation:** Current serum creatinine is ${crStr} mg/dL. Because current creatinine does NOT reach the absolute threshold of $\\ge 4.0\\text{ mg/dL}$ and fold ratio (${crRatioStr}x) is strictly $< 3.0\\times$, **KDIGO Stage 3 is NOT met** and cannot be suggested for the supplied values.\n`);
+  } else {
+    lines.push(`$$\\text{Creatinine Fold Ratio} = \\text{Uncomputable (Baseline creatinine unmeasured)}$$\n`);
+  }
 
   lines.push(`#### Calculation 3: qSOFA & CURB-65 Sepsis Scores`);
-  lines.push(`- **qSOFA Score: 3 / 3 (High Risk of Poor Outcomes)**`);
-  lines.push(`  - Systolic BP <= 100 mmHg: **Present (92 mmHg) [+1]**`);
-  lines.push(`  - Respiratory Rate >= 22/min: **Present (26/min) [+1]**`);
+  const sbpScore = vitals.systolicBp !== null && vitals.systolicBp <= 100 ? 1 : 0;
+  const rrScore = vitals.respiratoryRatePerMin !== null && vitals.respiratoryRatePerMin >= 22 ? 1 : 0;
+  const amsScore = 1; // Acute Delirium documented
+  const qsofaTotal = sbpScore + rrScore + amsScore;
+  lines.push(`- **qSOFA Score: ${qsofaTotal} / 3**`);
+  lines.push(`  - Systolic BP <= 100 mmHg: **${sbpScore ? `Present (${vitals.systolicBp} mmHg) [+1]` : "Absent [0]"}**`);
+  lines.push(`  - Respiratory Rate >= 22/min: **${rrScore ? `Present (${vitals.respiratoryRatePerMin}/min) [+1]` : "Absent [0]"}**`);
   lines.push(`  - Altered Mental Status: **Present (Acute Delirium) [+1]**`);
-  lines.push(`- **CURB-65 Score: 2 (Moderate-to-Severe Risk)**`);
+
+  const curbBpScore = (vitals.systolicBp !== null && vitals.systolicBp < 90) || (vitals.diastolicBp !== null && vitals.diastolicBp <= 60) ? 1 : 0;
+  const curbAgeScore = demographics.ageYears !== null && demographics.ageYears >= 65 ? 1 : 0;
+  const curbTotal = 1 + curbBpScore + curbAgeScore;
+  lines.push(`- **CURB-65 Score: ${curbTotal}**`);
   lines.push(`  - Confusion: Present (Delirium) [+1]`);
   lines.push(`  - Urea / BUN > 7 mmol/L: Unmeasured [0]`);
-  lines.push(`  - Respiratory Rate >= 30/min: Absent (26/min) [0]`);
-  lines.push(`  - Blood Pressure (SBP < 90 or DBP <= 60): Present (DBP 58 mmHg <= 60) [+1]`);
-  lines.push(`  - Age >= 65 years: **Absent (Documented age is ${ageStr} years; does NOT meet the >= 65 threshold) [0]**\n`);
+  lines.push(`  - Respiratory Rate >= 30/min: ${vitals.respiratoryRatePerMin !== null && vitals.respiratoryRatePerMin >= 30 ? "Present [+1]" : "Absent [0]"}`);
+  lines.push(`  - Blood Pressure (SBP < 90 or DBP <= 60): ${curbBpScore ? `Present (${bpStr}) [+1]` : "Absent [0]"}`);
+  lines.push(`  - Age >= 65 years: ${curbAgeScore ? `Present (${ageStr} years) [+1]` : `Absent (Documented age is ${ageStr} years; does NOT meet the >= 65 threshold) [0]`}\n`);
 
   lines.push(`#### Calculation 4: Classic TTP Pentad Assessment`);
   lines.push(`- **TTP Pentad Criteria Met: 5 / 5 (Complete Classic Pentad)**`);

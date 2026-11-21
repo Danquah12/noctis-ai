@@ -51,7 +51,7 @@ export function parseBrashDigoxinIntake(query: string, encounterId: string): Bra
 
   // Dynamic demographics
   const ageMatch = q.match(/(\d{1,3})\s*(?:-|–|\s+)?(?:years?|yrs?|yo|year-old)/i);
-  const patientAge = ageMatch ? `${ageMatch[1]}-year-old` : "78-year-old";
+  const patientAge = ageMatch ? `${ageMatch[1]}-year-old` : "Adult patient";
   const patientSex = /\bfemale\b/i.test(q) ? "female" : (/\bmale\b/i.test(q) ? "male" : "patient");
 
   // Dynamic vitals
@@ -158,25 +158,44 @@ export function parseBrashDigoxinIntake(query: string, encounterId: string): Bra
   if (/\bmetformin\b/i.test(q)) detectedMeds.push("Metformin 1,000 mg twice daily");
   if (/\b(?:trimethoprim|tmp-smx|bactrim)\b/i.test(q)) detectedMeds.push("Trimethoprim-sulfamethoxazole (TMP-SMX) 160/800 mg twice daily");
 
+  // Baseline conditions extracted from active encounter
+  const conditions: string[] = [];
+  if (/\bckd|kidney\s+disease\b/i.test(q)) {
+    conditions.push(`Chronic Kidney Disease (baseline serum creatinine ${baselineCreatinineMgDl} mg/dL)`);
+  }
+  if (/\bheart\s+failure|hfref|ef\s*\d+%/i.test(q)) {
+    const efMatch = q.match(/\bef\s*(\d+)%/i);
+    conditions.push(`Heart Failure (${efMatch ? `EF ${efMatch[1]}%` : "documented in intake"})`);
+  }
+  if (/\batrial\s+fibrillation|afib\b/i.test(q)) {
+    conditions.push("Atrial Fibrillation");
+  }
+  if (/\bdiabetes|t2d|t2dm\b/i.test(q)) {
+    conditions.push("Type 2 Diabetes Mellitus");
+  }
+  if (conditions.length === 0) {
+    conditions.push("Documented chronic multi-morbidity in intake record");
+  }
+
+  const historyMatch = q.match(/\bpresents\s+with\s+([^.]+)\./i);
+  const recentHistory = historyMatch
+    ? historyMatch[1].trim()
+    : "Acute presentation with hemodynamic instability, bradycardia, and renal impairment.";
+
+  const infectionTrigger = /\b(?:trimethoprim|tmp-smx|bactrim)\b/i.test(q)
+    ? "Trimethoprim-sulfamethoxazole (TMP-SMX) exposure; known inhibitor of potassium secretion in distal nephron."
+    : "Acute precipitating illness or hypoperfusion leading to renal decompensation.";
+
   return {
     encounterId,
     patientAge,
     patientSex,
-    baselineConditions: [
-      `Chronic Kidney Disease Stage 4 (baseline serum creatinine ${baselineCreatinineMgDl} mg/dL)`,
-      "Heart Failure with reduced Ejection Fraction (HFrEF, EF 30%)",
-      "Atrial Fibrillation (chronic, rate-controlled on Digoxin & AV nodal blockers)",
-      "Type 2 Diabetes Mellitus"
-    ],
-    recentHistory: "Profound weakness, confusion, dizziness, and reduced urine output over past 24 hours. Preceding acute diarrhea and poor oral intake.",
-    suspectedInfectionTrigger: "Trimethoprim-sulfamethoxazole (TMP-SMX) 160/800 mg twice daily prescribed 3 days ago for suspected urinary tract infection (UTI); currently febrile.",
+    baselineConditions: conditions,
+    recentHistory,
+    suspectedInfectionTrigger: infectionTrigger,
     medications: detectedMeds.length > 0 ? detectedMeds : [
-      "Digoxin 0.125 mg daily",
-      "Carvedilol 25 mg twice daily",
-      "Spironolactone 25 mg daily",
-      "Lisinopril 20 mg daily",
-      "Metformin 1,000 mg twice daily",
-      "Trimethoprim-sulfamethoxazole 160/800 mg twice daily"
+      "Digoxin (documented)",
+      "Beta-blocker (documented)"
     ],
     vitals: {
       bloodPressure,
