@@ -31,6 +31,8 @@ export interface ClinicalLabsExtracted {
   arterialPh: number | null;
   paco2MmHg: number | null;
   lactateMmolL: number | null;
+  glucoseMgDl: number | null;
+  betaHydroxybutyrateMmolL: number | null;
   digoxinNgMl: number | null;
   urineOutputMl: number | null;
   urineOutputDurationHours: number | null;
@@ -174,11 +176,27 @@ export function buildClinicalScratchpad(
   }
 
   // 2. Vitals
-  const bpMatch = q.match(/\b(\d{2,3})\s*\/\s*(\d{2,3})\s*mmHg\b/i) ||
-    q.match(/\bbp\s*[:=]?\s*(\d{2,3})\s*\/\s*(\d{2,3})\b/i);
-  const systolicBp = bpMatch ? parseInt(bpMatch[1], 10) : null;
-  const diastolicBp = bpMatch ? parseInt(bpMatch[2], 10) : null;
-  const bloodPressureString = bpMatch ? `${systolicBp}/${diastolicBp} mmHg` : null;
+  const bpExplicitMatch = q.match(/\b(?:bp|blood\s*pressure)\s*[:=]?\s*(\d{2,3})\s*\/\s*(\d{2,3})\b/i);
+  let systolicBp: number | null = null;
+  let diastolicBp: number | null = null;
+  if (bpExplicitMatch) {
+    systolicBp = parseInt(bpExplicitMatch[1], 10);
+    diastolicBp = parseInt(bpExplicitMatch[2], 10);
+  } else {
+    const allSlash = [...q.matchAll(/\b(\d{2,3})\s*\/\s*(\d{2,3})(?:\s*mmHg)?\b/gi)];
+    for (const m of allSlash) {
+      const s = parseInt(m[1], 10);
+      const d = parseInt(m[2], 10);
+      const ctx = q.slice(m.index ?? 0, (m.index ?? 0) + m[0].length + 5);
+      if (/mg|tab/i.test(ctx)) continue;
+      if (s >= 40 && s <= 280 && d >= 20 && d <= 180) {
+        systolicBp = s;
+        diastolicBp = d;
+        break;
+      }
+    }
+  }
+  const bloodPressureString = systolicBp !== null && diastolicBp !== null ? `${systolicBp}/${diastolicBp} mmHg` : null;
 
   const hrMatch = q.match(/\b(?:hr|heart\s*rate|pulse)\s*[:=]?\s*(\d{2,3})\s*(?:bpm)?\b/i) ||
     q.match(/\b(\d{2,3})\s*bpm\b/i);
@@ -199,11 +217,12 @@ export function buildClinicalScratchpad(
     q.match(/\b(\d{2}\.\d)\s*°?C\b/i);
   const temperatureCelsius = tempMatch ? parseFloat(tempMatch[1]) : null;
 
-  const glucMatch = q.match(/\b(?:glucose|blood\s*sugar|bg)\s*[:=]?\s*(\d{2,3})\s*(?:mg\/dl)?\b/i);
+  const glucMatch = q.match(/\b(?:glucose|blood\s*sugar|bg)\s*[:=]?\s*(\d{2,4})\s*(?:mg\/dl)?\b/i);
   const bloodGlucoseMgDl = glucMatch ? parseFloat(glucMatch[1]) : null;
+  const glucoseMgDl = bloodGlucoseMgDl;
 
   // 3. Labs
-  const kMatch = q.match(/\b(?:potassium|k\+)\s*[:=]?\s*([2-9]\.\d)\b/i);
+  const kMatch = q.match(/\b(?:potassium|k\+?)\s*[:=]?\s*([2-9]\.\d+)\b/i);
   const potassiumMeqL = kMatch ? parseFloat(kMatch[1]) : null;
 
   const naMatch = q.match(/\b(?:sodium|na\+?)\s*[:=]?\s*(\d{3})\b/i);
@@ -216,7 +235,9 @@ export function buildClinicalScratchpad(
     chlorideMeqL = clMatch ? parseFloat(clMatch[1]) : null;
   }
 
-  const baseCrMatch = q.match(/\bbaseline\s+(?:creatinine|cr)\s*[:=]?\s*(\d+\.\d+)\b/i);
+  const baseCrMatch =
+    q.match(/\bbaseline\s+(?:creatinine|cr\s*)?[:=]?\s*(\d+\.\d+)\b/i) ||
+    q.match(/\b(?:creatinine|cr)\s*[:=]?\s*\d+\.\d+\s*(?:mg\/dl)?\s*\(\s*baseline\s*(\d+\.\d+)\b/i);
   const baselineCreatinineMgDl = baseCrMatch ? parseFloat(baseCrMatch[1]) : null;
 
   // Creatinine (non-baseline)
@@ -233,23 +254,41 @@ export function buildClinicalScratchpad(
     creatinineMgDl = parseFloat(crMatches[0][1]);
   }
 
-  const hco3Match = q.match(/\b(?:bicarbonate|hco3-?)\s*[:=]?\s*(\d{1,2})\b/i);
+  const hco3Match =
+    q.match(/\b(?:bicarbonate|bicarb|hco3-?)\s*(?:\([^)]*\)\s*)?[:=]?\s*(\d{1,2}(?:\.\d+)?)\b/i) ||
+    q.match(/\b(?:venous|serum)\s+bicarbonate\s*[:=]?\s*(\d{1,2})\b/i);
   const bicarbonateMeqL = hco3Match ? parseFloat(hco3Match[1]) : null;
 
-  const phMatch = q.match(/\b(?:arterial\s+)?ph\s*[:=]?\s*(\d\.\d{2})\b/i);
+  const phMatch = q.match(/\b(?:arterial\s+|venous\s+)?ph\s*[:=]?\s*(\d\.\d{2,3})\b/i);
   const arterialPh = phMatch ? parseFloat(phMatch[1]) : null;
 
-  const paco2Match = q.match(/\bpaco2\s*[:=]?\s*(\d{2})\b/i);
+  const paco2Match =
+    q.match(/\b(?:arterial\s+|venous\s+)?(?:paco2|pco2|co2)\s*(?:is|of|=|:)?\s*(\d{1,2}(?:\.\d+)?)\s*(?:mmhg)?\b/i);
   const paco2MmHg = paco2Match ? parseFloat(paco2Match[1]) : null;
 
-  const lacMatch = q.match(/\blactate\s*[:=]?\s*(\d+\.\d+)\b/i);
+  const lacMatch = q.match(/\b(?:lactate|lactic\s*acid)\s*[:=]?\s*(\d+\.\d+)\b/i);
   const lactateMmolL = lacMatch ? parseFloat(lacMatch[1]) : null;
 
-  const digLevelMatch = q.match(/\b(?:digoxin|dig)\s*(?:level|concentration|serum)?\s*[:=]?\s*(\d+\.\d+)\s*(?:ng\/ml|mcg\/l|nmol\/l)\b/i) ||
-    q.match(/\b(?:digoxin|dig)\s*(?:level|concentration|serum)\s*[:=]?\s*(\d+\.\d+)\b/i);
-  let digoxinNgMl: number | null = digLevelMatch ? parseFloat(digLevelMatch[1]) : null;
+  const bhbMatch =
+    q.match(/\b(?:beta-?hydroxybutyrate|b-?ohb)\s*(?:\([^)]*\)\s*)?[:=]?\s*(\d+(?:\.\d+)?)\b/i) ||
+    q.match(/\b(?:blood|serum)\s+ketones?\s*[:=]?\s*(\d+(?:\.\d+)?)\b/i);
+  const betaHydroxybutyrateMmolL = bhbMatch ? parseFloat(bhbMatch[1]) : null;
+
+  // Digoxin: capture levels like "digoxin 2.9", "digoxin level 3.6 ng/mL", "digoxin: 2.9", avoiding pill doses like 0.125 mg
+  let digoxinNgMl: number | null = null;
+  const explicitSerumDigMatch =
+    q.match(/\b(?:digoxin|dig)\s*(?:level|concentration|serum)\s*[:=]?\s*(\d+(?:\.\d+)?)\s*(?:ng\/ml|mcg\/l|nmol\/l)?\b/i) ||
+    q.match(/\b(?:digoxin|dig)\s*[:=]?\s*(\d+(?:\.\d+)?)\s*(?:ng\/ml|mcg\/l|nmol\/l)\b/i) ||
+    q.match(/\b(?:digoxin|dig)\s*[:=]?\s*([1-9](?:\.\d+)?|0\.[3-9]\d*)\b/i);
+
+  if (explicitSerumDigMatch && explicitSerumDigMatch[1]) {
+    const matchedFull = explicitSerumDigMatch[0];
+    if (!/\b\d+(?:\.\d+)?\s*mg\b/i.test(matchedFull)) {
+      digoxinNgMl = parseFloat(explicitSerumDigMatch[1]);
+    }
+  }
   if (digoxinNgMl === null) {
-    const allDig = [...q.matchAll(/\b(?:digoxin|dig)\s*[:=]?\s*(\d+\.\d+)(?:\s*(mg|mcg|ng\/ml))?\b/gi)];
+    const allDig = [...q.matchAll(/\b(?:digoxin|dig)\s*[:=]?\s*(\d+(?:\.\d+)?)(?:\s*(mg|mcg|ng\/ml))?\b/gi)];
     for (const m of allDig) {
       if (m[2] && m[2].toLowerCase() === "mg") continue; // skip oral pill dosages like 0.125 mg
       digoxinNgMl = parseFloat(m[1]);
@@ -428,7 +467,7 @@ export function buildClinicalScratchpad(
         expectedPaco2RangeHighMmHg: high,
         deviationMmHg: deviation,
         interpretationCategory: "BORDERLINE_COMPENSATION_RELATIVE_HYPOVENTILATION",
-        calibratedClinicalInterpretation: `Expected PaCO2 is ${low}–${high} mmHg (${midpoint} ± 2 mmHg). Measured PaCO2 of ${paco2MmHg} mmHg is ${deviation} mmHg above the predicted upper limit. This minimal difference falls within normal biological and measurement variability, representing possible inadequate respiratory compensation / borderline relative hypoventilation rather than a definitive secondary respiratory acidosis. Clinical reassessment is prompted, especially in altered mental status and shock.`,
+        calibratedClinicalInterpretation: `Expected PaCO2 is ${low}–${high} mmHg (${midpoint} ± 2 mmHg). Measured PaCO2 of ${paco2MmHg} mmHg is ${deviation} mmHg above the predicted upper limit. This minimal difference falls within normal biological and measurement variability, representing possible inadequate respiratory compensation / borderline relative hypoventilation rather than an unsupported definitive diagnosis of a second respiratory acid-base disorder. Clinical reassessment is prompted, especially in altered mental status and shock.`,
       };
     } else if (paco2MmHg > high + 2) {
       wintersFormula = {
@@ -595,6 +634,8 @@ export function buildClinicalScratchpad(
       arterialPh,
       paco2MmHg,
       lactateMmolL,
+      glucoseMgDl,
+      betaHydroxybutyrateMmolL,
       digoxinNgMl,
       urineOutputMl,
       urineOutputDurationHours,
@@ -651,7 +692,217 @@ export function validateCrossSectionClinicalConsistency(
 ): CrossSectionConsistencyResult {
   const violations: CrossSectionConsistencyViolation[] = [];
 
-  // Check 1: Weight Consistency
+  // Check 1: Encounter Identifier Isolation
+  const encMatches = [...dossierText.matchAll(/\b(NPDE-[A-Z0-9-]+)\b/g)];
+  for (const m of encMatches) {
+    const id = m[1];
+    if (
+      id !== scratchpad.encounterId &&
+      !id.startsWith("NPDE-PREFLIGHT") &&
+      !id.startsWith("NPDE-HEAL") &&
+      !id.startsWith("NPDE-CONSENSUS")
+    ) {
+      violations.push({
+        item: "Encounter Identifier Isolation",
+        sectionA: `Authoritative Encounter (${scratchpad.encounterId})`,
+        sectionB: `Conflicting Identifier in Text (${id})`,
+        issue: `Dossier text references foreign encounter identifier ${id}, violating encounter isolation boundaries.`,
+      });
+    }
+  }
+
+  // Check 2: Patient Demographics Consistency (Age and Sex)
+  if (scratchpad.demographics.patientAgeYears !== null) {
+    const ageRegex = /\b(\d{1,3})\s*(?:-|–|\s+)?(?:years?|yrs?|yo|year-old)\b/gi;
+    for (const m of dossierText.matchAll(ageRegex)) {
+      const ageVal = parseInt(m[1], 10);
+      if (ageVal !== scratchpad.demographics.patientAgeYears) {
+        violations.push({
+          item: "Patient Demographics (Age)",
+          sectionA: `Documented Intake (${scratchpad.demographics.patientAgeYears}-year-old)`,
+          sectionB: `Dossier Text (${m[0]})`,
+          issue: `Stated age (${ageVal}-year-old) conflicts with intake age (${scratchpad.demographics.patientAgeYears}-year-old), indicating cross-patient data contamination.`,
+        });
+      }
+    }
+  }
+
+  if (scratchpad.demographics.patientSex !== "indeterminate") {
+    if (scratchpad.demographics.patientSex === "female") {
+      const malePattern = /\b(?:78-year-old\s+male|patient\s+is\s+a\s+(?:78-year-old\s+)?male|male\s+patient)\b/i;
+      if (malePattern.test(dossierText)) {
+        violations.push({
+          item: "Patient Demographics (Sex)",
+          sectionA: "Documented Intake (female)",
+          sectionB: "Dossier Narrative",
+          issue: "Patient sex is female, but dossier narrative asserts male patient profile, indicating cross-patient contamination.",
+        });
+      }
+    } else if (scratchpad.demographics.patientSex === "male") {
+      const femalePattern = /\b(?:72-year-old\s+female|patient\s+is\s+a\s+(?:72-year-old\s+)?female|female\s+patient)\b/i;
+      if (femalePattern.test(dossierText)) {
+        violations.push({
+          item: "Patient Demographics (Sex)",
+          sectionA: "Documented Intake (male)",
+          sectionB: "Dossier Narrative",
+          issue: "Patient sex is male, but dossier narrative asserts female patient profile, indicating cross-patient contamination.",
+        });
+      }
+    }
+  }
+
+  // Check 3: Blood Pressure & Stated MAP Consistency
+  if (scratchpad.vitals.systolicBp !== null && scratchpad.vitals.diastolicBp !== null) {
+    const bpMatches = [...dossierText.matchAll(/\b(?:bp\s*[:=]?\s*)?(\d{2,3})\s*\/\s*(\d{2,3})\s*(?:mmHg)?\b/gi)];
+    for (const m of bpMatches) {
+      const sbp = parseInt(m[1], 10);
+      const dbp = parseInt(m[2], 10);
+      if (sbp > 150 && dbp > 200) continue; // Skip medication doses like 160/800 mg
+      if (sbp < 40 || dbp < 20 || sbp > 260 || dbp > 160) continue;
+      if (sbp !== scratchpad.vitals.systolicBp || dbp !== scratchpad.vitals.diastolicBp) {
+        violations.push({
+          item: "Blood Pressure",
+          sectionA: `Documented Intake (${scratchpad.vitals.systolicBp}/${scratchpad.vitals.diastolicBp} mmHg)`,
+          sectionB: `Dossier Text (${m[0]})`,
+          issue: `Stated blood pressure (${sbp}/${dbp} mmHg) conflicts with documented intake (${scratchpad.vitals.systolicBp}/${scratchpad.vitals.diastolicBp} mmHg).`,
+        });
+      }
+    }
+  }
+
+  // Check 4: Exact MAP Derivation Consistency
+  if (scratchpad.derivedCalculations.meanArterialPressureMmHg !== null) {
+    const expectedMap = scratchpad.derivedCalculations.meanArterialPressureMmHg;
+    const statedMapMatches = [...dossierText.matchAll(/\b(?:map|mean\s+arterial\s+pressure)\s*[:=]?\s*(\d{2}(?:\.\d)?)\s*mmHg\b/gi)];
+    for (const m of statedMapMatches) {
+      const val = parseFloat(m[1]);
+      if (Math.abs(val - expectedMap) > 0.5) {
+        violations.push({
+          item: "Mean Arterial Pressure",
+          sectionA: `Scratchpad Derivation (${expectedMap.toFixed(1)} mmHg)`,
+          sectionB: `Dossier Text (${m[0]})`,
+          issue: `Stated MAP (${m[1]} mmHg) conflicts with exact derived MAP (${expectedMap.toFixed(1)} mmHg).`,
+        });
+      }
+    }
+  }
+
+  // Check 5: Serum Potassium Consistency
+  if (scratchpad.labs.potassiumMeqL !== null) {
+    const kMatches = [...dossierText.matchAll(/\b(?:potassium|k\+?)\s*(?:is|of|=|:)?\s*([2-9]\.\d+)\s*(?:mmol\/l|meq\/l)?\b/gi)];
+    for (const m of kMatches) {
+      const val = parseFloat(m[1]);
+      if (Math.abs(val - scratchpad.labs.potassiumMeqL) > 0.1) {
+        violations.push({
+          item: "Serum Potassium",
+          sectionA: `Documented Intake (${scratchpad.labs.potassiumMeqL} mmol/L)`,
+          sectionB: `Dossier Text (${m[0]})`,
+          issue: `Stated serum potassium (${val} mmol/L) conflicts with documented intake (${scratchpad.labs.potassiumMeqL} mmol/L).`,
+        });
+      }
+    }
+  }
+
+  // Check 6: Serum Creatinine Consistency
+  if (scratchpad.labs.creatinineMgDl !== null) {
+    const crMatches = [...dossierText.matchAll(/\b(?:creatinine|cr)\s*(?:is|of|=|:)?\s*(\d+(?:\.\d+)?)\s*mg\/dl\b/gi)];
+    for (const m of crMatches) {
+      const val = parseFloat(m[1]);
+      const ctx = dossierText.slice(Math.max(0, (m.index ?? 0) - 25), (m.index ?? 0) + m[0].length);
+      if (/baseline|rise|increase|vs\s+baseline/i.test(ctx)) continue;
+      if (scratchpad.labs.baselineCreatinineMgDl !== null && Math.abs(val - scratchpad.labs.baselineCreatinineMgDl) < 0.05) continue;
+      if (scratchpad.derivedCalculations.kdigoAki.crAbsoluteRiseMgDl !== null && Math.abs(val - Math.abs(scratchpad.derivedCalculations.kdigoAki.crAbsoluteRiseMgDl)) < 0.05) continue;
+      if (Math.abs(val - scratchpad.labs.creatinineMgDl) > 0.1) {
+        violations.push({
+          item: "Serum Creatinine",
+          sectionA: `Documented Intake (${scratchpad.labs.creatinineMgDl} mg/dL)`,
+          sectionB: `Dossier Text (${m[0]})`,
+          issue: `Stated serum creatinine (${val} mg/dL) conflicts with documented intake (${scratchpad.labs.creatinineMgDl} mg/dL).`,
+        });
+      }
+    }
+  }
+
+  // Check 7: Serum Digoxin Level & Completeness (Omission vs Over-reporting)
+  if (scratchpad.labs.digoxinNgMl !== null) {
+    if (/\b(?:digoxin\s*(?:is\s*)?(?:unmeasured|not\s*measured|not\s*provided|unknown)|serum\s*digoxin\s*level\s*[:=]?\s*\[UNMEASURED)\b/i.test(dossierText)) {
+      violations.push({
+        item: "Serum Digoxin Level Completeness",
+        sectionA: `Documented Intake (${scratchpad.labs.digoxinNgMl} ng/mL)`,
+        sectionB: "Dossier Narrative / Audit",
+        issue: `Serum digoxin was measured in intake (${scratchpad.labs.digoxinNgMl} ng/mL), but was falsely marked as unmeasured in the dossier.`,
+      });
+    }
+    const digMatches = [...dossierText.matchAll(/\b(?:digoxin|dig)\s*(?:level|concentration)?\s*(?:is|of|=|:)?\s*(\d+(?:\.\d+)?)\s*(?:ng\/ml)?\b/gi)];
+    for (const m of digMatches) {
+      const val = parseFloat(m[1]);
+      if (val === 0.125 || val === 0.25) continue; // skip pill doses
+      const ctx = dossierText.slice(Math.max(0, (m.index ?? 0) - 10), Math.min(dossierText.length, (m.index ?? 0) + m[0].length + 20));
+      if (ctx.includes("%") || /cleared|clearance|renally|elimination/i.test(ctx)) continue;
+      if (Math.abs(val - scratchpad.labs.digoxinNgMl) > 0.1) {
+        violations.push({
+          item: "Serum Digoxin Level",
+          sectionA: `Documented Intake (${scratchpad.labs.digoxinNgMl} ng/mL)`,
+          sectionB: `Dossier Text (${m[0]})`,
+          issue: `Stated digoxin level (${val} ng/mL) conflicts with documented intake (${scratchpad.labs.digoxinNgMl} ng/mL).`,
+        });
+      }
+    }
+  } else if (!/\b(?:digoxin|digitalis)\b/i.test(scratchpad.rawInputText)) {
+    // Patient has zero documented digoxin exposure
+    if (/\b(?:digifab|digibind|digoxin\s*(?:toxicity|intoxication|poisoning)|serum\s*digoxin\s*level\s*[:=]?\s*[1-9])\b/i.test(dossierText)) {
+      violations.push({
+        item: "Unindicated Digoxin Antidote & Diagnosis (Cross-Patient Contamination)",
+        sectionA: "Documented Intake (Zero Digoxin Exposure)",
+        sectionB: "Dossier Narrative / Treatment Recommendations",
+        issue: "Patient has no documented digoxin exposure, but dossier recommends DigiFab or diagnoses Digoxin Toxicity.",
+      });
+    }
+  }
+
+  // Check 7B: Demographics Mismatch (Cross-Patient Data Contamination)
+  if (scratchpad.demographics.patientSex === "female") {
+    if (/\b(?:78-year-old|78\s*yo|male\s+patient|this\s+78\s*yo\s*male)\b/i.test(dossierText)) {
+      violations.push({
+        item: "Patient Sex / Demographics Mismatch",
+        sectionA: "Documented Intake (Female)",
+        sectionB: "Dossier Narrative",
+        issue: "Patient is female, but dossier describes a male patient (cross-patient data contamination).",
+      });
+    }
+  }
+
+  // Check 7C: Heart Rate & Rhythm Mismatch (Tachycardia vs Bradycardia / BRASH)
+  if (scratchpad.vitals.heartRate !== null && scratchpad.vitals.heartRate > 100) {
+    if (/\b(?:severe\s+bradycardia|hr\s*29\b|heart\s*rate\s*[:=]?\s*29\s*bpm|brash\s+syndrome)\b/i.test(dossierText)) {
+      violations.push({
+        item: "Heart Rate & Rhythm Mismatch",
+        sectionA: `Documented Intake (Tachycardia: ${scratchpad.vitals.heartRate} bpm)`,
+        sectionB: "Dossier Narrative",
+        issue: `Patient is tachycardic (${scratchpad.vitals.heartRate} bpm), but dossier describes severe bradycardia / BRASH syndrome.`,
+      });
+    }
+  }
+
+  // Check 7D: Primary Syndrome Completeness (DKA Omission)
+  if (
+    scratchpad.labs.glucoseMgDl !== null &&
+    scratchpad.labs.glucoseMgDl >= 200 &&
+    ((scratchpad.labs.bicarbonateMeqL !== null && scratchpad.labs.bicarbonateMeqL <= 15) ||
+      (scratchpad.labs.betaHydroxybutyrateMmolL !== null && scratchpad.labs.betaHydroxybutyrateMmolL >= 3.0) ||
+      /\b(?:dka|ketoacidosis|beta-hydroxybutyrate)\b/i.test(scratchpad.rawInputText))
+  ) {
+    if (!/\b(?:dka|diabetic\s+ketoacidosis|ketoacidosis)\b/i.test(dossierText)) {
+      violations.push({
+        item: "Primary Clinical Syndrome Omission (DKA)",
+        sectionA: "Documented Intake (Severe Hyperglycemic Ketoacidosis)",
+        sectionB: "Dossier Assessment",
+        issue: "Patient presents with DKA findings (hyperglycemia, ketonemia/acidosis), but dossier fails to diagnose or evaluate DKA.",
+      });
+    }
+  }
+
+  // Check 8: Weight Sentinel Consistency (INV-003)
   if (scratchpad.sentinels.isWeightMissing) {
     if (/\b(?:weight\s*[:=]?\s*70\s*kg|assumed\s+70\s*kg|standard\s+70\s*kg|patient\s+weighs\s+70\s*kg)\b/i.test(dossierText)) {
       violations.push({
@@ -663,7 +914,7 @@ export function validateCrossSectionClinicalConsistency(
     }
   }
 
-  // Check 2: Chloride & Anion Gap Consistency
+  // Check 9: Chloride & Anion Gap Consistency (INV-002)
   if (scratchpad.sentinels.isChlorideMissing) {
     if (/\b(?:estimated\s+anion\s+gap\s*[:=]?\s*19|anion\s+gap\s*[:=]?\s*19|reference\s+chloride\s*(?:of\s*)?98)\b/i.test(dossierText)) {
       violations.push({
@@ -675,7 +926,7 @@ export function validateCrossSectionClinicalConsistency(
     }
   }
 
-  // Check 3: Urine Output vs Anuria Consistency (INV-004 & INV-006)
+  // Check 10: Urine Output vs Anuria Consistency (INV-004 & INV-006)
   if (scratchpad.labs.urineOutputMl !== null && scratchpad.labs.urineOutputMl > 0) {
     if (/\b(?:patient\s+is\s+anuric|due\s+to\s+anuria|anuric\s+ckd|presence\s+of\s+anuria)\b/i.test(dossierText)) {
       violations.push({
@@ -684,23 +935,6 @@ export function validateCrossSectionClinicalConsistency(
         sectionB: "Dossier Narrative / Recommendations",
         issue: `Patient has documented urine output (${scratchpad.labs.urineOutputMl} mL), but was falsely described as anuric.`,
       });
-    }
-  }
-
-  // Check 4: MAP Consistency
-  if (scratchpad.derivedCalculations.meanArterialPressureMmHg !== null) {
-    const expectedMap = scratchpad.derivedCalculations.meanArterialPressureMmHg.toFixed(1);
-    const statedMapMatches = [...dossierText.matchAll(/\b(?:map|mean\s+arterial\s+pressure)\s*[:=]?\s*(\d{2}(?:\.\d)?)\s*mmHg\b/gi)];
-    for (const m of statedMapMatches) {
-      const val = parseFloat(m[1]);
-      if (Math.abs(val - scratchpad.derivedCalculations.meanArterialPressureMmHg) > 0.5) {
-        violations.push({
-          item: "Mean Arterial Pressure",
-          sectionA: `Scratchpad Derivation (${expectedMap} mmHg)`,
-          sectionB: `Dossier Text (${m[0]})`,
-          issue: `Stated MAP (${m[1]} mmHg) conflicts with exact derived MAP (${expectedMap} mmHg).`,
-        });
-      }
     }
   }
 

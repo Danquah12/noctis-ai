@@ -76,6 +76,19 @@ export function evaluateMandatoryReleaseRule(
     blockingFailures.push("Unsafe medication recommendation: Rapid IV calcium push in digitalis toxicity.");
   }
 
+  // 5. Cross-Patient Data Contamination & Encounter Boundary Violation
+  const crossSectionViolations = violations.filter(
+    (v) =>
+      v.ruleId.includes("CONTAMINATION") ||
+      v.ruleId.includes("ISOLATION") ||
+      v.ruleId.includes("OMISSION") ||
+      v.ruleId.includes("CROSS-SECTION")
+  );
+  if (crossSectionViolations.length > 0) {
+    const details = crossSectionViolations.map((v) => v.description).join("; ");
+    blockingFailures.push(`CLINICAL_VALIDATION_FAILED — ENCOUNTER_CONTEXT_MISMATCH: ${details}`);
+  }
+
   return {
     passed: blockingFailures.length === 0,
     blockingFailures,

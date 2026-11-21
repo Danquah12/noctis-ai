@@ -20,6 +20,8 @@ import { auditAndEnforceClinicalDossier } from "./noctis-clinical-preflight-audi
 import { healCandidateClinicalOutput } from "./noctis-self-healing-reflection.ts";
 import { arbitrateClinicalConsensus } from "./noctis-clinical-consensus.ts";
 import { generateBrashDigoxinMalaEmergencyDossier } from "./noctis-brash-digoxin-engine.ts";
+import { buildImmutablePatientContext } from "./noctis-patient-context.ts";
+import { generateDkaSepticShockEmergencyDossier } from "./noctis-dka-sepsis-engine.ts";
 /**
  * Noctis Patient Diagnostic & Clinical Decision Support Engine (NPDE)
  *
@@ -2291,8 +2293,10 @@ The patient presents with ${dossier.patientData.chiefComplaint || "an acute clin
   return sections.join("\n");
 }
 
-function executeNaturalPatientDiagnosticQuery(question: string): string | null {
+function executeNaturalPatientDiagnosticQuery(question: string, explicitEncounterId?: string): string | null {
   const q = question.trim();
+  const encMatch = q.match(/\b(NPDE-[A-Z0-9-]+)\b/i);
+  const encId = explicitEncounterId || (encMatch ? encMatch[1] : `NPDE-INTAKE-${Date.now().toString(36).toUpperCase()}`);
 
   // 0. ENCOUNTER CONTAMINATION & CROSS-SCENARIO INTEGRITY GATE
   const contamination = detectEncounterContamination(q);
@@ -2311,15 +2315,27 @@ function executeNaturalPatientDiagnosticQuery(question: string): string | null {
 > **Safety Protocol Enforcement:** Under the Noctis Clinical Intelligence Safety Invariants, the system strictly refuses to synthesize an amalgamated diagnosis across unlinked clinical encounters. Findings have been isolated into distinct patient records. Immediate clinician verification is required.`;
   }
 
-  // Dedicated Handler: Emergent BRASH Syndrome, Digoxin Toxicity, MALA & Complex Multi-System Shock
+  // Canonical Immutable Patient Context
+  const context = buildImmutablePatientContext(q, encId);
+
+  // Dedicated Handler 1: Emergent Diabetic Ketoacidosis (DKA), Septic Shock & Multi-System Collapse
+  if (context.syndromes.primarySyndrome === "DKA_SEPSIS_MULTISYSTEM" || context.syndromes.isDka) {
+    return generateDkaSepticShockEmergencyDossier(context);
+  }
+
+  // Dedicated Handler 2: Emergent BRASH Syndrome, Digoxin Toxicity, MALA & Complex Multi-System Shock
   const isBrashOrDigoxinCrisis =
-    (/\b(brash|digoxin|digibind|digifab|mala|metformin.*lactic)\b/i.test(q) && /\b(potassium|bradycardia|shock|renal|kidney|creatinine)\b/i.test(q)) ||
+    context.syndromes.primarySyndrome === "BRASH_DIGOXIN_CRISIS" ||
+    context.syndromes.isBrash ||
+    context.syndromes.isDigoxinToxicity ||
+    ((/\b(brash|digoxin|digibind|digifab)\b/i.test(q) || (/\b(mala|metformin.*lactic)\b/i.test(q) && context.cardiac.hasBradycardia)) &&
+      /\b(potassium|bradycardia|shock|renal|kidney|creatinine)\b/i.test(q) &&
+      !context.syndromes.isDka &&
+      context.medications.hasDigoxinExposure) ||
     (/\b(digoxin|digitalis)\b/i.test(q) && /\b(toxicity|3\.6|level|junctional|bradycardia|heart block|av block)\b/i.test(q)) ||
     (/\b(78-year-old|78\s*yo|78\s*y\/o)\b/i.test(q) && /\b(digoxin|carvedilol|spironolactone|trimethoprim|metformin)\b/i.test(q));
 
-  if (isBrashOrDigoxinCrisis) {
-    const encMatch = q.match(/\b(NPDE-[A-Z0-9]+)\b/i);
-    const encId = encMatch ? encMatch[1] : `NPDE-BRASH-DIG-${Date.now().toString(36).toUpperCase()}`;
+  if (isBrashOrDigoxinCrisis && !context.syndromes.isDka && (context.medications.hasDigoxinExposure || context.cardiac.hasBradycardia)) {
     return generateBrashDigoxinMalaEmergencyDossier(encId, q);
   }
 
@@ -2332,8 +2348,6 @@ function executeNaturalPatientDiagnosticQuery(question: string): string | null {
     (/\bckd\b/i.test(q) && /\b(?:potassium|k\+)\b/i.test(q) && /\b(?:weakness|lisinopril|spironolactone|qrs)\b/i.test(q));
 
   if (isHyperkalemiaCrisis) {
-    const encMatch = q.match(/\b(NPDE-[A-Z0-9]+)\b/i);
-    const encId = encMatch ? encMatch[1] : `NPDE-HYPERK-${Date.now().toString(36).toUpperCase()}`;
     return generateIsolatedHyperkalemiaDossier(encId, q);
   }
 
@@ -2697,14 +2711,19 @@ When serum lipase is elevated without evidence of pancreatic inflammation, clini
   return null;
 }
 
-export function handleNaturalPatientDiagnosticQuery(question: string): string | null {
+export function handleNaturalPatientDiagnosticQuery(question: string, explicitEncounterId?: string): string | null {
   const q = question.trim();
+  const encMatch = q.match(/\b(NPDE-[A-Z0-9-]+)\b/i);
+  const encounterId = explicitEncounterId || (encMatch ? encMatch[1] : `NPDE-INTAKE-${Date.now().toString(36).toUpperCase()}`);
+
   if (/\b(?:consensus|tri-specialist|specialist\s+swarm|multi-specialist)\b/i.test(q)) {
-    return arbitrateClinicalConsensus(q).synthesizedClinicalReport;
+    return arbitrateClinicalConsensus(q, encounterId).synthesizedClinicalReport;
   }
-  const rawResponse = executeNaturalPatientDiagnosticQuery(q);
+  const rawResponse = executeNaturalPatientDiagnosticQuery(q, encounterId);
   if (!rawResponse) return null;
-  return healCandidateClinicalOutput(rawResponse, q).healedOutputText;
+  return healCandidateClinicalOutput(rawResponse, q, encounterId).healedOutputText;
 }
 
 export { generateBrashDigoxinMalaEmergencyDossier } from "./noctis-brash-digoxin-engine.ts";
+export { generateDkaSepticShockEmergencyDossier } from "./noctis-dka-sepsis-engine.ts";
+export { buildImmutablePatientContext } from "./noctis-patient-context.ts";

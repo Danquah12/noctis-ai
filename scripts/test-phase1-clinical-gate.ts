@@ -123,7 +123,7 @@ Physical exam confirms patient responds to sternal rub with distant heart sounds
   assertCondition("Cryptographic SHA-256 audit seal successfully generated", auditResult.auditSeal.length === 64);
 
   console.log("\nTEST 4: End-to-End Pipeline Execution (handleNaturalPatientDiagnosticQuery)");
-  const fullDossier = handleNaturalPatientDiagnosticQuery(case1Prompt);
+  const fullDossier = handleNaturalPatientDiagnosticQuery(case1Prompt, "CASE-CONSISTENCY-001");
   assertCondition("Pipeline returned non-null dossier", fullDossier !== null);
   if (fullDossier) {
     assertCondition("Contains P0 Emergency Classification", /P0\s+IMMEDIATE\s+EMERGENCY/i.test(fullDossier));

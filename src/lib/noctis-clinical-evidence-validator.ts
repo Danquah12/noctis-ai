@@ -557,7 +557,7 @@ export function validateClinicalEvidenceIntegrity(
   }
 
   // 20. VAL-WINTERS-BORDERLINE-CALIBRATION: Calibrated Acid-Base Interpretation Gate
-  const dogmaticWintersRegex = /\bdefinitive(?:ly)?\s+(?:superimposed\s+)?(?:secondary\s+)?respiratory\s+acidosis\b/gi;
+  const dogmaticWintersRegex = /(?<!rather than (?:an?\s+)?|not (?:an?\s+)?|never (?:an?\s+)?)\bdefinitive(?:ly)?\s+(?:superimposed\s+)?(?:secondary\s+)?respiratory\s+acidosis\b/gi;
   if (dogmaticWintersRegex.test(sanitized)) {
     sanitized = sanitized.replace(
       dogmaticWintersRegex,
