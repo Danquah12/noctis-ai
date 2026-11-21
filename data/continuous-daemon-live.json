@@ -1,9 +1,9 @@
 {
   "daemonState": "RUNNING_AUTONOMOUS",
-  "cumulativeEpochs": 2818693,
-  "totalEvaluatedSoFar": 11768599044,
-  "latestEpochId": "EPOCH-NOCTIS-2959220",
-  "timestamp": "2026-11-21T12:03:18.101Z",
+  "cumulativeEpochs": 2873363,
+  "totalEvaluatedSoFar": 12013684654,
+  "latestEpochId": "EPOCH-NOCTIS-3013890",
+  "timestamp": "2026-11-21T13:35:19.488Z",
   "domainsAudited": 120,
   "scenariosPerEpoch": 4483,
   "batchSize": 10,

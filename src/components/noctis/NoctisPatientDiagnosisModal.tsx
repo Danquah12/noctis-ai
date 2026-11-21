@@ -71,6 +71,7 @@ import { evaluateHeartFailureGdmt, calculateCha2ds2Vasc } from "@/lib/noctis-car
 import { evaluateSepsisHourOneBundle, calculateCurb65 } from "@/lib/noctis-infectious-disease-engine";
 import { analyzeCgmProfile } from "@/lib/noctis-endocrine-metabolic-engine";
 import { evaluateBeersCriteria } from "@/lib/noctis-neurology-geriatrics-engine";
+import { NoctisTriSpecialistConsensusSection } from "./NoctisTriSpecialistConsensusSection";
 
 interface NoctisPatientDiagnosisModalProps {
   open: boolean;
@@ -256,7 +257,7 @@ export function NoctisPatientDiagnosisModal({
   const [copiedSoap, setCopiedSoap] = useState(false);
   const [specialtySubTab, setSpecialtySubTab] = useState<"cardio" | "infectious" | "endocrine" | "geriatric">("cardio");
   const [activeTab, setActiveTab] = useState<
-    "differentials" | "adaptive" | "intake" | "records_upload" | "trends" | "pgx_safety" | "soap" | "specialists"
+    "differentials" | "consensus" | "adaptive" | "intake" | "records_upload" | "trends" | "pgx_safety" | "soap" | "specialists"
   >("differentials");
 
   // Real-Time SSE Inference Streaming State
@@ -693,6 +694,7 @@ Please provide comprehensive physician-grade clinical decision support:
         <div className="flex border-b border-neutral-800 px-6 pt-3 bg-neutral-900/50 gap-2 overflow-x-auto no-scrollbar">
           {[
             { id: "differentials", label: "Ranked Differentials", count: differentials.length, icon: Activity },
+            { id: "consensus", label: "Tri-Specialist Consensus", count: "Phase 4", icon: ShieldAlert },
             { id: "specialists", label: "Specialty CDS Suites", count: "7 Engines", icon: Stethoscope },
             { id: "records_upload", label: "Upload & Scan Records", count: ocrIntake ? `${ocrIntake.detectedLabs.length} labs` : null, icon: UploadCloud },
             { id: "trends", label: "Lab Trends & Velocity", count: longitudinal.analytesEvaluated.length ? `${longitudinal.analytesEvaluated.length}` : null, icon: TrendingUp },
@@ -731,6 +733,18 @@ Please provide comprehensive physician-grade clinical decision support:
 
         {/* Tab Content Body */}
         <div className="p-6 overflow-y-auto flex-1 space-y-6">
+          {/* TAB: TRI-SPECIALIST CONSENSUS & PRE-FLIGHT HEALING (PHASE 4) */}
+          {activeTab === "consensus" && (
+            <NoctisTriSpecialistConsensusSection
+              rawIntakeText={
+                uploadedRecordText ||
+                `Patient: ${ageYears}-year-old ${biologicalSex}. Chief Complaint: ${chiefComplaint}. Vitals: ${systolicBp && diastolicBp ? `BP ${systolicBp}/${diastolicBp} mmHg` : ""}, HR ${heartRate || ""} bpm, RR ${respiratoryRate || ""} /min, SpO2 ${spo2 || ""}% on room air, Temp ${temperatureC || ""}°C. Medications: ${patientData.currentMedications.join(", ")}. Allergies: ${patientData.knownAllergies.join(", ")}. Past Medical History: ${patientData.pastMedicalHistory.join(", ")}.`
+              }
+              encounterId={completeDossier.dossierId}
+              onExportFhir={handleExportFhirBundle}
+            />
+          )}
+
           {/* TAB 1: RANKED DIFFERENTIALS */}
           {activeTab === "differentials" && (
             <div className="space-y-4">
