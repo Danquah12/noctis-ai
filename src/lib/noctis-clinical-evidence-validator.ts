@@ -254,6 +254,26 @@ export function validateClinicalEvidenceIntegrity(
     });
   }
 
+  // 8B. VAL-ELECTROLYTE-CONFUSION: Electrolyte Conflation Veto (e.g. Magnesium misread as Potassium)
+  const isMgInputWithoutLowK =
+    isHypermagnesemicInput && !/\b(potassium\s*<\s*3\.5|k\+\s*<\s*3\.5|documented\s+hypokalemia)\b/i.test(inputLower);
+  const falseHypokalemiaRegex = /\b(?:Severe\s+Hypokalemia|potassium\s+(?:chloride|kcl)|administer\s+(?:iv\s+)?(?:potassium|kcl))\b/gi;
+  if (isMgInputWithoutLowK && falseHypokalemiaRegex.test(sanitized)) {
+    sanitized = sanitized.replace(
+      falseHypokalemiaRegex,
+      "Severe Hypermagnesemia (ICD-10: E83.42) with Bradycardia & Shock: Consider STAT IV Calcium Gluconate (10% 10-20 mL) for membrane antagonism and Emergent Hemodialysis"
+    );
+    violations.push({
+      ruleId: "VAL-ELECTROLYTE-CONFUSION",
+      ruleName: "Electrolyte Conflation Veto (Magnesium vs Potassium Confusion Gate)",
+      severity: "CRITICAL",
+      clinicalRationale:
+        "Conflated serum magnesium with potassium, falsely diagnosing hypokalemia and ordering potassium repletion in CKD Stage 5. Exogenous potassium administration during bradycardia in advanced renal failure risks lethal hyperkalemia.",
+      detectedText: "Serum magnesium misinterpreted as potassium deficiency with potassium chloride recommendation",
+      remediatedText: "Re-anchored primary diagnosis to Severe Hypermagnesemia (E83.42) with IV Calcium Gluconate and Emergent Hemodialysis",
+    });
+  }
+
   // 9. VAL-CKD-ANURIA: Renal Functional Reserve Gate (No assuming anuria solely from CKD Stage 5)
   const ckdAnuriaAssumptionRegex = /\b(?:due to ckd 5 anuria|ckd\s*(?:stage\s*)?5\s+(?:anuria|causes anuria|means anuria|proves anuria))\b/gi;
   if (ckdAnuriaAssumptionRegex.test(sanitized)) {

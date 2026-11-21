@@ -112,6 +112,7 @@ export function evaluateCircuitBreaker(candidateText: string): CircuitBreakerSta
     /\b(hypermagnesemia|magnesium|mg\b)\s*(?:is|=|:)?\s*(?:[4-9]\.\d|[1-9]\d\.\d|8\.5)\b/i.test(text) ||
     /\b(hypermagnesemia|magnesium\s+toxicity)\b/i.test(text);
   const givesMgSo4 = /\b(?:administer|give|start|infuse|bolus|order|prescribe)\s+(?:iv\s+)?(?:magnesium\s+sulfate|mgso4)\b/i.test(text);
+  const givesKClInHypermag = isHypermagCandidate && /\b(?:potassium chloride|kcl|treat(?:ing)?\s+hypokalemia)\b/i.test(text) && !/\b(potassium\s*<\s*3\.5|k\+\s*<\s*3\.5)\b/i.test(text);
 
   if (potassiumMatch && parseFloat(potassiumMatch[1]) >= 6.0 && dischargeMatch) {
     const kVal = parseFloat(potassiumMatch[1]);
@@ -146,6 +147,17 @@ export function evaluateCircuitBreaker(candidateText: string): CircuitBreakerSta
       observedValue: "Magnesium sulfate administration ordered during hypermagnesemic state",
       expectedConstraint: "Magnesium sulfate is contraindicated in hypermagnesemia (compounds cardiotoxicity and shock)",
       mathematicalProof: "VIOLATION: Exogenous magnesium administration during active hypermagnesemia exacerbates AV conduction block and vasodilation. STAT IV Calcium Gluconate indicated.",
+    });
+  } else if (givesKClInHypermag) {
+    evaluations.push({
+      id: "INV-MED-01",
+      type: "CLINICAL_SAFETY",
+      name: "Electrolyte Conflation & Hypermagnesemia Invariant (Potassium Chloride Veto)",
+      passed: false,
+      severity: "CRITICAL",
+      observedValue: "Potassium chloride ordered for hypermagnesemia after misinterpreting serum magnesium as potassium",
+      expectedConstraint: "Exogenous potassium contraindicated without verified hypokalemia; indicated treatment is IV Calcium Gluconate",
+      mathematicalProof: "VIOLATION: Administering IV KCl to a bradycardic CKD Stage 5 patient misdiagnosed with hypokalemia risks fatal cardiac arrest.",
     });
   } else {
     evaluations.push({
