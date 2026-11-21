@@ -739,7 +739,7 @@ Please provide comprehensive physician-grade clinical decision support:
             <NoctisTriSpecialistConsensusSection
               rawIntakeText={
                 uploadedRecordText ||
-                `Patient: ${ageYears}-year-old ${biologicalSex}. Chief Complaint: ${chiefComplaint}. Vitals: ${systolicBp && diastolicBp ? `BP ${systolicBp}/${diastolicBp} mmHg` : ""}, HR ${heartRate || ""} bpm, RR ${respiratoryRate || ""} /min, SpO2 ${spo2 || ""}% on room air, Temp ${temperatureC || ""}°C. Medications: ${patientData.currentMedications.join(", ")}. Allergies: ${patientData.knownAllergies.join(", ")}. Past Medical History: ${patientData.pastMedicalHistory.join(", ")}.`
+                `Patient: ${ageYears}-year-old ${biologicalSex}. Chief Complaint: ${chiefComplaint}. Vitals: ${systolicBp && diastolicBp ? `BP ${systolicBp}/${diastolicBp} mmHg` : ""}, HR ${heartRate || ""} bpm, RR ${respiratoryRate || ""} /min, SpO2 ${spo2 || ""}% on room air, Temp ${temperatureC || ""}°C. Medications: ${(patientData.currentMedications || []).join(", ")}. Allergies: ${(patientData.allergies || []).join(", ")}. Past Medical History: ${(patientData.pastMedicalHistory || []).join(", ")}.`
               }
               encounterId={completeDossier.dossierId}
               onExportFhir={handleExportFhirBundle}

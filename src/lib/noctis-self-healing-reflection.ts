@@ -10,7 +10,7 @@
  * ============================================================================
  */
 
-import crypto from "node:crypto";
+import { sha256Sync } from "./universal-crypto.ts";
 import {
   auditAndEnforceClinicalDossier,
   type PreflightAuditorResult,
@@ -189,7 +189,7 @@ export function executeDeterministicHealing(
   }
 
   // 7. Inject Verification Seal Header if not present
-  const auditSeal = crypto.createHash("sha256").update(healed).digest("hex");
+  const auditSeal = sha256Sync(healed);
   const sealHeader = `\n\n────────────────────────────────────────\n` +
     `🛡️ **NOCTIS PRE-FLIGHT CLOSED-LOOP SELF-HEALING CERTIFICATE**\n` +
     `- **Healing Invariant Status:** 100% COMPLIANT (Zero Violations Remaining)\n` +
@@ -216,7 +216,7 @@ export function healCandidateClinicalOutput(
 ): SelfHealingResult {
   const scratchpad = buildClinicalScratchpad(rawEncounterInput, encounterId);
   const initialAudit = auditAndEnforceClinicalDossier(candidateText, rawEncounterInput, encounterId);
-  const preHealingHash = crypto.createHash("sha256").update(candidateText).digest("hex");
+  const preHealingHash = sha256Sync(candidateText);
 
   let healedOutput = initialAudit.auditedDossier;
   let critiquePrompt = "";
@@ -240,7 +240,7 @@ export function healCandidateClinicalOutput(
   // Re-audit healed output
   const finalAudit = auditAndEnforceClinicalDossier(healedOutput, rawEncounterInput, encounterId);
   const finalSanitizedDossier = finalAudit.auditedDossier;
-  const healedHash = crypto.createHash("sha256").update(finalSanitizedDossier).digest("hex");
+  const healedHash = sha256Sync(finalSanitizedDossier);
 
   return {
     encounterId,

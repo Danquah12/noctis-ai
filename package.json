@@ -26,6 +26,7 @@
     "test:external": "node --experimental-strip-types scripts/run-external-clinical-benchmarks.ts",
     "test:step5": "node --experimental-strip-types scripts/test-step5-pipeline-readiness.ts",
     "test:live": "npx tsx scripts/test-live-production-endpoint.ts",
+    "test:browser": "node scripts/verify-live-browser.mjs",
     "test:research": "node --experimental-strip-types scripts/test-deep-research.ts",
     "ingest:specs": "npx tsx scripts/ingest-noctis-specs.ts",
     "check:auth": "node scripts/check-auth-invariant.mjs",

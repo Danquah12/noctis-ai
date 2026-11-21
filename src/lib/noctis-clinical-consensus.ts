@@ -13,7 +13,7 @@
  * ============================================================================
  */
 
-import crypto from "node:crypto";
+import { sha256Sync } from "./universal-crypto.ts";
 import {
   buildClinicalScratchpad,
   type NeuroSymbolicClinicalScratchpad,
@@ -185,10 +185,7 @@ export function arbitrateClinicalConsensus(
   // 4. Pass through closed-loop self-healing pipeline for 100% gate compliance
   const healedResult = healCandidateClinicalOutput(rawConsensusText, rawEncounterInput, encounterId);
 
-  const consensusArbitrationHash = crypto
-    .createHash("sha256")
-    .update(healedResult.healedOutputText)
-    .digest("hex");
+  const consensusArbitrationHash = sha256Sync(healedResult.healedOutputText);
 
   return {
     encounterId,
