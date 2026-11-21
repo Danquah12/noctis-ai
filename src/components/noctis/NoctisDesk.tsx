@@ -6937,7 +6937,10 @@ export function NoctisDesk() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleOpenSovereignSuite("noctis-health", "Evaluate clinical CDS guidelines and emergency triage protocols")}
+                    onClick={() => {
+                      setMenu(false);
+                      setPatientDiagnosisModalOpen(true);
+                    }}
                     className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
                   >
                     <Stethoscope className="size-3.5 text-sky-400 shrink-0" />

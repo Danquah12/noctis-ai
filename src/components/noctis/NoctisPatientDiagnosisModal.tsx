@@ -241,6 +241,7 @@ export function NoctisPatientDiagnosisModal({
   const [systolicBp, setSystolicBp] = useState<number | undefined>(154);
   const [diastolicBp, setDiastolicBp] = useState<number | undefined>(96);
   const [heartRate, setHeartRate] = useState<number | undefined>(98);
+  const [respiratoryRate, setRespiratoryRate] = useState<number | undefined>(20);
   const [spo2, setSpo2] = useState<number | undefined>(96);
   const [temperatureC, setTemperatureC] = useState<number | undefined>(37.0);
 
@@ -691,7 +692,7 @@ Please provide comprehensive physician-grade clinical decision support:
         )}
 
         {/* Navigation Tabs */}
-        <div className="flex border-b border-neutral-800 px-6 pt-3 bg-neutral-900/50 gap-2 overflow-x-auto no-scrollbar">
+        <div className="flex shrink-0 border-b border-neutral-800 px-6 pt-3 bg-neutral-900/50 gap-2 overflow-x-auto no-scrollbar">
           {[
             { id: "differentials", label: "Ranked Differentials", count: differentials.length, icon: Activity },
             { id: "consensus", label: "Tri-Specialist Consensus", count: "Phase 4", icon: ShieldAlert },
@@ -1158,7 +1159,7 @@ Please provide comprehensive physician-grade clinical decision support:
                   <TrendingUp className="w-8 h-8 text-neutral-500 mx-auto" />
                   <p className="text-xs text-neutral-300">No multi-point historical lab values supplied yet.</p>
                   <p className="text-[11px] text-neutral-500 max-w-md mx-auto">
-                    Paste or upload records containing baseline and current dates (e.g. &quot;Creatinine: baseline 1.1 &rarr; current 2.4&quot;) to trigger automatic KDIGO AKI staging and velocity alerts.
+                    {'Paste or upload records containing baseline and current dates (e.g. "Creatinine: baseline 1.1 → current 2.4") to trigger automatic KDIGO AKI staging and velocity alerts.'}
                   </p>
                 </div>
               )}
@@ -1610,7 +1611,7 @@ Please provide comprehensive physician-grade clinical decision support:
                   </div>
                 ) : (
                   <p className="text-[11px] text-neutral-400 italic">
-                    Click &quot;Stream DPO Consultation&quot; to connect to your active GPU server and stream the aligned clinical assessment in real time.
+                    {'Click "Stream DPO Consultation" to connect to your active GPU server and stream the aligned clinical assessment in real time.'}
                   </p>
                 )}
               </div>

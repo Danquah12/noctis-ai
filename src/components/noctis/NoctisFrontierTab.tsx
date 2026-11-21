@@ -1224,7 +1224,7 @@ export function NoctisFrontierTab({ onSendToChat, onClose }: NoctisFrontierTabPr
                         <tr className="hover:bg-white/[0.02] transition-colors">
                           <td className="py-2.5 px-3.5 font-medium text-white/95">Patient Profile</td>
                           <td className="py-2.5 px-3.5 font-semibold text-white/95">
-                            {activeCase.ageYears}-year-old {activeCase.biologicalSex.toLowerCase()}
+                            {`${activeCase.ageYears}-year-old ${activeCase.biologicalSex.toLowerCase()}`}
                           </td>
                           <td className="py-2.5 px-3.5 text-white/60">Demographic and epidemiological baseline</td>
                         </tr>
