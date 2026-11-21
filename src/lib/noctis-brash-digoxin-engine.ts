@@ -271,12 +271,13 @@ $$\\text{MAP} = \\frac{\\text{SBP} + 2 \\times \\text{DBP}}{3} = \\frac{68 + 2(3
 - **Fold Change from Baseline:** $\\frac{4.8\\text{ mg/dL}}{2.3\\text{ mg/dL}} = \\mathbf{2.09\\times\\text{ baseline}}$
 - **KDIGO Staging Criteria Analysis:**
   - **By Fold Increase:** A $2.09\\\\times$ rise strictly satisfies **KDIGO AKI STAGE 2** ($2.0\\text{--}2.9\\\\times$ baseline). It does NOT meet the $3.0\\\\times$ threshold required for Stage 3 by ratio.
-  - **By Absolute Creatinine Increase (Conditional Stage 3):** Under KDIGO criteria, an increase in serum creatinine to $\\\\ge 4.0\\text{ mg/dL}$ with an acute rise $\\\\ge 0.5\\text{ mg/dL}$ satisfies **STAGE 3 CONDITIONALLY**, provided the rise occurred within the defined acute KDIGO timeframe (within 48 hours or verified rapid trajectory). Because the exact chronological trajectory of creatinine over preceding days is not fully established in intake, Stage 3 is a **conditional assessment** requiring timeline confirmation.
-  - **Urine Output Staging & Weight Disclosure:**
+  - **By Absolute Creatinine Increase (Conditional Stage 3):** Under KDIGO criteria, an increase in serum creatinine to $\\\\ge 4.0\\text{ mg/dL}$ with an acute rise $\\\\ge 0.5\\text{ mg/dL}$ satisfies **STAGE 3 CONDITIONALLY**, provided the rise occurred within the defined acute KDIGO timeframe (within 48 hours to 7 days). Because the exact chronological trajectory of creatinine over preceding days is not fully established in intake, Stage 3 is a **conditional assessment** requiring timeline confirmation.
+  - **Urine Output Staging & Anuria Rule (INV-006):**
     - Documented urine output: **100 mL over 8 hours (severe oliguria)**.
+    - KDIGO Stage 3 urine criteria require $< 0.3\\text{ mL/kg/h}$ for $\\\\ge 24\\text{ hours}$ OR anuria for $\\\\ge 12\\text{ hours}$. Because urine output is non-zero ($100\\text{ mL}$) and duration is 8 hours, **anuria is NOT present and CANNOT be used to establish Stage 3**.
     > [!IMPORTANT]
-    > **ZERO DATA FABRICATION INVARIANT (Patient Body Weight):**
-    > **Patient body weight was NOT PROVIDED in the clinical encounter.** Under Noctis safety invariants, assuming an arbitrary patient weight to calculate urine output in $\\text{mL/kg/h}$ is strictly prohibited. While $100\\text{ mL / 8h}$ confirms gross oliguria ($< 400\\text{--}500\\text{ mL/day}$), precise weight-normalized $\\text{mL/kg/h}$ staging requires obtaining an actual bedside weight.
+    > **ZERO DATA FABRICATION INVARIANT (Patient Body Weight & Urine Output):**
+    > **Patient body weight was NOT PROVIDED in the clinical encounter.** Missing body weight does NOT invalidate or prevent documenting measured urine output volume ($100\\text{ mL / 8h}$); it prevents calculating weight-normalized output in $\\text{mL/kg/h}$. Assuming an arbitrary patient weight is strictly prohibited.
 
 #### Calculation 3: Serum Anion Gap (Laboratory Transparency & Refusal to Fabricate)
 $$\\text{Serum Anion Gap} = [\\text{Na}^+] - ([\\text{Cl}^-] + [\\text{HCO}_3^-])$$
@@ -284,17 +285,17 @@ $$\\text{Serum Anion Gap} = [\\text{Na}^+] - ([\\text{Cl}^-] + [\\text{HCO}_3^-]
 > **LABORATORY GAP AUDIT (Refusal to Fabricate Unmeasured Values):**
 > **Serum Chloride ($[\\text{Cl}^-]$) is UNMEASURED / NOT PROVIDED in the intake laboratory panel.**
 > Under Noctis clinical safety invariants, substituting an assumed reference chloride value (e.g. 98 or 100 mmol/L) to calculate an anion gap is **strictly prohibited**.
-> **Clinical Fact:** The actual serum anion gap **CANNOT be calculated** from the supplied data.
+> **Clinical Fact: Cannot calculate — chloride unavailable.**
 > Elevated serum lactate (**6.8 mmol/L**) objectively confirms marked hyperlactatemia, but precise calculation of the total unmeasured anion burden and albumin-adjusted anion gap requires obtaining measured serum chloride and serum albumin.
 
 #### Calculation 4: Winter's Formula & Calibrated Acid-Base Interpretation
 $$\\text{Expected } Pa\\text{CO}_2 = 1.5 \\times [\\text{HCO}_3^-] + 8 \\pm 2$$
 $$\\text{Expected } Pa\\text{CO}_2 = 1.5 \\times 12 + 8 \\pm 2 = 18 + 8 \\pm 2 = \\mathbf{26 \\pm 2\\text{ mmHg}} \\quad (\\text{Target Range: } 24\\text{ to } 28\\text{ mmHg})$$
 - **Measured Arterial $Pa\\text{CO}_2$:** **$29\\text{ mmHg}$**
-- **Calibrated Clinical Interpretation:**
+- **Calibrated Clinical Interpretation (INV-005):**
   - The measured $Pa\\text{CO}_2$ ($29\\text{ mmHg}$) is exactly **$1\\text{ mmHg}$ above the upper limit** of the calculated compensatory range ($28\\text{ mmHg}$).
   - A $1\\text{ mmHg}$ difference falls within clinical measurement precision and biological variability ($\\\\pm 1\\text{--}2\\text{ mmHg}$).
-  - **Diagnostic Assessment:** This finding indicates **possible inadequate respiratory compensation / borderline relative hypoventilation**, rather than a definitive, independently confirmed second primary respiratory acidosis. It highlights that despite tachypnea (RR 28/min), the patient may be developing ventilatory limitation or muscle fatigue, necessitating close respiratory monitoring and repeat arterial blood gas analysis following initial stabilization.
+  - **Diagnostic Assessment:** This finding indicates **borderline relative hypoventilation / possible inadequate respiratory compensation**, rather than an unsupported definitive diagnosis of a second primary respiratory acid-base disorder. It prompts close clinical and blood gas reassessment, especially given altered mental status and shock.
 
 ---
 
@@ -329,7 +330,7 @@ The patient's clinical crisis was precipitated by an iatrogenic cascade of six i
    - **Indication:** Severe acute-on-chronic digitalis toxicity with hemodynamic collapse (MAP 48 mmHg), life-threatening hyperkalemia (K+ 7.3 mmol/L), and high-grade AV block (HR 29 bpm).
    - **Dosing Strategy & Clinical Uncertainty:**
      - *Weight-Based Calculation:* $\\text{Vials} = \\frac{\\text{Digoxin (ng/mL)} \\times \\text{Weight (kg)}}{100}$. Because patient weight is **unmeasured / not provided**, an exact weight-based neutralisation dose **cannot be calculated** at this time.
-     - *Empiric Emergency Dosing:* In the setting of life-threatening shock, hemodynamic collapse, severe hyperkalemia, and high-grade AV block, empiric emergency administration is indicated: **5 to 10 vials IV infusion over 30 minutes** (or **10 to 20 vials IV push** for active cardiac arrest or periarrest collapse).
+     - *Empiric Emergency Treatment (INV-003):* In the setting of life-threatening shock, hemodynamic collapse, severe hyperkalemia, and high-grade AV block, recommending **5 to 10 vials IV infusion over 30 minutes** (or **10 to 20 vials IV push** for active cardiac arrest or periarrest collapse) is an **empiric emergency treatment recommendation**, NOT a formula-calculated dose. The appropriate initial amount depends on clinical severity, exposure history, and toxicology guidance. Requires continuous clinical and telemetry reassessment.
      - *Nuance:* In chronic toxicity, lower doses (e.g. 2–4 vials once weight is obtained) can achieve partial neutralization to relieve toxicity without completely stripping cardiac glycoside in severe HFrEF, but immediate life-threatening hemodynamic collapse takes precedence.
      - *Mandate:* Urgent Medical Toxicology / Regional Poison Center consultation and clinical pharmacist verification for dose selection.
 
@@ -385,11 +386,10 @@ The patient is in **Mixed Multi-Factorial Shock**:
 3. **Suspected Distributive / Septic Component:** Fever 38.6°C, tachypnea, altered mental status, and suspected UTI.
 
 #### Fluid Resuscitation Protocol
-- **STRICT CONTRAINDICATION TO STANDARD 30 mL/kg BOLUS:**
-  - With baseline HFrEF (EF 30%), oliguric AKI (urine output 100 mL/8h), and severe acidemia, administering a standard $30\\text{ mL/kg}$ fluid bolus ($> 2,100\\text{ mL}$) will precipitate fatal flash pulmonary edema.
-- **Individualized Resuscitation Strategy:**
-  - Administer a **cautious fluid challenge of 250–500 mL balanced crystalloid (Plasma-Lyte or Normal Saline)** over 20–30 minutes.
-  - Continuously assess with bedside lung ultrasound (evaluating for lung sliding and emergence of pulmonary B-lines) and dynamic stroke volume variation via arterial line.
+- **INDIVIDUALIZED FLUID RESUSCITATION & OVERLOAD RISK (INV-004):**
+  - HFrEF (EF 30%) and CKD Stage 4 represent major fluid overload risk factors, but do NOT automatically contraindicate fluid resuscitation. Fluid requirements must be individualized using clinical examination, dynamic fluid responsiveness, bedside lung ultrasound (POCUS to detect pulmonary B-lines), and early vasopressor initiation (Norepinephrine).
+  - *Renal Status & Zero Fabrication:* Documented urine output is **100 mL over 8 hours (severe oliguria)**. Anuria was NOT documented on intake and must never be inferred or invented without evidence.
+  - *Titrated Resuscitation Strategy:* Administer a **cautious fluid challenge of 250–500 mL balanced crystalloid (Plasma-Lyte or Normal Saline)** over 20–30 minutes with frequent serial reassessment; avoid unmonitored blanket 30 mL/kg boluses.
 
 #### Vasoactive & Chronotropic Pharmacotherapy
 1. **First-Line Vasopressor:** **Norepinephrine Infusion**

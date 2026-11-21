@@ -46,14 +46,49 @@ Blood pressure 68/38 mmHg, Heart rate 29 bpm, Respiratory rate 28/min, Oxygen sa
 
   const pad1 = buildClinicalScratchpad(case1Prompt, "CASE-001");
   assertCondition("Extracted age 78, male, weight null", pad1.demographics.patientAgeYears === 78 && pad1.demographics.patientSex === "male" && pad1.demographics.patientWeightKg === null);
-  assertCondition("Calculated MAP = 48.0 mmHg", pad1.derivedCalculations.meanArterialPressureMmHg === 48.0);
-  assertCondition("Calculated Cr rise = +2.5 mg/dL and fold change = 2.09x", pad1.derivedCalculations.kdigoAki.crAbsoluteRiseMgDl === 2.5 && pad1.derivedCalculations.kdigoAki.crFoldRatio === 2.09);
-  assertCondition("Staged KDIGO as Stage 2 (with conditional Stage 3 flag)", pad1.derivedCalculations.kdigoAki.establishedStage === 2 && pad1.derivedCalculations.kdigoAki.isStage3ConditionalOnAcuteTimeline === true);
-  assertCondition("Weight sentinel triggered: prohibited weight-normalized urine output", pad1.sentinels.isWeightMissing === true && pad1.derivedCalculations.kdigoAki.weightNormalizedUoMlKgHr === null);
-  assertCondition("Chloride sentinel triggered: Anion gap refused with zero fabrication", pad1.sentinels.isChlorideMissing === true && pad1.derivedCalculations.anionGap.isComputable === false);
-  assertCondition("Winter's formula calibrated interpretation: 26 ± 2 mmHg (borderline relative hypoventilation)", pad1.derivedCalculations.wintersFormula.expectedPaco2MidpointMmHg === 26 && pad1.derivedCalculations.wintersFormula.deviationMmHg === 1 && pad1.derivedCalculations.wintersFormula.interpretationCategory === "BORDERLINE_COMPENSATION_RELATIVE_HYPOVENTILATION");
-  assertCondition("DigiFab dosing: deferred weight-based formula and recommended empiric 5–10 vials", pad1.derivedCalculations.digiFabDosing.isComputableWeightBased === false && pad1.derivedCalculations.digiFabDosing.empiricEmergencyVials.includes("5–10 vials"));
-  assertCondition("Fluid safety: 30 mL/kg contraindicated due to HFrEF, CKD, and oliguria", pad1.derivedCalculations.fluidSafety.standard30mLPerKgContraindicated === true);
+
+  // INV-001: MAP Arithmetic
+  assertCondition("INV-001: Calculated exact MAP = 48.0 mmHg from BP 68/38", pad1.derivedCalculations.meanArterialPressureMmHg === 48.0);
+
+  // INV-002: Laboratory Data Integrity
+  assertCondition("INV-002: Refused anion gap with 'Cannot calculate — chloride unavailable'",
+    pad1.sentinels.isChlorideMissing === true &&
+    pad1.derivedCalculations.anionGap.isComputable === false &&
+    pad1.derivedCalculations.anionGap.refusalReason!.includes("Cannot calculate — chloride unavailable")
+  );
+
+  // INV-003: Weight and Antidote Dosing
+  assertCondition("INV-003: Weight null; distinguishes calculated dosing from empiric emergency treatment (5–10 vials)",
+    pad1.sentinels.isWeightMissing === true &&
+    pad1.derivedCalculations.digiFabDosing.isComputableWeightBased === false &&
+    pad1.derivedCalculations.digiFabDosing.dosingType === "EMPIRIC_EMERGENCY" &&
+    pad1.derivedCalculations.digiFabDosing.empiricEmergencyVials.includes("5–10 vials") &&
+    pad1.derivedCalculations.kdigoAki.uoStagingCaveat.includes("does NOT invalidate or prevent documenting measured urine output volume")
+  );
+
+  // INV-004: Individualized Fluid Resuscitation
+  assertCondition("INV-004: Flags high risk of fluid overload without automatic veto; never infers anuria without evidence",
+    pad1.derivedCalculations.fluidSafety.highRiskFluidOverload === true &&
+    pad1.derivedCalculations.fluidSafety.isAnuriaDocumented === false &&
+    pad1.derivedCalculations.fluidSafety.recommendedResuscitationApproach.includes("Individualize resuscitation") &&
+    !pad1.derivedCalculations.fluidSafety.recommendedResuscitationApproach.includes("anuric")
+  );
+
+  // INV-005: Acid-Base Compensation
+  assertCondition("INV-005: Winter's formula 26 ± 2 mmHg, 29 mmHg interpreted as borderline relative hypoventilation requiring reassessment",
+    pad1.derivedCalculations.wintersFormula.expectedPaco2MidpointMmHg === 26 &&
+    pad1.derivedCalculations.wintersFormula.deviationMmHg === 1 &&
+    pad1.derivedCalculations.wintersFormula.interpretationCategory === "BORDERLINE_COMPENSATION_RELATIVE_HYPOVENTILATION"
+  );
+
+  // INV-006: KDIGO AKI Staging
+  assertCondition("INV-006: Staged KDIGO as Stage 2 (fold ratio 2.09x), conditional Stage 3; anuria cannot establish Stage 3 without documented 12h duration",
+    pad1.derivedCalculations.kdigoAki.crAbsoluteRiseMgDl === 2.5 &&
+    pad1.derivedCalculations.kdigoAki.crFoldRatio === 2.09 &&
+    pad1.derivedCalculations.kdigoAki.establishedStage === 2 &&
+    pad1.derivedCalculations.kdigoAki.isStage3ConditionalOnAcuteTimeline === true &&
+    pad1.derivedCalculations.kdigoAki.canAnuriaBeUsedForStage3 === false
+  );
 
   console.log("\nTEST 2: Extreme Data Omission Challenge (72yo Female: Missing Baseline Cr, Weight, Cl, UO)");
   const case2Prompt = `A 72-year-old female presents with lethargy, vomiting, and dizziness.
@@ -100,6 +135,23 @@ Physical exam confirms patient responds to sternal rub with distant heart sounds
     assertCondition("Contains Standalone Neuro-Symbolic Scratchpad Summary", /Neuro-Symbolic Clinical Scratchpad/i.test(fullDossier));
     assertCondition("Zero Fabricated Weight (No 70 kg)", !/70\s*kg/i.test(fullDossier));
   }
+
+  console.log("\nTEST 5: Invariant 007 (Cross-Section Consistency) & Mandatory Release Rule");
+  // INV-007 Verification: ensure full dossier maintains 100% internal data consistency
+  if (fullDossier) {
+    const consistency = auditAndEnforceClinicalDossier(fullDossier, case1Prompt, "CASE-CONSISTENCY-001");
+    assertCondition("INV-007: Clinical consistency across narrative, math, and treatment sections", consistency.violations.every((v) => !v.ruleId.includes("CROSS-SECTION")));
+    assertCondition("Mandatory Release Rule: Zero blocking safety failures in production dossier", consistency.mandatoryReleasePassed === true && consistency.mandatoryReleaseFailures.length === 0);
+  }
+
+  // Adversarial Mandatory Release Rule test: mathematical calculation does not compensate for dangerous treatment
+  const mathOkButDangerousPlan = `# Flawed Plan
+Mean Arterial Pressure: 48.0 mmHg.
+Winter's formula: 26 mmHg.
+KDIGO Stage 2 (fold ratio 2.09x).
+Plan: Administer rapid IV push of calcium immediately over 2 seconds. Fluids are strictly prohibited in all heart failure. Discharge to outpatient clinic.`;
+  const releaseTest = auditAndEnforceClinicalDossier(mathOkButDangerousPlan, case1Prompt, "CASE-RELEASE-TEST");
+  assertCondition("Mandatory Release Rule: Triggered independent safety failure despite correct math", releaseTest.mandatoryReleasePassed === false && releaseTest.mandatoryReleaseFailures.length > 0);
 
   console.log("\n============================================================================");
   console.log(`PHASE 1 CLINICAL BENCHMARK SUMMARY: ${passes} PASSED, ${fails} FAILED`);

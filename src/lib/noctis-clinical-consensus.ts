@@ -59,7 +59,7 @@ export function runIntensivistAgent(
     ],
     contraindicatedActions: [
       "Rapid IV calcium push (administer slowly over 5–10 minutes due to digoxin).",
-      "Unmonitored 30 mL/kg crystalloid boluses (strictly contraindicated due to severe systolic dysfunction and anuric/oliguric CKD).",
+      "Unmonitored blanket 30 mL/kg crystalloid boluses without dynamic reassessment (flag high fluid overload risk in HFrEF/CKD; individualize resuscitation with serial POCUS and early vasopressors; never infer anuria without evidence).",
     ],
     unmeasuredDataNotices: scratchpad.sentinels.isWeightMissing
       ? ["Patient body weight is unmeasured; avoid weight-normalized resuscitation targets."]
@@ -81,7 +81,7 @@ export function runNephrologistAgent(
     specialtyDomain: "NEPHROLOGY_ACID_BASE",
     primaryPriority: "Dialysis Urgency Appraisal & Acid-Base Physiological Calibration",
     keyDirectives: [
-      `KDIGO AKI Staging: Creatinine multiple is ${kdigo.crFoldRatio ? `${kdigo.crFoldRatio.toFixed(2)}x baseline` : "indeterminate by fold ratio"}, classifying as formal Stage ${kdigo.establishedStage}. Stage 3 requires documentation of acute trajectory within 48 hours.`,
+      `KDIGO AKI Staging: Creatinine multiple is ${kdigo.crFoldRatio ? `${kdigo.crFoldRatio.toFixed(2)}x baseline` : "indeterminate by fold ratio"}, classifying as formal Stage ${kdigo.establishedStage}. Stage 3 may apply if acute rise to ≥ 4.0 mg/dL is documented within acute timing criteria. Documented urine output is ${scratchpad.labs.urineOutputMl !== null ? `${scratchpad.labs.urineOutputMl} mL / ${scratchpad.labs.urineOutputDurationHours || 8}h` : "unmeasured"}; anuria cannot be used to establish Stage 3.`,
       `Acid-Base Calibration: Severe metabolic acidosis (pH ${scratchpad.labs.arterialPh}, HCO3- ${scratchpad.labs.bicarbonateMeqL} mEq/L). Winter's formula expected PaCO2 is ${winters.expectedPaco2RangeLowMmHg}–${winters.expectedPaco2RangeHighMmHg} mmHg. Measured PaCO2 (${scratchpad.labs.paco2MmHg} mmHg) reflects ${winters.calibratedClinicalInterpretation}.`,
       `Emergent Renal Replacement Therapy (RRT): Evaluate for urgent hemodialysis/CRRT for refractory hyperkalemia, severe refractory metabolic acidosis, and oliguria. Note that Digoxin has a high volume of distribution and is NOT dialyzable.`,
     ],
@@ -90,7 +90,7 @@ export function runNephrologistAgent(
       "Assuming intermittent hemodialysis is universally contraindicated or that CRRT is the sole modality.",
     ],
     unmeasuredDataNotices: [
-      "Serum chloride is UNMEASURED — Anion gap calculation is strictly prohibited.",
+      "Serum chloride is UNMEASURED — Anion gap: Cannot calculate — chloride unavailable (zero fabrication invariant).",
       ...(scratchpad.sentinels.isBaselineCreatinineMissing
         ? ["Baseline creatinine unmeasured; formal fold-ratio staging indeterminate."]
         : []),
@@ -111,12 +111,12 @@ export function runToxicologistAgent(
     specialtyDomain: "TOXICOLOGY_PHARMACOVIGILANCE",
     primaryPriority: "Digoxin Neutralization & Polypharmacy De-escalation",
     keyDirectives: [
-      `Digoxin Toxicity Neutralization: Digoxin level is elevated (${scratchpad.labs.digoxinNgMl} ng/mL) with symptomatic junctional bradycardia (HR 29 bpm). Administer ${digiFab.empiricEmergencyVials} immediately.`,
+      `Digoxin Toxicity Neutralization: Digoxin level is elevated (${scratchpad.labs.digoxinNgMl} ng/mL) with symptomatic junctional bradycardia (HR 29 bpm). Administer ${digiFab.empiricEmergencyVials} as an empiric emergency treatment recommendation in consultation with Medical Toxicology.`,
       `BRASH Syndrome Cascade: Trimethoprim-sulfamethoxazole blocked ENaC channels in distal nephron, precipitating hyperkalemia, worsening renal clearance of carvedilol/digoxin, culminating in severe bradycardia and hypoperfusion.`,
       `Comprehensive Medication Withholding: Immediately withhold Carvedilol, Lisinopril, Spironolactone, Digoxin, and Metformin (risk of worsening metformin-associated lactic acidosis).`,
     ],
     contraindicatedActions: [
-      "Weight-based DigiFab dosing calculation (body weight is UNMEASURED; use empiric 5–10 vials IV).",
+      "Weight-based DigiFab dosing calculation (body weight is UNMEASURED; use empiric emergency treatment 5–10 vials IV in consultation with Medical Toxicology).",
       "Continued administration of negative chronotropes, RAAS inhibitors, or metformin.",
     ],
     unmeasuredDataNotices: [

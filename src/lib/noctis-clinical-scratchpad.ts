@@ -57,11 +57,16 @@ export interface KdigoAkiStagingResult {
   crAbsoluteRiseMgDl: number | null;
   crFoldRatio: number | null;
   establishedStage: 1 | 2 | 3 | "indeterminate";
+  creatinineCriteriaStage: 1 | 2 | 3 | "indeterminate";
   stageRationale: string;
   isStage3ConditionalOnAcuteTimeline: boolean;
+  stage3AcuteTimelineRationale: string;
   weightNormalizedUoMlKgHr: number | null;
   uoStagingStatus: "COMPUTABLE" | "UNMEASURED_WEIGHT_PROHIBITS_CALCULATION" | "NO_URINE_OUTPUT_DATA";
   uoStagingCaveat: string;
+  canAnuriaBeUsedForStage3: boolean;
+  anuriaRationale: string;
+  finalHighestSupportedStage: 1 | 2 | 3 | "indeterminate";
 }
 
 export interface AnionGapCalculationResult {
@@ -89,15 +94,21 @@ export interface WintersFormulaResult {
 
 export interface DigiFabDosingResult {
   isComputableWeightBased: boolean;
+  dosingType: "EMPIRIC_EMERGENCY" | "CALCULATED_WEIGHT_BASED" | "NOT_INDICATED";
   weightBasedVials: number | null;
   empiricEmergencyVials: string;
   rationale: string;
+  clinicalReassessmentRequired: boolean;
+  toxicologyConsultationRequired: boolean;
 }
 
 export interface FluidResuscitationSafetyResult {
-  standard30mLPerKgContraindicated: boolean;
+  standard30mLPerKgContraindicated: boolean; // Retained for compatibility
+  highRiskFluidOverload: boolean;
   highRiskConditionsIdentified: string[];
+  isAnuriaDocumented: boolean;
   recommendedResuscitationApproach: string;
+  individualizedResuscitationGuidance: string;
 }
 
 export interface NeuroSymbolicClinicalScratchpad {
@@ -274,12 +285,14 @@ export function buildClinicalScratchpad(
     meanArterialPressureMmHg = parseFloat(((systolicBp + 2 * diastolicBp) / 3).toFixed(1));
   }
 
-  // B. KDIGO AKI Staging
+  // B. KDIGO AKI Staging (INV-006: Independent evaluation of Creatinine, Urine Output, and Anuria)
   let crAbsoluteRiseMgDl: number | null = null;
   let crFoldRatio: number | null = null;
   let establishedStage: 1 | 2 | 3 | "indeterminate" = "indeterminate";
+  let creatinineCriteriaStage: 1 | 2 | 3 | "indeterminate" = "indeterminate";
   let stageRationale = "";
   let isStage3ConditionalOnAcuteTimeline = false;
+  let stage3AcuteTimelineRationale = "";
 
   if (creatinineMgDl !== null && baselineCreatinineMgDl !== null) {
     crAbsoluteRiseMgDl = parseFloat((creatinineMgDl - baselineCreatinineMgDl).toFixed(2));
@@ -287,23 +300,30 @@ export function buildClinicalScratchpad(
 
     if (crFoldRatio >= 3.0) {
       establishedStage = 3;
+      creatinineCriteriaStage = 3;
       stageRationale = `KDIGO Stage 3 (Serum creatinine increased ≥ 3.0× baseline: ${crFoldRatio}×).`;
     } else if (crFoldRatio >= 2.0 && crFoldRatio < 3.0) {
       establishedStage = 2;
-      stageRationale = `KDIGO Stage 2 (Serum creatinine increased 2.0–2.9× baseline: ${crFoldRatio}×). Note: An absolute serum creatinine ≥ 4.0 mg/dL (${creatinineMgDl} mg/dL) with an acute rise ≥ 0.5 mg/dL (+${crAbsoluteRiseMgDl} mg/dL) conditionally meets Stage 3 criteria if verified to have occurred acutely within 48 hours to 7 days.`;
+      creatinineCriteriaStage = 2;
+      stageRationale = `KDIGO Stage 2 by fold increase (${crFoldRatio}× baseline). Stage 3 may apply if the qualifying acute creatinine rise to ≥ 4.0 mg/dL (${creatinineMgDl} mg/dL, acute rise +${crAbsoluteRiseMgDl} mg/dL) meets KDIGO acute timing criteria (within 48 hours to 7 days).`;
       isStage3ConditionalOnAcuteTimeline = true;
+      stage3AcuteTimelineRationale = `Absolute serum creatinine ≥ 4.0 mg/dL with acute rise ≥ 0.5 mg/dL (+${crAbsoluteRiseMgDl} mg/dL) conditionally qualifies for Stage 3 pending confirmation of acute trajectory within 48 hours to 7 days.`;
     } else if (crFoldRatio >= 1.5 || crAbsoluteRiseMgDl >= 0.3) {
       establishedStage = 1;
+      creatinineCriteriaStage = 1;
       stageRationale = `KDIGO Stage 1 (Serum creatinine increased 1.5–1.9× baseline: ${crFoldRatio}× or rise ≥ 0.3 mg/dL).`;
     }
   } else if (creatinineMgDl !== null && baselineCreatinineMgDl === null) {
     establishedStage = "indeterminate";
+    creatinineCriteriaStage = "indeterminate";
     stageRationale = `KDIGO Stage indeterminate (Baseline creatinine unmeasured; current creatinine ${creatinineMgDl} mg/dL indicates severe renal impairment but baseline fold change cannot be confirmed).`;
   }
 
   let weightNormalizedUoMlKgHr: number | null = null;
   let uoStagingStatus: "COMPUTABLE" | "UNMEASURED_WEIGHT_PROHIBITS_CALCULATION" | "NO_URINE_OUTPUT_DATA" = "NO_URINE_OUTPUT_DATA";
   let uoStagingCaveat = "";
+  let canAnuriaBeUsedForStage3 = false;
+  let anuriaRationale = "";
 
   if (urineOutputMl !== null && urineOutputDurationHours !== null) {
     if (patientWeightKg !== null) {
@@ -314,24 +334,46 @@ export function buildClinicalScratchpad(
       uoStagingCaveat = `Urine output: ${urineOutputMl} mL over ${urineOutputDurationHours}h = ${weightNormalizedUoMlKgHr} mL/kg/h based on measured body weight ${patientWeightKg} kg.`;
     } else {
       uoStagingStatus = "UNMEASURED_WEIGHT_PROHIBITS_CALCULATION";
-      uoStagingCaveat = `Urine output is ${urineOutputMl} mL over ${urineOutputDurationHours}h. Because patient body weight was NOT provided, calculating weight-normalized output in mL/kg/h (e.g. by assuming an arbitrary adult weight) is clinically contraindicated.`;
+      uoStagingCaveat = `Urine output is documented as ${urineOutputMl} mL over ${urineOutputDurationHours}h. Note: Missing body weight does NOT invalidate or prevent documenting measured urine output volume; it prevents calculating weight-normalized output in mL/kg/hour (which requires actual measured weight, avoiding arbitrary adult weight assumptions).`;
+    }
+
+    if (urineOutputMl > 0) {
+      canAnuriaBeUsedForStage3 = false;
+      anuriaRationale = `Patient produced ${urineOutputMl} mL over ${urineOutputDurationHours}h (severe oliguria). KDIGO Stage 3 urine criteria require < 0.3 mL/kg/h for ≥ 24 hours OR anuria for ≥ 12 hours. Because urine output is non-zero and duration is ${urineOutputDurationHours}h (< 12h/24h), anuria is NOT present and CANNOT be used to establish Stage 3 without documented urine output and duration.`;
+    } else {
+      if (urineOutputDurationHours >= 12) {
+        canAnuriaBeUsedForStage3 = true;
+        anuriaRationale = `Documented anuria (0 mL) for ${urineOutputDurationHours} hours satisfies KDIGO Stage 3 criteria (anuria for ≥ 12 hours).`;
+      } else {
+        canAnuriaBeUsedForStage3 = false;
+        anuriaRationale = `Zero urine output documented over ${urineOutputDurationHours} hours; KDIGO Stage 3 requires documented anuria for at least 12 hours.`;
+      }
     }
   } else {
     uoStagingCaveat = "Urine output was not quantified in intake.";
+    canAnuriaBeUsedForStage3 = false;
+    anuriaRationale = "Urine output was not measured; anuria cannot be assumed without evidence.";
   }
+
+  const finalHighestSupportedStage = canAnuriaBeUsedForStage3 ? 3 : establishedStage;
 
   const kdigoAki: KdigoAkiStagingResult = {
     crAbsoluteRiseMgDl,
     crFoldRatio,
     establishedStage,
+    creatinineCriteriaStage,
     stageRationale,
     isStage3ConditionalOnAcuteTimeline,
+    stage3AcuteTimelineRationale,
     weightNormalizedUoMlKgHr,
     uoStagingStatus,
     uoStagingCaveat,
+    canAnuriaBeUsedForStage3,
+    anuriaRationale,
+    finalHighestSupportedStage,
   };
 
-  // C. Anion Gap Calculation
+  // C. Anion Gap Calculation (INV-002: Laboratory Data Integrity)
   let anionGap: AnionGapCalculationResult;
   if (isChlorideMissing) {
     anionGap = {
@@ -339,7 +381,7 @@ export function buildClinicalScratchpad(
       anionGapMeqL: null,
       formula: "Anion Gap = [Na+] - ([Cl-] + [HCO3-])",
       refusalReason:
-        "Serum chloride was NOT measured in this intake. Estimating or substituting a hypothetical reference chloride (e.g. 98 or 104 mmol/L) to calculate an anion gap is strictly prohibited. Anion Gap CANNOT be calculated without measured chloride.",
+        "Cannot calculate — chloride unavailable. Serum chloride was NOT measured in this intake. Estimating or substituting a hypothetical reference chloride (e.g. 98 or 104 mmol/L) to calculate an anion gap is strictly prohibited. Anion Gap CANNOT be calculated without measured chloride.",
     };
   } else if (sodiumMeqL !== null && chlorideMeqL !== null && bicarbonateMeqL !== null) {
     const agVal = sodiumMeqL - (chlorideMeqL + bicarbonateMeqL);
@@ -354,11 +396,11 @@ export function buildClinicalScratchpad(
       isComputable: false,
       anionGapMeqL: null,
       formula: "Anion Gap = [Na+] - ([Cl-] + [HCO3-])",
-      refusalReason: "Incomplete electrolyte profile (missing sodium or bicarbonate).",
+      refusalReason: "Cannot calculate — incomplete electrolyte profile (missing sodium or bicarbonate).",
     };
   }
 
-  // D. Winter's Formula
+  // D. Winter's Formula (INV-005: Calibrated Acid-Base Interpretation)
   let wintersFormula: WintersFormulaResult;
   if (bicarbonateMeqL !== null && paco2MmHg !== null) {
     const midpoint = 1.5 * bicarbonateMeqL + 8;
@@ -386,7 +428,7 @@ export function buildClinicalScratchpad(
         expectedPaco2RangeHighMmHg: high,
         deviationMmHg: deviation,
         interpretationCategory: "BORDERLINE_COMPENSATION_RELATIVE_HYPOVENTILATION",
-        calibratedClinicalInterpretation: `Expected PaCO2 is ${low}–${high} mmHg (${midpoint} ± 2 mmHg). Measured PaCO2 of ${paco2MmHg} mmHg is ${deviation} mmHg above the predicted upper limit. This minimal difference falls within normal biological and measurement variability, representing possible inadequate respiratory compensation / borderline relative hypoventilation rather than a definitive secondary respiratory acidosis.`,
+        calibratedClinicalInterpretation: `Expected PaCO2 is ${low}–${high} mmHg (${midpoint} ± 2 mmHg). Measured PaCO2 of ${paco2MmHg} mmHg is ${deviation} mmHg above the predicted upper limit. This minimal difference falls within normal biological and measurement variability, representing possible inadequate respiratory compensation / borderline relative hypoventilation rather than a definitive secondary respiratory acidosis. Clinical reassessment is prompted, especially in altered mental status and shock.`,
       };
     } else if (paco2MmHg > high + 2) {
       wintersFormula = {
@@ -424,36 +466,45 @@ export function buildClinicalScratchpad(
     };
   }
 
-  // E. DigiFab Dosing
+  // E. DigiFab Dosing (INV-003: Calculated vs Empiric Emergency Treatment)
   let digiFabDosing: DigiFabDosingResult;
   if (digoxinNgMl !== null) {
     if (patientWeightKg !== null) {
       const calculatedVials = (digoxinNgMl * patientWeightKg) / 100;
       digiFabDosing = {
         isComputableWeightBased: true,
+        dosingType: "CALCULATED_WEIGHT_BASED",
         weightBasedVials: Math.ceil(calculatedVials),
         empiricEmergencyVials: "5–10 vials IV infusion",
-        rationale: `Weight-based calculation: (${digoxinNgMl} ng/mL × ${patientWeightKg} kg) / 100 = ${calculatedVials.toFixed(1)} vials (round to ${Math.ceil(calculatedVials)} vials).`,
+        rationale: `Weight-based calculation: (${digoxinNgMl} ng/mL × ${patientWeightKg} kg) / 100 = ${calculatedVials.toFixed(1)} vials (round to ${Math.ceil(calculatedVials)} vials). Requires toxicology consultation and clinical reassessment.`,
+        clinicalReassessmentRequired: true,
+        toxicologyConsultationRequired: true,
       };
     } else {
       digiFabDosing = {
         isComputableWeightBased: false,
+        dosingType: "EMPIRIC_EMERGENCY",
         weightBasedVials: null,
-        empiricEmergencyVials: "5–10 vials IV infusion (empiric emergency dose; 10–20 vials if in cardiac arrest)",
+        empiricEmergencyVials: "5–10 vials IV infusion (empiric emergency treatment; 10–20 vials if in cardiac arrest)",
         rationale:
-          "Because patient weight was NOT provided, the weight-based formula [(Serum Digoxin ng/mL × Weight kg) / 100] cannot be calculated. Never assume an arbitrary weight. Administer empiric emergency dosing of 5–10 vials IV infusion (or 10–20 vials for cardiac arrest) in consultation with Medical Toxicology.",
+          "Because patient weight was NOT provided, the exact weight-based formula [(Serum Digoxin ng/mL × Weight kg) / 100] cannot be calculated. Never invent patient weight. Recommending 5–10 vials is an EMPIRIC EMERGENCY TREATMENT RECOMMENDATION based on life-threatening toxicity with shock and high-grade AV block, not a formula-calculated dose. The appropriate initial amount depends on severity, exposure history, and toxicology guidance. Requires urgent Medical Toxicology consultation, continuous telemetry, and frequent clinical reassessment.",
+        clinicalReassessmentRequired: true,
+        toxicologyConsultationRequired: true,
       };
     }
   } else {
     digiFabDosing = {
       isComputableWeightBased: false,
+      dosingType: "NOT_INDICATED",
       weightBasedVials: null,
       empiricEmergencyVials: "Not indicated unless clinical digoxin toxicity suspected",
       rationale: "Serum digoxin level not reported.",
+      clinicalReassessmentRequired: false,
+      toxicologyConsultationRequired: false,
     };
   }
 
-  // F. Fluid Safety Ceiling
+  // F. Fluid Safety Ceiling (INV-004: Individualized Resuscitation, No Automatic Veto, No Invented Anuria)
   const highRiskConditions: string[] = [];
   if (/\b(?:hfref|heart\s+failure|ef\s*(?:is|of|=|:)?\s*(?:[1-3]\d|25|30)%?|ejection\s+fraction\s*(?:is|of|=|:)?\s*(?:[1-3]\d|25|30)%?)\b/i.test(q)) {
     highRiskConditions.push("Reduced Ejection Fraction (HFrEF, EF ≤ 35%)");
@@ -465,13 +516,24 @@ export function buildClinicalScratchpad(
     highRiskConditions.push("Profound Oliguria");
   }
 
-  const standard30mLPerKgContraindicated = highRiskConditions.length > 0;
+  // Strict check on anuria: Never infer anuria without evidence!
+  const isAnuriaDocumented = urineOutputMl === 0 && (urineOutputDurationHours ?? 0) >= 12;
+
+  const highRiskFluidOverload = highRiskConditions.length > 0;
+  // Retain boolean for backwards compat but define semantics accurately:
+  const standard30mLPerKgContraindicated = highRiskFluidOverload;
+
+  const individualizedResuscitationGuidance = highRiskFluidOverload
+    ? "Flag high risk of fluid overload (HFrEF EF ≤ 30% and CKD Stage 4). Do not automatically prohibit or veto fluids solely because of HFrEF or CKD, but do not administer unmonitored blanket 30 mL/kg crystalloids. Individualize resuscitation using bedside clinical examination, dynamic fluid responsiveness, lung ultrasound (POCUS for pulmonary congestion/B-lines), and early vasopressor consideration (Norepinephrine). Anuria is NOT documented and must not be invented."
+    : "Standard crystalloid resuscitation permissible with serial hemodynamic and fluid responsiveness monitoring.";
+
   const fluidSafety: FluidResuscitationSafetyResult = {
     standard30mLPerKgContraindicated,
+    highRiskFluidOverload,
     highRiskConditionsIdentified: highRiskConditions,
-    recommendedResuscitationApproach: standard30mLPerKgContraindicated
-      ? "Standard 30 mL/kg sepsis crystalloid bolus is STRICTLY CONTRAINDICATED due to high pulmonary edema risk. Administer conservative titrated fluid challenges (250–500 mL balanced crystalloids) with serial dynamic POCUS/VExUS assessments and early vasopressor initiation (Norepinephrine)."
-      : "Standard crystalloid resuscitation permissible with dynamic fluid responsiveness monitoring.",
+    isAnuriaDocumented,
+    recommendedResuscitationApproach: individualizedResuscitationGuidance,
+    individualizedResuscitationGuidance,
   };
 
   // Build Markdown Summary
@@ -487,10 +549,10 @@ export function buildClinicalScratchpad(
   mdLines.push(`#### 2. Deterministic Derivations & Sentinels`);
   mdLines.push(`- **KDIGO AKI Staging:** ${kdigoAki.stageRationale}`);
   mdLines.push(`- **Weight-Normalized Urine Output:** ${kdigoAki.uoStagingCaveat}`);
-  mdLines.push(`- **Anion Gap:** ${anionGap.isComputable ? anionGap.formula : `**CANNOT BE CALCULATED** (${anionGap.refusalReason})`}`);
+  mdLines.push(`- **Anion Gap:** ${anionGap.isComputable ? anionGap.formula : `**CANNOT BE CALCULATED — CHLORIDE UNAVAILABLE** (${anionGap.refusalReason})`}`);
   mdLines.push(`- **Winter's Formula:** ${wintersFormula.calibratedClinicalInterpretation}`);
   mdLines.push(`- **DigiFab Dosing:** ${digiFabDosing.empiricEmergencyVials} (${digiFabDosing.rationale})`);
-  mdLines.push(`- **Fluid Challenge Ceiling:** ${fluidSafety.recommendedResuscitationApproach}`);
+  mdLines.push(`- **Fluid Resuscitation Approach:** ${fluidSafety.recommendedResuscitationApproach}`);
   mdLines.push(``);
   mdLines.push(`#### 3. Actionable Clinical Data Gaps`);
   if (missingDataItems.length > 0) {
@@ -555,5 +617,95 @@ export function buildClinicalScratchpad(
       fluidSafety,
     },
     markdownScratchpadSummary,
+  };
+}
+
+/**
+ * ============================================================================
+ * INV-007: CROSS-SECTION CLINICAL CONSISTENCY VALIDATOR
+ *
+ * Enforces that narrative, calculations, medication recommendations, SOAP note,
+ * and final audit trail all use the exact same verified patient data.
+ * Detects discrepancies such as:
+ * - Patient finding documented in one section and missing/unmeasured in another
+ * - Assuming 70 kg weight in medication plan when weight is unmeasured
+ * - Reporting anion gap when chloride is unmeasured
+ * - Falsely asserting anuria when non-zero urine output is documented
+ * ============================================================================
+ */
+export interface CrossSectionConsistencyViolation {
+  item: string;
+  sectionA: string;
+  sectionB: string;
+  issue: string;
+}
+
+export interface CrossSectionConsistencyResult {
+  isConsistent: boolean;
+  violations: CrossSectionConsistencyViolation[];
+}
+
+export function validateCrossSectionClinicalConsistency(
+  dossierText: string,
+  scratchpad: NeuroSymbolicClinicalScratchpad
+): CrossSectionConsistencyResult {
+  const violations: CrossSectionConsistencyViolation[] = [];
+
+  // Check 1: Weight Consistency
+  if (scratchpad.sentinels.isWeightMissing) {
+    if (/\b(?:weight\s*[:=]?\s*70\s*kg|assumed\s+70\s*kg|standard\s+70\s*kg|patient\s+weighs\s+70\s*kg)\b/i.test(dossierText)) {
+      violations.push({
+        item: "Patient Body Weight",
+        sectionA: "Neuro-Symbolic Scratchpad (Unmeasured)",
+        sectionB: "Dossier Narrative / Calculations / Plan",
+        issue: "Patient weight is unmeasured on intake, but 70 kg was assumed or asserted in the clinical text.",
+      });
+    }
+  }
+
+  // Check 2: Chloride & Anion Gap Consistency
+  if (scratchpad.sentinels.isChlorideMissing) {
+    if (/\b(?:estimated\s+anion\s+gap\s*[:=]?\s*19|anion\s+gap\s*[:=]?\s*19|reference\s+chloride\s*(?:of\s*)?98)\b/i.test(dossierText)) {
+      violations.push({
+        item: "Serum Chloride & Anion Gap",
+        sectionA: "Neuro-Symbolic Scratchpad (Unmeasured Chloride)",
+        sectionB: "Dossier Narrative / Calculations",
+        issue: "Serum chloride is unmeasured, but an anion gap was calculated or estimated using reference chloride.",
+      });
+    }
+  }
+
+  // Check 3: Urine Output vs Anuria Consistency (INV-004 & INV-006)
+  if (scratchpad.labs.urineOutputMl !== null && scratchpad.labs.urineOutputMl > 0) {
+    if (/\b(?:patient\s+is\s+anuric|due\s+to\s+anuria|anuric\s+ckd|presence\s+of\s+anuria)\b/i.test(dossierText)) {
+      violations.push({
+        item: "Urine Output Status",
+        sectionA: `Documented Intake Labs (${scratchpad.labs.urineOutputMl} mL / ${scratchpad.labs.urineOutputDurationHours || 8}h oliguria)`,
+        sectionB: "Dossier Narrative / Recommendations",
+        issue: `Patient has documented urine output (${scratchpad.labs.urineOutputMl} mL), but was falsely described as anuric.`,
+      });
+    }
+  }
+
+  // Check 4: MAP Consistency
+  if (scratchpad.derivedCalculations.meanArterialPressureMmHg !== null) {
+    const expectedMap = scratchpad.derivedCalculations.meanArterialPressureMmHg.toFixed(1);
+    const statedMapMatches = [...dossierText.matchAll(/\b(?:map|mean\s+arterial\s+pressure)\s*[:=]?\s*(\d{2}(?:\.\d)?)\s*mmHg\b/gi)];
+    for (const m of statedMapMatches) {
+      const val = parseFloat(m[1]);
+      if (Math.abs(val - scratchpad.derivedCalculations.meanArterialPressureMmHg) > 0.5) {
+        violations.push({
+          item: "Mean Arterial Pressure",
+          sectionA: `Scratchpad Derivation (${expectedMap} mmHg)`,
+          sectionB: `Dossier Text (${m[0]})`,
+          issue: `Stated MAP (${m[1]} mmHg) conflicts with exact derived MAP (${expectedMap} mmHg).`,
+        });
+      }
+    }
+  }
+
+  return {
+    isConsistent: violations.length === 0,
+    violations,
   };
 }

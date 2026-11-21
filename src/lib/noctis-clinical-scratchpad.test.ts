@@ -97,12 +97,12 @@ ECG: Junctional bradycardia, QRS 154 ms, peaked T waves`;
     assert.equal(pad.derivedCalculations.kdigoAki.uoStagingStatus, "UNMEASURED_WEIGHT_PROHIBITS_CALCULATION");
     assert.equal(pad.derivedCalculations.kdigoAki.weightNormalizedUoMlKgHr, null);
 
-    // Anion Gap Refusal
+    // Anion Gap Refusal (INV-002: Laboratory Data Integrity)
     assert.equal(pad.derivedCalculations.anionGap.isComputable, false);
     assert.equal(pad.derivedCalculations.anionGap.anionGapMeqL, null);
-    assert.match(pad.derivedCalculations.anionGap.refusalReason!, /Serum chloride was NOT measured/i);
+    assert.match(pad.derivedCalculations.anionGap.refusalReason!, /Cannot calculate — chloride unavailable/i);
 
-    // Winter's Formula
+    // Winter's Formula (INV-005: Acid-Base Compensation)
     assert.equal(pad.derivedCalculations.wintersFormula.isComputable, true);
     assert.equal(pad.derivedCalculations.wintersFormula.expectedPaco2MidpointMmHg, 26);
     assert.equal(pad.derivedCalculations.wintersFormula.expectedPaco2RangeLowMmHg, 24);
@@ -110,13 +110,17 @@ ECG: Junctional bradycardia, QRS 154 ms, peaked T waves`;
     assert.equal(pad.derivedCalculations.wintersFormula.deviationMmHg, 1);
     assert.equal(pad.derivedCalculations.wintersFormula.interpretationCategory, "BORDERLINE_COMPENSATION_RELATIVE_HYPOVENTILATION");
 
-    // DigiFab Dosing
+    // DigiFab Dosing (INV-003: Weight and Antidote Dosing)
     assert.equal(pad.derivedCalculations.digiFabDosing.isComputableWeightBased, false);
+    assert.equal(pad.derivedCalculations.digiFabDosing.dosingType, "EMPIRIC_EMERGENCY");
     assert.equal(pad.derivedCalculations.digiFabDosing.weightBasedVials, null);
     assert.match(pad.derivedCalculations.digiFabDosing.empiricEmergencyVials, /5–10 vials/i);
+    assert.match(pad.derivedCalculations.digiFabDosing.rationale, /EMPIRIC.*TREATMENT RECOMMENDATION/i);
 
-    // Fluid Resuscitation Safety
-    assert.equal(pad.derivedCalculations.fluidSafety.standard30mLPerKgContraindicated, true);
+    // Fluid Resuscitation Safety (INV-004: Individualized Fluid Resuscitation)
+    assert.equal(pad.derivedCalculations.fluidSafety.highRiskFluidOverload, true);
+    assert.equal(pad.derivedCalculations.fluidSafety.isAnuriaDocumented, false);
+    assert.match(pad.derivedCalculations.fluidSafety.recommendedResuscitationApproach, /individualize resuscitation/i);
     assert.ok(pad.derivedCalculations.fluidSafety.highRiskConditionsIdentified.length >= 2);
   });
 
@@ -211,5 +215,57 @@ Examination reveals patient responds to sternal rub and distant heart sounds.`;
     assert.doesNotMatch(response, /0\.18\s*ml\/kg\/h/i);
     assert.doesNotMatch(response, /estimated\s+anion\s+gap.*19/i);
     assert.doesNotMatch(response, /definitive.*secondary\s+respiratory\s+acidosis/i);
+  });
+
+  it("enforces INV-006: independent KDIGO evaluation and forbids using anuria without evidence", () => {
+    const pad = buildClinicalScratchpad(brash78MaleScenario, "TEST-KDIGO-006");
+    // Serum creatinine ratio establishes Stage 2
+    assert.equal(pad.derivedCalculations.kdigoAki.crFoldRatio, 2.09);
+    assert.equal(pad.derivedCalculations.kdigoAki.establishedStage, 2);
+    assert.equal(pad.derivedCalculations.kdigoAki.creatinineCriteriaStage, 2);
+    assert.equal(pad.derivedCalculations.kdigoAki.isStage3ConditionalOnAcuteTimeline, true);
+
+    // Patient has documented 100 mL over 8h; anuria CANNOT be used to establish Stage 3
+    assert.equal(pad.derivedCalculations.kdigoAki.canAnuriaBeUsedForStage3, false);
+    assert.match(pad.derivedCalculations.kdigoAki.anuriaRationale, /CANNOT be used to establish Stage 3/i);
+  });
+
+  it("enforces INV-007: cross-section clinical consistency validator flags section discrepancies", () => {
+    const pad = buildClinicalScratchpad(brash78MaleScenario, "TEST-CONSISTENCY-007");
+
+    // Discrepant text: states weight is missing in scratchpad, but assumes 70 kg in text and claims anuria
+    const inconsistentDossier = `
+    # Clinical Dossier
+    Encounter: CASE-DISCREPANT
+    Patient presents in shock.
+    Patient is anuric and requires immediate dialysis.
+    Estimated anion gap is 19 mEq/L using reference chloride of 98 mEq/L.
+    Assumed 70 kg weight for medication titration.
+    MAP is 42.0 mmHg.
+    `;
+
+    const consistencyResult = pad.derivedCalculations.meanArterialPressureMmHg !== null
+      ? auditAndEnforceClinicalDossier(inconsistentDossier, brash78MaleScenario, "TEST-AUDIT-DISCREPANT")
+      : null;
+
+    assert.ok(consistencyResult !== null);
+    assert.ok(consistencyResult.violations.some((v) => v.ruleId.includes("CROSS-SECTION") || v.ruleId.includes("CHLORIDE") || v.ruleId.includes("WEIGHT") || v.ruleId.includes("ANURIA")));
+  });
+
+  it("enforces Mandatory Release Rule: calculation accuracy does not compensate for unsafe treatment", () => {
+    // Correct calculations, but dangerous treatment recommendation
+    const dangerousDossier = `
+    # Correct Math with Dangerous Treatment
+    MAP is 48.0 mmHg.
+    KDIGO fold ratio is 2.09x (Stage 2).
+    Winter's expected PaCO2 is 26 mmHg.
+    Treatment: Rapid IV push of calcium over 5 seconds. Fluids are strictly prohibited in all heart failure.
+    Routine outpatient discharge home recommended.
+    `;
+
+    const audit = auditAndEnforceClinicalDossier(dangerousDossier, brash78MaleScenario, "TEST-MANDATORY-RELEASE");
+    assert.equal(audit.isApproved, false);
+    assert.equal(audit.mandatoryReleasePassed, false);
+    assert.ok(audit.mandatoryReleaseFailures.length > 0);
   });
 });

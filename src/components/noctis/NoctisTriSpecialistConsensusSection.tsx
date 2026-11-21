@@ -143,12 +143,12 @@ export function NoctisTriSpecialistConsensusSection({
               </div>
             </div>
           </div>
-          <div className="flex items-start gap-2 bg-red-950/40 p-2.5 rounded-lg border border-red-900/40">
+          <div className="flex items-start gap-2 bg-amber-950/30 p-2.5 rounded-lg border border-amber-900/40">
             <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
             <div>
-              <div className="font-semibold text-amber-200">Fluid Bolus Contraindicated</div>
+              <div className="font-semibold text-amber-200">Individualized Fluid Resuscitation (INV-004)</div>
               <div className="text-neutral-400 text-[11px] mt-0.5">
-                Standard 30 mL/kg strictly contraindicated in HFrEF (EF 30%) and CKD 4.
+                High fluid overload risk in HFrEF & CKD 4. Individualize with serial POCUS & vasopressors; do not assume anuria.
               </div>
             </div>
           </div>

@@ -1,6 +1,6 @@
 # Noctis Clinical Reasoning — External Multi-Center Benchmark Audit
 **Execution Run ID:** `NOCTIS-EXT-BENCHMARK-MWQE09LK`
-**Execution Timestamp:** 2026-11-21T13:54:35.809Z · **Duration:** 0.07s
+**Execution Timestamp:** 2026-11-21T15:07:22.012Z · **Duration:** 0.12s
 
 ## Executive Performance Summary
 

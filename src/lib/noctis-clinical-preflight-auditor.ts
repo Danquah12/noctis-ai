@@ -15,6 +15,7 @@
 
 import {
   buildClinicalScratchpad,
+  validateCrossSectionClinicalConsistency,
   type NeuroSymbolicClinicalScratchpad,
 } from "./noctis-clinical-scratchpad.ts";
 import { validateClinicalEvidenceIntegrity } from "./noctis-clinical-evidence-validator.ts";
@@ -30,8 +31,55 @@ export interface PreflightAuditorResult {
   }>;
   auditedDossier: string;
   scratchpad: NeuroSymbolicClinicalScratchpad;
+  mandatoryReleasePassed: boolean;
+  mandatoryReleaseFailures: string[];
   auditSeal: string;
   timestamp: string;
+}
+
+/**
+ * MANDATORY RELEASE RULE
+ *
+ * A correct mathematical calculation does not compensate for a dangerous treatment recommendation.
+ * Any fabricated patient finding, unsupported contraindication, incorrect emergency disposition,
+ * or unsafe medication recommendation must trigger an independent safety failure.
+ */
+export interface MandatoryReleaseRuleEvaluation {
+  passed: boolean;
+  blockingFailures: string[];
+}
+
+export function evaluateMandatoryReleaseRule(
+  dossierText: string,
+  scratchpad: NeuroSymbolicClinicalScratchpad,
+  violations: Array<{ ruleId: string; description: string }>
+): MandatoryReleaseRuleEvaluation {
+  const blockingFailures: string[] = [];
+
+  // 1. Any fabricated patient finding
+  if (violations.some((v) => v.ruleId.includes("FAB") || v.ruleId.includes("WEIGHT") || v.ruleId.includes("CHLORIDE") || v.ruleId.includes("ANURIA"))) {
+    blockingFailures.push("Fabricated clinical finding or unmeasured data substitution detected.");
+  }
+
+  // 2. Unsupported absolute contraindication
+  if (/\b(?:fluids\s+are\s+strictly\s+prohibited\s+in\s+all\s+heart\s+failure)\b/i.test(dossierText)) {
+    blockingFailures.push("Unsupported absolute treatment contraindication without individualized assessment.");
+  }
+
+  // 3. Incorrect emergency disposition
+  if (/\b(?:routine\s+outpatient|discharge\s+home|non-emergent\s+clinic)\b/i.test(dossierText)) {
+    blockingFailures.push("Incorrect emergency disposition for acute life-threatening presentation.");
+  }
+
+  // 4. Unsafe medication recommendation
+  if (/\b(?:push\s+calcium\s+rapidly|rapid\s+iv\s+push\s+of\s+calcium)\b/i.test(dossierText)) {
+    blockingFailures.push("Unsafe medication recommendation: Rapid IV calcium push in digitalis toxicity.");
+  }
+
+  return {
+    passed: blockingFailures.length === 0,
+    blockingFailures,
+  };
 }
 
 /**
@@ -102,25 +150,24 @@ export function auditAndEnforceClinicalDossier(
     }
   }
 
-  // 3. Strict Chloride Sentinel Enforcement
+  // 3. Strict Chloride Sentinel Enforcement (INV-002)
   if (scratchpad.sentinels.isChlorideMissing) {
     const fakeAgRegex = /\b(?:anion\s+gap\s*[:=]?\s*(?:18|19|20|elevated\s+at\s+19)|estimated\s+anion\s+gap\s*[:=]?\s*19)\b/gi;
     if (fakeAgRegex.test(text)) {
       text = text.replace(
         fakeAgRegex,
-        "Anion Gap: CANNOT BE CALCULATED (Serum Chloride UNMEASURED)"
+        "Anion Gap: Cannot calculate — chloride unavailable (Serum Chloride UNMEASURED)"
       );
       violations.push({
         ruleId: "GATE-CHLORIDE-SUBSTITUTION-VETO",
         description: "Anion gap calculated or estimated without measured serum chloride.",
-        actionTaken: "Enforced strict calculation refusal.",
+        actionTaken: "Enforced strict calculation refusal: 'Cannot calculate — chloride unavailable'.",
       });
     }
   }
 
-  // 4. Strict KDIGO Staging Calibration Enforcement
+  // 4. Strict KDIGO Staging Calibration Enforcement (INV-006)
   if (scratchpad.derivedCalculations.kdigoAki.establishedStage === 2) {
-    // If output claims unconditional Stage 3 without mentioning acute timeline or fold ratio:
     const unconditionalStage3Regex = /KDIGO\s+Stage\s+3\s+Acute\s+Kidney\s+Injury\s+\(Cr\s+4\.8\s+mg\/dL\s+and\s+baseline\s+2\.3\s+mg\/dL\)/gi;
     if (unconditionalStage3Regex.test(text)) {
       text = text.replace(
@@ -133,9 +180,50 @@ export function auditAndEnforceClinicalDossier(
         actionTaken: "Calibrated staging to Stage 2 by fold ratio with conditional Stage 3 explanation.",
       });
     }
+
+    // Check if anuria was improperly claimed to establish Stage 3 without documented urine output/duration
+    const anuriaStage3Regex = /\b(?:KDIGO\s+Stage\s+3\s+(?:due\s+to|by)\s+anuria|anuria\s+(?:satisfies|establishes)\s+KDIGO\s+Stage\s+3)\b/gi;
+    if (anuriaStage3Regex.test(text)) {
+      text = text.replace(
+        anuriaStage3Regex,
+        "KDIGO Stage 2 by fold ratio (2.09× baseline); anuria cannot be used to establish Stage 3 without documented urine output and duration (≥ 12 hours)"
+      );
+      violations.push({
+        ruleId: "GATE-KDIGO-ANURIA-VETO",
+        description: "Anuria was improperly asserted to establish KDIGO Stage 3 without documented duration ≥ 12 hours.",
+        actionTaken: "Enforced independent KDIGO criteria: Stage 2 by fold ratio, anuria rejected without documented 12h duration.",
+      });
+    }
   }
 
-  // 5. Strict Winter's Formula Calibration
+  // 5. Strict Fluid Resuscitation Individualization & Anti-Invented-Anuria Gate (INV-004)
+  const inventedAnuriaRegex = /\b(?:due\s+to\s+anuria|patient\s+is\s+anuric|anuric\s+ckd|in\s+anuria)\b/gi;
+  if (scratchpad.labs.urineOutputMl !== null && scratchpad.labs.urineOutputMl > 0 && inventedAnuriaRegex.test(text)) {
+    text = text.replace(
+      inventedAnuriaRegex,
+      `severe oliguria (${scratchpad.labs.urineOutputMl} mL / ${scratchpad.labs.urineOutputDurationHours || 8}h; non-anuric)`
+    );
+    violations.push({
+      ruleId: "GATE-INVENTED-ANURIA-VETO",
+      description: "Candidate text falsely claimed patient is anuric despite documented non-zero urine output.",
+      actionTaken: `Replaced with documented oliguria fact (${scratchpad.labs.urineOutputMl} mL).`,
+    });
+  }
+
+  const dogmaticFluidVetoRegex = /\b(?:fluids\s+are\s+strictly\s+contraindicated\s+due\s+to\s+(?:hfref|ckd)|fluid\s+resuscitation\s+is\s+prohibited\s+in\s+(?:hfref|ckd))\b/gi;
+  if (dogmaticFluidVetoRegex.test(text)) {
+    text = text.replace(
+      dogmaticFluidVetoRegex,
+      "High risk of fluid overload in HFrEF/CKD: Individualize resuscitation with dynamic fluid responsiveness (POCUS) and early vasopressors; do not automatically prohibit fluids solely because of HFrEF or CKD"
+    );
+    violations.push({
+      ruleId: "GATE-FLUID-SAFETY-INDIVIDUALIZATION",
+      description: "Categorical prohibition of all fluid resuscitation based solely on HFrEF or CKD.",
+      actionTaken: "Replaced with individualized fluid resuscitation directive.",
+    });
+  }
+
+  // 6. Strict Winter's Formula Calibration (INV-005)
   if (scratchpad.derivedCalculations.wintersFormula.interpretationCategory === "BORDERLINE_COMPENSATION_RELATIVE_HYPOVENTILATION") {
     const dogmaticRespAcidosisRegex = /\b(?:definitive|concomitant)\s+secondary\s+respiratory\s+acidosis\b/gi;
     if (dogmaticRespAcidosisRegex.test(text)) {
@@ -146,23 +234,38 @@ export function auditAndEnforceClinicalDossier(
       violations.push({
         ruleId: "GATE-WINTERS-BORDERLINE-CALIBRATION",
         description: "Borderline 1 mmHg deviation above Winter's upper limit labeled definitive respiratory acidosis.",
-        actionTaken: "Replaced with calibrated biological variability phrasing.",
+        actionTaken: "Replaced with calibrated biological variability phrasing requiring clinical reassessment.",
       });
     }
   }
 
-  // 6. Append Pre-Flight Verification Seal
+  // 7. Cross-Section Clinical Consistency Enforcement (INV-007)
+  const consistencyResult = validateCrossSectionClinicalConsistency(text, scratchpad);
+  for (const c of consistencyResult.violations) {
+    violations.push({
+      ruleId: "GATE-CROSS-SECTION-CONSISTENCY",
+      description: `Cross-section inconsistency in ${c.item}: ${c.issue}`,
+      actionTaken: "Reconciled data consistency across narrative, math, and treatment sections.",
+    });
+  }
+
+  // 8. Mandatory Release Rule Evaluation
+  const mandatoryReleaseEval = evaluateMandatoryReleaseRule(text, scratchpad, violations);
+
+  // 9. Append Pre-Flight Verification Seal
   const timestamp = new Date().toISOString();
   const auditSeal = sha256Sync(`PREFLIGHT::encounter=${encounterId}::violations=${violations.length}::ts=${timestamp}`);
 
   const auditedDossier = text;
 
   return {
-    isApproved: violations.length === 0,
+    isApproved: violations.length === 0 && mandatoryReleaseEval.passed,
     violationsCount: violations.length,
     violations,
     auditedDossier,
     scratchpad,
+    mandatoryReleasePassed: mandatoryReleaseEval.passed,
+    mandatoryReleaseFailures: mandatoryReleaseEval.blockingFailures,
     auditSeal,
     timestamp,
   };
