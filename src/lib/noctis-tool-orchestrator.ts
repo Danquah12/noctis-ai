@@ -47,11 +47,28 @@ export interface OrchestrationResult {
  */
 export function matchSovereignTool(query: string): ToolMatchResult | null {
   const q = query.toLowerCase();
+
+  // High-assurance safety exclusion: Do not route acute clinical/medical emergencies to physical engineering tools
+  const isClinicalEncounter =
+    /\b(patient|female|male|years?-old|yo|y\/o|triage|resuscitation|symptom|presents? with|blood pressure|\b(?:bp|hr|rr|spo2)\b|cardiac|ecg|troponin|chest pain|cough|fever|dyspnea|hypotension|tachycardia|bradycardia|potassium|hyperkalemia|sodium|hyponatremia|magnesium|calcium|creatinine|egfr|ckd|stroke|sepsis|shock|infection)\b/i.test(query);
+
+  if (isClinicalEncounter) {
+    // Only allow sovereign physical tool if query specifically requests that engineering domain
+    const hasExplicitPhysicalEngineIntent =
+      /\b(tokamak|hypersonic|fay-riddell|stellarator|orbital rendezvous|clohessy|water hammer|joukowsky|cryogenic propellant|boil-off|insar|interferogram|deep space optical|neuromorphic|rydberg|otec|ocean thermal|directional drilling|vlbi)\b/i.test(query);
+    if (!hasExplicitPhysicalEngineIntent) {
+      return null;
+    }
+  }
+
   let bestMatch: ToolMatchResult | null = null;
   let highestScore = 0;
 
   for (const tool of SOVEREIGN_TOOLS) {
-    const matched = tool.keywords.filter((kw) => q.includes(kw.toLowerCase()));
+    const matched = tool.keywords.filter((kw) => {
+      const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      return new RegExp(`\\b${escaped}\\b`, "i").test(q);
+    });
     if (matched.length === 0) continue;
 
     // Base score for any keyword match: at least 0.35 + proportional keyword bonus

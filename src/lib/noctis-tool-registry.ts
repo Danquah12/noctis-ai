@@ -533,10 +533,10 @@ export const SOVEREIGN_TOOLS: SovereignToolDefinition[] = [
     execute: (p: OtecPlantParams) => evaluateOtecPowerPlant(p),
     formatMarkdown: (p: OtecPlantParams, res: OtecAuditResult) => `
 ### OTEC Thermodynamic Power Plant Audit (Sovereign Engine #114)
-- **Carnot Maximum Efficiency**: **${(res.carnotEfficiencyLimit * 100).toFixed(2)}%** (Delta T = ${(p.surfaceWarmSeawaterTempC - p.deepColdSeawaterTempC).toFixed(1)} °C)
-- **Net Electrical Power Output**: **${res.netElectricOutputMWe.toFixed(2)} MWe** (Parasitic Load: **${res.parasiticPumpingPowerMWe.toFixed(2)} MWe**)
-- **Cold Water Pipe Pressure Drop**: **${res.pipeHeadLossMeters.toFixed(2)} m**
-- **Commercial Viability (Net > 0)**: **${res.isCommerciallyViable ? "VIABLE (Net power positive)" : "NEGATIVE NET POWER"}**
+- **Carnot Maximum Efficiency**: **${res.carnotIdealEfficiencyPercent.toFixed(2)}%** (Delta T = ${(p.surfaceWarmSeawaterTempC - p.deepColdSeawaterTempC).toFixed(1)} °C)
+- **Net Electrical Power Output**: **${res.netElectricalPowerMWe.toFixed(2)} MWe** (Parasitic Load: **${res.parasiticPumpingPowerMWe.toFixed(2)} MWe**)
+- **Cold Water Pipe Pressure Drop**: **${res.coldWaterPipingHeadLossMeters.toFixed(2)} m**
+- **Commercial Viability (Net > 0)**: **${res.isNetPositivePowerVerified ? "VIABLE (Net power positive)" : "NEGATIVE NET POWER"}**
 - **Diagnostic Invariant**: ${res.diagnostic}
 `
   },

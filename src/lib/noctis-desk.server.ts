@@ -961,15 +961,20 @@ export async function vibeReply(
     }
   }
 
+  // High-assurance safety gate: Do not route acute clinical/medical emergencies to physical engineering tools
+  const isClinicalInquiry = /\b(patient|female|male|years?-old|yo|y\/o|triage|resuscitation|symptom|presents? with|blood pressure|\b(?:bp|hr|rr|spo2)\b|cardiac|ecg|troponin|chest pain|cough|fever|dyspnea|hypotension|tachycardia|bradycardia|potassium|hyperkalemia|sodium|hyponatremia|magnesium|calcium|creatinine|egfr|ckd|stroke|sepsis|shock|infection)\b/i.test(latest);
+
   // Unified Sovereign Tool Orchestrator (16 Core Deterministic Computational Engines)
-  try {
-    const { orchestrateSovereignQuery } = await import("@/lib/noctis-tool-orchestrator");
-    const toolResult = orchestrateSovereignQuery(latest);
-    if (toolResult.handled && toolResult.formattedMarkdown) {
-      return { text: toolResult.formattedMarkdown };
+  if (!isClinicalInquiry) {
+    try {
+      const { orchestrateSovereignQuery } = await import("@/lib/noctis-tool-orchestrator");
+      const toolResult = orchestrateSovereignQuery(latest);
+      if (toolResult.handled && toolResult.formattedMarkdown) {
+        return { text: toolResult.formattedMarkdown };
+      }
+    } catch {
+      /* Fallback to LLM / standard synthesis if tool execution errors */
     }
-  } catch {
-    /* Fallback to LLM / standard synthesis if tool execution errors */
   }
   const reply = await composeVibeReply(kept, keyOverride, style);
   if (!("text" in reply) || reply.text.includes("Independent check") || reply.text.startsWith("## Vibe ") || (reply.text.trim().startsWith("{") && reply.text.trim().endsWith("}"))) return reply;

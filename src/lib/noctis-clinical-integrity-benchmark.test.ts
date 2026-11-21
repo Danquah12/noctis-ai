@@ -268,4 +268,74 @@ describe("NH-AI-001..NH-AI-015: Clinical Intelligence Integrity and Safety Bench
     assert.doesNotMatch(result, /\bhyperpyrexia\b/i);
     assert.doesNotMatch(result, /respiratory alkalosis compensating for lactic acidosis/i);
   });
+
+  it("NH-AI-017: Multi-System Emergency Audit: BRASH Syndrome, Digoxin Toxicity, MALA, Hyperkalemia 7.3 & Mixed Shock", () => {
+    const complexPrompt = `A 78-year-old male with CKD stage 4, heart failure with reduced ejection fraction (EF 30%), atrial fibrillation, and type 2 diabetes presents to the emergency department with profound weakness, confusion, dizziness, and reduced urine output over the past 24 hours.
+
+He recently developed diarrhea and poor oral intake. Three days ago, his primary care physician prescribed trimethoprim-sulfamethoxazole for a suspected urinary tract infection.
+
+Current medications:
+- Digoxin 0.125 mg daily
+- Carvedilol 25 mg twice daily
+- Spironolactone 25 mg daily
+- Lisinopril 20 mg daily
+- Metformin 1,000 mg twice daily
+- Trimethoprim-sulfamethoxazole 160/800 mg twice daily
+Emergency department findings
+Parameter	Value
+Blood pressure	68/38 mmHg
+Heart rate	29 bpm
+Respiratory rate	28/min
+Oxygen saturation	91% on room air
+Temperature	38.6°C
+Potassium	7.3 mmol/L
+Sodium	129 mmol/L
+Creatinine	4.8 mg/dL
+Baseline creatinine	2.3 mg/dL
+Bicarbonate	12 mmol/L
+Arterial pH	7.12
+PaCO2	29 mmHg
+Lactate	6.8 mmol/L
+Digoxin level	3.6 ng/mL
+Blood glucose	168 mg/dL
+Urine output	100 mL over 8 hours
+ECG	Junctional bradycardia, QRS 154 ms, peaked T waves
+
+Challenge for Noctis
+Perform a comprehensive, immediate clinical safety audit of this patient.`;
+
+    const result = handleNaturalPatientDiagnosticQuery(complexPrompt);
+    assert.ok(result !== null);
+
+    // 1. Emergency triage & immediate life threats
+    assert.match(result, /P0\s+IMMEDIATE\s+EMERGENCY/i);
+    assert.match(result, /BRASH\s+Syndrome/i);
+    assert.match(result, /Digoxin\s+Toxicity/i);
+
+    // 2. Calculations
+    assert.match(result, /\b48\.0\s*mmHg\b/); // MAP
+    assert.match(result, /\+2\.5\s*mg\/dL/i); // Creatinine rise
+    assert.match(result, /2\.09\s*×|2\.09x/i); // Fold change
+    assert.match(result, /KDIGO.*(?:Stage\s*3|STAGE\s*3)/i); // KDIGO 3
+    assert.match(result, /Chloride.*UNMEASURED/i); // Unmeasured chloride transparency
+    assert.match(result, /Winter's.*26\s*(?:±|\\pm|\+\/-)\s*2/i); // Winter's formula
+    assert.match(result, /superimposed acute respiratory acidosis|relative hypoventilation/i);
+
+    // 3. Medication interactions
+    assert.match(result, /Trimethoprim.*ENaC/i);
+    assert.match(result, /MALA|mitochondrial complex I/i);
+
+    // 4. Resuscitation & Stone Heart Myth
+    assert.match(result, /DigiFab|Digibind/i);
+    assert.match(result, /2\.5\s*vials/i);
+    assert.match(result, /DO NOT WITHHOLD IV CALCIUM/i);
+    assert.match(result, /stone heart.*myth/i);
+
+    // 5. Dialysis & CRRT
+    assert.match(result, /CRRT.*STRONGLY PREFERRED/i);
+    assert.match(result, /POORLY DIALYZABLE/i); // Digoxin dialyzability
+
+    // 6. Complete structured SOAP documentation
+    assert.match(result, /CLINICAL ENCOUNTER DOCUMENTATION: EMERGENCY ADMISSION SOAP NOTE/i);
+  });
 });

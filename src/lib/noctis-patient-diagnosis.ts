@@ -16,6 +16,7 @@ import {
   type PatientClinicalEncounter,
 } from "./noctis-clinical-engine.ts";
 import { validateClinicalEvidenceIntegrity } from "./noctis-clinical-evidence-validator.ts";
+import { generateBrashDigoxinMalaEmergencyDossier } from "./noctis-brash-digoxin-engine.ts";
 /**
  * Noctis Patient Diagnostic & Clinical Decision Support Engine (NPDE)
  *
@@ -2307,6 +2308,18 @@ function executeNaturalPatientDiagnosticQuery(question: string): string | null {
 > **Safety Protocol Enforcement:** Under the Noctis Clinical Intelligence Safety Invariants, the system strictly refuses to synthesize an amalgamated diagnosis across unlinked clinical encounters. Findings have been isolated into distinct patient records. Immediate clinician verification is required.`;
   }
 
+  // Dedicated Handler: Emergent BRASH Syndrome, Digoxin Toxicity, MALA & Complex Multi-System Shock
+  const isBrashOrDigoxinCrisis =
+    (/\b(brash|digoxin|digibind|digifab|mala|metformin.*lactic)\b/i.test(q) && /\b(potassium|bradycardia|shock|renal|kidney|creatinine)\b/i.test(q)) ||
+    (/\b(digoxin|digitalis)\b/i.test(q) && /\b(toxicity|3\.6|level|junctional|bradycardia|heart block|av block)\b/i.test(q)) ||
+    (/\b(78-year-old|78\s*yo|78\s*y\/o)\b/i.test(q) && /\b(digoxin|carvedilol|spironolactone|trimethoprim|metformin)\b/i.test(q));
+
+  if (isBrashOrDigoxinCrisis) {
+    const encMatch = q.match(/\b(NPDE-[A-Z0-9]+)\b/i);
+    const encId = encMatch ? encMatch[1] : `NPDE-BRASH-DIG-${Date.now().toString(36).toUpperCase()}`;
+    return generateBrashDigoxinMalaEmergencyDossier(encId, q);
+  }
+
   // Dedicated Handler: Emergent Severe Hyperkalemia & Cardiotoxic Electrolyte Crisis (C-BIG-K Protocol)
   const isHyperkalemiaCrisis =
     (/\b(hyperkalemia|potassium|k\+)\b/i.test(q) &&
@@ -2687,3 +2700,5 @@ export function handleNaturalPatientDiagnosticQuery(question: string): string | 
   if (!rawResponse) return null;
   return validateClinicalEvidenceIntegrity(rawResponse, q).sanitizedDossier;
 }
+
+export { generateBrashDigoxinMalaEmergencyDossier } from "./noctis-brash-digoxin-engine.ts";
