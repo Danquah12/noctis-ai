@@ -314,3 +314,268 @@ export function generateFhirDocumentReferencePayload(params: {
     },
   };
 }
+
+export interface IngestedEhrPatientRecord {
+  patientId: string;
+  encounterId?: string;
+  name?: string;
+  gender?: string;
+  age?: number;
+  vitals: {
+    sbp?: number;
+    dbp?: number;
+    hr?: number;
+    rr?: number;
+    tempC?: number;
+    spo2?: number;
+  };
+  labs: {
+    potassium?: number;
+    sodium?: number;
+    creatinine?: number;
+    bicarbonate?: number;
+    chloride?: number;
+    lactate?: number;
+    arterialPh?: number;
+    paco2?: number;
+    digoxin?: number;
+    glucose?: number;
+  };
+  baselineCreatinine?: number;
+  urineOutputSummary?: {
+    volumeMl: number;
+    periodHours: number;
+  };
+  activeConditions: string[];
+  medications: string[];
+  rawClinicalNotes: string[];
+  sourceEhrSystem: string;
+  ingestionTimestampIso: string;
+}
+
+/**
+ * Validates and transforms raw FHIR R4 resources into a structured Noctis patient record.
+ */
+export function transformFhirResourcesToNoctisPatient(
+  patientResource: Record<string, any>,
+  observations: Record<string, any>[],
+  conditions: Record<string, any>[] = [],
+  medications: Record<string, any>[] = [],
+  encounterResource?: Record<string, any>
+): IngestedEhrPatientRecord {
+  const patientId = patientResource.id || "UNKNOWN-PATIENT";
+  const encounterId = encounterResource?.id || "CURRENT-ENCOUNTER";
+
+  let name: string | undefined;
+  if (Array.isArray(patientResource.name) && patientResource.name.length > 0) {
+    const primaryName = patientResource.name[0];
+    const given = Array.isArray(primaryName.given) ? primaryName.given.join(" ") : "";
+    const family = primaryName.family || "";
+    name = `${given} ${family}`.trim() || undefined;
+  }
+
+  let age: number | undefined;
+  if (patientResource.birthDate) {
+    const birthYear = new Date(patientResource.birthDate).getFullYear();
+    const currentYear = new Date().getFullYear();
+    age = currentYear - birthYear;
+  }
+
+  const gender = patientResource.gender;
+  const vitals: IngestedEhrPatientRecord["vitals"] = {};
+  const labs: IngestedEhrPatientRecord["labs"] = {};
+  let baselineCreatinine: number | undefined;
+  let urineOutputSummary: IngestedEhrPatientRecord["urineOutputSummary"] | undefined;
+
+  for (const obs of observations) {
+    const code = obs.code?.coding?.[0]?.code || "";
+    const display = (obs.code?.coding?.[0]?.display || obs.code?.text || "").toLowerCase();
+    const valueQuantity = obs.valueQuantity?.value;
+
+    // Handle component-based panels (e.g. 85354-9 Blood pressure panel)
+    if (Array.isArray(obs.component)) {
+      for (const comp of obs.component) {
+        const compCode = comp.code?.coding?.[0]?.code || "";
+        const compDisplay = (comp.code?.coding?.[0]?.display || comp.code?.text || "").toLowerCase();
+        const compVal = comp.valueQuantity?.value;
+        if (compCode === "8480-6" || compDisplay.includes("systolic")) {
+          if (compVal !== undefined) vitals.sbp = Number(compVal);
+        }
+        if (compCode === "8462-4" || compDisplay.includes("diastolic")) {
+          if (compVal !== undefined) vitals.dbp = Number(compVal);
+        }
+      }
+    }
+
+    if (code === "8480-6" || display.includes("systolic")) {
+      const val = valueQuantity ?? obs.component?.find((c: any) => c.code?.coding?.[0]?.code === "8480-6")?.valueQuantity?.value;
+      if (val !== undefined) vitals.sbp = Number(val);
+    }
+    if (code === "8462-4" || display.includes("diastolic")) {
+      const val = valueQuantity ?? obs.component?.find((c: any) => c.code?.coding?.[0]?.code === "8462-4")?.valueQuantity?.value;
+      if (val !== undefined) vitals.dbp = Number(val);
+    }
+    if (code === "8867-4" || display.includes("heart rate") || display.includes("pulse")) {
+      if (valueQuantity !== undefined) vitals.hr = Number(valueQuantity);
+    }
+    if (code === "9279-1" || display.includes("respiratory rate")) {
+      if (valueQuantity !== undefined) vitals.rr = Number(valueQuantity);
+    }
+    if (code === "8310-5" || display.includes("body temperature")) {
+      const tempVal = Number(valueQuantity);
+      const unit = obs.valueQuantity?.unit || "Cel";
+      vitals.tempC = unit.toLowerCase().includes("f") ? ((tempVal - 32) * 5) / 9 : tempVal;
+    }
+    if (code === "2708-6" || code === "59408-5" || display.includes("oxygen saturation") || display.includes("spo2")) {
+      if (valueQuantity !== undefined) vitals.spo2 = Number(valueQuantity);
+    }
+
+    if (code === "2823-3" || code === "6298-4" || display.includes("potassium")) {
+      if (valueQuantity !== undefined) labs.potassium = Number(valueQuantity);
+    }
+    if (code === "2951-2" || code === "2947-0" || display.includes("sodium")) {
+      if (valueQuantity !== undefined) labs.sodium = Number(valueQuantity);
+    }
+    if (code === "2160-0" || code === "38483-4" || display.includes("creatinine")) {
+      if (display.includes("baseline") || obs.note?.[0]?.text?.includes("baseline")) {
+        baselineCreatinine = Number(valueQuantity);
+      } else {
+        labs.creatinine = Number(valueQuantity);
+      }
+    }
+    if (code === "1963-8" || code === "2028-9" || display.includes("bicarbonate") || display.includes("co2")) {
+      if (valueQuantity !== undefined) labs.bicarbonate = Number(valueQuantity);
+    }
+    if (code === "2075-0" || display.includes("chloride")) {
+      if (valueQuantity !== undefined) labs.chloride = Number(valueQuantity);
+    }
+    if (code === "2524-7" || code === "32693-4" || display.includes("lactate")) {
+      if (valueQuantity !== undefined) labs.lactate = Number(valueQuantity);
+    }
+    if (code === "2744-1" || display.includes("ph of arterial blood") || display.includes("arterial ph")) {
+      if (valueQuantity !== undefined) labs.arterialPh = Number(valueQuantity);
+    }
+    if (code === "2019-8" || display.includes("carbon dioxide [partial pressure] in arterial blood") || display.includes("paco2")) {
+      if (valueQuantity !== undefined) labs.paco2 = Number(valueQuantity);
+    }
+    if (code === "3564-2" || display.includes("digoxin")) {
+      if (valueQuantity !== undefined) labs.digoxin = Number(valueQuantity);
+    }
+    if (code === "2345-7" || display.includes("glucose")) {
+      if (valueQuantity !== undefined) labs.glucose = Number(valueQuantity);
+    }
+    if (code === "9187-6" || code === "9188-4" || display.includes("urine output")) {
+      urineOutputSummary = {
+        volumeMl: Number(valueQuantity) || 100,
+        periodHours: 8,
+      };
+    }
+  }
+
+  const activeConditions: string[] = [];
+  for (const cond of conditions) {
+    const text = cond.code?.text || cond.code?.coding?.[0]?.display;
+    if (text) activeConditions.push(text);
+  }
+
+  const activeMeds: string[] = [];
+  for (const med of medications) {
+    const text = med.medicationCodeableConcept?.text || med.medicationCodeableConcept?.coding?.[0]?.display;
+    if (text) activeMeds.push(text);
+  }
+
+  return {
+    patientId,
+    encounterId,
+    name,
+    gender,
+    age,
+    vitals,
+    labs,
+    baselineCreatinine,
+    urineOutputSummary,
+    activeConditions,
+    medications: activeMeds,
+    rawClinicalNotes: [],
+    sourceEhrSystem: "SMART-FHIR-R4-EHR",
+    ingestionTimestampIso: new Date().toISOString(),
+  };
+}
+
+/**
+ * Converts an IngestedEhrPatientRecord into standard Noctis natural clinical text intake.
+ */
+export function convertEhrPatientRecordToPrompt(record: IngestedEhrPatientRecord): string {
+  const parts: string[] = [];
+
+  const ageStr = record.age ? `${record.age}-year-old` : "Adult";
+  const genderStr = record.gender ? record.gender : "patient";
+  const conditionsStr = record.activeConditions.length > 0 ? `with ${record.activeConditions.join(", ")}` : "";
+
+  parts.push(`A ${ageStr} ${genderStr} ${conditionsStr} presents to the emergency department.\n`);
+
+  if (record.medications.length > 0) {
+    parts.push("Current medications:");
+    for (const med of record.medications) {
+      parts.push(`- ${med}`);
+    }
+    parts.push("");
+  }
+
+  parts.push("Emergency department findings");
+  parts.push("Parameter\tValue");
+
+  if (record.vitals.sbp !== undefined && record.vitals.dbp !== undefined) {
+    parts.push(`Blood pressure\t${record.vitals.sbp}/${record.vitals.dbp} mmHg`);
+  }
+  if (record.vitals.hr !== undefined) {
+    parts.push(`Heart rate\t${record.vitals.hr} bpm`);
+  }
+  if (record.vitals.rr !== undefined) {
+    parts.push(`Respiratory rate\t${record.vitals.rr}/min`);
+  }
+  if (record.vitals.spo2 !== undefined) {
+    parts.push(`Oxygen saturation\t${record.vitals.spo2}% on room air`);
+  }
+  if (record.vitals.tempC !== undefined) {
+    parts.push(`Temperature\t${record.vitals.tempC}°C`);
+  }
+  if (record.labs.potassium !== undefined) {
+    parts.push(`Potassium\t${record.labs.potassium} mmol/L`);
+  }
+  if (record.labs.sodium !== undefined) {
+    parts.push(`Sodium\t${record.labs.sodium} mmol/L`);
+  }
+  if (record.labs.creatinine !== undefined) {
+    parts.push(`Creatinine\t${record.labs.creatinine} mg/dL`);
+  }
+  if (record.baselineCreatinine !== undefined) {
+    parts.push(`Baseline creatinine\t${record.baselineCreatinine} mg/dL`);
+  }
+  if (record.labs.bicarbonate !== undefined) {
+    parts.push(`Bicarbonate\t${record.labs.bicarbonate} mmol/L`);
+  }
+  if (record.labs.chloride !== undefined) {
+    parts.push(`Chloride\t${record.labs.chloride} mmol/L`);
+  }
+  if (record.labs.arterialPh !== undefined) {
+    parts.push(`Arterial pH\t${record.labs.arterialPh}`);
+  }
+  if (record.labs.paco2 !== undefined) {
+    parts.push(`PaCO₂\t${record.labs.paco2} mmHg`);
+  }
+  if (record.labs.lactate !== undefined) {
+    parts.push(`Lactate\t${record.labs.lactate} mmol/L`);
+  }
+  if (record.labs.digoxin !== undefined) {
+    parts.push(`Digoxin level\t${record.labs.digoxin} ng/mL`);
+  }
+  if (record.labs.glucose !== undefined) {
+    parts.push(`Blood glucose\t${record.labs.glucose} mg/dL`);
+  }
+  if (record.urineOutputSummary) {
+    parts.push(`Urine output\t${record.urineOutputSummary.volumeMl} mL over ${record.urineOutputSummary.periodHours} hours`);
+  }
+
+  return parts.join("\n");
+}

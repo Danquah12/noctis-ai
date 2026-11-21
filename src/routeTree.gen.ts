@@ -76,6 +76,7 @@ import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiNoctisBenchmarkRouteImport } from './routes/api/noctis.benchmark'
 import { Route as ApiNoctisConsensusRouteImport } from './routes/api/noctis.consensus'
 import { Route as ApiNoctisIngestRouteImport } from './routes/api/noctis.ingest'
+import { Route as ApiNoctisSmartFhirRouteImport } from './routes/api/noctis.smart-fhir'
 import { Route as ApiV1HealthRouteImport } from './routes/api/v1.health'
 import { Route as HubCareerIdRouteImport } from './routes/hub.career.$id'
 import { Route as HubCertIdRouteImport } from './routes/hub.cert.$id'
@@ -431,6 +432,11 @@ const ApiNoctisIngestRoute = ApiNoctisIngestRouteImport.update({
   path: '/ingest',
   getParentRoute: () => ApiNoctisRoute,
 } as any)
+const ApiNoctisSmartFhirRoute = ApiNoctisSmartFhirRouteImport.update({
+  id: '/smart-fhir',
+  path: '/smart-fhir',
+  getParentRoute: () => ApiNoctisRoute,
+} as any)
 const ApiV1HealthRoute = ApiV1HealthRouteImport.update({
   id: '/api/v1/health',
   path: '/api/v1/health',
@@ -600,6 +606,7 @@ export interface FileRoutesByFullPath {
   '/api/noctis/benchmark': typeof ApiNoctisBenchmarkRoute
   '/api/noctis/consensus': typeof ApiNoctisConsensusRoute
   '/api/noctis/ingest': typeof ApiNoctisIngestRoute
+  '/api/noctis/smart-fhir': typeof ApiNoctisSmartFhirRoute
   '/api/v1/health': typeof ApiV1HealthRoute
   '/hub/career/$id': typeof HubCareerIdRoute
   '/hub/cert/$id': typeof HubCertIdRoute
@@ -684,6 +691,7 @@ export interface FileRoutesByTo {
   '/api/noctis/benchmark': typeof ApiNoctisBenchmarkRoute
   '/api/noctis/consensus': typeof ApiNoctisConsensusRoute
   '/api/noctis/ingest': typeof ApiNoctisIngestRoute
+  '/api/noctis/smart-fhir': typeof ApiNoctisSmartFhirRoute
   '/api/v1/health': typeof ApiV1HealthRoute
   '/hub/career/$id': typeof HubCareerIdRoute
   '/hub/cert/$id': typeof HubCertIdRoute
@@ -773,6 +781,7 @@ export interface FileRoutesById {
   '/api/noctis/benchmark': typeof ApiNoctisBenchmarkRoute
   '/api/noctis/consensus': typeof ApiNoctisConsensusRoute
   '/api/noctis/ingest': typeof ApiNoctisIngestRoute
+  '/api/noctis/smart-fhir': typeof ApiNoctisSmartFhirRoute
   '/api/v1/health': typeof ApiV1HealthRoute
   '/hub/career/$id': typeof HubCareerIdRoute
   '/hub/cert/$id': typeof HubCertIdRoute
@@ -863,6 +872,7 @@ export interface FileRouteTypes {
     | '/api/noctis/benchmark'
     | '/api/noctis/consensus'
     | '/api/noctis/ingest'
+    | '/api/noctis/smart-fhir'
     | '/api/v1/health'
     | '/hub/career/$id'
     | '/hub/cert/$id'
@@ -947,6 +957,7 @@ export interface FileRouteTypes {
     | '/api/noctis/benchmark'
     | '/api/noctis/consensus'
     | '/api/noctis/ingest'
+    | '/api/noctis/smart-fhir'
     | '/api/v1/health'
     | '/hub/career/$id'
     | '/hub/cert/$id'
@@ -1035,6 +1046,7 @@ export interface FileRouteTypes {
     | '/api/noctis/benchmark'
     | '/api/noctis/consensus'
     | '/api/noctis/ingest'
+    | '/api/noctis/smart-fhir'
     | '/api/v1/health'
     | '/hub/career/$id'
     | '/hub/cert/$id'
@@ -1563,6 +1575,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiNoctisIngestRouteImport
       parentRoute: typeof ApiNoctisRoute
     }
+    '/api/noctis/smart-fhir': {
+      id: '/api/noctis/smart-fhir'
+      path: '/smart-fhir'
+      fullPath: '/api/noctis/smart-fhir'
+      preLoaderRoute: typeof ApiNoctisSmartFhirRouteImport
+      parentRoute: typeof ApiNoctisRoute
+    }
     '/api/v1/health': {
       id: '/api/v1/health'
       path: '/api/v1/health'
@@ -1837,12 +1856,14 @@ interface ApiNoctisRouteChildren {
   ApiNoctisBenchmarkRoute: typeof ApiNoctisBenchmarkRoute
   ApiNoctisConsensusRoute: typeof ApiNoctisConsensusRoute
   ApiNoctisIngestRoute: typeof ApiNoctisIngestRoute
+  ApiNoctisSmartFhirRoute: typeof ApiNoctisSmartFhirRoute
 }
 
 const ApiNoctisRouteChildren: ApiNoctisRouteChildren = {
   ApiNoctisBenchmarkRoute: ApiNoctisBenchmarkRoute,
   ApiNoctisConsensusRoute: ApiNoctisConsensusRoute,
   ApiNoctisIngestRoute: ApiNoctisIngestRoute,
+  ApiNoctisSmartFhirRoute: ApiNoctisSmartFhirRoute,
 }
 
 const ApiNoctisRouteWithChildren = ApiNoctisRoute._addFileChildren(
