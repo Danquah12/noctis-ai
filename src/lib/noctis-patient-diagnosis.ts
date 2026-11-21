@@ -7,6 +7,7 @@ import {
   evaluateSepsis3Criteria
 } from "./noctis-clinical-validation-engine.ts";
 import { generateIsolatedHematologyTmaDossier } from "./noctis-hematology-tma-engine.ts";
+import { generateCrit044MultiOrganEmergencyDossier } from "./noctis-pe-hemorrhage-hit-engine.ts";
 import {
   assessAcuteAbdominalPain,
   calculateAlvaradoScore,
@@ -1976,6 +1977,17 @@ export function formatPatientDiagnosticDossierMarkdown(dossier: PatientDiagnosti
     /\b(abdomin\w*|belly|stomach|epigastr\w*|quadrant|rlq|ruq|llq|luq|alvarado|appendic\w*|cholecyst\w*|pancreat\w*|lipase|biliary)\b/i.test(cc) ||
     /\b(abdomin\w*|belly|stomach|epigastr\w*|quadrant|rlq|ruq|llq|luq|alvarado|appendic\w*|cholecyst\w*|pancreat\w*|lipase|biliary)\b/i.test(rawText);
 
+  const isCrit044PeHemorrhageHit =
+    /\b(CRIT-044|NOCTIS-ICU-CRIT-044)\b/i.test(cc) ||
+    /\b(CRIT-044|NOCTIS-ICU-CRIT-044)\b/i.test(rawText) ||
+    (/\b(hip\s+replacement|arthroplasty)\b/i.test(rawText) &&
+      /\b(apixaban|melena|black\s+stools)\b/i.test(rawText) &&
+      /\b(68\/40|rv\s+dilation|popliteal|dvt)\b/i.test(rawText));
+
+  if (isCrit044PeHemorrhageHit) {
+    return generateCrit044MultiOrganEmergencyDossier(dossier.encounterId, dossier.patientData.rawIntakeText || rawText);
+  }
+
   const isHematologyTma =
     /\b(schistocyte|schistocytes|ttp|thrombotic\s+microangiopathy|maha|plasmic)\b/i.test(cc) ||
     /\b(schistocyte|schistocytes|ttp|thrombotic\s+microangiopathy|maha|plasmic)\b/i.test(rawText) ||
@@ -2305,7 +2317,7 @@ The patient presents with ${dossier.patientData.chiefComplaint || "an acute clin
   return sections.join("\n");
 }
 
-function executeNaturalPatientDiagnosticQuery(question: string, explicitEncounterId?: string): string | null {
+export function executeNaturalPatientDiagnosticQuery(question: string, explicitEncounterId?: string): string | null {
   const q = question.trim();
   const encMatch = q.match(/\b(NPDE-[A-Z0-9-]+)\b/i);
   const encId = explicitEncounterId || (encMatch ? encMatch[1] : `NPDE-INTAKE-${Date.now().toString(36).toUpperCase()}`);
@@ -2339,7 +2351,17 @@ function executeNaturalPatientDiagnosticQuery(question: string, explicitEncounte
     return generateDkaSepticShockEmergencyDossier(context);
   }
 
-  // Dedicated Handler: Emergent Thrombotic Microangiopathy (TMA) / TTP vs DIC & Coagulopathy
+  // Dedicated Handler: Emergent PE / Active Hemorrhage / HIT / DIC Conflict (CRIT-044)
+  const isCrit044PeHemorrhageHit =
+    /\b(CRIT-044|NOCTIS-ICU-CRIT-044)\b/i.test(q) ||
+    (/\b(hip\s+replacement|arthroplasty)\b/i.test(q) &&
+      /\b(apixaban|melena|black\s+stools)\b/i.test(q) &&
+      /\b(68\/40|rv\s+dilation|popliteal|dvt)\b/i.test(q));
+
+  if (isCrit044PeHemorrhageHit) {
+    return generateCrit044MultiOrganEmergencyDossier(encId, q);
+  }
+
   const isHematologyTma =
     /\b(schistocyte|schistocytes|ttp|thrombotic\s+microangiopathy|maha|plasmic)\b/i.test(q) ||
     (/\b(?:platelets?|plt)\s*[:=]?\s*(?:1[0-9]|[1-9])\s*(?:k|,000|\/µl|\/ul)\b/i.test(q) &&

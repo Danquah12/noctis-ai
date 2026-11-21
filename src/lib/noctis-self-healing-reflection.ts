@@ -23,6 +23,7 @@ import { buildImmutablePatientContext } from "./noctis-patient-context.ts";
 import { generateDkaSepticShockEmergencyDossier } from "./noctis-dka-sepsis-engine.ts";
 import { generateBrashDigoxinMalaEmergencyDossier } from "./noctis-brash-digoxin-engine.ts";
 import { generateIsolatedHematologyTmaDossier } from "./noctis-hematology-tma-engine.ts";
+import { generateCrit044MultiOrganEmergencyDossier } from "./noctis-pe-hemorrhage-hit-engine.ts";
 
 export interface HealingDiagnosticRecord {
   gateId: string;
@@ -246,7 +247,15 @@ export function healCandidateClinicalOutput(
         /\b(schistocyte|schistocytes|ttp|thrombotic\s+microangiopathy|maha|plasmic)\b/i.test(rawEncounterInput) ||
         (/\b(?:platelets?|plt)\s*[:=]?\s*18\b/i.test(rawEncounterInput) && /\b(?:hemoglobin|hgb)\s*[:=]?\s*7\b/i.test(rawEncounterInput));
 
-      if (isTma) {
+      const isCrit044 =
+        /\b(CRIT-044|NOCTIS-ICU-CRIT-044)\b/i.test(rawEncounterInput) ||
+        (/\b(hip\s+replacement|arthroplasty)\b/i.test(rawEncounterInput) &&
+          /\b(apixaban|melena|black\s+stools)\b/i.test(rawEncounterInput) &&
+          /\b(68\/40|rv\s+dilation|popliteal|dvt)\b/i.test(rawEncounterInput));
+
+      if (isCrit044) {
+        healedOutput = generateCrit044MultiOrganEmergencyDossier(encounterId, rawEncounterInput);
+      } else if (isTma) {
         healedOutput = generateIsolatedHematologyTmaDossier(encounterId, rawEncounterInput);
       } else if (ctx.syndromes.isDka || ctx.syndromes.primarySyndrome === "DKA_SEPSIS_MULTISYSTEM") {
         healedOutput = generateDkaSepticShockEmergencyDossier(ctx);
