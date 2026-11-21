@@ -28,7 +28,16 @@ import {
   Printer,
   Download,
   FileUp,
+  Radio,
+  Square,
+  Settings,
+  Terminal,
 } from "lucide-react";
+import {
+  streamNoctisCompletion,
+  getNoctisEndpoint,
+  setNoctisEndpoint,
+} from "@/lib/noctis-streaming-client";
 import {
   PatientReportedData,
   buildPatientDiagnosticReport,
@@ -250,6 +259,14 @@ export function NoctisPatientDiagnosisModal({
     "differentials" | "adaptive" | "intake" | "records_upload" | "trends" | "pgx_safety" | "soap" | "specialists"
   >("differentials");
 
+  // Real-Time SSE Inference Streaming State
+  const [streamingText, setStreamingText] = useState("");
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamError, setStreamError] = useState<string | null>(null);
+  const [customEndpoint, setCustomEndpoint] = useState(() => getNoctisEndpoint());
+  const [showEndpointSettings, setShowEndpointSettings] = useState(false);
+  const [streamAbortController, setStreamAbortController] = useState<AbortController | null>(null);
+
   // Construct patient data object
   const patientData: PatientReportedData = useMemo(() => {
     const explicitMissing: string[] = [];
@@ -467,6 +484,75 @@ export function NoctisPatientDiagnosisModal({
     navigator.clipboard.writeText(text);
     setCopiedSoap(true);
     setTimeout(() => setCopiedSoap(false), 2000);
+  };
+
+  const handleStartStreaming = async () => {
+    if (isStreaming) {
+      streamAbortController?.abort();
+      setIsStreaming(false);
+      return;
+    }
+
+    setStreamingText("");
+    setStreamError(null);
+    setIsStreaming(true);
+
+    const controller = new AbortController();
+    setStreamAbortController(controller);
+
+    const clinicalContext = `Clinical Intake: ${patientData.ageYears || "Unknown"}-year-old ${patientData.biologicalSex || "patient"} presenting with ${patientData.chiefComplaint || "acute symptoms"}.\n` +
+      `Onset: ${patientData.onsetTiming || "Unspecified"}. Pain: ${patientData.painQuality || "None"} (${patientData.painSeverity ?? "N/A"}/10).\n` +
+      `Vitals: BP ${vitalsEnabled ? `${systolicBp}/${diastolicBp}` : "Unknown"}, HR ${vitalsEnabled ? heartRate : "Unknown"}, SpO2 ${vitalsEnabled ? `${spo2}%` : "Unknown"}, Temp ${vitalsEnabled ? `${temperatureC}°C` : "Unknown"}.\n` +
+      `Associated Symptoms: ${selectedSymptoms.join(", ") || "None declared"}.\n` +
+      `Past Medical History: ${selectedPmh.join(", ") || "None declared"}.\n` +
+      `Current Medications: ${patientData.currentMedications.join(", ") || "None declared"}.\n` +
+      `Primary Suspected Differentials: ${differentials.slice(0, 3).map((d) => `${d.condition} (Probability ${d.probabilityPercent}%, Urgency ${d.urgencyLevel})`).join("; ")}.\n` +
+      `Please provide real-time prioritized clinical assessment, immediate resuscitation actions, and medication safety reconciliation under clinical invariants.`;
+
+    try {
+      await streamNoctisCompletion({
+        endpoint: customEndpoint,
+        messages: [
+          {
+            role: "system",
+            content: "You are Noctis AI, an advanced emergency medicine and clinical intelligence assistant. You prioritize patient safety, life-threatening interventions, and deterministic clinical invariants (e.g., C-BIG-K protocol for hyperkalemia).",
+          },
+          {
+            role: "user",
+            content: clinicalContext,
+          },
+        ],
+        model: "noctis-7b-v3.0-dpo",
+        temperature: 0.1,
+        maxTokens: 1024,
+        signal: controller.signal,
+        onChunk: (_delta, accumulated) => {
+          setStreamingText(accumulated);
+        },
+        onDone: (full) => {
+          setStreamingText(full);
+          setIsStreaming(false);
+          setStreamAbortController(null);
+        },
+        onError: (err) => {
+          setStreamError(err.message);
+          setIsStreaming(false);
+          setStreamAbortController(null);
+        },
+      });
+    } catch (err: any) {
+      if (!controller.signal.aborted) {
+        setStreamError(err.message || "Streaming failed");
+      }
+      setIsStreaming(false);
+      setStreamAbortController(null);
+    }
+  };
+
+  const handleSaveEndpoint = (url: string) => {
+    setCustomEndpoint(url);
+    setNoctisEndpoint(url);
+    setShowEndpointSettings(false);
   };
 
   const sendToChat = () => {
@@ -1428,6 +1514,91 @@ Please provide comprehensive physician-grade clinical decision support:
                   <span className="text-purple-400 font-bold block mb-1">[P - PLAN]</span>
                   <pre className="text-neutral-300 whitespace-pre-wrap font-mono text-xs">{soapNote.plan}</pre>
                 </div>
+              </div>
+
+              {/* REAL-TIME DPO INFERENCE STREAMING CONSOLE */}
+              <div className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-950/20 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className="text-xs font-semibold text-emerald-300 flex items-center gap-1.5">
+                      <Terminal className="w-3.5 h-3.5" />
+                      Noctis-7B v3.0-DPO Real-Time Neural Stream
+                    </span>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      OpenAI SSE Spec
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setShowEndpointSettings(!showEndpointSettings)}
+                      className="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white transition-colors border border-neutral-700"
+                      title="Configure Inference Endpoint"
+                    >
+                      <Settings className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={handleStartStreaming}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
+                        isStreaming
+                          ? "bg-red-500/20 text-red-300 border border-red-500/40 hover:bg-red-500/30"
+                          : "bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-950/50"
+                      }`}
+                    >
+                      {isStreaming ? (
+                        <>
+                          <Square className="w-3 h-3 fill-current" />
+                          <span>Stop Stream</span>
+                        </>
+                      ) : (
+                        <>
+                          <Radio className="w-3.5 h-3.5" />
+                          <span>Stream DPO Consultation</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {showEndpointSettings && (
+                  <div className="p-2.5 rounded-lg bg-neutral-900 border border-neutral-700 text-xs space-y-2">
+                    <label className="text-[11px] text-neutral-400 block">
+                      Inference Server Endpoint (FastAPI / RunPod URL):
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={customEndpoint}
+                        onChange={(e) => setCustomEndpoint(e.target.value)}
+                        placeholder="http://localhost:8000"
+                        className="flex-1 px-2.5 py-1.5 rounded bg-neutral-950 border border-neutral-700 text-xs text-white font-mono"
+                      />
+                      <button
+                        onClick={() => handleSaveEndpoint(customEndpoint)}
+                        className="px-3 py-1.5 rounded bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-medium"
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {streamError && (
+                  <div className="p-2.5 rounded-lg bg-red-950/40 border border-red-500/30 text-xs text-red-300">
+                    ⚠️ {streamError}
+                  </div>
+                )}
+
+                {streamingText ? (
+                  <div className="p-3.5 rounded-lg bg-neutral-950/80 border border-emerald-500/20 font-mono text-xs text-emerald-100 whitespace-pre-wrap leading-relaxed max-h-80 overflow-y-auto">
+                    {streamingText}
+                    {isStreaming && <span className="inline-block w-2 h-4 ml-1 bg-emerald-400 animate-pulse align-middle" />}
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-neutral-400 italic">
+                    Click &quot;Stream DPO Consultation&quot; to connect to your active GPU server and stream the aligned clinical assessment in real time.
+                  </p>
+                )}
               </div>
 
               {/* Questions for Physician */}

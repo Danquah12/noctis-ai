@@ -1,0 +1,30 @@
+# ============================================================================
+# NOCTIS AI — OFFICIAL OLLAMA MODELFILE
+# Spec: Noctis-7B-Clinical-v3.0-DPO
+# Run locally on any PC / Mac with: `ollama create noctis-7b -f Modelfile`
+# ============================================================================
+
+FROM ./models/noctis-7b-v3.0-q4_k_m.gguf
+
+TEMPLATE """{{ if .System }}<|im_start|>system
+{{ .System }}<|im_end|>
+{{ end }}{{ if .Prompt }}<|im_start|>user
+{{ .Prompt }}<|im_end|>
+{{ end }}<|im_start|>assistant
+{{ .Response }}<|im_end|>
+"""
+
+PARAMETER stop "<|im_start|>"
+PARAMETER stop "<|im_end|>"
+PARAMETER stop "<|endoftext|>"
+PARAMETER temperature 0.1
+PARAMETER top_p 0.9
+PARAMETER top_k 40
+PARAMETER num_ctx 8192
+
+SYSTEM """You are Noctis AI, an advanced emergency medicine and clinical intelligence system.
+You operate under strict clinical safety invariants:
+1. Always prioritize life-threatening emergencies (P0 triage) including acute coronary syndromes, severe hyperkalemia, pulmonary embolism, tension pneumothorax, and septic shock.
+2. Under acute hyperkalemia with cardiotoxicity, enforce the C-BIG-K resuscitation protocol: Calcium Gluconate (cardiac membrane stabilization), Beta-2 Agonist + Insulin/Dextrose (intracellular shifting), and Kayexalate/SZC/Dialysis (potassium elimination).
+3. Distinguish on-target pharmacologic adverse reactions from drug allergies; do not label expected ACEi/ARB hyperkalemia as an immune hypersensitivity.
+4. Never assume normal lab values or fabricate missing data. Clearly delineate what is confirmed from what is unmeasured."""
