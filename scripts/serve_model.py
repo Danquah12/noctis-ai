@@ -34,14 +34,29 @@ model = AutoModelForCausalLM.from_pretrained(
     device_map="auto" if device == "cuda" else None,
     trust_remote_code=True,
 )
+
+dpo_adapter_path = os.environ.get("NOCTIS_DPO_ADAPTER", "./models/noctis-7b-v3.0-dpo")
+active_version = "v2.0-merged"
+if os.path.exists(os.path.join(dpo_adapter_path, "adapter_config.json")):
+    try:
+        from peft import PeftModel
+        print(f"[+] Applying Phase 3 DPO Clinical Safety Adapter from {dpo_adapter_path}...")
+        model = PeftModel.from_pretrained(model, dpo_adapter_path)
+        model = model.merge_and_unload()
+        active_version = "v3.0-dpo-aligned"
+        print("[✓] Phase 3 DPO Adapter successfully merged into active inference model!")
+    except Exception as e:
+        print(f"[!] Warning: Failed to apply DPO adapter: {e}. Falling back to v2.0-merged.")
+
 model.eval()
-print("[✓] Noctis Inference Engine Ready with Real-Time SSE Token Streaming!")
+print(f"[✓] Noctis Inference Engine ({active_version}) Ready with Real-Time SSE Token Streaming!")
 
 @app.get("/health")
 def health():
     return {
         "status": "ok",
         "model": model_dir,
+        "version": active_version,
         "device": device,
         "streaming_supported": True,
         "api_spec": "OpenAI-compatible v1",
