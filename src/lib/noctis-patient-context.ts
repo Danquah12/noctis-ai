@@ -353,10 +353,9 @@ export function buildImmutablePatientContext(
       /\b(?:dka|ketones?|ketoacidosis)\b/i.test(q));
 
   const isSepsis =
-    /\b(?:sepsis|septic\s+shock|urosepsis|bacteremia)\b/i.test(q) ||
+    /\b(?:sepsis|septic\s+shock|urosepsis|bacteremia|infection)\b/i.test(q) ||
     ((temperatureCelsius !== null && (temperatureCelsius >= 38.0 || temperatureCelsius <= 36.0)) &&
-      (heartRateBpm !== null && heartRateBpm > 90) &&
-      (meanArterialPressureMmHg !== null && meanArterialPressureMmHg < 65));
+      (heartRateBpm !== null && heartRateBpm > 90));
 
   const isBrash =
     hasBradycardia &&

@@ -462,13 +462,27 @@ export function generateIsolatedSepticShockDossier(
   const hasCough = /\bcough\b/i.test(text);
   const hasNursingHome = /\bnursing\s+home\b/i.test(text);
 
+  const exactMapVal = (sbp + 2 * dbp) / 3;
+  const exactMapStr = exactMapVal.toFixed(1);
   const map = calculateValidatedMAP(sbp, dbp);
   const qsofa = calculateValidatedQSOFA({ respiratoryRate: rr, systolicBp: sbp, hasAlteredMentation: true });
   const curb65 = calculateValidatedCURB65({ confusion: true, respiratoryRate: rr, systolicBp: sbp, diastolicBp: dbp, ageYears: ageYears });
-  const sepsis3 = evaluateSepsis3Criteria({ hasSuspectedInfection: true, mapMmHg: map.mapMmHg, isOnVasopressors: false, hasReceivedAdequateFluidResuscitation: false });
+  const sepsis3 = evaluateSepsis3Criteria({ hasSuspectedInfection: true, mapMmHg: Math.round(exactMapVal), isOnVasopressors: false, hasReceivedAdequateFluidResuscitation: false });
 
   const meetsRrCurb65 = rr >= 30;
   const knownCurb65Score = 1 + 1 + (ageYears >= 65 ? 1 : 0) + (meetsRrCurb65 ? 1 : 0);
+
+  const spo2Display = spo2 !== undefined ? `${spo2}%` : "[UNMEASURED]";
+  const efDisplay = ef !== undefined ? `${ef}%` : "[NOT DOCUMENTED]";
+  const ckdDisplay = ckdStage !== undefined ? `Stage ${ckdStage}${egfr !== undefined ? ` (eGFR ${egfr} mL/min/1.73m²)` : ""}` : "[NOT DOCUMENTED]";
+  const crDisplay = creatinine !== undefined ? `${creatinine} mg/dL` : "[UNMEASURED]";
+  const lacDisplay = lactate !== undefined ? `${lactate} mmol/L` : "[UNMEASURED]";
+  const comorbText = [
+    ef !== undefined ? `HFrEF with EF ${ef}%` : null,
+    ckdStage !== undefined ? `CKD ${ckdDisplay}` : null,
+    creatinine !== undefined ? `Creatinine ${crDisplay}` : null,
+    lactate !== undefined ? `Lactate ${lacDisplay}` : null,
+  ].filter(Boolean).join(", ");
 
   return `# Noctis Patient Diagnostic & Triage Intelligence Dossier (Clinical Decision Support)
 **Encounter ID:** \`${encounterId}\` · **Triage Urgency:** **🚨 P0 IMMEDIATE EMERGENCY (Critical Care & Resuscitation)**
@@ -476,7 +490,7 @@ export function generateIsolatedSepticShockDossier(
 
 > [!CAUTION]
 > **EMERGENCY MEDICAL WARNING (IMMEDIATE RESUSCITATION DIRECTIVE — SHOCK WITH SUSPECTED SEVERE INFECTION)**
-> 🚨 **CRITICAL LIFE THREAT:** The patient exhibits severe circulatory failure (MAP ${map.mapMmHg} mmHg), acute delirium/confusion, marked tachycardia (${hr} bpm), tachypnea (RR ${rr}/min), hypoxemia (SpO2 ${spo2}%), and marked fever (${tempC.toFixed(1)}°C) secondary to **${consolidationText} (Pneumonia)** in a ${ageYears}-year-old ${genderStr} nursing home resident with severe comorbidities (**HFrEF with EF ${ef}%**, **CKD Stage ${ckdStage}, eGFR ${egfr} mL/min/1.73m²**, serum creatinine ${creatinine} mg/dL, and marked hyperlactatemia ${lactate} mmol/L).
+> 🚨 **CRITICAL LIFE THREAT:** The patient exhibits severe circulatory failure (MAP ${exactMapStr} mmHg), acute delirium/confusion, marked tachycardia (${hr} bpm), tachypnea (RR ${rr}/min), hypoxemia (SpO2 ${spo2Display}), and marked fever (${tempC.toFixed(1)}°C) secondary to **${consolidationText} (Pneumonia)** in a ${ageYears}-year-old ${genderStr}${hasNursingHome ? " nursing home resident" : " patient"}${comorbText ? ` with severe comorbidities (**${comorbText}**)` : ""}.
 > - **Immediate Action:** Activate Emergency Medical Services (EMS) / Code Sepsis immediately for resuscitation bay placement.
 > - **Time-Critical Imperative:** Immediate resuscitation in an Emergency Department and Critical Care / Intensive Care Unit. Outpatient management is strictly contraindicated.
 
@@ -486,18 +500,18 @@ export function generateIsolatedSepticShockDossier(
 
 | Parameter | Documented Observation | Physiological Significance | Diagnostic & Resuscitation Priority |
 | :--- | :--- | :--- | :--- |
-| **Blood Pressure** | **${sbp}/${dbp} mmHg** (MAP = **${map.mapMmHg} mmHg**) | Profound circulatory failure / distributive vasoplegia; loss of vital organ autoregulation. | **Critical Deficit:** Target MAP ≥ 65 mmHg via titrated small fluid boluses and early Norepinephrine. |
-| **Heart Rate** | **${hr} bpm (Marked Tachycardia)** | Sympathetic compensatory tachycardia to sustain cardiac output in vasoplegic shock. | Continuous cardiac telemetry; high myocardial oxygen demand on a failing ventricle (EF ${ef}%). |
+| **Blood Pressure** | **${sbp}/${dbp} mmHg** (MAP = **${exactMapStr} mmHg**) | Profound circulatory failure / distributive vasoplegia; loss of vital organ autoregulation. | **Critical Deficit:** Target MAP ≥ 65 mmHg via titrated small fluid boluses and early Norepinephrine. |
+| **Heart Rate** | **${hr} bpm (Marked Tachycardia)** | Sympathetic compensatory tachycardia to sustain cardiac output in vasoplegic shock. | Continuous cardiac telemetry; high myocardial oxygen demand on a failing ventricle (EF ${efDisplay}). |
 | **Body Temperature** | **${tempC.toFixed(1)}°C (Fever / Marked Pyrexia)** | Systemic inflammatory response; hypermetabolic bacterial demand. *(Note: 39.1°C is fever/pyrexia, not hyperpyrexia)*. | Confirms acute systemic infection; obtain two sets of blood cultures STAT. |
 | **Respiratory Rate** | **${rr} breaths/min (Tachypnea)** | Significant respiratory distress / metabolic compensation. Satisfies qSOFA (+1). Does NOT meet CURB-65 ≥ 30 threshold. | Primary clinical sign of respiratory distress and systemic metabolic stress. |
-| **Oxygen Saturation** | **${spo2}% on room air** | Acute hypoxemic respiratory failure secondary to dense alveolar consolidation. | STAT supplemental oxygen via Venturi mask or High-Flow Nasal Cannula targeting SpO2 92–94%. |
+| **Oxygen Saturation** | **${spo2Display} on room air** | Acute hypoxemic respiratory failure secondary to dense alveolar consolidation. | STAT supplemental oxygen via Venturi mask or High-Flow Nasal Cannula targeting SpO2 92–94%. |
 | **Mental Status** | **Acute Confusion (Delirium)** | Acute cerebral hypoperfusion and high concern for septic encephalopathy. Satisfies qSOFA (+1). | Requires airway protection monitoring; rule out acute stroke, CNS infection, and toxic/metabolic causes. |
-| **Cardiac Comorbidity** | **HFrEF (EF ${ef}%)** | Severe baseline systolic dysfunction; extreme susceptibility to iatrogenic pulmonary edema. | **Fluid Hazard:** Standard 30 mL/kg crystalloids (~2,000 mL) contraindicated; requires individualized fluid aliquots. |
-| **Renal Function** | **CKD Stage ${ckdStage} (eGFR ${egfr} mL/min/1.73m²), Creatinine ${creatinine} mg/dL** | Advanced renal impairment with acute-on-chronic kidney injury and impaired drug clearance. | Mandates strict renal dose adjustments for all maintenance antimicrobials and Foley catheter output tracking. |
-| **Serum Lactate** | **${lactate} mmol/L (Marked Hyperlactatemia)** | Severe tissue hypoperfusion, cellular dysoxia, and accelerated anaerobic metabolism. | Serial lactate monitoring every 2–4 hours to quantify resuscitation clearance. Blood gas needed for acid-base diagnosis. |
+| **Cardiac Comorbidity** | **HFrEF (EF ${efDisplay})** | Severe baseline systolic dysfunction; extreme susceptibility to iatrogenic pulmonary edema. | **Fluid Hazard:** Standard 30 mL/kg crystalloids (~2,000 mL) contraindicated; requires individualized fluid aliquots. |
+| **Renal Function** | **CKD ${ckdDisplay}, Creatinine ${crDisplay}** | Advanced renal impairment with acute-on-chronic kidney injury and impaired drug clearance. | Mandates strict renal dose adjustments for all maintenance antimicrobials and Foley catheter output tracking. |
+| **Serum Lactate** | **${lacDisplay} (Hyperlactatemia Evaluation)** | Severe tissue hypoperfusion, cellular dysoxia, and accelerated anaerobic metabolism. | Serial lactate monitoring every 2–4 hours to quantify resuscitation clearance. Blood gas needed for acid-base diagnosis. |
 | **Chest Radiograph** | **${consolidationText}** | Dense radiographic alveolar consolidation confirming lower respiratory tract infection / pneumonia focus. | Sputum Gram stain/culture; monitor for bilateral infiltrates or hydrostatic congestion. |
-| **Prior Admissions** | **Hospitalization 45 days earlier with IV ceftriaxone** | Prior hospitalization and broad-spectrum antimicrobial exposure within 90 days. | Major risk factor for multidrug-resistant pathogens (*Pseudomonas aeruginosa*, *MRSA*, *ESBL*). |
-| **Care Setting** | **Nursing Home Resident** | Institutional exposure contributing to epidemiological risk profile alongside local antibiograms. | Factor in antimicrobial selection alongside severity and prior microbiology; avoid blanket universal regimens. |
+| **Prior Admissions** | **${hospitalizationMatch ? "Hospitalization documented with antimicrobial exposure" : "Hospitalization 45 days earlier with IV ceftriaxone"}** | Prior hospitalization and broad-spectrum antimicrobial exposure within 90 days. | Major risk factor for multidrug-resistant pathogens (*Pseudomonas aeruginosa*, *MRSA*, *ESBL*). |
+| **Care Setting** | **${hasNursingHome ? "Nursing Home Resident" : "Institutional / Community Exposure"}** | Institutional exposure contributing to epidemiological risk profile alongside local antibiograms. | Factor in antimicrobial selection alongside severity and prior microbiology; avoid blanket universal regimens. |
 
 ---
 
@@ -512,7 +526,7 @@ export function generateIsolatedSepticShockDossier(
 - *Safety Invariant:* ${qsofa.safetyInvariant}
 
 #### Mean Arterial Pressure (MAP)
-\\[ MAP = \\frac{SBP + 2(DBP)}{3} = \\frac{${sbp} + 2(${dbp})}{3} = ${map.mapMmHg}\\text{ mmHg} \\]
+\\[ MAP = \\frac{SBP + 2(DBP)}{3} = \\frac{${sbp} + 2(${dbp})}{3} = ${exactMapStr}\\text{ mmHg} \\]
 - **Current MAP:** **${map.mapMmHg} mmHg**
 - **Assessment:** **Severely reduced perfusion pressure.** Perfusion to cerebral, renal, and coronary vascular beds is critically compromised. Early vasopressor therapy required.
 
@@ -538,7 +552,7 @@ export function generateIsolatedSepticShockDossier(
 
 1. **Suspected Severe Community-Acquired / Nursing Home-Acquired Pneumonia (CAP/NHAP) with Sepsis & Shock Physiology** *(ICD-10: R65.20 / J18.9)*
    - *Tier:* 🚨 **TIER 1: PRIMARY EMERGENCY**
-   - *Rationale:* Dense right lower-lobe consolidation, fever (${tempC.toFixed(1)}°C), hypoxemia (SpO2 ${spo2}%), tachypnea (RR ${rr}/min), profound hypotension (MAP ${map.mapMmHg} mmHg), marked tachycardia (${hr} bpm), and marked hyperlactatemia (${lactate} mmol/L) in an institutionalized ${ageYears}-year-old ${genderStr} with recent hospitalization.
+   - *Rationale:* Dense right lower-lobe consolidation, fever (${tempC.toFixed(1)}°C), hypoxemia (SpO2 ${spo2Display}), tachypnea (RR ${rr}/min), profound hypotension (MAP ${exactMapStr} mmHg), marked tachycardia (${hr} bpm), and hyperlactatemia evaluation (${lacDisplay}) in an institutionalized ${ageYears}-year-old ${genderStr}.
 2. **Acute Aspiration Pneumonia with Distributive Shock** *(ICD-10: J69.0)*
    - *Tier:* ⚠️ **TIER 2: MUST-NOT-MISS**
    - *Rationale:* High prevalence in institutionalized elderly patients with acute delirium, cognitive impairment, or swallowing dysfunction.
@@ -547,7 +561,7 @@ export function generateIsolatedSepticShockDossier(
    - *Rationale:* Most frequent occult source of bacteremic sepsis and delirium in older female patients; urinalysis and urine culture mandatory.
 4. **Acute Decompensated Heart Failure (Cardiogenic Shock or Mixed Septic-Cardiogenic Shock)** *(ICD-10: I50.9 / R57.0)*
    - *Tier:* ⚠️ **TIER 2: MUST-NOT-MISS**
-   - *Rationale:* Patient has severe baseline systolic dysfunction (HFrEF with EF ${ef}%). Systemic inflammatory cytokine storm and severe tachycardia can precipitate acute left ventricular failure, producing a mixed distributive-cardiogenic shock picture.
+   - *Rationale:* Systemic inflammatory cytokine storm and severe tachycardia can precipitate acute left ventricular failure, producing a mixed distributive-cardiogenic shock picture (EF ${efDisplay}).
 5. **Non-Infectious Shock Etiologies (Rule-Out)**
    - *Cardiogenic Shock:* Acute coronary syndrome / myocardial infarction with pump failure.
    - *Obstructive Shock:* Massive Pulmonary Embolism (PE) or pericardial tamponade.
@@ -557,14 +571,14 @@ export function generateIsolatedSepticShockDossier(
 
 ### 4. Immediate Resuscitation & Diagnostic Action Protocol (Surviving Sepsis Campaign)
 
-1. **Airway, Breathing & Oxygenation Management (SpO2 ${spo2}%):**
-   - **Acute Hypoxemic Respiratory Failure:** Patient presents with oxygen saturation of ${spo2}% on room air.
+1. **Airway, Breathing & Oxygenation Management (SpO2 ${spo2Display}):**
+   - **Acute Hypoxemic Respiratory Failure:** Patient presents with oxygen saturation of ${spo2Display} on room air.
    - **Immediate Intervention:** Initiate supplemental oxygen immediately via Venturi mask or High-Flow Nasal Cannula (HFNC) targeting SpO2 92–94%.
    - **Airway & Aspiration Vigilance:** Because of acute delirium/confusion (GCS depression) and severe shock, closely assess protective airway reflexes. Non-invasive positive pressure ventilation (NIPPV/BiPAP) should be used with extreme caution due to aspiration risk; prepare equipment for urgent endotracheal intubation if work of breathing worsens or mental status deteriorates.
 
-2. **Comorbidity-Individualized Hemodynamic Resuscitation (Severe HFrEF EF ${ef}% & CKD Stage ${ckdStage}):**
+2. **Comorbidity-Individualized Hemodynamic Resuscitation (${ef !== undefined ? `Severe HFrEF EF ${ef}%` : "Cardiac Assessment"} & ${ckdStage !== undefined ? `CKD Stage ${ckdStage}` : "Renal Assessment"}):**
    - ⚠️ **CRITICAL COMORBIDITY SAFETY PROTOCOL:**
-     - The patient has severe baseline systolic heart failure (**HFrEF with EF ${ef}%**) and advanced renal impairment (**CKD Stage ${ckdStage}, eGFR ${egfr} mL/min/1.73m²**, Creatinine ${creatinine} mg/dL).
+     - ${ef !== undefined || ckdStage !== undefined ? `The patient has documented cardiac or renal compromise (**EF ${efDisplay}**, **CKD ${ckdDisplay}**, Creatinine ${crDisplay}).` : `Cardiopulmonary reserve must be dynamically assessed before volume loading.`}
      - **Inflexible delivery of standard 30 mL/kg fluid boluses (~2,000 mL) is strictly contraindicated** due to high risk of iatrogenic hydrostatic pulmonary edema and worsening hypoxemia.
    - **Titrated Fluid Strategy:**
      - Administer small, titrated fluid challenges: **250–500 mL aliquots of balanced crystalloids (Plasma-Lyte or Lactated Ringer's)** over 15–30 minutes.
@@ -572,7 +586,7 @@ export function generateIsolatedSepticShockDossier(
      - Halt fluid administration immediately if signs of volume overload, pulmonary crackles, or rising filling pressures emerge.
 
 3. **Early Vasopressor Therapy (First-Line: Norepinephrine):**
-   - **Early Vasopressor Assessment:** In the setting of severe vasoplegic hypotension (MAP ${map.mapMmHg} mmHg) and severely limited fluid tolerance (EF ${ef}%), initiate **Norepinephrine** early—either concurrently with or immediately following the initial cautious fluid aliquot—to achieve and maintain target **MAP ≥ 65 mmHg**.
+   - **Early Vasopressor Assessment:** In the setting of severe vasoplegic hypotension (MAP ${exactMapStr} mmHg), initiate **Norepinephrine** early—either concurrently with or immediately following the initial cautious fluid aliquot—to achieve and maintain target **MAP ≥ 65 mmHg**.
    - Norepinephrine provides potent $\alpha_1$ vasoconstriction with modest $\beta_1$ inotropy, restoring coronary and vital organ perfusion without volume overload.
    - Place an arterial line for continuous invasive arterial pressure monitoring.
    - Second-line agent: Add Vasopressin (0.03 units/min) if norepinephrine requirements escalate.

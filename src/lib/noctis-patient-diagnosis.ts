@@ -2319,7 +2319,11 @@ function executeNaturalPatientDiagnosticQuery(question: string, explicitEncounte
   const context = buildImmutablePatientContext(q, encId);
 
   // Dedicated Handler 1: Emergent Diabetic Ketoacidosis (DKA), Septic Shock & Multi-System Collapse
-  if (context.syndromes.primarySyndrome === "DKA_SEPSIS_MULTISYSTEM" || context.syndromes.isDka) {
+  if (
+    context.syndromes.isDka ||
+    context.syndromes.primarySyndrome === "DKA_SEPSIS_MULTISYSTEM" ||
+    (/\b(?:dka|diabetic\s+ketoacidosis|beta-hydroxybutyrate)\b/i.test(q) && !context.medications.hasDigoxinExposure)
+  ) {
     return generateDkaSepticShockEmergencyDossier(context);
   }
 
