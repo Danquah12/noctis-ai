@@ -23,7 +23,7 @@ echo "======================================================================"
 
 # Step 1: Verify Dependencies
 echo "[+] Step 1/3: Checking DPO dependencies..."
-pip install -q "transformers==4.45.2" "trl==0.11.4" peft accelerate bitsandbytes datasets
+pip install -q "transformers==4.45.2" "trl==0.11.4" peft accelerate bitsandbytes datasets rich
 
 # Step 2: Run DPO Alignment
 echo ""
