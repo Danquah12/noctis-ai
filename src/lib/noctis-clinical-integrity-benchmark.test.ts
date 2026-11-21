@@ -230,4 +230,42 @@ describe("NH-AI-001..NH-AI-015: Clinical Intelligence Integrity and Safety Bench
     assert.doesNotMatch(result, /CAP likelihood 70%/i);
     assert.doesNotMatch(result, /Sepsis likelihood 25%/i);
   });
+
+  it("NH-AI-016: Sepsis Engine Remediation V4: Complex Comorbidities (HFrEF EF 25%, CKD 4) & Resuscitation Individualization", () => {
+    const acceptanceInput =
+      "79-year-old female nursing home resident, fever 39.1°C, confusion, HR 132, BP 78/44, RR 28, SpO₂ 89%, EF 25%, CKD stage 4, eGFR 24, lactate 5.8, creatinine 3.2, and right lower-lobe consolidation. Hospitalization 45 days earlier with IV ceftriaxone.";
+    const result = handleNaturalPatientDiagnosticQuery(acceptanceInput);
+    assert.ok(result !== null);
+
+    // 1. Emergency classification and calculations
+    assert.match(result, /P0\s+IMMEDIATE\s+EMERGENCY/i);
+    assert.match(result, /\b55(?:\.3)?\s*mmhg\b/i);
+    assert.match(result, /qsofa[\s\S]*?3\s*\/\s*3/i);
+
+    // 2. CURB-65 exact calibration
+    assert.match(result, /Known Documented Score:[\s\S]*?3\s*\/\s*4/i);
+    assert.match(result, /28\/min[\s\S]*?does NOT meet.*≥ 30/i);
+
+    // 3. Complete input preservation
+    assert.match(result, /EF\s*25%/i);
+    assert.match(result, /CKD\s*Stage\s*4/i);
+    assert.match(result, /eGFR\s*24/i);
+    assert.match(result, /3\.2\s*mg\/dl/i);
+    assert.match(result, /5\.8\s*mmol\/l/i);
+    assert.match(result, /89%/i);
+    assert.match(result, /right lower-lobe consolidation/i);
+    assert.match(result, /45 days earlier/i);
+
+    // 4. Comorbidity-individualized fluid strategy & early vasopressors
+    assert.match(result, /250–500\s*mL|titrated\s+fluid/i);
+    assert.match(result, /Norepinephrine/i);
+
+    // 5. Evidence-based antimicrobial stewardship with renal adjustments
+    assert.match(result, /antimicrobial\s+stewardship|risk\s+assessment/i);
+    assert.match(result, /renally\s+adjusted|renal\s+dose\s+adjustment/i);
+
+    // 6. Physiological calibration
+    assert.doesNotMatch(result, /\bhyperpyrexia\b/i);
+    assert.doesNotMatch(result, /respiratory alkalosis compensating for lactic acidosis/i);
+  });
 });
