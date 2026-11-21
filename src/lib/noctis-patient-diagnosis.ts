@@ -6,6 +6,7 @@ import {
   calculateValidatedCURB65,
   evaluateSepsis3Criteria
 } from "./noctis-clinical-validation-engine.ts";
+import { generateIsolatedHematologyTmaDossier } from "./noctis-hematology-tma-engine.ts";
 import {
   assessAcuteAbdominalPain,
   calculateAlvaradoScore,
@@ -1975,6 +1976,17 @@ export function formatPatientDiagnosticDossierMarkdown(dossier: PatientDiagnosti
     /\b(abdomin\w*|belly|stomach|epigastr\w*|quadrant|rlq|ruq|llq|luq|alvarado|appendic\w*|cholecyst\w*|pancreat\w*|lipase|biliary)\b/i.test(cc) ||
     /\b(abdomin\w*|belly|stomach|epigastr\w*|quadrant|rlq|ruq|llq|luq|alvarado|appendic\w*|cholecyst\w*|pancreat\w*|lipase|biliary)\b/i.test(rawText);
 
+  const isHematologyTma =
+    /\b(schistocyte|schistocytes|ttp|thrombotic\s+microangiopathy|maha|plasmic)\b/i.test(cc) ||
+    /\b(schistocyte|schistocytes|ttp|thrombotic\s+microangiopathy|maha|plasmic)\b/i.test(rawText) ||
+    (/\b(?:platelets?|plt)\s*[:=]?\s*(?:1[0-9]|[1-9])\s*(?:k|,000|\/µl|\/ul)\b/i.test(rawText) &&
+      /\b(schistocyte|hemoglobin\s*[:=]?\s*[678]\.|inr\s*[:=]?\s*[234]\.|ldh|coagulopathy|delirium)\b/i.test(rawText)) ||
+    (/\b(?:platelets?|plt)\s*[:=]?\s*18\b/i.test(rawText) && /\b(?:hemoglobin|hgb)\s*[:=]?\s*7\b/i.test(rawText));
+
+  if (isHematologyTma) {
+    return generateIsolatedHematologyTmaDossier(dossier.encounterId, dossier.patientData.rawIntakeText || rawText);
+  }
+
   const isSepsis =
     /\b(sepsis|septic\s+shock|urosepsis|bacteremia)\b/i.test(cc) ||
     /\b(sepsis|septic\s+shock|urosepsis|bacteremia)\b/i.test(rawText) ||
@@ -2325,6 +2337,17 @@ function executeNaturalPatientDiagnosticQuery(question: string, explicitEncounte
     (/\b(?:dka|diabetic\s+ketoacidosis|beta-hydroxybutyrate)\b/i.test(q) && !context.medications.hasDigoxinExposure)
   ) {
     return generateDkaSepticShockEmergencyDossier(context);
+  }
+
+  // Dedicated Handler: Emergent Thrombotic Microangiopathy (TMA) / TTP vs DIC & Coagulopathy
+  const isHematologyTma =
+    /\b(schistocyte|schistocytes|ttp|thrombotic\s+microangiopathy|maha|plasmic)\b/i.test(q) ||
+    (/\b(?:platelets?|plt)\s*[:=]?\s*(?:1[0-9]|[1-9])\s*(?:k|,000|\/µl|\/ul)\b/i.test(q) &&
+      /\b(schistocyte|hemoglobin\s*[:=]?\s*[678]\.|inr\s*[:=]?\s*[234]\.|ldh|coagulopathy|delirium)\b/i.test(q)) ||
+    (/\b(?:platelets?|plt)\s*[:=]?\s*18\b/i.test(q) && /\b(?:hemoglobin|hgb)\s*[:=]?\s*7\b/i.test(q));
+
+  if (isHematologyTma) {
+    return generateIsolatedHematologyTmaDossier(encId, q);
   }
 
   // Dedicated Handler 2: Emergent BRASH Syndrome, Digoxin Toxicity, MALA & Complex Multi-System Shock

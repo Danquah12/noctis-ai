@@ -95,11 +95,24 @@ export interface ImmutablePatientCalculations {
   kdigoAkiStage: number | null;
 }
 
+export interface ImmutableEncounterProvenance {
+  encounterId: string;
+  patientContextId: string;
+  requestId: string;
+  inputHash: string;
+  patientFactsHash: string;
+  contextVersion: string;
+  modelVersion: string;
+  clinicalRulesVersion: string;
+  generationId: string;
+}
+
 export interface ImmutablePatientContext {
   encounterId: string;
   sourceInputHash: string;
   rawInput: string;
   timestampIso: string;
+  provenance: ImmutableEncounterProvenance;
   demographics: ImmutablePatientDemographics;
   vitals: ImmutablePatientVitals;
   labs: ImmutablePatientLabs;
@@ -107,6 +120,26 @@ export interface ImmutablePatientContext {
   medications: ImmutablePatientMedications;
   syndromes: ImmutableClinicalSyndromes;
   calculations: ImmutablePatientCalculations;
+}
+
+export function assertEncounterProvenance(
+  stageProvenance: {
+    stage: "extraction" | "reasoning" | "narrative" | "validation";
+    encounterId: string;
+    inputHash: string;
+  },
+  requestProvenance: ImmutableEncounterProvenance
+): void {
+  if (stageProvenance.encounterId !== requestProvenance.encounterId) {
+    throw new Error(
+      `CLINICAL_VALIDATION_FAILED — ENCOUNTER_ISOLATION_VIOLATION: Stage "${stageProvenance.stage}" encounter_id "${stageProvenance.encounterId}" does not match request encounter_id "${requestProvenance.encounterId}".`
+    );
+  }
+  if (stageProvenance.inputHash !== requestProvenance.inputHash) {
+    throw new Error(
+      `CLINICAL_VALIDATION_FAILED — INPUT_HASH_MISMATCH: Stage "${stageProvenance.stage}" input_hash "${stageProvenance.inputHash}" does not match request input_hash "${requestProvenance.inputHash}".`
+    );
+  }
 }
 
 /**
@@ -460,11 +493,28 @@ export function buildImmutablePatientContext(
     kdigoAkiStage,
   };
 
+  const patientFactsHash = sha256Sync(
+    JSON.stringify({ demographics, vitals, labs, cardiac, medications })
+  );
+
+  const provenance: ImmutableEncounterProvenance = {
+    encounterId,
+    patientContextId: `CTX-${encounterId}`,
+    requestId: `REQ-${sha256Sync(q + encounterId).slice(0, 12)}`,
+    inputHash: sourceInputHash,
+    patientFactsHash,
+    contextVersion: "v1.4-CLINICAL",
+    modelVersion: "NOCTIS-SOVEREIGN-v2.6",
+    clinicalRulesVersion: "KDIGO-2024/ADA-2026/SSC-2024",
+    generationId: `GEN-${Date.now().toString(36).toUpperCase()}`,
+  };
+
   return {
     encounterId,
     sourceInputHash,
     rawInput: q,
     timestampIso: new Date().toISOString(),
+    provenance,
     demographics,
     vitals,
     labs,

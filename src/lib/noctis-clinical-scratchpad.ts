@@ -344,9 +344,15 @@ export function buildClinicalScratchpad(
     } else if (crFoldRatio >= 2.0 && crFoldRatio < 3.0) {
       establishedStage = 2;
       creatinineCriteriaStage = 2;
-      stageRationale = `KDIGO Stage 2 by fold increase (${crFoldRatio}× baseline). Stage 3 may apply if the qualifying acute creatinine rise to ≥ 4.0 mg/dL (${creatinineMgDl} mg/dL, acute rise +${crAbsoluteRiseMgDl} mg/dL) meets KDIGO acute timing criteria (within 48 hours to 7 days).`;
-      isStage3ConditionalOnAcuteTimeline = true;
-      stage3AcuteTimelineRationale = `Absolute serum creatinine ≥ 4.0 mg/dL with acute rise ≥ 0.5 mg/dL (+${crAbsoluteRiseMgDl} mg/dL) conditionally qualifies for Stage 3 pending confirmation of acute trajectory within 48 hours to 7 days.`;
+      if (creatinineMgDl >= 4.0 && crAbsoluteRiseMgDl >= 0.5) {
+        stageRationale = `KDIGO Stage 2 by fold increase (${crFoldRatio}× baseline). Conditionally Stage 3 by absolute creatinine (≥ 4.0 mg/dL: ${creatinineMgDl} mg/dL, acute rise +${crAbsoluteRiseMgDl} mg/dL) pending confirmation of acute trajectory within 48 hours to 7 days.`;
+        isStage3ConditionalOnAcuteTimeline = true;
+        stage3AcuteTimelineRationale = `Absolute serum creatinine ≥ 4.0 mg/dL with acute rise ≥ 0.5 mg/dL (+${crAbsoluteRiseMgDl} mg/dL) conditionally qualifies for Stage 3 pending confirmation of acute trajectory within 48 hours to 7 days.`;
+      } else {
+        stageRationale = `KDIGO Stage 2 by fold increase (${crFoldRatio}× baseline: ${creatinineMgDl} / ${baselineCreatinineMgDl} mg/dL). Current creatinine (${creatinineMgDl} mg/dL) does NOT meet the ≥ 4.0 mg/dL absolute threshold, and ratio is < 3.0×, confirming Stage 2 by serum creatinine criteria.`;
+        isStage3ConditionalOnAcuteTimeline = false;
+        stage3AcuteTimelineRationale = "";
+      }
     } else if (crFoldRatio >= 1.5 || crAbsoluteRiseMgDl >= 0.3) {
       establishedStage = 1;
       creatinineCriteriaStage = 1;
@@ -850,15 +856,32 @@ export function validateCrossSectionClinicalConsistency(
         });
       }
     }
-  } else if (!/\b(?:digoxin|digitalis)\b/i.test(scratchpad.rawInputText)) {
-    // Patient has zero documented digoxin exposure
-    if (/\b(?:digifab|digibind|digoxin\s*(?:toxicity|intoxication|poisoning)|serum\s*digoxin\s*level\s*[:=]?\s*[1-9])\b/i.test(dossierText)) {
-      violations.push({
-        item: "Unindicated Digoxin Antidote & Diagnosis (Cross-Patient Contamination)",
-        sectionA: "Documented Intake (Zero Digoxin Exposure)",
-        sectionB: "Dossier Narrative / Treatment Recommendations",
-        issue: "Patient has no documented digoxin exposure, but dossier recommends DigiFab or diagnoses Digoxin Toxicity.",
-      });
+  } else {
+    // Patient has zero documented digoxin exposure (or explicitly documented as zero)
+    const isZeroDigoxin = !/\b(?:digoxin|digitalis)\b/i.test(scratchpad.rawInputText) ||
+      /\b(?:zero\s+(?:history|use|exposure)|no\s+digoxin|denies\s+digoxin)\b/i.test(scratchpad.rawInputText);
+
+    if (isZeroDigoxin) {
+      // Check for affirmative recommendations of DigiFab or diagnosis of digoxin toxicity
+      const digToxMatch = dossierText.match(/\b(?:diagnosis|primary|secondary|impression)?\s*[:=]?\s*(?:suspected\s+)?(?:digoxin\s*(?:toxicity|intoxication|poisoning))\b/i);
+      const digiFabOrderMatch = dossierText.match(/\b(?:administer|give|infuse|prescribe|initiate|recommend(?:ed|ing)?)\s+(?:empiric\s+)?(?:digifab|digibind)\s*(?:\d+\s*vials)?\b/i);
+      const digLevelClaim = dossierText.match(/\bserum\s*digoxin\s*level\s*[:=]?\s*([1-9](?:\.\d+)?)\s*ng\/ml\b/i);
+
+      if (digToxMatch || digiFabOrderMatch || digLevelClaim) {
+        // Exclude explicit negative/contraindication statements
+        const matchStr = (digToxMatch || digiFabOrderMatch || digLevelClaim)![0];
+        const matchIdx = (digToxMatch || digiFabOrderMatch || digLevelClaim)!.index ?? 0;
+        const surroundingCtx = dossierText.slice(Math.max(0, matchIdx - 30), Math.min(dossierText.length, matchIdx + matchStr.length + 30));
+        
+        if (!/\b(?:not\s+indicated|strictly\s+not\s+indicated|contraindicated|unindicated|zero\s+digoxin|no\s+digoxin)\b/i.test(surroundingCtx)) {
+          violations.push({
+            item: "Unindicated Digoxin Antidote & Diagnosis (Cross-Patient Contamination)",
+            sectionA: "Documented Intake (Zero Digoxin Exposure)",
+            sectionB: `Dossier Narrative ("${matchStr}")`,
+            issue: `Patient has no documented digoxin exposure, but dossier recommends DigiFab or diagnoses Digoxin Toxicity: "${matchStr}".`,
+          });
+        }
+      }
     }
   }
 

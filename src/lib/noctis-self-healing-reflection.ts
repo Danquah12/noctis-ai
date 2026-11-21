@@ -22,6 +22,7 @@ import {
 import { buildImmutablePatientContext } from "./noctis-patient-context.ts";
 import { generateDkaSepticShockEmergencyDossier } from "./noctis-dka-sepsis-engine.ts";
 import { generateBrashDigoxinMalaEmergencyDossier } from "./noctis-brash-digoxin-engine.ts";
+import { generateIsolatedHematologyTmaDossier } from "./noctis-hematology-tma-engine.ts";
 
 export interface HealingDiagnosticRecord {
   gateId: string;
@@ -241,7 +242,13 @@ export function healCandidateClinicalOutput(
     if (hasContextMismatch) {
       // Regenerate from authoritative current-encounter context
       const ctx = buildImmutablePatientContext(rawEncounterInput, encounterId);
-      if (ctx.syndromes.isDka || ctx.syndromes.primarySyndrome === "DKA_SEPSIS_MULTISYSTEM") {
+      const isTma =
+        /\b(schistocyte|schistocytes|ttp|thrombotic\s+microangiopathy|maha|plasmic)\b/i.test(rawEncounterInput) ||
+        (/\b(?:platelets?|plt)\s*[:=]?\s*18\b/i.test(rawEncounterInput) && /\b(?:hemoglobin|hgb)\s*[:=]?\s*7\b/i.test(rawEncounterInput));
+
+      if (isTma) {
+        healedOutput = generateIsolatedHematologyTmaDossier(encounterId, rawEncounterInput);
+      } else if (ctx.syndromes.isDka || ctx.syndromes.primarySyndrome === "DKA_SEPSIS_MULTISYSTEM") {
         healedOutput = generateDkaSepticShockEmergencyDossier(ctx);
       } else if (ctx.syndromes.isBrash || ctx.syndromes.isDigoxinToxicity) {
         healedOutput = generateBrashDigoxinMalaEmergencyDossier(encounterId, rawEncounterInput);
@@ -291,18 +298,20 @@ export function healCandidateClinicalOutput(
       finalSanitizedDossier += verifiedCert;
     }
   } else {
-    // Fail-Closed Gate Notice
-    const blockerNotice = `\n\n────────────────────────────────────────\n` +
-      `🚨 **NOCTIS CLINICAL RELEASE GATE: REJECTED & FAILED-CLOSED**\n` +
-      `- **Release Status:** BLOCKED (Mandatory Safety Gate Failure)\n` +
+    // Fail-Closed Gate: Suppress flawed clinical dossier and emit concise failure response
+    const failureCode = finalAudit.mandatoryReleaseFailures.some((f) => f.includes("ENCOUNTER_CONTEXT_MISMATCH") || f.includes("ROUTING"))
+      ? "CLINICAL_VALIDATION_FAILED — CLINICAL_CONTEXT_OR_ROUTING_ERROR"
+      : "CLINICAL_VALIDATION_FAILED — SAFETY_INVARIANT_VIOLATION";
+
+    finalSanitizedDossier =
+      `# NOCTIS CLINICAL RELEASE GATE: REJECTED & FAILED-CLOSED\n\n` +
+      `**Status:** 🚨 ${failureCode}\n` +
       `- **Encounter ID:** \`${encounterId}\`\n` +
       `- **Source Input Hash (SHA-256):** \`${healedHash}\`\n` +
-      `- **Blocking Safety Violations:**\n` +
-      finalAudit.violations.map((v) => `  - [${v.ruleId}] ${v.description}`).join("\n") + "\n" +
-      finalAudit.mandatoryReleaseFailures.map((f) => `  - [RELEASE-BLOCK] ${f}`).join("\n") + "\n" +
-      `- **Action Directive:** Clinical release halted under 21 U.S.C. § 360j(o)(1)(E) safety protocol. Independent clinician verification required.\n` +
-      `────────────────────────────────────────\n`;
-    finalSanitizedDossier += blockerNotice;
+      `- **Mandatory Directive:** Clinical dossier suppressed under 21 U.S.C. § 360j(o)(1)(E) safety protocol. Independent clinician evaluation required.\n\n` +
+      `### Blocking Safety Violations Detected:\n` +
+      finalAudit.violations.map((v) => `- **[${v.ruleId}]** ${v.description}`).join("\n") + "\n" +
+      finalAudit.mandatoryReleaseFailures.map((f) => `- **[RELEASE-BLOCK]** ${f}`).join("\n") + "\n";
   }
 
   return {
