@@ -6581,21 +6581,11 @@ export function NoctisDesk() {
     </form>
   );
 
-  const CHAT_DISCOVERY_PROMPTS = [
-    { label: "🛠️ How Noctis Builds Anything", ask: "Explain Noctis's 5-pillar autonomous engineering engine (direct filesystem access, sandboxed terminal execution, ReAct self-correction loop, subagent swarms, and MCP tools) that enables it to build and verify anything." },
-    { label: "⚡ Forge vs. Canvas Reconciler", ask: "How do Noctis Forge execution workflows reconcile with the persistent Canvas governance and audit balance sheets?" },
-    { label: "🛡️ Sovereign 16-Suite Architecture", ask: "Provide an executive overview of the 16 Sovereign Systems across all 5 architectural layers and the SQDEC governance model." },
-    { label: "🔄 Self-Correction Loop", ask: "How does Noctis execute the compile-run-diagnose-patch autonomous self-correction loop when fixing bugs in production code?" },
-    { label: "🔒 Universal Invariant Gates", ask: "Inspect architectural invariants across financial balance sheets, clinical CDS safety, and cybersecurity zero-trust boundaries." },
-  ];
-
   const activeRoutes =
     routes.length > 0
       ? routes
       : desk === "study"
       ? studyAsks(studyTopic || "USMLE Step 2 CK")
-      : desk === "chat"
-      ? CHAT_DISCOVERY_PROMPTS
       : [];
 
   return (
@@ -7919,20 +7909,6 @@ export function NoctisDesk() {
                     <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-[#e4b86a]/15 border border-[#e4b86a]/30 px-3 py-1 text-xs font-medium text-[#e4b86a]">
                       <Code2 className="size-3.5" />
                       <span>Code mode active: a working snippet first</span>
-                    </div>
-                  ) : null}
-                  {activeRoutes.length ? (
-                    <div className="mb-3 flex flex-wrap items-center justify-center gap-2">
-                      {activeRoutes.map((row) => (
-                        <button
-                          key={row.label}
-                          type="button"
-                          onClick={() => void send(row.ask)}
-                          className="rounded-full bg-white/10 hover:bg-white/15 px-3.5 py-1.5 text-xs font-medium text-zinc-100 border border-white/10 hover:border-white/25 transition backdrop-blur-sm cursor-pointer shadow-xs"
-                        >
-                          {row.label}
-                        </button>
-                      ))}
                     </div>
                   ) : null}
                   {composer}
