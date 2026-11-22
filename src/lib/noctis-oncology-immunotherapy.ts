@@ -239,21 +239,25 @@ export function evaluateFebrileNeutropenia(input: FebrileNeutropeniaEvaluation):
 
 export function handleNaturalOncologyQuery(prompt: string): string | null {
   const p = prompt.toLowerCase();
+  const isNetworkTls = /\b(mtls|ssl|cipher|handshake|x\.?509|certificate|zero[-\s]*trust|https|mutual\s*tls|replay\s*attack|authentication\s*gateway|nginx|envoy|tls\s*1\.[23])\b/i.test(
+    p,
+  );
+  const isTlsOncology = /\btls\b/i.test(p) && !isNetworkTls;
   const isMatch =
     p.includes("tumor lysis") ||
-    p.includes("tls") ||
+    isTlsOncology ||
     p.includes("rasburicase") ||
     p.includes("cairo-bishop") ||
     p.includes("irae") ||
     p.includes("checkpoint") ||
-    p.includes("myocarditis") && p.includes("pembrolizumab") ||
+    (p.includes("myocarditis") && p.includes("pembrolizumab")) ||
     p.includes("febrile neutropenia") ||
     p.includes("mascc");
 
   if (!isMatch) return null;
 
   // Case 1: Tumor Lysis Syndrome
-  if (p.includes("tumor lysis") || p.includes("tls") || p.includes("rasburicase") || p.includes("cairo-bishop")) {
+  if (p.includes("tumor lysis") || isTlsOncology || p.includes("rasburicase") || p.includes("cairo-bishop")) {
     const isAlkalinization = p.includes("alkaliniz") || p.includes("bicarbonate");
     const isG6pd = p.includes("g6pd") || p.includes("glucose-6");
 

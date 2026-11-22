@@ -55,7 +55,7 @@ export default function NoctisBlastRadiusStrip({
           <Clock className="w-3.5 h-3.5 text-amber-400" />
           <span className="text-zinc-400">Rollback SLA:</span>
           <span className="text-amber-300 font-semibold">
-            &lt;{blast.reversibilitySlaMs / 1000}s
+            {`<${blast.reversibilitySlaMs / 1000}s`}
           </span>
         </div>
 

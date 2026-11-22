@@ -159,7 +159,7 @@ export function NoctisThinkingAccordion({
             <Brain className="size-3 animate-pulse" />
           </span>
           <span className="font-semibold text-zinc-200 truncate">
-            Thought for {durationSeconds} {durationSeconds === 1 ? "second" : "seconds"}
+            {`Thought for ${durationSeconds} ${durationSeconds === 1 ? "second" : "seconds"}`}
             {engineName ? <span className="ml-1.5 font-normal text-[#e4b86a]">· {engineName}</span> : null}
           </span>
           <span className="hidden text-[11px] text-zinc-500 sm:inline shrink-0">

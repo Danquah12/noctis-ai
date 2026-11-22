@@ -8,6 +8,7 @@ import {
   parseThinkEnvelope,
   ensureDeepThinkEnvelope,
 } from "./noctis-engine-registry.ts";
+import { handleNaturalOncologyQuery } from "./noctis-oncology-immunotherapy.ts";
 
 const EXPECTED_ALL_33_IDS = [
   // 8 Frontier Models
@@ -149,5 +150,24 @@ describe("Noctis Universal Deep Thinking Registry & Envelope", () => {
       }),
       "Bypassed think",
     );
+  });
+
+  it("does not misroute mTLS or network TLS cybersecurity queries to Oncology Tumor Lysis Syndrome", () => {
+    assert.equal(
+      handleNaturalOncologyQuery(
+        "Architect a production-grade Zero-Trust mTLS authentication gateway in TypeScript",
+      ),
+      null,
+    );
+    assert.equal(
+      handleNaturalOncologyQuery("Why does zero-trust mTLS prevent replay attacks? 3 bullets."),
+      null,
+    );
+
+    const clinicalTls = handleNaturalOncologyQuery(
+      "Patient with TLS and uric acid 11.2, potassium 6.4, should we start sodium bicarbonate alkalinization?",
+    );
+    assert.ok(clinicalTls);
+    assert.match(clinicalTls, /NOCTIS-ONC-IRAE-001/);
   });
 });
