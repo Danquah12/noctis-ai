@@ -206,8 +206,8 @@ export function buildClinicalScratchpad(
     q.match(/\b(\d{1,2})\s*(?:\/min|breaths\s*per\s*min(?:ute)?)\b/i);
   const respiratoryRate = rrMatch ? parseInt(rrMatch[1], 10) : null;
 
-  const spo2Match = q.match(/\b(?:spo2|o2\s*sat(?:uration)?)\s*[:=]?\s*(\d{2,3})%?(?:\s*on\s*([^,.\n]+))?\b/i) ||
-    q.match(/\b(\d{2,3})%\s*(?:on\s*[^,.\n]+)?\b/i);
+  const spo2Match = q.match(/\b(?:spo2|o2\s*sat(?:uration)?)\s*[:=]?\s*(\d{2,3})%?(?:\s*on\s*([^,.\n(]+))?\b/i) ||
+    q.match(/\b(\d{2,3})%\s*(?:on\s*[^,.\n(]+)?\b/i);
   const oxygenSaturationPct = spo2Match ? parseInt(spo2Match[1], 10) : null;
   const rawSpo2Clean = spo2Match
     ? spo2Match[0].replace(/^(?:spo2|o2\s*sat(?:uration)?)\s*[:=]?\s*/i, "").trim()
@@ -239,8 +239,8 @@ export function buildClinicalScratchpad(
   }
 
   const baseCrMatch =
-    q.match(/\bbaseline\s+(?:creatinine|cr\s*)?[:=]?\s*(\d+\.\d+)\b/i) ||
-    q.match(/\b(?:creatinine|cr)\s*[:=]?\s*\d+\.\d+\s*(?:mg\/dl)?\s*\(\s*baseline\s*(\d+\.\d+)\b/i);
+    q.match(/\b(?:creatinine|cr)\s*[:=]?\s*\d+(?:\.\d+)?\s*(?:mg\/dl)?\s*\([^)]*?\bbaseline\s*(?:creatinine|cr)?\s*[:=]?\s*(\d+(?:\.\d+)?)\b/i) ||
+    q.match(/\bbaseline\s+(?:serum\s+)?(?:creatinine|cr)\s*[:=]?\s*(\d+(?:\.\d+)?)\b/i);
   const baselineCreatinineMgDl = baseCrMatch ? parseFloat(baseCrMatch[1]) : null;
 
   // Creatinine (non-baseline)
@@ -315,7 +315,27 @@ export function buildClinicalScratchpad(
   if (isWeightMissing) missingDataItems.push("Patient Body Weight (kg) [UNMEASURED — weight-based dosing & mL/kg/h urine output deferred]");
   if (isChlorideMissing) missingDataItems.push("Serum Chloride (Cl-) [UNMEASURED — Anion Gap cannot be calculated]");
   if (isBaselineCreatinineMissing) missingDataItems.push("Baseline Serum Creatinine [UNMEASURED — Fold-ratio KDIGO staging indeterminate]");
-  if (isLastDoseTimingMissing) missingDataItems.push("Exact Timing of Last Medication Doses (Digoxin, Beta-Blocker, RAASi) [UNREPORTED]");
+  if (isLastDoseTimingMissing) {
+    const gapMeds: string[] = [];
+    if (/\bdigoxin\b/i.test(q) && !/\b(?:zero\s+(?:history|use|exposure)|no\s+digoxin|denies\s+digoxin)\b/i.test(q)) {
+      gapMeds.push("Digoxin");
+    }
+    if (/\b(?:carvedilol|metoprolol|atenolol|bisoprolol|beta-?blocker)\b/i.test(q)) {
+      gapMeds.push("Beta-Blocker");
+    }
+    if (/\b(?:lisinopril|enalapril|losartan|valsartan|spironolactone|raas)\b/i.test(q)) {
+      gapMeds.push("RAASi/MRA");
+    }
+    if (/\b(?:apixaban|rivaroxaban|warfarin|anticoagulant)\b/i.test(q)) {
+      gapMeds.push("Anticoagulant/DOAC");
+    }
+    if (/\bmetformin\b/i.test(q)) {
+      gapMeds.push("Metformin");
+    }
+    if (gapMeds.length > 0) {
+      missingDataItems.push(`Exact Timing of Last Medication Doses (${gapMeds.join(", ")}) [UNREPORTED]`);
+    }
+  }
   if (isArterialBloodGasMissing) missingDataItems.push("Arterial Blood Gas (pH, PaCO2, PaO2) [UNMEASURED / INCOMPLETE]");
   if (isUrineOutputMissing) missingDataItems.push("Quantified Hourly Urine Output [UNMEASURED]");
 
@@ -567,6 +587,10 @@ export function buildClinicalScratchpad(
 
   // F. Fluid Safety Ceiling (INV-004: Individualized Resuscitation, No Automatic Veto, No Invented Anuria)
   const highRiskConditions: string[] = [];
+  const hasAcuteRvFailure = /\b(?:rv\s+dilation|right\s+ventricular\s+dilation|acute\s+cor\s+pulmonale|mcconnell|septal\s+flattening|d-shaped\s+lv|massive\s+(?:pe|pulmonary\s+embolism))\b/i.test(q);
+  if (hasAcuteRvFailure) {
+    highRiskConditions.push("Acute RV Failure / Cor Pulmonale (Severe RV Dilation — Avoid Large Fluid Boluses)");
+  }
   if (/\b(?:hfref|heart\s+failure|ef\s*(?:is|of|=|:)?\s*(?:[1-3]\d|25|30)%?|ejection\s+fraction\s*(?:is|of|=|:)?\s*(?:[1-3]\d|25|30)%?)\b/i.test(q)) {
     highRiskConditions.push("Reduced Ejection Fraction (HFrEF, EF ≤ 35%)");
   }
@@ -588,7 +612,9 @@ export function buildClinicalScratchpad(
   const standard30mLPerKgContraindicated = highRiskFluidOverload;
 
   const conditionsSummary = highRiskConditions.length > 0 ? highRiskConditions.join("; ") : "Documented clinical risk factors";
-  const individualizedResuscitationGuidance = highRiskFluidOverload
+  const individualizedResuscitationGuidance = hasAcuteRvFailure
+    ? `STRICTLY AVOID LARGE-VOLUME FLUID BOLUSES (${conditionsSummary}). Volume loading risks acute RV overdistension, reverse Bernheim septal shift into the LV, and cardiac arrest; initiate early Norepinephrine to maintain MAP ≥ 65 mmHg.`
+    : highRiskFluidOverload
     ? `Flag high risk of fluid overload (${conditionsSummary}). Do not automatically prohibit or veto fluids solely because of risk factors, but do not administer unmonitored blanket 30 mL/kg crystalloids. Individualize resuscitation using bedside clinical examination, dynamic fluid responsiveness, lung ultrasound (POCUS for pulmonary congestion/B-lines), and early vasopressor consideration (Norepinephrine). Anuria is NOT documented and must not be invented.`
     : "Standard crystalloid resuscitation permissible with serial hemodynamic and fluid responsiveness monitoring.";
 
@@ -739,11 +765,11 @@ export function validateCrossSectionClinicalConsistency(
 
   // Check 2: Patient Demographics Consistency (Age and Sex)
   if (scratchpad.demographics.patientAgeYears !== null) {
-    const ageRegex = /\b(\d{1,3})\s*(?:-|–|\s+)?(?:years?|yrs?|yo|year-old)\b/gi;
+    const ageRegex = /(?:\b(\d{1,3})\s*(?:-|–|\s+)?(?:year-old|yr-old|yo|y\/o)\b|\bpatient\s+age\s*[:=]?\s*(\d{1,3})\b)/gi;
     for (const m of dossierText.matchAll(ageRegex)) {
-      const ageVal = parseInt(m[1], 10);
+      const ageVal = parseInt(m[1] || m[2], 10);
       const ctx = dossierText.slice(Math.max(0, (m.index ?? 0) - 25), Math.min(dossierText.length, (m.index ?? 0) + m[0].length + 25));
-      if (/[≥><=]|threshold|curb-?65|criteria|cutoff|scale/i.test(ctx)) continue;
+      if (/[≥><=]|threshold|curb-?65|criteria|cutoff|scale|ago|history|duration|bisap|elderly|older\s+than/i.test(ctx)) continue;
       if (ageVal !== scratchpad.demographics.patientAgeYears) {
         violations.push({
           item: "Patient Demographics (Age)",
@@ -811,6 +837,8 @@ export function validateCrossSectionClinicalConsistency(
     const expectedMap = scratchpad.derivedCalculations.meanArterialPressureMmHg;
     const statedMapMatches = [...dossierText.matchAll(/\b(?:map|mean\s+arterial\s+pressure)\s*[:=]?\s*(\d{2}(?:\.\d)?)\s*mmHg\b/gi)];
     for (const m of statedMapMatches) {
+      const before = dossierText.slice(Math.max(0, (m.index ?? 0) - 35), m.index ?? 0);
+      if (/[<>≤≥]|target|goal|maintain|threshold|restore|above|below|deficit|reserve|keep|aim/i.test(before)) continue;
       const val = parseFloat(m[1]);
       if (Math.abs(val - expectedMap) > 0.5) {
         violations.push({
@@ -827,6 +855,8 @@ export function validateCrossSectionClinicalConsistency(
   if (scratchpad.labs.potassiumMeqL !== null) {
     const kMatches = [...dossierText.matchAll(/\b(?:potassium|k\+?)\s*(?:is|of|=|:)?\s*([2-9]\.\d+)\s*(?:mmol\/l|meq\/l)?\b/gi)];
     for (const m of kMatches) {
+      const before = dossierText.slice(Math.max(0, (m.index ?? 0) - 35), m.index ?? 0);
+      if (/[<>≤≥]|target|goal|normal|range|threshold|below|above|maintain|keep|reference|limit/i.test(before)) continue;
       const val = parseFloat(m[1]);
       if (Math.abs(val - scratchpad.labs.potassiumMeqL) > 0.1) {
         violations.push({
@@ -844,8 +874,10 @@ export function validateCrossSectionClinicalConsistency(
     const crMatches = [...dossierText.matchAll(/\b(?:creatinine|cr)\s*(?:is|of|=|:)?\s*(\d+(?:\.\d+)?)\s*mg\/dl\b/gi)];
     for (const m of crMatches) {
       const val = parseFloat(m[1]);
+      const before = dossierText.slice(Math.max(0, (m.index ?? 0) - 35), m.index ?? 0);
       const ctx = dossierText.slice(Math.max(0, (m.index ?? 0) - 25), (m.index ?? 0) + m[0].length);
       if (/baseline|rise|increase|vs\s+baseline/i.test(ctx)) continue;
+      if (/[<>≤≥]\s*$/.test(before) || /kdigo|threshold|criteria|stage|definition|target|normal|reference/i.test(ctx)) continue;
       if (scratchpad.labs.baselineCreatinineMgDl !== null && Math.abs(val - scratchpad.labs.baselineCreatinineMgDl) < 0.05) continue;
       if (scratchpad.derivedCalculations.kdigoAki.crAbsoluteRiseMgDl !== null && Math.abs(val - Math.abs(scratchpad.derivedCalculations.kdigoAki.crAbsoluteRiseMgDl)) < 0.05) continue;
       if (Math.abs(val - scratchpad.labs.creatinineMgDl) > 0.1) {
@@ -1102,12 +1134,13 @@ export function validateCrossSectionClinicalConsistency(
     "Metformin",
     "Spironolactone",
     "Carvedilol",
+    "Metoprolol",
   ];
   for (const med of monitoredHomeMeds) {
     const inInput = new RegExp(`\\b${med}\\b`, "i").test(scratchpad.rawInputText);
     if (!inInput) {
       const fabricatedHomeRegimenRegex = new RegExp(
-        `(?:^\\s*\\d+\\.\\s*${med}\\b|\\|\\s*\\*\\*${med}\\*\\*\\s*\\||\\bwithhold[^.\\n]{0,60}(?:outpatient|home)[^.\\n]{0,120}\\b${med}\\b)`,
+        `(?:^\\s*\\d+\\.\\s*${med}\\b|^\\s*-\\s*\\*\\*${med}\\b[^\\n]*DISCONTINUE|\\|\\s*\\*\\*${med}\\*\\*\\s*\\||\\bwithhold[^.\\n]{0,60}(?:outpatient|home)[^.\\n]{0,120}\\b${med}\\b|\\bPrescribed[^.\\n]{0,120}\\b${med}\\b)`,
         "im"
       );
       if (fabricatedHomeRegimenRegex.test(dossierText)) {
@@ -1141,6 +1174,42 @@ export function validateCrossSectionClinicalConsistency(
       sectionB: "Dossier History of Present Illness",
       issue: "Main report invents recent urinary tract infection history without documentation in intake.",
     });
+  }
+
+  // Check 18: Arterial pH Cross-Section Fidelity
+  if (scratchpad.labs.arterialPh !== null) {
+    const phMatches = [...dossierText.matchAll(/\b(?:arterial\s+)?ph[ \t]*[:=]?[ \t]*(\d\.\d{2})\b/gi)];
+    for (const m of phMatches) {
+      const before = dossierText.slice(Math.max(0, (m.index ?? 0)), (m.index ?? 0) + m[0].length - m[1].length);
+      if (/[<>≤≥]/.test(before.slice(-4))) continue;
+      const val = parseFloat(m[1]);
+      if (Math.abs(val - scratchpad.labs.arterialPh) > 0.015) {
+        violations.push({
+          item: "Arterial pH Cross-Section Fidelity",
+          sectionA: `Documented Intake (pH ${scratchpad.labs.arterialPh})`,
+          sectionB: `Dossier Text (${m[0]})`,
+          issue: `Stated arterial pH (${val}) conflicts with documented intake (${scratchpad.labs.arterialPh}).`,
+        });
+      }
+    }
+  }
+
+  // Check 19: Body Temperature Cross-Section Fidelity
+  if (scratchpad.vitals.temperatureCelsius !== null) {
+    const tempMatches = [...dossierText.matchAll(/\btemp(?:erature)?[ \t]*[:=]?[ \t]*(\d{2}\.\d)[ \t]*°?c\b/gi)];
+    for (const m of tempMatches) {
+      const before = dossierText.slice(Math.max(0, (m.index ?? 0)), (m.index ?? 0) + m[0].length - m[1].length);
+      if (/[<>≤≥]/.test(before.slice(-4))) continue;
+      const val = parseFloat(m[1]);
+      if (Math.abs(val - scratchpad.vitals.temperatureCelsius) > 0.2) {
+        violations.push({
+          item: "Body Temperature Cross-Section Fidelity",
+          sectionA: `Documented Intake (Temp ${scratchpad.vitals.temperatureCelsius}°C)`,
+          sectionB: `Dossier Text (${m[0]})`,
+          issue: `Stated temperature (${val}°C) conflicts with documented intake (${scratchpad.vitals.temperatureCelsius}°C).`,
+        });
+      }
+    }
   }
 
   return {

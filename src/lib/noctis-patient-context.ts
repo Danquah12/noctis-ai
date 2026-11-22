@@ -241,7 +241,9 @@ export function buildImmutablePatientContext(
     q.match(/\b(?:blood|serum)\s+ketones?\s*[:=]?\s*(\d+(?:\.\d+)?)\b/i);
   const betaHydroxybutyrateMmolL = bhbMatch ? parseFloat(bhbMatch[1]) : null;
 
-  const baseCrMatch = q.match(/\bbaseline\s+(?:creatinine|cr)\s*[:=]?\s*(\d+\.\d+)\b/i);
+  const baseCrMatch =
+    q.match(/\b(?:creatinine|cr)\s*[:=]?\s*\d+(?:\.\d+)?\s*(?:mg\/dl)?\s*\([^)]*?\bbaseline\s*(?:creatinine|cr)?\s*[:=]?\s*(\d+(?:\.\d+)?)\b/i) ||
+    q.match(/\bbaseline\s+(?:serum\s+)?(?:creatinine|cr)\s*[:=]?\s*(\d+(?:\.\d+)?)\b/i);
   const baselineCreatinineMgDl = baseCrMatch ? parseFloat(baseCrMatch[1]) : null;
 
   let creatinineMgDl: number | null = null;

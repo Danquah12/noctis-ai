@@ -979,18 +979,22 @@ export async function vibeReply(
   const reply = await composeVibeReply(kept, keyOverride, style);
   if (!("text" in reply) || reply.text.includes("Independent check") || reply.text.startsWith("## Vibe ") || (reply.text.trim().startsWith("{") && reply.text.trim().endsWith("}"))) return reply;
 
-  // Autonomous Continuous Self-Training & Epistemic Gap Synthesis
+  // Autonomous Continuous Self-Training & Epistemic Gap Synthesis (strictly bypassed for clinical encounters to prevent cross-patient cache leakage)
   try {
+    const { isUniversalClinicalQuestion } = await import("@/lib/noctis-universal-clinical.server");
     const { rememberAnswer, rememberRule, inferDomain } = await import("@/lib/noctis-train.server");
-    if (reply && "text" in reply && reply.text && reply.text.length > 60 && !reply.text.includes("could not finish")) {
+    const skipClinicalCache = isClinicalInquiry || isUniversalClinicalQuestion(latest);
+    if (!skipClinicalCache && reply && "text" in reply && reply.text && reply.text.length > 60 && !reply.text.includes("could not finish")) {
       const domain = inferDomain(latest);
-      rememberAnswer(latest, reply.text, "noctis-continuous-learner", domain);
+      if (domain !== "medical") {
+        rememberAnswer(latest, reply.text, "noctis-continuous-learner", domain);
 
-      // Auto-extract rule if a critical clinical invariant, override, or guideline violation was resolved:
-      if (/(?:override|wrong weight metric|predicted body weight|safety invariant|rule fails|absolute contraindication|hard safety veto|do not wait|ecmo criteria|winter['’]?s formula)/i.test(reply.text)) {
-        const keyRuleMatch = reply.text.match(/(?:ARDS ventilation targets[^.\n]+|using the actual \d+ kg gives a false limit[^.\n]+|do not administer[^.\n]+|mandatory IV[^.\n]+|PBW formula[^.\n]+|Alveolar distending pressure is measured strictly by Plateau Pressure[^.\n]+|increasing the respiratory rate from \d+ to \d+ will drastically shorten expiratory time[^.\n]+|never administer continuous neuromuscular blockade without first confirming deep[^.\n]+|in severe metabolic acidosis.*Winter['’]?s formula[^.\n]+|tension pneumothorax.*immediate decompression[^.\n]+|EOLIA trial criteria.*VV-ECMO[^.\n]+)/i);
-        if (keyRuleMatch?.[0]) {
-          void rememberRule(keyRuleMatch[0].trim(), domain);
+        // Auto-extract rule if a critical non-encounter invariant or guideline violation was resolved:
+        if (/(?:override|wrong weight metric|predicted body weight|safety invariant|rule fails|absolute contraindication|hard safety veto|do not wait|ecmo criteria|winter['’]?s formula)/i.test(reply.text)) {
+          const keyRuleMatch = reply.text.match(/(?:ARDS ventilation targets[^.\n]+|using the actual \d+ kg gives a false limit[^.\n]+|do not administer[^.\n]+|mandatory IV[^.\n]+|PBW formula[^.\n]+|Alveolar distending pressure is measured strictly by Plateau Pressure[^.\n]+|increasing the respiratory rate from \d+ to \d+ will drastically shorten expiratory time[^.\n]+|never administer continuous neuromuscular blockade without first confirming deep[^.\n]+|in severe metabolic acidosis.*Winter['’]?s formula[^.\n]+|tension pneumothorax.*immediate decompression[^.\n]+|EOLIA trial criteria.*VV-ECMO[^.\n]+)/i);
+          if (keyRuleMatch?.[0]) {
+            void rememberRule(keyRuleMatch[0].trim(), domain);
+          }
         }
       }
     }
@@ -1055,6 +1059,12 @@ async function composeVibeReply(
       fullQuestion
     );
 
+  const { isUniversalClinicalQuestion, executeUniversalClinicalReasoning } = await import(
+    "@/lib/noctis-universal-clinical.server"
+  );
+  const isClinicalCacheBypass =
+    isUniversalClinicalQuestion(fullQuestion) || isUniversalClinicalQuestion(question);
+
   if (!isCodingRequest) {
     // Authoritative Live MITRE CVE Program & NVD Resolver: Guarantees official names and full intelligence for all CVEs
     const cveMatch = fullQuestion.match(/\b(CVE-\d{4}-\d{4,7})\b/i);
@@ -1062,6 +1072,16 @@ async function composeVibeReply(
       const { resolveCveIntelligenceLive, formatCveResponse } = await import("@/lib/noctis-cve-knowledge");
       const profile = await resolveCveIntelligenceLive(cveMatch[1], fullQuestion);
       return { text: formatCveResponse(profile) };
+    }
+
+    // Universal Engine-Agnostic Neuro-Symbolic Clinical LLM Pipeline (Isolated Encounter)
+    if (isUniversalClinicalQuestion(fullQuestion)) {
+      const universalOut = await executeUniversalClinicalReasoning(fullQuestion, {
+        brain: style.brain,
+      });
+      if (universalOut) {
+        return { text: universalOut };
+      }
     }
 
     const { runFollowUpIntelligence } = await import("@/lib/noctis-response-intelligence");
@@ -1106,7 +1126,7 @@ async function composeVibeReply(
   }
   const route = routeQuestion(question);
   const spoken = languageNow(question, style.language || "");
-  if (!attached && spoken.toLowerCase() === "english" && !engineeringDesign(question) && !resourcePlan(question) && !hasHardRows) {
+  if (!isClinicalCacheBypass && !attached && spoken.toLowerCase() === "english" && !engineeringDesign(question) && !resourcePlan(question) && !hasHardRows) {
     const trainedHit = recallTrainedAnswer(question);
     if (trainedHit && (trainedHit.score >= 0.58 || trainedHit.model === "user-taught" || trainedHit.model === "vibe-trained" || trainedHit.model === "api-trained")) {
       return { text: trainedHit.answer };
@@ -1236,7 +1256,7 @@ async function composeVibeReply(
     const { stampBrain } = await import("@/lib/brain-stamp");
     return stampBrain(text, ground, { strict });
   };
-  if (strict && ground.trim().length < 40) {
+  if (!isClinicalCacheBypass && strict && ground.trim().length < 40) {
     const fallbackTrained = recallTrainedAnswer(question);
     if (fallbackTrained) return { text: fallbackTrained.answer };
     if (!fresh) {
@@ -1248,7 +1268,7 @@ async function composeVibeReply(
   }
   const persistedRules = storedRulesBlock();
   const plain = !design && !resourcePlan(question) && !hasHardRows && !seeing && !strict && !fresh;
-  if (plain) {
+  if (!isClinicalCacheBypass && plain) {
     const directTrained = recallTrainedAnswer(question);
     if (directTrained && spoken.toLowerCase() === "english") {
       return { text: directTrained.answer };

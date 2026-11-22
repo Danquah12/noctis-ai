@@ -173,6 +173,16 @@ assert.ok(out4.includes("64-year-old female"), "T4: Patient preserved");
 assert.ok(out4.includes("APPROVED FOR CLINICAL DECISION SUPPORT"), "T4: Release Cert");
 assert.ok(out4.includes("49.3 mmHg") && out4.includes("84.3%") && out4.includes("5.3 g/dL") && out4.includes("19 mEq/L"), "T4: Math verified");
 assert.ok(out4.includes("4Ts") && out4.includes("ISTH"), "T4: Scores verified");
+assert.ok(out4.includes("pH 7.22") && !out4.includes("7.19"), "T4: Exact arterial pH 7.22 preserved (no 7.19)");
+assert.ok(out4.includes("36.4°C") && !out4.includes("37.1°C"), "T4: Exact Temp 36.4C preserved (no 37.1C)");
+assert.ok(out4.includes("PaO2 54 mmHg") && !out4.includes("PaO2 49"), "T4: Exact PaO2 54 preserved (no 49)");
+assert.ok(out4.includes("145") && !out4.includes("175 mg/dL") && !out4.includes("Fibrinogen 175"), "T4: Exact Fibrinogen 145 preserved (no 175)");
+assert.ok(out4.includes("1.42 ng/mL") && out4.includes("1,850 pg/mL"), "T4: Exact Troponin I & BNP preserved");
+assert.ok(out4.includes("Atorvastatin") && !/metoprolol/i.test(out4), "T4: Documented Atorvastatin included; unprovided Metoprolol absent");
+assert.ok(!/GCS\s*11/i.test(out4), "T4: Fabricated GCS 11 absent");
+assert.ok(out4.includes("Baseline: 1.5 mg/dL") && /KDIGO\s+(?:AKI\s+)?Stage\s*1/i.test(out4), "T4: Scratchpad baseline Cr 1.5 & KDIGO Stage 1 aligned");
+assert.ok(/AVOID\s+LARGE-VOLUME\s+FLUID\s+BOLUSES|Acute\s+RV\s+Failure\s*\/\s*Cor\s+Pulmonale/i.test(out4), "T4: RV fluid restriction aligned");
+assert.ok(!out4.includes("(Digoxin, Beta-Blocker, RAASi)"), "T4: No irrelevant BRASH med list in CRIT-044 scratchpad");
 console.log("[PASS 5/6] Test 4 (NOCTIS-ICU-CRIT-044) routed cleanly to Clinical Critical Care (no Legal hijack).");
 
 // Test 5: NPDE-BLIND-34M-SEPSIS (Must NOT route to Hyponatremia!)

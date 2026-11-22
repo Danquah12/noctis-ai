@@ -66,8 +66,22 @@ export function evaluateMandatoryReleaseRule(
     blockingFailures.push("Unsupported absolute treatment contraindication without individualized assessment.");
   }
 
-  // 3. Incorrect emergency disposition
-  if (/\b(?:routine\s+outpatient|discharge\s+home|non-emergent\s+clinic)\b/i.test(dossierText)) {
+  // 3. Incorrect emergency disposition (only when acute instability or critical presentation is present)
+  const mapVal = scratchpad.derivedCalculations.meanArterialPressureMmHg;
+  const hrVal = scratchpad.vitals.heartRate;
+  const spo2Val = scratchpad.vitals.oxygenSaturationPct;
+  const kVal = scratchpad.labs.potassiumMeqL;
+  const lacVal = scratchpad.labs.lactateMmolL;
+  const phVal = scratchpad.labs.arterialPh;
+  const hasAcuteInstability =
+    (mapVal !== null && mapVal < 65) ||
+    (hrVal !== null && (hrVal >= 120 || hrVal <= 45)) ||
+    (spo2Val !== null && spo2Val <= 90) ||
+    (kVal !== null && kVal >= 6.0) ||
+    (lacVal !== null && lacVal >= 4.0) ||
+    (phVal !== null && phVal < 7.25) ||
+    /\b(shock|sepsis|stroke|cardiac\s+arrest|emergency|resuscitation|crit-\d+)\b/i.test(scratchpad.rawInputText);
+  if (hasAcuteInstability && /\b(?:routine\s+outpatient|discharge\s+home|non-emergent\s+clinic)\b/i.test(dossierText)) {
     blockingFailures.push("Incorrect emergency disposition for acute life-threatening presentation.");
   }
 
