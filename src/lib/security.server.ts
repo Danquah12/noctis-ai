@@ -25,6 +25,32 @@ export async function guardRate(bucket: string, limit: number, windowMs: number)
   }
 }
 
+/**
+ * Distributed rate limiter backed by Upstash Redis REST (when configured) or
+ * PostgreSQL `ndkrs.rate_limit_buckets`, preserving existing `guardRate()` behavior.
+ */
+export async function guardRateDistributed(
+  bucket: string,
+  limit: number,
+  windowMs: number,
+): Promise<{ backend: "upstash_redis" | "postgres_bucket" | "memory" }> {
+  try {
+    const { checkDistributedRateLimit } = await import("@/lib/ndkrs/persistence.server");
+    const res = await checkDistributedRateLimit(bucket, limit, windowMs);
+    if (!res.allowed) {
+      await noteAlert("rate-limit-distributed", bucket.split(":")[0] || "call");
+      throw new Error("Too many attempts. Wait a minute and try again.");
+    }
+    return { backend: res.backend };
+  } catch (err) {
+    if (err instanceof Error && err.message.startsWith("Too many attempts")) {
+      throw err;
+    }
+    await guardRate(bucket, limit, windowMs);
+    return { backend: "memory" };
+  }
+}
+
 export async function noteAlert(kind: string, detail: string) {
   try {
     const sql = await getSql();

@@ -1057,6 +1057,14 @@ export function buildClinicalScratchpad(
       establishedStage = 1;
       creatinineCriteriaStage = 1;
       stageRationale = `KDIGO Stage 1 AKI (Provisional: Serum creatinine increased 1.5–1.9× baseline: ${crFoldRatio}× or rise ≥ 0.3 mg/dL; formal acute staging provisional pending confirmation that rise occurred within qualifying acute window).`;
+    } else if (crAbsoluteRiseMgDl < 0) {
+      establishedStage = "indeterminate";
+      creatinineCriteriaStage = "indeterminate";
+      stageRationale = `No acute serum creatinine rise from documented historical baseline (current ${creatinineMgDl} mg/dL vs baseline ${baselineCreatinineMgDl} mg/dL; change ${crAbsoluteRiseMgDl} mg/dL, ratio ${crFoldRatio}× — resolving/decreasing trend). Creatinine-based KDIGO AKI criteria are not met; evaluate urine-output criteria separately.`;
+    } else {
+      establishedStage = "indeterminate";
+      creatinineCriteriaStage = "indeterminate";
+      stageRationale = `Serum creatinine change (+${crAbsoluteRiseMgDl} mg/dL, ${crFoldRatio}× baseline) is below KDIGO Stage 1 creatinine thresholds (< 1.5× baseline and < 0.3 mg/dL rise). Evaluate urine-output criteria separately.`;
     }
   } else if (creatinineMgDl !== null && baselineCreatinineMgDl === null) {
     establishedStage = "indeterminate";
@@ -1719,7 +1727,10 @@ export function validateCrossSectionClinicalConsistency(
     }
   }
 
-  // Check 6: Serum Creatinine Consistency
+  // Check 6: Serum Creatinine Consistency (Generic + Role-Bound Current/Baseline + Fold Ratio)
+  const narrativeOnlyText =
+    dossierText.split(/#{1,4}\s*(?:\d+\.\s*)?Neuro-Symbolic\s+(?:Clinical\s+)?Scratchpad/i)[0] || dossierText;
+
   if (scratchpad.labs.creatinineMgDl !== null) {
     const crMatches = [...dossierText.matchAll(/\b(?:creatinine|cr)\s*(?:is|of|=|:)?\s*(\d+(?:\.\d+)?)\s*mg\/dl\b/gi)];
     for (const m of crMatches) {
@@ -1728,15 +1739,79 @@ export function validateCrossSectionClinicalConsistency(
       const ctx = dossierText.slice(Math.max(0, (m.index ?? 0) - 25), (m.index ?? 0) + m[0].length);
       if (/baseline|rise|increase|vs\s+baseline/i.test(ctx)) continue;
       if (/[<>≤≥]\s*$/.test(before) || /kdigo|threshold|criteria|stage|definition|target|normal|reference/i.test(ctx)) continue;
-      if (scratchpad.labs.baselineCreatinineMgDl !== null && Math.abs(val - scratchpad.labs.baselineCreatinineMgDl) < 0.05) continue;
+      const explicitlyLabeledCurrent = /\b(?:current|today(?:'s)?|present(?:ing)?|admission|latest|now)\b/i.test(before) &&
+        !/\b(?:baseline|prior|previous|historical)\b/i.test(before);
+      if (!explicitlyLabeledCurrent && scratchpad.labs.baselineCreatinineMgDl !== null && Math.abs(val - scratchpad.labs.baselineCreatinineMgDl) < 0.05) continue;
       if (scratchpad.derivedCalculations.kdigoAki.crAbsoluteRiseMgDl !== null && Math.abs(val - Math.abs(scratchpad.derivedCalculations.kdigoAki.crAbsoluteRiseMgDl)) < 0.05) continue;
       if (Math.abs(val - scratchpad.labs.creatinineMgDl) > 0.1) {
         violations.push({
-          item: "Serum Creatinine",
-          sectionA: `Documented Intake (${scratchpad.labs.creatinineMgDl} mg/dL)`,
+          item: explicitlyLabeledCurrent ? "Temporal Creatinine Substitution (Current Narrative Swap)" : "Serum Creatinine",
+          sectionA: `Documented Intake Current Cr (${scratchpad.labs.creatinineMgDl} mg/dL)`,
           sectionB: `Dossier Text (${m[0]})`,
-          issue: `Stated serum creatinine (${val} mg/dL) conflicts with documented intake (${scratchpad.labs.creatinineMgDl} mg/dL).`,
+          issue: `Temporal Creatinine Substitution: Stated current serum creatinine (${val} mg/dL) conflicts with documented current intake (${scratchpad.labs.creatinineMgDl} mg/dL).`,
         });
+      }
+    }
+
+    // Explicit current-role check (even when unit 'mg/dL' is omitted right after the number)
+    const currentRoleRegex =
+      /\b(?:current|today(?:'s)?|present(?:ing)?|admission|latest)\s+(?:serum\s+)?(?:creatinine|cr)\s*(?:is|of|was|=|:)?\s*(\d+(?:\.\d+)?)\b(?:\s*mg\/dl)?/gi;
+    for (const m of narrativeOnlyText.matchAll(currentRoleRegex)) {
+      if (/\b(?:baseline|prior|previous|historical)\b/i.test(m[0])) continue;
+      const val = parseFloat(m[1]);
+      if (Number.isFinite(val) && Math.abs(val - scratchpad.labs.creatinineMgDl) > 0.1) {
+        violations.push({
+          item: "Temporal Creatinine Substitution (Current Narrative Swap)",
+          sectionA: `Documented Intake Current Cr (${scratchpad.labs.creatinineMgDl} mg/dL)`,
+          sectionB: `Dossier Text (${m[0]})`,
+          issue: `Temporal Creatinine Substitution: Narrative claims current creatinine is ${val} mg/dL, conflicting with documented current creatinine ${scratchpad.labs.creatinineMgDl} mg/dL.`,
+        });
+      }
+    }
+  }
+
+  if (scratchpad.labs.baselineCreatinineMgDl !== null) {
+    const baselineRoleRegexes = [
+      /\b(?:(?:historical|prior|previous)\s+)?baseline\s+(?:serum\s+)?(?:creatinine|cr)\s*(?:is|of|was|=|:)?\s*(\d+(?:\.\d+)?)\b(?:\s*mg\/dl)?/gi,
+      /\b(?:(?:historical|prior|previous)\s+)?baseline\s+(?:is|of|was|=|:)?\s*(\d+(?:\.\d+)?)\s*mg\/dl\b/gi,
+    ];
+    for (const bRegex of baselineRoleRegexes) {
+      for (const m of narrativeOnlyText.matchAll(bRegex)) {
+        const ctx = narrativeOnlyText.slice(Math.max(0, (m.index ?? 0) - 20), Math.min(narrativeOnlyText.length, (m.index ?? 0) + m[0].length + 25));
+        if (/\b(?:threshold|criteria|definition|target|range)\b/i.test(ctx)) continue;
+        const val = parseFloat(m[1]);
+        if (Number.isFinite(val) && Math.abs(val - scratchpad.labs.baselineCreatinineMgDl) > 0.1) {
+          violations.push({
+            item: "Temporal Creatinine Substitution (Baseline Narrative Swap)",
+            sectionA: `Documented Intake Baseline Cr (${scratchpad.labs.baselineCreatinineMgDl} mg/dL)`,
+            sectionB: `Dossier Text (${m[0]})`,
+            issue: `Temporal Creatinine Substitution: Narrative claims baseline creatinine is ${val} mg/dL, conflicting with documented baseline creatinine ${scratchpad.labs.baselineCreatinineMgDl} mg/dL.`,
+          });
+        }
+      }
+    }
+  }
+
+  if (scratchpad.derivedCalculations.kdigoAki.crFoldRatio !== null) {
+    const expectedRatio = scratchpad.derivedCalculations.kdigoAki.crFoldRatio;
+    const ratioRegexes = [
+      /\b(?:creatinine\s+)?(?:fold[- ]?change\s+|fold\s+)?ratio\s*(?:is|of|was|=|:)?\s*(\d+(?:\.\d+)?)\s*[x×]?\b/gi,
+      /\(\s*ratio\s*(\d+(?:\.\d+)?)\s*[x×]?\s*\)/gi,
+    ];
+    for (const rRegex of ratioRegexes) {
+      for (const m of narrativeOnlyText.matchAll(rRegex)) {
+        const idx = m.index ?? 0;
+        const ctx = narrativeOnlyText.slice(Math.max(0, idx - 35), Math.min(narrativeOnlyText.length, idx + m[0].length + 35));
+        if (/[<>≤≥]|kdigo\s*(?:stage|criteria)|threshold|definition|range|1\.5|2\.0–|3\.0\+/i.test(ctx)) continue;
+        const val = parseFloat(m[1]);
+        if (Number.isFinite(val) && Math.abs(val - expectedRatio) > 0.15) {
+          violations.push({
+            item: "Creatinine Fold-Ratio Mismatch",
+            sectionA: `Scratchpad KDIGO Ratio (${expectedRatio}×)`,
+            sectionB: `Dossier Text (${m[0]})`,
+            issue: `Creatinine Fold-Ratio Mismatch: Stated creatinine ratio (${val}×) conflicts with deterministic calculation (${expectedRatio}× = ${scratchpad.labs.creatinineMgDl} / ${scratchpad.labs.baselineCreatinineMgDl}).`,
+          });
+        }
       }
     }
   }
@@ -2215,7 +2290,7 @@ export function validateCrossSectionClinicalConsistency(
     }
   }
 
-  // Check 22: KDIGO Stage 3 Overstaging Veto
+  // Check 22: KDIGO Stage 3 Overstaging & Understaging Veto
   const kdigo = scratchpad.derivedCalculations.kdigoAki;
   const hasRrtInInput = /\b(?:dialysis\s+(?:initiated|started)|on\s+(?:hd|hemodialysis|crrt)|renal\s+replacement\s+therapy\s+(?:initiated|started))\b/i.test(scratchpad.rawInputText);
   if ((kdigo.establishedStage === 1 || kdigo.establishedStage === 2) && !kdigo.isStage3ConditionalOnAcuteTimeline && !kdigo.canAnuriaBeUsedForStage3 && !hasRrtInInput) {
@@ -2231,6 +2306,35 @@ export function validateCrossSectionClinicalConsistency(
         sectionB: `Dossier Text (${m[0]})`,
         issue: `Unsupported KDIGO Stage 3 / Stage 2/3 overstaging ("${m[0]}") when Stage 3 criteria are not met.`,
       });
+    }
+  } else if (kdigo.establishedStage === 3 && !kdigo.isStage3ConditionalOnAcuteTimeline) {
+    const normNarrativeOnly = narrativeOnlyText.replace(/[₃]/g, "3").replace(/[⁻]/g, "-");
+    const falseNoAkiMatch = normNarrativeOnly.match(
+      /\b(?:no\s+(?:acute\s+kidney\s+injury|aki)\s+(?:is\s+)?(?:present|identified|met|established)|does\s+not\s+meet\s+(?:kdigo\s+)?aki(?:\s+criteria)?)\b/i
+    );
+    if (falseNoAkiMatch) {
+      violations.push({
+        item: "KDIGO Stage 3 Understaging / False Negative",
+        sectionA: `Scratchpad KDIGO Analysis (${kdigo.stageRationale})`,
+        sectionB: `Dossier Narrative (${falseNoAkiMatch[0]})`,
+        issue: `KDIGO Stage 3 Understaging: Narrative claims "${falseNoAkiMatch[0]}" when Stage 3 AKI criteria are established (${kdigo.stageRationale}).`,
+      });
+    } else {
+      const hasStage3InNarrative =
+        /\b(?:kdigo\s*(?:aki\s*)?stage\s*(?:3|iii)|stage\s*(?:3|iii)\s*(?:aki|acute\s+kidney\s+injury|by\s+absolute|criterion|criteria|classification)|meets?\s+stage\s*3)\b/i.test(
+          normNarrativeOnly
+        );
+      const lowerStageMatch = normNarrativeOnly.match(
+        /\b(?:kdigo\s*(?:aki\s*)?stage\s*[12]|stage\s*[12]\s*(?:aki|acute\s+kidney\s+injury))\b/i
+      );
+      if (!hasStage3InNarrative && lowerStageMatch) {
+        violations.push({
+          item: "KDIGO Stage 3 Understaging / False Negative",
+          sectionA: `Scratchpad KDIGO Analysis (${kdigo.stageRationale})`,
+          sectionB: `Dossier Narrative (${lowerStageMatch[0]})`,
+          issue: `KDIGO Stage 3 Understaging: Narrative asserts "${lowerStageMatch[0]}" without identifying established KDIGO Stage 3 AKI.`,
+        });
+      }
     }
   }
 

@@ -49,6 +49,8 @@ import {
   runAutonomousZeroTouchTrainingSuite,
 } from "./noctis-autonomous-trainer.ts";
 import { buildNoctisSastTrainingPairs } from "./noctis-sast-engine.ts";
+import { isUniversalClinicalQuestion } from "./noctis-universal-clinical.server.ts";
+import { isRmfGrcQuery } from "./noctis-rmf-engine.ts";
 
 export type TrainingPair = {
   id?: string;
@@ -784,6 +786,10 @@ export function rememberAnswer(question: string, answer: string, model = "vibe-n
   if (asked.length < 4 || said.length < 8) return;
   if (/sk-|api[_-]?key|bearer /i.test(`${asked} ${said}`)) return;
   if (/^(Not in the record|Vibe could not|No OpenAI)/i.test(said)) return;
+  if (isUniversalClinicalQuestion(asked) || isRmfGrcQuery(asked)) {
+    // Hard NDKRS safety boundary: never cache regulated clinical encounters or RMF compliance determinations into mutable Q&A memory.
+    return;
+  }
   const key = asked.toLowerCase();
   const same = pairs.findIndex((pair) => pair.question.toLowerCase() === key);
   const resolvedDomain = domain || inferDomain(`${asked} ${said}`);
@@ -836,6 +842,14 @@ export async function trainPair(
   await hydrateFromDb();
   rememberAnswer(asked, said, modelOrDomain);
   const pair = pairs.find((p) => p.question.toLowerCase() === asked.toLowerCase());
+  if (!pair && (isUniversalClinicalQuestion(asked) || isRmfGrcQuery(asked))) {
+    return {
+      ok: false,
+      question: asked,
+      answer: said,
+      reason: "Regulated clinical encounters and RMF compliance determinations cannot be saved into unverified Q&A cache.",
+    };
+  }
   return { ok: true, question: asked, answer: said, pair };
 }
 

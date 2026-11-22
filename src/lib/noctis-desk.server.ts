@@ -1510,6 +1510,28 @@ async function composeVibeReply(
       };
     }
     const prior = lessonBlock(question);
+    let ndkrsHits: Array<{ citationLabel: string; title: string; excerpt: string; version: string; sha256: string; sourceUri: string; rrfScore: number; matchedTerms: number; canonicalKey: string }> = [];
+    if (!wantsCode) {
+      try {
+        const { hybridSearchNdkrs } = await import("@/lib/ndkrs/hybrid-retrieval.server");
+        const candidates = await hybridSearchNdkrs(question, { limit: 3 });
+        const qLower = question.toLowerCase();
+        ndkrsHits = candidates.filter(
+          (h) => h.rrfScore >= 0.015 && (h.matchedTerms >= 2 || qLower.includes(h.canonicalKey.toLowerCase())),
+        );
+      } catch {
+        // Preserve existing Noctis synthesis cleanly if NDKRS index is unavailable
+      }
+    }
+    const ndkrsGroundingBlock = ndkrsHits.length > 0
+      ? `[NDKRS Verified Authoritative Knowledge Grounding — Cite these verified facts & versions accurately]\n` +
+        ndkrsHits
+          .map(
+            (h, idx) =>
+              `${idx + 1}. [${h.citationLabel} | v${h.version} | SHA-256:${h.sha256.slice(0, 12)}] ${h.title} (${h.sourceUri})\n${h.excerpt}`,
+          )
+          .join("\n\n")
+      : "";
     const taught: ChatMessage[] = [
       { role: "system", content: TEACH },
       { role: "system", content: `Active Engine Profile: ${activeEngine.name} (${activeEngine.id}).` },
@@ -1521,6 +1543,7 @@ async function composeVibeReply(
         : []),
       ...(persistedRules ? [{ role: "system" as const, content: persistedRules }] : []),
       ...(prior ? [{ role: "system" as const, content: prior }] : []),
+      ...(ndkrsGroundingBlock ? [{ role: "system" as const, content: ndkrsGroundingBlock }] : []),
       ...(notes && !wantsCode
         ? [{ role: "system" as const, content: `Background, if it helps this question. Ignore a page about a different subject. Do not let it replace the answer.\n\n${notes.slice(0, 4000)}` }]
         : []),
@@ -1537,10 +1560,13 @@ async function composeVibeReply(
       },
     );
     if ("error" in result) return result;
+    const ndkrsFooter = ndkrsHits.length > 0
+      ? `\n\n---\n**NDKRS Verified Knowledge Grounding** · Citations: ${ndkrsHits.map((h) => `\`${h.citationLabel}\``).join(", ")} · SHA-256: \`${ndkrsHits[0].sha256.slice(0, 12)}\``
+      : "";
     return {
       text: wrapDeterministicThink(
-        result.text,
-        `Executed ${activeEngine.name} deep reasoning pass and verified explanation clarity and accuracy.`,
+        `${result.text}${ndkrsFooter}`,
+        `Executed ${activeEngine.name} deep reasoning pass${ndkrsHits.length > 0 ? " with NDKRS verified knowledge grounding" : ""} and verified explanation clarity and accuracy.`,
       ),
     };
   }

@@ -446,4 +446,32 @@ describe("Universal 3-Stage Neuro-Symbolic Clinical Pipeline (executeUniversalCl
     assert.ok(lockedOut.includes("CLINICAL_VALIDATION_FAILED — SAFETY_INVARIANT_VIOLATION"));
     assert.ok(!lockedOut.includes("APPROVED FOR CLINICAL DECISION SUPPORT"));
   });
+
+  it("enforces fail-closed lockout when LLM persistently swaps current/baseline creatinine and emits HMAC-signed certs on pass", async () => {
+    const prompt =
+      "A patient has a current creatinine of 5.1 mg/dL. Their historical baseline creatinine was 1.8 mg/dL, measured six days earlier. What is the creatinine ratio, and how should KDIGO AKI staging be evaluated?";
+
+    const persistentSwapMock: UniversalClinicalModelChatFn = async () => ({
+      text: "Current creatinine is 1.8 mg/dL and baseline creatinine was 5.1 mg/dL (0.35x ratio). KDIGO Stage 1 AKI.",
+    });
+    const locked = await executeUniversalClinicalReasoning(prompt, { modelChatFn: persistentSwapMock });
+    assert.ok(locked);
+    assert.ok(locked.includes("CLINICAL_VALIDATION_FAILED — SAFETY_INVARIANT_VIOLATION"));
+    assert.ok(!locked.includes("APPROVED FOR CLINICAL DECISION SUPPORT"));
+
+    const accurateMock: UniversalClinicalModelChatFn = async () => ({
+      text: [
+        "Current creatinine is 5.1 mg/dL and baseline creatinine was 1.8 mg/dL six days earlier (fold ratio 2.83×).",
+        "KDIGO Stage 3 AKI by absolute-creatinine criterion (>= 4.0 mg/dL with +3.3 mg/dL acute rise within 6 days); fold ratio 2.83× alone is in Stage 2 range.",
+        "### Missing Clinical Data Gaps\n- Body weight [UNMEASURED], serum chloride [UNMEASURED], ABG [UNMEASURED], urine output [UNMEASURED].",
+        "### Independent Fact-Reconciliation Matrix\n| Item | Intake |\n|---|---|\n| Cr | 5.1 (baseline 1.8 six days earlier) |",
+        "### SOAP Note\n- Subjective: Renal assessment.\n- Objective: Cr 5.1 mg/dL, baseline 1.8 mg/dL.\n- Assessment: KDIGO Stage 3 AKI.\n- Plan: Urgent nephrology evaluation; weight/Cl-/ABG/UO acquisition.",
+      ].join("\n\n"),
+    });
+    const signed = await executeUniversalClinicalReasoning(prompt, { modelChatFn: accurateMock });
+    assert.ok(signed);
+    assert.ok(signed.includes("APPROVED FOR CLINICAL DECISION SUPPORT"));
+    assert.match(signed, /Output Hash \(SHA-256\):\*\* `[a-f0-9]{64}`/i);
+    assert.match(signed, /Certificate Signature \(HMAC-SHA256\):\*\* `[a-f0-9]{64}`/i);
+  });
 });

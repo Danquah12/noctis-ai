@@ -45,11 +45,7 @@ const K_CONSTANTS: number[] = [
   0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
 ];
 
-/**
- * Computes deterministic FIPS 180-4 SHA-256 hex digest.
- */
-export function sha256Sync(str: string): string {
-  const bytes = toUtf8Bytes(str);
+function sha256RawBytes(bytes: number[]): number[] {
   const words: number[] = [];
   const bitLen = bytes.length * 8;
 
@@ -108,12 +104,46 @@ export function sha256Sync(str: string): string {
     hash[7] = (hash[7] + h) | 0;
   }
 
-  let res = "";
+  const out: number[] = [];
   for (let i = 0; i < 8; i++) {
     for (let j = 3; j >= 0; j--) {
-      const byte = (hash[i] >> (j * 8)) & 255;
-      res += (byte < 16 ? "0" : "") + byte.toString(16);
+      out.push((hash[i] >>> (j * 8)) & 255);
     }
   }
+  return out;
+}
+
+function bytesToHex(bytes: number[]): string {
+  let res = "";
+  for (const byte of bytes) {
+    res += (byte < 16 ? "0" : "") + byte.toString(16);
+  }
   return res;
+}
+
+/**
+ * Computes deterministic FIPS 180-4 SHA-256 hex digest.
+ */
+export function sha256Sync(str: string): string {
+  return bytesToHex(sha256RawBytes(toUtf8Bytes(str)));
+}
+
+/**
+ * Computes deterministic RFC 2104 HMAC-SHA256 hex digest across Browser, Node, and Edge runtimes.
+ */
+export function hmacSha256Sync(key: string, message: string): string {
+  const blockSize = 64;
+  let keyBytes = toUtf8Bytes(key);
+  if (keyBytes.length > blockSize) {
+    keyBytes = sha256RawBytes(keyBytes);
+  }
+  const paddedKey = new Array<number>(blockSize).fill(0);
+  for (let i = 0; i < keyBytes.length; i++) {
+    paddedKey[i] = keyBytes[i] & 0xff;
+  }
+  const oKeyPad = paddedKey.map((b) => b ^ 0x5c);
+  const iKeyPad = paddedKey.map((b) => b ^ 0x36);
+  const inner = sha256RawBytes([...iKeyPad, ...toUtf8Bytes(message)]);
+  const outer = sha256RawBytes([...oKeyPad, ...inner]);
+  return bytesToHex(outer);
 }

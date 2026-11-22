@@ -15,6 +15,7 @@ import {
 } from "./noctis-clinical-scratchpad.ts";
 import { auditAndEnforceClinicalDossier } from "./noctis-clinical-preflight-auditor.ts";
 import { handleNaturalPatientDiagnosticQuery } from "./noctis-patient-diagnosis.ts";
+import { hmacSha256Sync } from "./universal-crypto.ts";
 
 describe("Phase 1: Determinism & Gate Enforcer Benchmark", () => {
   const brash78MaleScenario = `A 78-year-old male with CKD stage 4, heart failure with reduced ejection fraction (EF 30%), atrial fibrillation, and type 2 diabetes presents to the emergency department with profound weakness, confusion, dizziness, and reduced urine output over the past 24 hours.
@@ -579,5 +580,35 @@ Clinical Question: Should an anticoagulant be started, or avoid anticoagulants p
     const incompleteFail = auditAndEnforceClinicalDossier(`${truncatedBody}\n\n${pad.markdownScratchpadSummary}`, crit048Prompt, "NOCTIS-ICU-CRIT-048");
     assert.equal(incompleteFail.isApproved, false);
     assert.equal(incompleteFail.mandatoryReleasePassed, false);
+  });
+
+  it("blocks NDKRS Phase 0 Check 6/Check 22 narrative swaps, preserves resolving Cr rationale, and verifies RFC 4231 HMAC-SHA256", () => {
+    // 1. RFC 4231 Test Vector 1 for HMAC-SHA256
+    assert.equal(
+      hmacSha256Sync("Jefe", "what do ya want for nothing?"),
+      "5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843",
+    );
+
+    // 2. Deliberate narrative swap (5.1 <-> 1.8) + wrong fold ratio (0.35x) + KDIGO understaging MUST be rejected
+    const prompt =
+      "A patient has a current creatinine of 5.1 mg/dL. Their historical baseline creatinine was 1.8 mg/dL, measured six days earlier. What is the creatinine ratio, and how should KDIGO AKI staging be evaluated?";
+    const swappedCandidate =
+      "Current serum creatinine is 1.8 mg/dL compared to a historical baseline creatinine of 5.1 mg/dL six days ago (ratio 0.35x). Therefore no acute kidney injury is present.";
+    const swapAudit = auditAndEnforceClinicalDossier(swappedCandidate, prompt, "PHASE0-SWAP-TEST");
+    assert.equal(swapAudit.isApproved, false);
+    assert.equal(swapAudit.mandatoryReleasePassed, false);
+    assert.ok(swapAudit.violations.some((v) => /Temporal Creatinine Substitution/i.test(v.description)));
+    assert.ok(swapAudit.violations.some((v) => /Creatinine Fold-Ratio Mismatch/i.test(v.description)));
+    assert.ok(swapAudit.violations.some((v) => /KDIGO Stage 3 Understaging/i.test(v.description)));
+
+    // 3. Reversed patient input (current 1.8, baseline 5.1) produces clear resolving-trend rationale
+    const reversedInput =
+      "A patient has a current creatinine of 1.8 mg/dL. Their historical baseline creatinine was 5.1 mg/dL, measured six days earlier.";
+    const revPad = buildClinicalScratchpad(reversedInput, "PHASE0-REV-INPUT");
+    assert.equal(revPad.labs.creatinineMgDl, 1.8);
+    assert.equal(revPad.labs.baselineCreatinineMgDl, 5.1);
+    assert.equal(revPad.derivedCalculations.kdigoAki.crFoldRatio, 0.35);
+    assert.equal(revPad.derivedCalculations.kdigoAki.establishedStage, "indeterminate");
+    assert.match(revPad.derivedCalculations.kdigoAki.stageRationale, /resolving\/decreasing trend/i);
   });
 });

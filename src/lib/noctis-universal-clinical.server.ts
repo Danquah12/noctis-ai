@@ -14,7 +14,7 @@ import {
   type NeuroSymbolicClinicalScratchpad,
 } from "./noctis-clinical-scratchpad.ts";
 import { auditAndEnforceClinicalDossier } from "./noctis-clinical-preflight-auditor.ts";
-import { sha256Sync } from "./universal-crypto.ts";
+import { hmacSha256Sync, sha256Sync } from "./universal-crypto.ts";
 
 export interface UniversalBrainOptions {
   provider?: string;
@@ -36,6 +36,7 @@ export type UniversalClinicalModelChatFn = (
 export interface UniversalClinicalOptions {
   brain?: UniversalBrainOptions;
   modelChatFn?: UniversalClinicalModelChatFn;
+  persistCertificate?: boolean;
 }
 
 const LEGAL_EXCLUSION_REGEX =
@@ -248,15 +249,41 @@ function buildRepairPrompt(
   ].join("\n");
 }
 
-function buildVerifiedCertificate(encounterId: string, sourceInputHash: string): string {
-  return (
+function resolveCertSigningConfig(): { signingKey: string; keyMode: string } {
+  const dedicatedKey = typeof process !== "undefined" ? process.env.NOCTIS_CERT_SIGNING_KEY?.trim() : "";
+  if (dedicatedKey) {
+    return { signingKey: dedicatedKey, keyMode: "production-hmac-key" };
+  }
+  const authSecret = typeof process !== "undefined" ? process.env.BETTER_AUTH_SECRET?.trim() : "";
+  if (authSecret) {
+    return { signingKey: authSecret, keyMode: "auth-secret-derived" };
+  }
+  return { signingKey: "noctis-dev-cert-key-v1", keyMode: "development-fallback" };
+}
+
+function buildVerifiedCertificate(
+  encounterId: string,
+  sourceInputHash: string,
+  outputSha256: string,
+): { markdown: string; hmacSignature: string; keyMode: string; timestamp: string } {
+  const timestamp = new Date().toISOString();
+  const validatorVersion = "NOCTIS-VAL-v2.4-CLINICAL";
+  const { signingKey, keyMode } = resolveCertSigningConfig();
+  const hmacSignature = hmacSha256Sync(
+    signingKey,
+    `${encounterId}|${sourceInputHash}|${outputSha256}|${validatorVersion}|${timestamp}`,
+  );
+  const markdown = (
     `\n\n────────────────────────────────────────\n` +
     `🛡️ **NOCTIS INDEPENDENT CLINICAL RELEASE CERTIFICATE**\n` +
     `- **Encounter ID:** \`${encounterId}\`\n` +
     `- **Reasoning Engine:** Universal Neuro-Symbolic Clinical LLM Pipeline (Isolated Encounter)\n` +
     `- **Validation Status:** VERIFIED (All Invariant Safety Gates Passed)\n` +
     `- **Source Input Hash (SHA-256):** \`${sourceInputHash}\`\n` +
-    `- **Independent Validator:** NOCTIS-VAL-v2.4-CLINICAL (ISO 14971 / IEC 62304 Compliant)\n` +
+    `- **Output Hash (SHA-256):** \`${outputSha256}\`\n` +
+    `- **Certificate Signature (HMAC-SHA256):** \`${hmacSignature}\`\n` +
+    `- **Signing Key Mode:** ${keyMode}\n` +
+    `- **Independent Validator:** ${validatorVersion} (ISO 14971 / IEC 62304 Compliant)\n` +
     `- **Gates Verified:**\n` +
     `  1. Encounter Isolation & Single Authoritative Context: PASS\n` +
     `  2. Zero Data Fabrication (Weight, Chloride, Baseline Cr, Meds): PASS\n` +
@@ -267,9 +294,10 @@ function buildVerifiedCertificate(encounterId: string, sourceInputHash: string):
     `  7. Individualized Fluid Resuscitation Safety: PASS\n` +
     `  8. Cross-Section & Cross-Patient Consistency: PASS\n` +
     `- **Release Decision:** APPROVED FOR CLINICAL DECISION SUPPORT\n` +
-    `- **Timestamp:** ${new Date().toISOString()}\n` +
+    `- **Timestamp:** ${timestamp}\n` +
     `────────────────────────────────────────\n`
   );
+  return { markdown, hmacSignature, keyMode, timestamp };
 }
 
 function buildFailClosedLockout(
@@ -399,8 +427,55 @@ export async function executeUniversalClinicalReasoning(
       activeThought || buildDeterministicClinicalThought(scratchpad),
       `Stage 3 Independent Validator (NOCTIS-VAL-v2.4-CLINICAL): All 8 invariant safety gates passed${hadRepair ? " after 1-shot safety remediation" : ""}.`,
     ].join("\n\n");
-    return `<think>\n${deliberationTrace}\n</think>\n\n${audit.auditedDossier.trim()}${buildVerifiedCertificate(encounterId, sourceInputHash)}`;
+    const approvedBody = audit.auditedDossier.trim();
+    const outputSha256 = sha256Sync(approvedBody);
+    const cert = buildVerifiedCertificate(encounterId, sourceInputHash, outputSha256);
+    if (!opts.modelChatFn || opts.persistCertificate) {
+      try {
+        const { recordClinicalCertificateAndGap } = await import("./ndkrs/fact-lock-validator.server.ts");
+        await recordClinicalCertificateAndGap({
+          encounterId,
+          sourceInputHash,
+          outputHash: outputSha256,
+          verdict: "APPROVED",
+          hmacSignature: cert.hmacSignature,
+          keyMode: cert.keyMode,
+          timestamp: cert.timestamp,
+          violations: [],
+        });
+      } catch {
+        // Non-blocking audit persistence must never disrupt clinical decision output
+      }
+    }
+    return `<think>\n${deliberationTrace}\n</think>\n\n${approvedBody}${cert.markdown}`;
   }
 
-  return buildFailClosedLockout(encounterId, sourceInputHash, audit);
+  const lockoutText = buildFailClosedLockout(encounterId, sourceInputHash, audit);
+  if (!opts.modelChatFn || opts.persistCertificate) {
+    try {
+      const { recordClinicalCertificateAndGap, buildHmacCertificateSignature } = await import("./ndkrs/fact-lock-validator.server.ts");
+      const ts = new Date().toISOString();
+      const outHash = sha256Sync(lockoutText);
+      const sig = buildHmacCertificateSignature({
+        requestId: encounterId,
+        sourceInputHash,
+        outputHash: outHash,
+        validatorVersion: "NOCTIS-VAL-v2.4-CLINICAL",
+        createdAt: ts,
+      });
+      await recordClinicalCertificateAndGap({
+        encounterId,
+        sourceInputHash,
+        outputHash: outHash,
+        verdict: "FAIL_CLOSED",
+        hmacSignature: sig.hmacSignature,
+        keyMode: sig.keyMode,
+        timestamp: ts,
+        violations: audit.violations.map((v) => ({ ruleId: v.ruleId, description: v.description })),
+      });
+    } catch {
+      // Non-blocking audit persistence
+    }
+  }
+  return lockoutText;
 }
