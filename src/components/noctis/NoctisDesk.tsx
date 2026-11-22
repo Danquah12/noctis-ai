@@ -6167,7 +6167,9 @@ export function NoctisDesk() {
                                       ? noctisSkill(skill).example
                                       : voiceOn
                                         ? "Listening"
-                                        : "Ask Noctis"
+                                        : desk === "study"
+                                          ? `Ask Noctis anything about ${studyTopic || "your board exam"}...`
+                                          : "Ask Noctis"
           }
           onPaste={pasteImage}
           onChange={(event) => {
@@ -7988,7 +7990,7 @@ export function NoctisDesk() {
               ) : (
                 <>
                   {desk === "study" ? (
-                    <div className="w-full max-w-4xl px-2 my-2">
+                    <div className="w-full max-w-5xl px-2 my-2">
                       <Suspense fallback={<div className="p-4 text-xs text-zinc-400">Loading Clinical Exam Suite...</div>}>
                         <NoctisBoardExamExplorer
                           onSend={(prompt) => void send(prompt)}
@@ -8006,14 +8008,14 @@ export function NoctisDesk() {
                 </>
               )}
             </div>
-            <div className="mx-auto w-full max-w-3xl shrink-0 px-3 pt-2 pb-[calc(env(safe-area-inset-bottom,0px)+1rem)]">
+            <div className={cn("mx-auto w-full shrink-0 px-3 pt-2 pb-[calc(env(safe-area-inset-bottom,0px)+1rem)]", desk === "study" ? "max-w-5xl" : "max-w-3xl")}>
               {code ? (
                 <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-[#e4b86a]/15 border border-[#e4b86a]/30 px-3 py-1 text-xs font-medium text-[#e4b86a]">
                   <Code2 className="size-3.5" />
                   <span>Code mode active: a working snippet first</span>
                 </div>
               ) : null}
-              {activeRoutes.length ? (
+              {desk !== "study" && activeRoutes.length ? (
                 <div className="mb-2 flex flex-wrap gap-1.5">
                   {activeRoutes.map((row) => (
                     <button
