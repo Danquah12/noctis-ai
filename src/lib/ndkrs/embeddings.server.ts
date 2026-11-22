@@ -92,12 +92,21 @@ export function cosineSimilarity(a: number[], b: number[]): number {
   return Number((dot / denom).toFixed(6));
 }
 
+export function shouldUseOpenAiEmbeddings(explicitOverride?: boolean): boolean {
+  const apiKey = typeof process !== "undefined" ? process.env.OPENAI_API_KEY?.trim() : "";
+  if (!apiKey) return false;
+  if (explicitOverride === true) return true;
+  if (explicitOverride === false) return false;
+  const provider = typeof process !== "undefined" ? process.env.NDKRS_EMBEDDING_PROVIDER?.trim().toLowerCase() : "";
+  return provider === "openai";
+}
+
 export async function computeEmbedding(
   text: string,
   opts: { allowExternal?: boolean } = {},
 ): Promise<{ vector: number[]; model: string; dims: number }> {
   const apiKey = typeof process !== "undefined" ? process.env.OPENAI_API_KEY?.trim() : "";
-  if (opts.allowExternal && apiKey && text.trim().length > 0) {
+  if (shouldUseOpenAiEmbeddings(opts.allowExternal) && apiKey && text.trim().length > 0) {
     try {
       const res = await fetch("https://api.openai.com/v1/embeddings", {
         method: "POST",

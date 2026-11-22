@@ -425,9 +425,311 @@ export const NDKRS_AUTHORITATIVE_CORPUS: AuthoritativeCorpusSeedItem[] = [
     effectiveDate: "2020-01-01T00:00:00Z",
     expiresAt: "2030-12-31T00:00:00Z",
   },
+
+  // --- ADDITIONAL CLINICAL (6 Records -> 12 Total) ---
+  {
+    domain: "clinical",
+    canonicalKey: "CLIN-SEPSIS-QSOFA",
+    title: "Sepsis-3 Recognition, qSOFA Screening, and Lactate Clearance Criteria",
+    summary:
+      "Sepsis is defined as life-threatening organ dysfunction caused by a dysregulated host response (SOFA increase >= 2 points); septic shock combines vasopressor requirement for MAP >= 65 mmHg with serum lactate > 2 mmol/L.",
+    content: `# Sepsis-3 Clinical Diagnostic Criteria
+- **qSOFA Screen:** RR >= 22/min, altered mentation (GCS < 15), SBP <= 100 mmHg.
+- **Septic Shock:** Persistent hypotension requiring vasopressors to keep MAP >= 65 mmHg AND serum lactate > 2.0 mmol/L despite adequate volume resuscitation.
+- Measure blood cultures before antimicrobials when no significant delay (> 45 min) occurs.`,
+    sourceUri: "https://pubmed.ncbi.nlm.nih.gov/26903338/",
+    trustTier: "CLINICAL_GUIDELINE",
+    version: "2016.3",
+    citationLabel: "SEPSIS-3-2016",
+    effectiveDate: "2016-02-23T00:00:00Z",
+    expiresAt: "2029-12-31T00:00:00Z",
+  },
+  {
+    domain: "clinical",
+    canonicalKey: "CLIN-DKA-HHS",
+    title: "Diabetic Ketoacidosis (DKA) & HHS Potassium-Before-Insulin Safety Gate",
+    summary:
+      "Never initiate regular IV insulin when serum potassium < 3.3 mmol/L until aggressive potassium repletion restores K+ >= 3.3 mmol/L; transition to dextrose-containing fluids once glucose reaches 200-250 mg/dL while anion gap closes.",
+    content: `# DKA / HHS Electrolyte & Insulin Safety Invariants
+- **K+ < 3.3 mmol/L:** Hold insulin; infuse IV KCl first to prevent catastrophic hypokalemic arrhythmia.
+- **K+ 3.3 to 5.2 mmol/L:** Administer IV KCl alongside balanced fluid resuscitation and insulin drip.
+- Monitor corrected sodium using Katz hyperglycemia correction (Measured Na+ + 0.016 * [Glucose - 100]).`,
+    sourceUri: "https://www.ncbi.nlm.nih.gov/books/NBK560723/",
+    trustTier: "CLINICAL_GUIDELINE",
+    version: "2024.1",
+    citationLabel: "ADA-DKA-HHS-2024",
+    effectiveDate: "2024-01-01T00:00:00Z",
+    expiresAt: "2028-12-31T00:00:00Z",
+  },
+  {
+    domain: "clinical",
+    canonicalKey: "CLIN-STROKE-THROMBOLYSIS",
+    title: "Acute Ischemic Stroke — Non-Contrast Head CT & BP Thresholds Before Alteplase/Tenecteplase",
+    summary:
+      "Exclude intracranial hemorrhage with stat non-contrast head CT before IV thrombolysis; maintain BP < 185/110 mmHg pre-thrombolysis and < 180/105 mmHg for 24h post-infusion.",
+    content: `# Acute Stroke Thrombolysis Safety Gates
+- Mandatory non-contrast head CT to exclude ICH before fibrinolytic therapy.
+- Verify glucose to exclude hypoglycemia stroke mimic, platelet count >= 100,000/uL, INR <= 1.7, and NO active therapeutic DOAC dosing within 48h unless laboratory exclusion confirmed.`,
+    sourceUri: "https://pubmed.ncbi.nlm.nih.gov/31662037/",
+    trustTier: "CLINICAL_GUIDELINE",
+    version: "2019.1",
+    citationLabel: "AHA-ASA-STROKE-2019",
+    effectiveDate: "2019-10-30T00:00:00Z",
+    expiresAt: "2028-12-31T00:00:00Z",
+  },
+  {
+    domain: "clinical",
+    canonicalKey: "CLIN-PE-WELLS-PESI",
+    title: "High-Risk Pulmonary Embolism with Concurrent Anticoagulation Contraindication",
+    summary:
+      "High-risk (massive) PE with obstructive shock requires PERT activation; when active intracranial hemorrhage or major GI bleeding coexists, systemic thrombolysis and therapeutic UFH/LMWH are contraindicated—pursue mechanical thrombectomy / IVC filter and reversal.",
+    content: `# High-Risk PE + Active Hemorrhage Trade-Off
+- Document exact RV echo findings without inflating mild RV dilation into acute cor pulmonale.
+- Concurrent ICH/GI hemorrhage prohibits systemic thrombolytics and heparin; activate multidisciplinary PERT, hematology, and neurosurgery/GI immediately.`,
+    sourceUri: "https://pubmed.ncbi.nlm.nih.gov/31473578/",
+    trustTier: "CLINICAL_GUIDELINE",
+    version: "2019.2",
+    citationLabel: "ESC-PE-2019",
+    effectiveDate: "2019-08-31T00:00:00Z",
+    expiresAt: "2028-12-31T00:00:00Z",
+  },
+  {
+    domain: "clinical",
+    canonicalKey: "CLIN-ANTICOAG-REVERSAL",
+    title: "DOAC / Factor Xa Inhibitor (Apixaban) Life-Threatening Hemorrhage Reversal",
+    summary:
+      "For life-threatening ICH or GI bleeding on Apixaban or Rivaroxaban, stop anticoagulant immediately and administer Andexanet alfa or 4-Factor Prothrombin Complex Concentrate (4F-PCC) alongside endoscopic/surgical hemostasis.",
+    content: `# Urgent FXa Inhibitor Reversal Protocol
+- Stop Apixaban/Rivaroxaban immediately and record exact last-dose timing (flag as [UNMEASURED] if unknown).
+- Administer targeted reversal (Andexanet alfa or 4F-PCC per institutional protocol) for CNS hemorrhage or unstable shock.`,
+    sourceUri: "https://pubmed.ncbi.nlm.nih.gov/32668199/",
+    trustTier: "CLINICAL_GUIDELINE",
+    version: "2020.1",
+    citationLabel: "ACC-DOAC-REVERSAL-2020",
+    effectiveDate: "2020-07-01T00:00:00Z",
+    expiresAt: "2028-12-31T00:00:00Z",
+  },
+  {
+    domain: "clinical",
+    canonicalKey: "CLIN-CORRECTED-SODIUM",
+    title: "Hyperglycemia Pseudohyponatremia Correction & Osmotic Demyelination Guard",
+    summary:
+      "Calculate Katz corrected sodium = Measured Na+ + 0.016 * (Glucose - 100); limit chronic severe hyponatremia correction to <= 6-8 mmol/L per 24 hours to prevent osmotic demyelination syndrome.",
+    content: `# Sodium Correction Safety Rules
+- Katz factor: +1.6 mEq/L Na+ per 100 mg/dL glucose elevation above 100 mg/dL.
+- Maximum 24-hour Na+ rise ceiling: <= 8 mmol/L in chronic/unknown duration hyponatremia.`,
+    sourceUri: "https://pubmed.ncbi.nlm.nih.gov/4763428/",
+    trustTier: "PEER_REVIEWED",
+    version: "1973.1",
+    citationLabel: "KATZ-CORRECTED-NA",
+    effectiveDate: "1973-10-18T00:00:00Z",
+    expiresAt: "2029-12-31T00:00:00Z",
+  },
+
+  // --- ADDITIONAL RMF & CYBERSECURITY (6 Records -> 16 Total) ---
+  {
+    domain: "rmf",
+    canonicalKey: "NIST-800-37-RMF-STEPS",
+    title: "NIST SP 800-37 Rev. 2 Seven-Step Risk Management Framework Lifecycle",
+    summary:
+      "The 7 RMF steps are Prepare, Categorize (FIPS 199), Select (SP 800-53B), Implement, Assess (SP 800-53A Examine/Interview/Test), Authorize (AO non-delegable ATO decision), and Monitor (ConMon/POA&M).",
+    content: `# NIST SP 800-37 Rev. 2 Lifecycle Steps
+0. Prepare (organizational & system context, common controls)
+1. Categorize (FIPS 199 C/I/A high-water mark)
+2. Select (SP 800-53B baseline, tailoring, overlays)
+3. Implement (system-specific, inherited, hybrid SSP narratives)
+4. Assess (SP 800-53A objective-level SAR evidence)
+5. Authorize (AO risk acceptance / ATO / Denial)
+6. Monitor (continuous monitoring, POA&M SLAs, ongoing authorization)`,
+    sourceUri: "https://csrc.nist.gov/pubs/sp/800/37/r2/final",
+    trustTier: "AUTHORITATIVE_GOV",
+    version: "2.0",
+    citationLabel: "NIST-800-37-R2",
+    effectiveDate: "2018-12-20T00:00:00Z",
+    expiresAt: "2029-12-31T00:00:00Z",
+  },
+  {
+    domain: "rmf",
+    canonicalKey: "NIST-800-171-R3-CUI",
+    title: "NIST SP 800-171 Rev. 3 — Protecting CUI & SPRS Assessment Methodology",
+    summary:
+      "Defines security requirements to protect Controlled Unclassified Information (CUI) in nonfederal systems; DoD SPRS assessment scores start from 110 points minus weighted deductions for unimplemented requirements.",
+    content: `# NIST SP 800-171 Rev. 3 CUI Protection
+- 130+ requirements aligned directly to NIST SP 800-53 Rev. 5 controls and ODPs.
+- Minimum FIPS 199 Confidentiality impact = MODERATE for CUI.`,
+    sourceUri: "https://csrc.nist.gov/pubs/sp/800/171/r3/final",
+    trustTier: "AUTHORITATIVE_GOV",
+    version: "3.0",
+    citationLabel: "NIST-800-171-R3",
+    effectiveDate: "2024-05-14T00:00:00Z",
+    expiresAt: "2029-12-31T00:00:00Z",
+  },
+  {
+    domain: "rmf",
+    canonicalKey: "FEDRAMP-BASELINES-LMH",
+    title: "FedRAMP Rev. 5 Low, Moderate, High Baselines & Provider Inheritance Rule",
+    summary:
+      "FedRAMP Rev. 5 tailors NIST SP 800-53B baselines with mandatory cloud ODPs. Inheriting an IaaS/PaaS CSP Provisional ATO satisfies only provider-owned controls and NEVER grants a SaaS/application system ATO automatically.",
+    content: `# FedRAMP Baselines & Inheritance Invariants
+- Low (~156 controls), Moderate (~323 controls), High (~410 controls) tailored above NIST 800-53B.
+- Customer responsibilities in hybrid/shared controls remain the system owner's obligation.`,
+    sourceUri: "https://www.fedramp.gov/baselines/",
+    trustTier: "AUTHORITATIVE_GOV",
+    version: "5.2.0",
+    citationLabel: "FEDRAMP-REV5-BASELINES",
+    effectiveDate: "2023-05-30T00:00:00Z",
+    expiresAt: "2029-12-31T00:00:00Z",
+  },
+  {
+    domain: "cybersecurity",
+    canonicalKey: "MITRE-ATTACK-T1078-T1190",
+    title: "MITRE ATT&CK v16.1 Initial Access & Valid Accounts Mapping (T1078 / T1190)",
+    summary:
+      "Valid Accounts (T1078) and Exploit Public-Facing Application (T1190) require synchronized mitigation across IA-2 phishing-resistant MFA, AC-2 account lifecycle, RA-5 patching, and SC-7 boundary filtering.",
+    content: `# MITRE ATT&CK Control Mitigations
+- T1078 Valid Accounts -> mitigated by IA-2(1)/(2), AC-2, AC-6, AU-6 correlation.
+- T1190 Exploit Public-Facing App -> mitigated by SI-2, RA-5, SA-11, SC-7(5).`,
+    sourceUri: "https://attack.mitre.org/techniques/T1078/",
+    trustTier: "PEER_REVIEWED",
+    version: "16.1",
+    citationLabel: "MITRE-ATTACK-V16.1",
+    effectiveDate: "2024-10-31T00:00:00Z",
+    expiresAt: "2028-12-31T00:00:00Z",
+  },
+  {
+    domain: "cybersecurity",
+    canonicalKey: "OWASP-TOP10-2025",
+    title: "OWASP Top 10 & API Security — Access Control, Cryptographic & Injection Defenses",
+    summary:
+      "Broken Access Control (A01), Cryptographic Failures (A02), Injection (A03), and SSRF (A10) mandate server-side tenant scoping, AES-256-GCM / TLS, parameterized SQL queries, and strict outbound URL allowlists.",
+    content: `# OWASP Defensive Verification Standards
+- Reject BOLA/IDOR via mandatory server-side tenant_id/owner checks on every route.
+- Enforce parameterized SQL queries, never string-concatenated SQL.`,
+    sourceUri: "https://owasp.org/Top10/",
+    trustTier: "PEER_REVIEWED",
+    version: "2025.1",
+    citationLabel: "OWASP-2025",
+    effectiveDate: "2025-01-01T00:00:00Z",
+    expiresAt: "2028-12-31T00:00:00Z",
+  },
+  {
+    domain: "cybersecurity",
+    canonicalKey: "NIST-800-207-ZERO-TRUST",
+    title: "NIST SP 800-207 Zero Trust Architecture — Policy Engine & Continuous Evaluation",
+    summary:
+      "Zero Trust assumes breach and eliminates implicit network trust; every access request is evaluated dynamically per session by an independent Policy Engine and Policy Decision Point before touching data resources.",
+    content: `# NIST SP 800-207 Zero Trust Principles
+- Explicit verification of identity, device health, tenant boundary, and request risk.
+- Policy Enforcement Point blocks fail-closed when Policy Decision verification fails.`,
+    sourceUri: "https://csrc.nist.gov/pubs/sp/800/207/final",
+    trustTier: "AUTHORITATIVE_GOV",
+    version: "1.0",
+    citationLabel: "NIST-800-207-ZTA",
+    effectiveDate: "2020-08-11T00:00:00Z",
+    expiresAt: "2029-12-31T00:00:00Z",
+  },
+
+  // --- ADDITIONAL LEGAL & REGULATORY (3 Records -> 6 Total) ---
+  {
+    domain: "legal",
+    canonicalKey: "HIPAA-45CFR-164-502-MIN",
+    title: "HIPAA Privacy Rule — 45 CFR § 164.502(b) Minimum Necessary Standard",
+    summary:
+      "Covered entities and business associates must limit PHI uses, disclosures, and requests to the minimum necessary to accomplish the intended purpose; external knowledge logs and gap registries must store zero PHI.",
+    content: `# HIPAA Minimum Necessary Standard (45 CFR § 164.502(b))
+- Isolate identifiable patient encounters inside encrypted enclave storage.
+- Never copy patient identifiers or clinical lab transcripts into shared analytics, gap logs, or Q&A caches.`,
+    sourceUri: "https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-C/part-164/subpart-E/section-164.502",
+    trustTier: "AUTHORITATIVE_GOV",
+    version: "2024.1",
+    citationLabel: "HIPAA-45CFR-164-502",
+    effectiveDate: "2013-03-26T00:00:00Z",
+    expiresAt: "2029-12-31T00:00:00Z",
+  },
+  {
+    domain: "legal",
+    canonicalKey: "HITECH-45CFR-164-404-BREACH",
+    title: "HITECH Breach Notification Rule — 45 CFR § 164.404 Encryption Safe Harbor",
+    summary:
+      "PHI rendered unusable, unreadable, or indecipherable to unauthorized individuals via NIST-aligned encryption (AES-256-GCM with keys stored separately) qualifies for safe-harbor exclusion from breach notification.",
+    content: `# HITECH Safe Harbor (45 CFR § 164.404 / § 164.402)
+- Store encrypted ePHI with AES-256-GCM and protect decryption keys outside the encrypted record row.`,
+    sourceUri: "https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-C/part-164/subpart-D/section-164.404",
+    trustTier: "AUTHORITATIVE_GOV",
+    version: "2024.1",
+    citationLabel: "HITECH-45CFR-164-404",
+    effectiveDate: "2013-03-26T00:00:00Z",
+    expiresAt: "2029-12-31T00:00:00Z",
+  },
+  {
+    domain: "legal",
+    canonicalKey: "CUI-32CFR-PART-2002",
+    title: "32 CFR Part 2002 — Controlled Unclassified Information Safeguarding & Marking",
+    summary:
+      "Establishes government-wide CUI safeguarding standards, FIPS 199 Moderate Confidentiality minimum, lawful Government purpose disclosure restrictions, and cryptographic protection requirements.",
+    content: `# 32 CFR Part 2002 CUI Requirements
+- Nonfederal systems handling CUI must implement NIST SP 800-171 safeguards and FIPS 140-3 validated cryptography.`,
+    sourceUri: "https://www.ecfr.gov/current/title-32/subtitle-B/chapter-XX/part-2002",
+    trustTier: "AUTHORITATIVE_GOV",
+    version: "2024.1",
+    citationLabel: "32-CFR-PART-2002",
+    effectiveDate: "2016-11-14T00:00:00Z",
+    expiresAt: "2029-12-31T00:00:00Z",
+  },
+
+  // --- ADDITIONAL ENGINEERING & SCIENCE (3 Records -> 8 Total) ---
+  {
+    domain: "engineering",
+    canonicalKey: "ENG-REYNOLDS-FLUID",
+    title: "Fluid Mechanics — Reynolds Number & Pipe Flow Regime Transition",
+    summary:
+      "Dimensionless Reynolds number Re = (rho * v * D) / mu; internal pipe flow is laminar for Re < 2,300, transitional for 2,300 <= Re <= 4,000, and turbulent for Re > 4,000.",
+    content: `# Reynolds Number Classification
+- Re = (fluid density kg/m^3 * velocity m/s * characteristic diameter m) / dynamic viscosity Pa*s.
+- Validate strictly positive dynamic viscosity mu > 0 before dividing.`,
+    sourceUri: "https://en.wikipedia.org/wiki/Reynolds_number",
+    trustTier: "PEER_REVIEWED",
+    version: "1.0.0",
+    citationLabel: "ASME-REYNOLDS",
+    effectiveDate: "2020-01-01T00:00:00Z",
+    expiresAt: "2030-12-31T00:00:00Z",
+  },
+  {
+    domain: "engineering",
+    canonicalKey: "ENG-FOURIER-HEAT",
+    title: "Fourier's Law of Thermal Conduction",
+    summary:
+      "Steady 1D conductive heat transfer rate q = k * A * (T_hot - T_cold) / L Watts for thermal conductivity k (W/m*K), cross-sectional area A (m^2), temperature delta (K), and thickness L (m).",
+    content: `# Fourier Heat Conduction Equation
+- Heat flux vector J_q = -k * grad(T); total rate Q_dot = k * A * delta_T / L.`,
+    sourceUri: "https://en.wikipedia.org/wiki/Thermal_conduction",
+    trustTier: "PEER_REVIEWED",
+    version: "1.0.0",
+    citationLabel: "FOURIER-CONDUCTION",
+    effectiveDate: "2020-01-01T00:00:00Z",
+    expiresAt: "2030-12-31T00:00:00Z",
+  },
+  {
+    domain: "science",
+    canonicalKey: "SCI-HENDERSON-HASSELBALCH",
+    title: "Henderson-Hasselbalch Buffer Equilibrium Equation",
+    summary:
+      "Buffer solution pH = pKa + log10([A-] / [HA]), relating hydrogen ion equilibrium to acid dissociation constant pKa and conjugate base-to-weak-acid molar ratio.",
+    content: `# Henderson-Hasselbalch Equation
+- pH = pKa + log10([conjugate base] / [weak acid]).
+- In arterial bicarbonate-carbonic acid physiology: pH = 6.1 + log10([HCO3-] / (0.03 * PaCO2)).`,
+    sourceUri: "https://en.wikipedia.org/wiki/Henderson%E2%80%93Hasselbalch_equation",
+    trustTier: "PEER_REVIEWED",
+    version: "1.0.0",
+    citationLabel: "IUPAC-HENDERSON-HASSELBALCH",
+    effectiveDate: "2020-01-01T00:00:00Z",
+    expiresAt: "2030-12-31T00:00:00Z",
+  },
 ];
 
-export async function seedNdkrsAuthoritativeCorpus(opts: { preVerifiedBy?: string } = {}) {
+export async function seedNdkrsAuthoritativeCorpus(
+  opts: { preVerifiedBy?: string; allowExternalEmbeddings?: boolean } = {},
+) {
   await ensureNdkrsSchema();
   const preVerifiedBy = opts.preVerifiedBy ?? "noctis-authoritative-seed-board";
 
@@ -450,6 +752,7 @@ export async function seedNdkrsAuthoritativeCorpus(opts: { preVerifiedBy?: strin
       proposedBy: "noctis-authoritative-seeder",
       proposedByType: "INGESTION_WORKER",
       preVerifiedBy,
+      allowExternalEmbeddings: opts.allowExternalEmbeddings,
     });
     recordsSeeded += 1;
     chunksSeeded += res.chunkCount;

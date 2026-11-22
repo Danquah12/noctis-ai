@@ -23,13 +23,14 @@ interface NoctisNdkrsConsoleTabProps {
   onClose?: () => void;
 }
 
-type NdkrsSubTab = "overview" | "search" | "governance" | "certificates";
+type NdkrsSubTab = "overview" | "search" | "governance" | "certificates" | "factlock";
 
 interface NdkrsStatus {
   platform: string;
   version: string;
   dbSource: "neon" | "pglite";
   pgvectorEnabled: boolean;
+  dominantEmbeddingModel?: string;
   rateLimitBackend?: string;
   counts: {
     sources: number;
@@ -157,6 +158,26 @@ export const NoctisNdkrsConsoleTab: React.FC<NoctisNdkrsConsoleTabProps> = ({
     JSON.stringify({ currentCrMgDl: 5.1, baselineCrMgDl: 1.8, timeframeText: "six days earlier" }, null, 2),
   );
   const [ruleResult, setRuleResult] = useState<Record<string, unknown> | null>(null);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [factLockPrompt, setFactLockPrompt] = useState("Calculate Ohm's law voltage and power for 2.5 A across 12 Ohm.");
+  const [factLockCandidate, setFactLockCandidate] = useState("Voltage is 19.0 V and Power is 20 W.");
+  const [factLockClaimsJson, setFactLockClaimsJson] = useState(
+    JSON.stringify(
+      [
+        { label: "Voltage", expectedValue: 30, unit: "V", tolerance: 0.05 },
+        { label: "Power", expectedValue: 75, unit: "W", tolerance: 0.05 },
+      ],
+      null,
+      2,
+    ),
+  );
+  const [factLockResult, setFactLockResult] = useState<Record<string, unknown> | null>(null);
+  const [enclaveTenant, setEnclaveTenant] = useState("hospital-alpha");
+  const [enclaveEncounter, setEnclaveEncounter] = useState("ENC-AES-DEMO-01");
+  const [enclavePayloadJson, setEnclavePayloadJson] = useState(
+    JSON.stringify({ currentCreatinineMgDl: 5.1, baselineCreatinineMgDl: 1.8, clinicalNote: "Protected PHI" }, null, 2),
+  );
+  const [enclaveStoreResult, setEnclaveStoreResult] = useState<Record<string, unknown> | null>(null);
 
   async function refreshAll() {
     setLoading(true);
@@ -319,8 +340,94 @@ export const NoctisNdkrsConsoleTab: React.FC<NoctisNdkrsConsoleTabProps> = ({
           2,
         ),
       );
+    } else if (id === "CLIN-ANION-GAP") {
+      setRuleInputsJson(JSON.stringify({ sodiumMeqL: 130, chlorideMeqL: 99, bicarbonateMeqL: 12 }, null, 2));
+    } else if (id === "CLIN-CORRECTED-NA") {
+      setRuleInputsJson(JSON.stringify({ sodiumMeqL: 128, glucoseMgDl: 600 }, null, 2));
+    } else if (id === "ENG-REYNOLDS") {
+      setRuleInputsJson(JSON.stringify({ densityKgM3: 1000, velocityMS: 2.5, diameterM: 0.05, dynamicViscosityPaS: 0.001 }, null, 2));
+    } else if (id === "SCI-HENDERSON-HASSELBALCH") {
+      setRuleInputsJson(JSON.stringify({ pKa: 4.76, conjugateBaseMolar: 0.2, weakAcidMolar: 0.1 }, null, 2));
     }
   };
+
+  async function submitFileUpload() {
+    if (!uploadFile) {
+      setGovMessage({ ok: false, text: "Choose a .pdf, .docx, .md, or .txt file first." });
+      return;
+    }
+    setGovMessage(null);
+    setLoading(true);
+    try {
+      const form = new FormData();
+      form.append("file", uploadFile);
+      form.append("domain", ingestDomain);
+      form.append("canonicalKey", ingestKey);
+      form.append("title", ingestTitle || uploadFile.name);
+      form.append("sourceUri", ingestUri);
+      form.append("proposedBy", ingestProposer);
+      const res = await fetch("/api/v2/ndkrs/ingest-file", { method: "POST", body: form });
+      const data = await res.json();
+      if (!res.ok) {
+        setGovMessage({ ok: false, text: data.error || "File upload failed" });
+      } else {
+        setGovMessage({
+          ok: true,
+          text: `Parsed ${data.extractedFormat} (${data.extractedChars} chars -> ${data.chunkCount} chunks) and quarantined as ${data.status} (${data.recordId}).`,
+        });
+        await refreshAll();
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function runFactLockTest() {
+    setLoading(true);
+    try {
+      const claims = JSON.parse(factLockClaimsJson || "[]");
+      const res = await fetch("/api/v2/ndkrs/fact-lock/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          domain: "engineering",
+          requestId: `UI-FACTLOCK-${Date.now()}`,
+          rawPrompt: factLockPrompt,
+          candidateText: factLockCandidate,
+          lockedClaims: claims,
+        }),
+      });
+      const data = await res.json();
+      setFactLockResult(data);
+      await refreshAll();
+    } catch (err) {
+      setFactLockResult({ error: err instanceof Error ? err.message : "Invalid claims JSON" });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function runEnclaveStore() {
+    setLoading(true);
+    try {
+      const payload = JSON.parse(enclavePayloadJson || "{}");
+      const res = await fetch("/api/v2/ndkrs/enclave/store", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tenantId: enclaveTenant,
+          encounterId: enclaveEncounter,
+          payload,
+        }),
+      }).then((r) => r.json());
+      setEnclaveStoreResult(res);
+      await refreshAll();
+    } catch (err) {
+      setEnclaveStoreResult({ error: err instanceof Error ? err.message : "Invalid payload JSON" });
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <div className="flex flex-1 flex-col overflow-y-auto bg-[#0b0f17] text-zinc-100 p-4 md:p-6">
@@ -352,6 +459,11 @@ export const NoctisNdkrsConsoleTab: React.FC<NoctisNdkrsConsoleTabProps> = ({
                     pgvector HNSW
                   </span>
                 )}
+                {status?.dominantEmbeddingModel && (
+                  <span className="rounded-full bg-violet-500/15 px-2 py-0.5 text-[11px] font-semibold text-violet-300 border border-violet-500/30">
+                    {status.dominantEmbeddingModel}
+                  </span>
+                )}
               </h1>
               <p className="text-xs text-zinc-400">
                 Hybrid BM25 + Vector Retrieval · Anti-Poisoning Dual Control · HMAC Certificates · Isolated Clinical Enclave
@@ -377,6 +489,7 @@ export const NoctisNdkrsConsoleTab: React.FC<NoctisNdkrsConsoleTabProps> = ({
             { id: "search" as const, label: "Hybrid BM25 + Vector Search", icon: Search },
             { id: "governance" as const, label: "Ingest & Dual-Control Queue", icon: Shield },
             { id: "certificates" as const, label: "Signed Certificates & Rules", icon: FileCheck2 },
+            { id: "factlock" as const, label: "Fact-Lock & Clinical Enclave", icon: Lock },
           ].map((tab) => {
             const Icon = tab.icon;
             return (
@@ -586,13 +699,36 @@ export const NoctisNdkrsConsoleTab: React.FC<NoctisNdkrsConsoleTabProps> = ({
                 onChange={(e) => setIngestContent(e.target.value)}
                 className="w-full rounded-xl border border-white/15 bg-black/40 px-3 py-2 text-xs text-white"
               />
-              <button
-                type="submit"
-                disabled={loading}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-amber-400 px-3.5 py-2 text-xs font-bold text-slate-950 hover:bg-amber-300"
-              >
-                Ingest as PENDING_REVIEW
-              </button>
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-amber-400 px-3.5 py-2 text-xs font-bold text-slate-950 hover:bg-amber-300"
+                >
+                  Ingest Text as PENDING_REVIEW
+                </button>
+              </div>
+              <div className="border-t border-white/10 pt-3 space-y-2">
+                <div className="text-[11px] font-semibold text-zinc-300">
+                  Or Upload Authoritative File (.pdf, .docx, .md, .txt, .html):
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    type="file"
+                    accept=".pdf,.docx,.md,.txt,.html,.csv,.json"
+                    onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+                    className="text-[11px] text-zinc-300 file:mr-2 file:rounded-lg file:border-0 file:bg-white/10 file:px-2.5 file:py-1 file:text-[11px] file:text-white"
+                  />
+                  <button
+                    type="button"
+                    disabled={loading}
+                    onClick={() => void submitFileUpload()}
+                    className="rounded-xl border border-sky-500/40 bg-sky-500/20 px-3 py-1.5 text-xs font-semibold text-sky-200 hover:bg-sky-500/30"
+                  >
+                    Upload & Parse File
+                  </button>
+                </div>
+              </div>
             </form>
 
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
@@ -697,7 +833,16 @@ export const NoctisNdkrsConsoleTab: React.FC<NoctisNdkrsConsoleTabProps> = ({
                 Deterministic Rule Evaluator ({rules.length} Verified Rules)
               </div>
               <div className="flex flex-wrap gap-1.5">
-                {["CLIN-KDIGO-AKI", "RMF-POAM-SLA", "ENG-OHMS-POWER", "LEGAL-CDS-21USC360J"].map((id) => (
+                {[
+                  "CLIN-KDIGO-AKI",
+                  "CLIN-ANION-GAP",
+                  "CLIN-CORRECTED-NA",
+                  "RMF-POAM-SLA",
+                  "ENG-OHMS-POWER",
+                  "ENG-REYNOLDS",
+                  "SCI-HENDERSON-HASSELBALCH",
+                  "LEGAL-CDS-21USC360J",
+                ].map((id) => (
                   <button
                     key={id}
                     type="button"
@@ -798,6 +943,105 @@ export const NoctisNdkrsConsoleTab: React.FC<NoctisNdkrsConsoleTabProps> = ({
                   {gaps.length === 0 && <div className="text-xs text-zinc-400 text-center py-2">No open knowledge gaps logged.</div>}
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Subtab 5: Fact-Lock & Clinical Enclave */}
+        {subTab === "factlock" && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
+              <div className="flex items-center gap-2 text-sm font-bold text-white">
+                <ShieldAlert className="size-4 text-amber-400" />
+                Cross-Domain Fact-Lock Tamper Simulator
+              </div>
+              <input
+                value={factLockPrompt}
+                onChange={(e) => setFactLockPrompt(e.target.value)}
+                className="w-full rounded-xl border border-white/15 bg-black/40 px-3 py-1.5 text-xs text-white"
+              />
+              <textarea
+                rows={2}
+                value={factLockCandidate}
+                onChange={(e) => setFactLockCandidate(e.target.value)}
+                placeholder="Candidate LLM text to verify against locked claims..."
+                className="w-full rounded-xl border border-white/15 bg-black/40 p-2.5 text-xs text-white"
+              />
+              <textarea
+                rows={4}
+                value={factLockClaimsJson}
+                onChange={(e) => setFactLockClaimsJson(e.target.value)}
+                className="w-full rounded-xl border border-white/15 bg-black/40 p-2.5 font-mono text-xs text-amber-200"
+              />
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={() => void runFactLockTest()}
+                  className="rounded-xl bg-amber-400 px-3.5 py-1.5 text-xs font-bold text-slate-950 hover:bg-amber-300"
+                >
+                  Run Fact-Lock Check
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFactLockCandidate("Voltage is 30 V and Power is 75 W.")}
+                  className="rounded-xl border border-emerald-500/40 bg-emerald-500/15 px-3 py-1.5 text-xs font-semibold text-emerald-200"
+                >
+                  Load Clean Candidate
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFactLockCandidate("Voltage is 19.0 V and Power is 20 W.")}
+                  className="rounded-xl border border-rose-500/40 bg-rose-500/15 px-3 py-1.5 text-xs font-semibold text-rose-200"
+                >
+                  Load Tampered Candidate
+                </button>
+              </div>
+              {factLockResult && (
+                <pre className="max-h-56 overflow-auto rounded-xl border border-white/10 bg-black/50 p-3 text-[11px] text-zinc-200">
+                  {JSON.stringify(factLockResult, null, 2)}
+                </pre>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
+              <div className="flex items-center gap-2 text-sm font-bold text-white">
+                <Lock className="size-4 text-cyan-400" />
+                Isolated AES-256-GCM Clinical Enclave
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  value={enclaveTenant}
+                  onChange={(e) => setEnclaveTenant(e.target.value)}
+                  placeholder="Tenant ID"
+                  className="rounded-xl border border-white/15 bg-black/40 px-3 py-1.5 text-xs text-white"
+                />
+                <input
+                  value={enclaveEncounter}
+                  onChange={(e) => setEnclaveEncounter(e.target.value)}
+                  placeholder="Encounter ID"
+                  className="rounded-xl border border-white/15 bg-black/40 px-3 py-1.5 text-xs text-white"
+                />
+              </div>
+              <textarea
+                rows={4}
+                value={enclavePayloadJson}
+                onChange={(e) => setEnclavePayloadJson(e.target.value)}
+                className="w-full rounded-xl border border-white/15 bg-black/40 p-2.5 font-mono text-xs text-cyan-200"
+              />
+              <button
+                type="button"
+                disabled={loading}
+                onClick={() => void runEnclaveStore()}
+                className="rounded-xl bg-cyan-400 px-3.5 py-1.5 text-xs font-bold text-slate-950 hover:bg-cyan-300"
+              >
+                Encrypt & Store in Isolated Enclave
+              </button>
+              {enclaveStoreResult && (
+                <pre className="max-h-56 overflow-auto rounded-xl border border-white/10 bg-black/50 p-3 text-[11px] text-zinc-200">
+                  {JSON.stringify(enclaveStoreResult, null, 2)}
+                </pre>
+              )}
             </div>
           </div>
         )}

@@ -871,10 +871,23 @@ export async function checkDistributedRateLimit(
   return { allowed: count <= limit, count, backend: "postgres_bucket" };
 }
 
+export async function getDominantChunkEmbeddingModel(): Promise<string> {
+  const sql = await ensureNdkrsSchema();
+  const rows = await sql.query<{ embedding_model: string; c: number }>(
+    `SELECT embedding_model, count(*)::int AS c
+     FROM ndkrs.knowledge_chunks
+     GROUP BY embedding_model
+     ORDER BY c DESC
+     LIMIT 1`,
+  );
+  return rows[0]?.embedding_model || "noctis-det-embed-384-v1";
+}
+
 export async function getNdkrsStatusSummary() {
   const { sql, dbSource } = await resolveNdkrsBackend();
   await ensureNdkrsSchema(sql);
   const pgvectorEnabled = await isPgvectorActive();
+  const dominantEmbeddingModel = await getDominantChunkEmbeddingModel();
 
   const [sources, verifiedRecords, pendingRecords, chunks, rules, queuePending, certs, gaps, enclaveCount] =
     await Promise.all([
@@ -894,6 +907,7 @@ export async function getNdkrsStatusSummary() {
     version: "1.0.0",
     dbSource,
     pgvectorEnabled,
+    dominantEmbeddingModel,
     counts: {
       sources: sources[0]?.c ?? 0,
       verifiedRecords: verifiedRecords[0]?.c ?? 0,

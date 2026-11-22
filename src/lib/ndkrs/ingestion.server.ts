@@ -9,7 +9,7 @@
 
 import { APPROVED_SOURCES } from "../approved-sources.ts";
 import { sha256Sync } from "../universal-crypto.ts";
-import { computeEmbedding } from "./embeddings.server.ts";
+import { computeEmbedding, shouldUseOpenAiEmbeddings } from "./embeddings.server.ts";
 import {
   ensureNdkrsSchema,
   findVerifiedRecordsByCanonicalKey,
@@ -249,11 +249,12 @@ export async function ingestKnowledgeDocument(
   });
 
   const rawChunks = splitHeadingAwareChunks(cleanContent);
+  const useExternalEmb = shouldUseOpenAiEmbeddings(input.allowExternalEmbeddings);
   for (let i = 0; i < rawChunks.length; i++) {
     const ch = rawChunks[i];
     const embText = `${input.title} ${input.canonicalKey} ${ch.heading || ""} ${ch.content}`;
     const emb = await computeEmbedding(embText, {
-      allowExternal: Boolean(input.allowExternalEmbeddings),
+      allowExternal: useExternalEmb,
     });
     const chunkSha = sha256Sync(`${recordId}:${i}:${ch.content}`);
     await insertKnowledgeChunk({

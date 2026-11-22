@@ -297,7 +297,7 @@ function extractTemporalCreatinineObservations(
 
   // Pass 1: Explicit labeled creatinine mentions
   const crLabelRegex = new RegExp(
-    `\\b(?:(?:current|ed|admission|present(?:ing)?|stat|today['’]?s|acute|baseline|prior|previous|historical|outpatient|pre-?op(?:erative)?|discharge|last)\\s+){0,2}(?:serum\\s+|plasma\\s+)?(?:creatinine|creat|scr|cr)(?:\\s*\\([^)\\n]{1,45}\\))?(?:\\s*(?:from|at|measured|of)?\\s*(?:${NUM_TOKEN_SOURCE}\\s*(?:-|–|\\s+)?${TIMEFRAME_UNIT_SOURCE}\\s*(?:old|ago|prior|earlier|before)))?\\s*(?:[:=]\\s*|\\s+(?:(?:is|was|of|remained)\\s+)?)\\s*(\\d+(?:\\.\\d+)?)\\s*(?:mg\\/dl)?`,
+    `\\b(?:(?:current|ed|admission|present(?:ing)?|stat|today['’]?s|acute|baseline|prior|previous|historical|outpatient|pre-?op(?:erative)?|discharge|last)\\s+){0,2}(?:serum\\s+|plasma\\s+)?(?:creatinine|creat|scr|cr)(?:\\s*\\([^)\\n]{1,45}\\))?(?:\\s*(?:from|at|measured|of)?\\s*(?:${NUM_TOKEN_SOURCE}\\s*(?:-|–|\\s+)?${TIMEFRAME_UNIT_SOURCE}\\s*(?:old|ago|prior|earlier|before)))?(?:\\s+(?:today|now))?\\s*(?:[:=]\\s*|\\s+(?:(?:is|was|of|remained)\\s+)?)\\s*(\\d+(?:\\.\\d+)?)\\s*(?:mg\\/dl)?`,
     "gi"
   );
 

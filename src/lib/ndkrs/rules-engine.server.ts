@@ -112,6 +112,58 @@ export const NDKRS_RULE_CATALOG: Array<Omit<DeterministicRuleRecord, "createdAt"
     status: "VERIFIED",
     approvedBy: "noctis-legal-board",
   },
+  {
+    ruleId: "CLIN-ANION-GAP",
+    domain: "clinical",
+    name: "Serum Anion Gap & Missing Chloride Guard",
+    version: "2024.1",
+    description: "Computes AG = Na - (Cl + HCO3) and strictly refuses computation if measured serum Cl- is omitted.",
+    authorityCitation: "StatPearls Anion Gap / Noctis Clinical Safety Invariant INV-002",
+    inputSchema: { sodiumMeqL: "number", chlorideMeqL: "number|null", bicarbonateMeqL: "number" },
+    ruleSpec: { normalUpperLimit: 12, requiresMeasuredChloride: true },
+    executorRef: "src/lib/ndkrs/rules-engine.server.ts#CLIN-ANION-GAP",
+    status: "VERIFIED",
+    approvedBy: "noctis-clinical-board",
+  },
+  {
+    ruleId: "CLIN-CORRECTED-NA",
+    domain: "clinical",
+    name: "Katz Hyperglycemia-Corrected Serum Sodium",
+    version: "1973.1",
+    description: "Computes Corrected Na+ = Measured Na+ + 0.016 * (Glucose mg/dL - 100) for hyperglycemia >= 100 mg/dL.",
+    authorityCitation: "Katz MA (N Engl J Med 1973)",
+    inputSchema: { sodiumMeqL: "number", glucoseMgDl: "number" },
+    ruleSpec: { katzFactor: 0.016, baselineGlucoseMgDl: 100 },
+    executorRef: "src/lib/ndkrs/rules-engine.server.ts#CLIN-CORRECTED-NA",
+    status: "VERIFIED",
+    approvedBy: "noctis-clinical-board",
+  },
+  {
+    ruleId: "ENG-REYNOLDS",
+    domain: "engineering",
+    name: "Reynolds Number Flow Regime Classifier",
+    version: "1.0.0",
+    description: "Computes Re = (density * velocity * diameter) / dynamicViscosity and classifies laminar vs transitional vs turbulent flow.",
+    authorityCitation: "ASME Fluid Meters / Osborne Reynolds (1883)",
+    inputSchema: { densityKgM3: "number", velocityMS: "number", diameterM: "number", dynamicViscosityPaS: "number" },
+    ruleSpec: { laminarMax: 2300, turbulentMin: 4000 },
+    executorRef: "src/lib/ndkrs/rules-engine.server.ts#ENG-REYNOLDS",
+    status: "VERIFIED",
+    approvedBy: "noctis-engineering-board",
+  },
+  {
+    ruleId: "SCI-HENDERSON-HASSELBALCH",
+    domain: "science",
+    name: "Henderson-Hasselbalch Buffer pH Equation",
+    version: "1.0.0",
+    description: "Computes equilibrium buffer pH = pKa + log10([A-] / [HA]) with strict positive concentration validation.",
+    authorityCitation: "IUPAC Analytical Nomenclature",
+    inputSchema: { pKa: "number", conjugateBaseMolar: "number", weakAcidMolar: "number" },
+    ruleSpec: { formula: "pH = pKa + log10([A-]/[HA])" },
+    executorRef: "src/lib/ndkrs/rules-engine.server.ts#SCI-HENDERSON-HASSELBALCH",
+    status: "VERIFIED",
+    approvedBy: "noctis-science-board",
+  },
 ];
 
 export interface DeterministicRuleExecutionResult {
@@ -156,7 +208,10 @@ export function evaluateDeterministicRule(
           lockedClaims: [],
         };
       }
-      const timeframe = String(inputs.timeframeText || "within 7 days");
+      const rawTimeframe = String(inputs.timeframeText || "7 days ago").trim();
+      const timeframe = /\b(old|ago|prior|earlier|before)\b/i.test(rawTimeframe)
+        ? rawTimeframe
+        : `${rawTimeframe.replace(/^within\s+/i, "")} earlier`;
       const pad = buildClinicalScratchpad(
         `Patient has a current creatinine of ${current} mg/dL. Historical baseline creatinine was ${baseline} mg/dL, measured ${timeframe}.`,
         "NDKRS-RULE-KDIGO",
@@ -392,6 +447,127 @@ export function evaluateDeterministicRule(
           qualifiesAsNonDeviceCds: qualifies,
         },
         lockedClaims: [{ label: "FDA Classification", expectedValue: qualifies ? "NON_DEVICE_CDS" : "DEVICE_REGULATED_SAMD_REVIEW_REQUIRED" }],
+      };
+    }
+
+    case "CLIN-ANION-GAP": {
+      const na = Number(inputs.sodiumMeqL);
+      const cl = inputs.chlorideMeqL == null ? null : Number(inputs.chlorideMeqL);
+      const hco3 = Number(inputs.bicarbonateMeqL);
+      if (cl === null || !Number.isFinite(cl)) {
+        return {
+          ruleId,
+          domain: meta.domain,
+          authorityCitation: meta.authorityCitation,
+          ok: false,
+          verdict: "CANNOT_CALCULATE_CHLORIDE_MISSING",
+          outputs: { refusalReason: "Cannot calculate — chloride unavailable (Serum Chloride UNMEASURED)" },
+          lockedClaims: [],
+        };
+      }
+      if (!Number.isFinite(na) || !Number.isFinite(hco3)) {
+        return {
+          ruleId,
+          domain: meta.domain,
+          authorityCitation: meta.authorityCitation,
+          ok: false,
+          verdict: "MISSING_INPUTS",
+          outputs: { error: "Provide numeric sodiumMeqL, chlorideMeqL, and bicarbonateMeqL." },
+          lockedClaims: [],
+        };
+      }
+      const ag = Number((na - (cl + hco3)).toFixed(1));
+      return {
+        ruleId,
+        domain: meta.domain,
+        authorityCitation: meta.authorityCitation,
+        ok: true,
+        verdict: ag > 12 ? "ELEVATED_HAGMA" : "NORMAL_ANION_GAP",
+        outputs: { sodiumMeqL: na, chlorideMeqL: cl, bicarbonateMeqL: hco3, anionGapMeqL: ag },
+        lockedClaims: [{ label: "Anion Gap", expectedValue: ag, unit: "mEq/L", tolerance: 0.5 }],
+      };
+    }
+
+    case "CLIN-CORRECTED-NA": {
+      const na = Number(inputs.sodiumMeqL);
+      const glucose = Number(inputs.glucoseMgDl);
+      if (!Number.isFinite(na) || !Number.isFinite(glucose) || glucose < 0) {
+        return {
+          ruleId,
+          domain: meta.domain,
+          authorityCitation: meta.authorityCitation,
+          ok: false,
+          verdict: "MISSING_INPUTS",
+          outputs: { error: "Provide valid sodiumMeqL and glucoseMgDl." },
+          lockedClaims: [],
+        };
+      }
+      const delta = glucose > 100 ? 0.016 * (glucose - 100) : 0;
+      const correctedNa = Number((na + delta).toFixed(1));
+      return {
+        ruleId,
+        domain: meta.domain,
+        authorityCitation: meta.authorityCitation,
+        ok: true,
+        verdict: correctedNa < 135 ? "HYPONATREMIA_PERSISTS" : correctedNa > 145 ? "HYPERNATREMIA" : "NORMOCORRECTED_SODIUM",
+        outputs: { measuredSodiumMeqL: na, glucoseMgDl: glucose, katzCorrectedSodiumMeqL: correctedNa },
+        lockedClaims: [{ label: "Corrected Sodium", expectedValue: correctedNa, unit: "mEq/L", tolerance: 0.5 }],
+      };
+    }
+
+    case "ENG-REYNOLDS": {
+      const rho = Number(inputs.densityKgM3);
+      const vel = Number(inputs.velocityMS);
+      const diam = Number(inputs.diameterM);
+      const mu = Number(inputs.dynamicViscosityPaS);
+      if (!Number.isFinite(rho) || !Number.isFinite(vel) || !Number.isFinite(diam) || !Number.isFinite(mu) || mu <= 0) {
+        return {
+          ruleId,
+          domain: meta.domain,
+          authorityCitation: meta.authorityCitation,
+          ok: false,
+          verdict: "MISSING_INPUTS",
+          outputs: { error: "Provide densityKgM3, velocityMS, diameterM, and positive dynamicViscosityPaS." },
+          lockedClaims: [],
+        };
+      }
+      const reynolds = Number(((rho * vel * diam) / mu).toFixed(2));
+      const regime = reynolds < 2300 ? "LAMINAR" : reynolds <= 4000 ? "TRANSITIONAL" : "TURBULENT";
+      return {
+        ruleId,
+        domain: meta.domain,
+        authorityCitation: meta.authorityCitation,
+        ok: true,
+        verdict: regime,
+        outputs: { reynoldsNumber: reynolds, flowRegime: regime },
+        lockedClaims: [{ label: "Reynolds Number", expectedValue: reynolds, tolerance: 1 }],
+      };
+    }
+
+    case "SCI-HENDERSON-HASSELBALCH": {
+      const pKa = Number(inputs.pKa);
+      const base = Number(inputs.conjugateBaseMolar);
+      const acid = Number(inputs.weakAcidMolar);
+      if (!Number.isFinite(pKa) || !Number.isFinite(base) || !Number.isFinite(acid) || base <= 0 || acid <= 0) {
+        return {
+          ruleId,
+          domain: meta.domain,
+          authorityCitation: meta.authorityCitation,
+          ok: false,
+          verdict: "MISSING_INPUTS",
+          outputs: { error: "Provide finite pKa and strictly positive conjugateBaseMolar and weakAcidMolar." },
+          lockedClaims: [],
+        };
+      }
+      const ph = Number((pKa + Math.log10(base / acid)).toFixed(3));
+      return {
+        ruleId,
+        domain: meta.domain,
+        authorityCitation: meta.authorityCitation,
+        ok: true,
+        verdict: ph < 7 ? "ACIDIC_BUFFER" : ph > 7 ? "BASIC_BUFFER" : "NEUTRAL_BUFFER",
+        outputs: { pKa, ratioBaseToAcid: Number((base / acid).toFixed(4)), pH: ph },
+        lockedClaims: [{ label: "Buffer pH", expectedValue: ph, tolerance: 0.05 }],
       };
     }
 

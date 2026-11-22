@@ -7,7 +7,11 @@
  */
 
 import { computeEmbedding, cosineSimilarity } from "./embeddings.server.ts";
-import { ensureNdkrsSchema, isPgvectorActive } from "./persistence.server.ts";
+import {
+  ensureNdkrsSchema,
+  getDominantChunkEmbeddingModel,
+  isPgvectorActive,
+} from "./persistence.server.ts";
 import type { HybridSearchHit, NdkrsDomain } from "./types.ts";
 
 interface ChunkJoinedRow {
@@ -23,6 +27,7 @@ interface ChunkJoinedRow {
   source_uri: string;
   version: string;
   record_sha256: string;
+  embedding_model: string;
   embedding_json: number[];
   ts_rank: number;
   pg_vec_sim?: number;
@@ -59,8 +64,13 @@ export async function hybridSearchNdkrs(
   const sql = await ensureNdkrsSchema();
   const usePgvector = await isPgvectorActive();
   const limit = Math.max(1, Math.min(25, opts.limit ?? 5));
+  const dominantModel = await getDominantChunkEmbeddingModel();
+  const useExternal =
+    opts.allowExternalEmbeddings !== undefined
+      ? opts.allowExternalEmbeddings
+      : dominantModel === "text-embedding-3-small";
   const qEmb = await computeEmbedding(cleanQuery, {
-    allowExternal: Boolean(opts.allowExternalEmbeddings),
+    allowExternal: useExternal,
   });
   const qTerms = extractQueryTerms(cleanQuery);
 
@@ -75,6 +85,7 @@ export async function hybridSearchNdkrs(
   if (usePgvector) {
     const vecLiteral = `[${qEmb.vector.map((n) => Number(n) || 0).join(",")}]`;
     const vecParamIdx = baseParams.length + 1;
+    const modelParamIdx = baseParams.length + 2;
     rows = await sql.query<ChunkJoinedRow>(
       `SELECT
          c.id AS chunk_id,
@@ -89,18 +100,23 @@ export async function hybridSearchNdkrs(
          r.version,
          r.record_sha256,
          s.source_uri,
+         c.embedding_model,
          c.embedding_json,
          ts_rank_cd(
            to_tsvector('english', r.canonical_key || ' ' || r.title || ' ' || coalesce(c.heading, '') || ' ' || c.content),
            plainto_tsquery('english', $1)
          )::float8 AS ts_rank,
-         CASE WHEN c.embedding_vec IS NOT NULL THEN (1 - (c.embedding_vec <=> $${vecParamIdx}::vector))::float8 ELSE 0 END AS pg_vec_sim
+         CASE
+           WHEN c.embedding_vec IS NOT NULL AND c.embedding_model = $${modelParamIdx}
+           THEN (1 - (c.embedding_vec <=> $${vecParamIdx}::vector))::float8
+           ELSE 0
+         END AS pg_vec_sim
        FROM ndkrs.knowledge_chunks c
        JOIN ndkrs.knowledge_records r ON r.id = c.record_id
        JOIN ndkrs.knowledge_sources s ON s.id = c.source_id
        WHERE ${statusFilter} AND ${expiryFilter} ${domainFilter}
        LIMIT 250`,
-      [...baseParams, vecLiteral],
+      [...baseParams, vecLiteral, qEmb.model],
     );
   } else {
     rows = await sql.query<ChunkJoinedRow>(
@@ -117,6 +133,7 @@ export async function hybridSearchNdkrs(
          r.version,
          r.record_sha256,
          s.source_uri,
+         c.embedding_model,
          c.embedding_json,
          ts_rank_cd(
            to_tsvector('english', r.canonical_key || ' ' || r.title || ' ' || coalesce(c.heading, '') || ' ' || c.content),
@@ -145,10 +162,13 @@ export async function hybridSearchNdkrs(
     const bm25Score = Number((Number(row.ts_rank || 0) + exactKeyHit + termRatio * 0.75).toFixed(4));
 
     const embVec = Array.isArray(row.embedding_json) ? row.embedding_json : [];
+    const sameModel = row.embedding_model === qEmb.model;
     const vectorScore =
-      typeof row.pg_vec_sim === "number" && row.pg_vec_sim > 0
+      sameModel && typeof row.pg_vec_sim === "number" && row.pg_vec_sim > 0
         ? Number(row.pg_vec_sim.toFixed(4))
-        : Number(cosineSimilarity(qEmb.vector, embVec).toFixed(4));
+        : sameModel
+        ? Number(cosineSimilarity(qEmb.vector, embVec).toFixed(4))
+        : 0;
 
     return { row, bm25Score, vectorScore, matchedTerms };
   });

@@ -77,6 +77,9 @@ export async function securityPosture(): Promise<{ rows: PostureRow[]; alerts: {
     select count(*)::int as n, count(*) filter (where totp_on)::int as on from staff
   `.catch(() => [{ n: 0, on: 0 }]);
   const secret = process.env.BETTER_AUTH_SECRET?.trim() || "";
+  const certKey = process.env.NOCTIS_CERT_SIGNING_KEY?.trim() || "";
+  const enclaveKey = process.env.NOCTIS_ENCLAVE_KEY?.trim() || "";
+  const hasAllKeys = secret.length >= 32 && certKey.length >= 32 && enclaveKey.length >= 32;
   const alerts = await sql<{ kind: string; detail: string; at: string }>`
     select kind, detail, created_at::text as at from security_alert order by created_at desc limit 12
   `.catch(() => []);
@@ -85,16 +88,24 @@ export async function securityPosture(): Promise<{ rows: PostureRow[]; alerts: {
     alerts,
     rows: [
       { name: "MFA", state: staff[0]?.on ? "On" : "Partial", line: `${mfa}. Desk tools refuse a session that has not passed the authenticator.` },
-      { name: "Encryption", state: "Partial", line: "Session cookies are marked Secure and HttpOnly. Stored notes are not encrypted field by field." },
+      {
+        name: "Encryption",
+        state: enclaveKey.length >= 32 ? "On" : "Partial",
+        line: enclaveKey.length >= 32
+          ? "Clinical Enclave records use AES-256-GCM authenticated encryption at rest; sessions are Secure/HttpOnly over TLS."
+          : "Session cookies are marked Secure and HttpOnly; Clinical Enclave uses dev fallback until NOCTIS_ENCLAVE_KEY is set.",
+      },
       { name: "Secure sessions", state: "On", line: "The desk session is HttpOnly and SameSite. A scripted cross-site call is rejected." },
-      { name: "Rate limiting", state: "On", line: "Vibe asks and activity writes are slowed after a burst. The account is not banned." },
+      { name: "Rate limiting", state: "On", line: "Distributed rate limiting persists buckets across Upstash Redis / PostgreSQL ndkrs.rate_limit_buckets." },
       { name: "Bot detection", state: "Partial", line: "A burst from one caller is slowed. A missing browser header is not treated as proof of a bot." },
       { name: "API security", state: "On", line: "Member and desk calls that use the auth middleware require a session and a same-site request." },
-      { name: "Audit logging", state: "On", line: "Member actions and staff decisions are written. Passwords are not." },
+      { name: "Audit logging", state: "On", line: "HMAC-SHA256 validation certificates (ndkrs.validation_certificates) and hash-chained RMF ledger are recorded." },
       {
         name: "Secrets",
-        state: secret.length >= 32 ? "On" : "Partial",
-        line: secret.length >= 32 ? "BETTER_AUTH_SECRET is set. The value is not shown here." : "BETTER_AUTH_SECRET is not set. Sessions are using the built-in fallback until it is.",
+        state: hasAllKeys ? "On" : secret.length >= 32 ? "Partial" : "Partial",
+        line: hasAllKeys
+          ? "BETTER_AUTH_SECRET, NOCTIS_CERT_SIGNING_KEY, and NOCTIS_ENCLAVE_KEY are provisioned (32+ bytes)."
+          : "One or more cryptographic keys are missing or using fallback.",
       },
       { name: "Vulnerability scanning", state: "Not running", line: "The app does not scan itself while it is serving. Run npm audit in the project." },
       { name: "Dependency monitoring", state: "Not running", line: "There is no live feed of new package advisories. npm audit is the check." },

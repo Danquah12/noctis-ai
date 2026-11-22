@@ -1130,6 +1130,34 @@ async function composeVibeReply(
       };
     }
 
+    // Live NDKRS Governance, Certificate, Gap, Enclave, RMF v2.0 SQL & Telemetry Introspection
+    const {
+      tryHandlePlatformStatusOrLedgerQuery,
+      tryExecuteNdkrsDeterministicRuleFromChat,
+    } = await import("@/lib/ndkrs/chat-bridge.server");
+    const platformStatusOut = await tryHandlePlatformStatusOrLedgerQuery(fullQuestion);
+    if (platformStatusOut) {
+      return {
+        text: wrapDeterministicThink(
+          platformStatusOut,
+          "Queried live NDKRS knowledge/certificate/gap/enclave status, RMF v2.0 SQL artifact & audit ledger, and universal ingestion stream.",
+        ),
+      };
+    }
+
+    // Explicit NDKRS Rule ID Execution (e.g., ENG-REYNOLDS, CLIN-ANION-GAP, RMF-POAM-SLA, LEGAL-CDS-21USC360J)
+    const explicitNdkrsRuleOut = await tryExecuteNdkrsDeterministicRuleFromChat(fullQuestion, {
+      explicitRuleIdOnly: true,
+    });
+    if (explicitNdkrsRuleOut) {
+      return {
+        text: wrapDeterministicThink(
+          explicitNdkrsRuleOut,
+          "Executed explicit NDKRS deterministic rule and minted HMAC-signed Cross-Domain Fact-Lock validation certificate.",
+        ),
+      };
+    }
+
     // Universal Engine-Agnostic Neuro-Symbolic Clinical LLM Pipeline (Isolated Encounter)
     if (isUniversalClinicalQuestion(fullQuestion)) {
       const universalOut = await executeUniversalClinicalReasoning(fullQuestion, {
@@ -1153,6 +1181,19 @@ async function composeVibeReply(
       if (rmfOut) {
         return { text: rmfOut };
       }
+    }
+
+    // Natural-Language NDKRS Cross-Domain Rule Execution (Reynolds, Ohm's Law, Ideal Gas, Henderson-Hasselbalch, FDA CDS, POA&M SLA)
+    const naturalNdkrsRuleOut = await tryExecuteNdkrsDeterministicRuleFromChat(fullQuestion, {
+      explicitRuleIdOnly: false,
+    });
+    if (naturalNdkrsRuleOut) {
+      return {
+        text: wrapDeterministicThink(
+          naturalNdkrsRuleOut,
+          "Executed domain-matched NDKRS deterministic rule and minted HMAC-signed Cross-Domain Fact-Lock validation certificate.",
+        ),
+      };
     }
 
     const { runFollowUpIntelligence } = await import("@/lib/noctis-response-intelligence");
@@ -1454,13 +1495,18 @@ async function composeVibeReply(
   const brain = brainQuestion(question, skill.id) && !design && !wantsCode;
   const strict = !wantsCode && (["evidence", "library", "search", "tools", "check", "extract", "film"].includes(skill.id) || fresh);
   const lesson = teachingQuestion(question) && !hasHardRows && !wantsCode;
-  const pulled = await Promise.all([
-    skill.source === "study" || skill.source === "both" || (brain && libraryQuestion(question)) ? libraryNotes(question).catch(() => "") : Promise.resolve(""),
-    !lesson && (skill.source === "web" || skill.source === "both" || lookUp || brain) ? within(liveBrief(question), 12000) : Promise.resolve(""),
-    brain || lesson ? within(wikiBrief(lesson ? searchSubject(question) : question), 8000) : Promise.resolve(""),
-    within(import("@/lib/noctis-outside.server").then((mod) => mod.outsideFacts(question)), 9000),
+  const [pulled, ndkrsGrounding] = await Promise.all([
+    Promise.all([
+      skill.source === "study" || skill.source === "both" || (brain && libraryQuestion(question)) ? libraryNotes(question).catch(() => "") : Promise.resolve(""),
+      !lesson && (skill.source === "web" || skill.source === "both" || lookUp || brain) ? within(liveBrief(question), 12000) : Promise.resolve(""),
+      brain || lesson ? within(wikiBrief(lesson ? searchSubject(question) : question), 8000) : Promise.resolve(""),
+      within(import("@/lib/noctis-outside.server").then((mod) => mod.outsideFacts(question)), 9000),
+    ]),
+    !wantsCode
+      ? import("@/lib/ndkrs/chat-bridge.server").then((m) => m.fetchNdkrsChatGrounding(question, { limit: 3 }))
+      : Promise.resolve({ hits: [], systemBlock: "", footer: "" }),
   ]);
-  const notes = pulled.filter(Boolean).join("\n\n");
+  const notes = [...pulled, ndkrsGrounding.systemBlock].filter(Boolean).join("\n\n");
   const walk = walkGraph(question);
   const map = walk ? formatMap(walk) : "";
   const record = [notes, pages, map].filter(Boolean).join("\n\n");
@@ -1510,28 +1556,8 @@ async function composeVibeReply(
       };
     }
     const prior = lessonBlock(question);
-    let ndkrsHits: Array<{ citationLabel: string; title: string; excerpt: string; version: string; sha256: string; sourceUri: string; rrfScore: number; matchedTerms: number; canonicalKey: string }> = [];
-    if (!wantsCode) {
-      try {
-        const { hybridSearchNdkrs } = await import("@/lib/ndkrs/hybrid-retrieval.server");
-        const candidates = await hybridSearchNdkrs(question, { limit: 3 });
-        const qLower = question.toLowerCase();
-        ndkrsHits = candidates.filter(
-          (h) => h.rrfScore >= 0.015 && (h.matchedTerms >= 2 || qLower.includes(h.canonicalKey.toLowerCase())),
-        );
-      } catch {
-        // Preserve existing Noctis synthesis cleanly if NDKRS index is unavailable
-      }
-    }
-    const ndkrsGroundingBlock = ndkrsHits.length > 0
-      ? `[NDKRS Verified Authoritative Knowledge Grounding — Cite these verified facts & versions accurately]\n` +
-        ndkrsHits
-          .map(
-            (h, idx) =>
-              `${idx + 1}. [${h.citationLabel} | v${h.version} | SHA-256:${h.sha256.slice(0, 12)}] ${h.title} (${h.sourceUri})\n${h.excerpt}`,
-          )
-          .join("\n\n")
-      : "";
+    const ndkrsHits = ndkrsGrounding.hits;
+    const ndkrsGroundingBlock = ndkrsGrounding.systemBlock;
     const taught: ChatMessage[] = [
       { role: "system", content: TEACH },
       { role: "system", content: `Active Engine Profile: ${activeEngine.name} (${activeEngine.id}).` },
@@ -1666,7 +1692,13 @@ async function composeVibeReply(
   const { auditAnswer } = await import("@/lib/answer-auditor");
   const { attachLedger } = await import("@/lib/noctis-ledger");
   const { attachHard } = await import("@/lib/noctis-hard");
-  const finalOut = attachHard(scenario, attachLedger(scenario, await auditAnswer(scenario, sealed, record)));
+  const rawFinalOut = attachHard(scenario, attachLedger(scenario, await auditAnswer(scenario, sealed, record)));
+  const appendNdkrsFooter =
+    ndkrsGrounding.footer &&
+    !wantsRawJson &&
+    !rawFinalOut.trim().startsWith("{") &&
+    !/CLINICAL_VALIDATION_FAILED|Not in the record\./i.test(rawFinalOut);
+  const finalOut = appendNdkrsFooter ? `${rawFinalOut}${ndkrsGrounding.footer}` : rawFinalOut;
   if (extractedThought && shouldThink && !wantsRawJson && !finalOut.trim().startsWith("{") && !/CLINICAL_VALIDATION_FAILED/i.test(finalOut)) {
     return { text: `<think>\n${extractedThought}\n</think>\n\n${finalOut}` };
   }

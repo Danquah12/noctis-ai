@@ -2,15 +2,24 @@
  * NDKRS Enterprise REST API Dispatcher (`/api/v2/ndkrs/*`, Server-Side)
  */
 
+import { seedNdkrsAuthoritativeCorpus } from "./corpus-seed.ts";
+import { extractDocumentText } from "./document-parser.server.ts";
+import { computeEmbedding } from "./embeddings.server.ts";
 import { storeEncryptedClinicalEnclaveRecord } from "./enclave-crypto.server.ts";
 import { validateCrossDomainFactLock, verifyCertificateSignature } from "./fact-lock-validator.server.ts";
-import { decideReviewItem, listReviewQueue, scanStaleKnowledgeRecords } from "./governance.server.ts";
+import {
+  decideReviewItem,
+  enforceExpiredKnowledgeRecords,
+  listReviewQueue,
+  scanStaleKnowledgeRecords,
+} from "./governance.server.ts";
 import { hybridSearchNdkrs } from "./hybrid-retrieval.server.ts";
 import { ingestKnowledgeDocument } from "./ingestion.server.ts";
 import {
   checkDistributedRateLimit,
   ensureNdkrsSchema,
   getNdkrsStatusSummary,
+  isPgvectorActive,
   listDeterministicRules,
   listKnowledgeGaps,
   listValidationCertificates,
@@ -92,10 +101,99 @@ export async function handleNdkrsV2Request(request: Request): Promise<Response> 
           recordCount: status.counts.encryptedClinicalEnclaveRecords,
         });
       }
+      if (subPath === "cron/revalidate") {
+        const cronSecret = process.env.CRON_SECRET?.trim();
+        const isLocalTest = url.hostname === "local.test" || url.hostname === "localhost";
+        if (cronSecret && !isLocalTest) {
+          const auth = request.headers.get("authorization") || "";
+          if (auth !== `Bearer ${cronSecret}`) {
+            return json({ error: "UNAUTHORIZED_CRON" }, 401);
+          }
+        }
+        const warningDays = Number(url.searchParams.get("warningDays") || 30);
+        const result = await enforceExpiredKnowledgeRecords(
+          Number.isFinite(warningDays) ? warningDays : 30,
+        );
+        return json({ ok: true, ...result });
+      }
       return json({ error: `Unknown NDKRS GET endpoint: /api/v2/ndkrs/${subPath}` }, 404);
     }
 
     if (request.method === "POST") {
+      if (subPath === "ingest-file") {
+        const cType = (request.headers.get("content-type") || "").toLowerCase();
+        let filename = "uploaded.txt";
+        let mimeType = "text/plain";
+        let bytes: Uint8Array | null = null;
+        let domain: NdkrsDomain = "general";
+        let canonicalKey = "";
+        let title = "";
+        let sourceUri = "";
+        let version = "1.0.0";
+        let proposedBy = "file-uploader";
+
+        if (cType.includes("multipart/form-data")) {
+          const form = await request.formData();
+          const fileEntry = form.get("file");
+          if (!fileEntry || typeof fileEntry === "string") {
+            return json({ error: "Multipart form requires a 'file' upload." }, 400);
+          }
+          filename = fileEntry.name || filename;
+          mimeType = fileEntry.type || mimeType;
+          bytes = new Uint8Array(await fileEntry.arrayBuffer());
+          domain = (String(form.get("domain") || "general") as NdkrsDomain);
+          canonicalKey = String(form.get("canonicalKey") || "").trim();
+          title = String(form.get("title") || filename).trim();
+          sourceUri = String(form.get("sourceUri") || "").trim();
+          version = String(form.get("version") || "1.0.0").trim();
+          proposedBy = String(form.get("proposedBy") || "file-uploader").trim();
+        } else {
+          const payload = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+          filename = String(payload.filename || "uploaded.txt").trim();
+          mimeType = String(payload.mimeType || "text/plain").trim();
+          const b64 = String(payload.contentBase64 || "").trim();
+          if (!b64) {
+            return json({ error: "Provide multipart 'file' or JSON 'contentBase64'." }, 400);
+          }
+          bytes = Buffer.from(b64, "base64");
+          domain = (String(payload.domain || "general") as NdkrsDomain);
+          canonicalKey = String(payload.canonicalKey || "").trim();
+          title = String(payload.title || filename).trim();
+          sourceUri = String(payload.sourceUri || "").trim();
+          version = String(payload.version || "1.0.0").trim();
+          proposedBy = String(payload.proposedBy || "file-uploader").trim();
+        }
+
+        if (!canonicalKey || !sourceUri || !bytes || bytes.byteLength === 0) {
+          return json({ error: "canonicalKey, sourceUri, and non-empty file content are required." }, 400);
+        }
+
+        const parsed = extractDocumentText({ filename, mimeType, bytes });
+        if (!parsed.text || parsed.text.length < 10) {
+          return json({ error: `Could not extract readable text from ${filename} (${parsed.format}).` }, 400);
+        }
+
+        const ingested = await ingestKnowledgeDocument({
+          domain,
+          canonicalKey,
+          title,
+          summary: parsed.text.slice(0, 320),
+          content: parsed.text,
+          sourceUri,
+          trustTier: "INTERNAL_SPEC",
+          version,
+          proposedBy,
+          proposedByType: "HUMAN",
+        });
+
+        return json({
+          ...ingested,
+          extractedFormat: parsed.format,
+          extractedChars: parsed.text.length,
+          byteSize: parsed.byteSize,
+        }, 201);
+      }
+
       const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
 
       if (subPath === "search") {
@@ -228,6 +326,68 @@ export async function handleNdkrsV2Request(request: Request): Promise<Response> 
         }
         const stored = await storeEncryptedClinicalEnclaveRecord({ tenantId, encounterId, payload });
         return json({ ok: true, ...stored }, 201);
+      }
+
+      if (subPath === "cron/reembed") {
+        const cronSecret = process.env.CRON_SECRET?.trim();
+        const isLocalTest = url.hostname === "local.test" || url.hostname === "localhost";
+        if (!isLocalTest) {
+          if (!cronSecret) {
+            return json({ error: "CRON_SECRET is not configured on this environment." }, 403);
+          }
+          const auth = request.headers.get("authorization") || "";
+          if (auth !== `Bearer ${cronSecret}`) {
+            return json({ error: "UNAUTHORIZED_CRON" }, 401);
+          }
+        }
+
+        const probe = await computeEmbedding("NDKRS semantic embedding capability check", {
+          allowExternal: true,
+        });
+        if (probe.model !== "text-embedding-3-small") {
+          return json({
+            ok: true,
+            upgraded: false,
+            activeModel: probe.model,
+            reason:
+              "OPENAI_API_KEY unavailable or OpenAI embeddings API did not return 384-dim text-embedding-3-small; existing vector alignment preserved.",
+          });
+        }
+
+        const seeded = await seedNdkrsAuthoritativeCorpus({
+          preVerifiedBy: "ndkrs-runtime-reembed",
+          allowExternalEmbeddings: true,
+        });
+        const sql = await ensureNdkrsSchema();
+        const hasVec = await isPgvectorActive();
+        const staleRows = await sql.query<{ id: string; content: string }>(
+          "SELECT id, content FROM ndkrs.knowledge_chunks WHERE embedding_model <> 'text-embedding-3-small'",
+        );
+        let additionalReembedded = 0;
+        for (const row of staleRows) {
+          const emb = await computeEmbedding(row.content, { allowExternal: true });
+          if (emb.model !== "text-embedding-3-small") continue;
+          if (hasVec && emb.vector.length === 384) {
+            const literal = `[${emb.vector.map((n) => Number(n) || 0).join(",")}]`;
+            await sql.query(
+              "UPDATE ndkrs.knowledge_chunks SET embedding_model = $1, embedding_json = $2::jsonb, embedding_vec = $3::vector WHERE id = $4",
+              [emb.model, JSON.stringify(emb.vector), literal, row.id],
+            );
+          } else {
+            await sql.query(
+              "UPDATE ndkrs.knowledge_chunks SET embedding_model = $1, embedding_json = $2::jsonb WHERE id = $3",
+              [emb.model, JSON.stringify(emb.vector), row.id],
+            );
+          }
+          additionalReembedded += 1;
+        }
+        return json({
+          ok: true,
+          upgraded: true,
+          activeModel: "text-embedding-3-small",
+          seeded,
+          additionalReembedded,
+        });
       }
 
       return json({ error: `Unknown NDKRS POST endpoint: /api/v2/ndkrs/${subPath}` }, 404);

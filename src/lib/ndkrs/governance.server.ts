@@ -7,7 +7,7 @@
  * - `SELF_APPROVAL_FORBIDDEN`: The proposer cannot approve their own submission.
  */
 
-import { ensureNdkrsSchema, mapReviewQueueItem } from "./persistence.server.ts";
+import { ensureNdkrsSchema, logKnowledgeGap, mapReviewQueueItem } from "./persistence.server.ts";
 import type { KnowledgeRecord, ReviewQueueItem } from "./types.ts";
 
 export async function listReviewQueue(status?: ReviewQueueItem["status"]): Promise<ReviewQueueItem[]> {
@@ -136,5 +136,50 @@ export async function scanStaleKnowledgeRecords(warningDays = 30): Promise<{
     expiringSoonCount: expiringSoon.length,
     expired,
     expiringSoon,
+  };
+}
+
+/**
+ * Transitions expired VERIFIED records & sources to `EXPIRED` and logs sanitized
+ * revalidation gaps so outdated guidance cannot remain active silently.
+ */
+export async function enforceExpiredKnowledgeRecords(warningDays = 30): Promise<{
+  checkedAt: string;
+  expiredTransitioned: number;
+  expiringSoonCount: number;
+  transitionedIds: string[];
+}> {
+  const sql = await ensureNdkrsSchema();
+  const scan = await scanStaleKnowledgeRecords(warningDays);
+  const transitionedIds: string[] = [];
+
+  for (const item of scan.expired) {
+    await sql.query(
+      `UPDATE ndkrs.knowledge_records
+       SET verification_status = 'EXPIRED', updated_at = now()
+       WHERE id = $1 AND verification_status = 'VERIFIED'`,
+      [item.id],
+    );
+    await sql.query(
+      `UPDATE ndkrs.knowledge_sources s
+       SET status = 'EXPIRED', updated_at = now()
+       FROM ndkrs.knowledge_records r
+       WHERE r.id = $1 AND s.id = r.source_id AND s.status = 'VERIFIED' AND s.expires_at IS NOT NULL AND s.expires_at <= now()`,
+      [item.id],
+    );
+    await logKnowledgeGap({
+      domain: item.domain,
+      sanitizedTopic: `Expired Knowledge Revalidation (${item.canonicalKey})`,
+      failureReason: `Verified record ${item.canonicalKey} ("${item.title}") expired at ${item.expiresAt} and was transitioned to EXPIRED.`,
+      validatorRuleIds: ["NDKRS-STALENESS-EXPIRY"],
+    }).catch(() => {});
+    transitionedIds.push(item.id);
+  }
+
+  return {
+    checkedAt: new Date().toISOString(),
+    expiredTransitioned: transitionedIds.length,
+    expiringSoonCount: scan.expiringSoonCount,
+    transitionedIds,
   };
 }

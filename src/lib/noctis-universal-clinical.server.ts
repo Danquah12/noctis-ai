@@ -366,11 +366,24 @@ export async function executeUniversalClinicalReasoning(
   const systemPrompt = buildSystemPrompt(encounterId);
   const userPrompt = buildUserPrompt(trimmed, scratchpad);
 
+  let liveUserPrompt = userPrompt;
+  if (!opts.modelChatFn) {
+    try {
+      const { fetchNdkrsChatGrounding } = await import("./ndkrs/chat-bridge.server.ts");
+      const clinGrounding = await fetchNdkrsChatGrounding(trimmed, { domain: "clinical", limit: 2 });
+      if (clinGrounding.systemBlock) {
+        liveUserPrompt = `${userPrompt}\n\n${clinGrounding.systemBlock}`;
+      }
+    } catch {
+      // Preserve deterministic clinical scratchpad reasoning if NDKRS DB is unavailable
+    }
+  }
+
   // Stage 2: Isolated Live LLM Reasoning (Strict zero-history context + deep deliberation)
   const firstResponse = await chatFn(
     [
       { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
+      { role: "user", content: liveUserPrompt },
     ],
     {
       temperature: 0.1,

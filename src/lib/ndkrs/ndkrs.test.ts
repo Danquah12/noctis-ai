@@ -7,11 +7,22 @@ import assert from "node:assert/strict";
 import { hmacSha256Sync } from "../universal-crypto.ts";
 import { executeUniversalClinicalReasoning } from "../noctis-universal-clinical.server.ts";
 import { rememberAnswer, trainPair } from "../noctis-train.server.ts";
+import {
+  tryExecuteNdkrsDeterministicRuleFromChat,
+  tryHandlePlatformStatusOrLedgerQuery,
+  fetchNdkrsChatGrounding,
+} from "./chat-bridge.server.ts";
 import { handleNdkrsV2Request } from "./api-handler.server.ts";
 import { seedNdkrsAuthoritativeCorpus } from "./corpus-seed.ts";
+import { extractDocumentText } from "./document-parser.server.ts";
 import { decryptClinicalPayload, encryptClinicalPayload } from "./enclave-crypto.server.ts";
 import { validateCrossDomainFactLock, verifyCertificateSignature } from "./fact-lock-validator.server.ts";
-import { decideReviewItem, listReviewQueue, scanStaleKnowledgeRecords } from "./governance.server.ts";
+import {
+  decideReviewItem,
+  enforceExpiredKnowledgeRecords,
+  listReviewQueue,
+  scanStaleKnowledgeRecords,
+} from "./governance.server.ts";
 import { hybridSearchNdkrs } from "./hybrid-retrieval.server.ts";
 import { ingestKnowledgeDocument } from "./ingestion.server.ts";
 import {
@@ -25,8 +36,8 @@ import { evaluateDeterministicRule } from "./rules-engine.server.ts";
 describe("NDKRS Full Deterministic Knowledge & Reasoning System", () => {
   it("1. Seeds authoritative corpus & retrieves multi-domain verified records via BM25 + Vector RRF", async () => {
     const seeded = await seedNdkrsAuthoritativeCorpus({ preVerifiedBy: "test-governance-board" });
-    assert.ok(seeded.recordsSeeded >= 20);
-    assert.ok(seeded.rulesSeeded >= 8);
+    assert.ok(seeded.recordsSeeded >= 40);
+    assert.ok(seeded.rulesSeeded >= 12);
 
     const kdigoHits = await hybridSearchNdkrs("KDIGO AKI staging creatinine 5.1 baseline 1.8");
     assert.ok(kdigoHits.length > 0);
@@ -298,5 +309,194 @@ describe("NDKRS Full Deterministic Knowledge & Reasoning System", () => {
 
     const qList = await listReviewQueue();
     assert.ok(Array.isArray(qList));
+  });
+
+  it("7. Parses TXT/MD/HTML/JSON/PDF/DOCX uploads & enforces quarantine via POST /api/v2/ndkrs/ingest-file", async () => {
+    const htmlParsed = extractDocumentText({
+      filename: "brief.html",
+      mimeType: "text/html",
+      bytes: new TextEncoder().encode("<html><head><style>.x{}</style></head><body><h1>Sepsis Target</h1><script>alert(1)</script><p>MAP >= 65 mmHg per SSC 2021.</p></body></html>"),
+    });
+    assert.equal(htmlParsed.format, "html");
+    assert.ok(htmlParsed.text.includes("MAP >= 65 mmHg") && !htmlParsed.text.includes("alert(1)"));
+
+    // Build a valid single-entry STORE (method=0) DOCX zip buffer containing word/document.xml
+    const xmlStr = '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>FedRAMP AC-2 inactivity limit is 35 days.</w:t></w:r></w:p></w:body></w:document>';
+    const xmlBytes = new TextEncoder().encode(xmlStr);
+    const nameBytes = new TextEncoder().encode("word/document.xml");
+    const lfh = Buffer.alloc(30);
+    lfh.writeUInt32LE(0x04034b50, 0);
+    lfh.writeUInt16LE(20, 4);
+    lfh.writeUInt16LE(0, 8); // stored (method=0)
+    lfh.writeUInt32LE(xmlBytes.length, 18);
+    lfh.writeUInt32LE(xmlBytes.length, 22);
+    lfh.writeUInt16LE(nameBytes.length, 26);
+    const docxBuf = Buffer.concat([lfh, nameBytes, xmlBytes]);
+    const docxParsed = extractDocumentText({
+      filename: "policy.docx",
+      mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      bytes: docxBuf,
+    });
+    assert.equal(docxParsed.format, "docx");
+    assert.ok(docxParsed.text.includes("FedRAMP AC-2 inactivity limit is 35 days."));
+
+    // Minimal valid uncompressed PDF stream check
+    const pdfStr = "%PDF-1.4\n1 0 obj << /Length 44 >> stream\nBT /F1 12 Tf 72 712 Td (KDIGO Stage 3 Creatinine >= 4.0 mg/dL) Tj ET\nendstream\nendobj\n%%EOF";
+    const pdfParsed = extractDocumentText({
+      filename: "kdigo-extract.pdf",
+      mimeType: "application/pdf",
+      bytes: new TextEncoder().encode(pdfStr),
+    });
+    assert.equal(pdfParsed.format, "pdf");
+    assert.ok(pdfParsed.text.includes("KDIGO Stage 3 Creatinine"));
+
+    const uploadRes = await handleNdkrsV2Request(
+      new Request("https://local.test/api/v2/ndkrs/ingest-file", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filename: "test-upload.md",
+          mimeType: "text/markdown",
+          contentBase64: Buffer.from("# Test Guideline\nFedRAMP High POA&M SLA for High findings is 30 days.", "utf8").toString("base64"),
+          domain: "rmf",
+          canonicalKey: "TEST-UPLOAD-SLA",
+          title: "Test Upload SLA Policy",
+          sourceUri: "https://untrusted.example.invalid/upload.md",
+          proposedBy: "upload-tester",
+        }),
+      }),
+    );
+    assert.equal(uploadRes.status, 201);
+    const uploadJson = await uploadRes.json();
+    assert.equal(uploadJson.status, "PENDING_REVIEW");
+    assert.ok(uploadJson.reviewQueueItem?.id);
+
+    // Clean up test upload queue item via rejection
+    const rej = await decideReviewItem({
+      queueId: uploadJson.reviewQueueItem.id,
+      decision: "REJECT",
+      reviewerId: "test-reviewer-2",
+      reviewerRole: "Governance Lead",
+      notes: "Cleanup test fixture",
+    });
+    assert.equal(rej.status, "REJECTED");
+  });
+
+  it("8. Executes all 4 newly added deterministic rules (Anion Gap, Corrected Na, Reynolds, Henderson-Hasselbalch) + Enclave API", async () => {
+    const agMissingCl = evaluateDeterministicRule("CLIN-ANION-GAP", { sodiumMeqL: 140, chlorideMeqL: null, bicarbonateMeqL: 14 });
+    assert.equal(agMissingCl.ok, false);
+    assert.equal(agMissingCl.verdict, "CANNOT_CALCULATE_CHLORIDE_MISSING");
+
+    const agOk = evaluateDeterministicRule("CLIN-ANION-GAP", { sodiumMeqL: 140, chlorideMeqL: 100, bicarbonateMeqL: 14 });
+    assert.equal(agOk.ok, true);
+    assert.equal(agOk.outputs.anionGapMeqL, 26);
+    assert.equal(agOk.verdict, "ELEVATED_HAGMA");
+
+    const corrNa = evaluateDeterministicRule("CLIN-CORRECTED-NA", { sodiumMeqL: 132, glucoseMgDl: 400 });
+    assert.equal(corrNa.ok, true);
+    assert.equal(corrNa.outputs.katzCorrectedSodiumMeqL, 136.8);
+
+    const re = evaluateDeterministicRule("ENG-REYNOLDS", { densityKgM3: 1000, velocityMS: 2.5, diameterM: 0.05, dynamicViscosityPaS: 0.001 });
+    assert.equal(re.ok, true);
+    assert.equal(re.outputs.reynoldsNumber, 125000);
+    assert.equal(re.verdict, "TURBULENT");
+
+    const hh = evaluateDeterministicRule("SCI-HENDERSON-HASSELBALCH", { pKa: 4.76, conjugateBaseMolar: 0.2, weakAcidMolar: 0.1 });
+    assert.equal(hh.ok, true);
+    assert.equal(hh.outputs.pH, 5.061);
+
+    const flRes = await handleNdkrsV2Request(
+      new Request("https://local.test/api/v2/ndkrs/fact-lock/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          domain: "engineering",
+          requestId: "API-FL-TEST",
+          rawPrompt: "Verify Reynolds number 125000",
+          candidateText: "Calculated Reynolds Number: 125000 (TURBULENT flow). ASME Fluid Meters",
+          lockedClaims: [{ label: "Reynolds Number", expectedValue: 125000, tolerance: 1, mustAppear: true }],
+          verifiedCitations: ["ASME Fluid Meters"],
+        }),
+      }),
+    );
+    assert.equal(flRes.status, 200);
+    const flJson = await flRes.json();
+    assert.equal(flJson.passed, true);
+    assert.equal(flJson.certificate.verdict, "APPROVED");
+
+    const encRes = await handleNdkrsV2Request(
+      new Request("https://local.test/api/v2/ndkrs/enclave/store", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          encounterId: "ENC-API-TEST",
+          patientAlias: "TEST-PT-01",
+          payload: { creatinine: 5.1, baseline: 1.8 },
+        }),
+      }),
+    );
+    assert.equal(encRes.status, 201);
+    const encJson = await encRes.json();
+    assert.equal(encJson.ok, true);
+    assert.ok(encJson.keyVersion);
+  });
+
+  it("9. Enforces temporal expiry via enforceExpiredKnowledgeRecords & /api/v2/ndkrs/cron/revalidate", async () => {
+    const expDoc = await ingestKnowledgeDocument({
+      domain: "general",
+      canonicalKey: "EXPIRED-TEMP-TEST-01",
+      title: "Temporary Standard Expired 2020",
+      summary: "Expired benchmark guidance from 2020.",
+      content: "Legacy guidance superseded in 2020 regarding temporary endpoint token lifetime.",
+      sourceUri: "https://csrc.nist.gov/publications/temp-expired-2020",
+      trustTier: "TIER_2_PEER_REVIEWED",
+      version: "2020.1",
+      expiresAt: "2020-01-01T00:00:00Z",
+      proposedBy: "test-seeder",
+      preVerifiedBy: "test-governance-board",
+    });
+    assert.equal(expDoc.status, "VERIFIED");
+
+    const cronRes = await handleNdkrsV2Request(new Request("https://local.test/api/v2/ndkrs/cron/revalidate"));
+    assert.equal(cronRes.status, 200);
+    const cronJson = await cronRes.json();
+    assert.ok(cronJson.expiredTransitioned >= 1);
+    assert.ok(Array.isArray(cronJson.transitionedIds));
+
+    // Confirm second invocation cleanly finds 0 remaining active expired transitions for same record
+    const followScan = await enforceExpiredKnowledgeRecords(30);
+    assert.equal(followScan.expiredTransitioned, 0);
+
+    // Expired records are excluded from hybrid retrieval
+    const hitsAfterExpiry = await hybridSearchNdkrs("Temporary Standard Expired 2020");
+    assert.equal(hitsAfterExpiry.some((h) => h.canonicalKey === "EXPIRED-TEMP-TEST-01"), false);
+
+    // Runtime re-embed endpoint cleanly reports active model / fallback without failing locally
+    const reembedRes = await handleNdkrsV2Request(
+      new Request("https://local.test/api/v2/ndkrs/cron/reembed", { method: "POST" }),
+    );
+    assert.equal(reembedRes.status, 200);
+    const reembedJson = await reembedRes.json();
+    assert.equal(reembedJson.ok, true);
+    assert.ok(typeof reembedJson.activeModel === "string" && reembedJson.activeModel.length > 0);
+  });
+
+  it("10. Routes Chat Bridge introspection, NDKRS rules, and hybrid RAG grounding cleanly", async () => {
+    const statusMd = await tryHandlePlatformStatusOrLedgerQuery("Show NDKRS status, validation certificates, and RMF v2 artifacts");
+    assert.ok(statusMd && statusMd.includes("NDKRS Live Platform Status") && statusMd.includes("RMF v2.0 SQL Artifact Store"));
+
+    const ruleOut = await tryExecuteNdkrsDeterministicRuleFromChat(
+      "Calculate Reynolds number with density 1000 velocity 2.5 diameter 0.05 viscosity 0.001",
+    );
+    assert.ok(ruleOut && ruleOut.includes("125000") && ruleOut.includes("TURBULENT") && ruleOut.includes("Fact-Lock Certificate"));
+
+    const anionRefusal = await tryExecuteNdkrsDeterministicRuleFromChat(
+      "Run CLIN-ANION-GAP sodium 140 chloride null bicarbonate 14",
+      { explicitRuleIdOnly: true },
+    );
+    assert.ok(anionRefusal && anionRefusal.includes("CANNOT_CALCULATE_CHLORIDE_MISSING"));
+
+    const grounding = await fetchNdkrsChatGrounding("KDIGO 2012 AKI Stage 3 creatinine 4.0");
+    assert.ok(grounding.hits.length > 0 && grounding.footer.includes("NDKRS Verified Knowledge Grounding"));
   });
 });
