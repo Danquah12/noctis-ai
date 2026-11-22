@@ -89,6 +89,7 @@ import { leaveHall } from "@/lib/auth/client";
 import { textFromDocx, textFromPdf, textFromRtf } from "@/lib/read-document";
 import { saveShareLink } from "@/lib/share-link";
 import { resolveNoctisEngine } from "@/lib/noctis-engine-registry";
+import { buildContextualFollowUps } from "@/lib/noctis-followups";
 
 function lazyWithRetry<T extends ComponentType<any>>(importer: () => Promise<{ default: T }>) {
   return lazy(() =>
@@ -333,19 +334,6 @@ function VibeFilms({ quiet, index, onIndex }: { quiet: boolean; index: number; o
       <p className="mt-1 shrink-0 text-center text-[11px] text-zinc-600">{tune.title} · {tune.by}</p>
     </div>
   );
-}
-
-function relatedAsks(raw: string) {
-  const topic = raw.replace(/---[\s\S]*$/g, "").replace(/\s+/g, " ").trim();
-  if (topic.length < 4) return [];
-  return [
-    { label: "What else should we add?", ask: "What else should we add?" },
-    { label: "Draw the architecture", ask: "Draw the architecture" },
-    { label: "Expand point 3", ask: "Expand point 3" },
-    { label: "Calculate implementation cost", ask: "Now calculate the implementation cost." },
-    { label: "Compare alternatives", ask: "Compare the alternatives." },
-    { label: "Simpler", ask: "Say that more simply." },
-  ];
 }
 
 const LIBRARY_DESKS = [
@@ -3791,6 +3779,7 @@ export function NoctisDesk() {
   const scroller = useRef<HTMLDivElement>(null);
   const picker = useRef<HTMLInputElement>(null);
   const topHeaderRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLFormElement>(null);
   const box = useRef<HTMLTextAreaElement>(null);
   const run = useRef(0);
   const pendingAsk = useRef("");
@@ -3854,8 +3843,10 @@ export function NoctisDesk() {
     setAddOpen(false);
     setMenu(false);
     setSkillsOpen(false);
+    setSkillsMore(false);
     setStudioMenuOpen(false);
     setMediaMenuOpen(false);
+    setGadgetsOpen(false);
     setCapabilityMatrixOpen(false);
     setBrainModalOpen(false);
     setAgentBuilderModalOpen(false);
@@ -3894,6 +3885,63 @@ export function NoctisDesk() {
     setTemplateCreatorOpen(false);
     setTrainOpen(false);
   }
+
+  type ComposerMenuKey =
+    | "add"
+    | "skills"
+    | "studio"
+    | "media"
+    | "gadgets"
+    | "train"
+    | "template"
+    | "library"
+    | "browserTab"
+    | "sketch";
+
+  function closeComposerPopups(keep?: "add" | "skills" | "studio" | "media") {
+    if (keep !== "add") {
+      setAddOpen(false);
+      setPluginQuery("");
+    }
+    if (keep !== "skills") {
+      setSkillsOpen(false);
+      setSkillsMore(false);
+    }
+    if (keep !== "studio") setStudioMenuOpen(false);
+    if (keep !== "media") setMediaMenuOpen(false);
+  }
+
+  function closeComposerMenus(keep?: ComposerMenuKey) {
+    closeComposerPopups(
+      keep === "add" || keep === "skills" || keep === "studio" || keep === "media" ? keep : undefined,
+    );
+    if (keep !== "gadgets") setGadgetsOpen(false);
+    if (keep !== "train") setTrainOpen(false);
+    if (keep !== "template") setTemplateCreatorOpen(false);
+    if (keep !== "library") setLibraryPickerOpen(false);
+    if (keep !== "browserTab") setBrowserTabOpen(false);
+    if (keep !== "sketch") setSketchOpen(false);
+  }
+
+  useEffect(() => {
+    if (!addOpen && !skillsOpen && !studioMenuOpen && !mediaMenuOpen) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (composerRef.current && !composerRef.current.contains(event.target as Node)) {
+        closeComposerPopups();
+      }
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        closeComposerPopups();
+      }
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [addOpen, skillsOpen, studioMenuOpen, mediaMenuOpen]);
 
   function switchDesk(next: typeof desk) {
     closeAllOverlays();
@@ -5038,9 +5086,13 @@ export function NoctisDesk() {
         useSkill = "talk";
       }
     }
-    const extra = leaveAlone ? [] : studyAsks(text);
-    const seen = new Set<string>();
-    setRoutes([...extra, ...routeActions(text, place)].filter((row) => (seen.has(row.label) ? false : seen.add(row.label))));
+    if (desk === "study") {
+      const extra = leaveAlone ? [] : studyAsks(text);
+      const seen = new Set<string>();
+      setRoutes([...extra, ...routeActions(text, place)].filter((row) => (seen.has(row.label) ? false : seen.add(row.label))));
+    } else {
+      setRoutes([]);
+    }
     if (!text && !uploads.length && !useSkill && !imagine) return;
     const film = VIBE_FILMS[filmAt];
     const uploadedSampleText = uploads.map((u) => `${u.name} ${u.text || ""}`).join(" ").toLowerCase();
@@ -5665,23 +5717,14 @@ export function NoctisDesk() {
 
   const composer = (
     <form
+      ref={composerRef}
       className="relative w-full"
       onSubmit={(event) => {
         event.preventDefault();
+        closeComposerPopups();
         void send();
       }}
     >
-      {addOpen ? (
-        <button
-          type="button"
-          aria-label="Close add menu"
-          className="fixed inset-0 z-40 cursor-default"
-          onClick={() => {
-            setAddOpen(false);
-            setPluginQuery("");
-          }}
-        />
-      ) : null}
       {libraryPickerOpen ? (
         <div className="mb-3 rounded-3xl border border-white/15 bg-[#1e1e1e] p-4 shadow-2xl">
           <div className="mb-2.5 flex items-center justify-between gap-2">
@@ -6249,7 +6292,9 @@ export function NoctisDesk() {
           aria-label="Open Noctis tools and plugins"
           aria-expanded={addOpen}
           onClick={() => {
-            setAddOpen((open) => !open);
+            const next = !addOpen;
+            closeComposerMenus(next ? "add" : undefined);
+            setAddOpen(next);
             setPluginQuery("");
           }}
           className={cn(
@@ -6306,6 +6351,7 @@ export function NoctisDesk() {
                                           ? `Ask Noctis about ${(studyTopic || "your board exam").replace(/\s*\([^)]+\)\s*$/, "")}...`
                                           : "Ask Noctis"
           }
+          onFocus={() => closeComposerPopups()}
           onPaste={pasteImage}
           onChange={(event) => {
             setDraft(event.target.value);
@@ -6402,7 +6448,12 @@ export function NoctisDesk() {
       <div className="mt-2 flex w-full flex-wrap items-center gap-1.5">
         <button
           type="button"
-          onClick={() => setSkillsOpen((open) => !open)}
+          aria-expanded={skillsOpen}
+          onClick={() => {
+            const next = !skillsOpen;
+            closeComposerMenus(next ? "skills" : undefined);
+            setSkillsOpen(next);
+          }}
           className={cn(
             "rounded-full px-3 py-1.5 text-xs font-medium transition",
             skillsOpen ? "bg-white/10 text-[#e4b86a]" : "text-zinc-400 hover:text-zinc-200"
@@ -6415,9 +6466,11 @@ export function NoctisDesk() {
         <div className="relative">
           <button
             type="button"
+            aria-expanded={studioMenuOpen}
             onClick={() => {
-              setStudioMenuOpen((v) => !v);
-              setMediaMenuOpen(false);
+              const next = !studioMenuOpen;
+              closeComposerMenus(next ? "studio" : undefined);
+              setStudioMenuOpen(next);
             }}
             className={cn(
               "inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium transition",
@@ -6435,10 +6488,9 @@ export function NoctisDesk() {
               <button
                 type="button"
                 onClick={() => {
-                  setGadgetsOpen((o) => !o);
-                  setTrainOpen(false);
-                  setTemplateCreatorOpen(false);
-                  setStudioMenuOpen(false);
+                  const next = !gadgetsOpen;
+                  closeComposerMenus(next ? "gadgets" : undefined);
+                  setGadgetsOpen(next);
                 }}
                 className="flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white"
               >
@@ -6448,10 +6500,9 @@ export function NoctisDesk() {
               <button
                 type="button"
                 onClick={() => {
-                  setTrainOpen((o) => !o);
-                  setGadgetsOpen(false);
-                  setTemplateCreatorOpen(false);
-                  setStudioMenuOpen(false);
+                  const next = !trainOpen;
+                  closeComposerMenus(next ? "train" : undefined);
+                  setTrainOpen(next);
                 }}
                 className="flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white"
               >
@@ -6461,10 +6512,9 @@ export function NoctisDesk() {
               <button
                 type="button"
                 onClick={() => {
-                  setTemplateCreatorOpen((o) => !o);
-                  setGadgetsOpen(false);
-                  setTrainOpen(false);
-                  setStudioMenuOpen(false);
+                  const next = !templateCreatorOpen;
+                  closeComposerMenus(next ? "template" : undefined);
+                  setTemplateCreatorOpen(next);
                 }}
                 className="flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white"
               >
@@ -6479,9 +6529,11 @@ export function NoctisDesk() {
         <div className="relative">
           <button
             type="button"
+            aria-expanded={mediaMenuOpen}
             onClick={() => {
-              setMediaMenuOpen((v) => !v);
-              setStudioMenuOpen(false);
+              const next = !mediaMenuOpen;
+              closeComposerMenus(next ? "media" : undefined);
+              setMediaMenuOpen(next);
             }}
             className={cn(
               "inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium transition",
@@ -6502,7 +6554,7 @@ export function NoctisDesk() {
                   const next = skill === "draw" ? "" : "draw";
                   setSkill(next);
                   if (!draft.trim()) setDraft("Create an interactive architectural SVG diagram and visual flow for ");
-                  setMediaMenuOpen(false);
+                  closeComposerMenus();
                 }}
                 className="flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white"
               >
@@ -6513,7 +6565,7 @@ export function NoctisDesk() {
                 type="button"
                 onClick={() => {
                   setHolodeckModalOpen(true);
-                  setMediaMenuOpen(false);
+                  closeComposerMenus();
                 }}
                 className="flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white"
               >
@@ -6524,7 +6576,7 @@ export function NoctisDesk() {
                 type="button"
                 onClick={() => {
                   void toggleVoice();
-                  setMediaMenuOpen(false);
+                  closeComposerMenus();
                 }}
                 className="flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white"
               >
@@ -6536,7 +6588,7 @@ export function NoctisDesk() {
                 onClick={() => {
                   setHarmonicPlaying(true);
                   playHarmonicTone(432, 5);
-                  setMediaMenuOpen(false);
+                  closeComposerMenus();
                   setTimeout(() => setHarmonicPlaying(false), 5000);
                 }}
                 className="flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white"
@@ -6551,7 +6603,10 @@ export function NoctisDesk() {
         {/* Quick Capabilities Launcher */}
         <button
           type="button"
-          onClick={() => setCapabilityMatrixOpen(true)}
+          onClick={() => {
+            closeComposerMenus();
+            setCapabilityMatrixOpen(true);
+          }}
           className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs text-[#e4b86a] bg-[#e4b86a]/10 border border-[#e4b86a]/20 hover:bg-[#e4b86a]/20 transition"
           title="Open Sovereign Capability Matrix"
         >
@@ -6581,7 +6636,10 @@ export function NoctisDesk() {
         <button
           type="button"
           aria-label={callOpen ? "Close call" : "Call someone"}
-          onClick={openCall}
+          onClick={() => {
+            closeComposerPopups();
+            openCall();
+          }}
           className={cn("grid size-8 shrink-0 place-items-center rounded-full", voiceOn || callOpen ? "bg-[#e4b86a] text-[#1a1408]" : "text-zinc-400 hover:bg-white/10 hover:text-zinc-100")}
         >
           <Phone className="size-4" />
@@ -6591,10 +6649,10 @@ export function NoctisDesk() {
   );
 
   const activeRoutes =
-    routes.length > 0
-      ? routes
-      : desk === "study"
-      ? studyAsks(studyTopic || "USMLE Step 2 CK")
+    desk === "study"
+      ? routes.length > 0
+        ? routes
+        : studyAsks(studyTopic || "USMLE Step 2 CK")
       : [];
 
   return (
@@ -8139,6 +8197,21 @@ export function NoctisDesk() {
                   const last = index === (thread?.turns.length || 0) - 1;
                   if (turn.role === "assistant") {
                     const asked = thread?.turns[index - 1]?.role === "user" ? thread.turns[index - 1]?.content || "" : "";
+                    let priorQuestion = "";
+                    for (let p = index - 2; p >= 0; p--) {
+                      if (thread?.turns[p]?.role === "user" && thread.turns[p]?.content) {
+                        priorQuestion = thread.turns[p]!.content;
+                        break;
+                      }
+                    }
+                    const followUps =
+                      last && !busy
+                        ? buildContextualFollowUps(asked, turn.content, {
+                            desk,
+                            priorQuestion,
+                            engineId: activeEngineId,
+                          })
+                        : [];
                     return (
                       <div key={index} className="text-[15px] leading-7 text-zinc-100">
                         {asked && asked.length < 180 && (asked.match(/\?/g) || []).length < 2 && !turn.images?.length ? <div className="mb-3"><KnowledgeMap query={asked} vibe /></div> : null}
@@ -8293,10 +8366,16 @@ export function NoctisDesk() {
                           <AnswerShare text={stripThinkBlock(turn.content)} />
                         </div>
                         </article>
-                        {last && !busy ? (
+                        {followUps.length > 0 ? (
                           <div className="mt-3 flex flex-wrap gap-1.5">
-                            {relatedAsks(asked).map((ask) => (
-                              <button key={ask.label} type="button" onClick={() => void send(ask.ask)} className="rounded-full bg-[#2f2f2f] px-3 py-1.5 text-xs text-zinc-200 hover:bg-white/10">
+                            {followUps.map((ask) => (
+                              <button
+                                key={ask.label}
+                                type="button"
+                                title={ask.ask}
+                                onClick={() => void send(ask.ask)}
+                                className="rounded-full border border-white/10 bg-[#2f2f2f] px-3 py-1.5 text-xs text-zinc-200 transition hover:border-[#e4b86a]/40 hover:bg-white/10 hover:text-white"
+                              >
                                 {ask.label}
                               </button>
                             ))}
