@@ -36,9 +36,26 @@ export function isRmfGrcQuery(question: string): boolean {
   const q = question.trim();
   if (!q) return false;
 
-  return /\b(fedramp|nist\s+sp\s*800-53|800-53\b|800-53a|800-53b|800-37\b|800-171\b|nist\s+sp\s*800-171|rmf\b|grc\b|rmg\b|poa&m|poam\b|3pao\b|c3pao\b|oscal\b|fips\s*199|fips\s*200|cmmc\b|cui\b|dod\s+il[2-6]|dow\s+il[2-6]|department\s+of\s+war|department\s+of\s+defense|impact\s+levels?|il[2-6]\b|scca\b|bcap\b|vdss\b|vdms\b|tccm\b|cc\s*srg|cloud\s+computing\s+security\s+requirements\s+guide|disa\s+srg|disa\s+pa|provisional\s+authorization|cnssi\s*1253|continuous\s+monitoring\s+strategy|system\s+security\s+plan|\bssp\b|security\s+control\s+assessment|ato\s+readiness|cato\b|fisma\b|disa\s+stig|security\s+protection\s+assets?|crma\b)\b/i.test(
-    q
-  );
+  if (
+    /\b(fedramp|nist\s+(?:sp\s*)?800-53|800-53\b|800-53a|800-53b|800-37\b|800-171\b|nist\s+(?:sp\s*)?800-171|nist\s+csf\b|csf\s*2\.0|sp\s*800-60|sp\s*800-30|sp\s*800-18|sp\s*800-207|rmf\b|grc\b|rmg\b|poa&m|poam\b|3pao\b|c3pao\b|oscal\b|fips\s*199|fips\s*200|cmmc\b|cui\b|dod\s+il[2-6]|dow\s+il[2-6]|department\s+of\s+war|department\s+of\s+defense|impact\s+levels?|il[2-6]\b|scca\b|bcap\b|vdss\b|vdms\b|tccm\b|cc\s*srg|cloud\s+computing\s+security\s+requirements\s+guide|disa\s+srg|disa\s+pa|provisional\s+authorization|cnssi\s*1253|continuous\s+monitoring\s+strategy|system\s+security\s+plan|\bssp\b|security\s+control\s+assessment|security\s+control\s+assessor|ato\s+readiness|cato\b|fisma\b|disa\s+stig|security\s+protection\s+assets?|crma\b|authorizing\s+official|\bisso\b|\bissm\b|high[- ]water\s*mark|control\s+baseline)\b/i.test(
+      q,
+    )
+  ) {
+    return true;
+  }
+
+  // Explicit NIST SP 800-53 Rev. 5 control ID (e.g., AC-2, AU-6, IA-2(6)) with governance/evaluation intent
+  const hasControlId =
+    /\b(?:AC|AT|AU|CA|CM|CP|IA|IR|MA|MP|PE|PL|PM|PS|PT|RA|SA|SC|SI|SR)-\d{1,2}(?:\(\d{1,2}\))?\b/i.test(q);
+  const hasGovernanceContext =
+    /\b(?:control|controls|baseline|compliance|verdict|assess\w*|evaluat\w*|audit|policy|threshold|evidence|withdrawn|att&ck|mitre|csf|terminat\w*|disable\w*|mfa|scan|flaw|stig|cis|hardening|review|categoriz\w*)\b/i.test(
+      q,
+    );
+  if (hasControlId && hasGovernanceContext && !/\b(?:AC-130|C-130|F-16|patient|creatinine|bp\b)\b/i.test(q)) {
+    return true;
+  }
+
+  return false;
 }
 
 export function handleNaturalRmfGrcQuery(question: string): string | null {

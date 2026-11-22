@@ -11,6 +11,7 @@ export interface FollowUpOptions {
 }
 
 export type FollowUpDomain =
+  | "rmf_grc"
   | "cve_cyber"
   | "clinical"
   | "software_arch"
@@ -188,6 +189,12 @@ const VERSE_RE =
   /\b(?:Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|1\s+Samuel|2\s+Samuel|1\s+Kings|2\s+Kings|Psalms?|Proverbs|Ecclesiastes|Isaiah|Jeremiah|Ezekiel|Daniel|Matthew|Mark|Luke|John|Acts|Romans|1\s+Corinthians|2\s+Corinthians|Galatians|Ephesians|Philippians|Colossians|1\s+Thessalonians|2\s+Thessalonians|1\s+Timothy|2\s+Timothy|Titus|Hebrews|James|1\s+Peter|2\s+Peter|1\s+John|Revelation)\s+\d+:\d+(?:-\d+)?\b/gi;
 
 const DOMAIN_PATTERNS: Record<Exclude<FollowUpDomain, "general">, RegExp[]> = {
+  rmf_grc: [
+    /\b(?:NIST\s+SP\s*800-53|800-53A?|800-53B|800-37|800-171|FedRAMP|FIPS\s*199|FIPS\s*200)\b/i,
+    /\b(?:RMF|POA&M|POAM|OSCAL|3PAO|C3PAO|SSP|SAR|ISSO|ISSM|Authorizing\s+Official|\bATO\b|ConMon)\b/i,
+    /\b(?:CSF\s*2\.0|INSUFFICIENT_EVIDENCE|High[- ]Water\s*Mark|control\s+baseline|800-53\s+Rev\.?\s*5)\b/i,
+    /\b(?:AC|AT|AU|CA|CM|CP|IA|IR|MA|MP|PE|PL|PM|PS|PT|RA|SA|SC|SI|SR)-\d{1,2}(?:\(\d{1,2}\))?\b/,
+  ],
   cve_cyber: [
     /\bCVE-\d{4}-\d{4,7}\b/i,
     /\b(?:mTLS|TLS\s+1\.[23]|Zero[- ]Trust|ransomware|exploit\w*|vulnerabilit\w*|patch\w*|remediat\w*)\b/i,
@@ -628,6 +635,7 @@ function detectDomain(question: string, plainBody: string, codeLangs: string[], 
 
   const combined = `${question}\n${plainBody}`;
   const scores: Record<Exclude<FollowUpDomain, "general">, number> = {
+    rmf_grc: 0,
     cve_cyber: 0,
     clinical: 0,
     software_arch: codeLangs.length > 0 ? 2 : 0,
@@ -787,6 +795,27 @@ export function buildContextualFollowUps(
 
   // Priority 2 — Domain-tailored follow-ups grounded in resolved subject
   switch (domain) {
+    case "rmf_grc":
+      candidates.push(
+        {
+          label: "800-53A Examine, Interview & Test",
+          ask: `Detail the complete NIST SP 800-53A Examine, Interview, and Test procedures and negative test cases for ${subject}.`,
+        },
+        {
+          label: "FedRAMP High ODPs & POA&M SLAs",
+          ask: `Specify exact FedRAMP High organization-defined parameters (ODPs) and statutory POA&M remediation SLAs for ${subject}.`,
+        },
+        {
+          label: "MITRE ATT&CK & CSF 2.0 mapping",
+          ask: `Map ${subject} to MITRE ATT&CK v16.1 techniques and NIST CSF 2.0 subcategories.`,
+        },
+        {
+          label: "Draft SSP & OSCAL narrative",
+          ask: `Draft an audit-ready System Security Plan (SSP) control implementation statement and OSCAL structure for ${subject}.`,
+        },
+      );
+      break;
+
     case "music_media":
       candidates.push(
         {

@@ -1008,8 +1008,9 @@ export async function vibeReply(
   // Autonomous Continuous Self-Training & Epistemic Gap Synthesis (strictly bypassed for clinical encounters to prevent cross-patient cache leakage)
   try {
     const { isUniversalClinicalQuestion } = await import("@/lib/noctis-universal-clinical.server");
+    const { isRmfGrcQuery } = await import("@/lib/noctis-rmf-engine");
     const { rememberAnswer, rememberRule, inferDomain } = await import("@/lib/noctis-train.server");
-    const skipClinicalCache = isClinicalInquiry || isUniversalClinicalQuestion(latest);
+    const skipClinicalCache = isClinicalInquiry || isUniversalClinicalQuestion(latest) || isRmfGrcQuery(latest);
     const cleanReplyForMemory = reply.text.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
     if (!skipClinicalCache && reply && "text" in reply && cleanReplyForMemory.length > 60 && !cleanReplyForMemory.includes("could not finish")) {
       const domain = inferDomain(latest);
@@ -1108,8 +1109,12 @@ async function composeVibeReply(
   const { isUniversalClinicalQuestion, executeUniversalClinicalReasoning } = await import(
     "@/lib/noctis-universal-clinical.server"
   );
+  const { isRmfGrcQuery } = await import("@/lib/noctis-rmf-engine");
   const isClinicalCacheBypass =
-    isUniversalClinicalQuestion(fullQuestion) || isUniversalClinicalQuestion(question);
+    isUniversalClinicalQuestion(fullQuestion) ||
+    isUniversalClinicalQuestion(question) ||
+    isRmfGrcQuery(fullQuestion) ||
+    isRmfGrcQuery(question);
 
   if (!isCodingRequest) {
     // Authoritative Live MITRE CVE Program & NVD Resolver: Guarantees official names and full intelligence for all CVEs
@@ -1132,6 +1137,21 @@ async function composeVibeReply(
       });
       if (universalOut) {
         return { text: universalOut };
+      }
+    }
+
+    // Deterministic RMF Knowledge DB + 10-Control Rule Engine + Neuro-Symbolic Chat Pipeline (Option B)
+    if (isRmfGrcQuery(fullQuestion) && !isUniversalClinicalQuestion(fullQuestion)) {
+      const { executeUniversalRmfReasoning } = await import("@/lib/noctis-rmf-reasoning.server");
+      const rmfOut = await executeUniversalRmfReasoning(fullQuestion, {
+        turns,
+        brain: style.brain,
+        engineName: activeEngine.name,
+        language: languageNow(question, style.language || ""),
+        shouldThink,
+      });
+      if (rmfOut) {
+        return { text: rmfOut };
       }
     }
 
