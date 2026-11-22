@@ -7827,7 +7827,10 @@ export function NoctisDesk() {
 
         {/* Sovereign Threat Radar & Live Intelligence Ribbon (Unified Row 2) */}
         <NoctisLiveCveTicker
-          onSelectCve={(cveId, prompt) => void send(prompt)}
+          onSelectCve={(cveId, prompt) => {
+            setShelf("chats");
+            void send(prompt);
+          }}
           centerSlot={
             <div className="flex items-center gap-1.5">
               <button
