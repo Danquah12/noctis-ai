@@ -445,4 +445,139 @@ Clinical Question: Should an anticoagulant be started, or avoid anticoagulants p
       "Validator must independently catch corrupted current/baseline swap instead of trusting extracted scratchpad"
     );
   });
+
+  it("enforces NOCTIS-ICU-CRIT-048 & CRIT-048-R1 RV-isolation, dual-pathway KDIGO, DigiFab clarity, data gaps, and completeness gates", () => {
+    const crit048Prompt = [
+      "**Encounter ID:** NOCTIS-ICU-CRIT-048",
+      "73-year-old male (Weight: 79 kg) with historical LVEF 28% and severe LV systolic dysfunction (current bedside echo: LVEF ~25%, mild RV dilation only; no acute cor pulmonale or massive pulmonary embolism).",
+      "Do not introduce severe RV dilation, acute cor pulmonale, massive pulmonary embolism, or any findings from previous encounters.",
+      "Current Medications: Digoxin 0.125 mg daily, Apixaban 5 mg BID, Carvedilol 12.5 mg BID, Furosemide 40 mg daily.",
+      "Presentation: Acute gastrointestinal hemorrhage (melena), profound hypotension (BP 66/36 mmHg), HR 34 bpm, suspected infection (Temp 38.4°C), oliguria (urine output 110 mL over 8 hours).",
+      "Labs: Na 130 mEq/L, K 6.8 mmol/L, Cl 101 mEq/L, Serum Bicarbonate 9 mEq/L, Creatinine 5.1 mg/dL (historical baseline 1.8 mg/dL measured six days earlier), Digoxin level 3.8 ng/mL.",
+      "ABG: pH 7.10, PaCO2 22 mmHg, HCO3- 9 mEq/L.",
+      "Unavailable / Pending Clinical Information:",
+      "- Exact time of the last digoxin dose is unavailable.",
+      "- Exact time of the last apixaban dose is unavailable.",
+      "- Blood and urine culture results are pending.",
+      "- Chest radiograph findings are unavailable.",
+      "- Endoscopic identification of the GI bleeding source is pending.",
+      "- Response to calcium, insulin, DigiFab, vasopressors, transfusion, or dialysis is unobserved.",
+      "Required Clinical Analyses:",
+      "1. Immediate resuscitation priorities and P0 emergency disposition.",
+      "2. Hemodynamic MAP calculation and individualized vasopressor/fluid strategy in severe LV systolic dysfunction.",
+      "3. Hyperkalemia stabilization and rapid-push calcium precautions during digitalis toxicity.",
+      "4. Digoxin-specific Fab formula-based estimate versus empiric emergency dosing and timing interpretation.",
+      "5. Dual-pathway KDIGO AKI staging (fold-change ratio vs. absolute-creatinine >= 4.0 mg/dL within 6 days) and separate urine-output staging.",
+      "6. Anion gap and Winter's formula acid-base compensation assessment.",
+      "7. Competing therapeutic conflict between life-threatening GI hemorrhage and Apixaban exposure plus complete SOAP note and fact-reconciliation matrix.",
+    ].join("\n");
+
+    const pad = buildClinicalScratchpad(crit048Prompt, "NOCTIS-ICU-CRIT-048");
+
+    // 1. Temporal creatinine + word numeral timeframe ("six days earlier")
+    assert.equal(pad.labs.creatinineMgDl, 5.1);
+    assert.equal(pad.labs.baselineCreatinineMgDl, 1.8);
+    assert.match(pad.labs.baselineCreatinineTimeframe ?? "", /six days earlier/i);
+
+    // 2. Dual-pathway KDIGO (2.83x fold ratio + >= 4.0 mg/dL within 6 days = Stage 3 absolute criterion + separate 0.174 mL/kg/h UO analysis)
+    assert.equal(pad.derivedCalculations.kdigoAki.crFoldRatio, 2.83);
+    assert.equal(pad.derivedCalculations.kdigoAki.crAbsoluteRiseMgDl, 3.3);
+    assert.equal(pad.derivedCalculations.kdigoAki.establishedStage, 3);
+    assert.match(pad.derivedCalculations.kdigoAki.stageRationale, /2\.83×.*Stage 2 range/i);
+    assert.match(pad.derivedCalculations.kdigoAki.stageRationale, /Stage 3.*absolute-creatinine criterion/i);
+    assert.match(pad.derivedCalculations.kdigoAki.uoStagingCaveat, /0\.174 mL\/kg\/h/);
+    assert.match(pad.derivedCalculations.kdigoAki.uoStagingCaveat, /Independent KDIGO UO evaluation/i);
+
+    // 3. DigiFab clarity: 3.8 * 79 / 100 = 3.002 -> 4 vials vs empiric emergency & chronic accumulation
+    assert.equal(pad.derivedCalculations.digiFabDosing.weightBasedVials, 4);
+    assert.match(pad.derivedCalculations.digiFabDosing.rationale, /3\.002/);
+    assert.match(pad.derivedCalculations.digiFabDosing.rationale, /empiric emergency dosing of 5–10 vials/i);
+    assert.match(pad.derivedCalculations.digiFabDosing.rationale, /chronic digoxin accumulation/i);
+
+    // 4. Zero Acute RV Failure / Cor Pulmonale contamination on "mild RV dilation" & prohibitive clauses
+    const fluidConds = pad.derivedCalculations.fluidSafety.highRiskConditionsIdentified.join("; ");
+    assert.match(fluidConds, /Severe LV Systolic Dysfunction|HFrEF/i);
+    assert.doesNotMatch(fluidConds, /Acute RV Failure|Severe RV Dilation|Cor Pulmonale/i);
+    assert.doesNotMatch(pad.markdownScratchpadSummary, /Acute RV Failure|Severe RV Dilation|Cor Pulmonale/i);
+
+    // 5. Missing clinical data gaps captured & NEVER "None detected; full dataset provided."
+    assert.equal(pad.sentinels.isLastDoseTimingMissing, true);
+    const allGapsText = pad.sentinels.missingDataItems.join("\n");
+    assert.match(allGapsText, /digoxin/i);
+    assert.match(allGapsText, /apixaban/i);
+    assert.match(allGapsText, /culture/i);
+    assert.match(allGapsText, /radiograph/i);
+    assert.match(allGapsText, /bleeding source|endoscop/i);
+    assert.match(allGapsText, /unobserved|vasopressors|dialysis/i);
+    assert.doesNotMatch(allGapsText, /Unavailable \/ Pending Clinical Information:/i);
+    assert.doesNotMatch(allGapsText, /Distinguish suspected infection/i);
+    assert.doesNotMatch(pad.markdownScratchpadSummary, /None detected;\s*full dataset provided/i);
+
+    const validCompleteBody = [
+      "**Encounter ID:** `NOCTIS-ICU-CRIT-048`",
+      "73-year-old male (79 kg) with severe LV systolic dysfunction (historical LVEF 28%, current LVEF ~25%, mild RV dilation only).",
+      "1. P0 Immediate Emergency Resuscitation: GI hemorrhage + bradycardic shock (BP 66/36 mmHg, MAP 46.0 mmHg, HR 34 bpm, Temp 38.4°C).",
+      "2. Individualized Hemodynamics: Norepinephrine early to target MAP >= 65 mmHg; cautious fluids given HFrEF/LVEF 25%.",
+      "3. Hyperkalemia Stabilization (K+ 6.8 mmol/L): Slow calcium gluconate infusion over 10–15 minutes with telemetry + IV insulin/dextrose.",
+      "4. DigiFab: Formula estimate (3.8 × 79 / 100 = 3.002 -> 4 vials) vs empiric emergency 5–10 vials vs chronic 3–6 vials; timing unknown.",
+      "5. KDIGO AKI Staging: Cr 5.1 vs baseline 1.8 (six days earlier) = 2.83× fold ratio (Stage 2) and >= 4.0 mg/dL acute rise +3.3 (Stage 3 absolute criterion); UO 110 mL/8h = 0.174 mL/kg/h evaluated separately.",
+      "6. Acid-Base: Na 130, Cl 101, HCO3 9 (serum & ABG), Anion Gap 20.0 mEq/L, pH 7.10, PaCO2 22 mmHg, Winter's expected 19.5–23.5 mmHg.",
+      "7. GI Hemorrhage vs Apixaban Conflict: Hold Apixaban, consider 4F-PCC/Andexanet reversal alongside urgent GI endoscopy and pRBC transfusion.",
+      "Documented Missing Clinical Data: Exact time of last digoxin and apixaban doses unavailable; cultures and endoscopy pending; CXR unavailable; treatment responses unobserved.",
+      "### SOAP Note",
+      "Subjective — 73-year-old male with melena and shock.",
+      "Objective — BP 66/36 mmHg (MAP 46 mmHg), HR 34 bpm, Temp 38.4°C, Na 130, K 6.8, Cl 101, HCO3 9, Cr 5.1 (baseline 1.8), pH 7.10, PaCO2 22, Digoxin 3.8, UO 110 mL/8h (0.174 mL/kg/h), LVEF ~25% with mild RV dilation.",
+      "Assessment — P0 mixed cardiogenic/hemorrhagic/distributive shock, digoxin toxicity, severe hyperkalemia, GI hemorrhage on Apixaban, KDIGO Stage 3 AKI by absolute creatinine, HAGMA.",
+      "Plan — Norepinephrine target MAP >= 65 mmHg, DigiFab, slow IV calcium, insulin/dextrose, urgent endoscopy and Apixaban reversal evaluation, pending cultures.",
+      "### Independent Fact-Reconciliation Matrix",
+      "| Parameter | Verified Source Input | Status |",
+      "|---|---|---|",
+      "| Creatinine | 5.1 mg/dL (baseline 1.8 six days earlier) | Preserved |",
+    ].join("\n\n");
+
+    const cleanAudit = auditAndEnforceClinicalDossier(
+      `${validCompleteBody}\n\n${pad.markdownScratchpadSummary}`,
+      crit048Prompt,
+      "NOCTIS-ICU-CRIT-048"
+    );
+    assert.equal(cleanAudit.isApproved, true, `Unexpected violations: ${cleanAudit.violations.map((v) => v.description).join(" | ")}`);
+    assert.equal(cleanAudit.mandatoryReleasePassed, true);
+
+    // 6. Validator MUST reject:
+    // (a) Injected Acute RV Failure / Cor Pulmonale
+    const rvFail = auditAndEnforceClinicalDossier(
+      `${validCompleteBody}\nAcute RV Failure / Cor Pulmonale (Severe RV Dilation — Avoid Large Fluid Boluses).\n\n${pad.markdownScratchpadSummary}`,
+      crit048Prompt,
+      "NOCTIS-ICU-CRIT-048"
+    );
+    assert.equal(rvFail.isApproved, false);
+    assert.equal(rvFail.mandatoryReleasePassed, false);
+
+    // (b) False "None detected; full dataset provided" claim
+    const datasetFail = auditAndEnforceClinicalDossier(
+      `${validCompleteBody}\nActionable Clinical Data Gaps: None detected; full dataset provided.`,
+      crit048Prompt,
+      "NOCTIS-ICU-CRIT-048"
+    );
+    assert.equal(datasetFail.isApproved, false);
+    assert.equal(datasetFail.mandatoryReleasePassed, false);
+
+    // (c) Missing SOAP Note
+    const noSoapBody = validCompleteBody.replace(/### SOAP Note[\s\S]*?(?=### Independent Fact-Reconciliation Matrix)/i, "");
+    const soapFail = auditAndEnforceClinicalDossier(`${noSoapBody}\n\n${pad.markdownScratchpadSummary}`, crit048Prompt, "NOCTIS-ICU-CRIT-048");
+    assert.equal(soapFail.isApproved, false);
+    assert.equal(soapFail.mandatoryReleasePassed, false);
+
+    // (d) Missing Fact-Reconciliation Matrix
+    const noMatrixBody = validCompleteBody.replace(/### Independent Fact-Reconciliation Matrix[\s\S]*$/i, "");
+    const matrixFail = auditAndEnforceClinicalDossier(`${noMatrixBody}\n\n${pad.markdownScratchpadSummary}`, crit048Prompt, "NOCTIS-ICU-CRIT-048");
+    assert.equal(matrixFail.isApproved, false);
+    assert.equal(matrixFail.mandatoryReleasePassed, false);
+
+    // (e) Incomplete numbered items / truncation
+    const truncatedBody = validCompleteBody.replace(/3\. Hyperkalemia[\s\S]*?(?=Documented Missing)/i, "");
+    const incompleteFail = auditAndEnforceClinicalDossier(`${truncatedBody}\n\n${pad.markdownScratchpadSummary}`, crit048Prompt, "NOCTIS-ICU-CRIT-048");
+    assert.equal(incompleteFail.isApproved, false);
+    assert.equal(incompleteFail.mandatoryReleasePassed, false);
+  });
 });

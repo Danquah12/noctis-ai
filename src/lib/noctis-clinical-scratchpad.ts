@@ -205,17 +205,53 @@ const KNOWN_MEDICATION_PATTERNS: Array<{ canonical: string; regex: RegExp; gapCl
   { canonical: "Trimethoprim-sulfamethoxazole", regex: /\b(?:trimethoprim-sulfamethoxazole|tmp-?smx|bactrim)\b/i },
 ];
 
-const HISTORICAL_CUE_REGEX =
-  /\b(?:baseline|prior|previous|pre-?op(?:erative)?|historical|outpatient|discharge|formerly|usual)\b|\b\d+\s*(?:-|–|\s+)?(?:hours?|hrs?|days?|weeks?|wks?|months?|mos?|years?|yrs?)\s*(?:old|ago|prior|earlier|before)\b/i;
+const WORD_NUMERALS: Record<string, number> = {
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+  seven: 7,
+  eight: 8,
+  nine: 9,
+  ten: 10,
+  eleven: 11,
+  twelve: 12,
+  fourteen: 14,
+  "twenty-four": 24,
+  "forty-eight": 48,
+  "seventy-two": 72,
+};
 
-const TIMEFRAME_EXTRACT_REGEX =
-  /\b(\d+\s*(?:-|–|\s+)?(?:hours?|hrs?|days?|weeks?|wks?|months?|mos?|years?|yrs?)\s*(?:old|ago|prior|earlier|before))\b/i;
+const NUM_TOKEN_SOURCE =
+  "(?:\\d+(?:\\.\\d+)?|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fourteen|twenty-?four|forty-?eight|seventy-?two)";
+
+const TIMEFRAME_UNIT_SOURCE =
+  "(?:hours?|hrs?|days?|weeks?|wks?|months?|mos?|years?|yrs?)";
+
+const HISTORICAL_CUE_REGEX = new RegExp(
+  `\\b(?:baseline|prior|previous|pre-?op(?:erative)?|historical|outpatient|discharge|formerly|usual)\\b|\\b${NUM_TOKEN_SOURCE}\\s*(?:-|–|\\s+)?${TIMEFRAME_UNIT_SOURCE}\\s*(?:old|ago|prior|earlier|before)\\b`,
+  "i"
+);
+
+const TIMEFRAME_EXTRACT_REGEX = new RegExp(
+  `\\b(${NUM_TOKEN_SOURCE}\\s*(?:-|–|\\s+)?${TIMEFRAME_UNIT_SOURCE}\\s*(?:old|ago|prior|earlier|before))\\b`,
+  "i"
+);
 
 function parseTimeframeDays(tf: string | null): number | null {
   if (!tf) return null;
-  const m = tf.match(/(\d+(?:\.\d+)?)\s*(?:-|–|\s+)?(hours?|hrs?|days?|weeks?|wks?|months?|mos?|years?|yrs?)/i);
+  const rx = new RegExp(
+    `(${NUM_TOKEN_SOURCE})\\s*(?:-|–|\\s+)?(hours?|hrs?|days?|weeks?|wks?|months?|mos?|years?|yrs?)`,
+    "i"
+  );
+  const m = tf.match(rx);
   if (!m) return null;
-  const n = parseFloat(m[1]);
+  const tok = m[1].toLowerCase();
+  const normalizedHyphen = tok.replace(/^(twenty|forty|seventy)(four|eight|two)$/, "$1-$2");
+  const n = WORD_NUMERALS[tok] ?? WORD_NUMERALS[normalizedHyphen] ?? parseFloat(tok);
+  if (Number.isNaN(n)) return null;
   const unit = m[2].toLowerCase();
   if (unit.startsWith("h")) return n / 24;
   if (unit.startsWith("d")) return n;
@@ -260,8 +296,10 @@ function extractTemporalCreatinineObservations(
   };
 
   // Pass 1: Explicit labeled creatinine mentions
-  const crLabelRegex =
-    /\b(?:(?:current|ed|admission|present(?:ing)?|stat|today['’]?s|acute|baseline|prior|previous|historical|outpatient|pre-?op(?:erative)?|discharge|last)\s+){0,2}(?:serum\s+|plasma\s+)?(?:creatinine|creat|scr|cr)(?:\s*\([^)\n]{1,45}\))?(?:\s*(?:from|at|measured|of)?\s*(?:\d+\s*(?:-|–|\s+)?(?:hours?|hrs?|days?|weeks?|wks?|months?|mos?|years?|yrs?)\s*(?:old|ago|prior|earlier|before)))?\s*(?:[:=]\s*|\s+(?:(?:is|was|of|remained)\s+)?)\s*(\d+(?:\.\d+)?)\s*(?:mg\/dl)?/gi;
+  const crLabelRegex = new RegExp(
+    `\\b(?:(?:current|ed|admission|present(?:ing)?|stat|today['’]?s|acute|baseline|prior|previous|historical|outpatient|pre-?op(?:erative)?|discharge|last)\\s+){0,2}(?:serum\\s+|plasma\\s+)?(?:creatinine|creat|scr|cr)(?:\\s*\\([^)\\n]{1,45}\\))?(?:\\s*(?:from|at|measured|of)?\\s*(?:${NUM_TOKEN_SOURCE}\\s*(?:-|–|\\s+)?${TIMEFRAME_UNIT_SOURCE}\\s*(?:old|ago|prior|earlier|before)))?\\s*(?:[:=]\\s*|\\s+(?:(?:is|was|of|remained)\\s+)?)\\s*(\\d+(?:\\.\\d+)?)\\s*(?:mg\\/dl)?`,
+    "gi"
+  );
 
   for (const m of norm.matchAll(crLabelRegex)) {
     const matchStart = m.index ?? 0;
@@ -291,7 +329,11 @@ function extractTemporalCreatinineObservations(
       const prevLineEnd = lineStart - 1;
       const prevLineStart = norm.lastIndexOf("\n", Math.max(0, prevLineEnd - 1)) + 1;
       const prevLine = norm.slice(prevLineStart, prevLineEnd).trim();
-      if (/^(?:#{1,4}\s*|\-\s*|\*\s*)?(?:historical|prior|previous|baseline|outpatient|old\s+labs?|5\s+days|\d+\s*(?:days?|weeks?|months?|years?)\s*ago)/i.test(prevLine) && prevLine.length < 95) {
+      const prevHeaderRegex = new RegExp(
+        `^(?:#{1,4}\\s*|\\-\\s*|\\*\\s*)?(?:historical|prior|previous|baseline|outpatient|old\\s+labs?|${NUM_TOKEN_SOURCE}\\s*${TIMEFRAME_UNIT_SOURCE}\\s*(?:ago|earlier|prior))`,
+        "i"
+      );
+      if (prevHeaderRegex.test(prevLine) && prevLine.length < 95) {
         headerPre = prevLine;
       }
     }
@@ -306,7 +348,7 @@ function extractTemporalCreatinineObservations(
         parenText.replace(/\b\d+\s*(?:-|–|\s+)?(?:hours?|hrs?|days?|weeks?|wks?|months?|mos?|years?|yrs?|x|×|fold)\b/gi, "")
       );
       if (!hasEmbeddedNonTimeNumber) {
-        // e.g. "Creatinine 1.4 mg/dL (5 days ago)" or "(baseline)"
+        // e.g. "Creatinine 1.4 mg/dL (5 days ago)" or "(six days earlier)" or "(baseline)"
         postCueForThisValue = parenText;
       } else {
         // e.g. "Creatinine 3.6 mg/dL (1.4 mg/dL 5 days ago)" -> extract inner historical number separately
@@ -330,8 +372,8 @@ function extractTemporalCreatinineObservations(
     } else {
       const shortClause = postTail.split(/[.\n;]/)[0] || "";
       if (
-        shortClause.length <= 40 &&
-        !/\b\d+(?:\.\d+)?\b/.test(shortClause.replace(TIMEFRAME_EXTRACT_REGEX, ""))
+        shortClause.length <= 55 &&
+        !/\b\d+(?:\.\d+)?\b/.test(shortClause.replace(new RegExp(TIMEFRAME_EXTRACT_REGEX.source, "gi"), ""))
       ) {
         postCueForThisValue = shortClause;
       }
@@ -358,8 +400,10 @@ function extractTemporalCreatinineObservations(
 
   // Pass 2: Standalone historical baseline lines (e.g., "Baseline (5 days ago): 1.4 mg/dL") when Creatinine exists
   if (obs.length > 0 || /\b(?:creatinine|creat|cr)\b/i.test(norm)) {
-    const standaloneHistRegex =
-      /\b(?:baseline|prior|previous)(?:\s+(?:serum\s+)?(?:creatinine|creat|scr|cr))?(?:\s*\([^)\n]{1,45}\))?(?:\s*(?:from|at|measured|was|is|of)?\s*(?:\d+\s*(?:-|–|\s+)?(?:hours?|hrs?|days?|weeks?|wks?|months?|mos?|years?|yrs?)\s*(?:old|ago|prior|earlier|before)))?\s*(?:[:=]\s*|\s+(?:(?:is|was|of)\s+)?)\s*(\d+(?:\.\d+)?)\s*(?:mg\/dl)?\b/gi;
+    const standaloneHistRegex = new RegExp(
+      `\\b(?:baseline|prior|previous)(?:\\s+(?:serum\\s+)?(?:creatinine|creat|scr|cr))?(?:\\s*\\([^)\\n]{1,45}\\))?(?:\\s*(?:from|at|measured|was|is|of)?\\s*(?:${NUM_TOKEN_SOURCE}\\s*(?:-|–|\\s+)?${TIMEFRAME_UNIT_SOURCE}\\s*(?:old|ago|prior|earlier|before)))?\\s*(?:[:=]\\s*|\\s+(?:(?:is|was|of)\\s+)?)\\s*(\\d+(?:\\.\\d+)?)\\s*(?:mg\\/dl)?\\b`,
+      "gi"
+    );
     for (const m of norm.matchAll(standaloneHistRegex)) {
       const valStr = m[1];
       const val = parseFloat(valStr);
@@ -368,7 +412,10 @@ function extractTemporalCreatinineObservations(
       const end = start + m[0].length;
       const win = norm.slice(Math.max(0, start - 65), Math.min(norm.length, end + 65));
       if (!/mg\/dl|\b(?:creatinine|creat|scr|cr)\b/i.test(win)) continue;
-      const tf = win.match(TIMEFRAME_EXTRACT_REGEX)?.[1]?.trim() ?? null;
+      const postWin = norm.slice(end, Math.min(norm.length, end + 50));
+      const tf =
+        (postWin.match(TIMEFRAME_EXTRACT_REGEX)?.[1] ?? win.match(TIMEFRAME_EXTRACT_REGEX)?.[1])
+          ?.trim() ?? null;
       pushObs(val, start, end, "historical_baseline", tf);
     }
   }
@@ -425,6 +472,124 @@ function extractDocumentedMedications(norm: string): string[] {
 }
 
 /**
+ * Returns true ONLY when intake affirmatively documents severe/acute RV dysfunction,
+ * acute cor pulmonale, McConnell's sign, septal flattening, RV:LV > 1, or high-risk/massive PE.
+ * Explicitly excludes "mild RV dilation" and negated or prohibitive instructions.
+ */
+export function hasDocumentedSevereRvFailureOrMassivePe(rawText: string): boolean {
+  const norm = normalizeClinicalTextForExtraction(rawText);
+  const rx =
+    /\b(?:(?:severe|marked|significant|moderate[- ]to[- ]severe|massive|acute)\s+(?:rv|right\s+ventricular)\s+(?:dilation|dilatation|enlargement|strain|failure|dysfunction)|acute\s+cor\s+pulmonale|cor\s+pulmonale|mcconnell['’]?s?\s+sign|septal\s+flattening|d-shaped\s+(?:lv|left\s+ventricle)|rv\s*[:/]\s*lv\s*(?:ratio\s*)?[>≥]\s*1(?:\.\d+)?|massive\s+(?:pe|pulmonary\s+embolism)|high[- ]risk\s+(?:pe|pulmonary\s+embolism)|saddle\s+(?:pe|pulmonary\s+embolism))\b/gi;
+  for (const m of norm.matchAll(rx)) {
+    const idx = m.index ?? 0;
+    const rawPre = norm.slice(Math.max(0, idx - 120), idx);
+    const lastBreak = Math.max(
+      rawPre.lastIndexOf("."),
+      rawPre.lastIndexOf("\n"),
+      rawPre.lastIndexOf(";")
+    );
+    const sentencePre = lastBreak >= 0 ? rawPre.slice(lastBreak + 1) : rawPre;
+    const rawPost = norm.slice(idx + m[0].length, Math.min(norm.length, idx + m[0].length + 60));
+    const postClause = rawPost.split(/[.\n;]/)[0] || "";
+    if (
+      /\b(?:no|not|without|absent|absence\s+of|denies|negative\s+for|ruled\s+out|rule\s+out|unlikely|do\s+not\s+(?:introduce|include|assume|assert|diagnose|fabricate|claim)|never\s+introduce|avoid\s+introducing|no\s+evidence\s+of|no\s+documented|free\s+of|exclude|not\s+documented|not\s+supported|only\s+mild)\b/i.test(
+        sentencePre
+      ) ||
+      /\b(?:is\s+not|are\s+not|not\s+present|not\s+documented|absent|excluded|ruled\s+out|unsupported)\b/i.test(
+        postClause
+      )
+    ) {
+      continue;
+    }
+    return true;
+  }
+  return false;
+}
+
+function hasDocumentedMedicationLastDoseTiming(norm: string): boolean {
+  const explicitMissingTiming =
+    /\b(?:(?:exact\s+)?(?:time|timing)\s+of\s+(?:the\s+)?last(?:\s+[a-z0-9-]+){0,3}\s+dose|last(?:\s+[a-z0-9-]+){0,3}\s+dose(?:\s+(?:time|timing))?|medication\s+timing)\b[^\n.;]{0,65}\b(?:unknown|unavailable|unreported|unclear|missing|unverified|not\s+(?:known|available|provided|documented|reported|established))\b/i.test(
+      norm
+    ) ||
+    /\b(?:unknown|unavailable|unreported|missing|unclear)\b[^\n.;]{0,45}\b(?:last(?:\s+[a-z0-9-]+){0,3}\s+dose|medication\s+timing)\b/i.test(
+      norm
+    );
+
+  const concreteDoseTime =
+    /\b(?:last(?:\s+[a-z0-9-]+){0,3}\s+dose\s+(?:was\s+)?(?:taken\s+|given\s+|administered\s+)?(?:at\s+\d{1,2}[:.]\d{2}|~?\d+\s*(?:hours?|hrs?|h|minutes?|mins?|days?)\s*ago|this\s+morning|last\s+night|yesterday)|(?:taken|ingested|administered)\s+(?:at\s+\d{1,2}[:.]\d{2}|~?\d+\s*(?:hours?|hrs?|h|minutes?|mins?)\s*ago))\b/i.test(
+      norm
+    );
+
+  if (concreteDoseTime && !explicitMissingTiming) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Dynamically extracts explicitly documented unavailable/pending tests, unknown medication timing,
+ * and unobserved treatment responses from clinical intake so partial workups never falsely claim "full dataset".
+ */
+export function extractDocumentedClinicalUnknowns(norm: string): string[] {
+  const items: string[] = [];
+  const seenNormalized = new Set<string>();
+
+  const pushUnique = (rawClause: string) => {
+    const cleaned = rawClause
+      .replace(/^\s*(?:[-*•]+|\d+[.)])\s*/, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (cleaned.length < 8) return;
+    if (
+      /:\s*$/.test(cleaned) ||
+      /^(?:unavailable|pending|missing|unknown|unobserved)(?:\s*[/,&]\s*(?:pending|unavailable|missing|unknown|unobserved))*(?:\s+(?:clinical\s+)?(?:information|data|results|findings|items|workup|tests))?\s*:?$/i.test(
+        cleaned
+      ) ||
+      /^(?:explicitly\s+identify|identify\s+all\s+missing|do\s+not\s+(?:introduce|fabricate|assume)|fail\s+closed|clinical\s+question|questions?\s*:|address|calculate|recalculate|distinguish|explain|discuss|outline|provide|produce|evaluate|assess|compare|reconcile|describe|summarize|list|determine|analyze|stratify|prioritize|manage|verify|preserve|reevaluate)\b/i.test(
+        cleaned
+      )
+    ) {
+      return;
+    }
+    const truncated = cleaned.length > 165 ? `${cleaned.slice(0, 162)}...` : cleaned;
+    const key = truncated.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+    if (!key) return;
+    for (const existing of seenNormalized) {
+      if (existing === key || existing.includes(key) || key.includes(existing)) return;
+    }
+    seenNormalized.add(key);
+    items.push(truncated);
+  };
+
+  // 1. Dedicated Unavailable / Pending / Missing Clinical Information blocks
+  const blockRegex =
+    /(?:^|\n)\s*(?:#{1,4}\s*)?(?:unavailable|pending|missing|unknown|unobserved)(?:\s*[/,&]\s*(?:pending|unavailable|missing|unknown|unobserved))*(?:\s+or\s+(?:pending|unavailable|missing|unknown))?(?:\s+(?:clinical\s+)?(?:information|data|results|findings|items|workup|tests))?\s*[:\-]\s*\n([\s\S]{1,1000}?)(?=\n\s*\n|\n#{1,4}\s|$)/gi;
+  for (const m of norm.matchAll(blockRegex)) {
+    const lines = m[1].split("\n");
+    for (const line of lines) {
+      if (/^\s*(?:[-*•]+|\d+[.)])\s+/.test(line) && line.trim().length > 6) {
+        pushUnique(line);
+      }
+    }
+  }
+
+  // 2. Inline clauses mentioning unavailable / pending / unknown / unobserved clinical facts
+  const cueRegex =
+    /\b(?:unavailable|unknown|pending|awaiting|unobserved|not\s+(?:yet\s+)?(?:available|known|obtained|performed|done|identified|completed|established|documented|reported|observed)|not\s+measured|unmeasured)\b/i;
+  const segments = norm.split(/\n+|(?<=[.;])\s+/);
+  for (const seg of segments) {
+    if (!cueRegex.test(seg)) continue;
+    if (/\b(?:no\s+(?:missing|unavailable|unknown|pending)|none\s+pending|if\s+[^,]{0,40}\s+is\s+(?:missing|unavailable)|assuming\s+(?:a|an|70)|weight-based\s+formula\s+cannot\s+be)\b/i.test(seg)) {
+      continue;
+    }
+    // Trim leading non-factual prompt framing if any
+    pushUnique(seg);
+  }
+
+  return items;
+}
+
+/**
  * Extracts demographics, vitals, labs, and unmeasured data sentinels from raw clinical text.
  */
 export function buildClinicalScratchpad(
@@ -449,14 +614,14 @@ export function buildClinicalScratchpad(
   let patientWeightKg: number | null = null;
   const isWeightExplicitlyMissing = /\b(?:weight\s*(?:is\s*)?(?:not\s*provided|unmeasured|missing|unknown|not\s*measured)|no\s*weight\s*(?:is\s*)?provided)\b/i.test(norm);
   if (!isWeightExplicitlyMissing) {
-    const explicitWeightMatch = norm.match(/\b(?:actual\s+)?(?:patient\s+)?(?:body\s+)?(?:weight|weighs|wt)\s*[:=]?\s*(\d{2,3}(?:\.\d+)?)\s*(?:kg|kilos|kilograms)\b/i);
+    const explicitWeightMatch = norm.match(/\b(?:actual\s+)?(?:patient\s+)?(?:body\s+)?(?:weight|weighs|wt)\s*[:=]?\s*(\d{2,3}(?:\.\d+)?)(?:-|\s*)(?:kg|kilos|kilograms)\b/i);
     if (explicitWeightMatch) {
       const pre = norm.slice(Math.max(0, (explicitWeightMatch.index ?? 0) - 40), explicitWeightMatch.index ?? 0);
       if (!/\b(?:assuming|assume|hypothetical|standard|reference|arbitrary|if)\b/i.test(pre)) {
         patientWeightKg = parseFloat(explicitWeightMatch[1]);
       }
     } else {
-      const allKg = [...norm.matchAll(/\b(\d{2,3}(?:\.\d+)?)\s*kg\b/gi)];
+      const allKg = [...norm.matchAll(/\b(\d{2,3}(?:\.\d+)?)(?:-|\s*)kg\b/gi)];
       for (const m of allKg) {
         const idx = m.index ?? 0;
         const pre = norm.slice(Math.max(0, idx - 40), idx);
@@ -769,18 +934,20 @@ export function buildClinicalScratchpad(
     }
   }
 
-  const uoMatch = norm.match(/\burine\s*output\s*[:=]?\s*(\d+)\s*ml(?:\s*(?:over|in|\/)\s*(\d+)\s*(?:hours|hrs|h))?\b/i);
+  const uoMatch = norm.match(
+    /\burine\s*output\s*[:=]?\s*(\d+)\s*ml(?:\s*(?:over(?:\s+the)?(?:\s+past|\s+last)?|in(?:\s+the)?(?:\s+past|\s+last)?|for|\/)\s*(\d+)\s*(?:hours?|hrs?|h))?\b/i
+  );
   const urineOutputMl = uoMatch ? parseInt(uoMatch[1], 10) : null;
   const urineOutputDurationHours = uoMatch && uoMatch[2] ? parseInt(uoMatch[2], 10) : (uoMatch ? 8 : null);
   pushGenericObs("urine_output", urineOutputMl, "mL", "urine", uoMatch);
 
   const documentedMedications = extractDocumentedMedications(norm);
 
-  // 4. Sentinels & Missing Flags (Grounded strictly in documentedMedications)
+  // 4. Sentinels & Missing Flags (Grounded strictly in documentedMedications + explicitly documented unknowns)
   const isWeightMissing = patientWeightKg === null;
   const isChlorideMissing = chlorideMeqL === null;
   const isBaselineCreatinineMissing = baselineCreatinineMgDl === null;
-  const isLastDoseTimingMissing = !/\b(?:last\s+dose|taken\s+at|hours\s+ago|ingested\s+at)\b/i.test(norm);
+  const isLastDoseTimingMissing = !hasDocumentedMedicationLastDoseTiming(norm);
   const isArterialBloodGasMissing = arterialPh === null || paco2MmHg === null;
   const isUrineOutputMissing = urineOutputMl === null;
 
@@ -802,6 +969,36 @@ export function buildClinicalScratchpad(
   if (isArterialBloodGasMissing) missingDataItems.push("Arterial Blood Gas (pH, PaCO2, PaO2) [UNMEASURED / INCOMPLETE]");
   if (isUrineOutputMissing) missingDataItems.push("Quantified Hourly Urine Output [UNMEASURED]");
 
+  const documentedUnknowns = extractDocumentedClinicalUnknowns(norm);
+  for (const unk of documentedUnknowns) {
+    const unkLow = unk.toLowerCase();
+    const alreadyCovered = missingDataItems.some((item) => {
+      const itemLow = item.toLowerCase();
+      return (
+        (itemLow.includes("body weight") && /\bweight\b/.test(unkLow)) ||
+        (itemLow.includes("chloride") && /\bchloride\b/.test(unkLow)) ||
+        (itemLow.includes("baseline serum creatinine") && /\bbaseline\b.*\bcreatinine\b/.test(unkLow)) ||
+        (itemLow.includes("arterial blood gas") && /\babg\b|arterial\s+blood\s+gas/.test(unkLow)) ||
+        (itemLow.includes("urine output") && /\burine\s+output\b/.test(unkLow))
+      );
+    });
+    if (!alreadyCovered) {
+      missingDataItems.push(unk);
+    }
+  }
+  if (
+    /\b(?:pending\s+tests|pending\s+diagnostics)\b/i.test(norm) &&
+    !missingDataItems.some((i) => /\b(?:culture|pending|radiograph|cxr|endoscop|imaging|head\s+ct|ctpa)\b/i.test(i))
+  ) {
+    missingDataItems.push("Pending Diagnostic / Microbiology / Imaging Results [PENDING]");
+  }
+  if (
+    /\bunobserved\s+treatment\s+responses\b/i.test(norm) &&
+    !missingDataItems.some((i) => /\b(?:response|unobserved|vasopressor|dialysis|transfusion)\b/i.test(i))
+  ) {
+    missingDataItems.push("Unobserved Clinical & Physiological Responses to Acute Interventions (electrolytes, antidotes, vasopressors, transfusion, RRT) [UNOBSERVED]");
+  }
+
   // 5. Mathematical Derivations:
 
   // A. Mean Arterial Pressure (MAP)
@@ -822,27 +1019,37 @@ export function buildClinicalScratchpad(
   if (creatinineMgDl !== null && baselineCreatinineMgDl !== null) {
     crAbsoluteRiseMgDl = parseFloat((creatinineMgDl - baselineCreatinineMgDl).toFixed(2));
     crFoldRatio = parseFloat((creatinineMgDl / baselineCreatinineMgDl).toFixed(2));
+    const tfDays = parseTimeframeDays(baselineCreatinineTimeframe);
 
     if (crFoldRatio >= 3.0) {
       establishedStage = 3;
       creatinineCriteriaStage = 3;
-      stageRationale = `KDIGO Stage 3 (Serum creatinine increased ≥ 3.0× baseline: ${crFoldRatio}×).`;
+      stageRationale = `KDIGO Stage 3 (Serum creatinine increased ≥ 3.0× baseline: ${crFoldRatio}×). Evaluate urine-output criteria separately.`;
     } else if (crFoldRatio >= 2.0 && crFoldRatio < 3.0) {
-      establishedStage = 2;
-      creatinineCriteriaStage = 2;
       if (creatinineMgDl >= 4.0 && crAbsoluteRiseMgDl >= 0.5) {
-        stageRationale = `KDIGO Stage 2 by fold increase (${crFoldRatio}× baseline). Conditionally Stage 3 by absolute creatinine (≥ 4.0 mg/dL: ${creatinineMgDl} mg/dL, acute rise +${crAbsoluteRiseMgDl} mg/dL) pending confirmation of acute trajectory within 48 hours to 7 days.`;
-        isStage3ConditionalOnAcuteTimeline = true;
-        stage3AcuteTimelineRationale = `Absolute serum creatinine ≥ 4.0 mg/dL with acute rise ≥ 0.5 mg/dL (+${crAbsoluteRiseMgDl} mg/dL) conditionally qualifies for Stage 3 pending confirmation of acute trajectory within 48 hours to 7 days.`;
+        if (tfDays !== null && tfDays <= 7) {
+          establishedStage = 3;
+          creatinineCriteriaStage = 3;
+          isStage3ConditionalOnAcuteTimeline = false;
+          stage3AcuteTimelineRationale = `Absolute serum creatinine ${creatinineMgDl} mg/dL (≥ 4.0 mg/dL) with acute increase of +${crAbsoluteRiseMgDl} mg/dL (≥ 0.5 mg/dL) from historical baseline ${baselineCreatinineMgDl} mg/dL (${baselineCreatinineTimeframe}, ≤ 7 days) satisfies the KDIGO Stage 3 absolute-creatinine criterion (subject to measurement validity).`;
+          stageRationale = `KDIGO Stage 3 by absolute-creatinine criterion (Cr ${creatinineMgDl} mg/dL ≥ 4.0 mg/dL with acute rise +${crAbsoluteRiseMgDl} mg/dL ≥ 0.5 mg/dL within ${baselineCreatinineTimeframe}, subject to measurement validity), whereas creatinine fold-change ratio alone is ${crFoldRatio}× baseline (${creatinineMgDl} / ${baselineCreatinineMgDl} mg/dL — KDIGO Stage 2 range, < 3.0×). Evaluate urine-output criteria separately.`;
+        } else {
+          establishedStage = 2;
+          creatinineCriteriaStage = 2;
+          isStage3ConditionalOnAcuteTimeline = true;
+          stageRationale = `KDIGO Stage 2 by fold increase (${crFoldRatio}× baseline). Conditionally Stage 3 by absolute creatinine (≥ 4.0 mg/dL: ${creatinineMgDl} mg/dL, acute rise +${crAbsoluteRiseMgDl} mg/dL) pending confirmation of acute trajectory within 48 hours to 7 days. Evaluate urine-output criteria separately.`;
+          stage3AcuteTimelineRationale = `Absolute serum creatinine ≥ 4.0 mg/dL with acute rise ≥ 0.5 mg/dL (+${crAbsoluteRiseMgDl} mg/dL) conditionally qualifies for Stage 3 pending confirmation of acute trajectory within 48 hours to 7 days.`;
+        }
       } else {
-        const tfDays = parseTimeframeDays(baselineCreatinineTimeframe);
+        establishedStage = 2;
+        creatinineCriteriaStage = 2;
         const tfCaveat =
           tfDays !== null && tfDays <= 7
             ? ` The documented ${baselineCreatinineTimeframe} baseline supports an acute increase within the KDIGO 7-day diagnostic window (subject to measurement verification).`
             : baselineCreatinineTimeframe
             ? ` Given the remote baseline (${baselineCreatinineTimeframe}), acute timing within the KDIGO 48-hour to 7-day diagnostic window is not independently established.`
             : "";
-        stageRationale = `KDIGO Stage 2 by fold increase (${crFoldRatio}× baseline: ${creatinineMgDl} / ${baselineCreatinineMgDl} mg/dL, +${crAbsoluteRiseMgDl} mg/dL).${tfCaveat} Current creatinine (${creatinineMgDl} mg/dL) does NOT meet the ≥ 4.0 mg/dL absolute threshold, and fold ratio is < 3.0×; KDIGO Stage 3 is NOT supported by serum creatinine criteria.`;
+        stageRationale = `KDIGO Stage 2 by fold increase (${crFoldRatio}× baseline: ${creatinineMgDl} / ${baselineCreatinineMgDl} mg/dL, +${crAbsoluteRiseMgDl} mg/dL).${tfCaveat} Current creatinine (${creatinineMgDl} mg/dL) does NOT meet the ≥ 4.0 mg/dL absolute threshold, and fold ratio is < 3.0×; KDIGO Stage 3 is NOT supported by serum creatinine criteria. Evaluate urine-output criteria separately.`;
         isStage3ConditionalOnAcuteTimeline = false;
         stage3AcuteTimelineRationale = "";
       }
@@ -865,11 +1072,29 @@ export function buildClinicalScratchpad(
 
   if (urineOutputMl !== null && urineOutputDurationHours !== null) {
     if (patientWeightKg !== null) {
-      weightNormalizedUoMlKgHr = parseFloat(
-        (urineOutputMl / (patientWeightKg * urineOutputDurationHours)).toFixed(2)
-      );
+      const rawUoMlKgHr = urineOutputMl / (patientWeightKg * urineOutputDurationHours);
+      weightNormalizedUoMlKgHr = parseFloat(rawUoMlKgHr.toFixed(2));
+      const preciseUoStr = rawUoMlKgHr.toFixed(3);
       uoStagingStatus = "COMPUTABLE";
-      uoStagingCaveat = `Urine output: ${urineOutputMl} mL over ${urineOutputDurationHours}h = ${weightNormalizedUoMlKgHr} mL/kg/h based on measured body weight ${patientWeightKg} kg.`;
+      const uoWindowNote =
+        urineOutputMl === 0 && urineOutputDurationHours >= 12
+          ? "Meets KDIGO Stage 3 urine-output criteria (anuria ≥ 12h)."
+          : rawUoMlKgHr < 0.3
+          ? urineOutputDurationHours >= 24
+            ? "Meets KDIGO Stage 3 urine-output criteria (< 0.3 mL/kg/h for ≥ 24h)."
+            : urineOutputDurationHours >= 12
+            ? `Meets KDIGO Stage 2 urine-output criteria (< 0.5 mL/kg/h for ≥ 12h) and falls in the < 0.3 mL/kg/h range, but observed ${urineOutputDurationHours}h window is < 24h required for independent Stage 3 UO staging.`
+            : urineOutputDurationHours >= 6
+            ? `Meets KDIGO Stage 1 urine-output criteria (< 0.5 mL/kg/h for ≥ 6h); although rate is ${preciseUoStr} mL/kg/h (< 0.3 mL/kg/h), the ${urineOutputDurationHours}h observation window is < 12h (Stage 2) and < 24h (Stage 3), so oliguria duration alone does not independently establish Stage 3 UO criteria.`
+            : `Severe oliguria rate (${preciseUoStr} mL/kg/h) over ${urineOutputDurationHours}h (< 6h window); continue serial hourly quantification.`
+          : rawUoMlKgHr < 0.5
+          ? urineOutputDurationHours >= 12
+            ? "Meets KDIGO Stage 2 urine-output criteria (< 0.5 mL/kg/h for ≥ 12h)."
+            : urineOutputDurationHours >= 6
+            ? "Meets KDIGO Stage 1 urine-output criteria (< 0.5 mL/kg/h for 6–12h)."
+            : `Oliguric rate (${preciseUoStr} mL/kg/h) observed over ${urineOutputDurationHours}h (< 6h minimum window).`
+          : "Exceeds KDIGO oliguria threshold (≥ 0.5 mL/kg/h).";
+      uoStagingCaveat = `Urine output: ${urineOutputMl} mL over ${urineOutputDurationHours}h = ${preciseUoStr} mL/kg/h (${weightNormalizedUoMlKgHr} mL/kg/h rounded to 2 decimals) based on measured body weight ${patientWeightKg} kg. Independent KDIGO UO evaluation: ${uoWindowNote}`;
     } else {
       uoStagingStatus = "UNMEASURED_WEIGHT_PROHIBITS_CALCULATION";
       uoStagingCaveat = `Urine output is documented as ${urineOutputMl} mL over ${urineOutputDurationHours}h. Note: Missing body weight does NOT invalidate or prevent documenting measured urine output volume; it prevents calculating weight-normalized output in mL/kg/hour (which requires actual measured weight, avoiding arbitrary adult weight assumptions).`;
@@ -1032,12 +1257,20 @@ export function buildClinicalScratchpad(
   if (digoxinNgMl !== null) {
     if (patientWeightKg !== null) {
       const calculatedVials = (digoxinNgMl * patientWeightKg) / 100;
+      const roundedVials = Math.ceil(calculatedVials);
+      const exactCalcStr = `${parseFloat(calculatedVials.toFixed(3))}`;
+      const timingInterpretationCaveat = isLastDoseTimingMissing
+        ? "CRITICAL SAMPLING/TIMING CAVEAT: Exact time of last digoxin dose is UNAVAILABLE — steady-state formula calculations assume a post-distribution level (drawn ≥ 6 hours after ingestion). Pre-distribution sampling artificially elevates serum concentration and overestimates total body burden, whereas chronic renal accumulation alters steady-state volume of distribution."
+        : "Confirm serum digoxin sample reflects post-distribution steady state (≥ 6 hours post-dose) before relying strictly on pharmacokinetic calculations.";
       digiFabDosing = {
         isComputableWeightBased: true,
         dosingType: "CALCULATED_WEIGHT_BASED",
-        weightBasedVials: Math.ceil(calculatedVials),
-        empiricEmergencyVials: "5–10 vials IV infusion",
-        rationale: `Weight-based calculation: (${digoxinNgMl} ng/mL × ${patientWeightKg} kg) / 100 = ${calculatedVials.toFixed(1)} vials (round to ${Math.ceil(calculatedVials)} vials). Requires toxicology consultation and clinical reassessment.`,
+        weightBasedVials: roundedVials,
+        empiricEmergencyVials: "5–10 vials IV infusion (acute life-threatening toxicity with uncertain kinetics; 3–6 vials titrated often considered in chronic accumulation)",
+        rationale:
+          `Formula-based estimate: (${digoxinNgMl} ng/mL × ${patientWeightKg} kg) / 100 = ${exactCalcStr} vials (rounded up to ${roundedVials} vials). ` +
+          `DISTINCTION BETWEEN CALCULATED ESTIMATE & EMPIRIC EMERGENCY DOSING: The ${roundedVials}-vial figure is a pharmacokinetic body-load estimate derived from steady-state serum concentration and body weight, whereas empiric emergency dosing of 5–10 vials IV applies to acute life-threatening shock/arrhythmia when dose timing, absorption completeness, or post-distribution equilibrium cannot be verified (and 3–6 vials titrated is frequently considered in suspected chronic digoxin accumulation with close hemodynamic/ECG reassessment). ` +
+          `${timingInterpretationCaveat} Urgent Medical Toxicology consultation and serial clinical/ECG/potassium reassessment are required to guide initial dosing and repeat vials.`,
         clinicalReassessmentRequired: true,
         toxicologyConsultationRequired: true,
       };
@@ -1067,12 +1300,19 @@ export function buildClinicalScratchpad(
 
   // F. Fluid Safety Ceiling (INV-004: Individualized Resuscitation, No Automatic Veto, No Invented Anuria)
   const highRiskConditions: string[] = [];
-  const hasAcuteRvFailure = /\b(?:rv\s+dilation|right\s+ventricular\s+dilation|acute\s+cor\s+pulmonale|mcconnell|septal\s+flattening|d-shaped\s+lv|massive\s+(?:pe|pulmonary\s+embolism))\b/i.test(q);
+  const hasAcuteRvFailure = hasDocumentedSevereRvFailureOrMassivePe(norm);
   if (hasAcuteRvFailure) {
     highRiskConditions.push("Acute RV Failure / Cor Pulmonale (Severe RV Dilation — Avoid Large Fluid Boluses)");
   }
-  if (/\b(?:hfref|heart\s+failure|ef\s*(?:is|of|=|:)?\s*(?:[1-3]\d|25|30)%?|ejection\s+fraction\s*(?:is|of|=|:)?\s*(?:[1-3]\d|25|30)%?)\b/i.test(q)) {
-    highRiskConditions.push("Reduced Ejection Fraction (HFrEF, EF ≤ 35%)");
+  const lvSysMatch = norm.match(
+    /\b(?:hfref|heart\s+failure|severe\s+(?:lv|left\s+ventricular)\s+systolic\s+dysfunction|(?:lv)?ef\s*(?:is|of|=|:|approximately|approx\.?|~)?\s*(?:[1-3]\d|40)%?|ejection\s+fraction\s*(?:is|of|=|:|approximately|approx\.?|~)?\s*(?:[1-3]\d|40)%?)\b/i
+  );
+  if (lvSysMatch) {
+    const lvIdx = lvSysMatch.index ?? 0;
+    const lvPre = norm.slice(Math.max(0, lvIdx - 45), lvIdx);
+    if (!/\b(?:no|not|without|denies|normal|preserved|absence\s+of)\b/i.test(lvPre)) {
+      highRiskConditions.push("Reduced Ejection Fraction / Severe LV Systolic Dysfunction (HFrEF, EF ≤ 35%)");
+    }
   }
   const hasDocumentedCkd = /\b(?:ckd|chronic\s+kidney\s+disease)\s*(?:stage\s*)?[45]\b/i.test(q);
   if (hasDocumentedCkd) {
@@ -1137,7 +1377,11 @@ export function buildClinicalScratchpad(
   mdLines.push(`- **Weight-Normalized Urine Output:** ${kdigoAki.uoStagingCaveat}`);
   mdLines.push(`- **Anion Gap:** ${anionGapLine}`);
   mdLines.push(`- **Winter's Formula:** ${wintersFormula.calibratedClinicalInterpretation}`);
-  mdLines.push(`- **DigiFab Dosing:** ${digiFabDosing.empiricEmergencyVials} (${digiFabDosing.rationale})`);
+  mdLines.push(
+    digiFabDosing.dosingType === "CALCULATED_WEIGHT_BASED"
+      ? `- **DigiFab Dosing:** Formula-based estimate = **${digiFabDosing.weightBasedVials} vials** vs. Empiric emergency range **${digiFabDosing.empiricEmergencyVials}** — ${digiFabDosing.rationale}`
+      : `- **DigiFab Dosing:** ${digiFabDosing.empiricEmergencyVials} (${digiFabDosing.rationale})`
+  );
   mdLines.push(`- **Fluid Resuscitation Approach:** ${fluidSafety.recommendedResuscitationApproach}`);
   mdLines.push(``);
   mdLines.push(`#### 3. Actionable Clinical Data Gaps`);
@@ -1146,7 +1390,7 @@ export function buildClinicalScratchpad(
       mdLines.push(`- ⚠️ ${item}`);
     }
   } else {
-    mdLines.push(`- None detected; full dataset provided.`);
+    mdLines.push(`- Core numeric parser sentinels populated; however, supplied encounter parameters do NOT constitute a complete clinical record — confirm exact medication last-dose timing, pending diagnostic/microbiology/imaging results, and serial physiologic response to acute interventions.`);
   }
 
   const markdownScratchpadSummary = mdLines.join("\n");
@@ -1413,12 +1657,17 @@ export function validateCrossSectionClinicalConsistency(
       const sbp = parseInt(m[1], 10);
       const dbp = parseInt(m[2], 10);
       if (sbp > 150 && dbp > 200) continue; // Skip medication doses like 160/800 mg
-      if (sbp < 40 || dbp < 20 || sbp > 260 || dbp > 160) continue;
+      if (sbp < 40 || dbp < 20 || sbp > 260 || dbp > 160 || sbp <= dbp) continue;
 
-      // Skip clinical guideline thresholds, targets, and protocol limits (e.g. "< 185/110", "up to 220/120", "Target: < 180/105")
+      // Skip clinical guideline thresholds, targets, protocol limits, and arithmetic formulas (e.g. "79 / 100")
       const matchIndex = m.index ?? 0;
       const precedingText = dossierText.slice(Math.max(0, matchIndex - 35), matchIndex).toLowerCase();
+      const followingText = dossierText.slice(matchIndex + m[0].length, Math.min(dossierText.length, matchIndex + m[0].length + 20)).toLowerCase();
+      const hasExplicitBpPrefix = /\bbp\s*[:=]?\s*$/i.test(precedingText) || /\bmmhg$/i.test(m[0]);
       if (/[<>≤≥]|target|goal|threshold|guideline|protocol|permissive|up\s+to|limit|criteria|exceed|titrate/i.test(precedingText)) {
+        continue;
+      }
+      if (!hasExplicitBpPrefix && (/[×*+=]/.test(precedingText) || /^\s*(?:mg|mcg|ml|kg|vials?|meq|mmol|=|×|\*)/i.test(followingText))) {
         continue;
       }
 
@@ -1648,7 +1897,7 @@ export function validateCrossSectionClinicalConsistency(
   }
 
   // Check 12: Unsupported Cardiac & Renal Disease Claims (Zero Fabrication Gate)
-  const hasCardiacInInput = /\b(?:hfref|heart\s+failure|ejection\s+fraction|ef\s*\d{1,2}%?)\b/i.test(scratchpad.rawInputText);
+  const hasCardiacInInput = /\b(?:hfref|heart\s+failure|ejection\s+fraction|(?:lv)?ef\s*(?:is|of|=|:|approximately|approx\.?|~)?\s*\d{1,2}%?|systolic\s+dysfunction|cardiomyopathy)\b/i.test(scratchpad.rawInputText);
   if (!hasCardiacInInput && /\b(?:hfre\s*f|severe\s+baseline\s+systolic\s+dysfunction|decompensated\s+heart\s+failure)\b/i.test(dossierText)) {
     violations.push({
       item: "Unsupported Cardiac Comorbidity (HFrEF)",
@@ -2062,6 +2311,198 @@ export function validateCrossSectionClinicalConsistency(
           issue: `Cross-section inconsistency in ${chk.item}: stated ${stated} conflicts with documented intake (${chk.expected}).`,
         });
       }
+    }
+  }
+
+  // Check 25: Unsupported Acute RV Failure / Cor Pulmonale / Massive PE Veto (Encounter Isolation Gate)
+  if (!hasDocumentedSevereRvFailureOrMassivePe(normInput)) {
+    const unsupportedRvPeRegex =
+      /\b(?:severe\s+(?:rv|right\s+ventricular)\s+(?:dilation|dilatation|failure|strain)|acute\s+(?:rv|right\s+ventricular)\s+failure|acute\s+cor\s+pulmonale|cor\s+pulmonale|massive\s+(?:pe|pulmonary\s+embolism)|high[- ]risk\s+(?:pe|pulmonary\s+embolism)|saddle\s+(?:pe|pulmonary\s+embolism)|mcconnell['’]?s?\s+sign|d-shaped\s+(?:lv|left\s+ventricle)|septal\s+flattening)\b/gi;
+    for (const m of normDossier.matchAll(unsupportedRvPeRegex)) {
+      const idx = m.index ?? 0;
+      const end = idx + m[0].length;
+      const rawPre = normDossier.slice(Math.max(0, idx - 130), idx);
+      const lastBreak = Math.max(
+        rawPre.lastIndexOf("."),
+        rawPre.lastIndexOf("\n"),
+        rawPre.lastIndexOf(";"),
+        rawPre.search(/\b(?:however|but)\b(?![\s\S]*\b(?:however|but)\b)/i)
+      );
+      const sentencePre = lastBreak >= 0 ? rawPre.slice(lastBreak + 1) : rawPre;
+      const postClause = (normDossier.slice(end, Math.min(normDossier.length, end + 65)).split(/[.\n;]/)[0] || "");
+      const blockPre = normDossier.slice(Math.max(0, idx - 240), idx);
+      const blockPara = blockPre.slice(Math.max(0, blockPre.lastIndexOf("\n\n")));
+      const isRuleOutSubItem =
+        /\(\s*rule-?out\s*\)|\b(?:non-infectious\s+shock\s+etiologies|etiologies\s+to\s+(?:exclude|rule\s+out)|rule-?out\s+(?:etiologies|causes))\b/i.test(
+          blockPara
+        ) &&
+        !/\b(?:patient\s+has|confirmed|documented|presents?\s+with|echo\s+shows|acute\s+rv\s+failure|cor\s+pulmonale|severe\s+rv)\b/i.test(
+          sentencePre
+        );
+      if (
+        isRuleOutSubItem ||
+        /\b(?:no|not|without|absent|absence\s+of|ruled\s+out|rule\s+out|exclude|excluding|unlikely|no\s+evidence\s+of|not\s+documented|not\s+present|not\s+supported|only\s+mild|do\s+not\s+(?:introduce|include|assume|assert|diagnose|fabricate)|never\s+introduce|avoid\s+introducing|differential)\b/i.test(
+          sentencePre
+        ) ||
+        /\b(?:is\s+not|are\s+not|not\s+present|not\s+documented|absent|excluded|ruled\s+out|unsupported|unconfirmed)\b/i.test(
+          postClause
+        )
+      ) {
+        continue;
+      }
+      violations.push({
+        item: "Unsupported Imaging/Cardiopulmonary Diagnosis (Severe RV Dilation / Cor Pulmonale / Massive PE)",
+        sectionA: "Documented Intake (No severe RV dilation, acute cor pulmonale, or massive PE documented)",
+        sectionB: `Dossier / Scratchpad Text ("${m[0]}")`,
+        issue: `Cross-encounter contamination / unsupported diagnosis: output asserts "${m[0]}" without supporting cardiac/imaging evidence in current intake.`,
+      });
+      break;
+    }
+  }
+
+  // Check 26A: False "Full Dataset Provided" Claim & Required Clinical Data-Gap Coverage
+  const narrativeOnly = (
+    scratchSplit.length >= 2 ? scratchSplit[0] : normDossier
+  ).replace(/\n*─{10,}\n*🛡️?\s*NOCTIS INDEPENDENT CLINICAL RELEASE CERTIFICATE[\s\S]*$/i, "").trim();
+
+  const falseFullDatasetRegex =
+    /\b(?:none\s+detected;\s*full\s+dataset\s+provided|full\s+dataset\s+provided|no\s+missing\s+clinical\s+(?:data|information)|no\s+clinical\s+(?:data|information)\s+(?:is|are)\s+missing|no\s+actionable\s+clinical\s+data\s+gaps|dataset\s+is\s+clinically\s+complete)\b/gi;
+  for (const m of normDossier.matchAll(falseFullDatasetRegex)) {
+    const idx = m.index ?? 0;
+    const pre = normDossier.slice(Math.max(0, idx - 50), idx);
+    if (/\b(?:not|never|do\s+not|cannot\s+assume|rather\s+than)\b/i.test(pre)) continue;
+    violations.push({
+      item: "False Full Dataset Claim",
+      sectionA: "Clinical Data-Gap Integrity",
+      sectionB: `Dossier / Scratchpad ("${m[0]}")`,
+      issue: `Unsafe completeness overclaim: "${m[0]}" falsely states no clinical data are missing.`,
+    });
+    break;
+  }
+
+  if (
+    /\b(?:identify\s+all\s+missing\s+clinical|explicitly\s+identify[^\n.]{0,50}missing|missing\s+clinical\s+information)\b/i.test(
+      normInput
+    ) &&
+    !/\b(?:missing|unavailable|pending|unknown|unobserved|data\s+gap|incomplete|unreported)\b/i.test(narrativeOnly)
+  ) {
+    violations.push({
+      item: "Missing Clinical Data Gaps Analysis",
+      sectionA: "Prompt Directive (Explicitly identify missing clinical information)",
+      sectionB: "Dossier Narrative",
+      issue: "Narrative fails to explicitly enumerate documented missing clinical information, pending studies, and unobserved responses.",
+    });
+  }
+
+  // Check 26B / 26C / 26D: Clinical Report Completeness (Required SOAP Note, Reconciliation Matrix, Multi-Item Checklist)
+  const rawNumberedItems = [...normInput.matchAll(/^\s*(\d{1,2})[.)]\s+([^\n]{15,})/gm)]
+    .map((m) => ({ num: parseInt(m[1], 10), text: m[2].trim() }))
+    .filter((entry) => {
+      if (entry.num < 1 || entry.num > 30) return false;
+      const pureMedLine =
+        /^\s*[A-Za-z-]+\s+\d+(?:,\d{3})*(?:\.\d+)?\s*(?:mg|mcg|g|ml|meq|mmol|units?)\b/i.test(entry.text) &&
+        entry.text.length < 48 &&
+        !/[?]/.test(entry.text);
+      return !pureMedLine;
+    });
+  const dedupedItems = new Map<number, string>();
+  for (const entry of rawNumberedItems) {
+    if (!dedupedItems.has(entry.num)) dedupedItems.set(entry.num, entry.text);
+  }
+  const hasMultiItemChecklist = dedupedItems.size >= 5;
+
+  if (/\bsoap(?:\s+note)?\b/i.test(normInput) || hasMultiItemChecklist) {
+    const hasSoapHeading =
+      /\bsoap(?:\s+note)?\b/i.test(narrativeOnly) ||
+      /^\s*(?:#{1,4}\s*|\-\s*)?subjective\b\s*[:\-—]?/im.test(narrativeOnly);
+    const missingSoapParts: string[] = [];
+    if (!/\bsubjective\b/i.test(narrativeOnly)) missingSoapParts.push("Subjective");
+    if (!/\bobjective\b/i.test(narrativeOnly)) missingSoapParts.push("Objective");
+    if (!/\bassessment\b/i.test(narrativeOnly)) missingSoapParts.push("Assessment");
+    if (!/\bplan\b/i.test(narrativeOnly)) missingSoapParts.push("Plan");
+    if (!hasSoapHeading || missingSoapParts.length > 0) {
+      violations.push({
+        item: "Missing Required SOAP Note",
+        sectionA: "Prompt Directive (Complete SOAP Note)",
+        sectionB: "Dossier Narrative",
+        issue:
+          missingSoapParts.length > 0
+            ? `Required complete SOAP Note is incomplete or missing sections: ${missingSoapParts.join(", ")}.`
+            : "Required structured SOAP Note section header is missing from clinical narrative.",
+      });
+    }
+  }
+
+  if (/\b(?:fact[- ]reconciliation|reconciliation)\s+matrix\b/i.test(normInput)) {
+    const rawScratchSplit = dossierText.split(/(?=#{2,4}\s*(?:\d+\.\s*)?Neuro-Symbolic)/i);
+    const rawNarrativeOnly = (rawScratchSplit.length >= 2 ? rawScratchSplit[0] : dossierText)
+      .replace(/\n*─{10,}\n*🛡️?\s*\*{0,2}NOCTIS INDEPENDENT CLINICAL RELEASE CERTIFICATE[\s\S]*$/i, "")
+      .trim();
+    const hasMatrixHeading =
+      /\b(?:fact[- ]reconciliation|reconciliation\s+(?:matrix|table)|fact\s+(?:reconciliation|verification)(?:\s+(?:matrix|table))?|source[- ]to[- ](?:dossier|scratchpad)\s+reconciliation|intake\s+vs\.?\s+(?:scratchpad|dossier))\b/i.test(
+        rawNarrativeOnly
+      );
+    const hasMatrixBody =
+      /\|[^\n]+\|/.test(rawNarrativeOnly) ||
+      /\n\s*[-*•]\s+[^\n]{10,}/.test(rawNarrativeOnly) ||
+      /\n\s*[^:\n]{3,40}:\s+[^\n]{8,}/.test(rawNarrativeOnly);
+    if (!hasMatrixHeading || !hasMatrixBody) {
+      violations.push({
+        item: "Missing Fact-Reconciliation Matrix",
+        sectionA: "Prompt Directive (Independent Fact-Reconciliation Matrix)",
+        sectionB: "Dossier Narrative",
+        issue:
+          'Requested independent fact-reconciliation matrix is missing from clinical narrative — include a Markdown table headed "### Independent Fact-Reconciliation Matrix" reconciling intake facts, calculations, and documented unknowns.',
+      });
+    }
+  }
+
+  if (hasMultiItemChecklist) {
+    const stopWords = new Set([
+      "with", "from", "that", "this", "what", "when", "your", "have", "patient", "clinical",
+      "please", "should", "provide", "explain", "describe", "discuss", "using", "only", "each",
+      "must", "also", "into", "both", "then", "about", "which", "their", "there", "these",
+      "other", "does", "will", "would", "could", "between", "based", "include", "all",
+    ]);
+    const lowNarrative = narrativeOnly.toLowerCase();
+    const uncoveredNums: number[] = [];
+
+    for (const [num, qText] of dedupedItems.entries()) {
+      const explicitNumRx = new RegExp(
+        `(?:^|\\n)\\s*(?:#{1,4}\\s*)?(?:q(?:uestion)?\\s*)?${num}(?:[.)\\]:]|\\s*[—–-])|\\b(?:question|item|part|analysis|requirement)\\s*#?\\s*${num}\\b`,
+        "im"
+      );
+      if (explicitNumRx.test(narrativeOnly)) continue;
+
+      const words = (qText.toLowerCase().match(/[a-z0-9]{4,}/g) || []).filter((w) => !stopWords.has(w));
+      const uniqueWords = [...new Set(words)].slice(0, 6);
+      const matched = uniqueWords.filter((w) => lowNarrative.includes(w)).length;
+      const needed = uniqueWords.length <= 1 ? uniqueWords.length : Math.min(2, uniqueWords.length);
+      if (matched < needed) {
+        uncoveredNums.push(num);
+      }
+    }
+
+    const fenceCount = (narrativeOnly.match(/```/g) || []).length;
+    const trimmedTail = narrativeOnly.replace(/\*+$/g, "").trimEnd();
+    const endsMidClause =
+      narrativeOnly.length < 200 ||
+      fenceCount % 2 !== 0 ||
+      /[,;(]$/.test(trimmedTail) ||
+      /\b(?:and|or|the|to|of|in|for|with|by|at|as|from|that|which|should|must|due|via|per)\s*$/i.test(trimmedTail);
+
+    const coveredRatio = (dedupedItems.size - uncoveredNums.length) / dedupedItems.size;
+    if (endsMidClause || coveredRatio < 0.85) {
+      violations.push({
+        item: "Incomplete Required Clinical Sections",
+        sectionA: `Prompt Checklist (${dedupedItems.size} required items)`,
+        sectionB: "Dossier Narrative",
+        issue:
+          `Clinical report is incomplete or truncated (` +
+          `covered ${dedupedItems.size - uncoveredNums.length}/${dedupedItems.size} items` +
+          `${uncoveredNums.length > 0 ? `; missing items: ${uncoveredNums.join(", ")}` : ""}` +
+          `${endsMidClause ? "; detected mid-sentence truncation" : ""}).`,
+      });
     }
   }
 

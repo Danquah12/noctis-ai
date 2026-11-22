@@ -216,7 +216,7 @@ function hasPicture(messages: { content: ModelContent }[]) {
 }
 
 function chatContent(content: ModelContent): string | { type: string; text?: string; image_url?: { url: string } }[] {
-  if (typeof content === "string") return content.slice(0, 16000);
+  if (typeof content === "string") return content.slice(0, 48000);
   const parts: { type: string; text?: string; image_url?: { url: string } }[] = [];
   for (const part of content) {
     if (part.type === "image_url" && part.image_url?.url) parts.push({ type: "image_url", image_url: { url: part.image_url.url } });
@@ -261,7 +261,7 @@ async function withPictures(messages: { role: string; content: ModelContent }[])
 }
 
 function geminiParts(content: ModelContent) {
-  if (typeof content === "string") return [{ text: content.slice(0, 16000) }];
+  if (typeof content === "string") return [{ text: content.slice(0, 48000) }];
   const parts: { text?: string; inline_data?: { mime_type: string; data: string } }[] = [];
   for (const part of content) {
     if (part.type === "image_url" && part.image_url?.url) {
@@ -358,7 +358,7 @@ export async function modelChat(
             systemInstruction: system ? { parts: [{ text: system }] } : undefined,
             contents: (talk.length ? talk : packed).map((message) => ({
               role: message.role === "assistant" ? "model" : "user",
-              parts: picture ? geminiParts(message.content) : [{ text: textOf(message.content).slice(0, 16000) }],
+              parts: picture ? geminiParts(message.content) : [{ text: textOf(message.content).slice(0, 48000) }],
             })),
             generationConfig: genConfig,
           }),
@@ -409,11 +409,11 @@ export async function modelChat(
           body: JSON.stringify({
             model,
             temperature,
-            max_tokens: maxTokens,
+            max_tokens: provider === "groq" ? Math.min(maxTokens, 8192) : maxTokens,
             ...(json && !picture ? { response_format: { type: "json_object" } } : {}),
             messages: packed.map((message) => ({
               role: message.role === "system" ? "system" : message.role === "assistant" ? "assistant" : "user",
-              content: picture ? chatContent(message.content) : textOf(message.content).slice(0, 16000),
+              content: picture ? chatContent(message.content) : textOf(message.content).slice(0, 48000),
             })),
           }),
         });
@@ -443,7 +443,7 @@ export async function modelChat(
           ...(json && !picture ? { response_format: { type: "json_object" } } : {}),
           messages: packed.map((message) => ({
             role: message.role === "system" ? "system" : message.role === "assistant" ? "assistant" : "user",
-            content: picture ? chatContent(message.content) : textOf(message.content).slice(0, 16000),
+            content: picture ? chatContent(message.content) : textOf(message.content).slice(0, 48000),
           })),
         }),
       });
@@ -472,7 +472,7 @@ export async function modelChat(
             ...(json && !picture ? { response_format: { type: "json_object" } } : {}),
             messages: packed.map((message) => ({
               role: message.role === "system" ? "system" : message.role === "assistant" ? "assistant" : "user",
-              content: picture ? chatContent(message.content) : textOf(message.content).slice(0, 16000),
+              content: picture ? chatContent(message.content) : textOf(message.content).slice(0, 48000),
             })),
           }),
         });
@@ -503,7 +503,7 @@ export async function modelChat(
           systemInstruction: system ? { parts: [{ text: system }] } : undefined,
           contents: (talk.length ? talk : packed).map((message) => ({
             role: message.role === "assistant" ? "model" : "user",
-            parts: picture ? geminiParts(message.content) : [{ text: textOf(message.content).slice(0, 16000) }],
+            parts: picture ? geminiParts(message.content) : [{ text: textOf(message.content).slice(0, 48000) }],
           })),
           generationConfig: genConfig,
         }),
@@ -532,7 +532,7 @@ export async function modelChat(
             ...(json && !picture ? { response_format: { type: "json_object" } } : {}),
             messages: packed.map((message) => ({
               role: message.role,
-              content: picture ? chatContent(message.content) : textOf(message.content).slice(0, 16000),
+              content: picture ? chatContent(message.content) : textOf(message.content).slice(0, 48000),
             })),
           }),
         });
@@ -555,11 +555,11 @@ export async function modelChat(
         body: JSON.stringify({
           model: "llama-3.3-70b-versatile",
           temperature,
-          max_tokens: maxTokens,
+          max_tokens: Math.min(maxTokens, 8192),
           ...(json ? { response_format: { type: "json_object" } } : {}),
           messages: packed.map((message) => ({
             role: message.role,
-            content: textOf(message.content).slice(0, 16000),
+            content: textOf(message.content).slice(0, 48000),
           })),
         }),
       });

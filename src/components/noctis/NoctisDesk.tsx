@@ -6215,32 +6215,49 @@ export function NoctisDesk() {
         >
           <Mic className="size-5" />
         </button>
-        {busy ? (
-          <button type="button" aria-label="Stop" onClick={stop} className="inline-flex h-10 shrink-0 items-center gap-1 rounded-full bg-white px-3 text-sm font-semibold text-black">
-            <Square className="size-3.5 fill-current" />
-            Stop
-          </button>
-        ) : draft.trim() || uploads.length || attachedTabs.length || skill || imagine || activePlugin ? (
-          <button
-            type="submit"
-            aria-label="Send to Noctis"
-            className="grid size-10 sm:size-9 shrink-0 place-items-center rounded-full bg-white text-black transition hover:opacity-90 shadow-sm touch-manipulation"
-          >
-            <ArrowUp className="size-5 stroke-[2.5]" />
-          </button>
-        ) : (
-          <button
-            type="button"
-            aria-label={voiceOn ? "Close Noctis voice" : "Start Noctis live voice"}
-            onClick={() => void toggleVoice()}
-            title="Start Noctis Voice"
-            className="grid size-10 shrink-0 place-items-center rounded-full bg-[#2563eb] text-white shadow-sm transition hover:bg-[#1d4ed8]"
-          >
-            <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-              <path d="M8 9v6M12 6v12M16 9v6M4 11v2M20 11v2" />
-            </svg>
-          </button>
-        )}
+        {(() => {
+          const canSend = Boolean(draft.trim() || uploads.length || attachedTabs.length || skill || imagine || activePlugin);
+          return (
+            <>
+              <button
+                type="button"
+                aria-label={voiceOn ? "Close Noctis voice" : "Start Noctis live voice"}
+                onClick={() => void toggleVoice()}
+                title={voiceOn ? "Close Noctis Voice" : "Start Noctis Voice"}
+                className={cn(
+                  "grid size-10 sm:size-9 shrink-0 place-items-center rounded-full transition shadow-sm",
+                  voiceOn
+                    ? "bg-[#2563eb] text-white hover:bg-[#1d4ed8]"
+                    : "bg-[#2563eb]/20 text-[#60a5fa] border border-[#2563eb]/40 hover:bg-[#2563eb] hover:text-white",
+                )}
+              >
+                <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                  <path d="M8 9v6M12 6v12M16 9v6M4 11v2M20 11v2" />
+                </svg>
+              </button>
+              {busy ? (
+                <button type="button" aria-label="Stop" onClick={stop} className="inline-flex h-10 sm:h-9 shrink-0 items-center gap-1 rounded-full bg-white px-3 text-sm font-semibold text-black">
+                  <Square className="size-3.5 fill-current" />
+                  Stop
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  aria-label="Send to Noctis"
+                  title="Send to Noctis (Enter)"
+                  className={cn(
+                    "grid size-10 sm:size-9 shrink-0 place-items-center rounded-full transition shadow-sm touch-manipulation",
+                    canSend
+                      ? "bg-white text-black hover:bg-zinc-200"
+                      : "bg-white/15 text-zinc-300 border border-white/15 hover:bg-white/25 hover:text-white",
+                  )}
+                >
+                  <ArrowUp className="size-5 stroke-[2.5]" />
+                </button>
+              )}
+            </>
+          );
+        })()}
       </div>
       <div className="mt-2 flex w-full flex-wrap items-center gap-1.5">
         <button
@@ -7801,6 +7818,42 @@ export function NoctisDesk() {
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-sky-950/30 via-[#0e121a]/85 to-[#080a0f]" />
             <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:3.5rem_3.5rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#12151c]/55 via-[#12151c]/35 to-[#12151c]/80" />
+            {desk === "chat" && shelf === "chats" ? (
+              <div className="relative flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto px-4 py-8">
+                <div className="mx-auto w-full max-w-3xl mb-6 text-center space-y-2.5 animate-in fade-in duration-300">
+                  <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+                    Noctis Sovereign Systems Desk
+                  </h2>
+                  <p className="text-xs sm:text-sm text-zinc-400 max-w-lg mx-auto leading-relaxed">
+                    Autonomous software engineering, continuous verification, subagent swarms, and cross-domain SQDEC governance.
+                  </p>
+                </div>
+                <div className="mx-auto w-full max-w-3xl shrink-0 px-1 pb-4">
+                  {code ? (
+                    <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-[#e4b86a]/15 border border-[#e4b86a]/30 px-3 py-1 text-xs font-medium text-[#e4b86a]">
+                      <Code2 className="size-3.5" />
+                      <span>Code mode active: a working snippet first</span>
+                    </div>
+                  ) : null}
+                  {activeRoutes.length ? (
+                    <div className="mb-3 flex flex-wrap items-center justify-center gap-2">
+                      {activeRoutes.map((row) => (
+                        <button
+                          key={row.label}
+                          type="button"
+                          onClick={() => void send(row.ask)}
+                          className="rounded-full bg-white/10 hover:bg-white/15 px-3.5 py-1.5 text-xs font-medium text-zinc-100 border border-white/10 hover:border-white/25 transition backdrop-blur-sm cursor-pointer shadow-xs"
+                        >
+                          {row.label}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                  {composer}
+                  {error ? <p className="mt-2 text-sm text-red-400">{error}</p> : null}
+                </div>
+              </div>
+            ) : (
             <div className="relative flex min-h-0 flex-1 flex-col">
             <div className="flex min-h-0 flex-1 flex-col items-center gap-3 overflow-y-auto px-4 pt-4">
               {shelf !== "chats" && (
@@ -7953,17 +8006,7 @@ export function NoctisDesk() {
                 </>
               )}
             </div>
-            {desk === "chat" && (!thread || thread.turns.length === 0) && (
-              <div className="mx-auto w-full max-w-3xl px-4 py-12 mb-2 text-center space-y-3 animate-in fade-in duration-300">
-                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-                  Noctis Sovereign Systems Desk
-                </h2>
-                <p className="text-xs sm:text-sm text-zinc-400 max-w-lg mx-auto leading-relaxed">
-                  Autonomous software engineering, continuous verification, subagent swarms, and cross-domain SQDEC governance.
-                </p>
-              </div>
-            )}
-            <div className="mx-auto w-full max-w-3xl shrink-0 px-3 pt-2 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)]">
+            <div className="mx-auto w-full max-w-3xl shrink-0 px-3 pt-2 pb-[calc(env(safe-area-inset-bottom,0px)+1rem)]">
               {code ? (
                 <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-[#e4b86a]/15 border border-[#e4b86a]/30 px-3 py-1 text-xs font-medium text-[#e4b86a]">
                   <Code2 className="size-3.5" />
@@ -7977,7 +8020,7 @@ export function NoctisDesk() {
                       key={row.label}
                       type="button"
                       onClick={() => void send(row.ask)}
-                      className="rounded-full bg-white/10 hover:bg-white/15 px-3.5 py-1.5 text-xs font-medium text-zinc-100 border border-white/5 hover:border-white/20 transition backdrop-blur-sm cursor-pointer shadow-xs"
+                      className="rounded-full bg-white/10 hover:bg-white/15 px-3.5 py-1.5 text-xs font-medium text-zinc-100 border border-white/10 hover:border-white/25 transition backdrop-blur-sm cursor-pointer shadow-xs"
                     >
                       {row.label}
                     </button>
@@ -7988,6 +8031,7 @@ export function NoctisDesk() {
               {error ? <p className="mt-2 text-sm text-red-400">{error}</p> : null}
             </div>
             </div>
+            )}
           </div>
         ) : (
           <>

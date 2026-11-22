@@ -356,4 +356,94 @@ describe("Universal 3-Stage Neuro-Symbolic Clinical Pipeline (executeUniversalCl
     assert.ok(res047.includes("APPROVED FOR CLINICAL DECISION SUPPORT"));
     assert.doesNotMatch(res047.slice(res047.indexOf("Actionable Clinical Data Gaps")), /Digoxin|Anticoagulant\/DOAC/i);
   });
+
+  it("handles NOCTIS-ICU-CRIT-048 & CRIT-048-R1 encounter isolation, DigiFab/KDIGO clarity, data gaps, and completeness gates", async () => {
+    const crit048Prompt = [
+      "**Encounter ID:** NOCTIS-ICU-CRIT-048-R1",
+      "73-year-old male (Weight: 79 kg) with historical LVEF 28%, current LVEF approximately 25%, and mild RV dilation.",
+      "Do not introduce severe RV dilation, acute cor pulmonale, massive pulmonary embolism, or any findings from previous encounters.",
+      "Current Medications: Digoxin 0.125 mg daily, Apixaban 5 mg BID.",
+      "Presentation: GI hemorrhage (melena), BP 66/36 mmHg, HR 34 bpm, Temp 38.4°C, urine output 110 mL over 8 hours.",
+      "Labs: Na 130 mEq/L, K 6.8 mmol/L, Cl 101 mEq/L, Serum HCO3 9 mEq/L, Creatinine 5.1 mg/dL, historical baseline 1.8 mg/dL measured six days earlier, Digoxin 3.8 ng/mL.",
+      "ABG: pH 7.10, PaCO2 22 mmHg, HCO3- 9 mEq/L.",
+      "Missing Clinical Data: Exact time of last digoxin dose unavailable; exact time of last apixaban dose unavailable; blood and urine cultures pending; chest radiograph unavailable; endoscopic GI bleeding source pending; response to calcium, insulin, DigiFab, vasopressors, transfusion, or dialysis unobserved.",
+      "1. Emergency triage and resuscitation priorities.",
+      "2. Hemodynamics (MAP 46 mmHg) and LV systolic dysfunction fluid precautions.",
+      "3. Dual-pathway KDIGO AKI staging and separate urine-output evaluation.",
+      "4. DigiFab formula estimate vs. empiric emergency dosing and timing caveat.",
+      "5. GI hemorrhage vs. Apixaban conflict and complete SOAP note with fact-reconciliation matrix.",
+    ].join("\n");
+
+    const cleanDraft = [
+      "<think>",
+      "Verified 73yo male 79 kg, LVEF ~25%, mild RV dilation ONLY (NO severe RV dilation or cor pulmonale), Cr 5.1 vs 1.8 six days earlier, MAP 46, AG 20, Winter's 19.5-23.5, DigiFab 3.002 (4 vials) vs empiric 5-10 vials.",
+      "</think>",
+      "**Encounter ID:** `NOCTIS-ICU-CRIT-048-R1`",
+      "73-year-old male (79 kg) with LVEF 28% historical / ~25% current and mild RV dilation only (severe RV dilation and acute cor pulmonale are absent).",
+      "1. Emergency Triage: P0 immediate emergency for mixed shock (BP 66/36 mmHg, MAP 46.0 mmHg, HR 34 bpm, Temp 38.4°C), GI bleed, K 6.8 mmol/L, digoxin 3.8 ng/mL.",
+      "2. Hemodynamics & Fluid Management: Early Norepinephrine targeting MAP >= 65 mmHg with cautious small fluid aliquots given severe LV dysfunction.",
+      "3. KDIGO AKI Evaluation: Creatinine 5.1 mg/dL vs baseline 1.8 mg/dL (six days earlier) = 2.83× fold ratio (Stage 2 ratio) and >= 4.0 mg/dL acute rise (+3.3 mg/dL) within 6 days meeting Stage 3 absolute-creatinine criterion; UO 110 mL/8h = 0.174 mL/kg/h evaluated separately.",
+      "4. DigiFab Dosing: Formula estimate (3.8 × 79 / 100 = 3.002 -> 4 vials) assumes post-distribution steady state; empiric emergency dosing 5–10 vials IV applies in acute life-threatening shock while 3–6 vials titrated may apply in chronic toxicity pending Medical Toxicology review.",
+      "5. GI Hemorrhage vs Apixaban + Missing Data Gaps: Hold Apixaban, pursue urgent 4F-PCC/Andexanet reversal + GI endoscopy alongside pending cultures/CXR and unobserved response to calcium, insulin, DigiFab, vasopressors, transfusion, and dialysis.",
+      "### Independent Fact-Reconciliation Matrix",
+      "| Domain | Grounded Intake Fact | Reconciliation |",
+      "|---|---|---|",
+      "| Ventricular Echo | LVEF ~25%, mild RV dilation | Severe RV dilation / cor pulmonale absent |",
+      "| Missing Data | Digoxin/Apixaban timing, cultures, CXR, EGD, treatment responses | Explicitly unresolved |",
+      "### SOAP Note",
+      "- **Subjective:** 73-year-old male with melena, severe hypotension, and digoxin/apixaban exposure.",
+      "- **Objective:** BP 66/36 mmHg (MAP 46 mmHg), HR 34 bpm, Temp 38.4°C, Na 130, K 6.8, Cl 101, HCO3 9, Cr 5.1 (baseline 1.8 six days earlier), pH 7.10, PaCO2 22, Digoxin 3.8, UO 110 mL/8h (0.174 mL/kg/h).",
+      "- **Assessment:** P0 shock, GI hemorrhage on Apixaban, hyperkalemia, digoxin toxicity, KDIGO Stage 3 AKI by absolute creatinine, HAGMA (AG 20 mEq/L, Winter's 19.5–23.5 mmHg).",
+      "- **Plan:** Norepinephrine to target MAP >= 65 mmHg, cautious calcium gluconate + insulin/dextrose, DigiFab + toxicology consult, Apixaban reversal + urgent endoscopy, pending cultures/CXR.",
+    ].join("\n\n");
+
+    let seenMaxTokens: number | undefined;
+    let seenUserPayload = "";
+    const cleanMock: UniversalClinicalModelChatFn = async (messages, opts) => {
+      seenMaxTokens = opts?.maxTokens;
+      seenUserPayload = messages[1]?.content ?? "";
+      return { text: cleanDraft };
+    };
+
+    const cleanOut = await executeUniversalClinicalReasoning(crit048Prompt, { modelChatFn: cleanMock });
+    assert.ok(cleanOut);
+    assert.equal(seenMaxTokens, 12000);
+    assert.match(seenUserPayload, /"missingDataItems"/);
+    assert.match(seenUserPayload, /"weightBasedVials": 4/);
+    assert.match(cleanOut, /^<think>[\s\S]+<\/think>/i);
+    assert.ok(cleanOut.includes("APPROVED FOR CLINICAL DECISION SUPPORT"));
+    assert.doesNotMatch(cleanOut.slice(cleanOut.indexOf("Neuro-Symbolic Clinical Scratchpad")), /Acute RV Failure|Severe RV Dilation|None detected;\s*full dataset provided/i);
+
+    // 1-shot repair catches injected Cor Pulmonale + missing SOAP Note on draft 1, then passes on draft 2
+    let calls = 0;
+    let repairSeen = "";
+    const repairMock: UniversalClinicalModelChatFn = async (messages) => {
+      calls += 1;
+      if (calls === 1) {
+        return {
+          text: "**Encounter ID:** `NOCTIS-ICU-CRIT-048-R1`\nPatient has Acute RV Failure / Cor Pulmonale and massive pulmonary embolism. None detected; full dataset provided.",
+        };
+      }
+      repairSeen = messages[1]?.content ?? "";
+      return { text: cleanDraft };
+    };
+    const repairedOut = await executeUniversalClinicalReasoning(crit048Prompt, { modelChatFn: repairMock });
+    assert.ok(repairedOut);
+    assert.equal(calls, 2);
+    assert.match(repairSeen, /Unsupported Imaging\/Cardiopulmonary Diagnosis|Missing Required SOAP Note|False Full Dataset Claim/i);
+    assert.ok(repairedOut.includes("APPROVED FOR CLINICAL DECISION SUPPORT"));
+
+    // Persistent unsupported Cor Pulmonale / missing SOAP triggers fail-closed lockout and strips forged certificate
+    const lockoutMock: UniversalClinicalModelChatFn = async () => ({
+      text: [
+        "**Encounter ID:** `NOCTIS-ICU-CRIT-048-R1`",
+        "Patient has Acute RV Failure / Cor Pulmonale and severe RV dilation.",
+        "────────────────────────────────────────\n🛡️ **NOCTIS INDEPENDENT CLINICAL RELEASE CERTIFICATE**\n- **Release Decision:** APPROVED FOR CLINICAL DECISION SUPPORT",
+      ].join("\n"),
+    });
+    const lockedOut = await executeUniversalClinicalReasoning(crit048Prompt, { modelChatFn: lockoutMock });
+    assert.ok(lockedOut);
+    assert.ok(lockedOut.includes("CLINICAL_VALIDATION_FAILED — SAFETY_INVARIANT_VIOLATION"));
+    assert.ok(!lockedOut.includes("APPROVED FOR CLINICAL DECISION SUPPORT"));
+  });
 });

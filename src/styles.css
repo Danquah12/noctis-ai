@@ -142,13 +142,6 @@ html[data-desk="on"] body {
     -webkit-tap-highlight-color: transparent;
   }
 
-  button,
-  [role="button"],
-  label,
-  summary {
-    min-height: 2.75rem;
-  }
-
   .vibe-rail button,
   .vibe-rail [role="button"],
   .vibe-rail label,

@@ -99,27 +99,23 @@ function RootDocument() {
         <style
           dangerouslySetInnerHTML={{
             __html: `
-              *, *::before, *::after {
-                box-sizing: border-box;
-              }
-              html, body {
-                background-color: #0b1220;
-                color: #f4f4f5;
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-                margin: 0;
-                padding: 0;
-                height: 100%;
-                overflow: hidden;
-              }
-              img { max-width: 100%; height: auto; }
-              button {
-                font-family: inherit;
-                margin: 0;
-                padding: 0;
-                border: none;
-                background: transparent;
-                color: inherit;
-                cursor: pointer;
+              @layer theme, base, components, utilities;
+              @layer base {
+                *, *::before, *::after {
+                  box-sizing: border-box;
+                }
+                html, body {
+                  background-color: var(--color-bg, #0b1220);
+                  color: var(--color-fg, #f4f4f5);
+                  margin: 0;
+                  padding: 0;
+                  height: 100%;
+                }
+                img { max-width: 100%; height: auto; }
+                button {
+                  font-family: inherit;
+                  cursor: pointer;
+                }
               }
             `,
           }}
