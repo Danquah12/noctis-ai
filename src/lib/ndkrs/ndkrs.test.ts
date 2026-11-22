@@ -238,7 +238,9 @@ describe("NDKRS Full Deterministic Knowledge & Reasoning System", () => {
     assert.ok(lockedOut?.includes("CLINICAL_VALIDATION_FAILED"));
 
     const certs = await listValidationCertificates(20);
-    assert.ok(certs.some((c) => c.domain === "clinical" && c.verdict === "FAIL_CLOSED"));
+    const clinicalFailCert = certs.find((c) => c.domain === "clinical" && c.verdict === "FAIL_CLOSED");
+    assert.ok(clinicalFailCert);
+    assert.equal(verifyCertificateSignature(clinicalFailCert), true, "Persisted DB cert MUST verify HMAC after SQL round-trip");
 
     const gaps = await listKnowledgeGaps(20);
     assert.ok(gaps.some((g) => g.domain === "clinical"));

@@ -24,6 +24,16 @@ export interface NdkrsSql {
   query<T = Record<string, unknown>>(text: string, params?: unknown[]): Promise<T[]>;
 }
 
+function toIsoTimestamp(val: unknown): string {
+  if (val instanceof Date) return val.toISOString();
+  return new Date(String(val)).toISOString();
+}
+
+function toNullableIsoTimestamp(val: unknown): string | null {
+  if (val === null || val === undefined || val === "") return null;
+  return toIsoTimestamp(val);
+}
+
 let resolvedBackendPromise: Promise<{ sql: NdkrsSql; dbSource: "neon" | "pglite" }> | null = null;
 let schemaReadyPromise: Promise<void> | null = null;
 let pgvectorChecked: boolean | null = null;
@@ -342,16 +352,16 @@ export async function upsertKnowledgeSource(input: {
     sourceUri: String(r.source_uri),
     trustTier: String(r.trust_tier) as TrustTier,
     version: String(r.version),
-    effectiveDate: r.effective_date ? new Date(String(r.effective_date)).toISOString() : null,
-    expiresAt: r.expires_at ? new Date(String(r.expires_at)).toISOString() : null,
+    effectiveDate: toNullableIsoTimestamp(r.effective_date),
+    expiresAt: toNullableIsoTimestamp(r.expires_at),
     contentSha256: String(r.content_sha256),
     storageRef: r.storage_ref ? String(r.storage_ref) : null,
     status: String(r.status) as VerificationStatus,
     ingestedBy: String(r.ingested_by),
     approvedBy: r.approved_by ? String(r.approved_by) : null,
-    approvedAt: r.approved_at ? new Date(String(r.approved_at)).toISOString() : null,
-    createdAt: new Date(String(r.created_at)).toISOString(),
-    updatedAt: new Date(String(r.updated_at)).toISOString(),
+    approvedAt: toNullableIsoTimestamp(r.approved_at),
+    createdAt: toIsoTimestamp(r.created_at),
+    updatedAt: toIsoTimestamp(r.updated_at),
   };
 }
 
@@ -430,15 +440,15 @@ function mapKnowledgeRecord(r: Record<string, unknown>): KnowledgeRecord {
       : {}) as Record<string, unknown>,
     citationLabel: String(r.citation_label),
     version: String(r.version),
-    effectiveDate: r.effective_date ? new Date(String(r.effective_date)).toISOString() : null,
-    expiresAt: r.expires_at ? new Date(String(r.expires_at)).toISOString() : null,
+    effectiveDate: toNullableIsoTimestamp(r.effective_date),
+    expiresAt: toNullableIsoTimestamp(r.expires_at),
     verificationStatus: String(r.verification_status) as VerificationStatus,
     recordSha256: String(r.record_sha256),
     createdBy: String(r.created_by),
     approvedBy: r.approved_by ? String(r.approved_by) : null,
-    approvedAt: r.approved_at ? new Date(String(r.approved_at)).toISOString() : null,
-    createdAt: new Date(String(r.created_at)).toISOString(),
-    updatedAt: new Date(String(r.updated_at)).toISOString(),
+    approvedAt: toNullableIsoTimestamp(r.approved_at),
+    createdAt: toIsoTimestamp(r.created_at),
+    updatedAt: toIsoTimestamp(r.updated_at),
   };
 }
 
@@ -562,8 +572,8 @@ export async function listDeterministicRules(domain?: NdkrsDomain): Promise<Dete
     executorRef: String(r.executor_ref),
     status: String(r.status) as "PENDING_REVIEW" | "VERIFIED" | "DEPRECATED",
     approvedBy: r.approved_by ? String(r.approved_by) : null,
-    createdAt: new Date(String(r.created_at)).toISOString(),
-    updatedAt: new Date(String(r.updated_at)).toISOString(),
+    createdAt: toIsoTimestamp(r.created_at),
+    updatedAt: toIsoTimestamp(r.updated_at),
   }));
 }
 
@@ -626,8 +636,8 @@ export function mapReviewQueueItem(r: Record<string, unknown>): ReviewQueueItem 
     reviewerId: r.reviewer_id ? String(r.reviewer_id) : null,
     reviewerRole: r.reviewer_role ? String(r.reviewer_role) : null,
     reviewerNotes: r.reviewer_notes ? String(r.reviewer_notes) : null,
-    decidedAt: r.decided_at ? new Date(String(r.decided_at)).toISOString() : null,
-    createdAt: new Date(String(r.created_at)).toISOString(),
+    decidedAt: toNullableIsoTimestamp(r.decided_at),
+    createdAt: toIsoTimestamp(r.created_at),
   };
 }
 
@@ -683,7 +693,7 @@ export async function listValidationCertificates(limit = 25): Promise<Validation
       : [],
     hmacSignature: String(r.hmac_signature),
     keyMode: String(r.key_mode),
-    createdAt: new Date(String(r.created_at)).toISOString(),
+    createdAt: toIsoTimestamp(r.created_at),
   }));
 }
 
@@ -726,8 +736,8 @@ export async function logKnowledgeGap(input: {
     validatorRuleIds: Array.isArray(r.validator_rule_ids) ? r.validator_rule_ids.map(String) : [],
     occurrences: Number(r.occurrences || 1),
     status: String(r.status) as KnowledgeGapRecord["status"],
-    lastSeenAt: new Date(String(r.last_seen_at)).toISOString(),
-    createdAt: new Date(String(r.created_at)).toISOString(),
+    lastSeenAt: toIsoTimestamp(r.last_seen_at),
+    createdAt: toIsoTimestamp(r.created_at),
   };
 }
 
@@ -746,8 +756,8 @@ export async function listKnowledgeGaps(limit = 25): Promise<KnowledgeGapRecord[
     validatorRuleIds: Array.isArray(r.validator_rule_ids) ? r.validator_rule_ids.map(String) : [],
     occurrences: Number(r.occurrences || 1),
     status: String(r.status) as KnowledgeGapRecord["status"],
-    lastSeenAt: new Date(String(r.last_seen_at)).toISOString(),
-    createdAt: new Date(String(r.created_at)).toISOString(),
+    lastSeenAt: toIsoTimestamp(r.last_seen_at),
+    createdAt: toIsoTimestamp(r.created_at),
   }));
 }
 

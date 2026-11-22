@@ -461,8 +461,8 @@ describe("Universal 3-Stage Neuro-Symbolic Clinical Pipeline (executeUniversalCl
 
     const accurateMock: UniversalClinicalModelChatFn = async () => ({
       text: [
-        "Current creatinine is 5.1 mg/dL and baseline creatinine was 1.8 mg/dL six days earlier (fold ratio 2.83×).",
-        "KDIGO Stage 3 AKI by absolute-creatinine criterion (>= 4.0 mg/dL with +3.3 mg/dL acute rise within 6 days); fold ratio 2.83× alone is in Stage 2 range.",
+        "1. Creatinine ratio = 5.1 / 1.8 = 2.83× baseline. Current creatinine is 5.1 mg/dL and baseline creatinine was 1.8 mg/dL six days earlier.",
+        "2. KDIGO Stage 3 AKI by absolute-creatinine criterion (>= 4.0 mg/dL with +3.3 mg/dL acute rise within 6 days); fold ratio 2.83× alone is in Stage 2 range.",
         "### Missing Clinical Data Gaps\n- Body weight [UNMEASURED], serum chloride [UNMEASURED], ABG [UNMEASURED], urine output [UNMEASURED].",
         "### Independent Fact-Reconciliation Matrix\n| Item | Intake |\n|---|---|\n| Cr | 5.1 (baseline 1.8 six days earlier) |",
         "### SOAP Note\n- Subjective: Renal assessment.\n- Objective: Cr 5.1 mg/dL, baseline 1.8 mg/dL.\n- Assessment: KDIGO Stage 3 AKI.\n- Plan: Urgent nephrology evaluation; weight/Cl-/ABG/UO acquisition.",

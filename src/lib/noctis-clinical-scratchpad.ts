@@ -1795,20 +1795,33 @@ export function validateCrossSectionClinicalConsistency(
   if (scratchpad.derivedCalculations.kdigoAki.crFoldRatio !== null) {
     const expectedRatio = scratchpad.derivedCalculations.kdigoAki.crFoldRatio;
     const ratioRegexes = [
-      /\b(?:creatinine\s+)?(?:fold[- ]?change\s+|fold\s+)?ratio\s*(?:is|of|was|=|:)?\s*(\d+(?:\.\d+)?)\s*[x×]?\b/gi,
+      /\b(?:creatinine\s+fold[- ]?change\s+ratio|creatinine\s+fold\s+ratio|creatinine\s+ratio|fold[- ]?change\s+ratio|fold\s+ratio)\s*(?:is|of|was|=|:)?\s*(\d+(?:\.\d+)?)\s*[x×]?\b/gi,
       /\(\s*ratio\s*(\d+(?:\.\d+)?)\s*[x×]?\s*\)/gi,
     ];
     for (const rRegex of ratioRegexes) {
       for (const m of narrativeOnlyText.matchAll(rRegex)) {
         const idx = m.index ?? 0;
+        const beforeCtx = narrativeOnlyText.slice(Math.max(0, idx - 20), idx);
+        if (/\b(?:bun\s*[\/:]\s*|urea\s*[\/:]\s*|odds\s+|pao2\s*[\/:]\s*)$/i.test(beforeCtx)) continue;
         const ctx = narrativeOnlyText.slice(Math.max(0, idx - 35), Math.min(narrativeOnlyText.length, idx + m[0].length + 35));
         if (/[<>≤≥]|kdigo\s*(?:stage|criteria)|threshold|definition|range|1\.5|2\.0–|3\.0\+/i.test(ctx)) continue;
-        const val = parseFloat(m[1]);
+
+        const afterMatch = narrativeOnlyText.slice(idx + m[0].length, idx + m[0].length + 40);
+        // Handle inline division expressions like "Creatinine ratio = 5.1 / 1.8 = 2.83x"
+        const divEqMatch = afterMatch.match(
+          /^\s*(?:mg\/dl\s*)?(?:\/|÷|divided\s+by)\s*\d+(?:\.\d+)?(?:\s*mg\/dl)?(?:\s*=\s*(\d+(?:\.\d+)?))?/i,
+        );
+        let val = parseFloat(m[1]);
+        if (divEqMatch) {
+          if (!divEqMatch[1]) continue; // Formula without right-hand product yet; do not mistake numerator for ratio
+          val = parseFloat(divEqMatch[1]);
+        }
+
         if (Number.isFinite(val) && Math.abs(val - expectedRatio) > 0.15) {
           violations.push({
             item: "Creatinine Fold-Ratio Mismatch",
             sectionA: `Scratchpad KDIGO Ratio (${expectedRatio}×)`,
-            sectionB: `Dossier Text (${m[0]})`,
+            sectionB: `Dossier Text (${m[0]}${divEqMatch ? divEqMatch[0] : ""})`,
             issue: `Creatinine Fold-Ratio Mismatch: Stated creatinine ratio (${val}×) conflicts with deterministic calculation (${expectedRatio}× = ${scratchpad.labs.creatinineMgDl} / ${scratchpad.labs.baselineCreatinineMgDl}).`,
           });
         }

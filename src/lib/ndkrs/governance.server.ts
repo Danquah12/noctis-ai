@@ -114,7 +114,7 @@ export async function scanStaleKnowledgeRecords(warningDays = 30): Promise<{
 
   for (const r of rows) {
     if (!r.expires_at) continue;
-    const expIso = new Date(String(r.expires_at)).toISOString();
+    const expIso = r.expires_at instanceof Date ? r.expires_at.toISOString() : new Date(String(r.expires_at)).toISOString();
     const expMs = new Date(expIso).getTime();
     const item = {
       id: String(r.id),
