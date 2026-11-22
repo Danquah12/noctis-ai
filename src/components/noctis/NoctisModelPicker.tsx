@@ -439,13 +439,15 @@ export function NoctisModelPicker({
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    if (currentModelId && NOCTIS_MODELS.some((m) => m.id === currentModelId)) {
+      setActiveModel(currentModelId);
+    } else if (typeof window !== "undefined") {
       const stored = localStorage.getItem("noctis_active_model");
       if (stored && NOCTIS_MODELS.some((m) => m.id === stored)) {
         setActiveModel(stored);
       }
     }
-  }, []);
+  }, [currentModelId]);
 
   const updatePosition = () => {
     if (buttonRef.current) {
@@ -563,14 +565,20 @@ export function NoctisModelPicker({
           >
             {/* Header with Title and Search Input */}
             <div className="pb-2 border-b border-white/10 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-zinc-200 flex items-center gap-1.5">
-                  <Sparkles className="size-3.5 text-[#e4b86a]" />
-                  <span>Intelligence Engines & Systems</span>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-bold text-zinc-200 flex items-center gap-1.5 truncate">
+                  <Sparkles className="size-3.5 text-[#e4b86a] shrink-0" />
+                  <span className="truncate">Intelligence Engines & Systems</span>
                 </span>
-                <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-mono text-zinc-400">
-                  {filtered.length} available
-                </span>
+                <div className="flex items-center gap-1 shrink-0">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[9.5px] font-semibold text-emerald-300">
+                    <Brain className="size-2.5" />
+                    Deep Thinking
+                  </span>
+                  <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-mono text-zinc-400">
+                    {filtered.length}
+                  </span>
+                </div>
               </div>
 
               {/* Search Box */}

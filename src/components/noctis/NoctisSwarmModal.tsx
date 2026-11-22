@@ -29,6 +29,7 @@ import {
   type SwarmMissionResult,
   type SwarmRole,
 } from "@/lib/noctis-work-swarm";
+import { NoctisSuiteDeepThinkBar } from "@/components/noctis/NoctisSuiteDeepThinkBar";
 
 interface NoctisSwarmModalProps {
   open: boolean;
@@ -199,6 +200,20 @@ export function NoctisSwarmModal({
             );
           })}
         </div>
+
+        <NoctisSuiteDeepThinkBar
+          suiteId="suite-swarm"
+          scenarioLabel={result.mission.name}
+          dossierMarkdown={dossierMarkdown}
+          onRunInChat={
+            onInsertToChat
+              ? (text) => {
+                  onInsertToChat(text);
+                  onClose();
+                }
+              : undefined
+          }
+        />
 
         {/* Modal Main Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">

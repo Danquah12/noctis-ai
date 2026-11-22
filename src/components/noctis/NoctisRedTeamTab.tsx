@@ -38,6 +38,13 @@ import {
   type AdversarialEvaluation,
 } from "@/lib/noctis-llm-redteam";
 import { getBrainConfig } from "@/lib/noctis-brain";
+import { NoctisLiveThinkingPanel, NoctisThinkingAccordion } from "./NoctisThinkingAccordion";
+import {
+  buildStructuredDeepThinkTrace,
+  mapWorkspaceModelToEngineId,
+  parseThinkEnvelope,
+  resolveNoctisEngine,
+} from "@/lib/noctis-engine-registry";
 
 interface NoctisRedTeamTabProps {
   onSendToChat?: (briefing: string) => void;
@@ -57,6 +64,7 @@ export function NoctisRedTeamTab({ onSendToChat, onClose }: NoctisRedTeamTabProp
   const [probeResult, setProbeResult] = useState<{
     status: "DEFENDED" | "VULNERABLE" | "INCONCLUSIVE";
     output: string;
+    thought?: string;
     latencyMs: number;
     asrScore: number;
     confidence?: number;
@@ -76,6 +84,7 @@ export function NoctisRedTeamTab({ onSendToChat, onClose }: NoctisRedTeamTabProp
     setProbing(true);
     setProbeResult(null);
     const start = Date.now();
+    const resolvedEngineId = mapWorkspaceModelToEngineId(targetModel, "desk-redteam");
 
     // 1. Raw / Unprotected breach simulation mode
     if (!shieldActive) {
@@ -85,6 +94,12 @@ export function NoctisRedTeamTab({ onSendToChat, onClose }: NoctisRedTeamTabProp
       setProbeResult({
         status: "VULNERABLE",
         output: simulatedBreach,
+        thought: buildStructuredDeepThinkTrace(
+          "desk-redteam",
+          selectedTest.name,
+          "Simulated unshielded adversarial breach without guardrail enforcement",
+          simulatedBreach.slice(0, 400),
+        ),
         latencyMs: Math.max(380, Date.now() - start),
         asrScore: 100,
         confidence: 99,
@@ -125,6 +140,8 @@ export function NoctisRedTeamTab({ onSendToChat, onClose }: NoctisRedTeamTabProp
           body: JSON.stringify({
             turns: [{ role: "user", content: customPayload }],
             brain: brainConfig,
+            think: true,
+            engine: resolvedEngineId,
             code: false,
           }),
         });
@@ -133,17 +150,28 @@ export function NoctisRedTeamTab({ onSendToChat, onClose }: NoctisRedTeamTabProp
         rawText = data?.text || "";
       }
 
+      const { thought: extractedThought, body: parsedBody } = parseThinkEnvelope(rawText);
+      let cleanBody = parsedBody;
+
       // If no external key or generic fallback returned, provide the authentic model red-team response
-      if (!rawText || (rawText === "I cannot assist with that request." && !targetModel.includes("Ultra"))) {
-        rawText = getModelRedTeamSimulation(targetModel, selectedTest.id, true);
+      if (!cleanBody || (cleanBody === "I cannot assist with that request." && !targetModel.includes("Ultra"))) {
+        cleanBody = getModelRedTeamSimulation(targetModel, selectedTest.id, true);
       }
 
       const elapsed = Date.now() - start;
-      const evalResult = evaluateAdversarialDefense(rawText, customPayload, selectedTest);
+      const evalResult = evaluateAdversarialDefense(cleanBody, customPayload, selectedTest);
 
       setProbeResult({
         status: evalResult.defended ? "DEFENDED" : "VULNERABLE",
-        output: rawText,
+        output: cleanBody,
+        thought:
+          extractedThought ||
+          buildStructuredDeepThinkTrace(
+            resolvedEngineId,
+            selectedTest.name,
+            `Evaluated ${selectedTest.vectorId} payload against ${targetModel} guardrails`,
+            cleanBody.slice(0, 400),
+          ),
         latencyMs: elapsed || 740,
         asrScore: evalResult.defended ? 0 : 100,
         confidence: evalResult.confidence,
@@ -155,6 +183,12 @@ export function NoctisRedTeamTab({ onSendToChat, onClose }: NoctisRedTeamTabProp
       setProbeResult({
         status: evalResult.defended ? "DEFENDED" : "VULNERABLE",
         output: simulatedDefense,
+        thought: buildStructuredDeepThinkTrace(
+          resolvedEngineId,
+          selectedTest.name,
+          `Evaluated ${selectedTest.vectorId} defense posture via fallback simulation`,
+          simulatedDefense.slice(0, 400),
+        ),
         latencyMs: Date.now() - start,
         asrScore: 0,
         confidence: 96,
@@ -676,9 +710,23 @@ ${AI_CVE_ADVISORIES.map((c) => `- ${c.cveId}: ${c.title} (CVSS ${c.cvss} ${c.sev
                   )}
                 </div>
 
-                <div className="flex-1 p-4 overflow-y-auto font-mono text-xs text-zinc-200 whitespace-pre-wrap leading-relaxed">
-                  {probeResult ? (
-                    probeResult.output
+                <div className="flex-1 p-4 overflow-y-auto font-mono text-xs text-zinc-200 whitespace-pre-wrap leading-relaxed space-y-3">
+                  {probing ? (
+                    <NoctisLiveThinkingPanel
+                      label={`${targetModel} — Adversarial Deep Thinking…`}
+                      stages={resolveNoctisEngine("desk-redteam").thinkingStages}
+                    />
+                  ) : probeResult ? (
+                    <>
+                      {probeResult.thought && (
+                        <NoctisThinkingAccordion
+                          rawThought={probeResult.thought}
+                          durationSeconds={Math.max(1, Math.round(probeResult.latencyMs / 1000))}
+                          engineName={`AI Red Team · ${targetModel}`}
+                        />
+                      )}
+                      <div>{probeResult.output}</div>
+                    </>
                   ) : (
                     <span className="text-zinc-600 italic">
                       Click 'Launch Adversarial Probe' to test {targetModel} against this payload and see real-time defense evaluation.

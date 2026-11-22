@@ -21,6 +21,7 @@ import {
   formatEnclaveAttestationMarkdown,
   type EnclaveAttestationQuote,
 } from "@/lib/noctis-enclave-attestation";
+import { NoctisSuiteDeepThinkBar } from "@/components/noctis/NoctisSuiteDeepThinkBar";
 
 interface NoctisEnclaveModalProps {
   open: boolean;
@@ -193,6 +194,20 @@ export function NoctisEnclaveModal({
             </button>
           </div>
         </div>
+
+        <NoctisSuiteDeepThinkBar
+          suiteId="suite-enclave"
+          scenarioLabel={quote.architecture}
+          dossierMarkdown={dossierMarkdown}
+          onRunInChat={
+            onInsertToChat
+              ? (text) => {
+                  onInsertToChat(text);
+                  onClose();
+                }
+              : undefined
+          }
+        />
 
         {/* Main Body */}
         <div className="flex flex-1 flex-col lg:flex-row overflow-hidden">

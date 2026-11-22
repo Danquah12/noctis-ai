@@ -25,6 +25,7 @@ import {
   type EpistemicBadgeType,
   type TruthLedgerBundle,
 } from "@/lib/noctis-truth-ledger";
+import { NoctisSuiteDeepThinkBar } from "@/components/noctis/NoctisSuiteDeepThinkBar";
 
 interface NoctisTruthLedgerModalProps {
   open: boolean;
@@ -221,6 +222,20 @@ export function NoctisTruthLedgerModal({
             </span>
           </button>
         </div>
+
+        <NoctisSuiteDeepThinkBar
+          suiteId="suite-truth-ledger"
+          scenarioLabel={activeBundle.documentTitle}
+          dossierMarkdown={dossierMarkdown}
+          onRunInChat={
+            onInsertToChat
+              ? (text) => {
+                  onInsertToChat(text);
+                  onClose();
+                }
+              : undefined
+          }
+        />
 
         {/* Modal Main Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">

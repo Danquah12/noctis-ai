@@ -25,6 +25,7 @@ import {
   type DigitalTwinNode,
   type SimulationControls,
 } from "@/lib/noctis-digital-twin";
+import { NoctisSuiteDeepThinkBar } from "@/components/noctis/NoctisSuiteDeepThinkBar";
 
 interface NoctisDigitalTwinModalProps {
   open: boolean;
@@ -158,6 +159,20 @@ export function NoctisDigitalTwinModal({
             </button>
           ))}
         </div>
+
+        <NoctisSuiteDeepThinkBar
+          suiteId="suite-digital-twin"
+          scenarioLabel={simulation.scenarioTitle}
+          dossierMarkdown={formatDigitalTwinDossierMarkdown(simulation)}
+          onRunInChat={
+            onInsertToChat
+              ? (text) => {
+                  onInsertToChat(text);
+                  onClose();
+                }
+              : undefined
+          }
+        />
 
         {/* Live Simulation Content Body */}
         <div className="flex flex-1 flex-col lg:flex-row overflow-hidden">

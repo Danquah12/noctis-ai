@@ -23,6 +23,7 @@ import {
   formatPqcMigrationMarkdown,
   type PqcMigrationState,
 } from "@/lib/noctis-pqc-shield";
+import { NoctisSuiteDeepThinkBar } from "@/components/noctis/NoctisSuiteDeepThinkBar";
 
 interface NoctisPqcModalProps {
   open: boolean;
@@ -180,6 +181,20 @@ export function NoctisPqcModal({
             );
           })}
         </div>
+
+        <NoctisSuiteDeepThinkBar
+          suiteId="suite-pqc"
+          scenarioLabel={currentAsset.name}
+          dossierMarkdown={dossierMarkdown}
+          onRunInChat={
+            onInsertToChat
+              ? (text) => {
+                  onInsertToChat(text);
+                  onClose();
+                }
+              : undefined
+          }
+        />
 
         {/* Main Body */}
         <div className="flex flex-1 flex-col lg:flex-row overflow-hidden">

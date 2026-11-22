@@ -24,6 +24,7 @@ import {
   formatCanaryAlertMarkdown,
   type CanaryIncidentAlert,
 } from "@/lib/noctis-canary-engine";
+import { NoctisSuiteDeepThinkBar } from "@/components/noctis/NoctisSuiteDeepThinkBar";
 
 interface NoctisCanaryModalProps {
   open: boolean;
@@ -178,6 +179,20 @@ export function NoctisCanaryModal({
             {tripped ? "Reset Alarm" : "Trigger Tripwire"}
           </button>
         </div>
+
+        <NoctisSuiteDeepThinkBar
+          suiteId="suite-canary"
+          scenarioLabel={currentToken.name}
+          dossierMarkdown={dossierMarkdown}
+          onRunInChat={
+            onInsertToChat
+              ? (text) => {
+                  onInsertToChat(text);
+                  onClose();
+                }
+              : undefined
+          }
+        />
 
         {/* Main Body */}
         <div className="flex flex-1 flex-col lg:flex-row overflow-hidden">

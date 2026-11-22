@@ -88,6 +88,7 @@ const NoctisBoardExamExplorer = lazyWithRetry(() => import("@/components/noctis/
 import { leaveHall } from "@/lib/auth/client";
 import { textFromDocx, textFromPdf, textFromRtf } from "@/lib/read-document";
 import { saveShareLink } from "@/lib/share-link";
+import { resolveNoctisEngine } from "@/lib/noctis-engine-registry";
 
 function lazyWithRetry<T extends ComponentType<any>>(importer: () => Promise<{ default: T }>) {
   return lazy(() =>
@@ -158,7 +159,7 @@ class TabErrorBoundary extends Component<
   }
 }
 
-type Turn = { role: "user" | "assistant"; content: string; images?: string[]; video?: string; clips?: string[]; audio?: string; thoughtSeconds?: number };
+type Turn = { role: "user" | "assistant"; content: string; images?: string[]; video?: string; clips?: string[]; audio?: string; thoughtSeconds?: number; engineName?: string };
 type Thread = { id: string; title: string; turns: Turn[]; temp?: boolean };
 type Upload = { id: string; name: string; kind: "text" | "image"; text?: string; dataUrl?: string };
 
@@ -3423,7 +3424,7 @@ function ClinicalHandoffView({ data, rawJson }: { data: Record<string, unknown>;
   );
 }
 
-function AnswerBody({ text, durationSeconds }: { text: string; durationSeconds?: number }) {
+function AnswerBody({ text, durationSeconds, engineName }: { text: string; durationSeconds?: number; engineName?: string }) {
   const cut = text.search(/\n\s*Claim standing:/i);
   let lesson = (cut >= 0 ? text.slice(0, cut) : text).trim();
   const stamp = cut >= 0 ? text.slice(cut).trim() : "";
@@ -3439,7 +3440,7 @@ function AnswerBody({ text, durationSeconds }: { text: string; durationSeconds?:
   return (
     <div className="space-y-3">
       {rawThought ? (
-        <NoctisThinkingAccordion rawThought={rawThought} durationSeconds={durationSeconds ?? 3} />
+        <NoctisThinkingAccordion rawThought={rawThought} durationSeconds={durationSeconds ?? 3} engineName={engineName} />
       ) : null}
       {clinicalJson ? <ClinicalHandoffView data={clinicalJson} rawJson={lesson} /> : renderBlocks(lesson)}
       {stamp ? (
@@ -3543,6 +3544,7 @@ export function NoctisDesk() {
   const [studioMenuOpen, setStudioMenuOpen] = useState(false);
   const [mediaMenuOpen, setMediaMenuOpen] = useState(false);
   const [activeCustomAgent, setActiveCustomAgent] = useState<NoctisCustomAgent | null>(null);
+  const [activeEngineId, setActiveEngineId] = useState<string>("noctis-ultra");
 
   const handleSelectEngine = (key: SovereignEngineKey, samplePrompt?: string) => {
     setCapabilityMatrixOpen(false);
@@ -3578,6 +3580,10 @@ export function NoctisDesk() {
   useEffect(() => {
     try {
       setActiveCustomAgent(getActiveCustomAgent());
+      const storedEngine = typeof window !== "undefined" ? localStorage.getItem("noctis_active_model") : null;
+      if (storedEngine) {
+        setActiveEngineId(resolveNoctisEngine(storedEngine).id);
+      }
     } catch {
       /* ignore client hydration */
     }
@@ -3600,12 +3606,13 @@ export function NoctisDesk() {
           turns: [{ role: "user", content: prompt }],
           desk: "chat",
           skill: "write",
-          think: false,
+          think: true,
+          engine: activeEngineId,
           speaks: "English",
         },
       });
       const picked = pickAnswer(res);
-      const updated = (picked.answer.split(/\n\s*Claim standing:/i)[0] || picked.answer).trim();
+      const updated = (stripThinkBlock(picked.answer).split(/\n\s*Claim standing:/i)[0] || stripThinkBlock(picked.answer)).trim();
       if (updated) {
         setCanvasContent(updated);
       }
@@ -4103,6 +4110,7 @@ export function NoctisDesk() {
           think,
           code: code || isCodeOrSecurity,
           skill: isTrainCmd ? "talk" : useSkill || "talk",
+          engine: activeEngineId,
           level: depthLock === "auto"
             ? levelFromProgress(
                 turns.filter((turn) => turn.role === "user").at(-1)?.content || "",
@@ -4154,7 +4162,8 @@ export function NoctisDesk() {
       return "";
     }
     const thoughtSeconds = Math.max(1, Math.round((Date.now() - replyStartedAt) / 1000));
-    setThreads((rows) => rows.map((row) => (row.id === id ? { ...row, turns: [...turns, { role: "assistant", content: answer, images: shots, thoughtSeconds }] } : row)));
+    const resolvedEngineName = resolveNoctisEngine(activeEngineId).name;
+    setThreads((rows) => rows.map((row) => (row.id === id ? { ...row, turns: [...turns, { role: "assistant", content: answer, images: shots, thoughtSeconds, engineName: resolvedEngineName }] } : row)));
     const asked = [...turns].reverse().find((turn) => turn.role === "user")?.content ?? title;
     const note = markDna(asked);
     if (note) awardXp(2);
@@ -7556,6 +7565,13 @@ export function NoctisDesk() {
             </div>
 
             <NoctisModelPicker
+              currentModelId={activeEngineId}
+              onModelSelect={(modelId) => {
+                const resolved = resolveNoctisEngine(modelId);
+                setActiveEngineId(resolved.id);
+                setThink(true);
+                if (desk !== "chat" && desk !== "study") switchDesk("chat");
+              }}
               onOpenBrainModal={() => setBrainModalOpen(true)}
               onSelectDesk={(d) => switchDesk(d)}
               onSelectEngine={(key) => handleSelectEngine(key)}
@@ -8147,7 +8163,7 @@ export function NoctisDesk() {
                                 }}
                               />
                             ) : null}
-                            <AnswerBody text={turn.content} durationSeconds={turn.thoughtSeconds} />
+                            <AnswerBody text={turn.content} durationSeconds={turn.thoughtSeconds} engineName={turn.engineName} />
                           </div>
                           {turn.video || (turn.images?.length && /Written by Noctis/i.test(turn.content)) ? (
                             <MadeShare words={plainAnswer(stripThinkBlock(turn.content))} picture={turn.images?.[0] || ""} video={turn.video || turn.clips?.[0] || ""} clips={turn.clips} />
@@ -8345,9 +8361,10 @@ export function NoctisDesk() {
                     <p className="text-sm text-zinc-500">
                       {imagine ? "Imagine is making the picture and the film…" : "Noctis is drawing…"}
                     </p>
-                  ) : (
-                    <NoctisLiveThinkingPanel />
-                  )
+                  ) : (() => {
+                    const activeEngine = resolveNoctisEngine(activeEngineId);
+                    return <NoctisLiveThinkingPanel label={activeEngine.thinkingLabel} stages={activeEngine.thinkingStages} />;
+                  })()
                 ) : null}
                 {error ? <p className="text-sm text-red-400">{error}</p> : null}
               </div>

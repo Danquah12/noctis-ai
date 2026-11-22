@@ -23,6 +23,7 @@ import {
   formatLexSynthesisMarkdown,
   type LexSynthesisState,
 } from "@/lib/noctis-lex-synthesizer";
+import { NoctisSuiteDeepThinkBar } from "@/components/noctis/NoctisSuiteDeepThinkBar";
 
 interface NoctisLexModalProps {
   open: boolean;
@@ -163,6 +164,20 @@ export function NoctisLexModal({
             );
           })}
         </div>
+
+        <NoctisSuiteDeepThinkBar
+          suiteId="suite-lex"
+          scenarioLabel={currentScenario.name}
+          dossierMarkdown={dossierMarkdown}
+          onRunInChat={
+            onInsertToChat
+              ? (text) => {
+                  onInsertToChat(text);
+                  onClose();
+                }
+              : undefined
+          }
+        />
 
         {/* Main Body */}
         <div className="flex flex-1 flex-col lg:flex-row overflow-hidden">

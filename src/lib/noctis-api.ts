@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { noctisSkill, type NoctisSkillId } from "@/lib/noctis-skills";
 import { clipTurn, retainSources } from "@/lib/noctis-hard";
+import { resolveNoctisEngine } from "@/lib/noctis-engine-registry";
 
 export type VibeTurn = { role: "user" | "assistant"; content: string; images?: string[] };
 
@@ -19,7 +20,7 @@ function cleanImages(value: unknown) {
 }
 
 export const askNoctis = createServerFn({ method: "POST" })
-  .validator((input: { turns?: VibeTurn[]; desk?: unknown; think?: unknown; code?: unknown; skill?: unknown; depth?: unknown; level?: unknown; context?: unknown; language?: unknown; brain?: unknown }) => {
+  .validator((input: { turns?: VibeTurn[]; desk?: unknown; think?: unknown; code?: unknown; skill?: unknown; depth?: unknown; level?: unknown; context?: unknown; language?: unknown; engine?: unknown; brain?: unknown }) => {
     const turns: VibeTurn[] = [];
     if (Array.isArray(input?.turns)) {
       for (const turn of input.turns) {
@@ -43,6 +44,7 @@ export const askNoctis = createServerFn({ method: "POST" })
       level,
       context: typeof input?.context === "string" ? input.context.slice(0, 1800) : "",
       language: typeof input?.language === "string" ? input.language.trim().slice(0, 40) : "English",
+      engine: resolveNoctisEngine(input?.engine).id,
       brain: input?.brain && typeof input.brain === "object" ? {
         provider: typeof (input.brain as any).provider === "string" ? (input.brain as any).provider : "gemini",
         apiKey: typeof (input.brain as any).apiKey === "string" ? (input.brain as any).apiKey.slice(0, 500) : "",
@@ -86,7 +88,7 @@ export const askNoctis = createServerFn({ method: "POST" })
     } catch {
       baked = "";
     }
-    return vibeReply(data.turns, baked, { desk: data.desk, think: data.think, code: data.code, skill: data.skill, depth: data.depth, level: data.level, context: data.context, language: data.language, brain: data.brain });
+    return vibeReply(data.turns, baked, { desk: data.desk, think: data.think, code: data.code, skill: data.skill, depth: data.depth, level: data.level, context: data.context, language: data.language, engine: data.engine, brain: data.brain });
   });
 
 async function bakedKey() {

@@ -25,6 +25,7 @@ import {
   formatWarRoomDossierMarkdown,
   type WarRoomScenario,
 } from "@/lib/noctis-war-room";
+import { NoctisSuiteDeepThinkBar } from "@/components/noctis/NoctisSuiteDeepThinkBar";
 
 interface NoctisWarRoomModalProps {
   open: boolean;
@@ -159,6 +160,20 @@ export function NoctisWarRoomModal({
             );
           })}
         </div>
+
+        <NoctisSuiteDeepThinkBar
+          suiteId="suite-war-room"
+          scenarioLabel={simulation.scenario.name}
+          dossierMarkdown={dossierMarkdown}
+          onRunInChat={
+            onInsertToChat
+              ? (text) => {
+                  onInsertToChat(text);
+                  onClose();
+                }
+              : undefined
+          }
+        />
 
         {/* Modal Main Content (Dual Agent Split Screen) */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">

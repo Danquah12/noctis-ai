@@ -27,6 +27,7 @@ import {
   type HolodeckSimulationState3D,
   type Vector3D,
 } from "@/lib/noctis-holodeck-3d";
+import { NoctisSuiteDeepThinkBar } from "@/components/noctis/NoctisSuiteDeepThinkBar";
 
 interface NoctisHolodeckModalProps {
   open: boolean;
@@ -380,6 +381,20 @@ export function NoctisHolodeckModal({
             </div>
           </div>
         </div>
+
+        <NoctisSuiteDeepThinkBar
+          suiteId="suite-holodeck"
+          scenarioLabel={simulation.simulationId}
+          dossierMarkdown={dossierMarkdown}
+          onRunInChat={
+            onInsertToChat
+              ? (text) => {
+                  onInsertToChat(text);
+                  onClose();
+                }
+              : undefined
+          }
+        />
 
         {/* Main Content Body */}
         <div className="flex flex-1 flex-col lg:flex-row overflow-hidden">

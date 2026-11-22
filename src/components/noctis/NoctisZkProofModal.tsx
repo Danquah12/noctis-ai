@@ -19,6 +19,7 @@ import {
   formatZkProofMarkdown,
   type ZkProofArtifact,
 } from "@/lib/noctis-zk-proof";
+import { NoctisSuiteDeepThinkBar } from "@/components/noctis/NoctisSuiteDeepThinkBar";
 
 interface NoctisZkProofModalProps {
   open: boolean;
@@ -178,6 +179,20 @@ export function NoctisZkProofModal({
             );
           })}
         </div>
+
+        <NoctisSuiteDeepThinkBar
+          suiteId="suite-zk-proof"
+          scenarioLabel={currentCircuit.name}
+          dossierMarkdown={dossierMarkdown}
+          onRunInChat={
+            onInsertToChat
+              ? (text) => {
+                  onInsertToChat(text);
+                  onClose();
+                }
+              : undefined
+          }
+        />
 
         {/* Main Body */}
         <div className="flex flex-1 flex-col lg:flex-row overflow-hidden">

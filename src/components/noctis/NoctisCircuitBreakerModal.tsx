@@ -22,6 +22,7 @@ import {
   formatCircuitBreakerMarkdown,
   type CircuitBreakerState,
 } from "@/lib/noctis-circuit-breaker";
+import { NoctisSuiteDeepThinkBar } from "@/components/noctis/NoctisSuiteDeepThinkBar";
 
 interface NoctisCircuitBreakerModalProps {
   open: boolean;
@@ -173,6 +174,20 @@ export function NoctisCircuitBreakerModal({
             </button>
           ))}
         </div>
+
+        <NoctisSuiteDeepThinkBar
+          suiteId="suite-circuit-breaker"
+          scenarioLabel={evaluation.auditId}
+          dossierMarkdown={dossierMarkdown}
+          onRunInChat={
+            onInsertToChat
+              ? (text) => {
+                  onInsertToChat(text);
+                  onClose();
+                }
+              : undefined
+          }
+        />
 
         {/* Main Body */}
         <div className="flex flex-1 flex-col lg:flex-row overflow-hidden">

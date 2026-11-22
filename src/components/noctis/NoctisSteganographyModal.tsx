@@ -23,6 +23,7 @@ import {
   formatForensicScanMarkdown,
   type ForensicScanResult,
 } from "@/lib/noctis-steganography";
+import { NoctisSuiteDeepThinkBar } from "@/components/noctis/NoctisSuiteDeepThinkBar";
 
 interface NoctisSteganographyModalProps {
   open: boolean;
@@ -159,6 +160,20 @@ export function NoctisSteganographyModal({
             </button>
           </div>
         </div>
+
+        <NoctisSuiteDeepThinkBar
+          suiteId="suite-steganography"
+          scenarioLabel={`${scanResult.scanId} (${activeTab})`}
+          dossierMarkdown={dossierMarkdown}
+          onRunInChat={
+            onInsertToChat
+              ? (text) => {
+                  onInsertToChat(text);
+                  onClose();
+                }
+              : undefined
+          }
+        />
 
         {/* Main Body */}
         <div className="flex flex-1 flex-col lg:flex-row overflow-hidden">

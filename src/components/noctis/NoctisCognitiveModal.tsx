@@ -33,6 +33,7 @@ import {
   type DpoTrainingPair,
   type CognitiveBenchmarkResult,
 } from "@/lib/noctis-cognitive-sandbox";
+import { NoctisSuiteDeepThinkBar } from "@/components/noctis/NoctisSuiteDeepThinkBar";
 
 interface NoctisCognitiveModalProps {
   open: boolean;
@@ -168,6 +169,20 @@ export function NoctisCognitiveModal({
             </button>
           </div>
         </div>
+
+        <NoctisSuiteDeepThinkBar
+          suiteId="suite-cognitive"
+          scenarioLabel={`Zero-Drift Benchmark (${activeTab})`}
+          dossierMarkdown={dossierMarkdown}
+          onRunInChat={
+            onInsertToChat
+              ? (text) => {
+                  onInsertToChat(text);
+                  onClose();
+                }
+              : undefined
+          }
+        />
 
         {/* Modal Main Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">

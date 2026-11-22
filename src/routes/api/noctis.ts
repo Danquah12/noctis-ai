@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { resolveNoctisEngine } from "@/lib/noctis-engine-registry";
 
 type Turn = { role?: unknown; content?: unknown; images?: unknown };
 
@@ -756,6 +757,7 @@ export const Route = createFileRoute("/api/noctis")({
           prompt?: string;
           question?: string;
           model?: string;
+          engine?: string;
           turns?: Turn[];
           train?: { question?: unknown; answer?: unknown } | { question?: unknown; answer?: unknown }[];
           rules?: unknown[];
@@ -1187,6 +1189,7 @@ export const Route = createFileRoute("/api/noctis")({
             }
           }
 
+          const resolvedEngine = resolveNoctisEngine(body?.engine || body?.model);
           const reply = await vibeReply(retainSources(turns), baked, {
             skill: typeof body?.skill === "string" ? body.skill : "talk",
             depth: body?.depth === "deep" ? "deep" : "plain",
@@ -1194,6 +1197,7 @@ export const Route = createFileRoute("/api/noctis")({
             code: body?.code === true,
             language: typeof body?.language === "string" ? body.language : "English",
             context: typeof body?.context === "string" ? body.context : "",
+            engine: resolvedEngine.id,
             brain: targetBrain,
           });
 
@@ -1205,7 +1209,8 @@ export const Route = createFileRoute("/api/noctis")({
             return Response.json(
               {
                 text: reply.text,
-                model: typeof body?.model === "string" ? body.model : targetBrain?.provider ? `Noctis (${targetBrain.provider})` : "Noctis Ultra",
+                engine: resolvedEngine.id,
+                model: typeof body?.model === "string" ? body.model : targetBrain?.provider ? `Noctis (${targetBrain.provider})` : resolvedEngine.name,
                 usage: {
                   prompt_tokens: promptTokens,
                   completion_tokens: completionTokens,

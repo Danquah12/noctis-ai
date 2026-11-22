@@ -23,6 +23,7 @@ import {
   formatRemediationMarkdown,
   type RemediationDispatchResult,
 } from "@/lib/noctis-auto-remediation";
+import { NoctisSuiteDeepThinkBar } from "@/components/noctis/NoctisSuiteDeepThinkBar";
 
 interface NoctisAutoRemediationModalProps {
   open: boolean;
@@ -247,6 +248,20 @@ export function NoctisAutoRemediationModal({
             </button>
           </div>
         </div>
+
+        <NoctisSuiteDeepThinkBar
+          suiteId="suite-remediation"
+          scenarioLabel={currentPlaybook.name}
+          dossierMarkdown={dossierMarkdown}
+          onRunInChat={
+            onInsertToChat
+              ? (text) => {
+                  onInsertToChat(text);
+                  onClose();
+                }
+              : undefined
+          }
+        />
 
         {/* Code Viewport & Pre-Flight Body */}
         <div className="flex-1 p-4 bg-[#050811] overflow-y-auto max-h-[380px]">

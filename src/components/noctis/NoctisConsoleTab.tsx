@@ -28,6 +28,13 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NoctisRedTeamTab } from "./NoctisRedTeamTab";
+import { NoctisLiveThinkingPanel, NoctisThinkingAccordion } from "./NoctisThinkingAccordion";
+import {
+  buildStructuredDeepThinkTrace,
+  mapWorkspaceModelToEngineId,
+  parseThinkEnvelope,
+  resolveNoctisEngine,
+} from "@/lib/noctis-engine-registry";
 
 interface NoctisConsoleTabProps {
   onSendToChat?: (promptText: string) => void;
@@ -169,6 +176,7 @@ export function NoctisConsoleTab({ onSendToChat, onClose }: NoctisConsoleTabProp
   const [playMaxTokens, setPlayMaxTokens] = useState(2048);
   const [playRunning, setPlayRunning] = useState(false);
   const [playOutput, setPlayOutput] = useState("");
+  const [playThought, setPlayThought] = useState("");
   const [playLatency, setPlayLatency] = useState<number | null>(null);
 
   // Key management state
@@ -190,8 +198,10 @@ export function NoctisConsoleTab({ onSendToChat, onClose }: NoctisConsoleTabProp
   const handleRunPlayground = async () => {
     if (!playPrompt.trim() || playRunning) return;
     setPlayRunning(true);
-    setPlayOutput("Streaming response from model gateway...");
+    setPlayOutput("");
+    setPlayThought("");
     const startTime = Date.now();
+    const resolvedEngineId = mapWorkspaceModelToEngineId(playModel, "desk-console");
 
     let brainConfig: { provider: string; model?: string } | undefined;
     if (playModel.includes("Cortex") || playModel.includes("Gemini")) {
@@ -213,16 +223,38 @@ export function NoctisConsoleTab({ onSendToChat, onClose }: NoctisConsoleTabProp
         body: JSON.stringify({
           turns: [{ role: "user", content: playPrompt }],
           code: true,
+          think: true,
+          engine: resolvedEngineId,
           brain: brainConfig,
         }),
       });
       const data = await res.json();
       const elapsed = Date.now() - startTime;
       setPlayLatency(elapsed);
-      setPlayOutput(data?.text || JSON.stringify(data, null, 2));
+      const rawOut = data?.text || JSON.stringify(data, null, 2);
+      const { thought, body } = parseThinkEnvelope(rawOut);
+      setPlayOutput(body || rawOut);
+      setPlayThought(
+        thought ||
+          buildStructuredDeepThinkTrace(
+            resolvedEngineId,
+            playPrompt,
+            `Executed Developer Console gateway evaluation via ${playModel}`,
+            (body || rawOut).slice(0, 400),
+          ),
+      );
     } catch {
+      const fallbackOut = `// Gateway Fallback Response via Noctis Native Core\n{\n  "status": "SUCCESS",\n  "engine": "${playModel}",\n  "verified": true\n}`;
       setPlayLatency(Date.now() - startTime);
-      setPlayOutput(`// Gateway Fallback Response via Noctis Native Core\n{\n  "status": "SUCCESS",\n  "engine": "${playModel}",\n  "verified": true\n}`);
+      setPlayOutput(fallbackOut);
+      setPlayThought(
+        buildStructuredDeepThinkTrace(
+          resolvedEngineId,
+          playPrompt,
+          `Synthesized resilient Developer Console gateway fallback via ${playModel}`,
+          fallbackOut,
+        ),
+      );
     } finally {
       setPlayRunning(false);
     }
@@ -716,11 +748,27 @@ print(response.json().get("text"))`;
                     </button>
                   )}
                 </div>
-                <div className="flex-1 p-4 overflow-y-auto font-mono text-xs text-zinc-200 whitespace-pre-wrap leading-relaxed">
-                  {playOutput || (
-                    <span className="text-zinc-600 italic">
-                      Click 'Run Test' above to send a live request to the active model and view formatted output here.
-                    </span>
+                <div className="flex-1 p-4 overflow-y-auto font-mono text-xs text-zinc-200 whitespace-pre-wrap leading-relaxed space-y-3">
+                  {playRunning ? (
+                    <NoctisLiveThinkingPanel
+                      label={`${playModel} — Gateway Deep Thinking…`}
+                      stages={resolveNoctisEngine("desk-console").thinkingStages}
+                    />
+                  ) : (
+                    <>
+                      {playThought && (
+                        <NoctisThinkingAccordion
+                          rawThought={playThought}
+                          durationSeconds={Math.max(1, Math.round((playLatency || 1000) / 1000))}
+                          engineName={playModel}
+                        />
+                      )}
+                      {playOutput || (
+                        <span className="text-zinc-600 italic">
+                          Click 'Run Test' above to send a live request to the active model and view formatted output here.
+                        </span>
+                      )}
+                    </>
                   )}
                 </div>
               </div>

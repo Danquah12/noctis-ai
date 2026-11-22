@@ -23,6 +23,7 @@ import {
   formatCrisisNegotiationMarkdown,
   type GameTheoreticState,
 } from "@/lib/noctis-crisis-negotiation";
+import { NoctisSuiteDeepThinkBar } from "@/components/noctis/NoctisSuiteDeepThinkBar";
 
 interface NoctisCrisisNegotiationModalProps {
   open: boolean;
@@ -187,6 +188,20 @@ export function NoctisCrisisNegotiationModal({
             );
           })}
         </div>
+
+        <NoctisSuiteDeepThinkBar
+          suiteId="suite-crisis"
+          scenarioLabel={currentSyndicate.name}
+          dossierMarkdown={dossierMarkdown}
+          onRunInChat={
+            onInsertToChat
+              ? (text) => {
+                  onInsertToChat(text);
+                  onClose();
+                }
+              : undefined
+          }
+        />
 
         {/* Main Body */}
         <div className="flex flex-1 flex-col lg:flex-row overflow-hidden">

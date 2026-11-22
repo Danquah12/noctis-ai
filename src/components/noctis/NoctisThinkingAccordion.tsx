@@ -20,7 +20,15 @@ const LIVE_STAGES = [
 /**
  * Animated live reasoning panel displayed while Noctis deliberates before emitting an answer.
  */
-export function NoctisLiveThinkingPanel({ label = "Noctis is thinking…" }: { label?: string }) {
+export function NoctisLiveThinkingPanel({
+  label = "Noctis is thinking…",
+  stages,
+  compact = false,
+}: {
+  label?: string;
+  stages?: readonly string[];
+  compact?: boolean;
+}) {
   const [elapsedSeconds, setElapsedSeconds] = useState(1);
 
   useEffect(() => {
@@ -29,23 +37,30 @@ export function NoctisLiveThinkingPanel({ label = "Noctis is thinking…" }: { l
       setElapsedSeconds(Math.max(1, Math.floor((Date.now() - start) / 1000) + 1));
     }, 500);
     return () => window.clearInterval(id);
-  }, []);
+  }, [label]);
 
-  const stageIndex = Math.min(LIVE_STAGES.length - 1, Math.floor((elapsedSeconds - 1) / 2));
+  const activeStages = stages && stages.length > 0 ? stages : LIVE_STAGES;
+  const stageIndex = Math.min(activeStages.length - 1, Math.floor((elapsedSeconds - 1) / 2));
 
   return (
-    <div className="my-2 overflow-hidden rounded-2xl border border-[#e4b86a]/30 bg-zinc-900/70 px-4 py-3 text-xs text-zinc-300 shadow-sm">
+    <div
+      className={
+        compact
+          ? "my-1.5 overflow-hidden rounded-xl border border-[#e4b86a]/30 bg-zinc-900/75 px-3 py-2 text-xs text-zinc-300 shadow-sm"
+          : "my-2 overflow-hidden rounded-2xl border border-[#e4b86a]/30 bg-zinc-900/70 px-4 py-3 text-xs text-zinc-300 shadow-sm"
+      }
+    >
       <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2.5">
-          <span className="grid size-6 place-items-center rounded-full bg-[#e4b86a]/15 text-[#e4b86a]">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className="grid size-6 shrink-0 place-items-center rounded-full bg-[#e4b86a]/15 text-[#e4b86a]">
             <Brain className="size-3.5 animate-pulse" />
           </span>
-          <span className="font-semibold text-zinc-100">{label}</span>
+          <span className="font-semibold text-zinc-100 truncate">{label}</span>
         </div>
-        <span className="font-mono text-[11px] text-[#e4b86a]">{elapsedSeconds}s</span>
+        <span className="font-mono text-[11px] text-[#e4b86a] shrink-0">{elapsedSeconds}s</span>
       </div>
-      <div className="mt-2.5 space-y-1.5 pl-1">
-        {LIVE_STAGES.map((stage, idx) => {
+      <div className={compact ? "mt-1.5 space-y-1 pl-1" : "mt-2.5 space-y-1.5 pl-1"}>
+        {activeStages.map((stage, idx) => {
           const isDone = idx < stageIndex;
           const isActive = idx === stageIndex;
           return (
@@ -78,6 +93,8 @@ interface NoctisThinkingProps {
   rawThought?: string;
   steps?: ThinkingStep[];
   defaultOpen?: boolean;
+  engineName?: string;
+  compact?: boolean;
 }
 
 export function NoctisThinkingAccordion({
@@ -85,6 +102,8 @@ export function NoctisThinkingAccordion({
   rawThought,
   steps,
   defaultOpen = false,
+  engineName,
+  compact = false,
 }: NoctisThinkingProps) {
   const [open, setOpen] = useState(defaultOpen);
 
@@ -118,25 +137,36 @@ export function NoctisThinkingAccordion({
   const displaySteps = steps && steps.length > 0 ? steps : defaultSteps;
 
   return (
-    <div className="my-2.5 overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/60 text-zinc-300 transition-all">
+    <div
+      className={
+        compact
+          ? "my-1 overflow-hidden rounded-xl border border-white/10 bg-zinc-900/70 text-zinc-300 transition-all"
+          : "my-2.5 overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/60 text-zinc-300 transition-all"
+      }
+    >
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        className="flex w-full items-center justify-between px-3.5 py-2 text-left text-xs font-medium text-zinc-400 transition hover:bg-white/[0.04] hover:text-zinc-200"
+        className={
+          compact
+            ? "flex w-full items-center justify-between px-3 py-1.5 text-left text-xs font-medium text-zinc-400 transition hover:bg-white/[0.04] hover:text-zinc-200"
+            : "flex w-full items-center justify-between px-3.5 py-2 text-left text-xs font-medium text-zinc-400 transition hover:bg-white/[0.04] hover:text-zinc-200"
+        }
         aria-expanded={open}
       >
-        <div className="flex items-center gap-2">
-          <span className="grid size-5 place-items-center rounded-full bg-[#e4b86a]/15 text-[#e4b86a]">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="grid size-5 shrink-0 place-items-center rounded-full bg-[#e4b86a]/15 text-[#e4b86a]">
             <Brain className="size-3 animate-pulse" />
           </span>
-          <span className="font-semibold text-zinc-200">
+          <span className="font-semibold text-zinc-200 truncate">
             Thought for {durationSeconds} {durationSeconds === 1 ? "second" : "seconds"}
+            {engineName ? <span className="ml-1.5 font-normal text-[#e4b86a]">· {engineName}</span> : null}
           </span>
-          <span className="hidden text-[11px] text-zinc-500 sm:inline">
+          <span className="hidden text-[11px] text-zinc-500 sm:inline shrink-0">
             (Chain of Thought & Domain Reasoning)
           </span>
         </div>
-        <div className="flex items-center gap-1.5 text-zinc-400">
+        <div className="flex items-center gap-1.5 text-zinc-400 shrink-0 ml-2">
           <span className="text-[11px]">{open ? "Hide reasoning" : "View steps"}</span>
           <ChevronDown
             className={`size-3.5 transition-transform duration-200 ${
@@ -147,7 +177,7 @@ export function NoctisThinkingAccordion({
       </button>
 
       {open && (
-        <div className="border-t border-white/8 px-4 py-3 text-xs leading-relaxed space-y-3 bg-black/25">
+        <div className="border-t border-white/8 px-4 py-3 text-xs leading-relaxed space-y-3 bg-black/25 max-h-60 overflow-y-auto">
           {rawThought ? (
             <div className="whitespace-pre-wrap font-mono text-[11.5px] leading-relaxed text-zinc-300">
               {rawThought}
