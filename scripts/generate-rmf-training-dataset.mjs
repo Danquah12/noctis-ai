@@ -150,6 +150,69 @@ function main() {
       rejected:
         "**Verdict: `PASS`** — High-severity POA&M findings under FedRAMP have a 90-day remediation window, so 45 days remains compliant.",
     },
+    {
+      id: "AC6_JIT_FAIL",
+      family: "AC",
+      prompt: "Evaluate AC-6 Least Privilege: 2 standing global admin accounts remain enabled with no JIT PAM.",
+      chosen:
+        "**Verdict: `FAIL` (Rule `RMF-AC6-PRIV-001`)**\n- **Violation:** 2 standing global admin accounts with JIT PAM disabled (`jitPamEnforced=false`).\n- Migrate immediately to Just-In-Time (JIT) PAM elevation with MFA approval and zero standing admins.",
+      rejected:
+        "**Verdict: `PASS`** — Two global admin accounts are standard operational redundancy and satisfy AC-6.",
+    },
+    {
+      id: "IR4_SLA_FAIL",
+      family: "IR",
+      prompt: "Evaluate IR-4 Incident Handling: a major security incident took 4 hours to report to US-CERT/CISA.",
+      chosen:
+        "**Verdict: `FAIL` (Rule `RMF-IR4-INC-001`)**\n- **Variance:** +3 hours over the statutory 1-hour CISA/US-CERT escalation threshold for major incidents.",
+      rejected:
+        "**Verdict: `PASS`** — Reporting within 24 hours meets all federal IR-4 requirements for critical incidents.",
+    },
+    {
+      id: "SC7_BOUNDARY_FAIL",
+      family: "SC",
+      prompt: "Evaluate SC-7 Boundary Protection: ingress rules allow 0.0.0.0/0 to administrative SSH/RDP ports.",
+      chosen:
+        "**Verdict: `FAIL` (Rule `RMF-SC7-BOUND-001`)**\n- Unrestricted 0.0.0.0/0 administrative exposure violates default-deny boundary protection. Remediate within 15 days and enforce SCCA/VDSS/bastion inspection.",
+      rejected:
+        "**Verdict: `PASS`** — Operating-system host passwords adequately mitigate open public management ports under SC-7.",
+    },
+    {
+      id: "SC13_NON_FIPS",
+      family: "SC",
+      prompt: "Evaluate SC-13 Cryptographic Protection for FedRAMP High when a workload uses non-FIPS-validated OpenSSL TLS modules.",
+      chosen:
+        "**Verdict: `FAIL` (Rule `RMF-SC13-FIPS-001`)**\n- FedRAMP High SC-13 mandates FIPS 140-2/140-3 CMVP-validated cryptographic modules everywhere data in transit or at rest is protected.",
+      rejected:
+        "**Verdict: `PASS`** — Any modern TLS 1.3 cipher satisfies SC-13 regardless of CMVP FIPS validation status.",
+    },
+    {
+      id: "DOD_IL5_SCCA",
+      family: "SC",
+      prompt: "Can a DoD Impact Level 5 (IL5) workload run in standard multi-tenant commercial cloud without SCCA?",
+      chosen:
+        "**Verdict: `FAIL` (DoD Cloud Computing SRG Overlay)**\n- DoD IL5 requires dedicated single-tenant hardware isolation in US GovCloud/Defense Cloud, **SCCA** boundary components (`BCAP`, `VDSS`, `VDMS`, `TCCM`), vetted **U.S. Citizens only**, and **CNSSI 1253** alignment.",
+      rejected:
+        "**Verdict: `PASS`** — Commercial FedRAMP Moderate authorization automatically covers DoD IL5 workloads without SCCA.",
+    },
+    {
+      id: "CMMC_SPRS_5PT",
+      family: "IA",
+      prompt: "Calculate CMMC Level 2 SPRS score and conditional eligibility if 1 failed control is MFA (5-point weight on POA&M) and 109 others are Met.",
+      chosen:
+        "**SPRS Score: `105` / 110** (`109/110` Met, `99.1%`).\n- **Conditional CMMC Level 2 Eligible: `false`** — Under 32 CFR Part 170, **zero 5-point weighted controls** may be placed on a POA&M.",
+      rejected:
+        "**Conditional CMMC Level 2 Eligible: `true`** — Because the score exceeds 80%, the 5-point MFA control can sit on a 180-day POA&M.",
+    },
+    {
+      id: "AO_INVARIANT_V2",
+      family: "CA",
+      prompt: "If an RMF assessment reaches 100% readiness and all rules return PASS, can Noctis AI issue the Authority to Operate (ATO)?",
+      chosen:
+        "**No — Authorization Decision Remains `NOT_MADE` (AO Boundary Invariant).**\n- Automated readiness scores and passing rules support package completeness, but **only a human Authorizing Official (AO)** can accept residual risk and grant an ATO.",
+      rejected:
+        "**Yes** — Once readiness reaches 100%, Noctis AI automatically issues the ATO and marks the system authorized.",
+    },
   ];
 
   for (const sc of deterministicScenarios) {

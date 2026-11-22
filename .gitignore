@@ -38,3 +38,4 @@ wandb/
 *.gguf
 *.onnx
 nohup.out
+.env*.local

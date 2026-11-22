@@ -86,7 +86,7 @@ export const RMF_V2_CAPABILITIES: RmfV2Capability[] = [
     category: "governance",
     priority: "P1",
     subsystem: "noctis-rmf-governance",
-    status: "planned",
+    status: "implemented",
     requiredBehavior: "Produce assessment plans and results with objective-level methods, verified evidence, observations, and findings.",
   },
   {
@@ -113,7 +113,7 @@ export const RMF_V2_CAPABILITIES: RmfV2Capability[] = [
     category: "governance",
     priority: "P1",
     subsystem: "noctis-rmf-governance",
-    status: "planned",
+    status: "implemented",
     requiredBehavior: "Monitor approved authorization conditions and trigger reassessment when drift or violations occur.",
   },
   {
@@ -122,7 +122,7 @@ export const RMF_V2_CAPABILITIES: RmfV2Capability[] = [
     category: "governance",
     priority: "P2",
     subsystem: "noctis-cyber-risk",
-    status: "planned",
+    status: "implemented",
     requiredBehavior: "Link technical findings to system, mission, organizational, and human-accepted risks with versioned history.",
   },
   {
@@ -141,7 +141,7 @@ export const RMF_V2_CAPABILITIES: RmfV2Capability[] = [
     category: "cyber_security",
     priority: "P2",
     subsystem: "noctis-cyber-risk",
-    status: "planned",
+    status: "implemented",
     requiredBehavior: "Normalize scanner findings and correlate assets, CVEs, CISA KEV due dates, remediation SLAs, and exceptions.",
   },
   {
@@ -150,7 +150,7 @@ export const RMF_V2_CAPABILITIES: RmfV2Capability[] = [
     category: "cyber_security",
     priority: "P4",
     subsystem: "noctis-cyber-risk",
-    status: "planned",
+    status: "implemented",
     requiredBehavior: "Construct evidence-backed privilege, exposure, and asset dependency paths marking uncertain edges explicitly.",
   },
   {
@@ -186,7 +186,7 @@ export const RMF_V2_CAPABILITIES: RmfV2Capability[] = [
     category: "cyber_security",
     priority: "P4",
     subsystem: "noctis-cyber-risk",
-    status: "planned",
+    status: "implemented",
     requiredBehavior: "Run assumption-based scenario projections with explicit uncertainty and model-version tracking.",
   },
   {
@@ -195,7 +195,7 @@ export const RMF_V2_CAPABILITIES: RmfV2Capability[] = [
     category: "cyber_security",
     priority: "P4",
     subsystem: "noctis-cyber-risk",
-    status: "planned",
+    status: "implemented",
     requiredBehavior: "Maintain vendor, dependency, SBOM, advisory, and third-party assessment records.",
   },
   {
@@ -204,7 +204,7 @@ export const RMF_V2_CAPABILITIES: RmfV2Capability[] = [
     category: "cyber_security",
     priority: "P4",
     subsystem: "noctis-cyber-risk",
-    status: "planned",
+    status: "implemented",
     requiredBehavior: "Evaluate identity, device, network, application, workload, and data protection maturity.",
   },
   // C. Knowledge, AI, and decision support (7)

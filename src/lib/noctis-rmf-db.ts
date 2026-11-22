@@ -15,6 +15,8 @@ import {
 } from "./noctis-rmf-engine.ts";
 import {
   extractAndEvaluateRmfRulesFromText,
+  evaluateDodImpactLevelOverlay,
+  evaluateCmmcSprsScore,
   type RmfRuleEvaluationResult,
 } from "./noctis-rmf-rules.ts";
 import {
@@ -554,12 +556,39 @@ export function buildRmfGroundingPacket(question: string): RmfGroundingPacket {
   }
 
   // Optional Unified DoD / CNSSI 1253 / SCCA / CMMC Overlay Reference (Option D bridge)
-  if (/\b(?:dod|il[2456]|scca|bcap|vdss|vdms|tccm|cnssi\s*1253|cmmc|stig|cato|dodi\s*8510)\b/i.test(q)) {
+  if (/\b(?:dod|il[2456]|scca|bcap|vdss|vdms|tccm|cnssi\s*1253|cmmc|sprs|stig|cato|dodi\s*8510)\b/i.test(q)) {
     lines.push("### 8. UNIFIED DEFENSE & CMMC OVERLAY CONTEXT (DoD CC SRG / CNSSI 1253 / SCCA / CMMC)");
     lines.push("- **DoD Impact Levels:** IL2 (public/non-CUI), IL4 (CUI / Moderate+ with US Persons/CONUS controls), IL5 (mission-critical CUI / NSS with dedicated isolation, vetted U.S. Persons, CONUS-only, CNSSI 1253), IL6 (Classified SECRET).");
     lines.push("- **SCCA Boundary Architecture:** BCAP (DISN/NIPRNet gateway), VDSS (TLS break-and-inspect / NGFW/WAF DMZ), VDMS (PAW jumpboxes, ACAS/HBSS, CSSP telemetry), TCCM (PKI/FIPS 140-3 Level 3 HSM KMS), VDC (no direct public internet egress).");
     lines.push("- **DISA STIG & cATO Gates:** Zero unwaived CAT I findings allowed for ATO; DoD cATO requires DevSecOps pipeline verification, continuous monitoring, and CSSP SLA integration.");
-    lines.push("- **CMMC 2.0 Levels 1–3:** Rooted in NIST SP 800-171 Rev. 2/Rev. 3 (CUI protection) and SP 800-172 enhanced protections for APT resistance.\n");
+    lines.push("- **CMMC 2.0 Levels 1–3:** Rooted in NIST SP 800-171 Rev. 2/Rev. 3 (CUI protection) and SP 800-172 enhanced protections for APT resistance.");
+
+    const ilMatch = q.match(/\b(IL2|IL4|IL5|IL6)\b/i);
+    if (ilMatch) {
+      const ilResult = evaluateDodImpactLevelOverlay({
+        impactLevel: ilMatch[1]!.toUpperCase() as "IL2" | "IL4" | "IL5" | "IL6",
+        hostingEnvironment: /\bcommercial\b/i.test(q) ? "Commercial" : ilMatch[1]!.toUpperCase() === "IL6" ? "SIPRNet_Classified" : "GovCloud_Dedicated",
+        sccaCompliant: /\bno\s+scca|without\s+scca\b/i.test(q) ? false : true,
+        usCitizenAdminsOnly: /\bforeign|non[- ]us\b/i.test(q) ? false : true,
+        cnssi1253Overlay: true,
+      });
+      lines.push(`- **Deterministic ${ilResult.impactLevel} Overlay Verdict:** \`${ilResult.verdict}\` · Required Overlays: ${ilResult.requiredOverlays.join(", ")}${ilResult.violations.length > 0 ? ` · Violations: ${ilResult.violations.join(" | ")}` : ""}`);
+    }
+
+    if (/\bsprs\b|\bcmmc\b/i.test(q)) {
+      const failedMatch = q.match(/(\d+)\s+(?:unmet|failed|open)/i);
+      const fivePtMatch = q.match(/(\d+)\s+(?:5[- ]?pt|five[- ]?point)/i);
+      const failedCount = failedMatch ? Math.min(110, Number(failedMatch[1])) : fivePtMatch ? Number(fivePtMatch[1]) : 0;
+      const fiveCount = fivePtMatch ? Math.min(failedCount, Number(fivePtMatch[1])) : 0;
+      const syntheticFails = Array.from({ length: failedCount }, (_, i) => ({
+        controlId: `REQ-${i + 1}`,
+        weight: (i < fiveCount ? 5 : 3) as 1 | 3 | 5,
+        onPoam: true,
+      }));
+      const sprs = evaluateCmmcSprsScore({ failedControls: syntheticFails });
+      lines.push(`- **Deterministic CMMC SPRS Calculation:** Score = **${sprs.sprsScore}** / 110 (${sprs.metCount}/110 Met, ${sprs.percentImplemented}%) · Conditional Eligible: **${sprs.conditionalCertificationEligible}** · POA&M Closeout Window: ${sprs.poamCloseoutDeadlineDays} days${sprs.ineligibilityReasons.length > 0 ? ` · Blockers: ${sprs.ineligibilityReasons.join(" | ")}` : ""}`);
+    }
+    lines.push("");
   }
 
   // RMF-003 Control Inheritance & CRM Context

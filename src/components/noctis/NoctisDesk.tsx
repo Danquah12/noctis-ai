@@ -21,6 +21,7 @@ const NoctisTrainingTab = lazyWithRetry(() => import("@/components/noctis/Noctis
 const NoctisSovereignFactoryStudio = lazyWithRetry(() => import("@/components/noctis/NoctisSovereignFactoryStudio").then((m) => ({ default: m.NoctisSovereignFactoryStudio })));
 const NoctisConsoleTab = lazyWithRetry(() => import("@/components/noctis/NoctisConsoleTab").then((m) => ({ default: m.NoctisConsoleTab })));
 const NoctisRedTeamTab = lazyWithRetry(() => import("@/components/noctis/NoctisRedTeamTab").then((m) => ({ default: m.NoctisRedTeamTab })));
+const NoctisRmfDashboardTab = lazyWithRetry(() => import("@/components/noctis/NoctisRmfDashboardTab").then((m) => ({ default: m.NoctisRmfDashboardTab })));
 const NoctisPluginExecutorModal = lazyWithRetry(() => import("@/components/noctis/NoctisPluginExecutorModal").then((m) => ({ default: m.NoctisPluginExecutorModal })));
 import { DISTRIBUTED_PLUGINS, getPluginsForShelf, type DistributedPluginItem } from "@/lib/noctis-distributed-plugins";
 import { NoctisCodeInterpreter } from "@/components/noctis/NoctisCodeInterpreter";
@@ -3476,7 +3477,7 @@ export function NoctisDesk() {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
   const [uploads, setUploads] = useState<Upload[]>([]);
-  const [desk, setDesk] = useState<"chat" | "study" | "forge" | "plugins" | "console" | "redteam" | "frontier" | "training">("chat");
+  const [desk, setDesk] = useState<"chat" | "study" | "forge" | "plugins" | "console" | "redteam" | "frontier" | "training" | "rmf">("chat");
   const [executorPlugin, setExecutorPlugin] = useState<DistributedPluginItem | null>(null);
   const [executorOpen, setExecutorOpen] = useState(false);
   const [studyTopic, setStudyTopic] = useState("");
@@ -6796,6 +6797,15 @@ export function NoctisDesk() {
           <span>Continuous Daemon</span>
           <span className="ml-auto rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-bold text-emerald-300">2,158</span>
         </button>
+        <button
+          type="button"
+          onClick={() => switchDesk("rmf")}
+          className={item(desk === "rmf")}
+        >
+          <Shield className="size-4 shrink-0 text-[#e4b86a]" />
+          <span>RMF v2.0 Command</span>
+          <span className="ml-auto rounded-full bg-[#e4b86a]/20 px-1.5 py-0.5 text-[10px] font-bold text-[#e4b86a]">25/25</span>
+        </button>
         <button type="button" onClick={() => openShelf("pictures")} className={item(desk === "chat" && shelf === "pictures")}>
           <Image className="size-4 shrink-0" />
           Pictures
@@ -7091,12 +7101,15 @@ export function NoctisDesk() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleOpenSovereignSuite("noctis-rmf", "Audit NIST SP 800-53 Rev. 5 controls and compile OSCAL System Security Plan")}
-                    className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
+                    onClick={() => switchDesk("rmf")}
+                    className={cn(
+                      "flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs transition text-left",
+                      desk === "rmf" ? "bg-amber-500/20 text-amber-200 border border-amber-500/30" : "text-zinc-300 hover:bg-white/10 hover:text-white"
+                    )}
                   >
                     <FileCheck className="size-3.5 text-amber-400 shrink-0" />
                     <span className="truncate">Noctis RMF / GRC</span>
-                    <span className="ml-auto rounded bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-bold text-amber-300">P2</span>
+                    <span className="ml-auto rounded bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-bold text-amber-300">25/25</span>
                   </button>
                   <button
                     type="button"
@@ -7958,6 +7971,17 @@ export function NoctisDesk() {
                     switchDesk("chat");
                     void send(taskPrompt);
                   }}
+                  onClose={() => switchDesk("chat")}
+                />
+              </Suspense>
+            ) : desk === "rmf" ? (
+              <Suspense fallback={<div className="flex-1 flex items-center justify-center p-8 text-zinc-400">Loading Noctis RMF Intelligence Command Center v2.0...</div>}>
+                <NoctisRmfDashboardTab
+                  onSendToChat={(taskPrompt) => {
+                    switchDesk("chat");
+                    void send(taskPrompt);
+                  }}
+                  onOpenInCanvas={(title, md) => openInCanvas(title, md)}
                   onClose={() => switchDesk("chat")}
                 />
               </Suspense>

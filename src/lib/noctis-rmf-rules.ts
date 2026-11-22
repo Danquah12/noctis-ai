@@ -10,6 +10,38 @@
  */
 
 import { sha256Sync } from "./universal-crypto.ts";
+import { extractAndEvaluateExtendedRmfRulesFromText } from "./noctis-rmf-rules-extended.ts";
+export {
+  EXTENDED_18_CONTROLS,
+  ALL_COVERED_RULE_CONTROLS,
+  EXTENDED_RULE_CATALOG,
+  evaluateAc6LeastPrivilegeRule,
+  evaluateAt2TrainingRule,
+  evaluateCp9BackupRule,
+  evaluateIa5AuthenticatorRule,
+  evaluateIr4IncidentRule,
+  evaluateSc7BoundaryRule,
+  evaluateSc13CryptoRule,
+  evaluateSi4MonitoringRule,
+  evaluateMa4Rule,
+  evaluateMp6Rule,
+  evaluatePe3Rule,
+  evaluatePl2Rule,
+  evaluatePm9Rule,
+  evaluatePs3Rule,
+  evaluatePt2Rule,
+  evaluateSa11Rule,
+  evaluateSc28Rule,
+  evaluateSr3Rule,
+  evaluateDodImpactLevelOverlay,
+  evaluateCmmcSprsScore,
+  extractAndEvaluateExtendedRmfRulesFromText,
+  type ExtendedRuleCatalogEntry,
+  type DodImpactLevelInput,
+  type DodImpactLevelResult,
+  type CmmcFailedControlInput,
+  type CmmcSprsResult,
+} from "./noctis-rmf-rules-extended.ts";
 
 export type RmfVerdict =
   | "PASS"
@@ -1129,6 +1161,14 @@ export function extractAndEvaluateRmfRulesFromText(question: string): RmfRuleEva
           isCisaKev: /\bkev\b|\bcisa\s+known\s+exploited\b/i.test(q),
         }),
       );
+    }
+  }
+
+  const seenRules = new Set(results.map((r) => r.ruleId));
+  for (const ext of extractAndEvaluateExtendedRmfRulesFromText(q)) {
+    if (!seenRules.has(ext.ruleId)) {
+      seenRules.add(ext.ruleId);
+      results.push(ext);
     }
   }
 
