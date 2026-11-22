@@ -3892,8 +3892,11 @@ export function NoctisDesk() {
     closeAllOverlays();
     setDesk(next);
     setShelf("chats");
-    if (next === "chat" && (skill === "draw" || skill === "library" || skill === "search" || skill === "research")) {
-      setSkill("");
+    if (next === "chat") {
+      setRoutes([]);
+      if (skill === "draw" || skill === "library" || skill === "search" || skill === "research") {
+        setSkill("");
+      }
     }
   }
 
@@ -3940,6 +3943,7 @@ export function NoctisDesk() {
     setError("");
     setUploads([]);
     setShelf("chats");
+    setRoutes([]);
     if (skill === "draw" || skill === "library" || skill === "search" || skill === "research") setSkill("");
     setEditing(null);
     if (blank) {
@@ -5159,6 +5163,7 @@ export function NoctisDesk() {
     setThreads([blank]);
     setActive(blank.id);
     setNaming("");
+    setRoutes([]);
   }
 
   function renameChat(id: string) {
