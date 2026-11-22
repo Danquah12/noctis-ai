@@ -206,4 +206,40 @@ High
     assert.ok(!allText.includes("Claim standing"));
     assert.ok(!allText.includes("NREL handbook"));
   });
+
+  it("strips 'Explain ' verb prefix cleanly and never emits 'Is Me... Then' or IR pills on mTLS architecture questions", () => {
+    const jloPrompt =
+      "Explain Jennifer Lopez's 2002 album This Is Me... Then and how Tommy Mottola leaking Jenny from the Block rushed the November 25, 2002 release.";
+    const jloPills = buildContextualFollowUps(jloPrompt, JLO_ANSWER, { desk: "chat" });
+    const jloText = jloPills.map((p) => p.label).join(" | ");
+    assert.ok(!jloText.includes("Timeline of Explain"), `leaked Explain prefix: ${jloText}`);
+    assert.ok(!/\bIs Me\.\.\./.test(jloText), `leaked broken title fragment: ${jloText}`);
+    assert.ok(!/Affleck\. Affleck/.test(jloText), `sentence-spanning entity leak: ${jloText}`);
+    assert.ok(
+      !/'s(?:\s+\d{4})?$/.test(jloPills.find((p) => p.label.startsWith("Timeline of "))?.label || ""),
+      `dangling possessive: ${jloText}`,
+    );
+
+    const mtlsAnswer = `
+### How Mutual TLS (mTLS) Secures Microservices
+
+1. **Initiation (Client Hello)**: The calling Client Service initiates a handshake with Server Service.
+2. **Server Presentation**: Server Service presents its TLS certificate and requests the client's certificate.
+3. **Certificate Validation**: Both services verify identities via the service mesh Envoy sidecar proxy.
+`;
+    const mtlsPills = buildContextualFollowUps(
+      "Explain how mTLS protects service-to-service traffic in microservices",
+      mtlsAnswer,
+      { desk: "chat" },
+    );
+    const mtlsLabels = mtlsPills.map((p) => p.label);
+    const mtlsText = mtlsLabels.join(" | ");
+    assert.ok(
+      mtlsLabels.includes("Cert rotation & PKI setup") || mtlsLabels.includes("Failure modes & scaling limits"),
+      `got: ${mtlsText}`,
+    );
+    assert.ok(mtlsLabels.some((l) => /^Diagram mTLS\b/.test(l)), `got: ${mtlsText}`);
+    assert.ok(!mtlsText.includes("How Mutual TLS"), `question-word entity leaked: ${mtlsText}`);
+    assert.ok(!mtlsLabels.includes("Patching & containment steps"));
+  });
 });

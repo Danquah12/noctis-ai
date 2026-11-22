@@ -135,6 +135,13 @@ const ENTITY_STOP_WORDS = new Set([
   "friday",
   "saturday",
   "sunday",
+  "how",
+  "what",
+  "who",
+  "why",
+  "where",
+  "using",
+  "mutual",
 ]);
 
 const CODE_LANG_DISPLAY: Record<string, string> = {
@@ -257,10 +264,12 @@ function truncateWords(text: string, maxLen: number): string {
   if (clean.length <= maxLen) return clean;
   const sliced = clean.slice(0, maxLen);
   const lastSpace = sliced.lastIndexOf(" ");
-  if (lastSpace >= Math.floor(maxLen * 0.55)) {
-    return sliced.slice(0, lastSpace).replace(/[,:;.\-–—]+$/, "").trim();
-  }
-  return sliced.replace(/[,:;.\-–—]+$/, "").trim();
+  let cut =
+    lastSpace >= Math.floor(maxLen * 0.55)
+      ? sliced.slice(0, lastSpace)
+      : sliced;
+  cut = cut.replace(/(?:['’]s|['’])$/, "").replace(/[,:;.\-–—]+$/, "").trim();
+  return cut || clean.slice(0, maxLen).trim();
 }
 
 function clampPillLabel(label: string, maxLen = 42): string {
@@ -448,6 +457,7 @@ function extractDates(text: string): string[] {
 function stripLeadingStopWords(phrase: string): string {
   const words = phrase.split(/\s+/).filter(Boolean);
   while (words.length > 0 && ENTITY_STOP_WORDS.has(words[0]!.toLowerCase().replace(/[.,:;!?]+$/, ""))) {
+    if (words[0]!.toLowerCase() === "this" && words[1]?.toLowerCase() === "is") break;
     words.shift();
   }
   while (words.length > 0 && ENTITY_STOP_WORDS.has(words[words.length - 1]!.toLowerCase().replace(/[.,:;!?]+$/, ""))) {
@@ -479,6 +489,7 @@ function extractEntities(
     const cleaned = isAcronym ? trimmed : stripLeadingStopWords(trimmed);
     if (!cleaned || cleaned.length < 3 || cleaned.length > 44) return;
     if (!isAcronym && cleaned.split(/\s+/).length < 2) return;
+    if (/^(?:is|was|are|were|to|and|or)\b/i.test(cleaned) || cleaned.includes("...")) return;
     const norm = cleaned.toLowerCase();
     if (ENTITY_STOP_WORDS.has(norm) || headingNorms.has(norm) || tableNorms.has(norm)) return;
     const prev = counts.get(norm);
@@ -489,7 +500,7 @@ function extractEntities(
     }
   };
 
-  const multiRe = /\b[A-Z][a-zA-Z0-9.'-]+(?:\s+(?:(?:of|the|and|for|from|&)\s+)?[A-Z][a-zA-Z0-9.'-]+){1,3}\b/g;
+  const multiRe = /\b[A-Z][a-zA-Z0-9'-]+(?:\s+(?:(?:of|the|and|for|from|&)\s+)?[A-Z][a-zA-Z0-9'-]+){1,3}\b/g;
   let m: RegExpExecArray | null;
   while ((m = multiRe.exec(combined)) !== null) {
     recordCandidate(m[0]!, m.index, false);
@@ -530,7 +541,7 @@ function stripQuestionVerbPrefix(question: string): string {
   let q = question
     .replace(/^(?:please\s+|can\s+you\s+|could\s+you\s+|would\s+you\s+)/i, "")
     .replace(
-      /^(?:tell\s+me\s+(?:more\s+)?about|explain\s+(?:to\s+me\s+)?(?:how|why|what)?|describe|summarize|summarise|analyze|analyse|compare|interpret|elaborate\s+on|walk\s+me\s+through|break\s+down|what\s+(?:is|are|was|were)|who\s+(?:is|are|was|were)|how\s+(?:does|do|did|can|to)|why\s+(?:does|do|did|is|are)|write\s+(?:a|an|the)?|create\s+(?:a|an|the)?|design\s+(?:a|an|the)?|build\s+(?:a|an|the)?|investigate|look\s+up|review)\s+/i,
+      /^(?:tell\s+me(?:\s+more)?\s+about|explain(?:\s+to\s+me)?(?:\s+(?:how|why|what))?|describe|summarize|summarise|analyze|analyse|compare|interpret|elaborate\s+on|walk\s+me\s+through|break\s+down|what(?:\s+(?:is|are|was|were))?|who(?:\s+(?:is|are|was|were))?|how(?:\s+(?:does|do|did|can|to))?|why(?:\s+(?:does|do|did|is|are))?|write(?:\s+(?:a|an|the))?|create(?:\s+(?:a|an|the))?|design(?:\s+(?:a|an|the))?|build(?:\s+(?:a|an|the))?|investigate|look\s+up|review)\s+/i,
       "",
     )
     .replace(/^(?:the|a|an)\s+(?=(?:\d{4}\s+)?(?:[A-Z]|album|song|film|cve|protocol|concept|process))/i, "")
@@ -539,8 +550,10 @@ function stripQuestionVerbPrefix(question: string): string {
     .trim();
 
   if (q.length > 48) {
-    const clause = q.split(/\s+(?:and\s+how|while\s+preserving|in\s+depth|step\s+by\s+step|including)\s+/i)[0]?.trim() || q;
-    q = truncateWords(clause, 48);
+    const clause = q.split(/\s+(?:and\s+how|and\s+why|while\s+preserving|in\s+depth|step\s+by\s+step|including)\s+/i)[0]?.trim() || q;
+    const beforeTitleMatch = clause.match(/^(.+?\b(?:album|film|movie|book|novel|single))\s+[A-Z]/);
+    const verbSplitMatch = clause.match(/^([A-Za-z0-9-]{2,24})\s+(?:protects|secures|prevents|enables|works|handles|helps)\b/i);
+    q = truncateWords(beforeTitleMatch?.[1]?.trim() || verbSplitMatch?.[1]?.trim() || clause, 48);
   }
   return q;
 }
@@ -689,7 +702,7 @@ export function buildContextualFollowUps(
   const entities = extractEntities(plainBody, cleanedQ, headings, tableComparisons);
 
   const subject = resolveSubject(cleanedQ, plainBody, options?.priorQuestion, cves, verses, entities, headings, quotedTerms);
-  const shortSubject = truncateWords(subject, 26);
+  const shortSubject = truncateWords(subject, 28);
   const domain = detectDomain(cleanedQ, plainBody, codeLangs, cves, verses);
 
   const candidates: ContextualFollowUp[] = [];
@@ -797,32 +810,55 @@ export function buildContextualFollowUps(
       );
       break;
 
-    case "cve_cyber":
+    case "cve_cyber": {
+      const isVulnOrIncident =
+        cves.length > 0 ||
+        /\b(?:vulnerability|vulnerabilities|exploit\w*|ransomware|malware|breach|incident|compromise|iocs?|hunting|sigma|attack\s+path|remediat\w*)\b/i.test(
+          `${cleanedQ} ${plainBody}`,
+        );
       if (cves[0]) {
         candidates.push({
           label: clampPillLabel(`Detection rules for ${cves[0]}`),
           ask: `Provide Sigma/SIEM detection rules and hunting queries for ${cves[0]}.`,
         });
       }
-      candidates.push(
-        {
-          label: "Patching & containment steps",
-          ask: `Detail prioritized patching, hardening, and immediate containment steps for ${subject}.`,
-        },
-        {
-          label: "MITRE ATT&CK & blast radius",
-          ask: `Map the MITRE ATT&CK techniques, lateral movement paths, and potential blast radius for ${subject}.`,
-        },
-        ...(/\b(?:architecture|network|zero[- ]trust|mtls|tls|mesh|flow|microservice)\b/i.test(`${cleanedQ} ${plainBody}`)
-          ? [
-              {
-                label: clampPillLabel(`Diagram ${shortSubject} flow`),
-                ask: `Draw a clear technical architecture and handshake flow diagram for ${subject}.`,
-              },
-            ]
-          : []),
-      );
+      if (isVulnOrIncident) {
+        candidates.push(
+          {
+            label: "Patching & containment steps",
+            ask: `Detail prioritized patching, hardening, and immediate containment steps for ${subject}.`,
+          },
+          {
+            label: "MITRE ATT&CK & blast radius",
+            ask: `Map the MITRE ATT&CK techniques, lateral movement paths, and potential blast radius for ${subject}.`,
+          },
+        );
+      } else {
+        candidates.push(
+          {
+            label: "Cert rotation & PKI setup",
+            ask: `Explain certificate rotation, trust stores, and PKI lifecycle management for ${subject}.`,
+          },
+          {
+            label: "Threat model & failure modes",
+            ask: `Analyze common misconfigurations, failure modes, and security edge cases for ${subject}.`,
+          },
+        );
+      }
+      if (/\b(?:architecture|network|zero[- ]trust|mtls|tls|mesh|flow|microservice)\b/i.test(`${cleanedQ} ${plainBody}`)) {
+        const flowSubject =
+          /\bmTLS\b/i.test(subject)
+            ? "mTLS"
+            : entities[0] && entities[0].length <= 20
+            ? entities[0]
+            : shortSubject;
+        candidates.push({
+          label: clampPillLabel(`Diagram ${flowSubject} flow`),
+          ask: `Draw a clear technical architecture and handshake flow diagram for ${subject}.`,
+        });
+      }
       break;
+    }
 
     case "clinical":
       candidates.push(
@@ -845,10 +881,11 @@ export function buildContextualFollowUps(
       );
       break;
 
-    case "software_arch":
+    case "software_arch": {
+      const archSubject = truncateWords(subject, 20);
       candidates.push(
         {
-          label: clampPillLabel(`Diagram ${shortSubject} architecture`),
+          label: clampPillLabel(`Diagram ${archSubject} architecture`),
           ask: `Create an architecture and data-flow diagram for ${subject}.`,
         },
         {
@@ -865,6 +902,7 @@ export function buildContextualFollowUps(
         },
       );
       break;
+    }
 
     case "finance":
       candidates.push(
