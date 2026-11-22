@@ -338,7 +338,7 @@ export function NoctisRmfDashboardTab({
               </span>
             </div>
             <p className="text-[11px] text-zinc-400 mt-0.5 font-mono">
-              NIST SP 800-53/53A Rev. {manifest.nistVersion || "5.2.0"} · 28 Rules / 20 Families · DB SHA-256:{" "}
+              {`NIST SP 800-53/53A Rev. ${manifest.nistVersion || "5.2.0"} · 28 Rules / 20 Families · DB SHA-256: `}
               <span className="text-[#e4b86a]">{(manifest.dbSha256 || "").slice(0, 12) || "verified"}</span>
             </p>
           </div>
@@ -355,7 +355,7 @@ export function NoctisRmfDashboardTab({
       </div>
 
       {/* Sub-tab Navigation Strip */}
-      <div className="shrink-0 border-b border-white/10 bg-[#0b0f18] px-4 py-2 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+      <div className="shrink-0 border-b border-white/10 bg-[#0b0f18] px-4 py-2 flex flex-wrap items-center gap-1.5">
         {SUB_TABS.map((t) => {
           const Icon = t.icon;
           const active = subTab === t.id;
@@ -432,7 +432,7 @@ export function NoctisRmfDashboardTab({
                     AI-021 Deterministic Golden RMF Simulator (10 Verification Cases)
                   </h2>
                   <p className="text-xs text-zinc-400">
-                    Tests rule evaluation, SHA-256 tamper quarantine, STIG CAT I veto, withdrawn AC-13 redirection, DoD IL5 SCCA, CMMC SPRS 5-pt POA&amp;M block, and ZTMM scoring.
+                    Tests rule evaluation, SHA-256 tamper quarantine, STIG CAT I veto, withdrawn AC-13 redirection, DoD IL5 SCCA, CMMC SPRS 5-pt POA&M block, and ZTMM scoring.
                   </p>
                 </div>
                 <button
@@ -448,7 +448,7 @@ export function NoctisRmfDashboardTab({
                 <div className="space-y-2 pt-2">
                   <div className="flex flex-wrap items-center gap-3 text-xs font-mono">
                     <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-emerald-300 font-bold">
-                      Passed: {String(simResult.passedCount)} / {String(simResult.totalCases)}
+                      {`Passed: ${String(simResult.passedCount)} / ${String(simResult.totalCases)}`}
                     </span>
                     <span className="text-zinc-400">Suite SHA-256: {String(simResult.suiteSha256 || "").slice(0, 16)}</span>
                   </div>
@@ -514,7 +514,7 @@ export function NoctisRmfDashboardTab({
         {subTab === "authoring" ? (
           <div className="space-y-5 max-w-6xl mx-auto">
             <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 space-y-4">
-              <h2 className="text-sm font-bold text-white">OSCAL SSP / SAP / SAR &amp; Control Inheritance Workbench (RMF-002..005)</h2>
+              <h2 className="text-sm font-bold text-white">OSCAL SSP / SAP / SAR & Control Inheritance Workbench (RMF-002..005)</h2>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                 <label className="space-y-1">
                   <span className="text-zinc-400 font-medium">System ID</span>
@@ -696,7 +696,7 @@ export function NoctisRmfDashboardTab({
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* ATO Readiness + cATO */}
               <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 space-y-3">
-                <h2 className="text-sm font-bold text-white">RMF-007 ATO Readiness &amp; RMF-008 cATO Monitor</h2>
+                <h2 className="text-sm font-bold text-white">RMF-007 ATO Readiness & RMF-008 cATO Monitor</h2>
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
@@ -746,7 +746,7 @@ export function NoctisRmfDashboardTab({
 
               {/* POA&M Closure Gate + Enterprise Risk Register */}
               <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 space-y-3">
-                <h2 className="text-sm font-bold text-white">RMF-006 POA&amp;M Evidence Gate &amp; RMF-009 Risk Register</h2>
+                <h2 className="text-sm font-bold text-white">RMF-006 POA&M Evidence Gate & RMF-009 Risk Register</h2>
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
@@ -896,7 +896,7 @@ export function NoctisRmfDashboardTab({
 
               {/* DoD IL2-IL6 Overlay & RMF-010 Crosswalk */}
               <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 space-y-3">
-                <h3 className="text-sm font-bold text-white">DoD IL2–IL6 / SCCA Overlay &amp; RMF-010 Framework Crosswalk</h3>
+                <h3 className="text-sm font-bold text-white">DoD IL2–IL6 / SCCA Overlay & RMF-010 Framework Crosswalk</h3>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <select value={dodIl} onChange={(e) => setDodIl(e.target.value as "IL2" | "IL4" | "IL5" | "IL6")} className="rounded-lg border border-white/15 bg-[#101521] px-2.5 py-1.5 text-white">
                     <option value="IL2">DoD IL2</option>
@@ -944,7 +944,7 @@ export function NoctisRmfDashboardTab({
                     }}
                     className="rounded-lg bg-white/10 border border-white/15 px-3 py-1.5 font-bold text-zinc-200"
                   >
-                    Resolve Crosswalk (800-171 / CSF / ISO / CIS / ATT&amp;CK)
+                    Resolve Crosswalk (800-171 / CSF / ISO / CIS / ATT&CK)
                   </button>
                 </div>
                 {crosswalkResult ? <pre className="rounded-lg bg-black/50 p-2.5 text-[11px] font-mono text-zinc-200 overflow-auto max-h-44">{JSON.stringify(crosswalkResult, null, 2)}</pre> : null}
@@ -998,7 +998,7 @@ export function NoctisRmfDashboardTab({
                 onClick={() => void runCyberSuite()}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-rose-600/30 hover:bg-rose-600/45 border border-rose-500/40 px-4 py-2 text-xs font-bold text-rose-200 transition"
               >
-                <ZapIcon /> Sync Live CISA KEV &amp; Run Full Cyber Suite
+                <ZapIcon /> Sync Live CISA KEV & Run Full Cyber Suite
               </button>
             </div>
 
@@ -1006,7 +1006,7 @@ export function NoctisRmfDashboardTab({
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 space-y-2">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-bold text-white">CYB-011 Live CISA KEV &amp; SLA Correlation</h3>
+                    <h3 className="text-sm font-bold text-white">CYB-011 Live CISA KEV & SLA Correlation</h3>
                     <span className="rounded bg-cyan-500/20 px-2 py-0.5 text-[10px] font-mono font-bold text-cyan-200">
                       {String(kevResult.kevFeedSource)} ({String(kevResult.kevCatalogCount)} CVEs)
                     </span>
@@ -1044,7 +1044,7 @@ export function NoctisRmfDashboardTab({
             {/* CYB-014 Evidence Connector & SHA-256 Tamper Test + ZTMM */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 space-y-3">
-                <h3 className="text-sm font-bold text-white">CYB-014 Scoped Connector &amp; SHA-256 Quarantine Gate</h3>
+                <h3 className="text-sm font-bold text-white">CYB-014 Scoped Connector & SHA-256 Quarantine Gate</h3>
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
@@ -1088,7 +1088,7 @@ export function NoctisRmfDashboardTab({
               </div>
 
               <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 space-y-3">
-                <h3 className="text-sm font-bold text-white">CYB-018 Zero Trust Pillars (ZTMM v2.0) &amp; CYB-016 Risk Forecast</h3>
+                <h3 className="text-sm font-bold text-white">CYB-018 Zero Trust Pillars (ZTMM v2.0) & CYB-016 Risk Forecast</h3>
                 <div className="space-y-2 text-xs">
                   {(["identity", "devices", "networks", "applications", "data"] as const).map((k) => (
                     <div key={k} className="flex items-center gap-3">
@@ -1117,7 +1117,7 @@ export function NoctisRmfDashboardTab({
                   }}
                   className="rounded-lg bg-cyan-500/20 border border-cyan-500/40 px-3 py-1.5 text-xs font-bold text-cyan-200"
                 >
-                  Score Zero Trust &amp; Forecast Risk
+                  Score Zero Trust & Forecast Risk
                 </button>
                 {ztResult ? <pre className="rounded-lg bg-black/50 p-2.5 text-[11px] font-mono text-cyan-200 overflow-auto max-h-40">{JSON.stringify(ztResult, null, 2)}</pre> : null}
                 {forecastResult ? (
@@ -1139,7 +1139,7 @@ export function NoctisRmfDashboardTab({
             <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <h2 className="text-sm font-bold text-white">AI-019 Tenant-Scoped RMF Knowledge Graph &amp; AI-025 Decision Trace</h2>
+                  <h2 className="text-sm font-bold text-white">AI-019 Tenant-Scoped RMF Knowledge Graph & AI-025 Decision Trace</h2>
                   <p className="text-xs text-zinc-400">Interactive graph linking System → Baseline → Controls → Provider with strict caller tenant isolation.</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -1148,7 +1148,7 @@ export function NoctisRmfDashboardTab({
                     onClick={() => void loadKnowledgeGraph()}
                     className="rounded-lg bg-cyan-500/20 border border-cyan-500/40 px-3 py-1.5 text-xs font-bold text-cyan-200"
                   >
-                    Build &amp; Query Tenant Graph
+                    Build & Query Tenant Graph
                   </button>
                   <button
                     type="button"
@@ -1208,7 +1208,7 @@ export function NoctisRmfDashboardTab({
 
             {/* AI-025 Reproducible Trace Investigate */}
             <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 space-y-3">
-              <h3 className="text-sm font-bold text-white">AI-025 Replayable Investigation &amp; Explanation Bundle</h3>
+              <h3 className="text-sm font-bold text-white">AI-025 Replayable Investigation & Explanation Bundle</h3>
               <div className="flex gap-2">
                 <input value={traceQuestion} onChange={(e) => setTraceQuestion(e.target.value)} className="flex-1 rounded-lg border border-white/15 bg-black/40 px-3 py-1.5 text-xs text-white" />
                 <button
@@ -1234,7 +1234,7 @@ export function NoctisRmfDashboardTab({
               <div>
                 <h2 className="text-sm font-bold text-white flex items-center gap-2">
                   <Cpu className="size-4 text-cyan-400" />
-                  AI-022 Curated Assessor Feedback &amp; LoRA / QLoRA Dataset Export
+                  AI-022 Curated Assessor Feedback & LoRA / QLoRA Dataset Export
                 </h2>
                 <p className="text-xs text-zinc-400">
                   Unapproved assessor corrections remain isolated (`PENDING_REVIEW`) and are never exported into SFT/DPO datasets until explicitly human-approved.
@@ -1261,7 +1261,7 @@ export function NoctisRmfDashboardTab({
                 <h3 className="text-sm font-bold text-white">Submit Expert Assessor Correction</h3>
                 <input value={fbControl} onChange={(e) => setFbControl(e.target.value)} placeholder="Control ID" className="w-full rounded-lg border border-white/15 bg-black/40 px-3 py-1.5 text-white font-mono" />
                 <input value={fbPrompt} onChange={(e) => setFbPrompt(e.target.value)} placeholder="Prompt" className="w-full rounded-lg border border-white/15 bg-black/40 px-3 py-1.5 text-white" />
-                <textarea rows={2} value={fbPreferred} onChange={(e) => setFbPreferred(e.target.value)} placeholder="Approved Preferred Response" className="w-full rounded-lg border border-white/15 bg-black/40 p-2.5 text-white" />
+                <textarea rows={4} value={fbPreferred} onChange={(e) => setFbPreferred(e.target.value)} placeholder="Approved Preferred Response" className="w-full rounded-lg border border-white/15 bg-black/40 p-2.5 text-white" />
                 <input value={fbRejected} onChange={(e) => setFbRejected(e.target.value)} placeholder="Rejected Example (optional for DPO)" className="w-full rounded-lg border border-white/15 bg-black/40 px-3 py-1.5 text-white" />
                 <button
                   type="button"
@@ -1299,9 +1299,9 @@ python scripts/train_rmf_lora.py --mode dpo --epochs 2`}
                 {trainingStatus ? (
                   <div className="space-y-2">
                     <div className="font-mono text-[11px] text-zinc-300">
-                      Base SFT: <strong>{String(trainingStatus.baseCorpusSftExamples)}</strong> · Base DPO:{" "}
-                      <strong>{String(trainingStatus.baseCorpusDpoPairs)}</strong> · Feedback Pending:{" "}
-                      <strong className="text-amber-300">{String(trainingStatus.feedbackPending)}</strong> · Approved:{" "}
+                      {"Base SFT: "}<strong>{String(trainingStatus.baseCorpusSftExamples)}</strong>{" · Base DPO: "}
+                      <strong>{String(trainingStatus.baseCorpusDpoPairs)}</strong>{" · Feedback Pending: "}
+                      <strong className="text-amber-300">{String(trainingStatus.feedbackPending)}</strong>{" · Approved: "}
                       <strong className="text-emerald-300">{String(trainingStatus.feedbackApproved)}</strong>
                     </div>
                     <div className="space-y-1.5 max-h-40 overflow-auto">

@@ -316,8 +316,8 @@ export async function handleRmfV2Request(request: Request): Promise<Response> {
     return jsonResponse(
       {
         tenant_id: caller.tenantId,
-        baseCorpusSftExamples: 677,
-        baseCorpusDpoPairs: 404,
+        baseCorpusSftExamples: 684,
+        baseCorpusDpoPairs: 411,
         liveExportableSftCount: baseSftCount + approvedCount,
         liveExportableDpoCount: baseDpoCount + records.filter((r) => r.status === "APPROVED" && r.rejectedResponse).length,
         feedbackTotal: records.length,
