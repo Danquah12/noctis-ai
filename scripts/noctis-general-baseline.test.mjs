@@ -6,7 +6,7 @@ import {resolve, dirname} from 'node:path';
 import {parseCases, validateEndpoint, gradeCase, auditRun, runLive, parseCli, hash} from './noctis-general-baseline.mjs';
 
 const root = dirname(fileURLToPath(import.meta.url));
-const bytes = readFileSync(resolve(root, 'noctis-general-smoke-v1.jsonl'));
+const bytes = readFileSync(resolve(root, '../data/noctis-general-smoke-v1.jsonl'));
 const cases = parseCases(bytes);
 const digest = hash(bytes);
 
