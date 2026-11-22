@@ -36,7 +36,7 @@ export const askNoctis = createServerFn({ method: "POST" })
     return {
       turns: retainSources(turns),
       desk: input?.desk === "study" ? ("study" as const) : ("chat" as const),
-      think: input?.think === true,
+      think: input?.think !== false,
       code: input?.code === true,
       skill: picked.id as NoctisSkillId,
       depth: input?.depth === "deep" ? ("deep" as const) : ("plain" as const),

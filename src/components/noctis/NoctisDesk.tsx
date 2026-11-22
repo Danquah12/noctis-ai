@@ -24,7 +24,7 @@ const NoctisRedTeamTab = lazy(() => import("@/components/noctis/NoctisRedTeamTab
 const NoctisPluginExecutorModal = lazy(() => import("@/components/noctis/NoctisPluginExecutorModal").then((m) => ({ default: m.NoctisPluginExecutorModal })));
 import { DISTRIBUTED_PLUGINS, getPluginsForShelf, type DistributedPluginItem } from "@/lib/noctis-distributed-plugins";
 import { NoctisCodeInterpreter } from "@/components/noctis/NoctisCodeInterpreter";
-import { NoctisThinkingAccordion, CitationBadge } from "@/components/noctis/NoctisThinkingAccordion";
+import { NoctisThinkingAccordion, NoctisLiveThinkingPanel, CitationBadge } from "@/components/noctis/NoctisThinkingAccordion";
 import NoctisAgentStepper from "@/components/noctis/NoctisAgentStepper";
 import NoctisLiveCveTicker from "@/components/noctis/NoctisLiveCveTicker";
 import NoctisBlastRadiusStrip from "@/components/noctis/NoctisBlastRadiusStrip";
@@ -89,9 +89,13 @@ import { leaveHall } from "@/lib/auth/client";
 import { textFromDocx, textFromPdf, textFromRtf } from "@/lib/read-document";
 import { saveShareLink } from "@/lib/share-link";
 
-type Turn = { role: "user" | "assistant"; content: string; images?: string[]; video?: string; clips?: string[]; audio?: string };
+type Turn = { role: "user" | "assistant"; content: string; images?: string[]; video?: string; clips?: string[]; audio?: string; thoughtSeconds?: number };
 type Thread = { id: string; title: string; turns: Turn[]; temp?: boolean };
 type Upload = { id: string; name: string; kind: "text" | "image"; text?: string; dataUrl?: string };
+
+function stripThinkBlock(text: string): string {
+  return (text || "").replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+}
 
 const STORE_BASE = "vibetok-vibe-threads";
 const SOURCE_BASE = "vibetok-vibe-source";
@@ -3350,7 +3354,7 @@ function ClinicalHandoffView({ data, rawJson }: { data: Record<string, unknown>;
   );
 }
 
-function AnswerBody({ text }: { text: string }) {
+function AnswerBody({ text, durationSeconds }: { text: string; durationSeconds?: number }) {
   const cut = text.search(/\n\s*Claim standing:/i);
   let lesson = (cut >= 0 ? text.slice(0, cut) : text).trim();
   const stamp = cut >= 0 ? text.slice(cut).trim() : "";
@@ -3366,7 +3370,7 @@ function AnswerBody({ text }: { text: string }) {
   return (
     <div className="space-y-3">
       {rawThought ? (
-        <NoctisThinkingAccordion rawThought={rawThought} durationSeconds={3} />
+        <NoctisThinkingAccordion rawThought={rawThought} durationSeconds={durationSeconds ?? 3} />
       ) : null}
       {clinicalJson ? <ClinicalHandoffView data={clinicalJson} rawJson={lesson} /> : renderBlocks(lesson)}
       {stamp ? (
@@ -3542,7 +3546,7 @@ export function NoctisDesk() {
       setCanvasRevising(false);
     }
   }
-  const [think, setThink] = useState(false);
+  const [think, setThink] = useState(true);
   const [filmAt, setFilmAt] = useState(0);
   const [code, setCode] = useState(false);
   const [shelf, setShelf] = useState<"chats" | "pictures" | "library" | "tools" | "more">("chats");
@@ -3902,6 +3906,7 @@ export function NoctisDesk() {
 
   async function reply(id: string, turns: Turn[], title: string, useSkill: NoctisSkillId | ""): Promise<string> {
     const token = ++run.current;
+    const replyStartedAt = Date.now();
     setError("");
     setBusy(true);
     setThreads((rows) => rows.map((row) => (row.id === id ? { ...row, title, turns } : row)));
@@ -4024,14 +4029,15 @@ export function NoctisDesk() {
       setBusy(false);
       return "";
     }
-    setThreads((rows) => rows.map((row) => (row.id === id ? { ...row, turns: [...turns, { role: "assistant", content: answer, images: shots }] } : row)));
+    const thoughtSeconds = Math.max(1, Math.round((Date.now() - replyStartedAt) / 1000));
+    setThreads((rows) => rows.map((row) => (row.id === id ? { ...row, turns: [...turns, { role: "assistant", content: answer, images: shots, thoughtSeconds }] } : row)));
     const asked = [...turns].reverse().find((turn) => turn.role === "user")?.content ?? title;
     const note = markDna(asked);
     if (note) awardXp(2);
     const mission = markMission("ask");
     if (mission.rewarded) awardXp(50);
     setBusy(false);
-    if (useSkill === "speak" && !sayAloud(answer)) setError("This browser cannot speak the answer.");
+    if (useSkill === "speak" && !sayAloud(stripThinkBlock(answer))) setError("This browser cannot speak the answer.");
     return answer;
   }
 
@@ -8034,13 +8040,13 @@ export function NoctisDesk() {
                                 }}
                               />
                             ) : null}
-                            <AnswerBody text={turn.content} />
+                            <AnswerBody text={turn.content} durationSeconds={turn.thoughtSeconds} />
                           </div>
                           {turn.video || (turn.images?.length && /Written by Noctis/i.test(turn.content)) ? (
-                            <MadeShare words={plainAnswer(turn.content)} picture={turn.images?.[0] || ""} video={turn.video || turn.clips?.[0] || ""} clips={turn.clips} />
+                            <MadeShare words={plainAnswer(stripThinkBlock(turn.content))} picture={turn.images?.[0] || ""} video={turn.video || turn.clips?.[0] || ""} clips={turn.clips} />
                           ) : null}
                           <div className="mt-4 flex flex-wrap gap-1 border-t border-[#e4b86a]/20 pt-3">
-                          <button type="button" onClick={() => void copyText(turn.content.split(/\n\s*Claim standing:/i)[0] || turn.content, `a-${index}`)} className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs text-zinc-400 hover:bg-white/10 hover:text-zinc-100">
+                          <button type="button" onClick={() => void copyText(stripThinkBlock(turn.content).split(/\n\s*Claim standing:/i)[0] || stripThinkBlock(turn.content), `a-${index}`)} className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs text-zinc-400 hover:bg-white/10 hover:text-zinc-100">
                             <Copy className="size-3.5" />
                             {copied === `a-${index}` ? "Copied" : "Copy"}
                           </button>
@@ -8056,7 +8062,7 @@ export function NoctisDesk() {
                                   } else {
                                     stopCurrentVoicePlayback();
                                     setReadingTurnIndex(index);
-                                    const rawAnswer = turn.content;
+                                    const rawAnswer = stripThinkBlock(turn.content);
                                     const brainConfig = getBrainConfig();
                                     const activeBrain = getActiveKeyAndModel(brainConfig);
                                     const userOpenAiKey = activeBrain.provider === "openai" ? activeBrain.key : "";
@@ -8117,7 +8123,7 @@ export function NoctisDesk() {
                                   data: {
                                     action: "train",
                                     question: asked.replace(/---[\s\S]*$/g, "").trim(),
-                                    answer: (turn.content.split(/\n\s*Claim standing:/i)[0] || turn.content).trim(),
+                                    answer: (stripThinkBlock(turn.content).split(/\n\s*Claim standing:/i)[0] || stripThinkBlock(turn.content)).trim(),
                                   },
                                 }).then(() => {
                                   setCopied(`t-${index}`);
@@ -8132,7 +8138,7 @@ export function NoctisDesk() {
                           ) : null}
                           <button
                             type="button"
-                            onClick={() => downloadWordReport(asked || "Noctis Analysis", turn.content)}
+                            onClick={() => downloadWordReport(asked || "Noctis Analysis", stripThinkBlock(turn.content))}
                             className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs text-zinc-400 hover:bg-white/10 hover:text-zinc-100"
                           >
                             <FileText className="size-3.5" />
@@ -8140,7 +8146,7 @@ export function NoctisDesk() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => printAnswerReport(asked || "Noctis Analysis", turn.content)}
+                            onClick={() => printAnswerReport(asked || "Noctis Analysis", stripThinkBlock(turn.content))}
                             className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs text-zinc-400 hover:bg-white/10 hover:text-zinc-100"
                           >
                             <Printer className="size-3.5" />
@@ -8154,14 +8160,14 @@ export function NoctisDesk() {
                           ) : null}
                           <button
                             type="button"
-                            onClick={() => openInCanvas(asked || "Noctis Artifact", turn.content)}
+                            onClick={() => openInCanvas(asked || "Noctis Artifact", stripThinkBlock(turn.content))}
                             className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs text-[#e4b86a] hover:bg-[#e4b86a]/15"
                             title="Open in Side-by-Side Canvas Workspace"
                           >
                             <PanelRightOpen className="size-3.5" />
                             Canvas
                           </button>
-                          <AnswerShare text={turn.content} />
+                          <AnswerShare text={stripThinkBlock(turn.content)} />
                         </div>
                         </article>
                         {last && !busy ? (
@@ -8227,7 +8233,15 @@ export function NoctisDesk() {
                     </div>
                   );
                 })}
-                {busy ? <p className="text-sm text-zinc-500">{imagine ? "Imagine is making the picture and the film…" : skill === "draw" ? "Noctis is drawing…" : skill === "search" || skill === "library" || skill === "tools" || skill === "agent" || skill === "research" || skill === "tutor" || skill === "make" ? "Noctis is looking that up…" : "Noctis is writing…"}</p> : null}
+                {busy ? (
+                  imagine || skill === "draw" ? (
+                    <p className="text-sm text-zinc-500">
+                      {imagine ? "Imagine is making the picture and the film…" : "Noctis is drawing…"}
+                    </p>
+                  ) : (
+                    <NoctisLiveThinkingPanel />
+                  )
+                ) : null}
                 {error ? <p className="text-sm text-red-400">{error}</p> : null}
               </div>
             </div>

@@ -229,12 +229,18 @@ describe("Universal 3-Stage Neuro-Symbolic Clinical Pipeline (executeUniversalCl
       "**ABG:** pH 7.18, PaCO₂ 30 mmHg, HCO₃⁻ 11 mEq/L",
     ].join("\n");
 
-    // 1. Clean pass verifies single-source authoritative labs reach LLM and certificate issues cleanly
+    // 1. Clean pass verifies single-source authoritative labs reach LLM, thinkingLevel="high", <think> block present, and certificate issues cleanly
     let cleanUserPrompt = "";
-    const cleanMock: UniversalClinicalModelChatFn = async (messages) => {
+    let seenThinkingLevel: string | undefined;
+    const cleanMock: UniversalClinicalModelChatFn = async (messages, opts) => {
+      seenThinkingLevel = opts?.thinkingLevel;
       cleanUserPrompt = messages[1]?.content ?? "";
       return {
         text: [
+          "<think>",
+          "Step 1: Verified Na 130, Cl 99, Serum HCO3 12, ABG HCO3 11, Cr 2.7 vs remote baseline 1.3 (3 months ago).",
+          "Step 2: AG = 19, Winter's = 22.5-26.5, KDIGO Stage 2 only; parallel Apixaban reversal urgent for ICH.",
+          "</think>",
           "# Noctis Patient Diagnostic & Triage Intelligence Dossier (Clinical Decision Support)",
           "**Encounter ID:** `NOCTIS-ICU-CRIT-046`",
           "### Critical Action: Urgent Parallel Apixaban Reversal for ICH",
@@ -254,6 +260,9 @@ describe("Universal 3-Stage Neuro-Symbolic Clinical Pipeline (executeUniversalCl
 
     const cleanOut = await executeUniversalClinicalReasoning(crit046Prompt, { modelChatFn: cleanMock });
     assert.ok(cleanOut);
+    assert.equal(seenThinkingLevel, "high", "Clinical reasoning must invoke modelChat with thinkingLevel=high");
+    assert.match(cleanOut, /^<think>[\s\S]+<\/think>/i, "Approved response must lead with <think>...</think> deliberation");
+    assert.match(cleanOut, /Stage 3 Independent Validator \(NOCTIS-VAL-v2\.4-CLINICAL\)/);
     assert.match(cleanUserPrompt, /"anionGapMeqL": 19/);
     assert.match(cleanUserPrompt, /"expectedPaco2RangeLowMmHg": 22\.5/);
     assert.ok(cleanOut.includes("APPROVED FOR CLINICAL DECISION SUPPORT"));
@@ -290,6 +299,7 @@ describe("Universal 3-Stage Neuro-Symbolic Clinical Pipeline (executeUniversalCl
     assert.ok(repairedOut);
     assert.equal(calls, 2);
     assert.match(repairPromptSeen, /Stage 3|Anion Gap/i);
+    assert.match(repairedOut, /^<think>[\s\S]+<\/think>/i);
     assert.ok(repairedOut.includes("APPROVED FOR CLINICAL DECISION SUPPORT"));
 
     // 3. Persistent documented-to-UNMEASURED or Stage 2/3 violation fails closed and suppresses certificate
@@ -305,5 +315,45 @@ describe("Universal 3-Stage Neuro-Symbolic Clinical Pipeline (executeUniversalCl
     assert.ok(lockedOut);
     assert.ok(lockedOut.includes("CLINICAL_VALIDATION_FAILED — SAFETY_INVARIANT_VIOLATION"));
     assert.ok(!lockedOut.includes("APPROVED FOR CLINICAL DECISION SUPPORT"));
+  });
+
+  it("handles NOCTIS-ICU-CRIT-047 end-to-end with prior Cr before current, ABG HCO3- Winter's, and zero med gap contamination", async () => {
+    const crit047Prompt = [
+      "**Encounter ID:** NOCTIS-ICU-CRIT-047",
+      "71-year-old male (Weight: 72 kg) presents in shock (BP 68/40 mmHg, HR 128 bpm, SpO2 87%).",
+      "5 days ago outpatient Creatinine: 1.4 mg/dL.",
+      "Current Medications: Metformin 1000 mg BID, Lisinopril 20 mg daily.",
+      "Current Labs: Na 128 mEq/L, K 5.9 mEq/L, Cl 94 mEq/L, Serum Bicarbonate 8 mEq/L, Creatinine 3.6 mg/dL.",
+      "ABG: pH 7.14, PaCO2 24 mmHg, HCO3- 7 mEq/L. Urine output 100 mL over 8 hours.",
+      "Clinical Question: What are the risks if an anticoagulant is considered?",
+    ].join("\n");
+
+    let userPayloadSeen = "";
+    const mock047: UniversalClinicalModelChatFn = async (messages) => {
+      userPayloadSeen = messages[1]?.content ?? "";
+      return {
+        text: [
+          "<think>",
+          "Verified Current Cr 3.6 vs baseline 1.4 (5 days ago; 2.57x KDIGO Stage 2), AG = 26, Winter's (ABG HCO3 7) = 16.5-20.5 mmHg.",
+          "</think>",
+          "**Encounter ID:** `NOCTIS-ICU-CRIT-047`",
+          "71-year-old male (72 kg) in P0 shock: BP 68/40 mmHg (MAP 49.3 mmHg), HR 128 bpm, SpO2 87%.",
+          "Cr 3.6 mg/dL (baseline 1.4 mg/dL 5 days ago; 2.57x ratio, +2.2 mg/dL rise = KDIGO Stage 2 AKI; Stage 3 criteria are not met).",
+          "Na 128 mEq/L, K 5.9 mEq/L, Cl 94 mEq/L, Serum HCO3 8 mEq/L, ABG pH 7.14, PaCO2 24 mmHg, ABG HCO3 7 mEq/L.",
+          "Anion Gap = 26 mEq/L. Winter's expected PaCO2 = 16.5-20.5 mmHg using ABG HCO3- 7; measured PaCO2 24 mmHg indicates inadequate compensation.",
+          "Target MAP >= 65 mmHg with Norepinephrine.",
+        ].join("\n\n"),
+      };
+    };
+
+    const res047 = await executeUniversalClinicalReasoning(crit047Prompt, { modelChatFn: mock047 });
+    assert.ok(res047);
+    assert.match(userPayloadSeen, /"creatinineMgDl": 3\.6/);
+    assert.match(userPayloadSeen, /"baselineCreatinineMgDl": 1\.4/);
+    assert.match(userPayloadSeen, /"anionGapMeqL": 26/);
+    assert.match(userPayloadSeen, /"expectedPaco2RangeLowMmHg": 16\.5/);
+    assert.match(res047, /^<think>[\s\S]+<\/think>/i);
+    assert.ok(res047.includes("APPROVED FOR CLINICAL DECISION SUPPORT"));
+    assert.doesNotMatch(res047.slice(res047.indexOf("Actionable Clinical Data Gaps")), /Digoxin|Anticoagulant\/DOAC/i);
   });
 });

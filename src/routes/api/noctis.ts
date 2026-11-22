@@ -1190,7 +1190,7 @@ export const Route = createFileRoute("/api/noctis")({
           const reply = await vibeReply(retainSources(turns), baked, {
             skill: typeof body?.skill === "string" ? body.skill : "talk",
             depth: body?.depth === "deep" ? "deep" : "plain",
-            think: body?.think === true,
+            think: body?.think !== false,
             code: body?.code === true,
             language: typeof body?.language === "string" ? body.language : "English",
             context: typeof body?.context === "string" ? body.context : "",

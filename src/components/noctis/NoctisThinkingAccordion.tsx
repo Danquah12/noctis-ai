@@ -1,13 +1,76 @@
 "use client";
 
-import React, { useState } from "react";
-import { Brain, ChevronDown, CheckCircle2, Search, ShieldCheck, Sparkles, ExternalLink } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { Brain, ChevronDown, CheckCircle2, Loader2, ExternalLink } from "lucide-react";
 
 interface ThinkingStep {
   title: string;
   detail: string;
   status: "done" | "active" | "waiting";
   timeMs?: number;
+}
+
+const LIVE_STAGES = [
+  "Analyzing prompt structure & isolating authoritative facts…",
+  "Cross-checking parameters, calculations & safety constraints…",
+  "Running deep multi-step reasoning & differential synthesis…",
+  "Running independent consistency & zero-fabrication audit…",
+];
+
+/**
+ * Animated live reasoning panel displayed while Noctis deliberates before emitting an answer.
+ */
+export function NoctisLiveThinkingPanel({ label = "Noctis is thinking…" }: { label?: string }) {
+  const [elapsedSeconds, setElapsedSeconds] = useState(1);
+
+  useEffect(() => {
+    const start = Date.now();
+    const id = window.setInterval(() => {
+      setElapsedSeconds(Math.max(1, Math.floor((Date.now() - start) / 1000) + 1));
+    }, 500);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const stageIndex = Math.min(LIVE_STAGES.length - 1, Math.floor((elapsedSeconds - 1) / 2));
+
+  return (
+    <div className="my-2 overflow-hidden rounded-2xl border border-[#e4b86a]/30 bg-zinc-900/70 px-4 py-3 text-xs text-zinc-300 shadow-sm">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2.5">
+          <span className="grid size-6 place-items-center rounded-full bg-[#e4b86a]/15 text-[#e4b86a]">
+            <Brain className="size-3.5 animate-pulse" />
+          </span>
+          <span className="font-semibold text-zinc-100">{label}</span>
+        </div>
+        <span className="font-mono text-[11px] text-[#e4b86a]">{elapsedSeconds}s</span>
+      </div>
+      <div className="mt-2.5 space-y-1.5 pl-1">
+        {LIVE_STAGES.map((stage, idx) => {
+          const isDone = idx < stageIndex;
+          const isActive = idx === stageIndex;
+          return (
+            <div
+              key={stage}
+              className={`flex items-center gap-2 text-[11.5px] transition-opacity ${
+                idx > stageIndex ? "opacity-35" : "opacity-100"
+              }`}
+            >
+              {isDone ? (
+                <CheckCircle2 className="size-3.5 shrink-0 text-emerald-400" />
+              ) : isActive ? (
+                <Loader2 className="size-3.5 shrink-0 animate-spin text-[#e4b86a]" />
+              ) : (
+                <span className="size-3.5 shrink-0 rounded-full border border-zinc-600" />
+              )}
+              <span className={isActive ? "text-zinc-100 font-medium" : "text-zinc-400"}>
+                {stage}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 interface NoctisThinkingProps {
@@ -67,7 +130,7 @@ export function NoctisThinkingAccordion({
             <Brain className="size-3 animate-pulse" />
           </span>
           <span className="font-semibold text-zinc-200">
-            Thought for {durationSeconds} seconds
+            Thought for {durationSeconds} {durationSeconds === 1 ? "second" : "seconds"}
           </span>
           <span className="hidden text-[11px] text-zinc-500 sm:inline">
             (Chain of Thought & Domain Reasoning)

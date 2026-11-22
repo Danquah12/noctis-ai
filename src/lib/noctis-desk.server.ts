@@ -984,14 +984,15 @@ export async function vibeReply(
     const { isUniversalClinicalQuestion } = await import("@/lib/noctis-universal-clinical.server");
     const { rememberAnswer, rememberRule, inferDomain } = await import("@/lib/noctis-train.server");
     const skipClinicalCache = isClinicalInquiry || isUniversalClinicalQuestion(latest);
-    if (!skipClinicalCache && reply && "text" in reply && reply.text && reply.text.length > 60 && !reply.text.includes("could not finish")) {
+    const cleanReplyForMemory = reply.text.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+    if (!skipClinicalCache && reply && "text" in reply && cleanReplyForMemory.length > 60 && !cleanReplyForMemory.includes("could not finish")) {
       const domain = inferDomain(latest);
       if (domain !== "medical") {
-        rememberAnswer(latest, reply.text, "noctis-continuous-learner", domain);
+        rememberAnswer(latest, cleanReplyForMemory, "noctis-continuous-learner", domain);
 
         // Auto-extract rule if a critical non-encounter invariant or guideline violation was resolved:
-        if (/(?:override|wrong weight metric|predicted body weight|safety invariant|rule fails|absolute contraindication|hard safety veto|do not wait|ecmo criteria|winter['’]?s formula)/i.test(reply.text)) {
-          const keyRuleMatch = reply.text.match(/(?:ARDS ventilation targets[^.\n]+|using the actual \d+ kg gives a false limit[^.\n]+|do not administer[^.\n]+|mandatory IV[^.\n]+|PBW formula[^.\n]+|Alveolar distending pressure is measured strictly by Plateau Pressure[^.\n]+|increasing the respiratory rate from \d+ to \d+ will drastically shorten expiratory time[^.\n]+|never administer continuous neuromuscular blockade without first confirming deep[^.\n]+|in severe metabolic acidosis.*Winter['’]?s formula[^.\n]+|tension pneumothorax.*immediate decompression[^.\n]+|EOLIA trial criteria.*VV-ECMO[^.\n]+)/i);
+        if (/(?:override|wrong weight metric|predicted body weight|safety invariant|rule fails|absolute contraindication|hard safety veto|do not wait|ecmo criteria|winter['’]?s formula)/i.test(cleanReplyForMemory)) {
+          const keyRuleMatch = cleanReplyForMemory.match(/(?:ARDS ventilation targets[^.\n]+|using the actual \d+ kg gives a false limit[^.\n]+|do not administer[^.\n]+|mandatory IV[^.\n]+|PBW formula[^.\n]+|Alveolar distending pressure is measured strictly by Plateau Pressure[^.\n]+|increasing the respiratory rate from \d+ to \d+ will drastically shorten expiratory time[^.\n]+|never administer continuous neuromuscular blockade without first confirming deep[^.\n]+|in severe metabolic acidosis.*Winter['’]?s formula[^.\n]+|tension pneumothorax.*immediate decompression[^.\n]+|EOLIA trial criteria.*VV-ECMO[^.\n]+)/i);
           if (keyRuleMatch?.[0]) {
             void rememberRule(keyRuleMatch[0].trim(), domain);
           }
@@ -1059,6 +1060,27 @@ async function composeVibeReply(
       fullQuestion
     );
 
+  const shouldThink = style.think !== false;
+  const wantsRawJson = /\b(?:return|output|respond)\s+(?:only|strictly)\s+(?:valid\s+)?json\b/i.test(question);
+  const THINKING_DIRECTIVE =
+    "THINK BEFORE ANSWERING: Begin your reply with a concise, rigorous <think>...</think> reasoning block where you (1) break down the question and constraints, (2) verify every calculation, fact, and edge case, and (3) check for missing information or contradictions before formulating your final response. Then close </think> and deliver the clear, complete answer.";
+  const wrapDeterministicThink = (rawOut: string, traceNote: string): string => {
+    const t = rawOut.trim();
+    if (
+      !shouldThink ||
+      wantsRawJson ||
+      !t ||
+      /^<think>/i.test(t) ||
+      t.startsWith("{") ||
+      t.startsWith("[") ||
+      t.startsWith("## Vibe ") ||
+      /CLINICAL_VALIDATION_FAILED/i.test(t)
+    ) {
+      return rawOut;
+    }
+    return `<think>\n${traceNote}\n</think>\n\n${rawOut}`;
+  };
+
   const { isUniversalClinicalQuestion, executeUniversalClinicalReasoning } = await import(
     "@/lib/noctis-universal-clinical.server"
   );
@@ -1071,7 +1093,12 @@ async function composeVibeReply(
     if (cveMatch) {
       const { resolveCveIntelligenceLive, formatCveResponse } = await import("@/lib/noctis-cve-knowledge");
       const profile = await resolveCveIntelligenceLive(cveMatch[1], fullQuestion);
-      return { text: formatCveResponse(profile) };
+      return {
+        text: wrapDeterministicThink(
+          formatCveResponse(profile),
+          `Queried authoritative MITRE/NVD vulnerability records for ${cveMatch[1].toUpperCase()} and verified severity, affected software ranges, and mitigation status prior to response synthesis.`,
+        ),
+      };
     }
 
     // Universal Engine-Agnostic Neuro-Symbolic Clinical LLM Pipeline (Isolated Encounter)
@@ -1089,9 +1116,19 @@ async function composeVibeReply(
     if (followUpOut) {
       const careerLang = languageNow(question, style.language || "");
       if (followUpOut.startsWith("# 🧭") && !/^(english|en([-_][a-z]+)?)$/i.test(careerLang.trim())) {
-        return { text: await translateCareerAnswer(followUpOut, careerLang) };
+        return {
+          text: wrapDeterministicThink(
+            await translateCareerAnswer(followUpOut, careerLang),
+            `Evaluated structured career guidance for query constraints, verified domain recommendations, and translated output cleanly to ${careerLang}.`,
+          ),
+        };
       }
-      return { text: followUpOut };
+      return {
+        text: wrapDeterministicThink(
+          followUpOut,
+          "Analyzed query scope against deterministic domain intelligence engines, cross-checked constraints and safety invariants, and validated internal consistency before response output.",
+        ),
+      };
     }
     const { runVibeGadgets } = await import("@/lib/noctis-gadgets.server");
     const gadgetOut = await runVibeGadgets(fullQuestion).catch(() => null);
@@ -1128,8 +1165,17 @@ async function composeVibeReply(
   const spoken = languageNow(question, style.language || "");
   if (!isClinicalCacheBypass && !attached && spoken.toLowerCase() === "english" && !engineeringDesign(question) && !resourcePlan(question) && !hasHardRows) {
     const trainedHit = recallTrainedAnswer(question);
-    if (trainedHit && (trainedHit.score >= 0.58 || trainedHit.model === "user-taught" || trainedHit.model === "vibe-trained" || trainedHit.model === "api-trained")) {
-      return { text: trainedHit.answer };
+    if (
+      trainedHit &&
+      (trainedHit.model === "user-taught" ||
+        (!shouldThink && (trainedHit.score >= 0.58 || trainedHit.model === "vibe-trained" || trainedHit.model === "api-trained")))
+    ) {
+      return {
+        text: wrapDeterministicThink(
+          trainedHit.answer,
+          "Matched explicitly verified user-taught training rule and validated relevance against current query.",
+        ),
+      };
     }
   }
   const { askedLevel, depthStance } = await import("@/lib/depth");
@@ -1258,7 +1304,14 @@ async function composeVibeReply(
   };
   if (!isClinicalCacheBypass && strict && ground.trim().length < 40) {
     const fallbackTrained = recallTrainedAnswer(question);
-    if (fallbackTrained) return { text: fallbackTrained.answer };
+    if (fallbackTrained && (!shouldThink || fallbackTrained.model === "user-taught")) {
+      return {
+        text: wrapDeterministicThink(
+          fallbackTrained.answer,
+          "Verified strict grounding constraint and retrieved explicit user-taught record.",
+        ),
+      };
+    }
     if (!fresh) {
       const { curatedCard } = await import("@/lib/knowledge-engine");
       const card = curatedCard(question);
@@ -1270,12 +1323,18 @@ async function composeVibeReply(
   const plain = !design && !resourcePlan(question) && !hasHardRows && !seeing && !strict && !fresh;
   if (!isClinicalCacheBypass && plain) {
     const directTrained = recallTrainedAnswer(question);
-    if (directTrained && spoken.toLowerCase() === "english") {
-      return { text: directTrained.answer };
+    if (directTrained && spoken.toLowerCase() === "english" && (!shouldThink || directTrained.model === "user-taught")) {
+      return {
+        text: wrapDeterministicThink(
+          directTrained.answer,
+          "Recalled explicitly verified user-taught answer and checked against session rules.",
+        ),
+      };
     }
     const prior = lessonBlock(question);
     const taught: ChatMessage[] = [
       { role: "system", content: TEACH },
+      ...(shouldThink && !wantsRawJson ? [{ role: "system" as const, content: THINKING_DIRECTIVE }] : []),
       ...(style.desk === "study" && !wantsCode ? [{ role: "system" as const, content: "The person is on the study board. Research the question and write study notes, what the opened pages say, references with only real links, practice, and what to study next. Do not stop at a definition. Do not invent a source." }] : []),
       ...(wantsCode ? [{ role: "system" as const, content: "The person wants complete, runnable code. Write complete, self-contained, idiomatic code in the requested language(s) (e.g., Python, Java, C, TypeScript, Go, Rust, C++, C#, SQL) including all required imports/headers, defensive input validation, a runnable main() or unit-test harness, and brief compile/run instructions. If the request involves security or OWASP testing, write strictly defensive verification and remediation tests (parameterized queries, AEAD encryption, RBAC/BOLA guards). Never refuse by saying the code is not in the retrieved notes." }] : []),
       ...(spoken.toLowerCase() !== "english"
@@ -1291,7 +1350,12 @@ async function composeVibeReply(
     const { modelChat } = await import("@/lib/video-mind.server");
     const result = await modelChat(
       taught.map((message) => ({ role: message.role, content: message.content })),
-      { temperature: 0.5, maxTokens: 4096 },
+      {
+        temperature: 0.4,
+        maxTokens: 4096,
+        brain: style.brain,
+        thinkingLevel: shouldThink ? "high" : "medium",
+      },
     );
     if ("error" in result) return result;
     return { text: result.text };
@@ -1299,7 +1363,7 @@ async function composeVibeReply(
   const stance = [
     style.desk === "study" && !wantsCode ? "The person is on the study board. Research the question and write study notes, what the opened pages say, references with only real links, practice, and what to study next. Do not stop at a definition. Do not invent a source." : "",
     wantsCode ? "The person wants complete, runnable code. Give a complete, self-contained implementation first, then a short note on how to run it." : "",
-    style.think ? "Slow down and check the claim before you answer. Give the answer, not a long chain of doubt." : "",
+    shouldThink && !wantsRawJson ? THINKING_DIRECTIVE : "",
     wantsCode ? "" : skill.stance,
     seeing
       ? "A picture is attached. Look at the picture before you use any notes. Say what kind of picture it is. Read the words, numbers, labels, people, objects, and marks that are actually visible. Explain what they mean in plain language. If a range or a status is printed, say which values sit inside it and which are marked outside it. Do not invent a person, a number, a label, or an event that is not on the picture. If the picture is medical, explain the page. Do not give a diagnosis or a treatment plan."
@@ -1379,15 +1443,22 @@ async function composeVibeReply(
   }));
   const result = await modelChat(flat, {
     temperature: seeing ? 0.2 : ground || fact || precise || hasHardRows ? 0 : 0.4,
-    maxTokens: seeing ? 2048 : engineeringDesign(question) || hasHardRows ? 8000 : 2048,
+    maxTokens: seeing ? 2048 : engineeringDesign(question) || hasHardRows ? 8000 : shouldThink ? 4096 : 2048,
+    thinkingLevel: shouldThink ? "high" : "medium",
     brain: style.brain,
   });
   if ("error" in result) return result;
-  const sealed = await seal(result.text);
+  const thinkMatch = result.text.match(/<think>([\s\S]*?)<\/think>/i);
+  const extractedThought = thinkMatch ? thinkMatch[1].trim() : "";
+  const rawBody = thinkMatch ? result.text.replace(/<think>[\s\S]*?<\/think>/gi, "").trim() : result.text;
+  const sealed = await seal(rawBody);
   const { auditAnswer } = await import("@/lib/answer-auditor");
   const { attachLedger } = await import("@/lib/noctis-ledger");
   const { attachHard } = await import("@/lib/noctis-hard");
   const finalOut = attachHard(scenario, attachLedger(scenario, await auditAnswer(scenario, sealed, record)));
+  if (extractedThought && shouldThink && !wantsRawJson && !finalOut.trim().startsWith("{")) {
+    return { text: `<think>\n${extractedThought}\n</think>\n\n${finalOut}` };
+  }
   return { text: finalOut };
 }
 

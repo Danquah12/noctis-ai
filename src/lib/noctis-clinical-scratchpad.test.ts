@@ -9,6 +9,8 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   buildClinicalScratchpad,
+  normalizeClinicalTextForExtraction,
+  validateScratchpadSourceProvenance,
   type NeuroSymbolicClinicalScratchpad,
 } from "./noctis-clinical-scratchpad.ts";
 import { auditAndEnforceClinicalDossier } from "./noctis-clinical-preflight-auditor.ts";
@@ -345,5 +347,102 @@ A 69-year-old female on Apixaban presents with confirmed high-risk pulmonary emb
     assert.equal(auditFail.mandatoryReleasePassed, false);
     assert.ok(auditFail.violationsCount >= 4);
     assert.ok(auditFail.mandatoryReleaseFailures.some((f) => /Documented-to-UNMEASURED|Narrative-vs-Scratchpad|Stage 3/i.test(f)));
+  });
+
+  it("enforces NOCTIS-ICU-CRIT-047 temporal creatinine provenance, ABG vs serum HCO3-, and grounded med gaps across formats and deliberate swap attacks", () => {
+    // Format A: Historical baseline placed BEFORE current ED creatinine across multi-line sections + non-regimen anticoagulation/digoxin discussion
+    const crit047Scenario = `**Encounter ID:** NOCTIS-ICU-CRIT-047
+A 71-year-old male (Weight: 72 kg) presents in shock (BP 68/40 mmHg, HR 128 bpm, SpO2 87%).
+Prior labs from 5 days ago: Creatinine 1.4 mg/dL.
+Current Medications:
+- Metformin 1000 mg BID
+- Lisinopril 20 mg daily
+(No history of digoxin use.)
+
+Current ED Chemistry (BMP):
+- Sodium: 128 mEq/L
+- Potassium: 5.9 mEq/L
+- Chloride: 94 mEq/L
+- Bicarbonate: 8 mEq/L
+- Creatinine: 3.6 mg/dL
+
+Arterial Blood Gas (ABG):
+- pH: 7.14
+- PaCO2: 24 mmHg
+- HCO3-: 7 mEq/L
+
+Urine output: 100 mL over 8 hours.
+Clinical Question: Should an anticoagulant be started, or avoid anticoagulants pending head CT?`;
+
+    const pad = buildClinicalScratchpad(crit047Scenario, "NOCTIS-ICU-CRIT-047");
+
+    assert.equal(pad.labs.creatinineMgDl, 3.6);
+    assert.equal(pad.labs.baselineCreatinineMgDl, 1.4);
+    assert.equal(pad.labs.baselineCreatinineTimeframe, "5 days ago");
+    assert.equal(pad.derivedCalculations.kdigoAki.crAbsoluteRiseMgDl, 2.2);
+    assert.equal(pad.derivedCalculations.kdigoAki.crFoldRatio, 2.57);
+    assert.equal(pad.derivedCalculations.kdigoAki.establishedStage, 2);
+    assert.match(pad.derivedCalculations.kdigoAki.stageRationale, /5 days ago.*KDIGO 7-day diagnostic window/i);
+
+    assert.equal(pad.derivedCalculations.meanArterialPressureMmHg, 49.3);
+    assert.equal(pad.derivedCalculations.kdigoAki.weightNormalizedUoMlKgHr, 0.17);
+
+    // Anion gap uses serum HCO3- (8) -> 128 - (94 + 8) = 26
+    assert.equal(pad.derivedCalculations.anionGap.isComputable, true);
+    assert.equal(pad.derivedCalculations.anionGap.anionGapMeqL, 26);
+
+    // Winter's formula uses ABG HCO3- (7) -> 1.5(7) + 8 ± 2 = 16.5-20.5 (PaCO2 24 > 20.5 -> inadequate compensation)
+    assert.equal(pad.labs.serumBicarbonateMeqL, 8);
+    assert.equal(pad.labs.abgBicarbonateMeqL, 7);
+    assert.equal(pad.derivedCalculations.wintersFormula.isComputable, true);
+    assert.equal(pad.derivedCalculations.wintersFormula.expectedPaco2RangeLowMmHg, 16.5);
+    assert.equal(pad.derivedCalculations.wintersFormula.expectedPaco2RangeHighMmHg, 20.5);
+    assert.equal(pad.derivedCalculations.wintersFormula.measuredPaco2MmHg, 24);
+    assert.equal(pad.derivedCalculations.wintersFormula.interpretationCategory, "SUPERIMPOSED_RESPIRATORY_ACIDOSIS");
+
+    // Medication gaps strictly grounded in documentedMedications (NO Digoxin, NO Anticoagulant/DOAC!)
+    assert.ok(pad.documentedMedications.includes("Metformin"));
+    assert.ok(pad.documentedMedications.includes("Lisinopril"));
+    assert.ok(!pad.documentedMedications.includes("Digoxin"));
+    const gapText = pad.sentinels.missingDataItems.join("\n");
+    assert.match(gapText, /Metformin/);
+    assert.match(gapText, /RAASi\/MRA/);
+    assert.doesNotMatch(gapText, /Digoxin/i);
+    assert.doesNotMatch(gapText, /Anticoagulant\/DOAC/i);
+
+    // Source span provenance verification on all typed observations
+    const norm = normalizeClinicalTextForExtraction(crit047Scenario);
+    const crCurObs = pad.observations.find((o) => o.analyte === "creatinine" && o.temporalRole === "current");
+    const crBaseObs = pad.observations.find((o) => o.analyte === "creatinine" && o.temporalRole === "historical_baseline");
+    assert.ok(crCurObs && crCurObs.value === 3.6);
+    assert.ok(crBaseObs && crBaseObs.value === 1.4 && crBaseObs.observationTime === "5 days ago");
+    assert.equal(norm.slice(crCurObs.sourceSpan.start, crCurObs.sourceSpan.end), crCurObs.sourceSpan.rawText);
+    assert.equal(validateScratchpadSourceProvenance(pad).length, 0);
+
+    // Format B: Inline parenthetical without the word "baseline" ("Creatinine 3.6 mg/dL (1.4 mg/dL 5 days ago)")
+    const inlineNoBaselineWord = `65yo male BP 70/40. Creatinine 3.6 mg/dL (1.4 mg/dL 5 days ago). Na 128, Cl 94, HCO3 8. ABG pH 7.14, PaCO2 24, HCO3 7.`;
+    const padInline = buildClinicalScratchpad(inlineNoBaselineWord, "NOCTIS-ICU-CRIT-047-INLINE");
+    assert.equal(padInline.labs.creatinineMgDl, 3.6);
+    assert.equal(padInline.labs.baselineCreatinineMgDl, 1.4);
+    assert.equal(padInline.labs.baselineCreatinineTimeframe, "5 days ago");
+
+    // Deliberate current/baseline swap attack: corrupted scratchpad (current overwritten by 1.4, baseline nulled) MUST fail closed!
+    const corruptedSwapPad: NeuroSymbolicClinicalScratchpad = {
+      ...pad,
+      labs: { ...pad.labs, creatinineMgDl: 1.4, baselineCreatinineMgDl: null, baselineCreatinineTimeframe: null },
+      sentinels: { ...pad.sentinels, isBaselineCreatinineMissing: true },
+    };
+    const swapAudit = auditAndEnforceClinicalDossier(
+      "71-year-old male BP 68/40 (MAP 49.3 mmHg), HR 128 bpm, Cr 3.6 mg/dL (baseline 1.4 mg/dL 5 days ago).",
+      crit047Scenario,
+      "NOCTIS-ICU-CRIT-047",
+      corruptedSwapPad
+    );
+    assert.equal(swapAudit.isApproved, false);
+    assert.equal(swapAudit.mandatoryReleasePassed, false);
+    assert.ok(
+      swapAudit.mandatoryReleaseFailures.some((f) => /Temporal Creatinine Substitution/i.test(f)),
+      "Validator must independently catch corrupted current/baseline swap instead of trusting extracted scratchpad"
+    );
   });
 });

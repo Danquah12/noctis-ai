@@ -134,12 +134,28 @@ export interface FluidResuscitationSafetyResult {
   individualizedResuscitationGuidance: string;
 }
 
+export type LabTemporalRole = "current" | "historical_baseline" | "serial_prior" | "unknown";
+export type LabCompartment = "serum" | "abg" | "vbg" | "urine" | "unspecified";
+
+export interface ClinicalLabObservation {
+  encounterId: string;
+  analyte: string;
+  value: number;
+  unit: string;
+  temporalRole: LabTemporalRole;
+  observationTime: string | null;
+  compartment: LabCompartment;
+  sourceSpan: { start: number; end: number; rawText: string };
+}
+
 export interface NeuroSymbolicClinicalScratchpad {
   encounterId: string;
   rawInputText: string;
   demographics: ClinicalDemographicsExtracted;
   vitals: ClinicalVitalsExtracted;
   labs: ClinicalLabsExtracted;
+  observations: ClinicalLabObservation[];
+  documentedMedications: string[];
   sentinels: ClinicalUnmeasuredSentinels;
   derivedCalculations: {
     meanArterialPressureMmHg: number | null;
@@ -150,6 +166,262 @@ export interface NeuroSymbolicClinicalScratchpad {
     fluidSafety: FluidResuscitationSafetyResult;
   };
   markdownScratchpadSummary: string;
+}
+
+const KNOWN_MEDICATION_PATTERNS: Array<{ canonical: string; regex: RegExp; gapClass?: string }> = [
+  { canonical: "Digoxin", regex: /\bdigoxin\b/i, gapClass: "Digoxin" },
+  { canonical: "Carvedilol", regex: /\bcarvedilol\b/i, gapClass: "Beta-Blocker" },
+  { canonical: "Metoprolol", regex: /\bmetoprolol\b/i, gapClass: "Beta-Blocker" },
+  { canonical: "Atenolol", regex: /\batenolol\b/i, gapClass: "Beta-Blocker" },
+  { canonical: "Bisoprolol", regex: /\bbisoprolol\b/i, gapClass: "Beta-Blocker" },
+  { canonical: "Propranolol", regex: /\bpropranolol\b/i, gapClass: "Beta-Blocker" },
+  { canonical: "Lisinopril", regex: /\blisinopril\b/i, gapClass: "RAASi/MRA" },
+  { canonical: "Enalapril", regex: /\benalapril\b/i, gapClass: "RAASi/MRA" },
+  { canonical: "Ramipril", regex: /\bramipril\b/i, gapClass: "RAASi/MRA" },
+  { canonical: "Losartan", regex: /\blosartan\b/i, gapClass: "RAASi/MRA" },
+  { canonical: "Valsartan", regex: /\bvalsartan\b/i, gapClass: "RAASi/MRA" },
+  { canonical: "Spironolactone", regex: /\bspironolactone\b/i, gapClass: "RAASi/MRA" },
+  { canonical: "Eplerenone", regex: /\beplerenone\b/i, gapClass: "RAASi/MRA" },
+  { canonical: "Furosemide", regex: /\bfurosemide\b/i },
+  { canonical: "Torsemide", regex: /\btorsemide\b/i },
+  { canonical: "Hydrochlorothiazide", regex: /\b(?:hydrochlorothiazide|hctz)\b/i },
+  { canonical: "Amlodipine", regex: /\bamlodipine\b/i },
+  { canonical: "Amiodarone", regex: /\bamiodarone\b/i },
+  { canonical: "Apixaban", regex: /\bapixaban\b/i, gapClass: "Anticoagulant/DOAC" },
+  { canonical: "Rivaroxaban", regex: /\brivaroxaban\b/i, gapClass: "Anticoagulant/DOAC" },
+  { canonical: "Edoxaban", regex: /\bedoxaban\b/i, gapClass: "Anticoagulant/DOAC" },
+  { canonical: "Dabigatran", regex: /\bdabigatran\b/i, gapClass: "Anticoagulant/DOAC" },
+  { canonical: "Warfarin", regex: /\bwarfarin\b/i, gapClass: "Anticoagulant/DOAC" },
+  { canonical: "Enoxaparin", regex: /\benoxaparin\b/i, gapClass: "Anticoagulant/DOAC" },
+  { canonical: "Fondaparinux", regex: /\bfondaparinux\b/i, gapClass: "Anticoagulant/DOAC" },
+  { canonical: "Aspirin", regex: /\baspirin\b/i },
+  { canonical: "Clopidogrel", regex: /\bclopidogrel\b/i },
+  { canonical: "Ticagrelor", regex: /\bticagrelor\b/i },
+  { canonical: "Metformin", regex: /\bmetformin\b/i, gapClass: "Metformin" },
+  { canonical: "Empagliflozin", regex: /\bempagliflozin\b/i },
+  { canonical: "Atorvastatin", regex: /\batorvastatin\b/i },
+  { canonical: "Rosuvastatin", regex: /\brosuvastatin\b/i },
+  { canonical: "Insulin", regex: /\binsulin\b/i },
+  { canonical: "Trimethoprim-sulfamethoxazole", regex: /\b(?:trimethoprim-sulfamethoxazole|tmp-?smx|bactrim)\b/i },
+];
+
+const HISTORICAL_CUE_REGEX =
+  /\b(?:baseline|prior|previous|pre-?op(?:erative)?|historical|outpatient|discharge|formerly|usual)\b|\b\d+\s*(?:-|–|\s+)?(?:hours?|hrs?|days?|weeks?|wks?|months?|mos?|years?|yrs?)\s*(?:old|ago|prior|earlier|before)\b/i;
+
+const TIMEFRAME_EXTRACT_REGEX =
+  /\b(\d+\s*(?:-|–|\s+)?(?:hours?|hrs?|days?|weeks?|wks?|months?|mos?|years?|yrs?)\s*(?:old|ago|prior|earlier|before))\b/i;
+
+function parseTimeframeDays(tf: string | null): number | null {
+  if (!tf) return null;
+  const m = tf.match(/(\d+(?:\.\d+)?)\s*(?:-|–|\s+)?(hours?|hrs?|days?|weeks?|wks?|months?|mos?|years?|yrs?)/i);
+  if (!m) return null;
+  const n = parseFloat(m[1]);
+  const unit = m[2].toLowerCase();
+  if (unit.startsWith("h")) return n / 24;
+  if (unit.startsWith("d")) return n;
+  if (unit.startsWith("w")) return n * 7;
+  if (unit.startsWith("mo")) return n * 30;
+  if (unit.startsWith("y")) return n * 365;
+  return null;
+}
+
+/**
+ * Extracts typed temporal creatinine observations while preserving exact source spans
+ * so historical baselines never overwrite current laboratory results.
+ */
+function extractTemporalCreatinineObservations(
+  norm: string,
+  encounterId: string
+): ClinicalLabObservation[] {
+  const obs: ClinicalLabObservation[] = [];
+  const seenSpans = new Set<string>();
+
+  const pushObs = (
+    value: number,
+    start: number,
+    end: number,
+    temporalRole: LabTemporalRole,
+    observationTime: string | null
+  ) => {
+    if (value < 0.2 || value > 25.0) return;
+    const key = `${temporalRole}:${value}:${start}:${end}`;
+    if (seenSpans.has(key)) return;
+    seenSpans.add(key);
+    obs.push({
+      encounterId,
+      analyte: "creatinine",
+      value,
+      unit: "mg/dL",
+      temporalRole,
+      observationTime,
+      compartment: "serum",
+      sourceSpan: { start, end, rawText: norm.slice(start, end) },
+    });
+  };
+
+  // Pass 1: Explicit labeled creatinine mentions
+  const crLabelRegex =
+    /\b(?:(?:current|ed|admission|present(?:ing)?|stat|today['’]?s|acute|baseline|prior|previous|historical|outpatient|pre-?op(?:erative)?|discharge|last)\s+){0,2}(?:serum\s+|plasma\s+)?(?:creatinine|creat|scr|cr)(?:\s*\([^)\n]{1,45}\))?(?:\s*(?:from|at|measured|of)?\s*(?:\d+\s*(?:-|–|\s+)?(?:hours?|hrs?|days?|weeks?|wks?|months?|mos?|years?|yrs?)\s*(?:old|ago|prior|earlier|before)))?\s*(?:[:=]\s*|\s+(?:(?:is|was|of|remained)\s+)?)\s*(\d+(?:\.\d+)?)\s*(?:mg\/dl)?/gi;
+
+  for (const m of norm.matchAll(crLabelRegex)) {
+    const matchStart = m.index ?? 0;
+    const matchEnd = matchStart + m[0].length;
+    const valStr = m[1];
+    const relValIdx = m[0].lastIndexOf(valStr);
+    const valStart = matchStart + relValIdx;
+    const valEnd = valStart + valStr.length;
+
+    const afterVal = norm.slice(valEnd, valEnd + 16);
+    if (/^\s*(?:x|×|fold)\b/i.test(afterVal)) continue;
+    const beforeMatch = norm.slice(Math.max(0, matchStart - 25), matchStart);
+    if (/\b(?:ratio|fold)\s*(?:is|of|=|:)?\s*$/i.test(beforeMatch)) continue;
+
+    // Immediate same-clause pre-context (break at newline, semicolon, or prior period)
+    const lineStart = norm.lastIndexOf("\n", matchStart) + 1;
+    const rawSameLinePre = norm.slice(Math.max(lineStart, matchStart - 110), matchStart);
+    const clauseBreak = Math.max(
+      rawSameLinePre.lastIndexOf(";"),
+      rawSameLinePre.search(/\.\s+(?=[A-Z])/)
+    );
+    const sameClausePre = clauseBreak >= 0 ? rawSameLinePre.slice(clauseBreak + 1) : rawSameLinePre;
+
+    // Section header on immediately preceding line if bullet/table item has no historical cue on same line
+    let headerPre = "";
+    if (lineStart > 1) {
+      const prevLineEnd = lineStart - 1;
+      const prevLineStart = norm.lastIndexOf("\n", Math.max(0, prevLineEnd - 1)) + 1;
+      const prevLine = norm.slice(prevLineStart, prevLineEnd).trim();
+      if (/^(?:#{1,4}\s*|\-\s*|\*\s*)?(?:historical|prior|previous|baseline|outpatient|old\s+labs?|5\s+days|\d+\s*(?:days?|weeks?|months?|years?)\s*ago)/i.test(prevLine) && prevLine.length < 95) {
+        headerPre = prevLine;
+      }
+    }
+
+    // Immediate post context: inspect parenthetical directly after value carefully
+    const postTail = norm.slice(matchEnd, Math.min(norm.length, matchEnd + 95));
+    const directParenMatch = postTail.match(/^\s*\(([^)\n]{1,80})\)/);
+    let postCueForThisValue = "";
+    if (directParenMatch) {
+      const parenText = directParenMatch[1];
+      const hasEmbeddedNonTimeNumber = /\b\d+(?:\.\d+)?\b/.test(
+        parenText.replace(/\b\d+\s*(?:-|–|\s+)?(?:hours?|hrs?|days?|weeks?|wks?|months?|mos?|years?|yrs?|x|×|fold)\b/gi, "")
+      );
+      if (!hasEmbeddedNonTimeNumber) {
+        // e.g. "Creatinine 1.4 mg/dL (5 days ago)" or "(baseline)"
+        postCueForThisValue = parenText;
+      } else {
+        // e.g. "Creatinine 3.6 mg/dL (1.4 mg/dL 5 days ago)" -> extract inner historical number separately
+        const innerNumbers = [...parenText.matchAll(/\b(\d+(?:\.\d+)?)\b/g)];
+        for (const nm of innerNumbers) {
+          const nIdx = nm.index ?? 0;
+          const nTail = parenText.slice(nIdx + nm[0].length, nIdx + nm[0].length + 20);
+          if (/^\s*(?:-|–|\s)?(?:hours?|hrs?|days?|weeks?|wks?|months?|mos?|years?|yrs?|x|×|fold)\b/i.test(nTail)) {
+            continue;
+          }
+          const bVal = parseFloat(nm[1]);
+          if (bVal >= 0.2 && bVal <= 20.0 && HISTORICAL_CUE_REGEX.test(parenText)) {
+            const absParenStart = matchEnd + postTail.indexOf(parenText);
+            const absNumStart = absParenStart + nIdx;
+            const tf = parenText.match(TIMEFRAME_EXTRACT_REGEX)?.[1]?.trim() ?? null;
+            pushObs(bVal, absNumStart, absNumStart + nm[0].length, "historical_baseline", tf);
+            break;
+          }
+        }
+      }
+    } else {
+      const shortClause = postTail.split(/[.\n;]/)[0] || "";
+      if (
+        shortClause.length <= 40 &&
+        !/\b\d+(?:\.\d+)?\b/.test(shortClause.replace(TIMEFRAME_EXTRACT_REGEX, ""))
+      ) {
+        postCueForThisValue = shortClause;
+      }
+    }
+
+    const combinedContext = `${headerPre} ${sameClausePre} ${m[0]} ${postCueForThisValue}`;
+    const isCurrentTag = /\b(?:current|today['’]?s|ed\b|admission|present(?:ing)?|stat|arrival)\b/i.test(
+      `${sameClausePre} ${m[0].slice(0, relValIdx)}`
+    );
+    const isHistTag = HISTORICAL_CUE_REGEX.test(combinedContext) && !isCurrentTag;
+    const tf =
+      `${postCueForThisValue} ${m[0]} ${sameClausePre} ${headerPre}`
+        .match(TIMEFRAME_EXTRACT_REGEX)?.[1]
+        ?.trim() ?? null;
+
+    pushObs(
+      parseFloat(valStr),
+      matchStart,
+      valEnd,
+      isHistTag ? "historical_baseline" : "current",
+      isHistTag ? tf : null
+    );
+  }
+
+  // Pass 2: Standalone historical baseline lines (e.g., "Baseline (5 days ago): 1.4 mg/dL") when Creatinine exists
+  if (obs.length > 0 || /\b(?:creatinine|creat|cr)\b/i.test(norm)) {
+    const standaloneHistRegex =
+      /\b(?:baseline|prior|previous)(?:\s+(?:serum\s+)?(?:creatinine|creat|scr|cr))?(?:\s*\([^)\n]{1,45}\))?(?:\s*(?:from|at|measured|was|is|of)?\s*(?:\d+\s*(?:-|–|\s+)?(?:hours?|hrs?|days?|weeks?|wks?|months?|mos?|years?|yrs?)\s*(?:old|ago|prior|earlier|before)))?\s*(?:[:=]\s*|\s+(?:(?:is|was|of)\s+)?)\s*(\d+(?:\.\d+)?)\s*(?:mg\/dl)?\b/gi;
+    for (const m of norm.matchAll(standaloneHistRegex)) {
+      const valStr = m[1];
+      const val = parseFloat(valStr);
+      if (val < 0.2 || val > 20.0) continue;
+      const start = m.index ?? 0;
+      const end = start + m[0].length;
+      const win = norm.slice(Math.max(0, start - 65), Math.min(norm.length, end + 65));
+      if (!/mg\/dl|\b(?:creatinine|creat|scr|cr)\b/i.test(win)) continue;
+      const tf = win.match(TIMEFRAME_EXTRACT_REGEX)?.[1]?.trim() ?? null;
+      pushObs(val, start, end, "historical_baseline", tf);
+    }
+  }
+
+  return obs;
+}
+
+/**
+ * Extracts active medications strictly from documented medication regimen sections
+ * or affirmative active-use statements, avoiding hypothetical/negated clinical questions.
+ */
+function extractDocumentedMedications(norm: string): string[] {
+  const medSpans: string[] = [];
+
+  // 1. Dedicated Medications / Home Meds blocks
+  const medSectionRegex =
+    /(?:^|\n|[.;])\s*(?:current|home|outpatient|active|daily|prescribed|chronic|regular)?\s*(?:medications?|meds|rx)(?:\s*\([^)\n]{0,35}\))?\s*[:=]\s*([\s\S]{1,750}?)(?=\n\s*(?:vitals?|exam|physical|labs?|laboratory|abg|vbg|bmp|cmp|imaging|ecg|ekg|echo|neurology|assessment|plan|allergies|pmh|past\s+medical|question|clinical\s+question|please)\s*[:.]|\n\s*\n|$)/gi;
+  for (const m of norm.matchAll(medSectionRegex)) {
+    if (m[1]) medSpans.push(m[1]);
+  }
+
+  // 2. Standalone affirmative med clauses outside explicit medication headers
+  const activeClauseRegex =
+    /\b(?:takes|taking|prescribed|maintained\s+on|currently\s+on|home\s+(?:regimen|therapy)\s+includes?|received\s+(?:inpatient|home)?)\s+([^.\n;]{3,160})/gi;
+  for (const m of norm.matchAll(activeClauseRegex)) {
+    if (m[0]) medSpans.push(m[0]);
+  }
+
+  const found: string[] = [];
+  const seen = new Set<string>();
+  const combinedSpans = medSpans.join("\n");
+  if (!combinedSpans.trim()) return found;
+
+  for (const spec of KNOWN_MEDICATION_PATTERNS) {
+    for (const m of combinedSpans.matchAll(new RegExp(spec.regex.source, "gi"))) {
+      const idx = m.index ?? 0;
+      const lineStart = combinedSpans.lastIndexOf("\n", idx) + 1;
+      const pre = combinedSpans.slice(Math.max(lineStart, idx - 50), idx);
+      if (
+        /\b(?:no|none|not\s+(?:on|taking|prescribed|given|receiving)|denies|zero\s+(?:history|use|exposure)|without|never|avoid|contraindicated|discontinued\s+prior|stopped\s+\d|whether\s+to|consider\s+starting)\b/i.test(
+          pre
+        )
+      ) {
+        continue;
+      }
+      if (!seen.has(spec.canonical)) {
+        seen.add(spec.canonical);
+        found.push(spec.canonical);
+      }
+    }
+  }
+
+  return found;
 }
 
 /**
@@ -249,17 +521,45 @@ export function buildClinicalScratchpad(
   const bloodGlucoseMgDl = glucParsed !== null && glucParsed >= 20 && glucParsed <= 2000 ? glucParsed : null;
   const glucoseMgDl = bloodGlucoseMgDl;
 
-  // 3. Labs (Format-Agnostic Extraction from Normalized Text)
+  const observations: ClinicalLabObservation[] = [];
+  const pushGenericObs = (
+    analyte: string,
+    value: number | null,
+    unit: string,
+    compartment: LabCompartment,
+    regexMatch?: RegExpMatchArray | null,
+    temporalRole: LabTemporalRole = "current",
+    observationTime: string | null = null
+  ) => {
+    if (value === null || !regexMatch || regexMatch.index === undefined) return;
+    const start = regexMatch.index;
+    const end = start + regexMatch[0].length;
+    observations.push({
+      encounterId,
+      analyte,
+      value,
+      unit,
+      temporalRole,
+      observationTime,
+      compartment,
+      sourceSpan: { start, end, rawText: norm.slice(start, end) },
+    });
+  };
+
+  // 3. Labs (Format-Agnostic Extraction with Source Provenance from Normalized Text)
   let potassiumMeqL: number | null = null;
+  let potassiumMatchRef: RegExpMatchArray | null = null;
   for (const m of norm.matchAll(
     /(?<![\d/])\b(?:serum\s+|plasma\s+|arterial\s+|venous\s+|bmp\s+|cmp\s+)?(?:potassium|k\+?)(?:\s*\([^)\n]{1,35}\))?\s*(?:[:=]\s*|\s+(?:(?:is|was|of)\s+)?)\s*([1-9](?:\.\d+)?)\b(?![\d]*\s*\/[uµ]l)/gi
   )) {
     const val = parseFloat(m[1]);
     if (val >= 1.5 && val <= 12.0) {
       potassiumMeqL = val;
+      potassiumMatchRef = m;
       break;
     }
   }
+  pushGenericObs("potassium", potassiumMeqL, "mmol/L", "serum", potassiumMatchRef);
 
   let sodiumMeqL: number | null = null;
   const naMatch = norm.match(
@@ -267,10 +567,14 @@ export function buildClinicalScratchpad(
   );
   if (naMatch) {
     const val = parseFloat(naMatch[1]);
-    if (val >= 95 && val <= 190) sodiumMeqL = val;
+    if (val >= 95 && val <= 190) {
+      sodiumMeqL = val;
+      pushGenericObs("sodium", sodiumMeqL, "mmol/L", "serum", naMatch);
+    }
   }
 
   let chlorideMeqL: number | null = null;
+  let clMatchRef: RegExpMatchArray | null = null;
   const isChlorideExplicitlyMissing =
     /\b(?:chloride|cl-?)\s*(?:\([^)\n]{1,20}\))?\s*(?:is\s*)?(?:unmeasured|not\s*measured|missing|not\s*available|unknown)\b/i.test(norm);
   if (!isChlorideExplicitlyMissing) {
@@ -280,115 +584,97 @@ export function buildClinicalScratchpad(
       const val = parseFloat(m[1]);
       if (val >= 65 && val <= 145) {
         chlorideMeqL = val;
+        clMatchRef = m;
         break;
       }
     }
   }
+  pushGenericObs("chloride", chlorideMeqL, "mmol/L", "serum", clMatchRef);
 
-  // Baseline Creatinine & Timeframe
-  let baselineCreatinineMgDl: number | null = null;
-  let baselineCreatinineTimeframe: string | null = null;
+  // Temporal Creatinine & Baseline Extraction (Never overwrite current with historical_baseline)
+  const creatinineObs = extractTemporalCreatinineObservations(norm, encounterId);
+  observations.push(...creatinineObs);
 
-  const extractBaselineNumberFromClause = (clause: string): number | null => {
-    for (const nm of clause.matchAll(/\b(\d+(?:\.\d+)?)\b/g)) {
-      const idx = nm.index ?? 0;
-      const tail = clause.slice(idx + nm[0].length, idx + nm[0].length + 20);
-      if (/^\s*(?:-|\s)?(?:days?|weeks?|wks?|months?|mos?|years?|yrs?|x|×|fold)\b/i.test(tail)) continue;
-      const val = parseFloat(nm[1]);
-      if (val >= 0.2 && val <= 20.0) return val;
-    }
-    return null;
-  };
+  const currentCrObsList = creatinineObs.filter((o) => o.temporalRole === "current");
+  const historicalCrObsList = creatinineObs.filter((o) => o.temporalRole === "historical_baseline");
 
-  const inlineCrBaselineMatch = norm.match(
-    /\b(?:serum\s+|current\s+|ed\s+|admission\s+)?(?:creatinine|creat|scr|cr)(?:\s*\([^)\n]{1,25}\))?\s*(?:[:=]\s*|\s+(?:(?:is|was|of)\s+)?)\s*\d+(?:\.\d+)?\s*(?:mg\/dl)?\s*\(([^)\n]*?\b(?:baseline|prior|previous)\b[^)\n]*)\)/i
-  );
-  if (inlineCrBaselineMatch?.[1]) {
-    const val = extractBaselineNumberFromClause(inlineCrBaselineMatch[1]);
-    if (val !== null) {
-      baselineCreatinineMgDl = val;
-      const tfMatch = inlineCrBaselineMatch[1].match(/\b(\d+\s*(?:-|–|\s+)?(?:days?|weeks?|wks?|months?|mos?|years?|yrs?)\s*(?:old|ago|prior))\b/i);
-      if (tfMatch) baselineCreatinineTimeframe = tfMatch[1].trim();
-    }
-  }
+  const creatinineMgDl = currentCrObsList.length > 0 ? currentCrObsList[0].value : null;
+  const baselineCreatinineMgDl = historicalCrObsList.length > 0 ? historicalCrObsList[0].value : null;
+  const baselineCreatinineTimeframe =
+    historicalCrObsList.find((o) => o.observationTime !== null)?.observationTime ?? null;
 
-  if (baselineCreatinineMgDl === null) {
-    const standaloneBaselineRegex =
-      /\b(?:(?:baseline|prior|previous|pre-?op(?:erative)?)(?:\s+\d+\s*(?:-|–|\s+)?(?:days?|weeks?|wks?|months?|mos?|years?|yrs?)\s*(?:old|ago|prior))?\s+(?:serum\s+)?(?:creatinine|creat|scr|cr)|(?:\d+\s*(?:-|–|\s+)?(?:days?|weeks?|wks?|months?|mos?|years?|yrs?)\s*(?:old|ago|prior))\s+(?:baseline\s+)?(?:serum\s+)?(?:creatinine|creat|scr|cr))(?:\s*\([^)\n]{1,40}\))?(?:\s*(?:from|at|measured)?\s*(?:\d+\s*(?:days?|weeks?|wks?|months?|mos?|years?|yrs?)\s*(?:ago|prior)))?\s*(?:was|is|of|=|:)?\s*(\d+(?:\.\d+)?)\s*(?:mg\/dl)?\b/gi;
-    for (const m of norm.matchAll(standaloneBaselineRegex)) {
-      const val = parseFloat(m[1]);
-      if (val >= 0.2 && val <= 20.0) {
-        baselineCreatinineMgDl = val;
-        const win = norm.slice(Math.max(0, (m.index ?? 0) - 55), Math.min(norm.length, (m.index ?? 0) + m[0].length + 55));
-        const tfMatch = win.match(/\b(\d+\s*(?:-|–|\s+)?(?:days?|weeks?|wks?|months?|mos?|years?|yrs?)\s*(?:old|ago|prior))\b/i);
-        if (tfMatch) baselineCreatinineTimeframe = tfMatch[1].trim();
-        break;
-      }
-    }
-  }
-
-  // Current Creatinine (non-baseline)
-  let creatinineMgDl: number | null = null;
-  const crMatches = [
-    ...norm.matchAll(
-      /\b(?:serum\s+|current\s+|ed\s+|admission\s+|present(?:ing)?\s+)?(?:creatinine|creat|scr|cr)(?:\s*\([^)\n]{1,30}\))?\s*(?:[:=]\s*|\s+(?:(?:is|was|of)\s+)?)\s*(\d+(?:\.\d+)?)\s*(?:mg\/dl)?\b/gi
-    ),
-  ];
-  const nonBaselineCrVals: number[] = [];
-  for (const m of crMatches) {
-    const idx = m.index ?? 0;
-    const pre = norm.slice(Math.max(0, idx - 35), idx);
-    if (/\b(?:baseline|prior|previous|pre-?op|ratio|fold)\b[^.\n]*$/i.test(pre)) continue;
-    const val = parseFloat(m[1]);
-    if (val < 0.2 || val > 25.0) continue;
-    nonBaselineCrVals.push(val);
-    if (val !== baselineCreatinineMgDl) {
-      creatinineMgDl = val;
-      break;
-    }
-  }
-  if (creatinineMgDl === null && nonBaselineCrVals.length > 0) {
-    creatinineMgDl = nonBaselineCrVals[0];
-  }
-
-  // Dual Bicarbonate (Serum/BMP vs ABG)
+  // Dual Compartment-Aware Bicarbonate Extraction (Serum/BMP vs ABG across multi-line blocks)
   let serumBicarbonateMeqL: number | null = null;
   let abgBicarbonateMeqL: number | null = null;
 
   const dualInlineMatch =
     norm.match(/\b(?:bicarbonate|bicarb|hco3-?)\s*[:=]?\s*(\d{1,2}(?:\.\d+)?)\s*(?:meq\/l|mmol\/l)?\s*(?:\(\s*serum\s*\)|\bserum\b)\s*(?:\/|,|;|\band\b)\s*(\d{1,2}(?:\.\d+)?)\s*(?:meq\/l|mmol\/l)?\s*(?:\(\s*abg\s*\)|\babg\b|\barterial\b)/i) ||
     norm.match(/\b(?:bicarbonate|bicarb|hco3-?)\s*[:=]?\s*(?:serum\s*[:=]?\s*)(\d{1,2}(?:\.\d+)?)\s*(?:meq\/l|mmol\/l)?\s*(?:\/|,|;|\band\b)\s*(?:abg\s*[:=]?\s*)(\d{1,2}(?:\.\d+)?)\s*(?:meq\/l|mmol\/l)?/i);
-  if (dualInlineMatch) {
+  if (dualInlineMatch && dualInlineMatch.index !== undefined) {
     const vSerum = parseFloat(dualInlineMatch[1]);
     const vAbg = parseFloat(dualInlineMatch[2]);
-    if (vSerum >= 3 && vSerum <= 55) serumBicarbonateMeqL = vSerum;
-    if (vAbg >= 3 && vAbg <= 55) abgBicarbonateMeqL = vAbg;
+    if (vSerum >= 3 && vSerum <= 55) {
+      serumBicarbonateMeqL = vSerum;
+      pushGenericObs("bicarbonate", vSerum, "mEq/L", "serum", dualInlineMatch);
+    }
+    if (vAbg >= 3 && vAbg <= 55) {
+      abgBicarbonateMeqL = vAbg;
+      pushGenericObs("bicarbonate", vAbg, "mEq/L", "abg", dualInlineMatch);
+    }
   }
 
   const dualReverseMatch = norm.match(
     /\b(?:bicarbonate|bicarb|hco3-?)\s*[:=]?\s*(\d{1,2}(?:\.\d+)?)\s*(?:meq\/l|mmol\/l)?\s*(?:\(\s*(?:abg|arterial)\s*\)|\b(?:abg|arterial)\b)\s*(?:\/|,|;|\band\b)\s*(\d{1,2}(?:\.\d+)?)\s*(?:meq\/l|mmol\/l)?\s*(?:\(\s*serum\s*\)|\bserum\b)/i
   );
-  if (dualReverseMatch) {
+  if (dualReverseMatch && dualReverseMatch.index !== undefined) {
     const vAbg = parseFloat(dualReverseMatch[1]);
     const vSerum = parseFloat(dualReverseMatch[2]);
-    if (abgBicarbonateMeqL === null && vAbg >= 3 && vAbg <= 55) abgBicarbonateMeqL = vAbg;
-    if (serumBicarbonateMeqL === null && vSerum >= 3 && vSerum <= 55) serumBicarbonateMeqL = vSerum;
+    if (abgBicarbonateMeqL === null && vAbg >= 3 && vAbg <= 55) {
+      abgBicarbonateMeqL = vAbg;
+      pushGenericObs("bicarbonate", vAbg, "mEq/L", "abg", dualReverseMatch);
+    }
+    if (serumBicarbonateMeqL === null && vSerum >= 3 && vSerum <= 55) {
+      serumBicarbonateMeqL = vSerum;
+      pushGenericObs("bicarbonate", vSerum, "mEq/L", "serum", dualReverseMatch);
+    }
   }
 
   const bicarbCandidateRegex =
-    /(?:\b(?:serum|venous|arterial|abg|vbg|bmp|cmp|chem-?\d*|chemistry)\s+)?\b(?:bicarbonate|bicarb|hco3-?|total\s+co2)(?:\s*\([^)\n]{1,35}\))?\s*(?:[:=]\s*|\s+(?:(?:is|was|of)\s+)?)\s*(\d{1,2}(?:\.\d+)?)\b(?:\s*(?:meq\/l|mmol\/l))?(?:\s*\(\s*(serum|abg|arterial|venous|bmp)\s*\))?/gi;
+    /(?:\b(?:serum|venous|arterial|abg|vbg|bmp|cmp|chem-?\d*|chemistry)\s+)?\b(?:bicarbonate|bicarb|hco3-?|chco3-?|actual\s+hco3-?|calculated\s+hco3-?|total\s+co2)(?:\s*\([^)\n]{1,35}\))?\s*(?:[:=]\s*|\s+(?:(?:is|was|of)\s+)?)\s*(\d{1,2}(?:\.\d+)?)\b(?:\s*(?:meq\/l|mmol\/l))?(?:\s*\(\s*(serum|abg|arterial|venous|bmp)\s*\))?/gi;
   for (const m of norm.matchAll(bicarbCandidateRegex)) {
     const val = parseFloat(m[1]);
     if (val < 3 || val > 55) continue;
     const idx = m.index ?? 0;
-    const lineStart = norm.lastIndexOf("\n", idx) + 1;
-    const sameLinePre = norm.slice(Math.max(lineStart, idx - 60), idx);
-    const fullAndTag = `${sameLinePre} ${m[0]}`;
-    const lastAbgIdx = fullAndTag.search(/\b(?:abg|arterial\s+blood\s+gas|arterial)\b/gi);
-    const isExplicitAbg =
-      /\b(?:abg|arterial)\b/i.test(m[0]) ||
-      (lastAbgIdx !== -1 && !/\b(?:serum|bmp|cmp|venous)\b/i.test(fullAndTag.slice(lastAbgIdx)));
-    if (isExplicitAbg) {
+
+    // 1. Direct explicit tag inside match itself
+    let compartment: LabCompartment = "unspecified";
+    if (/\b(?:abg|arterial)\b/i.test(m[0])) {
+      compartment = "abg";
+    } else if (/\b(?:serum|bmp|cmp|chemistry|venous|vbg)\b/i.test(m[0])) {
+      compartment = /\b(?:venous|vbg)\b/i.test(m[0]) ? "vbg" : "serum";
+    } else {
+      // 2. Multi-line / long-line lookback (closest header/context within 350 chars)
+      const lookback = norm.slice(Math.max(0, idx - 350), idx);
+      const abgMatches = [...lookback.matchAll(/\b(?:abg|arterial\s+blood\s+gas|arterial\s+gas|arterial)\b/gi)];
+      const serumMatches = [
+        ...lookback.matchAll(
+          /\b(?:serum|bmp|cmp|basic\s+metabolic|comprehensive\s+metabolic|chemistry|chem-?\d*|electrolytes?|venous\s+blood\s+gas|vbg|sodium|chloride|potassium|bun|creatinine)\b/gi
+        ),
+      ];
+      const lastAbgPos = abgMatches.length ? (abgMatches[abgMatches.length - 1].index ?? -1) : -1;
+      const lastSerumPos = serumMatches.length ? (serumMatches[serumMatches.length - 1].index ?? -1) : -1;
+      const phPaco2Matches = [...lookback.matchAll(/\b(?:ph|paco2|pco2)\b/gi)];
+      const lastGasMarkerPos = phPaco2Matches.length ? (phPaco2Matches[phPaco2Matches.length - 1].index ?? -1) : -1;
+
+      if (lastAbgPos > lastSerumPos || (lastGasMarkerPos > lastSerumPos && lookback.length - lastGasMarkerPos < 180)) {
+        compartment = "abg";
+      } else {
+        compartment = "serum";
+      }
+    }
+
+    pushGenericObs("bicarbonate", val, "mEq/L", compartment, m);
+    if (compartment === "abg") {
       if (abgBicarbonateMeqL === null) abgBicarbonateMeqL = val;
     } else if (serumBicarbonateMeqL === null) {
       serumBicarbonateMeqL = val;
@@ -401,7 +687,10 @@ export function buildClinicalScratchpad(
     );
     if (totalCo2Match) {
       const val = parseFloat(totalCo2Match[1]);
-      if (val >= 3 && val <= 55) serumBicarbonateMeqL = val;
+      if (val >= 3 && val <= 55) {
+        serumBicarbonateMeqL = val;
+        pushGenericObs("bicarbonate", val, "mEq/L", "serum", totalCo2Match);
+      }
     }
   }
 
@@ -410,10 +699,22 @@ export function buildClinicalScratchpad(
     /\bna\s*\/\s*k\s*\/\s*cl(?:\s*\/\s*(?:hco3-?|co2))?\s*[:=]?\s*(\d{3})\s*\/\s*([1-9](?:\.\d+)?)\s*\/\s*(\d{2,3})(?:\s*\/\s*(\d{1,2}(?:\.\d+)?))?/i
   );
   if (panelMatch) {
-    if (sodiumMeqL === null) sodiumMeqL = parseFloat(panelMatch[1]);
-    if (potassiumMeqL === null) potassiumMeqL = parseFloat(panelMatch[2]);
-    if (chlorideMeqL === null && !isChlorideExplicitlyMissing) chlorideMeqL = parseFloat(panelMatch[3]);
-    if (serumBicarbonateMeqL === null && panelMatch[4]) serumBicarbonateMeqL = parseFloat(panelMatch[4]);
+    if (sodiumMeqL === null) {
+      sodiumMeqL = parseFloat(panelMatch[1]);
+      pushGenericObs("sodium", sodiumMeqL, "mmol/L", "serum", panelMatch);
+    }
+    if (potassiumMeqL === null) {
+      potassiumMeqL = parseFloat(panelMatch[2]);
+      pushGenericObs("potassium", potassiumMeqL, "mmol/L", "serum", panelMatch);
+    }
+    if (chlorideMeqL === null && !isChlorideExplicitlyMissing) {
+      chlorideMeqL = parseFloat(panelMatch[3]);
+      pushGenericObs("chloride", chlorideMeqL, "mmol/L", "serum", panelMatch);
+    }
+    if (serumBicarbonateMeqL === null && panelMatch[4]) {
+      serumBicarbonateMeqL = parseFloat(panelMatch[4]);
+      pushGenericObs("bicarbonate", serumBicarbonateMeqL, "mEq/L", "serum", panelMatch);
+    }
   }
 
   const bicarbonateMeqL = serumBicarbonateMeqL ?? abgBicarbonateMeqL;
@@ -422,55 +723,64 @@ export function buildClinicalScratchpad(
     /\b(?:arterial\s+|venous\s+|abg\s+|vbg\s+)?ph(?:\s*\([^)\n]{1,30}\))?\s*(?:[:=]\s*|\s+(?:(?:is|was|of)\s+)?)\s*(6\.\d{2,3}|7\.\d{2,3})\b/i
   );
   const arterialPh = phMatch ? parseFloat(phMatch[1]) : null;
+  pushGenericObs("ph", arterialPh, "pH", "abg", phMatch);
 
   const paco2Match =
     norm.match(/\b(?:arterial\s+|venous\s+|abg\s+|vbg\s+)?(?:paco2|pco2|partial\s+pressure\s+of\s+co2)(?:\s*\([^)\n]{1,30}\))?\s*(?:[:=]\s*|\s+(?:(?:is|was|of)\s+)?)\s*(\d{1,3}(?:\.\d+)?)\s*(?:mmhg)?\b/i) ||
     norm.match(/\bco2(?:\s*\([^)\n]{1,25}\))?\s*(?:[:=]\s*|\s+(?:(?:is|was|of)\s+)?)\s*(\d{1,3}(?:\.\d+)?)\s*mmhg\b/i);
   const paco2Parsed = paco2Match ? parseFloat(paco2Match[1]) : null;
   const paco2MmHg = paco2Parsed !== null && paco2Parsed >= 10 && paco2Parsed <= 130 ? paco2Parsed : null;
+  pushGenericObs("paco2", paco2MmHg, "mmHg", "abg", paco2Match);
 
   const lacMatch = norm.match(
     /\b(?:arterial\s+|venous\s+|serum\s+|blood\s+|whole\s+blood\s+|poc\s+)?(?:lactate|lactic\s*acid)(?:\s*\([^)\n]{1,30}\))?\s*(?:[:=]\s*|\s+(?:(?:is|was|of)\s+)?)\s*(\d{1,2}(?:\.\d+)?)\s*(?:mmol\/l)?\b/i
   );
   const lacParsed = lacMatch ? parseFloat(lacMatch[1]) : null;
   const lactateMmolL = lacParsed !== null && lacParsed >= 0.3 && lacParsed <= 35.0 ? lacParsed : null;
+  pushGenericObs("lactate", lactateMmolL, "mmol/L", "serum", lacMatch);
+  pushGenericObs("glucose", bloodGlucoseMgDl, "mg/dL", "serum", glucMatch);
 
   const bhbMatch =
-    q.match(/\b(?:beta-?hydroxybutyrate|b-?ohb)\s*(?:\([^)]*\)\s*)?[:=]?\s*(\d+(?:\.\d+)?)\b/i) ||
-    q.match(/\b(?:blood|serum)\s+ketones?\s*[:=]?\s*(\d+(?:\.\d+)?)\b/i);
+    norm.match(/\b(?:beta-?hydroxybutyrate|b-?ohb)\s*(?:\([^)]*\)\s*)?[:=]?\s*(\d+(?:\.\d+)?)\b/i) ||
+    norm.match(/\b(?:blood|serum)\s+ketones?\s*[:=]?\s*(\d+(?:\.\d+)?)\b/i);
   const betaHydroxybutyrateMmolL = bhbMatch ? parseFloat(bhbMatch[1]) : null;
 
-  // Digoxin: capture levels like "digoxin 2.9", "digoxin level 3.6 ng/mL", "digoxin: 2.9", avoiding pill doses like 0.125 mg
+  // Digoxin: capture levels like "digoxin 2.9", "digoxin level 3.6 ng/mL", avoiding oral pill doses like 0.125 mg
   let digoxinNgMl: number | null = null;
   const explicitSerumDigMatch =
-    q.match(/\b(?:digoxin|dig)\s*(?:level|concentration|serum)\s*[:=]?\s*(\d+(?:\.\d+)?)\s*(?:ng\/ml|mcg\/l|nmol\/l)?\b/i) ||
-    q.match(/\b(?:digoxin|dig)\s*[:=]?\s*(\d+(?:\.\d+)?)\s*(?:ng\/ml|mcg\/l|nmol\/l)\b/i) ||
-    q.match(/\b(?:digoxin|dig)\s*[:=]?\s*([1-9](?:\.\d+)?|0\.[3-9]\d*)\b/i);
+    norm.match(/\b(?:digoxin|dig)\s*(?:level|concentration|serum)\s*[:=]?\s*(\d+(?:\.\d+)?)\s*(?:ng\/ml|mcg\/l|nmol\/l)?\b/i) ||
+    norm.match(/\b(?:digoxin|dig)\s*[:=]?\s*(\d+(?:\.\d+)?)\s*(?:ng\/ml|mcg\/l|nmol\/l)\b/i) ||
+    norm.match(/\b(?:digoxin|dig)\s*[:=]?\s*([1-9](?:\.\d+)?|0\.[3-9]\d*)\b/i);
 
   if (explicitSerumDigMatch && explicitSerumDigMatch[1]) {
     const matchedFull = explicitSerumDigMatch[0];
     if (!/\b\d+(?:\.\d+)?\s*mg\b/i.test(matchedFull)) {
       digoxinNgMl = parseFloat(explicitSerumDigMatch[1]);
+      pushGenericObs("digoxin", digoxinNgMl, "ng/mL", "serum", explicitSerumDigMatch);
     }
   }
   if (digoxinNgMl === null) {
-    const allDig = [...q.matchAll(/\b(?:digoxin|dig)\s*[:=]?\s*(\d+(?:\.\d+)?)(?:\s*(mg|mcg|ng\/ml))?\b/gi)];
+    const allDig = [...norm.matchAll(/\b(?:digoxin|dig)\s*[:=]?\s*(\d+(?:\.\d+)?)(?:\s*(mg|mcg|ng\/ml))?\b/gi)];
     for (const m of allDig) {
-      if (m[2] && m[2].toLowerCase() === "mg") continue; // skip oral pill dosages like 0.125 mg
+      if (m[2] && m[2].toLowerCase() === "mg") continue;
       digoxinNgMl = parseFloat(m[1]);
+      pushGenericObs("digoxin", digoxinNgMl, "ng/mL", "serum", m);
       break;
     }
   }
 
-  const uoMatch = q.match(/\burine\s*output\s*[:=]?\s*(\d+)\s*ml(?:\s*over\s*(\d+)\s*(?:hours|hrs|h))?\b/i);
+  const uoMatch = norm.match(/\burine\s*output\s*[:=]?\s*(\d+)\s*ml(?:\s*(?:over|in|\/)\s*(\d+)\s*(?:hours|hrs|h))?\b/i);
   const urineOutputMl = uoMatch ? parseInt(uoMatch[1], 10) : null;
   const urineOutputDurationHours = uoMatch && uoMatch[2] ? parseInt(uoMatch[2], 10) : (uoMatch ? 8 : null);
+  pushGenericObs("urine_output", urineOutputMl, "mL", "urine", uoMatch);
 
-  // 4. Sentinels & Missing Flags
+  const documentedMedications = extractDocumentedMedications(norm);
+
+  // 4. Sentinels & Missing Flags (Grounded strictly in documentedMedications)
   const isWeightMissing = patientWeightKg === null;
   const isChlorideMissing = chlorideMeqL === null;
   const isBaselineCreatinineMissing = baselineCreatinineMgDl === null;
-  const isLastDoseTimingMissing = !/\b(?:last\s+dose|taken\s+at|hours\s+ago|ingested\s+at)\b/i.test(q);
+  const isLastDoseTimingMissing = !/\b(?:last\s+dose|taken\s+at|hours\s+ago|ingested\s+at)\b/i.test(norm);
   const isArterialBloodGasMissing = arterialPh === null || paco2MmHg === null;
   const isUrineOutputMissing = urineOutputMl === null;
 
@@ -478,23 +788,13 @@ export function buildClinicalScratchpad(
   if (isWeightMissing) missingDataItems.push("Patient Body Weight (kg) [UNMEASURED — weight-based dosing & mL/kg/h urine output deferred]");
   if (isChlorideMissing) missingDataItems.push("Serum Chloride (Cl-) [UNMEASURED — Anion Gap cannot be calculated]");
   if (isBaselineCreatinineMissing) missingDataItems.push("Baseline Serum Creatinine [UNMEASURED — Fold-ratio KDIGO staging indeterminate]");
-  if (isLastDoseTimingMissing) {
-    const gapMeds: string[] = [];
-    if (/\bdigoxin\b/i.test(q) && !/\b(?:zero\s+(?:history|use|exposure)|no\s+digoxin|denies\s+digoxin)\b/i.test(q)) {
-      gapMeds.push("Digoxin");
+  if (isLastDoseTimingMissing && documentedMedications.length > 0) {
+    const gapMedsSet = new Set<string>();
+    for (const docMed of documentedMedications) {
+      const spec = KNOWN_MEDICATION_PATTERNS.find((s) => s.canonical === docMed);
+      if (spec?.gapClass) gapMedsSet.add(spec.gapClass);
     }
-    if (/\b(?:carvedilol|metoprolol|atenolol|bisoprolol|beta-?blocker)\b/i.test(q)) {
-      gapMeds.push("Beta-Blocker");
-    }
-    if (/\b(?:lisinopril|enalapril|losartan|valsartan|spironolactone|raas)\b/i.test(q)) {
-      gapMeds.push("RAASi/MRA");
-    }
-    if (/\b(?:apixaban|rivaroxaban|warfarin|anticoagulant)\b/i.test(q)) {
-      gapMeds.push("Anticoagulant/DOAC");
-    }
-    if (/\bmetformin\b/i.test(q)) {
-      gapMeds.push("Metformin");
-    }
+    const gapMeds = [...gapMedsSet];
     if (gapMeds.length > 0) {
       missingDataItems.push(`Exact Timing of Last Medication Doses (${gapMeds.join(", ")}) [UNREPORTED]`);
     }
@@ -535,10 +835,14 @@ export function buildClinicalScratchpad(
         isStage3ConditionalOnAcuteTimeline = true;
         stage3AcuteTimelineRationale = `Absolute serum creatinine ≥ 4.0 mg/dL with acute rise ≥ 0.5 mg/dL (+${crAbsoluteRiseMgDl} mg/dL) conditionally qualifies for Stage 3 pending confirmation of acute trajectory within 48 hours to 7 days.`;
       } else {
-        const tfCaveat = baselineCreatinineTimeframe
-          ? ` Given the remote baseline (${baselineCreatinineTimeframe}), acute timing within the KDIGO 48-hour to 7-day diagnostic window is not independently established.`
-          : "";
-        stageRationale = `KDIGO Stage 2 by fold increase (${crFoldRatio}× baseline: ${creatinineMgDl} / ${baselineCreatinineMgDl} mg/dL).${tfCaveat} Current creatinine (${creatinineMgDl} mg/dL) does NOT meet the ≥ 4.0 mg/dL absolute threshold, and fold ratio is < 3.0×; KDIGO Stage 3 is NOT supported by serum creatinine criteria.`;
+        const tfDays = parseTimeframeDays(baselineCreatinineTimeframe);
+        const tfCaveat =
+          tfDays !== null && tfDays <= 7
+            ? ` The documented ${baselineCreatinineTimeframe} baseline supports an acute increase within the KDIGO 7-day diagnostic window (subject to measurement verification).`
+            : baselineCreatinineTimeframe
+            ? ` Given the remote baseline (${baselineCreatinineTimeframe}), acute timing within the KDIGO 48-hour to 7-day diagnostic window is not independently established.`
+            : "";
+        stageRationale = `KDIGO Stage 2 by fold increase (${crFoldRatio}× baseline: ${creatinineMgDl} / ${baselineCreatinineMgDl} mg/dL, +${crAbsoluteRiseMgDl} mg/dL).${tfCaveat} Current creatinine (${creatinineMgDl} mg/dL) does NOT meet the ≥ 4.0 mg/dL absolute threshold, and fold ratio is < 3.0×; KDIGO Stage 3 is NOT supported by serum creatinine criteria.`;
         isStage3ConditionalOnAcuteTimeline = false;
         stage3AcuteTimelineRationale = "";
       }
@@ -886,6 +1190,8 @@ export function buildClinicalScratchpad(
       urineOutputMl,
       urineOutputDurationHours,
     },
+    observations,
+    documentedMedications,
     sentinels: {
       isWeightMissing,
       isChlorideMissing,
@@ -932,11 +1238,112 @@ export interface CrossSectionConsistencyResult {
   violations: CrossSectionConsistencyViolation[];
 }
 
+/**
+ * Independent Source-of-Truth Extraction Integrity Validator:
+ * Verifies observation source spans against raw encounter text, detects any
+ * historical-baseline-overwrites-current creatinine substitution, checks ABG HCO3-
+ * usage for Winter's formula, and validates medication-gap grounding.
+ */
+export function validateScratchpadSourceProvenance(
+  scratchpad: NeuroSymbolicClinicalScratchpad
+): CrossSectionConsistencyViolation[] {
+  const violations: CrossSectionConsistencyViolation[] = [];
+  const normRaw = normalizeClinicalTextForExtraction(scratchpad.rawInputText);
+
+  for (const obs of scratchpad.observations || []) {
+    const sliced = normRaw.slice(obs.sourceSpan.start, obs.sourceSpan.end);
+    if (sliced !== obs.sourceSpan.rawText) {
+      violations.push({
+        item: `Provenance Span Mismatch (${obs.analyte})`,
+        sectionA: `Raw Source Slice ("${sliced}")`,
+        sectionB: `Observation Span ("${obs.sourceSpan.rawText}")`,
+        issue: `Temporal observation provenance mismatch for ${obs.analyte} (${obs.value} ${obs.unit}).`,
+      });
+    }
+  }
+
+  const rawCrObs = extractTemporalCreatinineObservations(normRaw, scratchpad.encounterId);
+  const rawCurrent = rawCrObs.filter((o) => o.temporalRole === "current");
+  const rawBaseline = rawCrObs.filter((o) => o.temporalRole === "historical_baseline");
+  if (rawCurrent.length > 0 && rawBaseline.length > 0) {
+    const expectedCur = rawCurrent[0].value;
+    const expectedBase = rawBaseline[0].value;
+    if (scratchpad.labs.baselineCreatinineMgDl === null) {
+      violations.push({
+        item: "Temporal Creatinine Substitution (Missing Baseline)",
+        sectionA: `Raw Source Baseline (${expectedBase} mg/dL)`,
+        sectionB: `Scratchpad Baseline (${scratchpad.labs.baselineCreatinineMgDl})`,
+        issue: `Temporal Creatinine Substitution: historical baseline (${expectedBase} mg/dL) exists in source but scratchpad marked baseline UNMEASURED.`,
+      });
+    }
+    if (
+      expectedCur !== expectedBase &&
+      (scratchpad.labs.creatinineMgDl === null || Math.abs(scratchpad.labs.creatinineMgDl - expectedCur) > 0.1)
+    ) {
+      violations.push({
+        item: "Temporal Creatinine Substitution (Current Overwritten)",
+        sectionA: `Raw Source Current (${expectedCur} mg/dL vs baseline ${expectedBase} mg/dL)`,
+        sectionB: `Scratchpad Current (${scratchpad.labs.creatinineMgDl} mg/dL)`,
+        issue: `Temporal Creatinine Substitution: current creatinine (${expectedCur} mg/dL) replaced or misclassified as ${scratchpad.labs.creatinineMgDl} mg/dL.`,
+      });
+    }
+  } else if (rawBaseline.length > 0 && scratchpad.labs.baselineCreatinineMgDl === null) {
+    violations.push({
+      item: "Temporal Creatinine Substitution (Missing Baseline)",
+      sectionA: `Raw Source Baseline (${rawBaseline[0].value} mg/dL)`,
+      sectionB: "Scratchpad Baseline (UNMEASURED)",
+      issue: `Historical baseline (${rawBaseline[0].value} mg/dL) present in source was dropped from scratchpad.`,
+    });
+  }
+
+  if (
+    scratchpad.labs.abgBicarbonateMeqL !== null &&
+    scratchpad.labs.serumBicarbonateMeqL !== null &&
+    scratchpad.labs.abgBicarbonateMeqL !== scratchpad.labs.serumBicarbonateMeqL &&
+    scratchpad.derivedCalculations.wintersFormula.expectedPaco2MidpointMmHg !== null
+  ) {
+    const expectedWintersMid = parseFloat((1.5 * scratchpad.labs.abgBicarbonateMeqL + 8).toFixed(1));
+    if (Math.abs(scratchpad.derivedCalculations.wintersFormula.expectedPaco2MidpointMmHg - expectedWintersMid) > 0.5) {
+      violations.push({
+        item: "Winter's Formula ABG Bicarbonate Mismatch",
+        sectionA: `ABG HCO3- ${scratchpad.labs.abgBicarbonateMeqL} mEq/L (Expected Winter's midpoint ${expectedWintersMid} mmHg)`,
+        sectionB: `Scratchpad Winter's Midpoint (${scratchpad.derivedCalculations.wintersFormula.expectedPaco2MidpointMmHg} mmHg)`,
+        issue: `Winter's formula used wrong compartment bicarbonate instead of ABG HCO3- (${scratchpad.labs.abgBicarbonateMeqL} mEq/L).`,
+      });
+    }
+  }
+
+  // Verify medication gap items are grounded strictly in documentedMedications
+  const docMeds = scratchpad.documentedMedications || [];
+  for (const gap of scratchpad.sentinels.missingDataItems) {
+    const m = gap.match(/^Exact Timing of Last Medication Doses \(([^)]+)\)/i);
+    if (!m?.[1]) continue;
+    const claimedClasses = m[1].split(",").map((s) => s.trim());
+    for (const cls of claimedClasses) {
+      const hasDoc = docMeds.some((med) =>
+        KNOWN_MEDICATION_PATTERNS.some((spec) => spec.canonical === med && spec.gapClass === cls)
+      );
+      if (!hasDoc) {
+        violations.push({
+          item: `Medication Gap Contamination (${cls})`,
+          sectionA: `Documented Medications (${docMeds.join(", ") || "None"})`,
+          sectionB: `Data Gaps (${gap})`,
+          issue: `Medication gap references unprescribed drug class "${cls}" absent from documented medications.`,
+        });
+      }
+    }
+  }
+
+  return violations;
+}
+
 export function validateCrossSectionClinicalConsistency(
   dossierText: string,
   scratchpad: NeuroSymbolicClinicalScratchpad
 ): CrossSectionConsistencyResult {
-  const violations: CrossSectionConsistencyViolation[] = [];
+  const violations: CrossSectionConsistencyViolation[] = [
+    ...validateScratchpadSourceProvenance(scratchpad),
+  ];
 
   // Check 1: Encounter Identifier Isolation
   const encMatches = [...dossierText.matchAll(/\b(NPDE-[A-Z0-9-]+)\b/g)];

@@ -97,7 +97,7 @@ export function evaluateMandatoryReleaseRule(
       v.ruleId.includes("ISOLATION") ||
       v.ruleId.includes("OMISSION") ||
       v.ruleId.includes("CROSS-SECTION") ||
-      /Documented-to-UNMEASURED|Narrative-vs-Scratchpad|Unsupported KDIGO Stage 3|Anion Gap|Winter's Formula|Cross-section inconsistency in/i.test(
+      /Documented-to-UNMEASURED|Narrative-vs-Scratchpad|Unsupported KDIGO Stage 3|Anion Gap|Winter's Formula|Cross-section inconsistency in|Temporal Creatinine Substitution|Provenance Span Mismatch|Medication Gap Contamination/i.test(
         v.description
       )
   );
@@ -118,9 +118,10 @@ export function evaluateMandatoryReleaseRule(
 export function auditAndEnforceClinicalDossier(
   candidateDossierText: string,
   rawEncounterInput: string,
-  encounterId: string = "NPDE-PREFLIGHT-001"
+  encounterId: string = "NPDE-PREFLIGHT-001",
+  scratchpadOverride?: NeuroSymbolicClinicalScratchpad
 ): PreflightAuditorResult {
-  const scratchpad = buildClinicalScratchpad(rawEncounterInput, encounterId);
+  const scratchpad = scratchpadOverride ?? buildClinicalScratchpad(rawEncounterInput, encounterId);
   const violations: Array<{ ruleId: string; description: string; actionTaken: string }> = [];
   let text = candidateDossierText;
 

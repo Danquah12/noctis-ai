@@ -279,13 +279,37 @@ export interface BrainOptions {
   endpoint?: string;
 }
 
+function extractGeminiThoughtAndAnswer(
+  parts?: { text?: string; thought?: boolean }[],
+): string {
+  if (!Array.isArray(parts) || !parts.length) return "";
+  const thought = parts.filter((p) => p.thought && p.text).map((p) => p.text!.trim()).join("\n").trim();
+  const answer = parts.filter((p) => !p.thought && p.text).map((p) => p.text!).join("").trim();
+  if (thought && answer && !/<think>/i.test(answer)) {
+    return `<think>\n${thought}\n</think>\n\n${answer}`;
+  }
+  return answer || parts.map((p) => p.text || "").join("").trim();
+}
+
+function extractChatCompletionWithReasoning(
+  message?: { content?: string; reasoning_content?: string },
+): string {
+  const content = message?.content?.trim() || "";
+  const reasoning = message?.reasoning_content?.trim() || "";
+  if (reasoning && content && !/<think>/i.test(content)) {
+    return `<think>\n${reasoning}\n</think>\n\n${content}`;
+  }
+  return content;
+}
+
 export async function modelChat(
   messages: { role: string; content: ModelContent }[],
-  opts: { maxTokens?: number; temperature?: number; json?: boolean; brain?: BrainOptions } = {},
+  opts: { maxTokens?: number; temperature?: number; json?: boolean; brain?: BrainOptions; thinkingLevel?: "minimal" | "low" | "medium" | "high" } = {},
 ): Promise<{ text: string } | { error: string }> {
   const maxTokens = opts.maxTokens ?? 2048;
   const temperature = opts.temperature ?? 0.4;
   const json = opts.json === true;
+  const thinkingLevel = opts.thinkingLevel ?? "medium";
   const picture = hasPicture(messages);
   const ready = picture ? await withPictures(messages) : messages;
   const packed = ready
@@ -324,7 +348,7 @@ export async function modelChat(
           maxTokens,
           json: json && !picture,
           temperature,
-          thinkingLevel: "medium",
+          thinkingLevel,
         });
         const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent?key=${encodeURIComponent(key)}`, {
           method: "POST",
@@ -341,7 +365,7 @@ export async function modelChat(
         });
         if (res.ok) {
           const data = (await res.json());
-          const text = data.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("").trim();
+          const text = extractGeminiThoughtAndAnswer(data.candidates?.[0]?.content?.parts);
           if (text) return { text };
         }
       } catch {
@@ -395,7 +419,7 @@ export async function modelChat(
         });
         if (res.ok) {
           const data = (await res.json());
-          const text = data.choices?.[0]?.message?.content?.trim();
+          const text = extractChatCompletionWithReasoning(data.choices?.[0]?.message);
           if (text) return { text };
         }
       } catch {
@@ -424,8 +448,8 @@ export async function modelChat(
         }),
       });
       if (res.ok) {
-        const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-        const text = data.choices?.[0]?.message?.content?.trim();
+        const data = (await res.json()) as { choices?: { message?: { content?: string; reasoning_content?: string } }[] };
+        const text = extractChatCompletionWithReasoning(data.choices?.[0]?.message);
         if (text) return { text };
       }
     } catch {
@@ -453,8 +477,8 @@ export async function modelChat(
           }),
         });
         if (!res.ok) continue;
-        const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-        const text = data.choices?.[0]?.message?.content?.trim();
+        const data = (await res.json()) as { choices?: { message?: { content?: string; reasoning_content?: string } }[] };
+        const text = extractChatCompletionWithReasoning(data.choices?.[0]?.message);
         if (text) return { text };
       } catch {
         /* try the next model */
@@ -469,7 +493,7 @@ export async function modelChat(
         maxTokens,
         json: json && !picture,
         temperature,
-        thinkingLevel: "medium",
+        thinkingLevel,
       });
       const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent?key=${encodeURIComponent(geminiKey)}`, {
         method: "POST",
@@ -485,8 +509,8 @@ export async function modelChat(
         }),
       });
       if (res.ok) {
-        const data = (await res.json()) as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
-        const text = data.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("").trim();
+        const data = (await res.json()) as { candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] } }[] };
+        const text = extractGeminiThoughtAndAnswer(data.candidates?.[0]?.content?.parts);
         if (text) return { text };
       }
     } catch {
@@ -513,8 +537,8 @@ export async function modelChat(
           }),
         });
         if (!res.ok) continue;
-        const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-        const text = data.choices?.[0]?.message?.content?.trim();
+        const data = (await res.json()) as { choices?: { message?: { content?: string; reasoning_content?: string } }[] };
+        const text = extractChatCompletionWithReasoning(data.choices?.[0]?.message);
         if (text) return { text };
       } catch {
         /* try the next model */
@@ -540,8 +564,8 @@ export async function modelChat(
         }),
       });
       if (res.ok) {
-        const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-        const text = data.choices?.[0]?.message?.content?.trim();
+        const data = (await res.json()) as { choices?: { message?: { content?: string; reasoning_content?: string } }[] };
+        const text = extractChatCompletionWithReasoning(data.choices?.[0]?.message);
         if (text) return { text };
       }
     } catch {
