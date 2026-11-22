@@ -87,8 +87,61 @@ function buildRmfSystemPrompt(opts: {
     "5. GOVERNANCE BOUNDARY: Explicitly note where professional judgment is required and state that final ATO / risk acceptance authority rests strictly with the designated **Authorizing Official (AO)**, not an automated score.",
     "6. STATUTORY POAM SLAS: Respect FedRAMP Rev. 5 POA&M remediation timelines (Critical/KEV per BOD 22-01 / 15d, High <= 30d, Moderate <= 90d, Low <= 180d).",
     "7. FACTS VS ESTIMATES: Explicitly distinguish **Observed Facts** (timestamps, scanner/config evidence), **Deterministic Classifications** (rule verdicts, SLAs), and **Analytical Estimates** (risk/likelihood projections, stating assumptions & uncertainty).",
-    `8. LANGUAGE: ${langDirective}`,
+    "8. FORMATTING (NO RAW LATEX): NEVER output raw LaTeX delimiters (`$$...$$`, `\\[...\\]`, `\\text{...}`, `\\{`, `\\}`). Noctis Chat renders Markdown without KaTeX. Express FIPS 199 security categorizations and formulas in clean Markdown inline code (e.g., `SC system = {(confidentiality, MODERATE), (integrity, HIGH), (availability, LOW)}`).",
+    `9. LANGUAGE: ${langDirective}`,
   ].join("\n");
+}
+
+function unwrapLatexCommand(expr: string, command: string): string {
+  const re = new RegExp(`\\\\${command}\\{([^{}]*)\\}`, "g");
+  let next = expr;
+  for (let i = 0; i < 4; i++) {
+    const replaced = next.replace(re, "$1");
+    if (replaced === next) break;
+    next = replaced;
+  }
+  return next;
+}
+
+function cleanLatexExpression(rawExpr: string): string {
+  let out = rawExpr;
+  out = unwrapLatexCommand(out, "text");
+  out = unwrapLatexCommand(out, "mathrm");
+  out = unwrapLatexCommand(out, "textbf");
+  out = out
+    .replace(/\\\{/g, "{")
+    .replace(/\\\}/g, "}")
+    .replace(/\\leq\b|\\le\b/g, "<=")
+    .replace(/\\geq\b|\\ge\b/g, ">=")
+    .replace(/\\times\b/g, "×")
+    .replace(/\\rightarrow\b|\\to\b/g, "->")
+    .replace(/\\approx\b/g, "≈")
+    .replace(/\\(?:quad|qquad|,|;|:)/g, " ")
+    .replace(/`/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return out;
+}
+
+export function sanitizeRmfMarkdownFormatting(markdown: string): string {
+  if (!markdown) return markdown;
+  const fencedParts = markdown.split(/(```[\s\S]*?```)/g);
+  return fencedParts
+    .map((part, idx) => {
+      if (idx % 2 === 1) return part;
+      const formatMatch = (_full: string, inner: string): string => {
+        const cleaned = cleanLatexExpression(inner);
+        return cleaned ? `\`${cleaned}\`` : "";
+      };
+      return part
+        .replace(/\$\$([\s\S]*?)\$\$/g, formatMatch)
+        .replace(/\\\[([\s\S]*?)\\\]/g, formatMatch)
+        .replace(
+          /\$([^\n$]*\\(?:text|mathrm|textbf|leq|le|geq|ge|times|rightarrow|to|approx|\{|\})[^\n$]*)\$/g,
+          formatMatch,
+        );
+    })
+    .join("");
 }
 
 function buildRmfUserPrompt(question: string, packet: RmfGroundingPacket): string {
@@ -349,6 +402,7 @@ export async function executeUniversalRmfReasoning(
   if (!finalBody || (audit && !audit.passed)) {
     finalBody = renderDeterministicRmfFallback(packet);
   }
+  finalBody = sanitizeRmfMarkdownFormatting(finalBody);
 
   const footer = buildProvenanceFooter(packet, audit);
   if (opts.shouldThink === false) {

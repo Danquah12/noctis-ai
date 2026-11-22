@@ -143,6 +143,8 @@ const ENTITY_STOP_WORDS = new Set([
   "where",
   "using",
   "mutual",
+  "rev",
+  "vs",
 ]);
 
 const CODE_LANG_DISPLAY: Record<string, string> = {
@@ -254,7 +256,9 @@ function cleanAnswer(raw: string): string {
   return (raw || "")
     .replace(/<think>[\s\S]*?<\/think>/gi, "")
     .replace(/<think>[\s\S]*$/gi, "")
-    .split(/\n\s*(?:Claim standing:|Evidence status:|Evidence strength:|Pre-Delivery Check:|Sources\s*\n|Last verified\s*\n|Confidence\s*\n)/i)[0]!
+    .split(
+      /\n\s*(?:---\s*\n\s*\*{0,2}Deterministic RMF Verification\b|\*{0,2}Deterministic RMF Verification\b|Claim standing:|Evidence status:|Evidence strength:|Pre-Delivery Check:|Sources\s*\n|Last verified\s*\n|Confidence\s*\n)/i,
+    )[0]!
     .trim();
 }
 
@@ -275,7 +279,12 @@ function truncateWords(text: string, maxLen: number): string {
     lastSpace >= Math.floor(maxLen * 0.55)
       ? sliced.slice(0, lastSpace)
       : sliced;
-  cut = cut.replace(/(?:['’]s|['’])$/, "").replace(/[,:;.\-–—]+$/, "").trim();
+  cut = cut
+    .replace(/(?:['’]s|['’])$/, "")
+    .replace(/[,:;.\-–—]+$/, "")
+    .replace(/\s+(?:and|or|vs\.?|of|for|to|in|on|with|by|&)$/i, "")
+    .replace(/[,:;.\-–—]+$/, "")
+    .trim();
   return cut || clean.slice(0, maxLen).trim();
 }
 
@@ -414,7 +423,14 @@ function extractHeadings(answerNoCode: string): string[] {
     const clean = cleanHeadingText(raw);
     if (clean.length < 4 || clean.length > 68) continue;
     const norm = clean.toLowerCase();
-    if (GENERIC_HEADINGS.has(norm) || /^(?:structured reference table|comparison table)/i.test(norm)) continue;
+    if (
+      GENERIC_HEADINGS.has(norm) ||
+      /^(?:structured reference table|comparison table|executive summary\b|governance\s*&\s*assessment notice\b|deterministic rmf verification\b)/i.test(
+        norm,
+      )
+    ) {
+      continue;
+    }
     if (seen.has(norm)) continue;
     seen.add(norm);
     found.push(clean);
@@ -507,14 +523,15 @@ function extractEntities(
     }
   };
 
-  const multiRe = /\b[A-Z][a-zA-Z0-9'-]+(?:\s+(?:(?:of|the|and|for|from|&)\s+)?[A-Z][a-zA-Z0-9'-]+){1,3}\b/g;
+  const multiRe =
+    /\b[A-Z][a-zA-Z0-9'-]+(?:&[A-Z][a-zA-Z0-9'-]+)*(?:\s+(?:(?:of|the|and|for|from|&)\s+)?[A-Z][a-zA-Z0-9'-]+(?:&[A-Z][a-zA-Z0-9'-]+)*){1,3}\b/g;
   let m: RegExpExecArray | null;
   while ((m = multiRe.exec(combined)) !== null) {
     recordCandidate(m[0]!, m.index, false);
   }
 
   const acronymRe =
-    /\b(?:HIPAA|GDPR|EBITDA|WACC|CRISPR|Cas9|OWASP|MITRE|ATT&CK|OAuth|mTLS|Kubernetes|PostgreSQL|PAN-OS|GlobalProtect|SQLi|XSS|CSRF|SOC\s*2|NIST|ISO\s*27001|NDA|AKI|ICU|SOFA)\b/g;
+    /\b(?:MITRE\s+ATT&CK|FedRAMP|POA&M|FIPS\s*199|OSCAL|CNSSI\s*1253|CMMC|HIPAA|GDPR|EBITDA|WACC|CRISPR|Cas9|OWASP|MITRE|ATT&CK|OAuth|mTLS|Kubernetes|PostgreSQL|PAN-OS|GlobalProtect|SQLi|XSS|CSRF|SOC\s*2|NIST|ISO\s*27001|NDA|AKI|ICU|SOFA)\b/g;
   while ((m = acronymRe.exec(combined)) !== null) {
     recordCandidate(m[0]!, m.index, true);
   }

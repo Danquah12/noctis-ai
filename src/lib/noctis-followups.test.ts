@@ -244,4 +244,41 @@ Unlike standard TLS, mTLS protects against unauthorized access and lateral compr
     assert.ok(!mtlsText.includes("How Mutual TLS"), `question-word entity leaked: ${mtlsText}`);
     assert.ok(!mtlsLabels.includes("Patching & containment steps"));
   });
+
+  it("never emits split 'MITRE ATT & ATT&CK', dangling 'FedRAMP Rev', or generic 'Executive Summary ... vs' follow-up pills on RMF responses", () => {
+    const rmfAnswer = `
+<think>
+Verified AC-13 withdrawn -> AC-2, AU-6. FIPS 199 High-Water Mark = HIGH.
+</think>
+
+## 1. Executive Summary & Facts vs. Estimates
+
+Under NIST SP 800-53 Rev. 5 and FedRAMP Rev. 5, **AC-13** is **WITHDRAWN** and incorporated into **AC-2** and **AU-6**. While AU-6 has no direct CTID mitigation edge in MITRE ATT&CK v16.1, related controls mitigate persistence and defense evasion.
+
+## 2. FIPS 199 High-Water Mark
+
+- **Deterministic Rule Engine Result:** HIGH
+
+## 4. Governance & Assessment Notice
+
+Final ATO decisions rest with the designated Authorizing Official (AO).
+
+---
+**Deterministic RMF Verification** · NIST SP 800-53/53A Rev. 5.2.0 · SP 800-53B · SP 800-171 Rev. 3 · CSF 2.0 · MITRE ATT&CK v16.1 · Verified IDs: \`AC-13, AU-6, AC-2, AC-3, AC-6\` · DB SHA-256: \`4be01b579828\`
+`;
+    const pills = buildContextualFollowUps(
+      "What is NIST SP 800-53 Rev. 5 control AC-13, how does AU-6 map to MITRE ATT&CK and CSF 2.0, and what is the FIPS 199 High-Water Mark for Confidentiality=MODERATE, Integrity=HIGH, Availability=LOW?",
+      rmfAnswer,
+      { desk: "chat" },
+    );
+    const labels = pills.map((p) => p.label);
+    const joined = labels.join(" | ");
+    assert.ok(!joined.includes("MITRE ATT & ATT&CK"), `broken ATT&CK split: ${joined}`);
+    assert.ok(!/\bMITRE ATT\b(?!&CK)/.test(joined), `truncated MITRE ATT token: ${joined}`);
+    assert.ok(!/\bFedRAMP Rev\b/i.test(joined), `dangling FedRAMP Rev token: ${joined}`);
+    assert.ok(!labels.some((l) => /\bvs\.?$/i.test(l)), `label ends awkwardly on 'vs': ${joined}`);
+    assert.ok(!joined.includes("Executive Summary"), `leaked generic Executive Summary heading: ${joined}`);
+    assert.ok(labels.includes("800-53A Examine, Interview & Test"), `expected rmf_grc pills in: ${joined}`);
+    assert.ok(labels.includes("FedRAMP High ODPs & POA&M SLAs"), `expected rmf_grc pills in: ${joined}`);
+  });
 });

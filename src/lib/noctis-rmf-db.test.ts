@@ -24,7 +24,7 @@ import {
   evaluateSi2FlawRemediationRule,
   extractAndEvaluateRmfRulesFromText,
 } from "./noctis-rmf-rules.ts";
-import { executeUniversalRmfReasoning } from "./noctis-rmf-reasoning.server.ts";
+import { executeUniversalRmfReasoning, sanitizeRmfMarkdownFormatting } from "./noctis-rmf-reasoning.server.ts";
 import { buildContextualFollowUps } from "./noctis-followups.ts";
 
 describe("Deterministic RMF Knowledge DB (NIST SP 800-53 Rev. 5.2.0 + 800-53A + 800-53B + 800-171 + CSF 2.0 + MITRE ATT&CK)", () => {
@@ -207,5 +207,30 @@ Use Examine only for the assessment.
     assert.ok(labels.includes("FedRAMP High ODPs & POA&M SLAs"), `got: ${labels.join(", ")}`);
     assert.ok(!labels.includes("Draw the architecture"));
     assert.ok(!labels.includes("Calculate implementation cost"));
+  });
+
+  it("sanitizes raw LaTeX FIPS 199 delimiters into clean inline code while preserving currency and fenced code blocks", () => {
+    const raw = [
+      "### FIPS 199 Categorization",
+      "",
+      "$$\\text{SC} = \\{(\\text{confidentiality}, \\text{MODERATE}), (\\text{integrity}, \\text{HIGH}), (\\text{availability}, \\text{LOW})\\}$$",
+      "",
+      "Estimated remediation budget is $250 to $500, and threshold is $\\text{days} \\leq 30$.",
+      "",
+      "```tex",
+      "$$\\text{keep_inside_fence}$$",
+      "```",
+    ].join("\n");
+    const cleaned = sanitizeRmfMarkdownFormatting(raw);
+    assert.ok(
+      cleaned.includes("`SC = {(confidentiality, MODERATE), (integrity, HIGH), (availability, LOW)}`"),
+      `unexpected sanitized output:\n${cleaned}`,
+    );
+    assert.ok(cleaned.includes("$250 to $500"), "must preserve normal currency amounts");
+    assert.ok(cleaned.includes("`days <= 30`"), `expected <= operator cleanup:\n${cleaned}`);
+    assert.ok(cleaned.includes("$$\\text{keep_inside_fence}$$"), "must preserve fenced code blocks");
+    const outsideFence = cleaned.split("```tex")[0]!;
+    assert.ok(!outsideFence.includes("$$"), "must strip display $$ delimiters outside code blocks");
+    assert.ok(!outsideFence.includes("\\text{"), "must strip \\text{} macros outside code blocks");
   });
 });
