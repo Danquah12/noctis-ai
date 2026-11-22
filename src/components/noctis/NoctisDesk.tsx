@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, lazy, Suspense, type ClipboardEvent } from "react";
+import { Component, useEffect, useRef, useState, lazy, Suspense, type ClipboardEvent, type ComponentType, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { Activity, AlertCircle, AlertTriangle, Info, ArrowUp, Bot, Boxes, Brain, Calendar, Cpu, Crosshair, EyeOff, Fingerprint, FileLock, Globe, Key, Layers, Lock, LogOut, Network, Sparkles, Stethoscope, Swords, Target, ShieldAlert, Terminal, WifiOff, Zap, ChevronDown, ChevronLeft, Code2, Copy, CornerDownLeft, FileText, GraduationCap, Image, Library, Mail, Menu, Mic, MoreHorizontal, PanelLeftClose, PanelLeftOpen, PanelRight, PanelRightOpen, Pencil, Phone, PhoneOff, Plus, Printer, RotateCcw, Search, Square, SquarePen, Trash2, Users2, Video, Volume2, VolumeX, Wrench, X, TrendingUp, Scale, Atom, Landmark, Building2, Server, Microscope, FileCheck, Shield, CheckCircle2 } from "lucide-react";
 import { SOVEREIGN_SYSTEMS_PORTFOLIO } from "@/lib/noctis-sovereign-factory";
@@ -14,14 +14,14 @@ import { NoctisCall } from "@/components/noctis/NoctisCall";
 import { NoctisCanvas } from "@/components/noctis/NoctisCanvas";
 import { DUAL_PLANE_SPECIFICATION, SQDEC_HIERARCHY } from "@/lib/noctis-sovereign-factory";
 import { NoctisShelfPluginSection } from "@/components/noctis/NoctisShelfPluginSection";
-const NoctisPluginsTab = lazy(() => import("@/components/noctis/NoctisPluginsTab").then((m) => ({ default: m.NoctisPluginsTab })));
-const NoctisForgeTab = lazy(() => import("@/components/noctis/NoctisForgeTab").then((m) => ({ default: m.NoctisForgeTab })));
-const NoctisFrontierTab = lazy(() => import("@/components/noctis/NoctisFrontierTab").then((m) => ({ default: m.NoctisFrontierTab })));
-const NoctisTrainingTab = lazy(() => import("@/components/noctis/NoctisTrainingTab").then((m) => ({ default: m.NoctisTrainingTab })));
-const NoctisSovereignFactoryStudio = lazy(() => import("@/components/noctis/NoctisSovereignFactoryStudio").then((m) => ({ default: m.NoctisSovereignFactoryStudio })));
-const NoctisConsoleTab = lazy(() => import("@/components/noctis/NoctisConsoleTab").then((m) => ({ default: m.NoctisConsoleTab })));
-const NoctisRedTeamTab = lazy(() => import("@/components/noctis/NoctisRedTeamTab").then((m) => ({ default: m.NoctisRedTeamTab })));
-const NoctisPluginExecutorModal = lazy(() => import("@/components/noctis/NoctisPluginExecutorModal").then((m) => ({ default: m.NoctisPluginExecutorModal })));
+const NoctisPluginsTab = lazyWithRetry(() => import("@/components/noctis/NoctisPluginsTab").then((m) => ({ default: m.NoctisPluginsTab })));
+const NoctisForgeTab = lazyWithRetry(() => import("@/components/noctis/NoctisForgeTab").then((m) => ({ default: m.NoctisForgeTab })));
+const NoctisFrontierTab = lazyWithRetry(() => import("@/components/noctis/NoctisFrontierTab").then((m) => ({ default: m.NoctisFrontierTab })));
+const NoctisTrainingTab = lazyWithRetry(() => import("@/components/noctis/NoctisTrainingTab").then((m) => ({ default: m.NoctisTrainingTab })));
+const NoctisSovereignFactoryStudio = lazyWithRetry(() => import("@/components/noctis/NoctisSovereignFactoryStudio").then((m) => ({ default: m.NoctisSovereignFactoryStudio })));
+const NoctisConsoleTab = lazyWithRetry(() => import("@/components/noctis/NoctisConsoleTab").then((m) => ({ default: m.NoctisConsoleTab })));
+const NoctisRedTeamTab = lazyWithRetry(() => import("@/components/noctis/NoctisRedTeamTab").then((m) => ({ default: m.NoctisRedTeamTab })));
+const NoctisPluginExecutorModal = lazyWithRetry(() => import("@/components/noctis/NoctisPluginExecutorModal").then((m) => ({ default: m.NoctisPluginExecutorModal })));
 import { DISTRIBUTED_PLUGINS, getPluginsForShelf, type DistributedPluginItem } from "@/lib/noctis-distributed-plugins";
 import { NoctisCodeInterpreter } from "@/components/noctis/NoctisCodeInterpreter";
 import { NoctisThinkingAccordion, NoctisLiveThinkingPanel, CitationBadge } from "@/components/noctis/NoctisThinkingAccordion";
@@ -31,7 +31,7 @@ import NoctisBlastRadiusStrip from "@/components/noctis/NoctisBlastRadiusStrip";
 import { NoctisVoiceVisualizer } from "@/components/noctis/NoctisVoiceVisualizer";
 import { NoctisVoiceSelectorModal } from "@/components/noctis/NoctisVoiceSelectorModal";
 import { NoctisWorkspaceExplorer, getActiveProjectContext } from "@/components/noctis/NoctisWorkspaceExplorer";
-const NoctisDeepResearchModal = lazy(() => import("@/components/noctis/NoctisDeepResearchModal").then((m) => ({ default: m.NoctisDeepResearchModal })));
+const NoctisDeepResearchModal = lazyWithRetry(() => import("@/components/noctis/NoctisDeepResearchModal").then((m) => ({ default: m.NoctisDeepResearchModal })));
 import { NoctisModelPicker } from "@/components/noctis/NoctisModelPicker";
 import { NoctisBrainModal } from "@/components/noctis/NoctisBrainModal";
 import { getBrainConfig, getActiveKeyAndModel } from "@/lib/noctis-brain";
@@ -48,7 +48,7 @@ import { NoctisAirGapModal } from "@/components/noctis/NoctisAirGapModal";
 import { NoctisHolodeckModal } from "@/components/noctis/NoctisHolodeckModal";
 import { NoctisAutoRemediationModal } from "@/components/noctis/NoctisAutoRemediationModal";
 import { NoctisDefenseModal } from "@/components/noctis/NoctisDefenseModal";
-const NoctisScienceModal = lazy(() => import("@/components/noctis/NoctisScienceModal").then((m) => ({ default: m.NoctisScienceModal })));
+const NoctisScienceModal = lazyWithRetry(() => import("@/components/noctis/NoctisScienceModal").then((m) => ({ default: m.NoctisScienceModal })));
 import { NoctisCircuitBreakerModal } from "@/components/noctis/NoctisCircuitBreakerModal";
 import { NoctisCrisisNegotiationModal } from "@/components/noctis/NoctisCrisisNegotiationModal";
 import { NoctisSteganographyModal } from "@/components/noctis/NoctisSteganographyModal";
@@ -57,7 +57,7 @@ import { NoctisPqcModal } from "@/components/noctis/NoctisPqcModal";
 import { NoctisZkProofModal } from "@/components/noctis/NoctisZkProofModal";
 import { NoctisLexModal } from "@/components/noctis/NoctisLexModal";
 import { NoctisCanaryModal } from "@/components/noctis/NoctisCanaryModal";
-const NoctisPatientDiagnosisModal = lazy(() => import("@/components/noctis/NoctisPatientDiagnosisModal").then((m) => ({ default: m.NoctisPatientDiagnosisModal })));
+const NoctisPatientDiagnosisModal = lazyWithRetry(() => import("@/components/noctis/NoctisPatientDiagnosisModal").then((m) => ({ default: m.NoctisPatientDiagnosisModal })));
 import { NoctisCapabilityMatrixModal, type SovereignEngineKey } from "@/components/noctis/NoctisCapabilityMatrixModal";
 import { getActiveCustomAgent, getActiveCustomAgentContext, type NoctisCustomAgent } from "@/lib/noctis-custom-agents";
 import { NoctisMemoryModal, getNoctisPersonalizedContext } from "@/components/noctis/NoctisMemoryModal";
@@ -84,10 +84,79 @@ import { GOALS } from "@/lib/learn";
 import { markDna, readNoctisContext } from "@/components/noctis/NoctisContext";
 import { formatContext, markMission, routeActions } from "@/lib/noctis-os";
 import { studyAsks } from "@/lib/study-pass";
-const NoctisBoardExamExplorer = lazy(() => import("@/components/noctis/NoctisBoardExamExplorer").then((m) => ({ default: m.NoctisBoardExamExplorer })));
+const NoctisBoardExamExplorer = lazyWithRetry(() => import("@/components/noctis/NoctisBoardExamExplorer").then((m) => ({ default: m.NoctisBoardExamExplorer })));
 import { leaveHall } from "@/lib/auth/client";
 import { textFromDocx, textFromPdf, textFromRtf } from "@/lib/read-document";
 import { saveShareLink } from "@/lib/share-link";
+
+function lazyWithRetry<T extends ComponentType<any>>(importer: () => Promise<{ default: T }>) {
+  return lazy(() =>
+    importer().catch((err: unknown) => {
+      if (typeof window !== "undefined") {
+        try {
+          const last = Number(sessionStorage.getItem("noctis_chunk_reload_ts") || "0");
+          if (Date.now() - last > 15000) {
+            sessionStorage.setItem("noctis_chunk_reload_ts", String(Date.now()));
+            window.location.reload();
+            return new Promise<{ default: T }>(() => {});
+          }
+        } catch {
+          /* ignore storage errors and let ErrorBoundary handle it */
+        }
+      }
+      throw err;
+    }),
+  );
+}
+
+class TabErrorBoundary extends Component<
+  { children: ReactNode; onReset?: () => void },
+  { hasError: boolean; message: string }
+> {
+  state = { hasError: false, message: "" };
+
+  static getDerivedStateFromError(error: unknown) {
+    return {
+      hasError: true,
+      message: error instanceof Error ? error.message : "Failed to load this tab view.",
+    };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex flex-1 items-center justify-center p-6">
+          <div className="max-w-md rounded-2xl border border-amber-500/30 bg-[#141820] p-5 text-center space-y-3 shadow-xl">
+            <p className="text-sm font-semibold text-white">This workspace updated or failed to load</p>
+            <p className="text-xs text-zinc-400 break-words">{this.state.message}</p>
+            <div className="flex items-center justify-center gap-2 pt-1">
+              {this.props.onReset ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    this.setState({ hasError: false, message: "" });
+                    this.props.onReset?.();
+                  }}
+                  className="rounded-full bg-white/10 hover:bg-white/15 px-3.5 py-1.5 text-xs font-medium text-zinc-100 transition"
+                >
+                  Return to Chat
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                className="rounded-full bg-[#e4b86a] hover:opacity-90 px-3.5 py-1.5 text-xs font-semibold text-[#1a1408] transition"
+              >
+                Refresh Page
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 type Turn = { role: "user" | "assistant"; content: string; images?: string[]; video?: string; clips?: string[]; audio?: string; thoughtSeconds?: number };
 type Thread = { id: string; title: string; turns: Turn[]; temp?: boolean };
@@ -3460,9 +3529,9 @@ export function NoctisDesk() {
   const [dualPlaneModalOpen, setDualPlaneModalOpen] = useState(false);
 
   const handleOpenSovereignSuite = (systemId: string, promptText: string) => {
-    setMenu(false);
+    closeAllOverlays();
     setDesk("chat");
-    setFactoryStudioOpen(false);
+    setShelf("chats");
     setFactoryStudioSystemId(systemId);
     setDraft(promptText);
     setTimeout(() => {
@@ -3483,7 +3552,7 @@ export function NoctisDesk() {
       case "war_room": setWarRoomModalOpen(true); break;
       case "digital_twin": setDigitalTwinModalOpen(true); break;
       case "holodeck": setHolodeckModalOpen(true); break;
-      case "auto_remediation": setAutoRemediationModalOpen(true); break;
+      case "auto_remediation": setRemediationModalOpen(true); break;
       case "defense" as any: setDefenseModalOpen(true); break;
       case "science" as any: setScienceModalOpen(true); break;
       case "pqc": setPqcModalOpen(true); break;
@@ -3774,17 +3843,68 @@ export function NoctisDesk() {
     }
   }, [threads, ready, active, userScopeKey]);
 
+  function closeAllOverlays() {
+    setAddOpen(false);
+    setMenu(false);
+    setSkillsOpen(false);
+    setStudioMenuOpen(false);
+    setMediaMenuOpen(false);
+    setCapabilityMatrixOpen(false);
+    setBrainModalOpen(false);
+    setAgentBuilderModalOpen(false);
+    setVaultModalOpen(false);
+    setMemoryModalOpen(false);
+    setWorkspaceExplorerOpen(false);
+    setDualPlaneModalOpen(false);
+    setFactoryStudioOpen(false);
+    setPatientDiagnosisModalOpen(false);
+    setDeepResearchModalOpen(false);
+    setDataConnectorsModalOpen(false);
+    setCouncilModalOpen(false);
+    setDigitalTwinModalOpen(false);
+    setWarRoomModalOpen(false);
+    setTruthLedgerModalOpen(false);
+    setSwarmModalOpen(false);
+    setCognitiveModalOpen(false);
+    setAirGapModalOpen(false);
+    setHolodeckModalOpen(false);
+    setRemediationModalOpen(false);
+    setDefenseModalOpen(false);
+    setScienceModalOpen(false);
+    setCircuitBreakerModalOpen(false);
+    setCrisisNegotiationModalOpen(false);
+    setSteganographyModalOpen(false);
+    setEnclaveModalOpen(false);
+    setPqcModalOpen(false);
+    setZkProofModalOpen(false);
+    setLexModalOpen(false);
+    setCanaryModalOpen(false);
+    setExecutorOpen(false);
+    setVoiceModalOpen(false);
+    setLibraryPickerOpen(false);
+    setBrowserTabOpen(false);
+    setSketchOpen(false);
+    setTemplateCreatorOpen(false);
+    setTrainOpen(false);
+  }
+
+  function switchDesk(next: typeof desk) {
+    closeAllOverlays();
+    setDesk(next);
+    setShelf("chats");
+    if (next === "chat" && (skill === "draw" || skill === "library" || skill === "search" || skill === "research")) {
+      setSkill("");
+    }
+  }
+
   useEffect(() => {
-    if (!addOpen && !menu && !skillsOpen) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
-      setAddOpen(false);
-      setMenu(false);
-      setSkillsOpen(false);
+      closeAllOverlays();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [addOpen, menu, skillsOpen]);
+  }, []);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -3813,14 +3933,14 @@ export function NoctisDesk() {
   }, []);
 
   function openNew() {
+    closeAllOverlays();
     setDesk("chat");
     const blank = threads.find((row) => row.title === "New chat" && row.turns.length === 0 && Boolean(row.temp) === priv);
     setDraft("");
     setError("");
     setUploads([]);
-    setMenu(false);
-    setAddOpen(false);
     setShelf("chats");
+    if (skill === "draw" || skill === "library" || skill === "search" || skill === "research") setSkill("");
     setEditing(null);
     if (blank) {
       setActive(blank.id);
@@ -4942,6 +5062,7 @@ export function NoctisDesk() {
     setUploads([]);
     setAttachedTabs([]);
     dropClip();
+    if (shelf !== "chats") setShelf("chats");
     if (skillOverride !== undefined) setSkill(skillOverride);
     if (box.current) box.current.style.height = "auto";
 
@@ -5060,8 +5181,9 @@ export function NoctisDesk() {
   );
 
   function openShelf(next: "chats" | "pictures" | "library" | "tools" | "more") {
+    closeAllOverlays();
+    setDesk("chat");
     setShelf(next);
-    setMenu(false);
     setMore(false);
     setSearching(false);
     setQuery("");
@@ -5815,8 +5937,7 @@ export function NoctisDesk() {
               <button
                 type="button"
                 onClick={() => {
-                  setTrainOpen(false);
-                  setDesk("training");
+                  switchDesk("training");
                 }}
                 className="rounded-full bg-emerald-500/20 border border-emerald-500/40 px-2.5 py-1 text-[11px] font-semibold text-emerald-300 hover:bg-emerald-500/30 cursor-pointer"
               >
@@ -6168,7 +6289,7 @@ export function NoctisDesk() {
                                       : voiceOn
                                         ? "Listening"
                                         : desk === "study"
-                                          ? `Ask Noctis anything about ${studyTopic || "your board exam"}...`
+                                          ? `Ask Noctis about ${(studyTopic || "your board exam").replace(/\s*\([^)]+\)\s*$/, "")}...`
                                           : "Ask Noctis"
           }
           onPaste={pasteImage}
@@ -6183,7 +6304,10 @@ export function NoctisDesk() {
               void send();
             }
           }}
-          className="max-h-40 min-h-9 flex-1 resize-none bg-transparent px-1.5 py-2 text-base sm:text-[15px] leading-5 text-zinc-100 outline-none placeholder:text-zinc-400"
+          className={cn(
+            "max-h-40 min-h-9 flex-1 resize-none bg-transparent px-1.5 py-2 text-base sm:text-[15px] leading-5 text-zinc-100 outline-none placeholder:text-zinc-400 noctis-thin-scroll",
+            draft ? "overflow-y-auto" : "overflow-y-hidden",
+          )}
         />
         {code ? (
           <button type="button" onClick={() => setCode(false)} className="hidden shrink-0 items-center gap-1 rounded-full px-2 py-1 text-xs text-[#e4b86a] sm:inline-flex">
@@ -6471,7 +6595,7 @@ export function NoctisDesk() {
 
   return (
     <div
-      className="flex h-dvh w-screen min-h-0 overflow-hidden text-zinc-100"
+      className="flex h-dvh w-full max-w-[100vw] min-h-0 overflow-hidden text-zinc-100"
       style={{ background: canvas.swatch }}
       onDragOver={(event) => event.preventDefault()}
       onDrop={(event) => {
@@ -6484,7 +6608,7 @@ export function NoctisDesk() {
       ) : null}
       <aside
         className={cn(
-          "vibe-rail z-30 h-full shrink-0 flex-col overflow-y-auto px-2 py-2 transition-all duration-200",
+          "vibe-rail noctis-thin-scroll z-30 h-full shrink-0 flex-col overflow-y-auto px-2 py-2 transition-all duration-200",
           menu ? "fixed inset-y-0 left-0 flex w-full max-w-[20rem]" : "hidden",
           sidebarOpen ? "md:flex md:w-[310px] lg:w-[340px]" : "md:hidden"
         )}
@@ -6561,29 +6685,13 @@ export function NoctisDesk() {
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => {
-            setMenu(false);
-            handleSignOut();
-          }}
-          disabled={signingOut}
-          title="Sign out of Noctis and DStrike"
-          className="mb-1 flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-zinc-300 hover:text-rose-300 hover:bg-rose-500/15 transition disabled:opacity-50 touch-manipulation"
-        >
-          <LogOut className="size-4 shrink-0 text-zinc-400 group-hover:text-rose-300" />
-          <span>{signingOut ? "Signing out..." : "Log out"}</span>
-        </button>
         <button type="button" onClick={openNew} className={item(empty && shelf === "chats" && desk === "chat")}>
           <SquarePen className="size-4 shrink-0" />
           New chat
         </button>
         <button
           type="button"
-          onClick={() => {
-            setDesk("forge");
-            setMenu(false);
-          }}
+          onClick={() => switchDesk("forge")}
           className={item(desk === "forge")}
         >
           <Terminal className="size-4 shrink-0 text-amber-400" />
@@ -6592,10 +6700,7 @@ export function NoctisDesk() {
         </button>
         <button
           type="button"
-          onClick={() => {
-            setDesk("console");
-            setMenu(false);
-          }}
+          onClick={() => switchDesk("console")}
           className={item(desk === "console")}
         >
           <Activity className="size-4 shrink-0 text-emerald-400" />
@@ -6604,10 +6709,7 @@ export function NoctisDesk() {
         </button>
         <button
           type="button"
-          onClick={() => {
-            setDesk("plugins");
-            setMenu(false);
-          }}
+          onClick={() => switchDesk("plugins")}
           className={item(desk === "plugins")}
         >
           <Layers className="size-4 shrink-0 text-sky-400" />
@@ -6616,10 +6718,7 @@ export function NoctisDesk() {
         </button>
         <button
           type="button"
-          onClick={() => {
-            setDesk("frontier");
-            setMenu(false);
-          }}
+          onClick={() => switchDesk("frontier")}
           className={item(desk === "frontier")}
         >
           <Cpu className="size-4 shrink-0 text-violet-400" />
@@ -6628,38 +6727,35 @@ export function NoctisDesk() {
         </button>
         <button
           type="button"
-          onClick={() => {
-            setDesk("training");
-            setMenu(false);
-          }}
+          onClick={() => switchDesk("training")}
           className={item(desk === "training")}
         >
           <Activity className="size-4 shrink-0 text-emerald-400" />
           <span>Continuous Daemon</span>
           <span className="ml-auto rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-bold text-emerald-300">2,158</span>
         </button>
-        <button type="button" onClick={() => openShelf("pictures")} className={item(shelf === "pictures")}>
+        <button type="button" onClick={() => openShelf("pictures")} className={item(desk === "chat" && shelf === "pictures")}>
           <Image className="size-4 shrink-0" />
           Pictures
         </button>
-        <button type="button" onClick={() => openShelf("library")} className={item(shelf === "library")}>
+        <button type="button" onClick={() => openShelf("library")} className={item(desk === "chat" && shelf === "library")}>
           <Library className="size-4 shrink-0" />
           Library
         </button>
-        <button type="button" onClick={() => openShelf("tools")} className={item(shelf === "tools")}>
+        <button type="button" onClick={() => openShelf("tools")} className={item(desk === "chat" && shelf === "tools")}>
           <Wrench className="size-4 shrink-0" />
           Tools
         </button>
         <button
           type="button"
           onClick={() => {
-            if (shelf === "more") {
+            if (desk === "chat" && shelf === "more") {
               openShelf("chats");
             } else {
               openShelf("more");
             }
           }}
-          className={item(shelf === "more")}
+          className={item(desk === "chat" && shelf === "more")}
         >
           <MoreHorizontal className="size-4 shrink-0" />
           <span>More & Business</span>
@@ -6719,10 +6815,7 @@ export function NoctisDesk() {
                 </span>
                 <button
                   type="button"
-                  onClick={() => {
-                    setDesk("plugins");
-                    setMenu(false);
-                  }}
+                  onClick={() => switchDesk("plugins")}
                   className="text-[10px] text-[#e4b86a] hover:underline"
                 >
                   All →
@@ -6787,10 +6880,7 @@ export function NoctisDesk() {
                 <span>Knowledge & Research</span>
                 <button
                   type="button"
-                  onClick={() => {
-                    setDesk("plugins");
-                    setMenu(false);
-                  }}
+                  onClick={() => switchDesk("plugins")}
                   className="text-[10px] text-[#e4b86a] hover:underline"
                 >
                   All →
@@ -6822,10 +6912,7 @@ export function NoctisDesk() {
               <span>Creative Plugins</span>
               <button
                 type="button"
-                onClick={() => {
-                  setDesk("plugins");
-                  setMenu(false);
-                }}
+                onClick={() => switchDesk("plugins")}
                 className="text-[10px] text-[#e4b86a] hover:underline"
               >
                 All →
@@ -6854,10 +6941,7 @@ export function NoctisDesk() {
               <span>Business & Finance</span>
               <button
                 type="button"
-                onClick={() => {
-                  setDesk("plugins");
-                  setMenu(false);
-                }}
+                onClick={() => switchDesk("plugins")}
                 className="text-[10px] text-[#e4b86a] hover:underline"
               >
                 All →
@@ -6895,13 +6979,6 @@ export function NoctisDesk() {
                 <div className="flex items-center gap-1.5">
                   <button
                     type="button"
-                    onClick={() => { setMenu(false); setFactoryStudioTab("proof"); setFactoryStudioOpen(true); }}
-                    className="text-[10px] font-semibold text-emerald-400 hover:text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 rounded px-1.5 py-0.5"
-                  >
-                    Proof & SQDEC 🛡️
-                  </button>
-                  <button
-                    type="button"
                     onClick={() => { setMenu(false); setFactoryStudioTab("matrix"); setFactoryStudioOpen(true); }}
                     className="text-[11px] font-medium text-[#e4b86a] hover:underline"
                   >
@@ -6922,8 +6999,7 @@ export function NoctisDesk() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => { setMenu(false); setDesk("redteam");
-                    }}
+                    onClick={() => switchDesk("redteam")}
                     className={cn(
                       "flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs transition text-left",
                       desk === "redteam" ? "bg-rose-500/20 text-rose-200 border border-rose-500/30" : "text-zinc-300 hover:bg-white/10 hover:text-white"
@@ -7129,7 +7205,7 @@ export function NoctisDesk() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => { setMenu(false); setAutoRemediationModalOpen(true); }}
+                    onClick={() => { setMenu(false); setRemediationModalOpen(true); }}
                     className="flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs text-zinc-300 hover:bg-white/10 hover:text-white transition text-left"
                   >
                     <Wrench className="size-3.5 text-purple-400 shrink-0" />
@@ -7402,9 +7478,9 @@ export function NoctisDesk() {
             </div>
           </div>
         ) : null}
-        <header className="relative z-30 flex h-14 shrink-0 items-center justify-between border-b border-white/10 bg-[#12151c] px-3 sm:px-4 gap-2">
-          {/* Left: Mobile Menu, Sidebar Toggle, Brand & Atmosphere Palette */}
-          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+        <header className="relative z-30 flex h-14 min-w-0 shrink-0 items-center justify-between gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar border-b border-white/10 bg-[#12151c] px-2.5 sm:px-3.5">
+          {/* Left: Mobile Menu, Expand Sidebar (when collapsed), Brand (when collapsed), & Model Picker */}
+          <div className="flex items-center gap-2 shrink-0">
             {/* Mobile Menu */}
             <button
               type="button"
@@ -7415,20 +7491,22 @@ export function NoctisDesk() {
               <Menu className="size-5" />
             </button>
 
-            {/* Desktop Sidebar Toggle Button */}
-            <button
-              type="button"
-              aria-label={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
-              onClick={() => setSidebarOpen((v) => !v)}
-              className="hidden md:flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 px-2.5 py-1.5 text-xs text-zinc-300 hover:text-white transition shadow-xs cursor-pointer"
-              title={sidebarOpen ? "Collapse sidebar (Ctrl+B)" : "Expand sidebar (Ctrl+B)"}
-            >
-              {sidebarOpen ? <PanelLeftClose className="size-4 text-zinc-400" /> : <PanelLeftOpen className="size-4 text-[#e4b86a]" />}
-              <span className="text-[11px] font-medium hidden lg:inline">{sidebarOpen ? "Close panel" : "Sidebar"}</span>
-            </button>
+            {/* Desktop Expand Sidebar Button (only shown when sidebar is collapsed so Close is never duplicated) */}
+            {!sidebarOpen ? (
+              <button
+                type="button"
+                aria-label="Expand sidebar"
+                onClick={() => setSidebarOpen(true)}
+                className="hidden md:flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 px-2.5 py-1.5 text-xs text-zinc-300 hover:text-white transition shadow-xs cursor-pointer"
+                title="Expand sidebar (Ctrl+B)"
+              >
+                <PanelLeftOpen className="size-4 text-[#e4b86a]" />
+                <span className="text-[11px] font-medium hidden lg:inline">Sidebar</span>
+              </button>
+            ) : null}
 
-            {/* Brand Mark (Displayed when sidebar is collapsed, or on large screens) */}
-            <div className={cn("items-center gap-2", sidebarOpen ? "hidden 2xl:flex" : "flex")}>
+            {/* Brand Mark (Displayed ONLY when sidebar is collapsed) */}
+            <div className={cn("items-center gap-2", sidebarOpen ? "hidden" : "flex")}>
               <span className="flex items-center gap-2">
                 <img
                   src="/brand/dstrike-logo.png"
@@ -7451,12 +7529,9 @@ export function NoctisDesk() {
               </button>
             </div>
 
-            {/* Atmosphere Palette (Prominent Header Palette when sidebar is collapsed, or on wide screens) */}
-            <div className={cn("items-center gap-2 rounded-xl bg-white/[0.04] px-2.5 py-1 border border-white/8 shadow-xs", sidebarOpen ? "hidden 2xl:flex" : "hidden sm:flex")}>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] font-semibold tracking-wider uppercase text-zinc-400">ATMOSPHERE PALETTE</span>
-                <span className="text-[10px] font-mono font-medium text-[#e4b86a] capitalize">{theme}</span>
-              </div>
+            {/* Compact Atmosphere Swatches (Displayed ONLY when sidebar is collapsed) */}
+            <div className={cn("items-center gap-1.5 rounded-xl bg-white/[0.04] px-2 py-1 border border-white/8 shadow-xs", sidebarOpen ? "hidden" : "hidden lg:flex")}>
+              <span className="text-[10px] font-mono font-medium text-[#e4b86a] capitalize px-1">{theme}</span>
               <div className="flex items-center gap-1 rounded-full bg-black/40 p-0.5 border border-white/10">
                 {CANVASES.map((row) => {
                   const isActive = theme === row.id;
@@ -7484,32 +7559,33 @@ export function NoctisDesk() {
                 })}
               </div>
             </div>
-          </div>
 
-          {/* Center: Model Picker + Mode Switcher (Chat | Board | Canvas) */}
-          <div className="flex items-center gap-2 justify-center shrink-0">
             <NoctisModelPicker
               onOpenBrainModal={() => setBrainModalOpen(true)}
-              onSelectDesk={(d) => setDesk(d)}
+              onSelectDesk={(d) => switchDesk(d)}
               onSelectEngine={(key) => handleSelectEngine(key)}
               onOpenCapabilities={() => setCapabilityMatrixOpen(true)}
             />
-            <div className="inline-flex shrink-0 items-center rounded-full bg-[#1e232e] p-1 text-xs sm:text-sm ring-1 ring-white/10 shadow-inner">
+          </div>
+
+          {/* Center: Mode Switcher (Chat | Board | Canvas) */}
+          <div className="flex items-center justify-center shrink-0">
+            <div className="inline-flex shrink-0 items-center rounded-full bg-[#1e232e] p-1 text-xs sm:text-[13px] ring-1 ring-white/10 shadow-inner">
               <button
                 type="button"
-                onClick={() => setDesk("chat")}
+                onClick={() => switchDesk("chat")}
                 className={cn(
-                  "rounded-full px-3.5 py-1 text-xs sm:text-sm font-medium transition",
-                  desk === "chat" ? "bg-white/15 text-white shadow-xs font-semibold" : "text-zinc-400 hover:text-zinc-200"
+                  "rounded-full px-2.5 sm:px-3 py-1 text-xs sm:text-[13px] font-medium transition",
+                  desk === "chat" && shelf === "chats" ? "bg-white/15 text-white shadow-xs font-semibold" : "text-zinc-400 hover:text-zinc-200"
                 )}
               >
                 Chat
               </button>
               <button
                 type="button"
-                onClick={() => setDesk("study")}
+                onClick={() => switchDesk("study")}
                 className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1 text-xs sm:text-sm font-medium transition",
+                  "inline-flex items-center gap-1.5 rounded-full px-2.5 sm:px-3 py-1 text-xs sm:text-[13px] font-medium transition",
                   desk === "study" ? "bg-white/15 text-[#e4b86a] shadow-xs font-semibold" : "text-zinc-400 hover:text-zinc-200"
                 )}
               >
@@ -7526,7 +7602,7 @@ export function NoctisDesk() {
                   setCanvasOpen((o) => !o);
                 }}
                 className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1 text-xs sm:text-sm font-medium transition",
+                  "inline-flex items-center gap-1.5 rounded-full px-2.5 sm:px-3 py-1 text-xs sm:text-[13px] font-medium transition",
                   canvasOpen ? "bg-white/15 text-[#e4b86a] shadow-xs font-semibold" : "text-zinc-400 hover:text-zinc-200"
                 )}
               >
@@ -7538,46 +7614,49 @@ export function NoctisDesk() {
           </div>
 
           {/* Right: Studio Capabilities, Brain, Agents, Utilities & Logout */}
-          <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex items-center gap-1 2xl:gap-1.5 shrink-0">
             <button
               type="button"
+              aria-label="Capabilities"
               onClick={() => setCapabilityMatrixOpen(true)}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-2.5 sm:px-3 py-1 text-xs font-semibold transition",
+                "inline-flex items-center gap-1.5 rounded-full px-2 sm:px-2.5 py-1 text-xs font-semibold transition",
                 capabilityMatrixOpen
                   ? "bg-[#e4b86a] text-[#1a1408]"
                   : "bg-amber-500/10 border border-amber-500/25 text-amber-300 hover:border-amber-400 hover:text-white"
               )}
               title="Sovereign Capability Matrix: 16 Autonomous Engines"
             >
-              <Cpu className="size-3.5 text-amber-400" />
-              <span className="hidden sm:inline">Capabilities</span>
-              <span className="rounded-full bg-amber-400/20 px-1.5 py-0.2 text-[10px] font-bold text-amber-300">
+              <Cpu className="size-3.5 text-amber-400 shrink-0" />
+              <span className="hidden lg:inline">Capabilities</span>
+              <span className="hidden sm:inline rounded-full bg-amber-400/20 px-1.5 py-0.2 text-[10px] font-bold text-amber-300">
                 16
               </span>
             </button>
             <button
               type="button"
+              aria-label="Brain"
               onClick={() => setBrainModalOpen(true)}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-2.5 sm:px-3 py-1 text-xs font-semibold transition",
+                "inline-flex items-center gap-1.5 rounded-full px-2 sm:px-2.5 py-1 text-xs font-semibold transition",
                 brainModalOpen
                   ? "bg-[#e4b86a] text-[#1a1408]"
                   : "bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 hover:border-emerald-400 hover:text-white"
               )}
               title="Sovereign Brain & Provider Gateway: Google Gemini, Groq, OpenAI, Ollama"
             >
-              <Brain className="size-3.5 text-emerald-400" />
-              <span className="hidden sm:inline">Brain</span>
-              <span className="rounded-full bg-emerald-400/20 px-1.5 py-0.2 text-[10px] font-bold text-emerald-300">
+              <Brain className="size-3.5 text-emerald-400 shrink-0" />
+              <span className="hidden lg:inline">Brain</span>
+              <span className="hidden sm:inline rounded-full bg-emerald-400/20 px-1.5 py-0.2 text-[10px] font-bold text-emerald-300">
                 BYOK
               </span>
             </button>
             <button
               type="button"
+              aria-label="Agents"
               onClick={() => setAgentBuilderModalOpen(true)}
               className={cn(
-                "inline-flex items-center gap-1 rounded-full px-2 sm:px-2.5 py-1 text-xs text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition border border-white/5",
+                "inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] sm:text-xs text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition border border-white/5",
                 activeCustomAgent
                   ? "bg-[#e4b86a]/15 text-[#e4b86a] border-[#e4b86a]/30 font-semibold"
                   : agentBuilderModalOpen
@@ -7586,49 +7665,52 @@ export function NoctisDesk() {
               )}
               title="Specialist Agent Builder (Noctis GPTs)"
             >
-              <Bot className="size-3.5" />
-              <span className="hidden xl:inline">{activeCustomAgent ? `${activeCustomAgent.avatarEmoji} ${activeCustomAgent.name}` : "Agents"}</span>
+              <Bot className="size-3.5 shrink-0" />
+              <span className="hidden 2xl:inline">{activeCustomAgent ? `${activeCustomAgent.avatarEmoji} ${activeCustomAgent.name}` : "Agents"}</span>
             </button>
             <button
               type="button"
+              aria-label="Vault"
               onClick={() => setVaultModalOpen(true)}
               className={cn(
-                "inline-flex items-center gap-1 rounded-full px-2 sm:px-2.5 py-1 text-xs text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition border border-white/5",
+                "inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] sm:text-xs text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition border border-white/5",
                 vaultModalOpen ? "bg-[#3a3a3a] text-purple-400" : ""
               )}
               title="Encrypted Vault Backup"
             >
-              <Lock className="size-3.5" />
-              <span className="hidden xl:inline">Vault</span>
+              <Lock className="size-3.5 shrink-0" />
+              <span className="hidden 2xl:inline">Vault</span>
             </button>
             <button
               type="button"
+              aria-label="Memory"
               onClick={() => setMemoryModalOpen(true)}
               className={cn(
-                "inline-flex items-center gap-1 rounded-full px-2 sm:px-2.5 py-1 text-xs text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition border border-white/5",
+                "inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] sm:text-xs text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition border border-white/5",
                 memoryModalOpen ? "bg-[#3a3a3a] text-[#e4b86a]" : ""
               )}
               title="Personal Memory & Custom Instructions"
             >
-              <Brain className="size-3.5" />
-              <span className="hidden xl:inline">Memory</span>
+              <Brain className="size-3.5 shrink-0" />
+              <span className="hidden 2xl:inline">Memory</span>
             </button>
             <button
               type="button"
+              aria-label="Projects"
               onClick={() => setWorkspaceExplorerOpen(true)}
               className={cn(
-                "inline-flex items-center gap-1 rounded-full px-2 sm:px-2.5 py-1 text-xs text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition border border-white/5",
+                "inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] sm:text-xs text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition border border-white/5",
                 workspaceExplorerOpen ? "bg-[#3a3a3a] text-[#e4b86a]" : ""
               )}
               title="Project Workspace & Files"
             >
-              <Library className="size-3.5" />
-              <span className="hidden xl:inline">Projects</span>
+              <Library className="size-3.5 shrink-0" />
+              <span className="hidden 2xl:inline">Projects</span>
             </button>
 
-            <div className="h-4 w-px bg-white/10 hidden sm:block mx-0.5" />
+            <div className="h-4 w-px bg-white/10 hidden sm:block" />
 
-            {/* Phone call (mobile) & Sign out (desktop) */}
+            {/* Phone call (mobile) & Sign out (single unified desktop/mobile location) */}
             <button
               type="button"
               aria-label="Call someone"
@@ -7639,10 +7721,11 @@ export function NoctisDesk() {
             </button>
             <button
               type="button"
+              aria-label="Log out"
               onClick={handleSignOut}
               disabled={signingOut}
               title="Sign out of Noctis and DStrike"
-              className="inline-flex items-center gap-1 rounded-full px-2 sm:px-2.5 py-1 text-xs font-medium text-zinc-400 hover:bg-rose-500/20 hover:text-rose-200 transition border border-white/10 hover:border-rose-500/30 disabled:opacity-50 touch-manipulation"
+              className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] sm:text-xs font-medium text-zinc-400 hover:bg-rose-500/20 hover:text-rose-200 transition border border-white/10 hover:border-rose-500/30 disabled:opacity-50 touch-manipulation"
             >
               <LogOut className="size-3.5 shrink-0 text-zinc-400" />
               <span className="hidden xl:inline">{signingOut ? "Signing out..." : "Log out"}</span>
@@ -7654,17 +7737,16 @@ export function NoctisDesk() {
         <NoctisLiveCveTicker
           onSelectCve={(cveId, prompt) => void send(prompt)}
           centerSlot={
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => setDualPlaneModalOpen(true)}
-                title="Inspect Dual-Plane Sovereign Architecture and Zero-Trust Governance"
-                className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.05] hover:bg-white/[0.08] px-2.5 py-0.5 text-xs transition border border-white/10 cursor-pointer shadow-xs"
+                title="Dual-Plane Sovereign Architecture: Control [Noctis Ultra] — Enclave [Air-Gapped] (SQDEC P1)"
+                className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.05] hover:bg-white/[0.08] px-2.5 py-0.5 text-xs transition border border-white/10 cursor-pointer shadow-xs shrink-0"
               >
                 <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="font-semibold text-emerald-300 text-[11px]">Dual-Plane:</span>
-                <span className="text-zinc-300 text-[11px] hidden xl:inline">Control [Noctis Ultra] —</span>
-                <span className="text-zinc-300 text-[11px]">Enclave [Air-Gapped]</span>
+                <span className="font-semibold text-emerald-300 text-[11px]">Dual-Plane</span>
+                <span className="text-zinc-300 text-[11px] hidden 2xl:inline">· Enclave</span>
                 <span className="rounded bg-emerald-500/20 text-emerald-300 px-1 py-0.2 text-[9px] font-mono font-bold">SQDEC P1</span>
               </button>
               <button
@@ -7674,16 +7756,16 @@ export function NoctisDesk() {
                   setFactoryStudioOpen(true);
                 }}
                 title="Open Cryptographic Proof-of-Execution & SQDEC Priority Stack"
-                className="inline-flex items-center gap-1.5 rounded-full bg-emerald-950/60 hover:bg-emerald-900/70 px-2.5 py-0.5 text-xs transition border border-emerald-500/40 cursor-pointer shadow-xs text-emerald-300"
+                className="inline-flex items-center gap-1.5 rounded-full bg-emerald-950/60 hover:bg-emerald-900/70 px-2.5 py-0.5 text-xs transition border border-emerald-500/40 cursor-pointer shadow-xs text-emerald-300 shrink-0"
               >
                 <Shield className="size-3 text-emerald-400 shrink-0" />
                 <span className="font-bold text-[11px] font-sans">Proof & SQDEC</span>
-                <span className="rounded bg-emerald-500/25 text-emerald-200 px-1 py-0.2 text-[9px] font-mono font-bold">SHA-256</span>
+                <span className="hidden 2xl:inline rounded bg-emerald-500/25 text-emerald-200 px-1 py-0.2 text-[9px] font-mono font-bold">SHA-256</span>
               </button>
             </div>
           }
           rightSlot={
-            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 border-l border-white/10 pl-2">
+            <div className="flex items-center shrink-0 border-l border-white/10 pl-2">
               <button
                 type="button"
                 onClick={clearHistory}
@@ -7691,14 +7773,9 @@ export function NoctisDesk() {
                 className="inline-flex shrink-0 items-center gap-1 sm:gap-1.5 rounded-full bg-white/5 hover:bg-rose-500/20 px-2 sm:px-2.5 py-0.5 text-xs font-medium text-zinc-300 hover:text-rose-200 transition border border-white/10 hover:border-rose-500/30 touch-manipulation shadow-xs"
               >
                 <Trash2 className="size-3 text-zinc-400" />
-                <span className="hidden sm:inline text-[11px] font-sans">Clear previous chat</span>
+                <span className="hidden sm:inline text-[11px] font-sans">Clear chat</span>
                 <span className="sm:hidden text-[10px]">Clear</span>
               </button>
-              <img
-                src="/brand/dstrike-logo.png"
-                alt="DSTRIKE"
-                className="hidden md:block h-4.5 w-auto max-w-[50px] shrink-0 rounded bg-white/90 px-1 py-0.5 object-contain shadow-xs"
-              />
             </div>
           }
         />
@@ -7744,12 +7821,13 @@ export function NoctisDesk() {
           }}
         />
         <div className="flex min-h-0 flex-1 overflow-hidden">
-          <div className={cn("flex flex-col min-h-0 min-w-0 transition-all duration-200", canvasOpen ? "w-full md:w-1/2 lg:w-[46%] border-r border-white/10" : "w-full")}>
+          <TabErrorBoundary onReset={() => switchDesk("chat")}>
+          <div className={cn("flex flex-col h-full min-h-0 min-w-0 transition-all duration-200", canvasOpen ? "w-full md:w-1/2 lg:w-[46%] border-r border-white/10" : "w-full")}>
             {desk === "plugins" ? (
               <Suspense fallback={<div className="flex-1 flex items-center justify-center p-8 text-zinc-400">Loading Plugin Ecosystem...</div>}>
                 <NoctisPluginsTab
                   onLaunchPrompt={(promptText) => {
-                    setDesk("chat");
+                    switchDesk("chat");
                     void send(promptText);
                   }}
                   onSelectPlugin={(p) => {
@@ -7760,37 +7838,37 @@ export function NoctisDesk() {
                     };
                     handleUsePlugin(dist);
                   }}
-                  onClose={() => setDesk("chat")}
+                  onClose={() => switchDesk("chat")}
                 />
               </Suspense>
             ) : desk === "redteam" ? (
               <Suspense fallback={<div className="flex-1 flex items-center justify-center p-8 text-zinc-400">Loading Red Team Lab...</div>}>
                 <NoctisRedTeamTab
                   onSendToChat={(taskPrompt) => {
-                    setDesk("chat");
+                    switchDesk("chat");
                     void send(taskPrompt);
                   }}
-                  onClose={() => setDesk("chat")}
+                  onClose={() => switchDesk("chat")}
                 />
               </Suspense>
             ) : desk === "console" ? (
               <Suspense fallback={<div className="flex-1 flex items-center justify-center p-8 text-zinc-400">Loading Sovereign Console...</div>}>
                 <NoctisConsoleTab
                   onSendToChat={(taskPrompt) => {
-                    setDesk("chat");
+                    switchDesk("chat");
                     void send(taskPrompt);
                   }}
-                  onClose={() => setDesk("chat")}
+                  onClose={() => switchDesk("chat")}
                 />
               </Suspense>
             ) : desk === "forge" ? (
               <Suspense fallback={<div className="flex-1 flex items-center justify-center p-8 text-zinc-400">Loading Architecture Forge...</div>}>
                 <NoctisForgeTab
                   onSendToChat={(taskPrompt) => {
-                    setDesk("chat");
+                    switchDesk("chat");
                     void send(taskPrompt);
                   }}
-                  onClose={() => setDesk("chat")}
+                  onClose={() => switchDesk("chat")}
                   onOpenInCanvas={(title, md) => openInCanvas(title, md)}
                 />
               </Suspense>
@@ -7798,31 +7876,32 @@ export function NoctisDesk() {
               <Suspense fallback={<div className="flex-1 flex items-center justify-center p-8 text-zinc-400">Loading Frontier Clinical Lab...</div>}>
                 <NoctisFrontierTab
                   onSendToChat={(taskPrompt) => {
-                    setDesk("chat");
+                    switchDesk("chat");
                     void send(taskPrompt);
                   }}
-                  onClose={() => setDesk("chat")}
+                  onClose={() => switchDesk("chat")}
                 />
               </Suspense>
             ) : desk === "training" ? (
               <Suspense fallback={<div className="flex-1 flex items-center justify-center p-8 text-zinc-400">Loading Autonomous Training Studio...</div>}>
                 <NoctisTrainingTab
                   onSendToChat={(taskPrompt) => {
-                    setDesk("chat");
+                    switchDesk("chat");
                     void send(taskPrompt);
                   }}
-                  onClose={() => setDesk("chat")}
+                  onClose={() => switchDesk("chat")}
                 />
               </Suspense>
-            ) : empty ? (
+            ) : (empty || shelf !== "chats") ? (
           <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
             <div className="pointer-events-none absolute inset-0 bg-[#0d1117]" />
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-sky-950/30 via-[#0e121a]/85 to-[#080a0f]" />
             <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:3.5rem_3.5rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#12151c]/55 via-[#12151c]/35 to-[#12151c]/80" />
             {desk === "chat" && shelf === "chats" ? (
-              <div className="relative flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto px-4 py-8">
-                <div className="mx-auto w-full max-w-3xl mb-6 text-center space-y-2.5 animate-in fade-in duration-300">
+              <div className="relative flex h-full min-h-0 flex-1 flex-col items-center overflow-y-auto noctis-thin-scroll px-4 py-6">
+                <div style={{ flex: "2 1 0%", minHeight: "1.5rem" }} className="w-full" />
+                <div className="mx-auto w-full max-w-3xl mb-6 shrink-0 text-center space-y-2.5 animate-in fade-in duration-300">
                   <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
                     Noctis Sovereign Systems Desk
                   </h2>
@@ -7830,7 +7909,7 @@ export function NoctisDesk() {
                     Autonomous software engineering, continuous verification, subagent swarms, and cross-domain SQDEC governance.
                   </p>
                 </div>
-                <div className="mx-auto w-full max-w-3xl shrink-0 px-1 pb-4">
+                <div className="mx-auto w-full max-w-3xl shrink-0 px-1 pb-2">
                   {code ? (
                     <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-[#e4b86a]/15 border border-[#e4b86a]/30 px-3 py-1 text-xs font-medium text-[#e4b86a]">
                       <Code2 className="size-3.5" />
@@ -7854,10 +7933,11 @@ export function NoctisDesk() {
                   {composer}
                   {error ? <p className="mt-2 text-sm text-red-400">{error}</p> : null}
                 </div>
+                <div style={{ flex: "1 1 0%", minHeight: "2rem" }} className="w-full" />
               </div>
             ) : (
             <div className="relative flex min-h-0 flex-1 flex-col">
-            <div className="flex min-h-0 flex-1 flex-col items-center gap-3 overflow-y-auto px-4 pt-4">
+            <div className="flex min-h-0 flex-1 flex-col items-center gap-3 overflow-y-auto noctis-thin-scroll px-4 pt-4">
               {shelf !== "chats" && (
                 <h1 className="shrink-0 text-center font-display text-[26px] font-medium tracking-tight text-zinc-50 sm:text-[32px]">
                 {shelf === "pictures"
@@ -7889,7 +7969,7 @@ export function NoctisDesk() {
                     title="Creative & Visual Plugins"
                     subtitle="Design, generative video, vector layout & creative studio tools"
                     onUsePlugin={handleUsePlugin}
-                    onOpenAllPlugins={() => setDesk("plugins")}
+                    onOpenAllPlugins={() => switchDesk("plugins")}
                   />
                 </div>
               ) : shelf === "library" ? (
@@ -7912,7 +7992,7 @@ export function NoctisDesk() {
                     title="Knowledge & Academic Plugins"
                     subtitle="Peer-reviewed science, literature citations, scripture & learning roadmap"
                     onUsePlugin={handleUsePlugin}
-                    onOpenAllPlugins={() => setDesk("plugins")}
+                    onOpenAllPlugins={() => switchDesk("plugins")}
                   />
                 </div>
               ) : shelf === "tools" ? (
@@ -7974,7 +8054,7 @@ export function NoctisDesk() {
                         : "SAST 710, threat modeling, vulnerability scanners & cloud developer tools"
                     }
                     onUsePlugin={handleUsePlugin}
-                    onOpenAllPlugins={() => setDesk("plugins")}
+                    onOpenAllPlugins={() => switchDesk("plugins")}
                   />
                 </div>
               ) : shelf === "more" ? (
@@ -7984,7 +8064,7 @@ export function NoctisDesk() {
                     title="Business, Operations & Finance Plugins"
                     subtitle="Email, team chat, CRM, accounting, market data, and productivity connectors"
                     onUsePlugin={handleUsePlugin}
-                    onOpenAllPlugins={() => setDesk("plugins")}
+                    onOpenAllPlugins={() => switchDesk("plugins")}
                   />
                 </div>
               ) : (
@@ -8037,7 +8117,7 @@ export function NoctisDesk() {
           </div>
         ) : (
           <>
-            <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto">
+            <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto noctis-thin-scroll">
               <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6">
                 {desk === "study" ? (
                   <Suspense fallback={<div className="p-4 text-xs text-zinc-400">Loading Clinical Exam Suite...</div>}>
@@ -8311,6 +8391,7 @@ export function NoctisDesk() {
           </>
         )}
           </div>
+          </TabErrorBoundary>
           {canvasOpen ? (
             <div className={cn("min-w-0 h-full min-h-0 overflow-hidden transition-all duration-200", canvasFullscreen ? "fixed inset-0 z-50 bg-[#141414]" : "hidden md:flex flex-1 h-full")}>
               <NoctisCanvas

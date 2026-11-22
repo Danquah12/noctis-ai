@@ -38,7 +38,7 @@ if (existsSync(file)) {
     dest: "/styles.css",
     headers: {
       "content-type": "text/css; charset=utf-8",
-      "cache-control": "public, max-age=3600"
+      "cache-control": "public, max-age=0, must-revalidate"
     }
   };
 

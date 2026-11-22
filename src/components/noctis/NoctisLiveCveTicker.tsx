@@ -120,13 +120,13 @@ export default function NoctisLiveCveTicker({ onSelectCve, className, centerSlot
   return (
     <div
       className={cn(
-        "relative z-20 border-b border-white/10 bg-[#0e1017] text-zinc-100 transition-all duration-300",
-        expanded ? "shadow-2xl" : "h-9",
+        "relative z-20 border-b border-white/10 bg-[#0e1017] text-zinc-100 transition-all duration-300 min-w-0",
+        expanded ? "shadow-2xl" : "h-9 overflow-hidden",
         className
       )}
     >
       {/* Collapsed Strip */}
-      <div className="flex h-10 items-center justify-between px-3 sm:px-4 text-xs font-mono gap-2">
+      <div className="flex h-9 min-w-0 items-center justify-between overflow-x-auto no-scrollbar px-3 sm:px-4 text-xs font-mono gap-2">
         <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
           {/* Live Pulse Indicator */}
           <button
@@ -136,8 +136,8 @@ export default function NoctisLiveCveTicker({ onSelectCve, className, centerSlot
             title="Click to toggle Attack Surface Radar drawer"
           >
             <span className="size-2 rounded-full bg-rose-500 animate-pulse" />
-            <span className="hidden sm:inline">LIVE KEV RADAR</span>
-            <span className="sm:hidden">KEV</span>
+            <span className="hidden xl:inline">LIVE KEV RADAR</span>
+            <span className="xl:hidden">KEV</span>
           </button>
 
           {/* Active Ticker Item */}
@@ -159,12 +159,12 @@ export default function NoctisLiveCveTicker({ onSelectCve, className, centerSlot
                 {current.vendor} <span className="text-zinc-500">({current.product})</span>
               </span>
               {current.ransomware ? (
-                <span className="hidden md:inline-flex items-center gap-1 rounded bg-rose-950/80 border border-rose-500/40 px-1.5 py-0.2 text-[10px] text-rose-300 font-sans font-semibold shrink-0">
+                <span className="hidden xl:inline-flex items-center gap-1 rounded bg-rose-950/80 border border-rose-500/40 px-1.5 py-0.2 text-[10px] text-rose-300 font-sans font-semibold shrink-0">
                   <Flame className="size-2.5 text-rose-400" />
                   RANSOMWARE
                 </span>
               ) : null}
-              <span className="hidden xl:inline text-[11px] text-amber-300/80 shrink-0">
+              <span className="hidden 2xl:inline text-[11px] text-amber-300/80 shrink-0">
                 EPSS: {current.epssPercentile}%
               </span>
             </button>
@@ -179,7 +179,7 @@ export default function NoctisLiveCveTicker({ onSelectCve, className, centerSlot
         ) : null}
 
         {/* Controls: Manual Input + Investigate Button + Drawer Toggle + Right Slot */}
-        <div className="flex items-center gap-2 shrink-0 pl-1">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 pl-1">
           <form onSubmit={handleManualSubmit} className="flex items-center gap-1.5">
             <div className="relative flex items-center">
               <Search className="pointer-events-none absolute left-2 size-3 text-zinc-500" />
@@ -188,7 +188,7 @@ export default function NoctisLiveCveTicker({ onSelectCve, className, centerSlot
                 value={manualCve}
                 onChange={(e) => setManualCve(e.target.value)}
                 placeholder="CVE-YYYY-NNNN"
-                className="h-6 w-24 sm:w-32 md:w-40 rounded-full border border-white/15 bg-white/5 pl-6 pr-2 text-[11px] font-mono text-zinc-100 placeholder:text-zinc-500 focus:border-[#e4b86a] focus:bg-[#121622] focus:outline-none transition uppercase"
+                className="h-6 w-32 sm:w-36 rounded-full border border-white/15 bg-white/5 pl-6 pr-2 text-[11px] font-mono text-zinc-100 placeholder:text-zinc-500 focus:border-[#e4b86a] focus:bg-[#121622] focus:outline-none transition uppercase"
                 title="Enter any CVE value and press Enter or click Investigate"
               />
             </div>
