@@ -211,4 +211,99 @@ describe("Universal 3-Stage Neuro-Symbolic Clinical Pipeline (executeUniversalCl
     assert.ok(resB && resB.includes("APPROVED FOR CLINICAL DECISION SUPPORT"));
     assert.ok(!promptsSeen[1].includes("NPDE-ISO-A") && !promptsSeen[1].includes("6.8"));
   });
+
+  it("handles NOCTIS-ICU-CRIT-046 table/Unicode labs with 1-shot repair and fail-closed rejection", async () => {
+    const crit046Prompt = [
+      "**Encounter ID:** NOCTIS-ICU-CRIT-046",
+      "69-year-old female on Apixaban presents in obstructive shock with confirmed high-risk PE, acute intracranial hemorrhage with midline shift, and suspected HIT.",
+      "Vitals: BP 72/44 mmHg, HR 136 bpm, SpO₂ 86% on NRB.",
+      "| Test | Result |",
+      "|---|---|",
+      "| **Sodium (Na⁺)** | 130 mEq/L |",
+      "| **Chloride (Cl⁻)** | 99 mEq/L |",
+      "| **Potassium (K⁺)** | 5.4 mEq/L |",
+      "| **Serum Bicarbonate (HCO₃⁻)** | 12 mEq/L |",
+      "| **Creatinine** | 2.7 mg/dL (baseline 3 months ago: 1.3 mg/dL) |",
+      "| **Lactate** | 9.1 mmol/L |",
+      "| **Glucose** | 192 mg/dL |",
+      "**ABG:** pH 7.18, PaCO₂ 30 mmHg, HCO₃⁻ 11 mEq/L",
+    ].join("\n");
+
+    // 1. Clean pass verifies single-source authoritative labs reach LLM and certificate issues cleanly
+    let cleanUserPrompt = "";
+    const cleanMock: UniversalClinicalModelChatFn = async (messages) => {
+      cleanUserPrompt = messages[1]?.content ?? "";
+      return {
+        text: [
+          "# Noctis Patient Diagnostic & Triage Intelligence Dossier (Clinical Decision Support)",
+          "**Encounter ID:** `NOCTIS-ICU-CRIT-046`",
+          "### Critical Action: Urgent Parallel Apixaban Reversal for ICH",
+          "Proceed urgently in parallel with neurosurgery, hematology, and PERT to evaluate hemostatic/Apixaban reversal alongside catheter-directed PE rescue options (systemic thrombolysis and heparin strictly prohibited).",
+          "### Calculations & Labs",
+          "Sodium 130 mEq/L, Chloride 99 mEq/L, Potassium 5.4 mEq/L, Serum HCO3- 12 mEq/L, ABG HCO3- 11 mEq/L, Arterial pH 7.18, measured PaCO2 30 mmHg, Lactate 9.1 mmol/L, Blood Glucose 192 mg/dL.",
+          "Anion Gap = 130 - (99 + 12) = 19 mEq/L. Winter's formula using ABG HCO3- 11 mEq/L yields expected PaCO2 22.5-26.5 mmHg (measured PaCO2 30 mmHg).",
+          "Creatinine 2.7 mg/dL vs baseline 1.3 mg/dL (3 months ago; fold ratio 2.08x) represents provisional KDIGO Stage 2 AKI pending acute timeframe confirmation; Stage 3 criteria are not met.",
+          "### SOAP Note",
+          "- Subjective: 69-year-old female on Apixaban with PE, ICH, and suspected HIT.",
+          "- Objective: BP 72/44 mmHg (MAP 53.3 mmHg), HR 136 bpm, SpO2 86%, Na 130, Cl 99, K 5.4, HCO3 12 (serum) / 11 (ABG), Cr 2.7 (baseline 1.3), Lactate 9.1, Glucose 192, pH 7.18, PaCO2 30.",
+          "- Assessment: High-risk PE + obstructive shock, active ICH with midline shift, suspected HIT, provisional KDIGO Stage 2 AKI, HAGMA (AG 19 mEq/L).",
+          "- Plan: Target MAP >= 65 mmHg with Norepinephrine; urgent parallel Apixaban reversal evaluation; avoid heparin; non-contrast neurosurgical + PERT intervention.",
+        ].join("\n\n"),
+      };
+    };
+
+    const cleanOut = await executeUniversalClinicalReasoning(crit046Prompt, { modelChatFn: cleanMock });
+    assert.ok(cleanOut);
+    assert.match(cleanUserPrompt, /"anionGapMeqL": 19/);
+    assert.match(cleanUserPrompt, /"expectedPaco2RangeLowMmHg": 22\.5/);
+    assert.ok(cleanOut.includes("APPROVED FOR CLINICAL DECISION SUPPORT"));
+    assert.ok(cleanOut.includes("Na+ 130 mmol/L") && cleanOut.includes("Cl- 99 mmol/L"));
+    assert.ok(cleanOut.includes("12 mmol/L (serum) / 11 mmol/L (ABG)"));
+    assert.ok(cleanOut.includes("Glucose 192 mg/dL") && cleanOut.includes("Lactate 9.1 mmol/L"));
+
+    // 2. Validator-guided 1-shot repair catches Stage 2/3 overstaging and false AG refusal, then succeeds
+    let calls = 0;
+    let repairPromptSeen = "";
+    const repairMock: UniversalClinicalModelChatFn = async (messages) => {
+      calls += 1;
+      if (calls === 1) {
+        return {
+          text: [
+            "**Encounter ID:** `NOCTIS-ICU-CRIT-046`",
+            "69-year-old female with BP 72/44 mmHg (MAP 53.3 mmHg), Stage 2/3 AKI (Cr 2.7 / baseline 1.3).",
+            "Anion Gap: Cannot calculate — chloride unavailable.",
+          ].join("\n"),
+        };
+      }
+      repairPromptSeen = messages[1]?.content ?? "";
+      return {
+        text: [
+          "**Encounter ID:** `NOCTIS-ICU-CRIT-046`",
+          "69-year-old female with BP 72/44 mmHg (MAP 53.3 mmHg), Na 130, Cl 99, K 5.4, Serum HCO3 12, ABG HCO3 11, pH 7.18, PaCO2 30, Lactate 9.1, Glucose 192.",
+          "Anion Gap = 19 mEq/L; Winter's expected PaCO2 22.5-26.5 mmHg.",
+          "Provisional KDIGO Stage 2 AKI (2.08x baseline); Stage 3 criteria are not met.",
+        ].join("\n"),
+      };
+    };
+
+    const repairedOut = await executeUniversalClinicalReasoning(crit046Prompt, { modelChatFn: repairMock });
+    assert.ok(repairedOut);
+    assert.equal(calls, 2);
+    assert.match(repairPromptSeen, /Stage 3|Anion Gap/i);
+    assert.ok(repairedOut.includes("APPROVED FOR CLINICAL DECISION SUPPORT"));
+
+    // 3. Persistent documented-to-UNMEASURED or Stage 2/3 violation fails closed and suppresses certificate
+    const persistentBadMock: UniversalClinicalModelChatFn = async () => ({
+      text: [
+        "**Encounter ID:** `NOCTIS-ICU-CRIT-046`",
+        "69-year-old female with BP 72/44 mmHg (MAP 53.3 mmHg). Stage 2/3 AKI.",
+        "Sodium: UNMEASURED. Chloride: UNMEASURED.",
+      ].join("\n"),
+    });
+
+    const lockedOut = await executeUniversalClinicalReasoning(crit046Prompt, { modelChatFn: persistentBadMock });
+    assert.ok(lockedOut);
+    assert.ok(lockedOut.includes("CLINICAL_VALIDATION_FAILED — SAFETY_INVARIANT_VIOLATION"));
+    assert.ok(!lockedOut.includes("APPROVED FOR CLINICAL DECISION SUPPORT"));
+  });
 });

@@ -162,8 +162,12 @@ ECG: Junctional bradycardia with peaked T waves`;
     // Anion gap is uncomputable due to missing chloride
     assert.equal(pad.derivedCalculations.anionGap.isComputable, false);
 
-    // Winter's formula is uncomputable due to missing PaCO2
-    assert.equal(pad.derivedCalculations.wintersFormula.isComputable, false);
+    // Winter's formula calculates predicted range from HCO3- (15 -> 28.5-32.5) while noting missing PaCO2
+    assert.equal(pad.derivedCalculations.wintersFormula.isComputable, true);
+    assert.equal(pad.derivedCalculations.wintersFormula.expectedPaco2RangeLowMmHg, 28.5);
+    assert.equal(pad.derivedCalculations.wintersFormula.expectedPaco2RangeHighMmHg, 32.5);
+    assert.equal(pad.derivedCalculations.wintersFormula.measuredPaco2MmHg, null);
+    assert.match(pad.derivedCalculations.wintersFormula.calibratedClinicalInterpretation, /PaCO2 was not measured/i);
 
     // DigiFab dosing is empiric due to missing weight
     assert.equal(pad.derivedCalculations.digiFabDosing.isComputableWeightBased, false);
@@ -267,5 +271,79 @@ Examination reveals patient responds to sternal rub and distant heart sounds.`;
     assert.equal(audit.isApproved, false);
     assert.equal(audit.mandatoryReleasePassed, false);
     assert.ok(audit.mandatoryReleaseFailures.length > 0);
+  });
+
+  it("extracts formatted/table/Unicode CRIT-046 labs without loss and enforces all 12 audit invariants", () => {
+    const crit046Scenario = `**Encounter ID:** NOCTIS-ICU-CRIT-046
+A 69-year-old female on Apixaban presents with confirmed high-risk pulmonary embolism (BP 72/44 mmHg, HR 136 bpm, SpO₂ 86% on 15L NRB), acute intracranial hemorrhage with 6 mm midline shift, and suspected HIT (platelets 41,000/µL after UFH).
+
+| Laboratory Test | Result |
+|---|---|
+| **Sodium (Na⁺)** | 130 mEq/L |
+| **Potassium (K⁺)** | 5.4 mEq/L |
+| **Chloride (Cl⁻)** | 99 mEq/L |
+| **Serum Bicarbonate (HCO₃⁻)** | 12 mEq/L |
+| **Creatinine** | 2.7 mg/dL (baseline 3 months ago: 1.3 mg/dL) |
+| **Blood Glucose** | 192 mg/dL |
+| **Lactate** | 9.1 mmol/L |
+
+**ABG:** pH 7.18, PaCO₂ 30 mmHg, PaO₂ 68 mmHg, HCO₃⁻ 11 mEq/L`;
+
+    const pad = buildClinicalScratchpad(crit046Scenario, "NOCTIS-ICU-CRIT-046");
+
+    // Req 1-9: Single-source extraction & deterministic calculations
+    assert.equal(pad.labs.sodiumMeqL, 130);
+    assert.equal(pad.labs.chlorideMeqL, 99);
+    assert.equal(pad.labs.potassiumMeqL, 5.4);
+    assert.equal(pad.labs.serumBicarbonateMeqL, 12);
+    assert.equal(pad.labs.abgBicarbonateMeqL, 11);
+    assert.equal(pad.labs.bicarbonateMeqL, 12);
+    assert.equal(pad.labs.creatinineMgDl, 2.7);
+    assert.equal(pad.labs.baselineCreatinineMgDl, 1.3);
+    assert.equal(pad.labs.baselineCreatinineTimeframe, "3 months ago");
+    assert.equal(pad.labs.arterialPh, 7.18);
+    assert.equal(pad.labs.paco2MmHg, 30);
+    assert.equal(pad.labs.lactateMmolL, 9.1);
+    assert.equal(pad.labs.glucoseMgDl, 192);
+
+    assert.equal(pad.sentinels.isChlorideMissing, false);
+    assert.equal(pad.sentinels.isBaselineCreatinineMissing, false);
+    assert.equal(pad.sentinels.isArterialBloodGasMissing, false);
+
+    assert.equal(pad.derivedCalculations.anionGap.isComputable, true);
+    assert.equal(pad.derivedCalculations.anionGap.anionGapMeqL, 19);
+
+    assert.equal(pad.derivedCalculations.wintersFormula.isComputable, true);
+    assert.equal(pad.derivedCalculations.wintersFormula.expectedPaco2RangeLowMmHg, 22.5);
+    assert.equal(pad.derivedCalculations.wintersFormula.expectedPaco2RangeHighMmHg, 26.5);
+    assert.equal(pad.derivedCalculations.wintersFormula.measuredPaco2MmHg, 30);
+
+    assert.equal(pad.derivedCalculations.kdigoAki.crFoldRatio, 2.08);
+    assert.equal(pad.derivedCalculations.kdigoAki.establishedStage, 2);
+    assert.equal(pad.derivedCalculations.kdigoAki.isStage3ConditionalOnAcuteTimeline, false);
+
+    assert.match(pad.markdownScratchpadSummary, /Na\+ 130/);
+    assert.match(pad.markdownScratchpadSummary, /Cl- 99/);
+    assert.match(pad.markdownScratchpadSummary, /12 mmol\/L \(serum\) \/ 11 mmol\/L \(ABG\)/);
+    assert.match(pad.markdownScratchpadSummary, /Baseline: 1\.3 mg\/dL \(3 months ago\)/);
+    assert.match(pad.markdownScratchpadSummary, /Glucose 192 mg\/dL/);
+    assert.match(pad.markdownScratchpadSummary, /Lactate 9\.1 mmol\/L/);
+
+    // Req 10-12: Documented-to-UNMEASURED, wrong refusal, & KDIGO Stage 2/3 overstaging force rejection
+    const contradictoryDossier = [
+      "**Encounter ID:** `NOCTIS-ICU-CRIT-046`",
+      "69-year-old female with BP 72/44 mmHg (MAP 53.3 mmHg), HR 136 bpm.",
+      "Assessment: Stage 2/3 AKI based on Cr 2.7 mg/dL (baseline 1.3 mg/dL). Lactate is 9.1 mmol/L, Glucose 192 mg/dL.",
+      "Anion Gap: Cannot calculate — chloride unavailable.",
+      "Winter's formula cannot be computed without measured bicarbonate.",
+      "### Neuro-Symbolic Clinical Scratchpad (Deterministic Audit Trail)",
+      "- **Labs:** K+ 5.4 mmol/L, Na+ **[UNMEASURED]**, Cl- **[UNMEASURED]**, Cr **[UNMEASURED]**, Lactate **[UNMEASURED]**",
+    ].join("\n");
+
+    const auditFail = auditAndEnforceClinicalDossier(contradictoryDossier, crit046Scenario, "NOCTIS-ICU-CRIT-046");
+    assert.equal(auditFail.isApproved, false);
+    assert.equal(auditFail.mandatoryReleasePassed, false);
+    assert.ok(auditFail.violationsCount >= 4);
+    assert.ok(auditFail.mandatoryReleaseFailures.some((f) => /Documented-to-UNMEASURED|Narrative-vs-Scratchpad|Stage 3/i.test(f)));
   });
 });

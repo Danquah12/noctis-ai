@@ -27,7 +27,10 @@ export interface ClinicalLabsExtracted {
   chlorideMeqL: number | null;
   creatinineMgDl: number | null;
   baselineCreatinineMgDl: number | null;
+  baselineCreatinineTimeframe: string | null;
   bicarbonateMeqL: number | null;
+  serumBicarbonateMeqL: number | null;
+  abgBicarbonateMeqL: number | null;
   arterialPh: number | null;
   paco2MmHg: number | null;
   lactateMmolL: number | null;
@@ -36,6 +39,24 @@ export interface ClinicalLabsExtracted {
   digoxinNgMl: number | null;
   urineOutputMl: number | null;
   urineOutputDurationHours: number | null;
+}
+
+/**
+ * Normalizes Markdown tables, emphasis markers, Unicode subscripts/superscripts,
+ * and typographical dashes into a deterministic single-format text buffer so
+ * extraction behaves identically on plain text, JSON, Markdown tables, or formatted prompts.
+ */
+export function normalizeClinicalTextForExtraction(raw: string): string {
+  return (raw || "")
+    .replace(/[₀₁₂₃₄₅₆₇₈₉]/g, (ch) => String("₀₁₂₃₄₅₆₇₈₉".indexOf(ch)))
+    .replace(/⁺/g, "+")
+    .replace(/[⁻−]/g, "-")
+    .replace(/^\s*\|?(?:\s*:?-{2,}:?\s*\|)+\s*:?-{0,}:?\s*$/gm, "\n")
+    .replace(/\*\*|__|`/g, "")
+    .replace(/\|/g, " : ")
+    .replace(/(?<=[A-Za-z0-9)])[ \t]*—[ \t]*(?=\d)/g, ": ")
+    .replace(/(?:(?<=[A-Za-z)])[ \t]*|[ \t]+)–[ \t]*(?=\d)/g, ": ")
+    .replace(/[ \t]{2,}/g, " ");
 }
 
 export interface ClinicalDemographicsExtracted {
@@ -139,33 +160,34 @@ export function buildClinicalScratchpad(
   encounterId: string = "NPDE-SCRATCHPAD-001"
 ): NeuroSymbolicClinicalScratchpad {
   const q = query;
+  const norm = normalizeClinicalTextForExtraction(q);
 
   // 1. Demographics
-  const ageMatch = q.match(/(\d{1,3})\s*(?:-|–|\s+)?(?:years?|yrs?|yo|year-old)/i);
+  const ageMatch = norm.match(/(\d{1,3})\s*(?:-|–|\s+)?(?:years?|yrs?|yo|year-old)/i);
   const patientAgeYears = ageMatch ? parseInt(ageMatch[1], 10) : null;
   const patientAgeString = patientAgeYears ? `${patientAgeYears}-year-old` : null;
 
   let patientSex: "male" | "female" | "indeterminate" = "indeterminate";
-  if (/\b(?:female|woman|lady|she|her)\b/i.test(q)) {
+  if (/\b(?:female|woman|lady|she|her)\b/i.test(norm)) {
     patientSex = "female";
-  } else if (/\b(?:male|man|gentleman|he|his)\b/i.test(q)) {
+  } else if (/\b(?:male|man|gentleman|he|his)\b/i.test(norm)) {
     patientSex = "male";
   }
 
   let patientWeightKg: number | null = null;
-  const isWeightExplicitlyMissing = /\b(?:weight\s*(?:is\s*)?(?:not\s*provided|unmeasured|missing|unknown|not\s*measured)|no\s*weight\s*(?:is\s*)?provided)\b/i.test(q);
+  const isWeightExplicitlyMissing = /\b(?:weight\s*(?:is\s*)?(?:not\s*provided|unmeasured|missing|unknown|not\s*measured)|no\s*weight\s*(?:is\s*)?provided)\b/i.test(norm);
   if (!isWeightExplicitlyMissing) {
-    const explicitWeightMatch = q.match(/\b(?:actual\s+)?(?:patient\s+)?(?:body\s+)?(?:weight|weighs|wt)\s*[:=]?\s*(\d{2,3}(?:\.\d+)?)\s*(?:kg|kilos|kilograms)\b/i);
+    const explicitWeightMatch = norm.match(/\b(?:actual\s+)?(?:patient\s+)?(?:body\s+)?(?:weight|weighs|wt)\s*[:=]?\s*(\d{2,3}(?:\.\d+)?)\s*(?:kg|kilos|kilograms)\b/i);
     if (explicitWeightMatch) {
-      const pre = q.slice(Math.max(0, (explicitWeightMatch.index ?? 0) - 40), explicitWeightMatch.index ?? 0);
+      const pre = norm.slice(Math.max(0, (explicitWeightMatch.index ?? 0) - 40), explicitWeightMatch.index ?? 0);
       if (!/\b(?:assuming|assume|hypothetical|standard|reference|arbitrary|if)\b/i.test(pre)) {
         patientWeightKg = parseFloat(explicitWeightMatch[1]);
       }
     } else {
-      const allKg = [...q.matchAll(/\b(\d{2,3}(?:\.\d+)?)\s*kg\b/gi)];
+      const allKg = [...norm.matchAll(/\b(\d{2,3}(?:\.\d+)?)\s*kg\b/gi)];
       for (const m of allKg) {
         const idx = m.index ?? 0;
-        const pre = q.slice(Math.max(0, idx - 40), idx);
+        const pre = norm.slice(Math.max(0, idx - 40), idx);
         if (/\b(?:assuming|assume|hypothetical|standard|reference|arbitrary|nominal|ideal|per)\b/i.test(pre)) {
           continue; // skip assumption trap like "assuming a standard 70 kg weight"
         }
@@ -176,18 +198,18 @@ export function buildClinicalScratchpad(
   }
 
   // 2. Vitals
-  const bpExplicitMatch = q.match(/\b(?:bp|blood\s*pressure)\s*[:=]?\s*(\d{2,3})\s*\/\s*(\d{2,3})\b/i);
+  const bpExplicitMatch = norm.match(/\b(?:bp|blood\s*pressure)\s*[:=]?\s*(\d{2,3})\s*\/\s*(\d{2,3})\b/i);
   let systolicBp: number | null = null;
   let diastolicBp: number | null = null;
   if (bpExplicitMatch) {
     systolicBp = parseInt(bpExplicitMatch[1], 10);
     diastolicBp = parseInt(bpExplicitMatch[2], 10);
   } else {
-    const allSlash = [...q.matchAll(/\b(\d{2,3})\s*\/\s*(\d{2,3})(?:\s*mmHg)?\b/gi)];
+    const allSlash = [...norm.matchAll(/\b(\d{2,3})\s*\/\s*(\d{2,3})(?:\s*mmHg)?\b/gi)];
     for (const m of allSlash) {
       const s = parseInt(m[1], 10);
       const d = parseInt(m[2], 10);
-      const ctx = q.slice(m.index ?? 0, (m.index ?? 0) + m[0].length + 5);
+      const ctx = norm.slice(m.index ?? 0, (m.index ?? 0) + m[0].length + 5);
       if (/mg|tab/i.test(ctx)) continue;
       if (s >= 40 && s <= 280 && d >= 20 && d <= 180) {
         systolicBp = s;
@@ -198,16 +220,16 @@ export function buildClinicalScratchpad(
   }
   const bloodPressureString = systolicBp !== null && diastolicBp !== null ? `${systolicBp}/${diastolicBp} mmHg` : null;
 
-  const hrMatch = q.match(/\b(?:hr|heart\s*rate|pulse)\s*[:=]?\s*(\d{2,3})\s*(?:bpm)?\b/i) ||
-    q.match(/\b(\d{2,3})\s*bpm\b/i);
+  const hrMatch = norm.match(/\b(?:hr|heart\s*rate|pulse)\s*[:=]?\s*(\d{2,3})\s*(?:bpm)?\b/i) ||
+    norm.match(/\b(\d{2,3})\s*bpm\b/i);
   const heartRate = hrMatch ? parseInt(hrMatch[1], 10) : null;
 
-  const rrMatch = q.match(/\b(?:rr|resp(?:iratory)?\s*rate)\s*[:=]?\s*(\d{1,2})\s*(?:\/min|breaths)?\b/i) ||
-    q.match(/\b(\d{1,2})\s*(?:\/min|breaths\s*per\s*min(?:ute)?)\b/i);
+  const rrMatch = norm.match(/\b(?:rr|resp(?:iratory)?\s*rate)\s*[:=]?\s*(\d{1,2})\s*(?:\/min|breaths)?\b/i) ||
+    norm.match(/\b(\d{1,2})\s*(?:\/min|breaths\s*per\s*min(?:ute)?)\b/i);
   const respiratoryRate = rrMatch ? parseInt(rrMatch[1], 10) : null;
 
-  const spo2Match = q.match(/\b(?:spo2|o2\s*sat(?:uration)?)\s*[:=]?\s*(\d{2,3})%?(?:\s*on\s*([^,.\n(]+))?\b/i) ||
-    q.match(/\b(\d{2,3})%\s*(?:on\s*[^,.\n(]+)?\b/i);
+  const spo2Match = norm.match(/\b(?:spo2|o2\s*sat(?:uration)?)\s*[:=]?\s*(\d{2,3})%?(?:\s*on\s*([^,.\n(]+))?\b/i) ||
+    norm.match(/\b(\d{2,3})%\s*(?:on\s*[^,.\n(]+)?\b/i);
   const oxygenSaturationPct = spo2Match ? parseInt(spo2Match[1], 10) : null;
   const rawSpo2Clean = spo2Match
     ? spo2Match[0].replace(/^(?:spo2|o2\s*sat(?:uration)?)\s*[:=]?\s*/i, "").trim()
@@ -216,61 +238,202 @@ export function buildClinicalScratchpad(
     ? (rawSpo2Clean.includes("%") ? rawSpo2Clean : `${spo2Match![1]}%`)
     : null;
 
-  const tempMatch = q.match(/\b(?:temp(?:erature)?)\s*[:=]?\s*(\d{2}\.?\d?)\s*°?C\b/i) ||
-    q.match(/\b(\d{2}\.\d)\s*°?C\b/i);
+  const tempMatch = norm.match(/\b(?:temp(?:erature)?)\s*[:=]?\s*(\d{2}\.?\d?)\s*°?C\b/i) ||
+    norm.match(/\b(\d{2}\.\d)\s*°?C\b/i);
   const temperatureCelsius = tempMatch ? parseFloat(tempMatch[1]) : null;
 
-  const glucMatch = q.match(/\b(?:glucose|blood\s*sugar|bg)\s*[:=]?\s*(\d{2,4})\s*(?:mg\/dl)?\b/i);
-  const bloodGlucoseMgDl = glucMatch ? parseFloat(glucMatch[1]) : null;
+  const glucMatch = norm.match(
+    /\b(?:blood\s+|serum\s+|plasma\s+|fingerstick\s+|poc\s+|point-of-care\s+|random\s+|fasting\s+)?(?:glucose|blood\s*sugar|bg|glu)(?:\s*\([^)\n]{1,35}\))?\s*(?:[:=]\s*|\s+(?:(?:is|was|of)\s+)?)\s*(\d{2,4}(?:\.\d+)?)\s*(?:mg\/dl)?\b/i
+  );
+  const glucParsed = glucMatch ? parseFloat(glucMatch[1]) : null;
+  const bloodGlucoseMgDl = glucParsed !== null && glucParsed >= 20 && glucParsed <= 2000 ? glucParsed : null;
   const glucoseMgDl = bloodGlucoseMgDl;
 
-  // 3. Labs
-  const kMatch = q.match(/\b(?:potassium|k\+?)\s*[:=]?\s*([2-9]\.\d+)\b/i);
-  const potassiumMeqL = kMatch ? parseFloat(kMatch[1]) : null;
-
-  const naMatch = q.match(/\b(?:sodium|na\+?)\s*[:=]?\s*(\d{3})\b/i);
-  const sodiumMeqL = naMatch ? parseFloat(naMatch[1]) : null;
-
-  let chlorideMeqL: number | null = null;
-  const isChlorideExplicitlyMissing = /\b(?:chloride|cl)\s*(?:is\s*)?(?:unmeasured|not\s*measured|missing|not\s*available|unknown)\b/i.test(q);
-  if (!isChlorideExplicitlyMissing) {
-    const clMatch = q.match(/\b(?:chloride|cl\s*[-=:]?)\s*[:=]?\s*(\d{2,3})\b/i);
-    chlorideMeqL = clMatch ? parseFloat(clMatch[1]) : null;
+  // 3. Labs (Format-Agnostic Extraction from Normalized Text)
+  let potassiumMeqL: number | null = null;
+  for (const m of norm.matchAll(
+    /(?<![\d/])\b(?:serum\s+|plasma\s+|arterial\s+|venous\s+|bmp\s+|cmp\s+)?(?:potassium|k\+?)(?:\s*\([^)\n]{1,35}\))?\s*(?:[:=]\s*|\s+(?:(?:is|was|of)\s+)?)\s*([1-9](?:\.\d+)?)\b(?![\d]*\s*\/[uµ]l)/gi
+  )) {
+    const val = parseFloat(m[1]);
+    if (val >= 1.5 && val <= 12.0) {
+      potassiumMeqL = val;
+      break;
+    }
   }
 
-  const baseCrMatch =
-    q.match(/\b(?:creatinine|cr)\s*[:=]?\s*\d+(?:\.\d+)?\s*(?:mg\/dl)?\s*\([^)]*?\bbaseline\s*(?:creatinine|cr)?\s*[:=]?\s*(\d+(?:\.\d+)?)\b/i) ||
-    q.match(/\bbaseline\s+(?:serum\s+)?(?:creatinine|cr)\s*[:=]?\s*(\d+(?:\.\d+)?)\b/i);
-  const baselineCreatinineMgDl = baseCrMatch ? parseFloat(baseCrMatch[1]) : null;
+  let sodiumMeqL: number | null = null;
+  const naMatch = norm.match(
+    /\b(?:serum\s+|plasma\s+|bmp\s+|cmp\s+)?(?:sodium|na\+?)(?:\s*\([^)\n]{1,35}\))?\s*(?:[:=]\s*|\s+(?:(?:is|was|of)\s+)?)\s*(\d{3}(?:\.\d+)?)\b/i
+  );
+  if (naMatch) {
+    const val = parseFloat(naMatch[1]);
+    if (val >= 95 && val <= 190) sodiumMeqL = val;
+  }
 
-  // Creatinine (non-baseline)
+  let chlorideMeqL: number | null = null;
+  const isChlorideExplicitlyMissing =
+    /\b(?:chloride|cl-?)\s*(?:\([^)\n]{1,20}\))?\s*(?:is\s*)?(?:unmeasured|not\s*measured|missing|not\s*available|unknown)\b/i.test(norm);
+  if (!isChlorideExplicitlyMissing) {
+    for (const m of norm.matchAll(
+      /(?<![A-Za-z])\b(?:serum\s+|plasma\s+|bmp\s+|cmp\s+)?(?:chloride|cl-?)(?:\s*\([^)\n]{1,35}\))?\s*(?:[:=]\s*|\s+(?:(?:is|was|of)\s+)?)\s*(\d{2,3}(?:\.\d+)?)\b/gi
+    )) {
+      const val = parseFloat(m[1]);
+      if (val >= 65 && val <= 145) {
+        chlorideMeqL = val;
+        break;
+      }
+    }
+  }
+
+  // Baseline Creatinine & Timeframe
+  let baselineCreatinineMgDl: number | null = null;
+  let baselineCreatinineTimeframe: string | null = null;
+
+  const extractBaselineNumberFromClause = (clause: string): number | null => {
+    for (const nm of clause.matchAll(/\b(\d+(?:\.\d+)?)\b/g)) {
+      const idx = nm.index ?? 0;
+      const tail = clause.slice(idx + nm[0].length, idx + nm[0].length + 20);
+      if (/^\s*(?:-|\s)?(?:days?|weeks?|wks?|months?|mos?|years?|yrs?|x|×|fold)\b/i.test(tail)) continue;
+      const val = parseFloat(nm[1]);
+      if (val >= 0.2 && val <= 20.0) return val;
+    }
+    return null;
+  };
+
+  const inlineCrBaselineMatch = norm.match(
+    /\b(?:serum\s+|current\s+|ed\s+|admission\s+)?(?:creatinine|creat|scr|cr)(?:\s*\([^)\n]{1,25}\))?\s*(?:[:=]\s*|\s+(?:(?:is|was|of)\s+)?)\s*\d+(?:\.\d+)?\s*(?:mg\/dl)?\s*\(([^)\n]*?\b(?:baseline|prior|previous)\b[^)\n]*)\)/i
+  );
+  if (inlineCrBaselineMatch?.[1]) {
+    const val = extractBaselineNumberFromClause(inlineCrBaselineMatch[1]);
+    if (val !== null) {
+      baselineCreatinineMgDl = val;
+      const tfMatch = inlineCrBaselineMatch[1].match(/\b(\d+\s*(?:-|–|\s+)?(?:days?|weeks?|wks?|months?|mos?|years?|yrs?)\s*(?:old|ago|prior))\b/i);
+      if (tfMatch) baselineCreatinineTimeframe = tfMatch[1].trim();
+    }
+  }
+
+  if (baselineCreatinineMgDl === null) {
+    const standaloneBaselineRegex =
+      /\b(?:(?:baseline|prior|previous|pre-?op(?:erative)?)(?:\s+\d+\s*(?:-|–|\s+)?(?:days?|weeks?|wks?|months?|mos?|years?|yrs?)\s*(?:old|ago|prior))?\s+(?:serum\s+)?(?:creatinine|creat|scr|cr)|(?:\d+\s*(?:-|–|\s+)?(?:days?|weeks?|wks?|months?|mos?|years?|yrs?)\s*(?:old|ago|prior))\s+(?:baseline\s+)?(?:serum\s+)?(?:creatinine|creat|scr|cr))(?:\s*\([^)\n]{1,40}\))?(?:\s*(?:from|at|measured)?\s*(?:\d+\s*(?:days?|weeks?|wks?|months?|mos?|years?|yrs?)\s*(?:ago|prior)))?\s*(?:was|is|of|=|:)?\s*(\d+(?:\.\d+)?)\s*(?:mg\/dl)?\b/gi;
+    for (const m of norm.matchAll(standaloneBaselineRegex)) {
+      const val = parseFloat(m[1]);
+      if (val >= 0.2 && val <= 20.0) {
+        baselineCreatinineMgDl = val;
+        const win = norm.slice(Math.max(0, (m.index ?? 0) - 55), Math.min(norm.length, (m.index ?? 0) + m[0].length + 55));
+        const tfMatch = win.match(/\b(\d+\s*(?:-|–|\s+)?(?:days?|weeks?|wks?|months?|mos?|years?|yrs?)\s*(?:old|ago|prior))\b/i);
+        if (tfMatch) baselineCreatinineTimeframe = tfMatch[1].trim();
+        break;
+      }
+    }
+  }
+
+  // Current Creatinine (non-baseline)
   let creatinineMgDl: number | null = null;
-  const crMatches = [...q.matchAll(/\b(?:creatinine|cr)\s*[:=]?\s*(\d+\.\d+)\b/gi)];
+  const crMatches = [
+    ...norm.matchAll(
+      /\b(?:serum\s+|current\s+|ed\s+|admission\s+|present(?:ing)?\s+)?(?:creatinine|creat|scr|cr)(?:\s*\([^)\n]{1,30}\))?\s*(?:[:=]\s*|\s+(?:(?:is|was|of)\s+)?)\s*(\d+(?:\.\d+)?)\s*(?:mg\/dl)?\b/gi
+    ),
+  ];
+  const nonBaselineCrVals: number[] = [];
   for (const m of crMatches) {
+    const idx = m.index ?? 0;
+    const pre = norm.slice(Math.max(0, idx - 35), idx);
+    if (/\b(?:baseline|prior|previous|pre-?op|ratio|fold)\b[^.\n]*$/i.test(pre)) continue;
     const val = parseFloat(m[1]);
+    if (val < 0.2 || val > 25.0) continue;
+    nonBaselineCrVals.push(val);
     if (val !== baselineCreatinineMgDl) {
       creatinineMgDl = val;
       break;
     }
   }
-  if (creatinineMgDl === null && crMatches.length > 0 && baselineCreatinineMgDl === null) {
-    creatinineMgDl = parseFloat(crMatches[0][1]);
+  if (creatinineMgDl === null && nonBaselineCrVals.length > 0) {
+    creatinineMgDl = nonBaselineCrVals[0];
   }
 
-  const hco3Match =
-    q.match(/\b(?:bicarbonate|bicarb|hco3-?)\s*(?:\([^)]*\)\s*)?[:=]?\s*(\d{1,2}(?:\.\d+)?)\b/i) ||
-    q.match(/\b(?:venous|serum)\s+bicarbonate\s*[:=]?\s*(\d{1,2})\b/i);
-  const bicarbonateMeqL = hco3Match ? parseFloat(hco3Match[1]) : null;
+  // Dual Bicarbonate (Serum/BMP vs ABG)
+  let serumBicarbonateMeqL: number | null = null;
+  let abgBicarbonateMeqL: number | null = null;
 
-  const phMatch = q.match(/\b(?:arterial\s+|venous\s+)?ph\s*[:=]?\s*(\d\.\d{2,3})\b/i);
+  const dualInlineMatch =
+    norm.match(/\b(?:bicarbonate|bicarb|hco3-?)\s*[:=]?\s*(\d{1,2}(?:\.\d+)?)\s*(?:meq\/l|mmol\/l)?\s*(?:\(\s*serum\s*\)|\bserum\b)\s*(?:\/|,|;|\band\b)\s*(\d{1,2}(?:\.\d+)?)\s*(?:meq\/l|mmol\/l)?\s*(?:\(\s*abg\s*\)|\babg\b|\barterial\b)/i) ||
+    norm.match(/\b(?:bicarbonate|bicarb|hco3-?)\s*[:=]?\s*(?:serum\s*[:=]?\s*)(\d{1,2}(?:\.\d+)?)\s*(?:meq\/l|mmol\/l)?\s*(?:\/|,|;|\band\b)\s*(?:abg\s*[:=]?\s*)(\d{1,2}(?:\.\d+)?)\s*(?:meq\/l|mmol\/l)?/i);
+  if (dualInlineMatch) {
+    const vSerum = parseFloat(dualInlineMatch[1]);
+    const vAbg = parseFloat(dualInlineMatch[2]);
+    if (vSerum >= 3 && vSerum <= 55) serumBicarbonateMeqL = vSerum;
+    if (vAbg >= 3 && vAbg <= 55) abgBicarbonateMeqL = vAbg;
+  }
+
+  const dualReverseMatch = norm.match(
+    /\b(?:bicarbonate|bicarb|hco3-?)\s*[:=]?\s*(\d{1,2}(?:\.\d+)?)\s*(?:meq\/l|mmol\/l)?\s*(?:\(\s*(?:abg|arterial)\s*\)|\b(?:abg|arterial)\b)\s*(?:\/|,|;|\band\b)\s*(\d{1,2}(?:\.\d+)?)\s*(?:meq\/l|mmol\/l)?\s*(?:\(\s*serum\s*\)|\bserum\b)/i
+  );
+  if (dualReverseMatch) {
+    const vAbg = parseFloat(dualReverseMatch[1]);
+    const vSerum = parseFloat(dualReverseMatch[2]);
+    if (abgBicarbonateMeqL === null && vAbg >= 3 && vAbg <= 55) abgBicarbonateMeqL = vAbg;
+    if (serumBicarbonateMeqL === null && vSerum >= 3 && vSerum <= 55) serumBicarbonateMeqL = vSerum;
+  }
+
+  const bicarbCandidateRegex =
+    /(?:\b(?:serum|venous|arterial|abg|vbg|bmp|cmp|chem-?\d*|chemistry)\s+)?\b(?:bicarbonate|bicarb|hco3-?|total\s+co2)(?:\s*\([^)\n]{1,35}\))?\s*(?:[:=]\s*|\s+(?:(?:is|was|of)\s+)?)\s*(\d{1,2}(?:\.\d+)?)\b(?:\s*(?:meq\/l|mmol\/l))?(?:\s*\(\s*(serum|abg|arterial|venous|bmp)\s*\))?/gi;
+  for (const m of norm.matchAll(bicarbCandidateRegex)) {
+    const val = parseFloat(m[1]);
+    if (val < 3 || val > 55) continue;
+    const idx = m.index ?? 0;
+    const lineStart = norm.lastIndexOf("\n", idx) + 1;
+    const sameLinePre = norm.slice(Math.max(lineStart, idx - 60), idx);
+    const fullAndTag = `${sameLinePre} ${m[0]}`;
+    const lastAbgIdx = fullAndTag.search(/\b(?:abg|arterial\s+blood\s+gas|arterial)\b/gi);
+    const isExplicitAbg =
+      /\b(?:abg|arterial)\b/i.test(m[0]) ||
+      (lastAbgIdx !== -1 && !/\b(?:serum|bmp|cmp|venous)\b/i.test(fullAndTag.slice(lastAbgIdx)));
+    if (isExplicitAbg) {
+      if (abgBicarbonateMeqL === null) abgBicarbonateMeqL = val;
+    } else if (serumBicarbonateMeqL === null) {
+      serumBicarbonateMeqL = val;
+    }
+  }
+
+  if (serumBicarbonateMeqL === null) {
+    const totalCo2Match = norm.match(
+      /\b(?:total\s+)?co2(?:\s*\([^)\n]{1,25}\))?\s*(?:[:=]\s*|\s+)\s*(\d{1,2}(?:\.\d+)?)\s*(?:meq\/l|mmol\/l)\b/i
+    );
+    if (totalCo2Match) {
+      const val = parseFloat(totalCo2Match[1]);
+      if (val >= 3 && val <= 55) serumBicarbonateMeqL = val;
+    }
+  }
+
+  // Fallback compact BMP panel notation (e.g., "Na/K/Cl/HCO3: 130/5.4/99/12")
+  const panelMatch = norm.match(
+    /\bna\s*\/\s*k\s*\/\s*cl(?:\s*\/\s*(?:hco3-?|co2))?\s*[:=]?\s*(\d{3})\s*\/\s*([1-9](?:\.\d+)?)\s*\/\s*(\d{2,3})(?:\s*\/\s*(\d{1,2}(?:\.\d+)?))?/i
+  );
+  if (panelMatch) {
+    if (sodiumMeqL === null) sodiumMeqL = parseFloat(panelMatch[1]);
+    if (potassiumMeqL === null) potassiumMeqL = parseFloat(panelMatch[2]);
+    if (chlorideMeqL === null && !isChlorideExplicitlyMissing) chlorideMeqL = parseFloat(panelMatch[3]);
+    if (serumBicarbonateMeqL === null && panelMatch[4]) serumBicarbonateMeqL = parseFloat(panelMatch[4]);
+  }
+
+  const bicarbonateMeqL = serumBicarbonateMeqL ?? abgBicarbonateMeqL;
+
+  const phMatch = norm.match(
+    /\b(?:arterial\s+|venous\s+|abg\s+|vbg\s+)?ph(?:\s*\([^)\n]{1,30}\))?\s*(?:[:=]\s*|\s+(?:(?:is|was|of)\s+)?)\s*(6\.\d{2,3}|7\.\d{2,3})\b/i
+  );
   const arterialPh = phMatch ? parseFloat(phMatch[1]) : null;
 
   const paco2Match =
-    q.match(/\b(?:arterial\s+|venous\s+)?(?:paco2|pco2|co2)\s*(?:is|of|=|:)?\s*(\d{1,2}(?:\.\d+)?)\s*(?:mmhg)?\b/i);
-  const paco2MmHg = paco2Match ? parseFloat(paco2Match[1]) : null;
+    norm.match(/\b(?:arterial\s+|venous\s+|abg\s+|vbg\s+)?(?:paco2|pco2|partial\s+pressure\s+of\s+co2)(?:\s*\([^)\n]{1,30}\))?\s*(?:[:=]\s*|\s+(?:(?:is|was|of)\s+)?)\s*(\d{1,3}(?:\.\d+)?)\s*(?:mmhg)?\b/i) ||
+    norm.match(/\bco2(?:\s*\([^)\n]{1,25}\))?\s*(?:[:=]\s*|\s+(?:(?:is|was|of)\s+)?)\s*(\d{1,3}(?:\.\d+)?)\s*mmhg\b/i);
+  const paco2Parsed = paco2Match ? parseFloat(paco2Match[1]) : null;
+  const paco2MmHg = paco2Parsed !== null && paco2Parsed >= 10 && paco2Parsed <= 130 ? paco2Parsed : null;
 
-  const lacMatch = q.match(/\b(?:lactate|lactic\s*acid)\s*[:=]?\s*(\d+\.\d+)\b/i);
-  const lactateMmolL = lacMatch ? parseFloat(lacMatch[1]) : null;
+  const lacMatch = norm.match(
+    /\b(?:arterial\s+|venous\s+|serum\s+|blood\s+|whole\s+blood\s+|poc\s+)?(?:lactate|lactic\s*acid)(?:\s*\([^)\n]{1,30}\))?\s*(?:[:=]\s*|\s+(?:(?:is|was|of)\s+)?)\s*(\d{1,2}(?:\.\d+)?)\s*(?:mmol\/l)?\b/i
+  );
+  const lacParsed = lacMatch ? parseFloat(lacMatch[1]) : null;
+  const lactateMmolL = lacParsed !== null && lacParsed >= 0.3 && lacParsed <= 35.0 ? lacParsed : null;
 
   const bhbMatch =
     q.match(/\b(?:beta-?hydroxybutyrate|b-?ohb)\s*(?:\([^)]*\)\s*)?[:=]?\s*(\d+(?:\.\d+)?)\b/i) ||
@@ -372,7 +535,10 @@ export function buildClinicalScratchpad(
         isStage3ConditionalOnAcuteTimeline = true;
         stage3AcuteTimelineRationale = `Absolute serum creatinine ≥ 4.0 mg/dL with acute rise ≥ 0.5 mg/dL (+${crAbsoluteRiseMgDl} mg/dL) conditionally qualifies for Stage 3 pending confirmation of acute trajectory within 48 hours to 7 days.`;
       } else {
-        stageRationale = `KDIGO Stage 2 by fold increase (${crFoldRatio}× baseline: ${creatinineMgDl} / ${baselineCreatinineMgDl} mg/dL). Current creatinine (${creatinineMgDl} mg/dL) does NOT meet the ≥ 4.0 mg/dL absolute threshold, and ratio is < 3.0×, confirming Stage 2 by serum creatinine criteria.`;
+        const tfCaveat = baselineCreatinineTimeframe
+          ? ` Given the remote baseline (${baselineCreatinineTimeframe}), acute timing within the KDIGO 48-hour to 7-day diagnostic window is not independently established.`
+          : "";
+        stageRationale = `KDIGO Stage 2 by fold increase (${crFoldRatio}× baseline: ${creatinineMgDl} / ${baselineCreatinineMgDl} mg/dL).${tfCaveat} Current creatinine (${creatinineMgDl} mg/dL) does NOT meet the ≥ 4.0 mg/dL absolute threshold, and fold ratio is < 3.0×; KDIGO Stage 3 is NOT supported by serum creatinine criteria.`;
         isStage3ConditionalOnAcuteTimeline = false;
         stage3AcuteTimelineRationale = "";
       }
@@ -441,7 +607,8 @@ export function buildClinicalScratchpad(
     finalHighestSupportedStage,
   };
 
-  // C. Anion Gap Calculation (INV-002: Laboratory Data Integrity)
+  // C. Anion Gap Calculation (INV-002: Laboratory Data Integrity; prefers Serum/BMP Bicarbonate)
+  const agBicarbonateMeqL = serumBicarbonateMeqL ?? abgBicarbonateMeqL;
   let anionGap: AnionGapCalculationResult;
   if (isChlorideMissing) {
     anionGap = {
@@ -451,12 +618,16 @@ export function buildClinicalScratchpad(
       refusalReason:
         "Cannot calculate — chloride unavailable. Serum chloride was NOT measured in this intake. Estimating or substituting a hypothetical reference chloride (e.g. 98 or 104 mmol/L) to calculate an anion gap is strictly prohibited. Anion Gap CANNOT be calculated without measured chloride.",
     };
-  } else if (sodiumMeqL !== null && chlorideMeqL !== null && bicarbonateMeqL !== null) {
-    const agVal = sodiumMeqL - (chlorideMeqL + bicarbonateMeqL);
+  } else if (sodiumMeqL !== null && chlorideMeqL !== null && agBicarbonateMeqL !== null) {
+    const agVal = parseFloat((sodiumMeqL - (chlorideMeqL + agBicarbonateMeqL)).toFixed(1));
+    const bicarbLabel =
+      serumBicarbonateMeqL !== null && abgBicarbonateMeqL !== null && serumBicarbonateMeqL !== abgBicarbonateMeqL
+        ? `${agBicarbonateMeqL} [serum HCO3-]`
+        : `${agBicarbonateMeqL}`;
     anionGap = {
       isComputable: true,
       anionGapMeqL: agVal,
-      formula: `Anion Gap = ${sodiumMeqL} - (${chlorideMeqL} + ${bicarbonateMeqL}) = ${agVal} mEq/L`,
+      formula: `Anion Gap = ${sodiumMeqL} - (${chlorideMeqL} + ${bicarbLabel}) = ${agVal} mEq/L`,
       refusalReason: null,
     };
   } else {
@@ -468,15 +639,20 @@ export function buildClinicalScratchpad(
     };
   }
 
-  // D. Winter's Formula (INV-005: Calibrated Acid-Base Interpretation)
+  // D. Winter's Formula (INV-005: Calibrated Acid-Base Interpretation; prefers ABG Bicarbonate)
+  const wintersBicarbonateMeqL = abgBicarbonateMeqL ?? serumBicarbonateMeqL;
   let wintersFormula: WintersFormulaResult;
-  if (bicarbonateMeqL !== null) {
-    const midpoint = 1.5 * bicarbonateMeqL + 8;
-    const low = midpoint - 2;
-    const high = midpoint + 2;
+  if (wintersBicarbonateMeqL !== null) {
+    const midpoint = parseFloat((1.5 * wintersBicarbonateMeqL + 8).toFixed(1));
+    const low = parseFloat((midpoint - 2).toFixed(1));
+    const high = parseFloat((midpoint + 2).toFixed(1));
+    const wintersSourceNote =
+      abgBicarbonateMeqL !== null && serumBicarbonateMeqL !== null && abgBicarbonateMeqL !== serumBicarbonateMeqL
+        ? ` using ABG HCO3- ${abgBicarbonateMeqL} mEq/L (distinct from serum HCO3- ${serumBicarbonateMeqL} mEq/L)`
+        : ` based on measured HCO3- of ${wintersBicarbonateMeqL} mmol/L`;
 
     if (paco2MmHg !== null) {
-      const deviation = paco2MmHg - high;
+      const deviation = parseFloat((paco2MmHg - high).toFixed(1));
       if (paco2MmHg >= low && paco2MmHg <= high) {
         wintersFormula = {
           isComputable: true,
@@ -486,7 +662,7 @@ export function buildClinicalScratchpad(
           expectedPaco2RangeHighMmHg: high,
           deviationMmHg: 0,
           interpretationCategory: "PURE_METABOLIC_ACIDOSIS_ADEQUATE_COMPENSATION",
-          calibratedClinicalInterpretation: `Expected PaCO2 is ${low}–${high} mmHg (${midpoint} ± 2 mmHg). Measured PaCO2 of ${paco2MmHg} mmHg falls within expected range, demonstrating adequate respiratory compensation.`,
+          calibratedClinicalInterpretation: `Expected PaCO2 is ${low}–${high} mmHg (${midpoint} ± 2 mmHg)${wintersSourceNote}. Measured PaCO2 of ${paco2MmHg} mmHg falls within expected range, demonstrating adequate respiratory compensation.`,
         };
       } else if (paco2MmHg > high && paco2MmHg <= high + 2) {
         wintersFormula = {
@@ -497,7 +673,7 @@ export function buildClinicalScratchpad(
           expectedPaco2RangeHighMmHg: high,
           deviationMmHg: deviation,
           interpretationCategory: "BORDERLINE_COMPENSATION_RELATIVE_HYPOVENTILATION",
-          calibratedClinicalInterpretation: `Expected PaCO2 is ${low}–${high} mmHg (${midpoint} ± 2 mmHg). Measured PaCO2 of ${paco2MmHg} mmHg is ${deviation} mmHg above the predicted upper limit. This minimal difference falls within normal biological and measurement variability, representing possible inadequate respiratory compensation / borderline relative hypoventilation rather than an unsupported definitive diagnosis of a second respiratory acid-base disorder. Clinical reassessment is prompted, especially in altered mental status and shock.`,
+          calibratedClinicalInterpretation: `Expected PaCO2 is ${low}–${high} mmHg (${midpoint} ± 2 mmHg)${wintersSourceNote}. Measured PaCO2 of ${paco2MmHg} mmHg is ${deviation} mmHg above the predicted upper limit. This minimal difference falls within normal biological and measurement variability, representing possible inadequate respiratory compensation / borderline relative hypoventilation rather than an unsupported definitive diagnosis of a second respiratory acid-base disorder. Clinical reassessment is prompted, especially in altered mental status and shock.`,
         };
       } else if (paco2MmHg > high + 2) {
         wintersFormula = {
@@ -508,7 +684,7 @@ export function buildClinicalScratchpad(
           expectedPaco2RangeHighMmHg: high,
           deviationMmHg: deviation,
           interpretationCategory: "SUPERIMPOSED_RESPIRATORY_ACIDOSIS",
-          calibratedClinicalInterpretation: `Expected PaCO2 is ${low}–${high} mmHg (${midpoint} ± 2 mmHg). Measured PaCO2 of ${paco2MmHg} mmHg is significantly elevated (${deviation} mmHg above upper limit), confirming a superimposed primary respiratory acidosis.`,
+          calibratedClinicalInterpretation: `Expected PaCO2 is ${low}–${high} mmHg (${midpoint} ± 2 mmHg)${wintersSourceNote}. Measured PaCO2 of ${paco2MmHg} mmHg is elevated (+${deviation} mmHg above upper limit ${high} mmHg), indicating inadequate respiratory compensation / superimposed respiratory acidosis.`,
         };
       } else {
         wintersFormula = {
@@ -517,9 +693,9 @@ export function buildClinicalScratchpad(
           expectedPaco2MidpointMmHg: midpoint,
           expectedPaco2RangeLowMmHg: low,
           expectedPaco2RangeHighMmHg: high,
-          deviationMmHg: paco2MmHg - low,
+          deviationMmHg: parseFloat((paco2MmHg - low).toFixed(1)),
           interpretationCategory: "SUPERIMPOSED_RESPIRATORY_ALKALOSIS",
-          calibratedClinicalInterpretation: `Expected PaCO2 is ${low}–${high} mmHg (${midpoint} ± 2 mmHg). Measured PaCO2 of ${paco2MmHg} mmHg is below predicted range, suggesting a superimposed primary respiratory alkalosis.`,
+          calibratedClinicalInterpretation: `Expected PaCO2 is ${low}–${high} mmHg (${midpoint} ± 2 mmHg)${wintersSourceNote}. Measured PaCO2 of ${paco2MmHg} mmHg is below predicted range, suggesting a superimposed primary respiratory alkalosis.`,
         };
       }
     } else {
@@ -531,7 +707,7 @@ export function buildClinicalScratchpad(
         expectedPaco2RangeHighMmHg: high,
         deviationMmHg: null,
         interpretationCategory: "EXPECTED_RANGE_CALCULATED_MEASURED_PACO2_PENDING" as any,
-        calibratedClinicalInterpretation: `Expected compensatory PaCO2 is ${low}–${high} mmHg (${midpoint} ± 2 mmHg) based on measured HCO3- of ${bicarbonateMeqL} mmol/L. Actual respiratory compensation cannot be evaluated because PaCO2 was not measured.`,
+        calibratedClinicalInterpretation: `Expected compensatory PaCO2 is ${low}–${high} mmHg (${midpoint} ± 2 mmHg)${wintersSourceNote}. Actual respiratory compensation cannot be evaluated because PaCO2 was not measured.`,
       };
     }
   } else {
@@ -627,6 +803,21 @@ export function buildClinicalScratchpad(
     individualizedResuscitationGuidance,
   };
 
+  const bicarbDisplay =
+    serumBicarbonateMeqL !== null && abgBicarbonateMeqL !== null && serumBicarbonateMeqL !== abgBicarbonateMeqL
+      ? `${serumBicarbonateMeqL} mmol/L (serum) / ${abgBicarbonateMeqL} mmol/L (ABG)`
+      : bicarbonateMeqL !== null
+      ? `${bicarbonateMeqL} mmol/L`
+      : "[UNMEASURED]";
+  const baseCrDisplay = baselineCreatinineMgDl !== null
+    ? `${baselineCreatinineMgDl} mg/dL${baselineCreatinineTimeframe ? ` (${baselineCreatinineTimeframe})` : ""}`
+    : "**[UNMEASURED]**";
+  const anionGapLine = anionGap.isComputable
+    ? anionGap.formula
+    : isChlorideMissing
+    ? `**CANNOT BE CALCULATED — CHLORIDE UNAVAILABLE** (${anionGap.refusalReason})`
+    : `**CANNOT BE CALCULATED — INCOMPLETE ELECTROLYTES** (${anionGap.refusalReason})`;
+
   // Build Markdown Summary
   const mdLines: string[] = [];
   mdLines.push(`### Neuro-Symbolic Clinical Scratchpad (Deterministic Audit Trail)`);
@@ -635,12 +826,12 @@ export function buildClinicalScratchpad(
   mdLines.push(`#### 1. Extracted Patient Parameters`);
   mdLines.push(`- **Demographics:** ${patientAgeString || "[AGE UNREPORTED]"}, ${patientSex}, Body Weight: ${patientWeightKg ? `${patientWeightKg} kg` : "**[UNMEASURED / NOT PROVIDED]**"}`);
   mdLines.push(`- **Vitals:** BP ${bloodPressureString || "[UNMEASURED]"} (Calculated MAP: **${meanArterialPressureMmHg ? `${meanArterialPressureMmHg} mmHg` : "[UNMEASURED]"}**), HR ${heartRate ? `${heartRate} bpm` : "[UNMEASURED]"}, RR ${respiratoryRate ? `${respiratoryRate}/min` : "[UNMEASURED]"}, SpO2 ${oxygenSaturation || "[UNMEASURED]"}, Temp ${temperatureCelsius ? `${temperatureCelsius}°C` : "[UNMEASURED]"}, BG ${bloodGlucoseMgDl ? `${bloodGlucoseMgDl} mg/dL` : "[UNMEASURED]"}`);
-  mdLines.push(`- **Labs:** K+ ${potassiumMeqL ? `${potassiumMeqL} mmol/L` : "[UNMEASURED]"}, Na+ ${sodiumMeqL ? `${sodiumMeqL} mmol/L` : "[UNMEASURED]"}, Cl- ${chlorideMeqL ? `${chlorideMeqL} mmol/L` : "**[UNMEASURED / NOT PROVIDED]**"}, Cr ${creatinineMgDl ? `${creatinineMgDl} mg/dL` : "[UNMEASURED]"} (Baseline: ${baselineCreatinineMgDl ? `${baselineCreatinineMgDl} mg/dL` : "**[UNMEASURED]**"}), HCO3- ${bicarbonateMeqL ? `${bicarbonateMeqL} mmol/L` : "[UNMEASURED]"}, pH ${arterialPh || "[UNMEASURED]"}, PaCO2 ${paco2MmHg ? `${paco2MmHg} mmHg` : "[UNMEASURED]"}, Lactate ${lactateMmolL ? `${lactateMmolL} mmol/L` : "[UNMEASURED]"}, Digoxin ${digoxinNgMl ? `${digoxinNgMl} ng/mL` : "[UNMEASURED]"}, Urine Output: ${urineOutputMl !== null ? `${urineOutputMl} mL/${urineOutputDurationHours}h` : "[UNMEASURED]"}`);
+  mdLines.push(`- **Labs:** K+ ${potassiumMeqL ? `${potassiumMeqL} mmol/L` : "[UNMEASURED]"}, Na+ ${sodiumMeqL ? `${sodiumMeqL} mmol/L` : "[UNMEASURED]"}, Cl- ${chlorideMeqL ? `${chlorideMeqL} mmol/L` : "**[UNMEASURED / NOT PROVIDED]**"}, Cr ${creatinineMgDl ? `${creatinineMgDl} mg/dL` : "[UNMEASURED]"} (Baseline: ${baseCrDisplay}), HCO3- ${bicarbDisplay}, pH ${arterialPh || "[UNMEASURED]"}, PaCO2 ${paco2MmHg ? `${paco2MmHg} mmHg` : "[UNMEASURED]"}, Lactate ${lactateMmolL ? `${lactateMmolL} mmol/L` : "[UNMEASURED]"}, Glucose ${glucoseMgDl ? `${glucoseMgDl} mg/dL` : "[UNMEASURED]"}, Digoxin ${digoxinNgMl ? `${digoxinNgMl} ng/mL` : "[UNMEASURED]"}, Urine Output: ${urineOutputMl !== null ? `${urineOutputMl} mL/${urineOutputDurationHours}h` : "[UNMEASURED]"}`);
   mdLines.push(``);
   mdLines.push(`#### 2. Deterministic Derivations & Sentinels`);
   mdLines.push(`- **KDIGO AKI Staging:** ${kdigoAki.stageRationale}`);
   mdLines.push(`- **Weight-Normalized Urine Output:** ${kdigoAki.uoStagingCaveat}`);
-  mdLines.push(`- **Anion Gap:** ${anionGap.isComputable ? anionGap.formula : `**CANNOT BE CALCULATED — CHLORIDE UNAVAILABLE** (${anionGap.refusalReason})`}`);
+  mdLines.push(`- **Anion Gap:** ${anionGapLine}`);
   mdLines.push(`- **Winter's Formula:** ${wintersFormula.calibratedClinicalInterpretation}`);
   mdLines.push(`- **DigiFab Dosing:** ${digiFabDosing.empiricEmergencyVials} (${digiFabDosing.rationale})`);
   mdLines.push(`- **Fluid Resuscitation Approach:** ${fluidSafety.recommendedResuscitationApproach}`);
@@ -682,7 +873,10 @@ export function buildClinicalScratchpad(
       chlorideMeqL,
       creatinineMgDl,
       baselineCreatinineMgDl,
+      baselineCreatinineTimeframe,
       bicarbonateMeqL,
+      serumBicarbonateMeqL,
+      abgBicarbonateMeqL,
       arterialPh,
       paco2MmHg,
       lactateMmolL,
@@ -1207,6 +1401,258 @@ export function validateCrossSectionClinicalConsistency(
           sectionA: `Documented Intake (Temp ${scratchpad.vitals.temperatureCelsius}°C)`,
           sectionB: `Dossier Text (${m[0]})`,
           issue: `Stated temperature (${val}°C) conflicts with documented intake (${scratchpad.vitals.temperatureCelsius}°C).`,
+        });
+      }
+    }
+  }
+
+  const normDossier = normalizeClinicalTextForExtraction(dossierText);
+
+  // Check 20A: Documented-to-UNMEASURED Substitution Veto
+  const documentedParamMonitors: Array<{
+    label: string;
+    isDocumented: boolean;
+    unmeasuredRegex: RegExp;
+    measuredRegex: RegExp;
+    skipBefore?: RegExp;
+  }> = [
+    {
+      label: "Sodium",
+      isDocumented: scratchpad.labs.sodiumMeqL !== null,
+      unmeasuredRegex: /\b(?:sodium|na\+?)\s*(?:\([^)\n]{1,20}\))?\s*[:=]?\s*(?:\[\s*UNMEASURED|\b(?:unmeasured|unavailable|missing|not\s+(?:measured|provided|available|obtained))\b)/gi,
+      measuredRegex: /\b(?:sodium|na\+?)\s*(?:\([^)\n]{1,20}\))?\s*(?:[:=]\s*|\s+(?:is|of)\s+)?\d{3}\b/gi,
+    },
+    {
+      label: "Chloride",
+      isDocumented: scratchpad.labs.chlorideMeqL !== null,
+      unmeasuredRegex: /(?<![A-Za-z])\b(?:chloride|cl-?)\s*(?:\([^)\n]{1,20}\))?\s*[:=]?\s*(?:\[\s*UNMEASURED|\b(?:unmeasured|unavailable|missing|not\s+(?:measured|provided|available|obtained))\b)/gi,
+      measuredRegex: /(?<![A-Za-z])\b(?:chloride|cl-?)\s*(?:\([^)\n]{1,20}\))?\s*(?:[:=]\s*|\s+(?:is|of)\s+)?\d{2,3}\b/gi,
+    },
+    {
+      label: "Potassium",
+      isDocumented: scratchpad.labs.potassiumMeqL !== null,
+      unmeasuredRegex: /\b(?:potassium|k\+?)\s*(?:\([^)\n]{1,20}\))?\s*[:=]?\s*(?:\[\s*UNMEASURED|\b(?:unmeasured|unavailable|missing|not\s+(?:measured|provided|available|obtained))\b)/gi,
+      measuredRegex: /\b(?:potassium|k\+?)\s*(?:\([^)\n]{1,20}\))?\s*(?:[:=]\s*|\s+(?:is|of)\s+)?[1-9](?:\.\d+)?\b/gi,
+    },
+    {
+      label: "Creatinine",
+      isDocumented: scratchpad.labs.creatinineMgDl !== null,
+      unmeasuredRegex: /\b(?:serum\s+)?(?:creatinine|cr)\s*(?:\([^)\n]{1,20}\))?\s*[:=]?\s*(?:\[\s*UNMEASURED|\b(?:unmeasured|unavailable|missing|not\s+(?:measured|provided|available|obtained))\b)/gi,
+      measuredRegex: /\b(?:serum\s+)?(?:creatinine|cr)\s*(?:\([^)\n]{1,20}\))?\s*(?:[:=]\s*|\s+(?:is|of)\s+)?\d+(?:\.\d+)?\s*(?:mg\/dl)?\b/gi,
+      skipBefore: /\b(?:baseline|prior|previous)(?:\s+serum)?\s*$/i,
+    },
+    {
+      label: "Baseline Creatinine",
+      isDocumented: scratchpad.labs.baselineCreatinineMgDl !== null,
+      unmeasuredRegex: /\bbaseline(?:\s+(?:serum\s+)?(?:creatinine|cr))?\s*[:=]?\s*(?:\[\s*UNMEASURED|\b(?:unmeasured|unavailable|missing|not\s+(?:measured|provided|available|obtained))\b)/gi,
+      measuredRegex: /\bbaseline(?:\s+(?:serum\s+)?(?:creatinine|cr))?\s*(?:[:=]\s*|\s+(?:is|of)\s+)?\d+(?:\.\d+)?\b/gi,
+    },
+    {
+      label: "Bicarbonate",
+      isDocumented: scratchpad.labs.bicarbonateMeqL !== null,
+      unmeasuredRegex: /\b(?:bicarbonate|bicarb|hco3-?)\s*(?:\([^)\n]{1,20}\))?\s*[:=]?\s*(?:\[\s*UNMEASURED|\b(?:unmeasured|unavailable|missing|not\s+(?:measured|provided|available|obtained))\b)/gi,
+      measuredRegex: /\b(?:bicarbonate|bicarb|hco3-?)\s*(?:\([^)\n]{1,20}\))?\s*(?:[:=]\s*|\s+(?:is|of)\s+)?\d{1,2}(?:\.\d+)?\b/gi,
+    },
+    {
+      label: "Arterial pH",
+      isDocumented: scratchpad.labs.arterialPh !== null,
+      unmeasuredRegex: /\b(?:arterial\s+)?ph\s*[:=]?\s*(?:\[\s*UNMEASURED|\b(?:unmeasured|unavailable|missing|not\s+(?:measured|provided|available|obtained))\b)/gi,
+      measuredRegex: /\b(?:arterial\s+)?ph\s*(?:[:=]\s*|\s+(?:is|of)\s+)?(?:6|7)\.\d{2,3}\b/gi,
+    },
+    {
+      label: "PaCO2",
+      isDocumented: scratchpad.labs.paco2MmHg !== null,
+      unmeasuredRegex: /\b(?:paco2|pco2)\s*[:=]?\s*(?:\[\s*UNMEASURED|\b(?:unmeasured|unavailable|missing|not\s+(?:measured|provided|available|obtained))\b)/gi,
+      measuredRegex: /\b(?:paco2|pco2)\s*(?:[:=]\s*|\s+(?:is|of)\s+)?\d{2,3}(?:\.\d+)?\s*(?:mmhg)?\b/gi,
+    },
+    {
+      label: "Lactate",
+      isDocumented: scratchpad.labs.lactateMmolL !== null,
+      unmeasuredRegex: /\b(?:lactate|lactic\s*acid)\s*(?:\([^)\n]{1,20}\))?\s*[:=]?\s*(?:\[\s*UNMEASURED|\b(?:unmeasured|unavailable|missing|not\s+(?:measured|provided|available|obtained))\b)/gi,
+      measuredRegex: /\b(?:lactate|lactic\s*acid)\s*(?:\([^)\n]{1,20}\))?\s*(?:[:=]\s*|\s+(?:is|of)\s+)?\d{1,2}(?:\.\d+)?\b/gi,
+    },
+    {
+      label: "Blood Glucose",
+      isDocumented: scratchpad.labs.glucoseMgDl !== null,
+      unmeasuredRegex: /\b(?:blood\s+glucose|serum\s+glucose|glucose|bg)\s*(?:\([^)\n]{1,20}\))?\s*[:=]?\s*(?:\[\s*UNMEASURED|\b(?:unmeasured|unavailable|missing|not\s+(?:measured|provided|available|obtained))\b)/gi,
+      measuredRegex: /\b(?:blood\s+glucose|serum\s+glucose|glucose|bg)\s*(?:\([^)\n]{1,20}\))?\s*(?:[:=]\s*|\s+(?:is|of)\s+)?\d{2,4}(?:\.\d+)?\b/gi,
+    },
+  ];
+
+  const hasUnguardedParamMatch = (haystack: string, rx: RegExp, skipBefore?: RegExp): boolean => {
+    for (const m of haystack.matchAll(rx)) {
+      if (skipBefore) {
+        const idx = m.index ?? 0;
+        const pre = haystack.slice(Math.max(0, idx - 35), idx);
+        if (skipBefore.test(pre)) continue;
+      }
+      return true;
+    }
+    return false;
+  };
+
+  for (const pm of documentedParamMonitors) {
+    if (pm.isDocumented && hasUnguardedParamMatch(normDossier, pm.unmeasuredRegex, pm.skipBefore)) {
+      violations.push({
+        item: `Documented-to-UNMEASURED Substitution (${pm.label})`,
+        sectionA: `Documented Intake (${pm.label} present)`,
+        sectionB: "Dossier / Scratchpad Text",
+        issue: `Documented-to-UNMEASURED violation: ${pm.label} was documented in intake but marked unmeasured/missing in output.`,
+      });
+    }
+  }
+
+  // Check 20B: Narrative-vs-Scratchpad Section Divergence Veto
+  const scratchSplit = normDossier.split(/(?=#{2,4}\s*(?:\d+\.\s*)?Neuro-Symbolic)/i);
+  if (scratchSplit.length >= 2) {
+    const narrativePart = scratchSplit[0];
+    const scratchPart = scratchSplit.slice(1).join("\n");
+    for (const pm of documentedParamMonitors) {
+      if (
+        hasUnguardedParamMatch(scratchPart, pm.unmeasuredRegex, pm.skipBefore) &&
+        hasUnguardedParamMatch(narrativePart, pm.measuredRegex, pm.skipBefore)
+      ) {
+        violations.push({
+          item: `Narrative-vs-Scratchpad Contradiction (${pm.label})`,
+          sectionA: `Dossier Narrative (${pm.label} numerically reported)`,
+          sectionB: `Deterministic Scratchpad (${pm.label} marked unmeasured)`,
+          issue: `Narrative-vs-Scratchpad divergence: narrative uses ${pm.label} while scratchpad marks it UNMEASURED.`,
+        });
+      }
+    }
+  }
+
+  // Check 21: Anion Gap & Winter's Formula Refusal / Calculation Fidelity
+  if (scratchpad.derivedCalculations.anionGap.isComputable && scratchpad.derivedCalculations.anionGap.anionGapMeqL !== null) {
+    if (/\b(?:anion\s+gap[^\n.]{0,80}(?:cannot\s+be\s+calculated|cannot\s+calculate|chloride\s+(?:is\s+)?(?:unavailable|unmeasured|missing))|cannot\s+calculate[^\n.]{0,40}anion\s+gap)\b/i.test(normDossier)) {
+      violations.push({
+        item: "Anion Gap Refusal Integrity",
+        sectionA: `Documented Intake (${scratchpad.derivedCalculations.anionGap.formula})`,
+        sectionB: "Dossier Calculations",
+        issue: "Incorrect Anion Gap refusal: electrolytes including chloride are documented, yet output claims Anion Gap cannot be calculated or chloride is unavailable.",
+      });
+    }
+    const expectedAg = scratchpad.derivedCalculations.anionGap.anionGapMeqL;
+    for (const m of normDossier.matchAll(/\banion\s+gap\s*(?:is|of|=|:)?\s*(\d{1,2}(?:\.\d+)?)\s*(?:meq\/l|mmol\/l)?\b/gi)) {
+      const before = normDossier.slice(Math.max(0, (m.index ?? 0) - 35), m.index ?? 0);
+      if (/[<>≤≥]|normal|threshold|criteria|cutoff|reference/i.test(before)) continue;
+      const statedAg = parseFloat(m[1]);
+      if (Math.abs(statedAg - expectedAg) > 1.5) {
+        violations.push({
+          item: "Anion Gap Value Fidelity",
+          sectionA: `Expected Anion Gap (${expectedAg} mEq/L)`,
+          sectionB: `Dossier Text (${m[0]})`,
+          issue: `Anion Gap calculation mismatch: stated ${statedAg} conflicts with ${expectedAg} mEq/L.`,
+        });
+      }
+    }
+  }
+
+  if (scratchpad.derivedCalculations.wintersFormula.isComputable) {
+    if (/\bwinter['’]?s\s+formula[^\n.]{0,80}(?:cannot\s+be\s+(?:computed|calculated)|bicarbonate\s+(?:is\s+)?(?:missing|unavailable|unmeasured))/i.test(normDossier)) {
+      violations.push({
+        item: "Winter's Formula Calculation Integrity",
+        sectionA: `Documented Intake (HCO3- documented: ${scratchpad.labs.abgBicarbonateMeqL ?? scratchpad.labs.bicarbonateMeqL} mEq/L)`,
+        sectionB: "Dossier Calculations",
+        issue: "Incorrect Winter's Formula refusal: bicarbonate is documented, yet output claims Winter's formula cannot be computed/calculated.",
+      });
+    }
+  }
+
+  // Check 22: KDIGO Stage 3 Overstaging Veto
+  const kdigo = scratchpad.derivedCalculations.kdigoAki;
+  const hasRrtInInput = /\b(?:dialysis\s+(?:initiated|started)|on\s+(?:hd|hemodialysis|crrt)|renal\s+replacement\s+therapy\s+(?:initiated|started))\b/i.test(scratchpad.rawInputText);
+  if ((kdigo.establishedStage === 1 || kdigo.establishedStage === 2) && !kdigo.isStage3ConditionalOnAcuteTimeline && !kdigo.canAnuriaBeUsedForStage3 && !hasRrtInInput) {
+    for (const m of normDossier.matchAll(/\b(?:kdigo\s*(?:aki\s*)?stage\s*(?:2\s*[\/-]\s*3|3)|stage\s*(?:2\s*[\/-]\s*3|3)\s*(?:aki|acute\s+kidney\s+injury))\b/gi)) {
+      const idx = m.index ?? 0;
+      const ctx = normDossier.slice(Math.max(0, idx - 65), Math.min(normDossier.length, idx + m[0].length + 65));
+      if (/\b(?:(?:is|are)\s+not\s+(?:met|established|supported|confirmed|present|indicated)|not\s+(?:met|meet|establish|support|confirm|qualify|stage\s*3)|does\s+not|cannot\s+(?:be\s+used\s+to\s+)?(?:establish|confirm)|without\s+(?:supporting|documented)|exclude|rule\s+out|criteria\s+(?:for|require)|threshold|conditional|progression\s+to|prevent|avoid)\b/i.test(ctx)) {
+        continue;
+      }
+      violations.push({
+        item: "Unsupported KDIGO Stage 3 Assertion",
+        sectionA: `Scratchpad KDIGO Analysis (${kdigo.stageRationale})`,
+        sectionB: `Dossier Text (${m[0]})`,
+        issue: `Unsupported KDIGO Stage 3 / Stage 2/3 overstaging ("${m[0]}") when Stage 3 criteria are not met.`,
+      });
+    }
+  }
+
+  // Check 23: Core Lab Cross-Section Numeric Fidelity (Na+, Cl-, Lactate, Glucose, Measured PaCO2)
+  const coreLabChecks: Array<{
+    item: string;
+    expected: number | null;
+    regex: RegExp;
+    inputLabelRegex: RegExp;
+    tolerance: number;
+    skipBeforeRegex: RegExp;
+  }> = [
+    {
+      item: "Serum Sodium",
+      expected: scratchpad.labs.sodiumMeqL,
+      regex: /\b(?:serum\s+)?(?:sodium|na\+?)\s*(?:\([^)\n]{1,15}\))?\s*(?:is|of|=|:)?\s*(\d{3}(?:\.\d+)?)\s*(?:meq\/l|mmol\/l)?\b/gi,
+      inputLabelRegex: /\b(?:sodium|na\+?)\b[^\n]{0,30}?\b(\d{3}(?:\.\d+)?)\b/gi,
+      tolerance: 1.0,
+      skipBeforeRegex: /[<>≤≥]|target|goal|normal|range|threshold|reference|correction|limit/i,
+    },
+    {
+      item: "Serum Chloride",
+      expected: scratchpad.labs.chlorideMeqL,
+      regex: /(?<![A-Za-z])\b(?:serum\s+)?(?:chloride|cl-?)\s*(?:\([^)\n]{1,15}\))?\s*(?:is|of|=|:)?\s*(\d{2,3}(?:\.\d+)?)\s*(?:meq\/l|mmol\/l)?\b/gi,
+      inputLabelRegex: /(?<![A-Za-z])\b(?:chloride|cl-?)\b[^\n]{0,30}?\b(\d{2,3}(?:\.\d+)?)\b/gi,
+      tolerance: 1.0,
+      skipBeforeRegex: /[<>≤≥]|target|goal|normal|range|threshold|reference|hypothetical/i,
+    },
+    {
+      item: "Serum Lactate",
+      expected: scratchpad.labs.lactateMmolL,
+      regex: /\b(?:venous\s+|arterial\s+|serum\s+)?(?:lactate|lactic\s+acid)\s*(?:\([^)\n]{1,15}\))?\s*(?:is|of|=|:)?\s*(\d{1,2}(?:\.\d+)?)\s*(?:mmol\/l|meq\/l)?\b/gi,
+      inputLabelRegex: /\b(?:lactate|lactic\s+acid)\b[^\n]{0,30}?\b(\d{1,2}(?:\.\d+)?)\b/gi,
+      tolerance: 0.2,
+      skipBeforeRegex: /[<>≤≥]|target|goal|normal|range|threshold|clearance|cutoff/i,
+    },
+    {
+      item: "Blood Glucose",
+      expected: scratchpad.labs.glucoseMgDl,
+      regex: /\b(?:blood\s+|serum\s+)?(?:glucose|bg)\s*(?:\([^)\n]{1,15}\))?\s*(?:is|of|=|:)?\s*(\d{2,4}(?:\.\d+)?)\s*(?:mg\/dl)?\b/gi,
+      inputLabelRegex: /\b(?:glucose|blood\s*sugar|bg)\b[^\n]{0,30}?\b(\d{2,4}(?:\.\d+)?)\b/gi,
+      tolerance: 2.0,
+      skipBeforeRegex: /[<>≤≥]|target|goal|normal|range|threshold|insulin|protocol|hypoglycem|keep|maintain/i,
+    },
+    {
+      item: "Measured PaCO2",
+      expected: scratchpad.labs.paco2MmHg,
+      regex: /\b(?:measured\s+)?(?:paco2|pco2)\s*(?:is|of|=|:)?\s*(\d{2,3}(?:\.\d+)?)\s*(?:mmhg)?\b/gi,
+      inputLabelRegex: /\b(?:paco2|pco2)\b[^\n]{0,30}?\b(\d{2,3}(?:\.\d+)?)\b/gi,
+      tolerance: 1.0,
+      skipBeforeRegex: /[<>≤≥]|expected|predicted|winter|compensat|target|goal|range|normal|upper\s+limit|lower\s+limit|±|\\pm/i,
+    },
+  ];
+
+  const normInput = normalizeClinicalTextForExtraction(scratchpad.rawInputText);
+  for (const chk of coreLabChecks) {
+    if (chk.expected === null) continue;
+    const allowedValues = new Set<number>([chk.expected]);
+    for (const im of normInput.matchAll(chk.inputLabelRegex)) {
+      const iIdx = im.index ?? 0;
+      const iBefore = normInput.slice(Math.max(0, iIdx - 45), iIdx);
+      const iAfter = normInput.slice(iIdx + im[0].length, Math.min(normInput.length, iIdx + im[0].length + 25));
+      if (chk.skipBeforeRegex.test(iBefore) || /^[\s–-]*to\s+\d|^\s*[–-]\s*\d|±/i.test(iAfter)) continue;
+      allowedValues.add(parseFloat(im[1]));
+    }
+    for (const m of normDossier.matchAll(chk.regex)) {
+      const idx = m.index ?? 0;
+      const before = normDossier.slice(Math.max(0, idx - 45), idx);
+      const after = normDossier.slice(idx + m[0].length, Math.min(normDossier.length, idx + m[0].length + 25));
+      if (chk.skipBeforeRegex.test(before) || /^[\s–-]*to\s+\d|^\s*[–-]\s*\d|±/i.test(after)) continue;
+      const stated = parseFloat(m[1]);
+      const matchesAnyDocumented = [...allowedValues].some((v) => Math.abs(stated - v) <= chk.tolerance);
+      if (!matchesAnyDocumented) {
+        violations.push({
+          item: chk.item,
+          sectionA: `Documented Intake (${chk.item}: ${chk.expected})`,
+          sectionB: `Dossier Text (${m[0]})`,
+          issue: `Cross-section inconsistency in ${chk.item}: stated ${stated} conflicts with documented intake (${chk.expected}).`,
         });
       }
     }

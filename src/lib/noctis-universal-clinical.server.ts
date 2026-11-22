@@ -102,11 +102,13 @@ function buildSystemPrompt(encounterId: string): string {
     "   - If Baseline Creatinine, Arterial Blood Gas (pH/PaCO2), Glucose, or prior history are missing: mark them [UNMEASURED / NOT PROVIDED — REQUIRES IMMEDIATE ACQUISITION].",
     "   - NEVER invent unstated home medications (e.g., do not add Lisinopril, Metoprolol, Digoxin, or Metformin unless documented in input), HPI events (watery diarrhea, UTI), imaging findings (dense alveolar consolidation), comorbidities (HFrEF, CKD), or negative physical exam findings (e.g., 'patient denies chest pain', 'deep tendon reflexes preserved'). Label unasked negatives as [UNDOCUMENTED ON INTAKE].",
     "3. EXACT QUANTITATIVE & SCRATCHPAD FIDELITY:",
-    "   - Reproduce documented patient Age, Sex, BP, MAP, HR, Temp, SpO2, K+, Cr, pH, HCO3-, PaCO2, Lactate, Digoxin, and home medications verbatim across every section (including the SOAP Note).",
+    "   - Reproduce documented patient Age, Sex, BP, MAP, HR, Temp, SpO2, Na+, K+, Cl-, Cr, baseline Cr (with timeframe), pH, serum HCO3-, ABG HCO3-, PaCO2, Lactate, Glucose, Digoxin, and home medications verbatim across every section (including the SOAP Note). Never claim a documented lab in the Scratchpad is UNMEASURED/unavailable.",
+    "   - When BOTH serum HCO3- (BMP/CMP) and ABG HCO3- are documented, distinguish them explicitly: use Serum HCO3- for Anion Gap (= Na+ - [Cl- + serum HCO3-]) and ABG HCO3- for Winter's formula (= 1.5 × [ABG HCO3-] + 8 ± 2).",
     "   - When writing therapeutic goals, explicitly label them as targets (e.g., 'target MAP >= 65 mmHg', 'goal serum potassium < 5.5 mmol/L') so targets are never confused with measured values.",
-    "   - Respect the Scratchpad's Winter's formula calibrated interpretation (if borderline compensation, say 'possible inadequate respiratory compensation / borderline relative hypoventilation', never 'definitive respiratory acidosis') and KDIGO AKI stage + timeline caveats.",
+    "   - Respect the Scratchpad's Winter's formula calibrated interpretation (if borderline compensation, say 'possible inadequate respiratory compensation / borderline relative hypoventilation', never 'definitive respiratory acidosis') and KDIGO AKI stage + timeline caveats. When baseline creatinine is remote (e.g., months old) and Cr < 4.0 mg/dL with fold ratio < 3.0×, NEVER assert 'Stage 2/3 AKI' or 'KDIGO Stage 3 AKI'; note the fold-based stage provisionally with the acute-window limitation.",
     "   - Never contradict the Scratchpad fluid safety guidance. In acute shock with no documented systolic heart failure or pulmonary edema, individualized balanced crystalloids are permissible; in massive PE / RV dilation / cor pulmonale / HFrEF, enforce cautious small aliquots (250-500 mL) and early vasopressor support.",
     "   - Never declare ACE inhibitors / ARBs / MRAs 'permanently contraindicated' during acute hyperkalemia/AKI; state 'acute withholding with individualized post-stabilization reassessment once potassium and renal function recover'.",
+    "   - CRITICAL BLEEDING / ICH + ANTICOAGULATION RULE: In confirmed life-threatening hemorrhage (especially intracranial hemorrhage with mass effect / midline shift) with recent anticoagulant exposure (DOAC/Apixaban, warfarin, heparin), urgent anticoagulant reversal evaluation is time-critical and MUST proceed immediately in parallel with neurosurgical, hematologic, and competing thrombotic/PERT management — never indefinitely deferred awaiting multidisciplinary consensus.",
     "4. SPECIALTY-AGNOSTIC TRIAGE CALIBRATION:",
     "   - Dynamically calibrate disposition: P0 IMMEDIATE EMERGENCY / ICU / Resuscitation for shock, respiratory failure, severe electrolyte toxicity, aortic dissection, anaphylaxis, eclampsia, thyroid storm, DKA, or critical poisoning; urgent ED evaluation for acute unstable/undifferentiated presentations; evidence-based outpatient/clinic management ONLY when hemodynamically stable without acute red flags.",
     "   - Reconcile EVERY outpatient medication listed in the prompt explicitly (HOLD/STOP/MODIFY/CONTINUE and rationale).",
@@ -124,11 +126,37 @@ function buildSystemPrompt(encounterId: string): string {
 }
 
 function buildUserPrompt(rawPrompt: string, scratchpad: NeuroSymbolicClinicalScratchpad): string {
+  const authoritativeRecord = JSON.stringify(
+    {
+      encounterId: scratchpad.encounterId,
+      demographics: scratchpad.demographics,
+      vitals: scratchpad.vitals,
+      labs: scratchpad.labs,
+      derived: {
+        meanArterialPressureMmHg: scratchpad.derivedCalculations.meanArterialPressureMmHg,
+        anionGap: scratchpad.derivedCalculations.anionGap,
+        wintersFormula: scratchpad.derivedCalculations.wintersFormula,
+        kdigoAki: {
+          establishedStage: scratchpad.derivedCalculations.kdigoAki.establishedStage,
+          crFoldRatio: scratchpad.derivedCalculations.kdigoAki.crFoldRatio,
+          crAbsoluteRiseMgDl: scratchpad.derivedCalculations.kdigoAki.crAbsoluteRiseMgDl,
+          isStage3ConditionalOnAcuteTimeline: scratchpad.derivedCalculations.kdigoAki.isStage3ConditionalOnAcuteTimeline,
+          stageRationale: scratchpad.derivedCalculations.kdigoAki.stageRationale,
+        },
+      },
+    },
+    null,
+    2,
+  );
+
   return [
     "RAW CLINICAL ENCOUNTER INPUT (AUTHORITATIVE PRIMARY SOURCE):",
     "<<<ENCOUNTER_INPUT_START>>>",
     rawPrompt.trim(),
     "<<<ENCOUNTER_INPUT_END>>>",
+    "",
+    "AUTHORITATIVE EXTRACTED LABS & CALCULATIONS (SINGLE SOURCE OF TRUTH):",
+    authoritativeRecord,
     "",
     "DETERMINISTIC NEURO-SYMBOLIC EXTRACTION & MATHEMATICAL SCRATCHPAD (IMMUTABLE GROUND TRUTH):",
     scratchpad.markdownScratchpadSummary,
@@ -139,7 +167,7 @@ function buildUserPrompt(rawPrompt: string, scratchpad: NeuroSymbolicClinicalScr
         : "None flagged"
     }`,
     "",
-    "Generate the complete clinical decision support dossier strictly adhering to the documented input and scratchpad values above.",
+    "Generate the complete clinical decision support dossier strictly adhering to the documented input and authoritative scratchpad values above.",
   ].join("\n");
 }
 
@@ -310,7 +338,7 @@ export async function executeUniversalClinicalReasoning(
     }
   }
 
-  if (audit.isApproved && audit.mandatoryReleasePassed) {
+  if (audit.isApproved && audit.mandatoryReleasePassed && audit.violationsCount === 0) {
     return `${audit.auditedDossier.trim()}${buildVerifiedCertificate(encounterId, sourceInputHash)}`;
   }
 
