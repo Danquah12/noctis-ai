@@ -223,9 +223,11 @@ High
     const mtlsAnswer = `
 ### How Mutual TLS (mTLS) Secures Microservices
 
+Unlike standard TLS, mTLS protects against unauthorized access and lateral compromise if a container vulnerability exists inside the cluster.
+
 1. **Initiation (Client Hello)**: The calling Client Service initiates a handshake with Server Service.
 2. **Server Presentation**: Server Service presents its TLS certificate and requests the client's certificate.
-3. **Certificate Validation**: Both services verify identities via the service mesh Envoy sidecar proxy.
+3. **Certificate Validation**: Both services verify identities via an automated internal CA (HashiCorp Vault or cert-manager) managed by Istio or Linkerd.
 `;
     const mtlsPills = buildContextualFollowUps(
       "Explain how mTLS protects service-to-service traffic in microservices",

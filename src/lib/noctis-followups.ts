@@ -813,9 +813,13 @@ export function buildContextualFollowUps(
     case "cve_cyber": {
       const isVulnOrIncident =
         cves.length > 0 ||
-        /\b(?:vulnerability|vulnerabilities|exploit\w*|ransomware|malware|breach|incident|compromise|iocs?|hunting|sigma|attack\s+path|remediat\w*)\b/i.test(
-          `${cleanedQ} ${plainBody}`,
-        );
+        /\b(?:vulnerability|vulnerabilities|exploit\w*|ransomware|malware|breach|incident|compromis\w*|iocs?|hunting|sigma|attack\s+path|remediat\w*|cvss|epss)\b/i.test(
+          cleanedQ,
+        ) ||
+        (/\b(?:ransomware|malware|iocs?|sigma\s+rule|threat\s+actor|cvss|epss|incident\s+response|containment)\b/i.test(
+          plainBody,
+        ) &&
+          !/\b(?:mtls|tls\s+handshake|oauth|service\s+mesh|protocol)\b/i.test(cleanedQ));
       if (cves[0]) {
         candidates.push({
           label: clampPillLabel(`Detection rules for ${cves[0]}`),
