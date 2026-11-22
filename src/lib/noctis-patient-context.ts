@@ -206,9 +206,7 @@ export function buildImmutablePatientContext(
   const spo2Display = spo2Percent !== null ? `${spo2Percent}% on room air` : "[UNMEASURED]";
 
   // 3. Labs
-  const kMatch =
-    q.match(/\b(?:potassium|k\+?)\s*[:=]?\s*([2-9]\.\d+)\b/i) ||
-    q.match(/\b([2-9]\.\d+)\s*(?:mmol|meq)\/l?\b/i);
+  const kMatch = q.match(/\b(?:serum\s+)?(?:potassium|k\+?)\s*(?:is|of|level)?\s*[:=]?\s*([2-9]\.\d+)\b/i);
   const potassiumMeqL = kMatch ? parseFloat(kMatch[1]) : null;
 
   const naMatch = q.match(/\b(?:sodium|na\+?)\s*[:=]?\s*(\d{3})\b/i);

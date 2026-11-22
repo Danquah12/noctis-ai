@@ -1937,7 +1937,10 @@ PLAN (PROPOSED ORDERS & CONSIDERATIONS — NOT COMPLETED ACTIONS):
 > - **Institutional Regulatory Evaluation:** Intended software functionality should be evaluated by the deploying healthcare organization under applicable FDA Clinical Decision Support (CDS) guidance and SaMD regulatory frameworks. This system does not independently self-certify regulatory compliance.`;
 }
 
-export function buildPatientDiagnosticReport(dataOrText: PatientReportedData | string): PatientDiagnosticDossier {
+export function buildPatientDiagnosticReport(
+  dataOrText: PatientReportedData | string,
+  explicitEncounterId?: string
+): PatientDiagnosticDossier {
   const data = typeof dataOrText === "string" ? parsePatientNaturalLanguageIntake(dataOrText) : dataOrText;
   const triage = evaluateEmergencyTriage(data);
   const { differentials, mustNotMissEmergencies } = computeDifferentialDiagnosis(data);
@@ -1956,7 +1959,7 @@ export function buildPatientDiagnosticReport(dataOrText: PatientReportedData | s
     "FDA Jan 2026 Clinical Decision Support (CDS) Non-Device Framework (21 U.S.C. § 360j(o)(1)(E)): This algorithmic decision support assists healthcare evaluation. It does not replace independent clinical judgment, formal physical examination, laboratory testing, or a licensed physician's diagnosis.";
 
   return {
-    encounterId: `NPDE-${Date.now().toString(36).toUpperCase()}`,
+    encounterId: explicitEncounterId || `NPDE-${Date.now().toString(36).toUpperCase()}`,
     timestamp: new Date().toISOString(),
     patientData: data,
     triage,
@@ -2393,6 +2396,7 @@ export function executeNaturalPatientDiagnosticQuery(question: string, explicitE
   const isHyperkalemiaCrisis =
     !context.syndromes.isDka &&
     !context.syndromes.isBrash &&
+    !/\b(hypermagnesemia|magnesium\s+toxicity|milk\s+of\s+magnesia|magnesium\s+hydroxide)\b/i.test(q) &&
     ((/\b(hyperkalemia)\b/i.test(q) &&
       (/\b(?:[6-9]\.\d|7\.\d|qrs|peaked|sine\s*wave|arrhythmia|bradycardia|weakness|lisinopril|spironolactone|ckd|egfr)\b/i.test(q) ||
         /\b(?:[6-9]\.\d|7\.\d)\s*(?:mmol|meq)\b/i.test(q) ||
@@ -2405,25 +2409,24 @@ export function executeNaturalPatientDiagnosticQuery(question: string, explicitE
   }
 
   // Dedicated Handler: Emergent Severe Symptomatic Hyponatremia with Seizures & Rapid Overcorrection / ODS Rescue
+  const parsedNa = context.labs.sodiumMeqL;
+  const hasExplicitHyponatremiaTerms =
+    /\b(hyponatremia|low\s+sodium|osmotic\s+demyelination|\bods\b|overcorrect\w*|water\s+diuresis|ddavp|desmopressin|3%\s*(?:hypertonic|saline))\b/i.test(q);
+  const hasGenuineHyponatremia =
+    hasExplicitHyponatremiaTerms ||
+    (parsedNa !== null && parsedNa < 130 && /\b(112|121|seizures?|status\s+epilepticus|hctz|hydrochlorothiazide|sertraline|confusion|altered\s+mental|coma)\b/i.test(q));
   const isHyponatremiaCrisis =
-    (/\b(hyponatremia|sodium|na\+?|low\s+sodium)\b/i.test(q) &&
-      /\b(112|121|seizures?|status\s+epilepticus|altered\s+mental|coma|confusion|hctz|hydrochlorothiazide|sertraline|3%|hypertonic|desmopressin|ddavp|ods|osmotic\s+demyelination|overcorrect|water\s+diuresis|450\s*ml)\b/i.test(q)) ||
-    (/\b(sodium|na)\b/i.test(q) && /\b112\b/i.test(q)) ||
-    (/\bovercorrect\w*\b/i.test(q) && /\b(sodium|121|water\s+diuresis|desmopressin|ddavp)\b/i.test(q));
+    hasGenuineHyponatremia &&
+    !(parsedNa !== null && parsedNa >= 132 && !/\b(overcorrect\w*|osmotic\s+demyelination|\bods\b|ddavp|desmopressin)\b/i.test(q));
 
   if (isHyponatremiaCrisis) {
-    const encMatch = q.match(/\b(NPDE-[A-Z0-9]+)\b/i);
-    const encId = encMatch ? encMatch[1] : `NPDE-HYPONAT-${Date.now().toString(36).toUpperCase()}`;
     return generateIsolatedHyponatremiaDossier(encId, q);
   }
 
   // Dedicated Handler: Emergent Severe Hypermagnesemia with Bradycardia, Shock, and Neuromuscular Blockade in CKD
   const isHypermagnesemiaCrisis =
-    (/\b(hypermagnesemia|magnesium|milk\s+of\s+magnesia)\b/i.test(q) &&
-      (/\b(?:[4-9]\.\d|[1-9]\d\.\d|8\.5|calcium\s+gluconate|hemodialysis|bradycardia|38\s*bpm|hypotension|82\/46|reflexes|hyporeflexia|ckd|esrd)\b/i.test(q) ||
-        /\b(?:magnesium|mg)\s*(?:is|level|of|=|:)?\s*(?:[4-9]\.\d|[1-9]\d\.\d|8\.5)\b/i.test(q) ||
-        /\b8\.5\s*(?:mg\/dl|meq\/l)\b/i.test(q))) ||
-    (/\b(milk\s+of\s+magnesia|magnesium\s+hydroxide)\b/i.test(q) && /\b(ckd|renal|kidney)\b/i.test(q) && /\b(weakness|lethargy|bradycardia|hypotension|reflexes)\b/i.test(q));
+    /\b(hypermagnesemia|magnesium\s+toxicity|milk\s+of\s+magnesia|magnesium\s+hydroxide)\b/i.test(q) ||
+    /\b(?:serum\s+)?(?:magnesium|mg2?\+?)\s*(?:is|level|of|=|:)?\s*(?:[4-9]\.\d+|[1-9]\d+(?:\.\d+)?)\s*(?:mg\/dl|meq\/l)?\b/i.test(q);
 
   if (isHypermagnesemiaCrisis) {
     return generateIsolatedHypermagnesemiaDossier(encId, q);
@@ -2793,7 +2796,7 @@ When serum lipase is elevated without evidence of pancreatic inflammation, clini
     /\b(chest\s+pain|shortness\s+of\s+breath|fever|headache|abdominal\s+pain|cough|nausea|dizziness|weakness)\b/i.test(q);
 
   if (isPatientDiagnosisRequest || hasClinicalSymptomConstellation) {
-    const dossier = buildPatientDiagnosticReport(q);
+    const dossier = buildPatientDiagnosticReport(q, encId);
     return formatPatientDiagnosticDossierMarkdown(dossier);
   }
 

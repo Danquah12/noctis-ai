@@ -464,15 +464,17 @@ export function generateIsolatedSepticShockDossier(
   const isMale = !isFemale && (patientData?.biologicalSex === "male" || /\b(male|man|gentleman)\b/i.test(text));
   const genderStr = isFemale ? "female" : isMale ? "male" : "patient";
 
-  // Parse key comorbidities, labs and imaging
+  // Parse key comorbidities, labs and imaging (with strict negation guards)
   const efMatch = text.match(/\bef\s*(?:is|of|=|:)?\s*(\d{1,2})%?\b/i) || text.match(/\bejection\s+fraction\s*(?:is|of|=|:)?\s*(\d{1,2})%?\b/i);
   const ef = efMatch ? parseInt(efMatch[1], 10) : undefined;
-  const hasHfref = Boolean(/\bhfref|heart\s+failure\b/i.test(text) || (ef !== undefined && ef <= 40));
+  const negCardiac = /\bno\s+(?:known\s+|history\s+of\s+)?(?:heart\s+failure|hfref|cardiac\s+(?:disease|history))\b/i.test(text);
+  const hasHfref = !negCardiac && Boolean(/\bhfref|heart\s+failure\b/i.test(text) || (ef !== undefined && ef <= 40));
 
   const ckdMatch = text.match(/\b(?:ckd|chronic\s+kidney\s+disease)\s*(?:stage\s*)?([1-5])\b/i);
   const egfrMatch = text.match(/\begfr\s*(?:is|of|=|:)?\s*(\d+(?:\.\d+)?)\b/i);
   const egfr = egfrMatch ? parseFloat(egfrMatch[1]) : undefined;
-  const hasCkd = Boolean(ckdMatch || egfr !== undefined || /\bckd\b/i.test(text));
+  const negCkd = /\bno\s+(?:known\s+|history\s+of\s+)?(?:ckd|chronic\s+kidney\s+disease|kidney\s+disease)\b/i.test(text);
+  const hasCkd = !negCkd && Boolean(ckdMatch || egfr !== undefined || /\bckd\b/i.test(text));
   const ckdStage = ckdMatch ? ckdMatch[1] : (egfr !== undefined && egfr <= 29 ? "4" : hasCkd ? "4" : undefined);
 
   const crMatch = text.match(/\b(?:creatinine|cr)\s*(?:is|of|=|:)?\s*(\d+(?:\.\d+)?)\s*(?:mg\/dl)?\b/i);
@@ -486,13 +488,31 @@ export function generateIsolatedSepticShockDossier(
   const kDisplay = kVal !== undefined ? `${kVal} mmol/L` : "[UNMEASURED / STAT LAB REQUIRED]";
 
   const consolidationMatch = text.match(/\b(right\s+lower-?lobe\s+consolidation|rll\s+consolidation|left\s+lower-?lobe\s+consolidation|lll\s+consolidation|consolidation|infiltrate)\b/i);
-  const consolidationText = consolidationMatch ? consolidationMatch[0] : (/\bcough\b/i.test(text) ? "suspected lower respiratory infection" : "Undifferentiated Severe Infection");
+  const hasUrinaryFocus = /\b(flank\s+pain|pyelonephritis|urosepsis|dysuria|uti|urinary\s+tract)\b/i.test(text);
+  const consolidationText = consolidationMatch
+    ? consolidationMatch[0]
+    : hasUrinaryFocus
+    ? "Suspected Complicated Pyelonephritis / Urosepsis"
+    : /\bcough\b/i.test(text)
+    ? "Suspected Lower Respiratory Infection"
+    : "Undifferentiated Severe Community-Acquired Sepsis";
 
-  const hospitalizationMatch = text.match(/\b(?:hospitaliz\w*|admitted)\s*([a-z0-9\s]+?(?:days?|weeks?|months?)\s*ago|\d+\s*days?\s*earlier)\b/i) || text.match(/\b(\d+)\s*days?\s*(?:earlier|ago)\b/i);
-  const priorAbxMatch = text.match(/\b(?:iv\s+)?(ceftriaxone|vancomycin|cefepime|piperacillin|tazobactam|meropenem)\b/i);
+  const negPriorHosp = /\bno\s+prior\s+hospitaliz/i.test(text);
+  const hospitalizationMatch = !negPriorHosp
+    ? text.match(/\b(?:hospitaliz\w*|admitted)\s*([a-z0-9\s]+?(?:days?|weeks?|months?)\s*ago|\d+\s*days?\s*earlier)\b/i) || text.match(/\b(\d+)\s*days?\s*(?:earlier|ago)\b/i)
+    : null;
+  const priorAbxMatch = !/\bno\s+recent\s+antibiotics\b/i.test(text)
+    ? text.match(/\b(?:iv\s+)?(ceftriaxone|vancomycin|cefepime|piperacillin|tazobactam|meropenem)\b/i)
+    : null;
 
   const hasCough = /\bcough\b/i.test(text);
   const hasNursingHome = /\bnursing\s+home\b/i.test(text);
+
+  const hco3Match = text.match(/\b(?:bicarbonate|hco3-?)\s*(?:is|of|=|:)?\s*(\d{1,2}(?:\.\d+)?)\b/i);
+  const hco3Val = hco3Match ? parseFloat(hco3Match[1]) : undefined;
+  const wintersMid = hco3Val !== undefined ? 1.5 * hco3Val + 8 : undefined;
+  const wintersLow = wintersMid !== undefined ? wintersMid - 2 : undefined;
+  const wintersHigh = wintersMid !== undefined ? wintersMid + 2 : undefined;
 
   const exactMapVal = (sbp + 2 * dbp) / 3;
   const exactMapStr = exactMapVal.toFixed(1);
@@ -533,7 +553,7 @@ export function generateIsolatedSepticShockDossier(
 
 > [!CAUTION]
 > **EMERGENCY MEDICAL WARNING (IMMEDIATE RESUSCITATION DIRECTIVE — SHOCK WITH SUSPECTED SEVERE INFECTION)**
-> 🚨 **CRITICAL LIFE THREAT:** The patient exhibits ${isMapTargetMet ? `distributive shock physiology with systemic perfusion pressure currently maintained (MAP ${exactMapStr} mmHg)` : `severe circulatory failure (MAP ${exactMapStr} mmHg)`}, acute delirium/confusion, marked tachycardia (${hr} bpm), tachypnea (RR ${rr}/min), hypoxemia (SpO2 ${spo2Display}), and marked fever (${tempC.toFixed(1)}°C) secondary to **${consolidationMatch ? `${consolidationText} (Pneumonia)` : "Suspected Severe Infection"}** in a ${ageYears}-year-old ${genderStr}${hasNursingHome ? " nursing home resident" : " patient"}${comorbText ? ` with severe comorbidities (**${comorbText}**)` : ""}.
+> 🚨 **CRITICAL LIFE THREAT:** The patient exhibits ${isMapTargetMet ? `distributive shock physiology with systemic perfusion pressure currently maintained (MAP ${exactMapStr} mmHg)` : `severe circulatory failure (MAP ${exactMapStr} mmHg)`}, acute delirium/confusion, marked tachycardia (${hr} bpm), tachypnea (RR ${rr}/min), ${spo2 !== undefined && spo2 <= 90 ? `hypoxemia (SpO2 ${spo2Display})` : spo2 !== undefined && spo2 <= 94 ? `mild borderline desaturation (SpO2 ${spo2Display})` : `SpO2 ${spo2Display}`}, and marked fever (${tempC.toFixed(1)}°C) secondary to **${consolidationMatch ? `${consolidationText} (Pneumonia)` : hasUrinaryFocus ? "Suspected Complicated Pyelonephritis / Urosepsis" : "Suspected Severe Infection"}** in a ${ageYears}-year-old ${genderStr}${hasNursingHome ? " nursing home resident" : " patient"}${comorbText ? ` with ${hasHfref || hasCkd ? "severe comorbidities and acute derangements" : "acute laboratory abnormalities"} (**${comorbText}**)` : ""}.
 > - **Immediate Action:** Activate Emergency Medical Services (EMS) / Code Sepsis immediately for resuscitation bay placement.
 > - **Time-Critical Imperative:** Immediate resuscitation in an Emergency Department and Critical Care / Intensive Care Unit. Outpatient management is strictly contraindicated.
 
@@ -544,8 +564,8 @@ export function generateIsolatedSepticShockDossier(
 | Parameter | Documented Observation | Physiological Significance | Diagnostic & Resuscitation Priority |
 | :--- | :--- | :--- | :--- |
 | **Blood Pressure** | **${sbp}/${dbp} mmHg** (MAP = **${exactMapStr} mmHg**) | ${isMapTargetMet ? "Systemic perfusion pressure target met (MAP ≥ 65.0 mmHg)." : "Profound circulatory failure / distributive vasoplegia; loss of vital organ autoregulation."} | ${isMapTargetMet ? `Target met: +${mapMarginMmHg} mmHg reserve. Vasopressors on standby.` : "Critical Deficit: Target MAP ≥ 65 mmHg via titrated small fluid boluses and early Norepinephrine."} |
-| **Heart Rate** | **${hr} bpm (Marked Tachycardia)** | Sympathetic compensatory tachycardia to sustain cardiac output in vasoplegic shock. | Continuous cardiac telemetry; high myocardial oxygen demand on a failing ventricle (EF ${efDisplay}). |
-| **Body Temperature** | **${tempC.toFixed(1)}°C (Fever / Marked Pyrexia)** | Systemic inflammatory response; hypermetabolic bacterial demand. *(Note: 39.1°C is fever/pyrexia, not hyperpyrexia)*. | Confirms acute systemic infection; obtain two sets of blood cultures STAT. |
+| **Heart Rate** | **${hr} bpm (Marked Tachycardia)** | Sympathetic compensatory tachycardia to sustain cardiac output in vasoplegic shock. | ${hasHfref ? `Continuous cardiac telemetry; high myocardial oxygen demand on a failing ventricle (EF ${efDisplay}).` : "Continuous cardiac telemetry; elevated myocardial oxygen demand in shock physiology (baseline LV function undocumented)."} |
+| **Body Temperature** | **${tempC.toFixed(1)}°C (Fever / Marked Pyrexia)** | Systemic inflammatory response; hypermetabolic bacterial demand. *(Note: ${tempC.toFixed(1)}°C represents fever/pyrexia, not hyperpyrexia)*. | Confirms acute systemic infection; obtain two sets of blood cultures STAT. |
 | **Respiratory Rate** | **${rr} breaths/min (Tachypnea)** | Significant respiratory distress / metabolic compensation. Satisfies qSOFA (+1). Does NOT meet CURB-65 ≥ 30 threshold. | Primary clinical sign of respiratory distress and systemic metabolic stress. |
 | **Oxygen Saturation** | **${spo2Display} on room air** | ${spo2 !== undefined && spo2 <= 90 ? "Acute hypoxemic respiratory failure." : (spo2 !== undefined && spo2 <= 94 ? "Mild desaturation / borderline oxygenation. Target SpO2 92–96% with supplemental oxygen." : "Oxygenation adequate on ambient air.")} | ${spo2 !== undefined && spo2 <= 92 ? "STAT supplemental oxygen targeting SpO2 92–96%." : "Continuous pulse oximetry monitoring."} |
 | **Mental Status** | **Acute Confusion (Delirium)** | Acute cerebral hypoperfusion and high concern for septic encephalopathy. Satisfies qSOFA (+1). | Requires airway protection monitoring; rule out acute stroke, CNS infection, and toxic/metabolic causes. |
@@ -589,25 +609,25 @@ export function generateIsolatedSepticShockDossier(
 #### Sepsis-3 Septic Shock Assessment
 - **Status:** **Cannot yet be formally established.**
 - *Clinical Rationale:* ${sepsis3.clinicalRationale}
-
+${hco3Val !== undefined && wintersLow !== undefined && wintersHigh !== undefined && wintersMid !== undefined ? `\n#### Winter's Acid-Base Compensation Analysis\n- **Expected PaCO₂ Range:** **${wintersLow}–${wintersHigh} mmHg (${wintersMid} ± 2 mmHg)** derived from measured $\\text{HCO}_3^-$ of ${hco3Val} mmol/L ($1.5 \\times ${hco3Val} + 8 \\pm 2$).\n- **Assessment:** Actual compensatory respiratory status cannot be confirmed until arterial blood gas ($\text{PaCO}_2$) is measured.\n` : ""}
 ---
 
 ### 3. Prioritized Differential Diagnosis Hierarchy
 
 *Diagnostic percentages are removed in accordance with evidence standards; probabilities are not presented as arbitrary numbers without a validated prediction model.*
 
-1. **Suspected Severe Community-Acquired / Nursing Home-Acquired Pneumonia (CAP/NHAP) with Sepsis & Shock Physiology** *(ICD-10: R65.20 / J18.9)*
+1. **${consolidationMatch || hasCough ? (hasNursingHome ? "Suspected Nursing Home-Acquired Pneumonia (NHAP) with Sepsis & Shock Physiology" : "Suspected Severe Community-Acquired Pneumonia (CAP) with Sepsis & Shock Physiology") : hasUrinaryFocus ? "Suspected Complicated Pyelonephritis / Urosepsis with Sepsis & Shock Physiology" : "Suspected Severe Community-Acquired Sepsis with Shock Physiology"}** *(ICD-10: ${consolidationMatch || hasCough ? "R65.20 / J18.9" : hasUrinaryFocus ? "N10 / R65.20" : "A41.9 / R65.20"})*
    - *Tier:* 🚨 **TIER 1: PRIMARY EMERGENCY**
-   - *Rationale:* ${consolidationMatch ? "Dense alveolar consolidation, " : ""}fever (${tempC.toFixed(1)}°C), hypoxemia (SpO2 ${spo2Display}), tachypnea (RR ${rr}/min), profound hypotension (MAP ${exactMapStr} mmHg), marked tachycardia (${hr} bpm), and hyperlactatemia evaluation (${lacDisplay}) in a ${ageYears}-year-old ${genderStr}${hasNursingHome ? " residing in a nursing home" : ""}.
-2. **Acute Aspiration Pneumonia with Distributive Shock** *(ICD-10: J69.0)*
+   - *Rationale:* ${consolidationMatch ? "Dense alveolar consolidation, " : hasUrinaryFocus ? "Flank pain and suspected urinary source, " : ""}fever (${tempC.toFixed(1)}°C), SpO2 ${spo2Display}, tachypnea (RR ${rr}/min), profound hypotension (MAP ${exactMapStr} mmHg), marked tachycardia (${hr} bpm), and hyperlactatemia evaluation (${lacDisplay}) in a ${ageYears}-year-old ${genderStr}${hasNursingHome ? " residing in a nursing home" : ""}.
+2. **${hasUrinaryFocus ? "Occult Pulmonary / Intra-Abdominal Sepsis with Distributive Shock" : "Complicated Urosepsis / Acute Pyelonephritis"}** *(ICD-10: ${hasUrinaryFocus ? "A41.9" : "N39.0 / N10"})*
    - *Tier:* ⚠️ **TIER 2: MUST-NOT-MISS**
-   - *Rationale:* High prevalence in patients with acute delirium, cognitive impairment, or swallowing dysfunction.
-3. **Complicated Urosepsis / Occult Bacteremia** *(ICD-10: N39.0 / A41.9)*
+   - *Rationale:* Frequent primary or occult source of gram-negative bacteremic shock; bedside CXR, urinalysis, and urine culture mandatory.
+3. **Acute Aspiration Pneumonia / Pulmonary Infection** *(ICD-10: J69.0)*
    - *Tier:* ⚠️ **TIER 2: MUST-NOT-MISS**
-   - *Rationale:* Frequent occult source of bacteremic sepsis; urinalysis and urine culture mandatory.
-4. **Acute Decompensated Heart Failure (Cardiogenic Shock or Mixed Septic-Cardiogenic Shock)** *(ICD-10: I50.9 / R57.0)*
+   - *Rationale:* Important differential in patients presenting with acute delirium and tachypnea.
+4. **${hasHfref ? "Acute Decompensated Heart Failure (Cardiogenic Shock or Mixed Septic-Cardiogenic Shock)" : "Sepsis-Induced Cardiomyopathy / Mixed Distributive-Cardiogenic Shock (Rule-Out)"}** *(ICD-10: ${hasHfref ? "I50.9 / R57.0" : "I42.9 / R57.0"})*
    - *Tier:* ⚠️ **TIER 2: MUST-NOT-MISS**
-   - *Rationale:* Systemic inflammatory cytokine storm and severe tachycardia can precipitate acute left ventricular failure, producing a mixed distributive-cardiogenic shock picture (EF ${efDisplay}).
+   - *Rationale:* Systemic inflammatory cytokine storm and severe tachycardia can precipitate transient myocardial dysfunction, producing a mixed distributive-cardiogenic shock picture (${hasHfref ? `HFrEF EF ${efDisplay}` : "baseline EF undocumented; bedside POCUS indicated"}).
 5. **Non-Infectious Shock Etiologies (Rule-Out)**
    - *Cardiogenic Shock:* Acute coronary syndrome / myocardial infarction with pump failure.
    - *Obstructive Shock:* Massive Pulmonary Embolism (PE) or pericardial tamponade.
@@ -619,7 +639,7 @@ export function generateIsolatedSepticShockDossier(
 
 1. **Airway, Breathing & Oxygenation Management (SpO2 ${spo2Display}):**
    - **Oxygenation Assessment:** Patient presents with oxygen saturation of ${spo2Display} on room air.
-   - **Immediate Intervention:** Initiate supplemental oxygen via Venturi mask or High-Flow Nasal Cannula (HFNC) targeting SpO2 92–96%.
+   - **Immediate Intervention:** ${spo2 !== undefined && spo2 <= 90 ? "Initiate supplemental oxygen via Venturi mask or High-Flow Nasal Cannula (HFNC) targeting SpO2 92–96%." : "Monitor continuous pulse oximetry targeting SpO2 92–96%; titrate low-flow nasal cannula only if desaturation occurs."}
    - **Airway & Aspiration Vigilance:** Because of acute delirium/confusion (GCS depression) and severe shock, closely assess protective airway reflexes. Non-invasive positive pressure ventilation (NIPPV/BiPAP) should be used with extreme caution due to aspiration risk; prepare equipment for urgent endotracheal intubation if work of breathing worsens or mental status deteriorates.
 
 2. **Comorbidity-Individualized Hemodynamic Resuscitation (${hasHfref ? `Severe HFrEF EF ${ef}%` : "Cardiac Assessment"} & ${hasCkd ? `CKD Stage ${ckdStage}` : "Renal Assessment"}):**
@@ -631,29 +651,29 @@ export function generateIsolatedSepticShockDossier(
 
 3. **Early Vasopressor Therapy (First-Line: Norepinephrine):**
    - **Early Vasopressor Assessment:** In the setting of severe vasoplegic hypotension (MAP ${exactMapStr} mmHg), initiate **Norepinephrine** early—either concurrently with or immediately following the initial cautious fluid aliquot—to achieve and maintain target **MAP ≥ 65 mmHg**.
-   - Norepinephrine provides potent $\alpha_1$ vasoconstriction with modest $\beta_1$ inotropy, restoring coronary and vital organ perfusion without volume overload.
+   - Norepinephrine provides potent α₁ vasoconstriction with modest β₁ inotropy, restoring coronary and vital organ perfusion without volume overload.
    - Place an arterial line for continuous invasive arterial pressure monitoring.
    - Second-line agent: Add Vasopressin (0.03 units/min) if norepinephrine requirements escalate.
 
 4. **Blood Cultures & Empiric Antimicrobial Therapy:**
    - Draw two sets of blood cultures (aerobic and anaerobic) from separate venipuncture sites STAT before antimicrobial administration.
-   - ⚠️ **CRITICAL TIME GATE:** **DO NOT delay empiric IV antimicrobial administration to obtain blood cultures** if cultures cannot be drawn immediately. Administer broad-spectrum empiric IV antibiotics (e.g. Vancomycin + Cefepime/Piperacillin-Tazobactam) within the first hour of recognition.
+   - ⚠️ **CRITICAL TIME GATE:** **DO NOT delay empiric IV antimicrobial administration to obtain blood cultures** if cultures cannot be drawn immediately. Administer broad-spectrum empiric IV antibiotics within the first hour of recognition.
    - **Evidence-Based Antimicrobial Stewardship & Pathogen Risk Assessment:**
-     - ⚠️ **Antimicrobial Stewardship Rule:** Nursing home residence alone does NOT constitute an automatic mandate for universal MRSA and antipseudomonal coverage.
+     - **Community vs. Institutional Risk:** ${hasNursingHome ? "Nursing home residence alone does NOT constitute an automatic mandate for universal MRSA and antipseudomonal coverage." : "Community-acquired presentation with zero documented nursing home exposure; tailor empiric spectrum to suspected infection focus and local community antibiograms."}
      - **Patient-Specific Risk Assessment:**
        1. **Recent Hospitalization:** ${hospitalizationMatch ? "Documented prior hospitalization with broad-spectrum antimicrobial exposure significantly elevates the pre-test probability for multidrug-resistant (MDR) pathogens (*Pseudomonas aeruginosa*, *MRSA*, and *ESBL Enterobacterales*)." : "No recent prior hospitalization or 90-day broad-spectrum antimicrobial exposure documented in intake."}
        2. **Severe Septic Shock:** Septic shock with circulatory failure (MAP ${exactMapStr} mmHg, lactate ${lacDisplay}) warrants broad empiric coverage while culture results are pending.
      - **Initial Empiric Regimen:**
-       - Start empiric antipseudomonal $\beta$-lactam (e.g. Cefepime or Piperacillin-Tazobactam) PLUS MRSA coverage (Vancomycin).
-     - ${hasCkd ? `**MANDATORY RENAL DOSING ADJUSTMENT (CKD Stage ${ckdStage || "4"}, eGFR ${egfr || "24"} mL/min/1.73m², Cr ${crDisplay}):** Administer standard weight-based initial loading doses to rapidly establish therapeutic tissue concentrations (e.g. Vancomycin 20–25 mg/kg IV loading based on actual body weight). All subsequent maintenance doses must be **aggressively renally adjusted** (e.g. Cefepime 1 g IV q24h post-loading or renally adjusted Pip-Tazo) with therapeutic drug monitoring (Vancomycin AUC/MIC or trough monitoring) to prevent cumulative nephrotoxicity. Plan mandatory antimicrobial de-escalation at 48–72 hours guided by blood cultures, sputum cultures, and institutional antibiograms.` : (creatinine !== undefined ? `**MANDATORY RENAL DOSING ADJUSTMENT (Acute Kidney Injury, Cr ${crDisplay}):** Administer standard initial loading doses for rapid therapeutic levels; adjust subsequent maintenance doses for acute renal impairment with therapeutic drug monitoring.` : "Adjust subsequent maintenance doses based on organ function and de-escalate within 48–72 hours based on microbiology results.")}
+       - ${hasUrinaryFocus ? "For suspected complicated pyelonephritis / urosepsis in septic shock, initiate empiric broad-spectrum gram-negative coverage (e.g. Cefepime, Piperacillin-Tazobactam, or Meropenem) plus MRSA coverage only if clinically indicated." : "Start empiric broad-spectrum IV β-lactam (e.g. Cefepime or Piperacillin-Tazobactam) with MRSA coverage if indicated by shock severity or MDR risk factors."}
+     - ${hasCkd ? `**MANDATORY RENAL DOSING ADJUSTMENT (CKD Stage ${ckdStage || "4"}, eGFR ${egfr || "24"} mL/min/1.73m², Cr ${crDisplay}):** Administer standard weight-based initial loading doses to rapidly establish therapeutic tissue concentrations (e.g. Vancomycin 20–25 mg/kg IV loading based on actual body weight). All subsequent maintenance doses must be **aggressively renally adjusted** (e.g. Cefepime 1 g IV q24h post-loading or renally adjusted Pip-Tazo) with therapeutic drug monitoring (Vancomycin AUC/MIC or trough monitoring) to prevent cumulative nephrotoxicity. Plan mandatory antimicrobial de-escalation at 48–72 hours guided by blood cultures, sputum cultures, and institutional antibiograms.` : (creatinine !== undefined ? `**MANDATORY RENAL DOSING ADJUSTMENT (Acute Kidney Injury, Cr ${crDisplay}):** Administer standard initial loading doses for rapid therapeutic levels; adjust subsequent maintenance doses for acute renal impairment and de-escalate within 48–72 hours based on microbiology results.` : "Adjust subsequent maintenance doses based on organ function and de-escalate within 48–72 hours based on microbiology results.")}
 
 5. **Bedside Imaging Adaptation:**
    - **Perform Bedside Portable Chest X-Ray (CXR):** In an unstable shock patient, standing PA/lateral films in radiology are unsafe. Bedside Portable Chest X-Ray screens for lobar consolidation, pneumothorax, or pulmonary edema at the bedside.
 
 6. **Stat Laboratory Diagnostics:**
-   - Venous or arterial blood gas with **serum lactate** (quantify tissue hypoperfusion). Re-measure lactate within 2–4 hours.
+   - Venous or arterial blood gas with **serum lactate** (quantify tissue hypoperfusion) and arterial $\text{PaCO}_2$. Re-measure lactate within 2–4 hours.
    - CBC with differential (leukocytosis, left shift, thrombocytopenia).
-   - Comprehensive metabolic panel (creatinine, BUN, electrolytes, AST, ALT, total bilirubin).
+   - Comprehensive metabolic panel (creatinine, **BUN**, **serum chloride**, electrolytes, AST, ALT, total bilirubin).
    - Coagulation panel (PT/INR, PTT) and Urinalysis with urine culture.
 
 ---
@@ -662,8 +682,8 @@ export function generateIsolatedSepticShockDossier(
 
 - **Oxygen Saturation (SpO2):** ${spo2 !== undefined ? `Documented on intake (${spo2}% on room air); continue continuous pulse oximetry monitoring.` : "Missing in intake; measure immediately by pulse oximetry."}
 - **Serum Blood Urea Nitrogen (BUN) / Urea:** Missing in intake; required to complete definitive CURB-65 calculation.
-- **Arterial / Venous Blood Gas (ABG/VBG):** Essential to definitively diagnose metabolic acidosis, compensatory respiratory status, and oxygenation index.
-- **Prior Microbiology Records:** Retrieve culture results and sensitivities from hospitalization 45 days ago to guide targeted antimicrobial de-escalation.
+- **Arterial / Venous Blood Gas (ABG/VBG):** Essential to definitively diagnose metabolic acidosis, compensatory respiratory status ($\text{PaCO}_2$), and oxygenation index.
+${hospitalizationMatch ? `- **Prior Microbiology Records:** Retrieve culture results and sensitivities from documented prior hospitalization to guide targeted antimicrobial de-escalation.` : `- **Prior Microbiology & Exposure History:** None documented in intake; review external records if available.`}
 - **Documented Drug Allergies:** Verify prior to subsequent antimicrobial dosing.
 - **Serum Creatinine & Urine Output:** Evaluates acute kidney injury; place Foley catheter for hourly output tracking.
 

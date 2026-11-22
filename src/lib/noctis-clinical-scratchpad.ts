@@ -209,8 +209,11 @@ export function buildClinicalScratchpad(
   const spo2Match = q.match(/\b(?:spo2|o2\s*sat(?:uration)?)\s*[:=]?\s*(\d{2,3})%?(?:\s*on\s*([^,.\n]+))?\b/i) ||
     q.match(/\b(\d{2,3})%\s*(?:on\s*[^,.\n]+)?\b/i);
   const oxygenSaturationPct = spo2Match ? parseInt(spo2Match[1], 10) : null;
-  const oxygenSaturation = spo2Match
-    ? (spo2Match[0].includes("%") ? spo2Match[0] : `${spo2Match[1]}%`)
+  const rawSpo2Clean = spo2Match
+    ? spo2Match[0].replace(/^(?:spo2|o2\s*sat(?:uration)?)\s*[:=]?\s*/i, "").trim()
+    : null;
+  const oxygenSaturation = rawSpo2Clean
+    ? (rawSpo2Clean.includes("%") ? rawSpo2Clean : `${spo2Match![1]}%`)
     : null;
 
   const tempMatch = q.match(/\b(?:temp(?:erature)?)\s*[:=]?\s*(\d{2}\.?\d?)\s*°?C\b/i) ||
@@ -866,10 +869,16 @@ export function validateCrossSectionClinicalConsistency(
         issue: `Serum digoxin was measured in intake (${scratchpad.labs.digoxinNgMl} ng/mL), but was falsely marked as unmeasured in the dossier.`,
       });
     }
-    const digMatches = [...dossierText.matchAll(/\b(?:digoxin|dig)\s*(?:level|concentration)?\s*(?:is|of|=|:)?\s*(\d+(?:\.\d+)?)\s*(?:ng\/ml)?\b/gi)];
+    const digMatches = [
+      ...dossierText.matchAll(
+        /\b(?:digoxin|dig)[ \t]*(?:level|concentration)?[ \t]*(?:(?:is|of)[ \t]+|[=:][ \t]*)?(\d+(?:\.\d+)?)[ \t]*(?:ng\/ml)?\b/gi
+      ),
+    ];
     for (const m of digMatches) {
       const val = parseFloat(m[1]);
       if (val === 0.125 || val === 0.25) continue; // skip pill doses
+      const after = dossierText.slice((m.index ?? 0) + m[0].length, (m.index ?? 0) + m[0].length + 12);
+      if (/^[ \t]*(?:mg|mcg)\b/i.test(after)) continue; // skip oral dose strings like 0.125 mg
       const ctx = dossierText.slice(Math.max(0, (m.index ?? 0) - 10), Math.min(dossierText.length, (m.index ?? 0) + m[0].length + 20));
       if (ctx.includes("%") || /cleared|clearance|renally|elimination/i.test(ctx)) continue;
       if (Math.abs(val - scratchpad.labs.digoxinNgMl) > 0.1) {
@@ -1070,6 +1079,68 @@ export function validateCrossSectionClinicalConsistency(
         issue: `Bicarbonate is documented as ${scratchpad.labs.bicarbonateMeqL} mmol/L, but dossier claims Winter's formula cannot be computed without measured bicarbonate.`,
       });
     }
+  }
+
+  // Check 15: Fabricated Unmeasured Blood Glucose (Zero Fabrication Gate)
+  if (scratchpad.labs.glucoseMgDl === null) {
+    if (/\b(?:blood\s+glucose|serum\s+glucose)\s*:\s*\d{2,3}\s*mg\/dl\b/i.test(dossierText)) {
+      violations.push({
+        item: "Fabricated Blood Glucose Value",
+        sectionA: "Documented Intake (Blood Glucose unmeasured / not provided)",
+        sectionB: "Dossier SOAP / Objective Narrative",
+        issue: "Dossier reports a specific numeric blood glucose value despite blood glucose being unmeasured in intake.",
+      });
+    }
+  }
+
+  // Check 16: Fabricated Outpatient Home Medication
+  const monitoredHomeMeds = [
+    "Lisinopril",
+    "Warfarin",
+    "Apixaban",
+    "Amiodarone",
+    "Metformin",
+    "Spironolactone",
+    "Carvedilol",
+  ];
+  for (const med of monitoredHomeMeds) {
+    const inInput = new RegExp(`\\b${med}\\b`, "i").test(scratchpad.rawInputText);
+    if (!inInput) {
+      const fabricatedHomeRegimenRegex = new RegExp(
+        `(?:^\\s*\\d+\\.\\s*${med}\\b|\\|\\s*\\*\\*${med}\\*\\*\\s*\\||\\bwithhold[^.\\n]{0,60}(?:outpatient|home)[^.\\n]{0,120}\\b${med}\\b)`,
+        "im"
+      );
+      if (fabricatedHomeRegimenRegex.test(dossierText)) {
+        violations.push({
+          item: `Fabricated Outpatient Medication (${med})`,
+          sectionA: `Documented Intake (${med} not prescribed or mentioned)`,
+          sectionB: "Dossier Home Medications / Plan",
+          issue: `Main report fabricates outpatient prescription or withholding directive for ${med}, which is absent from intake.`,
+        });
+      }
+    }
+  }
+
+  // Check 17: Fabricated HPI Events (Watery Diarrhea / UTI)
+  if (!/\bdiarrhea\b/i.test(scratchpad.rawInputText) && /\bwatery\s+diarrhea\b/i.test(dossierText)) {
+    violations.push({
+      item: "Fabricated HPI (Watery Diarrhea)",
+      sectionA: "Documented Intake (No diarrhea documented)",
+      sectionB: "Dossier History of Present Illness",
+      issue: "Main report invents 'watery diarrhea' history that was never documented in intake.",
+    });
+  }
+
+  if (
+    !/\b(?:uti|urinary\s+tract\s+infection|flank\s+pain|pyelonephritis)\b/i.test(scratchpad.rawInputText) &&
+    /\b(?:recent\s+uti\s+on\s+tmp-smx|suspected\s+urinary\s+tract\s+infection)\b/i.test(dossierText)
+  ) {
+    violations.push({
+      item: "Fabricated HPI (Suspected UTI)",
+      sectionA: "Documented Intake (No UTI documented)",
+      sectionB: "Dossier History of Present Illness",
+      issue: "Main report invents recent urinary tract infection history without documentation in intake.",
+    });
   }
 
   return {

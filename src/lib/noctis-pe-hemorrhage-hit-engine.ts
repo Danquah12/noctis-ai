@@ -237,7 +237,7 @@ $$\\text{PaCO}_{2,\\text{expected}} = 1.5 \\times [\\text{HCO}_3^-] + 8 \\pm 2 =
   7. AKI KDIGO Stage 1 (Cr ratio 1.93x) and severe lactic acidosis (8.4 mmol/L) with metformin exposure.
 - **Plan:**
   1. Transfer to Resuscitation Bay; initiate Norepinephrine to MAP ≥ 65 mmHg; avoid fluid boluses.
-  2. STRICTLY WITHHOLD systemic thrombolytics, heparin, LMWH, warfarin, and antiplatelet agents.
+  2. STRICTLY PROHIBIT / DO NOT INITIATE systemic thrombolytics, heparin, LMWH, or warfarin; HOLD outpatient apixaban and antiplatelet agents.
   3. Transfuse pRBCs (target Hb 7–8 g/dL); reverse Apixaban with Andexanet alfa or 4F-PCC; hold routine platelet transfusions.
   4. Perform STAT Non-Contrast Brain CT.
   5. Mobilize PERT / Interventional team for emergent Catheter-Directed Mechanical Thrombectomy.

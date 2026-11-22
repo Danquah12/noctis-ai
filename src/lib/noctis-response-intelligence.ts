@@ -1143,6 +1143,27 @@ export function runFollowUpIntelligence(
     return adaptSpecialistEngineOutput(currentQuestion, markdown, "NOCTIS-COUNCIL-001");
   }
 
+  // 00-clin-urgent. Top-Priority Acute Clinical Patient Encounter Pre-Router
+  // Prevents non-clinical engines (Legal, Cyber, Digital Twin, etc.) from hijacking clinical ICU/ED intakes
+  const isExplicitClinicalEncounter =
+    !/\b(hipaa|ephi|attorney|lawyer|litigat\w*|far\s+part|cve-\d{4}|ransomware|war\s+room|merkle\s+root|air-gap|scif|holodeck|post-quantum|zkp|steganograph\w*|cmmc|fedramp|oscal|honeytoken)\b/i.test(
+      currentQuestion
+    ) &&
+    (/\[Patient Diagnostic Intake Encounter\]/i.test(currentQuestion) ||
+      /\bNOCTIS-ICU-CRIT-\d+\b/i.test(currentQuestion) ||
+      /\bEncounter(?:\s+ID)?:\s*NPDE-[A-Z0-9-]+\b/i.test(currentQuestion) ||
+      (/\b(\d{1,3}-year-old|patient\b|presents?\s+to\s+the\s+(?:ed|emergency)|chief\s+complaint)\b/i.test(
+        currentQuestion
+      ) &&
+        /\b(?:bp|blood\s+pressure)\s*[:=]?\s*\d{2,3}\s*\/\s*\d{2,3}\b/i.test(currentQuestion)));
+
+  if (isExplicitClinicalEncounter) {
+    const urgentClinDiag = handleNaturalPatientDiagnosticQuery(currentQuestion);
+    if (urgentClinDiag) {
+      return urgentClinDiag;
+    }
+  }
+
   // 00-twin. Noctis Digital Twin & Topological Attack-Graph Simulator (NOCTIS-TWIN-001)
   const twinResponse = handleNaturalDigitalTwinQuery(currentQuestion);
   if (twinResponse) {

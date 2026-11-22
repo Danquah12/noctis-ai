@@ -401,7 +401,16 @@ export function isLegalQuery(question: string): boolean {
   const q = question.trim();
   if (!q) return false;
 
-  return /\b(legal\b|lawyer\b|attorney\b|jurisprudence|statut\w*|breach|contract|litigat\w*|pleading\b|motion\b|summary\s+judgment|evidentiary|documentary\s+evidence|burden\s+of\s+proof|hipaa|security\s+rule|ephi|administrative\s+procedure\s+act|\bapa\b|negligence|gross\s+negligence|recklessness|intentional\s+misconduct|tort\s+law|far\s+part\s*\d+|federal\s+procurement|irac\b|creac\b|legal\s+memorandum|legal\s+opinion|noctis\s+legal|maryland\s+law|choice\s+of\s+law|personal\s+jurisdiction)\b/i.test(q);
+  // Exclude explicit clinical intake / ICU encounters unless explicitly requesting legal counsel/litigation/HIPAA
+  const isClinicalIntake =
+    /\[Patient Diagnostic Intake Encounter\]|\bNOCTIS-ICU-CRIT-\d+\b|\bEncounter(?:\s+ID)?:\s*NPDE-/i.test(q);
+  const hasExplicitLegalRequest =
+    /\b(hipaa|ephi|attorney|lawyer|litigat\w*|irac|creac|malpractice|legal\s+(?:memorandum|opinion|advisory)|far\s+part)\b/i.test(q);
+  if (isClinicalIntake && !hasExplicitLegalRequest) {
+    return false;
+  }
+
+  return /\b(legal\b|lawyer\b|attorney\b|jurisprudence|statut\w*|breach|contract|litigat\w*|pleading\b|(?:file[ds]?\s+a\s+motion|motion\s+(?:to\s+dismiss|for\s+summary\s+judgment|in\s+limine|to\s+compel|alleging|for\s+sanctions))|summary\s+judgment|evidentiary|documentary\s+evidence|burden\s+of\s+proof|hipaa|security\s+rule|ephi|administrative\s+procedure\s+act|\bapa\b|negligence|gross\s+negligence|recklessness|intentional\s+misconduct|tort\s+law|far\s+part\s*\d+|federal\s+procurement|irac\b|creac\b|legal\s+memorandum|legal\s+opinion|noctis\s+legal|maryland\s+law|choice\s+of\s+law|personal\s+jurisdiction)\b/i.test(q);
 }
 
 export function handleNaturalLegalQuery(question: string): string | null {
