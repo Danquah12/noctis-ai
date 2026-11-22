@@ -8,6 +8,7 @@
  */
 
 import rmfDbJson from "../data/rmf-deterministic-db.json" with { type: "json" };
+import { sha256Sync } from "./universal-crypto.ts";
 import {
   evaluateFips199SecurityCategorization,
   type Fips199Result,
@@ -28,6 +29,64 @@ import {
   createExplanationBundle,
   type ExplanationBundle,
 } from "./rmf-v2/graph-and-trace.ts";
+
+export interface FedrampProfileMeta {
+  id: string;
+  title: string;
+  version: string;
+  published: string;
+  lastModified?: string;
+  oscalVersion: string;
+  url: string;
+  sha256: string;
+  bytes: number;
+  includedControlsCount: number;
+  setParametersCount: number;
+}
+
+export interface FedrampControlBaselineData {
+  params: { id: string; value: string }[];
+  additionalRequirements: string[];
+  additionalGuidance: string[];
+}
+
+export interface AuthorityPolicyRecord {
+  id: string;
+  title: string;
+  authorityType: string;
+  statutory: boolean;
+  document: string;
+  version: string;
+  section: string;
+  url: string;
+  effectiveDate: string;
+  scope: string;
+  exceptions: string;
+}
+
+export interface AuthoritativeControlRecord {
+  control_id: string;
+  enhancement: string | null;
+  baseline: string;
+  baseline_version: string;
+  requirement_text: string;
+  organization_defined_parameters: { param_id: string; label: string; value: string }[];
+  additional_fedramp_requirements: string[];
+  additional_fedramp_guidance: string[];
+  authority: {
+    document: string;
+    version: string;
+    section: string;
+    url: string;
+    effective_date: string;
+    scope: string;
+    exceptions: string;
+    sha256: string;
+  };
+  assessment_methods: ("EXAMINE" | "INTERVIEW" | "TEST")[];
+  evidence_status: "NOT_VERIFIED" | "SCENARIO_STIPULATED" | "VERIFIED";
+  determination: "PENDING" | "PASS" | "FAIL" | "INSUFFICIENT_EVIDENCE" | "NOT_APPLICABLE" | "MANUAL_REVIEW_REQUIRED";
+}
 
 export interface NormalizedRmfControl {
   id: string;
@@ -73,11 +132,14 @@ export interface RmfGroundingPacket {
   targetBaseline: string;
   manifest: {
     nistVersion: string;
+    fedrampVersion?: string;
+    fedrampPublished?: string;
     dbSha256: string;
     counts: Record<string, number>;
   };
   rmfStepsReferenced: { step: number; title: string; pub: string; deliverables: string[]; summary: string }[];
   controls: NormalizedRmfControl[];
+  authoritativeRecords: AuthoritativeControlRecord[];
   cuiRequirements: Normalized800171Req[];
   csfItems: NormalizedCsf2Item[];
   attackByControl: Record<string, AttackTechniqueRef[]>;
@@ -101,6 +163,8 @@ interface RawRmfDb {
   manifest: {
     schemaVersion: string;
     nistVersion: string;
+    fedrampVersion?: string;
+    fedrampPublished?: string;
     generatedAt: string;
     dbSha256: string;
     counts: Record<string, number>;
@@ -109,6 +173,9 @@ interface RawRmfDb {
   rmfSteps: { step: number; code: string; title: string; pub: string; roles: string[]; deliverables: string[]; summary: string }[];
   fips199Types: { code: string; name: string; c: string; i: string; a: string; notes: string }[];
   fedrampOdps: Record<string, { low: string; moderate: string; high: string; sla: string }>;
+  fedrampProfiles?: { low: FedrampProfileMeta; moderate: FedrampProfileMeta; high: FedrampProfileMeta };
+  fedrampControlRegistry?: Record<string, { low?: FedrampControlBaselineData; moderate?: FedrampControlBaselineData; high?: FedrampControlBaselineData }>;
+  authorityPolicies?: Record<string, AuthorityPolicyRecord>;
   controls: Record<string, NormalizedRmfControl>;
   cui800171: Record<string, Normalized800171Req>;
   cuiAliasMap: Record<string, string>;
@@ -203,6 +270,72 @@ export function lookupAttackControls(techniqueId: string): { id: string; name: s
   const tid = techniqueId.trim().toUpperCase();
   const hit = DB.controlsByAttack[tid];
   return hit ? { id: tid, ...hit } : null;
+}
+
+export function getAuthorityPolicy(policyKey: string): AuthorityPolicyRecord | null {
+  return DB.authorityPolicies?.[policyKey] ?? null;
+}
+
+export function getAuthoritativeControlRecord(
+  controlId: string,
+  baseline: "LOW" | "MODERATE" | "HIGH" = "HIGH",
+  opts: {
+    evidenceStatus?: AuthoritativeControlRecord["evidence_status"];
+    determination?: AuthoritativeControlRecord["determination"];
+  } = {},
+): AuthoritativeControlRecord | null {
+  const ctrl = lookupRmfControl(controlId);
+  if (!ctrl) return null;
+
+  const baseKey = baseline.toLowerCase() as "low" | "moderate" | "high";
+  const profileMeta = DB.fedrampProfiles?.[baseKey];
+  const frBaseline = DB.fedrampControlRegistry?.[ctrl.id]?.[baseKey];
+
+  const paramLabelById = new Map<string, string>();
+  for (const p of ctrl.params || []) {
+    paramLabelById.set(p.id.toLowerCase(), p.label);
+  }
+
+  const odps: { param_id: string; label: string; value: string }[] = [];
+  for (const p of frBaseline?.params || []) {
+    odps.push({
+      param_id: p.id,
+      label: paramLabelById.get(p.id.toLowerCase()) || ctrl.title,
+      value: p.value,
+    });
+  }
+
+  const methods: ("EXAMINE" | "INTERVIEW" | "TEST")[] = [];
+  if (ctrl.methods?.examine) methods.push("EXAMINE");
+  if (ctrl.methods?.interview) methods.push("INTERVIEW");
+  if (ctrl.methods?.test) methods.push("TEST");
+  if (methods.length === 0) methods.push("EXAMINE", "INTERVIEW", "TEST");
+
+  return {
+    control_id: ctrl.parentId || ctrl.id,
+    enhancement: ctrl.parentId ? ctrl.id : null,
+    baseline: `FedRAMP Rev 5 ${baseline[0]}${baseline.slice(1).toLowerCase()}`,
+    baseline_version: profileMeta?.version || DB.manifest.fedrampVersion || "fedramp2.1.0-oscal1.0.4",
+    requirement_text: ctrl.statement,
+    organization_defined_parameters: odps,
+    additional_fedramp_requirements: frBaseline?.additionalRequirements || [],
+    additional_fedramp_guidance: frBaseline?.additionalGuidance || [],
+    authority: {
+      document: profileMeta?.title || `FedRAMP Rev 5 ${baseline} Baseline (OSCAL Profile)`,
+      version: profileMeta?.version || DB.manifest.fedrampVersion || "fedramp2.1.0-oscal1.0.4",
+      section: `${ctrl.id} (${ctrl.title})${odps.length > 0 ? ` — Params: ${odps.map((o) => o.param_id).join(", ")}` : ""}`,
+      url: profileMeta?.url || "https://www.fedramp.gov/baselines/",
+      effective_date: (profileMeta?.published || DB.manifest.fedrampPublished || "2024-09-24").slice(0, 10),
+      scope: `${ctrl.familyTitle} — Applicable to FedRAMP ${baseline} baseline authorizations; NIST SP 800-53 Rev. ${DB.manifest.nistVersion}.`,
+      exceptions:
+        frBaseline?.additionalGuidance?.[0] ||
+        "Subject to Authorizing Official (Agency AO / JAB) tailoring, approved Deviation Requests, and applicable overlays (e.g., DoD CC SRG).",
+      sha256: profileMeta?.sha256 || DB.manifest.dbSha256,
+    },
+    assessment_methods: methods,
+    evidence_status: opts.evidenceStatus || "NOT_VERIFIED",
+    determination: opts.determination || "PENDING",
+  };
 }
 
 function extract80053IdsFromText(text: string): string[] {
@@ -382,6 +515,22 @@ export function buildRmfGroundingPacket(question: string): RmfGroundingPacket {
     }
   }
 
+  // Pull directly governing FedRAMP sub-controls/enhancements for core multi-part controls
+  const ensureControl = (id: string) => {
+    const c = DB.controls[id];
+    if (c && !includedIds.has(c.id)) {
+      includedIds.add(c.id);
+      controls.push(c);
+    }
+  };
+  if (includedIds.has("AC-2") && /\b(?:fedramp|terminat\w*|disabl\w*|inactiv\w*|deprovision\w*|active\s+for)\b/i.test(q)) {
+    ensureControl("AC-2(3)");
+  }
+  if (includedIds.has("IA-2") && /\b(?:fedramp|mfa|ssh|bastion|privileged|hardware|phishing|key)\b/i.test(q)) {
+    ensureControl("IA-2(1)");
+    ensureControl("IA-2(6)");
+  }
+
   // Add top keyword-matched controls up to 8 total
   const needed = Math.max(0, 8 - controls.length);
   if (needed > 0) {
@@ -451,30 +600,79 @@ export function buildRmfGroundingPacket(question: string): RmfGroundingPacket {
   const csfItems = searchCsf2ForControls(q, controls);
   const fips199 = parseFips199FromQuestion(q);
   const ruleEvaluations = extractAndEvaluateRmfRulesFromText(q);
+  const baselineKey: "LOW" | "MODERATE" | "HIGH" = /\bmoderate\b/i.test(targetBaseline)
+    ? "MODERATE"
+    : /\blow\b/i.test(targetBaseline)
+    ? "LOW"
+    : "HIGH";
+  const ruleByControl = new Map<string, RmfRuleEvaluationResult>();
+  for (const r of ruleEvaluations) {
+    ruleByControl.set(r.controlId, r);
+  }
+
+  const authoritativeRecords: AuthoritativeControlRecord[] = [];
+  for (const c of controls) {
+    if (c.withdrawn) continue;
+    const matchedRule = ruleByControl.get(c.id) || (c.parentId ? ruleByControl.get(c.parentId) : undefined);
+    const rec = getAuthoritativeControlRecord(c.id, baselineKey, {
+      evidenceStatus: matchedRule
+        ? matchedRule.formalEvidenceStatus === "VERIFIED_ARTIFACTS_PROVIDED"
+          ? "VERIFIED"
+          : matchedRule.assessmentMode === "SCENARIO_ASSUMPTION"
+          ? "SCENARIO_STIPULATED"
+          : "NOT_VERIFIED"
+        : "NOT_VERIFIED",
+      determination: matchedRule ? matchedRule.verdict : "PENDING",
+    });
+    if (rec) authoritativeRecords.push(rec);
+  }
 
   // Format immutable Knowledge Packet
   const lines: string[] = [];
-  lines.push(`### Authoritative RMF Knowledge Packet (NIST SP 800-53 Rev. ${DB.manifest.nistVersion} · Option B Federal + FedRAMP + ConMon)`);
+  lines.push(
+    `### Authoritative RMF Knowledge Packet (NIST SP 800-53 Rev. ${DB.manifest.nistVersion} · Official FedRAMP Rev. 5 OSCAL ${DB.manifest.fedrampVersion || "fedramp2.1.0-oscal1.0.4"})`,
+  );
   lines.push(`- **Target Scope:** ${targetBaseline}`);
-  lines.push(`- **Catalog Totals:** ${DB.manifest.counts.totalControlsAndEnhancements} SP 800-53 controls/enhancements, ${DB.manifest.counts.cui800171Requirements} SP 800-171 Rev. 3 requirements, ${DB.manifest.counts.csf2Items} CSF 2.0 items, ${DB.manifest.counts.mitreAttackEdges} MITRE ATT&CK v16.1 edges.`);
+  lines.push(
+    `- **Catalog Totals:** ${DB.manifest.counts.totalControlsAndEnhancements} SP 800-53 controls/enhancements, ${DB.manifest.counts.fedrampControlRegistryCount || 0} FedRAMP OSCAL ODP/altered controls, ${DB.manifest.counts.cui800171Requirements} SP 800-171 Rev. 3 requirements, ${DB.manifest.counts.csf2Items} CSF 2.0 items, ${DB.manifest.counts.mitreAttackEdges} MITRE ATT&CK v16.1 edges.`,
+  );
   lines.push(`- **DB Provenance SHA-256:** \`${DB.manifest.dbSha256}\`\n`);
 
   if (ruleEvaluations.length > 0) {
     lines.push("### 1. IMMUTABLE DETERMINISTIC RULE ENGINE VERDICTS (DO NOT CONTRADICT)");
     for (const r of ruleEvaluations) {
-      lines.push(`- **Rule ${r.ruleId} (v${r.ruleVersion}) [${r.controlId} — ${r.controlTitle}]: VERDICT = \`${r.verdict}\`**`);
+      lines.push(
+        `- **Rule ${r.ruleId} (v${r.ruleVersion}) [${r.controlId} — ${r.controlTitle}]: SCENARIO VERDICT = \`${r.verdict}\` | ASSESSMENT MODE = \`${r.assessmentMode || "FORMAL_EVIDENCE_AUDIT"}\` | FORMAL AUDIT DETERMINATION = \`${r.formalDetermination || r.verdict}\`**`,
+      );
       lines.push(`  - Summary: ${r.summary}`);
       lines.push(`  - Threshold: ${r.threshold}`);
       lines.push(`  - Variance: ${r.variance}`);
       lines.push(`  - Audit Hash: \`${r.auditHash}\``);
+      if (r.authorityCitations?.length) {
+        lines.push(
+          `  - Authoritative Basis: ${r.authorityCitations
+            .map((a) => `${a.document} (${a.version}, effective ${a.effectiveDate}) ${a.section}${a.parameterId ? ` [${a.parameterId}: ${a.parameterValue || ""}]` : ""} — Exceptions: ${a.exceptions}`)
+            .join(" || ")}`,
+        );
+      }
+      if (r.authPathAssessment) {
+        lines.push(
+          `  - End-to-End Authentication Path (${r.authPathAssessment.evaluatedPath}): Same-Domain Exempt Applies=${r.authPathAssessment.sameDomainGuidanceApplies}; Direct Bypass Risk=${r.authPathAssessment.directBypassRisk}; Architectural Checks=[${r.authPathAssessment.architecturalVerificationRequired.join(" | ")}]`,
+        );
+      }
       if (r.missingEvidence.length > 0) {
-        lines.push(`  - Missing Evidence Required: ${r.missingEvidence.join("; ")}`);
+        lines.push(`  - Evidence Required for Formal Assessor Determination: ${r.missingEvidence.join("; ")}`);
       }
       if (r.draftFinding) {
         lines.push(`  - Draft Finding [${r.draftFinding.severity}, ${r.draftFinding.objectiveId}]: ${r.draftFinding.title} — ${r.draftFinding.impactSummary}`);
       }
       if (r.draftPoam) {
-        lines.push(`  - Draft POA&M (${r.draftPoam.poamId}, SLA: ${r.draftPoam.slaDays} days): ${r.draftPoam.weaknessName}. Plan: ${r.draftPoam.remediationPlan}. Required Proof: ${r.draftPoam.requiredTechnicalProof}`);
+        lines.push(
+          `  - Draft POA&M (${r.draftPoam.poamId}, Target Timeline: ${r.draftPoam.slaDays} days — Program Guidance, NOT Statutory): ${r.draftPoam.weaknessName}. Plan: ${r.draftPoam.remediationPlan}. Required Proof: ${r.draftPoam.requiredTechnicalProof}`,
+        );
+      }
+      if (r.poamAuthorityNote) {
+        lines.push(`  - POA&M Authority Note: ${r.poamAuthorityNote}`);
       }
     }
     lines.push("");
@@ -494,7 +692,8 @@ export function buildRmfGroundingPacket(question: string): RmfGroundingPacket {
   }
 
   if (controls.length > 0) {
-    lines.push("### 3. AUTHORITATIVE NIST SP 800-53 REV. 5.2.0 + SP 800-53A + FEDRAMP ODPs");
+    lines.push("### 3. AUTHORITATIVE NIST SP 800-53 REV. 5.2.0 + SP 800-53A + OFFICIAL FEDRAMP REV. 5 OSCAL REGISTRY");
+    const authRecMap = new Map(authoritativeRecords.map((rec) => [rec.enhancement || rec.control_id, rec]));
     for (const c of controls) {
       if (c.withdrawn) {
         lines.push(
@@ -505,8 +704,24 @@ export function buildRmfGroundingPacket(question: string): RmfGroundingPacket {
       lines.push(`- **${c.id} — ${c.title}** (Family: ${c.familyTitle}; Baselines: ${c.baselines.length > 0 ? c.baselines.join(", ") : "Optional / Tailored Enhancement"})`);
       if (c.statement) lines.push(`  - Requirement: ${c.statement}`);
       if (c.guidance) lines.push(`  - Guidance: ${c.guidance}`);
-      if (c.fedrampOdp) {
-        lines.push(`  - FedRAMP High ODP: ${c.fedrampOdp.high} (POA&M SLA: ${c.fedrampOdp.sla})`);
+      const authRec = authRecMap.get(c.id);
+      if (authRec) {
+        lines.push(
+          `  - Official Authority Metadata: Document=\`${authRec.authority.document}\` | Version=\`${authRec.authority.version}\` | Effective=\`${authRec.authority.effective_date}\` | SHA-256=\`${authRec.authority.sha256.slice(0, 12)}\` | URL=${authRec.authority.url}`,
+        );
+        if (authRec.organization_defined_parameters.length > 0) {
+          lines.push(
+            `  - Official FedRAMP ${baselineKey} OSCAL ODPs: ${authRec.organization_defined_parameters.map((p) => `\`${p.param_id}\` (${p.label}) = "${p.value}"`).join(" ; ")}`,
+          );
+        }
+        if (authRec.additional_fedramp_requirements.length > 0) {
+          lines.push(`  - Additional FedRAMP Requirements: ${authRec.additional_fedramp_requirements.join(" | ")}`);
+        }
+        if (authRec.additional_fedramp_guidance.length > 0) {
+          lines.push(`  - Additional FedRAMP Guidance / Exceptions: ${authRec.additional_fedramp_guidance.join(" | ")}`);
+        }
+      } else if (c.fedrampOdp) {
+        lines.push(`  - FedRAMP ${baselineKey} ODP Summary: ${c.fedrampOdp[baselineKey.toLowerCase() as "low" | "moderate" | "high"]} (Timeline Scope: ${c.fedrampOdp.sla})`);
       }
       if (c.objectives.length > 0) {
         lines.push(`  - SP 800-53A Determination Objectives: ${c.objectives.join(" | ")}`);
@@ -519,6 +734,18 @@ export function buildRmfGroundingPacket(question: string): RmfGroundingPacket {
       } else if (relatedAttackHints[c.id]?.length) {
         lines.push(`  - ATT&CK Note: No direct CTID v16.1 mitigation edge on ${c.id}; related controls (${[...new Set(relatedAttackHints[c.id]!.map((h) => h.viaControl))].join(", ")}) mitigate: ${relatedAttackHints[c.id]!.map((h) => `${h.viaControl} -> ${h.id} (${h.name})`).join(", ")}`);
       }
+    }
+    const poamPol = DB.authorityPolicies?.FEDRAMP_POAM_TIMELINES;
+    const kevPol = DB.authorityPolicies?.CISA_BOD_22_01;
+    if (poamPol) {
+      lines.push(
+        `- **Authority Policy [FEDRAMP_POAM_TIMELINES]:** ${poamPol.document} (version \`${poamPol.version}\`, effective \`${poamPol.effectiveDate}\`). Scope: ${poamPol.scope} Exceptions: ${poamPol.exceptions}`,
+      );
+    }
+    if (kevPol) {
+      lines.push(
+        `- **Authority Policy [CISA_BOD_22_01]:** ${kevPol.document} (effective \`${kevPol.effectiveDate}\`). Scope: ${kevPol.scope} Exceptions: ${kevPol.exceptions}`,
+      );
     }
     lines.push("");
   }
@@ -634,23 +861,55 @@ export function buildRmfGroundingPacket(question: string): RmfGroundingPacket {
   let explanationBundle: ExplanationBundle | null = null;
   if (ruleEvaluations.length > 0) {
     const primaryRule = ruleEvaluations[0]!;
+    const combinedAuditSha =
+      ruleEvaluations.length === 1
+        ? primaryRule.auditHash
+        : sha256Sync(ruleEvaluations.map((r) => `${r.ruleId}:${r.auditHash}`).join("|"));
+    const traceRuleItems = ruleEvaluations.map((r) => ({
+      ruleId: r.ruleId,
+      ruleVersion: r.ruleVersion,
+      controlId: r.controlId,
+      assessmentMode: r.assessmentMode || "FORMAL_EVIDENCE_AUDIT",
+      verdict: r.verdict,
+      formalDetermination: String(r.formalDetermination || r.verdict),
+      variance: r.variance,
+      auditHash: r.auditHash,
+      observedFacts: r.observedFacts,
+      authorityDocs: (r.authorityCitations || []).map(
+        (a) => `${a.document} (${a.version}) ${a.section}${a.parameterId ? ` [${a.parameterId}]` : ""}`,
+      ),
+    }));
     explanationBundle = createExplanationBundle({
       tenantId: "chat-session",
-      evaluationRef: primaryRule.controlId,
+      evaluationRef: ruleEvaluations.map((r) => r.controlId).join("+"),
       nistVersion: DB.manifest.nistVersion,
       dbSha256: DB.manifest.dbSha256,
-      ruleId: primaryRule.ruleId,
-      ruleVersion: primaryRule.ruleVersion,
-      evidenceSha256: primaryRule.auditHash,
-      observedFacts: primaryRule.observedFacts,
-      deterministicClassifications: ruleEvaluations.map((r) => `${r.controlId} (${r.ruleId}): ${r.verdict} — ${r.variance}`),
+      ruleId: ruleEvaluations.map((r) => r.ruleId).join("+"),
+      ruleVersion: ruleEvaluations.map((r) => r.ruleVersion).join("+"),
+      evidenceSha256: combinedAuditSha,
+      observedFacts:
+        ruleEvaluations.length === 1
+          ? primaryRule.observedFacts
+          : {
+              ruleCount: ruleEvaluations.length,
+              controls: ruleEvaluations.map((r) => r.controlId).join(", "),
+              verdicts: ruleEvaluations.map((r) => `${r.controlId}:${r.verdict}`).join(", "),
+              assessmentMode: primaryRule.assessmentMode || "SCENARIO_ASSUMPTION",
+            },
+      deterministicClassifications: ruleEvaluations.map(
+        (r) =>
+          `${r.controlId} (${r.ruleId}): Scenario=${r.verdict} | Formal=${r.formalDetermination || r.verdict} — ${r.variance}`,
+      ),
       analyticalEstimates: [],
-      verdict: primaryRule.verdict,
+      verdict:
+        ruleEvaluations.length === 1
+          ? primaryRule.verdict
+          : ruleEvaluations.map((r) => `${r.controlId}:${r.verdict}`).join("|"),
+      ruleEvaluations: traceRuleItems,
     });
     lines.push("### 12. AI-025 EXPLAINABLE DECISION TRACE (SEPARATE FACTS / DETERMINISTIC VERDICTS / ESTIMATES)");
     lines.push(`- **Bundle ID:** \`${explanationBundle.bundleId}\` | **Canonical Trace SHA-256:** \`${explanationBundle.canonicalTraceHash}\``);
-    lines.push(`- **Observed Facts:** ${JSON.stringify(explanationBundle.observedFacts)}`);
-    lines.push(`- **Deterministic Classifications:** ${explanationBundle.deterministicClassifications.join(" ; ")}`);
+    lines.push(`- **Rules Traced (${traceRuleItems.length}):** ${traceRuleItems.map((t) => `${t.controlId}=${t.verdict} (Formal: ${t.formalDetermination})`).join(" ; ")}`);
     lines.push("- **Analytical Estimates:** Any forward-looking risk or remediation effort commentary must explicitly state assumptions and uncertainty rather than claiming verified fact.\n");
   }
 
@@ -659,11 +918,14 @@ export function buildRmfGroundingPacket(question: string): RmfGroundingPacket {
     targetBaseline,
     manifest: {
       nistVersion: DB.manifest.nistVersion,
+      fedrampVersion: DB.manifest.fedrampVersion,
+      fedrampPublished: DB.manifest.fedrampPublished,
       dbSha256: DB.manifest.dbSha256,
       counts: DB.manifest.counts,
     },
     rmfStepsReferenced,
     controls,
+    authoritativeRecords,
     cuiRequirements,
     csfItems,
     attackByControl,
@@ -674,6 +936,85 @@ export function buildRmfGroundingPacket(question: string): RmfGroundingPacket {
     explanationBundle,
     markdownContext: lines.join("\n"),
   };
+}
+
+function controlMatchesBase(controlId: string, textBlock: string): boolean {
+  const esc = controlId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  if (new RegExp(`\\b${esc}(?![\\w(])`, "i").test(textBlock)) return true;
+  // Match child enhancement of a base control (e.g., AC-2(3) inside AC-2 section, IA-2(1)/(6) inside IA-2 section)
+  if (!controlId.includes("(")) {
+    const baseEsc = controlId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    if (new RegExp(`\\b${baseEsc}\\(\\d+\\)`, "i").test(textBlock)) return true;
+  }
+  return false;
+}
+
+export function extractControlScopedText(
+  draftBody: string,
+  targetControlId: string,
+  allEvaluatedControlIds: string[],
+): string {
+  if (allEvaluatedControlIds.length <= 1) return draftBody;
+
+  const others = allEvaluatedControlIds.filter((id) => id !== targetControlId);
+  const lines = draftBody.split(/\r?\n/);
+
+  // 1. Try markdown heading / bold section segmentation
+  type Section = { owner: string | null; lines: string[] };
+  const sections: Section[] = [];
+  let current: Section = { owner: null, lines: [] };
+
+  for (const line of lines) {
+    const isHeaderLike =
+      /^#{1,6}\s+/.test(line) ||
+      /^\*\*[^*]{2,100}\*\*\s*(?:[:—–-]|$)/.test(line.trim()) ||
+      /^[-*]\s+\*\*(?:Rule\s+RMF-)?[A-Z]{2}-\d+/.test(line.trim());
+
+    if (isHeaderLike) {
+      const mentionsTarget = controlMatchesBase(targetControlId, line);
+      const mentionsOther = others.some((o) => controlMatchesBase(o, line));
+      if (mentionsTarget && !mentionsOther) {
+        sections.push(current);
+        current = { owner: targetControlId, lines: [line] };
+        continue;
+      }
+      if (mentionsOther && !mentionsTarget) {
+        sections.push(current);
+        current = { owner: "OTHER", lines: [line] };
+        continue;
+      }
+      if (/^#{1,2}\s+/.test(line) && current.owner !== null) {
+        sections.push(current);
+        current = { owner: null, lines: [line] };
+        continue;
+      }
+    }
+    current.lines.push(line);
+  }
+  sections.push(current);
+
+  const ownedBlocks = sections.filter((s) => s.owner === targetControlId);
+  if (ownedBlocks.length > 0) {
+    return ownedBlocks.map((b) => b.lines.join("\n")).join("\n");
+  }
+
+  // 2. Fallback: extract lines / table rows / sentences mentioning targetControlId and NOT others
+  const matchedLines = lines.filter((line) => {
+    const hasTarget = controlMatchesBase(targetControlId, line);
+    const hasOther = others.some((o) => controlMatchesBase(o, line));
+    return hasTarget && !hasOther;
+  });
+  if (matchedLines.length > 0) {
+    return matchedLines.join("\n");
+  }
+
+  const sentences = draftBody.split(/(?<=[.!?])\s+|\n+/);
+  const matchedSentences = sentences.filter((s) => {
+    const hasTarget = controlMatchesBase(targetControlId, s);
+    const hasOther = others.some((o) => controlMatchesBase(o, s));
+    return hasTarget && !hasOther;
+  });
+  return matchedSentences.join(" ");
 }
 
 // ----------------------------------------------------------------------------
@@ -716,31 +1057,69 @@ export function verifyRmfResponseAgainstDb(
     }
   }
 
-  // Enforce deterministic rule verdict fidelity
+  // Enforce deterministic rule verdict fidelity PER CONTROL (no global multi-control regex collision)
+  const evaluatedControlIds = [...new Set(packet.ruleEvaluations.map((r) => r.controlId))];
   for (const r of packet.ruleEvaluations) {
+    const scopedText = extractControlScopedText(draftBody, r.controlId, evaluatedControlIds);
+    const statusPattern =
+      /(?:scenario(?:\s+based)?\s+verdict|primary\s+verdict|verdict|rule\s+result|compliance\s+status|scenario\s+determination|determination)(?:\*{0,2}\s*[:\-—]\s*|\s+)\*{0,2}\s*(PASS|PASSED|COMPLIANT|FAIL|FAILED|NON[- ]COMPLIANT|INSUFFICIENT_EVIDENCE|INSUFFICIENT\s+EVIDENCE|MANUAL_REVIEW_REQUIRED)\b/gi;
+    const declaredStatuses = [...scopedText.matchAll(statusPattern)]
+      .filter((m) => {
+        const before = scopedText.slice(Math.max(0, (m.index ?? 0) - 24), m.index ?? 0);
+        return !/\bformal(?:\s+audit)?\s*$/i.test(before);
+      })
+      .map((m) => m[1]!.toUpperCase().replace(/\s+/g, "_").replace("-", "_"));
+
     if (r.verdict === "FAIL") {
-      const falselyPassed = /\b(?:verdict|rule\s+result|compliance\s+status|determination)\s*[:\-*]?\s*\*{0,2}\s*(?:PASS|PASSED|COMPLIANT)\b/i.test(
-        draftBody,
+      const hasFalsePassOrDowngrade = declaredStatuses.some((s) =>
+        s === "PASS" || s === "PASSED" || s === "COMPLIANT" || s === "INSUFFICIENT_EVIDENCE",
       );
-      const acknowledgesFail = /\b(?:FAIL|FAILED|NON-COMPLIANT|VIOLATION|EXCEEDED|DEFICIENCY|BREACH)\b/i.test(draftBody);
-      if (falselyPassed || !acknowledgesFail) {
+      const acknowledgesFail = /\b(?:FAIL|FAILED|NON[- ]COMPLIANT)\b/i.test(scopedText);
+      if (hasFalsePassOrDowngrade || !acknowledgesFail) {
         violations.push(
-          `RULE_VERDICT_CONTRADICTION: Deterministic rule ${r.ruleId} [${r.controlId}] evaluated to FAIL (${r.summary}). Response must clearly state FAIL and must not report PASS/Compliant.`,
+          `RULE_VERDICT_CONTRADICTION: Deterministic rule ${r.ruleId} [${r.controlId}] evaluated to FAIL (${r.summary}). Its ${r.controlId} section must explicitly state FAIL and must not report PASS or INSUFFICIENT_EVIDENCE as the scenario verdict.`,
         );
       }
     } else if (r.verdict === "INSUFFICIENT_EVIDENCE") {
-      const fabricatedPassOrFail = /\b(?:verdict|rule\s+result|determination)\s*[:\-*]?\s*\*{0,2}\s*(?:PASS|PASSED|COMPLIANT|FAIL|FAILED)\b/i.test(
-        draftBody,
+      const fabricatedPassOrFail = declaredStatuses.some(
+        (s) => s === "PASS" || s === "PASSED" || s === "COMPLIANT" || s === "FAIL" || s === "FAILED" || s === "NON_COMPLIANT",
       );
-      const notesInsufficient = /\b(?:INSUFFICIENT_EVIDENCE|insufficient\s+evidence|missing\s+evidence|cannot\s+verify|not\s+provided)\b/i.test(
-        draftBody,
+      const notesInsufficient = /\b(?:INSUFFICIENT_EVIDENCE|insufficient\s+evidence|missing\s+evidence|cannot\s+verify|not\s+provided|pending\s+verified\s+evidence)\b/i.test(
+        scopedText,
       );
       if (fabricatedPassOrFail || !notesInsufficient) {
         violations.push(
-          `EVIDENCE_SUFFICIENCY_CONTRADICTION: Deterministic rule ${r.ruleId} [${r.controlId}] returned INSUFFICIENT_EVIDENCE. Response must explicitly report INSUFFICIENT_EVIDENCE and list missing artifacts.`,
+          `EVIDENCE_SUFFICIENCY_CONTRADICTION: Deterministic rule ${r.ruleId} [${r.controlId}] returned INSUFFICIENT_EVIDENCE. Its ${r.controlId} section must explicitly report INSUFFICIENT_EVIDENCE and list missing artifacts.`,
+        );
+      }
+    } else if (r.verdict === "PASS") {
+      const falselyFailed = declaredStatuses.some((s) => s === "FAIL" || s === "FAILED" || s === "NON_COMPLIANT");
+      if (falselyFailed) {
+        violations.push(
+          `RULE_VERDICT_CONTRADICTION: Deterministic rule ${r.ruleId} [${r.controlId}] evaluated to PASS, but the ${r.controlId} section reported FAIL.`,
+        );
+      }
+    } else if (r.verdict === "MANUAL_REVIEW_REQUIRED") {
+      const notesReview = /\b(?:MANUAL_REVIEW_REQUIRED|manual\s+review|architectural\s+verification|verify\s+(?:the\s+)?(?:upstream|end-to-end|full))\b/i.test(
+        scopedText,
+      );
+      if (!notesReview) {
+        violations.push(
+          `RULE_VERDICT_CONTRADICTION: Deterministic rule ${r.ruleId} [${r.controlId}] evaluated to MANUAL_REVIEW_REQUIRED. Its ${r.controlId} section must note required architectural verification.`,
         );
       }
     }
+  }
+
+  // Enforce Authority Accuracy: prevent labeling POA&M timelines "statutory"
+  if (
+    /\bstatutory\b[^.\n]{0,70}\b(?:30[- ]?day|poa&m|poam|remediation\s+(?:deadline|sla|timeline))\b|\b(?:30[- ]?day|poa&m|poam)\b[^.\n]{0,70}\bstatutory\b/i.test(
+      draftBody,
+    )
+  ) {
+    violations.push(
+      "AUTHORITY_MISREPRESENTATION: FedRAMP 30-day POA&M timelines are program guidance / RA-5(d) vulnerability ODPs (subject to AO tailoring), not a universal statutory requirement.",
+    );
   }
 
   // Enforce FIPS 199 High-Water Mark fidelity

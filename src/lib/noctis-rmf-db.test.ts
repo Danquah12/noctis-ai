@@ -10,7 +10,10 @@ import {
   isValid80053ControlId,
   buildRmfGroundingPacket,
   verifyRmfResponseAgainstDb,
+  getAuthoritativeControlRecord,
+  getAuthorityPolicy,
 } from "./noctis-rmf-db.ts";
+import { handleRmfV2Request } from "./rmf-v2/api-handler.server.ts";
 import {
   evaluateAc2AccountManagementRule,
   evaluateAc3AccessEnforcementRule,
@@ -232,5 +235,162 @@ Use Examine only for the assessment.
     const outsideFence = cleaned.split("```tex")[0]!;
     assert.ok(!outsideFence.includes("$$"), "must strip display $$ delimiters outside code blocks");
     assert.ok(!outsideFence.includes("\\text{"), "must strip \\text{} macros outside code blocks");
+  });
+
+  it("ingests official FedRAMP Rev. 5 OSCAL High/Mod/Low baseline profiles with structured authority metadata and non-statutory POA&M scope", () => {
+    const manifest = getRmfDbManifest() as unknown as {
+      fedrampVersion?: string;
+      sources: { id: string; sha256: string }[];
+    };
+    assert.equal(manifest.fedrampVersion, "fedramp2.1.0-oscal1.0.4");
+    assert.ok(manifest.sources.some((s) => s.id === "fedramp-rev5-high-oscal" && /^[a-f0-9]{64}$/.test(s.sha256)));
+
+    const ac23 = getAuthoritativeControlRecord("AC-2(3)", "HIGH");
+    assert.ok(ac23);
+    assert.equal(ac23.baseline_version, "fedramp2.1.0-oscal1.0.4");
+    assert.equal(ac23.authority.effective_date, "2024-09-24");
+    assert.ok(ac23.organization_defined_parameters.some((p) => p.param_id === "ac-02.03_odp.01" && p.value.includes("24 hours")));
+    assert.ok(ac23.organization_defined_parameters.some((p) => p.param_id === "ac-02.03_odp.02" && /thirty-five\s*\(35\)\s*days/i.test(p.value)));
+
+    const ac2 = getAuthoritativeControlRecord("AC-2", "HIGH");
+    assert.ok(ac2);
+    assert.ok(ac2.organization_defined_parameters.some((p) => p.param_id === "ac-02_odp.07" && /eight\s*\(8\)\s*hours/i.test(p.value)));
+    assert.ok(ac2.organization_defined_parameters.some((p) => p.param_id === "ac-02_odp.10" && /monthly/i.test(p.value)));
+
+    const ia21 = getAuthoritativeControlRecord("IA-2(1)", "HIGH");
+    assert.ok(ia21);
+    assert.ok(ia21.additional_fedramp_requirements.some((r) => /phishing-resistant/i.test(r)));
+    assert.ok(ia21.additional_fedramp_guidance.some((g) => /subsequent components in the same user domain/i.test(g)));
+
+    const poamPol = getAuthorityPolicy("FEDRAMP_POAM_TIMELINES");
+    assert.ok(poamPol);
+    assert.equal(poamPol.statutory, false);
+    const kevPol = getAuthorityPolicy("CISA_BOD_22_01");
+    assert.ok(kevPol);
+    assert.ok(/Does NOT automatically govern/i.test(kevPol.exceptions));
+  });
+
+  it("remediates audit root causes: extracts 38h & without hardware MFA, separates scenario vs formal evidence, and evaluates IA-2 end-to-end auth paths", () => {
+    const auditPrompt =
+      "Evaluate FedRAMP High AC-2 and IA-2: a terminated employee account remained active for 38 hours, and privileged administrators use static SSH keys without hardware MFA.";
+    const evals = extractAndEvaluateRmfRulesFromText(auditPrompt);
+    assert.equal(evals.length, 2);
+
+    const ac2 = evals.find((e) => e.controlId === "AC-2")!;
+    const ia2 = evals.find((e) => e.controlId === "IA-2")!;
+    assert.ok(ac2 && ia2);
+
+    assert.equal(ac2.verdict, "FAIL");
+    assert.equal(ac2.assessmentMode, "SCENARIO_ASSUMPTION");
+    assert.equal(ac2.formalDetermination, "PENDING_EVIDENCE");
+    assert.equal(ac2.observedFacts.elapsedHours, 38);
+    assert.equal(ac2.observedFacts.policyThresholdHours, 24);
+    assert.equal(ac2.variance, "+14 hours over deadline");
+    assert.ok(ac2.draftPoam?.remediationPlan.includes("14-hour excess window"));
+    assert.ok(!ac2.draftPoam?.remediationPlan.includes("7-hour excess window"));
+    assert.ok((ac2.authorityCitations?.length ?? 0) >= 2);
+    assert.ok(ac2.missingEvidence.length >= 2);
+
+    assert.equal(ia2.verdict, "FAIL");
+    assert.equal(ia2.assessmentMode, "SCENARIO_ASSUMPTION");
+    assert.equal(ia2.formalDetermination, "PENDING_EVIDENCE");
+    assert.equal(ia2.observedFacts.mfaEnforcedPrivileged, false);
+    assert.equal(ia2.observedFacts.phishingResistant, false);
+    assert.equal(ia2.observedFacts.staticSshKeysInUse, true);
+    assert.equal(ia2.authPathAssessment?.upstreamMfaConsidered, true);
+
+    // End-to-end IA-2 path cases
+    const bastionSameDomain = evaluateIa2AuthRule({
+      staticSshKeysInUse: true,
+      upstreamBastionMfaEnforced: true,
+      directSshBypassBlocked: true,
+      phishingResistant: true,
+    });
+    assert.equal(bastionSameDomain.verdict, "MANUAL_REVIEW_REQUIRED");
+    assert.equal(bastionSameDomain.authPathAssessment?.sameDomainGuidanceApplies, true);
+
+    const ephemeralCertPass = evaluateIa2AuthRule({
+      ephemeralSshCertificates: true,
+      staticSshKeysInUse: false,
+      upstreamBastionMfaEnforced: true,
+      directSshBypassBlocked: true,
+      phishingResistant: true,
+    });
+    assert.equal(ephemeralCertPass.verdict, "PASS");
+
+    const ephemeralUnverifiedBypass = evaluateIa2AuthRule({
+      ephemeralSshCertificates: true,
+      staticSshKeysInUse: false,
+      upstreamBastionMfaEnforced: true,
+      phishingResistant: true,
+    });
+    assert.equal(ephemeralUnverifiedBypass.verdict, "MANUAL_REVIEW_REQUIRED");
+
+    const omittedMfaDoesNotCoerceTrue = evaluateIa2AuthRule({ staticSshKeysInUse: true });
+    assert.equal(omittedMfaDoesNotCoerceTrue.verdict, "FAIL");
+    assert.equal(omittedMfaDoesNotCoerceTrue.observedFacts.mfaEnforcedPrivileged, null);
+    assert.equal(omittedMfaDoesNotCoerceTrue.observedFacts.phishingResistant, null);
+  });
+
+  it("prevents Stage 3 multi-control verdict collision, blocks silent FAIL->INSUFFICIENT_EVIDENCE downgrade, and rejects 'statutory' POA&M claims", () => {
+    const packet = buildRmfGroundingPacket(
+      "Evaluate AC-2 termination and IA-2 static SSH keys for FedRAMP High.",
+    );
+    // Packet here has AC-2 = INSUFFICIENT_EVIDENCE (no hours) and IA-2 = FAIL
+    assert.equal(packet.ruleEvaluations.length, 2);
+    assert.equal(packet.ruleEvaluations.find((r) => r.controlId === "AC-2")?.verdict, "INSUFFICIENT_EVIDENCE");
+    assert.equal(packet.ruleEvaluations.find((r) => r.controlId === "IA-2")?.verdict, "FAIL");
+
+    const validScopedDraft = `
+### AC-2 — Account Management
+- **Scenario Verdict:** **INSUFFICIENT_EVIDENCE** — missing HR termination timestamp and immutable IdP log.
+
+### IA-2 — Identification and Authentication
+- **Scenario Verdict:** **FAIL** — Static SSH keys without verified upstream phishing-resistant MFA.
+- **Formal Audit Determination:** **PENDING_VERIFIED_EVIDENCE** — requires bastion/IdP & sshd_config verification.
+`;
+    const okAudit = verifyRmfResponseAgainstDb(packet.question, validScopedDraft, packet);
+    assert.equal(okAudit.passed, true, `Expected pass, got: ${okAudit.violations.join(" | ")}`);
+
+    const silentDowngradeDraft = `
+### AC-2 — Account Management
+- **Verdict:** **INSUFFICIENT_EVIDENCE** — missing timestamps.
+
+### IA-2 — Identification and Authentication
+- **Verdict:** **INSUFFICIENT_EVIDENCE** — unverified deficiency in SSH MFA path.
+`;
+    const caughtDowngrade = verifyRmfResponseAgainstDb(packet.question, silentDowngradeDraft, packet);
+    assert.equal(caughtDowngrade.passed, false);
+    assert.ok(caughtDowngrade.violations.some((v) => v.includes("RULE_VERDICT_CONTRADICTION") && v.includes("IA-2")));
+
+    const statutoryDraft = validScopedDraft + "\nFedRAMP imposes a statutory 30-day POA&M deadline for all High findings.";
+    const caughtAuthority = verifyRmfResponseAgainstDb(packet.question, statutoryDraft, packet);
+    assert.equal(caughtAuthority.passed, false);
+    assert.ok(caughtAuthority.violations.some((v) => v.includes("AUTHORITY_MISREPRESENTATION")));
+  });
+
+  it("persists multi-rule EXPL-... bundles to SQL and replays them via GET /api/v2/rmf/explanations/:id", async () => {
+    const prompt =
+      "Evaluate FedRAMP High AC-2 and IA-2: a terminated employee account remained active for 38 hours, and privileged administrators use static SSH keys without hardware MFA.";
+    const out = await executeUniversalRmfReasoning(prompt, {
+      shouldThink: false,
+      modelChatFn: async () => ({ error: "offline test mode" }),
+    });
+    assert.ok(out.includes("+14 hours over deadline"));
+    assert.ok(out.includes("PENDING_EVIDENCE") || out.includes("PENDING_VERIFIED_EVIDENCE"));
+    assert.ok(out.includes("fedramp2.1.0-oscal1.0.4"));
+    const traceMatch = out.match(/Trace:\s*`(EXPL-[A-Z0-9]+)`/);
+    assert.ok(traceMatch, `Expected EXPL bundle id in footer:\n${out}`);
+
+    const res = await handleRmfV2Request(new Request(`https://www.dstrike.app/api/v2/rmf/explanations/${traceMatch[1]}`));
+    assert.equal(res.status, 200);
+    const json = (await res.json()) as {
+      persistedInSql: boolean;
+      replayVerification: { reproducible: boolean };
+      bundle: { ruleEvaluations?: { controlId: string; verdict: string }[] };
+    };
+    assert.equal(json.persistedInSql, true);
+    assert.equal(json.replayVerification.reproducible, true);
+    assert.equal(json.bundle.ruleEvaluations?.length, 2);
   });
 });

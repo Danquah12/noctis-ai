@@ -187,6 +187,19 @@ export function queryTenantRmfGraph(input: {
 // ----------------------------------------------------------------------------
 // AI-025: Reproducible Explainable Decision Trace Bundle
 // ----------------------------------------------------------------------------
+export interface ExplanationRuleTraceItem {
+  ruleId: string;
+  ruleVersion: string;
+  controlId: string;
+  assessmentMode: string;
+  verdict: string;
+  formalDetermination: string;
+  variance: string;
+  auditHash: string;
+  observedFacts: Record<string, string | number | boolean | null>;
+  authorityDocs: string[];
+}
+
 export interface ExplanationBundle {
   bundleId: string;
   tenantId: string;
@@ -200,12 +213,26 @@ export interface ExplanationBundle {
   deterministicClassifications: string[];
   analyticalEstimates: { estimate: string; assumptions: string[]; uncertainty: string }[];
   verdict: string;
+  ruleEvaluations?: ExplanationRuleTraceItem[];
   canonicalTraceHash: string;
   createdAt: string;
 }
 
+function canonicalSortValue(val: unknown): unknown {
+  if (Array.isArray(val)) return val.map(canonicalSortValue);
+  if (val && typeof val === "object") {
+    const sorted: Record<string, unknown> = {};
+    for (const key of Object.keys(val as Record<string, unknown>).sort()) {
+      const v = (val as Record<string, unknown>)[key];
+      if (v !== undefined) sorted[key] = canonicalSortValue(v);
+    }
+    return sorted;
+  }
+  return val;
+}
+
 function canonicalTracePayload(bundle: Omit<ExplanationBundle, "bundleId" | "canonicalTraceHash" | "createdAt">): string {
-  return JSON.stringify({
+  const payload: Record<string, unknown> = {
     tenantId: bundle.tenantId,
     evaluationRef: bundle.evaluationRef,
     nistVersion: bundle.nistVersion,
@@ -217,7 +244,13 @@ function canonicalTracePayload(bundle: Omit<ExplanationBundle, "bundleId" | "can
     deterministicClassifications: bundle.deterministicClassifications,
     analyticalEstimates: bundle.analyticalEstimates,
     verdict: bundle.verdict,
-  });
+  };
+  if (bundle.ruleEvaluations !== undefined) {
+    payload.ruleEvaluations = bundle.ruleEvaluations;
+    // Use canonical deep key-sorted JSON so PostgreSQL JSONB key-reordering never breaks hash replay
+    return JSON.stringify(canonicalSortValue(payload));
+  }
+  return JSON.stringify(payload);
 }
 
 export function createExplanationBundle(
@@ -251,6 +284,7 @@ export function replayExplanationBundle(bundle: ExplanationBundle): {
       deterministicClassifications: bundle.deterministicClassifications,
       analyticalEstimates: bundle.analyticalEstimates,
       verdict: bundle.verdict,
+      ...(bundle.ruleEvaluations !== undefined ? { ruleEvaluations: bundle.ruleEvaluations } : {}),
     }),
   );
   return {

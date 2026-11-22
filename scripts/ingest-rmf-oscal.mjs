@@ -59,20 +59,35 @@ const SOURCES = {
     title: "MITRE CTID ATT&CK v16.1 Enterprise <-> NIST SP 800-53 Rev. 5 Mappings",
     url: "https://raw.githubusercontent.com/center-for-threat-informed-defense/mappings-explorer/main/mappings/nist_800_53/attack-16.1/nist_800_53-rev5/enterprise/nist_800_53-rev5_attack-16.1-enterprise.json",
   },
+  fedrampLow: {
+    id: "fedramp-rev5-low-oscal",
+    title: "FedRAMP Rev. 5 Low Impact Baseline OSCAL Profile",
+    url: "https://raw.githubusercontent.com/oscal-compass-lab/fedramp-automation/master/dist/content/rev5/baselines/json/FedRAMP_rev5_LOW-baseline_profile-min.json",
+  },
+  fedrampMod: {
+    id: "fedramp-rev5-moderate-oscal",
+    title: "FedRAMP Rev. 5 Moderate Impact Baseline OSCAL Profile",
+    url: "https://raw.githubusercontent.com/oscal-compass-lab/fedramp-automation/master/dist/content/rev5/baselines/json/FedRAMP_rev5_MODERATE-baseline_profile-min.json",
+  },
+  fedrampHigh: {
+    id: "fedramp-rev5-high-oscal",
+    title: "FedRAMP Rev. 5 High Impact Baseline OSCAL Profile",
+    url: "https://raw.githubusercontent.com/oscal-compass-lab/fedramp-automation/master/dist/content/rev5/baselines/json/FedRAMP_rev5_HIGH-baseline_profile-min.json",
+  },
 };
 
 const FEDRAMP_ODPS = {
   "AC-2": {
-    low: "Review accounts at least annually; enforce automated provisioning/deprovisioning workflows.",
-    moderate: "Review accounts annually (privileged at least semi-annually); disable inactive accounts after 90 days; remove/disable separated user access per agency SLA.",
-    high: "Review accounts at least semi-annually (privileged quarterly); disable inactive accounts after 35 days; remove/disable separated accounts immediately or within 24 hours; notify ISSO of atypical usage.",
-    sla: "High/Crit findings 30d, Mod 90d, Low 180d",
+    low: "Review accounts at least annually (ac-02_odp.10); notify account managers/ISSO within 24h when accounts are no longer required or users terminated/transferred.",
+    moderate: "Review accounts monthly for privileged access and every 6 months for non-privileged access (ac-02_odp.10); notify within 24h when no longer required (ac-02_odp.06) and 12h on termination/transfer (ac-02_odp.07); disable user accounts within 24h per AC-2(3).",
+    high: "Review accounts monthly for privileged access and every 6 months for non-privileged access (ac-02_odp.10); notify account managers/designated roles within 24h when accounts are no longer required (ac-02_odp.06) and within 8h when users are terminated/transferred (ac-02_odp.07); disable separated user accounts within 24h per AC-2(3).",
+    sla: "Program Guidance (non-statutory): High <= 30d, Mod <= 90d, Low <= 180d (subject to AO tailoring)",
   },
   "AC-2(3)": {
-    low: "Disable inactive accounts after [FedRAMP: 90 days].",
-    moderate: "Disable inactive accounts after [FedRAMP: 90 days for non-privileged; 35 days recommended].",
-    high: "Automatically disable inactive accounts after [FedRAMP High: 35 days] of inactivity.",
-    sla: "High 30d",
+    low: "Included in Moderate/High FedRAMP baselines (agency-tailored under Low).",
+    moderate: "Disable accounts within 24 hours for user accounts when expired/no longer associated/violating policy (ac-02.03_odp.01), or after thirty-five (35) days of inactivity (ac-02.03_odp.02); CSP defines non-user/device periods approved by JAB/AO.",
+    high: "Disable user accounts within 24 hours when expired, terminated/no longer associated, or violating policy (ac-02.03_odp.01), or after thirty-five (35) days of inactivity (ac-02.03_odp.02); CSP defines non-user/device timeframes approved by JAB/AO.",
+    sla: "Program Guidance (non-statutory): High <= 30d (subject to AO tailoring)",
   },
   "AC-3": {
     low: "Enforce least-privilege RBAC and default-deny access policies.",
@@ -135,40 +150,40 @@ const FEDRAMP_ODPS = {
     sla: "High 30d, Mod 90d",
   },
   "IA-2": {
-    low: "Uniquely identify and authenticate organizational users and processes.",
-    moderate: "Uniquely identify users/services (no shared accounts) and enforce strong authentication + MFA.",
-    high: "Uniquely identify every human and non-human workload identity with phishing-resistant MFA or mutual TLS/X.509.",
-    sla: "High 30d",
+    low: "Uniquely identify and authenticate organizational users; MFA implementations must adhere to NIST SP 800-63B and be phishing-resistant (IA-2 FedRAMP Additional Requirements).",
+    moderate: "Uniquely identify organizational users; adhere to NIST SP 800-63B Digital Identity Guidelines and enforce phishing-resistant MFA per Additional FedRAMP Requirements.",
+    high: "Uniquely identify organizational users; adhere to NIST SP 800-63B Digital Identity Guidelines and enforce phishing-resistant MFA across privileged and non-privileged enhancements (IA-2 Additional FedRAMP Requirements).",
+    sla: "Program Guidance (non-statutory): High <= 30d (subject to AO tailoring)",
   },
   "IA-2(1)": {
-    low: "MFA required for network access to privileged accounts.",
-    moderate: "Phishing-resistant MFA enforced for all privileged network access (SSO/IAM/SSH/K8s).",
-    high: "Hardware-token / FIDO2 / PIV phishing-resistant MFA enforced without bypass for all privileged access.",
-    sla: "High 30d (CAT I blocker if absent)",
+    low: "Enforce phishing-resistant MFA for access to privileged accounts (not in Low baseline unless tailored; see IA-2(1) when applied).",
+    moderate: "Implement phishing-resistant MFA for access to privileged accounts per SP 800-63-3 (63A/63B/63C). Guidance (ia-2.1_fr_gdn.1): MFA to subsequent components in the same user domain is not required.",
+    high: "Implement phishing-resistant MFA for access to privileged accounts per SP 800-63-3 (63A/63B/63C). Guidance (ia-2.1_fr_gdn.1): MFA to subsequent components in the same user domain is not required (evaluate full end-to-end auth path including bastion/IdP).",
+    sla: "Program Guidance (non-statutory): High <= 30d (subject to AO tailoring)",
   },
   "IA-2(2)": {
-    low: "MFA for network access to non-privileged accounts (FedRAMP Required).",
-    moderate: "MFA required for all non-privileged interactive network access.",
-    high: "Phishing-resistant MFA required for all non-privileged interactive network access.",
-    sla: "High 30d, Mod 90d",
+    low: "Phishing-resistant MFA for access to non-privileged accounts (when included/tailored).",
+    moderate: "Phishing-resistant MFA for non-privileged accounts per SP 800-63-3; subsequent same-domain components exempt per ia-2.2_fr_gdn.1.",
+    high: "Phishing-resistant MFA for non-privileged accounts per SP 800-63-3; subsequent same-domain components exempt per ia-2.2_fr_gdn.1.",
+    sla: "Program Guidance (non-statutory): High <= 30d, Mod <= 90d",
   },
   "IA-2(6)": {
-    low: "Protect remote privileged access via replay-resistant authentication.",
-    moderate: "Separate hardware/FIDO2 device MFA required for network access to privileged and non-privileged accounts.",
-    high: "Phishing-resistant MFA (PIV/CAC/FIDO2/WebAuthn) on separate authenticator device required; static SSH keys prohibited.",
-    sla: "High 30d",
+    low: "Included in Moderate/High baselines.",
+    moderate: "Implement MFA for local, network, and remote access (ia-02.06_odp.01) to privileged and non-privileged accounts (ia-02.06_odp.02) using a separate device meeting FIPS-validated or NSA-approved cryptography (ia-02.06_odp.03; e.g., PIV/SP 800-157 or FIDO2).",
+    high: "Implement MFA for local, network, and remote access (ia-02.06_odp.01) to privileged and non-privileged accounts (ia-02.06_odp.02) using a separate device meeting FIPS-validated or NSA-approved cryptography (ia-02.06_odp.03); evaluate end-to-end SSH/bastion/IdP auth path.",
+    sla: "Program Guidance (non-statutory): High <= 30d (subject to AO tailoring)",
   },
   "RA-5": {
-    low: "Monthly OS scans; remediate High 30d, Moderate 90d, Low 180d.",
-    moderate: "Authenticated OS scans at least monthly (<= 30d) + web/DB/container scans <= 30d; POA&M SLAs: High 30d, Moderate 90d, Low 180d.",
-    high: "Authenticated OS, database, web app, and container scans at least monthly (<= 30d); POA&M SLAs: Critical/KEV per CISA BOD 22-01 (often <= 14-21d), High 30d, Moderate 90d, Low 180d.",
-    sla: "Scan <= 30d; High 30d, Mod 90d, Low 180d",
+    low: "Monthly OS scans (ra-5_prm_1); remediate High <= 30d, Moderate <= 90d, Low <= 180d from discovery (ra-05_odp.03); CISA KEV catalog dates supersede RA-5(d) timelines where applicable.",
+    moderate: "Monthly OS/infrastructure, web app/API, and database scans (ra-5_prm_1) + annual 3PAO scan; mitigate High <= 30d, Moderate <= 90d, Low <= 180d (ra-05_odp.03); CISA KEV catalog dates supersede where listed.",
+    high: "Monthly OS/infrastructure, web app/API, and database scans (ra-5_prm_1) + annual 3PAO scan; mitigate High <= 30d, Moderate <= 90d, Low <= 180d (ra-05_odp.03); CISA KEV catalog dates supersede for KEV-listed CVEs only.",
+    sla: "Scan <= 30d; RA-5(d) ODP: High 30d, Mod 90d, Low 180d (KEV supersedes for listed CVEs)",
   },
   "SI-2": {
-    low: "Remediate known flaws within FedRAMP timelines.",
-    moderate: "Identify, report, and remediate software/firmware flaws: High 30d, Moderate 90d, Low 180d.",
-    high: "Identify and patch security flaws within FedRAMP SLAs (Critical/KEV immediate/BOD 22-01, High <= 30d, Moderate <= 90d, Low <= 180d); enforce central patch management.",
-    sla: "High <= 30d, Mod <= 90d, Low <= 180d",
+    low: "Install security-relevant software and firmware updates within thirty (30) days of release of updates (si-02_odp).",
+    moderate: "Install security-relevant software and firmware updates within thirty (30) days of release of updates (si-02_odp).",
+    high: "Install security-relevant software and firmware updates within thirty (30) days of release of updates (si-02_odp); CISA BOD 22-01 applies specifically to CISA KEV-listed vulnerabilities.",
+    sla: "SI-2(c) ODP: <= 30d of update release (program POA&M / BOD 22-01 KEV-scoped)",
   },
 };
 
@@ -383,6 +398,108 @@ function extractProfileIds(profileJson) {
   return set;
 }
 
+function paramIdToControlId(paramId) {
+  const s = String(paramId || "").trim().toLowerCase();
+  const m = s.match(/^([a-z]{2})-?0*(\d+)(?:\.0*(\d+))?(?:_|$)/i);
+  if (!m) return null;
+  const fam = m[1].toUpperCase();
+  const num = Number(m[2]);
+  const enh = m[3] ? `(${Number(m[3])})` : "";
+  return `${fam}-${num}${enh}`;
+}
+
+function collectFedrampAlterText(parts = [], requirements = [], guidance = []) {
+  for (const pt of parts || []) {
+    const prose = String(pt.prose || "")
+      .replace(/\\"/g, '"')
+      .replace(/\s+/g, " ")
+      .trim();
+    const labelVal = (pt.props || []).find((pr) => pr.name === "label")?.value || "";
+    const isGuidance = pt.name === "guidance" || /^guidance/i.test(labelVal) || /_gdn\./i.test(pt.id || "");
+    if (prose) {
+      if (isGuidance) guidance.push(clamp(prose, 320));
+      else requirements.push(clamp(prose, 320));
+    }
+    if (pt.parts?.length) {
+      collectFedrampAlterText(pt.parts, requirements, guidance);
+    }
+  }
+}
+
+function parseFedrampProfile(profileJson, srcMeta) {
+  const prof = profileJson?.profile || {};
+  const meta = prof.metadata || {};
+  const includedIds = extractProfileIds(profileJson);
+  const byControl = {};
+
+  const ensureEntry = (cid) => {
+    if (!byControl[cid]) {
+      byControl[cid] = { params: [], additionalRequirements: [], additionalGuidance: [] };
+    }
+    return byControl[cid];
+  };
+
+  for (const sp of prof.modify?.["set-parameters"] || []) {
+    const cid = paramIdToControlId(sp["param-id"]);
+    if (!cid) continue;
+    const vals = [];
+    for (const v of sp.values || []) if (v) vals.push(String(v).trim());
+    if (vals.length === 0) {
+      for (const c of sp.constraints || []) if (c?.description) vals.push(String(c.description).trim());
+    }
+    if (vals.length === 0 && sp.select?.choice?.length) {
+      vals.push(`Selection: ${sp.select.choice.join("; ")}`);
+    }
+    const valStr = clamp(vals.join("; "), 340);
+    if (valStr) {
+      ensureEntry(cid).params.push({ id: sp["param-id"], value: valStr });
+    }
+  }
+
+  for (const alt of prof.modify?.alters || []) {
+    const cid = canonicalControlId(alt["control-id"]);
+    if (!cid) continue;
+    const reqs = [];
+    const gdns = [];
+    for (const add of alt.adds || []) {
+      if (add.parts?.length) {
+        collectFedrampAlterText(add.parts, reqs, gdns);
+      }
+    }
+    if (reqs.length > 0 || gdns.length > 0) {
+      const entry = ensureEntry(cid);
+      for (const r of reqs) {
+        if (!entry.additionalRequirements.includes(r) && entry.additionalRequirements.length < 6) {
+          entry.additionalRequirements.push(r);
+        }
+      }
+      for (const g of gdns) {
+        if (!entry.additionalGuidance.includes(g) && entry.additionalGuidance.length < 5) {
+          entry.additionalGuidance.push(g);
+        }
+      }
+    }
+  }
+
+  return {
+    meta: {
+      id: srcMeta.id,
+      title: String(meta.title || srcMeta.title).trim(),
+      version: String(meta.version || "fedramp-rev5").trim(),
+      published: String(meta.published || meta["last-modified"] || "2024-09-24T02:24:00Z").trim(),
+      lastModified: String(meta["last-modified"] || meta.published || "").trim(),
+      oscalVersion: String(meta["oscal-version"] || "1.0.4").trim(),
+      url: srcMeta.url,
+      sha256: srcMeta.sha256,
+      bytes: srcMeta.bytes,
+      includedControlsCount: includedIds.size,
+      setParametersCount: (prof.modify?.["set-parameters"] || []).length,
+    },
+    includedIds,
+    byControl,
+  };
+}
+
 async function main() {
   const fetched = {};
   const manifestSources = [];
@@ -404,6 +521,61 @@ async function main() {
   const modSet = extractProfileIds(fetched.baselineMod);
   const highSet = extractProfileIds(fetched.baselineHigh);
   const privacySet = extractProfileIds(fetched.baselinePrivacy);
+
+  // 1b. Official FedRAMP Rev. 5 OSCAL Baseline Profiles (Low / Moderate / High)
+  const frMetaMap = new Map(manifestSources.map((s) => [s.id, s]));
+  const parsedFrLow = parseFedrampProfile(fetched.fedrampLow, frMetaMap.get(SOURCES.fedrampLow.id));
+  const parsedFrMod = parseFedrampProfile(fetched.fedrampMod, frMetaMap.get(SOURCES.fedrampMod.id));
+  const parsedFrHigh = parseFedrampProfile(fetched.fedrampHigh, frMetaMap.get(SOURCES.fedrampHigh.id));
+
+  const fedrampProfiles = {
+    low: parsedFrLow.meta,
+    moderate: parsedFrMod.meta,
+    high: parsedFrHigh.meta,
+  };
+
+  const fedrampControlRegistry = {};
+  const allFrControlIds = new Set([
+    ...Object.keys(parsedFrLow.byControl),
+    ...Object.keys(parsedFrMod.byControl),
+    ...Object.keys(parsedFrHigh.byControl),
+  ]);
+  for (const cid of allFrControlIds) {
+    const rec = {};
+    if (parsedFrLow.byControl[cid]) rec.low = parsedFrLow.byControl[cid];
+    if (parsedFrMod.byControl[cid]) rec.moderate = parsedFrMod.byControl[cid];
+    if (parsedFrHigh.byControl[cid]) rec.high = parsedFrHigh.byControl[cid];
+    fedrampControlRegistry[cid] = rec;
+  }
+
+  const authorityPolicies = {
+    FEDRAMP_POAM_TIMELINES: {
+      id: "FEDRAMP_POAM_TIMELINES",
+      title: "FedRAMP Rev. 5 POA&M & Vulnerability Remediation Timelines",
+      authorityType: "BASELINE_ODP_AND_PROGRAM_GUIDANCE",
+      statutory: false,
+      document: "FedRAMP Rev. 5 High/Moderate/Low Baseline OSCAL Profile (RA-5(d) ODP ra-05_odp.03) & FedRAMP Continuous Monitoring Strategy Guide / POA&M Completion Guide",
+      version: parsedFrHigh.meta.version,
+      section: "RA-5(d) Parameter ra-05_odp.03 (scanner findings); FedRAMP ConMon Strategy Guide & POA&M Template Completion Guide (control weaknesses)",
+      url: "https://www.fedramp.gov/baselines/",
+      effectiveDate: parsedFrHigh.meta.published.slice(0, 10),
+      scope: "High <= 30 days, Moderate <= 90 days, Low <= 180 days from discovery. In FedRAMP Rev. 5 OSCAL, ra-05_odp.03 binds vulnerability-scan remediation. For non-vulnerability control weaknesses (e.g., AC-2, IA-2), FedRAMP ConMon/POA&M guidance applies Risk-adjusted timelines—it is program guidance, not a universal statute.",
+      exceptions: "Subject to Authorizing Official (Agency AO / JAB) tailoring, approved Deviation Requests (False Positive, Operational Requirement, Vendor Dependency), and risk acceptance; CISA KEV dates supersede for KEV-listed CVEs only.",
+    },
+    CISA_BOD_22_01: {
+      id: "CISA_BOD_22_01",
+      title: "CISA Binding Operational Directive 22-01 (Reducing the Significant Risk of Known Exploited Vulnerabilities)",
+      authorityType: "DIRECTIVE_SCOPED",
+      statutory: false,
+      document: "CISA BOD 22-01 & FedRAMP Rev. 5 RA-5 Additional Requirement ra-5_fr_smt.2",
+      version: "BOD 22-01 (Nov 3, 2021) / " + parsedFrHigh.meta.version,
+      section: "BOD 22-01 Required Actions; FedRAMP RA-5 ra-5_fr_smt.2",
+      url: "https://www.cisa.gov/known-exploited-vulnerabilities-catalog",
+      effectiveDate: "2021-11-03",
+      scope: "Applies strictly to known exploited vulnerabilities listed in the CISA KEV Catalog affecting FCEB / FedRAMP-authorized cloud systems (where CISA KEV due dates supersede standard RA-5(d) timelines).",
+      exceptions: "Does NOT automatically govern general procedural or access-control deficiencies (such as AC-2 deprovisioning delays or IA-2 authentication configuration weaknesses) unless a listed KEV CVE is present.",
+    },
+  };
 
   // 2. SP 800-53 Rev. 5.2.0 + SP 800-53A Rev. 5.2.0
   const cat53 = fetched.sp80053.catalog;
@@ -576,11 +748,14 @@ async function main() {
   }
 
   const payloadWithoutDigest = {
-    schemaVersion: "1.0.0-option-b",
+    schemaVersion: "1.1.0-option-b-fedramp-oscal",
     oscalVersion: cat53.metadata?.version || "5.2.0",
     rmfSteps: RMF_STEPS,
     fips199Types: FIPS_199_TYPES,
     fedrampOdps: FEDRAMP_ODPS,
+    fedrampProfiles,
+    fedrampControlRegistry,
+    authorityPolicies,
     controls,
     cui800171,
     cuiAliasMap,
@@ -593,8 +768,10 @@ async function main() {
   const dbSha256 = sha256(JSON.stringify(payloadWithoutDigest));
   const finalDb = {
     manifest: {
-      schemaVersion: "1.0.0-option-b",
+      schemaVersion: "1.1.0-option-b-fedramp-oscal",
       nistVersion: cat53.metadata?.version || "5.2.0",
+      fedrampVersion: parsedFrHigh.meta.version,
+      fedrampPublished: parsedFrHigh.meta.published,
       generatedAt: new Date().toISOString(),
       dbSha256,
       counts: {
@@ -606,6 +783,10 @@ async function main() {
         baselineModerate: modSet.size,
         baselineHigh: highSet.size,
         baselinePrivacy: privacySet.size,
+        fedrampBaselineLow: parsedFrLow.includedIds.size,
+        fedrampBaselineModerate: parsedFrMod.includedIds.size,
+        fedrampBaselineHigh: parsedFrHigh.includedIds.size,
+        fedrampControlRegistryCount: Object.keys(fedrampControlRegistry).length,
         cui800171Requirements: Object.keys(cui800171).length,
         csf2Items: Object.keys(csf2).length,
         mitreAttackEdges: attackEdgeCount,
@@ -617,6 +798,9 @@ async function main() {
     rmfSteps: RMF_STEPS,
     fips199Types: FIPS_199_TYPES,
     fedrampOdps: FEDRAMP_ODPS,
+    fedrampProfiles,
+    fedrampControlRegistry,
+    authorityPolicies,
     controls,
     cui800171,
     cuiAliasMap,

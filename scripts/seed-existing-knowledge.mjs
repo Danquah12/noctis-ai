@@ -246,6 +246,32 @@ async function main() {
       }
     }
 
+    // Add machine-ingested Official FedRAMP Rev. 5 OSCAL Profile Parameters
+    const frProfiles = rmf.fedrampProfiles || {};
+    for (const [ctrlIdRaw, entry] of Object.entries(rmf.fedrampControlRegistry || {})) {
+      const cid = cleanText(ctrlIdRaw).trim();
+      if (!cid || !entry || typeof entry !== "object") continue;
+      for (const [level, baselineId] of [
+        ["low", "FEDRAMP_LOW"],
+        ["moderate", "FEDRAMP_MODERATE"],
+        ["high", "FEDRAMP_HIGH"],
+      ]) {
+        const levelData = entry[level];
+        if (!levelData || !Array.isArray(levelData.params)) continue;
+        const profVer = cleanText(frProfiles[level]?.version || "fedramp2.1.0-oscal1.0.4");
+        for (const p of levelData.params) {
+          const pid = cleanText(p?.id).trim();
+          const pval = cleanText(p?.value).trim();
+          if (!pid || !pval) continue;
+          const pKey = `${cid}::${pid}::${baselineId}`;
+          if (!paramKeySet.has(pKey)) {
+            paramKeySet.add(pKey);
+            paramRows.push([pid, cid, baselineId, `FedRAMP Rev.5 OSCAL (${level.toUpperCase()})`, pval, profVer]);
+          }
+        }
+      }
+    }
+
     // Add CUI NIST 800-171 control mappings to CUI baseline & crosswalks
     const crosswalkRows = [];
     const crosswalkKeySet = new Set();

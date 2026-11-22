@@ -69,6 +69,7 @@ import {
   saveRmfArtifact,
   listRmfArtifacts,
   getRmfArtifactById,
+  getRmfExplanationArtifactById,
   updateRmfArtifactApproval,
   type RmfArtifactType,
 } from "./persistence.server.ts";
@@ -360,14 +361,32 @@ export async function handleRmfV2Request(request: Request): Promise<Response> {
   // GET /api/v2/rmf/explanations/:id
   if (method === "GET" && subPath.startsWith("explanations/")) {
     const bundleId = decodeURIComponent(subPath.slice("explanations/".length)).trim();
-    const bundle = EXPLANATION_STORE.get(bundleId);
-    if (!bundle) {
-      return jsonResponse({ error: "NOT_FOUND", message: `Explanation bundle '${bundleId}' was not found.` }, 404, correlationId);
+    const cached = EXPLANATION_STORE.get(bundleId);
+    if (cached) {
+      if (cached.tenantId !== caller.tenantId && cached.tenantId !== "chat-session") {
+        return jsonResponse({ error: "CROSS_TENANT_ACCESS", message: "Explanation bundle belongs to another tenant." }, 403, correlationId);
+      }
+      return jsonResponse({ bundle: cached, replayVerification: replayExplanationBundle(cached), persistedInSql: false }, 200, correlationId);
     }
-    if (bundle.tenantId !== caller.tenantId) {
+
+    const stored = await getRmfExplanationArtifactById<ExplanationBundle>(bundleId, caller.tenantId);
+    if (stored.forbidden) {
       return jsonResponse({ error: "CROSS_TENANT_ACCESS", message: "Explanation bundle belongs to another tenant." }, 403, correlationId);
     }
-    return jsonResponse({ bundle, replayVerification: replayExplanationBundle(bundle) }, 200, correlationId);
+    if (!stored.artifact) {
+      return jsonResponse({ error: "NOT_FOUND", message: `Explanation bundle '${bundleId}' was not found.` }, 404, correlationId);
+    }
+    return jsonResponse(
+      {
+        bundle: stored.artifact.payload,
+        replayVerification: replayExplanationBundle(stored.artifact.payload),
+        persistedInSql: true,
+        payloadSha256: stored.artifact.payloadSha256,
+        storedAt: stored.artifact.createdAt,
+      },
+      200,
+      correlationId,
+    );
   }
 
   if (method !== "POST") {
@@ -870,28 +889,89 @@ export async function handleRmfV2Request(request: Request): Promise<Response> {
     const { buildRmfGroundingPacket } = await import("../noctis-rmf-db.ts");
     const { executeUniversalRmfReasoning } = await import("../noctis-rmf-reasoning.server.ts");
     const packet = buildRmfGroundingPacket(q);
-    const answer = await executeUniversalRmfReasoning(q);
+    const answer = await executeUniversalRmfReasoning(q, { tenantId: caller.tenantId, persistTrace: false });
+
+    const ruleItems = packet.ruleEvaluations.map((r) => ({
+      ruleId: r.ruleId,
+      ruleVersion: r.ruleVersion,
+      controlId: r.controlId,
+      assessmentMode: r.assessmentMode || "FORMAL_EVIDENCE_AUDIT",
+      verdict: r.verdict,
+      formalDetermination: String(r.formalDetermination || r.verdict),
+      variance: r.variance,
+      auditHash: r.auditHash,
+      observedFacts: r.observedFacts,
+      authorityDocs: (r.authorityCitations || []).map(
+        (a) => `${a.document} (${a.version}) ${a.section}${a.parameterId ? ` [${a.parameterId}]` : ""}`,
+      ),
+    }));
+    const combinedEvidenceSha =
+      packet.ruleEvaluations.length === 0
+        ? packet.manifest.dbSha256
+        : packet.ruleEvaluations.length === 1
+        ? packet.ruleEvaluations[0]!.auditHash
+        : sha256Sync(packet.ruleEvaluations.map((r) => `${r.ruleId}:${r.auditHash}`).join("|"));
 
     const bundle = createExplanationBundle({
       tenantId: caller.tenantId,
-      evaluationRef: `INV-${Date.now().toString(36)}`,
+      evaluationRef:
+        packet.ruleEvaluations.length > 0
+          ? packet.ruleEvaluations.map((r) => r.controlId).join("+")
+          : `INV-${Date.now().toString(36)}`,
       nistVersion: packet.manifest.nistVersion,
       dbSha256: packet.manifest.dbSha256,
-      ruleId: packet.ruleEvaluations[0]?.ruleId || "RMF-INVESTIGATE-001",
-      ruleVersion: packet.ruleEvaluations[0]?.ruleVersion || "2.0.0",
-      evidenceSha256: packet.ruleEvaluations[0]?.auditHash || packet.manifest.dbSha256,
-      observedFacts: packet.ruleEvaluations[0]?.observedFacts || { queryControlsCount: packet.controls.length },
-      deterministicClassifications: packet.ruleEvaluations.map((r) => `${r.controlId}: ${r.verdict}`),
+      ruleId:
+        packet.ruleEvaluations.length > 0
+          ? packet.ruleEvaluations.map((r) => r.ruleId).join("+")
+          : "RMF-INVESTIGATE-001",
+      ruleVersion:
+        packet.ruleEvaluations.length > 0
+          ? packet.ruleEvaluations.map((r) => r.ruleVersion).join("+")
+          : "2.0.0",
+      evidenceSha256: combinedEvidenceSha,
+      observedFacts:
+        packet.ruleEvaluations.length === 1
+          ? packet.ruleEvaluations[0]!.observedFacts
+          : packet.ruleEvaluations.length > 1
+          ? {
+              ruleCount: packet.ruleEvaluations.length,
+              controls: packet.ruleEvaluations.map((r) => r.controlId).join(", "),
+              verdicts: packet.ruleEvaluations.map((r) => `${r.controlId}:${r.verdict}`).join(", "),
+            }
+          : { queryControlsCount: packet.controls.length },
+      deterministicClassifications: packet.ruleEvaluations.map(
+        (r) => `${r.controlId} (${r.ruleId}): ${r.verdict} — ${r.variance}`,
+      ),
       analyticalEstimates: [],
-      verdict: packet.ruleEvaluations[0]?.verdict || "ADVISORY_GROUNDED",
+      verdict:
+        packet.ruleEvaluations.length === 0
+          ? "ADVISORY_GROUNDED"
+          : packet.ruleEvaluations.length === 1
+          ? packet.ruleEvaluations[0]!.verdict
+          : packet.ruleEvaluations.map((r) => `${r.controlId}:${r.verdict}`).join("|"),
+      ...(ruleItems.length > 0 ? { ruleEvaluations: ruleItems } : {}),
     });
     if (EXPLANATION_STORE.size > 200) EXPLANATION_STORE.clear();
     EXPLANATION_STORE.set(bundle.bundleId, bundle);
+
+    const storageReceipt = await safePersist(() =>
+      saveRmfArtifact({
+        id: bundle.bundleId,
+        tenantId: caller.tenantId,
+        artifactType: "EXPLANATION",
+        systemId: String(body.system_id || "noctis-investigate"),
+        title: `Investigation Trace ${bundle.evaluationRef} (${bundle.verdict})`,
+        status: "RECORDED",
+        payload: bundle as unknown as Record<string, unknown>,
+        createdBy: caller.actorId,
+      }),
+    );
 
     return finishPost(200, {
       tenant_id: caller.tenantId,
       explanationBundleId: bundle.bundleId,
       canonicalTraceHash: bundle.canonicalTraceHash,
+      storageReceipt,
       verifiedControls: packet.controls.map((c) => ({ id: c.id, title: c.title, withdrawn: c.withdrawn })),
       ruleEvaluations: packet.ruleEvaluations,
       fips199: packet.fips199,

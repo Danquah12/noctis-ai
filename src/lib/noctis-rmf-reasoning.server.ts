@@ -13,6 +13,7 @@ import {
   type RmfVerificationReport,
 } from "./noctis-rmf-db.ts";
 import { parseThinkEnvelope } from "./noctis-engine-registry.ts";
+import { saveRmfArtifact } from "./rmf-v2/persistence.server.ts";
 
 export interface RmfBrainOptions {
   provider?: string;
@@ -43,6 +44,8 @@ export interface RmfReasoningOptions {
   language?: string;
   shouldThink?: boolean;
   modelChatFn?: RmfModelChatFn;
+  tenantId?: string;
+  persistTrace?: boolean;
 }
 
 function cleanThinkOutput(raw: string): { thought: string; body: string } {
@@ -80,15 +83,18 @@ function buildRmfSystemPrompt(opts: {
       : "Respond concisely with no raw XML tags.",
     "",
     "STRICT GROUNDING & DETERMINISTIC GOVERNANCE INVARIANTS (NON-NEGOTIABLE):",
-    "1. NEVER fabricate NIST SP 800-53, 800-53A, 800-171, or CSF 2.0 control IDs. Cite ONLY control IDs verified in the Deterministic Knowledge Packet or standard Rev. 5 family catalog.",
+    "1. NEVER fabricate NIST SP 800-53, 800-53A, 800-171, FedRAMP, or CSF 2.0 control IDs or ODPs. Cite ONLY control IDs, parameter IDs, versions, and effective dates verified in the Deterministic Knowledge Packet.",
     "2. WITHDRAWN CONTROLS: If a user asks about a withdrawn Rev. 5 control (e.g., AC-13, AU-15), you MUST state explicitly that it is WITHDRAWN and direct the user to its exact official replacement control(s) listed in the packet.",
-    "3. IMMUTABLE VERDICTS: Never override or contradict a deterministic rule engine verdict (`PASS`, `FAIL`, `INSUFFICIENT_EVIDENCE`, `NOT_APPLICABLE`, `MANUAL_REVIEW_REQUIRED`) or a FIPS 199 High-Water Mark computed in code. If evidence is missing, preserve `INSUFFICIENT_EVIDENCE`.",
-    "4. ASSESSMENT COMPLETENESS: Whenever the user asks about assessment methods, 800-53A procedures, or 3PAO audits, address all three methods explicitly: **Examine**, **Interview**, and **Test**.",
-    "5. GOVERNANCE BOUNDARY: Explicitly note where professional judgment is required and state that final ATO / risk acceptance authority rests strictly with the designated **Authorizing Official (AO)**, not an automated score.",
-    "6. STATUTORY POAM SLAS: Respect FedRAMP Rev. 5 POA&M remediation timelines (Critical/KEV per BOD 22-01 / 15d, High <= 30d, Moderate <= 90d, Low <= 180d).",
-    "7. FACTS VS ESTIMATES: Explicitly distinguish **Observed Facts** (timestamps, scanner/config evidence), **Deterministic Classifications** (rule verdicts, SLAs), and **Analytical Estimates** (risk/likelihood projections, stating assumptions & uncertainty).",
-    "8. FORMATTING (NO RAW LATEX): NEVER output raw LaTeX delimiters (`$$...$$`, `\\[...\\]`, `\\text{...}`, `\\{`, `\\}`). Noctis Chat renders Markdown without KaTeX. Express FIPS 199 security categorizations and formulas in clean Markdown inline code (e.g., `SC system = {(confidentiality, MODERATE), (integrity, HIGH), (availability, LOW)}`).",
-    `9. LANGUAGE: ${langDirective}`,
+    "3. IMMUTABLE DETERMINISTIC VERDICTS: Never override or contradict a deterministic rule engine verdict (`PASS`, `FAIL`, `INSUFFICIENT_EVIDENCE`, `NOT_APPLICABLE`, `MANUAL_REVIEW_REQUIRED`) or a FIPS 199 High-Water Mark computed in code.",
+    "4. SCENARIO-BASED VS FORMAL ASSESSMENT SEPARATION: When a prompt provides stipulated scenario facts without attached immutable audit artifacts, treat the scenario facts as stipulated assumptions to compute the exact compliance variance (e.g., 38h active vs 24h limit = +14h excess) and preserve the rule's Scenario Verdict (`FAIL` / `PASS`), while explicitly stating that the Formal Assessor Determination remains `PENDING_VERIFIED_EVIDENCE` until HRIS/IdP/config artifacts and approved SSP ODPs are verified.",
+    "5. PER-CONTROL SECTION STRUCTURE: Organize multi-control evaluations under distinct per-control headings (`### AC-2 — ...`, `### IA-2 — ...`), stating each control's Scenario Verdict, Formal Audit Determination, exact Authority Citations (document, version, parameter ID, effective date, exceptions), and SP 800-53A Examine/Interview/Test evidence requirements cleanly.",
+    "6. END-TO-END IA-2 AUTHENTICATION PATH: For privileged SSH/MFA assessments, evaluate the entire authentication path (upstream bastion/jump host, federated IdP, FIDO2/PIV hardware authenticator, ephemeral SSH CA certs vs static keys, direct bypass blocking), referencing FedRAMP IA-2(1) guidance (`ia-2.1_fr_gdn.1`: subsequent same-domain components exempt when domain entry enforces phishing-resistant MFA) and IA-2(6) cryptography rather than blanket-failing solely on the phrase 'SSH key'.",
+    "7. ASSESSMENT COMPLETENESS: Whenever the user asks about assessment methods, 800-53A procedures, or 3PAO audits (or when listing evidence requirements), address **Examine**, **Interview**, and **Test** explicitly.",
+    "8. GOVERNANCE BOUNDARY & AUTHORIZING OFFICIAL: Explicitly state that final ATO / risk acceptance rests strictly with the designated **Authorizing Official (AO)**, not an automated score.",
+    "9. ACCURATE POA&M & BOD 22-01 AUTHORITY SCOPE: NEVER call a 30-day POA&M deadline a 'statutory requirement'. Explain accurately from the packet that High <= 30d / Moderate <= 90d / Low <= 180d come from FedRAMP `RA-5(d)` ODP `ra-05_odp.03` (for vulnerability-scan findings) and FedRAMP Continuous Monitoring / POA&M program guidance (subject to Agency/JAB AO tailoring and Deviation Requests). State explicitly that CISA BOD 22-01 governs KEV-listed vulnerabilities, NOT automatically AC-2 or IA-2 control weaknesses.",
+    "10. FACTS VS ESTIMATES: Explicitly distinguish **Stipulated Scenario Assumptions**, **Verified Audit Evidence** (when present), **Deterministic Rule Verdicts**, and **Analytical Estimates** (stating assumptions & uncertainty).",
+    "11. FORMATTING (NO RAW LATEX): NEVER output raw LaTeX delimiters (`$$...$$`, `\\[...\\]`, `\\text{...}`, `\\{`, `\\}`). Express formulas in clean Markdown inline code.",
+    `12. LANGUAGE: ${langDirective}`,
   ].join("\n");
 }
 
@@ -181,28 +187,52 @@ function buildRmfRepairPrompt(
 
 export function renderDeterministicRmfFallback(packet: RmfGroundingPacket): string {
   const out: string[] = [];
-  out.push(`# Noctis Deterministic RMF Assessment (NIST SP 800-53 Rev. ${packet.manifest.nistVersion})`);
+  out.push(
+    `# Noctis Deterministic RMF Assessment (NIST SP 800-53 Rev. ${packet.manifest.nistVersion} · FedRAMP Rev. 5 ${packet.manifest.fedrampVersion || "fedramp2.1.0-oscal1.0.4"})`,
+  );
   out.push(`**Scope:** ${packet.targetBaseline}\n`);
 
   if (packet.ruleEvaluations.length > 0) {
     out.push("## Deterministic Rule Evaluation Verdicts");
     for (const r of packet.ruleEvaluations) {
       out.push(`### ${r.controlId} — ${r.controlTitle} (\`${r.ruleId}\`)`);
-      out.push(`- **Verdict:** **${r.verdict}**`);
+      out.push(`- **Scenario Verdict:** **${r.verdict}** *(Assessment Mode: \`${r.assessmentMode || "FORMAL_EVIDENCE_AUDIT"}\`)*`);
+      out.push(
+        `- **Formal Audit Determination:** **${r.formalDetermination || r.verdict}** *(Evidence Status: \`${r.formalEvidenceStatus || "PENDING_VERIFIED_EVIDENCE"}\`)*`,
+      );
       out.push(`- **Summary:** ${r.summary}`);
       out.push(`- **Policy / ODP Threshold:** ${r.threshold}`);
       out.push(`- **Variance:** ${r.variance}`);
       out.push(`- **Audit Hash:** \`${r.auditHash}\``);
+      if (r.authorityCitations?.length) {
+        out.push("- **Authoritative Citations:**");
+        for (const a of r.authorityCitations) {
+          out.push(
+            `  - **${a.document}** (\`${a.version}\`, effective \`${a.effectiveDate}\`, ${a.url}) — *${a.section}*${a.parameterId ? ` [\`${a.parameterId}\`: ${a.parameterValue || ""}]` : ""}. *Exceptions:* ${a.exceptions}`,
+          );
+        }
+      }
+      if (r.authPathAssessment) {
+        out.push(`- **End-to-End Authentication Path:** ${r.authPathAssessment.evaluatedPath}`);
+        out.push(
+          `  - *Architectural Checks:* ${r.authPathAssessment.architecturalVerificationRequired.join(" | ")}`,
+        );
+      }
       if (r.missingEvidence.length > 0) {
-        out.push(`- **Missing Evidence Required:** ${r.missingEvidence.join("; ")}`);
+        out.push(`- **Evidence Required for Formal Assessor Determination:** ${r.missingEvidence.join("; ")}`);
       }
       if (r.draftFinding) {
         out.push(`- **Draft Assessment Finding (${r.draftFinding.severity}, ${r.draftFinding.objectiveId}):** ${r.draftFinding.title} — ${r.draftFinding.impactSummary}`);
       }
       if (r.draftPoam) {
-        out.push(`- **Draft POA&M (\`${r.draftPoam.poamId}\`, SLA: ${r.draftPoam.slaDays} days):** ${r.draftPoam.weaknessName}`);
+        out.push(
+          `- **Draft POA&M (\`${r.draftPoam.poamId}\`, Program Guidance Timeline: ${r.draftPoam.slaDays} days — NOT Statutory):** ${r.draftPoam.weaknessName}`,
+        );
         out.push(`  - *Remediation Plan:* ${r.draftPoam.remediationPlan}`);
         out.push(`  - *Verification Proof Required:* ${r.draftPoam.requiredTechnicalProof}`);
+      }
+      if (r.poamAuthorityNote) {
+        out.push(`- **POA&M & Directive Scope Note:** ${r.poamAuthorityNote}`);
       }
       out.push("");
     }
@@ -233,8 +263,11 @@ export function renderDeterministicRmfFallback(packet: RmfGroundingPacket): stri
       out.push(`### ${c.id} — ${c.title}`);
       out.push(`- **Baselines:** ${c.baselines.length > 0 ? c.baselines.join(", ") : "Optional / Tailored Enhancement"}`);
       if (c.statement) out.push(`- **Statement:** ${c.statement}`);
-      if (c.fedrampOdp) {
-        out.push(`- **FedRAMP High ODP:** ${c.fedrampOdp.high} *(SLA: ${c.fedrampOdp.sla})*`);
+      const authRec = packet.authoritativeRecords?.find((rec) => (rec.enhancement || rec.control_id) === c.id);
+      if (authRec) {
+        lines_auth(out, authRec);
+      } else if (c.fedrampOdp) {
+        out.push(`- **FedRAMP ODP Summary:** ${c.fedrampOdp.high} *(Timeline Scope: ${c.fedrampOdp.sla})*`);
       }
       if (c.objectives.length > 0) {
         out.push(`- **SP 800-53A Objectives:** ${c.objectives.join(" | ")}`);
@@ -273,6 +306,23 @@ export function renderDeterministicRmfFallback(packet: RmfGroundingPacket): stri
   return out.join("\n");
 }
 
+function lines_auth(out: string[], rec: import("./noctis-rmf-db.ts").AuthoritativeControlRecord): void {
+  out.push(
+    `- **Authoritative Registry Metadata:** ${rec.authority.document} (\`${rec.authority.version}\`, effective \`${rec.authority.effective_date}\`, SHA-256 \`${rec.authority.sha256.slice(0, 12)}\`)`,
+  );
+  if (rec.organization_defined_parameters.length > 0) {
+    out.push(
+      `- **FedRAMP OSCAL ODPs:** ${rec.organization_defined_parameters.map((p) => `\`${p.param_id}\` = "${p.value}"`).join("; ")}`,
+    );
+  }
+  if (rec.additional_fedramp_requirements.length > 0) {
+    out.push(`- **Additional FedRAMP Requirements:** ${rec.additional_fedramp_requirements.join(" | ")}`);
+  }
+  if (rec.additional_fedramp_guidance.length > 0) {
+    out.push(`- **Additional FedRAMP Guidance / Exceptions:** ${rec.additional_fedramp_guidance.join(" | ")}`);
+  }
+}
+
 function buildDeterministicThoughtTrace(
   packet: RmfGroundingPacket,
   audit: RmfVerificationReport | null,
@@ -300,14 +350,19 @@ function buildDeterministicThoughtTrace(
   ].join("\n");
 }
 
-function buildProvenanceFooter(packet: RmfGroundingPacket, audit: RmfVerificationReport | null): string {
+function buildProvenanceFooter(
+  packet: RmfGroundingPacket,
+  audit: RmfVerificationReport | null,
+  persistedTraceSql?: boolean,
+): string {
   const cited = audit?.verifiedControls.length ? audit.verifiedControls.slice(0, 8).join(", ") : packet.controls.map((c) => c.id).slice(0, 6).join(", ");
   const tracePart = packet.explanationBundle
-    ? ` · Trace: \`${packet.explanationBundle.bundleId}\` (\`${packet.explanationBundle.canonicalTraceHash.slice(0, 12)}\`)`
+    ? ` · Trace: \`${packet.explanationBundle.bundleId}\` (\`${packet.explanationBundle.canonicalTraceHash.slice(0, 12)}\`${persistedTraceSql ? ", SQL Replayable" : ""})`
     : "";
+  const frVer = packet.manifest.fedrampVersion ? ` · FedRAMP Rev. 5 OSCAL (${packet.manifest.fedrampVersion})` : "";
   return (
     `\n\n---\n` +
-    `**Deterministic RMF Verification** · NIST SP 800-53/53A Rev. ${packet.manifest.nistVersion} · SP 800-53B · SP 800-171 Rev. 3 · CSF 2.0 · MITRE ATT&CK v16.1` +
+    `**Deterministic RMF Verification** · NIST SP 800-53/53A Rev. ${packet.manifest.nistVersion}${frVer} · SP 800-53B · SP 800-171 Rev. 3 · CSF 2.0 · MITRE ATT&CK v16.1` +
     `${cited ? ` · Verified IDs: \`${cited}\`` : ""}` +
     `${tracePart}` +
     ` · DB SHA-256: \`${packet.manifest.dbSha256.slice(0, 12)}\``
@@ -351,7 +406,7 @@ export async function executeUniversalRmfReasoning(
         { role: "user", content: buildRmfUserPrompt(question, packet) },
       ],
       {
-        temperature: 0.15,
+        temperature: 0.0,
         maxTokens: 3200,
         thinkingLevel: opts.shouldThink === false ? "medium" : "high",
         brain: opts.brain,
@@ -373,7 +428,7 @@ export async function executeUniversalRmfReasoning(
               { role: "user", content: buildRmfRepairPrompt(question, finalBody, packet, audit) },
             ],
             {
-              temperature: 0.05,
+              temperature: 0.0,
               maxTokens: 3200,
               thinkingLevel: opts.shouldThink === false ? "medium" : "high",
               brain: opts.brain,
@@ -404,7 +459,27 @@ export async function executeUniversalRmfReasoning(
   }
   finalBody = sanitizeRmfMarkdownFormatting(finalBody);
 
-  const footer = buildProvenanceFooter(packet, audit);
+  let persistedTraceSql = false;
+  if (packet.explanationBundle && opts.persistTrace !== false) {
+    try {
+      const traceTenant = opts.tenantId?.trim() || "chat-session";
+      await saveRmfArtifact({
+        id: packet.explanationBundle.bundleId,
+        tenantId: traceTenant,
+        artifactType: "EXPLANATION",
+        systemId: "noctis-chat-rmf",
+        title: `Decision Trace ${packet.explanationBundle.evaluationRef} (${packet.explanationBundle.verdict})`,
+        status: "RECORDED",
+        payload: packet.explanationBundle as unknown as Record<string, unknown>,
+        createdBy: traceTenant,
+      });
+      persistedTraceSql = true;
+    } catch {
+      /* Non-fatal if DB unavailable during ephemeral offline inference */
+    }
+  }
+
+  const footer = buildProvenanceFooter(packet, audit, persistedTraceSql);
   if (opts.shouldThink === false) {
     return `${finalBody.trim()}${footer}`;
   }
