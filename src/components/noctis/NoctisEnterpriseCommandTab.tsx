@@ -159,6 +159,27 @@ export function NoctisEnterpriseCommandTab({
     void loadCommandCenter();
   }, []);
 
+  async function syncRelationalDb() {
+    setBusyMsg("Synchronizing all 0015 relational schemas, Policy-as-Code bundles, SBOM, and enclave anchors...");
+    setErrMsg("");
+    try {
+      const res = await fetch("/api/v2/enterprise/db/sync-all", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({}),
+      }).then((r) => r.json());
+      if (res?.error) {
+        setErrMsg(String(res.error));
+      } else {
+        await loadCommandCenter();
+      }
+    } catch (e) {
+      setErrMsg(e instanceof Error ? e.message : "Relational DB sync failed.");
+    } finally {
+      setBusyMsg("");
+    }
+  }
+
   async function investigateCase(caseId: string) {
     setBusyMsg(`Executing live regression check for ${caseId}...`);
     try {
@@ -274,6 +295,14 @@ export function NoctisEnterpriseCommandTab({
           )}
           <button
             type="button"
+            onClick={() => void syncRelationalDb()}
+            className="rounded-lg border border-sky-500/35 bg-sky-500/15 px-2.5 py-1.5 text-xs text-sky-200 hover:bg-sky-500/25 flex items-center gap-1 whitespace-nowrap"
+          >
+            <Database className="size-3.5" />
+            Sync Relational DB
+          </button>
+          <button
+            type="button"
             onClick={() => void loadCommandCenter()}
             className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs text-zinc-300 hover:bg-white/10 flex items-center gap-1 whitespace-nowrap"
           >
@@ -339,10 +368,12 @@ export function NoctisEnterpriseCommandTab({
                     Database Health
                   </div>
                   <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
-                    {snap?.databaseHealth.dbSource?.toUpperCase() || "NEON / PGLITE"}
+                    {`${snap?.databaseHealth.dbSource?.toUpperCase() || "NEON"}${snap?.databaseHealth.pgvectorEnabled ? " · HNSW" : ""}`}
                   </span>
                 </div>
-                <p className="text-[11px] text-zinc-400">Source freshness, SQL schemas & vector ingestion</p>
+                <p className="text-[11px] text-zinc-400">
+                  Source freshness, 0015 SQL schemas, enclave & vector ingestion ({snap?.databaseHealth.embeddingModel || "384-dim"})
+                </p>
                 <div className="grid grid-cols-2 gap-2 text-xs pt-1">
                   <div className="rounded-lg bg-black/40 p-2 border border-white/5">
                     <div className="text-[10px] text-zinc-400">Verified Sources</div>
@@ -357,8 +388,23 @@ export function NoctisEnterpriseCommandTab({
                     <div className="text-base font-bold text-emerald-300">{snap?.databaseHealth.vectorChunksCount ?? 0}</div>
                   </div>
                   <div className="rounded-lg bg-black/40 p-2 border border-white/5">
-                    <div className="text-[10px] text-zinc-400">Ingested Events</div>
-                    <div className="text-base font-bold text-zinc-200">{snap?.databaseHealth.ingestTotalEvents ?? 0}</div>
+                    <div className="text-[10px] text-zinc-400">Relational Tables</div>
+                    <div className="text-base font-bold text-cyan-300">
+                      {snap?.databaseHealth.relationalTablesTracked
+                        ? `${snap.databaseHealth.relationalTablesPopulated ?? 0}/${snap.databaseHealth.relationalTablesTracked}`
+                        : "0/0"}
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-1.5 text-[10px]">
+                  <div className="rounded bg-black/40 px-2 py-1 border border-white/5 text-zinc-300">
+                    Bundles: <span className="font-bold text-white">{snap?.databaseHealth.policyBundlesCount ?? 0}</span>
+                  </div>
+                  <div className="rounded bg-black/40 px-2 py-1 border border-white/5 text-zinc-300">
+                    SBOM: <span className="font-bold text-white">{snap?.databaseHealth.sbomComponentsCount ?? 0}</span>
+                  </div>
+                  <div className="rounded bg-black/40 px-2 py-1 border border-white/5 text-zinc-300">
+                    Enclave: <span className="font-bold text-emerald-300">{snap?.databaseHealth.clinicalEnclaveRecordsCount ?? 0}</span>
                   </div>
                 </div>
               </div>
@@ -464,10 +510,10 @@ export function NoctisEnterpriseCommandTab({
                     Knowledge Coverage
                   </div>
                   <span className="rounded-full bg-purple-500/15 border border-purple-500/30 px-2 py-0.5 text-[10px] font-bold text-purple-300">
-                    {`${snap?.knowledgeCoverage.ndkrsDomainsCovered ?? 7}/7 Domains`}
+                    {`${snap?.knowledgeCoverage.ndkrsDomainsCovered ?? 0}/7 Domains`}
                   </span>
                 </div>
-                <p className="text-[11px] text-zinc-400">Verified authorities vs open knowledge gaps</p>
+                <p className="text-[11px] text-zinc-400">Verified authorities vs open knowledge gaps across all 7 NDKRS domains</p>
                 <div className="grid grid-cols-2 gap-2 text-xs pt-1">
                   <div className="rounded-lg bg-black/40 p-2 border border-white/5">
                     <div className="text-[10px] text-zinc-400">DoD/IC Directives</div>
@@ -488,6 +534,23 @@ export function NoctisEnterpriseCommandTab({
                     <div className="text-base font-bold text-zinc-200">{snap?.knowledgeCoverage.openKnowledgeGaps ?? 0}</div>
                   </div>
                 </div>
+                {snap?.knowledgeCoverage.recordsByDomain && (
+                  <div className="flex flex-wrap gap-1 pt-0.5">
+                    {Object.entries(snap.knowledgeCoverage.recordsByDomain).map(([dom, cnt]) => (
+                      <span
+                        key={dom}
+                        className={cn(
+                          "rounded px-1.5 py-0.5 text-[10px] border",
+                          cnt > 0
+                            ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
+                            : "bg-zinc-800/70 border-white/10 text-zinc-400",
+                        )}
+                      >
+                        {dom}:{cnt}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Panel 5: Agent Activity */}

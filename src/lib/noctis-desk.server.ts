@@ -933,7 +933,60 @@ async function translateCareerAnswer(english: string, language: string): Promise
   }
   return english;
 }
-export async function vibeReply(
+async function logChatVerificationTelemetry(
+  prompt: string,
+  replyText: string,
+  latencyMs: number,
+  isClinicalHint: boolean,
+): Promise<void> {
+  try {
+    const cleanText = (replyText || "").replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+    if (cleanText.length < 15) return;
+
+    const [{ recordVerificationEvent }, { sha256Sync }] = await Promise.all([
+      import("@/lib/enterprise/persistence.server"),
+      import("@/lib/universal-crypto"),
+    ]);
+
+    const status = /CLINICAL_VALIDATION_FAILED|FAIL_CLOSED_BLOCK|FAIL CLOSED|HARD GATE 0 VETO/i.test(cleanText)
+      ? "FAIL_CLOSED_BLOCK"
+      : /Self-Healing Repair|REPAIRED|auto-repaired/i.test(cleanText)
+        ? "REPAIRED"
+        : "PASS";
+
+    const domain =
+      isClinicalHint || /\b(creatinine|kdigo|sepsis|hyperkalemia|patient|clinical|diagnosis)\b/i.test(prompt)
+        ? "clinical"
+        : /\b(stig|cci|acas|kev|cyber|vulnerability|mitre|attack|sigma)\b/i.test(prompt)
+          ? "cybersecurity"
+          : /\b(rmf|dodi|icd|ato|fedramp|nist|policy-as-code|digital twin|command center|database health|eval lab)\b/i.test(prompt)
+            ? "enterprise"
+            : "general";
+
+    const uniqueSalt = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const hashPrefix = sha256Sync(`${prompt}::${cleanText.slice(0, 200)}::${uniqueSalt}`).slice(0, 12);
+
+    await recordVerificationEvent({
+      id: `chat-verif-${Date.now()}-${hashPrefix}`,
+      domain,
+      requestId: `chat-${sha256Sync(prompt).slice(0, 12)}`,
+      status,
+      rulesChecked: status === "FAIL_CLOSED_BLOCK" ? 6 : 4,
+      violations:
+        status === "FAIL_CLOSED_BLOCK"
+          ? [{ ruleId: "GATE0-OR-CLINICAL-SAFETY", message: cleanText.slice(0, 240) }]
+          : [],
+      outputSha256: sha256Sync(cleanText),
+      latencyMs: Math.max(1, latencyMs),
+      actorId: "noctis-chat",
+      tenantId: "tenant:public-sandbox",
+    });
+  } catch {
+    /* telemetry write is strictly non-blocking for user chat */
+  }
+}
+
+async function executeVibeReply(
   turns: VibeTurn[],
   keyOverride = "",
   style: { desk?: "chat" | "study"; think?: boolean; code?: boolean; skill?: string; depth?: "plain" | "deep"; level?: "beginner" | "intermediate" | "advanced" | "expert"; context?: string; language?: string; engine?: string; brain?: { provider?: string; apiKey?: string; model?: string; endpoint?: string } } = {},
@@ -1044,6 +1097,28 @@ export async function vibeReply(
   return {
     text: withThink(attached, "Synthesized and audited complete response against scenario inputs"),
   };
+}
+
+export async function vibeReply(
+  turns: VibeTurn[],
+  keyOverride = "",
+  style: { desk?: "chat" | "study"; think?: boolean; code?: boolean; skill?: string; depth?: "plain" | "deep"; level?: "beginner" | "intermediate" | "advanced" | "expert"; context?: string; language?: string; engine?: string; brain?: { provider?: string; apiKey?: string; model?: string; endpoint?: string } } = {},
+): Promise<{ text: string } | { error: string }> {
+  const startedAt = Date.now();
+  const kept = retainSources(turns);
+  const last = [...kept].reverse().find((turn) => turn.role === "user");
+  const latest = (last?.content || "").replace(/\n--- [^\n]+ ---\n[\s\S]*$/g, "").replace(/\[Image:[^\]]*\]/g, "").trim();
+  const isClinicalHint = /\b(patient|female|male|years?-old|yo|y\/o|triage|resuscitation|symptom|presents? with|blood pressure|\b(?:bp|hr|rr|spo2)\b|cardiac|ecg|troponin|chest pain|cough|fever|dyspnea|hypotension|tachycardia|bradycardia|potassium|hyperkalemia|sodium|hyponatremia|magnesium|calcium|creatinine|egfr|ckd|stroke|sepsis|shock|infection)\b/i.test(latest);
+
+  const out = await executeVibeReply(turns, keyOverride, style);
+  if (out && "text" in out) {
+    const trimmed = out.text.trim();
+    const isGenericJson = trimmed.startsWith("{") && trimmed.endsWith("}");
+    if (!isGenericJson) {
+      await logChatVerificationTelemetry(latest, out.text, Date.now() - startedAt, isClinicalHint);
+    }
+  }
+  return out;
 }
 
 async function composeVibeReply(

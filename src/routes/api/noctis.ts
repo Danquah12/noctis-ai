@@ -885,8 +885,15 @@ export const Route = createFileRoute("/api/noctis")({
         }
         if (body?.ingest) {
           const { ingestUniversalTelemetry } = await import("@/lib/noctis-universal-ingestor");
+          const { persistTelemetryEvents } = await import("@/lib/enterprise/persistence.server");
           const result = ingestUniversalTelemetry(body.ingest);
-          return Response.json(result, { headers: CORS_HEADERS });
+          let persistedCount = 0;
+          try {
+            persistedCount = await persistTelemetryEvents(result.ingestId, result.events);
+          } catch {
+            persistedCount = 0;
+          }
+          return Response.json({ ...result, persistedCount }, { headers: CORS_HEADERS });
         }
         if (body?.enterprise_telemetry && typeof body.enterprise_telemetry === "object") {
           const { parseEnterprisePayload } = await import("@/lib/noctis-enterprise-protocol-engine");

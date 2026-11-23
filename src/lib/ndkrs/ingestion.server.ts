@@ -48,6 +48,16 @@ const EXTRA_ALLOWLIST_HOSTS = [
   "w3.org",
   "arxiv.org",
   "en.wikipedia.org",
+  "esd.whs.mil",
+  "dni.gov",
+  "cnss.gov",
+  "nsa.gov",
+  "defense.gov",
+  "dodcio.defense.gov",
+  "whitehouse.gov",
+  "archives.gov",
+  "ieee.org",
+  "asme.org",
 ];
 
 export function isAllowlistedSourceUri(sourceUri: string): boolean {

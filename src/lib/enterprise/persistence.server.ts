@@ -159,6 +159,21 @@ export async function ensureEnterpriseSchema(): Promise<{ sql: EnterpriseSql; db
           created_at TIMESTAMPTZ NOT NULL DEFAULT now()
         )
       `);
+      await sql.query(`
+        CREATE TABLE IF NOT EXISTS enterprise.telemetry_events (
+          id TEXT PRIMARY KEY,
+          ingest_id TEXT NOT NULL,
+          protocol TEXT NOT NULL,
+          suite TEXT NOT NULL,
+          pillar TEXT NOT NULL,
+          severity TEXT NOT NULL,
+          hostname TEXT NOT NULL DEFAULT 'unknown',
+          summary TEXT NOT NULL,
+          payload_sha256 TEXT NOT NULL,
+          payload_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )
+      `);
     })().catch((err) => {
       ensureReadyPromise = null;
       throw err;
@@ -602,7 +617,12 @@ export async function savePolicyBundle(bundle: {
       `INSERT INTO enterprise.policy_bundles
         (id, name, version, authority_source, rules_json, bundle_sha256, status, created_by)
        VALUES ($1, $2, $3, $4, $5::jsonb, $6, 'ACTIVE', $7)
-       ON CONFLICT (id) DO NOTHING`,
+       ON CONFLICT (id) DO UPDATE SET
+         name = EXCLUDED.name,
+         version = EXCLUDED.version,
+         authority_source = EXCLUDED.authority_source,
+         rules_json = EXCLUDED.rules_json,
+         bundle_sha256 = EXCLUDED.bundle_sha256`,
       [
         bundle.id,
         bundle.name,
@@ -616,4 +636,181 @@ export async function savePolicyBundle(bundle: {
   } catch {
     /* non-fatal */
   }
+}
+
+export async function persistTelemetryEvents(
+  ingestId: string,
+  events: Array<{
+    eventId: string;
+    detectedProtocol: string;
+    targetSovereignSuite: string;
+    sqdecPillar: string;
+    severity: string;
+    summary: string;
+    auditSha256: string;
+    normalizedEntities?: Record<string, unknown>;
+  }>,
+): Promise<number> {
+  if (!Array.isArray(events) || events.length === 0) return 0;
+  try {
+    const { sql } = await ensureEnterpriseSchema();
+    let inserted = 0;
+    for (const ev of events) {
+      const hostname =
+        typeof ev.normalizedEntities?.hostname === "string"
+          ? ev.normalizedEntities.hostname
+          : typeof ev.normalizedEntities?.host === "string"
+          ? ev.normalizedEntities.host
+          : "noctis-edge-node";
+      await sql.query(
+        `INSERT INTO enterprise.telemetry_events
+          (id, ingest_id, protocol, suite, pillar, severity, hostname, summary, payload_sha256, payload_json)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb)
+         ON CONFLICT (id) DO NOTHING`,
+        [
+          ev.eventId,
+          ingestId,
+          ev.detectedProtocol,
+          ev.targetSovereignSuite,
+          ev.sqdecPillar,
+          ev.severity,
+          hostname,
+          ev.summary,
+          ev.auditSha256,
+          JSON.stringify(ev),
+        ],
+      );
+      inserted += 1;
+    }
+    return inserted;
+  } catch {
+    return 0;
+  }
+}
+
+export async function getPersistedTelemetryStats(): Promise<{
+  totalPersisted: number;
+  criticalCount: number;
+  latestIngestedAt: string | null;
+}> {
+  try {
+    const { sql } = await ensureEnterpriseSchema();
+    const rows = await sql.query<{ c: number; crit: number; latest: unknown }>(
+      `SELECT count(*)::int AS c,
+              count(*) FILTER (WHERE severity = 'CRITICAL')::int AS crit,
+              max(created_at) AS latest
+       FROM enterprise.telemetry_events`,
+    );
+    const r = rows[0];
+    return {
+      totalPersisted: Number(r?.c ?? 0),
+      criticalCount: Number(r?.crit ?? 0),
+      latestIngestedAt: r?.latest instanceof Date ? r.latest.toISOString() : r?.latest ? String(r.latest) : null,
+    };
+  } catch {
+    return { totalPersisted: 0, criticalCount: 0, latestIngestedAt: null };
+  }
+}
+
+export async function listPersistedTelemetryEvents(limit = 20): Promise<Record<string, unknown>[]> {
+  try {
+    const { sql } = await ensureEnterpriseSchema();
+    return await sql.query<Record<string, unknown>>(
+      "SELECT id, ingest_id, protocol, suite, pillar, severity, hostname, summary, payload_sha256, created_at FROM enterprise.telemetry_events ORDER BY created_at DESC LIMIT $1",
+      [Math.max(1, Math.min(100, limit))],
+    );
+  } catch {
+    return [];
+  }
+}
+
+const TARGET_ENTERPRISE_SCHEMAS = [
+  "enterprise",
+  "ndkrs",
+  "rmf",
+  "governance",
+  "assessment",
+  "monitoring",
+  "cyber",
+  "graph",
+  "agents",
+  "intelligence",
+  "training",
+  "security",
+];
+
+export async function getSchemaTableCounts(): Promise<{
+  dbSource: "neon" | "pglite";
+  schemas: Record<string, { tables: { table: string; rows: number }[]; totalRows: number; nonEmptyTables: number }>;
+  totalTablesTracked: number;
+  nonEmptyTablesCount: number;
+}> {
+  const { sql, dbSource } = await ensureEnterpriseSchema();
+  const rows = await sql.query<{ table_schema: string; table_name: string }>(
+    `SELECT table_schema, table_name
+     FROM information_schema.tables
+     WHERE table_type = 'BASE TABLE'
+       AND table_schema = ANY($1::text[])
+     ORDER BY table_schema, table_name`,
+    [TARGET_ENTERPRISE_SCHEMAS],
+  );
+
+  const schemas: Record<string, { tables: { table: string; rows: number }[]; totalRows: number; nonEmptyTables: number }> = {};
+  let nonEmptyTablesCount = 0;
+
+  for (const r of rows) {
+    const sName = String(r.table_schema);
+    const tName = String(r.table_name);
+    if (!schemas[sName]) {
+      schemas[sName] = { tables: [], totalRows: 0, nonEmptyTables: 0 };
+    }
+    let count = 0;
+    try {
+      const res = await sql.query<{ c: number }>(`SELECT count(*)::int AS c FROM "${sName}"."${tName}"`);
+      count = Number(res[0]?.c ?? 0);
+    } catch {
+      count = 0;
+    }
+    schemas[sName]!.tables.push({ table: tName, rows: count });
+    schemas[sName]!.totalRows += count;
+    if (count > 0) {
+      schemas[sName]!.nonEmptyTables += 1;
+      nonEmptyTablesCount += 1;
+    }
+  }
+
+  let totalTablesTracked = rows.length;
+  if (dbSource === "pglite" && !schemas["ndkrs"]) {
+    try {
+      const { ensureNdkrsSchema } = await import("../ndkrs/persistence.server.ts");
+      const ndkrsSql = await ensureNdkrsSchema();
+      const ndkrsRows = await ndkrsSql.query<{ table_name: string }>(
+        `SELECT table_name FROM information_schema.tables
+         WHERE table_type = 'BASE TABLE' AND table_schema = 'ndkrs'
+         ORDER BY table_name`,
+      );
+      schemas["ndkrs"] = { tables: [], totalRows: 0, nonEmptyTables: 0 };
+      totalTablesTracked += ndkrsRows.length;
+      for (const nr of ndkrsRows) {
+        const tName = String(nr.table_name);
+        const res = await ndkrsSql.query<{ c: number }>(`SELECT count(*)::int AS c FROM "ndkrs"."${tName}"`);
+        const count = Number(res[0]?.c ?? 0);
+        schemas["ndkrs"]!.tables.push({ table: tName, rows: count });
+        schemas["ndkrs"]!.totalRows += count;
+        if (count > 0) {
+          schemas["ndkrs"]!.nonEmptyTables += 1;
+          nonEmptyTablesCount += 1;
+        }
+      }
+    } catch {
+      /* ignore when NDKRS not initialized */
+    }
+  }
+
+  return {
+    dbSource,
+    schemas,
+    totalTablesTracked,
+    nonEmptyTablesCount,
+  };
 }

@@ -11,7 +11,7 @@ import { DOD_IC_POLICY_REGISTRY } from "../dod-ic/policy-registry.ts";
 import { getDisaCciManifest } from "../dod-ic/stig-acas-engine.ts";
 import { searchStigLibrary } from "../dod-ic/stig-library.ts";
 import { STARTER_10_CONTROLS } from "../noctis-rmf-rules.ts";
-import { getNdkrsStatusSummary } from "../ndkrs/persistence.server.ts";
+import { ensureNdkrsSchema, getNdkrsStatusSummary } from "../ndkrs/persistence.server.ts";
 import { getIngestStatistics } from "../noctis-universal-ingestor.ts";
 import { listPolicyAsCodePacks, compilePolicyRulePack, evaluatePolicyPack } from "./policy-as-code-engine.ts";
 import { getDefaultAuthorizationTwin, evaluateAuthorizationTwin, simulateInheritanceChange } from "./authorization-digital-twin.ts";
@@ -27,6 +27,8 @@ import { getMasterDevelopmentPlan } from "./master-plan-audit.ts";
 import {
   ensureEnterpriseSchema,
   getCustodySummaryCounts,
+  getPersistedTelemetryStats,
+  getSchemaTableCounts,
   listAgentActivity,
   listAgentProposals,
   listCustodyEvents,
@@ -35,6 +37,13 @@ import {
   savePolicyBundle,
   verifyAgentActivityHashChain,
 } from "./persistence.server.ts";
+import {
+  persistCcvRunToMonitoringSql,
+  persistKnowledgeGraphToSql,
+  persistTwinToGovernanceSql,
+  syncAllRelationalEnterpriseSchemas,
+  syncPolicyBundlesToSql,
+} from "./relational-sync.server.ts";
 import type {
   AuthorizationBoundaryTwin,
   ClassificationTier,
@@ -80,8 +89,9 @@ export async function buildEnterpriseCommandCenterSnapshot(caller?: {
     general: 0,
   };
   try {
+    const ndkrsSql = await ensureNdkrsSchema();
     ndkrsSummary = await getNdkrsStatusSummary();
-    const domRows = await sql.query<{ domain: string; c: number }>(
+    const domRows = await ndkrsSql.query<{ domain: string; c: number }>(
       "SELECT domain, count(*)::int AS c FROM ndkrs.knowledge_records WHERE verification_status = 'VERIFIED' GROUP BY domain",
     );
     for (const r of domRows) {
@@ -91,12 +101,25 @@ export async function buildEnterpriseCommandCenterSnapshot(caller?: {
     /* keep baseline 0s when NDKRS not seeded yet in isolated test */
   }
 
-  let ingestTotal = 0;
+  let inMemIngest = 0;
   try {
-    ingestTotal = getIngestStatistics().totalIngested;
+    inMemIngest = getIngestStatistics().totalIngestedCount;
   } catch {
-    ingestTotal = 0;
+    inMemIngest = 0;
   }
+  const persistedTelemetry = await getPersistedTelemetryStats();
+  const ingestTotal = Math.max(inMemIngest, persistedTelemetry.totalPersisted);
+
+  let schemaStats: Awaited<ReturnType<typeof getSchemaTableCounts>> | null = null;
+  try {
+    schemaStats = await getSchemaTableCounts();
+  } catch {
+    schemaStats = null;
+  }
+  const policyBundlesCount =
+    schemaStats?.schemas["enterprise"]?.tables.find((t) => t.table === "policy_bundles")?.rows ?? 0;
+  const sbomComponentsCount =
+    schemaStats?.schemas["cyber"]?.tables.find((t) => t.table === "sbom_components")?.rows ?? 0;
 
   let evalRuns = await listEvalRuns(5);
   if (evalRuns.length === 0) {
@@ -139,7 +162,14 @@ export async function buildEnterpriseCommandCenterSnapshot(caller?: {
       verifiedRecordsCount: ndkrsSummary?.counts.verifiedRecords ?? 0,
       vectorChunksCount: ndkrsSummary?.counts.chunks ?? 0,
       ingestTotalEvents: ingestTotal,
+      persistedTelemetryCount: persistedTelemetry.totalPersisted,
       embeddingModel: ndkrsSummary?.dominantEmbeddingModel || "noctis-det-embed-384-v1",
+      pgvectorEnabled: ndkrsSummary?.pgvectorEnabled ?? false,
+      clinicalEnclaveRecordsCount: ndkrsSummary?.counts.encryptedClinicalEnclaveRecords ?? 0,
+      relationalTablesTracked: schemaStats?.totalTablesTracked ?? 0,
+      relationalTablesPopulated: schemaStats?.nonEmptyTablesCount ?? 0,
+      policyBundlesCount,
+      sbomComponentsCount,
     },
     aiModelPerformance: {
       latestRunId: latestRun.id,
@@ -155,7 +185,7 @@ export async function buildEnterpriseCommandCenterSnapshot(caller?: {
     },
     safetyValidation: verifStats,
     knowledgeCoverage: {
-      ndkrsDomainsCovered: Object.values(recordsByDomain).filter((n) => n > 0).length || 7,
+      ndkrsDomainsCovered: Object.values(recordsByDomain).filter((n) => n > 0).length,
       recordsByDomain,
       openKnowledgeGaps: ndkrsSummary?.counts.openKnowledgeGaps ?? 0,
       dodIcPoliciesCount: Object.keys(DOD_IC_POLICY_REGISTRY).length,
@@ -214,6 +244,8 @@ export async function handleEnterpriseV2Request(request: Request): Promise<Respo
       rbacCaller: callerSummary,
       endpoints: [
         "/api/v2/enterprise/command-center",
+        "/api/v2/enterprise/db/health",
+        "/api/v2/enterprise/db/sync-all",
         "/api/v2/enterprise/policy-as-code/packs",
         "/api/v2/enterprise/policy-as-code/evaluate",
         "/api/v2/enterprise/digital-twin/evaluate",
@@ -241,6 +273,33 @@ export async function handleEnterpriseV2Request(request: Request): Promise<Respo
   if (subPath === "command-center") {
     const snap = await buildEnterpriseCommandCenterSnapshot(callerSummary);
     return jsonRes(snap);
+  }
+
+  if (subPath === "db/health") {
+    const [schemaCounts, ndkrsSummary, telemetryStats, snap] = await Promise.all([
+      getSchemaTableCounts(),
+      getNdkrsStatusSummary().catch(() => null),
+      getPersistedTelemetryStats(),
+      buildEnterpriseCommandCenterSnapshot(callerSummary),
+    ]);
+    return jsonRes({
+      ok: true,
+      dbSource: schemaCounts.dbSource,
+      schemaCounts,
+      ndkrsSummary,
+      telemetryStats,
+      databaseHealth: snap.databaseHealth,
+      knowledgeCoverage: snap.knowledgeCoverage,
+    });
+  }
+
+  if (subPath === "db/sync-all") {
+    if (request.method !== "POST") {
+      return jsonRes({ error: "Use POST /api/v2/enterprise/db/sync-all to synchronize schemas." }, 405);
+    }
+    const syncResult = await syncAllRelationalEnterpriseSchemas({ triggeredBy: caller.actorId });
+    const schemaCounts = await getSchemaTableCounts();
+    return jsonRes({ ...syncResult, schemaCounts });
   }
 
   if (subPath === "master-plan") {
@@ -277,13 +336,16 @@ export async function handleEnterpriseV2Request(request: Request): Promise<Respo
       return jsonRes(evaluatePolicyPack(compiled, facts));
     }
     const packId = typeof body.pack_id === "string" ? body.pack_id : url.searchParams.get("pack") || "DOD-IL5-CORE";
+    await syncPolicyBundlesToSql(caller.actorId).catch(() => 0);
     return jsonRes(evaluatePolicyPack(packId, facts));
   }
 
   if (subPath === "digital-twin/evaluate") {
     const twin =
       body.twin && typeof body.twin === "object" ? (body.twin as AuthorizationBoundaryTwin) : getDefaultAuthorizationTwin();
-    return jsonRes({ twin, evaluation: evaluateAuthorizationTwin(twin) });
+    const evaluation = evaluateAuthorizationTwin(twin);
+    await persistTwinToGovernanceSql(twin, evaluation).catch(() => {});
+    return jsonRes({ twin, evaluation });
   }
 
   if (subPath === "digital-twin/simulate-inheritance") {
@@ -297,7 +359,9 @@ export async function handleEnterpriseV2Request(request: Request): Promise<Respo
       | "REVOKED"
       | "EXPIRED";
     const impactedControls = Array.isArray(body.impacted_controls) ? (body.impacted_controls as string[]) : undefined;
-    return jsonRes(simulateInheritanceChange(baseTwin, { providerId, newPaStatus, impactedControls }));
+    const sim = simulateInheritanceChange(baseTwin, { providerId, newPaStatus, impactedControls });
+    await persistTwinToGovernanceSql(baseTwin, sim.after).catch(() => {});
+    return jsonRes(sim);
   }
 
   if (subPath === "evidence/analyze") {
@@ -314,7 +378,9 @@ export async function handleEnterpriseV2Request(request: Request): Promise<Respo
       body.ssp_claims && typeof body.ssp_claims === "object"
         ? (body.ssp_claims as Record<string, "Implemented" | "Planned" | "Partial">)
         : {};
-    return jsonRes(runContinuousControlValidation(telemetry, sspClaims));
+    const ccvRes = runContinuousControlValidation(telemetry, sspClaims);
+    await persistCcvRunToMonitoringSql(ccvRes).catch(() => {});
+    return jsonRes(ccvRes);
   }
 
   if (subPath === "knowledge-graph/query") {
@@ -326,6 +392,7 @@ export async function handleEnterpriseV2Request(request: Request): Promise<Respo
     ) as ClassificationTier;
     const focusNodeId = typeof body.focus === "string" ? body.focus : url.searchParams.get("focus") || undefined;
     const res = queryComplianceKnowledgeGraph({ tenantId, requesterTenantId, maxClassification, focusNodeId });
+    await persistKnowledgeGraphToSql().catch(() => {});
     const orphans = findOrphanControls();
     return jsonRes({ ...res, orphans }, res.allowed ? 200 : 403);
   }

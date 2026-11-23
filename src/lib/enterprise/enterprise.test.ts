@@ -271,3 +271,109 @@ test("Capability #10 (AI Eval Lab & CRIT-046/047), Gov Readiness (9), Master Pla
   assert.match(chatRes, /CRIT-047/);
   assert.match(chatRes, /3\.6/);
 });
+
+test("Database Gap Closure: 7/7 NDKRS domains, 0015 relational schemas, enclave crypto, telemetry persistence & DB chat bridge", async () => {
+  const { seedNdkrsAuthoritativeCorpus, seedExtendedDefenseAndEnterpriseCorpus } = await import(
+    "../ndkrs/corpus-seed.ts"
+  );
+  const { syncAllRelationalEnterpriseSchemas } = await import("./relational-sync.server.ts");
+  const { getPersistedTelemetryStats, getSchemaTableCounts, persistTelemetryEvents } = await import(
+    "./persistence.server.ts"
+  );
+  const { sha256Sync } = await import("../universal-crypto.ts");
+
+  const coreSeed = await seedNdkrsAuthoritativeCorpus({
+    allowExternalEmbeddings: false,
+    skipExistingVerified: true,
+  });
+  assert.ok(coreSeed.recordsSeeded + coreSeed.recordsSkippedExisting >= 70);
+
+  const extSeed = await seedExtendedDefenseAndEnterpriseCorpus({
+    allowExternalEmbeddings: false,
+    skipExistingVerified: true,
+  });
+  assert.ok(extSeed.totalCataloged >= 70);
+
+  const syncRes = await syncAllRelationalEnterpriseSchemas({ triggeredBy: "enterprise-test-suite" });
+  assert.equal(syncRes.ok, true);
+  assert.equal(syncRes.policyBundlesSynced, 5);
+  assert.ok(syncRes.sbomComponentsSynced > 10);
+  assert.equal(syncRes.clinicalEnclaveIds.length, 2);
+  assert.equal(syncRes.enclaveDecryptVerified, true);
+  assert.ok(syncRes.baselineTelemetryCount >= 3);
+
+  const persistedNew = await persistTelemetryEvents("TEST-INGEST-001", [
+    {
+      eventId: "TEL-TEST-EVENT-99",
+      detectedProtocol: "SYSLOG_RFC5424",
+      targetSovereignSuite: "noctis-cyber",
+      sqdecPillar: "Safety",
+      severity: "CRITICAL",
+      summary: "Synthetic test critical syslog event persisted to PostgreSQL.",
+      auditSha256: sha256Sync("TEL-TEST-EVENT-99"),
+      normalizedEntities: { hostname: "test-host.dod.mil" },
+    },
+  ]);
+  assert.equal(persistedNew, 1);
+
+  const telStats = await getPersistedTelemetryStats();
+  assert.ok(telStats.totalPersisted >= 4);
+  assert.ok(telStats.criticalCount >= 1);
+
+  const schemaCounts = await getSchemaTableCounts();
+  for (const s of [
+    "enterprise",
+    "ndkrs",
+    "rmf",
+    "governance",
+    "assessment",
+    "monitoring",
+    "cyber",
+    "graph",
+    "agents",
+    "intelligence",
+    "training",
+    "security",
+  ]) {
+    assert.ok((schemaCounts.schemas[s]?.totalRows ?? 0) > 0, `Expected non-empty rows in schema ${s}`);
+  }
+
+  const dbHealthRes = await handleEnterpriseV2Request(new Request("http://localhost/api/v2/enterprise/db/health"));
+  assert.equal(dbHealthRes.status, 200);
+  const dbHealthJson = (await dbHealthRes.json()) as {
+    ok: boolean;
+    knowledgeCoverage: { ndkrsDomainsCovered: number; recordsByDomain: Record<string, number> };
+    databaseHealth: {
+      policyBundlesCount: number;
+      sbomComponentsCount: number;
+      clinicalEnclaveRecordsCount: number;
+      persistedTelemetryCount: number;
+    };
+  };
+  assert.equal(dbHealthJson.ok, true);
+  assert.equal(dbHealthJson.knowledgeCoverage.ndkrsDomainsCovered, 7);
+  for (const dom of ["clinical", "rmf", "cybersecurity", "legal", "science", "engineering", "general"]) {
+    assert.ok((dbHealthJson.knowledgeCoverage.recordsByDomain[dom] ?? 0) >= 4, `Domain ${dom} missing records`);
+  }
+  assert.ok(dbHealthJson.databaseHealth.policyBundlesCount >= 5);
+  assert.ok(dbHealthJson.databaseHealth.sbomComponentsCount > 10);
+  assert.ok(dbHealthJson.databaseHealth.clinicalEnclaveRecordsCount >= 2);
+  assert.ok(dbHealthJson.databaseHealth.persistedTelemetryCount >= 4);
+
+  const syncPostRes = await handleEnterpriseV2Request(
+    new Request("http://localhost/api/v2/enterprise/db/sync-all", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({}),
+    }),
+  );
+  assert.equal(syncPostRes.status, 200);
+
+  assert.equal(isEnterpriseChatQuery("How is our database coming on all these?"), true);
+  assert.equal(isEnterpriseChatQuery("How is our database health and schema coverage?"), true);
+  const dbChat = await tryHandleEnterpriseChatQuery("How is our database health and schema coverage?");
+  assert.ok(dbChat);
+  assert.match(dbChat, /7\/7 Domains Active/);
+  assert.match(dbChat, /enterprise\.\*/);
+  assert.match(dbChat, /cyber\.\*/);
+});

@@ -338,7 +338,14 @@ export interface EnterpriseCommandCenterSnapshot {
     verifiedRecordsCount: number;
     vectorChunksCount: number;
     ingestTotalEvents: number;
+    persistedTelemetryCount?: number;
     embeddingModel: string;
+    pgvectorEnabled?: boolean;
+    clinicalEnclaveRecordsCount?: number;
+    relationalTablesTracked?: number;
+    relationalTablesPopulated?: number;
+    policyBundlesCount?: number;
+    sbomComponentsCount?: number;
   };
   aiModelPerformance: {
     latestRunId: string | null;

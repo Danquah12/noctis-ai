@@ -140,13 +140,17 @@ export const GOVERNMENT_READINESS_CONTROLS: GovernmentReadinessControl[] = [
   },
 ];
 
-export function buildCycloneDxSbomSummary() {
-  const deps = Object.entries(pkgJson.dependencies || {}).map(([name, version]) => ({
+export function getAllProductionSbomComponents() {
+  return Object.entries(pkgJson.dependencies || {}).map(([name, version]) => ({
     type: "library",
     name,
     version: String(version),
     purl: `pkg:npm/${encodeURIComponent(name)}@${String(version).replace(/^[\^~]/, "")}`,
   }));
+}
+
+export function buildCycloneDxSbomSummary() {
+  const deps = getAllProductionSbomComponents();
   const devDepsCount = Object.keys(pkgJson.devDependencies || {}).length;
   const manifest = {
     bomFormat: "CycloneDX",

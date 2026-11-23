@@ -22,10 +22,13 @@ import { runAiEvaluationLabSuite, investigateEvaluationCase } from "./ai-evaluat
 import { getGovernmentReadinessAssessment } from "./government-readiness.ts";
 import { getMasterDevelopmentPlan } from "./master-plan-audit.ts";
 import { buildEnterpriseCommandCenterSnapshot } from "./api-handler.server.ts";
+import { getPersistedTelemetryStats, getSchemaTableCounts } from "./persistence.server.ts";
 
 const ENTERPRISE_PATTERNS = {
   commandCenter:
     /\b(?:noctis\s+intelligence\s+command\s+center|enterprise\s+command\s+center|6-?panel\s+command\s+center|enterprise\s+(?:health|dashboard|status)|database\s+health\s+and\s+(?:safety|ai\s+model))\b/i,
+  databaseHealth:
+    /\b(?:how\s+is\s+(?:our\s+)?database(?:\s+(?:coming|doing|health|status))?|database\s+(?:health|status|gaps?|coverage|schemas?)|close\s+(?:all\s+)?(?:the\s+)?database\s+gaps|schema\s+coverage|pgvector\s+status|relational\s+db)\b/i,
   test046047:
     /\b(?:tests?\s*0?46(?:\s*(?:and|&|,|\/)\s*0?47)?|tests?\s*0?47|crit-?0?46|crit-?0?47|investigate\s+(?:the\s+)?creatinine\s+extraction)\b/i,
   evalLab:
@@ -91,14 +94,47 @@ export async function tryHandleEnterpriseChatQuery(question: string): Promise<st
         "",
         "| Command Center Panel | Live Observed State & Key Metrics |",
         "| :--- | :--- |",
-        `| **1. Database Health** | Backend: \`${snap.databaseHealth.dbSource}\` · Verified Sources: **${snap.databaseHealth.verifiedSourcesCount}** · Verified Records: **${snap.databaseHealth.verifiedRecordsCount}** · Chunks: **${snap.databaseHealth.vectorChunksCount}** · Model: \`${snap.databaseHealth.embeddingModel}\` |`,
+        `| **1. Database Health** | Backend: \`${snap.databaseHealth.dbSource}\` · pgvector: **${snap.databaseHealth.pgvectorEnabled ? "ACTIVE" : "INACTIVE"}** · Sources: **${snap.databaseHealth.verifiedSourcesCount}** · Records: **${snap.databaseHealth.verifiedRecordsCount}** · Chunks: **${snap.databaseHealth.vectorChunksCount}** · Relational Tables: **${snap.databaseHealth.relationalTablesPopulated ?? 0}/${snap.databaseHealth.relationalTablesTracked ?? 0}** · Bundles: **${snap.databaseHealth.policyBundlesCount ?? 0}** · SBOM: **${snap.databaseHealth.sbomComponentsCount ?? 0}** · Enclave: **${snap.databaseHealth.clinicalEnclaveRecordsCount ?? 0}** · Ingest: **${snap.databaseHealth.ingestTotalEvents}** (\`${snap.databaseHealth.embeddingModel}\`) |`,
         `| **2. AI Model Performance** | Eval Suite: \`${snap.aiModelPerformance.suiteName}\` · Accuracy: **${snap.aiModelPerformance.accuracyPct}%** (**${snap.aiModelPerformance.passedCases}/${snap.aiModelPerformance.totalCases}** PASS) · Avg Latency: \`${snap.aiModelPerformance.avgLatencyMs}ms\` · CRIT-046: **${snap.aiModelPerformance.crit046Status}** · CRIT-047: **${snap.aiModelPerformance.crit047Status}** |`,
         `| **3. Safety Validation** | Checked: **${snap.safetyValidation.totalChecked}** · Passed: **${snap.safetyValidation.passedCount}** · Repaired: **${snap.safetyValidation.repairedCount}** · Fail-Closed Blocked: **${snap.safetyValidation.blockedCount}** · Failed: **${snap.safetyValidation.failedCount}** |`,
-        `| **4. Knowledge Coverage** | NDKRS Domains Active: **${snap.knowledgeCoverage.ndkrsDomainsCovered}/7** · Open Gaps: **${snap.knowledgeCoverage.openKnowledgeGaps}** · DoD/IC Directives: **${snap.knowledgeCoverage.dodIcPoliciesCount}** · DISA CCIs: **${snap.knowledgeCoverage.disaCciCount.toLocaleString()}** · STIG Rules: **${snap.knowledgeCoverage.indexedStigRulesCount}** |`,
+        `| **4. Knowledge Coverage** | NDKRS Domains Active: **${snap.knowledgeCoverage.ndkrsDomainsCovered}/7** (${Object.entries(snap.knowledgeCoverage.recordsByDomain).map(([k, v]) => `${k}:${v}`).join(", ")}) · Open Gaps: **${snap.knowledgeCoverage.openKnowledgeGaps}** · DoD/IC Directives: **${snap.knowledgeCoverage.dodIcPoliciesCount}** · DISA CCIs: **${snap.knowledgeCoverage.disaCciCount.toLocaleString()}** · STIG Rules: **${snap.knowledgeCoverage.indexedStigRulesCount}** |`,
         `| **5. Agent Activity** | Governed Agents: **${snap.agentActivity.governedAgentsCount}** · Pending Human Auth: **${snap.agentActivity.pendingProposalsCount}** · Hash-Chained Events: **${snap.agentActivity.totalActivityEvents}** (Chain Intact: **${snap.agentActivity.activityChainIntact}**) |`,
         `| **6. Security Operations** | Gate 0 Fail-Closed: **${snap.securityOperations.gate0FailClosedActive}** · Custody Artifacts: **${snap.securityOperations.custodyArtifactsTracked}** (${snap.securityOperations.custodyEventsCount} events) · Gov Readiness: **${snap.securityOperations.govReadinessControlsImplemented}/${snap.securityOperations.govReadinessTotalControls}** |`,
         "",
         `> **Accreditation Boundary:** ${snap.securityOperations.accreditationNotice}`,
+      ].join("\n"),
+    );
+  }
+
+  // 2b. Unified Database & Relational Schema Health
+  if (ENTERPRISE_PATTERNS.databaseHealth.test(q) && !ENTERPRISE_PATTERNS.commandCenter.test(q)) {
+    const [schemaCounts, snap, telemetryStats] = await Promise.all([
+      getSchemaTableCounts(),
+      buildEnterpriseCommandCenterSnapshot({
+        actorId: "noctis-chat",
+        tenantId: "tenant:public-sandbox",
+        rbacRole: "ISSM_HUMAN",
+        authMethod: "CHAT_SESSION",
+      }),
+      getPersistedTelemetryStats(),
+    ]);
+    const domPairs = Object.entries(snap.knowledgeCoverage.recordsByDomain)
+      .map(([d, c]) => `\`${d}\`: **${c}**`)
+      .join(" · ");
+    const schemaRows = Object.entries(schemaCounts.schemas).map(
+      ([sName, sInfo]) =>
+        `| \`${sName}.*\` | **${sInfo.nonEmptyTables}/${sInfo.tables.length}** populated | **${sInfo.totalRows}** total rows | ${sInfo.tables.map((t) => `${t.table}(${t.rows})`).join(", ")} |`,
+    );
+    sections.push(
+      [
+        "# Noctis Unified PostgreSQL & pgvector Database Health",
+        `- **Database Engine:** \`${snap.databaseHealth.dbSource}\` · **pgvector HNSW:** **${snap.databaseHealth.pgvectorEnabled ? "ENABLED" : "LOCAL_PGLITE"}** · **Embedding Model:** \`${snap.databaseHealth.embeddingModel}\``,
+        `- **NDKRS Knowledge Coverage:** **${snap.knowledgeCoverage.ndkrsDomainsCovered}/7 Domains Active** (${domPairs}) · Verified Sources: **${snap.databaseHealth.verifiedSourcesCount}** · Verified Records: **${snap.databaseHealth.verifiedRecordsCount}** · Vector Chunks: **${snap.databaseHealth.vectorChunksCount}** · Clinical Enclave (AES-256-GCM): **${snap.databaseHealth.clinicalEnclaveRecordsCount ?? 0}**`,
+        `- **Operational Telemetry & Governance:** Populated Tables: **${schemaCounts.nonEmptyTablesCount}/${schemaCounts.totalTablesTracked}** · Policy Bundles: **${snap.databaseHealth.policyBundlesCount ?? 0}** · SBOM Components: **${snap.databaseHealth.sbomComponentsCount ?? 0}** · Safety Verifications Logged: **${snap.safetyValidation.totalChecked}** · Persisted Telemetry Events: **${telemetryStats.totalPersisted}** (${telemetryStats.criticalCount} CRITICAL)`,
+        "",
+        "| Schema | Table Coverage | Row Total | Breakdown |",
+        "| :--- | :---: | :---: | :--- |",
+        ...schemaRows,
       ].join("\n"),
     );
   }
