@@ -94,6 +94,7 @@ import { Route as HubTrackIdRouteImport } from './routes/hub.track.$id'
 import { Route as ApiV2DodIcSplatRouteImport } from './routes/api/v2.dod-ic.$'
 import { Route as ApiV2EnterpriseSplatRouteImport } from './routes/api/v2.enterprise.$'
 import { Route as ApiV2NdkrsSplatRouteImport } from './routes/api/v2.ndkrs.$'
+import { Route as ApiV2NupsSplatRouteImport } from './routes/api/v2.nups.$'
 import { Route as ApiV2RmfSplatRouteImport } from './routes/api/v2.rmf.$'
 import { Route as HubNistFamilyIdRouteImport } from './routes/hub.nist.family.$id'
 import { Route as LearnJourneysJourneyIdIndexRouteImport } from './routes/learn.journeys.$journeyId.index'
@@ -527,6 +528,11 @@ const ApiV2NdkrsSplatRoute = ApiV2NdkrsSplatRouteImport.update({
   path: '/api/v2/ndkrs/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiV2NupsSplatRoute = ApiV2NupsSplatRouteImport.update({
+  id: '/api/v2/nups/$',
+  path: '/api/v2/nups/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiV2RmfSplatRoute = ApiV2RmfSplatRouteImport.update({
   id: '/api/v2/rmf/$',
   path: '/api/v2/rmf/$',
@@ -654,6 +660,7 @@ export interface FileRoutesByFullPath {
   '/api/v2/dod-ic/$': typeof ApiV2DodIcSplatRoute
   '/api/v2/enterprise/$': typeof ApiV2EnterpriseSplatRoute
   '/api/v2/ndkrs/$': typeof ApiV2NdkrsSplatRoute
+  '/api/v2/nups/$': typeof ApiV2NupsSplatRoute
   '/api/v2/rmf/$': typeof ApiV2RmfSplatRoute
   '/hub/nist/family/$id': typeof HubNistFamilyIdRoute
   '/learn/lessons/$lessonId/practice': typeof LearnLessonsLessonIdPracticeRoute
@@ -744,6 +751,7 @@ export interface FileRoutesByTo {
   '/api/v2/dod-ic/$': typeof ApiV2DodIcSplatRoute
   '/api/v2/enterprise/$': typeof ApiV2EnterpriseSplatRoute
   '/api/v2/ndkrs/$': typeof ApiV2NdkrsSplatRoute
+  '/api/v2/nups/$': typeof ApiV2NupsSplatRoute
   '/api/v2/rmf/$': typeof ApiV2RmfSplatRoute
   '/hub/nist/family/$id': typeof HubNistFamilyIdRoute
   '/learn/lessons/$lessonId/practice': typeof LearnLessonsLessonIdPracticeRoute
@@ -839,6 +847,7 @@ export interface FileRoutesById {
   '/api/v2/dod-ic/$': typeof ApiV2DodIcSplatRoute
   '/api/v2/enterprise/$': typeof ApiV2EnterpriseSplatRoute
   '/api/v2/ndkrs/$': typeof ApiV2NdkrsSplatRoute
+  '/api/v2/nups/$': typeof ApiV2NupsSplatRoute
   '/api/v2/rmf/$': typeof ApiV2RmfSplatRoute
   '/hub/nist/family/$id': typeof HubNistFamilyIdRoute
   '/learn/lessons/$lessonId/practice': typeof LearnLessonsLessonIdPracticeRoute
@@ -935,6 +944,7 @@ export interface FileRouteTypes {
     | '/api/v2/dod-ic/$'
     | '/api/v2/enterprise/$'
     | '/api/v2/ndkrs/$'
+    | '/api/v2/nups/$'
     | '/api/v2/rmf/$'
     | '/hub/nist/family/$id'
     | '/learn/lessons/$lessonId/practice'
@@ -1025,6 +1035,7 @@ export interface FileRouteTypes {
     | '/api/v2/dod-ic/$'
     | '/api/v2/enterprise/$'
     | '/api/v2/ndkrs/$'
+    | '/api/v2/nups/$'
     | '/api/v2/rmf/$'
     | '/hub/nist/family/$id'
     | '/learn/lessons/$lessonId/practice'
@@ -1119,6 +1130,7 @@ export interface FileRouteTypes {
     | '/api/v2/dod-ic/$'
     | '/api/v2/enterprise/$'
     | '/api/v2/ndkrs/$'
+    | '/api/v2/nups/$'
     | '/api/v2/rmf/$'
     | '/hub/nist/family/$id'
     | '/learn/lessons/$lessonId/practice'
@@ -1166,6 +1178,7 @@ export interface RootRouteChildren {
   ApiV2DodIcSplatRoute: typeof ApiV2DodIcSplatRoute
   ApiV2EnterpriseSplatRoute: typeof ApiV2EnterpriseSplatRoute
   ApiV2NdkrsSplatRoute: typeof ApiV2NdkrsSplatRoute
+  ApiV2NupsSplatRoute: typeof ApiV2NupsSplatRoute
   ApiV2RmfSplatRoute: typeof ApiV2RmfSplatRoute
 }
 
@@ -1766,6 +1779,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV2NdkrsSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/v2/nups/$': {
+      id: '/api/v2/nups/$'
+      path: '/api/v2/nups/$'
+      fullPath: '/api/v2/nups/$'
+      preLoaderRoute: typeof ApiV2NupsSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/v2/rmf/$': {
       id: '/api/v2/rmf/$'
       path: '/api/v2/rmf/$'
@@ -2008,6 +2028,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiV2DodIcSplatRoute: ApiV2DodIcSplatRoute,
   ApiV2EnterpriseSplatRoute: ApiV2EnterpriseSplatRoute,
   ApiV2NdkrsSplatRoute: ApiV2NdkrsSplatRoute,
+  ApiV2NupsSplatRoute: ApiV2NupsSplatRoute,
   ApiV2RmfSplatRoute: ApiV2RmfSplatRoute,
 }
 export const routeTree = rootRouteImport
