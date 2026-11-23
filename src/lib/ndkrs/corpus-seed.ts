@@ -1940,6 +1940,168 @@ export async function seedExtendedDefenseAndEnterpriseCorpus(
     await ingestIfNeeded(indItem);
   }
 
+  const CATALOG_260_GAP_CLOSURE_SEED: typeof NUPS_INDUSTRY_SEED = [
+    {
+      domain: "legal",
+      canonicalKey: "CAT260-LEGAL-FRCP6-DISCOVERY",
+      title: "Federal Rules of Civil Procedure Rule 6(a)/(d) Time Computation & Rule 26(b)(5) E-Discovery",
+      summary:
+        "Excludes the trigger day, counts calendar days including weekends/holidays, rolls to the next non-holiday business day under FRCP Rule 6(a)(1)(C), adds 3 days for service by mail under Rule 6(d), and enforces Rule 26(b)(5) privilege logging.",
+      content: `# FRCP Rule 6 Procedural Deadlines & E-Discovery Integrity
+- Rule 6(a)(1): Exclude event day; if last day is Saturday, Sunday, or federal holiday, extend to next business day.
+- Rule 6(d): Add 3 calendar days after service by mail or certain non-electronic methods.
+- E-Discovery: Preserve native metadata hashes, Bates numbering continuity, and Rule 26(b)(5) privilege logs; court filings require barred-attorney signature.`,
+      sourceUri: "https://uscode.house.gov/",
+      trustTier: "AUTHORITATIVE_GOV",
+      version: "FRCP-2025",
+      citationLabel: "FRCP-6-26",
+      effectiveDate: "2024-12-01T00:00:00Z",
+      expiresAt: "2032-12-31T00:00:00Z",
+    },
+    {
+      domain: "legal",
+      canonicalKey: "CAT260-LEGAL-FLSA-FMLA-WARN",
+      title: "FLSA 1.5x Overtime (29 CFR 778), FMLA Eligibility & WARN Act 60-Day Notice Standard",
+      summary:
+        "Computes non-exempt FLSA overtime at 1.5x regular rate above 40 hours/week, checks FMLA 12-month / 1,250-hour / 50-employee thresholds, and flags WARN Act 60-day advance notice when >= 100 employers cut >= 50 full-time roles.",
+      content: `# Employment & Labor Law Quantitative Thresholds
+- FLSA: Overtime rate >= 1.5 * hourly regular rate for hours > 40 in a single workweek.
+- WARN Act (29 U.S.C. 2101): Covered employers (>= 100 FT employees) must provide 60 calendar days advance notice for mass layoffs (>= 50 FT workers).`,
+      sourceUri: "https://www.ecfr.gov/current/title-29",
+      trustTier: "AUTHORITATIVE_GOV",
+      version: "29CFR-2025",
+      citationLabel: "FLSA-WARN-29CFR",
+      effectiveDate: "2025-01-01T00:00:00Z",
+      expiresAt: "2032-12-31T00:00:00Z",
+    },
+    {
+      domain: "cybersecurity",
+      canonicalKey: "CAT260-CYBER-OWASP-MASVS-MALWARE",
+      title: "OWASP MASVS Mobile App Verification & Static Binary Entropy Triage",
+      summary:
+        "Evaluates Android/iOS mobile controls across MASVS-STORAGE, MASVS-NETWORK TLS pinning, debuggable flags, and Shannon byte entropy >= 7.2 bits/byte as a static packing/obfuscation indicator.",
+      content: `# Mobile Security (MASVS) & Static Binary Triage
+- Never ship android:debuggable="true" or cleartext HTTP traffic in production mobile builds; enforce ATS / Network Security Config + certificate pinning.
+- Static triage: Shannon entropy >= 7.20 bits/byte in executable sections signals encryption/packing requiring dynamic sandbox analysis.`,
+      sourceUri: "https://csrc.nist.gov/publications/sp",
+      trustTier: "AUTHORITATIVE_GOV",
+      version: "MASVS-NIST-2025",
+      citationLabel: "MASVS-ENTROPY",
+      effectiveDate: "2024-06-01T00:00:00Z",
+      expiresAt: "2032-12-31T00:00:00Z",
+    },
+    {
+      domain: "engineering",
+      canonicalKey: "CAT260-ENG-WATER-HAZEN-EPA-CT",
+      title: "EPA Surface Water Treatment Chlorine CT Disinfection & Hazen-Williams Pipe Headloss",
+      summary:
+        "Computes residual disinfection CT = C * t_10 (mg*min/L) against Giardia 3-log inactivation targets and Hazen-Williams friction headloss hf in potable distribution mains.",
+      content: `# Water & Wastewater Engineering Hydraulics
+- EPA SWTR: Effective disinfection depends on free/combined chlorine concentration C (mg/L) multiplied by baffle-corrected contact time T10 (min).
+- Hazen-Williams: hf = 4.727 * L * (Q/C)^1.852 / D^4.871 (imperial) verifies minimum residual pressure (>= 20 psi under peak fire flow).`,
+      sourceUri: "https://www.ecfr.gov/current/title-40/chapter-I/subchapter-D/part-141",
+      trustTier: "AUTHORITATIVE_GOV",
+      version: "40CFR141-2025",
+      citationLabel: "EPA-SWTR-CT",
+      effectiveDate: "2025-01-01T00:00:00Z",
+      expiresAt: "2032-12-31T00:00:00Z",
+    },
+    {
+      domain: "engineering",
+      canonicalKey: "CAT260-ENG-ASHRAE-HVAC-170",
+      title: "ASHRAE 62.1 Ventilation, Sensible Cooling Load & ASHRAE 170 Healthcare Air Changes",
+      summary:
+        "Calculates sensible cooling capacity tons = 1.08 * CFM * dT / 12000, room air changes per hour ACH = (60 * CFM) / RoomVolume_ft3, and negative/positive clinical isolation compliance.",
+      content: `# Building HVAC & Clinical Ventilation Standards
+- Hospital airborne infection isolation (AIIR) and operating rooms follow ASHRAE 170 minimum total ACH and differential pressure monitoring.`,
+      sourceUri: "https://www.iso.org/",
+      trustTier: "PEER_REVIEWED",
+      version: "ASHRAE-170-2025",
+      citationLabel: "ASHRAE-HVAC-170",
+      effectiveDate: "2024-01-01T00:00:00Z",
+      expiresAt: "2032-12-31T00:00:00Z",
+    },
+    {
+      domain: "general",
+      canonicalKey: "CAT260-PROJ-PMI-EVM",
+      title: "OMB Capital Programming / ANSI EIA-748 Earned Value Management (CPI, SPI, EAC, TCPI)",
+      summary:
+        "Evaluates project cost & schedule health via CPI = EV/AC, SPI = EV/PV, Estimate at Completion EAC = BAC/CPI, and To-Complete Performance Index TCPI.",
+      content: `# Earned Value Management (EVM) Deterministic Metrics
+- CPI < 1.0 indicates cost overrun; SPI < 1.0 indicates schedule delay; TCPI > 1.10 signals recovery within baseline BAC is high-risk.`,
+      sourceUri: "https://www.whitehouse.gov/",
+      trustTier: "AUTHORITATIVE_GOV",
+      version: "EIA748-OMB",
+      citationLabel: "EVM-EIA748",
+      effectiveDate: "2024-01-01T00:00:00Z",
+      expiresAt: "2032-12-31T00:00:00Z",
+    },
+    {
+      domain: "legal",
+      canonicalKey: "CAT260-FIN-BENFORD-BSA-STRUCTURING",
+      title: "Benford's Law First-Digit Anomaly Screening & 31 U.S.C. 5324 BSA Structuring Rules",
+      summary:
+        "Tests financial ledgers against P(d) = log10(1 + 1/d) chi-square distribution and identifies sub-$10,000 split cash transactions exhibiting structuring risk under 31 U.S.C. 5324.",
+      content: `# Forensic Fraud & AML Structuring Detection
+- Expected Benford digit 1 probability = 30.10%, digit 9 = 4.58%. Chi-square exceeding critical 15.51 (df=8, p<0.05) triggers forensic invoice audit.
+- Repeated cash transactions clustered in $9,000-$9,999 totaling >= $10,000 indicate potential 31 U.S.C. 5324 structuring for SAR review.`,
+      sourceUri: "https://uscode.house.gov/",
+      trustTier: "AUTHORITATIVE_GOV",
+      version: "31USC5324-2025",
+      citationLabel: "BENFORD-BSA-5324",
+      effectiveDate: "2025-01-01T00:00:00Z",
+      expiresAt: "2032-12-31T00:00:00Z",
+    },
+    {
+      domain: "engineering",
+      canonicalKey: "CAT260-UX-WCAG22-508",
+      title: "W3C WCAG 2.2 Relative Luminance Contrast & Revised Section 508 Accessibility",
+      summary:
+        "Computes exact sRGB relative luminance ratio (L1 + 0.05) / (L2 + 0.05) enforcing >= 4.5:1 WCAG AA normal text, >= 3.0:1 large text/UI components, and >= 7.0:1 AAA.",
+      content: `# WCAG 2.2 & Section 508 Quantitative Accessibility
+- Normal text requires >= 4.5:1 luminance contrast; high-contrast AAA requires >= 7.0:1 along with keyboard focus visibility.`,
+      sourceUri: "https://www.whitehouse.gov/",
+      trustTier: "AUTHORITATIVE_GOV",
+      version: "WCAG22-508",
+      citationLabel: "WCAG22-508",
+      effectiveDate: "2024-01-01T00:00:00Z",
+      expiresAt: "2032-12-31T00:00:00Z",
+    },
+    {
+      domain: "science",
+      canonicalKey: "CAT260-SCI-NIST-SP811-SI",
+      title: "NIST SP 811 SI Unit Conversions & Dimensional Consistency Verification",
+      summary:
+        "Standardizes exact conversion factors across pressure (psi <-> kPa), energy (kWh <-> BTU), radiation absorbed/equivalent dose (mSv <-> rem), temperature, and distance.",
+      content: `# NIST SP 811 SI Unit Conversion & Dimensional Integrity
+- 1 psi = 6.894757 kPa; 1 kWh = 3412.142 BTU; 1 mSv = 0.1 rem; always reject cross-dimension conversions before engineering calculations.`,
+      sourceUri: "https://www.nist.gov/pml/special-publication-811",
+      trustTier: "AUTHORITATIVE_GOV",
+      version: "NIST-SP811",
+      citationLabel: "NIST-SP811-SI",
+      effectiveDate: "2024-01-01T00:00:00Z",
+      expiresAt: "2032-12-31T00:00:00Z",
+    },
+    {
+      domain: "general",
+      canonicalKey: "CAT260-DEP-EPISTEMIC-CONTRADICTION",
+      title: "NIST AI RMF 1.0 Epistemic Confidence Calibration, Contradiction Detection & Temporal Isolation",
+      summary:
+        "Enforces separation of Established Facts, Inferences, Hypotheses, and Unknowns (#254/#38/#39), cross-source normative conflict detection (#253), and historical vs current timestamp isolation (#252).",
+      content: `# AI Dependability & Epistemic Calibration Invariants
+- Never merge historical baseline measurements with current acute values; detect conflicting numeric or normative assertions across authorities before synthesis.`,
+      sourceUri: "https://csrc.nist.gov/pubs/ai/100/1/final",
+      trustTier: "AUTHORITATIVE_GOV",
+      version: "NIST-AIRMF-2025",
+      citationLabel: "NIST-AIRMF-DEP",
+      effectiveDate: "2024-01-01T00:00:00Z",
+      expiresAt: "2032-12-31T00:00:00Z",
+    },
+  ];
+  for (const catItem of CATALOG_260_GAP_CLOSURE_SEED) {
+    await ingestIfNeeded(catItem);
+  }
+
   return {
     recordsSeeded,
     recordsSkippedExisting,
@@ -1949,6 +2111,7 @@ export async function seedExtendedDefenseAndEnterpriseCorpus(
       searchStigLibrary({ limit: 100 }).length +
       listPolicyAsCodePacks().length +
       GOVERNMENT_READINESS_CONTROLS.length +
-      NUPS_INDUSTRY_SEED.length,
+      NUPS_INDUSTRY_SEED.length +
+      CATALOG_260_GAP_CLOSURE_SEED.length,
   };
 }

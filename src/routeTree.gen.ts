@@ -91,6 +91,7 @@ import { Route as HubNistTailorRouteImport } from './routes/hub.nist.tailor'
 import { Route as HubProjectIdRouteImport } from './routes/hub.project.$id'
 import { Route as HubToolIdRouteImport } from './routes/hub.tool.$id'
 import { Route as HubTrackIdRouteImport } from './routes/hub.track.$id'
+import { Route as ApiV2CatalogSplatRouteImport } from './routes/api/v2.catalog.$'
 import { Route as ApiV2DodIcSplatRouteImport } from './routes/api/v2.dod-ic.$'
 import { Route as ApiV2EnterpriseSplatRouteImport } from './routes/api/v2.enterprise.$'
 import { Route as ApiV2NdkrsSplatRouteImport } from './routes/api/v2.ndkrs.$'
@@ -513,6 +514,11 @@ const HubTrackIdRoute = HubTrackIdRouteImport.update({
   path: '/track/$id',
   getParentRoute: () => HubRoute,
 } as any)
+const ApiV2CatalogSplatRoute = ApiV2CatalogSplatRouteImport.update({
+  id: '/api/v2/catalog/$',
+  path: '/api/v2/catalog/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiV2DodIcSplatRoute = ApiV2DodIcSplatRouteImport.update({
   id: '/api/v2/dod-ic/$',
   path: '/api/v2/dod-ic/$',
@@ -657,6 +663,7 @@ export interface FileRoutesByFullPath {
   '/hub/tool/$id': typeof HubToolIdRoute
   '/hub/track/$id': typeof HubTrackIdRoute
   '/hub/nist/': typeof HubNistIndexRoute
+  '/api/v2/catalog/$': typeof ApiV2CatalogSplatRoute
   '/api/v2/dod-ic/$': typeof ApiV2DodIcSplatRoute
   '/api/v2/enterprise/$': typeof ApiV2EnterpriseSplatRoute
   '/api/v2/ndkrs/$': typeof ApiV2NdkrsSplatRoute
@@ -748,6 +755,7 @@ export interface FileRoutesByTo {
   '/hub/tool/$id': typeof HubToolIdRoute
   '/hub/track/$id': typeof HubTrackIdRoute
   '/hub/nist': typeof HubNistIndexRoute
+  '/api/v2/catalog/$': typeof ApiV2CatalogSplatRoute
   '/api/v2/dod-ic/$': typeof ApiV2DodIcSplatRoute
   '/api/v2/enterprise/$': typeof ApiV2EnterpriseSplatRoute
   '/api/v2/ndkrs/$': typeof ApiV2NdkrsSplatRoute
@@ -844,6 +852,7 @@ export interface FileRoutesById {
   '/hub/tool/$id': typeof HubToolIdRoute
   '/hub/track/$id': typeof HubTrackIdRoute
   '/hub/nist/': typeof HubNistIndexRoute
+  '/api/v2/catalog/$': typeof ApiV2CatalogSplatRoute
   '/api/v2/dod-ic/$': typeof ApiV2DodIcSplatRoute
   '/api/v2/enterprise/$': typeof ApiV2EnterpriseSplatRoute
   '/api/v2/ndkrs/$': typeof ApiV2NdkrsSplatRoute
@@ -941,6 +950,7 @@ export interface FileRouteTypes {
     | '/hub/tool/$id'
     | '/hub/track/$id'
     | '/hub/nist/'
+    | '/api/v2/catalog/$'
     | '/api/v2/dod-ic/$'
     | '/api/v2/enterprise/$'
     | '/api/v2/ndkrs/$'
@@ -1032,6 +1042,7 @@ export interface FileRouteTypes {
     | '/hub/tool/$id'
     | '/hub/track/$id'
     | '/hub/nist'
+    | '/api/v2/catalog/$'
     | '/api/v2/dod-ic/$'
     | '/api/v2/enterprise/$'
     | '/api/v2/ndkrs/$'
@@ -1127,6 +1138,7 @@ export interface FileRouteTypes {
     | '/hub/tool/$id'
     | '/hub/track/$id'
     | '/hub/nist/'
+    | '/api/v2/catalog/$'
     | '/api/v2/dod-ic/$'
     | '/api/v2/enterprise/$'
     | '/api/v2/ndkrs/$'
@@ -1175,6 +1187,7 @@ export interface RootRouteChildren {
   UUsernameRoute: typeof UUsernameRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiV1HealthRoute: typeof ApiV1HealthRoute
+  ApiV2CatalogSplatRoute: typeof ApiV2CatalogSplatRoute
   ApiV2DodIcSplatRoute: typeof ApiV2DodIcSplatRoute
   ApiV2EnterpriseSplatRoute: typeof ApiV2EnterpriseSplatRoute
   ApiV2NdkrsSplatRoute: typeof ApiV2NdkrsSplatRoute
@@ -1758,6 +1771,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HubTrackIdRouteImport
       parentRoute: typeof HubRoute
     }
+    '/api/v2/catalog/$': {
+      id: '/api/v2/catalog/$'
+      path: '/api/v2/catalog/$'
+      fullPath: '/api/v2/catalog/$'
+      preLoaderRoute: typeof ApiV2CatalogSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/v2/dod-ic/$': {
       id: '/api/v2/dod-ic/$'
       path: '/api/v2/dod-ic/$'
@@ -2025,6 +2045,7 @@ const rootRouteChildren: RootRouteChildren = {
   UUsernameRoute: UUsernameRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiV1HealthRoute: ApiV1HealthRoute,
+  ApiV2CatalogSplatRoute: ApiV2CatalogSplatRoute,
   ApiV2DodIcSplatRoute: ApiV2DodIcSplatRoute,
   ApiV2EnterpriseSplatRoute: ApiV2EnterpriseSplatRoute,
   ApiV2NdkrsSplatRoute: ApiV2NdkrsSplatRoute,

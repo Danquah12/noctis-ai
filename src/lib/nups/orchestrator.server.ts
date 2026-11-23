@@ -16,6 +16,10 @@ import { solveScienceQuestion } from "../noctis-universal-science-engine.ts";
 import { orchestrateSovereignQuery } from "../noctis-tool-orchestrator.ts";
 import { assessMissionRiskIntelligence } from "../enterprise/graph-and-mission-risk.ts";
 import { verifySubstantiveOutput } from "../enterprise/independent-verification-engine.ts";
+import {
+  analyzeTemporalSequence,
+  calibrateEpistemicConfidence,
+} from "../catalog260/dependability-suite.server.ts";
 import type { NdkrsDomain } from "../ndkrs/types.ts";
 import type { SQDECPillar } from "../noctis-cross-domain-consensus.ts";
 import { NOCTIS_MASTER_CAPABILITY_MATRIX } from "./master-capability-matrix.ts";
@@ -366,6 +370,8 @@ export async function solveUniversalProblem(req: NupsSolveRequest): Promise<Nups
   }
 
   const candidateMarkdown = candidateLines.join("\n");
+  const temporalCheck = analyzeTemporalSequence(query);
+  const epistemic = calibrateEpistemicConfidence(candidateMarkdown, retrievedAuthorities.length);
   const verif = await verifySubstantiveOutput({
     domain: "enterprise",
     requestId: runId,
@@ -378,7 +384,7 @@ export async function solveUniversalProblem(req: NupsSolveRequest): Promise<Nups
 
   const finalMarkdown = verif.failClosedTriggered
     ? `> **NUPS SAFETY VALIDATOR — FAIL_CLOSED_BLOCK:** ${verif.violations.map((v) => v.message).join("; ")}`
-    : `${candidateMarkdown}\n> **Independent Safety Validator:** **${verif.status}** (${verif.rulesChecked} gates checked in ${verif.latencyMs}ms · Event \`${verif.id}\` · Audit SHA-256 \`${verif.outputSha256.slice(0, 16)}\`)`;
+    : `${candidateMarkdown}\n> **Independent Safety Validator:** **${verif.status}** (${verif.rulesChecked} gates checked in ${verif.latencyMs}ms · Event \`${verif.id}\` · Audit SHA-256 \`${verif.outputSha256.slice(0, 16)}\`)\n> **Dependability Calibration (#252/#254):** Confidence \`${epistemic.calibratedConfidence}\` band \`${epistemic.confidenceBand}\` (Hallucination risk: \`${epistemic.hallucinationRisk}\`) · Temporal: \`${temporalCheck.temporalGuardNote}\``;
 
   const latencyMs = Math.max(1, Date.now() - startedAt);
   const auditSha256 = sha256Sync(`${runId}|${verif.outputSha256}|${expertOutputs.length}`);

@@ -22,6 +22,13 @@ import { syncAllRelationalEnterpriseSchemas } from "../src/lib/enterprise/relati
 import { OPENAI_KEY } from "../src/lib/openai-key.server.ts";
 import { syncNupsCatalogToSql, listNupsRuns } from "../src/lib/nups/persistence.server.ts";
 import { solveUniversalProblem } from "../src/lib/nups/orchestrator.server.ts";
+import {
+  createDynamicRegressionTest,
+  getCatalog260SqlStats,
+  registerModelVersion,
+  saveUserMemory,
+  syncCatalog260ToSql,
+} from "../src/lib/catalog260/persistence.server.ts";
 
 async function main() {
   const startedAt = Date.now();
@@ -37,9 +44,13 @@ async function main() {
     }),
   );
 
-  // 1. Apply 0019_telemetry_persistence.sql & 0020_nups_orchestration.sql idempotently
+  // 1. Apply 0019, 0020 & 0021 idempotently
   const sql = await getSql();
-  for (const migFile of ["0019_telemetry_persistence.sql", "0020_nups_orchestration.sql"]) {
+  for (const migFile of [
+    "0019_telemetry_persistence.sql",
+    "0020_nups_orchestration.sql",
+    "0021_ultimate_catalog_260.sql",
+  ]) {
     const migPath = path.join(process.cwd(), "migrations", migFile);
     const migSql = readFileSync(migPath, "utf8");
     for (const rawStmt of migSql.split(/;\s*(?:\r?\n|$)/)) {
@@ -54,7 +65,7 @@ async function main() {
     }
     await sql.query(`INSERT INTO _migrations (name) VALUES ($1) ON CONFLICT (name) DO NOTHING`, [migFile]);
   }
-  console.log(JSON.stringify({ step: "migrations_0019_0020", applied: true }));
+  console.log(JSON.stringify({ step: "migrations_0019_0020_0021", applied: true }));
 
   // 2. Sync relational 0015 + enterprise + enclave + baseline telemetry schemas first (fast SQL operations)
   const relational = await syncAllRelationalEnterpriseSchemas({
@@ -128,6 +139,61 @@ async function main() {
     baselineRunId = baseline.runId;
   }
   console.log(JSON.stringify({ step: "nups_sync", catalogedEngines: nupsCatalogCount, baselineRunId }));
+
+  // 4c. Sync 260-Capability Catalog Registry & Dependability baseline tables (#12, #30/#35, #255)
+  const catalog260Synced = await syncCatalog260ToSql();
+  const catStatsBefore = await getCatalog260SqlStats();
+  if (catStatsBefore.userMemoryRows === 0) {
+    await saveUserMemory({
+      id: "MEM-BASELINE-2026",
+      userId: "system:baseline",
+      tenantId: "tenant:public-sandbox",
+      purpose: "system_dependability_baseline",
+      contentRedacted: "Verified privacy-preserving scoped memory baseline initialized with PII redaction.",
+      consentGranted: true,
+      retentionDays: 180,
+    });
+  }
+  if (catStatsBefore.modelRegistryRows === 0) {
+    await registerModelVersion({
+      modelId: "noctis-core-v1",
+      version: "1.0.0",
+      evalAccuracyPct: 99.4,
+      canaryTrafficPct: 0,
+      status: "ACTIVE_PROD",
+      rollbackTarget: null,
+    });
+    await registerModelVersion({
+      modelId: "canary-eval-2026",
+      version: "1.1.0-canary",
+      evalAccuracyPct: 98.2,
+      canaryTrafficPct: 5,
+      status: "CANARY",
+      rollbackTarget: "noctis-core-v1",
+    });
+  }
+  if (catStatsBefore.dynamicRegressionRows === 0) {
+    await createDynamicRegressionTest({
+      id: "REG-CRIT-046",
+      defectSource: "clinical-v1-encounter-isolation",
+      domain: "clinical",
+      promptSample: "Patient A baseline creatinine 1.1 mg/dL 6 months ago; Patient A today creatinine 2.6 mg/dL. Do not overwrite today's value.",
+      mustInclude: ["2.6 mg/dL", "baseline"],
+      mustNotInclude: ["1.1 mg/dL current"],
+      createdBy: "scripts/sync-neon-databases.ts",
+    });
+    await createDynamicRegressionTest({
+      id: "REG-CRIT-047",
+      defectSource: "cross-source-contradiction-guard",
+      domain: "rmf",
+      promptSample: "Enforce FedRAMP High AC-2 MFA without unverified waivers.",
+      mustInclude: ["AC-2", "MFA"],
+      mustNotInclude: ["exempt"],
+      createdBy: "scripts/sync-neon-databases.ts",
+    });
+  }
+  const catStatsAfter = await getCatalog260SqlStats();
+  console.log(JSON.stringify({ step: "catalog260_sync", catalog260Synced, ...catStatsAfter }));
 
   // 5. Summarize live state across all schemas and NDKRS domains
   const [schemaCounts, ndkrsSummary, domainRows] = await Promise.all([

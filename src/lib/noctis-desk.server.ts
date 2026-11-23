@@ -1065,6 +1065,7 @@ async function executeVibeReply(
     const { isDodIcQuery } = await import("@/lib/dod-ic/dod-ic-reasoning.server");
     const { isEnterpriseChatQuery } = await import("@/lib/enterprise/chat-bridge.server");
     const { isNupsChatQuery } = await import("@/lib/nups/chat-bridge.server");
+    const { isCatalog260ChatQuery } = await import("@/lib/catalog260/chat-bridge.server");
     const { rememberAnswer, rememberRule, inferDomain } = await import("@/lib/noctis-train.server");
     const skipClinicalCache =
       isClinicalInquiry ||
@@ -1072,7 +1073,8 @@ async function executeVibeReply(
       isRmfGrcQuery(latest) ||
       isDodIcQuery(latest) ||
       isEnterpriseChatQuery(latest) ||
-      isNupsChatQuery(latest);
+      isNupsChatQuery(latest) ||
+      isCatalog260ChatQuery(latest);
     const cleanReplyForMemory = reply.text.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
     if (!skipClinicalCache && reply && "text" in reply && cleanReplyForMemory.length > 60 && !cleanReplyForMemory.includes("could not finish")) {
       const domain = inferDomain(latest);
@@ -1210,6 +1212,7 @@ async function composeVibeReply(
   const { isRmfGrcQuery } = await import("@/lib/noctis-rmf-engine");
   const { isEnterpriseChatQuery, tryHandleEnterpriseChatQuery } = await import("@/lib/enterprise/chat-bridge.server");
   const { isNupsChatQuery, tryHandleNupsChatQuery } = await import("@/lib/nups/chat-bridge.server");
+  const { isCatalog260ChatQuery, tryHandleCatalog260ChatQuery } = await import("@/lib/catalog260/chat-bridge.server");
   const isClinicalCacheBypass =
     isUniversalClinicalQuestion(fullQuestion) ||
     isUniversalClinicalQuestion(question) ||
@@ -1220,7 +1223,9 @@ async function composeVibeReply(
     isEnterpriseChatQuery(fullQuestion) ||
     isEnterpriseChatQuery(question) ||
     isNupsChatQuery(fullQuestion) ||
-    isNupsChatQuery(question);
+    isNupsChatQuery(question) ||
+    isCatalog260ChatQuery(fullQuestion) ||
+    isCatalog260ChatQuery(question);
 
   if (!isCodingRequest) {
     // Authoritative Live MITRE CVE Program & NVD Resolver: Guarantees official names and full intelligence for all CVEs
@@ -1285,6 +1290,19 @@ async function composeVibeReply(
           text: wrapDeterministicThink(
             nupsOut,
             "Orchestrated Noctis Universal Problem Solver (NUPS): Classified cross-domain expertise, planned isolated fact boundaries, retrieved NDKRS authorities, delegated deterministic domain solvers, and verified output via Independent Safety Validator.",
+          ),
+        };
+      }
+    }
+
+    // Catalog 260 Master Capability Audit, Dependability Suite (#251-#260) & Deterministic Gap Solvers
+    if (isCatalog260ChatQuery(fullQuestion)) {
+      const catOut = await tryHandleCatalog260ChatQuery(fullQuestion);
+      if (catOut) {
+        return {
+          text: wrapDeterministicThink(
+            catOut,
+            "Evaluated Noctis Master Capability Catalog v1.0 (260 capabilities), Dependability Suite (#251-#260), and deterministic gap-closure domain solvers.",
           ),
         };
       }

@@ -31,6 +31,7 @@ interface NoctisEnterpriseCommandTabProps {
 type EnterpriseSubTab =
   | "command-overview"
   | "nups-matrix"
+  | "catalog-260"
   | "policy-ccv"
   | "twin-graph-risk"
   | "evidence-custody"
@@ -144,12 +145,28 @@ export function NoctisEnterpriseCommandTab({
     "A hospital experiences a power outage affecting backup electrical generators (transfer time 8.5s, 2400 gal tank at 50 gph, 300 kWh UPS at 400 kW critical load), 24 ICU operations, cybersecurity, emergency preparedness, and regulatory compliance",
   );
   const [nupsOut, setNupsOut] = useState<any>(null);
+  const [catSummary, setCatSummary] = useState<any>(null);
+  const [catItems, setCatItems] = useState<any[]>([]);
+  const [catDivFilter, setCatDivFilter] = useState<string>("ALL");
+  const [catStatusFilter, setCatStatusFilter] = useState<string>("ALL");
+  const [catSearch, setCatSearch] = useState<string>("");
+  const [catFreshness, setCatFreshness] = useState<any>(null);
+  const [catModels, setCatModels] = useState<any[]>([]);
+  const [catEvalFactory, setCatEvalFactory] = useState<any>(null);
+  const [depText, setDepText] = useState<string>(
+    "Patient A baseline creatinine 1.1 mg/dL 6 months ago; Patient A today creatinine 2.6 mg/dL. Always require MFA on FedRAMP High AC-2. FedRAMP High AC-2 exempt from MFA.",
+  );
+  const [depOut, setDepOut] = useState<any>(null);
+  const [catSolveQuery, setCatSolveQuery] = useState<string>(
+    "Calculate PMI EVM CPI, SPI, EAC, and TCPI for BAC=$500000, PV=$250000, EV=$220000, AC=$260000",
+  );
+  const [catSolveOut, setCatSolveOut] = useState<any>(null);
 
   async function loadCommandCenter() {
     setLoading(true);
     setErrMsg("");
     try {
-      const [cc, pk, ag, gv, mp, nx, nr] = await Promise.all([
+      const [cc, pk, ag, gv, mp, nx, nr, cs, ci, cf, cm, ce] = await Promise.all([
         fetch("/api/v2/enterprise/command-center").then((r) => r.json()),
         fetch("/api/v2/enterprise/policy-as-code/packs").then((r) => r.json()),
         fetch("/api/v2/enterprise/agents/manifest").then((r) => r.json()),
@@ -157,6 +174,11 @@ export function NoctisEnterpriseCommandTab({
         fetch("/api/v2/enterprise/master-plan").then((r) => r.json()),
         fetch("/api/v2/nups/matrix").then((r) => r.json()),
         fetch("/api/v2/nups/runs?limit=8").then((r) => r.json()),
+        fetch("/api/v2/catalog/summary").then((r) => r.json()).catch(() => null),
+        fetch("/api/v2/catalog/items").then((r) => r.json()).catch(() => null),
+        fetch("/api/v2/catalog/freshness").then((r) => r.json()).catch(() => null),
+        fetch("/api/v2/catalog/models").then((r) => r.json()).catch(() => null),
+        fetch("/api/v2/catalog/eval-factory").then((r) => r.json()).catch(() => null),
       ]);
       setSnap(cc);
       setPacks(Array.isArray(pk.packs) ? pk.packs : []);
@@ -166,6 +188,11 @@ export function NoctisEnterpriseCommandTab({
       setNupsMatrix(Array.isArray(nx.engines) ? nx.engines : []);
       setNupsSummary(nx.summary || null);
       setNupsRuns(Array.isArray(nr.runs) ? nr.runs : []);
+      if (cs) setCatSummary(cs);
+      if (ci && Array.isArray(ci.items)) setCatItems(ci.items);
+      if (cf) setCatFreshness(cf);
+      if (cm && Array.isArray(cm.models)) setCatModels(cm.models);
+      if (ce) setCatEvalFactory(ce);
     } catch (e) {
       setErrMsg(e instanceof Error ? e.message : "Failed to load Enterprise Command Center telemetry.");
     } finally {
@@ -271,9 +298,49 @@ export function NoctisEnterpriseCommandTab({
     }
   }
 
+  async function runDependabilitySuite() {
+    const t = depText.trim();
+    if (!t) return;
+    setBusyMsg("Running Unified Dependability Suite (#251-#257, Knowledge Authority, Temporal Split, Contradictions, Epistemic Confidence)...");
+    setErrMsg("");
+    try {
+      const res = await fetch("/api/v2/catalog/dependability/run", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ text: t }),
+      }).then((r) => r.json());
+      setDepOut(res);
+    } catch (e) {
+      setErrMsg(e instanceof Error ? e.message : "Dependability suite failed.");
+    } finally {
+      setBusyMsg("");
+    }
+  }
+
+  async function runCatalogGapSolve(promptOverride?: string) {
+    const q = (promptOverride ?? catSolveQuery).trim();
+    if (!q) return;
+    if (promptOverride) setCatSolveQuery(promptOverride);
+    setBusyMsg("Running Deterministic Catalog-260 Gap Solver & Epistemic Calibration...");
+    setErrMsg("");
+    try {
+      const res = await fetch("/api/v2/catalog/solve", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ query: q }),
+      }).then((r) => r.json());
+      setCatSolveOut(res);
+    } catch (e) {
+      setErrMsg(e instanceof Error ? e.message : "Catalog gap solver failed.");
+    } finally {
+      setBusyMsg("");
+    }
+  }
+
   const navTabs: { id: EnterpriseSubTab; label: string; icon: React.ReactNode }[] = [
     { id: "command-overview", label: "Command Overview (6 Panels)", icon: <Activity className="size-3.5" /> },
     { id: "nups-matrix", label: "Universal Solver (NUPS) & 40-Engine Matrix", icon: <Sparkles className="size-3.5" /> },
+    { id: "catalog-260", label: "Catalog 260 & Dependability (#251-260)", icon: <Database className="size-3.5" /> },
     { id: "policy-ccv", label: "Policy-as-Code & CCV", icon: <Shield className="size-3.5" /> },
     { id: "twin-graph-risk", label: "Auth Twin, Graph & Risk", icon: <Network className="size-3.5" /> },
     { id: "evidence-custody", label: "Evidence & Chain of Custody", icon: <FileCheck2 className="size-3.5" /> },
@@ -1713,6 +1780,266 @@ export function NoctisEnterpriseCommandTab({
                       </div>
                       <div className="text-[10px] text-zinc-500 font-mono truncate">
                         {`Modules: ${(e.existingModules || []).join(", ")}`}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ==================== CATALOG 260 & DEPENDABILITY (#251-260) ==================== */}
+        {subTab === "catalog-260" && (
+          <div className="space-y-4">
+            {/* Summary KPI Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
+              <div className="rounded-xl border border-white/10 bg-[#121722] p-3">
+                <div className="text-[10px] uppercase tracking-wider text-zinc-400">Master Catalog</div>
+                <div className="text-xl font-bold text-white mt-0.5">{catSummary?.totalCapabilities ?? catItems.length ?? 260}</div>
+                <div className="text-[10px] text-cyan-300">14 Divisions (I–XIV)</div>
+              </div>
+              <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 p-3">
+                <div className="text-[10px] uppercase tracking-wider text-zinc-400">Already Built</div>
+                <div className="text-xl font-bold text-emerald-300 mt-0.5">{catSummary?.countsByStatus?.alreadyImplemented ?? "—"}</div>
+                <div className="text-[10px] text-zinc-400">Verified pre-audit</div>
+              </div>
+              <div className="rounded-xl border border-sky-500/25 bg-sky-500/5 p-3">
+                <div className="text-[10px] uppercase tracking-wider text-zinc-400">Gaps Closed Now</div>
+                <div className="text-xl font-bold text-sky-300 mt-0.5">{catSummary?.countsByStatus?.gapClosedNow ?? "—"}</div>
+                <div className="text-[10px] text-zinc-400">Solvers & Dependability</div>
+              </div>
+              <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-3">
+                <div className="text-[10px] uppercase tracking-wider text-zinc-400">Ext Infra Boundaries</div>
+                <div className="text-xl font-bold text-amber-300 mt-0.5">{catSummary?.countsByStatus?.externalBoundary ?? "—"}</div>
+                <div className="text-[10px] text-zinc-400">GPU cluster / OS GUI / video</div>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-[#121722] p-3">
+                <div className="text-[10px] uppercase tracking-wider text-zinc-400">Source Freshness (#256)</div>
+                <div className="text-xl font-bold text-emerald-300 mt-0.5">{catFreshness?.status ?? "FRESH"}</div>
+                <div className="text-[10px] text-zinc-400">{`${catFreshness?.ndkrsVerifiedRecords ?? 0} NDKRS · ${catFreshness?.disaCciCount ?? 0} CCIs`}</div>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-[#121722] p-3">
+                <div className="text-[10px] uppercase tracking-wider text-zinc-400">Eval Factory (#255)</div>
+                <div className="text-xl font-bold text-cyan-300 mt-0.5">
+                  {catEvalFactory?.factoryRun ? `${catEvalFactory.factoryRun.passedCount}/${catEvalFactory.factoryRun.totalDynamicTests}` : "—"}
+                </div>
+                <div className="text-[10px] text-zinc-400">{`${catModels.length} Models · SQL Tracked`}</div>
+              </div>
+            </div>
+
+            {/* Dependability Suite (#251-#259) Workbench */}
+            <div className="rounded-xl border border-white/10 bg-[#121722] p-4 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h2 className="text-sm font-semibold text-white">Dependability Suite (#251–#259) Interactive Verifier</h2>
+                  <p className="text-xs text-zinc-400">
+                    Runs Knowledge Authority (#251), Temporal Separation (#252), Cross-Source Contradictions (#253), Epistemic Confidence (#254/#39), Eval Factory (#255), Freshness (#256), and Privacy Redaction (#257).
+                  </p>
+                </div>
+                {onSendToChat && (
+                  <button
+                    type="button"
+                    onClick={() => onSendToChat("Run a full 260-capability master capability catalog audit and live dependability suite check")}
+                    className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 text-xs text-cyan-200 hover:bg-cyan-500/20 flex items-center gap-1"
+                  >
+                    <Send className="size-3" /> Send Catalog Audit to Chat
+                  </button>
+                )}
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-2">
+                <textarea
+                  value={depText}
+                  onChange={(e) => setDepText(e.target.value)}
+                  rows={2}
+                  className="flex-1 rounded-lg border border-white/15 bg-black/50 px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-400"
+                  placeholder="Enter clinical, security, or policy text to check temporal splits, contradictions, PII, and authority..."
+                />
+                <button
+                  type="button"
+                  onClick={() => void runDependabilitySuite()}
+                  className="rounded-lg bg-cyan-600 hover:bg-cyan-500 px-4 py-2 text-xs font-semibold text-white flex items-center justify-center gap-1.5 shrink-0"
+                >
+                  <Play className="size-3.5" /> Run Dependability Check
+                </button>
+              </div>
+
+              {depOut && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 pt-2 border-t border-white/10 text-xs">
+                  <div className="rounded-lg border border-white/10 bg-black/45 p-2.5 space-y-1">
+                    <div className="font-semibold text-cyan-300">#251 Authority Check</div>
+                    <div className="text-white">{depOut.knowledgeVerificationAuthority?.status}</div>
+                    <div className="text-[11px] text-zinc-400">
+                      {`${depOut.knowledgeVerificationAuthority?.supportingHits?.length ?? 0} NDKRS hits`}
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-white/10 bg-black/45 p-2.5 space-y-1">
+                    <div className="font-semibold text-sky-300">#252 Temporal Split</div>
+                    <div className="text-white">
+                      {depOut.temporalIntelligence?.hasHistoricalVsCurrentSplit ? "HISTORICAL_VS_CURRENT_ISOLATED" : "SINGLE_HORIZON"}
+                    </div>
+                    <div className="text-[11px] text-zinc-400">{depOut.temporalIntelligence?.temporalGuardNote}</div>
+                  </div>
+                  <div className="rounded-lg border border-white/10 bg-black/45 p-2.5 space-y-1">
+                    <div className="font-semibold text-amber-300">#253 Contradictions</div>
+                    <div className="text-white">{`${depOut.contradictionDetection?.status} (${depOut.contradictionDetection?.contradictionCount ?? 0})`}</div>
+                    <div className="text-[11px] text-zinc-400 truncate">
+                      {depOut.contradictionDetection?.conflicts?.[0]?.reason || "No normative or numeric clashes"}
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-white/10 bg-black/45 p-2.5 space-y-1">
+                    <div className="font-semibold text-emerald-300">#254 Epistemic Confidence</div>
+                    <div className="text-white">
+                      {`${depOut.epistemicConfidence?.calibratedConfidence} ${depOut.epistemicConfidence?.confidenceBand}`}
+                    </div>
+                    <div className="text-[11px] text-zinc-400">
+                      {`Hallucination Risk: ${depOut.epistemicConfidence?.hallucinationRisk}`}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Deterministic Gap-Closure Solver Workbench */}
+            <div className="rounded-xl border border-white/10 bg-[#121722] p-4 space-y-3">
+              <h2 className="text-sm font-semibold text-white">Newly Closed Deterministic Domain Solvers (`/api/v2/catalog/solve`)</h2>
+              <div className="flex flex-wrap gap-1.5 text-[11px]">
+                {[
+                  { label: "PMI EVM (#209)", q: "Calculate PMI EVM CPI, SPI, EAC, and TCPI for BAC=$500000, PV=$250000, EV=$220000, AC=$260000" },
+                  { label: "FRCP Rule 6 Deadline (#153)", q: "Calculate FRCP Rule 6 deadline 21 days from 2026-11-06 with Rule 6(d) mail service" },
+                  { label: "Benford & BSA Structuring (#204)", q: "Check Benford Law anomaly and 31 U.S.C. 5324 BSA structuring on ledger deposits $9400, $9500, $9800, $9200" },
+                  { label: "WCAG 2.2 Contrast (#235)", q: "Audit WCAG 2.2 contrast ratio between foreground #FFFFFF and background #0F172A" },
+                  { label: "ASHRAE 170 HVAC (#197)", q: "Compute ASHRAE 170 HVAC cooling tons and ACH for 4000 CFM, delta T 20 F, volume 24000 cu ft" },
+                  { label: "FLSA & WARN Act (#155)", q: "Evaluate FLSA overtime and WARN Act for $32/hr worker working 48 hours at a 150-employee site laying off 60 workers" },
+                ].map((preset) => (
+                  <button
+                    key={preset.label}
+                    type="button"
+                    onClick={() => void runCatalogGapSolve(preset.q)}
+                    className="rounded-md border border-white/10 bg-white/5 px-2.5 py-1 text-zinc-200 hover:bg-white/10"
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="text"
+                  value={catSolveQuery}
+                  onChange={(e) => setCatSolveQuery(e.target.value)}
+                  className="flex-1 rounded-lg border border-white/15 bg-black/50 px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-400"
+                  placeholder="Query any newly closed solver (FRCP Rule 6, EVM, Benford, WCAG, ASHRAE, Hazen-Williams, MASVS, SI units)..."
+                />
+                <button
+                  type="button"
+                  onClick={() => void runCatalogGapSolve()}
+                  className="rounded-lg bg-emerald-600 hover:bg-emerald-500 px-4 py-2 text-xs font-semibold text-white flex items-center justify-center gap-1.5 shrink-0"
+                >
+                  <Play className="size-3.5" /> Solve & Calibrate
+                </button>
+              </div>
+              {catSolveOut?.solverResult && (
+                <div className="rounded-lg border border-white/10 bg-black/45 p-3 text-xs space-y-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-semibold text-white">
+                      {`${catSolveOut.solverResult.solverId}: ${catSolveOut.solverResult.title}`}
+                    </span>
+                    <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-bold", statusTone(catSolveOut.solverResult.status))}>
+                      {catSolveOut.solverResult.status}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {Object.entries(catSolveOut.solverResult.metrics || {}).map(([k, v]) => (
+                      <span key={k} className="rounded bg-white/5 px-2 py-0.5 text-[10px] font-mono text-emerald-300">
+                        {`${k}: ${String(v)}`}
+                      </span>
+                    ))}
+                  </div>
+                  {(catSolveOut.solverResult.findings || []).map((f: string, idx: number) => (
+                    <div key={idx} className="text-zinc-300">{f}</div>
+                  ))}
+                  <div className="text-[11px] text-zinc-400">
+                    {`Authorities: ${(catSolveOut.solverResult.authorities || []).join("; ")} · Confidence: ${catSolveOut.epistemicConfidence?.calibratedConfidence} ${catSolveOut.epistemicConfidence?.confidenceBand}`}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Filterable 260-Capability Registry */}
+            <div className="rounded-xl border border-white/10 bg-[#121722] p-4 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="text-sm font-semibold text-white">
+                  Complete 260-Capability Audit Registry ({catItems.filter((item) => {
+                    if (catDivFilter !== "ALL" && item.divisionCode !== catDivFilter) return false;
+                    if (catStatusFilter !== "ALL" && item.status !== catStatusFilter) return false;
+                    if (catSearch.trim() && !`${item.itemNumber} ${item.name} ${item.divisionName} ${item.gapAction}`.toLowerCase().includes(catSearch.toLowerCase())) return false;
+                    return true;
+                  }).length} / {catItems.length})
+                </h2>
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                  <select
+                    value={catDivFilter}
+                    onChange={(e) => setCatDivFilter(e.target.value)}
+                    className="rounded-lg border border-white/15 bg-black/60 px-2 py-1 text-zinc-200"
+                  >
+                    <option value="ALL">All 14 Divisions</option>
+                    {["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII", "XIII", "XIV"].map((d) => (
+                      <option key={d} value={d}>{`Division ${d}`}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={catStatusFilter}
+                    onChange={(e) => setCatStatusFilter(e.target.value)}
+                    className="rounded-lg border border-white/15 bg-black/60 px-2 py-1 text-zinc-200"
+                  >
+                    <option value="ALL">All Statuses</option>
+                    <option value="ALREADY_IMPLEMENTED">Already Implemented</option>
+                    <option value="GAP_CLOSED_NOW">Gap Closed Now</option>
+                    <option value="EXTERNAL_INFRA_OR_LICENSE_BOUNDARY">External Infra Boundary</option>
+                  </select>
+                  <input
+                    type="text"
+                    value={catSearch}
+                    onChange={(e) => setCatSearch(e.target.value)}
+                    placeholder="Search # or capability..."
+                    className="rounded-lg border border-white/15 bg-black/60 px-2.5 py-1 text-zinc-200 placeholder:text-zinc-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-[520px] overflow-y-auto pr-1">
+                {catItems
+                  .filter((item) => {
+                    if (catDivFilter !== "ALL" && item.divisionCode !== catDivFilter) return false;
+                    if (catStatusFilter !== "ALL" && item.status !== catStatusFilter) return false;
+                    if (catSearch.trim() && !`${item.itemNumber} ${item.name} ${item.divisionName} ${item.gapAction}`.toLowerCase().includes(catSearch.toLowerCase())) return false;
+                    return true;
+                  })
+                  .map((item) => (
+                    <div key={item.itemNumber} className="rounded-lg border border-white/10 bg-black/45 p-2.5 text-xs space-y-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="font-semibold text-white">{`#${item.itemNumber} · ${item.name}`}</span>
+                        <span
+                          className={cn(
+                            "rounded-full border px-1.5 py-0.5 text-[9px] font-bold shrink-0",
+                            item.status === "ALREADY_IMPLEMENTED"
+                              ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-300"
+                              : item.status === "GAP_CLOSED_NOW"
+                                ? "border-sky-500/40 bg-sky-500/15 text-sky-300"
+                                : "border-amber-500/40 bg-amber-500/15 text-amber-300",
+                          )}
+                        >
+                          {item.status === "ALREADY_IMPLEMENTED"
+                            ? "BUILT"
+                            : item.status === "GAP_CLOSED_NOW"
+                              ? "CLOSED NOW"
+                              : "EXT BOUNDARY"}
+                        </span>
+                      </div>
+                      <div className="text-[10px] text-cyan-300/80">{`Div ${item.divisionCode}: ${item.divisionName} · ${item.stage}`}</div>
+                      <div className="text-[11px] text-zinc-300">{item.gapAction}</div>
+                      <div className="text-[10px] text-zinc-500 font-mono truncate">
+                        {`${(item.modules || []).join(", ")} -> ${item.apiEndpoint}`}
                       </div>
                     </div>
                   ))}
