@@ -17,9 +17,17 @@ import {
 } from "./dod-ic-reasoning.server.ts";
 import { handleDodIcV2Request } from "./api-handler.server.ts";
 
-test("Directive revision lineages: ICD-503 (2015->2024), DoDI 8510.01 (2014->2022), DoDI 8520.03 (2011->2023) & custom NIST diff", () => {
+test("Directive revision lineages: ICD-503 (2015->2024), DoDI 8510.01 (2014->2022), DoDI 8520.03 (2011->2023), CNSSP 15, CMMC & custom NIST diff", () => {
   const lineages = listDirectiveLineages();
-  assert.equal(lineages.length, 6);
+  assert.ok(lineages.length >= 12);
+
+  const cnsaLineage = diffHistoricalDirectiveRevision("CNSSP-15-CNSA-2.0-CSFC");
+  assert.ok(cnsaLineage);
+  assert.equal(cnsaLineage.currentEffectiveDate, "2025-03-04");
+
+  const cmmcLineage = diffHistoricalDirectiveRevision("CMMC-32CFR-170-DFARS");
+  assert.ok(cmmcLineage);
+  assert.equal(cmmcLineage.currentEffectiveDate, "2024-12-16");
 
   const icd503 = diffHistoricalDirectiveRevision("ICD-503");
   assert.ok(icd503);

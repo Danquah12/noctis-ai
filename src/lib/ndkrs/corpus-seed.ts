@@ -954,6 +954,258 @@ export const NDKRS_AUTHORITATIVE_CORPUS: AuthoritativeCorpusSeedItem[] = [
     effectiveDate: "2025-01-23T00:00:00Z",
     expiresAt: "2030-12-31T00:00:00Z",
   },
+
+  // --- NDIMP WAVES 2, 3 & 4 AUTHORITATIVE UNCLASSIFIED CORPUS (+16 Records -> 72 Total) ---
+  {
+    domain: "rmf",
+    canonicalKey: "ICD-705-SCIF-PHYSICAL",
+    title: "ODNI ICD 705, ICS 705-1 & IC Tech Spec v1.5.1 — SCIF Accreditation & PED Prohibition",
+    summary:
+      "Governs Sensitive Compartmented Information Facilities (ICD 705 effective May 26, 2010; ICS 705-1 Sept 17, 2010; Tech Spec v1.5.1 July 2021), Fixed Facility Checklists, UL 2050 IDS monitoring, acoustic/RF standards, and strict PED prohibition.",
+    content: `# ICD 705 / ICS 705-1 SCIF Governance
+- Formal SCIF accreditation is issued exclusively by the Cognizant Security Authority (CSA) / Accrediting Official (AO).
+- Unauthorized smartphones, smartwatches, Bluetooth, and wireless PEDs are strictly prohibited inside SCIF boundaries.`,
+    sourceUri: "https://www.dni.gov/",
+    trustTier: "AUTHORITATIVE_GOV",
+    version: "2021-07",
+    citationLabel: "ICD-705-SCIF",
+    effectiveDate: "2010-05-26T00:00:00Z",
+    expiresAt: "2030-12-31T00:00:00Z",
+  },
+  {
+    domain: "cybersecurity",
+    canonicalKey: "DODI-8523.01-CNSSI-4005-COMSEC",
+    title: "DoDI 8523.01 & CNSSI 4005 — Type 1 COMSEC, Two-Person Integrity & KMI Accounting",
+    summary:
+      "Establishes DoD COMSEC doctrine (DoDI 8523.01 Jan 6, 2021) and CNSSI 4005 (Aug 22, 2011; May 2024 update) governing Type 1 NSA crypto, Two-Person Integrity (TPI) for TS/COMSEC keying material, KMI custody, and emergency zeroization.",
+    content: `# DoDI 8523.01 & CNSSI 4005 COMSEC Governance
+- Requires NSA Type 1 cryptography or registered NSA CSfC dual-layer capability packages for classified transport.
+- Two-Person Integrity (TPI), appointed COMSEC Custodian accounting, and verified zeroization are mandatory.`,
+    sourceUri: "https://www.esd.whs.mil/DD/",
+    trustTier: "AUTHORITATIVE_GOV",
+    version: "2021-01-06",
+    citationLabel: "DODI-8523.01",
+    effectiveDate: "2021-01-06T00:00:00Z",
+    expiresAt: "2030-12-31T00:00:00Z",
+  },
+  {
+    domain: "cybersecurity",
+    canonicalKey: "CNSSP-15-CNSA-2.0-CSFC",
+    title: "CNSSP 15 CNSA 2.0 (March 4, 2025) & NSA CSfC Dual-Layer Commercial Encryption",
+    summary:
+      "Mandates CNSA 2.0 post-quantum algorithms (AES-256, ML-KEM-1024 FIPS 203, ML-DSA-87 FIPS 204, LMS/XMSS SP 800-208) with Jan 1 2027 NSS acquisition and Dec 31 2030/2031 milestones, plus dual-vendor NSA CSfC independent encryption layers.",
+    content: `# CNSSP 15 CNSA 2.0 & NSA CSfC
+- Single-layer commercial VPN/TLS NEVER satisfies NSA CSfC for classified transit; two independent layers from distinct vendors on the CSfC Components List with AO Capability Package registration are mandatory.
+- Classical RSA/ECDH/ECDSA are deprecated under CNSA 2.0 for new NSS acquisitions starting Jan 1, 2027.`,
+    sourceUri: "https://www.cnss.gov/",
+    trustTier: "AUTHORITATIVE_GOV",
+    version: "2025-03-04",
+    citationLabel: "CNSSP-15-CNSA-2.0",
+    effectiveDate: "2025-03-04T00:00:00Z",
+    expiresAt: "2031-12-31T00:00:00Z",
+  },
+  {
+    domain: "cybersecurity",
+    canonicalKey: "CNSSAM-TEMPEST-01-13-REDBLACK",
+    title: "CNSSAM TEMPEST/01-13 — RED/BLACK Installation, PDS & CTTA Authority",
+    summary:
+      "Governs EMSEC compromising emanations, RED (unencrypted classified) vs. BLACK separation, Protected Distribution Systems (PDS), and CTTA site determinations (issued Jan 2014). Exact classified attenuation specs are CTTA-only.",
+    content: `# CNSSAM TEMPEST/01-13
+- Prohibits unshielded RF transmitters (Wi-Fi/Bluetooth) near RED classified equipment and requires CTTA-inspected RED/BLACK separation.
+- Noctis never fabricates classified site-specific TEMPEST separation distances or dB attenuation values.`,
+    sourceUri: "https://www.cnss.gov/",
+    trustTier: "AUTHORITATIVE_GOV",
+    version: "2014-01",
+    citationLabel: "CNSSAM-TEMPEST-01-13",
+    effectiveDate: "2014-01-01T00:00:00Z",
+    expiresAt: "2030-12-31T00:00:00Z",
+  },
+  {
+    domain: "rmf",
+    canonicalKey: "NIST-SP-800-88-R2-SANITIZATION",
+    title: "NIST SP 800-88 Rev. 2 (Sept 2025) Media Sanitization & DoDM 5200.01 Classified Disposal",
+    summary:
+      "Distinguishes Clear, Purge, and Destroy; magnetic degaussing does NOT erase SSD/flash storage, and Clear/formatting never sanitizes SECRET/TS/SCI media leaving an accredited enclave for unclassified disposal.",
+    content: `# NIST SP 800-88 Rev. 2 (September 2025)
+- Magnetic degaussing fails on SSD/NAND flash media.
+- Top Secret / SCI release to lower/unclassified boundaries requires physical NSA/CSS EPL destruction + Certificate of Destruction.`,
+    sourceUri: "https://csrc.nist.gov/pubs/sp/800/88/r2/final",
+    trustTier: "AUTHORITATIVE_GOV",
+    version: "2.0",
+    citationLabel: "NIST-SP-800-88-R2",
+    effectiveDate: "2025-09-01T00:00:00Z",
+    expiresAt: "2031-12-31T00:00:00Z",
+  },
+  {
+    domain: "cybersecurity",
+    canonicalKey: "DODI-5205.16-INSIDER-THREAT",
+    title: "DoDI 5205.16 (Dec 20, 2024) & EO 13587 — DoD Insider Threat Hub & Classified UAM",
+    summary:
+      "Governs DoD Component Insider Threat Hubs, User Activity Monitoring (UAM) on classified networks, anomaly triage, and mandatory legal/privacy/civil-liberties oversight (reissuing DoDD 5205.16 from Sept 30, 2014).",
+    content: `# DoDI 5205.16 & EO 13587
+- Classified networks require UAM telemetry correlated in Component Insider Threat Hubs under strict legal and privacy oversight.`,
+    sourceUri: "https://www.esd.whs.mil/DD/",
+    trustTier: "AUTHORITATIVE_GOV",
+    version: "2024-12-20",
+    citationLabel: "DODI-5205.16",
+    effectiveDate: "2024-12-20T00:00:00Z",
+    expiresAt: "2030-12-31T00:00:00Z",
+  },
+  {
+    domain: "cybersecurity",
+    canonicalKey: "NIST-SP-800-86-DCO-FORENSICS",
+    title: "NIST SP 800-86 & DCO/SOC — Volatile-First Forensics & Missing-Telemetry Claim Blocking",
+    summary:
+      "Mandates volatile memory capture before host reboot/wipe, hardware write-blocking, SHA-256 chain of custody, NTP/UTC synchronization, and blocking 'no intrusion' claims when EDR/DNS/NetFlow/Auth telemetry is absent.",
+    content: `# DCO Detection Engineering & NIST SP 800-86 Forensics
+- Absence of telemetry is NOT evidence of absence of intrusion.
+- Wiping or re-imaging a compromised host before RAM/disk forensic acquisition destroys volatile evidence and violates SP 800-86 / DoDI 8530.03.`,
+    sourceUri: "https://csrc.nist.gov/pubs/sp/800/86/final",
+    trustTier: "AUTHORITATIVE_GOV",
+    version: "2006-08",
+    citationLabel: "NIST-SP-800-86",
+    effectiveDate: "2006-08-01T00:00:00Z",
+    expiresAt: "2030-12-31T00:00:00Z",
+  },
+  {
+    domain: "rmf",
+    canonicalKey: "DOD-DEVSECOPS-SSDF-CCSRG-INHERIT",
+    title: "NIST SP 800-218 v1.1 SSDF, DoD DevSecOps (cATO), K8s STIG & CC SRG Cloud Inheritance",
+    summary:
+      "Requires continuous runtime monitoring, SAST/DAST, signed SBOMs, SLSA provenance, and non-privileged non-root Kubernetes pods for DoD cATO; inheriting a DISA CSP PA or FedRAMP High ATO never grants an application Mission Owner ATO.",
+    content: `# DevSecOps cATO, K8s Hardening & DoD CC SRG Inheritance
+- One-time CI scans never qualify for Continuous ATO (cATO).
+- CSP Provisional Authorization (PA) covers IaaS/PaaS infrastructure only; each workload still requires a DoD Mission Owner ATO and IL4/IL5 SCCA protection.`,
+    sourceUri: "https://csrc.nist.gov/pubs/sp/800/218/final",
+    trustTier: "AUTHORITATIVE_GOV",
+    version: "1.1",
+    citationLabel: "NIST-SP-800-218-SSDF",
+    effectiveDate: "2022-02-01T00:00:00Z",
+    expiresAt: "2030-12-31T00:00:00Z",
+  },
+  {
+    domain: "rmf",
+    canonicalKey: "DODD-3000.09-RESPONSIBLE-AI",
+    title: "DoDD 3000.09 Autonomy in Weapon Systems (Jan 25, 2023) & DoD Responsible AI Principles",
+    summary:
+      "Requires appropriate levels of human judgment over use of force, Senior Review governance, and the 5 DoD RAI Principles (Responsible, Equitable, Traceable, Reliable, Governable) across defense autonomous and AI capabilities.",
+    content: `# DoDD 3000.09 & DoD RAI Strategy (June 2022)
+- Lethal or weapon-system autonomy without appropriate human judgment and Senior Review fails DoDD 3000.09.`,
+    sourceUri: "https://www.esd.whs.mil/DD/",
+    trustTier: "AUTHORITATIVE_GOV",
+    version: "2023-01-25",
+    citationLabel: "DODD-3000.09",
+    effectiveDate: "2023-01-25T00:00:00Z",
+    expiresAt: "2030-12-31T00:00:00Z",
+  },
+  {
+    domain: "cybersecurity",
+    canonicalKey: "NIST-AI-100-1-600-1-REDTEAM",
+    title: "NIST AI 100-1 AI RMF, NIST AI 600-1 GenAI Profile & OWASP LLM/Agentic Red-Team Assurance",
+    summary:
+      "Evaluates GOVERN/MAP/MEASURE/MANAGE AI risk controls, prompt injection/indirect tool defense, classification boundary leakage blocking, signed model weights, hallucination verification, and prohibition against AI autonomous policy approval.",
+    content: `# NIST AI 100-1 / 600-1 & Defense AI Red-Team Evaluation
+- Generative and agentic systems must pass prompt injection, boundary-leak, and human-control red-team gates (>=95% pass rate, zero critical boundary bypasses).`,
+    sourceUri: "https://www.nist.gov/itl/ai-risk-management-framework",
+    trustTier: "AUTHORITATIVE_GOV",
+    version: "2024-07-26",
+    citationLabel: "NIST-AI-600-1",
+    effectiveDate: "2024-07-26T00:00:00Z",
+    expiresAt: "2030-12-31T00:00:00Z",
+  },
+  {
+    domain: "cybersecurity",
+    canonicalKey: "IC-ICD-203-206-ACH-ADMIRALTY",
+    title: "ODNI ICD 203 Analytic Standards, ICD 206 Sourcing, ACH Falsification & NATO 6x6 Grading",
+    summary:
+      "Enforces ICD 203/206 objectivity, Analysis of Competing Hypotheses (least disconfirming evidence wins), NATO/Admiralty 6x6 reliability/credibility codes (A1–F6), and calibrated confidence blocking High Confidence on uncorroborated F6 intel.",
+    content: `# ODNI ICD 203 / ICD 206 Analytic Tradecraft
+- Single-source uncorroborated reporting graded E/F or 5/6 (e.g., F6) NEVER supports a High Confidence analytic judgment.
+- ACH ranks competing hypotheses from lowest to highest count of INCONSISTENT (disconfirming) evidence.`,
+    sourceUri: "https://www.dni.gov/",
+    trustTier: "AUTHORITATIVE_GOV",
+    version: "2015-01-02",
+    citationLabel: "ICD-203-206",
+    effectiveDate: "2015-01-02T00:00:00Z",
+    expiresAt: "2030-12-31T00:00:00Z",
+  },
+  {
+    domain: "cybersecurity",
+    canonicalKey: "IC-MULTI-INT-SYNTHETIC-FUSION",
+    title: "UNCLASSIFIED / Synthetic Multi-INT Fusion (OSINT/GEOINT/SIGINT) & Counterintelligence",
+    summary:
+      "Correlates unclassified/synthetic OSINT provenance, GEOINT WGS-84 Haversine distance, public ITU SIGINT frequency bands (HF/VHF/UHF/SHF/EHF), and CI deception flags while blocking uncorroborated single-INT ground-truth assertions.",
+    content: `# UNCLASSIFIED / Synthetic Multi-INT Fusion
+- Uncorroborated single-INT OSINT or unverified imagery alone never proves Multi-INT verified ground truth.`,
+    sourceUri: "https://www.dni.gov/",
+    trustTier: "AUTHORITATIVE_GOV",
+    version: "2023-01-01",
+    citationLabel: "MULTI-INT-GOV",
+    effectiveDate: "2023-01-01T00:00:00Z",
+    expiresAt: "2030-12-31T00:00:00Z",
+  },
+  {
+    domain: "rmf",
+    canonicalKey: "DODI-3020.45-MISSION-ASSURANCE",
+    title: "DoDI 3020.45 & DoDD 3020.40 — Mission Assurance MEF/PMEF Dependency DAG & SPOF Analysis",
+    summary:
+      "Models Mission-Essential Functions (MEFs/PMEFs), Defense/Task Critical Assets (DCAs/TCAs), Single Points of Failure (SPOFs), blast-radius % impact, and continuity failover under DoDI 3020.45 (Aug 14, 2018; Ch. 1 May 2022).",
+    content: `# DoDI 3020.45 / DoDD 3020.40 Mission Assurance
+- Critical MEFs backed by unmitigated non-redundant SPOFs fail Mission Assurance readiness even when standalone IT controls pass.`,
+    sourceUri: "https://www.esd.whs.mil/DD/",
+    trustTier: "AUTHORITATIVE_GOV",
+    version: "2022-05-02",
+    citationLabel: "DODI-3020.45",
+    effectiveDate: "2018-08-14T00:00:00Z",
+    expiresAt: "2030-12-31T00:00:00Z",
+  },
+  {
+    domain: "rmf",
+    canonicalKey: "CMMC-32CFR-170-DFARS-7012",
+    title: "32 CFR Part 170 CMMC Final Rule (Dec 16, 2024) & DFARS 252.204-7012/7019/7020/7021",
+    summary:
+      "Enforces 32 CFR § 170.21 CMMC Level 2 conditional POA&M caps (>=80% / >=88 SPRS floor, zero 5-pt missing, <=180-day closeout), DFARS 7012 72-hour DIBNet cyber reporting, 48 CFR Part 204 (Nov 10, 2025), and SP 800-171 Rev. 2/3 transition.",
+    content: `# CMMC Final Rule (32 CFR Part 170) & DFARS 252.204-7012
+- Conditional CMMC Level 2 POA&M closeout limit is 180 calendar days with at least 80% score (>=88/110).
+- DFARS 252.204-7012 mandates cyber incident reporting to DoD (DIBNet) within 72 hours of discovery.`,
+    sourceUri: "https://www.ecfr.gov/current/title-32/subtitle-A/chapter-I/subchapter-G/part-170",
+    trustTier: "AUTHORITATIVE_GOV",
+    version: "2024-12-16",
+    citationLabel: "32-CFR-PART-170",
+    effectiveDate: "2024-12-16T00:00:00Z",
+    expiresAt: "2030-12-31T00:00:00Z",
+  },
+  {
+    domain: "legal",
+    canonicalKey: "NISPOM-32CFR-117-FOCI",
+    title: "32 CFR Part 117 NISPOM Rule (Feb 24, 2021) — Cleared Contractor FOCI Mitigation & SCRM",
+    summary:
+      "Governs Facility Clearances (FCL), Personnel Clearances, and mandatory Foreign Ownership, Control, or Influence (FOCI) mitigation instruments (SSA, Proxy Agreement, Voting Trust, SCA) under DCSA cognizance.",
+    content: `# 32 CFR Part 117 NISPOM FOCI Governance
+- Cleared defense contractors under Foreign Ownership, Control, or Influence without a DCSA-approved mitigation agreement fail FCL eligibility.`,
+    sourceUri: "https://www.ecfr.gov/current/title-32/subtitle-A/chapter-I/subchapter-D/part-117",
+    trustTier: "AUTHORITATIVE_GOV",
+    version: "2021-02-24",
+    citationLabel: "32-CFR-PART-117",
+    effectiveDate: "2021-02-24T00:00:00Z",
+    expiresAt: "2030-12-31T00:00:00Z",
+  },
+  {
+    domain: "engineering",
+    canonicalKey: "SPD-5-SPECTRUM-4650-MBSE-5000-97",
+    title: "Space Policy Directive-5 (Sept 4, 2020), DoDI 4650.01 Spectrum & DoDI 5000.97 Digital Engineering",
+    summary:
+      "Mandates encrypted/authenticated space TT&C command links (SPD-5 / CNSSI 1253 Space Overlay), DoDI 4650.01 spectrum certification, DoDI 5000.97 MBSE Authoritative Source of Truth (Dec 21, 2023), and Ao = MTBF/(MTBF+MTTR).",
+    content: `# SPD-5, DoDI 4650.01 & DoDI 5000.97 MBSE / Logistics Ao
+- Unencrypted or unauthenticated spacecraft TT&C command links fail Space Policy Directive-5.
+- Operational availability Ao = MTBF / (MTBF + MTTR) quantifies mission-system readiness.`,
+    sourceUri: "https://www.esd.whs.mil/DD/",
+    trustTier: "AUTHORITATIVE_GOV",
+    version: "2023-12-21",
+    citationLabel: "SPD-5-5000.97",
+    effectiveDate: "2023-12-21T00:00:00Z",
+    expiresAt: "2030-12-31T00:00:00Z",
+  },
 ];
 
 export async function seedNdkrsAuthoritativeCorpus(

@@ -48,6 +48,37 @@ import {
   listDirectiveLineages,
   listPolicyChangeProposals,
 } from "./policy-change-engine.server.ts";
+import {
+  evaluateClassifiedMediaSanitizationAndSpillage,
+  evaluateComsecAndCsfcArchitecture,
+  evaluateScifIcd705Compliance,
+  evaluateTempestRedBlackCompliance,
+} from "./classified-systems-engine.ts";
+import {
+  evaluateDcoSocDetectionCoverage,
+  evaluateDigitalForensicsChainOfCustody,
+  evaluateInsiderThreatProgram,
+} from "./dco-forensics-engine.ts";
+import {
+  evaluateDevSecOpsCatoAndSsdf,
+  evaluateDodCloudSrgInheritance,
+  evaluateKubernetesAndContainerHardening,
+} from "./devsecops-cloud-engine.ts";
+import {
+  evaluateAiAdversarialRedTeam,
+  evaluateDefenseAiGovernanceAndRai,
+} from "./defense-ai-governance-engine.ts";
+import {
+  evaluateIcd203AndAchAnalysis,
+  evaluateMultiIntSyntheticFusion,
+  type AchRating,
+  type AnalyticConfidence,
+} from "./intel-tradecraft-fusion-engine.ts";
+import {
+  evaluateAcquisitionCmmcAndFoci,
+  evaluateDigitalEngineeringSpaceSpectrum,
+  evaluateMissionAssuranceDag,
+} from "./mission-acquisition-space-engine.ts";
 import type { ZtPillarScore } from "../rmf-v2/cyber-intelligence.ts";
 
 const CORS_HEADERS = {
@@ -81,9 +112,12 @@ export async function handleDodIcV2Request(request: Request): Promise<Response> 
 
   if (method === "GET" && (subPath === "" || subPath === "status")) {
     return jsonRes({
-      platform: "Noctis Defense & Intelligence Community Security Architecture (NDIMP Wave 1)",
-      version: "1.3.0",
+      platform: "Noctis Defense & Intelligence Community Security Architecture (NDIMP Waves 1–4 Complete)",
+      version: "4.0.0",
       wave1Complete: true,
+      wave2Complete: true,
+      wave3Complete: true,
+      wave4Complete: true,
       engines: [
         "DOD-RMF-DODI-8510.01",
         "CNSSI-1253-CATEGORIZATION",
@@ -101,6 +135,20 @@ export async function handleDodIcV2Request(request: Request): Promise<Response> 
         "POLICY-CHANGE-INTELLIGENCE-DIFF",
         "UPSTREAM-OSCAL-CCI-DRIFT-MONITOR",
         "DUAL-CONTROL-POLICY-ROLLOUT",
+        "CLASSIFIED-SCIF-ICD-705",
+        "COMSEC-DODI-8523.01-CNSA2-CSFC",
+        "TEMPEST-RED-BLACK-CTTA",
+        "MEDIA-SANITIZATION-SP-800-88-R2",
+        "DCO-SOC-TELEMETRY-FORENSICS-SP-800-86",
+        "INSIDER-THREAT-DODI-5205.16",
+        "DEVSECOPS-CATO-SSDF-K8S-STIG",
+        "CLOUD-CC-SRG-INHERITANCE",
+        "DEFENSE-AI-RAI-DODD-3000.09-REDTEAM",
+        "IC-ANALYTIC-TRADECRAFT-ICD-203-ACH-6X6",
+        "SYNTHETIC-MULTI-INT-FUSION",
+        "MISSION-ASSURANCE-DAG-DODI-3020.45",
+        "ACQUISITION-CMMC-32CFR-170-DFARS-FOCI",
+        "SPACE-SPD-5-SPECTRUM-4650-MBSE-5000.97",
       ],
       policiesCount: Object.keys(DOD_IC_POLICY_REGISTRY).length,
       policyLineagesCount: listDirectiveLineages().length,
@@ -115,6 +163,13 @@ export async function handleDodIcV2Request(request: Request): Promise<Response> 
         aiCanIssueAto: false,
         aiCanAutoApprovePolicyRollout: false,
         selfApprovalPermittedOnPolicyRollout: false,
+        singleLayerCommercialSatisfiesCsfc: false,
+        degaussingSanitizesSsdFlash: false,
+        clearSanitizesTsSciForUnclassifiedRelease: false,
+        cspPaAutomaticallyGrantsMissionOwnerAto: false,
+        autonomousLethalExemptFromHumanJudgment: false,
+        singleSourceF6SatisfiesHighConfidence: false,
+        missingTelemetryProvesNoIntrusion: false,
       },
     });
   }
@@ -567,6 +622,299 @@ export async function handleDodIcV2Request(request: Request): Promise<Response> 
       regressionSuitePassed: typeof body.regression_suite_passed === "boolean" ? body.regression_suite_passed : true,
     });
     return jsonRes(res, res.statusCode);
+  }
+
+  // Wave 2 — Step 1: Classified Systems Security (SCIF, COMSEC/CSfC/CNSA 2.0, TEMPEST, SP 800-88 R2)
+  if (subPath === "classified/scif") {
+    return jsonRes(
+      evaluateScifIcd705Compliance({
+        aoAccreditationActive: typeof body.ao_accreditation_active === "boolean" ? body.ao_accreditation_active : null,
+        fixedFacilityChecklistCurrent: typeof body.ffc_current === "boolean" ? body.ffc_current : null,
+        idsUl2050Monitored: typeof body.ids_ul2050_monitored === "boolean" ? body.ids_ul2050_monitored : null,
+        accessControlAndVisitorEscortEnforced: typeof body.access_control_enforced === "boolean" ? body.access_control_enforced : null,
+        pedProhibitionEnforced: typeof body.ped_prohibition_enforced === "boolean" ? body.ped_prohibition_enforced : null,
+        acousticAndRfInspectionComplete: typeof body.acoustic_rf_verified === "boolean" ? body.acoustic_rf_verified : null,
+        coUtilizationAgreementIfShared: typeof body.co_utilization_agreement === "boolean" ? body.co_utilization_agreement : null,
+        assessmentMode: body.assessment_mode === "FORMAL_EVIDENCE_AUDIT" ? "FORMAL_EVIDENCE_AUDIT" : "SCENARIO_ASSUMPTION",
+        evidenceVerified: body.evidence_verified === true,
+      }),
+    );
+  }
+
+  if (subPath === "classified/comsec-csfc") {
+    return jsonRes(
+      evaluateComsecAndCsfcArchitecture({
+        architectureMode: (body.architecture_mode as "TYPE_1" | "CSFC_DUAL_LAYER" | "SINGLE_LAYER_COMMERCIAL") || null,
+        twoIndependentEncryptionLayers: typeof body.two_independent_layers === "boolean" ? body.two_independent_layers : null,
+        distinctVendorsAcrossLayers: typeof body.distinct_vendors === "boolean" ? body.distinct_vendors : null,
+        csfcCapabilityPackageRegistered: typeof body.capability_package_registered === "boolean" ? body.capability_package_registered : null,
+        symmetricAlgorithm: typeof body.symmetric_algorithm === "string" ? body.symmetric_algorithm : null,
+        asymmetricKeyExchange: typeof body.asymmetric_key_exchange === "string" ? body.asymmetric_key_exchange : null,
+        signatureAlgorithm: typeof body.signature_algorithm === "string" ? body.signature_algorithm : null,
+        targetAcquisitionYear: typeof body.target_acquisition_year === "number" ? body.target_acquisition_year : null,
+        twoPersonIntegrityEnforced: typeof body.tpi_enforced === "boolean" ? body.tpi_enforced : null,
+        comsecCustodianAppointed: typeof body.custodian_appointed === "boolean" ? body.custodian_appointed : null,
+        zeroizationCapabilityVerified: typeof body.zeroization_verified === "boolean" ? body.zeroization_verified : null,
+        assessmentMode: body.assessment_mode === "FORMAL_EVIDENCE_AUDIT" ? "FORMAL_EVIDENCE_AUDIT" : "SCENARIO_ASSUMPTION",
+        evidenceVerified: body.evidence_verified === true,
+      }),
+    );
+  }
+
+  if (subPath === "classified/tempest") {
+    return jsonRes(
+      evaluateTempestRedBlackCompliance({
+        redBlackCablingSeparated: typeof body.red_black_separated === "boolean" ? body.red_black_separated : null,
+        cttaAssessmentCompleted: typeof body.ctta_completed === "boolean" ? body.ctta_completed : null,
+        protectedDistributionSystemIfOutsideScif: typeof body.pds_verified === "boolean" ? body.pds_verified : null,
+        unshieldedRfTransmitterNearRedEquipment: typeof body.rf_near_red === "boolean" ? body.rf_near_red : null,
+        powerLineFilteringVerified: typeof body.power_filtering_verified === "boolean" ? body.power_filtering_verified : null,
+        assessmentMode: body.assessment_mode === "FORMAL_EVIDENCE_AUDIT" ? "FORMAL_EVIDENCE_AUDIT" : "SCENARIO_ASSUMPTION",
+        evidenceVerified: body.evidence_verified === true,
+      }),
+    );
+  }
+
+  if (subPath === "classified/sanitize") {
+    return jsonRes(
+      evaluateClassifiedMediaSanitizationAndSpillage({
+        mediaType: (body.media_type as "SSD_FLASH" | "HDD_MAGNETIC" | "VOLATILE_RAM" | "OPTICAL" | "PAPER" | "MULTI_FUNCTION_PRINTER") || null,
+        highestClassification: (body.highest_classification as SecurityClassification) || null,
+        proposedMethod: (body.proposed_method as "CLEAR_FORMAT" | "PURGE_CRYPTO_ERASE" | "DEGAUSS_NSA_EPL" | "DESTROY_NSA_EPL_SHRED_DISINTEGRATE") || null,
+        destinationBoundary: (body.destination_boundary as "SAME_ACCREDITED_ENCLAVE" | "LOWER_OR_UNCLASSIFIED_RELEASE" | "EXCESS_DISPOSAL") || null,
+        spillageEvent: typeof body.spillage_event === "boolean" ? body.spillage_event : null,
+        spillageContainedAndIsolated: typeof body.spillage_contained === "boolean" ? body.spillage_contained : null,
+        securityOfficerNotified: typeof body.security_officer_notified === "boolean" ? body.security_officer_notified : null,
+        deviceWipedWithoutForensicApproval: typeof body.wiped_without_forensic_approval === "boolean" ? body.wiped_without_forensic_approval : null,
+        assessmentMode: body.assessment_mode === "FORMAL_EVIDENCE_AUDIT" ? "FORMAL_EVIDENCE_AUDIT" : "SCENARIO_ASSUMPTION",
+        evidenceVerified: body.evidence_verified === true,
+      }),
+    );
+  }
+
+  // Wave 2 — Step 2: DCO Detection, Forensics & Insider Threat
+  if (subPath === "dco/detection") {
+    return jsonRes(
+      evaluateDcoSocDetectionCoverage({
+        edrTelemetryPresent: typeof body.edr_present === "boolean" ? body.edr_present : null,
+        dnsLogsPresent: typeof body.dns_logs_present === "boolean" ? body.dns_logs_present : null,
+        netflowOrFirewallLogsPresent: typeof body.netflow_present === "boolean" ? body.netflow_present : null,
+        identityAuthLogsPresent: typeof body.auth_logs_present === "boolean" ? body.auth_logs_present : null,
+        siemCorrelationActive: typeof body.siem_active === "boolean" ? body.siem_active : null,
+        sigmaOrYaraRulesValidated: typeof body.sigma_yara_validated === "boolean" ? body.sigma_yara_validated : null,
+        mappedAttackTechniques: Array.isArray(body.attack_techniques) ? (body.attack_techniques as string[]) : [],
+        claimsNoIntrusionOccurred: typeof body.claims_no_intrusion === "boolean" ? body.claims_no_intrusion : null,
+        assessmentMode: body.assessment_mode === "FORMAL_EVIDENCE_AUDIT" ? "FORMAL_EVIDENCE_AUDIT" : "SCENARIO_ASSUMPTION",
+        evidenceVerified: body.evidence_verified === true,
+      }),
+    );
+  }
+
+  if (subPath === "dco/forensics") {
+    return jsonRes(
+      evaluateDigitalForensicsChainOfCustody({
+        volatileMemoryCapturedBeforeReboot: typeof body.volatile_ram_captured === "boolean" ? body.volatile_ram_captured : null,
+        hardwareWriteBlockerUsed: typeof body.write_blocker_used === "boolean" ? body.write_blocker_used : null,
+        cryptographicHashVerified: typeof body.sha256_verified === "boolean" ? body.sha256_verified : null,
+        chainOfCustodyDocumented: typeof body.chain_of_custody === "boolean" ? body.chain_of_custody : null,
+        ntpUtcTimelineSynchronized: typeof body.ntp_utc_synced === "boolean" ? body.ntp_utc_synced : null,
+        hostWipedOrReimagedBeforeAcquisition: typeof body.wiped_before_acquisition === "boolean" ? body.wiped_before_acquisition : null,
+        assessmentMode: body.assessment_mode === "FORMAL_EVIDENCE_AUDIT" ? "FORMAL_EVIDENCE_AUDIT" : "SCENARIO_ASSUMPTION",
+        evidenceVerified: body.evidence_verified === true,
+      }),
+    );
+  }
+
+  if (subPath === "dco/insider-threat") {
+    return jsonRes(
+      evaluateInsiderThreatProgram({
+        insiderThreatHubActive: typeof body.hub_active === "boolean" ? body.hub_active : null,
+        classifiedNetworkUamEnabled: typeof body.uam_enabled === "boolean" ? body.uam_enabled : null,
+        anomalousExfiltrationIndicators: Array.isArray(body.indicators) ? (body.indicators as string[]) : [],
+        legalAndPrivacyOversightActive: typeof body.legal_privacy_oversight === "boolean" ? body.legal_privacy_oversight : null,
+        humanAdjudicationRequired: typeof body.human_adjudication_required === "boolean" ? body.human_adjudication_required : null,
+        assessmentMode: body.assessment_mode === "FORMAL_EVIDENCE_AUDIT" ? "FORMAL_EVIDENCE_AUDIT" : "SCENARIO_ASSUMPTION",
+        evidenceVerified: body.evidence_verified === true,
+      }),
+    );
+  }
+
+  // Wave 2 — Step 3: DevSecOps (cATO/SSDF), K8s STIG & DoD CC SRG Cloud Inheritance
+  if (subPath === "devsecops/cato-ssdf") {
+    return jsonRes(
+      evaluateDevSecOpsCatoAndSsdf({
+        sastPassed: typeof body.sast_passed === "boolean" ? body.sast_passed : null,
+        dastPassed: typeof body.dast_passed === "boolean" ? body.dast_passed : null,
+        sbomGeneratedAndScanned: typeof body.sbom_scanned === "boolean" ? body.sbom_scanned : null,
+        containerImagesSignedAndHardened: typeof body.images_signed === "boolean" ? body.images_signed : null,
+        slsaProvenanceVerified: typeof body.slsa_verified === "boolean" ? body.slsa_verified : null,
+        criticalOrKevVulnsOpenCount: typeof body.critical_kev_open === "number" ? body.critical_kev_open : null,
+        continuousRuntimeMonitoringActive: typeof body.continuous_monitoring === "boolean" ? body.continuous_monitoring : null,
+        activeSecOpsTeamAssigned: typeof body.active_secops_team === "boolean" ? body.active_secops_team : null,
+        assessmentMode: body.assessment_mode === "FORMAL_EVIDENCE_AUDIT" ? "FORMAL_EVIDENCE_AUDIT" : "SCENARIO_ASSUMPTION",
+        evidenceVerified: body.evidence_verified === true,
+      }),
+    );
+  }
+
+  if (subPath === "devsecops/k8s-hardening") {
+    return jsonRes(
+      evaluateKubernetesAndContainerHardening({
+        privilegedContainersPresent: typeof body.privileged_containers === "boolean" ? body.privileged_containers : null,
+        runningAsRootUid0: typeof body.root_uid0 === "boolean" ? body.root_uid0 : null,
+        hostNetworkOrPidShared: typeof body.host_network_pid === "boolean" ? body.host_network_pid : null,
+        etcdEncryptedAtRest: typeof body.etcd_encrypted === "boolean" ? body.etcd_encrypted : null,
+        networkPoliciesEnforced: typeof body.network_policies === "boolean" ? body.network_policies : null,
+        rbacLeastPrivilegeEnforced: typeof body.rbac_least_privilege === "boolean" ? body.rbac_least_privilege : null,
+        unsignedContainerImagesBlocked: typeof body.unsigned_blocked === "boolean" ? body.unsigned_blocked : null,
+        assessmentMode: body.assessment_mode === "FORMAL_EVIDENCE_AUDIT" ? "FORMAL_EVIDENCE_AUDIT" : "SCENARIO_ASSUMPTION",
+        evidenceVerified: body.evidence_verified === true,
+      }),
+    );
+  }
+
+  if (subPath === "cloud/cc-srg-inheritance") {
+    return jsonRes(
+      evaluateDodCloudSrgInheritance({
+        impactLevel: (body.impact_level as "IL2" | "IL4" | "IL5" | "IL6") || null,
+        cspProvisionalAuthActive: typeof body.csp_pa_active === "boolean" ? body.csp_pa_active : null,
+        missionOwnerWorkloadAtoIssued: typeof body.mission_owner_ato === "boolean" ? body.mission_owner_ato : null,
+        sccaComponentsEnforced: typeof body.scca_enforced === "boolean" ? body.scca_enforced : null,
+        usPersonsAndConusVerified: typeof body.us_persons_conus === "boolean" ? body.us_persons_conus : null,
+        fedrampHighClaimedSufficientForIl5OrIl6: typeof body.fedramp_claimed_sufficient === "boolean" ? body.fedramp_claimed_sufficient : null,
+        assessmentMode: body.assessment_mode === "FORMAL_EVIDENCE_AUDIT" ? "FORMAL_EVIDENCE_AUDIT" : "SCENARIO_ASSUMPTION",
+        evidenceVerified: body.evidence_verified === true,
+      }),
+    );
+  }
+
+  // Wave 2 — Step 4: Defense AI Governance & Adversarial Red Team
+  if (subPath === "ai/rai-governance") {
+    const sc = (v: unknown): 1 | 2 | 3 | 4 | null => (typeof v === "number" ? (v >= 4 ? 4 : v >= 3 ? 3 : v >= 2 ? 2 : 1) : null);
+    return jsonRes(
+      evaluateDefenseAiGovernanceAndRai({
+        governScore: sc(body.govern_score),
+        mapScore: sc(body.map_score),
+        measureScore: sc(body.measure_score),
+        manageScore: sc(body.manage_score),
+        isLethalOrWeaponSystem: typeof body.is_lethal_weapon === "boolean" ? body.is_lethal_weapon : null,
+        appropriateHumanJudgmentEnforced: typeof body.human_judgment_enforced === "boolean" ? body.human_judgment_enforced : null,
+        seniorReviewCompleted: typeof body.senior_review_completed === "boolean" ? body.senior_review_completed : null,
+        traceableAuditLoggingActive: typeof body.audit_logging === "boolean" ? body.audit_logging : null,
+        biasAndReliabilityEvaluated: typeof body.bias_reliability_evaluated === "boolean" ? body.bias_reliability_evaluated : null,
+        killSwitchAndDeactivationVerified: typeof body.kill_switch_verified === "boolean" ? body.kill_switch_verified : null,
+        assessmentMode: body.assessment_mode === "FORMAL_EVIDENCE_AUDIT" ? "FORMAL_EVIDENCE_AUDIT" : "SCENARIO_ASSUMPTION",
+        evidenceVerified: body.evidence_verified === true,
+      }),
+    );
+  }
+
+  if (subPath === "ai/red-team") {
+    return jsonRes(
+      evaluateAiAdversarialRedTeam({
+        promptInjectionDefensesTested: typeof body.prompt_injection_tested === "boolean" ? body.prompt_injection_tested : null,
+        indirectToolInjectionBlocked: typeof body.indirect_tool_blocked === "boolean" ? body.indirect_tool_blocked : null,
+        classificationBoundaryLeakageBlocked: typeof body.boundary_leak_blocked === "boolean" ? body.boundary_leak_blocked : null,
+        modelSupplyChainAndWeightsSigned: typeof body.weights_signed === "boolean" ? body.weights_signed : null,
+        agentAutonomousApprovalBlocked: typeof body.agent_approval_blocked === "boolean" ? body.agent_approval_blocked : null,
+        hallucinationGroundingVerifierActive: typeof body.grounding_verifier === "boolean" ? body.grounding_verifier : null,
+        adversarialRedTeamPassRatePercent: typeof body.pass_rate_percent === "number" ? body.pass_rate_percent : null,
+        assessmentMode: body.assessment_mode === "FORMAL_EVIDENCE_AUDIT" ? "FORMAL_EVIDENCE_AUDIT" : "SCENARIO_ASSUMPTION",
+        evidenceVerified: body.evidence_verified === true,
+      }),
+    );
+  }
+
+  // Wave 3: Analytic Tradecraft (ICD 203 / 206 / ACH / NATO 6x6) & Synthetic Multi-INT Fusion
+  if (subPath === "intel/icd203-ach") {
+    return jsonRes(
+      evaluateIcd203AndAchAnalysis({
+        hypotheses: Array.isArray(body.hypotheses) ? (body.hypotheses as { id: string; label: string }[]) : undefined,
+        evidence: Array.isArray(body.evidence)
+          ? (body.evidence as { id: string; description: string; admiraltyCode: string; ratingsByHypothesis: Record<string, AchRating> }[])
+          : undefined,
+        admiraltyCodes: Array.isArray(body.admiralty_codes) ? (body.admiralty_codes as string[]) : undefined,
+        sourceCount: typeof body.source_count === "number" ? body.source_count : null,
+        claimedConfidence: (body.claimed_confidence as AnalyticConfidence) || null,
+        alternativesConsidered: typeof body.alternatives_considered === "boolean" ? body.alternatives_considered : null,
+        keyAssumptionsExplicit: typeof body.key_assumptions_explicit === "boolean" ? body.key_assumptions_explicit : null,
+        sourcesDocumentedPerIcd206: typeof body.sources_documented === "boolean" ? body.sources_documented : null,
+        assessmentMode: body.assessment_mode === "FORMAL_EVIDENCE_AUDIT" ? "FORMAL_EVIDENCE_AUDIT" : "SCENARIO_ASSUMPTION",
+        evidenceVerified: body.evidence_verified === true,
+      }),
+    );
+  }
+
+  if (subPath === "intel/multi-int-fusion") {
+    return jsonRes(
+      evaluateMultiIntSyntheticFusion({
+        summaryText: typeof body.summary_text === "string" ? body.summary_text : null,
+        disciplinesPresent: Array.isArray(body.disciplines)
+          ? (body.disciplines as ("OSINT" | "GEOINT" | "SIGINT" | "MASINT" | "CI")[])
+          : undefined,
+        osintProvenanceVerified: typeof body.osint_provenance_verified === "boolean" ? body.osint_provenance_verified : null,
+        geointCoordinatesA: (body.coords_a as { lat: number; lon: number }) || null,
+        geointCoordinatesB: (body.coords_b as { lat: number; lon: number }) || null,
+        geospatialToleranceKm: typeof body.tolerance_km === "number" ? body.tolerance_km : undefined,
+        sigintFrequencyMhz: typeof body.sigint_freq_mhz === "number" ? body.sigint_freq_mhz : null,
+        ciDeceptionIndicatorsPresent: typeof body.ci_deception === "boolean" ? body.ci_deception : null,
+        claimsMultiIntVerifiedGroundTruth: typeof body.claims_ground_truth === "boolean" ? body.claims_ground_truth : null,
+        assessmentMode: body.assessment_mode === "FORMAL_EVIDENCE_AUDIT" ? "FORMAL_EVIDENCE_AUDIT" : "SCENARIO_ASSUMPTION",
+        evidenceVerified: body.evidence_verified === true,
+      }),
+    );
+  }
+
+  // Wave 4: Mission Assurance DAG, CMMC/DFARS/FOCI & Space/Spectrum/MBSE
+  if (subPath === "mission/assurance-dag") {
+    return jsonRes(
+      evaluateMissionAssuranceDag({
+        mefs: Array.isArray(body.mefs) ? (body.mefs as { id: string; name: string; critical: boolean }[]) : undefined,
+        assets: Array.isArray(body.assets)
+          ? (body.assets as { id: string; name: string; redundant: boolean; backupAssetId?: string | null; operationalStatus?: "UP" | "DEGRADED" | "DOWN" }[])
+          : undefined,
+        dependencies: Array.isArray(body.dependencies) ? (body.dependencies as { fromId: string; toId: string }[]) : undefined,
+        assessmentMode: body.assessment_mode === "FORMAL_EVIDENCE_AUDIT" ? "FORMAL_EVIDENCE_AUDIT" : "SCENARIO_ASSUMPTION",
+        evidenceVerified: body.evidence_verified === true,
+      }),
+    );
+  }
+
+  if (subPath === "acquisition/cmmc-foci") {
+    return jsonRes(
+      evaluateAcquisitionCmmcAndFoci({
+        cmmcLevel: (body.cmmc_level as "LEVEL_1" | "LEVEL_2_SELF" | "LEVEL_2_C3PAO" | "LEVEL_3_DIBCAC") || null,
+        nist800171PercentMet: typeof body.nist_800_171_percent === "number" ? body.nist_800_171_percent : null,
+        poamCloseoutDays: typeof body.poam_closeout_days === "number" ? body.poam_closeout_days : null,
+        fivePointControlsMissing: typeof body.five_point_missing === "boolean" ? body.five_point_missing : null,
+        dfars7012CloudFedrampModEquiv: typeof body.dfars_cloud_fedramp_mod === "boolean" ? body.dfars_cloud_fedramp_mod : null,
+        dfars7012IncidentReportedHours: typeof body.dfars_incident_hours === "number" ? body.dfars_incident_hours : null,
+        sprsSubmitted: typeof body.sprs_submitted === "boolean" ? body.sprs_submitted : null,
+        hasForeignOwnershipOrControl: typeof body.has_foci === "boolean" ? body.has_foci : null,
+        fociMitigationInstrument:
+          (body.foci_instrument as "NONE" | "BOARD_RESOLUTION" | "SCA" | "SSA" | "PROXY_AGREEMENT" | "VOTING_TRUST") || null,
+        assessmentMode: body.assessment_mode === "FORMAL_EVIDENCE_AUDIT" ? "FORMAL_EVIDENCE_AUDIT" : "SCENARIO_ASSUMPTION",
+        evidenceVerified: body.evidence_verified === true,
+      }),
+    );
+  }
+
+  if (subPath === "space/mbse-spectrum") {
+    return jsonRes(
+      evaluateDigitalEngineeringSpaceSpectrum({
+        ttcCommandLinkEncryptedAndAuthenticated: typeof body.ttc_encrypted === "boolean" ? body.ttc_encrypted : null,
+        antiJamAndAntiSpoofVerified: typeof body.anti_jam_verified === "boolean" ? body.anti_jam_verified : null,
+        groundSegmentSegmented: typeof body.ground_segmented === "boolean" ? body.ground_segmented : null,
+        flightSoftwareCryptographicallySigned: typeof body.flight_sw_signed === "boolean" ? body.flight_sw_signed : null,
+        spectrumCertificationObtained: typeof body.spectrum_cert === "boolean" ? body.spectrum_cert : null,
+        mbseAuthoritativeSourceOfTruthActive: typeof body.mbse_asot === "boolean" ? body.mbse_asot : null,
+        mtbfHours: typeof body.mtbf_hours === "number" ? body.mtbf_hours : null,
+        mttrHours: typeof body.mttr_hours === "number" ? body.mttr_hours : null,
+        targetAo: typeof body.target_ao === "number" ? body.target_ao : null,
+        assessmentMode: body.assessment_mode === "FORMAL_EVIDENCE_AUDIT" ? "FORMAL_EVIDENCE_AUDIT" : "SCENARIO_ASSUMPTION",
+        evidenceVerified: body.evidence_verified === true,
+      }),
+    );
   }
 
   if (subPath === "investigate") {
