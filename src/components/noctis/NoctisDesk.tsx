@@ -39,7 +39,7 @@ import { NoctisWorkspaceExplorer, getActiveProjectContext } from "@/components/n
 const NoctisDeepResearchModal = lazyWithRetry(() => import("@/components/noctis/NoctisDeepResearchModal").then((m) => ({ default: m.NoctisDeepResearchModal })));
 import { NoctisModelPicker } from "@/components/noctis/NoctisModelPicker";
 import { NoctisBrainModal } from "@/components/noctis/NoctisBrainModal";
-import { getBrainConfig, getActiveKeyAndModel } from "@/lib/noctis-brain";
+import { getBrainConfig, getActiveKeyAndModel, getBrainForEngine } from "@/lib/noctis-brain";
 import { NoctisVaultModal } from "@/components/noctis/NoctisVaultModal";
 import { NoctisAgentBuilderModal } from "@/components/noctis/NoctisAgentBuilderModal";
 import { NoctisDataConnectorsModal } from "@/components/noctis/NoctisDataConnectorsModal";
@@ -4187,7 +4187,7 @@ export function NoctisDesk() {
               )
             : depthLock,
           language: spoken,
-          brain: getActiveKeyAndModel(getBrainConfig()),
+          brain: getBrainForEngine(getBrainConfig(), resolveNoctisEngine(activeEngineId).preferredProviderHint),
           context: (() => {
             try {
               const voiceContext = voiceRef.current

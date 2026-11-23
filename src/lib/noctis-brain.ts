@@ -92,3 +92,14 @@ export function getActiveKeyAndModel(config: BrainConfig): { provider: BrainProv
       };
   }
 }
+
+export function getBrainForEngine(
+  config: BrainConfig,
+  preferredProvider?: "noctis" | "gemini" | "openai" | "groq" | "xai",
+): { provider: BrainProvider; apiKey: string; model: string; endpoint?: string } | undefined {
+  if (preferredProvider && preferredProvider !== "noctis") {
+    const targeted = getActiveKeyAndModel({ ...config, provider: preferredProvider });
+    return targeted.apiKey ? targeted : undefined;
+  }
+  return getActiveKeyAndModel(config);
+}

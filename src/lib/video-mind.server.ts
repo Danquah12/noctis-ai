@@ -3,6 +3,14 @@ import { stripStatus } from "@/lib/evidence";
 import { studyBrief } from "@/lib/study-pass";
 import { formatMap, walkGraph } from "@/lib/knowledge-graph";
 import type { FilmAsk, MindSource, VideoLesson } from "@/lib/video-mind";
+import {
+  resolveProviderOrder,
+  shouldPrioritizeClientBrain,
+  type PreferredLlmProvider,
+  type ServerLlmProvider,
+} from "@/lib/noctis-provider-routing";
+
+export { resolveProviderOrder, shouldPrioritizeClientBrain, type PreferredLlmProvider, type ServerLlmProvider };
 
 type Turn = { role: "user" | "assistant"; content: string };
 
@@ -302,10 +310,58 @@ function extractChatCompletionWithReasoning(
   return content;
 }
 
+async function postOpenAiCompatibleChat(opts: {
+  endpoint: string;
+  apiKey?: string;
+  models: string[];
+  packed: { role: string; content: ModelContent }[];
+  temperature: number;
+  maxTokens: number;
+  json: boolean;
+  picture: boolean;
+  providerLabel: string;
+}): Promise<{ text: string; provider: string; model: string } | null> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (opts.apiKey) headers.Authorization = `Bearer ${opts.apiKey}`;
+  for (const model of opts.models) {
+    try {
+      const res = await fetch(opts.endpoint, {
+        method: "POST",
+        headers,
+        signal: AbortSignal.timeout(60000),
+        body: JSON.stringify({
+          model,
+          temperature: opts.temperature,
+          max_tokens: opts.maxTokens,
+          ...(opts.json && !opts.picture ? { response_format: { type: "json_object" } } : {}),
+          messages: opts.packed.map((message) => ({
+            role: message.role === "system" ? "system" : message.role === "assistant" ? "assistant" : "user",
+            content: opts.picture ? chatContent(message.content) : textOf(message.content).slice(0, 48000),
+          })),
+        }),
+      });
+      if (!res.ok) continue;
+      const data = (await res.json()) as { choices?: { message?: { content?: string; reasoning_content?: string } }[] };
+      const text = extractChatCompletionWithReasoning(data.choices?.[0]?.message);
+      if (text) return { text, provider: opts.providerLabel, model };
+    } catch {
+      /* try next model or fallback provider */
+    }
+  }
+  return null;
+}
+
 export async function modelChat(
   messages: { role: string; content: ModelContent }[],
-  opts: { maxTokens?: number; temperature?: number; json?: boolean; brain?: BrainOptions; thinkingLevel?: "minimal" | "low" | "medium" | "high" } = {},
-): Promise<{ text: string } | { error: string }> {
+  opts: {
+    maxTokens?: number;
+    temperature?: number;
+    json?: boolean;
+    brain?: BrainOptions;
+    preferredProvider?: PreferredLlmProvider;
+    thinkingLevel?: "minimal" | "low" | "medium" | "high";
+  } = {},
+): Promise<{ text: string; provider?: string; model?: string } | { error: string }> {
   const maxTokens = opts.maxTokens ?? 2048;
   const temperature = opts.temperature ?? 0.4;
   const json = opts.json === true;
@@ -318,7 +374,7 @@ export async function modelChat(
   const system = packed.filter((message) => message.role === "system").map((message) => textOf(message.content)).join("\n\n").slice(0, 24000);
   const talk = packed.filter((message) => message.role !== "system");
 
-  // Priority 1: User-configured Client Brain (BYOK or chosen Provider)
+  // Priority 1: User-configured Client Brain (BYOK or matching provider)
   const clientBrain = opts.brain;
   const clientProvider = clientBrain?.provider;
   const clientExplicitKey = clientBrain?.apiKey?.trim();
@@ -336,8 +392,13 @@ export async function modelChat(
       ? "local-bearer-token"
       : "");
 
-  if ((clientResolvedKey || clientProvider === "ollama" || clientProvider === "vllm" || clientProvider === "noctis-local") && clientProvider && clientProvider !== "noctis") {
-    const key = clientResolvedKey || "local-bearer-token";
+  if (
+    shouldPrioritizeClientBrain(clientBrain, opts.preferredProvider, picture) &&
+    (clientResolvedKey || clientProvider === "ollama" || clientProvider === "vllm" || clientProvider === "noctis-local") &&
+    clientProvider &&
+    clientProvider !== "noctis"
+  ) {
+    const resolvedKey = clientResolvedKey || "local-bearer-token";
     const provider = clientProvider;
     const userModel = clientBrain?.model?.trim();
 
@@ -350,7 +411,7 @@ export async function modelChat(
           temperature,
           thinkingLevel,
         });
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent?key=${encodeURIComponent(key)}`, {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent?key=${encodeURIComponent(resolvedKey)}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           signal: AbortSignal.timeout(60000),
@@ -366,7 +427,7 @@ export async function modelChat(
         if (res.ok) {
           const data = (await res.json());
           const text = extractGeminiThoughtAndAnswer(data.candidates?.[0]?.content?.parts);
-          if (text) return { text };
+          if (text) return { text, provider: "gemini", model: m };
         }
       } catch {
         /* fall through to other providers */
@@ -401,183 +462,144 @@ export async function modelChat(
           ? "llama3.2"
           : "gpt-4o");
 
-      try {
-        const res = await fetch(endpoint, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-          signal: AbortSignal.timeout(60000),
-          body: JSON.stringify({
-            model,
-            temperature,
-            max_tokens: provider === "groq" ? Math.min(maxTokens, 8192) : maxTokens,
-            ...(json && !picture ? { response_format: { type: "json_object" } } : {}),
-            messages: packed.map((message) => ({
-              role: message.role === "system" ? "system" : message.role === "assistant" ? "assistant" : "user",
-              content: picture ? chatContent(message.content) : textOf(message.content).slice(0, 48000),
-            })),
-          }),
-        });
-        if (res.ok) {
-          const data = (await res.json());
-          const text = extractChatCompletionWithReasoning(data.choices?.[0]?.message);
-          if (text) return { text };
-        }
-      } catch {
-        /* fall through */
-      }
-    }
-  }
-  const custom = customModelConfig();
-  if (custom && packed.length) {
-    try {
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (custom.apiKey) headers.Authorization = `Bearer ${custom.apiKey}`;
-      const res = await fetch(custom.endpoint, {
-        method: "POST",
-        headers,
-        signal: AbortSignal.timeout(60000),
-        body: JSON.stringify({
-          model: custom.model,
-          temperature,
-          max_tokens: maxTokens,
-          ...(json && !picture ? { response_format: { type: "json_object" } } : {}),
-          messages: packed.map((message) => ({
-            role: message.role === "system" ? "system" : message.role === "assistant" ? "assistant" : "user",
-            content: picture ? chatContent(message.content) : textOf(message.content).slice(0, 48000),
-          })),
-        }),
-      });
-      if (res.ok) {
-        const data = (await res.json()) as { choices?: { message?: { content?: string; reasoning_content?: string } }[] };
-        const text = extractChatCompletionWithReasoning(data.choices?.[0]?.message);
-        if (text) return { text };
-      }
-    } catch {
-      /* try next provider */
-    }
-  }
-  const vibeKey = resolveXaiKey();
-  if (vibeKey && packed.length) {
-    const models = picture ? ["grok-2-vision-1212", "grok-4"] : ["grok-3", "grok-3-mini"];
-    for (const model of models) {
-      try {
-        const res = await fetch("https://api.x.ai/v1/chat/completions", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${vibeKey}`, "Content-Type": "application/json" },
-          signal: AbortSignal.timeout(60000),
-          body: JSON.stringify({
-            model,
-            temperature,
-            max_tokens: maxTokens,
-            ...(json && !picture ? { response_format: { type: "json_object" } } : {}),
-            messages: packed.map((message) => ({
-              role: message.role === "system" ? "system" : message.role === "assistant" ? "assistant" : "user",
-              content: picture ? chatContent(message.content) : textOf(message.content).slice(0, 48000),
-            })),
-          }),
-        });
-        if (!res.ok) continue;
-        const data = (await res.json()) as { choices?: { message?: { content?: string; reasoning_content?: string } }[] };
-        const text = extractChatCompletionWithReasoning(data.choices?.[0]?.message);
-        if (text) return { text };
-      } catch {
-        /* try the next model */
-      }
-    }
-  }
-  const geminiKey = resolveGeminiKey();
-  if (geminiKey && (talk.length || picture)) {
-    try {
-      const m = "gemini-3.5-flash-lite";
-      const genConfig = buildGeminiGenerationConfig(m, {
-        maxTokens,
-        json: json && !picture,
+      const hit = await postOpenAiCompatibleChat({
+        endpoint,
+        apiKey: resolvedKey,
+        models: [model],
+        packed,
         temperature,
-        thinkingLevel,
+        maxTokens: provider === "groq" ? Math.min(maxTokens, 8192) : maxTokens,
+        json,
+        picture,
+        providerLabel: provider,
       });
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent?key=${encodeURIComponent(geminiKey)}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal: AbortSignal.timeout(60000),
-        body: JSON.stringify({
-          systemInstruction: system ? { parts: [{ text: system }] } : undefined,
-          contents: (talk.length ? talk : packed).map((message) => ({
-            role: message.role === "assistant" ? "model" : "user",
-            parts: picture ? geminiParts(message.content) : [{ text: textOf(message.content).slice(0, 48000) }],
-          })),
-          generationConfig: genConfig,
-        }),
-      });
-      if (res.ok) {
-        const data = (await res.json()) as { candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] } }[] };
-        const text = extractGeminiThoughtAndAnswer(data.candidates?.[0]?.content?.parts);
-        if (text) return { text };
-      }
-    } catch {
-      /* try next provider */
+      if (hit) return hit;
     }
   }
-  const openai = key();
-  if (openai && packed.length) {
-    for (const model of picture ? ["gpt-4o"] : ["gpt-4o", "gpt-4o-mini"]) {
-      try {
-        const res = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${openai}`, "Content-Type": "application/json" },
-          signal: AbortSignal.timeout(60000),
-          body: JSON.stringify({
-            model,
-            temperature,
-            max_tokens: maxTokens,
-            ...(json && !picture ? { response_format: { type: "json_object" } } : {}),
-            messages: packed.map((message) => ({
-              role: message.role,
-              content: picture ? chatContent(message.content) : textOf(message.content).slice(0, 48000),
-            })),
-          }),
-        });
-        if (!res.ok) continue;
-        const data = (await res.json()) as { choices?: { message?: { content?: string; reasoning_content?: string } }[] };
-        const text = extractChatCompletionWithReasoning(data.choices?.[0]?.message);
-        if (text) return { text };
-      } catch {
-        /* try the next model */
-      }
-    }
-  }
-  const groqKey = resolveGroqKey();
-  if (groqKey && packed.length && !picture) {
-    try {
-      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${groqKey}`, "Content-Type": "application/json" },
-        signal: AbortSignal.timeout(60000),
-        body: JSON.stringify({
-          model: "llama-3.3-70b-versatile",
+
+  let groqServerFailed = false;
+  for (const provider of resolveProviderOrder(opts.preferredProvider, picture)) {
+    if (provider === "custom") {
+      const custom = customModelConfig();
+      const isDefaultGroqCustom = Boolean(custom?.endpoint.includes("api.groq.com"));
+      if (custom && packed.length && !(isDefaultGroqCustom && groqServerFailed)) {
+        const hit = await postOpenAiCompatibleChat({
+          endpoint: custom.endpoint,
+          apiKey: custom.apiKey,
+          models: [custom.model],
+          packed,
           temperature,
-          max_tokens: Math.min(maxTokens, 8192),
-          ...(json ? { response_format: { type: "json_object" } } : {}),
-          messages: packed.map((message) => ({
-            role: message.role,
-            content: textOf(message.content).slice(0, 48000),
-          })),
-        }),
-      });
-      if (res.ok) {
-        const data = (await res.json()) as { choices?: { message?: { content?: string; reasoning_content?: string } }[] };
-        const text = extractChatCompletionWithReasoning(data.choices?.[0]?.message);
-        if (text) return { text };
+          maxTokens,
+          json,
+          picture,
+          providerLabel: isDefaultGroqCustom ? "groq" : "custom",
+        });
+        if (hit) return hit;
+        if (isDefaultGroqCustom) groqServerFailed = true;
       }
-    } catch {
-      /* try local native complete */
+      continue;
+    }
+
+    if (provider === "xai") {
+      const vibeKey = resolveXaiKey();
+      if (vibeKey && packed.length) {
+        const hit = await postOpenAiCompatibleChat({
+          endpoint: "https://api.x.ai/v1/chat/completions",
+          apiKey: vibeKey,
+          models: picture ? ["grok-2-vision-1212", "grok-4"] : ["grok-3", "grok-3-mini"],
+          packed,
+          temperature,
+          maxTokens,
+          json,
+          picture,
+          providerLabel: "xai",
+        });
+        if (hit) return hit;
+      }
+      continue;
+    }
+
+    if (provider === "gemini") {
+      const geminiKey = resolveGeminiKey();
+      if (geminiKey && (talk.length || picture)) {
+        try {
+          const m = "gemini-3.5-flash-lite";
+          const genConfig = buildGeminiGenerationConfig(m, {
+            maxTokens,
+            json: json && !picture,
+            temperature,
+            thinkingLevel,
+          });
+          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent?key=${encodeURIComponent(geminiKey)}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            signal: AbortSignal.timeout(60000),
+            body: JSON.stringify({
+              systemInstruction: system ? { parts: [{ text: system }] } : undefined,
+              contents: (talk.length ? talk : packed).map((message) => ({
+                role: message.role === "assistant" ? "model" : "user",
+                parts: picture ? geminiParts(message.content) : [{ text: textOf(message.content).slice(0, 48000) }],
+              })),
+              generationConfig: genConfig,
+            }),
+          });
+          if (res.ok) {
+            const data = (await res.json()) as { candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] } }[] };
+            const text = extractGeminiThoughtAndAnswer(data.candidates?.[0]?.content?.parts);
+            if (text) return { text, provider: "gemini", model: m };
+          }
+        } catch {
+          /* try next provider */
+        }
+      }
+      continue;
+    }
+
+    if (provider === "openai") {
+      const openai = key();
+      if (openai && packed.length) {
+        const hit = await postOpenAiCompatibleChat({
+          endpoint: "https://api.openai.com/v1/chat/completions",
+          apiKey: openai,
+          models: picture ? ["gpt-4o"] : ["gpt-4o", "gpt-4o-mini"],
+          packed,
+          temperature,
+          maxTokens,
+          json,
+          picture,
+          providerLabel: "openai",
+        });
+        if (hit) return hit;
+      }
+      continue;
+    }
+
+    if (provider === "groq") {
+      const groqKey = resolveGroqKey();
+      if (groqKey && packed.length && !picture && !groqServerFailed) {
+        const hit = await postOpenAiCompatibleChat({
+          endpoint: "https://api.groq.com/openai/v1/chat/completions",
+          apiKey: groqKey,
+          models: ["llama-3.3-70b-versatile"],
+          packed,
+          temperature,
+          maxTokens: Math.min(maxTokens, 8192),
+          json,
+          picture: false,
+          providerLabel: "groq",
+        });
+        if (hit) return hit;
+        groqServerFailed = true;
+      }
     }
   }
+
   try {
     const { vibeNativeComplete } = await import("@/lib/noctis-train.server");
     const nativeText = await vibeNativeComplete(
       packed.map((message) => ({ role: message.role, content: textOf(message.content) })),
     );
-    if (nativeText?.text) return { text: nativeText.text };
+    if (nativeText?.text) return { text: nativeText.text, provider: "noctis", model: "noctis-native" };
   } catch {
     /* fallback failed */
   }

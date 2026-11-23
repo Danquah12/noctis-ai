@@ -1428,6 +1428,7 @@ async function composeVibeReply(
           maxTokens: 1600,
           thinkingLevel: shouldThink ? "high" : "medium",
           brain: style.brain,
+          preferredProvider: activeEngine.preferredProviderHint,
         }
       );
       if (!("error" in modelResult) && modelResult.text && modelResult.text.trim().length > 60) {
@@ -1526,6 +1527,7 @@ async function composeVibeReply(
           maxTokens: 900,
           thinkingLevel: shouldThink ? "high" : "medium",
           brain: style.brain,
+          preferredProvider: activeEngine.preferredProviderHint,
         },
       );
       if ("error" in result || !result.text.trim()) return { text: "The document was read, but no answer came back. Nothing was invented." };
@@ -1764,6 +1766,7 @@ async function composeVibeReply(
         temperature: 0.4,
         maxTokens: 4096,
         brain: style.brain,
+        preferredProvider: activeEngine.preferredProviderHint,
         thinkingLevel: shouldThink ? "high" : "medium",
       },
     );
@@ -1816,7 +1819,7 @@ async function composeVibeReply(
   const messages: ChatMessage[] = [
     { role: "system", content: sovereignGrounding },
     { role: "system", content: SYSTEM },
-    { role: "system", content: `Active Intelligence Engine: ${activeEngine.name} (${activeEngine.id}).` },
+    { role: "system", content: `Active Intelligence Engine: ${activeEngine.name}.` },
     { role: "system", content: `${pipe.route.note} ${reasonBrief(scenario)} The pipeline packet below was computed in code. Copy it. Do not replace a pipeline line with a guess. A feasibility sentence comes after the figures, never instead of them.` },
     ...(packet ? [{ role: "system" as const, content: packet }] : []),
     ...(stance ? [{ role: "system" as const, content: stance }] : []),
@@ -1865,6 +1868,7 @@ async function composeVibeReply(
     maxTokens: seeing ? 2048 : engineeringDesign(question) || hasHardRows ? 8000 : shouldThink ? 4096 : 2048,
     thinkingLevel: shouldThink ? "high" : "medium",
     brain: style.brain,
+    preferredProvider: activeEngine.preferredProviderHint,
   });
   if ("error" in result) return result;
   const parsedModel = parseThinkEnvelope(result.text);
