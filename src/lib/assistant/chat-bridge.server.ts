@@ -47,8 +47,8 @@ export async function tryHandleAssistantChatQuery(question: string): Promise<str
     return [
       `## Noctis 100-Task Application-Component Check (\`${res.runId}\`)`,
       `- **Evidence boundary:** In-process deterministic function checks only; **no selected-model inference**, **no held-out evaluation**, **no verified model-intelligence score**.`,
-      `- **Model release gate:** \`${res.releaseGate}\` · **Model quality score:** not measured`
-      `- **Pass Rate:** **${res.passRatePct}%** (\`PASS\`: **${res.passedTasks}**, \`PARTIAL\`: **${res.partialTasks}**, \`FAIL\`: **${res.failedTasks}** across **${res.totalTasks}** real tasks in ${res.elapsedMs}ms)`,
+      `- **Model release gate:** \`${res.releaseGate}\` · **Model quality score:** not measured`,
+      `- **Component pass rate:** **${res.passRatePct}%** (\`PASS\`: **${res.passedTasks}**, \`PARTIAL\`: **${res.partialTasks}**, \`FAIL\`: **${res.failedTasks}** across **${res.totalTasks}** component checks in ${res.elapsedMs}ms)`,
       "",
       "| Category | Pass | Partial | Fail | Total |",
       "| :--- | :---: | :---: | :---: | :---: |",
