@@ -47,16 +47,93 @@ function downloadZipBase64(b64: string, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export function NoctisForgeBuilderStudio() {
-  const [prompt, setPrompt] = useState(FORGE_COMPLEX_PLATFORMS[0]!.prompt);
-  const [category, setCategory] = useState(FORGE_40_CATEGORIES[3]!.name);
+function downloadHtmlFile(html: string, name: string) {
+  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48) || "noctis-website";
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${slug}.html`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+const UNIVERSAL_QUICK_STARTERS: Array<{ id: string; label: string; category: string; prompt: string }> = [
+  {
+    id: "travel",
+    label: "Global Travel & Tourism",
+    category: "Travel",
+    prompt: "Build a worldwide travel and adventure booking website with interactive destination search, itinerary planner, local tour guides, and luxury stays.",
+  },
+  {
+    id: "ecommerce",
+    label: "E-Commerce Storefront",
+    category: "E-commerce",
+    prompt: "Build a modern direct-to-consumer e-commerce storefront with product category filters, shopping bag drawer, bundle pricing, and Stripe checkout.",
+  },
+  {
+    id: "real-estate",
+    label: "Real Estate Marketplace",
+    category: "Real estate",
+    prompt: "Build a modern real estate marketplace website with property search, neighborhood filters, virtual tour scheduling, PostGIS spatial search, and a mortgage calculator.",
+  },
+  {
+    id: "healthcare",
+    label: "Healthcare Clinic Portal",
+    category: "Healthcare",
+    prompt: "Build a healthcare clinic website and patient portal with online appointment scheduling, telehealth visits, specialty search, and HIPAA-conscious intake.",
+  },
+  {
+    id: "saas",
+    label: "SaaS Analytics Platform",
+    category: "SaaS products",
+    prompt: "Build a B2B SaaS analytics platform website with interactive telemetry modules, RBAC enterprise security, seat pricing calculator, and live trial onboarding.",
+  },
+  {
+    id: "hospitality",
+    label: "Restaurant & Reservations",
+    category: "Hospitality",
+    prompt: "Build an artisan bakery and restaurant website with seasonal menu filtering, table reservations, catering estimator, and online takeaway ordering.",
+  },
+  {
+    id: "portfolio",
+    label: "Creative Portfolio",
+    category: "Portfolio websites",
+    prompt: "Build an independent design and engineering studio portfolio website with filterable case studies, scope timeline calculator, and client inquiry booking.",
+  },
+  {
+    id: "ai-platforms",
+    label: "AI Agent Workspace",
+    category: "AI platforms",
+    prompt: "Build an AI platform website for orchestrating agents, RAG knowledge search, safety evaluations, and API developer tooling.",
+  },
+];
+
+const QUICK_EDIT_CHIPS: Array<{ label: string; instruction: string }> = [
+  { label: "Light Mode", instruction: "Switch to light mode editorial theme" },
+  { label: "Dark Mode", instruction: "Switch to dark mode midnight theme" },
+  { label: "Gold Luxury Palette", instruction: "Use gold luxury palette" },
+  { label: "Emerald Palette", instruction: "Use emerald green palette" },
+  { label: "Add Pricing Tier", instruction: "Add pricing tier and table pricing_tiers" },
+  { label: "Multilingual EN/ES/FR", instruction: "Enable multilingual EN/ES/FR language switcher" },
+  { label: "Add Mobile Wrapper", instruction: "Add mobile iOS and Android Capacitor wrapper" },
+];
+
+export interface NoctisForgeBuilderStudioProps {
+  initialPrompt?: string;
+  initialNonce?: number;
+}
+
+export function NoctisForgeBuilderStudio({ initialPrompt, initialNonce }: NoctisForgeBuilderStudioProps = {}) {
+  const [prompt, setPrompt] = useState(UNIVERSAL_QUICK_STARTERS[0]!.prompt);
+  const [category, setCategory] = useState("");
   const [stack, setStack] = useState(FORGE_STACK_PRESETS[0]!);
   const [accentHex, setAccentHex] = useState("#06B6D4");
   const [stage, setStage] = useState<StudioStage>("Preview");
 
   const [activeProject, setActiveProject] = useState<any>(null);
   const [selectedFile, setSelectedFile] = useState("src/App.tsx");
-  const [editInstruction, setEditInstruction] = useState("Add table analytics_events and use emerald palette");
+  const [editInstruction, setEditInstruction] = useState("Add table traveler_reviews and use emerald palette");
   const [projectsList, setProjectsList] = useState<any[]>([]);
   const [revisions, setRevisions] = useState<any[]>([]);
   const [envAudit, setEnvAudit] = useState<any>(null);
@@ -79,14 +156,14 @@ export function NoctisForgeBuilderStudio() {
     return json;
   }
 
-  async function refreshProjects() {
+  async function refreshProjects(skipAutoLoad = false) {
     const [st, env] = await Promise.all([
       api("/api/v2/forge/status"),
       api("/api/v2/forge/environment"),
     ]);
     setProjectsList(Array.isArray(st.projects) ? st.projects : []);
     setEnvAudit(env);
-    if (!activeProject && Array.isArray(st.projects) && st.projects[0]?.id) {
+    if (!skipAutoLoad && !activeProject && !initialPrompt && Array.isArray(st.projects) && st.projects[0]?.id) {
       const full = await api(`/api/v2/forge/projects?id=${encodeURIComponent(st.projects[0].id)}`);
       if (full.project) {
         setActiveProject({
@@ -107,17 +184,28 @@ export function NoctisForgeBuilderStudio() {
   }
 
   useEffect(() => {
-    void refreshProjects();
+    void refreshProjects(Boolean(initialPrompt));
   }, []);
 
-  async function generateProject() {
-    setBusy("Orchestrating 12 Noctis Forge Agents (Requirements -> Design -> Code -> SQL -> QA/SAST)...");
+  async function generateProject(promptOverride?: string, categoryOverride?: string) {
+    const activePrompt = (promptOverride ?? prompt).trim();
+    const activeCategory = categoryOverride !== undefined ? categoryOverride : category;
+    if (!activePrompt) return;
+    setBusy("Orchestrating 12 Noctis Forge Agents (Requirements -> Blueprint -> UI/Preview -> SQL -> QA/SAST)...");
     try {
-      const res = await api("/api/v2/forge/projects/generate", "POST", { prompt, category, stack, accentHex });
+      const res = await api("/api/v2/forge/projects/generate", "POST", {
+        prompt: activePrompt,
+        category: activeCategory || undefined,
+        stack,
+        accentHex: categoryOverride === "" ? undefined : accentHex,
+      });
       setActiveProject(res);
+      if (res?.blueprint?.theme?.accent) {
+        setAccentHex(res.blueprint.theme.accent);
+      }
       setStage("Preview");
       setSelectedFile("src/App.tsx");
-      await refreshProjects();
+      await refreshProjects(true);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Forge generation failed.");
     } finally {
@@ -125,21 +213,37 @@ export function NoctisForgeBuilderStudio() {
     }
   }
 
-  async function applyConversationalEdit() {
-    if (!activeProject?.projectId || !editInstruction.trim()) return;
+  useEffect(() => {
+    if (initialPrompt && initialNonce) {
+      setPrompt(initialPrompt);
+      setCategory("");
+      void generateProject(initialPrompt, "");
+    }
+  }, [initialPrompt, initialNonce]);
+
+  async function applyConversationalEdit(instructionOverride?: string) {
+    const activeInstruction = (instructionOverride ?? editInstruction).trim();
+    if (!activeProject?.projectId || !activeInstruction) return;
+    if (instructionOverride) {
+      setEditInstruction(instructionOverride);
+    }
     setBusy("Applying surgical conversational revision & re-running QA/SAST...");
     try {
       const res = await api("/api/v2/forge/projects/edit", "POST", {
         projectId: activeProject.projectId,
-        instruction: editInstruction,
+        instruction: activeInstruction,
       });
       setActiveProject((prev: any) => ({
         ...prev,
+        name: res.blueprint?.brandName || prev?.name,
         currentRevision: res.revisionNumber,
         qaSecurity: res.qaSecurity,
         files: res.files,
         fileNames: res.fileNames,
       }));
+      if (res?.accentHex) {
+        setAccentHex(res.accentHex);
+      }
       const full = await api(`/api/v2/forge/projects?id=${encodeURIComponent(activeProject.projectId)}`);
       setRevisions(Array.isArray(full.revisions) ? full.revisions : []);
     } catch (e) {
@@ -166,17 +270,17 @@ export function NoctisForgeBuilderStudio() {
             </p>
           </div>
           <div className="flex flex-wrap gap-1.5">
-            {FORGE_COMPLEX_PLATFORMS.slice(0, 4).map((p) => (
+            {UNIVERSAL_QUICK_STARTERS.map((preset) => (
               <button
-                key={p.id}
+                key={preset.id}
                 type="button"
                 onClick={() => {
-                  setPrompt(p.prompt);
-                  setCategory(p.category);
+                  setPrompt(preset.prompt);
+                  setCategory("");
                 }}
-                className="rounded-md border border-white/10 bg-white/5 px-2 py-1 text-[10px] text-zinc-300 hover:bg-white/10"
+                className="rounded-md border border-white/10 bg-white/5 px-2 py-1 text-[10px] text-zinc-300 hover:bg-white/10 hover:text-white cursor-pointer"
               >
-                {p.name}
+                {preset.label}
               </button>
             ))}
           </div>
@@ -184,10 +288,12 @@ export function NoctisForgeBuilderStudio() {
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
           <select
+            aria-label="Website Category"
             value={category}
             onChange={(e) => setCategory(e.target.value)}
             className="rounded-lg border border-white/15 bg-black/60 px-2.5 py-1.5 text-white"
           >
+            <option value="">Auto-Detect (Any Website · 40 Categories)</option>
             {FORGE_40_CATEGORIES.map((c) => (
               <option key={c.id} value={c.name}>{`#${c.id} ${c.name}${c.regulated ? " (Regulated)" : ""}`}</option>
             ))}
@@ -215,7 +321,7 @@ export function NoctisForgeBuilderStudio() {
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             rows={2}
-            placeholder="What would you like to build?"
+            placeholder="Describe ANY website or web app to build (e.g., worldwide tourism booking portal, boutique bakery store, dental clinic, real estate marketplace, SaaS app)..."
             className="flex-1 rounded-xl border border-white/15 bg-black/55 p-2.5 text-white focus:outline-none focus:border-[#e4b86a]"
           />
           <button
@@ -223,7 +329,7 @@ export function NoctisForgeBuilderStudio() {
             onClick={() => void generateProject()}
             className="rounded-xl bg-[#e4b86a] hover:bg-[#efc77b] text-black font-bold px-4 py-2 flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
           >
-            <Play className="size-3.5" /> Generate project specification
+            <Play className="size-3.5" /> Build Website &amp; Full-Stack App
           </button>
         </div>
 
@@ -260,16 +366,27 @@ export function NoctisForgeBuilderStudio() {
           </div>
 
           {activeProject?.projectId && (
-            <button
-              type="button"
-              onClick={async () => {
-                const zipped = await api(`/api/v2/forge/projects/export-zip?id=${encodeURIComponent(activeProject.projectId)}`);
-                if (zipped.base64) downloadZipBase64(zipped.base64, zipped.filename);
-              }}
-              className="rounded-lg border border-cyan-500/35 bg-cyan-500/15 hover:bg-cyan-500/25 px-3 py-1 text-[11px] font-semibold text-cyan-200 flex items-center gap-1.5 cursor-pointer"
-            >
-              <Download className="size-3.5" /> Download Source .ZIP
-            </button>
+            <div className="flex items-center gap-1.5">
+              {filesMap["index.html"] && (
+                <button
+                  type="button"
+                  onClick={() => downloadHtmlFile(filesMap["index.html"]!, activeProject.name || "website")}
+                  className="rounded-lg border border-[#e4b86a]/40 bg-[#e4b86a]/15 hover:bg-[#e4b86a]/25 px-3 py-1 text-[11px] font-semibold text-[#e4b86a] flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Download className="size-3.5" /> Download .html
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={async () => {
+                  const zipped = await api(`/api/v2/forge/projects/export-zip?id=${encodeURIComponent(activeProject.projectId)}`);
+                  if (zipped.base64) downloadZipBase64(zipped.base64, zipped.filename);
+                }}
+                className="rounded-lg border border-cyan-500/35 bg-cyan-500/15 hover:bg-cyan-500/25 px-3 py-1 text-[11px] font-semibold text-cyan-200 flex items-center gap-1.5 cursor-pointer"
+              >
+                <Download className="size-3.5" /> Download Source .ZIP
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -284,24 +401,38 @@ export function NoctisForgeBuilderStudio() {
       {activeProject && stage === "Preview" && (
         <div className="space-y-3">
           {/* Conversational & Visual Edit Bar */}
-          <div className="rounded-xl border border-white/10 bg-[#121722] p-3 flex flex-col sm:flex-row gap-2 items-center">
-            <span className="text-[11px] font-semibold text-zinc-300 shrink-0">
-              {`Rev #${activeProject.currentRevision} · ${activeProject.name}`}
-            </span>
-            <input
-              type="text"
-              value={editInstruction}
-              onChange={(e) => setEditInstruction(e.target.value)}
-              placeholder="Conversational edit (e.g., Add table billing_invoices, switch to emerald theme)..."
-              className="flex-1 rounded-lg border border-white/15 bg-black/55 px-2.5 py-1.5 text-white"
-            />
-            <button
-              type="button"
-              onClick={() => void applyConversationalEdit()}
-              className="rounded-lg bg-cyan-600 hover:bg-cyan-500 px-3 py-1.5 font-semibold text-white shrink-0"
-            >
-              Apply Edit Revision
-            </button>
+          <div className="rounded-xl border border-white/10 bg-[#121722] p-3 space-y-2">
+            <div className="flex flex-col sm:flex-row gap-2 items-center">
+              <span className="text-[11px] font-semibold text-zinc-300 shrink-0">
+                {`Rev #${activeProject.currentRevision} · ${activeProject.name}`}
+              </span>
+              <input
+                type="text"
+                value={editInstruction}
+                onChange={(e) => setEditInstruction(e.target.value)}
+                placeholder="Conversational edit (e.g., Switch to light mode, add table traveler_reviews, emerald theme)..."
+                className="flex-1 rounded-lg border border-white/15 bg-black/55 px-2.5 py-1.5 text-white"
+              />
+              <button
+                type="button"
+                onClick={() => void applyConversationalEdit()}
+                className="rounded-lg bg-cyan-600 hover:bg-cyan-500 px-3 py-1.5 font-semibold text-white shrink-0 cursor-pointer"
+              >
+                Apply Edit Revision
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {QUICK_EDIT_CHIPS.map((chip) => (
+                <button
+                  key={chip.label}
+                  type="button"
+                  onClick={() => void applyConversationalEdit(chip.instruction)}
+                  className="rounded-full border border-white/10 bg-white/5 hover:bg-white/15 px-2.5 py-0.5 text-[10px] font-medium text-zinc-300 hover:text-white cursor-pointer"
+                >
+                  + {chip.label}
+                </button>
+              ))}
+            </div>
           </div>
           {filesMap["index.html"] && (
             <div className="h-[540px] rounded-xl overflow-hidden border border-white/15">

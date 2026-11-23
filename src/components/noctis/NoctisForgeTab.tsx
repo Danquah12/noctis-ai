@@ -398,9 +398,17 @@ interface NoctisForgeTabProps {
   onSendToChat?: (prompt: string) => void;
   onClose?: () => void;
   onOpenInCanvas?: (title: string, markdown: string) => void;
+  initialBuilderPrompt?: string;
+  initialBuilderNonce?: number;
 }
 
-export function NoctisForgeTab({ onSendToChat, onClose, onOpenInCanvas }: NoctisForgeTabProps) {
+export function NoctisForgeTab({
+  onSendToChat,
+  onClose,
+  onOpenInCanvas,
+  initialBuilderPrompt,
+  initialBuilderNonce,
+}: NoctisForgeTabProps) {
   const [recents, setRecents] = useState<BuildRecentItem[]>(INITIAL_RECENTS);
   const [activeRecentId, setActiveRecentId] = useState<string>("1");
   const [prompt, setPrompt] = useState("");
@@ -419,7 +427,13 @@ export function NoctisForgeTab({ onSendToChat, onClose, onOpenInCanvas }: Noctis
   const [forgeMenuOpen, setForgeMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [viewMode, setViewMode] = useState<"code" | "canvas" | "split" | "builder">("code");
+  const [viewMode, setViewMode] = useState<"code" | "canvas" | "split" | "builder">("builder");
+
+  useEffect(() => {
+    if (initialBuilderPrompt && initialBuilderNonce) {
+      setViewMode("builder");
+    }
+  }, [initialBuilderPrompt, initialBuilderNonce]);
   const [highlightedText, setHighlightedText] = useState<string>("");
   const [highlightInterpretation, setHighlightInterpretation] = useState<HighlightInterpretation | null>(null);
   const [inspectorOpen, setInspectorOpen] = useState(false);
@@ -948,6 +962,28 @@ describe("${textToBuild} - Verification", () => {
             </div>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <div className="flex items-center rounded-full bg-white/5 border border-white/10 p-0.5 text-[11px] shrink-0">
+              <button
+                type="button"
+                onClick={() => setViewMode("builder")}
+                className={cn(
+                  "rounded-full px-2.5 py-0.5 font-semibold transition cursor-pointer",
+                  viewMode === "builder" ? "bg-[#e4b86a] text-black" : "text-zinc-300 hover:text-white"
+                )}
+              >
+                Website &amp; App Builder
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("code")}
+                className={cn(
+                  "rounded-full px-2.5 py-0.5 font-semibold transition cursor-pointer",
+                  viewMode !== "builder" ? "bg-white/15 text-white" : "text-zinc-300 hover:text-white"
+                )}
+              >
+                Code Forge
+              </button>
+            </div>
             <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2 sm:px-2.5 py-0.5 text-[11px] font-semibold text-emerald-400 flex items-center gap-1.5 shrink-0 whitespace-nowrap">
               <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
               <span className="hidden sm:inline">XTRIKE Verified</span>
@@ -993,7 +1029,10 @@ describe("${textToBuild} - Verification", () => {
                   Back to Forge Code View
                 </button>
               </div>
-              <NoctisForgeBuilderStudio />
+              <NoctisForgeBuilderStudio
+                initialPrompt={initialBuilderPrompt}
+                initialNonce={initialBuilderNonce}
+              />
             </div>
           ) : buildArtifact ? (
             // Build Output Result View

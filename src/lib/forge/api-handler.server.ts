@@ -111,6 +111,7 @@ export async function handleForgeV2Request(request: Request): Promise<Response> 
         accentHex: typeof body.accentHex === "string" ? body.accentHex : undefined,
         actorId: caller.actorId,
         persist: body.persist !== false,
+        useAi: body.useAi !== false,
       }),
     );
   }
@@ -126,6 +127,7 @@ export async function handleForgeV2Request(request: Request): Promise<Response> 
       accentHex: typeof body.accentHex === "string" ? body.accentHex : undefined,
       addEntity: typeof body.addEntity === "string" ? body.addEntity : undefined,
       actorId: caller.actorId,
+      useAi: body.useAi !== false,
     });
     return jsonRes(out, out.ok ? 200 : 404);
   }

@@ -27,6 +27,16 @@ import {
   listForgeProjectRevisions,
   saveForgeProjectRecord,
 } from "./forge-persistence.server.ts";
+import {
+  applyBlueprintConversationalEdit,
+  buildDeterministicWebsiteBlueprint,
+  classifyWebsiteCategory,
+  renderReactAppFromBlueprint,
+  renderSqlFromBlueprint,
+  renderWebsiteBlueprintHtml,
+  synthesizeWebsiteBlueprintWithAi,
+  type WebsiteBlueprint,
+} from "./website-blueprint-engine.ts";
 
 /** Section 9 Priority: Honest validation of current Noctis dev/execution/GitHub/deploy runtime */
 export function validateDevelopmentEnvironment() {
@@ -95,30 +105,12 @@ export function validateDevelopmentEnvironment() {
   };
 }
 
-function matchCategory(categoryHint?: string, prompt?: string): ForgeCategorySpec {
-  const hay = `${categoryHint || ""} ${prompt || ""}`.toLowerCase();
-  const byName = FORGE_40_CATEGORIES.find(
-    (c) =>
-      (categoryHint && c.name.toLowerCase() === categoryHint.toLowerCase()) ||
-      (categoryHint && c.slug === categoryHint.toLowerCase()),
-  );
-  if (byName) return byName;
-
-  if (/\b(hospital|clinic|patient|fhir|medical|health)\b/i.test(hay)) return FORGE_40_CATEGORIES[4]!;
-  if (/\b(court|legal|law firm|litigation|frcp)\b/i.test(hay)) return FORGE_40_CATEGORIES[5]!;
-  if (/\b(government|agency|citizen|permit|fedramp|rmf|grc)\b/i.test(hay)) return FORGE_40_CATEGORIES[28]!;
-  if (/\b(bank|banking|loan|branch)\b/i.test(hay)) return FORGE_40_CATEGORIES[8]!;
-  if (/\b(fintech|payment|invoice|budget)\b/i.test(hay)) return FORGE_40_CATEGORIES[9]!;
-  if (/\b(insur|claim|underwriting)\b/i.test(hay)) return FORGE_40_CATEGORIES[10]!;
-  if (/\b(cyber|soc|siem|kev|vulnerability)\b/i.test(hay)) return FORGE_40_CATEGORIES[27]!;
-  if (/\b(network|linkedin|profile.*connection|healthcare worker)\b/i.test(hay)) return FORGE_40_CATEGORIES[3]!;
-  if (/\b(shop|store|ecommerce|e-commerce|catalog|checkout)\b/i.test(hay)) return FORGE_40_CATEGORIES[1]!;
-  if (/\b(social|video|feed|creator)\b/i.test(hay)) return FORGE_40_CATEGORIES[2]!;
-  if (/\b(ai\s*platform|chatbot|agent)\b/i.test(hay)) return FORGE_40_CATEGORIES[29]!;
-  return FORGE_40_CATEGORIES[0]!;
-}
-
-function runStaticQaAndSecurityScan(files: Record<string, string>, accentHex: string) {
+function runStaticQaAndSecurityScan(
+  files: Record<string, string>,
+  accentHex: string,
+  themeBg = "#090D16",
+  themeText = "#F8FAFC",
+) {
   const securityFindings: string[] = [];
   for (const [fPath, content] of Object.entries(files)) {
     if (/\beval\s*\(|new\s+Function\s*\(/i.test(content)) {
@@ -128,7 +120,7 @@ function runStaticQaAndSecurityScan(files: Record<string, string>, accentHex: st
       securityFindings.push(`${fPath}: Hardcoded credential pattern detected.`);
     }
   }
-  const wcag = auditWcagContrastAndA11y(`#F8FAFC on #0B1120 and ${accentHex} on #0B1120`);
+  const wcag = auditWcagContrastAndA11y(`${themeText} on ${themeBg} and ${accentHex} on ${themeBg}`);
   const hasSchema = Boolean(files["migrations/0001_init.sql"]);
   const hasTests = Boolean(files["tests/app.test.ts"]);
   const hasApi = Boolean(files["src/server/api.ts"]);
@@ -150,101 +142,6 @@ function runStaticQaAndSecurityScan(files: Record<string, string>, accentHex: st
   };
 }
 
-function buildInteractivePreviewHtml(input: {
-  title: string;
-  category: ForgeCategorySpec;
-  accentHex: string;
-  entities: string[];
-  prompt: string;
-  localeStrings: Record<string, { badge: string; navHome: string; navData: string; navApi: string; actionBtn: string }>;
-}) {
-  const { title, category, accentHex, entities, prompt } = input;
-  const safeTitle = title.replace(/[<>&"]/g, "");
-  const safePrompt = prompt.replace(/[<>&"]/g, "").slice(0, 180);
-  const entityCards = entities
-    .map(
-      (e, idx) =>
-        `<div class="card"><h3>${e.replace(/_/g, " ").toUpperCase()}</h3><p class="num">${(idx + 1) * 14}</p><span class="pill">PostgreSQL Table Ready</span></div>`,
-    )
-    .join("");
-
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>${safeTitle} — Noctis Forge Preview</title>
-  <style>
-    * { box-sizing: border-box; font-family: Inter, system-ui, -apple-system, sans-serif; }
-    body { margin: 0; background: #0b1120; color: #f8fafc; padding: 20px; }
-    header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1e293b; padding-bottom: 14px; margin-bottom: 18px; flex-wrap: wrap; gap: 10px; }
-    .brand { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
-    .dot { width: 10px; height: 10px; border-radius: 999px; background: ${accentHex}; display: inline-block; }
-    nav { display: flex; gap: 8px; }
-    button { background: #1e293b; color: #e2e8f0; border: 1px solid #334155; border-radius: 8px; padding: 7px 12px; font-size: 12px; cursor: pointer; }
-    button.active, button.primary { background: ${accentHex}; color: #020617; border-color: ${accentHex}; font-weight: 600; }
-    .hero { background: linear-gradient(135deg, #0f172a, #111827); border: 1px solid #1e293b; border-radius: 14px; padding: 18px; margin-bottom: 16px; }
-    .badge { display: inline-block; font-size: 11px; padding: 3px 9px; border-radius: 999px; background: rgba(6,182,212,0.15); color: ${accentHex}; border: 1px solid rgba(6,182,212,0.35); margin-bottom: 8px; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-top: 12px; }
-    .card { background: #0f172a; border: 1px solid #1e293b; border-radius: 12px; padding: 14px; }
-    .card h3 { margin: 0 0 6px 0; font-size: 11px; letter-spacing: 0.06em; color: #94a3b8; }
-    .num { font-size: 24px; font-weight: 700; margin: 0 0 6px 0; color: #fff; }
-    .pill { font-size: 10px; background: #1e293b; color: #38bdf8; padding: 2px 7px; border-radius: 999px; }
-    .advisory { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.35); color: #fcd34d; padding: 10px 12px; border-radius: 10px; font-size: 12px; margin-top: 12px; }
-    .form-row { display: flex; gap: 8px; margin-top: 14px; }
-    input { flex: 1; background: #020617; color: #fff; border: 1px solid #334155; border-radius: 8px; padding: 8px 10px; font-size: 12px; }
-    .log { margin-top: 10px; font-size: 12px; color: #34d399; font-family: monospace; }
-  </style>
-</head>
-<body>
-  <header>
-    <div class="brand"><span class="dot"></span>${safeTitle}</div>
-    <nav>
-      <button class="active" onclick="switchTab('overview', this)">Overview</button>
-      <button onclick="switchTab('records', this)">Data (${entities.length})</button>
-      <button onclick="switchTab('api', this)">API Health</button>
-    </nav>
-  </header>
-  <section class="hero">
-    <span class="badge">${category.name} · Noctis Forge v1.0</span>
-    <p style="margin:6px 0 0 0;color:#cbd5e1;font-size:13px;">${safePrompt}</p>
-    ${category.specialistAdvisory ? `<div class="advisory">Regulated Compliance Notice: ${category.specialistAdvisory}</div>` : ""}
-  </section>
-  <div id="panel-overview" class="grid">${entityCards}</div>
-  <div id="panel-records" style="display:none" class="card">
-    <h3>Live Interactive Record Creator (${entities[0] || "items"})</h3>
-    <div class="form-row">
-      <input id="recInput" placeholder="Enter new item title..." />
-      <button class="primary" onclick="addRec()">Add Record</button>
-    </div>
-    <div id="recLog" class="log">Ready. Connected to local preview state &amp; /api/records schema.</div>
-  </div>
-  <div id="panel-api" style="display:none" class="card">
-    <h3>Backend & Security Status</h3>
-    <p style="font-size:12px;color:#94a3b8;">Routes: /api/health · /api/${entities[0] || "records"} · Better-Auth RBAC enabled · Hardcoded secrets: 0</p>
-  </div>
-  <script>
-    const records = [];
-    function switchTab(id, btn) {
-      document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      ['overview','records','api'].forEach(p => {
-        document.getElementById('panel-' + p).style.display = p === id ? (p === 'overview' ? 'grid' : 'block') : 'none';
-      });
-    }
-    function addRec() {
-      const val = document.getElementById('recInput').value.trim();
-      if (!val) return;
-      records.push({ id: records.length + 1, title: val, ts: new Date().toISOString() });
-      document.getElementById('recInput').value = '';
-      document.getElementById('recLog').textContent = 'Created #' + records.length + ': ' + val + ' (Total rows: ' + records.length + ')';
-      console.log('Forge preview record added:', val);
-    }
-  </script>
-</body>
-</html>`;
-}
-
 function buildProjectFiles(input: {
   projectId: string;
   name: string;
@@ -253,57 +150,23 @@ function buildProjectFiles(input: {
   prompt: string;
   accentHex: string;
   entities: string[];
+  blueprint: WebsiteBlueprint;
   includeMobileWrapper?: boolean;
 }) {
-  const { projectId, name, category, stack, prompt, accentHex, entities } = input;
+  const { projectId, name, category, stack, prompt, accentHex, entities, blueprint } = input;
   const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "noctis-app";
 
-  const localeStrings = {
-    en: { badge: category.name, navHome: "Overview", navData: "Records", navApi: "API", actionBtn: "Create" },
-    es: { badge: category.name, navHome: "Resumen", navData: "Registros", navApi: "API", actionBtn: "Crear" },
-    fr: { badge: category.name, navHome: "Apercu", navData: "Donnees", navApi: "API", actionBtn: "Creer" },
-  };
-
-  const indexHtml = buildInteractivePreviewHtml({
-    title: name,
-    category,
-    accentHex,
-    entities,
-    prompt,
-    localeStrings,
-  });
-
-  const appTsx = `import React, { useState } from "react";
-
-export function App() {
-  const [items, setItems] = useState<{ id: number; title: string }[]>([
-    { id: 1, title: "${name} Baseline Record" },
-  ]);
-  const [draft, setDraft] = useState("");
-
-  return (
-    <main style={{ background: "#0b1120", color: "#f8fafc", minHeight: "100vh", padding: 24 }}>
-      <h1>${name}</h1>
-      <p>Category: ${category.name} | Stack: ${stack}</p>
-      <div>
-        <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="New entry..." />
-        <button onClick={() => { if (draft.trim()) { setItems([...items, { id: Date.now(), title: draft }]); setDraft(""); } }}>
-          Add Record
-        </button>
-      </div>
-      <ul>{items.map((it) => <li key={it.id}>{it.title}</li>)}</ul>
-    </main>
-  );
-}
-export default App;
-`;
+  const indexHtml = renderWebsiteBlueprintHtml(blueprint);
+  const appTsx = renderReactAppFromBlueprint(blueprint, stack);
+  const blueprintTs = `export const WEBSITE_BLUEPRINT = ${JSON.stringify(blueprint, null, 2)} as const;\n`;
+  const { initSql, seedSql } = renderSqlFromBlueprint(blueprint);
 
   const serverApiTs = `// Generated REST API Handler for ${name} (${projectId})
 export interface ApiRequestContext { method: string; path: string; userRole: "ADMIN" | "USER"; body?: Record<string, unknown>; }
 
 export async function handleAppRequest(ctx: ApiRequestContext) {
   if (ctx.path === "/api/health") {
-    return { status: 200, body: { ok: true, app: "${slug}", regulated: ${category.regulated} } };
+    return { status: 200, body: { ok: true, app: "${slug}", category: "${category.name}", regulated: ${category.regulated} } };
   }
   if (ctx.path.startsWith("/api/admin") && ctx.userRole !== "ADMIN") {
     return { status: 403, body: { error: "RBAC denied: ADMIN role required." } };
@@ -311,30 +174,6 @@ export async function handleAppRequest(ctx: ApiRequestContext) {
   return { status: 200, body: { entities: ${JSON.stringify(entities)}, method: ctx.method, path: ctx.path } };
 }
 `;
-
-  const initSql = `-- PostgreSQL Schema & Reversible Migration for ${name}
-${entities
-  .map(
-    (tbl) => `CREATE TABLE IF NOT EXISTS app_${tbl} (
-  id TEXT PRIMARY KEY,
-  title TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'ACTIVE',
-  metadata_json JSONB NOT NULL DEFAULT '{}'::jsonb,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);`,
-  )
-  .join("\n\n")}
-
--- DOWN Migration (DBA approval required before execution):
-${entities.map((tbl) => `-- DROP TABLE IF EXISTS app_${tbl};`).join("\n")}
-`;
-
-  const seedSql = entities
-    .map(
-      (tbl, idx) =>
-        `INSERT INTO app_${tbl} (id, title) VALUES ('SEED-${idx + 1}', 'Initial ${tbl} baseline item') ON CONFLICT DO NOTHING;`,
-    )
-    .join("\n");
 
   const testTs = `import test from "node:test";
 import assert from "node:assert/strict";
@@ -384,7 +223,7 @@ jobs:
       short_name: name.slice(0, 12),
       start_url: "/",
       display: "standalone",
-      background_color: "#0b1120",
+      background_color: blueprint.theme.bg,
       theme_color: accentHex,
     },
     null,
@@ -393,8 +232,8 @@ jobs:
 
   const sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://${slug}.example.com/</loc><priority>1.0</priority></url>
-${entities.map((e) => `  <url><loc>https://${slug}.example.com/${e}</loc><priority>0.8</priority></url>`).join("\n")}
+  <url><loc>https://${blueprint.domain}/</loc><priority>1.0</priority></url>
+${entities.map((e) => `  <url><loc>https://${blueprint.domain}/${e}</loc><priority>0.8</priority></url>`).join("\n")}
 </urlset>`;
 
   const pkgJson = JSON.stringify(
@@ -413,12 +252,13 @@ ${entities.map((e) => `  <url><loc>https://${slug}.example.com/${e}</loc><priori
   const readmeMd = [
     `# ${name}`,
     `- **Project ID:** \`${projectId}\``,
+    `- **Domain:** ${blueprint.domain} · **Scope:** ${blueprint.scopeLabel}`,
     `- **Category:** ${category.name} (${category.regulated ? "Regulated — Human Compliance Sign-off Required" : "Standard"})`,
     `- **Stack:** ${stack}`,
     `- **Prompt:** ${prompt}`,
     category.specialistAdvisory ? `\n> **Compliance Advisory:** ${category.specialistAdvisory}\n` : "",
     `## Generated Architecture`,
-    `- Frontend Live App: \`index.html\`, \`src/App.tsx\``,
+    `- Frontend Live Website: \`index.html\`, \`src/App.tsx\`, \`src/data/blueprint.ts\``,
     `- Backend API & RBAC: \`src/server/api.ts\`, \`openapi.json\``,
     `- Database Schemas: \`migrations/0001_init.sql\`, \`migrations/seed.sql\``,
     `- Automated Tests & CI: \`tests/app.test.ts\`, \`.github/workflows/ci.yml\``,
@@ -427,6 +267,7 @@ ${entities.map((e) => `  <url><loc>https://${slug}.example.com/${e}</loc><priori
   const files: Record<string, string> = {
     "index.html": indexHtml,
     "src/App.tsx": appTsx,
+    "src/data/blueprint.ts": blueprintTs,
     "src/server/api.ts": serverApiTs,
     "migrations/0001_init.sql": initSql,
     "migrations/seed.sql": seedSql,
@@ -439,7 +280,7 @@ ${entities.map((e) => `  <url><loc>https://${slug}.example.com/${e}</loc><priori
     "README.md": readmeMd,
   };
 
-  if (input.includeMobileWrapper || /mobile|ios|android|capacitor/i.test(stack + " " + prompt)) {
+  if (input.includeMobileWrapper || blueprint.includeMobileWrapper || /mobile|ios|android|capacitor/i.test(stack + " " + prompt)) {
     files["capacitor.config.json"] = JSON.stringify(
       { appId: `com.noctis.${slug.replace(/-/g, "")}`, appName: name, webDir: "dist" },
       null,
@@ -459,16 +300,28 @@ export async function generateForgeProject(input: {
   accentHex?: string;
   actorId?: string;
   persist?: boolean;
+  useAi?: boolean;
+  brain?: Record<string, unknown>;
+  preferredProvider?: string;
 }) {
   const prompt = (input.prompt || "Build a SaaS customer analytics dashboard with user portal and audit logging").trim();
-  const cat = matchCategory(input.category, prompt);
+  const cat = classifyWebsiteCategory(input.category, prompt);
   const stack = input.stack?.trim() || cat.defaultStack;
-  const projectName =
-    input.projectName?.trim() ||
-    `${cat.name.replace(/\bwebsites?\b/i, "").trim() || "Noctis App"} Studio`.slice(0, 48);
-  const accentHex = /^#[0-9a-f]{6}$/i.test(input.accentHex || "") ? input.accentHex! : "#06B6D4";
+  const blueprint = await synthesizeWebsiteBlueprintWithAi({
+    prompt,
+    categoryHint: input.category,
+    stack,
+    projectName: input.projectName,
+    accentHex: input.accentHex,
+    useAi: input.useAi,
+    brain: input.brain,
+    preferredProvider: input.preferredProvider,
+  });
+
+  const projectName = (input.projectName?.trim() || blueprint.brandName).slice(0, 56);
+  const accentHex = blueprint.theme.accent;
   const projectId = `FRG-${sha256Sync(`${projectName}|${prompt}|${Date.now()}`).slice(0, 10).toUpperCase()}`;
-  const entities = cat.defaultEntities;
+  const entities = blueprint.entities.map((e) => e.name);
 
   const files = buildProjectFiles({
     projectId,
@@ -478,9 +331,10 @@ export async function generateForgeProject(input: {
     prompt,
     accentHex,
     entities,
+    blueprint,
   });
 
-  const qaSecurity = runStaticQaAndSecurityScan(files, accentHex);
+  const qaSecurity = runStaticQaAndSecurityScan(files, accentHex, blueprint.theme.bg, blueprint.theme.text);
 
   const spec = {
     projectId,
@@ -491,6 +345,8 @@ export async function generateForgeProject(input: {
     stack,
     entities,
     accentHex,
+    blueprint,
+    aiGenerated: blueprint.aiGenerated,
     agentsExecuted: FORGE_12_AGENTS.map((a) => ({ id: a.id, role: a.role, status: "COMPLETED" })),
     milestones: [
       { id: "M1", title: "Requirements, Schema & Security Isolation", status: "DONE" },
@@ -536,6 +392,8 @@ export async function generateForgeProject(input: {
     deployState,
     fileNames: Object.keys(files),
     files,
+    blueprint,
+    aiGenerated: blueprint.aiGenerated,
   };
 }
 
@@ -546,6 +404,7 @@ export async function editForgeProjectConversationally(input: {
   accentHex?: string;
   addEntity?: string;
   actorId?: string;
+  useAi?: boolean;
 }) {
   const row = await getForgeProjectRecord(input.projectId);
   if (!row) {
@@ -554,43 +413,59 @@ export async function editForgeProjectConversationally(input: {
   const spec = (row.spec_json && typeof row.spec_json === "object" ? row.spec_json : {}) as Record<string, unknown>;
   const currentRev = Number(row.current_revision || 1);
   const nextRev = currentRev + 1;
-  const cat = matchCategory(String(row.category), String(row.prompt));
+  const cat = classifyWebsiteCategory(String(row.category), String(row.prompt));
 
-  const prevEntities = Array.isArray(spec.entities) ? spec.entities.map(String) : [...cat.defaultEntities];
-  if (input.addEntity && !prevEntities.includes(input.addEntity.trim().toLowerCase())) {
-    prevEntities.push(input.addEntity.trim().toLowerCase().replace(/[^a-z0-9_]/g, "_"));
-  }
-  const entityMatch = input.instruction.match(/\badd\s+(?:table|entity|section|module)\s+([a-z0-9_]+)\b/i);
-  if (entityMatch && !prevEntities.includes(entityMatch[1]!.toLowerCase())) {
-    prevEntities.push(entityMatch[1]!.toLowerCase());
-  }
+  const legacyEntities = Array.isArray(spec.entities) ? spec.entities.map(String) : undefined;
+  const baseBlueprint: WebsiteBlueprint =
+    spec.blueprint && typeof spec.blueprint === "object"
+      ? (spec.blueprint as WebsiteBlueprint)
+      : buildDeterministicWebsiteBlueprint({
+          prompt: String(row.prompt),
+          categoryHint: String(row.category),
+          stack: String(row.stack),
+          projectName: String(row.name),
+          accentHex: typeof spec.accentHex === "string" ? spec.accentHex : undefined,
+          addEntities: legacyEntities,
+        });
 
-  const accentHex =
-    input.accentHex && /^#[0-9a-f]{6}$/i.test(input.accentHex)
-      ? input.accentHex
-      : /\bamber|gold\b/i.test(input.instruction)
-        ? "#F59E0B"
-        : /\bemerald|green\b/i.test(input.instruction)
-          ? "#10B981"
-          : String(spec.accentHex || "#06B6D4");
+  const nextBlueprint = await applyBlueprintConversationalEdit(baseBlueprint, input.instruction, {
+    accentHex: input.accentHex,
+    addEntity: input.addEntity,
+    useAi: input.useAi,
+  });
+
+  const prevEntities = nextBlueprint.entities.map((e) => e.name);
+  const accentHex = nextBlueprint.theme.accent;
 
   const updatedFiles = buildProjectFiles({
     projectId: input.projectId,
-    name: String(row.name),
+    name: nextBlueprint.brandName || String(row.name),
     category: cat,
     stack: String(row.stack),
     prompt: `${String(row.prompt)} | Revision ${nextRev}: ${input.instruction}`,
     accentHex,
     entities: prevEntities,
-    includeMobileWrapper: /\bmobile|ios|android\b/i.test(input.instruction),
+    blueprint: nextBlueprint,
+    includeMobileWrapper: nextBlueprint.includeMobileWrapper || /\bmobile|ios|android\b/i.test(input.instruction),
   });
 
-  const qaSecurity = runStaticQaAndSecurityScan(updatedFiles, accentHex);
-  const nextSpec = { ...spec, entities: prevEntities, accentHex, lastInstruction: input.instruction };
+  const qaSecurity = runStaticQaAndSecurityScan(
+    updatedFiles,
+    accentHex,
+    nextBlueprint.theme.bg,
+    nextBlueprint.theme.text,
+  );
+  const nextSpec = {
+    ...spec,
+    blueprint: nextBlueprint,
+    entities: prevEntities,
+    accentHex,
+    lastInstruction: input.instruction,
+  };
 
   await saveForgeProjectRecord({
     id: input.projectId,
-    name: String(row.name),
+    name: nextBlueprint.brandName || String(row.name),
     category: String(row.category),
     stack: String(row.stack),
     prompt: String(row.prompt),
@@ -614,6 +489,7 @@ export async function editForgeProjectConversationally(input: {
     qaSecurity,
     fileNames: Object.keys(updatedFiles),
     files: updatedFiles,
+    blueprint: nextBlueprint,
   };
 }
 
@@ -628,8 +504,15 @@ export async function restoreForgeProjectRevision(projectId: string, revisionNum
   if (!target) return { ok: false as const, error: `Revision #${revisionNumber} not found.` };
 
   const files = (target.files_json && typeof target.files_json === "object" ? target.files_json : {}) as Record<string, string>;
+  const spec = (proj.spec_json as Record<string, unknown>) || {};
+  const bp = (spec.blueprint as WebsiteBlueprint | undefined) || undefined;
   const newRev = Number(proj.current_revision || 1) + 1;
-  const qaSecurity = runStaticQaAndSecurityScan(files, "#06B6D4");
+  const qaSecurity = runStaticQaAndSecurityScan(
+    files,
+    bp?.theme.accent || "#06B6D4",
+    bp?.theme.bg || "#090D16",
+    bp?.theme.text || "#F8FAFC",
+  );
 
   await saveForgeProjectRecord({
     id: projectId,

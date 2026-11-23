@@ -2075,6 +2075,7 @@ function CodeBlock({ body, lang = "" }: { body: string; lang?: string }) {
     /^\s*(flowchart\s+(?:TD|LR|TB|BT)|graph\s+(?:TD|LR|TB|BT)|sequenceDiagram|stateDiagram)/i.test(body);
   const isRawSvg = lang === "svg" || /^\s*<svg[\s>]/i.test(body);
   const [viewMode, setViewMode] = useState<"preview" | "code">("preview");
+  const [previewWidth, setPreviewWidth] = useState<"desktop" | "tablet" | "mobile">("desktop");
   const [selectedNodeId, setSelectedNodeId] = useState<string>("");
 
   function openNewTab() {
@@ -2303,7 +2304,39 @@ function CodeBlock({ body, lang = "" }: { body: string; lang?: string }) {
               HTML / CSS / JS Code
             </button>
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {viewMode === "preview" && (
+              <div className="flex items-center rounded-full bg-white/5 border border-white/10 p-0.5 text-[11px] mr-1">
+                {(["desktop", "tablet", "mobile"] as const).map((vp) => (
+                  <button
+                    key={vp}
+                    type="button"
+                    onClick={() => setPreviewWidth(vp)}
+                    className={cn(
+                      "rounded-full px-2 py-0.5 capitalize font-medium transition",
+                      previewWidth === vp ? "bg-[#e4b86a] text-[#1a1408] font-semibold" : "text-zinc-300 hover:text-white",
+                    )}
+                  >
+                    {vp}
+                  </button>
+                ))}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                const rawTitle = body.match(/<title>([^<]+)<\/title>/i)?.[1]?.trim() || "Custom Web Platform";
+                const cleanTitle = rawTitle.replace(/\s+—\s+Noctis.*$/i, "").trim();
+                window.dispatchEvent(
+                  new CustomEvent("noctis:open-forge-builder", {
+                    detail: { prompt: `Build a complete interactive website and full-stack app for ${cleanTitle}` },
+                  }),
+                );
+              }}
+              className="rounded-full bg-[#e4b86a]/20 border border-[#e4b86a]/45 px-2.5 py-1 text-xs font-semibold text-[#e4b86a] hover:bg-[#e4b86a]/30"
+            >
+              Customize in Builder Studio →
+            </button>
             <button
               type="button"
               onClick={openNewTab}
@@ -2333,12 +2366,21 @@ function CodeBlock({ body, lang = "" }: { body: string; lang?: string }) {
           </div>
         </div>
         {viewMode === "preview" ? (
-          <iframe
-            title="Noctis Live Web Page Preview"
-            srcDoc={body}
-            sandbox="allow-scripts"
-            className="h-[560px] w-full border-0 bg-white"
-          />
+          <div className="bg-[#0b0e14] flex justify-center overflow-x-auto">
+            <iframe
+              title="Noctis Live Web Page Preview"
+              srcDoc={body}
+              sandbox="allow-scripts"
+              className={cn(
+                "h-[560px] border-0 bg-white transition-all duration-200",
+                previewWidth === "mobile"
+                  ? "w-[390px] max-w-full border-x border-white/15"
+                  : previewWidth === "tablet"
+                    ? "w-[768px] max-w-full border-x border-white/15"
+                    : "w-full",
+              )}
+            />
+          </div>
         ) : (
           <pre className="max-h-[560px] overflow-auto p-3 text-[13px] leading-relaxed text-zinc-100">
             <code>{body}</code>
@@ -3525,6 +3567,7 @@ export function NoctisDesk() {
   const [canaryModalOpen, setCanaryModalOpen] = useState(false);
   const [patientDiagnosisModalOpen, setPatientDiagnosisModalOpen] = useState(false);
   const [capabilityMatrixOpen, setCapabilityMatrixOpen] = useState(false);
+  const [forgeBuilderHandoff, setForgeBuilderHandoff] = useState<{ prompt: string; nonce: number } | null>(null);
   const [factoryStudioOpen, setFactoryStudioOpen] = useState(false);
   const [factoryStudioSystemId, setFactoryStudioSystemId] = useState<string>("noctis-cyber");
   const [factoryStudioTab, setFactoryStudioTab] = useState<"matrix" | "inspector" | "architecture" | "lifecycle" | "bus" | "templates" | "proof">("matrix");
@@ -3999,8 +4042,21 @@ export function NoctisDesk() {
         sendRef.current(custom.detail.trim());
       }
     };
+    const onOpenForgeBuilder = (event: Event) => {
+      const custom = event as CustomEvent<{ prompt?: string }>;
+      const nextPrompt = typeof custom.detail?.prompt === "string" ? custom.detail.prompt.trim() : "";
+      if (nextPrompt) {
+        setForgeBuilderHandoff({ prompt: nextPrompt, nonce: Date.now() });
+      }
+      closeAllOverlays();
+      setDesk("forge");
+    };
     window.addEventListener("noctis:ask", onDiagramAsk);
-    return () => window.removeEventListener("noctis:ask", onDiagramAsk);
+    window.addEventListener("noctis:open-forge-builder", onOpenForgeBuilder);
+    return () => {
+      window.removeEventListener("noctis:ask", onDiagramAsk);
+      window.removeEventListener("noctis:open-forge-builder", onOpenForgeBuilder);
+    };
   }, []);
 
   function openNew() {
@@ -8038,6 +8094,8 @@ export function NoctisDesk() {
                   }}
                   onClose={() => switchDesk("chat")}
                   onOpenInCanvas={(title, md) => openInCanvas(title, md)}
+                  initialBuilderPrompt={forgeBuilderHandoff?.prompt}
+                  initialBuilderNonce={forgeBuilderHandoff?.nonce}
                 />
               </Suspense>
             ) : desk === "frontier" ? (

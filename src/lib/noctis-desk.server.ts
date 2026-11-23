@@ -1437,12 +1437,18 @@ async function composeVibeReply(
       };
     }
     const { runVibeGadgets } = await import("@/lib/noctis-gadgets.server");
-    const gadgetOut = await runVibeGadgets(fullQuestion).catch(() => null);
+    const allowWebsiteRebuild =
+      !followUp.isFollowUp ||
+      /\b(rebuild|regenerate|switch\s+to\s+a\s+new\s+website|build\s+a\s+new\s+website)\b/i.test(question);
+    const gadgetOut = await runVibeGadgets(fullQuestion, {
+      isFollowUp: followUp.isFollowUp,
+      allowWebsiteRebuild,
+    }).catch(() => null);
     if (gadgetOut) {
       return {
         text: wrapDeterministicThink(
           gadgetOut,
-          "Executed deterministic domain gadget / calculator tool and verified output constraints.",
+          "Executed deterministic domain gadget / universal website builder tool and verified output constraints.",
         ),
       };
     }
@@ -1791,6 +1797,9 @@ async function composeVibeReply(
         : []),
       ...(style.desk === "study" && !wantsCode ? [{ role: "system" as const, content: "The person is on the study board. Research the question and write study notes, what the opened pages say, references with only real links, practice, and what to study next. Do not stop at a definition. Do not invent a source." }] : []),
       ...(wantsCode ? [{ role: "system" as const, content: "The person wants complete, runnable code. Write complete, self-contained, idiomatic code in the requested language(s) (e.g., Python, Java, C, TypeScript, Go, Rust, C++, C#, SQL) including all required imports/headers, defensive input validation, a runnable main() or unit-test harness, and brief compile/run instructions. If the request involves security or OWASP testing, write strictly defensive verification and remediation tests (parameterized queries, AEAD encryption, RBAC/BOLA guards). Never refuse by saying the code is not in the retrieved notes." }] : []),
+      ...(wantsCode && /\b(web\s*site|website|web\s*page|webpage|landing\s*page|homepage|storefront|html)\b/i.test(question)
+        ? [{ role: "system" as const, content: "Website Follow-Up Directive: If building or updating a website/HTML preview, emit a complete, self-contained responsive HTML5 document inside a ```html code block with CSS variables, interactive filters/modals/calculators, and zero broken external image URLs." }]
+        : []),
       ...(spoken.toLowerCase() !== "english"
         ? [{ role: "system" as const, content: `Write the whole answer in ${spoken}. Keep names and numbers as written.` }]
         : []),
@@ -1834,6 +1843,9 @@ async function composeVibeReply(
   const stance = [
     style.desk === "study" && !wantsCode ? "The person is on the study board. Research the question and write study notes, what the opened pages say, references with only real links, practice, and what to study next. Do not stop at a definition. Do not invent a source." : "",
     wantsCode ? "The person wants complete, runnable code. Give a complete, self-contained implementation first, then a short note on how to run it." : "",
+    wantsCode && /\b(web\s*site|website|web\s*page|webpage|landing\s*page|homepage|storefront|html)\b/i.test(question)
+      ? "If building or updating a website/HTML preview, emit a complete, self-contained responsive HTML5 document inside a ```html code block with CSS variables, interactive filters/modals/calculators, and zero broken external image URLs."
+      : "",
     shouldThink && !wantsRawJson ? THINKING_DIRECTIVE : "",
     wantsCode ? "" : skill.stance,
     seeing
