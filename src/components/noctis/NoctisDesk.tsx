@@ -2326,7 +2326,13 @@ function CodeBlock({ body, lang = "" }: { body: string; lang?: string }) {
               type="button"
               onClick={() => {
                 const rawTitle = body.match(/<title>([^<]+)<\/title>/i)?.[1]?.trim() || "Custom Web Platform";
-                const cleanTitle = rawTitle.replace(/\s+—\s+Noctis.*$/i, "").trim();
+                const decodedTitle = rawTitle
+                  .replace(/&amp;/g, "&")
+                  .replace(/&quot;/g, '"')
+                  .replace(/&#39;/g, "'")
+                  .replace(/&lt;/g, "<")
+                  .replace(/&gt;/g, ">");
+                const cleanTitle = decodedTitle.replace(/\s+—\s+Noctis.*$/i, "").trim();
                 window.dispatchEvent(
                   new CustomEvent("noctis:open-forge-builder", {
                     detail: { prompt: `Build a complete interactive website and full-stack app for ${cleanTitle}` },

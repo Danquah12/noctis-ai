@@ -329,7 +329,7 @@ export function NoctisForgeBuilderStudio({ initialPrompt, initialNonce }: Noctis
             onClick={() => void generateProject()}
             className="rounded-xl bg-[#e4b86a] hover:bg-[#efc77b] text-black font-bold px-4 py-2 flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
           >
-            <Play className="size-3.5" /> Build Website &amp; Full-Stack App
+            <Play className="size-3.5" /> Build Website & Full-Stack App
           </button>
         </div>
 

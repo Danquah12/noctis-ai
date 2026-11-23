@@ -218,10 +218,20 @@ export function classifyWebsiteCategory(categoryHint?: string, prompt?: string):
     if (byName) return byName;
   }
 
+  const suffixMatch = (prompt || "").match(/[—–-]\s*([A-Za-z0-9 &/+()-]+)$/)?.[1]?.trim();
+  if (suffixMatch) {
+    const bySuffix = FORGE_40_CATEGORIES.find(
+      (c) =>
+        c.name.toLowerCase() === suffixMatch.toLowerCase() ||
+        c.slug.toLowerCase() === suffixMatch.toLowerCase(),
+    );
+    if (bySuffix) return bySuffix;
+  }
+
   const hay = `${hint} ${prompt || ""}`.toLowerCase();
   const rules: Array<{ slug: string; primary: RegExp; secondary?: RegExp; boost?: number }> = [
     { slug: "travel", primary: /\b(?:tourism|tourist|travel(?:er|s|ing)?|safari|itinerar(?:y|ies)|vacation|tour\s+guide|destinations?|excursions?|trip\s+planner|sightseeing|ecotourism|adventure\s+tours?)\b/i, secondary: /\b(?:resorts?|lodges?|hotels?|flights?|visa|wildlife|beach|mountains?)\b/i, boost: 4 },
-    { slug: "hospitality", primary: /\b(?:restaurant|bakery|cafe|coffee\s*shop|bistro|catering|menu|dining|chef|pastry|hotel\s+(?:chain|website|booking|reservation)|room\s+booking|table\s+reservation|guest\s*house|resort\s+spa)\b/i, secondary: /\b(?:hospitality|rooms?|orders?|reservations?|desserts?|brunch)\b/i, boost: 3 },
+    { slug: "hospitality", primary: /\b(?:hospitality|restaurant|bakery|cafe|coffee\s*shop|bistro|catering|menu|dining|chef|pastry|hotel\s+(?:chain|website|booking|reservation)|room\s+booking|table\s+reservation|guest\s*house|resort\s+spa)\b/i, secondary: /\b(?:rooms?|orders?|reservations?|desserts?|brunch)\b/i, boost: 3 },
     { slug: "ecommerce", primary: /\b(?:e-?commerce|online\s+store|storefront|product\s+catalog|shopping\s+cart|checkout|boutique|merchandise|handmade|retail\s+shop|sneakers?|apparel|fashion\s+store|jewelry\s+shop)\b/i, secondary: /\b(?:products?|skus?|inventory|orders?|shipping|discounts?)\b/i, boost: 3 },
     { slug: "real-estate", primary: /\b(?:real\s*estate|property\s+listing|properties|realtor|brokerage|apartment|rentals?|condos?|homes?\s+for\s+sale|mortgage\s+calculator|mls\s+idx|commercial\s+leasing|landlords?)\b/i, secondary: /\b(?:tenants?|leases?|floor\s*plan|open\s+house|neighborhood)\b/i, boost: 4 },
     { slug: "healthcare", primary: /\b(?:healthcare|hospital|clinic|medical|patient\s+portal|telehealth|doctor|physician|dental|dentist|pharmacy|fhir|hipaa|appointment\s+scheduling|diagnostic|therapy|mental\s+health|pediatric|urgent\s+care)\b/i, secondary: /\b(?:patients?|providers?|prescriptions?|ehr|triage)\b/i, boost: 4 },

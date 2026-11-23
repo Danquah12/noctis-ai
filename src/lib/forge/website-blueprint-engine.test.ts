@@ -63,6 +63,12 @@ test("classifyWebsiteCategory routes representative prompts accurately across al
       `Expected category "${cat.slug}" for "${prompt}", got "${matched.slug}"`,
     );
   }
+
+  const handoffMatch = classifyWebsiteCategory(
+    "",
+    "Build a complete interactive website and full-stack app for Hearth & Saffron Table — Hospitality",
+  );
+  assert.equal(handoffMatch.slug, "hospitality");
 });
 
 test("generateForgeProject produces domain-authentic interactive sites across 6 diverse industries", async () => {

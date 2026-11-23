@@ -971,7 +971,7 @@ describe("${textToBuild} - Verification", () => {
                   viewMode === "builder" ? "bg-[#e4b86a] text-black" : "text-zinc-300 hover:text-white"
                 )}
               >
-                Website &amp; App Builder
+                Website & App Builder
               </button>
               <button
                 type="button"
@@ -1014,7 +1014,7 @@ describe("${textToBuild} - Verification", () => {
         <div
           className={cn(
             "flex-1 overflow-y-auto px-4 sm:px-8 no-scrollbar flex flex-col items-center",
-            buildArtifact || building ? "justify-start pt-3 pb-48" : "justify-center py-6"
+            viewMode === "builder" ? "justify-start pt-4 pb-10" : buildArtifact || building ? "justify-start pt-3 pb-48" : "justify-center py-6"
           )}
         >
           {viewMode === "builder" ? (
@@ -1477,6 +1477,7 @@ describe("${textToBuild} - Verification", () => {
         </div>
 
         {/* Floating Composer Action Bar (Matching Screenshot 8) */}
+        {viewMode !== "builder" ? (
         <div className="shrink-0 p-4 sm:p-6 w-full max-w-3xl mx-auto">
           <div className="rounded-2xl border border-white/15 bg-[#18181c]/95 backdrop-blur-md shadow-2xl p-3 focus-within:border-[#e4b86a]/60 transition">
             {/* Target Selectors Top Bar */}
@@ -1571,6 +1572,7 @@ describe("${textToBuild} - Verification", () => {
             </div>
           </div>
         </div>
+        ) : null}
         <NoctisSovereignFactoryStudio
           isOpen={factoryStudioOpen}
           onClose={() => setFactoryStudioOpen(false)}
