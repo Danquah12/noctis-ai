@@ -2073,6 +2073,30 @@ img[src*="dstrike-mark"] {
 
 /* Tinted deep themes (Nordic Blue & Montreal Emerald) */
 :is(html[data-theme="nordic"], html[data-theme="emerald"]) .noctis-desk-shell :is(
+  [class^="bg-[#0"],
+  [class*=" bg-[#0"],
+  [class^="bg-[#1"],
+  [class*=" bg-[#1"],
+  [class^="bg-[#2"],
+  [class*=" bg-[#2"],
+  [class~="bg-[#3a3a3a]"],
+  [class^="bg-zinc-9"],
+  [class*=" bg-zinc-9"],
+  [class^="bg-zinc-8"],
+  [class*=" bg-zinc-8"],
+  [class^="bg-neutral-9"],
+  [class*=" bg-neutral-9"],
+  [class^="bg-neutral-8"],
+  [class*=" bg-neutral-8"],
+  [class^="bg-slate-9"],
+  [class*=" bg-slate-9"],
+  [class^="bg-slate-8"],
+  [class*=" bg-slate-8"]
+):where(:not(pre):not(code):not([class~="bg-[#0284c7]"]):not([class~="bg-[#0a66c2]"]):not([class~="bg-[#10b981]"]):not([class~="bg-[#16a34a]"]):not([class~="bg-[#1d4ed8]"]):not([class~="bg-[#2563eb]"]):not([class~="bg-[#b42318]"])) {
+  background-color: var(--noctis-card-bg);
+}
+
+:is(html[data-theme="nordic"], html[data-theme="emerald"]) .noctis-desk-shell :is(
   [class~="bg-[#0d1117]"],
   [class~="bg-[#0b0e14]"],
   [class~="bg-[#0e121a]"],
@@ -2081,20 +2105,6 @@ img[src*="dstrike-mark"] {
   [class~="bg-[#0a0c12]"]
 ) {
   background-color: var(--noctis-header-bg);
-}
-
-:is(html[data-theme="nordic"], html[data-theme="emerald"]) .noctis-desk-shell :is(
-  [class~="bg-[#121722]"],
-  [class~="bg-[#141722]"],
-  [class~="bg-[#161a24]"],
-  [class~="bg-[#1a1a1a]"],
-  [class~="bg-[#1b1b1b]/98"],
-  [class~="bg-[#1e232e]"],
-  [class~="bg-[#252525]"],
-  [class~="bg-[#2a2a2a]"],
-  [class~="bg-[#2f2f2f]"]
-) {
-  background-color: var(--noctis-card-bg);
 }
 
 :is(html[data-theme="nordic"], html[data-theme="emerald"]) .noctis-desk-shell :is(
@@ -2109,28 +2119,26 @@ img[src*="dstrike-mark"] {
 
 /* Light themes (Clean White & Warm Sand) */
 :is(html[data-theme="white"], html[data-theme="sand"]) .noctis-desk-shell :is(
-  [class~="bg-[#0d1117]"],
-  [class~="bg-[#0b0e14]"],
-  [class~="bg-[#0a0c12]"],
-  [class~="bg-[#0e1017]"],
-  [class~="bg-[#0e121a]"],
-  [class~="bg-[#0f131c]"],
-  [class~="bg-[#12151c]"],
-  [class~="bg-[#121722]"],
-  [class~="bg-[#141722]"],
-  [class~="bg-[#141820]"],
-  [class~="bg-[#161a24]"],
-  [class~="bg-[#181818]"],
-  [class~="bg-[#1a1a1a]"],
-  [class~="bg-[#1b1b1b]/98"],
-  [class~="bg-[#1c1c1c]"],
-  [class~="bg-[#1e1e1e]"],
-  [class~="bg-[#1e232e]"],
-  [class~="bg-[#1f1f1f]"],
-  [class~="bg-[#252525]"],
-  [class~="bg-[#2a2a2a]"],
-  [class~="bg-[#2f2f2f]"]
-) {
+  [class^="bg-[#0"],
+  [class*=" bg-[#0"],
+  [class^="bg-[#1"],
+  [class*=" bg-[#1"],
+  [class^="bg-[#2"],
+  [class*=" bg-[#2"],
+  [class~="bg-[#3a3a3a]"],
+  [class^="bg-zinc-9"],
+  [class*=" bg-zinc-9"],
+  [class^="bg-zinc-8"],
+  [class*=" bg-zinc-8"],
+  [class^="bg-neutral-9"],
+  [class*=" bg-neutral-9"],
+  [class^="bg-neutral-8"],
+  [class*=" bg-neutral-8"],
+  [class^="bg-slate-9"],
+  [class*=" bg-slate-9"],
+  [class^="bg-slate-8"],
+  [class*=" bg-slate-8"]
+):where(:not(pre):not(code):not([class~="bg-[#0284c7]"]):not([class~="bg-[#0a66c2]"]):not([class~="bg-[#10b981]"]):not([class~="bg-[#16a34a]"]):not([class~="bg-[#1d4ed8]"]):not([class~="bg-[#2563eb]"]):not([class~="bg-[#b42318]"])) {
   background-color: var(--color-surface);
 }
 
@@ -2191,7 +2199,7 @@ img[src*="dstrike-mark"] {
   [class~="text-zinc-100"],
   [class~="text-zinc-200"],
   [class~="text-zinc-300"]
-):not([class~="bg-red-500"]):not([class~="bg-red-600"]):not([class~="bg-rose-600"]):not([class~="bg-cyan-600"]):not([class~="bg-emerald-600"]):not([class~="bg-blue-600"]):not([class~="bg-indigo-600"]):not([class~="bg-amber-600"]):not([class~="bg-[#2563eb]"]):not([class~="bg-[#16a34a]"]):not([class~="bg-[#b42318]"]):not(pre):not(code) {
+):where(:not([class~="bg-red-500"]):not([class~="bg-red-600"]):not([class~="bg-rose-600"]):not([class~="bg-cyan-600"]):not([class~="bg-emerald-600"]):not([class~="bg-blue-600"]):not([class~="bg-indigo-600"]):not([class~="bg-amber-600"]):not([class~="bg-[#0284c7]"]):not([class~="bg-[#0a66c2]"]):not([class~="bg-[#10b981]"]):not([class~="bg-[#16a34a]"]):not([class~="bg-[#1d4ed8]"]):not([class~="bg-[#2563eb]"]):not([class~="bg-[#b42318]"]):not(pre):not(code)) {
   color: var(--color-fg);
 }
 
@@ -2215,6 +2223,14 @@ img[src*="dstrike-mark"] {
 }
 
 :is(html[data-theme="white"], html[data-theme="sand"]) .noctis-desk-shell :is(
+  [class~="text-teal-200"],
+  [class~="text-teal-300"],
+  [class~="text-teal-400"]
+) {
+  color: #0f766e;
+}
+
+:is(html[data-theme="white"], html[data-theme="sand"]) .noctis-desk-shell :is(
   [class~="text-sky-200"],
   [class~="text-sky-300"],
   [class~="text-sky-400"],
@@ -2226,6 +2242,17 @@ img[src*="dstrike-mark"] {
 }
 
 :is(html[data-theme="white"], html[data-theme="sand"]) .noctis-desk-shell :is(
+  [class~="text-blue-200"],
+  [class~="text-blue-300"],
+  [class~="text-blue-400"]
+) {
+  color: #1d4ed8;
+}
+
+:is(html[data-theme="white"], html[data-theme="sand"]) .noctis-desk-shell :is(
+  [class~="text-violet-200"],
+  [class~="text-violet-300"],
+  [class~="text-violet-400"],
   [class~="text-purple-200"],
   [class~="text-purple-300"],
   [class~="text-purple-400"],
@@ -2237,9 +2264,26 @@ img[src*="dstrike-mark"] {
 }
 
 :is(html[data-theme="white"], html[data-theme="sand"]) .noctis-desk-shell :is(
+  [class~="text-pink-200"],
+  [class~="text-pink-300"],
+  [class~="text-pink-400"],
+  [class~="text-fuchsia-200"],
+  [class~="text-fuchsia-300"],
+  [class~="text-fuchsia-400"]
+) {
+  color: #be185d;
+}
+
+:is(html[data-theme="white"], html[data-theme="sand"]) .noctis-desk-shell :is(
   [class~="text-amber-200"],
   [class~="text-amber-300"],
-  [class~="text-amber-400"]
+  [class~="text-amber-400"],
+  [class~="text-orange-200"],
+  [class~="text-orange-300"],
+  [class~="text-orange-400"],
+  [class~="text-yellow-200"],
+  [class~="text-yellow-300"],
+  [class~="text-yellow-400"]
 ) {
   color: #b45309;
 }
@@ -2262,8 +2306,12 @@ img[src*="dstrike-mark"] {
   [class~="bg-emerald-600"],
   [class~="bg-blue-600"],
   [class~="bg-indigo-600"],
-  [class~="bg-[#2563eb]"],
+  [class~="bg-[#0284c7]"],
+  [class~="bg-[#0a66c2]"],
+  [class~="bg-[#10b981]"],
   [class~="bg-[#16a34a]"],
+  [class~="bg-[#1d4ed8]"],
+  [class~="bg-[#2563eb]"],
   [class~="bg-[#b42318]"],
   [class~="from-[#3a0811]"]
 ),
@@ -2275,8 +2323,12 @@ img[src*="dstrike-mark"] {
   [class~="bg-emerald-600"],
   [class~="bg-blue-600"],
   [class~="bg-indigo-600"],
-  [class~="bg-[#2563eb]"],
+  [class~="bg-[#0284c7]"],
+  [class~="bg-[#0a66c2]"],
+  [class~="bg-[#10b981]"],
   [class~="bg-[#16a34a]"],
+  [class~="bg-[#1d4ed8]"],
+  [class~="bg-[#2563eb]"],
   [class~="bg-[#b42318]"],
   [class~="from-[#3a0811]"]
 ) * {
