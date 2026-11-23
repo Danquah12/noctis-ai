@@ -1010,12 +1010,14 @@ export async function vibeReply(
     const { isUniversalClinicalQuestion } = await import("@/lib/noctis-universal-clinical.server");
     const { isRmfGrcQuery } = await import("@/lib/noctis-rmf-engine");
     const { isDodIcQuery } = await import("@/lib/dod-ic/dod-ic-reasoning.server");
+    const { isEnterpriseChatQuery } = await import("@/lib/enterprise/chat-bridge.server");
     const { rememberAnswer, rememberRule, inferDomain } = await import("@/lib/noctis-train.server");
     const skipClinicalCache =
       isClinicalInquiry ||
       isUniversalClinicalQuestion(latest) ||
       isRmfGrcQuery(latest) ||
-      isDodIcQuery(latest);
+      isDodIcQuery(latest) ||
+      isEnterpriseChatQuery(latest);
     const cleanReplyForMemory = reply.text.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
     if (!skipClinicalCache && reply && "text" in reply && cleanReplyForMemory.length > 60 && !cleanReplyForMemory.includes("could not finish")) {
       const domain = inferDomain(latest);
@@ -1129,13 +1131,16 @@ async function composeVibeReply(
     "@/lib/noctis-universal-clinical.server"
   );
   const { isRmfGrcQuery } = await import("@/lib/noctis-rmf-engine");
+  const { isEnterpriseChatQuery, tryHandleEnterpriseChatQuery } = await import("@/lib/enterprise/chat-bridge.server");
   const isClinicalCacheBypass =
     isUniversalClinicalQuestion(fullQuestion) ||
     isUniversalClinicalQuestion(question) ||
     isRmfGrcQuery(fullQuestion) ||
     isRmfGrcQuery(question) ||
     isDodIcQuery(fullQuestion) ||
-    isDodIcQuery(question);
+    isDodIcQuery(question) ||
+    isEnterpriseChatQuery(fullQuestion) ||
+    isEnterpriseChatQuery(question);
 
   if (!isCodingRequest) {
     // Authoritative Live MITRE CVE Program & NVD Resolver: Guarantees official names and full intelligence for all CVEs
@@ -1177,6 +1182,19 @@ async function composeVibeReply(
           "Executed explicit NDKRS deterministic rule and minted HMAC-signed Cross-Domain Fact-Lock validation certificate.",
         ),
       };
+    }
+
+    // Noctis Enterprise Intelligence Platform (6-Panel Command Center, Tests 046/047 Investigator, 10 Enterprise Capabilities, Gov Readiness & Master Plan)
+    if (isEnterpriseChatQuery(fullQuestion)) {
+      const enterpriseOut = await tryHandleEnterpriseChatQuery(fullQuestion);
+      if (enterpriseOut) {
+        return {
+          text: wrapDeterministicThink(
+            enterpriseOut,
+            "Queried Noctis Enterprise Intelligence engines (6-panel Command Center, AI Evaluation Lab, Policy-as-Code, Auth Digital Twin, Knowledge Graph, Agent Governance, Secure Model Gateway, Custody Chain, and Government Readiness).",
+          ),
+        };
+      }
     }
 
     // Universal Engine-Agnostic Neuro-Symbolic Clinical LLM Pipeline (Isolated Encounter)

@@ -23,6 +23,7 @@ const NoctisConsoleTab = lazyWithRetry(() => import("@/components/noctis/NoctisC
 const NoctisRedTeamTab = lazyWithRetry(() => import("@/components/noctis/NoctisRedTeamTab").then((m) => ({ default: m.NoctisRedTeamTab })));
 const NoctisRmfDashboardTab = lazyWithRetry(() => import("@/components/noctis/NoctisRmfDashboardTab").then((m) => ({ default: m.NoctisRmfDashboardTab })));
 const NoctisDodIcCommandTab = lazyWithRetry(() => import("@/components/noctis/NoctisDodIcCommandTab").then((m) => ({ default: m.NoctisDodIcCommandTab })));
+const NoctisEnterpriseCommandTab = lazyWithRetry(() => import("@/components/noctis/NoctisEnterpriseCommandTab").then((m) => ({ default: m.NoctisEnterpriseCommandTab })));
 const NoctisNdkrsConsoleTab = lazyWithRetry(() => import("@/components/noctis/NoctisNdkrsConsoleTab").then((m) => ({ default: m.NoctisNdkrsConsoleTab })));
 const NoctisPluginExecutorModal = lazyWithRetry(() => import("@/components/noctis/NoctisPluginExecutorModal").then((m) => ({ default: m.NoctisPluginExecutorModal })));
 import { DISTRIBUTED_PLUGINS, getPluginsForShelf, type DistributedPluginItem } from "@/lib/noctis-distributed-plugins";
@@ -3479,7 +3480,7 @@ export function NoctisDesk() {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
   const [uploads, setUploads] = useState<Upload[]>([]);
-  const [desk, setDesk] = useState<"chat" | "study" | "forge" | "plugins" | "console" | "redteam" | "frontier" | "training" | "rmf" | "dod-ic" | "ndkrs">("chat");
+  const [desk, setDesk] = useState<"chat" | "study" | "forge" | "plugins" | "console" | "redteam" | "frontier" | "training" | "rmf" | "dod-ic" | "enterprise" | "ndkrs">("chat");
   const [executorPlugin, setExecutorPlugin] = useState<DistributedPluginItem | null>(null);
   const [executorOpen, setExecutorOpen] = useState(false);
   const [studyTopic, setStudyTopic] = useState("");
@@ -6819,6 +6820,15 @@ export function NoctisDesk() {
         </button>
         <button
           type="button"
+          onClick={() => switchDesk("enterprise")}
+          className={item(desk === "enterprise")}
+        >
+          <Server className="size-4 shrink-0 text-cyan-400" />
+          <span>Intelligence Command</span>
+          <span className="ml-auto rounded-full bg-cyan-500/20 px-1.5 py-0.5 text-[10px] font-bold text-cyan-300">10/10</span>
+        </button>
+        <button
+          type="button"
           onClick={() => switchDesk("ndkrs")}
           className={item(desk === "ndkrs")}
         >
@@ -7142,6 +7152,18 @@ export function NoctisDesk() {
                     <Shield className="size-3.5 text-emerald-400 shrink-0" />
                     <span className="truncate">NDIMP Defense & IC</span>
                     <span className="ml-auto rounded bg-emerald-500/20 px-1.5 py-0.5 text-[9px] font-bold text-emerald-300">v4.0</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => switchDesk("enterprise")}
+                    className={cn(
+                      "flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs transition text-left",
+                      desk === "enterprise" ? "bg-cyan-500/20 text-cyan-200 border border-cyan-500/30" : "text-zinc-300 hover:bg-white/10 hover:text-white"
+                    )}
+                  >
+                    <Server className="size-3.5 text-cyan-400 shrink-0" />
+                    <span className="truncate">Enterprise Command</span>
+                    <span className="ml-auto rounded bg-cyan-500/20 px-1.5 py-0.5 text-[9px] font-bold text-cyan-300">10/10</span>
                   </button>
                   <button
                     type="button"
@@ -8023,6 +8045,17 @@ export function NoctisDesk() {
             ) : desk === "dod-ic" ? (
               <Suspense fallback={<div className="flex-1 flex items-center justify-center p-8 text-zinc-400">Loading NDIMP Defense & IC Command Center v4.0...</div>}>
                 <NoctisDodIcCommandTab
+                  onSendToChat={(taskPrompt) => {
+                    switchDesk("chat");
+                    void send(taskPrompt);
+                  }}
+                  onOpenInCanvas={(title, md) => openInCanvas(title, md)}
+                  onClose={() => switchDesk("chat")}
+                />
+              </Suspense>
+            ) : desk === "enterprise" ? (
+              <Suspense fallback={<div className="flex-1 flex items-center justify-center p-8 text-zinc-400">Loading Noctis Intelligence Command Center...</div>}>
+                <NoctisEnterpriseCommandTab
                   onSendToChat={(taskPrompt) => {
                     switchDesk("chat");
                     void send(taskPrompt);
