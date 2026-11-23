@@ -23,7 +23,8 @@ export type RmfArtifactType =
   | "TAILORING"
   | "FEEDBACK"
   | "CATO"
-  | "EXPLANATION";
+  | "EXPLANATION"
+  | "POLICY_CHANGE";
 
 export interface StoredRmfArtifact<T = Record<string, unknown>> {
   id: string;
@@ -355,6 +356,53 @@ export async function getRmfArtifactById<T = Record<string, unknown>>(
     approvedBy: row.approved_by,
     createdAt: new Date(row.created_at).toISOString(),
     updatedAt: new Date(row.updated_at).toISOString(),
+  };
+}
+
+export async function getRmfArtifactScopedWithForbidden<T = Record<string, unknown>>(
+  artifactId: string,
+  callerTenantId: string,
+  artifactType: RmfArtifactType,
+): Promise<{ artifact: StoredRmfArtifact<T> | null; forbidden: boolean }> {
+  const { sql } = await resolveSqlBackend();
+  await ensureRmfRuntimeSchema(sql);
+  const rows = await sql.query<{
+    id: string;
+    tenant_id: string;
+    artifact_type: RmfArtifactType;
+    system_id: string;
+    title: string;
+    status: string;
+    payload: unknown;
+    payload_sha256: string;
+    created_by: string;
+    approved_by: string | null;
+    created_at: string | Date;
+    updated_at: string | Date;
+  }>("SELECT * FROM rmf.v2_artifacts WHERE id = $1 AND artifact_type = $2 LIMIT 1", [artifactId, artifactType]);
+
+  const row = rows[0];
+  if (!row) return { artifact: null, forbidden: false };
+  if (row.tenant_id !== callerTenantId) {
+    return { artifact: null, forbidden: true };
+  }
+
+  return {
+    artifact: {
+      id: row.id,
+      tenantId: row.tenant_id,
+      artifactType: row.artifact_type,
+      systemId: row.system_id,
+      title: row.title,
+      status: row.status,
+      payload: (typeof row.payload === "string" ? JSON.parse(row.payload) : row.payload) as T,
+      payloadSha256: row.payload_sha256,
+      createdBy: row.created_by,
+      approvedBy: row.approved_by,
+      createdAt: new Date(row.created_at).toISOString(),
+      updatedAt: new Date(row.updated_at).toISOString(),
+    },
+    forbidden: false,
   };
 }
 

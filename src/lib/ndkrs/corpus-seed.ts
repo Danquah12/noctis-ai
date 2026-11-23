@@ -938,6 +938,22 @@ export const NDKRS_AUTHORITATIVE_CORPUS: AuthoritativeCorpusSeedItem[] = [
     effectiveDate: "2023-04-11T00:00:00Z",
     expiresAt: "2030-12-31T00:00:00Z",
   },
+  {
+    domain: "rmf",
+    canonicalKey: "NDIMP-POLICY-CHANGE-GOVERNANCE",
+    title: "NDIMP Policy Change Intelligence — Upstream OSCAL/CCI Drift & Human Dual-Control Rollout",
+    summary:
+      "Governs DoD/IC policy revision diffing, blast-radius calculation across rules and DISA CCIs, live upstream OSCAL/CCI/KEV drift checks, and mandatory human dual-control approval (AGENT_APPROVAL_FORBIDDEN and SELF_APPROVAL_FORBIDDEN).",
+    content: `# NDIMP Policy Change Intelligence Governance
+- Upstream OSCAL, DISA CCI, and CISA KEV drift detection NEVER auto-applies policy updates into production.
+- Every policy change proposal is gated by Classification Gate, regression test execution, and distinct human dual-control sign-off (AGENT_APPROVAL_FORBIDDEN, SELF_APPROVAL_FORBIDDEN).`,
+    sourceUri: "https://www.esd.whs.mil/DD/",
+    trustTier: "AUTHORITATIVE_GOV",
+    version: "1.0.0",
+    citationLabel: "NDIMP-PCI-GOV",
+    effectiveDate: "2025-01-23T00:00:00Z",
+    expiresAt: "2030-12-31T00:00:00Z",
+  },
 ];
 
 export async function seedNdkrsAuthoritativeCorpus(

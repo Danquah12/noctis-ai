@@ -39,6 +39,15 @@ import {
   getDodZeroTrustCatalog,
   type DodCredentialType,
 } from "./zero-trust-icam-engine.ts";
+import {
+  checkUpstreamAuthoritativeDrift,
+  createPolicyChangeProposal,
+  decidePolicyChangeProposal,
+  diffHistoricalDirectiveRevision,
+  diffPolicyDocumentVersions,
+  listDirectiveLineages,
+  listPolicyChangeProposals,
+} from "./policy-change-engine.server.ts";
 import type { ZtPillarScore } from "../rmf-v2/cyber-intelligence.ts";
 
 const CORS_HEADERS = {
@@ -73,7 +82,8 @@ export async function handleDodIcV2Request(request: Request): Promise<Response> 
   if (method === "GET" && (subPath === "" || subPath === "status")) {
     return jsonRes({
       platform: "Noctis Defense & Intelligence Community Security Architecture (NDIMP Wave 1)",
-      version: "1.2.0",
+      version: "1.3.0",
+      wave1Complete: true,
       engines: [
         "DOD-RMF-DODI-8510.01",
         "CNSSI-1253-CATEGORIZATION",
@@ -88,8 +98,12 @@ export async function handleDodIcV2Request(request: Request): Promise<Response> 
         "CISA-ZTMM-V2-CROSSWALK",
         "DOD-ICAM-PKI-DODI-8520.02-03",
         "DOD-PAM-ABAC-MICROSEGMENTATION",
+        "POLICY-CHANGE-INTELLIGENCE-DIFF",
+        "UPSTREAM-OSCAL-CCI-DRIFT-MONITOR",
+        "DUAL-CONTROL-POLICY-ROLLOUT",
       ],
       policiesCount: Object.keys(DOD_IC_POLICY_REGISTRY).length,
+      policyLineagesCount: listDirectiveLineages().length,
       disaCci: getDisaCciManifest(),
       zeroTrustCatalog: getDodZeroTrustCatalog().summary,
       invariants: {
@@ -99,12 +113,36 @@ export async function handleDodIcV2Request(request: Request): Promise<Response> 
         ocspFailOpenCompliantWithDodi8520: false,
         smsOtpSatisfiesPhishingResistantMfa: false,
         aiCanIssueAto: false,
+        aiCanAutoApprovePolicyRollout: false,
+        selfApprovalPermittedOnPolicyRollout: false,
       },
     });
   }
 
   if (method === "GET" && subPath === "zero-trust/pillars") {
     return jsonRes(getDodZeroTrustCatalog());
+  }
+
+  if (method === "GET" && subPath === "policy-change/lineage") {
+    const pid = (url.searchParams.get("policy") || "").trim();
+    if (pid) {
+      const rep = diffHistoricalDirectiveRevision(pid);
+      if (!rep) return jsonRes({ error: "NOT_FOUND", message: `No revision lineage found for '${pid}'.` }, 404);
+      return jsonRes(rep);
+    }
+    const lineages = listDirectiveLineages();
+    return jsonRes({ count: lineages.length, lineages });
+  }
+
+  if (method === "GET" && subPath === "policy-change/drift") {
+    const live = url.searchParams.get("live") !== "false";
+    const drift = await checkUpstreamAuthoritativeDrift({ liveCheck: live });
+    return jsonRes(drift);
+  }
+
+  if (method === "GET" && subPath === "policy-change/proposals") {
+    const proposals = await listPolicyChangeProposals(tenantId);
+    return jsonRes({ tenant_id: tenantId, count: proposals.length, proposals });
   }
 
   if (method === "GET" && subPath === "cci") {
@@ -463,6 +501,72 @@ export async function handleDodIcV2Request(request: Request): Promise<Response> 
         evidenceVerified: body.evidence_verified === true,
       }),
     );
+  }
+
+  if (subPath === "policy-change/diff") {
+    if (body.mode === "lineage" && typeof body.policy_id === "string") {
+      const rep = diffHistoricalDirectiveRevision(body.policy_id);
+      if (!rep) return jsonRes({ error: "NOT_FOUND", message: `No lineage found for '${body.policy_id}'.` }, 404);
+      return jsonRes(rep);
+    }
+    return jsonRes(
+      diffPolicyDocumentVersions({
+        policyId: typeof body.policy_id === "string" ? body.policy_id : undefined,
+        oldVersion: typeof body.old_version === "string" ? body.old_version : undefined,
+        newVersion: typeof body.new_version === "string" ? body.new_version : undefined,
+        oldRequirements: Array.isArray(body.old_requirements) ? (body.old_requirements as string[]) : undefined,
+        newRequirements: Array.isArray(body.new_requirements) ? (body.new_requirements as string[]) : undefined,
+        oldText: typeof body.old_text === "string" ? body.old_text : undefined,
+        newText: typeof body.new_text === "string" ? body.new_text : undefined,
+        fromNistBaseline: typeof body.from_nist_baseline === "string" ? body.from_nist_baseline : undefined,
+        toNistBaseline: typeof body.to_nist_baseline === "string" ? body.to_nist_baseline : undefined,
+      }),
+    );
+  }
+
+  if (subPath === "policy-change/propose") {
+    try {
+      const created = await createPolicyChangeProposal({
+        tenantId,
+        policyId: String(body.policy_id || "CUSTOM-POLICY"),
+        title: typeof body.title === "string" ? body.title : undefined,
+        proposedBy: String(body.proposed_by || "issm-proposer@dod.mil"),
+        rationale: String(body.rationale || ""),
+        oldVersion: typeof body.old_version === "string" ? body.old_version : undefined,
+        newVersion: typeof body.new_version === "string" ? body.new_version : undefined,
+        oldRequirements: Array.isArray(body.old_requirements) ? (body.old_requirements as string[]) : undefined,
+        newRequirements: Array.isArray(body.new_requirements) ? (body.new_requirements as string[]) : undefined,
+        oldText: typeof body.old_text === "string" ? body.old_text : undefined,
+        newText: typeof body.new_text === "string" ? body.new_text : undefined,
+        fromNistBaseline: typeof body.from_nist_baseline === "string" ? body.from_nist_baseline : undefined,
+        toNistBaseline: typeof body.to_nist_baseline === "string" ? body.to_nist_baseline : undefined,
+      });
+      return jsonRes(created, 201);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const isCls = msg.startsWith("CLASSIFICATION_BOUNDARY_VIOLATION");
+      return jsonRes(
+        {
+          error: isCls ? "CLASSIFICATION_BOUNDARY_VIOLATION" : "BAD_REQUEST",
+          message: msg,
+        },
+        isCls ? 403 : 400,
+      );
+    }
+  }
+
+  if (subPath === "policy-change/review") {
+    const decision = String(body.decision || "").toUpperCase() === "REJECT" ? "REJECT" : "APPROVE";
+    const res = await decidePolicyChangeProposal({
+      tenantId,
+      proposalId: String(body.proposal_id || ""),
+      decision,
+      reviewerId: String(body.reviewer_id || ""),
+      reviewerRole: String(body.reviewer_role || ""),
+      notes: typeof body.notes === "string" ? body.notes : undefined,
+      regressionSuitePassed: typeof body.regression_suite_passed === "boolean" ? body.regression_suite_passed : true,
+    });
+    return jsonRes(res, res.statusCode);
   }
 
   if (subPath === "investigate") {

@@ -131,7 +131,7 @@ export async function tryHandlePlatformStatusOrLedgerQuery(question: string): Pr
         `- **Pending Human Review Queue:** ${status.counts.pendingReviewQueue} item(s)\n` +
         `- **Signed Validation Certificates:** ${status.counts.validationCertificates} total\n` +
         `- **Open Knowledge Gaps:** ${status.counts.openKnowledgeGaps} open gap(s)\n` +
-        `- **NDIMP DoD/IC Deterministic Architecture:** Active Wave 1 (16 verified DoD/IC directives, DISA CCI \`2025-01-23\` 5,137 CCIs, ACAS/STIG, Zero Trust 7-Pillar & ICAM/PKI via \`/api/v2/dod-ic/status\`)\n` +
+        `- **NDIMP DoD/IC Deterministic Architecture:** Wave 1 Complete Steps 1–4 (16 verified DoD/IC directives, DISA CCI \`2025-01-23\` 5,137 CCIs, ACAS/STIG, Zero Trust 7-Pillar, ICAM/PKI & Policy Change Intelligence + Dual-Control Rollout via \`/api/v2/dod-ic/status\`)\n` +
         `- **AES-256-GCM Clinical Enclave Records:** ${status.counts.encryptedClinicalEnclaveRecords} encrypted payload(s) (mode: \`${process.env.NOCTIS_ENCLAVE_KEY ? "prod-enclave-v1" : "dev-enclave-fallback-v1"}\`)`,
     );
 

@@ -56,6 +56,15 @@ import {
   type DodPamAbacResult,
   type DodZeroTrustAssessmentResult,
 } from "./zero-trust-icam-engine.ts";
+import {
+  checkUpstreamAuthoritativeDrift,
+  diffHistoricalDirectiveRevision,
+  evaluatePolicyRolloutGovernance,
+  listDirectiveLineages,
+  type DirectiveDiffReport,
+  type PolicyRolloutGovernanceCheckResult,
+  type UpstreamDriftReport,
+} from "./policy-change-engine.server.ts";
 
 export interface DodIcModelChatFn {
   (
@@ -88,7 +97,7 @@ export function isDodIcQuery(question: string): boolean {
   return (
     /<(?:NessusClientData_v2|ReportHost|CHECKLIST|STIG_INFO|(?:[a-zA-Z0-9_.-]+:)?rule-result)\b/i.test(q) ||
     /\b(?:replay|verify|inspect|show)\s+(?:explanation\s+)?(?:trace\s+)?EXPL-[A-Z0-9]+\b/i.test(q) ||
-    /\b(?:ndimp\b|(?:dod|ic)\s+(?:engines?|capabilities|policies|roadmap|status)\b[^.\n]{0,40}\b(?:noctis|live|active|loaded|list|show|what|right\s+now))\b/i.test(
+    /\b(?:ndimp\b|policy\s+change\s+intelligence|policy\s+(?:diff|drift|rollout|proposal|supersession|lineage)|upstream\s+(?:oscal|cci|kev|policy|directive)\s+drift|(?:what\s+changed|changes?\s+between|compare|diff)\b[^.\n]{0,50}\b(?:icd\s*503|dodi?\s*8510|cnssi?\s*1253|dodi?\s*8520|ztmm|cci|oscal)|(?:ai|agent|llm|self)[- ]?(?:auto[- ]?)?approv\w*[^.\n]{0,45}\b(?:policy|directive|rollout)|(?:dod|ic)\s+(?:engines?|capabilities|policies|roadmap|status)\b[^.\n]{0,40}\b(?:noctis|live|active|loaded|list|show|what|right\s+now))\b/i.test(
       q,
     ) ||
     /\b(?:CCI-\d{4,6}|DISA\s+CCIs?|CCIs?\b[^.\n]{0,35}(?:NIST|800-53|STIG|control|map)|dodi?\s*8510(?:\.01)?|dodi?\s*8531(?:\.01)?|dodi?\s*8530(?:\.03)?|dodi?\s*8540(?:\.01)?|dodi?\s*8520(?:\.0[23])?|dodm\s*5200(?:\.01)?|eo\s*13526|nsm[- ]?8|omb\s+m-?22-?09|cisa\s+ztmm|\bztmm\b|fips\s*201(?:-?3)?|800-207|dod\s+zero\s+trust|zero\s+trust\b[^.\n]{0,50}(?:pillar|fy\s*2027|target|advanced|dod|ic|icd|nsm|ztmm|cisa|icam|microsegment|pdp|pep|pam|jit|abac|cac|piv|pki)|(?:7[- ]?pillars?|fy\s*2027)[^.\n]{0,40}zero\s+trust|dod\s+rmf|dod\s+ato|dod\s+reciproc\w*|emass\b|iatt\b|dato\b|atowc\b|icd\s*50[123]|icd\s*705|ic\s+ie\b|ic\s+rmf|ic\s+ato|ic\s+reciproc\w*|ic\s+cloud|ic\s+security|odni\b|cnssi?\s*1253|national\s+security\s+system|nss\s+categoriz\w*|cross[- ]?domain\s+(?:solution|transfer|guard|governance)|ncdsmo\b|ts\/?sci\b|\bscif\b|disa\s+stig\b|stig\s+(?:cat\s*(?:i|ii|iii|1|2|3)|check\w*|checklist\w*|finding\w*|rule\w*|viewer|evaluat\w*|compliance|waiver|v-\d+)|scap\b|xccdf\b|\.ckl\b|acas\b|nessus\b|iava\b|iavm\b|iavb\b|cssp\b|jfhq-?dodin|credentialed\s+scan\b|v-\d{5,7}\b|sv-\d{5,7}r\d+_rule\b|\bicam\b|\bcac\b(?:\s*(?:\/|\bor\b|\band\b|\bcard|\btoken|\bauth|\blogon|\bmfa|\bpiv|\bwithout))|\bdaily\s+cac\b|\buser\s+cac\b|\bpiv\b(?:\s*(?:card|token|auth|mfa|fips|cac))|alt\s+token|alternate\s+logon\s+token|dod\s+pki|pki\s+enabl\w*|\bocsp\b|\bcrl\b(?:\s*(?:check|revocation|fail|valid|ocsp))|revocation\s+fail[- ]?(?:open|closed)|soft[- ]?fail\s+ocsp|npe\s+cert\w*|ic-?pe\b|standing\s+(?:privileged|domain\s+admin|admin)\s+(?:access|rights|privileges)|microsegmentation|flat\s+network[^.\n]{0,40}(?:zero\s+trust|microsegment|mtls|dod|ic)|classified\s+(?:spillage|system|systems|enclave|handling|payload|cable|material)|commercial\s+cloud[^.\n]{0,40}classified|classified[^.\n]{0,40}commercial\s+cloud)\b/i.test(
@@ -481,6 +490,9 @@ export interface DodIcAsyncContext {
   ztAssessment: DodZeroTrustAssessmentResult | null;
   icamAssessment: DodIcamPkiResult | null;
   pamAbacAssessment: DodPamAbacResult | null;
+  policyDiffReports: DirectiveDiffReport[];
+  driftReport: UpstreamDriftReport | null;
+  rolloutCheck: PolicyRolloutGovernanceCheckResult | null;
   ndimpInventoryRequested: boolean;
 }
 
@@ -600,6 +612,58 @@ export async function extractDodIcContextAsync(question: string): Promise<DodIcA
     ) ||
     (/\b(?:7\s+pillars?|zero\s+trust\s+pillars?)\b/i.test(q) && /\b(?:what\s+are|list|explain|show)\b/i.test(q));
 
+  // 4. Step 4: Policy Change Intelligence (Directive Lineage Diffing, Live Upstream Drift, Dual-Control Rollout)
+  const policyDiffReports: DirectiveDiffReport[] = [];
+  if (/\b(?:what\s+changed|changes?\s+between|revision|revisions?|supersession|supersedes?|diff|compare|lineage|impacted)\b/i.test(q)) {
+    const lineageMap: [RegExp, string][] = [
+      [/\bicd\s*503\b/i, "ICD-503"],
+      [/\bdodi?\s*8510(?:\.01)?\b/i, "DODI-8510.01"],
+      [/\bcnssi?\s*1253\b/i, "CNSSI-1253"],
+      [/\bdodi?\s*8520\.02\b/i, "DODI-8520.02"],
+      [/\bdodi?\s*8520\.03\b/i, "DODI-8520.03"],
+      [/\b(?:ztmm|m-?22-?09|cisa\s+zero\s+trust)\b/i, "CISA-ZTMM-2.0-OMB-M22-09"],
+    ];
+    for (const [rx, pid] of lineageMap) {
+      if (rx.test(q)) {
+        const rep = diffHistoricalDirectiveRevision(pid);
+        if (rep) {
+          policyDiffReports.push(rep);
+          pushUniqueRule(rep.ruleResult);
+        }
+      }
+    }
+  }
+
+  let driftReport: UpstreamDriftReport | null = null;
+  if (
+    /\b(?:drift|upstream\s+(?:oscal|cci|kev|policy|directive)|policy\s+drift)\b/i.test(q) &&
+    /\b(?:check|monitor|scan|audit|status|detect|live|oscal|cci|kev)\b/i.test(q)
+  ) {
+    driftReport = await checkUpstreamAuthoritativeDrift({
+      liveCheck: !/\boffline\b/i.test(q),
+      assessmentMode,
+    });
+    pushUniqueRule(driftReport.ruleResult);
+  }
+
+  let rolloutCheck: PolicyRolloutGovernanceCheckResult | null = null;
+  if (
+    /\b(?:(?:ai|agent|llm|self)[- ]?(?:auto[- ]?)?approv\w*|auto[- ]?approv\w*)\b/i.test(q) &&
+    /\b(?:policy|directive|rollout|proposal|dual[- ]?control|update)\b/i.test(q)
+  ) {
+    const isSelfApprove = /\bself[- ]?approv\w*\b/i.test(q);
+    rolloutCheck = evaluatePolicyRolloutGovernance({
+      proposedBy: "human-author@dod.mil",
+      reviewerId: isSelfApprove ? "human-author@dod.mil" : "agent:noctis-ai",
+      reviewerRole: isSelfApprove ? "ISSO_HUMAN" : "AGENT",
+      regressionSuitePassed: !/\bfail(?:ing|ed)\s+regression\b/i.test(q),
+      classificationCleared: true,
+      decision: "APPROVE",
+      assessmentMode,
+    });
+    pushUniqueRule(rolloutCheck.ruleResult);
+  }
+
   return {
     rules,
     resolvedCcis,
@@ -609,6 +673,9 @@ export async function extractDodIcContextAsync(question: string): Promise<DodIcA
     ztAssessment: step3.ztAssessment,
     icamAssessment: step3.icamAssessment,
     pamAbacAssessment: step3.pamAbacAssessment,
+    policyDiffReports,
+    driftReport,
+    rolloutCheck,
     ndimpInventoryRequested,
   };
 }
@@ -680,6 +747,20 @@ export function verifyDodIcResponse(
     );
   }
 
+  // Block AI policy auto-approval or self-approval claims
+  if (
+    /\b(?:ai\s+agents?|llm|noctis|self[- ]?approval)\b[^.\n]{0,75}\b(?:can|may|is\s+permitted\s+to|will)\s+(?:auto[- ]?approve|autonomously\s+(?:approve|promote|roll\s*out)|self[- ]?approve)\b[^.\n]{0,60}\b(?:policy|directive|rollout|baseline)\b/i.test(
+      draftBody,
+    ) &&
+    !/\b(?:forbidden|prohibited|cannot|never|not\s+permitted|does\s+not\s+(?:permit|allow|satisfy)|rejected|disallowed)\b/i.test(
+      draftBody,
+    )
+  ) {
+    violations.push(
+      "AI_POLICY_AUTO_APPROVAL_CLAIM: Dual-control governance strictly enforces AGENT_APPROVAL_FORBIDDEN and SELF_APPROVAL_FORBIDDEN on policy rollouts.",
+    );
+  }
+
   // Block fabricated exploit verification or remediation closure claims on unvalidated scanner/STIG rules
   const hasUnverifiedScannerOrStigRule = ruleResults.some(
     (r) =>
@@ -729,12 +810,14 @@ function buildLiveNdimpInventoryMarkdown(): string {
   const allPolicies = listDodIcPolicies();
   const cciMeta = getDisaCciManifest();
   const ztCatalog = getDodZeroTrustCatalog();
+  const lineages = listDirectiveLineages();
   return [
-    "## Live Noctis NDIMP Architecture Inventory (Wave 1 Steps 1–3)",
+    "## Live Noctis NDIMP Architecture Inventory (Wave 1 Complete — Steps 1–4)",
     `- **Authoritative DoD/IC Policy Registry:** **${allPolicies.length} verified public directives** (${allPolicies.map((p) => `\`${p.id}\` [${p.effectiveDate}]`).join(", ")})`,
     `- **DISA CCI Crosswalk Database:** Version \`${cciMeta.version}\` (**${cciMeta.counts.totalCcis.toLocaleString()} CCIs**, **${cciMeta.counts.rev5MappedCcis.toLocaleString()}** Rev. 5 mappings across **${cciMeta.counts.distinctRev5Controls.toLocaleString()}** controls)`,
     `- **DoD Zero Trust Strategy Catalog:** **${ztCatalog.summary.pillarsCount} Pillars** · **${ztCatalog.summary.capabilitiesCount} Capabilities** · **${ztCatalog.summary.targetActivities} Target Activities (${ztCatalog.summary.targetDeadline})** + **${ztCatalog.summary.advancedActivities} Advanced** (**${ztCatalog.summary.totalActivities} Total**), crosswalked to CISA ZTMM v2.0`,
-    `- **Live REST API Endpoints (\`/api/v2/dod-ic/*\`):** \`/status\`, \`/policies\`, \`/explanations/:id\`, \`/classification/check\`, \`/cross-domain/evaluate\`, \`/dod-rmf/authorize\`, \`/dod-rmf/reciprocity\`, \`/dod-rmf/emass-package\`, \`/cnssi1253/categorize\`, \`/ic/icd503\`, \`/ic/reciprocity\`, \`/ic/icd501\`, \`/cci/:id\`, \`/cci/by-control/:controlId\`, \`/acas/analyze\`, \`/stig/evaluate\`, \`/vuln/dodi8531\`, \`/incident/dodi8530\`, \`/zero-trust/pillars\`, \`/zero-trust/evaluate\`, \`/icam/evaluate\`, \`/icam/pam-abac\`, \`/investigate\``,
+    `- **Policy Change Intelligence:** **${lineages.length} tracked directive revision lineages**, live upstream DISA CCI/OSCAL/KEV drift monitor (\`autoApplyToProduction: false\`), and dual-control human rollout queue (\`AGENT_APPROVAL_FORBIDDEN\`, \`SELF_APPROVAL_FORBIDDEN\`)`,
+    `- **Live REST API Endpoints (\`/api/v2/dod-ic/*\`):** \`/status\`, \`/policies\`, \`/explanations/:id\`, \`/classification/check\`, \`/cross-domain/evaluate\`, \`/dod-rmf/authorize\`, \`/dod-rmf/reciprocity\`, \`/dod-rmf/emass-package\`, \`/cnssi1253/categorize\`, \`/ic/icd503\`, \`/ic/reciprocity\`, \`/ic/icd501\`, \`/cci/:id\`, \`/cci/by-control/:controlId\`, \`/acas/analyze\`, \`/stig/evaluate\`, \`/vuln/dodi8531\`, \`/incident/dodi8530\`, \`/zero-trust/pillars\`, \`/zero-trust/evaluate\`, \`/icam/evaluate\`, \`/icam/pam-abac\`, \`/policy-change/lineage\`, \`/policy-change/drift\`, \`/policy-change/proposals\`, \`/policy-change/diff\`, \`/policy-change/propose\`, \`/policy-change/review\`, \`/investigate\``,
     `- **7 DoD Zero Trust Pillars:** ${ztCatalog.pillars.map((p) => `**${p.name}** (${p.cisaZtmmCounterpart})`).join(" · ")}`,
     "",
   ].join("\n");
@@ -747,11 +830,55 @@ export function renderDeterministicDodIcFallback(
   ctx?: Partial<DodIcAsyncContext>,
 ): string {
   const out: string[] = [];
-  out.push("# Noctis DoD RMF, STIG/CCI, ACAS, Zero Trust, ICAM & IC Security Assessment (NDIMP Wave 1)");
+  out.push("# Noctis DoD RMF, STIG/CCI, ACAS, Zero Trust, ICAM, Policy Change & IC Security Assessment (NDIMP Wave 1)");
   out.push(`**Query Scope:** ${question.trim().slice(0, 220)}\n`);
 
   if (ctx?.ndimpInventoryRequested) {
     out.push(buildLiveNdimpInventoryMarkdown());
+  }
+
+  if (ctx?.policyDiffReports && ctx.policyDiffReports.length > 0) {
+    for (const d of ctx.policyDiffReports) {
+      out.push(`## Directive Revision Diff & Blast Radius (\`${d.policyId}\` · \`${d.severity}\`)`);
+      out.push(
+        `- **Transition:** ${d.priorVersion} (\`${d.priorEffectiveDate}\`) -> **${d.currentVersion}** (\`${d.currentEffectiveDate}\`)`,
+      );
+      out.push(
+        `- **Blast Radius:** ${d.blastRadius.mappedDisaCciCount} DISA CCIs across ${d.blastRadius.impactedNistControls.map((c) => `\`${c}\``).join(", ")} · Impacted Noctis Rules: ${d.blastRadius.impactedRuleIds.map((r) => `\`${r}\``).join(", ")}`,
+      );
+      if (d.addedItems.length > 0) {
+        out.push("- **Added / Strengthened Requirements:**");
+        for (const item of d.addedItems) out.push(`  - ${item}`);
+      }
+      if (d.removedItems.length > 0) {
+        out.push("- **Deprecated / Superseded:**");
+        for (const item of d.removedItems) out.push(`  - ${item}`);
+      }
+      out.push("");
+    }
+  }
+
+  if (ctx?.driftReport) {
+    const dr = ctx.driftReport;
+    out.push(`## Live Upstream Authoritative Drift Monitor (\`${dr.overallStatus}\`)`);
+    out.push(
+      `- **Auto-Apply to Production:** \`${dr.autoApplyToProduction}\` · **Human Dual-Control Required:** \`${dr.humanDualControlRequired}\` · **CISA KEV:** \`${dr.kevStatus.source}\` (${dr.kevStatus.catalogCount} entries)`,
+    );
+    for (const src of dr.sources) {
+      out.push(
+        `- **${src.sourceId}** (Pinned \`${src.pinnedVersion}\`): \`${src.status}\` — ${src.note}`,
+      );
+    }
+    out.push("");
+  }
+
+  if (ctx?.rolloutCheck) {
+    const rc = ctx.rolloutCheck;
+    out.push("## Dual-Control Policy Rollout Governance");
+    out.push(
+      `- **Permitted:** \`${rc.allowed}\` · **Gate Code:** \`${rc.errorCode || "APPROVED"}\` · ${rc.ruleResult.summary}`,
+    );
+    out.push("");
   }
 
   if (ctx?.ztAssessment) {
@@ -897,8 +1024,9 @@ function buildDodIcSystemPrompt(lang: string, shouldThink: boolean): string {
     "3. CLASSIFICATION BOUNDARY: User clearance and need-to-know NEVER authorize sending classified or TS/SCI data to commercial cloud LLMs or lower-classification enclaves.",
     "4. SCANNER VS. VALIDATED EVIDENCE: Raw ACAS/Nessus and DISA STIG/.ckl findings are `SCANNER_REPORTED_UNVALIDATED`. NEVER claim raw scanner findings prove independent exploitability or that vulnerabilities are remediated/closed without a verified post-patch credentialed rescan.",
     "5. ZERO TRUST & ICAM PKI RULES: DoD Zero Trust Strategy (`2022-11-22`) mandates 7 Pillars, 45 Capabilities, 91 Target Level activities by FY 2027 (152 total incl. 61 Advanced). OCSP/CRL soft-fail / fail-open or disabled revocation checking violates DoDI 8520.02 (`2023-05-18`). Privileged admins must use separate admin accounts + ALT tokens rather than daily user CACs, and SMS/OTP/passwords fail phishing-resistant MFA under DoDI 8520.03 (`2023-05-19`), FIPS 201-3, and NSM-8 (`2022-01-19`).",
-    "6. AUTHORITIES: Cite ONLY exact versions and effective dates present in the Knowledge Packet (`DoDI 8510.01` `2022-07-19`, `DoDI 8531.01` `2020-09-15`, `DoDI 8530.03` `2023-08-09`, `DoDI 8520.02` `2023-05-18`, `DoDI 8520.03` `2023-05-19`, `DoD ZT Strategy` `2022-11-22`, `NSM-8` `2022-01-19`, `CISA ZTMM v2.0` `2023-04-11`, `ICD 503` `2024-10-25`, `ICD 502` `2011-03-11`, `ICD 501` `2009-01-21`, `CNSSI 1253` `2022-07`, `DISA CCI` `2025-01-23`).",
-    `7. LANGUAGE: ${!/^english$/i.test(lang) ? `Respond in ${lang} while keeping US DoD/IC directive IDs and CCI/CVE codes in English.` : "Write in authoritative English."}`,
+    "6. POLICY CHANGE GOVERNANCE: Upstream OSCAL/CCI/KEV drift is NEVER auto-applied (`autoApplyToProduction: false`). Every policy update requires diff + blast-radius review + passing regression tests + distinct human dual-control approval (`AGENT_APPROVAL_FORBIDDEN`, `SELF_APPROVAL_FORBIDDEN`).",
+    "7. AUTHORITIES: Cite ONLY exact versions and effective dates present in the Knowledge Packet (`DoDI 8510.01` `2022-07-19`, `DoDI 8531.01` `2020-09-15`, `DoDI 8530.03` `2023-08-09`, `DoDI 8520.02` `2023-05-18`, `DoDI 8520.03` `2023-05-19`, `DoD ZT Strategy` `2022-11-22`, `NSM-8` `2022-01-19`, `CISA ZTMM v2.0` `2023-04-11`, `ICD 503` `2024-10-25`, `ICD 502` `2011-03-11`, `ICD 501` `2009-01-21`, `CNSSI 1253` `2022-07`, `DISA CCI` `2025-01-23`).",
+    `8. LANGUAGE: ${!/^english$/i.test(lang) ? `Respond in ${lang} while keeping US DoD/IC directive IDs and CCI/CVE codes in English.` : "Write in authoritative English."}`,
   ].join("\n");
 }
 
@@ -1059,6 +1187,16 @@ export async function executeDodIcReasoning(
     policySet.set("DODI-8520.02", DOD_IC_POLICY_REGISTRY["DODI-8520.02"]!);
     policySet.set("DODI-8520.03", DOD_IC_POLICY_REGISTRY["DODI-8520.03"]!);
   }
+  if (ctx.policyDiffReports.length > 0) {
+    for (const d of ctx.policyDiffReports) {
+      const p = DOD_IC_POLICY_REGISTRY[d.policyId];
+      if (p) policySet.set(p.id, p);
+    }
+  }
+  if (ctx.driftReport) {
+    policySet.set("DISA-STIG-CCI", DOD_IC_POLICY_REGISTRY["DISA-STIG-CCI"]!);
+    policySet.set("DODI-8510.01", DOD_IC_POLICY_REGISTRY["DODI-8510.01"]!);
+  }
   if (ctx.ndimpInventoryRequested) {
     for (const p of listDodIcPolicies()) policySet.set(p.id, p);
   }
@@ -1092,7 +1230,7 @@ export async function executeDodIcReasoning(
         : ctx.ndimpInventoryRequested
         ? "NDIMP-LIVE-INVENTORY"
         : "DOD-IC-POLICY-GROUNDED",
-    ruleVersion: "ndimp-wave1-1.2.0",
+    ruleVersion: "ndimp-wave1-1.3.0",
     evidenceSha256: combinedEvidenceSha,
     observedFacts:
       rules.length === 1
@@ -1136,6 +1274,38 @@ export async function executeDodIcReasoning(
   const packetParts: string[] = [];
   if (ctx.ndimpInventoryRequested) {
     packetParts.push(buildLiveNdimpInventoryMarkdown());
+  }
+
+  if (ctx.policyDiffReports.length > 0) {
+    packetParts.push("### POLICY REVISION LINEAGE DIFF & BLAST RADIUS (IMMUTABLE)");
+    for (const d of ctx.policyDiffReports) {
+      packetParts.push(
+        `- **${d.policyId} [${d.severity}]**: ${d.priorVersion} (${d.priorEffectiveDate}) -> ${d.currentVersion} (${d.currentEffectiveDate})`,
+        `  - Blast Radius: ${d.blastRadius.mappedDisaCciCount} DISA CCIs across [${d.blastRadius.impactedNistControls.join(", ")}] | Impacted Noctis Rules: [${d.blastRadius.impactedRuleIds.join(", ")}]`,
+        `  - Added: ${d.addedItems.join(" | ")}`,
+        `  - Deprecated: ${d.removedItems.join(" | ")}`,
+      );
+    }
+    packetParts.push("");
+  }
+
+  if (ctx.driftReport) {
+    const dr = ctx.driftReport;
+    packetParts.push("### LIVE UPSTREAM AUTHORITATIVE DRIFT MONITOR (IMMUTABLE)");
+    packetParts.push(
+      `- Overall=${dr.overallStatus} | DriftCount=${dr.driftCount} | AutoApplyToProduction=${dr.autoApplyToProduction} | KEV=${dr.kevStatus.source} (${dr.kevStatus.catalogCount})`,
+    );
+    for (const s of dr.sources) {
+      packetParts.push(`- ${s.sourceId} (Pinned=${s.pinnedVersion}): Status=${s.status} | ${s.note}`);
+    }
+    packetParts.push("");
+  }
+
+  if (ctx.rolloutCheck) {
+    const rc = ctx.rolloutCheck;
+    packetParts.push("### POLICY ROLLOUT DUAL-CONTROL GOVERNANCE");
+    packetParts.push(`- Allowed=${rc.allowed} | Code=${rc.errorCode || "APPROVED"} | ${rc.ruleResult.summary}`);
+    packetParts.push("");
   }
 
   packetParts.push(
