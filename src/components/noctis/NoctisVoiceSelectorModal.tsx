@@ -103,9 +103,12 @@ export function NoctisVoiceSelectorModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-2 sm:p-4 animate-in fade-in duration-200">
       <div className="relative flex h-[94vh] max-h-[800px] w-full max-w-[420px] flex-col overflow-hidden rounded-[32px] border border-white/10 bg-[#1c1c1e] text-white shadow-2xl">
         {/* Top Header with Centered Title & Close Button */}
-        <div className="relative flex items-center justify-between px-6 pt-5 pb-2">
+        <div className="relative flex items-center justify-between px-6 pt-5 pb-1">
           <div className="w-8" />
-          <h2 className="text-xl font-bold tracking-tight text-white">{title || "Choose your voice"}</h2>
+          <div className="text-center">
+            <h2 className="text-xl font-bold tracking-tight text-white">{title || "Choose your voice"}</h2>
+            <p className="text-[11px] font-medium text-sky-300/80">Real Human Neural Voice · GPT-4o Studio Audio</p>
+          </div>
           <button
             type="button"
             onClick={() => {
@@ -188,14 +191,17 @@ export function NoctisVoiceSelectorModal({
                         ) : null}
                       </div>
 
-                      {/* Voice Name */}
-                      <span
-                        className={`text-[16px] tracking-tight ${
-                          isSelected ? "text-white font-medium" : "text-zinc-200 group-hover:text-white"
-                        }`}
-                      >
-                        {v.label}
-                      </span>
+                      {/* Voice Name + Tone */}
+                      <div className="flex flex-1 items-center justify-between gap-2">
+                        <span
+                          className={`text-[16px] tracking-tight ${
+                            isSelected ? "text-white font-medium" : "text-zinc-200 group-hover:text-white"
+                          }`}
+                        >
+                          {v.label}
+                        </span>
+                        <span className="text-[11px] text-zinc-500">{v.tone}</span>
+                      </div>
                     </div>
                   );
                 })}

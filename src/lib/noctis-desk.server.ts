@@ -2057,9 +2057,26 @@ export async function vibeHear(audio: string, keyOverride = ""): Promise<{ text:
   return { error: "Vibe could not hear that." };
 }
 
-export async function vibeSay(script: string, keyOverride = "", voice = "", speed = 0): Promise<{ audio: string } | { error: string }> {
-  const key = openAiKey(keyOverride);
-  if (!key) return { error: "Speech synthesis is processed via client-side Web Speech API." };
+export const HUMAN_VOICE_INSTRUCTIONS =
+  "Speak like a warm, genuine, natural human having a relaxed real-life conversation. Use natural breathing pauses between sentences, authentic inflection, subtle emotional warmth, and conversational rhythm. Never sound robotic, metallic, rushed, or like an automated announcer.";
+
+const ALLOWED_HUMAN_TTS_VOICES = new Set([
+  "marin",
+  "cedar",
+  "coral",
+  "sage",
+  "ash",
+  "ballad",
+  "verse",
+  "nova",
+  "onyx",
+  "echo",
+  "fable",
+  "shimmer",
+  "alloy",
+]);
+
+function normalizeSpokenScript(script: string): string {
   let input = script
     .replace(/```[\s\S]*?```/g, " ")
     .split(/Evidence status:/i)[0]
@@ -2071,23 +2088,77 @@ export async function vibeSay(script: string, keyOverride = "", voice = "", spee
     const lastPunct = Math.max(candidate.lastIndexOf(". "), candidate.lastIndexOf("! "), candidate.lastIndexOf("? "));
     input = (lastPunct > 2000 ? candidate.slice(0, lastPunct + 1) : candidate).trim();
   }
+  return input;
+}
+
+export async function vibeSayBinary(
+  script: string,
+  options: { keyOverride?: string; voice?: string; speed?: number; instructions?: string } = {},
+): Promise<{ buffer: Uint8Array; model: string; voice: string; contentType: string } | { error: string }> {
+  const key = openAiKey(options.keyOverride || "");
+  if (!key) return { error: "Human neural speech synthesis requires an active OpenAI key." };
+  const input = normalizeSpokenScript(script);
   if (input.length < 2) return { error: "There was nothing to say." };
+
+  const requestedVoice = (options.voice || "marin").toLowerCase().trim();
+  const voice = ALLOWED_HUMAN_TTS_VOICES.has(requestedVoice) ? requestedVoice : "marin";
+  const instructions = options.instructions?.trim() || HUMAN_VOICE_INSTRUCTIONS;
+  const speed = typeof options.speed === "number" && options.speed >= 0.7 && options.speed <= 1.25 ? options.speed : undefined;
+
   try {
     const res = await fetch("https://api.openai.com/v1/audio/speech", {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       signal: AbortSignal.timeout(45000),
       body: JSON.stringify({
-        model: "tts-1",
-        voice: voice || "alloy",
+        model: "gpt-4o-mini-tts",
+        voice,
         input,
+        instructions,
+        response_format: "mp3",
         ...(speed ? { speed } : {}),
       }),
     });
-    if (!res.ok) return { error: "Vibe could not speak that." };
-    const raw = bytesToBase64(new Uint8Array(await res.arrayBuffer()));
-    return raw ? { audio: `data:audio/mpeg;base64,${raw}` } : { error: "Vibe could not speak that." };
+    if (res.ok) {
+      const buf = new Uint8Array(await res.arrayBuffer());
+      if (buf.byteLength > 0) {
+        return { buffer: buf, model: "gpt-4o-mini-tts", voice, contentType: "audio/mpeg" };
+      }
+    }
+
+    // Resilient high-definition fallback if gpt-4o-mini-tts rejects a parameter or transiently errors
+    const hdVoice = ["cedar", "ash", "verse", "onyx", "echo"].includes(voice) ? "onyx" : "nova";
+    const fallbackRes = await fetch("https://api.openai.com/v1/audio/speech", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(45000),
+      body: JSON.stringify({
+        model: "tts-1-hd",
+        voice: hdVoice,
+        input,
+        response_format: "mp3",
+        ...(speed ? { speed } : {}),
+      }),
+    });
+    if (!fallbackRes.ok) return { error: "Human speech synthesis request failed." };
+    const hdBuf = new Uint8Array(await fallbackRes.arrayBuffer());
+    return hdBuf.byteLength > 0
+      ? { buffer: hdBuf, model: "tts-1-hd", voice: hdVoice, contentType: "audio/mpeg" }
+      : { error: "Human speech synthesis returned empty audio." };
   } catch {
-    return { error: "Speech synthesis service unavailable." };
+    return { error: "Human speech synthesis service unavailable." };
   }
+}
+
+export async function vibeSay(
+  script: string,
+  keyOverride = "",
+  voice = "marin",
+  speed = 0,
+  instructions = "",
+): Promise<{ audio: string } | { error: string }> {
+  const result = await vibeSayBinary(script, { keyOverride, voice, speed, instructions });
+  if ("error" in result) return result;
+  const raw = bytesToBase64(result.buffer);
+  return raw ? { audio: `data:audio/mpeg;base64,${raw}` } : { error: "Vibe could not speak that." };
 }

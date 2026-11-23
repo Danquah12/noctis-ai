@@ -28,6 +28,11 @@ import {
   NOCTIS_100_CAPABILITY_PARITY_MATRIX,
   type ParityCapabilityItem,
 } from "@/lib/assistant/parity-matrix";
+import {
+  speakNoctisVoice,
+  stopCurrentVoicePlayback,
+  type VoicePersona,
+} from "@/lib/noctis-voice";
 
 interface NoctisUniversalAssistantTabProps {
   onSendToChat?: (text: string) => void;
@@ -127,6 +132,8 @@ export function NoctisUniversalAssistantTab({ onSendToChat, onOpenInCanvas, onCl
   const [imgPrompt, setImgPrompt] = useState("Zero-Trust Sovereign Architecture Blueprint");
   const [imgOut, setImgOut] = useState<any>(null);
   const [voiceText, setVoiceText] = useState("Verification complete: 100 capability gates active with deterministic Answer Passport seals.");
+  const [voicePersona, setVoicePersona] = useState<VoicePersona>("maple");
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const [translateLang, setTranslateLang] = useState("es");
   const [voiceOut, setVoiceOut] = useState<any>(null);
 
@@ -722,6 +729,25 @@ export function NoctisUniversalAssistantTab({ onSendToChat, onOpenInCanvas, onCl
             />
             <div className="flex flex-wrap items-center gap-2">
               <select
+                value={voicePersona}
+                onChange={(e) => setVoicePersona(e.target.value as VoicePersona)}
+                aria-label="Human voice persona"
+                className="rounded-lg border border-white/15 bg-black/65 px-2.5 py-1.5 text-white"
+              >
+                <option value="maple">Maple (Warm Human Female · US)</option>
+                <option value="spruce">Spruce (Calm Human Male · US)</option>
+                <option value="breeze">Breeze (Friendly Human · US)</option>
+                <option value="cove">Cove (Composed Male · US)</option>
+                <option value="juniper">Juniper (Clear Human · US)</option>
+                <option value="bubbie">Bubbie (Gentle Human · US)</option>
+                <option value="vale">Vale (Warm Human · UK)</option>
+                <option value="arbor">Arbor (Calm Human · UK)</option>
+                <option value="arrullo">Arrullo (Human Spanish · MX)</option>
+                <option value="aube">Aube (Human French · FR)</option>
+                <option value="sonna">Sonna (Human German · DE)</option>
+                <option value="viola">Viola (Human Portuguese · BR)</option>
+              </select>
+              <select
                 value={translateLang}
                 onChange={(e) => setTranslateLang(e.target.value)}
                 className="rounded-lg border border-white/15 bg-black/65 px-2.5 py-1.5 text-white"
@@ -741,15 +767,54 @@ export function NoctisUniversalAssistantTab({ onSendToChat, onOpenInCanvas, onCl
               <button
                 type="button"
                 onClick={() => {
-                  if (typeof window !== "undefined" && "speechSynthesis" in window) {
-                    window.speechSynthesis.cancel();
-                    window.speechSynthesis.speak(new SpeechSynthesisUtterance(voiceText));
+                  if (isSpeaking) {
+                    stopCurrentVoicePlayback();
+                    setIsSpeaking(false);
+                    return;
                   }
+                  setErr("");
+                  setIsSpeaking(true);
+                  void speakNoctisVoice(voiceText, voicePersona, {
+                    onStart: () => setIsSpeaking(true),
+                    onEnd: () => setIsSpeaking(false),
+                  }).then((ok) => {
+                    if (!ok) setIsSpeaking(false);
+                  });
                 }}
-                className="rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-white hover:bg-white/10"
+                className={cn(
+                  "rounded-lg border px-3 py-1.5 font-semibold transition",
+                  isSpeaking
+                    ? "border-amber-400/50 bg-amber-500/20 text-amber-200 hover:bg-amber-500/30"
+                    : "border-emerald-400/40 bg-emerald-500/15 text-emerald-200 hover:bg-emerald-500/25",
+                )}
               >
-                Speak (Web Speech)
+                {isSpeaking ? "Stop Speaking" : "Speak (Human Voice)"}
               </button>
+              {voiceOut?.translatedText && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const langMap: Record<string, { persona: VoicePersona; code: string }> = {
+                      es: { persona: "arrullo", code: "es-MX" },
+                      fr: { persona: "aube", code: "fr-FR" },
+                      de: { persona: "sonna", code: "de-DE" },
+                      pt: { persona: "viola", code: "pt-BR" },
+                    };
+                    const picked = langMap[String(voiceOut.targetLang || translateLang)] || { persona: voicePersona, code: "en-US" };
+                    setIsSpeaking(true);
+                    void speakNoctisVoice(String(voiceOut.translatedText), picked.persona, {
+                      langCode: picked.code,
+                      onStart: () => setIsSpeaking(true),
+                      onEnd: () => setIsSpeaking(false),
+                    }).then((ok) => {
+                      if (!ok) setIsSpeaking(false);
+                    });
+                  }}
+                  className="rounded-lg border border-sky-400/40 bg-sky-500/15 px-3 py-1.5 font-semibold text-sky-200 hover:bg-sky-500/25"
+                >
+                  Speak Translation
+                </button>
+              )}
             </div>
             {voiceOut && (
               <div className="rounded-lg border border-white/10 bg-black/45 p-3 text-xs text-emerald-300">

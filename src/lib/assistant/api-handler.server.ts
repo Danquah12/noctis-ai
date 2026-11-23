@@ -101,6 +101,7 @@ import {
   runCounterfactualAnalysis,
 } from "./distinctive-moat.server.ts";
 import { run100TaskBenchmark } from "./benchmark-100.server.ts";
+import { resolveHumanNeuralVoice } from "../noctis-voice.ts";
 import type { NdkrsDomain } from "../ndkrs/types.ts";
 
 const CORS_HEADERS = {
@@ -425,7 +426,57 @@ export async function handleAssistantV2Request(request: Request): Promise<Respon
     return jsonRes(analyzeAudioTranscript({ transcript: String(body.transcript || ""), language: typeof body.language === "string" ? body.language : "en-US" }));
   }
   if (subPath === "voice/speak") {
-    return jsonRes(prepareVoiceResponseSpec({ text: String(body.text || ""), personaId: typeof body.personaId === "string" ? body.personaId : "maple", languageCode: typeof body.languageCode === "string" ? body.languageCode : "en-US" }));
+    const spec = prepareVoiceResponseSpec({
+      text: String(body.text || ""),
+      personaId: typeof body.personaId === "string" ? body.personaId : "maple",
+      languageCode: typeof body.languageCode === "string" ? body.languageCode : "en-US",
+    });
+    if (body.synthesize === false || spec.speakableText.length < 2) {
+      return jsonRes({ ...spec, voiceEngine: "spec-only" });
+    }
+    const { neuralVoice, instructions: defaultInstructions } = resolveHumanNeuralVoice(
+      spec.personaId,
+      spec.languageCode,
+    );
+    const { vibeSayBinary } = await import("../noctis-desk.server.ts");
+    const audioRes = await vibeSayBinary(spec.speakableText, {
+      keyOverride: typeof body.apiKey === "string" ? body.apiKey : "",
+      voice: neuralVoice,
+      speed: typeof body.speed === "number" ? body.speed : undefined,
+      instructions:
+        typeof body.instructions === "string" && body.instructions.trim()
+          ? body.instructions.trim()
+          : defaultInstructions,
+    });
+    if ("buffer" in audioRes) {
+      if (body.binary === true) {
+        return new Response(new Uint8Array(audioRes.buffer), {
+          status: 200,
+          headers: {
+            "content-type": audioRes.contentType,
+            "cache-control": "no-store",
+            "x-noctis-voice-model": audioRes.model,
+            "x-noctis-voice-name": audioRes.voice,
+            ...CORS_HEADERS,
+          },
+        });
+      }
+      return jsonRes({
+        ...spec,
+        voiceEngine: "openai-gpt4o-mini-tts-human",
+        model: audioRes.model,
+        neuralVoice: audioRes.voice,
+        byteLength: audioRes.buffer.byteLength,
+        audio: `data:audio/mpeg;base64,${Buffer.from(audioRes.buffer).toString("base64")}`,
+      });
+    }
+    return jsonRes({
+      ...spec,
+      voiceEngine: "fallback-unavailable",
+      neuralVoice,
+      audio: null,
+      error: audioRes.error,
+    });
   }
   if (subPath === "translate") {
     return jsonRes(await translateText({ text: String(body.text || ""), targetLang: String(body.targetLang || "es") }));

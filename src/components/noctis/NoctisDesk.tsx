@@ -426,8 +426,8 @@ function sayAloud(text: string): boolean {
   try {
     const brainConfig = getBrainConfig();
     const activeBrain = getActiveKeyAndModel(brainConfig);
-    const userOpenAiKey = activeBrain.provider === "openai" ? activeBrain.key : "";
-    void speakNoctisVoice(text, "alloy", { apiKey: userOpenAiKey });
+    const userOpenAiKey = activeBrain.provider === "openai" ? activeBrain.apiKey : "";
+    void speakNoctisVoice(text, "maple", { apiKey: userOpenAiKey });
     return true;
   } catch {
     return false;
@@ -3757,10 +3757,10 @@ export function NoctisDesk() {
     if (typeof window !== "undefined") {
       try {
         const saved = localStorage.getItem("noctis_preferred_voice");
-        if (saved) return saved as VoicePersona;
+        if (saved && saved !== "alloy" && saved !== "natural") return saved as VoicePersona;
       } catch {}
     }
-    return "alloy";
+    return "maple";
   });
   const [voiceModalOpen, setVoiceModalOpen] = useState(false);
   const [readingTurnIndex, setReadingTurnIndex] = useState<number | null>(null);
@@ -4283,7 +4283,7 @@ export function NoctisDesk() {
     let audio = "";
     if (kind) {
       try {
-        const said = await sayVibe({ data: { text: slices.join(" ").trim(), voice: "onyx", speed: 0.85 } });
+        const said = await sayVibe({ data: { text: slices.join(" ").trim(), voice: "cedar", speed: 0.9 } });
         const bag = said && typeof said === "object" ? (said as { audio?: unknown; result?: unknown }) : {};
         const inner = bag.result && typeof bag.result === "object" ? (bag.result as { audio?: unknown }) : bag;
         audio = typeof inner.audio === "string" ? inner.audio : "";
@@ -4851,7 +4851,7 @@ export function NoctisDesk() {
       try {
         const brainConfig = getBrainConfig();
         const activeBrain = getActiveKeyAndModel(brainConfig);
-        const userOpenAiKey = activeBrain.provider === "openai" ? activeBrain.key : "";
+        const userOpenAiKey = activeBrain.provider === "openai" ? activeBrain.apiKey : "";
         await speakNoctisVoice(answer, voicePersona, {
           apiKey: userOpenAiKey,
         });
@@ -8395,7 +8395,7 @@ export function NoctisDesk() {
                                     const rawAnswer = stripThinkBlock(turn.content);
                                     const brainConfig = getBrainConfig();
                                     const activeBrain = getActiveKeyAndModel(brainConfig);
-                                    const userOpenAiKey = activeBrain.provider === "openai" ? activeBrain.key : "";
+                                    const userOpenAiKey = activeBrain.provider === "openai" ? activeBrain.apiKey : "";
                                     void speakNoctisVoice(rawAnswer, voicePersona, {
                                       apiKey: userOpenAiKey,
                                       onStart: () => setReadingTurnIndex(index),

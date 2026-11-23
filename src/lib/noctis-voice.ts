@@ -452,6 +452,60 @@ export function getVoicePersona(id: string): VoicePersonaInfo {
   return VOICE_PERSONAS[0]; // Maple is index 0
 }
 
+export type HumanNeuralVoiceId = "marin" | "cedar" | "coral" | "sage" | "ash" | "ballad" | "verse";
+
+const PERSONA_TO_HUMAN_VOICE: Record<
+  VoicePersona,
+  { neuralVoice: HumanNeuralVoiceId; personaHint: string }
+> = {
+  maple: { neuralVoice: "marin", personaHint: "warm, upbeat, friendly American woman speaking naturally" },
+  bubbie: { neuralVoice: "ballad", personaHint: "gentle, soothing, comforting empathetic human cadence" },
+  spruce: { neuralVoice: "cedar", personaHint: "calm, grounded, reassuring American male voice" },
+  breeze: { neuralVoice: "coral", personaHint: "earnest, bright, lively natural human conversation" },
+  juniper: { neuralVoice: "sage", personaHint: "clear, thoughtful, bright articulate human voice" },
+  cove: { neuralVoice: "ash", personaHint: "composed, smooth, direct natural male conversational voice" },
+  sol: { neuralVoice: "coral", personaHint: "relaxed, warm, radiant everyday human speaker" },
+  alloy: { neuralVoice: "marin", personaHint: "balanced, warm, natural human speaker" },
+  nova: { neuralVoice: "coral", personaHint: "expressive, warm, engaging natural human woman" },
+  onyx: { neuralVoice: "cedar", personaHint: "deep, calm, resonant authoritative human man" },
+  echo: { neuralVoice: "verse", personaHint: "crisp, clear, natural human male voice" },
+  natural: { neuralVoice: "marin", personaHint: "natural, relaxed everyday human speaker" },
+  rio: { neuralVoice: "cedar", personaHint: "fluent native Brazilian Portuguese male speaker, lyrical and warm" },
+  viola: { neuralVoice: "marin", personaHint: "fluent native Brazilian Portuguese female speaker, expressive and warm" },
+  arbor: { neuralVoice: "cedar", personaHint: "refined natural British English male RP speaker, calm and clear" },
+  vale: { neuralVoice: "sage", personaHint: "warm natural British English female speaker, poised and clear" },
+  rivage: { neuralVoice: "ash", personaHint: "fluent native French male speaker, poised and articulate" },
+  aube: { neuralVoice: "coral", personaHint: "fluent native French female speaker, gentle and cultured" },
+  miko: { neuralVoice: "cedar", personaHint: "fluent native German male speaker, warm and precise" },
+  sonna: { neuralVoice: "sage", personaHint: "fluent native German female speaker, approachable and clear" },
+  neer: { neuralVoice: "cedar", personaHint: "fluent native Indian speaker of Hindi/English, steady and calm" },
+  leher: { neuralVoice: "marin", personaHint: "fluent native Indian female speaker of Hindi/English, warm and clear" },
+  rindo: { neuralVoice: "ash", personaHint: "fluent native Japanese male speaker, calm and respectful" },
+  himari: { neuralVoice: "coral", personaHint: "fluent native Japanese female speaker, warm and polite" },
+  haetsal: { neuralVoice: "marin", personaHint: "fluent native Korean female speaker, warm and clear" },
+  hanul: { neuralVoice: "cedar", personaHint: "fluent native Korean male speaker, calm and resonant" },
+  arrullo: { neuralVoice: "coral", personaHint: "fluent native Mexican Spanish female speaker, warm and melodic" },
+  tinta: { neuralVoice: "cedar", personaHint: "fluent native Mexican Spanish male speaker, dynamic and natural" },
+};
+
+/**
+ * Maps any of Noctis's 28 personas to OpenAI's expressive human neural voice (`gpt-4o-mini-tts`)
+ * with tailored prosody, warmth, natural breathing pauses, and native language cues.
+ */
+export function resolveHumanNeuralVoice(
+  persona: string,
+  languageCodeOverride?: string,
+): { neuralVoice: HumanNeuralVoiceId; instructions: string } {
+  const info = getVoicePersona(persona);
+  const mapped = PERSONA_TO_HUMAN_VOICE[info.id] || PERSONA_TO_HUMAN_VOICE.maple;
+  const lang = languageCodeOverride || info.languageCode;
+  const instructions = `Speak like a real human (${mapped.personaHint}) at natural conversational pace in ${info.language} (${lang}). Use subtle breath pauses between sentences, natural emphasis on key words, and genuine human warmth. Never sound robotic, synthetic, or flat.`;
+  return {
+    neuralVoice: mapped.neuralVoice,
+    instructions,
+  };
+}
+
 /**
  * Checks if Speech Recognition (Web Speech API) is supported in the current environment.
  */
@@ -783,8 +837,22 @@ export function pickHumanBrowserVoice(
 // Global active audio, speech, and session references
 let activeUtterances: SpeechSynthesisUtterance[] = [];
 let currentAudioElement: HTMLAudioElement | null = null;
+let currentAudioObjectUrl: string | null = null;
 let keepAliveTimer: number | null = null;
 let activeSessionId = 0;
+const HUMAN_AUDIO_CACHE = new Map<string, Blob>();
+const MAX_AUDIO_CACHE_ENTRIES = 30;
+
+function rememberCachedAudioBlob(cacheKey: string, blob: Blob) {
+  if (HUMAN_AUDIO_CACHE.has(cacheKey)) {
+    HUMAN_AUDIO_CACHE.delete(cacheKey);
+  }
+  HUMAN_AUDIO_CACHE.set(cacheKey, blob);
+  if (HUMAN_AUDIO_CACHE.size > MAX_AUDIO_CACHE_ENTRIES) {
+    const oldestKey = HUMAN_AUDIO_CACHE.keys().next().value;
+    if (oldestKey) HUMAN_AUDIO_CACHE.delete(oldestKey);
+  }
+}
 
 /**
  * Stops all currently active audio playback (both Web Speech and HTML5 Audio).
@@ -803,6 +871,12 @@ export function stopCurrentVoicePlayback(): void {
         currentAudioElement.currentTime = 0;
       } catch {}
       currentAudioElement = null;
+    }
+    if (currentAudioObjectUrl) {
+      try {
+        URL.revokeObjectURL(currentAudioObjectUrl);
+      } catch {}
+      currentAudioObjectUrl = null;
     }
     if (keepAliveTimer !== null) {
       window.clearInterval(keepAliveTimer);
@@ -989,11 +1063,131 @@ export function speakBrowserVoice(
   });
 }
 
+async function fetchHumanNeuralAudioBlob(
+  chunkText: string,
+  persona: VoicePersona,
+  languageCode: string,
+  rate: number,
+  apiKey: string,
+): Promise<Blob | null> {
+  const cacheKey = `${persona}|${languageCode}|${rate}|${chunkText}`;
+  if (chunkText.length <= 280) {
+    const hit = HUMAN_AUDIO_CACHE.get(cacheKey);
+    if (hit) return hit;
+  }
+
+  const { neuralVoice, instructions } = resolveHumanNeuralVoice(persona, languageCode);
+
+  // Primary path: direct binary MP3 from /api/v2/assistant/voice/speak (gpt-4o-mini-tts human audio)
+  try {
+    const res = await fetch("/api/v2/assistant/voice/speak", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        text: chunkText,
+        personaId: persona,
+        languageCode,
+        speed: rate || 1.0,
+        apiKey: apiKey || "",
+        instructions,
+        binary: true,
+      }),
+    });
+    const ct = res.headers.get("content-type") || "";
+    if (res.ok && ct.includes("audio/")) {
+      const blob = await res.blob();
+      if (blob.size > 0) {
+        if (chunkText.length <= 280) rememberCachedAudioBlob(cacheKey, blob);
+        return blob;
+      }
+    }
+  } catch {
+    /* fall through to serverFn sayVibe */
+  }
+
+  // Secondary path: TanStack Start serverFn sayVibe
+  try {
+    const { sayVibe } = await import("@/lib/noctis-api");
+    const res = await sayVibe({
+      data: {
+        text: chunkText,
+        voice: neuralVoice,
+        speed: rate || 1.0,
+        keyOverride: apiKey || "",
+        instructions,
+      },
+    });
+    const bag = res && typeof res === "object" ? (res as { audio?: unknown; result?: unknown }) : {};
+    const inner = bag.result && typeof bag.result === "object" ? (bag.result as { audio?: unknown }) : bag;
+    const audioUrl = typeof inner.audio === "string" ? inner.audio : "";
+    if (audioUrl && audioUrl.startsWith("data:audio/")) {
+      const b64 = audioUrl.split(",")[1] || "";
+      const raw = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+      const blob = new Blob([raw], { type: "audio/mpeg" });
+      if (blob.size > 0) {
+        if (chunkText.length <= 280) rememberCachedAudioBlob(cacheKey, blob);
+        return blob;
+      }
+    }
+  } catch {
+    /* network or key unavailable */
+  }
+
+  return null;
+}
+
+function playHumanBlob(
+  blob: Blob,
+  session: number,
+  isFirst: boolean,
+  isLast: boolean,
+  options?: { onStart?: () => void; onEnd?: () => void },
+): Promise<boolean> {
+  return new Promise<boolean>((resolve) => {
+    if (activeSessionId !== session) {
+      resolve(false);
+      return;
+    }
+    try {
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      currentAudioElement = audio;
+      currentAudioObjectUrl = url;
+      if (isFirst && options?.onStart) options.onStart();
+
+      const cleanup = () => {
+        if (currentAudioElement === audio) currentAudioElement = null;
+        if (currentAudioObjectUrl === url) currentAudioObjectUrl = null;
+        try {
+          URL.revokeObjectURL(url);
+        } catch {}
+      };
+
+      audio.onended = () => {
+        cleanup();
+        if (activeSessionId === session && isLast && options?.onEnd) options.onEnd();
+        resolve(true);
+      };
+      audio.onerror = () => {
+        cleanup();
+        resolve(false);
+      };
+      audio.play().catch(() => {
+        cleanup();
+        resolve(false);
+      });
+    } catch {
+      resolve(false);
+    }
+  });
+}
+
 /**
- * Unified human speech synthesis engine.
- * First attempts Studio-Quality Neural TTS (OpenAI tts-1) when configured.
- * Seamlessly falls back to the device's natural browser speech engine with
- * complete sentence-level chunking and continuous keep-alive playback.
+ * Unified Real Human Voice Engine.
+ * Always speaks with OpenAI's flagship expressive human neural speech (`gpt-4o-mini-tts`
+ * -> `marin` / `cedar` / `coral` / `sage` / `ash` / `ballad` / `verse`) across all 28 personas,
+ * with next-chunk prefetching for gapless long-form speech and offline browser speech only as a
+ * last-resort fallback when network/API audio is unreachable.
  */
 export async function speakNoctisVoice(
   text: string,
@@ -1008,6 +1202,7 @@ export async function speakNoctisVoice(
   }
 ): Promise<boolean> {
   stopCurrentVoicePlayback();
+  const mySession = activeSessionId;
 
   const info = getVoicePersona(persona);
   const effectiveLang = options?.langCode || info.languageCode || "en-US";
@@ -1018,99 +1213,63 @@ export async function speakNoctisVoice(
     return true;
   }
 
-    // 1. Studio-Quality Human Neural TTS (OpenAI tts-1 / tts-1-hd)
-  if (persona !== "natural") {
+  // Headless Node test environment check: no browser Audio / SpeechSynthesis output
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  const rate = options?.rate || 1.0;
+  const apiKey = options?.apiKey || "";
+
+  // 1. Primary Studio Real-Human Neural Voice (`gpt-4o-mini-tts` with `tts-1-hd` server fallback)
+  if (typeof Audio !== "undefined") {
     try {
-      const { sayVibe } = await import("@/lib/noctis-api");
-      let ttsVoice = "alloy";
-      if (["onyx", "spruce", "cove", "arbor", "rivage", "miko", "neer", "rindo", "hanul", "tinta"].includes(persona)) {
-        ttsVoice = "onyx";
-      } else if (["nova", "maple", "breeze", "juniper", "viola", "aube", "sonna", "leher", "himari", "haetsal", "arrullo"].includes(persona)) {
-        ttsVoice = "nova";
-      } else if (persona === "echo") {
-        ttsVoice = "echo";
-      } else if (["vale", "fable"].includes(persona)) {
-        ttsVoice = "fable";
-      } else if (["shimmer", "sol", "bubbie"].includes(persona)) {
-        ttsVoice = "shimmer";
-      }
+      const neuralChunks = cleaned.length <= 1800 ? [cleaned] : splitIntoSpokenChunks(cleaned, 1400);
+      let currentPromise: Promise<Blob | null> = fetchHumanNeuralAudioBlob(
+        neuralChunks[0]!,
+        persona,
+        effectiveLang,
+        rate,
+        apiKey,
+      );
 
-      const playAudio = (url: string, isFirst = false, isLast = false): Promise<boolean> => {
-        return new Promise<boolean>((resolve) => {
-          try {
-            const audio = new Audio(url);
-            currentAudioElement = audio;
-            if (isFirst && options?.onStart) options.onStart();
-            audio.onended = () => {
-              currentAudioElement = null;
-              if (isLast && options?.onEnd) options.onEnd();
-              resolve(true);
-            };
-            audio.onerror = () => {
-              currentAudioElement = null;
-              resolve(false);
-            };
-            audio.play().catch(() => {
-              currentAudioElement = null;
-              resolve(false);
-            });
-          } catch {
-            currentAudioElement = null;
-            resolve(false);
-          }
-        });
-      };
+      let allPlayed = neuralChunks.length > 0;
+      for (let i = 0; i < neuralChunks.length; i++) {
+        if (activeSessionId !== mySession) return false;
+        if (options?.onChunk) options.onChunk(i + 1, neuralChunks.length);
 
-      if (cleaned.length <= 3800) {
-        const res = await sayVibe({
-          data: {
-            text: cleaned,
-            voice: ttsVoice,
-            speed: options?.rate || 1.0,
-            keyOverride: options?.apiKey || "",
-          },
-        });
-        const bag = res && typeof res === "object" ? (res as { audio?: unknown; result?: unknown; error?: unknown }) : {};
-        const inner = bag.result && typeof bag.result === "object" ? (bag.result as { audio?: unknown; error?: unknown }) : bag;
-        const audioUrl = typeof inner.audio === "string" ? inner.audio : "";
-        if (audioUrl && audioUrl.startsWith("data:audio/")) {
-          const played = await playAudio(audioUrl, true, true);
-          if (played) return true;
+        const blob = await currentPromise;
+        if (activeSessionId !== mySession) return false;
+
+        // Prefetch next chunk immediately while current chunk plays
+        const nextPromise =
+          i + 1 < neuralChunks.length
+            ? fetchHumanNeuralAudioBlob(neuralChunks[i + 1]!, persona, effectiveLang, rate, apiKey)
+            : null;
+
+        if (!blob) {
+          allPlayed = false;
+          break;
         }
-      } else {
-        // Multi-chunk continuous studio neural streaming for long texts
-        const neuralChunks = splitIntoSpokenChunks(cleaned, 3000);
-        let allPlayed = true;
-        for (let i = 0; i < neuralChunks.length; i++) {
-          const res = await sayVibe({
-            data: {
-              text: neuralChunks[i],
-              voice: ttsVoice,
-              speed: options?.rate || 1.0,
-              keyOverride: options?.apiKey || "",
-            },
-          });
-          const bag = res && typeof res === "object" ? (res as { audio?: unknown; result?: unknown; error?: unknown }) : {};
-          const inner = bag.result && typeof bag.result === "object" ? (bag.result as { audio?: unknown; error?: unknown }) : bag;
-          const audioUrl = typeof inner.audio === "string" ? inner.audio : "";
-          if (audioUrl && audioUrl.startsWith("data:audio/")) {
-            const played = await playAudio(audioUrl, i === 0, i === neuralChunks.length - 1);
-            if (!played) { allPlayed = false; break; }
-          } else {
-            allPlayed = false;
-            break;
-          }
+        const played = await playHumanBlob(blob, mySession, i === 0, i === neuralChunks.length - 1, options);
+        if (!played) {
+          allPlayed = false;
+          break;
         }
-        if (allPlayed) return true;
+        if (nextPromise) {
+          currentPromise = nextPromise;
+        }
       }
+      if (allPlayed) return true;
     } catch {
-      // Fallback seamlessly to native browser speech synthesis
+      // Offline / autoplay blocked -> fall through to offline browser speech if cancelled was not triggered
     }
   }
 
-  // 2. Uninterrupted Browser Natural Human Voice Fallback
-  // Handles arbitrarily long text without mid-stream cutoffs or timeouts
-  return speakBrowserVoice(cleaned, persona, options?.rate || 1.0, effectiveLang, options);
+  if (activeSessionId !== mySession) return false;
+
+  // 2. Offline Last-Resort Fallback ONLY when real human neural audio is unreachable
+  return speakBrowserVoice(cleaned, persona, rate, effectiveLang, options);
 }
 
 /**

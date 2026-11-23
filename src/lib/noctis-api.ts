@@ -118,16 +118,36 @@ export const hearVibe = createServerFn({ method: "POST" })
     return vibeHear(data.audio, await bakedKey());
   });
 
+const SAY_VIBE_VOICES = new Set([
+  "marin",
+  "cedar",
+  "coral",
+  "sage",
+  "ash",
+  "ballad",
+  "verse",
+  "nova",
+  "onyx",
+  "echo",
+  "fable",
+  "shimmer",
+  "alloy",
+]);
+
 export const sayVibe = createServerFn({ method: "POST" })
-  .validator((input: { text?: unknown; voice?: unknown; speed?: unknown; keyOverride?: unknown }) => ({
-    text: typeof input?.text === "string" ? input.text.slice(0, 4000) : "",
-    voice: input?.voice === "onyx" || input?.voice === "nova" || input?.voice === "alloy" || input?.voice === "echo" || input?.voice === "fable" || input?.voice === "shimmer" ? input.voice : "alloy",
-    speed: typeof input?.speed === "number" && input.speed >= 0.7 && input.speed <= 1.2 ? input.speed : 0,
-    keyOverride: typeof input?.keyOverride === "string" ? input.keyOverride.trim() : "",
-  }))
+  .validator((input: { text?: unknown; voice?: unknown; speed?: unknown; keyOverride?: unknown; instructions?: unknown }) => {
+    const v = typeof input?.voice === "string" ? input.voice.toLowerCase().trim() : "";
+    return {
+      text: typeof input?.text === "string" ? input.text.slice(0, 4000) : "",
+      voice: SAY_VIBE_VOICES.has(v) ? v : "marin",
+      speed: typeof input?.speed === "number" && input.speed >= 0.7 && input.speed <= 1.25 ? input.speed : 0,
+      keyOverride: typeof input?.keyOverride === "string" ? input.keyOverride.trim() : "",
+      instructions: typeof input?.instructions === "string" ? input.instructions.trim().slice(0, 600) : "",
+    };
+  })
   .handler(async ({ data }) => {
     const { vibeSay } = await import("@/lib/noctis-desk.server");
-    return vibeSay(data.text, data.keyOverride || (await bakedKey()), data.voice, data.speed);
+    return vibeSay(data.text, data.keyOverride || (await bakedKey()), data.voice, data.speed, data.instructions);
   });
 
 export const trainVibe = createServerFn({ method: "POST" })

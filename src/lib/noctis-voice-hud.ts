@@ -4,6 +4,8 @@
  * and synthesized voice telemetry for sovereign cyber defense operations.
  */
 
+import { speakNoctisVoice } from "./noctis-voice.ts";
+
 export type VoiceIntent =
   | "FUZZ_INVARIANTS"
   | "BLAST_RADIUS"
@@ -297,26 +299,12 @@ export function playTacticalFeedbackCue(intent: VoiceIntent): void {
 }
 
 /**
- * Uses SpeechSynthesis to enunciate tactical confirmations if enabled and available in browser.
+ * Uses Real Human Neural Speech (`gpt-4o-mini-tts` -> `spruce`/`cedar`) with seamless fallback
+ * to enunciate tactical confirmations when running in a browser.
  */
-export function speakTacticalConfirmation(text: string, voiceRate: number = 1.05): void {
-  if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+export function speakTacticalConfirmation(text: string, voiceRate: number = 1.0): void {
+  if (typeof window === "undefined" || !text?.trim()) {
     return;
   }
-  try {
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = voiceRate;
-    utterance.pitch = 0.95;
-    const voices = window.speechSynthesis.getVoices();
-    const targetVoice =
-      voices.find((v) => v.lang.startsWith("en") && (v.name.includes("Natural") || v.name.includes("Enhanced") || v.name.includes("Google"))) ||
-      voices.find((v) => v.lang.startsWith("en"));
-    if (targetVoice) {
-      utterance.voice = targetVoice;
-    }
-    window.speechSynthesis.speak(utterance);
-  } catch {
-    // Speech synthesis error handled gracefully
-  }
+  void speakNoctisVoice(text, "spruce", { rate: voiceRate });
 }
