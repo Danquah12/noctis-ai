@@ -1009,8 +1009,13 @@ export async function vibeReply(
   try {
     const { isUniversalClinicalQuestion } = await import("@/lib/noctis-universal-clinical.server");
     const { isRmfGrcQuery } = await import("@/lib/noctis-rmf-engine");
+    const { isDodIcQuery } = await import("@/lib/dod-ic/dod-ic-reasoning.server");
     const { rememberAnswer, rememberRule, inferDomain } = await import("@/lib/noctis-train.server");
-    const skipClinicalCache = isClinicalInquiry || isUniversalClinicalQuestion(latest) || isRmfGrcQuery(latest);
+    const skipClinicalCache =
+      isClinicalInquiry ||
+      isUniversalClinicalQuestion(latest) ||
+      isRmfGrcQuery(latest) ||
+      isDodIcQuery(latest);
     const cleanReplyForMemory = reply.text.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
     if (!skipClinicalCache && reply && "text" in reply && cleanReplyForMemory.length > 60 && !cleanReplyForMemory.includes("could not finish")) {
       const domain = inferDomain(latest);
@@ -1098,6 +1103,20 @@ async function composeVibeReply(
   await hydrateFromDb().catch(() => {});
   const attached = (last?.content || "").split(/\n--- [^\n]+ ---\n/).slice(1).join("\n").trim();
   const fullQuestion = (last?.content || "").replace(/\[Image:[^\]]*\]/g, "").trim();
+
+  // Fail-Closed Classification Boundary Gate BEFORE any external LLM, cache, or clinical/RMF routing
+  const { evaluateClassificationGate } = await import("@/lib/dod-ic/classification-gateway");
+  const { isDodIcQuery, executeDodIcReasoning } = await import("@/lib/dod-ic/dod-ic-reasoning.server");
+  const preClassificationGate = evaluateClassificationGate({ text: fullQuestion });
+  if (preClassificationGate.action === "FAIL_CLOSED_BLOCK") {
+    const blockedReply = await executeDodIcReasoning(fullQuestion, {
+      shouldThink,
+      language: languageNow(question, style.language || ""),
+      engineName: activeEngine.name,
+    });
+    return { text: blockedReply };
+  }
+
   const isCodingRequest =
     /\b(architect and implement|build|create|code|develop|generate|write)\b[\s\S]{0,60}?\b(in react|in typescript|in python|react component|single-file|with tailwind|app|application|ui|unit test|microservice)\b/i.test(
       fullQuestion
@@ -1114,7 +1133,9 @@ async function composeVibeReply(
     isUniversalClinicalQuestion(fullQuestion) ||
     isUniversalClinicalQuestion(question) ||
     isRmfGrcQuery(fullQuestion) ||
-    isRmfGrcQuery(question);
+    isRmfGrcQuery(question) ||
+    isDodIcQuery(fullQuestion) ||
+    isDodIcQuery(question);
 
   if (!isCodingRequest) {
     // Authoritative Live MITRE CVE Program & NVD Resolver: Guarantees official names and full intelligence for all CVEs
@@ -1165,6 +1186,20 @@ async function composeVibeReply(
       });
       if (universalOut) {
         return { text: universalOut };
+      }
+    }
+
+    // DoD RMF (DoDI 8510.01) + IC Security (ICD 503/502/501) + CNSSI 1253 + Cross-Domain Engine (NDIMP Wave 1)
+    if (isDodIcQuery(fullQuestion) && !isUniversalClinicalQuestion(fullQuestion)) {
+      const dodIcOut = await executeDodIcReasoning(fullQuestion, {
+        turns,
+        brain: style.brain,
+        engineName: activeEngine.name,
+        language: languageNow(question, style.language || ""),
+        shouldThink,
+      });
+      if (dodIcOut) {
+        return { text: dodIcOut };
       }
     }
 

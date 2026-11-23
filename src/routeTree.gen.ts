@@ -91,6 +91,7 @@ import { Route as HubNistTailorRouteImport } from './routes/hub.nist.tailor'
 import { Route as HubProjectIdRouteImport } from './routes/hub.project.$id'
 import { Route as HubToolIdRouteImport } from './routes/hub.tool.$id'
 import { Route as HubTrackIdRouteImport } from './routes/hub.track.$id'
+import { Route as ApiV2DodIcSplatRouteImport } from './routes/api/v2.dod-ic.$'
 import { Route as ApiV2NdkrsSplatRouteImport } from './routes/api/v2.ndkrs.$'
 import { Route as ApiV2RmfSplatRouteImport } from './routes/api/v2.rmf.$'
 import { Route as HubNistFamilyIdRouteImport } from './routes/hub.nist.family.$id'
@@ -510,6 +511,11 @@ const HubTrackIdRoute = HubTrackIdRouteImport.update({
   path: '/track/$id',
   getParentRoute: () => HubRoute,
 } as any)
+const ApiV2DodIcSplatRoute = ApiV2DodIcSplatRouteImport.update({
+  id: '/api/v2/dod-ic/$',
+  path: '/api/v2/dod-ic/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiV2NdkrsSplatRoute = ApiV2NdkrsSplatRouteImport.update({
   id: '/api/v2/ndkrs/$',
   path: '/api/v2/ndkrs/$',
@@ -639,6 +645,7 @@ export interface FileRoutesByFullPath {
   '/hub/tool/$id': typeof HubToolIdRoute
   '/hub/track/$id': typeof HubTrackIdRoute
   '/hub/nist/': typeof HubNistIndexRoute
+  '/api/v2/dod-ic/$': typeof ApiV2DodIcSplatRoute
   '/api/v2/ndkrs/$': typeof ApiV2NdkrsSplatRoute
   '/api/v2/rmf/$': typeof ApiV2RmfSplatRoute
   '/hub/nist/family/$id': typeof HubNistFamilyIdRoute
@@ -727,6 +734,7 @@ export interface FileRoutesByTo {
   '/hub/tool/$id': typeof HubToolIdRoute
   '/hub/track/$id': typeof HubTrackIdRoute
   '/hub/nist': typeof HubNistIndexRoute
+  '/api/v2/dod-ic/$': typeof ApiV2DodIcSplatRoute
   '/api/v2/ndkrs/$': typeof ApiV2NdkrsSplatRoute
   '/api/v2/rmf/$': typeof ApiV2RmfSplatRoute
   '/hub/nist/family/$id': typeof HubNistFamilyIdRoute
@@ -820,6 +828,7 @@ export interface FileRoutesById {
   '/hub/tool/$id': typeof HubToolIdRoute
   '/hub/track/$id': typeof HubTrackIdRoute
   '/hub/nist/': typeof HubNistIndexRoute
+  '/api/v2/dod-ic/$': typeof ApiV2DodIcSplatRoute
   '/api/v2/ndkrs/$': typeof ApiV2NdkrsSplatRoute
   '/api/v2/rmf/$': typeof ApiV2RmfSplatRoute
   '/hub/nist/family/$id': typeof HubNistFamilyIdRoute
@@ -914,6 +923,7 @@ export interface FileRouteTypes {
     | '/hub/tool/$id'
     | '/hub/track/$id'
     | '/hub/nist/'
+    | '/api/v2/dod-ic/$'
     | '/api/v2/ndkrs/$'
     | '/api/v2/rmf/$'
     | '/hub/nist/family/$id'
@@ -1002,6 +1012,7 @@ export interface FileRouteTypes {
     | '/hub/tool/$id'
     | '/hub/track/$id'
     | '/hub/nist'
+    | '/api/v2/dod-ic/$'
     | '/api/v2/ndkrs/$'
     | '/api/v2/rmf/$'
     | '/hub/nist/family/$id'
@@ -1094,6 +1105,7 @@ export interface FileRouteTypes {
     | '/hub/tool/$id'
     | '/hub/track/$id'
     | '/hub/nist/'
+    | '/api/v2/dod-ic/$'
     | '/api/v2/ndkrs/$'
     | '/api/v2/rmf/$'
     | '/hub/nist/family/$id'
@@ -1139,6 +1151,7 @@ export interface RootRouteChildren {
   UUsernameRoute: typeof UUsernameRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiV1HealthRoute: typeof ApiV1HealthRoute
+  ApiV2DodIcSplatRoute: typeof ApiV2DodIcSplatRoute
   ApiV2NdkrsSplatRoute: typeof ApiV2NdkrsSplatRoute
   ApiV2RmfSplatRoute: typeof ApiV2RmfSplatRoute
 }
@@ -1719,6 +1732,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HubTrackIdRouteImport
       parentRoute: typeof HubRoute
     }
+    '/api/v2/dod-ic/$': {
+      id: '/api/v2/dod-ic/$'
+      path: '/api/v2/dod-ic/$'
+      fullPath: '/api/v2/dod-ic/$'
+      preLoaderRoute: typeof ApiV2DodIcSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/v2/ndkrs/$': {
       id: '/api/v2/ndkrs/$'
       path: '/api/v2/ndkrs/$'
@@ -1965,6 +1985,7 @@ const rootRouteChildren: RootRouteChildren = {
   UUsernameRoute: UUsernameRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiV1HealthRoute: ApiV1HealthRoute,
+  ApiV2DodIcSplatRoute: ApiV2DodIcSplatRoute,
   ApiV2NdkrsSplatRoute: ApiV2NdkrsSplatRoute,
   ApiV2RmfSplatRoute: ApiV2RmfSplatRoute,
 }

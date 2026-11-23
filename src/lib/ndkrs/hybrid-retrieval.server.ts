@@ -12,6 +12,10 @@ import {
   getDominantChunkEmbeddingModel,
   isPgvectorActive,
 } from "./persistence.server.ts";
+import {
+  filterRecordsByClassificationBoundary,
+  type SecurityClassification,
+} from "../dod-ic/classification-gateway.ts";
 import type { HybridSearchHit, NdkrsDomain } from "./types.ts";
 
 interface ChunkJoinedRow {
@@ -27,6 +31,7 @@ interface ChunkJoinedRow {
   source_uri: string;
   version: string;
   record_sha256: string;
+  structured_json?: Record<string, unknown> | string | null;
   embedding_model: string;
   embedding_json: number[];
   ts_rank: number;
@@ -56,6 +61,8 @@ export async function hybridSearchNdkrs(
     limit?: number;
     includePending?: boolean;
     allowExternalEmbeddings?: boolean;
+    maxClassification?: SecurityClassification;
+    authorizedCompartments?: string[];
   } = {},
 ): Promise<HybridSearchHit[]> {
   const cleanQuery = (query || "").trim();
@@ -99,6 +106,7 @@ export async function hybridSearchNdkrs(
          r.citation_label,
          r.version,
          r.record_sha256,
+         r.structured_json,
          s.source_uri,
          c.embedding_model,
          c.embedding_json,
@@ -132,6 +140,7 @@ export async function hybridSearchNdkrs(
          r.citation_label,
          r.version,
          r.record_sha256,
+         r.structured_json,
          s.source_uri,
          c.embedding_model,
          c.embedding_json,
@@ -147,6 +156,32 @@ export async function hybridSearchNdkrs(
       baseParams,
     );
   }
+
+  // Enforce classification-aware retrieval filtering so classified/SCI records never leak across boundaries
+  const taggedRows = rows.map((row) => {
+    let sj: Record<string, unknown> = {};
+    try {
+      sj =
+        typeof row.structured_json === "string"
+          ? (JSON.parse(row.structured_json) as Record<string, unknown>)
+          : ((row.structured_json as Record<string, unknown>) || {});
+    } catch {
+      sj = {};
+    }
+    return {
+      row,
+      classification: (typeof sj.classification === "string"
+        ? sj.classification.toUpperCase()
+        : "UNCLASSIFIED") as SecurityClassification,
+      compartments: Array.isArray(sj.compartments) ? sj.compartments.map(String) : [],
+    };
+  });
+  const boundaryFiltered = filterRecordsByClassificationBoundary(
+    taggedRows,
+    opts.maxClassification ?? "UNCLASSIFIED",
+    opts.authorizedCompartments ?? [],
+  );
+  rows = boundaryFiltered.allowedRecords.map((item) => item.row);
 
   if (rows.length === 0) return [];
 

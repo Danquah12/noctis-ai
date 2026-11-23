@@ -725,6 +725,105 @@ export const NDKRS_AUTHORITATIVE_CORPUS: AuthoritativeCorpusSeedItem[] = [
     effectiveDate: "2020-01-01T00:00:00Z",
     expiresAt: "2030-12-31T00:00:00Z",
   },
+
+  // --- DOD & INTELLIGENCE COMMUNITY SECURITY FOUNDATIONS (NDIMP Wave 1, UNCLASSIFIED) ---
+  {
+    domain: "rmf",
+    canonicalKey: "DODI-8510.01-RMF",
+    title: "DoDI 8510.01 — Risk Management Framework (RMF) for DoD Systems (July 19, 2022)",
+    summary:
+      "Establishes the 7-step DoD RMF lifecycle, formal AO/AODR/ISSM/ISSO/independent SCA responsibilities, DoD Component reciprocity conditions, eMASS package governance, and ATO/ATOwC/IATT/DATO decisions (reissuing and cancelling March 12, 2014 DoDI 8510.01 and DTM 20-004).",
+    content: `# DoDI 8510.01 (Effective July 19, 2022)
+- Full 7-step lifecycle: Prepare, Categorize, Select, Implement, Assess, Authorize, Monitor.
+- Only a designated DoD Authorizing Official issues ATO, ATOwC, IATT, or DATO.
+- DoD reciprocity applies within DoD Components with active ATO/PA delta verification and never automatically confers IC ICD 503 authorization.`,
+    sourceUri: "https://www.esd.whs.mil/DD/",
+    trustTier: "AUTHORITATIVE_GOV",
+    version: "2022-07-19",
+    citationLabel: "DODI-8510.01",
+    effectiveDate: "2022-07-19T00:00:00Z",
+    expiresAt: "2030-12-31T00:00:00Z",
+  },
+  {
+    domain: "rmf",
+    canonicalKey: "IC-ICD-503-2024",
+    title: "ODNI ICD 503 — Intelligence Community Information Environment Risk Management (Oct 25, 2024)",
+    summary:
+      "Governs holistic risk management across the IC Information Environment (IC IE), mandating Zero Trust alignment, continuous monitoring, IC reciprocity, information sharing, privacy protections, and CNSSI 1253 / IC overlays (superseding July 21, 2015 ICD 503).",
+    content: `# ODNI ICD 503 (Effective October 25, 2024)
+- Supersedes July 21, 2015 issuance and expands scope across the entire IC Information Environment (IC IE).
+- Integrates Zero Trust architecture, Continuous Monitoring (ICD 502), information sharing (ICD 501), and privacy risk management.
+- A DoD ATO or FedRAMP ATO does NOT automatically satisfy IC ICD 503 authorization requirements.`,
+    sourceUri: "https://www.dni.gov/index.php/what-we-do/ic-related-menus/ic-related-links/intelligence-community-directives",
+    trustTier: "AUTHORITATIVE_GOV",
+    version: "2024-10-25",
+    citationLabel: "ICD-503",
+    effectiveDate: "2024-10-25T00:00:00Z",
+    expiresAt: "2030-12-31T00:00:00Z",
+  },
+  {
+    domain: "rmf",
+    canonicalKey: "IC-ICD-502-DEFENSE",
+    title: "ODNI ICD 502 — Integrated Defense of the Intelligence Community Information Environment",
+    summary:
+      "Establishes policy for integrated defensive cyber operations, continuous security posture monitoring, and coordinated response across interconnected Intelligence Community enclaves (effective March 11, 2011).",
+    content: `# ODNI ICD 502 (Effective March 11, 2011)
+- Integrated defense oversight, situational awareness, and response supporting ICD 503 continuous authorization.`,
+    sourceUri: "https://www.dni.gov/index.php/what-we-do/ic-related-menus/ic-related-links/intelligence-community-directives",
+    trustTier: "AUTHORITATIVE_GOV",
+    version: "2011-03-11",
+    citationLabel: "ICD-502",
+    effectiveDate: "2011-03-11T00:00:00Z",
+    expiresAt: "2030-12-31T00:00:00Z",
+  },
+  {
+    domain: "rmf",
+    canonicalKey: "IC-ICD-501-SHARING",
+    title: "ODNI ICD 501 — Discovery and Dissemination or Retrieval Within the IC",
+    summary:
+      "Establishes 'responsibility to provide' policy balanced against classification, SCI compartments, NOFORN/ORCON controls, accredited target system boundaries, and need-to-know enforcement (effective January 21, 2009).",
+    content: `# ODNI ICD 501 (Effective January 21, 2009)
+- Balances IC discovery and retrieval with protection of intelligence sources and methods.
+- User clearance alone does NOT permit routing classified records onto unaccredited or lower-classified systems.`,
+    sourceUri: "https://www.dni.gov/index.php/what-we-do/ic-related-menus/ic-related-links/intelligence-community-directives",
+    trustTier: "AUTHORITATIVE_GOV",
+    version: "2009-01-21",
+    citationLabel: "ICD-501",
+    effectiveDate: "2009-01-21T00:00:00Z",
+    expiresAt: "2030-12-31T00:00:00Z",
+  },
+  {
+    domain: "rmf",
+    canonicalKey: "CNSSI-1253-NSS",
+    title: "CNSSI 1253 — Security Categorization and Control Selection for National Security Systems (July 2022)",
+    summary:
+      "Companion to NIST SP 800-53 Rev. 5 / 800-37 Rev. 2 requiring independent Confidentiality, Integrity, and Availability categorization vectors and mandatory NSS/Classified/Intelligence/CDS/Space overlays.",
+    content: `# CNSSI 1253 (July 2022)
+- Keeps (C, I, A) vectors independent rather than collapsing into one civilian High-Water Mark baseline.
+- Enforces HIGH Confidentiality floor for SECRET / TOP SECRET / TS-SCI National Security Systems and applies mandatory CNSSI 1253 overlays.`,
+    sourceUri: "https://www.cnss.gov/",
+    trustTier: "AUTHORITATIVE_GOV",
+    version: "2022-07",
+    citationLabel: "CNSSI-1253",
+    effectiveDate: "2022-07-01T00:00:00Z",
+    expiresAt: "2030-12-31T00:00:00Z",
+  },
+  {
+    domain: "cybersecurity",
+    canonicalKey: "DOD-IC-CLASSIFICATION-BOUNDARY",
+    title: "Classified Systems, Cross-Domain Governance (DoDI 8540.01) & Commercial Cloud Prohibition",
+    summary:
+      "Classified and SCI material must never enter commercial cloud models or lower-classification retrieval boundaries even when a user holds clearance; cross-domain transfers require NCDSMO Raise-the-Bar accredited CDS controls.",
+    content: `# Classification-Aware Boundary Invariant (EO 13526 / DoDM 5200.01 / DoDI 8540.01)
+- Clearance != System Accreditation: Fail closed whenever classified banners/markings enter commercial LLMs or lower enclaves.
+- Logical multi-tenant separation in commercial storage is insufficient for SECRET or TS/SCI data.`,
+    sourceUri: "https://www.esd.whs.mil/DD/",
+    trustTier: "AUTHORITATIVE_GOV",
+    version: "2023-05",
+    citationLabel: "DODI-8540.01-EO13526",
+    effectiveDate: "2023-05-01T00:00:00Z",
+    expiresAt: "2030-12-31T00:00:00Z",
+  },
 ];
 
 export async function seedNdkrsAuthoritativeCorpus(
