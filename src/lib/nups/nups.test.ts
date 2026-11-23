@@ -111,6 +111,7 @@ test("5-Stage NUPS Orchestrator solves multi-domain Hospital Power Outage, persi
   assert.ok(solved.crossDomainConflicts.length >= 1);
   assert.equal(solved.crossDomainConflicts[0]!.governingSqdecPillar, "Safety");
   assert.match(solved.synthesizedMarkdown, /Independent Safety Validator/);
+  assert.doesNotMatch(solved.synthesizedMarkdown, /\bundefined\b|\bNaN\b/);
 
   const stats = await getNupsTelemetryStats();
   assert.equal(stats.catalogedEngines, 41);

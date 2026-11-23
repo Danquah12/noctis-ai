@@ -136,16 +136,17 @@ export async function solveUniversalProblem(req: NupsSolveRequest): Promise<Nups
         maxClassification: req.maxClassification === "TS_SCI" ? "UNCLASSIFIED" : "UNCLASSIFIED",
       });
       for (const h of hits) {
-        if (seenRecords.has(h.recordId)) continue;
-        seenRecords.add(h.recordId);
+        const recKey = h.recordId || h.chunkId;
+        if (seenRecords.has(recKey)) continue;
+        seenRecords.add(recKey);
         retrievedAuthorities.push({
-          recordId: h.recordId,
+          recordId: recKey,
           domain: h.domain,
           canonicalKey: h.canonicalKey,
           title: h.title,
           citationLabel: h.citationLabel || h.canonicalKey,
           sourceUri: h.sourceUri,
-          snippet: h.content.replace(/\s+/g, " ").slice(0, 220),
+          snippet: (h.excerpt || "").replace(/\s+/g, " ").slice(0, 220),
           score: Number(h.rrfScore.toFixed(4)),
         });
       }
@@ -187,19 +188,19 @@ export async function solveUniversalProblem(req: NupsSolveRequest): Promise<Nups
       rulesApplied: ["HIPAA Security Contingency Mode 45 CFR 164.312(a)(2)(ii)", "NIST SP 800-53 CP-9 / PE-11", "Audit Log Retention"],
       computations: {
         missionReadinessPosture: risk.readinessPosture,
-        missionReadinessScore: risk.readinessScore,
+        missionReadinessScore: risk.operationalReadinessScore,
         operationalRiskTier: risk.operationalRiskTier,
         emergencyAccessAuditRequired: true,
       },
       findings: [
-        `Mission Assurance Posture: ${risk.readinessPosture} (Score ${risk.readinessScore}/100, Tier ${risk.operationalRiskTier}).`,
+        `Mission Assurance Posture: ${risk.readinessPosture} (Score ${risk.operationalReadinessScore}/100, Tier ${risk.operationalRiskTier}).`,
         "Trigger HIPAA Emergency Access Procedure (break-glass accounts logged & time-bounded); prevent unsegmented BMS/generator ATS internet exposure.",
       ],
       recommendations: [
         "Enforce out-of-band MFA/hardware tokens once primary IdP restores and retain immutable outage audit logs.",
         "Preserve statutory downtime documentation for CMS 42 CFR 482.15 & OCR/NERC post-incident review.",
       ],
-      complianceStatus: risk.readinessPosture === "NMC" ? "CRITICAL_ACTION_REQUIRED" : risk.readinessScore < 85 ? "WARN" : "PASS",
+      complianceStatus: risk.readinessPosture === "NMC" ? "CRITICAL_ACTION_REQUIRED" : risk.operationalReadinessScore < 85 ? "WARN" : "PASS",
       authoritiesCited: ["45 CFR 164.312(a)(2)(ii)", "NIST SP 800-53 Rev. 5 CP/PE", "NERC CIP-007"],
     });
   }
