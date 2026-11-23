@@ -267,6 +267,112 @@ export const DOD_IC_POLICY_REGISTRY: Record<string, DodIcPolicyRecord> = {
     distinctBoundaryNote:
       "SCAP automated scans cover only a subset of STIG checks; manual STIG review and documented SCA verification remain required before closing findings or issuing ATO recommendations.",
   },
+  "DOD-ZT-STRATEGY-2022": {
+    id: "DOD-ZT-STRATEGY-2022",
+    jurisdiction: "DOD",
+    title: "DoD Zero Trust Strategy & Capability Execution Roadmap",
+    version: "November 2022 Issuance",
+    effectiveDate: "2022-11-22",
+    supersededVersion: null,
+    issuingAuthority: "DoD Chief Information Officer (DoD CIO)",
+    url: "https://dodcio.defense.gov/Zero-Trust/",
+    classification: "UNCLASSIFIED",
+    scope:
+      "Establishes the DoD Zero Trust Architecture across 7 Pillars (User, Device, Applications & Workloads, Data, Network & Environment, Automation & Orchestration, Visibility & Analytics), 45 Capabilities, and 152 Activities across Target Level (91 activities mandatory by FY 2027) and Advanced Level (61 activities).",
+    keyRequirements: [
+      "91 Target Level Zero Trust activities across 7 Pillars and 45 Capabilities mandated across DoD Components by the end of FY 2027.",
+      "Eliminate implicit network trust via continuous Policy Decision Point (PDP) / Policy Enforcement Point (PEP) evaluation, microsegmentation, and mTLS.",
+      "Bind User phishing-resistant identity (DoDI 8520.03), Device health/EDR posture, Data tagging/encryption, and centralized SIEM/SOAR visibility into access decisions.",
+    ],
+    exceptions: "Advanced Level (61 additional activities, 152 total) represents the post-Target FY 2032 maturation tier.",
+    distinctBoundaryNote:
+      "DoD Zero Trust uses 7 Pillars and 91 Target / 61 Advanced (152 total) activities with a mandatory FY 2027 Target deadline; do not conflate DoD Target compliance with CISA ZTMM v2.0's 5-pillar civilian maturity stages.",
+  },
+  "DODI-8520.02": {
+    id: "DODI-8520.02",
+    jurisdiction: "DOD",
+    title: "Public Key Infrastructure (PKI) and Public Key (PK) Enabling",
+    version: "May 18, 2023 Issuance",
+    effectiveDate: "2023-05-18",
+    supersededVersion: "DoDI 8520.02 (May 24, 2011)",
+    issuingAuthority: "DoD Chief Information Officer (DoD CIO)",
+    url: "https://www.esd.whs.mil/DD/",
+    classification: "UNCLASSIFIED",
+    scope:
+      "Governs DoD Public Key Infrastructure (PKI) issuance, trust anchor validation, certificate path verification, real-time revocation checking (OCSP/CRL), Non-Person Entity (NPE) service/device certificates, and PK-enabled applications.",
+    keyRequirements: [
+      "Strict certificate path validation anchored to authorized DoD Root CAs / ECA / approved Federal PKI cross-certified trust anchors.",
+      "Mandatory real-time certificate revocation verification via OCSP and/or current CRLs configured to fail closed when revocation status indicates revoked or unverified.",
+      "Issuance and lifecycle management of Non-Person Entity (NPE) certificates for workloads, network devices, and mTLS east-west service authentication.",
+      "Cryptographic operations performed exclusively inside FIPS 140-validated modules.",
+    ],
+    exceptions: "Disconnected/DDIL tactical environments require pre-positioned CRL/responder caching approved by the DoD AO rather than blind fail-open overrides.",
+    distinctBoundaryNote:
+      "Disabling OCSP/CRL checks or configuring soft-fail / fail-open revocation validation violates DoDI 8520.02 because revoked or compromised certificates continue to authenticate.",
+  },
+  "DODI-8520.03": {
+    id: "DODI-8520.03",
+    jurisdiction: "DOD",
+    title: "Identity Authentication for Information Systems",
+    version: "May 19, 2023 Issuance",
+    effectiveDate: "2023-05-19",
+    supersededVersion: "DoDI 8520.03 (May 13, 2011)",
+    issuingAuthority: "DoD Chief Information Officer (DoD CIO)",
+    url: "https://www.esd.whs.mil/DD/",
+    classification: "UNCLASSIFIED",
+    scope:
+      "Establishes mandatory authentication assurance policies across DoD information systems, requiring phishing-resistant hardware credentials (CAC, PIV, DoD PKI ALT tokens, or approved FIDO2), strict privileged account separation, and elimination of reusable password-only / SMS MFA.",
+    keyRequirements: [
+      "Phishing-resistant hardware MFA (CAC, PIV, DoD PKI ALT token, or approved FIDO2) required for interactive network access and privileged access.",
+      "Privileged administrators MUST use dedicated, separate administrative accounts bound to privileged ALT tokens rather than reusing standard daily user CAC credentials.",
+      "Passwords, SMS OTP codes, email tokens, and unassisted static SSH keys without upstream hardware MFA enforcement are insufficient.",
+    ],
+    exceptions: "Mission/technical exceptions require documented compensating controls, AO risk acceptance, and tracked POA&M milestones.",
+    distinctBoundaryNote:
+      "SMS/OTP, email codes, and unassisted static SSH keys or passwords do NOT satisfy DoDI 8520.03 phishing-resistant hardware MFA requirements.",
+  },
+  "NSM-8": {
+    id: "NSM-8",
+    jurisdiction: "FEDERAL",
+    title: "National Security Memorandum 8 — Improving the Cybersecurity of National Security, DoD, and IC Systems",
+    version: "January 19, 2022 Issuance",
+    effectiveDate: "2022-01-19",
+    supersededVersion: null,
+    issuingAuthority: "The White House (National Manager for NSS: NSA)",
+    url: "https://www.whitehouse.gov/",
+    classification: "UNCLASSIFIED",
+    scope:
+      "Establishes mandatory cybersecurity modernization requirements across all National Security Systems (NSS) operated by DoD, the Intelligence Community, and federal agencies, designating the NSA Director as National Manager for NSS.",
+    keyRequirements: [
+      "Mandatory multifactor authentication (MFA) and data-at-rest / data-in-transit encryption across all National Security Systems.",
+      "Accelerated Zero Trust Architecture implementation aligned to NIST SP 800-207 and CNSS directives.",
+      "Endpoint Detection and Response (EDR) coverage, standardized event logging, and formal National Manager (NSA) exception governance.",
+    ],
+    exceptions: "Mission-unique NSS exceptions require formal Agency Head / National Manager authorization.",
+    distinctBoundaryNote:
+      "NSM-8 governs NSS across DoD and the IC under NSA National Manager authority; civilian FCEB agencies follow EO 14028 / OMB M-22-09.",
+  },
+  "CISA-ZTMM-2.0-OMB-M22-09": {
+    id: "CISA-ZTMM-2.0-OMB-M22-09",
+    jurisdiction: "FEDERAL",
+    title: "CISA Zero Trust Maturity Model v2.0, OMB M-22-09 & FIPS 201-3",
+    version: "CISA ZTMM v2.0 (Apr 2023) / OMB M-22-09 (Jan 26, 2022) / FIPS 201-3 (Jan 2022)",
+    effectiveDate: "2023-04-11",
+    supersededVersion: "CISA ZTMM v1.0 (2021)",
+    issuingAuthority: "CISA / OMB / NIST",
+    url: "https://www.cisa.gov/zero-trust-maturity-model",
+    classification: "UNCLASSIFIED",
+    scope:
+      "Establishes federal civilian Zero Trust requirements across 5 Pillars (Identity, Devices, Networks, Applications & Workloads, Data), 3 Cross-Cutting Capabilities (Visibility & Analytics, Automation & Orchestration, Governance), 4 maturity stages (Traditional, Initial, Advanced, Optimal), and FIPS 201-3 PIV authentication.",
+    keyRequirements: [
+      "Phishing-resistant MFA (PIV / WebAuthn-FIDO2 per FIPS 201-3) for enterprise identities and privileged roles.",
+      "Complete device inventory/telemetry, encrypted/isolated network traffic, continuous application authorization, and automated data categorization/DLP.",
+      "Architecture grounded in NIST SP 800-207 Policy Decision Point (PDP) and Policy Enforcement Point (PEP) principles.",
+    ],
+    exceptions: "Applicable directly to civilian FCEB agencies via OMB M-22-09; cross-walked by Noctis alongside DoD's 7-Pillar Strategy.",
+    distinctBoundaryNote:
+      "CISA ZTMM v2.0 & OMB M-22-09 establish federal civilian Zero Trust baselines; DoD Components must meet DoD's 7-Pillar Target FY 2027 roadmap and IC elements must meet ODNI ICD 503 Zero Trust mandates.",
+  },
 };
 
 export function lookupDodIcPolicy(id: string): DodIcPolicyRecord | null {
@@ -298,6 +404,21 @@ export function searchDodIcPolicies(question: string): DodIcPolicyRecord[] {
   }
   if (/\b(?:disa\s+stig|stig\b|cci-\d{6}|scap\b|xccdf|\.ckl\b|checklist|cat\s*(?:i|ii|iii|1|2|3)\b)\b/i.test(q)) {
     hits.push(DOD_IC_POLICY_REGISTRY["DISA-STIG-CCI"]!);
+  }
+  if (/\b(?:zero\s+trust|7[- ]?pillars?|fy\s*2027|target\s+level\s+activit|microsegment|pdp|pep|800-207)\b/i.test(q)) {
+    hits.push(DOD_IC_POLICY_REGISTRY["DOD-ZT-STRATEGY-2022"]!);
+  }
+  if (/\b(?:dodi?\s*8520\.02|dod\s+pki|\bpki\b|ocsp\b|\bcrl\b|revocation|npe\s+cert|mtls|root\s+ca)\b/i.test(q)) {
+    hits.push(DOD_IC_POLICY_REGISTRY["DODI-8520.02"]!);
+  }
+  if (/\b(?:dodi?\s*8520\.03|\bicam\b|\bcac\b|\bpiv\b|alt\s+token|alternate\s+logon|fips\s*201|privileged\s+access|\bpam\b|\bjit\b|phishing[- ]resistant)\b/i.test(q)) {
+    hits.push(DOD_IC_POLICY_REGISTRY["DODI-8520.03"]!);
+  }
+  if (/\b(?:nsm[- ]?8|national\s+security\s+memorandum\s*8|national\s+manager\s+for\s+nss)\b/i.test(q)) {
+    hits.push(DOD_IC_POLICY_REGISTRY["NSM-8"]!);
+  }
+  if (/\b(?:ztmm|cisa\s+zero\s+trust|omb\s+m-?22-?09|m-22-09|fips\s*201-?3|800-207)\b/i.test(q)) {
+    hits.push(DOD_IC_POLICY_REGISTRY["CISA-ZTMM-2.0-OMB-M22-09"]!);
   }
   if (/\b(?:icd\s*503|ic\s+rmf|ic\s+ie|ic\s+reciproc|ic\s+ato|ic\s+cloud|ic\s+overlay|intelligence\s+community\s+security)\b/i.test(q)) {
     hits.push(DOD_IC_POLICY_REGISTRY["ICD-503"]!);

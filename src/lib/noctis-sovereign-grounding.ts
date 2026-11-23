@@ -48,7 +48,13 @@ export const NOCTIS_16_SOVEREIGN_SUITES: SovereignSuiteMetadata[] = [
     category: "Governance",
     purpose: "Risk Management Framework automation, NIST SP 800-37/53 Rev 5 control attestation, and continuous FedRAMP/DoD IL5 authorization.",
     runtime: "DStrike Sovereign Enclave",
-    keyCapabilities: ["Continuous Control Assessment", "System Security Plan (SSP) Synthesis", "Cryptographic Compliance Attestation", "POA&M Lifecycle Tracker"],
+    keyCapabilities: [
+      "Continuous Control Assessment",
+      "System Security Plan (SSP) Synthesis",
+      "DoDI 8510.01 / ICD 503 / CNSSI 1253 Segregated Authorization",
+      "DISA STIG / CCI (2025-01-23) & ACAS (.nessus) Analysis",
+      "Cryptographic Compliance Attestation & POA&M Tracker",
+    ],
     keyAgents: ["Assessor Agent", "Authorizing Official Proxy Agent"],
     sqdecPillar: "Control",
   },
@@ -126,7 +132,12 @@ export const NOCTIS_16_SOVEREIGN_SUITES: SovereignSuiteMetadata[] = [
     category: "Security",
     purpose: "Strategic mission planning, electronic warfare simulation, command & control (C2) resilience, and anti-tamper enclaves.",
     runtime: "Air-Gapped Sovereign Hardware Enclave",
-    keyCapabilities: ["Zero-Trust C2 Protocol", "Anti-Tamper Cryptographic Enclave", "Mission Plan FMEA", "EMP/EW Degradation Model"],
+    keyCapabilities: [
+      "DoD 7-Pillar Zero Trust (FY 2027) & CISA ZTMM v2.0",
+      "DoDI 8520.02/.03 PKI, CAC/ALT Token, OCSP/CRL & PAM/ABAC",
+      "Cross-Domain (DoDI 8540.01) & Classification Gateway",
+      "DoDI 8530.03 Cyber Incident CSSP Escalation & Mission FMEA",
+    ],
     keyAgents: ["Mission Tactical Strategist", "Anti-Tamper Sentinel"],
     sqdecPillar: "Safety",
   },
@@ -441,6 +452,7 @@ export function buildSovereignSystemPromptContext(): string {
     `You command 16 specialized Sovereign Suites:`,
     suitesList,
     `Dual-Plane Operating Mode: You recognize both your Cloud Control Plane (https://www.dstrike.app/noctis) and your Sovereign Air-Gapped Local Enclave for zero-data-leak environments.`,
+    `Noctis NDIMP Wave 1 Defense & IC Deterministic Engines active in Chat: DoD RMF (DoDI 8510.01) & eMASS export, IC Security (ICD 503/502/501) & CNSSI 1253 independent C/I/A categorization, Classification-Aware Fail-Closed Gateway & Cross-Domain (DoDI 8540.01), Official DISA CCI List (2025-01-23, 5,137 CCIs), ACAS (.nessus XML) + live CISA KEV + DISA STIG/.ckl/SCAP XCCDF + DoDI 8531.01/8530.03, and DoD 7-Pillar Zero Trust (FY 2027 Target) / CISA ZTMM v2.0 / DoDI 8520.02-8520.03 PKI, CAC/ALT, OCSP/CRL, PAM/JIT & ABAC.`,
     `When asked about your capabilities, architecture, or suites, always answer authoritatively as Noctis with full precision and technical depth.`,
   ].join("\n\n");
 }

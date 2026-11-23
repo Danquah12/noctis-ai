@@ -1,17 +1,20 @@
 /**
- * Noctis Defense & IC Neuro-Symbolic Reasoning Engine (NDIMP Wave 1 — Steps 1 & 2)
+ * Noctis Defense & IC Neuro-Symbolic Reasoning Engine (NDIMP Wave 1 — Steps 1–3)
  *
  * Orchestrates:
  *   Gate 0: Classification & Boundary Guard BEFORE any external LLM dispatch
- *   Stage 1: Deterministic DoDI 8510.01 / 8531.01 / 8530.03 / 8540.01 / CNSSI 1253 / ICD 503-501 / DISA CCI-STIG-ACAS Rules
+ *   Stage 1: Deterministic DoDI 8510.01 / 8531.01 / 8530.03 / 8540.01 / 8520.02 / 8520.03 /
+ *            DoD ZT 7-Pillar Strategy / NSM-8 / CISA ZTMM v2.0 / CNSSI 1253 / ICD 503-501 / DISA CCI-STIG-ACAS Rules
+ *            + Live NDIMP Platform Inventory & SQL EXPL-... Trace Replay
  *   Stage 2: Constrained Synthesis (temperature: 0.0) + Deterministic Offline Fallback
- *   Stage 3: Anti-Conflation & Anti-Fabrication Verifier + 1-Shot Repair + SQL EXPLANATION Persistence
+ *   Stage 3: Anti-Conflation, Anti-Fabrication & ICAM/PKI Safety Verifier + 1-Shot Repair + SQL EXPLANATION Persistence
  */
 
 import { parseThinkEnvelope } from "../noctis-engine-registry.ts";
 import { fetchLiveCisaKevCatalog } from "../rmf-v2/cyber-intelligence.ts";
-import { createExplanationBundle, type ExplanationBundle } from "../rmf-v2/graph-and-trace.ts";
-import { saveRmfArtifact } from "../rmf-v2/persistence.server.ts";
+import { type ZtPillarScore } from "../rmf-v2/cyber-intelligence.ts";
+import { createExplanationBundle, replayExplanationBundle, type ExplanationBundle } from "../rmf-v2/graph-and-trace.ts";
+import { getRmfExplanationArtifactById, saveRmfArtifact } from "../rmf-v2/persistence.server.ts";
 import { sha256Sync } from "../universal-crypto.ts";
 import {
   evaluateClassificationGate,
@@ -28,7 +31,7 @@ import {
   type ImpactLevel,
 } from "./dod-rmf-engine.ts";
 import { evaluateIcd501SharingGovernance, evaluateIcd503Authorization, evaluateIcReciprocity } from "./ic-security-engine.ts";
-import { DOD_IC_POLICY_REGISTRY, searchDodIcPolicies, type DodIcPolicyRecord } from "./policy-registry.ts";
+import { DOD_IC_POLICY_REGISTRY, listDodIcPolicies, searchDodIcPolicies, type DodIcPolicyRecord } from "./policy-registry.ts";
 import {
   evaluateDodi8530IncidentReporting,
   evaluateDodi8531VulnerabilityCompliance,
@@ -43,6 +46,16 @@ import {
   type DisaCciRecord,
   type StigChecklistAnalysisResult,
 } from "./stig-acas-engine.ts";
+import {
+  evaluateDodIcamPkiAuthentication,
+  evaluateDodZeroTrust7Pillar,
+  evaluatePrivilegedAccessAndAbac,
+  getDodZeroTrustCatalog,
+  type DodCredentialType,
+  type DodIcamPkiResult,
+  type DodPamAbacResult,
+  type DodZeroTrustAssessmentResult,
+} from "./zero-trust-icam-engine.ts";
 
 export interface DodIcModelChatFn {
   (
@@ -74,11 +87,173 @@ export function isDodIcQuery(question: string): boolean {
   if (!q) return false;
   return (
     /<(?:NessusClientData_v2|ReportHost|CHECKLIST|STIG_INFO|(?:[a-zA-Z0-9_.-]+:)?rule-result)\b/i.test(q) ||
-    /\b(?:CCI-\d{4,6}|DISA\s+CCIs?|CCIs?\b[^.\n]{0,35}(?:NIST|800-53|STIG|control|map)|dodi?\s*8510(?:\.01)?|dodi?\s*8531(?:\.01)?|dodi?\s*8530(?:\.03)?|dodi?\s*8540(?:\.01)?|dodm\s*5200(?:\.01)?|eo\s*13526|dod\s+rmf|dod\s+ato|dod\s+reciproc\w*|emass\b|iatt\b|dato\b|atowc\b|icd\s*50[123]|icd\s*705|ic\s+ie\b|ic\s+rmf|ic\s+ato|ic\s+reciproc\w*|ic\s+cloud|ic\s+security|odni\b|cnssi?\s*1253|national\s+security\s+system|nss\s+categoriz\w*|cross[- ]?domain\s+(?:solution|transfer|guard|governance)|ncdsmo\b|ts\/?sci\b|\bscif\b|disa\s+stig\b|stig\s+(?:cat\s*(?:i|ii|iii|1|2|3)|check\w*|checklist\w*|finding\w*|rule\w*|viewer|evaluat\w*|compliance|waiver|v-\d+)|scap\b|xccdf\b|\.ckl\b|acas\b|nessus\b|iava\b|iavm\b|iavb\b|cssp\b|jfhq-?dodin|credentialed\s+scan\b|v-\d{5,7}\b|sv-\d{5,7}r\d+_rule\b|classified\s+(?:spillage|system|systems|enclave|handling|payload|cable|material)|commercial\s+cloud[^.\n]{0,40}classified|classified[^.\n]{0,40}commercial\s+cloud)\b/i.test(
+    /\b(?:replay|verify|inspect|show)\s+(?:explanation\s+)?(?:trace\s+)?EXPL-[A-Z0-9]+\b/i.test(q) ||
+    /\b(?:ndimp\b|(?:dod|ic)\s+(?:engines?|capabilities|policies|roadmap|status)\b[^.\n]{0,40}\b(?:noctis|live|active|loaded|list|show|what|right\s+now))\b/i.test(
+      q,
+    ) ||
+    /\b(?:CCI-\d{4,6}|DISA\s+CCIs?|CCIs?\b[^.\n]{0,35}(?:NIST|800-53|STIG|control|map)|dodi?\s*8510(?:\.01)?|dodi?\s*8531(?:\.01)?|dodi?\s*8530(?:\.03)?|dodi?\s*8540(?:\.01)?|dodi?\s*8520(?:\.0[23])?|dodm\s*5200(?:\.01)?|eo\s*13526|nsm[- ]?8|omb\s+m-?22-?09|cisa\s+ztmm|\bztmm\b|fips\s*201(?:-?3)?|800-207|dod\s+zero\s+trust|zero\s+trust\b[^.\n]{0,50}(?:pillar|fy\s*2027|target|advanced|dod|ic|icd|nsm|ztmm|cisa|icam|microsegment|pdp|pep|pam|jit|abac|cac|piv|pki)|(?:7[- ]?pillars?|fy\s*2027)[^.\n]{0,40}zero\s+trust|dod\s+rmf|dod\s+ato|dod\s+reciproc\w*|emass\b|iatt\b|dato\b|atowc\b|icd\s*50[123]|icd\s*705|ic\s+ie\b|ic\s+rmf|ic\s+ato|ic\s+reciproc\w*|ic\s+cloud|ic\s+security|odni\b|cnssi?\s*1253|national\s+security\s+system|nss\s+categoriz\w*|cross[- ]?domain\s+(?:solution|transfer|guard|governance)|ncdsmo\b|ts\/?sci\b|\bscif\b|disa\s+stig\b|stig\s+(?:cat\s*(?:i|ii|iii|1|2|3)|check\w*|checklist\w*|finding\w*|rule\w*|viewer|evaluat\w*|compliance|waiver|v-\d+)|scap\b|xccdf\b|\.ckl\b|acas\b|nessus\b|iava\b|iavm\b|iavb\b|cssp\b|jfhq-?dodin|credentialed\s+scan\b|v-\d{5,7}\b|sv-\d{5,7}r\d+_rule\b|\bicam\b|\bcac\b(?:\s*(?:\/|\bor\b|\band\b|\bcard|\btoken|\bauth|\blogon|\bmfa|\bpiv|\bwithout))|\bdaily\s+cac\b|\buser\s+cac\b|\bpiv\b(?:\s*(?:card|token|auth|mfa|fips|cac))|alt\s+token|alternate\s+logon\s+token|dod\s+pki|pki\s+enabl\w*|\bocsp\b|\bcrl\b(?:\s*(?:check|revocation|fail|valid|ocsp))|revocation\s+fail[- ]?(?:open|closed)|soft[- ]?fail\s+ocsp|npe\s+cert\w*|ic-?pe\b|standing\s+(?:privileged|domain\s+admin|admin)\s+(?:access|rights|privileges)|microsegmentation|flat\s+network[^.\n]{0,40}(?:zero\s+trust|microsegment|mtls|dod|ic)|classified\s+(?:spillage|system|systems|enclave|handling|payload|cable|material)|commercial\s+cloud[^.\n]{0,40}classified|classified[^.\n]{0,40}commercial\s+cloud)\b/i.test(
       q,
     ) ||
     (/\b(?:acas|nessus|plugin|credential\w*|scan)\b/i.test(q) && /\b(?:19506|21745|110385|104410|24786|117885)\b/.test(q))
   );
+}
+
+interface Step3Extracted {
+  ztAssessment: DodZeroTrustAssessmentResult | null;
+  icamAssessment: DodIcamPkiResult | null;
+  pamAbacAssessment: DodPamAbacResult | null;
+}
+
+function extractStep3FromText(q: string, assessmentMode: "SCENARIO_ASSUMPTION" | "FORMAL_EVIDENCE_AUDIT", evidenceVerified: boolean): Step3Extracted {
+  let ztAssessment: DodZeroTrustAssessmentResult | null = null;
+  let icamAssessment: DodIcamPkiResult | null = null;
+  let pamAbacAssessment: DodPamAbacResult | null = null;
+
+  const parseScore = (pattern: RegExp): ZtPillarScore | null => {
+    const m = q.match(pattern);
+    if (!m) return null;
+    const n = Number(m[1]);
+    if (n >= 4) return 4;
+    if (n >= 3) return 3;
+    if (n >= 2) return 2;
+    return 1;
+  };
+
+  // Zero Trust 7-Pillar extraction
+  const hasZtIntent =
+    /\b(?:zero\s+trust|7[- ]?pillars?|fy\s*2027|ztmm|nsm[- ]?8|m-?22-?09|800-207|microsegment|pdp\/pep)\b/i.test(q) &&
+    /\b(?:evaluat\w*|assess\w*|score|stage|pillar|flat\s+network|no\s+microsegment\w*|without\s+microsegment\w*|no\s+edr|unencrypted|no\s+phishing|sms|static\s+ssh|fy\s*2027|target|ready|readiness)\b/i.test(
+      q,
+    );
+
+  if (hasZtIntent) {
+    const userScore = parseScore(/\buser\s*(?:pillar\s*)?(?:score|=|:)?\s*([1-4])\b/i);
+    const deviceScore = parseScore(/\bdevice\s*(?:pillar\s*)?(?:score|=|:)?\s*([1-4])\b/i);
+    const networkScore = parseScore(/\bnetwork\s*(?:pillar\s*)?(?:score|=|:)?\s*([1-4])\b/i);
+    const applicationsScore = parseScore(/\bapplications?\s*(?:pillar\s*)?(?:score|=|:)?\s*([1-4])\b/i);
+    const dataScore = parseScore(/\bdata\s*(?:pillar\s*)?(?:score|=|:)?\s*([1-4])\b/i);
+    const visibilityScore = parseScore(/\bvisibility\s*(?:pillar\s*)?(?:score|=|:)?\s*([1-4])\b/i);
+    const automationScore = parseScore(/\bautomation\s*(?:pillar\s*)?(?:score|=|:)?\s*([1-4])\b/i);
+
+    const noMfa = /\b(?:no|without|lacks?|missing)\s+phishing[- ]?resistant\s+mfa\b|\b(?:sms|otp|password[- ]only)\b/i.test(q);
+    const hasMfa = /\b(?:phishing[- ]?resistant\s+mfa\s+(?:enforced|active|enabled)|cac|piv|alt\s+token|fido2)\b/i.test(q) && !noMfa;
+    const noMicro = /\b(?:flat\s+network|no\s+microsegment\w*|without\s+microsegment\w*|lacks?\s+microsegment\w*)\b/i.test(q);
+    const hasMicro = /\bmicrosegment\w*\s+(?:enforced|active|enabled)\b/i.test(q) && !noMicro;
+    const noEdr = /\b(?:no\s+edr|without\s+edr|unmanaged\s+devices?)\b/i.test(q);
+    const noDataEnc = /\b(?:unencrypted\s+data|no\s+data\s+tagging|no\s+dlp)\b/i.test(q);
+    const noPdp = /\b(?:no\s+pdp|without\s+pdp)\b/i.test(q);
+    const noSiem = /\b(?:no\s+siem|without\s+siem|no\s+soar)\b/i.test(q);
+
+    ztAssessment = evaluateDodZeroTrust7Pillar({
+      isNationalSecuritySystem: /\b(?:nss|national\s+security\s+system|nsm[- ]?8|secret|ts\/?sci|classified)\b/i.test(q),
+      userScore,
+      deviceScore,
+      networkScore,
+      applicationsScore,
+      dataScore,
+      visibilityScore,
+      automationScore,
+      phishingResistantMfaEnforced: noMfa ? false : hasMfa ? true : null,
+      devicePostureAndEdrVerified: noEdr ? false : /\bedr\s+(?:deployed|verified|active)\b/i.test(q) ? true : null,
+      microsegmentationAndMtlsEnforced: noMicro ? false : hasMicro ? true : null,
+      dataTaggingAndEncryptionEnforced: noDataEnc ? false : null,
+      continuousPdpPepEnforced: noPdp ? false : null,
+      centralizedSiemsAndSoarActive: noSiem ? false : null,
+      assessmentMode,
+      evidenceVerified,
+    });
+  }
+
+  // ICAM / PKI / CAC / ALT / OCSP-CRL extraction
+  const hasIcamIntent =
+    /\b(?:dodi?\s*8520|\bicam\b|\bcac\b|\bpiv\b|alt\s+token|alternate\s+logon|dod\s+pki|\bocsp\b|\bcrl\b|fips\s*201)\b/i.test(q) &&
+    /\b(?:evaluat\w*|assess\w*|fail[- ]?open|soft[- ]?fail|fail[- ]?closed|without\s+a?\s*separate\s+alt|no\s+alt|daily\s+cac|shared\s+cac|sms|otp|password|static\s+ssh|disabled|privileged|admin|revocation|mfa|check)\b/i.test(
+      q,
+    );
+
+  if (hasIcamIntent) {
+    const credentialType: DodCredentialType | null = /\b(?:sms|otp|email\s+code)\b/i.test(q)
+      ? "SMS_OTP"
+      : /\bpassword[- ]?only\b/i.test(q)
+      ? "PASSWORD_ONLY"
+      : /\bstatic\s+ssh\s+key\b/i.test(q)
+      ? "STATIC_SSH_KEY"
+      : /\b(?:alt\s+token|alternate\s+logon)\b/i.test(q) && !/\b(?:no|without|lacks?|missing)\s+(?:a\s+)?(?:separate\s+)?(?:privileged\s+)?alt\s+token\b/i.test(q)
+      ? "DOD_PKI_ALT_TOKEN"
+      : /\bfido2\b/i.test(q)
+      ? "FIDO2_HARDWARE"
+      : /\bpiv\b/i.test(q)
+      ? "PIV"
+      : /\bcac\b/i.test(q)
+      ? "CAC"
+      : /\bnpe\b/i.test(q)
+      ? "NPE_CERT"
+      : null;
+
+    const isPrivilegedAccount = /\b(?:privileged|admin|administrator|domain\s+admin|root)\b/i.test(q);
+    const missingAlt =
+      /\b(?:without|no|lacks?|missing)\s+(?:a\s+)?(?:separate\s+)?(?:privileged\s+)?(?:alt\s+token|alternate\s+logon|privileged\s+account)\b|\bdaily\s+(?:user\s+)?cac\b[^.\n]{0,40}\b(?:admin|privileged|without\s+alt)\b/i.test(
+        q,
+      );
+    const hasAlt = /\bseparate\s+(?:admin|privileged)\s+account[^.\n]{0,40}alt\s+token\b/i.test(q) && !missingAlt;
+
+    const ocspDisabled = /\b(?:ocsp|crl|revocation)\s+(?:is\s+)?(?:disabled|off|skipped|bypassed|not\s+checked)\b/i.test(q);
+    const ocspFailOpen = /\b(?:ocsp|crl|revocation)\b[^.\n]{0,40}\b(?:fail[- ]?open|soft[- ]?fail)\b|\b(?:fail[- ]?open|soft[- ]?fail)\s+(?:ocsp|crl)\b/i.test(
+      q,
+    );
+    const ocspFailClosed = /\b(?:ocsp|crl|revocation)\b[^.\n]{0,40}\bfail[- ]?closed\b/i.test(q) && !ocspFailOpen && !ocspDisabled;
+
+    icamAssessment = evaluateDodIcamPkiAuthentication({
+      credentialType,
+      isPrivilegedAccount,
+      separatePrivilegedAccountAndAltToken: missingAlt ? false : hasAlt ? true : null,
+      ocspOrCrlRevocationChecked: ocspDisabled ? false : ocspFailOpen || ocspFailClosed ? true : null,
+      revocationFailClosed: ocspFailOpen ? false : ocspFailClosed ? true : null,
+      dodRootCaChainVerified: /\b(?:untrusted|self[- ]signed)\s+(?:root|ca)\b/i.test(q)
+        ? false
+        : /\bdod\s+root\s+ca\s+verified\b/i.test(q)
+        ? true
+        : null,
+      fips140ValidatedCrypto: /\bnon[- ]?fips\b/i.test(q) ? false : null,
+      upstreamBastionEnforcesHardwareMfa: /\bupstream\s+bastion[^.\n]{0,30}(?:hardware|cac|piv)\b/i.test(q) ? true : null,
+      assessmentMode,
+      evidenceVerified,
+    });
+  }
+
+  // PAM / JIT / ABAC / Microsegmentation extraction
+  const hasPamAbacIntent =
+    /\b(?:standing\s+(?:privileged|domain\s+admin|admin)|pam\b|jit\b|just[- ]in[- ]time|abac\b|ic-?pe\b|rbac[- ]only|east[- ]west|microsegment\w*|npe\s+mtls)\b/i.test(
+      q,
+    ) &&
+    /\b(?:evaluat\w*|assess\w*|standing|flat\s+network|no\s+microsegment\w*|without\s+microsegment\w*|no\s+jit|no\s+abac|rbac[- ]only|no\s+mtls|without\s+mtls|enforce|check)\b/i.test(
+      q,
+    );
+
+  if (hasPamAbacIntent) {
+    const standingBad = /\bstanding\s+(?:privileged|domain\s+admin|admin)\b/i.test(q) && !/\b(?:zero|no|eliminated)\s+standing\b/i.test(q);
+    const standingGood = /\b(?:zero|no|eliminated)\s+standing\b/i.test(q);
+    const jitBad = /\b(?:no|without|lacks?)\s+(?:jit|session\s+recording)\b/i.test(q);
+    const rbacOnly = /\brbac[- ]only\b|\bwithout\s+abac\b|\bno\s+abac\b/i.test(q);
+    const abacGood = /\babac\b[^.\n]{0,40}\b(?:enforced|active)\b/i.test(q) && !rbacOnly;
+    const microBad = /\b(?:flat\s+network|no\s+microsegment\w*|without\s+microsegment\w*)\b/i.test(q);
+    const microGood = /\bmicrosegment\w*\s+(?:enforced|active)\b/i.test(q) && !microBad;
+    const mtlsBad = /\b(?:no|without|unauthenticated)\s+(?:east[- ]west\s+)?(?:npe\s+)?mtls\b/i.test(q);
+
+    pamAbacAssessment = evaluatePrivilegedAccessAndAbac({
+      standingPrivilegedAccessEliminated: standingBad ? false : standingGood ? true : null,
+      jitApprovalAndSessionRecording: jitBad ? false : /\bjit\s+approval\b/i.test(q) ? true : null,
+      rbacOnlyWithoutAttributeChecks: rbacOnly ? true : null,
+      abacClassificationAttributesEnforced: rbacOnly ? false : abacGood ? true : null,
+      eastWestMicrosegmentationEnforced: microBad ? false : microGood ? true : null,
+      workloadMtlsWithNpeCerts: mtlsBad ? false : null,
+      isIcOrClassifiedEnvironment: /\b(?:ic\b|ic-?pe|icd\s*50[13]|secret|ts\/?sci|classified|noforn)\b/i.test(q),
+      assessmentMode,
+      evidenceVerified,
+    });
+  }
+
+  return { ztAssessment, icamAssessment, pamAbacAssessment };
 }
 
 export function extractAndEvaluateDodIcRulesFromText(question: string): DodIcRuleResult[] {
@@ -288,6 +463,12 @@ export function extractAndEvaluateDodIcRulesFromText(question: string): DodIcRul
     );
   }
 
+  // 8. Step 3: Zero Trust 7-Pillar, DoDI 8520.02/8520.03 PKI/ICAM & PAM/JIT/ABAC
+  const step3 = extractStep3FromText(q, assessmentMode, evidenceVerified);
+  if (step3.ztAssessment) results.push(step3.ztAssessment.ruleResult);
+  if (step3.icamAssessment) results.push(step3.icamAssessment.ruleResult);
+  if (step3.pamAbacAssessment) results.push(step3.pamAbacAssessment.ruleResult);
+
   return results;
 }
 
@@ -297,10 +478,20 @@ export interface DodIcAsyncContext {
   controlCciMatches: { controlId: string; matches: DisaCciControlSummary[] }[];
   acasAnalysis: AcasAnalysisResult | null;
   stigAnalysis: StigChecklistAnalysisResult | null;
+  ztAssessment: DodZeroTrustAssessmentResult | null;
+  icamAssessment: DodIcamPkiResult | null;
+  pamAbacAssessment: DodPamAbacResult | null;
+  ndimpInventoryRequested: boolean;
 }
 
 export async function extractDodIcContextAsync(question: string): Promise<DodIcAsyncContext> {
   const q = (question || "").trim();
+  const evidenceVerified = /\b(?:verified\s+(?:audit\s+)?evidence|attached\s+(?:audit\s+)?artifacts?|immutable\s+logs?\s+attached|sha-?256\s*[:=])\b/i.test(
+    q,
+  );
+  const assessmentMode = evidenceVerified ? "FORMAL_EVIDENCE_AUDIT" : "SCENARIO_ASSUMPTION";
+
+  const step3 = extractStep3FromText(q, assessmentMode, evidenceVerified);
   const rules = extractAndEvaluateDodIcRulesFromText(q);
   const seenRuleIds = new Set(rules.map((r) => r.ruleId));
   const pushUniqueRule = (r: DodIcRuleResult) => {
@@ -310,13 +501,11 @@ export async function extractDodIcContextAsync(question: string): Promise<DodIcA
     }
   };
 
-  const evidenceVerified = /\b(?:verified\s+(?:audit\s+)?evidence|attached\s+(?:audit\s+)?artifacts?|immutable\s+logs?\s+attached|sha-?256\s*[:=])\b/i.test(
-    q,
-  );
-  const assessmentMode = evidenceVerified ? "FORMAL_EVIDENCE_AUDIT" : "SCENARIO_ASSUMPTION";
-
   // 1. Resolve DISA CCIs mentioned in prompt text
   const cciIds = new Set<string>(extractCciIdsFromText(q));
+  if (step3.icamAssessment) {
+    for (const c of step3.icamAssessment.resolvedDisaCcis) cciIds.add(c.cciId);
+  }
   const controlCciMatches: { controlId: string; matches: DisaCciControlSummary[] }[] = [];
   if (/\bCCIs?\b[^.\n]{0,40}\b(?:map|for|under|of)\b/i.test(q)) {
     const ctrlMatches = [...q.matchAll(/\b([A-Z]{2}-\d+(?:\s*\(\d+\))?)\b/gi)];
@@ -405,12 +594,22 @@ export async function extractDodIcContextAsync(question: string): Promise<DodIcA
     if (rec) resolvedCcis.push(rec);
   }
 
+  const ndimpInventoryRequested =
+    /\b(?:ndimp\b|(?:dod|ic)\s+(?:engines?|capabilities|policies|roadmap|status)\b[^.\n]{0,40}\b(?:noctis|live|active|loaded|list|show|what|right\s+now))\b/i.test(
+      q,
+    ) ||
+    (/\b(?:7\s+pillars?|zero\s+trust\s+pillars?)\b/i.test(q) && /\b(?:what\s+are|list|explain|show)\b/i.test(q));
+
   return {
     rules,
     resolvedCcis,
     controlCciMatches,
     acasAnalysis,
     stigAnalysis,
+    ztAssessment: step3.ztAssessment,
+    icamAssessment: step3.icamAssessment,
+    pamAbacAssessment: step3.pamAbacAssessment,
+    ndimpInventoryRequested,
   };
 }
 
@@ -451,6 +650,34 @@ export function verifyDodIcResponse(
   // Block AI ATO issuance claims
   if (/\bnoctis\s+(?:grants?|issues?|approves?)\s+(?:an?\s+)?(?:ato|iatt|authorization\s+to\s+operate)\b/i.test(draftBody)) {
     violations.push("AI_ATO_CLAIM: Only a designated DoD or IC Authorizing Official (AO) can render an ATO decision.");
+  }
+
+  // Block OCSP/CRL fail-open compliance endorsement
+  if (
+    /\b(?:ocsp|crl|revocation)\b[^.\n]{0,70}\b(?:fail[- ]?open|soft[- ]?fail|disabled)\b[^.\n]{0,70}\b(?:compl(?:ies|iant)|satisf(?:y|ies)|allowed\s+by\s+dodi?\s*8520)\b/i.test(
+      draftBody,
+    ) &&
+    !/\b(?:violates?|fails?\s+(?:dodi|nsm|pki|mfa|the|to)|non[- ]compliant|not\s+compliant|does\s+not\s+(?:comply|satisfy)|prohibited|insufficient)\b/i.test(
+      draftBody,
+    )
+  ) {
+    violations.push(
+      "PKI_REVOCATION_FAIL_OPEN_ENDORSEMENT: Soft-fail / fail-open or disabled OCSP/CRL revocation checking violates DoDI 8520.02 (May 18, 2023).",
+    );
+  }
+
+  // Block SMS/OTP or password-only phishing-resistant MFA claims
+  if (
+    /\b(?:sms|otp|password[- ]only)\b[^.\n]{0,70}\b(?:satisf(?:y|ies)|compl(?:ies|iant)\s+with|meets?)\b[^.\n]{0,70}\b(?:dodi?\s*8520\.03|phishing[- ]resistant|nsm[- ]?8|fips\s*201)\b/i.test(
+      draftBody,
+    ) &&
+    !/\b(?:does\s+not\s+satisfy|fails?\s+(?:dodi|nsm|phishing|mfa|to)|not\s+phishing[- ]resistant|violates?|insufficient|prohibited)\b/i.test(
+      draftBody,
+    )
+  ) {
+    violations.push(
+      "PHISHABLE_MFA_DOD_COMPLIANCE_CLAIM: SMS/OTP or password-only authentication does NOT satisfy DoDI 8520.03 (May 19, 2023), NSM-8, or FIPS 201-3 phishing-resistant MFA.",
+    );
   }
 
   // Block fabricated exploit verification or remediation closure claims on unvalidated scanner/STIG rules
@@ -498,6 +725,21 @@ export function verifyDodIcResponse(
   return { passed: violations.length === 0, violations };
 }
 
+function buildLiveNdimpInventoryMarkdown(): string {
+  const allPolicies = listDodIcPolicies();
+  const cciMeta = getDisaCciManifest();
+  const ztCatalog = getDodZeroTrustCatalog();
+  return [
+    "## Live Noctis NDIMP Architecture Inventory (Wave 1 Steps 1–3)",
+    `- **Authoritative DoD/IC Policy Registry:** **${allPolicies.length} verified public directives** (${allPolicies.map((p) => `\`${p.id}\` [${p.effectiveDate}]`).join(", ")})`,
+    `- **DISA CCI Crosswalk Database:** Version \`${cciMeta.version}\` (**${cciMeta.counts.totalCcis.toLocaleString()} CCIs**, **${cciMeta.counts.rev5MappedCcis.toLocaleString()}** Rev. 5 mappings across **${cciMeta.counts.distinctRev5Controls.toLocaleString()}** controls)`,
+    `- **DoD Zero Trust Strategy Catalog:** **${ztCatalog.summary.pillarsCount} Pillars** · **${ztCatalog.summary.capabilitiesCount} Capabilities** · **${ztCatalog.summary.targetActivities} Target Activities (${ztCatalog.summary.targetDeadline})** + **${ztCatalog.summary.advancedActivities} Advanced** (**${ztCatalog.summary.totalActivities} Total**), crosswalked to CISA ZTMM v2.0`,
+    `- **Live REST API Endpoints (\`/api/v2/dod-ic/*\`):** \`/status\`, \`/policies\`, \`/explanations/:id\`, \`/classification/check\`, \`/cross-domain/evaluate\`, \`/dod-rmf/authorize\`, \`/dod-rmf/reciprocity\`, \`/dod-rmf/emass-package\`, \`/cnssi1253/categorize\`, \`/ic/icd503\`, \`/ic/reciprocity\`, \`/ic/icd501\`, \`/cci/:id\`, \`/cci/by-control/:controlId\`, \`/acas/analyze\`, \`/stig/evaluate\`, \`/vuln/dodi8531\`, \`/incident/dodi8530\`, \`/zero-trust/pillars\`, \`/zero-trust/evaluate\`, \`/icam/evaluate\`, \`/icam/pam-abac\`, \`/investigate\``,
+    `- **7 DoD Zero Trust Pillars:** ${ztCatalog.pillars.map((p) => `**${p.name}** (${p.cisaZtmmCounterpart})`).join(" · ")}`,
+    "",
+  ].join("\n");
+}
+
 export function renderDeterministicDodIcFallback(
   question: string,
   policies: DodIcPolicyRecord[],
@@ -505,16 +747,44 @@ export function renderDeterministicDodIcFallback(
   ctx?: Partial<DodIcAsyncContext>,
 ): string {
   const out: string[] = [];
-  out.push("# Noctis DoD RMF, STIG/CCI, ACAS & IC Security Assessment (NDIMP Wave 1)");
+  out.push("# Noctis DoD RMF, STIG/CCI, ACAS, Zero Trust, ICAM & IC Security Assessment (NDIMP Wave 1)");
   out.push(`**Query Scope:** ${question.trim().slice(0, 220)}\n`);
+
+  if (ctx?.ndimpInventoryRequested) {
+    out.push(buildLiveNdimpInventoryMarkdown());
+  }
+
+  if (ctx?.ztAssessment) {
+    const z = ctx.ztAssessment;
+    out.push(`## DoD Zero Trust 7-Pillar Assessment (${z.framework})`);
+    out.push(
+      `- **Target FY 2027 Readiness:** ${z.targetReadinessPercent ?? "N/A"}% (\`${z.fy2027Status}\`) · **Avg Supplied Score:** ${z.averageSuppliedScore ?? "N/A"}/4 · **NSS / NSM-8:** \`${z.isNationalSecuritySystem}\``,
+    );
+    out.push(
+      `- **DoD 7 Pillars:** ${z.pillarRatings.map((p) => `${p.pillar}: \`${p.stage}${p.score ? ` (${p.score}/4)` : ""}\``).join(" | ")}`,
+    );
+    if (z.cisaZtmmCrosswalk) {
+      out.push(
+        `- **CISA ZTMM v2.0 Crosswalk:** Overall \`${z.cisaZtmmCrosswalk.overallStage}\` (${z.cisaZtmmCrosswalk.averageScore}/4) · Weakest Pillar: **${z.cisaZtmmCrosswalk.weakestPillar}**`,
+      );
+    }
+    out.push("");
+  }
+
+  if (ctx?.icamAssessment) {
+    const ic = ctx.icamAssessment;
+    out.push("## DoD PKI & ICAM Assessment (`DoDI 8520.02` / `DoDI 8520.03`)");
+    out.push(
+      `- **Credential Type:** \`${ic.credentialType || "UNSPECIFIED"}\` · **Privileged Account:** \`${ic.isPrivilegedAccount}\` · **Phishing-Resistant:** \`${String(ic.phishingResistant)}\` · **OCSP/CRL Fail-Closed:** \`${String(ic.revocationFailClosedEnforced)}\``,
+    );
+    out.push("");
+  }
 
   if (ctx?.resolvedCcis && ctx.resolvedCcis.length > 0) {
     const cciMeta = getDisaCciManifest();
     out.push(`## DISA CCI Crosswalk (\`${cciMeta.version}\`, ${cciMeta.counts.totalCcis.toLocaleString()} Official CCIs)`);
     for (const c of ctx.resolvedCcis) {
-      out.push(
-        `- **\`${c.cciId}\`** (${c.type}, status: \`${c.status}\`): ${c.definition}`,
-      );
+      out.push(`- **\`${c.cciId}\`** (${c.type}, status: \`${c.status}\`): ${c.definition}`);
       out.push(
         `  - **NIST SP 800-53 Rev. 5:** ${c.nistRev5Controls.length ? c.nistRev5Controls.map((id) => `\`${id}\`${c.nistControlTitles[id] ? ` (${c.nistControlTitles[id]})` : ""}`).join(", ") : "None mapped"}`,
       );
@@ -608,27 +878,73 @@ export function renderDeterministicDodIcFallback(
   }
 
   out.push(
-    "> **Governance & Accreditation Boundary:** Noctis enforces strict DoD vs. IC reciprocity separation (`DoD ATO != IC ICD 503`), strict classification-aware boundaries, strict separation between raw ACAS/STIG scanner reports and verified remediation rescans, and human Authorizing Official (AO) authority for all ATO/DATO decisions.",
+    "> **Governance & Accreditation Boundary:** Noctis enforces strict DoD vs. IC reciprocity separation (`DoD ATO != IC ICD 503`), strict classification-aware boundaries, strict separation between raw ACAS/STIG scanner reports and verified remediation rescans, fail-closed PKI OCSP/CRL checks, phishing-resistant hardware MFA, and human Authorizing Official (AO) authority for all ATO/DATO decisions.",
   );
   return out.join("\n");
 }
 
 function buildDodIcSystemPrompt(lang: string, shouldThink: boolean): string {
   return [
-    "You are Noctis Defense & Intelligence Community Security Architect (NDIMP Wave 1), strictly grounded in verified public DoD Directives, ODNI Intelligence Community Directives (ICDs), CNSSI 1253, DISA CCI List (2025-01-23), and EO 13526.",
+    "You are Noctis Defense & Intelligence Community Security Architect (NDIMP Wave 1), strictly grounded in verified public DoD Directives, ODNI Intelligence Community Directives (ICDs), CNSSI 1253, DISA CCI List (2025-01-23), DoD Zero Trust Strategy (Nov 2022), DoDI 8520.02/8520.03, NSM-8, CISA ZTMM v2.0, and EO 13526.",
     "",
     shouldThink
-      ? "Begin with a concise `<think>...</think>` block verifying policy effective dates, DoD-vs-IC reciprocity boundaries, CNSSI 1253 C/I/A vectors, DISA CCI crosswalks, and ACAS/STIG epistemic invariants before writing the Markdown response."
+      ? "Begin with a concise `<think>...</think>` block verifying policy effective dates, DoD-vs-IC reciprocity boundaries, CNSSI 1253 C/I/A vectors, DISA CCI crosswalks, ACAS/STIG epistemic invariants, and DoD 7-Pillar Zero Trust / PKI OCSP/CRL fail-closed rules before writing the Markdown response."
       : "Respond concisely with no raw XML tags.",
     "",
     "NON-NEGOTIABLE INVARIANTS:",
     "1. DOD VS. IC DISTINCTION: A DoD ATO (DoDI 8510.01, July 19, 2022) NEVER automatically satisfies an ODNI ICD 503 (Oct 25, 2024) IC IE authorization.",
     "2. CNSSI 1253 VECTORS: Under CNSSI 1253 (July 2022), Confidentiality, Integrity, and Availability remain INDEPENDENT control-selection vectors.",
     "3. CLASSIFICATION BOUNDARY: User clearance and need-to-know NEVER authorize sending classified or TS/SCI data to commercial cloud LLMs or lower-classification enclaves.",
-    "4. SCANNER VS. VALIDATED EVIDENCE: Raw ACAS/Nessus and DISA STIG/.ckl findings are `SCANNER_REPORTED_UNVALIDATED`. NEVER claim raw scanner findings prove independent exploitability or that vulnerabilities are remediated/closed without a verified post-patch credentialed rescan. Credentialed-scan authentication failures (e.g. plugin 21745, 19506=no, 110385) invalidate local compliance assurance.",
-    "5. AUTHORITIES: Cite ONLY exact versions and effective dates present in the Knowledge Packet (`DoDI 8510.01` `2022-07-19`, `DoDI 8531.01` `2020-09-15`, `DoDI 8530.03` `2023-08-09`, `ICD 503` `2024-10-25`, `ICD 502` `2011-03-11`, `ICD 501` `2009-01-21`, `CNSSI 1253` `2022-07`, `DISA CCI` `2025-01-23`).",
-    `6. LANGUAGE: ${!/^english$/i.test(lang) ? `Respond in ${lang} while keeping US DoD/IC directive IDs and CCI/CVE codes in English.` : "Write in authoritative English."}`,
+    "4. SCANNER VS. VALIDATED EVIDENCE: Raw ACAS/Nessus and DISA STIG/.ckl findings are `SCANNER_REPORTED_UNVALIDATED`. NEVER claim raw scanner findings prove independent exploitability or that vulnerabilities are remediated/closed without a verified post-patch credentialed rescan.",
+    "5. ZERO TRUST & ICAM PKI RULES: DoD Zero Trust Strategy (`2022-11-22`) mandates 7 Pillars, 45 Capabilities, 91 Target Level activities by FY 2027 (152 total incl. 61 Advanced). OCSP/CRL soft-fail / fail-open or disabled revocation checking violates DoDI 8520.02 (`2023-05-18`). Privileged admins must use separate admin accounts + ALT tokens rather than daily user CACs, and SMS/OTP/passwords fail phishing-resistant MFA under DoDI 8520.03 (`2023-05-19`), FIPS 201-3, and NSM-8 (`2022-01-19`).",
+    "6. AUTHORITIES: Cite ONLY exact versions and effective dates present in the Knowledge Packet (`DoDI 8510.01` `2022-07-19`, `DoDI 8531.01` `2020-09-15`, `DoDI 8530.03` `2023-08-09`, `DoDI 8520.02` `2023-05-18`, `DoDI 8520.03` `2023-05-19`, `DoD ZT Strategy` `2022-11-22`, `NSM-8` `2022-01-19`, `CISA ZTMM v2.0` `2023-04-11`, `ICD 503` `2024-10-25`, `ICD 502` `2011-03-11`, `ICD 501` `2009-01-21`, `CNSSI 1253` `2022-07`, `DISA CCI` `2025-01-23`).",
+    `7. LANGUAGE: ${!/^english$/i.test(lang) ? `Respond in ${lang} while keeping US DoD/IC directive IDs and CCI/CVE codes in English.` : "Write in authoritative English."}`,
   ].join("\n");
+}
+
+async function handleChatTraceReplay(
+  traceId: string,
+  tenantId: string,
+  shouldThink: boolean,
+): Promise<string> {
+  let stored = await getRmfExplanationArtifactById<ExplanationBundle>(traceId, tenantId);
+  if (!stored.artifact && !stored.forbidden && tenantId === "chat-session") {
+    stored = await getRmfExplanationArtifactById<ExplanationBundle>(traceId, "tenant:public-sandbox");
+  }
+  if (stored.forbidden) {
+    const denied = `# Audit Trace Access Denied (\`${traceId}\`)\n- **Status:** \`403 CROSS_TENANT_ACCESS\`\n- Trace belongs to another tenant boundary and cannot be inspected across tenants.`;
+    return shouldThink ? `<think>\nCross-tenant access denied for ${traceId}.\n</think>\n\n${denied}` : denied;
+  }
+  if (!stored.artifact) {
+    const missing = `# Audit Trace Not Found (\`${traceId}\`)\n- No persisted SQL explanation artifact found with ID \`${traceId}\` under authorized tenant scope.`;
+    return shouldThink ? `<think>\nTrace ${traceId} not found in SQL artifact store.\n</think>\n\n${missing}` : missing;
+  }
+
+  const bundle = stored.artifact.payload;
+  const replay = replayExplanationBundle(bundle);
+  const body = [
+    `# SQL Explanation Trace Replay & Integrity Verification (\`${bundle.bundleId}\`)`,
+    `- **Persisted in PostgreSQL (\`rmf.v2_artifacts\`):** \`true\` (stored at \`${stored.artifact.createdAt}\`)`,
+    `- **Deterministic SHA-256 Replay Reproducible:** **\`${replay.reproducible}\`**`,
+    `- **Stored Canonical Hash:** \`${bundle.canonicalTraceHash}\``,
+    `- **Recomputed Hash:** \`${replay.recomputedHash}\``,
+    `- **Evaluation Reference:** \`${bundle.evaluationRef}\` | **Rule ID(s):** \`${bundle.ruleId}\` | **Rule Version:** \`${bundle.ruleVersion}\``,
+    `- **Overall Verdict:** **\`${bundle.verdict}\`** | **SQL Row Payload SHA-256:** \`${stored.artifact.payloadSha256.slice(0, 16)}...\``,
+    ...(bundle.deterministicClassifications.length > 0
+      ? [
+          "",
+          "## Verified Deterministic Classifications",
+          ...bundle.deterministicClassifications.map((line) => `- ${line}`),
+        ]
+      : []),
+    "",
+    "---",
+    `**Noctis Deterministic Trace Verification** · Replay Status: \`${replay.reproducible ? "VERIFIED_IMMUTABLE" : "HASH_MISMATCH"}\``,
+  ].join("\n");
+
+  return shouldThink
+    ? `<think>\nRetrieved persisted SQL ExplanationBundle ${bundle.bundleId} and replayed canonical SHA-256 trace -> reproducible=${replay.reproducible}.\n</think>\n\n${body}`
+    : body;
 }
 
 export async function executeDodIcReasoning(
@@ -712,7 +1028,17 @@ export async function executeDodIcReasoning(
       : body;
   }
 
-  // STAGE 1: Deterministic Policy, CCI Crosswalk, ACAS/STIG Parser & Rule Execution
+  // Deterministic SQL Trace Replay Short-Circuit (after Gate 0!)
+  const replayMatch = q.match(/\b(?:replay|verify|inspect|show)\s+(?:explanation\s+)?(?:trace\s+)?(EXPL-[A-Z0-9]+)\b/i);
+  if (replayMatch && replayMatch[1]) {
+    try {
+      return await handleChatTraceReplay(replayMatch[1].toUpperCase(), tenantId, shouldThink);
+    } catch {
+      /* Fall through if storage unavailable */
+    }
+  }
+
+  // STAGE 1: Deterministic Policy, CCI Crosswalk, ACAS/STIG, Zero Trust & ICAM Execution
   const policySet = new Map<string, DodIcPolicyRecord>();
   for (const p of searchDodIcPolicies(q)) policySet.set(p.id, p);
 
@@ -724,6 +1050,17 @@ export async function executeDodIcReasoning(
   }
   if (ctx.acasAnalysis) {
     policySet.set("DODI-8531.01", DOD_IC_POLICY_REGISTRY["DODI-8531.01"]!);
+  }
+  if (ctx.ztAssessment) {
+    policySet.set("DOD-ZT-STRATEGY-2022", DOD_IC_POLICY_REGISTRY["DOD-ZT-STRATEGY-2022"]!);
+    policySet.set("CISA-ZTMM-2.0-OMB-M22-09", DOD_IC_POLICY_REGISTRY["CISA-ZTMM-2.0-OMB-M22-09"]!);
+  }
+  if (ctx.icamAssessment) {
+    policySet.set("DODI-8520.02", DOD_IC_POLICY_REGISTRY["DODI-8520.02"]!);
+    policySet.set("DODI-8520.03", DOD_IC_POLICY_REGISTRY["DODI-8520.03"]!);
+  }
+  if (ctx.ndimpInventoryRequested) {
+    for (const p of listDodIcPolicies()) policySet.set(p.id, p);
   }
   const policies = [...policySet.values()];
 
@@ -742,6 +1079,8 @@ export async function executeDodIcReasoning(
         ? rules.map((r) => r.ruleId).join("+")
         : ctx.resolvedCcis.length > 0
         ? ctx.resolvedCcis.map((c) => c.cciId).join("+")
+        : ctx.ndimpInventoryRequested
+        ? "NDIMP-LIVE-INVENTORY"
         : policies.map((p) => p.id).join("+"),
     nistVersion: "5.2.0",
     dbSha256: getDisaCciManifest().dbSha256,
@@ -750,8 +1089,10 @@ export async function executeDodIcReasoning(
         ? rules.map((r) => r.ruleId).join("+")
         : ctx.resolvedCcis.length > 0
         ? "DISA-CCI-CROSSWALK"
+        : ctx.ndimpInventoryRequested
+        ? "NDIMP-LIVE-INVENTORY"
         : "DOD-IC-POLICY-GROUNDED",
-    ruleVersion: "ndimp-wave1-1.1.0",
+    ruleVersion: "ndimp-wave1-1.2.0",
     evidenceSha256: combinedEvidenceSha,
     observedFacts:
       rules.length === 1
@@ -774,6 +1115,8 @@ export async function executeDodIcReasoning(
         ? rules.map((r) => `${r.ruleId}:${r.verdict}`).join("|")
         : ctx.resolvedCcis.length > 0
         ? "CCI_CROSSWALK_GROUNDED"
+        : ctx.ndimpInventoryRequested
+        ? "NDIMP_INVENTORY_VERIFIED"
         : "POLICY_GROUNDED",
     ruleEvaluations: rules.map((r) => ({
       ruleId: r.ruleId,
@@ -790,14 +1133,42 @@ export async function executeDodIcReasoning(
   });
 
   // Build deterministic knowledge packet for LLM Stage 2
-  const packetParts: string[] = [
+  const packetParts: string[] = [];
+  if (ctx.ndimpInventoryRequested) {
+    packetParts.push(buildLiveNdimpInventoryMarkdown());
+  }
+
+  packetParts.push(
     "### AUTHORITATIVE DOD & IC POLICY REGISTRY (VERIFIED PUBLIC METADATA)",
     ...policies.map(
       (p) =>
         `- **${p.id} (${p.title})** | Version: ${p.version} | Effective: ${p.effectiveDate} | Authority: ${p.issuingAuthority}\n  - Requirements: ${p.keyRequirements.join(" ")}\n  - Boundary Invariant: ${p.distinctBoundaryNote}`,
     ),
     "",
-  ];
+  );
+
+  if (ctx.ztAssessment) {
+    const z = ctx.ztAssessment;
+    packetParts.push("### DOD ZERO TRUST 7-PILLAR ASSESSMENT + CISA ZTMM CROSSWALK");
+    packetParts.push(
+      `- Readiness=${z.targetReadinessPercent ?? "N/A"}% | Status=${z.fy2027Status} | AvgScore=${z.averageSuppliedScore ?? "N/A"}/4 | NSS=${z.isNationalSecuritySystem} | Pillars: ${z.pillarRatings.map((p) => `${p.pillar}=${p.stage}`).join(", ")}`,
+    );
+    if (z.cisaZtmmCrosswalk) {
+      packetParts.push(
+        `- CISA ZTMM v2.0 Crosswalk: Overall=${z.cisaZtmmCrosswalk.overallStage} (${z.cisaZtmmCrosswalk.averageScore}/4), Weakest=${z.cisaZtmmCrosswalk.weakestPillar}`,
+      );
+    }
+    packetParts.push("");
+  }
+
+  if (ctx.icamAssessment) {
+    const ic = ctx.icamAssessment;
+    packetParts.push("### DOD PKI & ICAM ASSESSMENT");
+    packetParts.push(
+      `- Credential=${ic.credentialType || "UNSPECIFIED"} | Privileged=${ic.isPrivilegedAccount} | PhishingResistant=${String(ic.phishingResistant)} | OCSP/CRL FailClosed=${String(ic.revocationFailClosedEnforced)}`,
+    );
+    packetParts.push("");
+  }
 
   if (ctx.resolvedCcis.length > 0) {
     packetParts.push(`### OFFICIAL DISA CCI CROSSWALK (Version ${getDisaCciManifest().version})`);

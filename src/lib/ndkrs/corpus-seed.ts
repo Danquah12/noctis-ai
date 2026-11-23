@@ -873,6 +873,71 @@ export const NDKRS_AUTHORITATIVE_CORPUS: AuthoritativeCorpusSeedItem[] = [
     effectiveDate: "2025-01-23T00:00:00Z",
     expiresAt: "2030-12-31T00:00:00Z",
   },
+  {
+    domain: "cybersecurity",
+    canonicalKey: "DOD-ZT-STRATEGY-7PILLARS",
+    title: "DoD Zero Trust Strategy (Nov 2022) — 7 Pillars, 45 Capabilities, 91 Target FY 2027 Activities",
+    summary:
+      "DoD CIO Zero Trust Strategy & Capability Execution Roadmap (effective Nov 22, 2022) defining 7 Pillars, 45 Capabilities, and 152 Total Activities (91 Target Level due end of FY 2027, 61 Advanced Level).",
+    content: `# DoD Zero Trust Strategy (November 2022)
+- 7 Pillars: User, Device, Applications & Workloads, Data, Network & Environment, Automation & Orchestration, Visibility & Analytics.
+- 45 Capabilities and 152 Total Activities: 91 Target Level (mandatory FY 2027) and 61 Advanced Level.
+- Distinct from CISA ZTMM v2.0 (5 pillars + 3 cross-cutting capabilities across Traditional/Initial/Advanced/Optimal).`,
+    sourceUri: "https://dodcio.defense.gov/Zero-Trust/",
+    trustTier: "AUTHORITATIVE_GOV",
+    version: "2022-11-22",
+    citationLabel: "DOD-ZT-2022",
+    effectiveDate: "2022-11-22T00:00:00Z",
+    expiresAt: "2030-12-31T00:00:00Z",
+  },
+  {
+    domain: "cybersecurity",
+    canonicalKey: "DODI-8520.02-PKI-OCSP-CRL",
+    title: "DoDI 8520.02 — DoD PKI, Non-Person Entity (NPE) Certs & Fail-Closed OCSP/CRL Revocation",
+    summary:
+      "Governs DoD PKI / NSS trust anchors, NPE workload certificates for mTLS, FIPS 140-validated cryptography, and mandatory fail-closed OCSP/CRL revocation checking (effective May 18, 2023).",
+    content: `# DoDI 8520.02 (Effective May 18, 2023)
+- Certificate revocation checks (OCSP/CRL) MUST fail closed; soft-fail / fail-open or disabled revocation violates DoDI 8520.02.
+- Workloads, devices, and mTLS east-west communications require authorized Non-Person Entity (NPE) PKI certificates.`,
+    sourceUri: "https://www.esd.whs.mil/DD/",
+    trustTier: "AUTHORITATIVE_GOV",
+    version: "2023-05-18",
+    citationLabel: "DODI-8520.02",
+    effectiveDate: "2023-05-18T00:00:00Z",
+    expiresAt: "2030-12-31T00:00:00Z",
+  },
+  {
+    domain: "cybersecurity",
+    canonicalKey: "DODI-8520.03-ICAM-CAC-ALT",
+    title: "DoDI 8520.03 — Identity Authentication (CAC, PIV, Privileged ALT Tokens & Phishing-Resistant MFA)",
+    summary:
+      "Requires phishing-resistant hardware MFA (CAC, PIV, DoD PKI ALT tokens, FIDO2) and dedicated privileged admin accounts bound to separate ALT tokens rather than daily user CACs (effective May 19, 2023).",
+    content: `# DoDI 8520.03 (Effective May 19, 2023)
+- Privileged administrators must authenticate via separate privileged accounts + ALT tokens rather than daily user CAC credentials.
+- SMS OTP, email OTP, and unassisted static SSH keys/passwords fail phishing-resistant MFA requirements.`,
+    sourceUri: "https://www.esd.whs.mil/DD/",
+    trustTier: "AUTHORITATIVE_GOV",
+    version: "2023-05-19",
+    citationLabel: "DODI-8520.03",
+    effectiveDate: "2023-05-19T00:00:00Z",
+    expiresAt: "2030-12-31T00:00:00Z",
+  },
+  {
+    domain: "cybersecurity",
+    canonicalKey: "NSM-8-CISA-ZTMM-V2",
+    title: "NSM-8 (Jan 2022), CISA ZTMM v2.0 (Apr 2023), OMB M-22-09 & FIPS 201-3 Zero Trust Integration",
+    summary:
+      "NSM-8 mandates MFA, encryption, EDR, logging, and NIST SP 800-207 Zero Trust across National Security Systems under NSA National Manager authority, while CISA ZTMM v2.0 & OMB M-22-09 govern FCEB maturity and FIPS 201-3 PIV standards.",
+    content: `# NSM-8 & CISA ZTMM v2.0 Integration
+- NSM-8 (Jan 19, 2022) governs National Security Systems across DoD & IC (NSA National Manager).
+- CISA ZTMM v2.0 (Apr 11, 2023) defines 5 Pillars + 3 Cross-Cutting Capabilities across Traditional/Initial/Advanced/Optimal stages aligned with OMB M-22-09 and FIPS 201-3.`,
+    sourceUri: "https://www.cisa.gov/zero-trust-maturity-model",
+    trustTier: "AUTHORITATIVE_GOV",
+    version: "2023-04-11",
+    citationLabel: "NSM-8-ZTMM-V2",
+    effectiveDate: "2023-04-11T00:00:00Z",
+    expiresAt: "2030-12-31T00:00:00Z",
+  },
 ];
 
 export async function seedNdkrsAuthoritativeCorpus(
