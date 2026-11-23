@@ -11,6 +11,28 @@ import { sha256Sync } from "../universal-crypto.ts";
 import { buildPullRequestPackage } from "../noctis-git-remediator.server.ts";
 import { executePythonSandbox, extractRunnableCode, stripTypesSimple } from "../noctis-wasm-runner.ts";
 import { evaluateCanaryRollbackGate } from "../catalog260/persistence.server.ts";
+import { NOCTIS_100_CAPABILITY_PARITY_MATRIX } from "./parity-matrix.ts";
+
+const ARCHITECTURE_LAYERS = [
+  "Routes & REST Handlers (src/routes/api/v2.*)",
+  "Deterministic Domain Solvers (NDKRS + NUPS + Catalog260 + Assistant + Forge)",
+  "Independent Verification Engine & RBAC / Fail-Closed Safety Gates",
+  "Neon PostgreSQL + pgvector HNSW Persistent Storage (migrations/0001..0022)",
+];
+
+const EXTRA_MANIFEST_MODULES = [
+  "src/lib/assistant/benchmark-100.server.ts",
+  "src/lib/assistant/chat-bridge.server.ts",
+  "src/lib/assistant/parity-matrix.ts",
+  "src/lib/forge/forge-catalog.ts",
+  "src/lib/forge/forge-engine.server.ts",
+  "src/lib/forge/forge-persistence.server.ts",
+  "src/lib/forge/api-handler.server.ts",
+  "src/routes/api/v2.assistant.$.ts",
+  "src/routes/api/v2.forge.$.ts",
+  "src/components/noctis/NoctisForgeBuilderStudio.tsx",
+  "src/components/noctis/NoctisForgeTab.tsx",
+];
 
 function resolveSafeRepoRoot(): string {
   const cwd = process.cwd();
@@ -20,7 +42,7 @@ function resolveSafeRepoRoot(): string {
 /** #6 / #61 / #65 Workspace Repository & Architecture Analyzer (Strictly path-traversal guarded) */
 export function analyzeWorkspaceRepository(input: { subdir?: string; query?: string } = {}) {
   const repoRoot = resolveSafeRepoRoot();
-  const rel = (input.subdir || "src").replace(/\\/g, "/");
+  const rel = (input.subdir || "src").replace(/\\/g, "/").replace(/\/+$/, "") || "src";
   if (rel.includes("..") || path.isAbsolute(rel) || /\.env|node_modules|\.git|secret|private/i.test(rel)) {
     return {
       ok: false as const,
@@ -31,6 +53,46 @@ export function analyzeWorkspaceRepository(input: { subdir?: string; query?: str
       architectureLayers: [],
     };
   }
+
+  const q = (input.query || "").trim().toLowerCase();
+  const hasSourceTree = fs.existsSync(path.join(repoRoot, "src"));
+  if (!hasSourceTree) {
+    // Compiled serverless bundles (Vercel Nitro) omit raw src/*.ts files; introspect the verified runtime manifest.
+    const uniqueModules = Array.from(
+      new Set([
+        ...NOCTIS_100_CAPABILITY_PARITY_MATRIX.flatMap((m) => m.sourceModules),
+        ...EXTRA_MANIFEST_MODULES,
+      ]),
+    ).sort();
+    const scoped = uniqueModules.filter((f) => f === rel || f.startsWith(`${rel}/`));
+    const filtered = q ? scoped.filter((f) => f.toLowerCase().includes(q)) : scoped;
+    if (filtered.length === 0) {
+      return {
+        ok: false as const,
+        error: `Directory '${rel}' does not exist inside compiled runtime manifest.`,
+        totalFiles: 0,
+        extensionCounts: {},
+        sampleFiles: [],
+        architectureLayers: [],
+      };
+    }
+    const extCounts: Record<string, number> = {};
+    const matched = filtered.map((file) => {
+      const ext = path.extname(file).toLowerCase() || ".other";
+      extCounts[ext] = (extCounts[ext] || 0) + 1;
+      return { file, bytes: 0, lines: 0 };
+    });
+    return {
+      ok: true as const,
+      sourceMode: "compiled-runtime-manifest" as const,
+      scannedPath: rel,
+      totalFiles: matched.length,
+      extensionCounts: extCounts,
+      sampleFiles: matched.slice(0, 35),
+      architectureLayers: ARCHITECTURE_LAYERS,
+    };
+  }
+
   const targetDir = path.resolve(repoRoot, rel);
   if (!targetDir.startsWith(repoRoot) || !fs.existsSync(targetDir)) {
     return {
@@ -45,7 +107,6 @@ export function analyzeWorkspaceRepository(input: { subdir?: string; query?: str
 
   const extCounts: Record<string, number> = {};
   const matchedFiles: { file: string; bytes: number; lines: number }[] = [];
-  const q = (input.query || "").trim().toLowerCase();
 
   function walk(dir: string, depth: number) {
     if (depth > 4 || matchedFiles.length >= 250) return;
@@ -86,16 +147,12 @@ export function analyzeWorkspaceRepository(input: { subdir?: string; query?: str
 
   return {
     ok: true as const,
+    sourceMode: "filesystem" as const,
     scannedPath: rel,
     totalFiles: matchedFiles.length,
     extensionCounts: extCounts,
     sampleFiles: matchedFiles.slice(0, 35),
-    architectureLayers: [
-      "Routes & REST Handlers (src/routes/api/v2.*)",
-      "Deterministic Domain Solvers (NDKRS + NUPS + Catalog260 + Assistant + Forge)",
-      "Independent Verification Engine & RBAC / Fail-Closed Safety Gates",
-      "Neon PostgreSQL + pgvector HNSW Persistent Storage (migrations/0001..0022)",
-    ],
+    architectureLayers: ARCHITECTURE_LAYERS,
   };
 }
 
