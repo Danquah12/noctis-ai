@@ -3,7 +3,11 @@
  */
 
 import { replayExplanationBundle, type ExplanationBundle } from "../rmf-v2/graph-and-trace.ts";
-import { getRmfExplanationArtifactById } from "../rmf-v2/persistence.server.ts";
+import { getRmfExplanationArtifactById, saveRmfArtifact } from "../rmf-v2/persistence.server.ts";
+import { exportEmassXlsxWorkbook, generateComplianceBinderMarkdown, type EmassControlExportRow, type EmassPoamExportRow } from "./emass-export-engine.ts";
+import { resolveDodIcCallerContext } from "./rbac.server.ts";
+import { buildAttackNavigatorLayer, parseSigmaYamlRule, parseYaraRule, type NavigatorTechniqueInput } from "./sigma-attack-engine.ts";
+import { listStigBenchmarks, lookupStigRuleById, searchStigLibrary, type StigBenchmarkId } from "./stig-library.ts";
 import { sha256Sync } from "../universal-crypto.ts";
 import {
   evaluateClassificationGate,
@@ -85,19 +89,11 @@ const CORS_HEADERS = {
   "cache-control": "no-store",
   "access-control-allow-origin": "*",
   "access-control-allow-methods": "GET, POST, OPTIONS",
-  "access-control-allow-headers": "Content-Type, Authorization, X-Tenant-ID",
+  "access-control-allow-headers": "Content-Type, Authorization, X-Tenant-ID, X-Noctis-Key, X-Noctis-Role",
 };
 
 function jsonRes(body: unknown, status = 200): Response {
   return Response.json(body, { status, headers: CORS_HEADERS });
-}
-
-function resolveTenant(request: Request): string {
-  const hdr = (request.headers.get("x-tenant-id") || "").trim();
-  if (hdr) return hdr;
-  const auth = (request.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
-  if (auth) return `tenant:${sha256Sync(auth).slice(0, 16)}`;
-  return "tenant:public-sandbox";
 }
 
 export async function handleDodIcV2Request(request: Request): Promise<Response> {
@@ -108,9 +104,15 @@ export async function handleDodIcV2Request(request: Request): Promise<Response> 
   const url = new URL(request.url);
   const subPath = url.pathname.replace(/^\/api\/v2\/dod-ic\/?/, "").replace(/\/+$/, "");
   const method = request.method.toUpperCase();
-  const tenantId = resolveTenant(request);
+  const caller = await resolveDodIcCallerContext(request);
+  const tenantId = caller.tenantId;
+
+  if (method === "GET" && subPath === "auth/me") {
+    return jsonRes(caller);
+  }
 
   if (method === "GET" && (subPath === "" || subPath === "status")) {
+    const stigBenchmarks = listStigBenchmarks();
     return jsonRes({
       platform: "Noctis Defense & Intelligence Community Security Architecture (NDIMP Waves 1–4 Complete)",
       version: "4.0.0",
@@ -125,6 +127,7 @@ export async function handleDodIcV2Request(request: Request): Promise<Response> 
         "CLASSIFICATION-AWARE-GATEWAY",
         "CROSS-DOMAIN-DODI-8540.01",
         "DISA-STIG-CCI-CROSSWALK",
+        "DISA-STIG-BENCHMARK-LIBRARY",
         "ACAS-NESSUS-PARSER-DODI-8531.01",
         "SCAP-XCCDF-CKL-ENGINE",
         "CYBER-INCIDENT-DODI-8530.03",
@@ -140,6 +143,7 @@ export async function handleDodIcV2Request(request: Request): Promise<Response> 
         "TEMPEST-RED-BLACK-CTTA",
         "MEDIA-SANITIZATION-SP-800-88-R2",
         "DCO-SOC-TELEMETRY-FORENSICS-SP-800-86",
+        "SIGMA-YARA-ATTACK-NAVIGATOR-EXPORTER",
         "INSIDER-THREAT-DODI-5205.16",
         "DEVSECOPS-CATO-SSDF-K8S-STIG",
         "CLOUD-CC-SRG-INHERITANCE",
@@ -149,9 +153,16 @@ export async function handleDodIcV2Request(request: Request): Promise<Response> 
         "MISSION-ASSURANCE-DAG-DODI-3020.45",
         "ACQUISITION-CMMC-32CFR-170-DFARS-FOCI",
         "SPACE-SPD-5-SPECTRUM-4650-MBSE-5000.97",
+        "EMASS-XACTA-XLSX-BINDER-EXPORT",
       ],
       policiesCount: Object.keys(DOD_IC_POLICY_REGISTRY).length,
       policyLineagesCount: listDirectiveLineages().length,
+      stigLibraryBenchmarks: stigBenchmarks.length,
+      stigLibraryRulesCount: stigBenchmarks.reduce((a, b) => a + b.ruleCount, 0),
+      rbacEnabled: true,
+      emassXlsxExportEnabled: true,
+      sigmaAttackNavigatorEnabled: true,
+      scheduledDriftCronPath: "/api/v2/dod-ic/cron/drift-check",
       disaCci: getDisaCciManifest(),
       zeroTrustCatalog: getDodZeroTrustCatalog().summary,
       invariants: {
@@ -171,6 +182,63 @@ export async function handleDodIcV2Request(request: Request): Promise<Response> 
         singleSourceF6SatisfiesHighConfidence: false,
         missingTelemetryProvesNoIntrusion: false,
       },
+    });
+  }
+
+  if (method === "GET" && subPath === "stig/library") {
+    const idParam = (url.searchParams.get("id") || "").trim();
+    if (idParam) {
+      const rule = lookupStigRuleById(idParam);
+      if (!rule) return jsonRes({ error: "NOT_FOUND", message: `STIG rule '${idParam}' not found in indexed library.` }, 404);
+      return jsonRes({ found: true, rule });
+    }
+    const benchmarkId = (url.searchParams.get("benchmark") || "").trim().toUpperCase() as StigBenchmarkId | "";
+    const severity = (url.searchParams.get("severity") || "").trim().toUpperCase() as "CAT_I" | "CAT_II" | "CAT_III" | "";
+    const query = (url.searchParams.get("q") || "").trim();
+    const benchmarks = listStigBenchmarks();
+    const rules = searchStigLibrary({
+      query: query || undefined,
+      benchmarkId: benchmarkId || undefined,
+      severity: severity || undefined,
+      limit: 50,
+    });
+    return jsonRes({ benchmarks, count: rules.length, rules });
+  }
+
+  if (method === "GET" && subPath === "cron/drift-check") {
+    const cronSecret = process.env.CRON_SECRET?.trim();
+    const isLocalTest = url.hostname === "local.test" || url.hostname === "localhost" || url.hostname === "127.0.0.1";
+    if (cronSecret && !isLocalTest) {
+      const authHdr = request.headers.get("authorization") || "";
+      if (authHdr !== `Bearer ${cronSecret}`) {
+        return jsonRes({ error: "UNAUTHORIZED_CRON" }, 401);
+      }
+    }
+    const live = url.searchParams.get("live") !== "false";
+    const drift = await checkUpstreamAuthoritativeDrift({ liveCheck: live });
+    const snapshotId = `DRIFT-${new Date().toISOString().slice(0, 10)}-${drift.ruleResult.auditHash.slice(0, 8).toUpperCase()}`;
+    try {
+      await saveRmfArtifact({
+        id: snapshotId,
+        tenantId: "tenant:cron-governance",
+        artifactType: "POLICY_CHANGE",
+        systemId: "ndimp-drift-monitor",
+        title: `Scheduled Upstream Policy Drift Check (${drift.overallStatus})`,
+        status: drift.driftCount > 0 ? "PENDING_HUMAN_REVIEW" : "VERIFIED_NO_DRIFT",
+        payload: drift as unknown as Record<string, unknown>,
+        createdBy: "cron:dod-ic-drift",
+      });
+    } catch {
+      /* Non-fatal if DB unavailable */
+    }
+    return jsonRes({
+      ok: true,
+      snapshotId,
+      autoApplyToProduction: drift.autoApplyToProduction,
+      humanDualControlRequired: drift.humanDualControlRequired,
+      overallStatus: drift.overallStatus,
+      driftCount: drift.driftCount,
+      checkedAt: drift.checkedAt,
     });
   }
 
@@ -581,11 +649,13 @@ export async function handleDodIcV2Request(request: Request): Promise<Response> 
 
   if (subPath === "policy-change/propose") {
     try {
+      const proposer =
+        caller.authMethod === "BETTER_AUTH_SESSION" ? caller.actorId : String(body.proposed_by || caller.actorId || "issm-proposer@dod.mil");
       const created = await createPolicyChangeProposal({
         tenantId,
         policyId: String(body.policy_id || "CUSTOM-POLICY"),
         title: typeof body.title === "string" ? body.title : undefined,
-        proposedBy: String(body.proposed_by || "issm-proposer@dod.mil"),
+        proposedBy: proposer,
         rationale: String(body.rationale || ""),
         oldVersion: typeof body.old_version === "string" ? body.old_version : undefined,
         newVersion: typeof body.new_version === "string" ? body.new_version : undefined,
@@ -612,12 +682,22 @@ export async function handleDodIcV2Request(request: Request): Promise<Response> 
 
   if (subPath === "policy-change/review") {
     const decision = String(body.decision || "").toUpperCase() === "REJECT" ? "REJECT" : "APPROVE";
+    const requestedRole = String(body.reviewer_role || "");
+    const effectiveReviewerId =
+      caller.authMethod === "BETTER_AUTH_SESSION" && requestedRole.toUpperCase() !== "AGENT"
+        ? caller.actorId
+        : String(body.reviewer_id || caller.actorId || "");
+    const effectiveRole =
+      caller.authMethod === "BETTER_AUTH_SESSION" && requestedRole.toUpperCase() !== "AGENT"
+        ? caller.rbacRole
+        : requestedRole || caller.rbacRole;
+
     const res = await decidePolicyChangeProposal({
       tenantId,
       proposalId: String(body.proposal_id || ""),
       decision,
-      reviewerId: String(body.reviewer_id || ""),
-      reviewerRole: String(body.reviewer_role || ""),
+      reviewerId: effectiveReviewerId,
+      reviewerRole: effectiveRole,
       notes: typeof body.notes === "string" ? body.notes : undefined,
       regressionSuitePassed: typeof body.regression_suite_passed === "boolean" ? body.regression_suite_passed : true,
     });
@@ -915,6 +995,70 @@ export async function handleDodIcV2Request(request: Request): Promise<Response> 
         evidenceVerified: body.evidence_verified === true,
       }),
     );
+  }
+
+  if (subPath === "export/emass-xlsx") {
+    const exp = exportEmassXlsxWorkbook({
+      systemName: typeof body.system_name === "string" ? body.system_name : undefined,
+      emassSystemId: typeof body.emass_system_id === "string" ? body.emass_system_id : undefined,
+      impactLevel: body.impact_level as "IL2" | "IL4" | "IL5" | "IL6" | undefined,
+      jurisdiction: body.jurisdiction === "IC" ? "IC" : "DOD",
+      controls: Array.isArray(body.controls) ? (body.controls as EmassControlExportRow[]) : undefined,
+      poams: Array.isArray(body.poams) ? (body.poams as EmassPoamExportRow[]) : undefined,
+    });
+    if (url.searchParams.get("format") === "json" || body.format === "json") {
+      return jsonRes({
+        filename: exp.filename,
+        mimeType: exp.mimeType,
+        base64: exp.base64,
+        sha256: exp.sha256,
+        sheetNames: exp.sheetNames,
+        rowCounts: exp.rowCounts,
+        aiCanIssueAto: exp.aiCanIssueAto,
+      });
+    }
+    return new Response(new Uint8Array(exp.buffer), {
+      status: 200,
+      headers: {
+        ...CORS_HEADERS,
+        "content-type": exp.mimeType,
+        "content-disposition": `attachment; filename="${exp.filename}"`,
+        "x-noctis-sha256": exp.sha256,
+      },
+    });
+  }
+
+  if (subPath === "export/binder") {
+    const binder = generateComplianceBinderMarkdown({
+      systemName: typeof body.system_name === "string" ? body.system_name : undefined,
+      emassSystemId: typeof body.emass_system_id === "string" ? body.emass_system_id : undefined,
+      impactLevel: body.impact_level as "IL2" | "IL4" | "IL5" | "IL6" | undefined,
+      jurisdiction: body.jurisdiction === "IC" ? "IC" : "DOD",
+      controls: Array.isArray(body.controls) ? (body.controls as EmassControlExportRow[]) : undefined,
+      poams: Array.isArray(body.poams) ? (body.poams as EmassPoamExportRow[]) : undefined,
+    });
+    return jsonRes(binder);
+  }
+
+  if (subPath === "dco/sigma-navigator") {
+    const sigma = typeof body.sigma_yaml === "string" && body.sigma_yaml.trim() ? parseSigmaYamlRule(body.sigma_yaml) : null;
+    const yara = typeof body.yara_rule === "string" && body.yara_rule.trim() ? parseYaraRule(body.yara_rule) : null;
+    const explicitTechs = Array.isArray(body.techniques) ? (body.techniques as NavigatorTechniqueInput[]) : [];
+    const mergedTechs: NavigatorTechniqueInput[] = [...explicitTechs];
+    for (const tid of [...(sigma?.attackTechniques ?? []), ...(yara?.attackTechniques ?? [])]) {
+      if (!mergedTechs.some((t) => t.techniqueId.toUpperCase() === tid.toUpperCase())) {
+        mergedTechs.push({
+          techniqueId: tid,
+          coverageStatus: sigma?.valid || yara?.valid ? "DETECTED" : "PARTIAL",
+          comment: `Parsed from ${sigma?.title || yara?.ruleName || "DCO rule"}`,
+        });
+      }
+    }
+    const navigator = buildAttackNavigatorLayer({
+      name: typeof body.layer_name === "string" ? body.layer_name : undefined,
+      techniques: mergedTechs,
+    });
+    return jsonRes({ sigma, yara, navigator });
   }
 
   if (subPath === "investigate") {

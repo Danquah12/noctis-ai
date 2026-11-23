@@ -72,6 +72,7 @@ import {
   renderWaves234SummaryLines,
   type Waves234Context,
 } from "./waves234-extractors.ts";
+import { lookupStigRuleById, searchStigLibrary, type StigLibraryRuleHydrated } from "./stig-library.ts";
 
 export interface DodIcModelChatFn {
   (
@@ -111,6 +112,7 @@ export function isDodIcQuery(question: string): boolean {
       q,
     ) ||
     (/\b(?:f6|e5|e6)\b/i.test(q) && /\b(?:confidence|icd\s*20[36]|source|analytic)\b/i.test(q)) ||
+    /\b(?:rhel\s*9\s+stig|windows\s*server\s*2022\s+stig|postgresql\s+stig|asd\s+stig)\b/i.test(q) ||
     (/\bno\s+intrusion\b/i.test(q) && /\b(?:missing|without|no)\s+(?:edr|dns|netflow|siem|telemetry|logs?)\b/i.test(q)) ||
     (/\b(?:acas|nessus|plugin|credential\w*|scan)\b/i.test(q) && /\b(?:19506|21745|110385|104410|24786|117885)\b/.test(q))
   );
@@ -500,6 +502,7 @@ export interface DodIcAsyncContext {
   rules: DodIcRuleResult[];
   resolvedCcis: DisaCciRecord[];
   controlCciMatches: { controlId: string; matches: DisaCciControlSummary[] }[];
+  stigLibraryHits: StigLibraryRuleHydrated[];
   acasAnalysis: AcasAnalysisResult | null;
   stigAnalysis: StigChecklistAnalysisResult | null;
   ztAssessment: DodZeroTrustAssessmentResult | null;
@@ -623,6 +626,40 @@ export async function extractDodIcContextAsync(question: string): Promise<DodIcA
     if (rec) resolvedCcis.push(rec);
   }
 
+  const stigLibraryHits: StigLibraryRuleHydrated[] = [];
+  const seenStig = new Set<string>();
+  for (const vm of q.matchAll(/\b(V-\d{5,7}|SV-\d{5,7}(?:r\d+_rule)?)\b/gi)) {
+    const rule = lookupStigRuleById(vm[1]!);
+    if (rule && !seenStig.has(rule.groupId)) {
+      seenStig.add(rule.groupId);
+      stigLibraryHits.push(rule);
+      for (const c of rule.cciIds) {
+        const cr = lookupDisaCci(c);
+        if (cr && !resolvedCcis.some((x) => x.cciId === cr.cciId)) resolvedCcis.push(cr);
+      }
+    }
+  }
+  if (
+    stigLibraryHits.length === 0 &&
+    /\b(?:rhel\s*9|windows\s*server\s*2022|kubernetes\s+stig|k8s\s+stig|postgresql\s+stig|asd\s+stig)\b/i.test(q)
+  ) {
+    const bm = /\brhel\s*9\b/i.test(q)
+      ? "RHEL_9_STIG"
+      : /\bwindows\s*server\s*2022\b/i.test(q)
+      ? "WIN_2022_STIG"
+      : /\b(?:kubernetes|k8s)\b/i.test(q)
+      ? "K8S_STIG"
+      : /\bpostgresql\b/i.test(q)
+      ? "PGSQL_STIG"
+      : "ASD_STIG";
+    for (const r of searchStigLibrary({ benchmarkId: bm, limit: 6 })) {
+      if (!seenStig.has(r.groupId)) {
+        seenStig.add(r.groupId);
+        stigLibraryHits.push(r);
+      }
+    }
+  }
+
   const ndimpInventoryRequested =
     /\b(?:ndimp\b|(?:dod|ic)\s+(?:engines?|capabilities|policies|roadmap|status)\b[^.\n]{0,40}\b(?:noctis|live|active|loaded|list|show|what|right\s+now))\b/i.test(
       q,
@@ -691,6 +728,7 @@ export async function extractDodIcContextAsync(question: string): Promise<DodIcA
     rules,
     resolvedCcis,
     controlCciMatches,
+    stigLibraryHits,
     acasAnalysis,
     stigAnalysis,
     ztAssessment: step3.ztAssessment,
@@ -1045,6 +1083,17 @@ export function renderDeterministicDodIcFallback(
       for (const m of grp.matches.slice(0, 8)) {
         out.push(`  - \`${m.cciId}\` [${m.revision}]: ${m.definition.slice(0, 180)}`);
       }
+    }
+    out.push("");
+  }
+
+  if (ctx?.stigLibraryHits && ctx.stigLibraryHits.length > 0) {
+    out.push("## Pre-Indexed Public DISA STIG Benchmark Rules");
+    for (const s of ctx.stigLibraryHits) {
+      out.push(`- **\`${s.groupId}\` (\`${s.ruleId}\` · \`${s.severity}\` · ${s.benchmarkTitle}):** ${s.title}`);
+      out.push(`  - **CCIs:** \`${s.cciIds.join("`, `")}\` · **NIST SP 800-53 Rev. 5:** \`${s.nistRev5Controls.join("`, `") || "None"}\``);
+      out.push(`  - **Check:** ${s.checkText}`);
+      out.push(`  - **Fix:** ${s.fixText}`);
     }
     out.push("");
   }
@@ -1495,6 +1544,16 @@ export async function executeDodIcReasoning(
     for (const f of a.findings.slice(0, 10)) {
       packetParts.push(
         `- [${f.priority}] Plugin ${f.pluginId} (${f.pluginName}): Hosts=${f.assetCount} [${f.affectedHosts.join(", ")}] | CVEs=${f.cves.join(",") || "none"} | SLA=${f.slaDays}d | Validation=${f.validationStatus} | Rescan=${f.remediationVerification}`,
+      );
+    }
+    packetParts.push("");
+  }
+
+  if (ctx.stigLibraryHits.length > 0) {
+    packetParts.push("### PRE-INDEXED PUBLIC DISA STIG BENCHMARK RULES (HYDRATED WITH DISA CCI)");
+    for (const s of ctx.stigLibraryHits) {
+      packetParts.push(
+        `- **${s.groupId} (${s.ruleId} | ${s.severity} | ${s.benchmarkTitle})**: ${s.title} | CCIs=[${s.cciIds.join(", ")}] | Rev5=[${s.nistRev5Controls.join(", ")}] | Check: ${s.checkText} | Fix: ${s.fixText}`,
       );
     }
     packetParts.push("");

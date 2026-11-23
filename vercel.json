@@ -7,6 +7,10 @@
     {
       "path": "/api/v2/ndkrs/cron/revalidate",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/v2/dod-ic/cron/drift-check",
+      "schedule": "0 7 * * *"
     }
   ]
 }

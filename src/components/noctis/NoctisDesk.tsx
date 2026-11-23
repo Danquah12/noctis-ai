@@ -22,6 +22,7 @@ const NoctisSovereignFactoryStudio = lazyWithRetry(() => import("@/components/no
 const NoctisConsoleTab = lazyWithRetry(() => import("@/components/noctis/NoctisConsoleTab").then((m) => ({ default: m.NoctisConsoleTab })));
 const NoctisRedTeamTab = lazyWithRetry(() => import("@/components/noctis/NoctisRedTeamTab").then((m) => ({ default: m.NoctisRedTeamTab })));
 const NoctisRmfDashboardTab = lazyWithRetry(() => import("@/components/noctis/NoctisRmfDashboardTab").then((m) => ({ default: m.NoctisRmfDashboardTab })));
+const NoctisDodIcCommandTab = lazyWithRetry(() => import("@/components/noctis/NoctisDodIcCommandTab").then((m) => ({ default: m.NoctisDodIcCommandTab })));
 const NoctisNdkrsConsoleTab = lazyWithRetry(() => import("@/components/noctis/NoctisNdkrsConsoleTab").then((m) => ({ default: m.NoctisNdkrsConsoleTab })));
 const NoctisPluginExecutorModal = lazyWithRetry(() => import("@/components/noctis/NoctisPluginExecutorModal").then((m) => ({ default: m.NoctisPluginExecutorModal })));
 import { DISTRIBUTED_PLUGINS, getPluginsForShelf, type DistributedPluginItem } from "@/lib/noctis-distributed-plugins";
@@ -3478,7 +3479,7 @@ export function NoctisDesk() {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
   const [uploads, setUploads] = useState<Upload[]>([]);
-  const [desk, setDesk] = useState<"chat" | "study" | "forge" | "plugins" | "console" | "redteam" | "frontier" | "training" | "rmf" | "ndkrs">("chat");
+  const [desk, setDesk] = useState<"chat" | "study" | "forge" | "plugins" | "console" | "redteam" | "frontier" | "training" | "rmf" | "dod-ic" | "ndkrs">("chat");
   const [executorPlugin, setExecutorPlugin] = useState<DistributedPluginItem | null>(null);
   const [executorOpen, setExecutorOpen] = useState(false);
   const [studyTopic, setStudyTopic] = useState("");
@@ -6809,6 +6810,15 @@ export function NoctisDesk() {
         </button>
         <button
           type="button"
+          onClick={() => switchDesk("dod-ic")}
+          className={item(desk === "dod-ic")}
+        >
+          <Shield className="size-4 shrink-0 text-emerald-400" />
+          <span>DoD &amp; IC Command</span>
+          <span className="ml-auto rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-bold text-emerald-300">v4.0</span>
+        </button>
+        <button
+          type="button"
           onClick={() => switchDesk("ndkrs")}
           className={item(desk === "ndkrs")}
         >
@@ -7120,6 +7130,18 @@ export function NoctisDesk() {
                     <FileCheck className="size-3.5 text-amber-400 shrink-0" />
                     <span className="truncate">Noctis RMF / GRC</span>
                     <span className="ml-auto rounded bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-bold text-amber-300">25/25</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => switchDesk("dod-ic")}
+                    className={cn(
+                      "flex w-full items-center gap-2 rounded-xl px-3 py-1.5 text-xs transition text-left",
+                      desk === "dod-ic" ? "bg-emerald-500/20 text-emerald-200 border border-emerald-500/30" : "text-zinc-300 hover:bg-white/10 hover:text-white"
+                    )}
+                  >
+                    <Shield className="size-3.5 text-emerald-400 shrink-0" />
+                    <span className="truncate">NDIMP Defense &amp; IC</span>
+                    <span className="ml-auto rounded bg-emerald-500/20 px-1.5 py-0.5 text-[9px] font-bold text-emerald-300">v4.0</span>
                   </button>
                   <button
                     type="button"
@@ -7990,6 +8012,17 @@ export function NoctisDesk() {
             ) : desk === "rmf" ? (
               <Suspense fallback={<div className="flex-1 flex items-center justify-center p-8 text-zinc-400">Loading Noctis RMF Intelligence Command Center v2.0...</div>}>
                 <NoctisRmfDashboardTab
+                  onSendToChat={(taskPrompt) => {
+                    switchDesk("chat");
+                    void send(taskPrompt);
+                  }}
+                  onOpenInCanvas={(title, md) => openInCanvas(title, md)}
+                  onClose={() => switchDesk("chat")}
+                />
+              </Suspense>
+            ) : desk === "dod-ic" ? (
+              <Suspense fallback={<div className="flex-1 flex items-center justify-center p-8 text-zinc-400">Loading NDIMP Defense &amp; IC Command Center v4.0...</div>}>
+                <NoctisDodIcCommandTab
                   onSendToChat={(taskPrompt) => {
                     switchDesk("chat");
                     void send(taskPrompt);

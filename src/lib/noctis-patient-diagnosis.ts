@@ -2433,9 +2433,14 @@ export function executeNaturalPatientDiagnosticQuery(question: string, explicitE
   }
 
   // Dedicated Handler: Emergent Acute Pancreatitis & Severe SIRS Shock Resuscitation
+  const deniesPainOrNormalImagingOnly =
+    /\b(?:denies|no|without)\s+(?:epigastric|upper|abdominal)?\s*pain\b/i.test(q) &&
+    /\b(?:normal\s+(?:abdominal\s+)?(?:ultrasound|ct|imaging)|(?:ultrasound|ct|imaging)\s+is\s+normal)\b/i.test(q) &&
+    !/\b(?:shock|hypotension|bp\s+\d+|sirs)\b/i.test(q);
   const isAcutePancreatitisCrisis =
-    (/\b(pancreat\w*|lipase|amylase)\b/i.test(q) && (/\b(epigastr\w*|back|vomiting|guarding|distension|shock|hypotension|sirs)\b/i.test(q) || context.vitals.systolicBp !== null)) ||
-    (/\b(?:lipase|amylase)\s*(?:is|of|=|:)?\s*[\d,]+\b/i.test(q) && /\b(?:u\/l|units)\b/i.test(q));
+    !deniesPainOrNormalImagingOnly &&
+    ((/\b(pancreat\w*|lipase|amylase)\b/i.test(q) && (/\b(epigastr\w*|back|vomiting|guarding|distension|shock|hypotension|sirs)\b/i.test(q) || context.vitals.systolicBp !== null)) ||
+      (/\b(?:lipase|amylase)\s*(?:is|of|=|:)?\s*[\d,]+\b/i.test(q) && /\b(?:u\/l|units)\b/i.test(q)));
 
   if (isAcutePancreatitisCrisis) {
     return generateIsolatedAcutePancreatitisDossier(encId, q);
@@ -2759,7 +2764,7 @@ Under international consensus guidelines (**Revised Atlanta Classification** / A
 When serum lipase is elevated without evidence of pancreatic inflammation, clinicians must investigate the following non-pancreatic etiologies:
 
 1. **Reduced Renal Clearance:**
-   - Lipase and amylase are filtered and cleared by the kidneys. Acute Kidney Injury (AKI) or chronic kidney disease (CKD stage 3-5) frequently causes baseline serum lipase elevations up to 3-5x ULN without pancreatitis.
+   - Lipase and amylase are filtered and cleared by the kidneys; impaired renal filtration (baseline renal function unmeasured in this intake) can elevate serum lipase up to 3–5x ULN without pancreatic inflammation.
 2. **Macrolipasemia / Macroamylasemia:**
    - Lipase complexes with circulating immunoglobulins, creating large macromolecular complexes that resist normal renal filtration, producing persistent asymptomatic enzyme elevations.
 3. **Non-Pancreatic Intra-Abdominal Pathology:**
