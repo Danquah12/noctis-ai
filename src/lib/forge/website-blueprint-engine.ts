@@ -1744,12 +1744,12 @@ export function renderWebsiteBlueprintHtml(blueprint: WebsiteBlueprint): string 
     a { color: inherit; text-decoration: none; }
     .container { max-width: 1180px; margin: 0 auto; padding: 0 20px; }
     header.nav { position: sticky; top: 0; z-index: 40; backdrop-filter: blur(12px); background: color-mix(in srgb, var(--bg) 86%, transparent); border-bottom: 1px solid var(--border); }
-    .nav-inner { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-height: 64px; flex-wrap: wrap; padding: 8px 0; }
-    .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 17px; letter-spacing: -0.02em; }
+    .nav-inner { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 60px; flex-wrap: nowrap; padding: 8px 0; }
+    .brand { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 16px; letter-spacing: -0.02em; white-space: nowrap; flex-shrink: 0; }
     .brand-dot { width: 12px; height: 12px; border-radius: 999px; background: var(--accent); box-shadow: 0 0 12px var(--accent); }
-    .nav-links { display: flex; gap: 18px; font-size: 13px; font-weight: 500; color: var(--muted); flex-wrap: wrap; }
+    .nav-links { display: flex; gap: 14px; font-size: 12.5px; font-weight: 500; color: var(--muted); flex-wrap: nowrap; overflow: hidden; }
     .nav-links a:hover { color: var(--text); }
-    .nav-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .nav-actions { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; flex-shrink: 0; }
     .btn { border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 999px; padding: 9px 16px; font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: opacity .15s, transform .15s; }
     .btn:hover { opacity: 0.92; }
     .btn-primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
@@ -1805,7 +1805,9 @@ export function renderWebsiteBlueprintHtml(blueprint: WebsiteBlueprint): string 
     .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(390px, 100vw); background: var(--surface); border-left: 1px solid var(--border); z-index: 70; padding: 20px; display: none; flex-direction: column; gap: 12px; box-shadow: -12px 0 40px rgba(0,0,0,0.4); }
     .drawer.open { display: flex; }
     .toast { position: fixed; bottom: 20px; right: 20px; z-index: 80; background: var(--accent); color: var(--accent-text); padding: 11px 16px; border-radius: 12px; font-weight: 700; font-size: 13px; display: none; box-shadow: 0 10px 28px rgba(0,0,0,0.3); }
+    @media (max-width: 960px) { .nav-links { display: none; } }
     @media (max-width: 820px) { .search-dock, .tool-box, .cta-panel { grid-template-columns: 1fr; } }
+    @media (max-width: 480px) { .nav-inner { flex-wrap: wrap; } .nav-actions { width: 100%; justify-content: flex-end; flex-wrap: wrap; } }
   </style>
 </head>
 <body>
