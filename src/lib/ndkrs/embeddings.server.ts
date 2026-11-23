@@ -7,8 +7,16 @@
  *   so embeddings run deterministically offline and identically across Neon Postgres and PGLite.
  */
 
+import { OPENAI_KEY } from "../openai-key.server.ts";
+
 export const NDKRS_EMBEDDING_DIMS = 384;
 export const NDKRS_DETERMINISTIC_EMBED_MODEL = "noctis-det-embed-384-v1";
+
+function resolveOpenAiEmbeddingKey(): string {
+  const envKey = typeof process !== "undefined" ? process.env.OPENAI_API_KEY?.trim() : "";
+  if (envKey) return envKey;
+  return typeof OPENAI_KEY === "string" ? OPENAI_KEY.trim() : "";
+}
 
 function fnv1a32(str: string, seed = 0x811c9dc5): number {
   let hash = seed >>> 0;
@@ -93,7 +101,7 @@ export function cosineSimilarity(a: number[], b: number[]): number {
 }
 
 export function shouldUseOpenAiEmbeddings(explicitOverride?: boolean): boolean {
-  const apiKey = typeof process !== "undefined" ? process.env.OPENAI_API_KEY?.trim() : "";
+  const apiKey = resolveOpenAiEmbeddingKey();
   if (!apiKey) return false;
   if (explicitOverride === true) return true;
   if (explicitOverride === false) return false;
@@ -105,7 +113,7 @@ export async function computeEmbedding(
   text: string,
   opts: { allowExternal?: boolean } = {},
 ): Promise<{ vector: number[]; model: string; dims: number }> {
-  const apiKey = typeof process !== "undefined" ? process.env.OPENAI_API_KEY?.trim() : "";
+  const apiKey = resolveOpenAiEmbeddingKey();
   if (shouldUseOpenAiEmbeddings(opts.allowExternal) && apiKey && text.trim().length > 0) {
     try {
       const res = await fetch("https://api.openai.com/v1/embeddings", {

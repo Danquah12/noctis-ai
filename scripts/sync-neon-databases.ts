@@ -11,6 +11,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { getSql, dbSource } from "../src/lib/db.ts";
+import { computeEmbedding } from "../src/lib/ndkrs/embeddings.server.ts";
 import {
   seedExtendedDefenseAndEnterpriseCorpus,
   seedNdkrsAuthoritativeCorpus,
@@ -18,11 +19,12 @@ import {
 import { getNdkrsStatusSummary } from "../src/lib/ndkrs/persistence.server.ts";
 import { getSchemaTableCounts } from "../src/lib/enterprise/persistence.server.ts";
 import { syncAllRelationalEnterpriseSchemas } from "../src/lib/enterprise/relational-sync.server.ts";
+import { OPENAI_KEY } from "../src/lib/openai-key.server.ts";
 
 async function main() {
   const startedAt = Date.now();
   const hasDbUrl = Boolean(process.env.DATABASE_URL?.trim());
-  const hasOpenAiKey = Boolean(process.env.OPENAI_API_KEY?.trim());
+  const hasOpenAiKey = Boolean(process.env.OPENAI_API_KEY?.trim() || OPENAI_KEY?.trim());
   console.log(
     JSON.stringify({
       step: "init",
@@ -73,6 +75,42 @@ async function main() {
     preVerifiedBy: "noctis-neon-closure-board",
   });
   console.log(JSON.stringify({ step: "ndkrs_extended_seed", ...extSeed }));
+
+  // 4b. Upgrade any non-OpenAI chunks to text-embedding-3-small (384-dim) so pgvector HNSW stays unified
+  if (hasOpenAiKey) {
+    const nonOpenAiRows = await sql.query<{ id: string; content: string }>(
+      "SELECT id, content FROM ndkrs.knowledge_chunks WHERE embedding_model <> 'text-embedding-3-small' ORDER BY id",
+    );
+    let upgradedCount = 0;
+    for (let i = 0; i < nonOpenAiRows.length; i += 10) {
+      const batch = nonOpenAiRows.slice(i, i + 10);
+      await Promise.all(
+        batch.map(async (row) => {
+          const emb = await computeEmbedding(row.content, { allowExternal: true });
+          if (emb.model === "text-embedding-3-small") {
+            await sql.query(
+              `UPDATE ndkrs.knowledge_chunks
+               SET embedding_json = $1::jsonb, embedding_model = $2, embedding_vec = NULL
+               WHERE id = $3`,
+              [JSON.stringify(emb.vector), emb.model, row.id],
+            );
+            upgradedCount += 1;
+          }
+        }),
+      );
+    }
+    const remRows = await sql.query<{ c: number }>(
+      "SELECT count(*)::int AS c FROM ndkrs.knowledge_chunks WHERE embedding_model <> 'text-embedding-3-small'",
+    );
+    console.log(
+      JSON.stringify({
+        step: "reembed_openai",
+        attempted: nonOpenAiRows.length,
+        upgradedCount,
+        remainingNonOpenAi: Number(remRows[0]?.c ?? 0),
+      }),
+    );
+  }
 
   // 5. Summarize live state across all schemas and NDKRS domains
   const [schemaCounts, ndkrsSummary, domainRows] = await Promise.all([
