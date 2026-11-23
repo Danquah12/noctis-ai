@@ -1775,6 +1775,171 @@ export async function seedExtendedDefenseAndEnterpriseCorpus(
     });
   }
 
+  // 5. All 10 Multi-Industry Authoritative Reference Records (NUPS Cross-Industry Grounding)
+  const NUPS_INDUSTRY_SEED: AuthoritativeCorpusSeedItem[] = [
+    {
+      domain: "engineering",
+      canonicalKey: "NUPS-IND-NFPA99-110-HOSPITAL-EES",
+      title: "NFPA 99 & NFPA 110 Type 1 Essential Electrical System (EES) for Hospitals",
+      summary:
+        "Mandates Type 1 EES Automatic Transfer Switch (ATS) power restoration within 10 seconds for hospital life-safety and critical care branches plus generator fuel reserves.",
+      content: `# NFPA 99 & NFPA 110 Hospital Power Outage Continuity
+- Type 1 EES transfer time must not exceed 10 seconds for life-safety and critical care branches (ICU ventilators, ORs).
+- Separate Life Safety, Critical, and Equipment branches with redundant battery UPS bridge during ATS transfer.`,
+      sourceUri: "https://csrc.nist.gov/pubs/sp/800/82/r3/final",
+      trustTier: "AUTHORITATIVE_GOV",
+      version: "NFPA-2024",
+      citationLabel: "NFPA-99-110",
+      effectiveDate: "2024-01-01T00:00:00Z",
+      expiresAt: "2032-12-31T00:00:00Z",
+    },
+    {
+      domain: "science",
+      canonicalKey: "NUPS-IND-NRC-10CFR20-ALARA",
+      title: "NRC 10 CFR Part 20 Radiation Protection, Inverse-Square Law & HVL Shielding",
+      summary:
+        "Establishes 50 mSv (5 rem)/yr occupational TEDE limit, 1 mSv/yr public limit, inverse-square attenuation I2=I1*(d1/d2)^2, and Half-Value Layer I=I0*0.5^(x/HVL).",
+      content: `# NRC 10 CFR Part 20 & ALARA Radiation Protection
+- Occupational annual limit = 50 mSv (5 rem); public limit = 1 mSv (0.1 rem).
+- ALARA combines Time minimization, Distance (1/r^2), and Shielding thickness measured in Half-Value Layers.`,
+      sourceUri: "https://www.ecfr.gov/current/title-10/chapter-I/part-20",
+      trustTier: "AUTHORITATIVE_GOV",
+      version: "10CFR20-2025",
+      citationLabel: "NRC-10CFR20",
+      effectiveDate: "2025-01-01T00:00:00Z",
+      expiresAt: "2032-12-31T00:00:00Z",
+    },
+    {
+      domain: "engineering",
+      canonicalKey: "NUPS-IND-FAA-MARITIME-SAFETY",
+      title: "FAA 14 CFR 91.167 IFR Fuel Reserve & IMO Vessel Stability / Cyber Rules",
+      summary:
+        "Requires 45-minute IFR post-alternate fuel reserve in aviation, positive metacentric height GM = KB + BM - KG >= 0.15m in naval vessels, and IMO MSC-FAL.1/Circ.3 cyber segmentation.",
+      content: `# Aviation IFR Reserve & Maritime Stability/Cyber
+- FAA 14 CFR 91.167 mandates fuel to destination + alternate (if required) + 45 minutes at normal cruise.
+- IMO Intact Stability Code mandates positive GM >= 0.15 m alongside ECDIS OT/IT segmentation.`,
+      sourceUri: "https://www.ecfr.gov/current/title-14/chapter-I/subchapter-F/part-91/section-91.167",
+      trustTier: "AUTHORITATIVE_GOV",
+      version: "14CFR91-IMO",
+      citationLabel: "FAA-IMO-SAFETY",
+      effectiveDate: "2024-01-01T00:00:00Z",
+      expiresAt: "2032-12-31T00:00:00Z",
+    },
+    {
+      domain: "general",
+      canonicalKey: "NUPS-IND-INSURANCE-ACTUARIAL-RATIOS",
+      title: "NAIC Actuarial Combined Ratio, Loss Ratio & CAS Pure Premium Standards",
+      summary:
+        "Defines Loss Ratio = Incurred Losses / Earned Premium, Combined Ratio = Loss + Expense Ratio (<100% underwriting profit), and Pure Premium = Frequency * Severity.",
+      content: `# NAIC Actuarial Ratios & Human Adjuster Rule
+- Combined Ratio < 100% reflects profitable core underwriting before investment income; > 100% signals underwriting loss.
+- Suspected fraud indicators escalate to Special Investigations Unit (SIU) without autonomous claim denial.`,
+      sourceUri: "https://www.nist.gov/itl/ai-risk-management-framework",
+      trustTier: "PEER_REVIEWED",
+      version: "ASOP-2025",
+      citationLabel: "NAIC-ASOP",
+      effectiveDate: "2025-01-01T00:00:00Z",
+      expiresAt: "2032-12-31T00:00:00Z",
+    },
+    {
+      domain: "engineering",
+      canonicalKey: "NUPS-IND-REAL-ESTATE-NOI-DSCR",
+      title: "Commercial Real Estate NOI, Cap Rate, DSCR (>=1.25x) & IBC Structural Standards",
+      summary:
+        "Computes Net Operating Income NOI = EGI - OpEx, Cap Rate = NOI / Value, Debt Service Coverage Ratio DSCR = NOI / DebtService against 1.25x underwriting floor.",
+      content: `# Commercial Real Estate Valuation & Facility Safety
+- NOI excludes capital expenditures and debt service; DSCR < 1.25x triggers commercial underwriting covenant caution.
+- Facility structural and fire-life-safety inspections remain governed by IBC 2024 & NFPA codes.`,
+      sourceUri: "https://www.iso.org/standard/72704.html",
+      trustTier: "PEER_REVIEWED",
+      version: "CREFC-IBC-2024",
+      citationLabel: "CREFC-IBC",
+      effectiveDate: "2024-01-01T00:00:00Z",
+      expiresAt: "2032-12-31T00:00:00Z",
+    },
+    {
+      domain: "legal",
+      canonicalKey: "NUPS-IND-FAR-2CFR200-NARA",
+      title: "FAR Part 13/15 Acquisition Thresholds, 2 CFR Part 200 Single Audit & NARA Records",
+      summary:
+        "Defines FAR $10k micro-purchase / $250k SAT thresholds, 2 CFR 200.501 $1,000,000 federal Single Audit threshold (Oct 2024), and human Contracting Officer signature boundary.",
+      content: `# FAR Part 13/15 & 2 CFR Part 200 Government Administration
+- Simplified Acquisition Threshold (SAT) is $250,000; Single Audit under revised 2 CFR Part 200 triggers at >= $1,000,000 annual federal expenditures.
+- AI agents cannot legally obligate federal funds or execute awards; warranted Contracting Officers retain sole authority.`,
+      sourceUri: "https://www.ecfr.gov/current/title-2/subtitle-A/chapter-II/part-200",
+      trustTier: "AUTHORITATIVE_GOV",
+      version: "2CFR200-2024",
+      citationLabel: "FAR-2CFR200",
+      effectiveDate: "2024-10-01T00:00:00Z",
+      expiresAt: "2032-12-31T00:00:00Z",
+    },
+    {
+      domain: "engineering",
+      canonicalKey: "NUPS-IND-TELECOM-FRIIS-FSPL",
+      title: "ITU-R P.525 Free-Space Path Loss (FSPL), Friis RF Link Budget & 5G Propagation",
+      summary:
+        "Computes Free-Space Path Loss FSPL(dB) = 20*log10(d_km) + 20*log10(f_MHz) + 32.44, received power P_rx, and >= 10 dB fade margin for reliable telecom links.",
+      content: `# RF Telecom Link Budget & FSPL
+- At 3500 MHz (n78 5G) and 10 km LoS, FSPL exceeds 123 dB; link design requires net fade margin >= 10 dB above receiver sensitivity.
+- Combine with Shannon-Hartley C = B * log2(1 + SNR) for physical-layer spectral capacity.`,
+      sourceUri: "https://www.ieee.org/",
+      trustTier: "PEER_REVIEWED",
+      version: "ITU-P525",
+      citationLabel: "ITU-FSPL",
+      effectiveDate: "2024-01-01T00:00:00Z",
+      expiresAt: "2032-12-31T00:00:00Z",
+    },
+    {
+      domain: "engineering",
+      canonicalKey: "NUPS-IND-MFG-ISO22400-OEE-PLC",
+      title: "ISO 22400 Overall Equipment Effectiveness (OEE), Six Sigma Cpk & IEC 61508 OT Safety",
+      summary:
+        "Measures plant productivity via OEE = Availability * Performance * Quality (>= 85% world-class), SPC Cpk >= 1.33, and NIST SP 800-82 PLC network segmentation.",
+      content: `# Manufacturing OEE, Six Sigma SPC & OT/PLC Safety
+- Unplanned micro-stops erode Availability & Performance multiplicatively; IEC 61508 SIL safety interlocks must remain hardware-isolated from IT networks.`,
+      sourceUri: "https://csrc.nist.gov/pubs/sp/800/82/r3/final",
+      trustTier: "AUTHORITATIVE_GOV",
+      version: "ISO22400-SP800-82",
+      citationLabel: "ISO22400-OEE",
+      effectiveDate: "2024-01-01T00:00:00Z",
+      expiresAt: "2032-12-31T00:00:00Z",
+    },
+    {
+      domain: "science",
+      canonicalKey: "NUPS-IND-EPA-PM25-AQI-GHG",
+      title: "EPA 2024 Revised NAAQS PM2.5 AQI Breakpoints & GHG Scope 1-3 Accounting",
+      summary:
+        "Applies EPA 2024 9.0 ug/m3 PM2.5 Good AQI upper boundary (AQI 0-50) alongside GHG Protocol Scope 1 direct, Scope 2 purchased energy, and Scope 3 supply-chain CO2e totals.",
+      content: `# EPA 2024 PM2.5 AQI & GHG Emissions Standard
+- Good AQI (0-50): 0.0-9.0 ug/m3; Moderate (51-100): 9.1-35.4 ug/m3; Unhealthy for Sensitive Groups (101-150): 35.5-55.4 ug/m3.`,
+      sourceUri: "https://www.ecfr.gov/current/title-40/chapter-I/subchapter-C/part-50",
+      trustTier: "AUTHORITATIVE_GOV",
+      version: "EPA-NAAQS-2024",
+      citationLabel: "EPA-PM25-2024",
+      effectiveDate: "2024-05-06T00:00:00Z",
+      expiresAt: "2032-12-31T00:00:00Z",
+    },
+    {
+      domain: "general",
+      canonicalKey: "NUPS-IND-FEMA-NIMS-CMS-OUTAGE",
+      title: "FEMA NIMS / Hospital Incident Command System (HICS) & CMS 42 CFR 482.15 Emergency Continuity",
+      summary:
+        "Establishes multi-agency NIMS ICS emergency coordination, hospital emergency preparedness plans, 72-hour utility contingency planning, and HIPAA contingency access.",
+      content: `# FEMA NIMS / HICS & CMS Emergency Preparedness
+- During hospital utility outages, CMS 42 CFR 482.15 requires documented alternate energy, medical gas reserves, and emergency staffing continuity.
+- Life-safety patient continuity takes precedence over restrictive IT lockouts under SQDEC Safety governance.`,
+      sourceUri: "https://www.ecfr.gov/current/title-42/chapter-IV/subchapter-G/part-482/subpart-B/section-482.15",
+      trustTier: "AUTHORITATIVE_GOV",
+      version: "CMS-NIMS-2025",
+      citationLabel: "CMS-NIMS-482.15",
+      effectiveDate: "2025-01-01T00:00:00Z",
+      expiresAt: "2032-12-31T00:00:00Z",
+    },
+  ];
+  for (const indItem of NUPS_INDUSTRY_SEED) {
+    await ingestIfNeeded(indItem);
+  }
+
   return {
     recordsSeeded,
     recordsSkippedExisting,
@@ -1783,6 +1948,7 @@ export async function seedExtendedDefenseAndEnterpriseCorpus(
       Object.keys(DOD_IC_POLICY_REGISTRY).length +
       searchStigLibrary({ limit: 100 }).length +
       listPolicyAsCodePacks().length +
-      GOVERNMENT_READINESS_CONTROLS.length,
+      GOVERNMENT_READINESS_CONTROLS.length +
+      NUPS_INDUSTRY_SEED.length,
   };
 }

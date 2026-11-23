@@ -1064,13 +1064,15 @@ async function executeVibeReply(
     const { isRmfGrcQuery } = await import("@/lib/noctis-rmf-engine");
     const { isDodIcQuery } = await import("@/lib/dod-ic/dod-ic-reasoning.server");
     const { isEnterpriseChatQuery } = await import("@/lib/enterprise/chat-bridge.server");
+    const { isNupsChatQuery } = await import("@/lib/nups/chat-bridge.server");
     const { rememberAnswer, rememberRule, inferDomain } = await import("@/lib/noctis-train.server");
     const skipClinicalCache =
       isClinicalInquiry ||
       isUniversalClinicalQuestion(latest) ||
       isRmfGrcQuery(latest) ||
       isDodIcQuery(latest) ||
-      isEnterpriseChatQuery(latest);
+      isEnterpriseChatQuery(latest) ||
+      isNupsChatQuery(latest);
     const cleanReplyForMemory = reply.text.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
     if (!skipClinicalCache && reply && "text" in reply && cleanReplyForMemory.length > 60 && !cleanReplyForMemory.includes("could not finish")) {
       const domain = inferDomain(latest);
@@ -1207,6 +1209,7 @@ async function composeVibeReply(
   );
   const { isRmfGrcQuery } = await import("@/lib/noctis-rmf-engine");
   const { isEnterpriseChatQuery, tryHandleEnterpriseChatQuery } = await import("@/lib/enterprise/chat-bridge.server");
+  const { isNupsChatQuery, tryHandleNupsChatQuery } = await import("@/lib/nups/chat-bridge.server");
   const isClinicalCacheBypass =
     isUniversalClinicalQuestion(fullQuestion) ||
     isUniversalClinicalQuestion(question) ||
@@ -1215,7 +1218,9 @@ async function composeVibeReply(
     isDodIcQuery(fullQuestion) ||
     isDodIcQuery(question) ||
     isEnterpriseChatQuery(fullQuestion) ||
-    isEnterpriseChatQuery(question);
+    isEnterpriseChatQuery(question) ||
+    isNupsChatQuery(fullQuestion) ||
+    isNupsChatQuery(question);
 
   if (!isCodingRequest) {
     // Authoritative Live MITRE CVE Program & NVD Resolver: Guarantees official names and full intelligence for all CVEs
@@ -1267,6 +1272,19 @@ async function composeVibeReply(
           text: wrapDeterministicThink(
             enterpriseOut,
             "Queried Noctis Enterprise Intelligence engines (6-panel Command Center, AI Evaluation Lab, Policy-as-Code, Auth Digital Twin, Knowledge Graph, Agent Governance, Secure Model Gateway, Custody Chain, and Government Readiness).",
+          ),
+        };
+      }
+    }
+
+    // Noctis Universal Problem Solver (NUPS) & 40-Engine Master Capability Matrix
+    if (isNupsChatQuery(fullQuestion)) {
+      const nupsOut = await tryHandleNupsChatQuery(fullQuestion);
+      if (nupsOut) {
+        return {
+          text: wrapDeterministicThink(
+            nupsOut,
+            "Orchestrated Noctis Universal Problem Solver (NUPS): Classified cross-domain expertise, planned isolated fact boundaries, retrieved NDKRS authorities, delegated deterministic domain solvers, and verified output via Independent Safety Validator.",
           ),
         };
       }

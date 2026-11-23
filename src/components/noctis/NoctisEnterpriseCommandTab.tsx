@@ -30,6 +30,7 @@ interface NoctisEnterpriseCommandTabProps {
 
 type EnterpriseSubTab =
   | "command-overview"
+  | "nups-matrix"
   | "policy-ccv"
   | "twin-graph-risk"
   | "evidence-custody"
@@ -132,22 +133,39 @@ export function NoctisEnterpriseCommandTab({
   const [govReadiness, setGovReadiness] = useState<any>(null);
   const [masterPlan, setMasterPlan] = useState<any>(null);
 
+  // NUPS & 40-Engine Master Capability Matrix
+  const [nupsMatrix, setNupsMatrix] = useState<any[]>([]);
+  const [nupsSummary, setNupsSummary] = useState<any>(null);
+  const [nupsRuns, setNupsRuns] = useState<any[]>([]);
+  const [nupsCatFilter, setNupsCatFilter] = useState<"ALL" | "INDUSTRY" | "SCIENTIFIC_TECHNICAL" | "CROSS_PLATFORM">("ALL");
+  const [nupsPhaseFilter, setNupsPhaseFilter] = useState<string>("ALL");
+  const [nupsSearch, setNupsSearch] = useState("");
+  const [nupsQuery, setNupsQuery] = useState(
+    "A hospital experiences a power outage affecting backup electrical generators (transfer time 8.5s, 2400 gal tank at 50 gph, 300 kWh UPS at 400 kW critical load), 24 ICU operations, cybersecurity, emergency preparedness, and regulatory compliance",
+  );
+  const [nupsOut, setNupsOut] = useState<any>(null);
+
   async function loadCommandCenter() {
     setLoading(true);
     setErrMsg("");
     try {
-      const [cc, pk, ag, gv, mp] = await Promise.all([
+      const [cc, pk, ag, gv, mp, nx, nr] = await Promise.all([
         fetch("/api/v2/enterprise/command-center").then((r) => r.json()),
         fetch("/api/v2/enterprise/policy-as-code/packs").then((r) => r.json()),
         fetch("/api/v2/enterprise/agents/manifest").then((r) => r.json()),
         fetch("/api/v2/enterprise/government-readiness").then((r) => r.json()),
         fetch("/api/v2/enterprise/master-plan").then((r) => r.json()),
+        fetch("/api/v2/nups/matrix").then((r) => r.json()),
+        fetch("/api/v2/nups/runs?limit=8").then((r) => r.json()),
       ]);
       setSnap(cc);
       setPacks(Array.isArray(pk.packs) ? pk.packs : []);
       setAgents(Array.isArray(ag.agents) ? ag.agents : []);
       setGovReadiness(gv);
       setMasterPlan(mp);
+      setNupsMatrix(Array.isArray(nx.engines) ? nx.engines : []);
+      setNupsSummary(nx.summary || null);
+      setNupsRuns(Array.isArray(nr.runs) ? nr.runs : []);
     } catch (e) {
       setErrMsg(e instanceof Error ? e.message : "Failed to load Enterprise Command Center telemetry.");
     } finally {
@@ -232,8 +250,30 @@ export function NoctisEnterpriseCommandTab({
     }
   }
 
+  async function runNupsSolve(promptOverride?: string) {
+    const q = (promptOverride ?? nupsQuery).trim();
+    if (!q) return;
+    if (promptOverride) setNupsQuery(promptOverride);
+    setBusyMsg("Running 5-Stage Noctis Universal Problem Solver (Classify -> Plan -> Retrieve -> Delegate -> Safety Validator)...");
+    setErrMsg("");
+    try {
+      const res = await fetch("/api/v2/nups/solve", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ query: q }),
+      }).then((r) => r.json());
+      setNupsOut(res);
+      await loadCommandCenter();
+    } catch (e) {
+      setErrMsg(e instanceof Error ? e.message : "NUPS orchestration failed.");
+    } finally {
+      setBusyMsg("");
+    }
+  }
+
   const navTabs: { id: EnterpriseSubTab; label: string; icon: React.ReactNode }[] = [
     { id: "command-overview", label: "Command Overview (6 Panels)", icon: <Activity className="size-3.5" /> },
+    { id: "nups-matrix", label: "Universal Solver (NUPS) & 40-Engine Matrix", icon: <Sparkles className="size-3.5" /> },
     { id: "policy-ccv", label: "Policy-as-Code & CCV", icon: <Shield className="size-3.5" /> },
     { id: "twin-graph-risk", label: "Auth Twin, Graph & Risk", icon: <Network className="size-3.5" /> },
     { id: "evidence-custody", label: "Evidence & Chain of Custody", icon: <FileCheck2 className="size-3.5" /> },
@@ -1410,6 +1450,272 @@ export function NoctisEnterpriseCommandTab({
                     <p className="text-[10px] text-amber-300/80">{h.planningTargetDisclaimer}</p>
                   </div>
                 ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {subTab === "nups-matrix" && (
+          <div className="space-y-6 max-w-6xl mx-auto">
+            {/* Interactive NUPS 5-Stage Orchestrator */}
+            <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/[0.04] p-4 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="size-4 text-cyan-400" />
+                    <h2 className="text-sm font-semibold text-white">
+                      Noctis Universal Problem Solver (NUPS) — 5-Stage Multi-Domain Orchestrator
+                    </h2>
+                  </div>
+                  <p className="text-xs text-zinc-400">
+                    Classify · Plan · Retrieve NDKRS (pgvector) · Delegate Domain Experts & Tools · Independent Safety Validator
+                  </p>
+                </div>
+                {onSendToChat && (
+                  <button
+                    type="button"
+                    onClick={() => onSendToChat(nupsQuery)}
+                    className="rounded-lg border border-cyan-500/35 bg-cyan-500/15 px-3 py-1.5 text-xs text-cyan-200 hover:bg-cyan-500/25 flex items-center gap-1.5"
+                  >
+                    <Send className="size-3.5" /> Ask NUPS in Chat
+                  </button>
+                )}
+              </div>
+
+              <div className="flex flex-wrap gap-1.5 text-[11px]">
+                {[
+                  {
+                    label: "Hospital Power Outage (5-Domain)",
+                    q: "A hospital experiences a power outage affecting backup electrical generators (transfer time 8.5s, 2400 gal tank at 50 gph, 300 kWh UPS at 400 kW critical load), 24 ICU operations, cybersecurity, emergency management, and regulatory compliance",
+                  },
+                  {
+                    label: "Nuclear ALARA Shielding",
+                    q: "Calculate ALARA radiation dose rate attenuation from 40 mSv/hr at d1=1m to d2=4m through shield thickness of 3 cm lead with HVL of 1.2 cm under NRC 10 CFR 20",
+                  },
+                  {
+                    label: "Insurance Combined Ratio",
+                    q: "Compute insurance underwriting combined ratio, loss ratio, and pure premium for earned premiums of $1000000, incurred losses of $680000, expenses of $270000, 120 claims across 2000 exposures",
+                  },
+                  {
+                    label: "Real Estate NOI / DSCR",
+                    q: "Analyze commercial property valuation with EGI of $600000, operating expenses of $210000, property value of $5200000, loan amount $3640000, and annual debt service $295000",
+                  },
+                  {
+                    label: "FAR & 2 CFR 200 Procurement",
+                    q: "Evaluate federal grant and procurement rules for a $1,250,000 federal expenditure award under FAR Part 15 and 2 CFR 200 Single Audit threshold",
+                  },
+                  {
+                    label: "Telecom 5G FSPL Link Budget",
+                    q: "Calculate RF free-space path loss (FSPL) and link budget over 10 km at 3500 MHz with tx power 43 dBm, gain 18 dB, sensitivity -95 dBm",
+                  },
+                ].map((preset) => (
+                  <button
+                    key={preset.label}
+                    type="button"
+                    onClick={() => void runNupsSolve(preset.q)}
+                    className="rounded-md border border-white/10 bg-white/5 px-2.5 py-1 text-zinc-200 hover:bg-white/10"
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-2">
+                <textarea
+                  value={nupsQuery}
+                  onChange={(e) => setNupsQuery(e.target.value)}
+                  rows={2}
+                  className="flex-1 rounded-lg border border-white/15 bg-black/50 px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-400"
+                  placeholder="Describe any complex cross-domain or industry engineering/regulatory problem..."
+                />
+                <button
+                  type="button"
+                  onClick={() => void runNupsSolve()}
+                  className="rounded-lg bg-cyan-600 hover:bg-cyan-500 px-4 py-2 text-xs font-semibold text-white flex items-center justify-center gap-1.5 shrink-0"
+                >
+                  <Play className="size-3.5" /> Run Universal Problem Solver
+                </button>
+              </div>
+
+              {nupsOut && (
+                <div className="space-y-3 pt-2 border-t border-white/10">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-bold", statusTone(nupsOut.safetyValidation?.status))}>
+                        {`VALIDATOR: ${nupsOut.safetyValidation?.status || "PASS"}`}
+                      </span>
+                      <span className="rounded bg-white/5 border border-white/10 px-2 py-0.5 text-[11px] text-cyan-300">
+                        {`Run ${nupsOut.runId} · ${nupsOut.classification?.matchedEngines?.length ?? 0} Engines · ${nupsOut.classification?.distinctDomains?.length ?? 0} Domains · ${nupsOut.latencyMs}ms`}
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-zinc-400 font-mono">
+                      {`SHA-256: ${String(nupsOut.auditSha256 || "").slice(0, 16)} · SQL: ${nupsOut.persistedToSql ? "SAVED" : "MEM"}`}
+                    </span>
+                  </div>
+
+                  {/* Isolated Per-Domain Expert Outputs */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {(nupsOut.expertOutputs || []).map((exp: any) => (
+                      <div key={exp.engineId + exp.domainLabel} className="rounded-lg border border-white/10 bg-black/45 p-3 text-xs space-y-1.5">
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="font-semibold text-white">{`${exp.engineId}: ${exp.domainLabel}`}</span>
+                          <span className={cn("rounded border px-1.5 py-0.5 text-[10px]", statusTone(exp.complianceStatus))}>
+                            {exp.complianceStatus}
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-sky-300/90">{`Pillar: ${exp.sqdecPillar} · NDKRS: ${exp.ndkrsDomain}`}</div>
+                        <div className="flex flex-wrap gap-1 pt-0.5">
+                          {Object.entries(exp.computations || {}).slice(0, 4).map(([k, v]) => (
+                            <span key={k} className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-emerald-300 font-mono">
+                              {`${k}: ${String(v)}`}
+                            </span>
+                          ))}
+                        </div>
+                        {(exp.findings || []).slice(0, 2).map((f: string, idx: number) => (
+                          <div key={idx} className="text-[11px] text-zinc-300">{f}</div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* SQDEC Conflict Arbitration */}
+                  {Array.isArray(nupsOut.crossDomainConflicts) && nupsOut.crossDomainConflicts.length > 0 && (
+                    <div className="rounded-lg border border-amber-500/35 bg-amber-500/10 p-3 text-xs space-y-1">
+                      <div className="font-semibold text-amber-300">Cross-Domain SQDEC Conflict Arbitration</div>
+                      {nupsOut.crossDomainConflicts.map((c: any) => (
+                        <div key={c.conflictId} className="text-[11px] text-amber-100">
+                          {`${c.conflictId} (${c.betweenEngines?.join(" vs ")}): ${c.resolutionDecision}`}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {nupsRuns.length > 0 && (
+                <div className="text-[11px] text-zinc-400 flex flex-wrap gap-2 items-center pt-1">
+                  <span className="font-semibold text-zinc-300">Recent SQL Runs:</span>
+                  {nupsRuns.slice(0, 4).map((r: any) => (
+                    <span key={r.id} className="rounded border border-white/10 bg-black/40 px-2 py-0.5 font-mono text-[10px]">
+                      {`${r.id} · ${r.validation_status} (${r.domains_count} domains)`}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 40-Engine Master Capability Matrix */}
+            <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h2 className="text-sm font-semibold text-white">
+                    {`Noctis Master Capability Matrix (${nupsSummary?.totalCataloged ?? nupsMatrix.length} Engines: 1 NUPS + 20 Industries + 10 Scientific + 10 Cross-Platform)`}
+                  </h2>
+                  <p className="text-xs text-zinc-400">
+                    {`Status: ${nupsSummary?.byStatus?.LIVE_WIRED ?? 0} Live-Wired · ${nupsSummary?.byStatus?.EXISTING_ENGINE_WIRED_VIA_NUPS ?? 0} Existing Engines Wired via NUPS · ${nupsSummary?.byStatus?.NEWLY_BUILT_GAP_CLOSED ?? 3} New Domain Gap Closures`}
+                  </p>
+                </div>
+                {onOpenInCanvas && nupsMatrix.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onOpenInCanvas(
+                        "Noctis 41-Engine Master Capability Matrix",
+                        nupsMatrix
+                          .map((e) => `### ${e.id} — ${e.name} (${e.category} / ${e.phase})\n- **Sources:** ${(e.authoritativeSources || []).join(", ")}\n- **Rules:** ${(e.deterministicRules || []).join("; ")}\n- **Modules:** ${(e.existingModules || []).join(", ")}`)
+                          .join("\n\n"),
+                      )
+                    }
+                    className="rounded-lg border border-sky-500/35 bg-sky-500/15 px-2.5 py-1 text-xs text-sky-200 flex items-center gap-1"
+                  >
+                    <Sparkles className="size-3.5" /> Open Matrix in Canvas
+                  </button>
+                )}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                {(
+                  [
+                    ["ALL", "All (41)"],
+                    ["INDUSTRY", "20 Industries"],
+                    ["SCIENTIFIC_TECHNICAL", "10 Scientific & Technical"],
+                    ["CROSS_PLATFORM", "10 Cross-Platform"],
+                  ] as const
+                ).map(([cat, label]) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setNupsCatFilter(cat)}
+                    className={cn(
+                      "rounded-lg border px-2.5 py-1 text-xs",
+                      nupsCatFilter === cat
+                        ? "bg-cyan-500/20 border-cyan-500/40 text-cyan-200 font-semibold"
+                        : "bg-white/5 border-white/10 text-zinc-400 hover:text-white",
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+                <select
+                  value={nupsPhaseFilter}
+                  onChange={(e) => setNupsPhaseFilter(e.target.value)}
+                  className="rounded-lg border border-white/10 bg-black/50 px-2.5 py-1 text-xs text-zinc-200"
+                >
+                  <option value="ALL">All 5 Phases</option>
+                  <option value="PHASE_1_FOUNDATION">Phase 1 — Foundation</option>
+                  <option value="PHASE_2_SHARED_TOOLS">Phase 2 — Shared Tools</option>
+                  <option value="PHASE_3_TECHNICAL">Phase 3 — Technical Expansion</option>
+                  <option value="PHASE_4_ENTERPRISE">Phase 4 — Enterprise Expansion</option>
+                  <option value="PHASE_5_SPECIALIZED">Phase 5 — Specialized Validation</option>
+                </select>
+                <input
+                  value={nupsSearch}
+                  onChange={(e) => setNupsSearch(e.target.value)}
+                  placeholder="Filter engines, rules, sources, modules..."
+                  className="flex-1 min-w-[200px] rounded-lg border border-white/10 bg-black/50 px-2.5 py-1 text-xs text-white"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {nupsMatrix
+                  .filter((e) => nupsCatFilter === "ALL" || e.category === nupsCatFilter)
+                  .filter((e) => nupsPhaseFilter === "ALL" || e.phase === nupsPhaseFilter)
+                  .filter((e) => {
+                    const q = nupsSearch.trim().toLowerCase();
+                    if (!q) return true;
+                    return JSON.stringify(e).toLowerCase().includes(q);
+                  })
+                  .map((e) => (
+                    <div key={e.id} className="rounded-lg border border-white/10 bg-black/45 p-3 text-xs space-y-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-semibold text-white">{`${e.id} · ${e.name}`}</span>
+                        <span
+                          className={cn(
+                            "rounded border px-1.5 py-0.5 text-[10px]",
+                            e.status === "LIVE_WIRED"
+                              ? "bg-emerald-500/15 border-emerald-500/35 text-emerald-300"
+                              : e.status === "NEWLY_BUILT_GAP_CLOSED"
+                              ? "bg-cyan-500/15 border-cyan-500/35 text-cyan-300"
+                              : "bg-sky-500/15 border-sky-500/35 text-sky-300",
+                          )}
+                        >
+                          {e.status}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-zinc-300">{e.capabilitiesSummary}</p>
+                      <div className="text-[10px] text-zinc-400">
+                        <span className="text-zinc-200 font-medium">Sources: </span>
+                        {(e.authoritativeSources || []).join("; ")}
+                      </div>
+                      <div className="text-[10px] text-emerald-300/90">
+                        <span className="text-zinc-200 font-medium">Deterministic Rules: </span>
+                        {(e.deterministicRules || []).slice(0, 2).join(" · ")}
+                      </div>
+                      <div className="text-[10px] text-zinc-500 font-mono truncate">
+                        {`Modules: ${(e.existingModules || []).join(", ")}`}
+                      </div>
+                    </div>
+                  ))}
               </div>
             </div>
           </div>

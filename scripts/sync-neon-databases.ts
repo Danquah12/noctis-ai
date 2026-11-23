@@ -20,6 +20,8 @@ import { getNdkrsStatusSummary } from "../src/lib/ndkrs/persistence.server.ts";
 import { getSchemaTableCounts } from "../src/lib/enterprise/persistence.server.ts";
 import { syncAllRelationalEnterpriseSchemas } from "../src/lib/enterprise/relational-sync.server.ts";
 import { OPENAI_KEY } from "../src/lib/openai-key.server.ts";
+import { syncNupsCatalogToSql, listNupsRuns } from "../src/lib/nups/persistence.server.ts";
+import { solveUniversalProblem } from "../src/lib/nups/orchestrator.server.ts";
 
 async function main() {
   const startedAt = Date.now();
@@ -35,24 +37,24 @@ async function main() {
     }),
   );
 
-  // 1. Apply 0019_telemetry_persistence.sql idempotently when connected to Postgres
+  // 1. Apply 0019_telemetry_persistence.sql & 0020_nups_orchestration.sql idempotently
   const sql = await getSql();
-  const migPath = path.join(process.cwd(), "migrations", "0019_telemetry_persistence.sql");
-  const migSql = readFileSync(migPath, "utf8");
-  for (const rawStmt of migSql.split(/;\s*(?:\r?\n|$)/)) {
-    const stmt = rawStmt
-      .split(/\r?\n/)
-      .filter((line) => !line.trim().startsWith("--"))
-      .join("\n")
-      .trim();
-    if (stmt) {
-      await sql.query(stmt);
+  for (const migFile of ["0019_telemetry_persistence.sql", "0020_nups_orchestration.sql"]) {
+    const migPath = path.join(process.cwd(), "migrations", migFile);
+    const migSql = readFileSync(migPath, "utf8");
+    for (const rawStmt of migSql.split(/;\s*(?:\r?\n|$)/)) {
+      const stmt = rawStmt
+        .split(/\r?\n/)
+        .filter((line) => !line.trim().startsWith("--"))
+        .join("\n")
+        .trim();
+      if (stmt) {
+        await sql.query(stmt);
+      }
     }
+    await sql.query(`INSERT INTO _migrations (name) VALUES ($1) ON CONFLICT (name) DO NOTHING`, [migFile]);
   }
-  await sql.query(
-    `INSERT INTO _migrations (name) VALUES ('0019_telemetry_persistence.sql') ON CONFLICT (name) DO NOTHING`,
-  );
-  console.log(JSON.stringify({ step: "migration_0019", applied: true }));
+  console.log(JSON.stringify({ step: "migrations_0019_0020", applied: true }));
 
   // 2. Sync relational 0015 + enterprise + enclave + baseline telemetry schemas first (fast SQL operations)
   const relational = await syncAllRelationalEnterpriseSchemas({
@@ -111,6 +113,21 @@ async function main() {
       }),
     );
   }
+
+  const nupsCatalogCount = await syncNupsCatalogToSql();
+  const existingRuns = await listNupsRuns(1);
+  let baselineRunId: string | null = null;
+  if (existingRuns.length === 0) {
+    const baseline = await solveUniversalProblem({
+      query:
+        "A hospital experiences a power outage affecting backup electrical generators (transfer time 8.5s, 2400 gal tank at 50 gph, 300 kWh UPS at 400 kW critical load), 24 ICU ventilator operations, cybersecurity, emergency management, and HIPAA/CMS regulatory compliance",
+      actorId: "scripts/sync-neon-databases.ts",
+      tenantId: "tenant:public-sandbox",
+      persist: true,
+    });
+    baselineRunId = baseline.runId;
+  }
+  console.log(JSON.stringify({ step: "nups_sync", catalogedEngines: nupsCatalogCount, baselineRunId }));
 
   // 5. Summarize live state across all schemas and NDKRS domains
   const [schemaCounts, ndkrsSummary, domainRows] = await Promise.all([
