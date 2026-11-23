@@ -2074,6 +2074,8 @@ img[src*="dstrike-mark"] {
 /* Tinted deep themes (Nordic Blue & Montreal Emerald) */
 :is(html[data-theme="nordic"], html[data-theme="emerald"]) .noctis-desk-shell :is(
   [class~="bg-[#0d1117]"],
+  [class~="bg-[#0b0e14]"],
+  [class~="bg-[#0e121a]"],
   [class~="bg-[#12151c]"],
   [class~="bg-[#0e1017]"],
   [class~="bg-[#0a0c12]"]
@@ -2086,7 +2088,9 @@ img[src*="dstrike-mark"] {
   [class~="bg-[#141722]"],
   [class~="bg-[#161a24]"],
   [class~="bg-[#1a1a1a]"],
+  [class~="bg-[#1b1b1b]/98"],
   [class~="bg-[#1e232e]"],
+  [class~="bg-[#252525]"],
   [class~="bg-[#2a2a2a]"],
   [class~="bg-[#2f2f2f]"]
 ) {
@@ -2106,8 +2110,10 @@ img[src*="dstrike-mark"] {
 /* Light themes (Clean White & Warm Sand) */
 :is(html[data-theme="white"], html[data-theme="sand"]) .noctis-desk-shell :is(
   [class~="bg-[#0d1117]"],
+  [class~="bg-[#0b0e14]"],
   [class~="bg-[#0a0c12]"],
   [class~="bg-[#0e1017]"],
+  [class~="bg-[#0e121a]"],
   [class~="bg-[#0f131c]"],
   [class~="bg-[#12151c]"],
   [class~="bg-[#121722]"],
@@ -2116,10 +2122,12 @@ img[src*="dstrike-mark"] {
   [class~="bg-[#161a24]"],
   [class~="bg-[#181818]"],
   [class~="bg-[#1a1a1a]"],
+  [class~="bg-[#1b1b1b]/98"],
   [class~="bg-[#1c1c1c]"],
   [class~="bg-[#1e1e1e]"],
   [class~="bg-[#1e232e]"],
   [class~="bg-[#1f1f1f]"],
+  [class~="bg-[#252525]"],
   [class~="bg-[#2a2a2a]"],
   [class~="bg-[#2f2f2f]"]
 ) {
@@ -2131,6 +2139,7 @@ img[src*="dstrike-mark"] {
   [class~="bg-black/40"],
   [class~="bg-black/45"],
   [class~="bg-black/55"],
+  [class~="bg-black/60"],
   [class~="bg-black/65"],
   [class~="bg-white/[0.04]"],
   [class~="bg-white/[0.05]"],
@@ -2143,9 +2152,18 @@ img[src*="dstrike-mark"] {
 :is(html[data-theme="white"], html[data-theme="sand"]) .noctis-desk-shell :is(
   [class~="bg-emerald-950/60"],
   [class~="bg-emerald-950/50"],
-  [class~="bg-emerald-950/20"]
+  [class~="bg-emerald-950/20"],
+  [class~="bg-emerald-500/5"]
 ) {
   background-color: rgba(16, 185, 129, 0.14);
+}
+
+:is(html[data-theme="white"], html[data-theme="sand"]) .noctis-desk-shell [class~="bg-amber-500/5"] {
+  background-color: rgba(245, 158, 11, 0.14);
+}
+
+:is(html[data-theme="white"], html[data-theme="sand"]) .noctis-desk-shell [class~="bg-sky-500/5"] {
+  background-color: rgba(14, 165, 233, 0.14);
 }
 
 :is(html[data-theme="white"], html[data-theme="sand"]) .noctis-desk-shell :is(
@@ -2199,9 +2217,23 @@ img[src*="dstrike-mark"] {
 :is(html[data-theme="white"], html[data-theme="sand"]) .noctis-desk-shell :is(
   [class~="text-sky-200"],
   [class~="text-sky-300"],
-  [class~="text-cyan-300"]
+  [class~="text-sky-400"],
+  [class~="text-cyan-200"],
+  [class~="text-cyan-300"],
+  [class~="text-cyan-400"]
 ) {
-  color: #0369a1;
+  color: #0e7490;
+}
+
+:is(html[data-theme="white"], html[data-theme="sand"]) .noctis-desk-shell :is(
+  [class~="text-purple-200"],
+  [class~="text-purple-300"],
+  [class~="text-purple-400"],
+  [class~="text-indigo-200"],
+  [class~="text-indigo-300"],
+  [class~="text-indigo-400"]
+) {
+  color: #6d28d9;
 }
 
 :is(html[data-theme="white"], html[data-theme="sand"]) .noctis-desk-shell :is(
