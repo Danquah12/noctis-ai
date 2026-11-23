@@ -1503,10 +1503,10 @@ describe("${textToBuild} - Verification", () => {
                     className="bg-transparent text-xs text-zinc-200 focus:outline-none cursor-pointer"
                   >
                     <option value="Noctis Ultra (Deep Sovereign Reasoning)" className="bg-zinc-900 text-white">Noctis Ultra (Deep Sovereign Reasoning)</option>
-                    <option value="Noctis Astra High (GPT-4o Architecture)" className="bg-zinc-900 text-white">Noctis Astra High (GPT-4o Architecture)</option>
-                    <option value="Noctis Cortex Flash (Gemini 2.0 Multimodal)" className="bg-zinc-900 text-white">Noctis Cortex Flash (Gemini 2.0 Multimodal)</option>
-                    <option value="Noctis Velocity 70B (Groq 300 t/s Hyper-Speed)" className="bg-zinc-900 text-white">Noctis Velocity 70B (Groq 300 t/s Hyper-Speed)</option>
-                    <option value="Noctis Sentinel Grok (xAI Autonomous Audit)" className="bg-zinc-900 text-white">Noctis Sentinel Grok (xAI Autonomous Audit)</option>
+                    <option value="Noctis Astra High (Omni Multimodal)" className="bg-zinc-900 text-white">Noctis Astra High (Omni Multimodal)</option>
+                    <option value="Noctis Cortex Flash (Ultra-Fast Core)" className="bg-zinc-900 text-white">Noctis Cortex Flash (Ultra-Fast Core)</option>
+                    <option value="Noctis Velocity 70B (500 t/s Edge LPU)" className="bg-zinc-900 text-white">Noctis Velocity 70B (500 t/s Edge LPU)</option>
+                    <option value="Noctis Sentinel (Deductive Autonomous Audit)" className="bg-zinc-900 text-white">Noctis Sentinel (Deductive Autonomous Audit)</option>
                   </select>
                 </div>
               </div>

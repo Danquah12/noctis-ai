@@ -63,7 +63,7 @@ export const NOCTIS_MODELS: ModelOption[] = [
   {
     id: "noctis-o3-deep",
     name: "Noctis Deep Thinking",
-    badge: "o1/o3 Proofs",
+    badge: "Formal Proofs",
     category: "frontier",
     categoryLabel: "Frontier Models",
     description: "Multi-pass chain of thought, rigorous mathematical logic & counter-example search.",
@@ -72,61 +72,61 @@ export const NOCTIS_MODELS: ModelOption[] = [
   },
   {
     id: "claude-3-7-sonnet",
-    name: "Claude 3.7 Sonnet",
+    name: "Noctis Apex",
     badge: "Hybrid Thinking",
     category: "frontier",
     categoryLabel: "Frontier Models",
-    description: "Anthropic's premier hybrid reasoning and deep architectural code synthesis engine.",
+    description: "Premier Noctis hybrid reasoning and deep architectural code synthesis engine.",
     icon: Zap,
     accentColor: "text-amber-400",
   },
   {
     id: "gpt-4o",
-    name: "ChatGPT / GPT-4o",
-    badge: "OpenAI Multimodal",
+    name: "Noctis Astra",
+    badge: "Omni Multimodal",
     category: "frontier",
     categoryLabel: "Frontier Models",
-    description: "OpenAI flagship multimodal intelligence for rapid comprehension and reasoning.",
+    description: "Flagship Noctis omni-modal intelligence for rapid comprehension, vision, and cross-domain reasoning.",
     icon: Sparkles,
     accentColor: "text-emerald-400",
   },
   {
     id: "gemini-35-flash-lite",
-    name: "Gemini 3.5 Flash-Lite",
-    badge: "Google DeepMind",
+    name: "Noctis Cortex Flash",
+    badge: "Ultra-Fast Core",
     category: "frontier",
     categoryLabel: "Frontier Models",
-    description: "Next-gen ultra-fast frontier reasoning ($0.30/1M tokens), strict API validation & native thinkingConfig.",
+    description: "Next-gen ultra-fast Noctis frontier reasoning, strict API schema validation & native deep-thinking orchestration.",
     icon: Globe,
     accentColor: "text-blue-400",
   },
   {
     id: "grok-3",
-    name: "xAI Grok 3",
+    name: "Noctis Sentinel",
     badge: "Frontier Deductive",
     category: "frontier",
     categoryLabel: "Frontier Models",
-    description: "Uncensored frontier scientific reasoning, telemetry analysis & real-time search.",
+    description: "First-principles Noctis scientific reasoning, adversarial telemetry analysis & real-time signal synthesis.",
     icon: Cpu,
     accentColor: "text-purple-400",
   },
   {
     id: "deepseek-r1",
-    name: "DeepSeek R1",
-    badge: "Open Reasoning",
+    name: "Noctis Axiom",
+    badge: "Chain-of-Thought",
     category: "frontier",
     categoryLabel: "Frontier Models",
-    description: "Advanced open-weights reasoning model with step-by-step chain of thought verification.",
+    description: "Advanced open-weights Noctis reasoning engine with step-by-step chain of thought self-verification.",
     icon: Brain,
     accentColor: "text-cyan-400",
   },
   {
     id: "llama-3-3-70b",
-    name: "Llama 3.3 70B",
-    badge: "Groq 500 tok/s",
+    name: "Noctis Velocity 70B",
+    badge: "500 tok/s Edge",
     category: "frontier",
     categoryLabel: "Frontier Models",
-    description: "Ultra-fast sovereign edge reasoning powered by Groq LPU inference hardware.",
+    description: "Ultra-fast Noctis sovereign edge reasoning powered by high-speed LPU inference acceleration.",
     icon: Terminal,
     accentColor: "text-orange-400",
   },
@@ -136,7 +136,7 @@ export const NOCTIS_MODELS: ModelOption[] = [
   // ==========================================
   {
     id: "noctis-cyber-dfir",
-    name: "XTRIKE Cyber DFIR",
+    name: "Noctis XTRIKE Cyber DFIR",
     badge: "401 SAST Rules",
     category: "specialist",
     categoryLabel: "Specialist Engines",
@@ -166,7 +166,7 @@ export const NOCTIS_MODELS: ModelOption[] = [
   },
   {
     id: "noctis-invest-alpha",
-    name: "Investment Alpha",
+    name: "Noctis Investment Alpha",
     badge: "SEC EDGAR",
     category: "specialist",
     categoryLabel: "Specialist Engines",
@@ -176,7 +176,7 @@ export const NOCTIS_MODELS: ModelOption[] = [
   },
   {
     id: "noctis-theology-exegesis",
-    name: "Bible & Exegesis",
+    name: "Noctis Bible & Exegesis",
     badge: "Greek & Hebrew",
     category: "specialist",
     categoryLabel: "Specialist Engines",
@@ -201,7 +201,7 @@ export const NOCTIS_MODELS: ModelOption[] = [
   },
   {
     id: "desk-console",
-    name: "Developer Console",
+    name: "Noctis Developer Console",
     badge: "GATEWAY",
     category: "workspace",
     categoryLabel: "Workspaces",
@@ -212,7 +212,7 @@ export const NOCTIS_MODELS: ModelOption[] = [
   },
   {
     id: "desk-plugins",
-    name: "Plugins & Systems",
+    name: "Noctis Plugins & Systems",
     badge: "50+ CONNECTORS",
     category: "workspace",
     categoryLabel: "Workspaces",
@@ -223,7 +223,7 @@ export const NOCTIS_MODELS: ModelOption[] = [
   },
   {
     id: "desk-redteam",
-    name: "AI Red Team & Threat Matrix",
+    name: "Noctis Red Team & Threat Matrix",
     badge: "SHIELD",
     category: "workspace",
     categoryLabel: "Workspaces",
@@ -238,7 +238,7 @@ export const NOCTIS_MODELS: ModelOption[] = [
   // ==========================================
   {
     id: "suite-canary",
-    name: "Canary Deception",
+    name: "Noctis Canary Deception",
     badge: "TRIPWIRE",
     category: "suite",
     categoryLabel: "Sovereign Suites",
@@ -249,7 +249,7 @@ export const NOCTIS_MODELS: ModelOption[] = [
   },
   {
     id: "suite-war-room",
-    name: "War Room Sandbox",
+    name: "Noctis War Room Sandbox",
     badge: "CRISIS",
     category: "suite",
     categoryLabel: "Sovereign Suites",
@@ -260,7 +260,7 @@ export const NOCTIS_MODELS: ModelOption[] = [
   },
   {
     id: "suite-digital-twin",
-    name: "Digital Twin",
+    name: "Noctis Digital Twin",
     badge: "PREDICTIVE",
     category: "suite",
     categoryLabel: "Sovereign Suites",
@@ -271,7 +271,7 @@ export const NOCTIS_MODELS: ModelOption[] = [
   },
   {
     id: "suite-pqc",
-    name: "PQC Kyber Shield",
+    name: "Noctis PQC Kyber Shield",
     badge: "KYBER-1024",
     category: "suite",
     categoryLabel: "Sovereign Suites",
@@ -282,7 +282,7 @@ export const NOCTIS_MODELS: ModelOption[] = [
   },
   {
     id: "suite-holodeck",
-    name: "3D Holodeck",
+    name: "Noctis 3D Holodeck",
     badge: "SPATIAL",
     category: "suite",
     categoryLabel: "Sovereign Suites",
@@ -293,7 +293,7 @@ export const NOCTIS_MODELS: ModelOption[] = [
   },
   {
     id: "suite-remediation",
-    name: "Auto-Remediation",
+    name: "Noctis Auto-Remediation",
     badge: "PLAYBOOKS",
     category: "suite",
     categoryLabel: "Sovereign Suites",
@@ -304,7 +304,7 @@ export const NOCTIS_MODELS: ModelOption[] = [
   },
   {
     id: "suite-truth-ledger",
-    name: "Truth Ledger",
+    name: "Noctis Truth Ledger",
     badge: "SHA-256",
     category: "suite",
     categoryLabel: "Sovereign Suites",
@@ -315,7 +315,7 @@ export const NOCTIS_MODELS: ModelOption[] = [
   },
   {
     id: "suite-zk-proof",
-    name: "Zero-Knowledge Proofs",
+    name: "Noctis Zero-Knowledge Proofs",
     badge: "zk-SNARKs",
     category: "suite",
     categoryLabel: "Sovereign Suites",
@@ -326,7 +326,7 @@ export const NOCTIS_MODELS: ModelOption[] = [
   },
   {
     id: "suite-swarm",
-    name: "Swarm Orchestrator",
+    name: "Noctis Swarm Orchestrator",
     badge: "MULTI-AGENT",
     category: "suite",
     categoryLabel: "Sovereign Suites",
@@ -337,7 +337,7 @@ export const NOCTIS_MODELS: ModelOption[] = [
   },
   {
     id: "suite-air-gap",
-    name: "Air-Gap Protocol",
+    name: "Noctis Air-Gap Protocol",
     badge: "OFFLINE",
     category: "suite",
     categoryLabel: "Sovereign Suites",
@@ -348,7 +348,7 @@ export const NOCTIS_MODELS: ModelOption[] = [
   },
   {
     id: "suite-circuit-breaker",
-    name: "Circuit Breaker",
+    name: "Noctis Circuit Breaker",
     badge: "SAFETY VETO",
     category: "suite",
     categoryLabel: "Sovereign Suites",
@@ -359,7 +359,7 @@ export const NOCTIS_MODELS: ModelOption[] = [
   },
   {
     id: "suite-enclave",
-    name: "Enclave Attestation",
+    name: "Noctis Enclave Attestation",
     badge: "CONFIDENTIAL",
     category: "suite",
     categoryLabel: "Sovereign Suites",
@@ -370,7 +370,7 @@ export const NOCTIS_MODELS: ModelOption[] = [
   },
   {
     id: "suite-cognitive",
-    name: "Cognitive Bias Sandbox",
+    name: "Noctis Cognitive Bias Sandbox",
     badge: "EPISTEMIC",
     category: "suite",
     categoryLabel: "Sovereign Suites",
@@ -381,7 +381,7 @@ export const NOCTIS_MODELS: ModelOption[] = [
   },
   {
     id: "suite-crisis",
-    name: "Crisis Negotiation",
+    name: "Noctis Crisis Negotiation",
     badge: "BEHAVIORAL",
     category: "suite",
     categoryLabel: "Sovereign Suites",
@@ -392,7 +392,7 @@ export const NOCTIS_MODELS: ModelOption[] = [
   },
   {
     id: "suite-steganography",
-    name: "Steganography Forensics",
+    name: "Noctis Steganography Forensics",
     badge: "FORENSIC",
     category: "suite",
     categoryLabel: "Sovereign Suites",
@@ -403,7 +403,7 @@ export const NOCTIS_MODELS: ModelOption[] = [
   },
   {
     id: "suite-lex",
-    name: "Lex Synthesizer",
+    name: "Noctis Lex Synthesizer",
     badge: "REGULATORY",
     category: "suite",
     categoryLabel: "Sovereign Suites",
@@ -568,7 +568,7 @@ export function NoctisModelPicker({
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs font-bold text-zinc-200 flex items-center gap-1.5 truncate">
                   <Sparkles className="size-3.5 text-[#e4b86a] shrink-0" />
-                  <span className="truncate">Intelligence Engines & Systems</span>
+                  <span className="truncate">Noctis Intelligence Engines</span>
                 </span>
                 <div className="flex items-center gap-1 shrink-0">
                   <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[9.5px] font-semibold text-emerald-300">

@@ -546,10 +546,10 @@ ${AI_CVE_ADVISORIES.map((c) => `- ${c.cveId}: ${c.title} (CVSS ${c.cvss} ${c.sev
                     className="rounded-lg bg-black/60 border border-white/10 px-3 py-1.5 text-xs font-semibold text-white focus:outline-none focus:border-rose-400 cursor-pointer"
                   >
                     <option value="Noctis Ultra (Deep Sovereign Reasoning)">Noctis Ultra (Deep Sovereign Reasoning)</option>
-                    <option value="Noctis Astra High (GPT-4o Architecture)">Noctis Astra High (GPT-4o Architecture)</option>
-                    <option value="Noctis Cortex Flash (Gemini 2.0 Multimodal)">Noctis Cortex Flash (Gemini 2.0 Multimodal)</option>
-                    <option value="Noctis Velocity 70B (Groq 300 t/s Hyper-Speed)">Noctis Velocity 70B (Groq 300 t/s Hyper-Speed)</option>
-                    <option value="Noctis Sentinel Grok (xAI Autonomous Audit)">Noctis Sentinel Grok (xAI Autonomous Audit)</option>
+                    <option value="Noctis Astra High (Omni Multimodal)">Noctis Astra High (Omni Multimodal)</option>
+                    <option value="Noctis Cortex Flash (Ultra-Fast Core)">Noctis Cortex Flash (Ultra-Fast Core)</option>
+                    <option value="Noctis Velocity 70B (500 t/s Edge LPU)">Noctis Velocity 70B (500 t/s Edge LPU)</option>
+                    <option value="Noctis Sentinel (Deductive Autonomous Audit)">Noctis Sentinel (Deductive Autonomous Audit)</option>
                   </select>
                 </div>
 

@@ -120,9 +120,9 @@ const SOVEREIGN_CATALOG = [
     category: "Code & Architecture",
     speed: "65 tokens/sec",
     context: "128k tokens",
-    engine: "OpenAI GPT-4o",
+    engine: "Noctis Astra Omni Engine",
     highlight: "Autonomous multi-repo synthesis, enterprise AST compilation & refactoring.",
-    badge: "OpenAI Tier",
+    badge: "Omni Tier",
     badgeColor: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
   },
   {
@@ -132,9 +132,9 @@ const SOVEREIGN_CATALOG = [
     category: "Multimodal & Vision",
     speed: "140 tokens/sec",
     context: "2,000,000 tokens",
-    engine: "Google Gemini 3.5 Flash-Lite",
+    engine: "Noctis Cortex Flash Core",
     highlight: "Instant vision analysis, massive document ingestion, and low-latency frontier reasoning.",
-    badge: "Gemini Tier",
+    badge: "Cortex Tier",
     badgeColor: "bg-sky-500/10 text-sky-400 border-sky-500/20",
   },
   {
@@ -144,21 +144,21 @@ const SOVEREIGN_CATALOG = [
     category: "Real-Time Synthesis",
     speed: "300+ tokens/sec",
     context: "128k tokens",
-    engine: "Groq Llama 3.3 70B",
+    engine: "Noctis Velocity LPU Engine",
     highlight: "Sub-second code completion, lightning-fast generation, zero throttle delays.",
-    badge: "Groq Tier",
+    badge: "Velocity Tier",
     badgeColor: "bg-orange-500/10 text-orange-400 border-orange-500/20",
   },
   {
     id: "noctis-sentinel",
-    name: "Noctis Sentinel Grok",
+    name: "Noctis Sentinel",
     tagline: "Autonomous Security & Truth Audit",
     category: "Security & Alignment",
     speed: "90 tokens/sec",
     context: "128k tokens",
-    engine: "xAI Grok 3",
+    engine: "Noctis Sentinel Deductive Engine",
     highlight: "Adversarial boundary probing, vulnerability audits, and unfiltered truth verification.",
-    badge: "xAI Tier",
+    badge: "Sentinel Tier",
     badgeColor: "bg-purple-500/10 text-purple-400 border-purple-500/20",
   },
 ];
@@ -431,7 +431,7 @@ print(response.json().get("text"))`;
                     Welcome to the Noctis Gateway, Kwesi
                   </h2>
                   <p className="text-xs sm:text-sm text-zinc-400 mt-1 max-w-xl">
-                    Deploy, test, and orchestrate across all 5 frontier model engines (Noctis Ultra, GPT-4o, Gemini 2.0, Groq Llama 3.3, and Grok 3) from a single sovereign API.
+                    Deploy, test, and orchestrate across all 5 frontier model engines (Noctis Ultra, Noctis Astra, Noctis Cortex Flash, Noctis Velocity 70B, and Noctis Sentinel) from a single sovereign API.
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -654,10 +654,10 @@ print(response.json().get("text"))`;
                   className="rounded-lg bg-black/60 border border-white/10 px-3 py-1.5 text-xs font-semibold text-white focus:outline-none focus:border-amber-400 cursor-pointer"
                 >
                   <option value="Noctis Ultra (Deep Sovereign Reasoning)">Noctis Ultra (Deep Sovereign Reasoning)</option>
-                  <option value="Noctis Astra High (GPT-4o Architecture)">Noctis Astra High (GPT-4o Architecture)</option>
-                  <option value="Noctis Cortex Flash (Gemini 2.0 Multimodal)">Noctis Cortex Flash (Gemini 2.0 Multimodal)</option>
-                  <option value="Noctis Velocity 70B (Groq 300 t/s Hyper-Speed)">Noctis Velocity 70B (Groq 300 t/s Hyper-Speed)</option>
-                  <option value="Noctis Sentinel Grok (xAI Autonomous Audit)">Noctis Sentinel Grok (xAI Autonomous Audit)</option>
+                  <option value="Noctis Astra High (Omni Multimodal)">Noctis Astra High (Omni Multimodal)</option>
+                  <option value="Noctis Cortex Flash (Ultra-Fast Core)">Noctis Cortex Flash (Ultra-Fast Core)</option>
+                  <option value="Noctis Velocity 70B (500 t/s Edge LPU)">Noctis Velocity 70B (500 t/s Edge LPU)</option>
+                  <option value="Noctis Sentinel (Deductive Autonomous Audit)">Noctis Sentinel (Deductive Autonomous Audit)</option>
                 </select>
               </div>
 

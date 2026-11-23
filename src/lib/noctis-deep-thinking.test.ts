@@ -60,6 +60,7 @@ describe("Noctis Universal Deep Thinking Registry & Envelope", () => {
       assert.ok(profile, `Missing registry profile for ${id}`);
       assert.equal(profile.id, id);
       assert.ok(profile.name.length > 0, `Missing name for ${id}`);
+      assert.ok(profile.name.startsWith("Noctis "), `Expected Noctis-branded name for ${id}, got "${profile.name}"`);
       assert.ok(profile.thinkingLabel.length > 0, `Missing thinkingLabel for ${id}`);
       assert.equal(profile.thinkingStages.length, 4, `Expected 4 stages for ${id}`);
       assert.ok(profile.thinkingStages.every((s) => typeof s === "string" && s.length > 5));
@@ -67,16 +68,35 @@ describe("Noctis Universal Deep Thinking Registry & Envelope", () => {
     }
   });
 
-  it("resolves IDs, workspace dropdown display names, and unknown fallback safely", () => {
+  it("resolves IDs, Noctis-branded engine names, workspace dropdown display names, and unknown fallback cleanly while keeping embedded engines identical", () => {
+    const expectedMappings: Array<[string, string, string | undefined]> = [
+      ["Noctis Apex", "claude-3-7-sonnet", "noctis"],
+      ["Noctis Astra", "gpt-4o", "openai"],
+      ["Noctis Cortex Flash", "gemini-35-flash-lite", "gemini"],
+      ["Noctis Sentinel", "grok-3", "xai"],
+      ["Noctis Axiom", "deepseek-r1", "noctis"],
+      ["Noctis Velocity 70B", "llama-3-3-70b", "groq"],
+      ["Noctis XTRIKE Cyber DFIR", "noctis-cyber-dfir", "noctis"],
+      ["Noctis Investment Alpha", "noctis-invest-alpha", "noctis"],
+      ["Noctis Bible & Exegesis", "noctis-theology-exegesis", "noctis"],
+    ];
+
+    for (const [displayName, embeddedId, expectedHint] of expectedMappings) {
+      const resolved = resolveNoctisEngine(displayName);
+      assert.equal(resolved.id, embeddedId);
+      assert.equal(resolved.name, displayName);
+      assert.equal(resolved.preferredProviderHint, expectedHint);
+    }
+
     assert.equal(resolveNoctisEngine("claude-3-7-sonnet").id, "claude-3-7-sonnet");
     assert.equal(resolveNoctisEngine("XTRIKE Cyber DFIR").id, "noctis-cyber-dfir");
     assert.equal(resolveNoctisEngine("Noctis Ultra (Deep Sovereign Reasoning)").id, "noctis-ultra");
     assert.equal(resolveNoctisEngine("nonexistent-engine").id, "noctis-ultra");
 
-    assert.equal(mapWorkspaceModelToEngineId("Noctis Cortex Flash", "desk-console"), "gemini-35-flash-lite");
-    assert.equal(mapWorkspaceModelToEngineId("Noctis Astra High", "desk-console"), "gpt-4o");
-    assert.equal(mapWorkspaceModelToEngineId("Noctis Velocity 70B", "desk-forge"), "llama-3-3-70b");
-    assert.equal(mapWorkspaceModelToEngineId("Noctis Sentinel Grok", "desk-redteam"), "grok-3");
+    assert.equal(mapWorkspaceModelToEngineId("Noctis Cortex Flash (Ultra-Fast Core)", "desk-console"), "gemini-35-flash-lite");
+    assert.equal(mapWorkspaceModelToEngineId("Noctis Astra High (Omni Multimodal)", "desk-console"), "gpt-4o");
+    assert.equal(mapWorkspaceModelToEngineId("Noctis Velocity 70B (500 t/s Edge LPU)", "desk-forge"), "llama-3-3-70b");
+    assert.equal(mapWorkspaceModelToEngineId("Noctis Sentinel (Deductive Autonomous Audit)", "desk-redteam"), "grok-3");
     assert.equal(mapWorkspaceModelToEngineId("Unknown Local Model", "desk-forge"), "desk-forge");
   });
 
