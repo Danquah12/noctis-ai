@@ -223,7 +223,8 @@ describe("Noctis DoD RMF (DoDI 8510.01) + IC Security (ICD 503/502/501/CNSSI 125
       policiesCount: number;
       invariants: { dodAtoAutomaticallySatisfiesIcIcd503: boolean; aiCanIssueAto: boolean };
     };
-    assert.equal(statusJson.policiesCount, 8);
+    assert.equal(statusJson.policiesCount, Object.keys(DOD_IC_POLICY_REGISTRY).length);
+    assert.ok(statusJson.policiesCount >= 11);
     assert.equal(statusJson.invariants.dodAtoAutomaticallySatisfiesIcIcd503, false);
     assert.equal(statusJson.invariants.aiCanIssueAto, false);
 

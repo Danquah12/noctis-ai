@@ -1,14 +1,15 @@
 /**
- * Noctis Defense & IC Neuro-Symbolic Reasoning Engine (Wave 1 — Step 1)
+ * Noctis Defense & IC Neuro-Symbolic Reasoning Engine (NDIMP Wave 1 — Steps 1 & 2)
  *
  * Orchestrates:
  *   Gate 0: Classification & Boundary Guard BEFORE any external LLM dispatch
- *   Stage 1: Deterministic DoDI 8510.01 / CNSSI 1253 / ICD 503 / ICD 501 / CDS Rules
+ *   Stage 1: Deterministic DoDI 8510.01 / 8531.01 / 8530.03 / 8540.01 / CNSSI 1253 / ICD 503-501 / DISA CCI-STIG-ACAS Rules
  *   Stage 2: Constrained Synthesis (temperature: 0.0) + Deterministic Offline Fallback
- *   Stage 3: Anti-Conflation Verifier + 1-Shot Repair + SQL EXPLANATION Persistence
+ *   Stage 3: Anti-Conflation & Anti-Fabrication Verifier + 1-Shot Repair + SQL EXPLANATION Persistence
  */
 
 import { parseThinkEnvelope } from "../noctis-engine-registry.ts";
+import { fetchLiveCisaKevCatalog } from "../rmf-v2/cyber-intelligence.ts";
 import { createExplanationBundle, type ExplanationBundle } from "../rmf-v2/graph-and-trace.ts";
 import { saveRmfArtifact } from "../rmf-v2/persistence.server.ts";
 import { sha256Sync } from "../universal-crypto.ts";
@@ -27,7 +28,21 @@ import {
   type ImpactLevel,
 } from "./dod-rmf-engine.ts";
 import { evaluateIcd501SharingGovernance, evaluateIcd503Authorization, evaluateIcReciprocity } from "./ic-security-engine.ts";
-import { searchDodIcPolicies, type DodIcPolicyRecord } from "./policy-registry.ts";
+import { DOD_IC_POLICY_REGISTRY, searchDodIcPolicies, type DodIcPolicyRecord } from "./policy-registry.ts";
+import {
+  evaluateDodi8530IncidentReporting,
+  evaluateDodi8531VulnerabilityCompliance,
+  extractCciIdsFromText,
+  getDisaCciManifest,
+  listCcisForNistControl,
+  lookupDisaCci,
+  parseAndEvaluateAcasNessus,
+  parseAndEvaluateStigXccdfOrCkl,
+  type AcasAnalysisResult,
+  type DisaCciControlSummary,
+  type DisaCciRecord,
+  type StigChecklistAnalysisResult,
+} from "./stig-acas-engine.ts";
 
 export interface DodIcModelChatFn {
   (
@@ -57,8 +72,12 @@ export interface DodIcReasoningOptions {
 export function isDodIcQuery(question: string): boolean {
   const q = (question || "").trim();
   if (!q) return false;
-  return /\b(?:dodi?\s*8510(?:\.01)?|dodi?\s*8540(?:\.01)?|dodm\s*5200(?:\.01)?|eo\s*13526|dod\s+rmf|dod\s+ato|dod\s+reciproc\w*|emass\b|iatt\b|dato\b|atowc\b|icd\s*50[123]|icd\s*705|ic\s+ie\b|ic\s+rmf|ic\s+ato|ic\s+reciproc\w*|ic\s+cloud|ic\s+security|odni\b|cnssi?\s*1253|national\s+security\s+system|nss\s+categoriz\w*|cross[- ]?domain\s+(?:solution|transfer|guard|governance)|ncdsmo\b|ts\/?sci\b|\bscif\b|classified\s+(?:spillage|system|systems|enclave|handling|payload|cable|material)|commercial\s+cloud[^.\n]{0,40}classified|classified[^.\n]{0,40}commercial\s+cloud)\b/i.test(
-    q,
+  return (
+    /<(?:NessusClientData_v2|ReportHost|CHECKLIST|STIG_INFO|(?:[a-zA-Z0-9_.-]+:)?rule-result)\b/i.test(q) ||
+    /\b(?:CCI-\d{4,6}|DISA\s+CCIs?|CCIs?\b[^.\n]{0,35}(?:NIST|800-53|STIG|control|map)|dodi?\s*8510(?:\.01)?|dodi?\s*8531(?:\.01)?|dodi?\s*8530(?:\.03)?|dodi?\s*8540(?:\.01)?|dodm\s*5200(?:\.01)?|eo\s*13526|dod\s+rmf|dod\s+ato|dod\s+reciproc\w*|emass\b|iatt\b|dato\b|atowc\b|icd\s*50[123]|icd\s*705|ic\s+ie\b|ic\s+rmf|ic\s+ato|ic\s+reciproc\w*|ic\s+cloud|ic\s+security|odni\b|cnssi?\s*1253|national\s+security\s+system|nss\s+categoriz\w*|cross[- ]?domain\s+(?:solution|transfer|guard|governance)|ncdsmo\b|ts\/?sci\b|\bscif\b|disa\s+stig\b|stig\s+(?:cat\s*(?:i|ii|iii|1|2|3)|check\w*|checklist\w*|finding\w*|rule\w*|viewer|evaluat\w*|compliance|waiver|v-\d+)|scap\b|xccdf\b|\.ckl\b|acas\b|nessus\b|iava\b|iavm\b|iavb\b|cssp\b|jfhq-?dodin|credentialed\s+scan\b|v-\d{5,7}\b|sv-\d{5,7}r\d+_rule\b|classified\s+(?:spillage|system|systems|enclave|handling|payload|cable|material)|commercial\s+cloud[^.\n]{0,40}classified|classified[^.\n]{0,40}commercial\s+cloud)\b/i.test(
+      q,
+    ) ||
+    (/\b(?:acas|nessus|plugin|credential\w*|scan)\b/i.test(q) && /\b(?:19506|21745|110385|104410|24786|117885)\b/.test(q))
   );
 }
 
@@ -78,7 +97,10 @@ export function extractAndEvaluateDodIcRulesFromText(question: string): DodIcRul
   };
 
   // 1. CNSSI 1253 Security Categorization & Overlays
-  if (/\b(?:cnssi?\s*1253|nss\s+categoriz\w*|national\s+security\s+system)\b/i.test(q) || (parseImpact("confidentiality") && /\b(?:ts\/?sci|secret|classified|icd\s*503|dodi?\s*8510)\b/i.test(q))) {
+  if (
+    /\b(?:cnssi?\s*1253|nss\s+categoriz\w*|national\s+security\s+system)\b/i.test(q) ||
+    (parseImpact("confidentiality") && /\b(?:ts\/?sci|secret|classified|icd\s*503|dodi?\s*8510)\b/i.test(q))
+  ) {
     const c = parseImpact("confidentiality") || (/\b(ts\/?sci|top\s*secret|secret)\b/i.test(q) ? "HIGH" : "MODERATE");
     const i = parseImpact("integrity") || "MODERATE";
     const a = parseImpact("availability") || "LOW";
@@ -124,7 +146,11 @@ export function extractAndEvaluateDodIcRulesFromText(question: string): DodIcRul
         evaluateIcReciprocity({
           sourceAuthorizationType,
           sourceAtoActiveAndUnexpired: /\bexpired\b/i.test(q) ? false : null,
-          icOverlaysAndSciVerified: /\bverified\s+(?:ic|sci)\s+overlays\b/i.test(q) ? true : sourceAuthorizationType !== "IC_ICD503_ATO" ? false : null,
+          icOverlaysAndSciVerified: /\bverified\s+(?:ic|sci)\s+overlays\b/i.test(q)
+            ? true
+            : sourceAuthorizationType !== "IC_ICD503_ATO"
+            ? false
+            : null,
           assessmentMode,
           evidenceVerified,
         }),
@@ -143,7 +169,12 @@ export function extractAndEvaluateDodIcRulesFromText(question: string): DodIcRul
   }
 
   // 3. DoDI 8510.01 DoD RMF Authorization Readiness
-  if (/\bdodi?\s*8510|emass|dod\s+ato|dod\s+rmf|cat\s*i\b|cat\s*1\b/i.test(q) && /\b(evaluat\w*|assess\w*|ready|readiness|authorize|authorization|can\s+.*issue|gap|missing|cat\s*i|cat\s*1|no\s+independent\s+sca)\b/i.test(q)) {
+  if (
+    /\bdodi?\s*8510|emass|dod\s+ato|dod\s+rmf|cat\s*i\b|cat\s*1\b/i.test(q) &&
+    /\b(evaluat\w*|assess\w*|ready|readiness|authorize|authorization|can\s+.*issue|gap|missing|cat\s*i|cat\s*1|no\s+independent\s+sca)\b/i.test(
+      q,
+    )
+  ) {
     const cat1Match = q.match(/(\d+)\s+(?:unmitigated\s+|open\s+)?cat\s*(?:i|1)\b/i);
     const noSca = /\b(?:no|without|lacks?|missing)\s+independent\s+sca\b|\bself[- ]assess/i.test(q);
     const noEmass = /\b(?:not\s+(?:registered|in)\s+emass|missing\s+emass|no\s+emass)\b/i.test(q);
@@ -159,7 +190,10 @@ export function extractAndEvaluateDodIcRulesFromText(question: string): DodIcRul
   }
 
   // 4. ICD 503 IC Authorization Readiness
-  if (/\bicd\s*503|ic\s+cloud|ic\s+rmf|ic\s+ie\b/i.test(q) && /\b(evaluat\w*|assess\w*|commercial\s+cloud|zero\s+trust|authorize|authorization|requirements?|ts\/?sci)\b/i.test(q)) {
+  if (
+    /\bicd\s*503|ic\s+cloud|ic\s+rmf|ic\s+ie\b/i.test(q) &&
+    /\b(evaluat\w*|assess\w*|commercial\s+cloud|zero\s+trust|authorize|authorization|requirements?|ts\/?sci)\b/i.test(q)
+  ) {
     const isCommercial = /\bcommercial\s+(?:cloud|llm|saas|public\s+cloud)\b/i.test(q);
     const noZt = /\bwithout\s+zero\s+trust|no\s+zero\s+trust\b/i.test(q);
     const no502 = /\b(?:no|without)\s+icd\s*502\b/i.test(q);
@@ -177,10 +211,19 @@ export function extractAndEvaluateDodIcRulesFromText(question: string): DodIcRul
   }
 
   // 5. Cross-Domain Solution (DoDI 8540.01)
-  if (/\b(?:cross[- ]?domain|ncdsmo|\bcds\b|high[- ]to[- ]low|dodi?\s*8540)\b/i.test(q) && /\b(evaluat\w*|assess\w*|transfer|without|bypass|check|missing|script)\b/i.test(q)) {
-    const srcCls: SecurityClassification = /\b(?:ts\/?sci|top\s*secret)\b/i.test(q) ? "TS_SCI" : /\bsecret\b/i.test(q) ? "SECRET" : "CUI";
+  if (
+    /\b(?:cross[- ]?domain|ncdsmo|\bcds\b|high[- ]to[- ]low|low[- ]to[- ]high|dodi?\s*8540)\b/i.test(q) &&
+    /\b(evaluat\w*|assess\w*|transfer|without|bypass|check|missing|script)\b/i.test(q)
+  ) {
+    const srcCls: SecurityClassification = /\b(?:ts\/?sci|top\s*secret)\b/i.test(q)
+      ? "TS_SCI"
+      : /\bsecret\b/i.test(q)
+      ? "SECRET"
+      : "CUI";
     const dstCls: SecurityClassification = /\b(?:unclass|low[- ]side|nipr)\b/i.test(q) ? "UNCLASSIFIED" : "CUI";
-    const noCds = /\b(?:without|no|bypass(?:ing)?)\s+(?:an?\s+)?(?:accredited\s+)?(?:cds|cross[- ]?domain)\b|\bdual[- ]homed\b/i.test(q);
+    const noCds = /\b(?:without|no|bypass(?:ing)?)\s+(?:an?\s+)?(?:accredited\s+)?(?:cds|cross[- ]?domain)\b|\bdual[- ]homed\b/i.test(
+      q,
+    );
     results.push(
       evaluateCrossDomainTransfer({
         sourceClassification: srcCls,
@@ -195,7 +238,10 @@ export function extractAndEvaluateDodIcRulesFromText(question: string): DodIcRul
   }
 
   // 6. ICD 501 Sharing / Commercial Cloud Scenario
-  if (/\bicd\s*501\b/i.test(q) && /\b(commercial\s+cloud|orcon|noforn|need[- ]to[- ]know|clearance|share|disseminat)\b/i.test(q)) {
+  if (
+    /\bicd\s*501\b/i.test(q) &&
+    /\b(commercial\s+cloud|orcon|noforn|need[- ]to[- ]know|clearance|share|disseminat)\b/i.test(q)
+  ) {
     const isCom = /\bcommercial\s+(?:cloud|model|llm|saas)\b/i.test(q);
     results.push(
       evaluateIcd501SharingGovernance({
@@ -210,7 +256,162 @@ export function extractAndEvaluateDodIcRulesFromText(question: string): DodIcRul
     );
   }
 
+  // 7. DoDI 8530.03 Cyber Incident Response Scenario
+  if (
+    /\b(?:dodi?\s*8530|cssp\b|jfhq-?dodin|cyber\s+incident\s+response)\b/i.test(q) &&
+    /\b(?:compromise|spillage|discovered|hours?|notified|forensic|evaluat\w*|assess\w*|incident)\b/i.test(q)
+  ) {
+    const hoursMatch = q.match(/(\d+(?:\.\d+)?)\s*hours?\b/i);
+    const notCssp = /\bcssp\s+(?:not\s+(?:yet\s+)?notified|unnotified)|not\s+(?:yet\s+)?notified\s+(?:to\s+)?cssp|without\s+cssp\b/i.test(
+      q,
+    );
+    const noForensics = /\b(?:without|no|failed?\s+to)\s+(?:forensic|memory|log)\s+preserv\w*|\bwiped\s+before\b/i.test(q);
+    const cat = /\bspillage\b/i.test(q)
+      ? "CLASSIFIED_SPILLAGE"
+      : /\broot\s+compromise|admin\s+compromise|privileged\s+compromise\b/i.test(q)
+      ? "ROOT_COMPROMISE"
+      : /\buser\s+compromise\b/i.test(q)
+      ? "USER_COMPROMISE"
+      : /\bmalicious\s+logic|malware|ransomware\b/i.test(q)
+      ? "MALICIOUS_LOGIC"
+      : "ROOT_COMPROMISE";
+    results.push(
+      evaluateDodi8530IncidentReporting({
+        incidentCategory: cat,
+        hoursSinceDiscovery: hoursMatch ? Number(hoursMatch[1]) : null,
+        csspNotified: notCssp ? false : /\bcssp\s+notified\b/i.test(q) ? true : null,
+        forensicEvidencePreserved: noForensics ? false : null,
+        affectsClassifiedOrNss: /\b(?:secret|ts\/?sci|classified|nss)\b/i.test(q),
+        assessmentMode,
+        evidenceVerified,
+      }),
+    );
+  }
+
   return results;
+}
+
+export interface DodIcAsyncContext {
+  rules: DodIcRuleResult[];
+  resolvedCcis: DisaCciRecord[];
+  controlCciMatches: { controlId: string; matches: DisaCciControlSummary[] }[];
+  acasAnalysis: AcasAnalysisResult | null;
+  stigAnalysis: StigChecklistAnalysisResult | null;
+}
+
+export async function extractDodIcContextAsync(question: string): Promise<DodIcAsyncContext> {
+  const q = (question || "").trim();
+  const rules = extractAndEvaluateDodIcRulesFromText(q);
+  const seenRuleIds = new Set(rules.map((r) => r.ruleId));
+  const pushUniqueRule = (r: DodIcRuleResult) => {
+    if (!seenRuleIds.has(r.ruleId)) {
+      seenRuleIds.add(r.ruleId);
+      rules.push(r);
+    }
+  };
+
+  const evidenceVerified = /\b(?:verified\s+(?:audit\s+)?evidence|attached\s+(?:audit\s+)?artifacts?|immutable\s+logs?\s+attached|sha-?256\s*[:=])\b/i.test(
+    q,
+  );
+  const assessmentMode = evidenceVerified ? "FORMAL_EVIDENCE_AUDIT" : "SCENARIO_ASSUMPTION";
+
+  // 1. Resolve DISA CCIs mentioned in prompt text
+  const cciIds = new Set<string>(extractCciIdsFromText(q));
+  const controlCciMatches: { controlId: string; matches: DisaCciControlSummary[] }[] = [];
+  if (/\bCCIs?\b[^.\n]{0,40}\b(?:map|for|under|of)\b/i.test(q)) {
+    const ctrlMatches = [...q.matchAll(/\b([A-Z]{2}-\d+(?:\s*\(\d+\))?)\b/gi)];
+    for (const cm of ctrlMatches.slice(0, 3)) {
+      const ctrlId = cm[1]!.toUpperCase().replace(/\s+/g, "");
+      const matches = listCcisForNistControl(ctrlId).slice(0, 12);
+      if (matches.length > 0) {
+        controlCciMatches.push({ controlId: ctrlId, matches });
+      }
+    }
+  }
+
+  // 2. Raw ACAS / .nessus XML payload evaluation
+  let acasAnalysis: AcasAnalysisResult | null = null;
+  if (/<(?:NessusClientData_v2|ReportHost|ReportItem)\b/i.test(q)) {
+    acasAnalysis = await parseAndEvaluateAcasNessus({
+      nessusXml: q,
+      assessmentMode,
+      evidenceVerified,
+    });
+    pushUniqueRule(acasAnalysis.ruleResult);
+  } else if (
+    /\b(?:dodi?\s*8531|acas\b|nessus\b|credentialed\s+scan\b|19506|21745|110385|104410|24786)\b/i.test(q) &&
+    (/\b(?:CVE-\d{4}-\d{4,7})\b/i.test(q) ||
+      /\b(?:open\s+\d+\s*days?|\d+\s*days?\s+open|credential\w*|failure|evaluat\w*|assess\w*|19506|21745|110385)\b/i.test(q))
+  ) {
+    const cveMatch = q.match(/\b(CVE-\d{4}-\d{4,7})\b/i);
+    const cveId = cveMatch ? cveMatch[1]!.toUpperCase() : null;
+    const kevCatalog = await fetchLiveCisaKevCatalog(false);
+    const isCisaKev = cveId ? kevCatalog.entries.has(cveId) || /\bkev\b/i.test(q) : /\bkev\b/i.test(q);
+    const daysMatch = q.match(/(?:open\s+(?:for\s+)?(\d+)\s*days?|(\d+)\s*days?\s*open)/i);
+    const daysOpen = daysMatch ? Number(daysMatch[1] || daysMatch[2]) : null;
+    const iavaMatch = q.match(/iava\b[^.\n]{0,20}(\d+)\s*days?/i);
+    const credFail =
+      /\b(?:plugin\s*(?:21745|110385|104410|24786)|19506\b[^.\n]{0,30}\bno\b|credentialed\s+scan\s+fail\w*|authentication\s+fail\w*)\b/i.test(
+        q,
+      );
+    const credPass = /\bcredentialed\s+scan\s+(?:passed|succeeded)|19506\b[^.\n]{0,30}\byes\b/i.test(q);
+    const poamMissing = /\b(?:no|without|missing)\s+poa&?m\b/i.test(q);
+    const rescanVerified = /\bverified\s+(?:post[- ]patch\s+)?credentialed\s+rescan\b/i.test(q);
+
+    const sev: "CRITICAL" | "HIGH" | "MODERATE" | "LOW" = /\b(critical|cat\s*i|cat[- ]?1)\b/i.test(q)
+      ? "CRITICAL"
+      : /\b(moderate|medium|cat\s*ii|cat[- ]?2)\b/i.test(q)
+      ? "MODERATE"
+      : /\b(low|cat\s*iii|cat[- ]?3)\b/i.test(q)
+      ? "LOW"
+      : "HIGH";
+
+    pushUniqueRule(
+      evaluateDodi8531VulnerabilityCompliance({
+        cveId,
+        severityCategory: sev,
+        isCisaKev,
+        hasActiveIava: /\biava\b|\btaskord\b/i.test(q),
+        iavaDueDays: iavaMatch ? Number(iavaMatch[1]) : null,
+        daysOpen,
+        credentialedScanPassed: credFail ? false : credPass ? true : null,
+        poamTracked: poamMissing ? false : null,
+        remediationRescanVerified: rescanVerified,
+        assessmentMode,
+        evidenceVerified,
+      }),
+    );
+  }
+
+  // 3. Raw STIG .ckl or SCAP XCCDF XML payload evaluation
+  let stigAnalysis: StigChecklistAnalysisResult | null = null;
+  if (/<(?:CHECKLIST|STIG_INFO|VULN)\b/i.test(q)) {
+    stigAnalysis = parseAndEvaluateStigXccdfOrCkl({ cklXml: q, assessmentMode, evidenceVerified });
+    pushUniqueRule(stigAnalysis.ruleResult);
+    for (const item of [...stigAnalysis.failedFindings, ...stigAnalysis.unsubstantiatedAssertions]) {
+      for (const c of item.ccis) cciIds.add(c);
+    }
+  } else if (/<(?:[a-zA-Z0-9_.-]+:)?(?:rule-result|TestResult|Benchmark)\b/i.test(q)) {
+    stigAnalysis = parseAndEvaluateStigXccdfOrCkl({ xccdfXml: q, assessmentMode, evidenceVerified });
+    pushUniqueRule(stigAnalysis.ruleResult);
+    for (const item of [...stigAnalysis.failedFindings, ...stigAnalysis.unsubstantiatedAssertions]) {
+      for (const c of item.ccis) cciIds.add(c);
+    }
+  }
+
+  const resolvedCcis: DisaCciRecord[] = [];
+  for (const id of [...cciIds].slice(0, 20)) {
+    const rec = lookupDisaCci(id);
+    if (rec) resolvedCcis.push(rec);
+  }
+
+  return {
+    rules,
+    resolvedCcis,
+    controlCciMatches,
+    acasAnalysis,
+    stigAnalysis,
+  };
 }
 
 export interface DodIcVerificationReport {
@@ -252,13 +453,44 @@ export function verifyDodIcResponse(
     violations.push("AI_ATO_CLAIM: Only a designated DoD or IC Authorizing Official (AO) can render an ATO decision.");
   }
 
+  // Block fabricated exploit verification or remediation closure claims on unvalidated scanner/STIG rules
+  const hasUnverifiedScannerOrStigRule = ruleResults.some(
+    (r) =>
+      (r.ruleId === "DOD-ACAS-001" || r.ruleId === "DOD-VULN-8531-001" || r.ruleId === "DOD-STIG-001") &&
+      r.observedFacts.remediationRescanVerified !== true &&
+      r.observedFacts.remediationVerified !== true,
+  );
+  if (hasUnverifiedScannerOrStigRule) {
+    const sentences = draftBody.split(/(?<=[.!?])\s+|\n+/);
+    for (const s of sentences) {
+      const claimsClosureOrValidatedExploit =
+        /\b(?:is\s+confirmed\s+(?:remediated|patched|closed|mitigated)|successfully\s+(?:remediated|closed)\s+(?:and\s+)?verified|independently\s+validated\s+as\s+exploitable|exploitability\s+is\s+proven\s+by\s+(?:the\s+)?scanner)\b/i.test(
+          s,
+        );
+      const hasNegativeQualifier =
+        /\b(?:not\s+yet|never|does\s+not|cannot|unverified|unvalidated|without\s+a?\s*post[- ]patch|requires?\s+.*rescan|pending)\b/i.test(
+          s,
+        );
+      if (claimsClosureOrValidatedExploit && !hasNegativeQualifier) {
+        violations.push(
+          "FABRICATED_REMEDIATION_OR_EXPLOIT_CLAIM: Draft claimed scanner findings are confirmed remediated/closed or exploitability is validated without a post-patch credentialed rescan or independent validation artifact.",
+        );
+        break;
+      }
+    }
+  }
+
   // Per-rule verdict fidelity check
   for (const r of ruleResults) {
     const scopeId = r.ruleId.includes("RECIP") ? "reciprocity" : r.ruleId.includes("CNSSI") ? "cnssi" : r.ruleId;
     if (r.verdict === "FAIL") {
-      const hasFailWord = /\b(?:FAIL|FAILED|DOES NOT|NOT PERMITTED|PROHIBITED|DENIED|BLOCKED|NON[- ]COMPLIANT)\b/i.test(draftBody);
+      const hasFailWord = /\b(?:FAIL|FAILED|DOES NOT|NOT PERMITTED|PROHIBITED|DENIED|BLOCKED|NON[- ]COMPLIANT|EXCEEDS|DEFICIENCY|OVERDUE)\b/i.test(
+        draftBody,
+      );
       if (!hasFailWord) {
-        violations.push(`RULE_VERDICT_CONTRADICTION: Rule ${r.ruleId} [${scopeId}] evaluated to FAIL, but draft omitted FAIL / denial language.`);
+        violations.push(
+          `RULE_VERDICT_CONTRADICTION: Rule ${r.ruleId} [${scopeId}] evaluated to FAIL, but draft omitted FAIL / deficiency language.`,
+        );
       }
     }
   }
@@ -270,10 +502,80 @@ export function renderDeterministicDodIcFallback(
   question: string,
   policies: DodIcPolicyRecord[],
   ruleResults: DodIcRuleResult[],
+  ctx?: Partial<DodIcAsyncContext>,
 ): string {
   const out: string[] = [];
-  out.push("# Noctis DoD RMF & Intelligence Community Security Assessment (NDIMP Wave 1)");
+  out.push("# Noctis DoD RMF, STIG/CCI, ACAS & IC Security Assessment (NDIMP Wave 1)");
   out.push(`**Query Scope:** ${question.trim().slice(0, 220)}\n`);
+
+  if (ctx?.resolvedCcis && ctx.resolvedCcis.length > 0) {
+    const cciMeta = getDisaCciManifest();
+    out.push(`## DISA CCI Crosswalk (\`${cciMeta.version}\`, ${cciMeta.counts.totalCcis.toLocaleString()} Official CCIs)`);
+    for (const c of ctx.resolvedCcis) {
+      out.push(
+        `- **\`${c.cciId}\`** (${c.type}, status: \`${c.status}\`): ${c.definition}`,
+      );
+      out.push(
+        `  - **NIST SP 800-53 Rev. 5:** ${c.nistRev5Controls.length ? c.nistRev5Controls.map((id) => `\`${id}\`${c.nistControlTitles[id] ? ` (${c.nistControlTitles[id]})` : ""}`).join(", ") : "None mapped"}`,
+      );
+      if (c.nistRev5References.length > 0) {
+        out.push(`  - **Rev. 5 Index References:** \`${c.nistRev5References.join("`, `")}\``);
+      }
+      if (c.nistRev4Controls.length > 0) {
+        out.push(`  - **NIST SP 800-53 Rev. 4:** ${c.nistRev4Controls.map((id) => `\`${id}\``).join(", ")}`);
+      }
+    }
+    out.push("");
+  }
+
+  if (ctx?.controlCciMatches && ctx.controlCciMatches.length > 0) {
+    out.push("## DISA CCIs Mapped to NIST Controls");
+    for (const grp of ctx.controlCciMatches) {
+      out.push(`- **\`${grp.controlId}\`** (showing ${grp.matches.length} mapped CCIs):`);
+      for (const m of grp.matches.slice(0, 8)) {
+        out.push(`  - \`${m.cciId}\` [${m.revision}]: ${m.definition.slice(0, 180)}`);
+      }
+    }
+    out.push("");
+  }
+
+  if (ctx?.acasAnalysis) {
+    const a = ctx.acasAnalysis;
+    out.push("## ACAS / Nessus (.nessus) Vulnerability & Credential Diagnostics");
+    out.push(
+      `- **Hosts:** ${a.credentialedScanDiagnostics.totalHosts} scanned (${a.credentialedScanDiagnostics.credentialedHosts} credentialed, **${a.credentialedScanDiagnostics.uncredentialedHosts} failed/uncredentialed**) · **KEV Feed:** \`${a.kevFeedSource}\``,
+    );
+    out.push(
+      `- **Deduplicated Active Findings:** ${a.summary.deduplicatedActiveFindings} (from ${a.summary.rawReportItems} raw items) · **CISA KEV:** ${a.summary.kevMatches} · **Critical:** ${a.summary.criticalCount} · **High:** ${a.summary.highCount}`,
+    );
+    if (a.credentialedScanDiagnostics.hostIssues.length > 0) {
+      out.push("- **Credentialed Scan Failures:**");
+      for (const hi of a.credentialedScanDiagnostics.hostIssues) {
+        out.push(`  - Host \`${hi.host}\` (plugins: ${hi.pluginIds.join(", ") || "HostProperties"}): ${hi.reason}`);
+      }
+    }
+    if (a.findings.length > 0) {
+      out.push("- **Top Prioritized Findings (`SCANNER_REPORTED_UNVALIDATED`):**");
+      for (const f of a.findings.slice(0, 8)) {
+        out.push(
+          `  - \`[${f.priority}]\` **${f.pluginName}** (Plugin \`${f.pluginId}\`, ${f.assetCount} host(s), CVSS ${f.maxCvss}${f.isCisaKev ? ", **CISA KEV**" : ""}) -> SLA: \`${f.slaDays}d\` (\`${f.mappedControls.join("/")}\`)`,
+        );
+      }
+    }
+    out.push("");
+  }
+
+  if (ctx?.stigAnalysis) {
+    const s = ctx.stigAnalysis;
+    out.push(`## DISA STIG / SCAP Checklist Assessment (\`${s.sourceFormat}\`)`);
+    out.push(
+      `- **Compliance:** ${s.summary.compliancePercent}% (${s.summary.passedChecks}/${s.summary.applicableChecks} applicable) · **CAT I Open:** ${s.summary.cat1Open} · **CAT II Open:** ${s.summary.cat2Open} · **Not_Reviewed:** ${s.summary.notReviewedCount} · **Unsubstantiated Non-Open Assertions:** ${s.summary.unsubstantiatedNonOpenCount} · **ATO Veto:** \`${s.summary.atoVetoTriggered}\``,
+    );
+    out.push(
+      `- **Impacted NIST SP 800-53 Rev. 5 Controls:** ${s.summary.impactedNistRev5Controls.map((c) => `\`${c}\``).join(", ") || "None"}`,
+    );
+    out.push("");
+  }
 
   if (ruleResults.length > 0) {
     out.push("## Deterministic Rule Evaluations");
@@ -295,7 +597,9 @@ export function renderDeterministicDodIcFallback(
   out.push("## Authoritative Policy Citations & Boundary Rules");
   for (const p of policies) {
     out.push(`### ${p.id} — ${p.title}`);
-    out.push(`- **Jurisdiction:** \`${p.jurisdiction}\` | **Version:** ${p.version} | **Effective:** \`${p.effectiveDate}\` | **Issuing Authority:** ${p.issuingAuthority}`);
+    out.push(
+      `- **Jurisdiction:** \`${p.jurisdiction}\` | **Version:** ${p.version} | **Effective:** \`${p.effectiveDate}\` | **Issuing Authority:** ${p.issuingAuthority}`,
+    );
     if (p.supersededVersion) out.push(`- **Supersedes:** ${p.supersededVersion}`);
     out.push(`- **Scope:** ${p.scope}`);
     out.push(`- **Key Requirements:** ${p.keyRequirements.join(" ")}`);
@@ -304,26 +608,26 @@ export function renderDeterministicDodIcFallback(
   }
 
   out.push(
-    "> **Governance & Accreditation Boundary:** Noctis enforces strict DoD vs. IC reciprocity separation (`DoD ATO != IC ICD 503`), strict classification-aware boundaries (clearance never authorizes commercial cloud processing of classified/SCI data), and human Authorizing Official (AO) authority for all ATO/DATO decisions.",
+    "> **Governance & Accreditation Boundary:** Noctis enforces strict DoD vs. IC reciprocity separation (`DoD ATO != IC ICD 503`), strict classification-aware boundaries, strict separation between raw ACAS/STIG scanner reports and verified remediation rescans, and human Authorizing Official (AO) authority for all ATO/DATO decisions.",
   );
   return out.join("\n");
 }
 
 function buildDodIcSystemPrompt(lang: string, shouldThink: boolean): string {
   return [
-    "You are Noctis Defense & Intelligence Community Security Architect (NDIMP Wave 1), strictly grounded in verified public DoD Directives, ODNI Intelligence Community Directives (ICDs), CNSSI 1253, and EO 13526.",
+    "You are Noctis Defense & Intelligence Community Security Architect (NDIMP Wave 1), strictly grounded in verified public DoD Directives, ODNI Intelligence Community Directives (ICDs), CNSSI 1253, DISA CCI List (2025-01-23), and EO 13526.",
     "",
     shouldThink
-      ? "Begin with a concise `<think>...</think>` block verifying policy effective dates, DoD-vs-IC reciprocity boundaries, CNSSI 1253 C/I/A vectors, and classification invariants before writing the Markdown response."
+      ? "Begin with a concise `<think>...</think>` block verifying policy effective dates, DoD-vs-IC reciprocity boundaries, CNSSI 1253 C/I/A vectors, DISA CCI crosswalks, and ACAS/STIG epistemic invariants before writing the Markdown response."
       : "Respond concisely with no raw XML tags.",
     "",
     "NON-NEGOTIABLE INVARIANTS:",
-    "1. DOD VS. IC DISTINCTION: A DoD ATO (DoDI 8510.01, July 19, 2022) NEVER automatically satisfies an ODNI ICD 503 (Oct 25, 2024) IC IE authorization. Explain exact IC/SCI overlay delta analysis, ICD 502 ConMon, and receiving IC AO acceptance requirements.",
-    "2. CNSSI 1253 VECTORS: Under CNSSI 1253 (July 2022), Confidentiality, Integrity, and Availability remain INDEPENDENT control-selection vectors (do NOT collapse C/I/A into a single FedRAMP High-Water Mark baseline); cite Confidentiality floors & mandatory NSS overlays.",
-    "3. CLASSIFICATION BOUNDARY: User clearance and need-to-know NEVER authorize sending classified or TS/SCI data to commercial cloud LLMs or lower-classification enclaves; accredited boundary + need-to-know + ICD 501/503 gates are mandatory.",
-    "4. SCENARIO VS. FORMAL EVIDENCE: Distinguish stipulated scenario assumptions from formal assessor verification (`PENDING_EVIDENCE` until eMASS/Xacta/SCA artifacts are verified). State that only a designated DoD or IC AO renders formal ATO decisions.",
-    "5. AUTHORITIES: Cite ONLY exact versions and effective dates present in the Knowledge Packet (`DoDI 8510.01` `2022-07-19`, `ICD 503` `2024-10-25`, `ICD 502` `2011-03-11`, `ICD 501` `2009-01-21`, `CNSSI 1253` `2022-07`).",
-    `6. LANGUAGE: ${!/^english$/i.test(lang) ? `Respond in ${lang} while keeping US DoD/IC directive IDs in English.` : "Write in authoritative English."}`,
+    "1. DOD VS. IC DISTINCTION: A DoD ATO (DoDI 8510.01, July 19, 2022) NEVER automatically satisfies an ODNI ICD 503 (Oct 25, 2024) IC IE authorization.",
+    "2. CNSSI 1253 VECTORS: Under CNSSI 1253 (July 2022), Confidentiality, Integrity, and Availability remain INDEPENDENT control-selection vectors.",
+    "3. CLASSIFICATION BOUNDARY: User clearance and need-to-know NEVER authorize sending classified or TS/SCI data to commercial cloud LLMs or lower-classification enclaves.",
+    "4. SCANNER VS. VALIDATED EVIDENCE: Raw ACAS/Nessus and DISA STIG/.ckl findings are `SCANNER_REPORTED_UNVALIDATED`. NEVER claim raw scanner findings prove independent exploitability or that vulnerabilities are remediated/closed without a verified post-patch credentialed rescan. Credentialed-scan authentication failures (e.g. plugin 21745, 19506=no, 110385) invalidate local compliance assurance.",
+    "5. AUTHORITIES: Cite ONLY exact versions and effective dates present in the Knowledge Packet (`DoDI 8510.01` `2022-07-19`, `DoDI 8531.01` `2020-09-15`, `DoDI 8530.03` `2023-08-09`, `ICD 503` `2024-10-25`, `ICD 502` `2011-03-11`, `ICD 501` `2009-01-21`, `CNSSI 1253` `2022-07`, `DISA CCI` `2025-01-23`).",
+    `6. LANGUAGE: ${!/^english$/i.test(lang) ? `Respond in ${lang} while keeping US DoD/IC directive IDs and CCI/CVE codes in English.` : "Write in authoritative English."}`,
   ].join("\n");
 }
 
@@ -344,7 +648,6 @@ export async function executeDodIcReasoning(
   });
 
   if (gate.action === "FAIL_CLOSED_BLOCK") {
-    // Log sanitized audit metadata ONLY (never store raw classified input text!)
     const blockBundle = createExplanationBundle({
       tenantId,
       evaluationRef: "CLASSIFICATION_GATE_BLOCK",
@@ -409,36 +712,69 @@ export async function executeDodIcReasoning(
       : body;
   }
 
-  // STAGE 1: Deterministic Policy & Rule Execution
-  const policies = searchDodIcPolicies(q);
-  const rules = extractAndEvaluateDodIcRulesFromText(q);
-  const combinedEvidenceSha =
-    rules.length === 0
-      ? sha256Sync(policies.map((p) => `${p.id}:${p.effectiveDate}`).join("|"))
-      : sha256Sync(rules.map((r) => `${r.ruleId}:${r.auditHash}`).join("|"));
+  // STAGE 1: Deterministic Policy, CCI Crosswalk, ACAS/STIG Parser & Rule Execution
+  const policySet = new Map<string, DodIcPolicyRecord>();
+  for (const p of searchDodIcPolicies(q)) policySet.set(p.id, p);
+
+  const ctx = await extractDodIcContextAsync(q);
+  const rules = ctx.rules;
+
+  if (ctx.resolvedCcis.length > 0 || ctx.controlCciMatches.length > 0 || ctx.stigAnalysis) {
+    policySet.set("DISA-STIG-CCI", DOD_IC_POLICY_REGISTRY["DISA-STIG-CCI"]!);
+  }
+  if (ctx.acasAnalysis) {
+    policySet.set("DODI-8531.01", DOD_IC_POLICY_REGISTRY["DODI-8531.01"]!);
+  }
+  const policies = [...policySet.values()];
+
+  const combinedEvidenceSha = sha256Sync(
+    JSON.stringify({
+      policies: policies.map((p) => `${p.id}:${p.effectiveDate}`),
+      rules: rules.map((r) => `${r.ruleId}:${r.auditHash}`),
+      ccis: ctx.resolvedCcis.map((c) => c.cciId),
+    }),
+  );
 
   const bundle: ExplanationBundle = createExplanationBundle({
     tenantId,
-    evaluationRef: rules.length > 0 ? rules.map((r) => r.ruleId).join("+") : policies.map((p) => p.id).join("+"),
+    evaluationRef:
+      rules.length > 0
+        ? rules.map((r) => r.ruleId).join("+")
+        : ctx.resolvedCcis.length > 0
+        ? ctx.resolvedCcis.map((c) => c.cciId).join("+")
+        : policies.map((p) => p.id).join("+"),
     nistVersion: "5.2.0",
-    dbSha256: sha256Sync(JSON.stringify(policies.map((p) => ({ id: p.id, effectiveDate: p.effectiveDate })))),
-    ruleId: rules.length > 0 ? rules.map((r) => r.ruleId).join("+") : "DOD-IC-POLICY-GROUNDED",
-    ruleVersion: "ndimp-wave1-1.0.0",
+    dbSha256: getDisaCciManifest().dbSha256,
+    ruleId:
+      rules.length > 0
+        ? rules.map((r) => r.ruleId).join("+")
+        : ctx.resolvedCcis.length > 0
+        ? "DISA-CCI-CROSSWALK"
+        : "DOD-IC-POLICY-GROUNDED",
+    ruleVersion: "ndimp-wave1-1.1.0",
     evidenceSha256: combinedEvidenceSha,
     observedFacts:
       rules.length === 1
         ? rules[0]!.observedFacts
         : {
             rulesExecuted: rules.length,
+            resolvedCciCount: ctx.resolvedCcis.length,
             policiesLoaded: policies.map((p) => p.id).join(", "),
             verdicts: rules.map((r) => `${r.ruleId}:${r.verdict}`).join(", "),
           },
     deterministicClassifications:
       rules.length > 0
         ? rules.map((r) => `${r.ruleId}: Scenario=${r.verdict} | Formal=${r.formalDetermination} — ${r.variance}`)
+        : ctx.resolvedCcis.length > 0
+        ? ctx.resolvedCcis.map((c) => `${c.cciId} -> Rev5:[${c.nistRev5Controls.join(",")}] Rev4:[${c.nistRev4Controls.join(",")}]`)
         : policies.map((p) => `${p.id} (${p.effectiveDate}): Grounded Policy Citation`),
     analyticalEstimates: [],
-    verdict: rules.length > 0 ? rules.map((r) => `${r.ruleId}:${r.verdict}`).join("|") : "POLICY_GROUNDED",
+    verdict:
+      rules.length > 0
+        ? rules.map((r) => `${r.ruleId}:${r.verdict}`).join("|")
+        : ctx.resolvedCcis.length > 0
+        ? "CCI_CROSSWALK_GROUNDED"
+        : "POLICY_GROUNDED",
     ruleEvaluations: rules.map((r) => ({
       ruleId: r.ruleId,
       ruleVersion: r.ruleVersion,
@@ -454,25 +790,70 @@ export async function executeDodIcReasoning(
   });
 
   // Build deterministic knowledge packet for LLM Stage 2
-  const packetText = [
+  const packetParts: string[] = [
     "### AUTHORITATIVE DOD & IC POLICY REGISTRY (VERIFIED PUBLIC METADATA)",
     ...policies.map(
       (p) =>
         `- **${p.id} (${p.title})** | Version: ${p.version} | Effective: ${p.effectiveDate} | Authority: ${p.issuingAuthority}\n  - Requirements: ${p.keyRequirements.join(" ")}\n  - Boundary Invariant: ${p.distinctBoundaryNote}`,
     ),
     "",
-    ...(rules.length > 0
-      ? [
-          "### DETERMINISTIC DOD/IC RULE VERDICTS (IMMUTABLE)",
-          ...rules.map(
-            (r) =>
-              `- **${r.ruleId} [${r.jurisdiction}]: VERDICT = \`${r.verdict}\` | MODE = \`${r.assessmentMode}\` | FORMAL = \`${r.formalDetermination}\`**\n  - Summary: ${r.summary}\n  - Threshold: ${r.threshold}\n  - Variance: ${r.variance}\n  - Missing Evidence: ${r.missingEvidence.join("; ")}\n  - Audit Hash: \`${r.auditHash}\``,
-          ),
-        ]
-      : []),
-    "",
-    `Trace Bundle: \`${bundle.bundleId}\` (Canonical SHA-256: \`${bundle.canonicalTraceHash}\`)`,
-  ].join("\n");
+  ];
+
+  if (ctx.resolvedCcis.length > 0) {
+    packetParts.push(`### OFFICIAL DISA CCI CROSSWALK (Version ${getDisaCciManifest().version})`);
+    for (const c of ctx.resolvedCcis) {
+      packetParts.push(
+        `- **${c.cciId}** (${c.type}, status=${c.status}): ${c.definition} | Rev5=[${c.nistRev5Controls.join(", ")}] (Refs: ${c.nistRev5References.join(", ") || "none"}) | Rev4=[${c.nistRev4Controls.join(", ")}]`,
+      );
+    }
+    packetParts.push("");
+  }
+
+  if (ctx.controlCciMatches.length > 0) {
+    packetParts.push("### REVERSE NIST-TO-DISA CCI LOOKUP");
+    for (const g of ctx.controlCciMatches) {
+      packetParts.push(
+        `- **${g.controlId}**: ${g.matches.map((m) => `${m.cciId} (${m.revision}: ${m.references.join("/")})`).join("; ")}`,
+      );
+    }
+    packetParts.push("");
+  }
+
+  if (ctx.acasAnalysis) {
+    const a = ctx.acasAnalysis;
+    packetParts.push("### ACAS / NESSUS ANALYSIS SUMMARY (SCANNER_REPORTED_UNVALIDATED)");
+    packetParts.push(
+      `- Hosts: ${a.credentialedScanDiagnostics.totalHosts} (${a.credentialedScanDiagnostics.uncredentialedHosts} credential failed: ${a.credentialedScanDiagnostics.failedCredentialHosts.join(", ") || "none"}) | KEVSource=${a.kevFeedSource} | DedupActive=${a.summary.deduplicatedActiveFindings} | KEV=${a.summary.kevMatches}`,
+    );
+    for (const f of a.findings.slice(0, 10)) {
+      packetParts.push(
+        `- [${f.priority}] Plugin ${f.pluginId} (${f.pluginName}): Hosts=${f.assetCount} [${f.affectedHosts.join(", ")}] | CVEs=${f.cves.join(",") || "none"} | SLA=${f.slaDays}d | Validation=${f.validationStatus} | Rescan=${f.remediationVerification}`,
+      );
+    }
+    packetParts.push("");
+  }
+
+  if (ctx.stigAnalysis) {
+    const s = ctx.stigAnalysis;
+    packetParts.push(`### DISA STIG / SCAP CHECKLIST SUMMARY (${s.sourceFormat})`);
+    packetParts.push(
+      `- Compliance=${s.summary.compliancePercent}% (${s.summary.passedChecks}/${s.summary.applicableChecks}) | CAT_I_OPEN=${s.summary.cat1Open} | CAT_II_OPEN=${s.summary.cat2Open} | NOT_REVIEWED=${s.summary.notReviewedCount} | UNSUBSTANTIATED_NON_OPEN=${s.summary.unsubstantiatedNonOpenCount} | ATO_VETO=${s.summary.atoVetoTriggered} | ImpactedRev5=[${s.summary.impactedNistRev5Controls.join(", ")}]`,
+    );
+    packetParts.push("");
+  }
+
+  if (rules.length > 0) {
+    packetParts.push("### DETERMINISTIC DOD/IC RULE VERDICTS (IMMUTABLE)");
+    for (const r of rules) {
+      packetParts.push(
+        `- **${r.ruleId} [${r.jurisdiction}]: VERDICT = \`${r.verdict}\` | MODE = \`${r.assessmentMode}\` | FORMAL = \`${r.formalDetermination}\`**\n  - Summary: ${r.summary}\n  - Threshold: ${r.threshold}\n  - Variance: ${r.variance}\n  - Missing Evidence: ${r.missingEvidence.join("; ")}\n  - Audit Hash: \`${r.auditHash}\``,
+      );
+    }
+    packetParts.push("");
+  }
+
+  packetParts.push(`Trace Bundle: \`${bundle.bundleId}\` (Canonical SHA-256: \`${bundle.canonicalTraceHash}\`)`);
+  const packetText = packetParts.join("\n");
 
   let chatFn = opts.modelChatFn;
   if (!chatFn) {
@@ -531,7 +912,7 @@ export async function executeDodIcReasoning(
   }
 
   if (!finalBody || !audit.passed) {
-    finalBody = renderDeterministicDodIcFallback(q, policies, rules);
+    finalBody = renderDeterministicDodIcFallback(q, policies, rules, ctx);
   }
 
   let persistedSql = false;
@@ -560,7 +941,7 @@ export async function executeDodIcReasoning(
     ` · Trace: \`${bundle.bundleId}\` (\`${bundle.canonicalTraceHash.slice(0, 12)}\`${persistedSql ? ", SQL Replayable" : ""})`;
 
   if (!shouldThink) return `${finalBody.trim()}${footer}`;
-  const detTrace = `DoD/IC Trace: Policies=[${policies.map((p) => p.id).join(", ")}]; Rules=[${rules.map((r) => `${r.ruleId}=${r.verdict}`).join(", ") || "policy"}]; ClassificationGate=${gate.action}`;
+  const detTrace = `DoD/IC Trace: Policies=[${policies.map((p) => p.id).join(", ")}]; Rules=[${rules.map((r) => `${r.ruleId}=${r.verdict}`).join(", ") || "policy"}]; CCIs=${ctx.resolvedCcis.length}; ClassificationGate=${gate.action}`;
   const thought = [activeThought, detTrace].filter(Boolean).join("\n\n");
   return `<think>\n${thought}\n</think>\n\n${finalBody.trim()}${footer}`;
 }

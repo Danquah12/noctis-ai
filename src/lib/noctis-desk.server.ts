@@ -1140,7 +1140,7 @@ async function composeVibeReply(
   if (!isCodingRequest) {
     // Authoritative Live MITRE CVE Program & NVD Resolver: Guarantees official names and full intelligence for all CVEs
     const cveMatch = fullQuestion.match(/\b(CVE-\d{4}-\d{4,7})\b/i);
-    if (cveMatch) {
+    if (cveMatch && !isDodIcQuery(fullQuestion)) {
       const { resolveCveIntelligenceLive, formatCveResponse } = await import("@/lib/noctis-cve-knowledge");
       const profile = await resolveCveIntelligenceLive(cveMatch[1], fullQuestion);
       return {

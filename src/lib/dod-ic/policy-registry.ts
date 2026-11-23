@@ -200,6 +200,73 @@ export const DOD_IC_POLICY_REGISTRY: Record<string, DodIcPolicyRecord> = {
     distinctBoundaryNote:
       "Logical tenant isolation inside a commercial unclassified database is NOT sufficient to store or route SECRET, TOP SECRET, or SCI information.",
   },
+  "DODI-8531.01": {
+    id: "DODI-8531.01",
+    jurisdiction: "DOD",
+    title: "DoD Vulnerability Management",
+    version: "September 15, 2020 Issuance",
+    effectiveDate: "2020-09-15",
+    supersededVersion: "DoDI 8531.01 (legacy DoD IAVM/VMS directives)",
+    issuingAuthority: "DoD Chief Information Officer (DoD CIO)",
+    url: "https://www.esd.whs.mil/DD/",
+    classification: "UNCLASSIFIED",
+    scope:
+      "Establishes enterprise vulnerability management across DoD Information Networks (DODIN), governing continuous ACAS/Nessus credentialed scanning, IAVM/IAVA/IAVB/IAVT orders, risk-based prioritization, and POA&M remediation tracking.",
+    keyRequirements: [
+      "Continuous enterprise credentialed ACAS vulnerability scanning across DoD systems and enclaves with automated reporting into VMS / eMASS.",
+      "Execution and tracking of DoD Information Assurance Vulnerability Management (IAVM) alerts/bulletins (IAVA, IAVB, IAVT), USCYBERCOM / JFHQ-DODIN TASKORDs, and CISA Known Exploited Vulnerabilities (KEV) superseding deadlines.",
+      "Risk-based vulnerability remediation prioritization and POA&M tracking aligned to DoDI 8510.01 RMF continuous monitoring.",
+      "Mandatory post-remediation credentialed verification rescan before closing vulnerabilities or POA&M milestones.",
+    ],
+    exceptions:
+      "Active USCYBERCOM / JFHQ-DODIN TASKORDs, IAVAs, or CISA BOD 22-01 KEV due dates supersede standard baseline remediation windows.",
+    distinctBoundaryNote:
+      "Scanner output alone does NOT constitute independently validated exploitability or confirmed remediation closure; credentialed scan failures hide local patch/registry gaps, and CISA KEV or JFHQ-DODIN TASKORDs supersede baseline timelines.",
+  },
+  "DODI-8530.03": {
+    id: "DODI-8530.03",
+    jurisdiction: "DOD",
+    title: "Cyber Incident Response",
+    version: "August 9, 2023 Issuance",
+    effectiveDate: "2023-08-09",
+    supersededVersion: null,
+    issuingAuthority: "DoD Chief Information Officer (DoD CIO)",
+    url: "https://www.esd.whs.mil/DD/",
+    classification: "UNCLASSIFIED",
+    scope:
+      "Establishes policy and responsibilities for standardized DoD cyber incident detection, categorization, reporting, containment, forensic preservation, and defensive coordination across DoD Components and aligned Cybersecurity Service Providers (CSSPs).",
+    keyRequirements: [
+      "Standardized cyber incident categorization and initial reporting through aligned CSSP / Component CERT to JFHQ-DODIN and USCYBERCOM.",
+      "Time-critical escalation benchmarks (immediate / 1-hour initial notification benchmark for root/administrative compromise or classified spillage per DoD incident handling procedures).",
+      "Preservation of volatile and disk forensic evidence prior to destructive eradication, re-imaging, or log rotation.",
+      "Structured containment, eradication, recovery verification, and post-incident remediation feedback into RMF / DoDI 8531.01.",
+    ],
+    exceptions: "Classified spillage events also trigger DoDM 5200.01 security officer notification and sanitization governance.",
+    distinctBoundaryNote:
+      "DoDI 8530.03 governs DoD cyber incident response and CSSP/JFHQ-DODIN coordination; IC element cyber defense remains separately governed under ODNI ICD 502 and agency CSIRT charters.",
+  },
+  "DISA-STIG-CCI": {
+    id: "DISA-STIG-CCI",
+    jurisdiction: "DOD",
+    title: "DISA Security Technical Implementation Guides (STIGs), SRGs & Control Correlation Identifiers (CCIs)",
+    version: "DISA CCI List 2025-01-23",
+    effectiveDate: "2025-01-23",
+    supersededVersion: null,
+    issuingAuthority: "Defense Information Systems Agency (DISA) Cyber Exchange",
+    url: "https://public.cyber.mil/stigs/cci/",
+    classification: "UNCLASSIFIED",
+    scope:
+      "Provides mandatory DoD configuration hardening baselines (STIGs/SRGs), SCAP XCCDF automated compliance checks, STIG Viewer checklists (.ckl), and the authoritative DISA CCI crosswalk mapping atomic technical requirements to NIST SP 800-53 Rev. 5 / Rev. 4 controls.",
+    keyRequirements: [
+      "CAT I (High — ATO blocker absent explicit AO risk acceptance), CAT II (Medium), and CAT III (Low) severity classification aligned to DoDI 8510.01 RMF packages.",
+      "Authoritative CCI-to-NIST SP 800-53 Rev. 5 / Rev. 4 mapping via DISA U_CCI_List.xml.",
+      "SCAP XCCDF automated scanning combined with manual STIG Viewer (.ckl) inspection for non-automatable checks.",
+      "Documented technical evidence or compensating controls required for every Not_Applicable or NotAFinding assertion prior to SCA review.",
+    ],
+    exceptions: "Tailoring or mission-required deviations must be documented as STIG waivers / POA&Ms and accepted by the Authorizing Official.",
+    distinctBoundaryNote:
+      "SCAP automated scans cover only a subset of STIG checks; manual STIG review and documented SCA verification remain required before closing findings or issuing ATO recommendations.",
+  },
 };
 
 export function lookupDodIcPolicy(id: string): DodIcPolicyRecord | null {
@@ -222,6 +289,15 @@ export function searchDodIcPolicies(question: string): DodIcPolicyRecord[] {
   const hits: DodIcPolicyRecord[] = [];
   if (/\b(?:dodi?\s*8510|emass|dod\s+rmf|dod\s+ato|dod\s+reciproc|iatt|dato|atowc)\b/i.test(q)) {
     hits.push(DOD_IC_POLICY_REGISTRY["DODI-8510.01"]!);
+  }
+  if (/\b(?:dodi?\s*8531|acas\b|nessus|iava\b|iavm\b|iavb\b|vulnerability\s+management|credentialed\s+scan|21745|19506|110385)\b/i.test(q)) {
+    hits.push(DOD_IC_POLICY_REGISTRY["DODI-8531.01"]!);
+  }
+  if (/\b(?:dodi?\s*8530|cyber\s+incident\s+response|cssp\b|jfhq-?dodin|root\s+compromise|incident\s+reporting)\b/i.test(q)) {
+    hits.push(DOD_IC_POLICY_REGISTRY["DODI-8530.03"]!);
+  }
+  if (/\b(?:disa\s+stig|stig\b|cci-\d{6}|scap\b|xccdf|\.ckl\b|checklist|cat\s*(?:i|ii|iii|1|2|3)\b)\b/i.test(q)) {
+    hits.push(DOD_IC_POLICY_REGISTRY["DISA-STIG-CCI"]!);
   }
   if (/\b(?:icd\s*503|ic\s+rmf|ic\s+ie|ic\s+reciproc|ic\s+ato|ic\s+cloud|ic\s+overlay|intelligence\s+community\s+security)\b/i.test(q)) {
     hits.push(DOD_IC_POLICY_REGISTRY["ICD-503"]!);

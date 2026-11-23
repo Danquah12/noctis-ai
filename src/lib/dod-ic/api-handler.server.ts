@@ -21,6 +21,17 @@ import {
 import { executeDodIcReasoning } from "./dod-ic-reasoning.server.ts";
 import { evaluateIcd501SharingGovernance, evaluateIcd503Authorization, evaluateIcReciprocity } from "./ic-security-engine.ts";
 import { DOD_IC_POLICY_REGISTRY, listDodIcPolicies, type PolicyJurisdiction } from "./policy-registry.ts";
+import {
+  evaluateDodi8530IncidentReporting,
+  evaluateDodi8531VulnerabilityCompliance,
+  getDisaCciManifest,
+  listCcisForNistControl,
+  lookupDisaCci,
+  parseAndEvaluateAcasNessus,
+  parseAndEvaluateStigXccdfOrCkl,
+  type AcasJsonFindingInput,
+  type StigJsonCheckInput,
+} from "./stig-acas-engine.ts";
 
 const CORS_HEADERS = {
   "cache-control": "no-store",
@@ -54,21 +65,56 @@ export async function handleDodIcV2Request(request: Request): Promise<Response> 
   if (method === "GET" && (subPath === "" || subPath === "status")) {
     return jsonRes({
       platform: "Noctis Defense & Intelligence Community Security Architecture (NDIMP Wave 1)",
-      version: "1.0.0",
+      version: "1.1.0",
       engines: [
         "DOD-RMF-DODI-8510.01",
         "CNSSI-1253-CATEGORIZATION",
         "IC-SECURITY-ICD-503-502-501",
         "CLASSIFICATION-AWARE-GATEWAY",
         "CROSS-DOMAIN-DODI-8540.01",
+        "DISA-STIG-CCI-CROSSWALK",
+        "ACAS-NESSUS-PARSER-DODI-8531.01",
+        "SCAP-XCCDF-CKL-ENGINE",
+        "CYBER-INCIDENT-DODI-8530.03",
       ],
       policiesCount: Object.keys(DOD_IC_POLICY_REGISTRY).length,
+      disaCci: getDisaCciManifest(),
       invariants: {
         dodAtoAutomaticallySatisfiesIcIcd503: false,
         clearanceAuthorizesCommercialCloudClassified: false,
+        scannerOutputEqualsValidatedRemediation: false,
         aiCanIssueAto: false,
       },
     });
+  }
+
+  if (method === "GET" && subPath === "cci") {
+    const idParam = (url.searchParams.get("id") || "").trim();
+    const ctrlParam = (url.searchParams.get("control") || "").trim();
+    if (idParam) {
+      const cci = lookupDisaCci(idParam);
+      if (!cci) return jsonRes({ error: "NOT_FOUND", message: `DISA CCI '${idParam}' not found.` }, 404);
+      return jsonRes({ found: true, cci });
+    }
+    if (ctrlParam) {
+      const ccis = listCcisForNistControl(ctrlParam);
+      return jsonRes({ controlId: ctrlParam.toUpperCase(), count: ccis.length, ccis });
+    }
+    return jsonRes({ manifest: getDisaCciManifest() });
+  }
+
+  if (method === "GET" && subPath.startsWith("cci/by-control/")) {
+    const ctrlId = decodeURIComponent(subPath.slice("cci/by-control/".length)).trim();
+    if (!ctrlId) return jsonRes({ error: "BAD_REQUEST", message: "controlId is required." }, 400);
+    const ccis = listCcisForNistControl(ctrlId);
+    return jsonRes({ controlId: ctrlId.toUpperCase(), count: ccis.length, ccis });
+  }
+
+  if (method === "GET" && subPath.startsWith("cci/")) {
+    const cciId = decodeURIComponent(subPath.slice("cci/".length)).trim();
+    const cci = lookupDisaCci(cciId);
+    if (!cci) return jsonRes({ error: "NOT_FOUND", message: `DISA CCI '${cciId}' not found.` }, 404);
+    return jsonRes({ found: true, cci });
   }
 
   if (method === "GET" && subPath === "policies") {
@@ -242,6 +288,81 @@ export async function handleDodIcV2Request(request: Request): Promise<Response> 
         orconOriginatorApproved: typeof body.orcon_approved === "boolean" ? body.orcon_approved : null,
         auditTrailEnabled: typeof body.audit_enabled === "boolean" ? body.audit_enabled : null,
         assessmentMode: body.assessment_mode === "FORMAL_EVIDENCE_AUDIT" ? "FORMAL_EVIDENCE_AUDIT" : "SCENARIO_ASSUMPTION",
+      }),
+    );
+  }
+
+  if (subPath === "acas/analyze") {
+    const analysis = await parseAndEvaluateAcasNessus({
+      nessusXml: typeof body.nessus_xml === "string" ? body.nessus_xml : typeof body.xml === "string" ? body.xml : undefined,
+      findings: Array.isArray(body.findings) ? (body.findings as AcasJsonFindingInput[]) : undefined,
+      forceOfflineKev: body.force_offline_kev === true,
+      assessmentMode: body.assessment_mode === "FORMAL_EVIDENCE_AUDIT" ? "FORMAL_EVIDENCE_AUDIT" : "SCENARIO_ASSUMPTION",
+      evidenceVerified: body.evidence_verified === true,
+    });
+    return jsonRes(analysis);
+  }
+
+  if (subPath === "stig/evaluate") {
+    const res = parseAndEvaluateStigXccdfOrCkl({
+      cklXml: typeof body.ckl_xml === "string" ? body.ckl_xml : undefined,
+      xccdfXml: typeof body.xccdf_xml === "string" ? body.xccdf_xml : undefined,
+      checks: Array.isArray(body.checks) ? (body.checks as StigJsonCheckInput[]) : undefined,
+      benchmarkTitle: typeof body.benchmark_title === "string" ? body.benchmark_title : undefined,
+      assessmentMode: body.assessment_mode === "FORMAL_EVIDENCE_AUDIT" ? "FORMAL_EVIDENCE_AUDIT" : "SCENARIO_ASSUMPTION",
+      evidenceVerified: body.evidence_verified === true,
+    });
+    return jsonRes(res);
+  }
+
+  if (subPath === "vuln/dodi8531") {
+    return jsonRes(
+      evaluateDodi8531VulnerabilityCompliance({
+        cveId: typeof body.cve_id === "string" ? body.cve_id : null,
+        severityCategory: body.severity as
+          | "CRITICAL"
+          | "HIGH"
+          | "MODERATE"
+          | "MEDIUM"
+          | "LOW"
+          | "CAT_I"
+          | "CAT_II"
+          | "CAT_III"
+          | undefined,
+        isCisaKev: typeof body.is_cisa_kev === "boolean" ? body.is_cisa_kev : null,
+        hasActiveIava: typeof body.has_active_iava === "boolean" ? body.has_active_iava : null,
+        iavaDueDays: typeof body.iava_due_days === "number" ? body.iava_due_days : null,
+        daysOpen: typeof body.days_open === "number" ? body.days_open : null,
+        credentialedScanPassed: typeof body.credentialed_scan_passed === "boolean" ? body.credentialed_scan_passed : null,
+        poamTracked: typeof body.poam_tracked === "boolean" ? body.poam_tracked : null,
+        aoRiskAccepted: typeof body.ao_risk_accepted === "boolean" ? body.ao_risk_accepted : null,
+        remediationRescanVerified:
+          typeof body.remediation_rescan_verified === "boolean" ? body.remediation_rescan_verified : null,
+        assessmentMode: body.assessment_mode === "FORMAL_EVIDENCE_AUDIT" ? "FORMAL_EVIDENCE_AUDIT" : "SCENARIO_ASSUMPTION",
+        evidenceVerified: body.evidence_verified === true,
+      }),
+    );
+  }
+
+  if (subPath === "incident/dodi8530") {
+    return jsonRes(
+      evaluateDodi8530IncidentReporting({
+        incidentCategory: body.incident_category as
+          | "ROOT_COMPROMISE"
+          | "CLASSIFIED_SPILLAGE"
+          | "USER_COMPROMISE"
+          | "MALICIOUS_LOGIC"
+          | "DOS"
+          | "SUSPICIOUS_ACTIVITY"
+          | undefined,
+        hoursSinceDiscovery: typeof body.hours_since_discovery === "number" ? body.hours_since_discovery : null,
+        csspNotified: typeof body.cssp_notified === "boolean" ? body.cssp_notified : null,
+        uscybercomJfhqNotified: typeof body.jfhq_notified === "boolean" ? body.jfhq_notified : null,
+        containmentInitiated: typeof body.containment_initiated === "boolean" ? body.containment_initiated : null,
+        forensicEvidencePreserved: typeof body.forensic_preserved === "boolean" ? body.forensic_preserved : null,
+        affectsClassifiedOrNss: typeof body.classified_or_nss === "boolean" ? body.classified_or_nss : null,
+        assessmentMode: body.assessment_mode === "FORMAL_EVIDENCE_AUDIT" ? "FORMAL_EVIDENCE_AUDIT" : "SCENARIO_ASSUMPTION",
+        evidenceVerified: body.evidence_verified === true,
       }),
     );
   }

@@ -824,6 +824,55 @@ export const NDKRS_AUTHORITATIVE_CORPUS: AuthoritativeCorpusSeedItem[] = [
     effectiveDate: "2023-05-01T00:00:00Z",
     expiresAt: "2030-12-31T00:00:00Z",
   },
+  {
+    domain: "cybersecurity",
+    canonicalKey: "DODI-8531.01-VULN-MGMT",
+    title: "DoDI 8531.01 — DoD Vulnerability Management, ACAS Credentialed Scanning & KEV Precedence",
+    summary:
+      "Governs enterprise DoD vulnerability management (effective Sept 15, 2020), continuous ACAS credentialed scanning, IAVM/IAVA execution, CISA KEV superseding deadlines, and mandatory post-patch credentialed verification rescans.",
+    content: `# DoDI 8531.01 (Effective September 15, 2020)
+- Requires continuous credentialed ACAS scanning; plugin 19506/21745/110385 authentication failures invalidate local compliance assurance.
+- CISA KEV / JFHQ-DODIN TASKORDs / active IAVAs supersede standard remediation SLAs.
+- Scanner output alone never proves exploitability or confirmed remediation closure without a verified post-patch credentialed rescan.`,
+    sourceUri: "https://www.esd.whs.mil/DD/",
+    trustTier: "AUTHORITATIVE_GOV",
+    version: "2020-09-15",
+    citationLabel: "DODI-8531.01",
+    effectiveDate: "2020-09-15T00:00:00Z",
+    expiresAt: "2030-12-31T00:00:00Z",
+  },
+  {
+    domain: "cybersecurity",
+    canonicalKey: "DODI-8530.03-CYBER-INCIDENT",
+    title: "DoDI 8530.03 — DoD Cyber Incident Response, CSSP Escalation & Forensic Preservation",
+    summary:
+      "Establishes DoD cyber incident detection, categorization, time-critical reporting through aligned CSSP / Component CERT to JFHQ-DODIN (effective Aug 9, 2023), and forensic preservation prior to destructive eradication.",
+    content: `# DoDI 8530.03 (Effective August 9, 2023)
+- Root/administrative compromise and classified spillage trigger immediate (1-hour benchmark) initial reporting to aligned CSSP and JFHQ-DODIN.
+- Volatile memory and forensic artifacts must be preserved before destructive wipe/re-imaging.`,
+    sourceUri: "https://www.esd.whs.mil/DD/",
+    trustTier: "AUTHORITATIVE_GOV",
+    version: "2023-08-09",
+    citationLabel: "DODI-8530.03",
+    effectiveDate: "2023-08-09T00:00:00Z",
+    expiresAt: "2030-12-31T00:00:00Z",
+  },
+  {
+    domain: "rmf",
+    canonicalKey: "DISA-STIG-CCI-CROSSWALK",
+    title: "DISA STIG / SCAP XCCDF & Official DISA CCI List (2025-01-23) NIST SP 800-53 Crosswalk",
+    summary:
+      "DISA Control Correlation Identifiers (CCIs) correlate atomic STIG/SRG technical checks and .ckl / SCAP XCCDF findings to NIST SP 800-53 Rev. 5 and Rev. 4 controls; CAT I Open findings block standard ATO.",
+    content: `# DISA STIG & CCI Crosswalk (DISA CCI List 2025-01-23)
+- Authoritative mapping between DISA CCI-XXXXXX identifiers, STIG Rule IDs, and NIST SP 800-53 Rev. 5 / Rev. 4 controls.
+- Open CAT I findings trigger DoDI 8510.01 ATO veto absent explicit Authorizing Official risk acceptance; Not_Applicable and NotAFinding claims require documented evidence.`,
+    sourceUri: "https://public.cyber.mil/stigs/cci/",
+    trustTier: "AUTHORITATIVE_GOV",
+    version: "2025-01-23",
+    citationLabel: "DISA-CCI-2025",
+    effectiveDate: "2025-01-23T00:00:00Z",
+    expiresAt: "2030-12-31T00:00:00Z",
+  },
 ];
 
 export async function seedNdkrsAuthoritativeCorpus(
