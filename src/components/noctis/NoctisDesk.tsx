@@ -80,7 +80,7 @@ import {
   getVoicePersona,
   type VoicePersona,
 } from "@/lib/noctis-voice";
-import { CANVASES, useTheme } from "@/lib/theme";
+import { CANVASES, applyTheme, readTheme, useTheme } from "@/lib/theme";
 import { useFeedStore } from "@/lib/feed-store";
 import { learningBoard } from "@/lib/learning-board";
 import { levelFromProgress, type DepthLevel } from "@/lib/depth";
@@ -3474,6 +3474,14 @@ export function NoctisDesk() {
   const theme = useTheme((s) => s.theme);
   const setTheme = useTheme((s) => s.setTheme);
   const canvas = CANVASES.find((row) => row.id === theme) ?? CANVASES[0];
+
+  useEffect(() => {
+    const saved = readTheme();
+    applyTheme(saved);
+    if (saved !== useTheme.getState().theme) {
+      useTheme.setState({ theme: saved });
+    }
+  }, []);
   const [threads, setThreads] = useState<Thread[]>([]);
   const [active, setActive] = useState<string>("");
   const [draft, setDraft] = useState("");
@@ -6291,7 +6299,10 @@ export function NoctisDesk() {
           </div>
         </div>
       ) : null}
-      <div className="flex min-w-0 items-center gap-1.5 rounded-[28px] bg-[#2a2a2a] py-1.5 pr-2 pl-2 ring-1 ring-white/12 shadow-[0_8px_30px_rgba(0,0,0,0.28)]">
+      <div
+        className="noctis-composer-pill flex min-w-0 items-center gap-1.5 rounded-[28px] py-1.5 pr-2 pl-2 ring-1 ring-white/12 shadow-[0_8px_30px_rgba(0,0,0,0.22)] transition-colors duration-200"
+        style={{ background: "var(--noctis-composer-bg)", boxShadow: "var(--shadow-border)" }}
+      >
         <button
           type="button"
           aria-label="Open Noctis tools and plugins"
@@ -6369,8 +6380,9 @@ export function NoctisDesk() {
               void send();
             }
           }}
+          style={{ color: "var(--color-fg)" }}
           className={cn(
-            "max-h-40 min-h-9 flex-1 resize-none bg-transparent px-1.5 py-2 text-base sm:text-[15px] leading-5 text-zinc-100 outline-none placeholder:text-zinc-400 noctis-thin-scroll",
+            "noctis-composer-input max-h-40 min-h-9 flex-1 resize-none bg-transparent px-1.5 py-2 text-base sm:text-[15px] leading-5 outline-none noctis-thin-scroll",
             draft ? "overflow-y-auto" : "overflow-y-hidden",
           )}
         />
@@ -6436,11 +6448,14 @@ export function NoctisDesk() {
                   type="submit"
                   aria-label="Send to Noctis"
                   title="Send to Noctis (Enter)"
-                  className={cn(
-                    "grid size-10 sm:size-9 shrink-0 place-items-center rounded-full transition shadow-sm touch-manipulation",
+                  style={
                     canSend
-                      ? "bg-white text-black hover:bg-zinc-200"
-                      : "bg-white/15 text-zinc-300 border border-white/15 hover:bg-white/25 hover:text-white",
+                      ? { background: "var(--color-fg)", color: "var(--color-bg)" }
+                      : { background: "var(--noctis-surface-tint)", color: "var(--color-muted)", borderColor: "var(--color-border)" }
+                  }
+                  className={cn(
+                    "grid size-10 sm:size-9 shrink-0 place-items-center rounded-full border transition shadow-sm touch-manipulation hover:opacity-90",
+                    canSend ? "border-transparent" : "",
                   )}
                 >
                   <ArrowUp className="size-5 stroke-[2.5]" />
@@ -6662,8 +6677,9 @@ export function NoctisDesk() {
 
   return (
     <div
-      className="flex h-dvh w-full max-w-[100vw] min-h-0 overflow-hidden text-zinc-100"
-      style={{ background: canvas.swatch }}
+      data-noctis-theme={theme}
+      className="noctis-desk-shell flex h-dvh w-full max-w-[100vw] min-h-0 overflow-hidden"
+      style={{ background: "var(--noctis-canvas-bg)", color: "var(--color-fg)" }}
       onDragOver={(event) => event.preventDefault()}
       onDrop={(event) => {
         event.preventDefault();
@@ -6675,11 +6691,11 @@ export function NoctisDesk() {
       ) : null}
       <aside
         className={cn(
-          "vibe-rail noctis-thin-scroll z-30 h-full shrink-0 flex-col overflow-y-auto px-2 py-2 transition-all duration-200",
+          "noctis-sidebar vibe-rail noctis-thin-scroll z-30 h-full shrink-0 flex-col overflow-y-auto px-2 py-2 transition-all duration-200",
           menu ? "fixed inset-y-0 left-0 flex w-full max-w-[20rem]" : "hidden",
           sidebarOpen ? "md:flex md:w-[310px] lg:w-[340px]" : "md:hidden"
         )}
-        style={{ background: canvas.light ? "#171717" : canvas.meta }}
+        style={{ background: "var(--noctis-sidebar-bg)", borderRight: "1px solid var(--color-border)" }}
       >
         <div className="mb-2 flex items-center gap-1 px-1">
           {searching ? (
@@ -6745,7 +6761,7 @@ export function NoctisDesk() {
                       : "0 0 0 1px rgba(255,255,255,0.2)"
                   }}
                 >
-                  <span className="size-5 rounded-full transition-transform" style={{ background: row.swatch }} />
+                  <span className="size-5 rounded-full transition-transform" style={{ background: row.swatch, border: "1px solid rgba(127, 127, 127, 0.4)" }} />
                 </button>
               );
             })}
@@ -7617,7 +7633,10 @@ export function NoctisDesk() {
             </div>
           </div>
         ) : null}
-        <header className="relative z-30 flex h-14 min-w-0 shrink-0 items-center justify-between gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar border-b border-white/10 bg-[#12151c] px-2.5 sm:px-3.5">
+        <header
+          className="noctis-header relative z-30 flex h-14 min-w-0 shrink-0 items-center justify-between gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar border-b px-2.5 sm:px-3.5 transition-colors duration-200"
+          style={{ background: "var(--noctis-header-bg)", borderColor: "var(--color-border)" }}
+        >
           {/* Left: Mobile Menu, Expand Sidebar (when collapsed), Brand (when collapsed), & Model Picker */}
           <div className="flex items-center gap-2 shrink-0">
             {/* Mobile Menu */}
@@ -7692,7 +7711,7 @@ export function NoctisDesk() {
                           : "0 0 0 1px rgba(255,255,255,0.2)"
                       }}
                     >
-                      <span className="size-3.5 rounded-full transition-transform" style={{ background: row.swatch }} />
+                      <span className="size-3.5 rounded-full transition-transform" style={{ background: row.swatch, border: "1px solid rgba(127, 127, 127, 0.4)" }} />
                     </button>
                   );
                 })}
@@ -8096,19 +8115,21 @@ export function NoctisDesk() {
                 />
               </Suspense>
             ) : (empty || shelf !== "chats") ? (
-          <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-            <div className="pointer-events-none absolute inset-0 bg-[#0d1117]" />
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-sky-950/30 via-[#0e121a]/85 to-[#080a0f]" />
-            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:3.5rem_3.5rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[#12151c]/55 via-[#12151c]/35 to-[#12151c]/80" />
+          <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden transition-colors duration-200" style={{ background: "var(--noctis-canvas-bg)" }}>
+            <div className="pointer-events-none absolute inset-0" style={{ background: "var(--noctis-canvas-bg)" }} />
+            <div className="pointer-events-none absolute inset-0" style={{ backgroundImage: "var(--noctis-canvas-glow)" }} />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[size:3.5rem_3.5rem] [mask-image:radial-gradient(ellipse_65%_55%_at_50%_0%,#000_70%,transparent_100%)]"
+              style={{ backgroundImage: "var(--noctis-canvas-grid)" }}
+            />
             {desk === "chat" && shelf === "chats" ? (
               <div className="relative flex h-full min-h-0 flex-1 flex-col items-center overflow-y-auto noctis-thin-scroll px-4 py-6">
                 <div style={{ flex: "2 1 0%", minHeight: "1.5rem" }} className="w-full" />
                 <div className="mx-auto w-full max-w-3xl mb-6 shrink-0 text-center space-y-2.5 animate-in fade-in duration-300">
-                  <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+                  <h2 className="text-2xl sm:text-3xl font-bold tracking-tight" style={{ color: "var(--color-fg)" }}>
                     Noctis Sovereign Systems Desk
                   </h2>
-                  <p className="text-xs sm:text-sm text-zinc-400 max-w-lg mx-auto leading-relaxed">
+                  <p className="text-xs sm:text-sm max-w-lg mx-auto leading-relaxed" style={{ color: "var(--color-muted)" }}>
                     Autonomous software engineering, continuous verification, subagent swarms, and cross-domain SQDEC governance.
                   </p>
                 </div>
@@ -8347,9 +8368,12 @@ export function NoctisDesk() {
                           })
                         : [];
                     return (
-                      <div key={index} className="text-[15px] leading-7 text-zinc-100">
+                      <div key={index} className="text-[15px] leading-7" style={{ color: "var(--color-fg)" }}>
                         {asked && asked.length < 180 && (asked.match(/\?/g) || []).length < 2 && !turn.images?.length ? <div className="mb-3"><KnowledgeMap query={asked} vibe /></div> : null}
-                        <article className="rounded-3xl border border-[#e4b86a]/40 bg-[#1a1a1a] px-5 py-4 shadow-[inset_0_1px_0_rgba(228,184,106,0.16)]">
+                        <article
+                          className="noctis-answer-card rounded-3xl border border-[#e4b86a]/40 px-5 py-4 shadow-[inset_0_1px_0_rgba(228,184,106,0.16)] transition-colors duration-200"
+                          style={{ background: "var(--noctis-card-bg)", color: "var(--color-fg)" }}
+                        >
                           <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#e4b86a]">{desk === "study" ? "Study board" : "Noctis"}</p>
                           {turn.audio ? <audio src={turn.audio} controls className="mb-3 w-full" /> : null}
                           {turn.clips?.length ? <FilmPlay clips={turn.clips} /> : turn.video ? <video src={turn.video} controls playsInline className="mb-3 aspect-[4/5] w-full rounded-2xl border border-white/10 bg-black object-cover" /> : turn.images?.map((src, shot) => (

@@ -161,23 +161,42 @@ html[data-desk="on"] body {
     outline: 1px solid #ffffff14;
   }
 
+  :root {
+    --noctis-sidebar-bg: #080d17;
+    --noctis-header-bg: #0e1422;
+    --noctis-canvas-bg: #0b1220;
+    --noctis-canvas-glow: radial-gradient(ellipse at top, rgba(56, 189, 248, 0.14) 0%, rgba(11, 18, 32, 0.85) 55%, #070b14 100%);
+    --noctis-canvas-grid: linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    --noctis-composer-bg: #1e2432;
+    --noctis-card-bg: #131926;
+    --noctis-surface-tint: rgba(255, 255, 255, 0.05);
+  }
+
   html[data-theme="white"] {
     --color-bg: #f7f8fa;
     --color-surface: #ffffff;
-    --color-elevated: #eef0f4;
+    --color-elevated: #eef1f6;
     --color-fg: #0e1116;
-    --color-muted: #5c6570;
-    --color-subtle: #8b939e;
-    --color-primary: #e11d48;
+    --color-muted: #525b66;
+    --color-subtle: #6e7784;
+    --color-primary: #b91c1c;
     --color-primary-fg: #fff7f8;
     --color-live: #e11d48;
-    --color-border: #0e111614;
+    --color-border: rgba(14, 17, 22, 0.12);
     --color-ring: #e11d48;
     --color-wash-cool: #d7e2ea;
     --color-wash-ember: #eadfd4;
-    --shadow-border: 0 0 0 1px #0e111612, 0 1px 2px #0e11160a;
-    --shadow-border-hover: 0 0 0 1px #0e111620, 0 2px 8px #0e111612;
-    --shadow-float: 0 18px 50px #0e111622;
+    --shadow-border: 0 0 0 1px rgba(14, 17, 22, 0.1), 0 1px 3px rgba(14, 17, 22, 0.06);
+    --shadow-border-hover: 0 0 0 1px rgba(14, 17, 22, 0.2), 0 2px 8px rgba(14, 17, 22, 0.1);
+    --shadow-float: 0 18px 50px rgba(14, 17, 22, 0.14);
+    --noctis-sidebar-bg: #f0f2f6;
+    --noctis-header-bg: #ffffff;
+    --noctis-canvas-bg: #f7f8fa;
+    --noctis-canvas-glow: radial-gradient(ellipse at top, rgba(225, 29, 72, 0.06) 0%, rgba(219, 234, 254, 0.35) 45%, rgba(247, 248, 250, 0.95) 100%);
+    --noctis-canvas-grid: linear-gradient(to right, rgba(14, 17, 22, 0.04) 1px, transparent 1px), linear-gradient(to bottom, rgba(14, 17, 22, 0.04) 1px, transparent 1px);
+    --noctis-composer-bg: #ffffff;
+    --noctis-card-bg: #ffffff;
+    --noctis-surface-tint: rgba(14, 17, 22, 0.045);
   }
 
   html[data-theme="nordic"] {
@@ -189,13 +208,21 @@ html[data-desk="on"] body {
     --color-subtle: #5b7e96;
     --color-primary: #5ec8f0;
     --color-primary-fg: #062030;
-    --color-border: #b7e4ff16;
+    --color-border: #b7e4ff20;
     --color-ring: #5ec8f0;
     --color-wash-cool: #0a3a5c;
     --color-wash-ember: #1a2840;
-    --shadow-border: 0 0 0 1px #b7e4ff16;
-    --shadow-border-hover: 0 0 0 1px #b7e4ff28;
+    --shadow-border: 0 0 0 1px #b7e4ff20;
+    --shadow-border-hover: 0 0 0 1px #b7e4ff38;
     --shadow-float: 0 18px 50px #030b1480;
+    --noctis-sidebar-bg: #05101d;
+    --noctis-header-bg: #091a2e;
+    --noctis-canvas-bg: #071525;
+    --noctis-canvas-glow: radial-gradient(ellipse at top, rgba(94, 200, 240, 0.16) 0%, rgba(12, 32, 56, 0.85) 55%, #050f1b 100%);
+    --noctis-canvas-grid: linear-gradient(to right, rgba(94, 200, 240, 0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(94, 200, 240, 0.05) 1px, transparent 1px);
+    --noctis-composer-bg: #0f2844;
+    --noctis-card-bg: #0c2038;
+    --noctis-surface-tint: rgba(94, 200, 240, 0.08);
   }
 
   html[data-theme="emerald"] {
@@ -207,13 +234,21 @@ html[data-desk="on"] body {
     --color-subtle: #5a806c;
     --color-primary: #34d399;
     --color-primary-fg: #042016;
-    --color-border: #b7f0d416;
+    --color-border: #b7f0d420;
     --color-ring: #34d399;
     --color-wash-cool: #0a3028;
     --color-wash-ember: #143018;
-    --shadow-border: 0 0 0 1px #b7f0d416;
-    --shadow-border-hover: 0 0 0 1px #b7f0d428;
+    --shadow-border: 0 0 0 1px #b7f0d420;
+    --shadow-border-hover: 0 0 0 1px #b7f0d438;
     --shadow-float: 0 18px 50px #020a0880;
+    --noctis-sidebar-bg: #04100c;
+    --noctis-header-bg: #081c15;
+    --noctis-canvas-bg: #06140f;
+    --noctis-canvas-glow: radial-gradient(ellipse at top, rgba(52, 211, 153, 0.16) 0%, rgba(12, 34, 26, 0.85) 55%, #040e0a 100%);
+    --noctis-canvas-grid: linear-gradient(to right, rgba(52, 211, 153, 0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(52, 211, 153, 0.05) 1px, transparent 1px);
+    --noctis-composer-bg: #102b21;
+    --noctis-card-bg: #0c221a;
+    --noctis-surface-tint: rgba(52, 211, 153, 0.08);
   }
 
   html[data-theme="sand"] {
@@ -221,18 +256,26 @@ html[data-desk="on"] body {
     --color-surface: #f6eee2;
     --color-elevated: #ddd0ba;
     --color-fg: #2a2118;
-    --color-muted: #6f6254;
-    --color-subtle: #948676;
-    --color-primary: #b45309;
+    --color-muted: #615344;
+    --color-subtle: #827362;
+    --color-primary: #9a3412;
     --color-primary-fg: #fff8f0;
     --color-live: #e11d48;
-    --color-border: #2a211814;
+    --color-border: rgba(42, 33, 24, 0.14);
     --color-ring: #b45309;
     --color-wash-cool: #d4dce4;
     --color-wash-ember: #e0c8a8;
-    --shadow-border: 0 0 0 1px #2a211814, 0 1px 2px #2a21180c;
-    --shadow-border-hover: 0 0 0 1px #2a211824, 0 2px 8px #2a211814;
-    --shadow-float: 0 18px 50px #2a211828;
+    --shadow-border: 0 0 0 1px rgba(42, 33, 24, 0.14), 0 1px 2px rgba(42, 33, 24, 0.06);
+    --shadow-border-hover: 0 0 0 1px rgba(42, 33, 24, 0.24), 0 2px 8px rgba(42, 33, 24, 0.12);
+    --shadow-float: 0 18px 50px rgba(42, 33, 24, 0.18);
+    --noctis-sidebar-bg: #e0d1b9;
+    --noctis-header-bg: #f3eadc;
+    --noctis-canvas-bg: #e9dcc8;
+    --noctis-canvas-glow: radial-gradient(ellipse at top, rgba(180, 83, 9, 0.1) 0%, rgba(246, 238, 226, 0.5) 55%, rgba(233, 220, 200, 0.95) 100%);
+    --noctis-canvas-grid: linear-gradient(to right, rgba(42, 33, 24, 0.045) 1px, transparent 1px), linear-gradient(to bottom, rgba(42, 33, 24, 0.045) 1px, transparent 1px);
+    --noctis-composer-bg: #faf4ea;
+    --noctis-card-bg: #f6eee2;
+    --noctis-surface-tint: rgba(42, 33, 24, 0.055);
   }
 
   html[data-theme="white"] img,
@@ -2016,4 +2059,194 @@ img[src*="dstrike-mark"] {
   max-width: 72px !important;
   width: auto !important;
   object-fit: contain !important;
+}
+
+/* ============================================================================
+ * Noctis Atmosphere Palette Layer (midnight | white | nordic | emerald | sand)
+ * Adapts shell, cards, borders, composer, badges & inputs across all 5 palettes
+ * while preserving vivid action button foregrounds and code blocks.
+ * ========================================================================== */
+
+.noctis-composer-input::placeholder {
+  color: var(--color-muted);
+}
+
+/* Tinted deep themes (Nordic Blue & Montreal Emerald) */
+:is(html[data-theme="nordic"], html[data-theme="emerald"]) .noctis-desk-shell :is(
+  [class~="bg-[#0d1117]"],
+  [class~="bg-[#12151c]"],
+  [class~="bg-[#0e1017]"],
+  [class~="bg-[#0a0c12]"]
+) {
+  background-color: var(--noctis-header-bg);
+}
+
+:is(html[data-theme="nordic"], html[data-theme="emerald"]) .noctis-desk-shell :is(
+  [class~="bg-[#121722]"],
+  [class~="bg-[#141722]"],
+  [class~="bg-[#161a24]"],
+  [class~="bg-[#1a1a1a]"],
+  [class~="bg-[#1e232e]"],
+  [class~="bg-[#2a2a2a]"],
+  [class~="bg-[#2f2f2f]"]
+) {
+  background-color: var(--noctis-card-bg);
+}
+
+:is(html[data-theme="nordic"], html[data-theme="emerald"]) .noctis-desk-shell :is(
+  [class~="border-white/5"],
+  [class~="border-white/8"],
+  [class~="border-white/10"],
+  [class~="border-white/12"],
+  [class~="border-white/15"]
+) {
+  border-color: var(--color-border);
+}
+
+/* Light themes (Clean White & Warm Sand) */
+:is(html[data-theme="white"], html[data-theme="sand"]) .noctis-desk-shell :is(
+  [class~="bg-[#0d1117]"],
+  [class~="bg-[#0a0c12]"],
+  [class~="bg-[#0e1017]"],
+  [class~="bg-[#0f131c]"],
+  [class~="bg-[#12151c]"],
+  [class~="bg-[#121722]"],
+  [class~="bg-[#141722]"],
+  [class~="bg-[#141820]"],
+  [class~="bg-[#161a24]"],
+  [class~="bg-[#181818]"],
+  [class~="bg-[#1a1a1a]"],
+  [class~="bg-[#1c1c1c]"],
+  [class~="bg-[#1e1e1e]"],
+  [class~="bg-[#1e232e]"],
+  [class~="bg-[#1f1f1f]"],
+  [class~="bg-[#2a2a2a]"],
+  [class~="bg-[#2f2f2f]"]
+) {
+  background-color: var(--color-surface);
+}
+
+:is(html[data-theme="white"], html[data-theme="sand"]) .noctis-desk-shell :is(
+  [class~="bg-black/30"],
+  [class~="bg-black/40"],
+  [class~="bg-black/45"],
+  [class~="bg-black/55"],
+  [class~="bg-black/65"],
+  [class~="bg-white/[0.04]"],
+  [class~="bg-white/[0.05]"],
+  [class~="bg-white/5"],
+  [class~="bg-white/10"]
+) {
+  background-color: var(--noctis-surface-tint);
+}
+
+:is(html[data-theme="white"], html[data-theme="sand"]) .noctis-desk-shell :is(
+  [class~="bg-emerald-950/60"],
+  [class~="bg-emerald-950/50"],
+  [class~="bg-emerald-950/20"]
+) {
+  background-color: rgba(16, 185, 129, 0.14);
+}
+
+:is(html[data-theme="white"], html[data-theme="sand"]) .noctis-desk-shell :is(
+  [class~="border-white/5"],
+  [class~="border-white/8"],
+  [class~="border-white/10"],
+  [class~="border-white/12"],
+  [class~="border-white/15"],
+  [class~="border-white/20"]
+) {
+  border-color: var(--color-border);
+}
+
+:is(html[data-theme="white"], html[data-theme="sand"]) .noctis-desk-shell :is(
+  [class~="ring-white/10"],
+  [class~="ring-white/12"],
+  [class~="ring-white/15"]
+) {
+  --tw-ring-color: var(--color-border);
+}
+
+:is(html[data-theme="white"], html[data-theme="sand"]) .noctis-desk-shell :is(
+  [class~="text-white"],
+  [class~="text-zinc-50"],
+  [class~="text-zinc-100"],
+  [class~="text-zinc-200"],
+  [class~="text-zinc-300"]
+):not([class~="bg-red-500"]):not([class~="bg-red-600"]):not([class~="bg-rose-600"]):not([class~="bg-cyan-600"]):not([class~="bg-emerald-600"]):not([class~="bg-blue-600"]):not([class~="bg-indigo-600"]):not([class~="bg-amber-600"]):not([class~="bg-[#2563eb]"]):not([class~="bg-[#16a34a]"]):not([class~="bg-[#b42318]"]):not(pre):not(code) {
+  color: var(--color-fg);
+}
+
+:is(html[data-theme="white"], html[data-theme="sand"]) .noctis-desk-shell :is(
+  [class~="text-zinc-400"],
+  [class~="text-zinc-500"]
+) {
+  color: var(--color-muted);
+}
+
+:is(html[data-theme="white"], html[data-theme="sand"]) .noctis-desk-shell [class~="text-[#e4b86a]"] {
+  color: var(--color-primary);
+}
+
+:is(html[data-theme="white"], html[data-theme="sand"]) .noctis-desk-shell :is(
+  [class~="text-emerald-200"],
+  [class~="text-emerald-300"],
+  [class~="text-emerald-400"]
+) {
+  color: #047857;
+}
+
+:is(html[data-theme="white"], html[data-theme="sand"]) .noctis-desk-shell :is(
+  [class~="text-sky-200"],
+  [class~="text-sky-300"],
+  [class~="text-cyan-300"]
+) {
+  color: #0369a1;
+}
+
+:is(html[data-theme="white"], html[data-theme="sand"]) .noctis-desk-shell :is(
+  [class~="text-amber-200"],
+  [class~="text-amber-300"],
+  [class~="text-amber-400"]
+) {
+  color: #b45309;
+}
+
+:is(html[data-theme="white"], html[data-theme="sand"]) .noctis-desk-shell :is(
+  [class~="text-rose-200"],
+  [class~="text-rose-300"],
+  [class~="text-red-300"],
+  [class~="text-red-400"]
+) {
+  color: #be123c;
+}
+
+/* Preserve white text inside solid CTA pills and active dark zero-day ribbon */
+:is(html[data-theme="white"], html[data-theme="sand"]) .noctis-desk-shell :is(
+  [class~="bg-red-500"],
+  [class~="bg-red-600"],
+  [class~="bg-rose-600"],
+  [class~="bg-cyan-600"],
+  [class~="bg-emerald-600"],
+  [class~="bg-blue-600"],
+  [class~="bg-indigo-600"],
+  [class~="bg-[#2563eb]"],
+  [class~="bg-[#16a34a]"],
+  [class~="bg-[#b42318]"],
+  [class~="from-[#3a0811]"]
+),
+:is(html[data-theme="white"], html[data-theme="sand"]) .noctis-desk-shell :is(
+  [class~="bg-red-500"],
+  [class~="bg-red-600"],
+  [class~="bg-rose-600"],
+  [class~="bg-cyan-600"],
+  [class~="bg-emerald-600"],
+  [class~="bg-blue-600"],
+  [class~="bg-indigo-600"],
+  [class~="bg-[#2563eb]"],
+  [class~="bg-[#16a34a]"],
+  [class~="bg-[#b42318]"],
+  [class~="from-[#3a0811]"]
+) * {
+  color: #ffffff;
 }
