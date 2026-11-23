@@ -134,6 +134,21 @@ export function detectEncounterContamination(rawInput: string): EncounterContami
     };
   }
 
+  // Pattern C: Explicit multi-patient identifiers merged into one encounter (e.g., Patient A + Patient B / Patient 1 + Patient 2)
+  const explicitPatientMatches = [...rawInput.matchAll(/\b(?:patient|Patient|PATIENT)\s+([A-Z]|[1-9]\d?)\b/g)]
+    .map((m) => `PATIENT-${m[1]}`);
+  const distinctPatientLabels = Array.from(new Set(explicitPatientMatches));
+  if (distinctPatientLabels.length >= 2) {
+    return {
+      isContaminated: true,
+      contaminationType: "CROSS_SCENARIO_LEAKAGE",
+      description: `Cross-Patient Encounter Leakage Detected: Distinct patient identifiers (${distinctPatientLabels.join(", ")}) merged in one clinical intake.`,
+      isolatedEncounters: [],
+      remedyAction: "HALT_UNIFIED_DIAGNOSIS_REQUEST_CLINICIAN_VERIFICATION",
+      quarantinedText: [rawInput]
+    };
+  }
+
   // Single clean encounter
   return {
     isContaminated: false,

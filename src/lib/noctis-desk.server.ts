@@ -1066,6 +1066,7 @@ async function executeVibeReply(
     const { isEnterpriseChatQuery } = await import("@/lib/enterprise/chat-bridge.server");
     const { isNupsChatQuery } = await import("@/lib/nups/chat-bridge.server");
     const { isCatalog260ChatQuery } = await import("@/lib/catalog260/chat-bridge.server");
+    const { isAssistantChatQuery } = await import("@/lib/assistant/chat-bridge.server");
     const { rememberAnswer, rememberRule, inferDomain } = await import("@/lib/noctis-train.server");
     const skipClinicalCache =
       isClinicalInquiry ||
@@ -1074,7 +1075,8 @@ async function executeVibeReply(
       isDodIcQuery(latest) ||
       isEnterpriseChatQuery(latest) ||
       isNupsChatQuery(latest) ||
-      isCatalog260ChatQuery(latest);
+      isCatalog260ChatQuery(latest) ||
+      isAssistantChatQuery(latest);
     const cleanReplyForMemory = reply.text.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
     if (!skipClinicalCache && reply && "text" in reply && cleanReplyForMemory.length > 60 && !cleanReplyForMemory.includes("could not finish")) {
       const domain = inferDomain(latest);
@@ -1213,6 +1215,7 @@ async function composeVibeReply(
   const { isEnterpriseChatQuery, tryHandleEnterpriseChatQuery } = await import("@/lib/enterprise/chat-bridge.server");
   const { isNupsChatQuery, tryHandleNupsChatQuery } = await import("@/lib/nups/chat-bridge.server");
   const { isCatalog260ChatQuery, tryHandleCatalog260ChatQuery } = await import("@/lib/catalog260/chat-bridge.server");
+  const { isAssistantChatQuery, tryHandleAssistantChatQuery } = await import("@/lib/assistant/chat-bridge.server");
   const isClinicalCacheBypass =
     isUniversalClinicalQuestion(fullQuestion) ||
     isUniversalClinicalQuestion(question) ||
@@ -1225,7 +1228,9 @@ async function composeVibeReply(
     isNupsChatQuery(fullQuestion) ||
     isNupsChatQuery(question) ||
     isCatalog260ChatQuery(fullQuestion) ||
-    isCatalog260ChatQuery(question);
+    isCatalog260ChatQuery(question) ||
+    isAssistantChatQuery(fullQuestion) ||
+    isAssistantChatQuery(question);
 
   if (!isCodingRequest) {
     // Authoritative Live MITRE CVE Program & NVD Resolver: Guarantees official names and full intelligence for all CVEs
@@ -1303,6 +1308,19 @@ async function composeVibeReply(
           text: wrapDeterministicThink(
             catOut,
             "Evaluated Noctis Master Capability Catalog v1.0 (260 capabilities), Dependability Suite (#251-#260), and deterministic gap-closure domain solvers.",
+          ),
+        };
+      }
+    }
+
+    // Noctis Universal Assistant v1.0 (100-Capability Parity, 100-Task Benchmark, Deep Research) & Noctis Forge Builder
+    if (isAssistantChatQuery(fullQuestion)) {
+      const asstOut = await tryHandleAssistantChatQuery(fullQuestion);
+      if (asstOut) {
+        return {
+          text: wrapDeterministicThink(
+            asstOut,
+            "Executed Noctis Universal Assistant v1.0 / Noctis Forge 12-agent deterministic studio & benchmark pipeline with verified safety gates.",
           ),
         };
       }

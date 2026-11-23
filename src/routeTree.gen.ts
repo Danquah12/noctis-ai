@@ -91,9 +91,11 @@ import { Route as HubNistTailorRouteImport } from './routes/hub.nist.tailor'
 import { Route as HubProjectIdRouteImport } from './routes/hub.project.$id'
 import { Route as HubToolIdRouteImport } from './routes/hub.tool.$id'
 import { Route as HubTrackIdRouteImport } from './routes/hub.track.$id'
+import { Route as ApiV2AssistantSplatRouteImport } from './routes/api/v2.assistant.$'
 import { Route as ApiV2CatalogSplatRouteImport } from './routes/api/v2.catalog.$'
 import { Route as ApiV2DodIcSplatRouteImport } from './routes/api/v2.dod-ic.$'
 import { Route as ApiV2EnterpriseSplatRouteImport } from './routes/api/v2.enterprise.$'
+import { Route as ApiV2ForgeSplatRouteImport } from './routes/api/v2.forge.$'
 import { Route as ApiV2NdkrsSplatRouteImport } from './routes/api/v2.ndkrs.$'
 import { Route as ApiV2NupsSplatRouteImport } from './routes/api/v2.nups.$'
 import { Route as ApiV2RmfSplatRouteImport } from './routes/api/v2.rmf.$'
@@ -514,6 +516,11 @@ const HubTrackIdRoute = HubTrackIdRouteImport.update({
   path: '/track/$id',
   getParentRoute: () => HubRoute,
 } as any)
+const ApiV2AssistantSplatRoute = ApiV2AssistantSplatRouteImport.update({
+  id: '/api/v2/assistant/$',
+  path: '/api/v2/assistant/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiV2CatalogSplatRoute = ApiV2CatalogSplatRouteImport.update({
   id: '/api/v2/catalog/$',
   path: '/api/v2/catalog/$',
@@ -527,6 +534,11 @@ const ApiV2DodIcSplatRoute = ApiV2DodIcSplatRouteImport.update({
 const ApiV2EnterpriseSplatRoute = ApiV2EnterpriseSplatRouteImport.update({
   id: '/api/v2/enterprise/$',
   path: '/api/v2/enterprise/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV2ForgeSplatRoute = ApiV2ForgeSplatRouteImport.update({
+  id: '/api/v2/forge/$',
+  path: '/api/v2/forge/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiV2NdkrsSplatRoute = ApiV2NdkrsSplatRouteImport.update({
@@ -663,9 +675,11 @@ export interface FileRoutesByFullPath {
   '/hub/tool/$id': typeof HubToolIdRoute
   '/hub/track/$id': typeof HubTrackIdRoute
   '/hub/nist/': typeof HubNistIndexRoute
+  '/api/v2/assistant/$': typeof ApiV2AssistantSplatRoute
   '/api/v2/catalog/$': typeof ApiV2CatalogSplatRoute
   '/api/v2/dod-ic/$': typeof ApiV2DodIcSplatRoute
   '/api/v2/enterprise/$': typeof ApiV2EnterpriseSplatRoute
+  '/api/v2/forge/$': typeof ApiV2ForgeSplatRoute
   '/api/v2/ndkrs/$': typeof ApiV2NdkrsSplatRoute
   '/api/v2/nups/$': typeof ApiV2NupsSplatRoute
   '/api/v2/rmf/$': typeof ApiV2RmfSplatRoute
@@ -755,9 +769,11 @@ export interface FileRoutesByTo {
   '/hub/tool/$id': typeof HubToolIdRoute
   '/hub/track/$id': typeof HubTrackIdRoute
   '/hub/nist': typeof HubNistIndexRoute
+  '/api/v2/assistant/$': typeof ApiV2AssistantSplatRoute
   '/api/v2/catalog/$': typeof ApiV2CatalogSplatRoute
   '/api/v2/dod-ic/$': typeof ApiV2DodIcSplatRoute
   '/api/v2/enterprise/$': typeof ApiV2EnterpriseSplatRoute
+  '/api/v2/forge/$': typeof ApiV2ForgeSplatRoute
   '/api/v2/ndkrs/$': typeof ApiV2NdkrsSplatRoute
   '/api/v2/nups/$': typeof ApiV2NupsSplatRoute
   '/api/v2/rmf/$': typeof ApiV2RmfSplatRoute
@@ -852,9 +868,11 @@ export interface FileRoutesById {
   '/hub/tool/$id': typeof HubToolIdRoute
   '/hub/track/$id': typeof HubTrackIdRoute
   '/hub/nist/': typeof HubNistIndexRoute
+  '/api/v2/assistant/$': typeof ApiV2AssistantSplatRoute
   '/api/v2/catalog/$': typeof ApiV2CatalogSplatRoute
   '/api/v2/dod-ic/$': typeof ApiV2DodIcSplatRoute
   '/api/v2/enterprise/$': typeof ApiV2EnterpriseSplatRoute
+  '/api/v2/forge/$': typeof ApiV2ForgeSplatRoute
   '/api/v2/ndkrs/$': typeof ApiV2NdkrsSplatRoute
   '/api/v2/nups/$': typeof ApiV2NupsSplatRoute
   '/api/v2/rmf/$': typeof ApiV2RmfSplatRoute
@@ -950,9 +968,11 @@ export interface FileRouteTypes {
     | '/hub/tool/$id'
     | '/hub/track/$id'
     | '/hub/nist/'
+    | '/api/v2/assistant/$'
     | '/api/v2/catalog/$'
     | '/api/v2/dod-ic/$'
     | '/api/v2/enterprise/$'
+    | '/api/v2/forge/$'
     | '/api/v2/ndkrs/$'
     | '/api/v2/nups/$'
     | '/api/v2/rmf/$'
@@ -1042,9 +1062,11 @@ export interface FileRouteTypes {
     | '/hub/tool/$id'
     | '/hub/track/$id'
     | '/hub/nist'
+    | '/api/v2/assistant/$'
     | '/api/v2/catalog/$'
     | '/api/v2/dod-ic/$'
     | '/api/v2/enterprise/$'
+    | '/api/v2/forge/$'
     | '/api/v2/ndkrs/$'
     | '/api/v2/nups/$'
     | '/api/v2/rmf/$'
@@ -1138,9 +1160,11 @@ export interface FileRouteTypes {
     | '/hub/tool/$id'
     | '/hub/track/$id'
     | '/hub/nist/'
+    | '/api/v2/assistant/$'
     | '/api/v2/catalog/$'
     | '/api/v2/dod-ic/$'
     | '/api/v2/enterprise/$'
+    | '/api/v2/forge/$'
     | '/api/v2/ndkrs/$'
     | '/api/v2/nups/$'
     | '/api/v2/rmf/$'
@@ -1187,9 +1211,11 @@ export interface RootRouteChildren {
   UUsernameRoute: typeof UUsernameRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiV1HealthRoute: typeof ApiV1HealthRoute
+  ApiV2AssistantSplatRoute: typeof ApiV2AssistantSplatRoute
   ApiV2CatalogSplatRoute: typeof ApiV2CatalogSplatRoute
   ApiV2DodIcSplatRoute: typeof ApiV2DodIcSplatRoute
   ApiV2EnterpriseSplatRoute: typeof ApiV2EnterpriseSplatRoute
+  ApiV2ForgeSplatRoute: typeof ApiV2ForgeSplatRoute
   ApiV2NdkrsSplatRoute: typeof ApiV2NdkrsSplatRoute
   ApiV2NupsSplatRoute: typeof ApiV2NupsSplatRoute
   ApiV2RmfSplatRoute: typeof ApiV2RmfSplatRoute
@@ -1771,6 +1797,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HubTrackIdRouteImport
       parentRoute: typeof HubRoute
     }
+    '/api/v2/assistant/$': {
+      id: '/api/v2/assistant/$'
+      path: '/api/v2/assistant/$'
+      fullPath: '/api/v2/assistant/$'
+      preLoaderRoute: typeof ApiV2AssistantSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/v2/catalog/$': {
       id: '/api/v2/catalog/$'
       path: '/api/v2/catalog/$'
@@ -1790,6 +1823,13 @@ declare module '@tanstack/react-router' {
       path: '/api/v2/enterprise/$'
       fullPath: '/api/v2/enterprise/$'
       preLoaderRoute: typeof ApiV2EnterpriseSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v2/forge/$': {
+      id: '/api/v2/forge/$'
+      path: '/api/v2/forge/$'
+      fullPath: '/api/v2/forge/$'
+      preLoaderRoute: typeof ApiV2ForgeSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/v2/ndkrs/$': {
@@ -2045,9 +2085,11 @@ const rootRouteChildren: RootRouteChildren = {
   UUsernameRoute: UUsernameRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiV1HealthRoute: ApiV1HealthRoute,
+  ApiV2AssistantSplatRoute: ApiV2AssistantSplatRoute,
   ApiV2CatalogSplatRoute: ApiV2CatalogSplatRoute,
   ApiV2DodIcSplatRoute: ApiV2DodIcSplatRoute,
   ApiV2EnterpriseSplatRoute: ApiV2EnterpriseSplatRoute,
+  ApiV2ForgeSplatRoute: ApiV2ForgeSplatRoute,
   ApiV2NdkrsSplatRoute: ApiV2NdkrsSplatRoute,
   ApiV2NupsSplatRoute: ApiV2NupsSplatRoute,
   ApiV2RmfSplatRoute: ApiV2RmfSplatRoute,

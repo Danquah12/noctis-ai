@@ -29,6 +29,19 @@ import {
   saveUserMemory,
   syncCatalog260ToSql,
 } from "../src/lib/catalog260/persistence.server.ts";
+import {
+  createScheduledTask,
+  createWorkspace,
+  getAssistantSqlStats,
+  saveWorkspaceDocumentRevision,
+  saveWorkflowRun,
+  syncParityMatrixToSql,
+  upsertCustomAssistant,
+} from "../src/lib/assistant/persistence.server.ts";
+import { issueAnswerPassport } from "../src/lib/assistant/distinctive-moat.server.ts";
+import { run100TaskBenchmark } from "../src/lib/assistant/benchmark-100.server.ts";
+import { generateForgeProject } from "../src/lib/forge/forge-engine.server.ts";
+import { getForgeSqlStats } from "../src/lib/forge/forge-persistence.server.ts";
 
 async function main() {
   const startedAt = Date.now();
@@ -44,12 +57,13 @@ async function main() {
     }),
   );
 
-  // 1. Apply 0019, 0020 & 0021 idempotently
+  // 1. Apply 0019, 0020, 0021 & 0022 idempotently
   const sql = await getSql();
   for (const migFile of [
     "0019_telemetry_persistence.sql",
     "0020_nups_orchestration.sql",
     "0021_ultimate_catalog_260.sql",
+    "0022_universal_assistant_parity.sql",
   ]) {
     const migPath = path.join(process.cwd(), "migrations", migFile);
     const migSql = readFileSync(migPath, "utf8");
@@ -65,7 +79,7 @@ async function main() {
     }
     await sql.query(`INSERT INTO _migrations (name) VALUES ($1) ON CONFLICT (name) DO NOTHING`, [migFile]);
   }
-  console.log(JSON.stringify({ step: "migrations_0019_0020_0021", applied: true }));
+  console.log(JSON.stringify({ step: "migrations_0019_to_0022", applied: true }));
 
   // 2. Sync relational 0015 + enterprise + enclave + baseline telemetry schemas first (fast SQL operations)
   const relational = await syncAllRelationalEnterpriseSchemas({
@@ -194,6 +208,87 @@ async function main() {
   }
   const catStatsAfter = await getCatalog260SqlStats();
   console.log(JSON.stringify({ step: "catalog260_sync", catalog260Synced, ...catStatsAfter }));
+
+  // 4d. Sync Universal Assistant v1.0 (100 Parity Rows + Studios + 100-Task Benchmark) & Noctis Forge v1.0
+  const paritySynced = await syncParityMatrixToSql();
+  const asstBefore = await getAssistantSqlStats();
+  if (asstBefore.customAssistants === 0) {
+    await upsertCustomAssistant({
+      id: "ASST-BASELINE-CHIEF",
+      name: "Noctis Universal Specialist",
+      tagline: "Verified multi-domain executive & research partner",
+      specialistEngine: "NOCTIS-CORE-001",
+      systemInstructions: "Verify claims against NDKRS and issue Answer Passports for quantitative outputs.",
+      enabledTools: ["research", "code", "documents", "analyze", "verify"],
+      createdBy: "scripts/sync-neon-databases.ts",
+    });
+  }
+  if (asstBefore.workspaces === 0) {
+    await createWorkspace({
+      id: "WS-DEFAULT",
+      name: "Noctis Sovereign Engineering Hub",
+      description: "Shared collaborative workspace & research notebooks",
+      ownerId: "scripts/sync-neon-databases.ts",
+      projectInstructions: "Require human approval for production writes and cite verified NDKRS records.",
+    });
+  }
+  if (asstBefore.workspaceDocuments === 0) {
+    await saveWorkspaceDocumentRevision({
+      id: "DOC-BASELINE-NOTEBOOK",
+      workspaceId: "WS-DEFAULT",
+      title: "Platform Verification Research Notebook",
+      docFormat: "markdown",
+      contentMarkdown: "# Platform Verification Baseline\nInitialized across 100 capabilities and 65 SQL tables.",
+      updatedBy: "scripts/sync-neon-databases.ts",
+    });
+  }
+  if (asstBefore.scheduledTasks === 0) {
+    await createScheduledTask({
+      id: "SCH-BASELINE-WATCH",
+      title: "Weekly NDKRS Source Freshness & Parity Watch",
+      taskType: "FRESHNESS_AUDIT",
+      cronOrIso: "0 8 * * 1",
+      payload: { scope: "all-7-domains" },
+      createdBy: "scripts/sync-neon-databases.ts",
+    });
+  }
+  if (asstBefore.workflowRuns === 0) {
+    await saveWorkflowRun({
+      id: "WF-BASELINE-001",
+      workflowName: "Research & Executive Deliverable Pipeline",
+      objective: "Demonstrate durable checkpointing and human approval gates",
+      status: "COMPLETED",
+      requiresHumanApproval: false,
+      steps: [{ step: 1, name: "Baseline Initialized", status: "COMPLETED" }],
+      createdBy: "scripts/sync-neon-databases.ts",
+    });
+  }
+  if (asstBefore.answerPassports === 0) {
+    await issueAnswerPassport({
+      domain: "legal",
+      promptText: "FRCP Rule 6 21-day deadline baseline from 2026-11-07",
+      inputs: { triggerDate: "2026-11-07", periodDays: 21 },
+      answerSummary: "Rolled Saturday 2026-11-28 to Monday 2026-11-30 per FRCP Rule 6(a)(1)(C).",
+      sourceVersions: [{ sourceId: "CAT260-LEGAL-FRCP6-DISCOVERY", version: "FRCP-2025" }],
+      calculationTrace: [{ step: "1", formula: "2026-11-07 + 21d -> Sat -> +2d", result: "2026-11-30" }],
+      createdBy: "scripts/sync-neon-databases.ts",
+    });
+  }
+  if (asstBefore.benchmarkRuns === 0) {
+    await run100TaskBenchmark({ persist: true, executedBy: "scripts/sync-neon-databases.ts" });
+  }
+  const forgeBefore = await getForgeSqlStats();
+  if (forgeBefore.forgeProjects === 0) {
+    await generateForgeProject({
+      prompt: "Build a professional networking platform for healthcare workers with clinician profiles, hospital credentials, jobs, messaging, and dashboards.",
+      category: "Professional networking",
+      projectName: "MedConnect Sovereign Network",
+      actorId: "scripts/sync-neon-databases.ts",
+      persist: true,
+    });
+  }
+  const [asstAfter, forgeAfter] = await Promise.all([getAssistantSqlStats(), getForgeSqlStats()]);
+  console.log(JSON.stringify({ step: "assistant_and_forge_sync", paritySynced, ...asstAfter, ...forgeAfter }));
 
   // 5. Summarize live state across all schemas and NDKRS domains
   const [schemaCounts, ndkrsSummary, domainRows] = await Promise.all([

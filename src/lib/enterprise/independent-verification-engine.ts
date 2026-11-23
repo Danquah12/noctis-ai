@@ -109,14 +109,34 @@ export async function verifySubstantiveOutput(input: {
         message: "Only a designated Human Authorizing Official (AO) can grant an ATO (`aiCanIssueAto: false`).",
       });
     }
+    const hasNegationBeforeEquivalence =
+      /\b(?:not|never|cannot|doesn't|does\s+not|do\s+not)\s+(?:be\s+|automatically\s+)?(?:identical|satisfy|satisfies|equivalent|cover|covers|authorize|authorizes)/i.test(
+        input.candidateOutput,
+      );
     if (
       /\bdod\s+ato\s+automatically\s+satisfies\s+icd\s*503\b/i.test(input.candidateOutput) ||
-      (lowerOut.includes("dodi 8510.01") && lowerOut.includes("identical to icd 503"))
+      (lowerOut.includes("dodi 8510.01") && lowerOut.includes("identical to icd 503")) ||
+      (!hasNegationBeforeEquivalence &&
+        /\b(?:dod\s+rmf|dodi\s*8510\.01|dod\s+ato)\b[^.\n]{0,80}\b(?:identical\s+to|automatically\s+satisfies|equivalent\s+to|replaces)\b[^.\n]{0,80}\bicd\s*503\b/i.test(
+          input.candidateOutput,
+        ))
     ) {
       violations.push({
         code: "DOD_IC_JURISDICTION_CONFLATION",
         severity: "CRITICAL",
         message: "DoD RMF (DoDI 8510.01) ATOs do NOT automatically satisfy ODNI ICD 503 IC authorization.",
+      });
+    }
+    if (
+      !hasNegationBeforeEquivalence &&
+      /\bfedramp\b[^.\n]{0,80}\b(?:satisfies|covers|equivalent\s+to|automatically\s+authorizes|authorizes)\b[^.\n]{0,80}\b(?:top\s*secret|ts\s*\/\/\s*sci|scif|icd\s*503|classified)\b/i.test(
+        input.candidateOutput,
+      )
+    ) {
+      violations.push({
+        code: "FEDRAMP_CLASSIFIED_JURISDICTION_CONFLATION",
+        severity: "CRITICAL",
+        message: "FedRAMP authorization never automatically satisfies Top Secret / SCI / SCIF / ICD 503 requirements.",
       });
     }
     if (input.domain === "rmf" && input.candidateOutput.trim()) {

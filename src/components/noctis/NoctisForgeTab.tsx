@@ -41,6 +41,7 @@ import { cn } from "@/lib/utils";
 import { generatePlainEnglishCanvas, interpretHighlightedSnippet, type HighlightInterpretation } from "@/lib/noctis-code-interpreter";
 import { useMemo } from "react";
 import { NoctisSovereignFactoryStudio } from "@/components/noctis/NoctisSovereignFactoryStudio";
+import { NoctisForgeBuilderStudio } from "@/components/noctis/NoctisForgeBuilderStudio";
 import { NoctisVoiceSelectorModal } from "@/components/noctis/NoctisVoiceSelectorModal";
 import { type VoicePersona } from "@/lib/noctis-voice";
 import { NoctisLiveThinkingPanel, NoctisThinkingAccordion } from "@/components/noctis/NoctisThinkingAccordion";
@@ -418,7 +419,7 @@ export function NoctisForgeTab({ onSendToChat, onClose, onOpenInCanvas }: Noctis
   const [forgeMenuOpen, setForgeMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [viewMode, setViewMode] = useState<"code" | "canvas" | "split">("code");
+  const [viewMode, setViewMode] = useState<"code" | "canvas" | "split" | "builder">("code");
   const [highlightedText, setHighlightedText] = useState<string>("");
   const [highlightInterpretation, setHighlightInterpretation] = useState<HighlightInterpretation | null>(null);
   const [inspectorOpen, setInspectorOpen] = useState(false);
@@ -980,7 +981,21 @@ describe("${textToBuild} - Verification", () => {
             buildArtifact || building ? "justify-start pt-3 pb-48" : "justify-center py-6"
           )}
         >
-          {buildArtifact ? (
+          {viewMode === "builder" ? (
+            <div className="w-full max-w-5xl space-y-3 animate-in fade-in duration-200">
+              <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+                <span className="text-xs font-bold text-[#e4b86a]">Noctis Forge Builder Studio (Website & Full-Stack App Factory v1.0)</span>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("code")}
+                  className="rounded-lg border border-white/15 bg-white/5 hover:bg-white/10 px-3 py-1 text-xs text-zinc-200 cursor-pointer"
+                >
+                  Back to Forge Code View
+                </button>
+              </div>
+              <NoctisForgeBuilderStudio />
+            </div>
+          ) : buildArtifact ? (
             // Build Output Result View
             <div className="w-full max-w-3xl space-y-4 animate-in fade-in duration-200">
               {/* Noctis Sovereign Systems Factory Studio Hero Banner */}
@@ -1061,6 +1076,14 @@ describe("${textToBuild} - Verification", () => {
                     >
                       <Columns className="size-3.5" />
                       <span>Split</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setViewMode("builder")}
+                      className="rounded-full px-2.5 py-1 font-medium transition cursor-pointer flex items-center gap-1.5 text-cyan-300 hover:bg-cyan-500/15"
+                    >
+                      <Boxes className="size-3.5" />
+                      <span>Builder Studio</span>
                     </button>
                   </div>
 

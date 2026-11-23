@@ -2102,6 +2102,91 @@ export async function seedExtendedDefenseAndEnterpriseCorpus(
     await ingestIfNeeded(catItem);
   }
 
+  const ASSISTANT_FORGE_SEED: typeof NUPS_INDUSTRY_SEED = [
+    {
+      domain: "engineering",
+      canonicalKey: "ASST-DOC-OOXML-PDF",
+      title: "ECMA-376 OpenXML (.docx/.xlsx/.pptx) & ISO 32000 PDF 1.4 Deterministic Synthesis",
+      summary:
+        "Specifies pure-Node IEEE 802.3 CRC32 PKZIP OpenXML generation for Word, Excel, and PowerPoint deliverables alongside ISO 32000 %PDF-1.4 Type1 font stream and byte-accurate xref generation.",
+      content: `# Document & Presentation Studio Standards
+- OpenXML deliverables (.docx, .xlsx, .pptx) require valid [Content_Types].xml, _rels/.rels, and ZIP central directory offsets.
+- PDF deliverables require valid %PDF-1.4 header, Catalog/Pages/Page hierarchy, byte-offset xref table, trailer, and %%EOF.`,
+      sourceUri: "https://www.iso.org/",
+      trustTier: "PEER_REVIEWED",
+      version: "ISO-32000-OOXML",
+      citationLabel: "ISO32000-ECMA376",
+      effectiveDate: "2024-01-01T00:00:00Z",
+      expiresAt: "2032-12-31T00:00:00Z",
+    },
+    {
+      domain: "science",
+      canonicalKey: "ASST-DATA-STATS-ANOMALY",
+      title: "NIST/SEMATECH Descriptive Statistics, IQR/Z-Score Outliers & OLS Regression",
+      summary:
+        "Establishes exact quantile computation, Tukey 1.5*IQR fence & |Z|>=2.5 outlier screening, Pearson correlation coefficient, and ordinary least-squares regression equations.",
+      content: `# Data Analysis Studio Quantitative Invariants
+- Never confuse correlation coefficient r with causation without confounding & design controls (Bradford Hill).
+- Compute both parametric mean/stdDev and non-parametric median/IQR to protect against skewed distributions.`,
+      sourceUri: "https://www.nist.gov/",
+      trustTier: "AUTHORITATIVE_GOV",
+      version: "NIST-STAT-2025",
+      citationLabel: "NIST-SEMATECH-STATS",
+      effectiveDate: "2024-01-01T00:00:00Z",
+      expiresAt: "2032-12-31T00:00:00Z",
+    },
+    {
+      domain: "general",
+      canonicalKey: "ASST-MSG-RFC5322-ICS",
+      title: "RFC 5322 Internet Message (.eml) & RFC 5545 iCalendar (.ics) Scheduling Controls",
+      summary:
+        "Defines standards-compliant .eml email drafting headers and .ics VCALENDAR/VEVENT invites while gating external dispatch on explicit human approval.",
+      content: `# Email & Calendar Integration Safety
+- Drafts produce RFC 5322 .eml and RFC 5545 .ics artifacts; autonomous AI agents must never dispatch outbound email without human approval.`,
+      sourceUri: "https://csrc.nist.gov/publications/sp",
+      trustTier: "AUTHORITATIVE_GOV",
+      version: "RFC5322-5545",
+      citationLabel: "RFC5322-RFC5545",
+      effectiveDate: "2024-01-01T00:00:00Z",
+      expiresAt: "2032-12-31T00:00:00Z",
+    },
+    {
+      domain: "cybersecurity",
+      canonicalKey: "ASST-WEB-SSRF-OAUTH21",
+      title: "OWASP SSRF Prevention (CWE-918), Isolated Sandbox & Prompt-Injection Quarantine",
+      summary:
+        "Requires strict allowlisting of public HTTP/HTTPS schemes while blocking loopback, RFC-1918 private subnets, and 169.254.169.254 cloud metadata endpoints alongside isolated VM execution.",
+      content: `# Safe Web Reading & Code Execution Sandbox
+- Reject localhost, 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, and 169.254.169.254 on server fetch tools.
+- Block process.env, child_process, fs, and dynamic require inside sandboxed evaluation contexts.`,
+      sourceUri: "https://csrc.nist.gov/publications/sp",
+      trustTier: "AUTHORITATIVE_GOV",
+      version: "OWASP-SSRF-2025",
+      citationLabel: "OWASP-CWE918",
+      effectiveDate: "2024-01-01T00:00:00Z",
+      expiresAt: "2032-12-31T00:00:00Z",
+    },
+    {
+      domain: "engineering",
+      canonicalKey: "FORGE-FULLSTACK-MICROVM-SRS",
+      title: "Noctis Forge Multi-Agent Software Factory, MicroVM Isolation & Regulated-Sector Gates",
+      summary:
+        "Coordinates 12 software agents over a shared versioned specification with PostgreSQL migrations, SAST/WCAG QA verification, microVM tenant boundaries, and mandatory human approval before production deployment.",
+      content: `# Noctis Forge Security & Engineering Architecture
+- Generated applications run isolated from Noctis host secrets; database migrations, GitHub merges, and production deploys enforce human approval.
+- Regulated applications (Healthcare, Banking, Legal, Government, Cyber/RMF) inject specialist advisory and compliance checks automatically.`,
+      sourceUri: "https://csrc.nist.gov/pubs/sp/800/218/final",
+      trustTier: "AUTHORITATIVE_GOV",
+      version: "SSDF-FORGE-2025",
+      citationLabel: "NIST-SSDF-FORGE",
+      effectiveDate: "2024-01-01T00:00:00Z",
+      expiresAt: "2032-12-31T00:00:00Z",
+    },
+  ];
+  for (const afItem of ASSISTANT_FORGE_SEED) {
+    await ingestIfNeeded(afItem);
+  }
+
   return {
     recordsSeeded,
     recordsSkippedExisting,
@@ -2112,6 +2197,7 @@ export async function seedExtendedDefenseAndEnterpriseCorpus(
       listPolicyAsCodePacks().length +
       GOVERNMENT_READINESS_CONTROLS.length +
       NUPS_INDUSTRY_SEED.length +
-      CATALOG_260_GAP_CLOSURE_SEED.length,
+      CATALOG_260_GAP_CLOSURE_SEED.length +
+      ASSISTANT_FORGE_SEED.length,
   };
 }

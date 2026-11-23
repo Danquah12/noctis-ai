@@ -25,6 +25,7 @@ const NoctisRmfDashboardTab = lazyWithRetry(() => import("@/components/noctis/No
 const NoctisDodIcCommandTab = lazyWithRetry(() => import("@/components/noctis/NoctisDodIcCommandTab").then((m) => ({ default: m.NoctisDodIcCommandTab })));
 const NoctisEnterpriseCommandTab = lazyWithRetry(() => import("@/components/noctis/NoctisEnterpriseCommandTab").then((m) => ({ default: m.NoctisEnterpriseCommandTab })));
 const NoctisNdkrsConsoleTab = lazyWithRetry(() => import("@/components/noctis/NoctisNdkrsConsoleTab").then((m) => ({ default: m.NoctisNdkrsConsoleTab })));
+const NoctisUniversalAssistantTab = lazyWithRetry(() => import("@/components/noctis/NoctisUniversalAssistantTab").then((m) => ({ default: m.NoctisUniversalAssistantTab })));
 const NoctisPluginExecutorModal = lazyWithRetry(() => import("@/components/noctis/NoctisPluginExecutorModal").then((m) => ({ default: m.NoctisPluginExecutorModal })));
 import { DISTRIBUTED_PLUGINS, getPluginsForShelf, type DistributedPluginItem } from "@/lib/noctis-distributed-plugins";
 import { NoctisCodeInterpreter } from "@/components/noctis/NoctisCodeInterpreter";
@@ -3480,7 +3481,7 @@ export function NoctisDesk() {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
   const [uploads, setUploads] = useState<Upload[]>([]);
-  const [desk, setDesk] = useState<"chat" | "study" | "forge" | "plugins" | "console" | "redteam" | "frontier" | "training" | "rmf" | "dod-ic" | "enterprise" | "ndkrs">("chat");
+  const [desk, setDesk] = useState<"chat" | "study" | "forge" | "plugins" | "console" | "redteam" | "frontier" | "training" | "rmf" | "dod-ic" | "enterprise" | "ndkrs" | "assistant">("chat");
   const [executorPlugin, setExecutorPlugin] = useState<DistributedPluginItem | null>(null);
   const [executorOpen, setExecutorOpen] = useState(false);
   const [studyTopic, setStudyTopic] = useState("");
@@ -6836,6 +6837,15 @@ export function NoctisDesk() {
           <span>NDKRS Knowledge DB</span>
           <span className="ml-auto rounded-full bg-sky-500/20 px-1.5 py-0.5 text-[10px] font-bold text-sky-300">v1.0</span>
         </button>
+        <button
+          type="button"
+          onClick={() => switchDesk("assistant")}
+          className={item(desk === "assistant")}
+        >
+          <Sparkles className="size-4 shrink-0 text-cyan-300" />
+          <span>Universal Assistant</span>
+          <span className="ml-auto rounded-full bg-cyan-500/20 px-1.5 py-0.5 text-[10px] font-bold text-cyan-200">v1.0</span>
+        </button>
         <button type="button" onClick={() => openShelf("pictures")} className={item(desk === "chat" && shelf === "pictures")}>
           <Image className="size-4 shrink-0" />
           Pictures
@@ -8071,6 +8081,17 @@ export function NoctisDesk() {
                     switchDesk("chat");
                     void send(taskPrompt);
                   }}
+                  onClose={() => switchDesk("chat")}
+                />
+              </Suspense>
+            ) : desk === "assistant" ? (
+              <Suspense fallback={<div className="flex-1 flex items-center justify-center p-8 text-zinc-400">Loading Noctis Universal Assistant v1.0...</div>}>
+                <NoctisUniversalAssistantTab
+                  onSendToChat={(taskPrompt) => {
+                    switchDesk("chat");
+                    void send(taskPrompt);
+                  }}
+                  onOpenInCanvas={(title, md) => openInCanvas(title, md)}
                   onClose={() => switchDesk("chat")}
                 />
               </Suspense>
