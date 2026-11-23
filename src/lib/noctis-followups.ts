@@ -563,6 +563,8 @@ function extractEntities(
 
 function stripQuestionVerbPrefix(question: string): string {
   let q = question
+    .replace(/^(?:in\s+(?:\d+|one|two|three|four|five)\s+(?:concise\s+|short\s+|brief\s+)?(?:sentences?|paragraphs?|bullets?|bullet\s+points?|lines?|words?|steps?)\s*[,:-]?\s*)/i, "")
+    .replace(/^(?:(?:briefly|concisely|simply|step\s+by\s+step)\s*[,:-]?\s*)/i, "")
     .replace(/^(?:please\s+|can\s+you\s+|could\s+you\s+|would\s+you\s+)/i, "")
     .replace(
       /^(?:tell\s+me(?:\s+more)?\s+about|explain(?:\s+to\s+me)?(?:\s+(?:how|why|what))?|describe|summarize|summarise|analyze|analyse|compare|interpret|elaborate\s+on|walk\s+me\s+through|break\s+down|what(?:\s+(?:is|are|was|were))?|who(?:\s+(?:is|are|was|were))?|how(?:\s+(?:does|do|did|can|to))?|why(?:\s+(?:does|do|did|is|are))?|write(?:\s+(?:a|an|the))?|create(?:\s+(?:a|an|the))?|design(?:\s+(?:a|an|the))?|build(?:\s+(?:a|an|the))?|investigate|look\s+up|review)\s+/i,
@@ -576,7 +578,7 @@ function stripQuestionVerbPrefix(question: string): string {
   if (q.length > 48) {
     const clause = q.split(/\s+(?:and\s+how|and\s+why|while\s+preserving|in\s+depth|step\s+by\s+step|including)\s+/i)[0]?.trim() || q;
     const beforeTitleMatch = clause.match(/^(.+?\b(?:album|film|movie|book|novel|single))\s+[A-Z]/);
-    const verbSplitMatch = clause.match(/^([A-Za-z0-9-]{2,24})\s+(?:protects|secures|prevents|enables|works|handles|helps)\b/i);
+    const verbSplitMatch = clause.match(/^([A-Za-z0-9() -]{2,32}?)\s+(?:protects|secures|prevents|enables|works|handles|helps|authenticates)\b/i);
     q = truncateWords(beforeTitleMatch?.[1]?.trim() || verbSplitMatch?.[1]?.trim() || clause, 48);
   }
   return q;

@@ -22,6 +22,11 @@ import { executionSheet } from "@/lib/noctis-execute";
 import { ledgerSheet } from "@/lib/noctis-ledger";
 import { extractInputs, retrievalReport, retainSources, scenarioText, strategySheet } from "@/lib/noctis-hard";
 import { ensureDeepThinkEnvelope, parseThinkEnvelope, resolveNoctisEngine } from "@/lib/noctis-engine-registry";
+import {
+  cleanAssistantTurnForHistory,
+  cleanTurnsForHistory,
+  resolveFollowUpContext,
+} from "@/lib/noctis-followup-resolver";
 
 export type VibeTurn = { role: "user" | "assistant"; content: string; images?: string[] };
 
@@ -895,8 +900,11 @@ function withLanguage(text: string, spoken: string) {
   return `${text}\n\nTeach, instruct, and answer entirely in ${spoken}. Do not answer in English unless they asked for both.`;
 }
 
-function toChatMessage(turn: VibeTurn): ChatMessage {
-  const text = turn.content.slice(0, 18000);
+function toChatMessage(turn: VibeTurn, isLatestAssistant = false): ChatMessage {
+  const cleaned = turn.role === "assistant"
+    ? cleanAssistantTurnForHistory(turn.content, isLatestAssistant ? 10000 : 4500)
+    : turn.content;
+  const text = cleaned.slice(0, 18000);
   const images = (turn.images ?? []).filter(isImageData).slice(0, 2);
   if (turn.role !== "user" || !images.length) return { role: turn.role, content: text };
   return {
@@ -906,6 +914,17 @@ function toChatMessage(turn: VibeTurn): ChatMessage {
       ...images.map((url) => ({ type: "image_url", image_url: { url } })),
     ],
   };
+}
+
+function mapHistoryForModel(list: VibeTurn[]): ChatMessage[] {
+  let lastAssistantIdx = -1;
+  for (let i = list.length - 1; i >= 0; i--) {
+    if (list[i]?.role === "assistant") {
+      lastAssistantIdx = i;
+      break;
+    }
+  }
+  return list.map((turn, idx) => toChatMessage(turn, idx === lastAssistantIdx));
 }
 
 /**
@@ -1068,8 +1087,11 @@ async function executeVibeReply(
     const { isCatalog260ChatQuery } = await import("@/lib/catalog260/chat-bridge.server");
     const { isAssistantChatQuery } = await import("@/lib/assistant/chat-bridge.server");
     const { rememberAnswer, rememberRule, inferDomain } = await import("@/lib/noctis-train.server");
+    const followUpCacheCheck = resolveFollowUpContext(kept, latest);
     const skipClinicalCache =
       isClinicalInquiry ||
+      followUpCacheCheck.isFollowUp ||
+      followUpCacheCheck.activeDomain === "clinical" ||
       isUniversalClinicalQuestion(latest) ||
       isRmfGrcQuery(latest) ||
       isDodIcQuery(latest) ||
@@ -1136,6 +1158,8 @@ async function composeVibeReply(
   const last = [...turns].reverse().find((turn) => turn.role === "user");
   const question = (last?.content || "").replace(/\n--- [^\n]+ ---\n[\s\S]*$/g, "").replace(/\[Image:[^\]]*\]/g, "").trim();
   const scenario = scenarioText(turns, question);
+  const followUp = resolveFollowUpContext(turns, question);
+  const retrievalQuery = followUp.isFollowUp ? followUp.standaloneQuery : question;
   const activeEngine = resolveNoctisEngine(style.engine);
   const shouldThink = style.think !== false;
   const wantsRawJson = /\b(?:return|output|respond)\s+(?:only|strictly)\s+(?:valid\s+)?json\b/i.test(question);
@@ -1153,7 +1177,12 @@ async function composeVibeReply(
   const wantsCode =
     Boolean(style.code) ||
     /\b(python|java|c\+\+|c#|javascript|typescript|golang|rust|html|css|sql\s+injection|sqli|owasp|bola|bopla|bfla|ssrf|csrf|clickjacking|cors|xxe|ssti|smuggling|deserialization|websockets|cswsh|prototype\s+pollution|graphql|nosql|portswigger|etc\/passwd|win\.ini|php:\/\/filter|unit\s*test|unittest|pytest|junit|risk\s+management\s+lifecycle|risk\s+management\s+engine|risk\s+intelligence|domain\s+certification\s+engine|800-37|800-30|iso\s*31000|400[\s-]*question|evaluation\s+suite|evaluation\s+runner|benchmark\s+suite|benchmark\s+runner|eval:noctis)\b/i.test(question) ||
-    /\b(write|create|generate|build|implement|train|design|make|develop|code|run|execute)\b[\s\S]{0,90}\b(code|script|program|function|class|test|tasks?|c\s+code|c\s+program|c\s+script|web\s*page|webpage|website|web\s*site|landing\s*page|html\s*page|web\s*app|homepage|home\s*page|portal|dashboard|portfolio|storefront|site|benchmark|evaluation)\b/i.test(question);
+    /\b(write|create|generate|build|implement|train|design|make|develop|code|run|execute)\b[\s\S]{0,90}\b(code|script|program|function|class|test|tasks?|c\s+code|c\s+program|c\s+script|web\s*page|webpage|website|web\s*site|landing\s*page|html\s*page|web\s*app|homepage|home\s*page|portal|dashboard|portfolio|storefront|site|benchmark|evaluation)\b/i.test(question) ||
+    (followUp.isFollowUp &&
+      followUp.activeDomain === "coding" &&
+      /\b(test|unit\s*test|refactor|fix|bug|edge\s*case|optimiz|convert|rewrite|add|handle|type|error|null|async|python|typescript|javascript|react|go|rust|java|sql|code|function|method|class|line)\b/i.test(
+        question,
+      ));
   const math = onlyMath(question);
   if (math) return { text: wrapDeterministicThink(math, "Evaluated mathematical expression deterministically and verified result.") };
   const trainCmd = question.match(/^(?:train(?:\s+vibe)?|teach\s+vibe)\s*:\s*([\s\S]+?)\s*(?:\|\||=>|->)\s*([\s\S]+)$/i);
@@ -1185,6 +1214,7 @@ async function composeVibeReply(
   const { hydrateFromDb, lessonBlock, rememberAnswer, recallTrainedAnswer, storedRulesBlock } = await import("@/lib/noctis-train.server");
   await hydrateFromDb().catch(() => {});
   const attached = (last?.content || "").split(/\n--- [^\n]+ ---\n/).slice(1).join("\n").trim();
+  const effectiveAttached = attached || (followUp.carriedAttachment && followUp.isFollowUp ? followUp.carriedAttachment.content : "");
   const fullQuestion = (last?.content || "").replace(/\[Image:[^\]]*\]/g, "").trim();
 
   // Fail-Closed Classification Boundary Gate BEFORE any external LLM, cache, or clinical/RMF routing
@@ -1217,6 +1247,7 @@ async function composeVibeReply(
   const { isCatalog260ChatQuery, tryHandleCatalog260ChatQuery } = await import("@/lib/catalog260/chat-bridge.server");
   const { isAssistantChatQuery, tryHandleAssistantChatQuery } = await import("@/lib/assistant/chat-bridge.server");
   const isClinicalCacheBypass =
+    followUp.activeDomain === "clinical" ||
     isUniversalClinicalQuestion(fullQuestion) ||
     isUniversalClinicalQuestion(question) ||
     isRmfGrcQuery(fullQuestion) ||
@@ -1337,9 +1368,13 @@ async function composeVibeReply(
     }
 
     // DoD RMF (DoDI 8510.01) + IC Security (ICD 503/502/501) + CNSSI 1253 + Cross-Domain Engine (NDIMP Wave 1)
-    if (isDodIcQuery(fullQuestion) && !isUniversalClinicalQuestion(fullQuestion)) {
-      const dodIcOut = await executeDodIcReasoning(fullQuestion, {
-        turns,
+    if (
+      (isDodIcQuery(fullQuestion) || (followUp.isFollowUp && followUp.activeDomain === "dod_ic" && !wantsCode)) &&
+      !followUp.shouldIsolateEncounter &&
+      !isUniversalClinicalQuestion(fullQuestion)
+    ) {
+      const dodIcOut = await executeDodIcReasoning(followUp.isFollowUp ? followUp.standaloneQuery : fullQuestion, {
+        turns: cleanTurnsForHistory(turns),
         brain: style.brain,
         engineName: activeEngine.name,
         language: languageNow(question, style.language || ""),
@@ -1351,10 +1386,14 @@ async function composeVibeReply(
     }
 
     // Deterministic RMF Knowledge DB + 10-Control Rule Engine + Neuro-Symbolic Chat Pipeline (Option B)
-    if (isRmfGrcQuery(fullQuestion) && !isUniversalClinicalQuestion(fullQuestion)) {
+    if (
+      (isRmfGrcQuery(fullQuestion) || (followUp.isFollowUp && followUp.activeDomain === "rmf_grc" && !wantsCode)) &&
+      !followUp.shouldIsolateEncounter &&
+      !isUniversalClinicalQuestion(fullQuestion)
+    ) {
       const { executeUniversalRmfReasoning } = await import("@/lib/noctis-rmf-reasoning.server");
-      const rmfOut = await executeUniversalRmfReasoning(fullQuestion, {
-        turns,
+      const rmfOut = await executeUniversalRmfReasoning(followUp.isFollowUp ? followUp.standaloneQuery : fullQuestion, {
+        turns: cleanTurnsForHistory(turns),
         brain: style.brain,
         engineName: activeEngine.name,
         language: languageNow(question, style.language || ""),
@@ -1451,7 +1490,7 @@ async function composeVibeReply(
   }
   const route = routeQuestion(question);
   const spoken = languageNow(question, style.language || "");
-  if (!isClinicalCacheBypass && !attached && spoken.toLowerCase() === "english" && !engineeringDesign(question) && !resourcePlan(question) && !hasHardRows) {
+  if (!isClinicalCacheBypass && !followUp.isFollowUp && !attached && spoken.toLowerCase() === "english" && !engineeringDesign(question) && !resourcePlan(question) && !hasHardRows) {
     const trainedHit = recallTrainedAnswer(question);
     if (
       trainedHit &&
@@ -1469,7 +1508,7 @@ async function composeVibeReply(
   const { askedLevel, depthStance } = await import("@/lib/depth");
   const depth = askedLevel(question) ?? style.level ?? (style.depth === "deep" ? "advanced" : "beginner");
   const { scienceLab } = await import("@/lib/science-lab");
-  const lab = scienceLab(question);
+  const lab = !followUp.isFollowUp ? scienceLab(question) : null;
   if (lab) return { text: wrapDeterministicThink(lab, "Executed interactive science lab computation and checked physical constants.") };
   if (/\b(?:30-minute lesson|create a lesson)\b/i.test(question)) {
     const { curatedCard } = await import("@/lib/knowledge-engine");
@@ -1483,7 +1522,7 @@ async function composeVibeReply(
       ),
     };
   }
-  if (/\b(explain|study)\b/i.test(question) && !engineeringDesign(question) && !hasHardRows && !/\b(budget|electricity|infrastructure|cyberattack|population|megawatt|gigawatt)\b/i.test(question)) {
+  if (!followUp.isFollowUp && /\b(explain|study)\b/i.test(question) && !engineeringDesign(question) && !hasHardRows && !/\b(budget|electricity|infrastructure|cyberattack|population|megawatt|gigawatt)\b/i.test(question)) {
     const { bibleStudyCard } = await import("@/lib/knowledge.server");
     const passage = await bibleStudyCard(question).catch(() => null);
     if (passage) {
@@ -1507,9 +1546,9 @@ async function composeVibeReply(
       ),
     };
   }
-  if (attached && /\b(explain this|quiz me|find contradictions|chapter\s+\d+|flashcards|teach me this)\b/i.test(question)) {
+  if (effectiveAttached && /\b(explain this|quiz me|find contradictions|chapter\s+\d+|flashcards|teach me this)\b/i.test(question)) {
     const chapter = question.match(/chapter\s+(\d+)/i);
-    if (chapter && !new RegExp(`chapter\\s+${chapter[1]}\\b`, "i").test(attached)) {
+    if (chapter && !new RegExp(`chapter\\s+${chapter[1]}\\b`, "i").test(effectiveAttached)) {
       return { text: `Chapter ${chapter[1]} is not in the attached document. It was not summarized.` };
     }
     try {
@@ -1520,7 +1559,7 @@ async function composeVibeReply(
             role: "system",
             content: `${shouldThink && !wantsRawJson ? `${THINKING_DIRECTIVE}\n\n` : ""}The attached document is the only source. Do the job asked. If the document does not contain it, say it is not in the document. Do not add a fact, a number, or a citation. Explain this restates the document in plain words. Quiz me writes three questions whose answers are in the document. Find contradictions names two passages that disagree, or says none are written. A chapter summary uses only that chapter. Flashcards use a term that appears and the sentence around it. Teach me this material teaches one step from the document, then asks one question.`,
           },
-          { role: "user", content: `Job: ${question.slice(0, 400)}\n\nDocument:\n${attached.slice(0, 12000)}` },
+          { role: "user", content: `Job: ${question.slice(0, 400)}\n\nDocument:\n${effectiveAttached.slice(0, 12000)}` },
         ],
         {
           temperature: 0,
@@ -1534,7 +1573,7 @@ async function composeVibeReply(
       const parsedDoc = parseThinkEnvelope(result.text);
       const draft = parsedDoc.body || result.text.trim();
       const { stampBrain } = await import("@/lib/brain-stamp");
-      const stampedDoc = await stampBrain(draft, attached.slice(0, 12000), { strict: true });
+      const stampedDoc = await stampBrain(draft, effectiveAttached.slice(0, 12000), { strict: true });
       if (parsedDoc.thought && shouldThink && !wantsRawJson) {
         return { text: `<think>\n${parsedDoc.thought}\n</think>\n\n${stampedDoc}` };
       }
@@ -1589,7 +1628,7 @@ async function composeVibeReply(
   if (!wantsCode && (skill.id === "research" || /\bresearch this\b|\bresearch the topic\b/i.test(question))) {
     const pages = await linkedPages(turns);
     const mind = await import("@/lib/video-mind.server");
-    const researched = await mind.researchReport(withLanguage(question, spoken), pages);
+    const researched = await mind.researchReport(withLanguage(retrievalQuery, spoken), pages);
     if ("text" in researched && researched.text) {
       return {
         text: wrapDeterministicThink(
@@ -1601,8 +1640,8 @@ async function composeVibeReply(
     return researched;
   }
   const { needsCurrent, currentAnswer } = await import("@/lib/current.server");
-  if (!wantsCode && needsCurrent(question)) {
-    const current = await currentAnswer(question, spoken).catch(() => null);
+  if (!wantsCode && needsCurrent(retrievalQuery)) {
+    const current = await currentAnswer(retrievalQuery, spoken).catch(() => null);
     if (current?.text) {
       return {
         text: wrapDeterministicThink(
@@ -1673,25 +1712,25 @@ async function composeVibeReply(
     return tutoredReply;
   }
   const pages = await linkedPages(turns);
-  const fresh = !wantsCode && needsFresh(question);
-  const lookUp = !wantsCode && (fresh || needsCurrent(question) || /\b(look\s*up|latest|today|this week|who is the|what happened|current)\b/i.test(question));
+  const fresh = !wantsCode && needsFresh(retrievalQuery);
+  const lookUp = !wantsCode && (fresh || needsCurrent(retrievalQuery) || /\b(look\s*up|latest|today|this week|who is the|what happened|current)\b/i.test(question));
   const design = engineeringDesign(question) || hasHardRows;
   const brain = brainQuestion(question, skill.id) && !design && !wantsCode;
   const strict = !wantsCode && (["evidence", "library", "search", "tools", "check", "extract", "film"].includes(skill.id) || fresh);
   const lesson = teachingQuestion(question) && !hasHardRows && !wantsCode;
   const [pulled, ndkrsGrounding] = await Promise.all([
     Promise.all([
-      skill.source === "study" || skill.source === "both" || (brain && libraryQuestion(question)) ? libraryNotes(question).catch(() => "") : Promise.resolve(""),
-      !lesson && (skill.source === "web" || skill.source === "both" || lookUp || brain) ? within(liveBrief(question), 12000) : Promise.resolve(""),
-      brain || lesson ? within(wikiBrief(lesson ? searchSubject(question) : question), 8000) : Promise.resolve(""),
-      within(import("@/lib/noctis-outside.server").then((mod) => mod.outsideFacts(question)), 9000),
+      skill.source === "study" || skill.source === "both" || (brain && libraryQuestion(retrievalQuery)) ? libraryNotes(retrievalQuery).catch(() => "") : Promise.resolve(""),
+      !lesson && (skill.source === "web" || skill.source === "both" || lookUp || brain) ? within(liveBrief(retrievalQuery), 12000) : Promise.resolve(""),
+      brain || lesson ? within(wikiBrief(lesson ? searchSubject(retrievalQuery) : retrievalQuery), 8000) : Promise.resolve(""),
+      within(import("@/lib/noctis-outside.server").then((mod) => mod.outsideFacts(retrievalQuery)), 9000),
     ]),
     !wantsCode
-      ? import("@/lib/ndkrs/chat-bridge.server").then((m) => m.fetchNdkrsChatGrounding(question, { limit: 3 }))
+      ? import("@/lib/ndkrs/chat-bridge.server").then((m) => m.fetchNdkrsChatGrounding(retrievalQuery, { limit: 3 }))
       : Promise.resolve({ hits: [], systemBlock: "", footer: "" }),
   ]);
   const notes = [...pulled, ndkrsGrounding.systemBlock].filter(Boolean).join("\n\n");
-  const walk = walkGraph(question);
+  const walk = walkGraph(retrievalQuery);
   const map = walk ? formatMap(walk) : "";
   const record = [notes, pages, map].filter(Boolean).join("\n\n");
   const ground = [record, skill.id === "film" ? last?.content || "" : ""].filter(Boolean).join("\n\n");
@@ -1703,7 +1742,7 @@ async function composeVibeReply(
     const { stampBrain } = await import("@/lib/brain-stamp");
     return stampBrain(text, ground, { strict });
   };
-  if (!isClinicalCacheBypass && strict && ground.trim().length < 40) {
+  if (!isClinicalCacheBypass && !followUp.isFollowUp && strict && ground.trim().length < 40) {
     const fallbackTrained = recallTrainedAnswer(question);
     if (fallbackTrained && (!shouldThink || fallbackTrained.model === "user-taught")) {
       return {
@@ -1730,7 +1769,7 @@ async function composeVibeReply(
   const persistedRules = storedRulesBlock();
   const plain = !design && !resourcePlan(question) && !hasHardRows && !seeing && !strict && !fresh;
   if (!isClinicalCacheBypass && plain) {
-    const directTrained = recallTrainedAnswer(question);
+    const directTrained = !followUp.isFollowUp ? recallTrainedAnswer(question) : null;
     if (directTrained && spoken.toLowerCase() === "english" && (!shouldThink || directTrained.model === "user-taught")) {
       return {
         text: wrapDeterministicThink(
@@ -1744,8 +1783,12 @@ async function composeVibeReply(
     const ndkrsGroundingBlock = ndkrsGrounding.systemBlock;
     const taught: ChatMessage[] = [
       { role: "system", content: TEACH },
-      { role: "system", content: `Active Engine Profile: ${activeEngine.name} (${activeEngine.id}).` },
+      { role: "system", content: `Active Engine Profile: ${activeEngine.name}.` },
       ...(shouldThink && !wantsRawJson ? [{ role: "system" as const, content: THINKING_DIRECTIVE }] : []),
+      ...(followUp.systemContinuityDirective ? [{ role: "system" as const, content: followUp.systemContinuityDirective }] : []),
+      ...(followUp.relation === "document_followup" && effectiveAttached
+        ? [{ role: "system" as const, content: `Carried uploaded document (${followUp.carriedAttachment?.filename || "attachment"}):\n\n${effectiveAttached.slice(0, 12000)}` }]
+        : []),
       ...(style.desk === "study" && !wantsCode ? [{ role: "system" as const, content: "The person is on the study board. Research the question and write study notes, what the opened pages say, references with only real links, practice, and what to study next. Do not stop at a definition. Do not invent a source." }] : []),
       ...(wantsCode ? [{ role: "system" as const, content: "The person wants complete, runnable code. Write complete, self-contained, idiomatic code in the requested language(s) (e.g., Python, Java, C, TypeScript, Go, Rust, C++, C#, SQL) including all required imports/headers, defensive input validation, a runnable main() or unit-test harness, and brief compile/run instructions. If the request involves security or OWASP testing, write strictly defensive verification and remediation tests (parameterized queries, AEAD encryption, RBAC/BOLA guards). Never refuse by saying the code is not in the retrieved notes." }] : []),
       ...(spoken.toLowerCase() !== "english"
@@ -1757,7 +1800,7 @@ async function composeVibeReply(
       ...(notes && !wantsCode
         ? [{ role: "system" as const, content: `Background, if it helps this question. Ignore a page about a different subject. Do not let it replace the answer.\n\n${notes.slice(0, 4000)}` }]
         : []),
-      ...turns.slice(-24).map(toChatMessage),
+      ...mapHistoryForModel(turns.slice(-24)),
     ];
     const { modelChat } = await import("@/lib/video-mind.server");
     const result = await modelChat(
@@ -1774,11 +1817,18 @@ async function composeVibeReply(
     const ndkrsFooter = ndkrsHits.length > 0
       ? `\n\n---\n**NDKRS Verified Knowledge Grounding** · Citations: ${ndkrsHits.map((h) => `\`${h.citationLabel}\``).join(", ")} · SHA-256: \`${ndkrsHits[0].sha256.slice(0, 12)}\``
       : "";
+    const parsedTeach = parseThinkEnvelope(result.text);
+    const cleanedTeachBody = parsedTeach.thought ? parsedTeach.body : result.text;
+    const followUpTrace = followUp.isFollowUp
+      ? `Resolved follow-up (${followUp.relation}) on "${followUp.activeSubject}"${followUp.referencedPoint ? ` targeting #${followUp.referencedPoint.index} "${followUp.referencedPoint.title}"` : ""} and executed `
+      : "Executed ";
     return {
-      text: wrapDeterministicThink(
-        `${result.text}${ndkrsFooter}`,
-        `Executed ${activeEngine.name} deep reasoning pass${ndkrsHits.length > 0 ? " with NDKRS verified knowledge grounding" : ""} and verified explanation clarity and accuracy.`,
-      ),
+      text: parsedTeach.thought && shouldThink && !wantsRawJson
+        ? `<think>\n${parsedTeach.thought}\n</think>\n\n${cleanedTeachBody}${ndkrsFooter}`
+        : wrapDeterministicThink(
+            `${cleanedTeachBody}${ndkrsFooter}`,
+            `${followUpTrace}${activeEngine.name} deep reasoning pass${ndkrsHits.length > 0 ? " with NDKRS verified knowledge grounding" : ""} and verified explanation clarity and accuracy.`,
+          ),
     };
   }
   const stance = [
@@ -1811,7 +1861,7 @@ async function composeVibeReply(
     .filter(Boolean)
     .join(" ");
   const pipe = runPipeline(question);
-  const isolatedTurns = hasHardRows && scenario === question && last ? [last] : turns.slice(-24);
+  const isolatedTurns = (followUp.shouldIsolateEncounter || (hasHardRows && scenario === question)) && last ? [last] : turns.slice(-24);
   const earlier = isolatedTurns.slice(0, -1).filter((turn) => turn.role === "user").map((turn) => turn.content).join("\n");
   const packet = [growthSheet(scenario), hourlyGrid(scenario), optimizeOptions(scenario), executionSheet(scenario), ledgerSheet(scenario), strategySheet(scenario), domainRules(question), vocabularyLine(question), authorityLine(question), memoryLines(question, style.context || ""), statedRules(isolatedTurns), persistedRules, rulesFromContext(style.context || ""), graphFromNotes(notes), uncertaintyLine(question), predictionLine(question), shockLine(question), decisionLine(question), optimizeLine(question), causalLine(question), askLine(question), consistencyLine(question, earlier), stakesLine(question), needsCurrent(question) ? "This can go out of date. Use a page opened for this message. If none was opened, say the current fact was not retrieved. Do not supply it from memory." : ""].filter(Boolean).join("\n\n");
   const { buildSovereignSystemPromptContext } = await import("@/lib/noctis-sovereign-grounding");
@@ -1820,6 +1870,10 @@ async function composeVibeReply(
     { role: "system", content: sovereignGrounding },
     { role: "system", content: SYSTEM },
     { role: "system", content: `Active Intelligence Engine: ${activeEngine.name}.` },
+    ...(followUp.systemContinuityDirective ? [{ role: "system" as const, content: followUp.systemContinuityDirective }] : []),
+    ...(followUp.relation === "document_followup" && effectiveAttached
+      ? [{ role: "system" as const, content: `Carried uploaded document (${followUp.carriedAttachment?.filename || "attachment"}):\n\n${effectiveAttached.slice(0, 12000)}` }]
+      : []),
     { role: "system", content: `${pipe.route.note} ${reasonBrief(scenario)} The pipeline packet below was computed in code. Copy it. Do not replace a pipeline line with a guess. A feasibility sentence comes after the figures, never instead of them.` },
     ...(packet ? [{ role: "system" as const, content: packet }] : []),
     ...(stance ? [{ role: "system" as const, content: stance }] : []),
@@ -1855,7 +1909,7 @@ async function composeVibeReply(
           content: `The person selected ${spoken}. Teach, instruct, and answer entirely in ${spoken}. Keep the lesson. Do not answer in English and then add a translation unless they asked for both. Keep names and numbers as written.`,
         }]
       : []),
-    ...isolatedTurns.map(toChatMessage),
+    ...mapHistoryForModel(isolatedTurns),
   ];
   const precise = skill.id === "extract" || skill.id === "check" || skill.id === "sort" || skill.id === "guard" || skill.id === "library" || skill.id === "evidence" || skill.id === "quiz" || skill.id === "film";
   const { modelChat } = await import("@/lib/video-mind.server");
@@ -1888,10 +1942,13 @@ async function composeVibeReply(
   if (extractedThought && shouldThink && !wantsRawJson && !finalOut.trim().startsWith("{") && !/CLINICAL_VALIDATION_FAILED/i.test(finalOut)) {
     return { text: `<think>\n${extractedThought}\n</think>\n\n${finalOut}` };
   }
+  const followUpRoutePrefix = followUp.isFollowUp
+    ? `Resolved follow-up (${followUp.relation}) on "${followUp.activeSubject}"${followUp.referencedPoint ? ` targeting #${followUp.referencedPoint.index} "${followUp.referencedPoint.title}"` : ""} and executed `
+    : "Executed ";
   return {
     text: wrapDeterministicThink(
       finalOut,
-      `Executed ${activeEngine.name} deep reasoning, safety auditing, and deterministic verification.`,
+      `${followUpRoutePrefix}${activeEngine.name} deep reasoning, safety auditing, and deterministic verification.`,
     ),
   };
 }

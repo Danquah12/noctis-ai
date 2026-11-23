@@ -281,4 +281,17 @@ Final ATO decisions rest with the designated Authorizing Official (AO).
     assert.ok(labels.includes("800-53A Examine, Interview & Test"), `expected rmf_grc pills in: ${joined}`);
     assert.ok(labels.includes("FedRAMP High ODPs & POA&M SLAs"), `expected rmf_grc pills in: ${joined}`);
   });
+
+  it("strips leading sentence-count formatting qualifiers like 'In 2 concise sentences,' cleanly", () => {
+    const answer =
+      "Mutual TLS (mTLS) authenticates both the client and server by requiring each party to present a valid X.509 digital certificate issued by a trusted Certificate Authority (CA) during the TLS handshake.";
+    const pills = buildContextualFollowUps(
+      "In 2 concise sentences, explain how mutual TLS (mTLS) authenticates both client and server.",
+      answer,
+      { desk: "chat" },
+    );
+    const joined = pills.map((p) => `${p.label} :: ${p.ask}`).join(" | ");
+    assert.ok(!/In 2 concise sentences/i.test(joined), `leaked formatting prefix: ${joined}`);
+    assert.ok(/mutual TLS \(mTLS\)/i.test(joined), `expected mTLS subject in: ${joined}`);
+  });
 });

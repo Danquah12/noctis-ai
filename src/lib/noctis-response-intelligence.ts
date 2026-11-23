@@ -1630,77 +1630,15 @@ export function runFollowUpIntelligence(
 
   const topic = state.activeTopic;
   const headcount = state.parameters.employeesOrUsers || 5000;
-  const powerKw = state.parameters.powerKw;
+  const conversationScope = `${topic} ${currentQuestion} ${state.lastAssistantText}`;
 
-  // Follow-up 1: "What else?" / "What is missing?" / "What else should we add?"
-  if (state.followUpIntent === "what-else") {
-    const isZeroTrustOrCyber = /\b(zero\s+trust|cyber|security|rmf|ransomware|network|cloud|iam|idor|owasp|pdp|pep|policy)\b/i.test(
-      `${topic} ${state.lastAssistantText}`
-    );
-    const isMicrogridOrEnergy = /\b(microgrid|solar|battery|power|energy|electricity|grid|kw|mw|kwh|mwh)\b/i.test(
-      `${topic} ${state.lastAssistantText}`
-    );
-    const additions = isMicrogridOrEnergy
-      ? [
-          `1. **Seasonal Solar Irradiance Variation (Winter / Monsoon Derating):** Peak-sun-hours drop by $30\\%\text{–}55\\%$ during winter or rainy months. Sizing solar PV only on annual average irradiance creates a guaranteed seasonal energy deficit.`,
-          `2. **Battery Cycle & Calendar Degradation ($\\text{SOH}$ End-of-Life Factor):** $\\text{LiFePO}_4$ cells lose $15\\%\text{–}20\\%$ capacity over 3,500–5,000 cycles. Nameplate storage must include a $1.20\\times$ beginning-of-life ($\text{BOL}$) oversize factor on top of $80\\%$ usable Depth of Discharge ($\\text{DoD}$).`,
-          `3. **Critical-Load Prioritization & Automated Load-Shedding Tiers:** Divide loads into **Tier 1 Life-Safety (Hospital ICU / Water / Telecom — 100% backed)**, **Tier 2 Essential Commercial**, and **Tier 3 Sheddable HVAC/Residential** via smart under-frequency relays.`,
-          `4. **Dispatchable Generator Fuel Logistics & Wet-Stacking Prevention:** Backup diesel/natural-gas generators require a verified 72-hour to 14-day on-site fuel reserve, fuel polishing schedule, and minimum $35\\%$ load-factor dispatch rules.`,
-          `5. **Inverter Fault-Ride-Through & Black-Start Capability:** Grid-forming inverters must handle $1.25\\times$ motor-start inrush currents and re-energize dead buses without external grid voltage.`,
-        ]
-      : isZeroTrustOrCyber
-        ? [
-            `1. **Legacy & OT/IoT System Isolation (Brownfield Enclaves):** Most ${headcount.toLocaleString("en-US")}-person organizations have legacy mainframes, printers, or operational technology that cannot run FIDO2 or EDR agents. Place them behind protocol-break jump hosts and strict unidirectional/microsegmented VLAN gateways.`,
-            `2. **Non-Human & Machine Identity Governance (NHI / Service Accounts):** Service principals, CI/CD tokens, and API keys typically outnumber human employees $10:1$. Replace static long-lived secrets with workload identity federation (\`OIDC\` / \`SPIFFE/SPIRE\`) and automatic 24-hour credential rotation.`,
-            `3. **Break-Glass Emergency Access Procedures:** Define offline-audited hardware security keys and dual-custody approval workflows so administrators can recover the environment if the primary IdP or Policy Engine suffers an outage.`,
-            `4. **Policy Simulation & Shadow-Mode Testing:** Before switching Policy Enforcement Points (\`PEP\`) to block mode across ${headcount.toLocaleString("en-US")} users, run policies in \`audit/report-only\` mode for 14 days to eliminate false-positive business disruption.`,
-            `5. **Automated Continuity, Rollback & Chaos Drills:** Test control plane resilience via purple-team fault injection (simulated IdP latency, revoked intermediate CA, and compromised endpoint quarantine).`,
-            `6. **Measurable Implementation KPIs:** Track **% of applications behind PEP**, **mean time to revoke compromised session (< 60s)**, and **0% unauthenticated east-west SMB/RDP flows**.`,
-          ]
-        : [
-            `1. **Edge-Case & Degraded-Mode Resilience:** Define how **${topic}** operates when primary connectivity, upstream dependencies, or peak capacity limits are exceeded.`,
-            `2. **Automated Observability & SLA Telemetry:** Instrument real-time health indicators, error budgets, and threshold alerts tied to named operational owners.`,
-            `3. **Governance, Access Control & Audit Trail:** Enforce role-based approvals and immutable change logs for every configuration or financial modification.`,
-            `4. **Phased Rollout & Rollback Gate:** Validate in a 5% canary cohort before full production cutover, with a tested 15-minute rollback procedure.`,
-            `5. **Quantitative Acceptance Criteria:** Establish baseline vs. target metrics before sign-off.`,
-          ];
-
-    const check = verifyResponseIntegrity(currentQuestion, additions.join("\n"), false, false);
-    return [
-      `## Proactive Knowledge Gap Detection & High-Value Additions: ${topic}`,
-      `**Conversation Context Preserved:** Continuing from your previous task on **${topic}**${state.parameters.employeesOrUsers ? ` (${state.parameters.employeesOrUsers.toLocaleString("en-US")} scope)` : ""}.`,
-      `### Critical Unstated Assumptions & Additions Identified\n${additions.join("\n\n")}`,
-      `| Knowledge Gap / Addition | Risk If Omitted | Implementation Priority | Verification Artifact |\n| :--- | :--- | :--- | :--- |\n| **Primary Boundary / Capacity Derating** | Silent failure under peak or seasonal stress | Phase 1 (Immediate) | Stress-test & derating calculation sheet |\n| **Non-Human / Secondary Dependencies** | Unmonitored lateral or supply-chain failure | Phase 1 (Immediate) | Dependency inventory & SLA check |\n| **Break-Glass / Degraded Continuity** | Total outage during control-plane fault | Phase 1 (Immediate) | Quarterly fault-injection tabletop drill |\n| **Canary / Shadow-Mode Validation** | Production disruption during rollout | Phase 2 (Rollout) | 14-day telemetry validation log |`,
-      `> **${check.summaryLine}**`,
-    ].join("\n\n");
-  }
-
-  // Follow-up 2: "Expand point 3" / "Explain step 2"
-  if (state.followUpIntent === "expand-point") {
-    const idx = state.targetPointIndex || 3;
-    const matchedPoint =
-      state.priorPoints.find((p) => p.index === idx) ||
-      state.priorPoints[idx - 1] || {
-        index: idx,
-        title: `Component #${idx} of ${topic}`,
-        detail: `Core implementation and verification controls for ${topic}.`,
-      };
-
-    return [
-      `## Deep-Dive Expansion — Point #${matchedPoint.index}: ${matchedPoint.title}`,
-      `**Conversation Context Preserved:** Expanding **Point #${matchedPoint.index}** from our active analysis of **${topic}**${state.parameters.employeesOrUsers ? ` (${state.parameters.employeesOrUsers.toLocaleString("en-US")}-user scope)` : ""}.`,
-      `### 1. Core Mechanism & Objective\n${matchedPoint.detail || `**${matchedPoint.title}** is a foundational requirement in **${topic}** that prevents single-point failure and ensures verifiable compliance.`}`,
-      `### 2. Step-by-Step Technical Implementation\n1. **Baseline Discovery & Scope Mapping:** Inventory all assets, interfaces, and dependencies governed by **${matchedPoint.title}**.\n2. **Control & Policy Engineering:** Configure deterministic enforcement rules with least-privilege defaults and explicit fail-closed behavior.\n3. **Telemetry & Automated Validation:** Stream execution events to central monitoring and run automated regression checks on every change.\n4. **Operational Handover & Runbook:** Document escalation thresholds, responsible owners, and recovery SLAs.`,
-      `### 3. Common Failure Modes & How to Avoid Them\n- **Failure Mode A (Policy-Only Deployment):** Writing a policy for **${matchedPoint.title}** without technical enforcement. *Fix:* Verify via active test cases (\`SP 800-53A Test\`).\n- **Failure Mode B (Unmonitored Drift):** Controls degrade silently after initial cutover. *Fix:* Enable continuous configuration drift alerts.`,
-      `### 4. Verification Checklist for Point #${matchedPoint.index}\n| Check Item | Verification Method | Passing Criterion |\n| :--- | :--- | :--- |\n| **Technical Enforcement** | Automated integration test | 100% of unauthorized/invalid requests blocked |\n| **Telemetry Coverage** | Log ingestion audit | Structured events emitted with correlation ID |\n| **Resilience / Failover** | Fault-injection test | Graceful degradation within target RTO |`,
-    ].join("\n\n");
-  }
-
-  // Follow-up 3: "Draw the architecture" / "Show me visually"
+  // Follow-up 3: Only emit a deterministic architecture diagram if an exact domain diagram matches (not generic fallback).
+  // Otherwise let the conversation-aware LLM generate a custom diagram tailored to the active thread.
   if (state.followUpIntent === "draw-diagram") {
-    const diag =
-      generateDynamicDiagram(topic, state.lastAssistantText) ||
-      generateDynamicDiagram(`draw the architecture of ${topic}`, topic)!;
+    const diag = generateDynamicDiagram(topic, state.lastAssistantText);
+    if (!diag || diag.title.startsWith("System & Workflow Architecture Diagram:")) {
+      return null;
+    }
     return [
       `## ${diag.title}`,
       `**Conversation Context Preserved:** Generated visual architecture diagram for **${topic}**${state.parameters.employeesOrUsers ? ` (${state.parameters.employeesOrUsers.toLocaleString("en-US")}-user scope)` : ""}.`,
@@ -1712,12 +1650,20 @@ export function runFollowUpIntelligence(
       .join("\n\n");
   }
 
-  // Follow-up 4: "Now calculate the implementation cost" / "Change population from 10,000 to 50,000 and recalculate"
+  // Follow-up 4: Restrict deterministic recalculation strictly to explicit microgrid/energy sizing
+  // or explicit Zero-Trust enterprise headcount sizing so unrelated topics reach the context-aware LLM.
   if (state.followUpIntent === "recalculate") {
     const scale = headcount;
-    const isMicrogridOrEnergy = /\b(microgrid|solar|battery|power|energy|electricity|grid|population)\b/i.test(
-      `${topic} ${currentQuestion} ${state.lastAssistantText}`
+    const isMicrogridOrEnergy = /\b(microgrid|solar|battery|pv|bess|inverter|kwh|mwh)\b/i.test(
+      conversationScope,
     );
+    const isZeroTrustHeadcountSizing =
+      /\b(zero\s+trust|ztna|fido2|edr|idp|pep)\b/i.test(conversationScope) &&
+      /\b(employees?|users?|seats?|staff|headcount)\b/i.test(conversationScope);
+
+    if (!isMicrogridOrEnergy && !isZeroTrustHeadcountSizing) {
+      return null;
+    }
 
     if (isMicrogridOrEnergy) {
       const kwhPerPersonDay = 4.5; // Assumed residential + community services per-capita demand
@@ -1749,6 +1695,7 @@ export function runFollowUpIntelligence(
     const totalYear1 = annualLicensing + hardwareKeys + engineeringIntegration + trainingAndChangeMgmt;
     const lowRange = Math.round(totalYear1 * 0.85);
     const highRange = Math.round(totalYear1 * 1.20);
+    const powerKw = state.parameters.powerKw;
 
     return [
       `## Quantitative Cost & Resource Estimate: ${topic} (${scale.toLocaleString("en-US")} Users / Employees)`,
@@ -1756,16 +1703,6 @@ export function runFollowUpIntelligence(
       `### 1. Explicit Inputs vs. Transparent Assumptions\n- **User-Supplied / Active Scope:** \`${scale.toLocaleString("en-US")} users/employees\` (carried forward from conversation state).\n- **Missing Inputs Identified (\`Assumed with Ranges\`):** Existing license enterprise agreement (EA) discounts, number of legacy on-prem applications requiring custom connectors, and internal vs. external SI labor rates.\n- **Formula:** $\\text{Total Year-1 Cost} = (N_{\\text{users}} \\times C_{\\text{annual\\_stack}}) + (N_{\\text{users}} \\times 2 \\times C_{\\text{FIDO2}}) + C_{\\text{integration}} + C_{\\text{training}}$`,
       `### 2. Itemized Year-1 Implementation & Run-Rate Ledger\n| Cost Category | Unit Basis & Assumption | Arithmetic Calculation | Year-1 Estimate (USD) | Uncertainty Range (-15% / +20%) |\n| :--- | :--- | :--- | :--- | :--- |\n| **1. Core Software Stack (IdP + EDR + ZTNA PEP)** | \`$${perUserLicenseAnnual}/user/yr\` enterprise bundle | \`${scale.toLocaleString("en-US")} × $${perUserLicenseAnnual}\` | **$${annualLicensing.toLocaleString("en-US")}** | $${Math.round(annualLicensing * 0.85).toLocaleString("en-US")} – $${Math.round(annualLicensing * 1.2).toLocaleString("en-US")} |\n| **2. Hardware FIDO2 Security Keys (Primary + Backup)** | \`2 keys/user × $55\` | \`${scale.toLocaleString("en-US")} × 2 × $55\` | **$${hardwareKeys.toLocaleString("en-US")}** | $${Math.round(hardwareKeys * 0.85).toLocaleString("en-US")} – $${Math.round(hardwareKeys * 1.2).toLocaleString("en-US")} |\n| **3. Architecture, PEP & SIEM Integration Engineering** | \`$48/user\` baseline (min $120k) | \`max($120,000, ${scale.toLocaleString("en-US")} × $48)\` | **$${engineeringIntegration.toLocaleString("en-US")}** | $${Math.round(engineeringIntegration * 0.85).toLocaleString("en-US")} – $${Math.round(engineeringIntegration * 1.2).toLocaleString("en-US")} |\n| **4. Rollout, Phased Testing & Training** | \`$18/user\` enablement | \`${scale.toLocaleString("en-US")} × $18\` | **$${trainingAndChangeMgmt.toLocaleString("en-US")}** | $${Math.round(trainingAndChangeMgmt * 0.85).toLocaleString("en-US")} – $${Math.round(trainingAndChangeMgmt * 1.2).toLocaleString("en-US")} |\n| **TOTAL YEAR-1 INVESTMENT** | **All-in Capex + Year-1 Opex** | **Sum of rows 1–4** | **$${totalYear1.toLocaleString("en-US")}** | **$${lowRange.toLocaleString("en-US")} – $${highRange.toLocaleString("en-US")}** |`,
       `### 3. Year-2+ Ongoing Annual Run Rate\n- **Recurring Annual Licensing & Maintenance:** **$${Math.round(annualLicensing * 1.05).toLocaleString("en-US")} / year** (excluding one-time hardware key purchase and initial integration).\n- **Confidence:** \`Medium-High\` (Provide your exact vendor quote per seat or number of legacy apps to tighten the $-15\\% / +20\\%$ band).`,
-    ].join("\n\n");
-  }
-
-  // Follow-up 5: "Compare the alternatives"
-  if (state.followUpIntent === "compare-alternatives" || state.followUpIntent === "revise-artifact") {
-    return [
-      `## Architectural Alternatives & Trade-Off Analysis: ${topic}`,
-      `**Conversation Context Preserved:** Comparing implementation options for **${topic}** (${headcount.toLocaleString("en-US")}-user scope).`,
-      `| Option / Architecture | Core Mechanism | Capital & Operational Cost | Security / Reliability Guarantee | Strongest Weakness / Failure Mode |\n| :--- | :--- | :--- | :--- | :--- |\n| **Option A: Cloud-Native Zero-Trust / Managed Mesh (Recommended)** | Inline cloud PEP + FIDO2 IdP + continuous device posture | Moderate Opex (\`~$138/user/yr\`), Low Capex | **High** (Per-request verification & instant revocation) | Requires high-availability connector redundancy for on-prem legacy apps |\n| **Option B: Traditional Perimeter VPN + Castle-and-Moat VLANs** | Concentrator appliances + static network ACLs | High hardware refresh Capex, high operational toil | **Low** (Implicit east-west trust once inside perimeter) | Single phished credential or VPN CVE exposes internal subnet |\n| **Option C: Hybrid Phased Co-Existence** | Cloud PEP for Tier-1 apps + microsegmented jump enclaves for legacy | Balanced phased spend over 12–18 months | **Moderate-High** (Immediate reduction of blast radius) | Dual policy administration during transition window |`,
-      `### Recommendation\nAdopt **Option C transitioning into Option A**: isolate Tier-0 and high-impact assets behind per-request Policy Enforcement Points immediately while migrating legacy brownfield applications in 90-day waves.`,
     ].join("\n\n");
   }
 
