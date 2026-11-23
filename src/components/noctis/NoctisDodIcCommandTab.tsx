@@ -354,7 +354,7 @@ export function NoctisDodIcCommandTab({ onSendToChat, onOpenInCanvas, onClose }:
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs text-zinc-300 hover:bg-white/10 flex items-center gap-1.5"
+              className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs text-zinc-300 hover:bg-white/10 flex items-center gap-1.5 whitespace-nowrap shrink-0"
             >
               <ArrowLeft className="size-3.5" />
               Back to Chat
@@ -440,7 +440,7 @@ export function NoctisDodIcCommandTab({ onSendToChat, onOpenInCanvas, onClose }:
               <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
                 <div className="text-[11px] text-zinc-400">Official DISA CCIs</div>
                 <div className="text-xl font-bold text-sky-300">{status?.disaCci?.counts?.totalCcis?.toLocaleString() ?? "5,137"}</div>
-                <div className="text-[10px] text-zinc-500">CCI List {status?.disaCci?.version ?? "2025-01-23"}</div>
+                <div className="text-[10px] text-zinc-500 whitespace-nowrap">{`CCI List ${status?.disaCci?.version ?? "2025-01-23"}`}</div>
               </div>
               <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
                 <div className="text-[11px] text-zinc-400">Indexed STIG Rules</div>
@@ -450,7 +450,7 @@ export function NoctisDodIcCommandTab({ onSendToChat, onOpenInCanvas, onClose }:
               <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
                 <div className="text-[11px] text-zinc-400">Zero Trust Target</div>
                 <div className="text-xl font-bold text-purple-300">{status?.zeroTrustCatalog?.targetActivities ?? 91}</div>
-                <div className="text-[10px] text-zinc-500">7 Pillars · {status?.zeroTrustCatalog?.targetDeadline ?? "FY 2027"}</div>
+                <div className="text-[10px] text-zinc-500">{`7 Pillars · ${status?.zeroTrustCatalog?.targetDeadline ?? "FY 2027"}`}</div>
               </div>
               <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
                 <div className="text-[11px] text-zinc-400">Revision Lineages</div>
@@ -590,7 +590,7 @@ export function NoctisDodIcCommandTab({ onSendToChat, onOpenInCanvas, onClose }:
             {/* DISA CCI & Pre-Indexed STIG Library */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 space-y-3">
-                <h3 className="text-sm font-semibold text-white">Official DISA CCI Explorer (`2025-01-23`)</h3>
+                <h3 className="text-sm font-semibold text-white">Official DISA CCI Explorer (2025-01-23)</h3>
                 <div className="flex gap-2">
                   <input
                     value={cciQuery}
@@ -650,7 +650,9 @@ export function NoctisDodIcCommandTab({ onSendToChat, onOpenInCanvas, onClose }:
                     <div key={r.groupId} className="rounded-lg border border-white/10 bg-black/40 p-2.5 text-xs space-y-1">
                       <div className="flex items-center justify-between">
                         <span className="font-mono font-bold text-amber-300">{r.groupId} · {r.severity}</span>
-                        <span className="text-[10px] text-zinc-400">NIST Rev5: {(r.nistRev5Controls || []).join(", ")}</span>
+                        <span className="text-[10px] text-zinc-400">
+                          {`NIST Rev 5: ${(r.nistRev5Controls?.length ? r.nistRev5Controls : r.nistRev4Controls || []).join(", ")}`}
+                        </span>
                       </div>
                       <div className="text-zinc-200">{r.title}</div>
                     </div>
@@ -1032,7 +1034,9 @@ export function NoctisDodIcCommandTab({ onSendToChat, onOpenInCanvas, onClose }:
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <h2 className="text-sm font-semibold text-white">Live Upstream Authoritative Drift Monitor & 12-Lineage Diffs</h2>
-                  <p className="text-xs text-zinc-400">Upstream OSCAL / DISA CCI / CISA KEV drift NEVER auto-applies (`autoApplyToProduction: false`).</p>
+                  <p className="text-xs text-zinc-400">
+                    Upstream OSCAL / DISA CCI / CISA KEV drift NEVER auto-applies (<code className="text-emerald-300">autoApplyToProduction: false</code>).
+                  </p>
                 </div>
                 <button
                   type="button"
@@ -1078,7 +1082,7 @@ export function NoctisDodIcCommandTab({ onSendToChat, onOpenInCanvas, onClose }:
                     {selectedLineage.policyId}: {selectedLineage.priorVersion} ({selectedLineage.priorEffectiveDate}) → {selectedLineage.currentVersion} ({selectedLineage.currentEffectiveDate})
                   </div>
                   <div className="text-zinc-400">
-                    Blast Radius: {selectedLineage.blastRadius?.mappedDisaCciCount} DISA CCIs across {(selectedLineage.blastRadius?.impactedNistControls || []).join(", ")}
+                    {`Blast Radius: ${selectedLineage.blastRadius?.mappedDisaCciCount ?? 0} DISA CCIs across ${(selectedLineage.blastRadius?.impactedNistControls || []).join(", ")}`}
                   </div>
                 </div>
               )}
@@ -1086,9 +1090,9 @@ export function NoctisDodIcCommandTab({ onSendToChat, onOpenInCanvas, onClose }:
 
             <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 space-y-3">
               <h2 className="text-sm font-semibold text-white">Dual-Control Policy Rollout Approval Queue</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 text-xs">
                 <input value={newPropPolicyId} onChange={(e) => setNewPropPolicyId(e.target.value)} className="rounded-lg border border-white/10 bg-black/50 px-2.5 py-1.5 text-white" placeholder="Policy ID" />
-                <input value={newPropTitle} onChange={(e) => setNewPropTitle(e.target.value)} className="rounded-lg border border-white/10 bg-black/50 px-2.5 py-1.5 text-white" placeholder="Proposal Title" />
+                <input value={newPropTitle} onChange={(e) => setNewPropTitle(e.target.value)} className="sm:col-span-2 rounded-lg border border-white/10 bg-black/50 px-2.5 py-1.5 text-white" placeholder="Proposal Title" />
                 <input value={newPropProposer} onChange={(e) => setNewPropProposer(e.target.value)} className="rounded-lg border border-white/10 bg-black/50 px-2.5 py-1.5 text-white" placeholder="Proposer ID" />
               </div>
               <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -1167,7 +1171,7 @@ export function NoctisDodIcCommandTab({ onSendToChat, onOpenInCanvas, onClose }:
         {subTab === "exports-replay" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 max-w-6xl mx-auto">
             <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 space-y-3">
-              <h2 className="text-sm font-semibold text-white">eMASS / Xacta `.xlsx` Workbook & Authorization Binder</h2>
+              <h2 className="text-sm font-semibold text-white">eMASS / Xacta .xlsx Workbook & Authorization Binder</h2>
               <div className="grid grid-cols-3 gap-2 text-xs">
                 <input value={exportSysName} onChange={(e) => setExportSysName(e.target.value)} className="col-span-2 rounded-lg border border-white/10 bg-black/50 px-2.5 py-1.5 text-white" />
                 <input value={exportEmassId} onChange={(e) => setExportEmassId(e.target.value)} className="rounded-lg border border-white/10 bg-black/50 px-2.5 py-1.5 text-white" />
@@ -1215,7 +1219,7 @@ export function NoctisDodIcCommandTab({ onSendToChat, onOpenInCanvas, onClose }:
             </div>
 
             <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 space-y-3">
-              <h2 className="text-sm font-semibold text-white">SQL Explanation Trace Replay Inspector (`EXPL-...`)</h2>
+              <h2 className="text-sm font-semibold text-white">SQL Explanation Trace Replay Inspector (EXPL-...)</h2>
               <div className="flex gap-2">
                 <input
                   value={traceIdInput}

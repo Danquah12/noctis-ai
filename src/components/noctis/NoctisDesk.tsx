@@ -6814,7 +6814,7 @@ export function NoctisDesk() {
           className={item(desk === "dod-ic")}
         >
           <Shield className="size-4 shrink-0 text-emerald-400" />
-          <span>DoD &amp; IC Command</span>
+          <span>DoD & IC Command</span>
           <span className="ml-auto rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-bold text-emerald-300">v4.0</span>
         </button>
         <button
@@ -7140,7 +7140,7 @@ export function NoctisDesk() {
                     )}
                   >
                     <Shield className="size-3.5 text-emerald-400 shrink-0" />
-                    <span className="truncate">NDIMP Defense &amp; IC</span>
+                    <span className="truncate">NDIMP Defense & IC</span>
                     <span className="ml-auto rounded bg-emerald-500/20 px-1.5 py-0.5 text-[9px] font-bold text-emerald-300">v4.0</span>
                   </button>
                   <button
@@ -8021,7 +8021,7 @@ export function NoctisDesk() {
                 />
               </Suspense>
             ) : desk === "dod-ic" ? (
-              <Suspense fallback={<div className="flex-1 flex items-center justify-center p-8 text-zinc-400">Loading NDIMP Defense &amp; IC Command Center v4.0...</div>}>
+              <Suspense fallback={<div className="flex-1 flex items-center justify-center p-8 text-zinc-400">Loading NDIMP Defense & IC Command Center v4.0...</div>}>
                 <NoctisDodIcCommandTab
                   onSendToChat={(taskPrompt) => {
                     switchDesk("chat");
