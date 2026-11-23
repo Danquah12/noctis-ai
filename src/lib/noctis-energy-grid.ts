@@ -176,10 +176,13 @@ export function evaluateAntiIslandingAndBlackStart(input: IslandingEvaluation): 
 
 export function handleNaturalEnergyQuery(prompt: string): string | null {
   const p = prompt.toLowerCase();
+  const hasFrequencyDroopContext =
+    /\bdroop\b/i.test(p) &&
+    /\b(?:frequency|grid|hz|inverter|generator|mw|power|microgrid|governor|control)\b/i.test(p);
   const isMatch =
-    p.includes("bess") ||
+    /\bbess\b/i.test(p) ||
     p.includes("thermal runaway") ||
-    p.includes("droop") ||
+    hasFrequencyDroopContext ||
     p.includes("frequency regulation") ||
     p.includes("microgrid") ||
     p.includes("anti-islanding") ||
@@ -189,7 +192,7 @@ export function handleNaturalEnergyQuery(prompt: string): string | null {
   if (!isMatch) return null;
 
   // Case 1: BESS Thermal Runaway
-  if (p.includes("bess") || p.includes("thermal runaway") || (p.includes("battery") && p.includes("temperature"))) {
+  if (/\bbess\b/i.test(p) || p.includes("thermal runaway") || (p.includes("battery") && p.includes("temperature"))) {
     const isHot = p.includes("58") || p.includes("60") || p.includes("overheating") || p.includes("cooling offline");
     const res = evaluateBessSafety({
       bessRatedCapacityKwh: 2000,
@@ -220,7 +223,7 @@ export function handleNaturalEnergyQuery(prompt: string): string | null {
   }
 
   // Case 3: Frequency Droop
-  if (p.includes("droop") || p.includes("frequency")) {
+  if (hasFrequencyDroopContext || p.includes("frequency")) {
     const res = evaluateFrequencyDroopResponse({
       nominalFrequencyHz: 60,
       measuredFrequencyHz: 59.4,

@@ -864,15 +864,14 @@ function adaptSpecialistEngineOutput(q: string, engineResponse: string, engineId
 
     scored.sort((a, b) => b.score - a.score || a.bIdx - b.bIdx);
     const bestMatches = scored.filter((s) => s.score > 0).slice(0, 2).map((s) => s.b);
+    const hasMatch = bestMatches.length > 0;
 
     return {
       question: qText,
-      answer:
-        bestMatches.length > 0
-          ? bestMatches.join(" | ")
-          : engineBullets[idx] ||
-            engineBullets[0] ||
-            `Evaluated under ${engineId}: grounded strictly in supplied facts (${promptFacts.slice(0, 2).join("; ") || "active prompt parameters"}) without fabricating unprovided telemetry.`,
+      answer: hasMatch
+        ? bestMatches.join(" | ")
+        : `Evaluated under ${engineId}: grounded strictly in supplied facts (${promptFacts.slice(0, 2).join("; ") || "active prompt parameters"}) without fabricating unprovided telemetry.`,
+      hasMatch,
     };
   });
 
@@ -907,7 +906,8 @@ function adaptSpecialistEngineOutput(q: string, engineResponse: string, engineId
         out[k] = `${engineId}_VERIFIED — Evidence-grounded analysis with strict provenance and adversarial safety enforcement.`;
       else if (/verified|fact|observed|input/i.test(k))
         out[k] = promptFacts.length > 0 ? promptFacts : engineBullets.slice(0, 5);
-      else if (/question|answer/i.test(k)) out[k] = questionsAnswered;
+      else if (/question|answer/i.test(k))
+        out[k] = questionsAnswered.map(({ question, answer }) => ({ question, answer }));
       else if (/advers|pushback|reject/i.test(k)) out[k] = adversarialResults;
       else if (/missing|unknown|gap/i.test(k))
         out[k] =
@@ -935,11 +935,12 @@ function adaptSpecialistEngineOutput(q: string, engineResponse: string, engineId
     /\b(NOCTIS-ARCH-001|ARCH-AT-\d+|NOCTIS-PRED-001|PRED-1042|NOCTIS-AUTO-001|AUTO-AC-016|NOCTIS-PHYSICIAN-DX-001|NOCTIS-HEALTH-LIVE-\d+|NOCTIS-AUTO-TRAIN-20D)\b/i.test(
       q
     );
+  const matchedQuestions = questionsAnswered.filter((qa) => qa.hasMatch);
   if (!isCanonicalBenchmark && (advInstructions.length > 0 || questions.length >= 2)) {
     const extraSections: string[] = [];
-    if (questionsAnswered.length > 0) {
+    if (matchedQuestions.length > 0) {
       extraSections.push(
-        `### Direct Scenario Questions Answered\n${questionsAnswered.map((qa) => `- **Q:** ${qa.question}\n  - **A:** ${qa.answer}`).join("\n")}`
+        `### Direct Scenario Questions Answered\n${matchedQuestions.map((qa) => `- **Q:** ${qa.question}\n  - **A:** ${qa.answer}`).join("\n")}`
       );
     }
     if (adversarialResults.length > 0) {

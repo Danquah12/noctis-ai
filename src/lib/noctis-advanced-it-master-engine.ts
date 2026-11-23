@@ -664,17 +664,17 @@ export function handleNaturalAdvancedItQuery(prompt: string): string | null {
   if (!isAdvIt) return null;
 
   // 1. HPC GPU Cluster & Distributed Pre-training
-  if (p.includes("gpu") || p.includes("tensor parallel") || p.includes("rocev2") || p.includes("infiniband") || p.includes("nvlink")) {
+  if (/\bgpu\b/i.test(p) || /\btensor\s+parallel/i.test(p) || /\brocev2\b/i.test(p) || /\binfiniband\b/i.test(p) || /\bnvlink\b/i.test(p)) {
     const res = evaluateHpcGpuClusterTopology({
       totalGpus: 8192,
       gpusPerNode: 8,
       intraNodeInterconnect: "NVLINK_V4",
-      interNodeFabric: p.includes("roce") ? "ROCE_V2_400G" : "INFINIBAND_NDR_400G",
-      tensorParallelDegree: p.includes("across nodes") || p.includes("cross-node") ? 8 : 4,
+      interNodeFabric: /\broce(?:v2)?\b/i.test(p) ? "ROCE_V2_400G" : "INFINIBAND_NDR_400G",
+      tensorParallelDegree: /\bacross\s+nodes\b|\bcross-node\b/i.test(p) ? 8 : 4,
       pipelineParallelDegree: 8,
       dataParallelDegree: 256,
-      rocePfcEnabled: !p.includes("disable pfc"),
-      roceEcnEnabled: !p.includes("disable ecn")
+      rocePfcEnabled: !/\bdisable\s+pfc\b/i.test(p),
+      roceEcnEnabled: !/\bdisable\s+ecn\b/i.test(p)
     });
     let md = `### Noctis Sovereign HPC GPU Cluster & Interconnect Engine (${res.engineId})\n`;
     md += `**Subsystem Domain:** \`${res.domain}\` · **Standards:** ${res.standardsReferenced.join(" · ")}\n\n`;
@@ -693,10 +693,10 @@ export function handleNaturalAdvancedItQuery(prompt: string): string | null {
   }
 
   // 2. Post-Quantum Cryptography & QKD
-  if (p.includes("quantum") || p.includes("pqc") || p.includes("kyber") || p.includes("dilithium") || p.includes("qkd") || p.includes("shor")) {
+  if (/\bquantum\b/i.test(p) || /\bpqc\b/i.test(p) || /\bkyber\b/i.test(p) || /\bdilithium\b/i.test(p) || /\bqkd\b/i.test(p) || /\bshor(?:'s|’s)?\b/i.test(p)) {
     const res = evaluatePostQuantumSecurity({
-      keyExchangeAlgorithm: p.includes("kyber") ? "ML_KEM_1024" : "RSA_2048",
-      digitalSignatureAlgorithm: p.includes("dilithium") ? "ML_DSA_87" : "ECDSA_P256",
+      keyExchangeAlgorithm: /\bkyber\b/i.test(p) ? "ML_KEM_1024" : "RSA_2048",
+      digitalSignatureAlgorithm: /\bdilithium\b/i.test(p) ? "ML_DSA_87" : "ECDSA_P256",
       hybridClassicalPqcEnabled: true,
       qkdLinkDistanceKm: 35,
       measuredQberPercent: 3.2
@@ -718,13 +718,13 @@ export function handleNaturalAdvancedItQuery(prompt: string): string | null {
   }
 
   // 3. Industrial Control Systems / OT SCADA
-  if (p.includes("purdue") || p.includes("scada") || p.includes("plc") || p.includes("dcs") || p.includes("sis") || p.includes("sil-3") || p.includes("modbus")) {
+  if (/\bpurdue\b/i.test(p) || /\bscada\b/i.test(p) || /\bplc\b/i.test(p) || /\bdcs\b/i.test(p) || /\bsis\b/i.test(p) || /\bsil-3\b/i.test(p) || /\bmodbus\b/i.test(p)) {
     const res = evaluateOtPurdueArchitectureSecurity({
       purdueLevel: "LEVEL_1_BASIC_CONTROL",
-      idmzLevel35Enforced: !p.includes("bypass idmz"),
-      sisSafetyControllerSegregated: !p.includes("share controller"),
+      idmzLevel35Enforced: !/\bbypass\s+idmz\b/i.test(p),
+      sisSafetyControllerSegregated: !/\bshare\s+controller\b/i.test(p),
       fieldbusProtocol: "MODBUS_TCP",
-      secureModbusTlsEnabled: p.includes("tls"),
+      secureModbusTlsEnabled: /\btls\b/i.test(p),
       airGapOrDataDiodePresent: true
     });
     let md = `### Noctis Industrial Control Systems (ICS/SCADA) Safety Engine (${res.engineId})\n`;
@@ -743,7 +743,7 @@ export function handleNaturalAdvancedItQuery(prompt: string): string | null {
   }
 
   // 4. 5G Standalone Core & Fronthaul
-  if (p.includes("5g") || p.includes("fronthaul") || p.includes("urllc") || p.includes("o-ran") || p.includes("ptp") || p.includes("g.8275.1")) {
+  if (/\b5g\b/i.test(p) || /\bfronthaul\b/i.test(p) || /\burllc\b/i.test(p) || /\bo-ran\b/i.test(p) || /\bptp\b/i.test(p) || /\bg\.8275\.1\b/i.test(p)) {
     const res = evaluate5gCoreSliceAndSync({
       sliceType: "URLLC",
       userPlaneLatencyTargetMs: 0.8,
@@ -769,10 +769,10 @@ export function handleNaturalAdvancedItQuery(prompt: string): string | null {
   }
 
   // 5. Zero-Knowledge Proofs & Verifiable Computing
-  if (p.includes("zk") || p.includes("snark") || p.includes("stark") || p.includes("groth16") || p.includes("plonk") || p.includes("fri")) {
+  if (/\bzk[- ]?(?:snark|stark|proof)/i.test(p) || /\bsnark\b/i.test(p) || /\bzk[- ]?stark\b/i.test(p) || /\bgroth16\b/i.test(p) || /\bplonk\b/i.test(p) || /\bfri\s+protocol\b/i.test(p)) {
     const res = evaluateZkProofSoundness({
-      proofSystem: p.includes("stark") ? "ZK_STARK_FRI" : p.includes("plonk") ? "PLONK" : "GROTH16",
-      trustedSetupType: p.includes("stark") ? "TRANSPARENT_NO_SETUP" : "POWERS_OF_TAU_MULTI_PARTY",
+      proofSystem: /\b(?:zk[- ]?)?stark\b/i.test(p) ? "ZK_STARK_FRI" : /\bplonk\b/i.test(p) ? "PLONK" : "GROTH16",
+      trustedSetupType: /\b(?:zk[- ]?)?stark\b/i.test(p) ? "TRANSPARENT_NO_SETUP" : "POWERS_OF_TAU_MULTI_PARTY",
       trustedSetupParticipantCount: 200,
       plonkPermutationCheckEnforced: true,
       circuitConstraintsCount: 250000

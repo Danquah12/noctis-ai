@@ -201,21 +201,24 @@ export function evaluateGiBleed(input: GiBleedEvaluation): GastroAssessmentResul
 
 export function handleNaturalGastroQuery(prompt: string): string | null {
   const p = prompt.toLowerCase();
+  const hasSbpClinicalContext =
+    /\bsbp\b/i.test(p) &&
+    /\b(?:cirrhosis|ascites|paracentesis|peritonitis|pmn|albumin|cefotaxime|liver|hepatic|meld|spontaneous)\b/i.test(p);
   const isMatch =
     p.includes("cirrhosis") ||
-    p.includes("meld") ||
-    p.includes("sbp") ||
+    /\bmeld\b/i.test(p) ||
+    hasSbpClinicalContext ||
     p.includes("spontaneous bacterial peritonitis") ||
     p.includes("paracentesis") ||
     p.includes("variceal bleed") ||
     p.includes("gi bleed") ||
     p.includes("glasgow-blatchford") ||
-    p.includes("octreotide") && p.includes("bleed");
+    (p.includes("octreotide") && p.includes("bleed"));
 
   if (!isMatch) return null;
 
   // Case 1: Cirrhosis & SBP
-  if (p.includes("cirrhosis") || p.includes("meld") || p.includes("sbp") || p.includes("peritonitis") || p.includes("paracentesis")) {
+  if (p.includes("cirrhosis") || /\bmeld\b/i.test(p) || hasSbpClinicalContext || p.includes("peritonitis") || p.includes("paracentesis")) {
     const isNoParacentesis = p.includes("without paracentesis") || p.includes("skip paracentesis") || p.includes("empiric antibiotics before tap");
     const isNoAlbumin = p.includes("without albumin") || p.includes("no albumin") || p.includes("skip albumin");
 
@@ -236,7 +239,7 @@ export function handleNaturalGastroQuery(prompt: string): string | null {
   }
 
   // Case 2: Acute GI Bleed & Varices
-  if (p.includes("variceal") || p.includes("gi bleed") || p.includes("gbs") || p.includes("octreotide")) {
+  if (p.includes("variceal") || p.includes("gi bleed") || /\bgbs\b/i.test(p) || p.includes("octreotide")) {
     const isOverTransfusion = p.includes("target hb 10") || p.includes("transfuse to 11") || p.includes("liberal transfusion");
     const isBetaBlockerActive = p.includes("propranolol") || p.includes("nadolol") || p.includes("continue beta-blocker");
 

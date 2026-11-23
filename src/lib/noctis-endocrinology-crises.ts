@@ -291,10 +291,13 @@ export function evaluatePheochromocytoma(input: PheochromocytomaEvaluation): End
 
 export function handleNaturalEndocrinologyQuery(prompt: string): string | null {
   const p = prompt.toLowerCase();
+  const hasHhsEndoContext =
+    /\bhhs\b/i.test(p) &&
+    /\b(?:glucose|hyperosmolar|hyperglyc|insulin|ketone|potassium|osmolality|dehydrat|diabetic|dka|patient)\b/i.test(p);
   const isEndo =
-    p.includes("dka") ||
+    /\bdka\b/i.test(p) ||
     p.includes("diabetic ketoacidosis") ||
-    p.includes("hhs") ||
+    hasHhsEndoContext ||
     p.includes("hyperosmolar hyperglycemic") ||
     p.includes("thyroid storm") ||
     p.includes("burch-wartofsky") ||
@@ -306,7 +309,7 @@ export function handleNaturalEndocrinologyQuery(prompt: string): string | null {
   if (!isEndo) return null;
 
   // Case 1: DKA / HHS
-  if (p.includes("dka") || p.includes("ketoacidosis") || p.includes("hhs") || p.includes("glucose")) {
+  if (/\bdka\b/i.test(p) || p.includes("ketoacidosis") || hasHhsEndoContext || p.includes("glucose")) {
     const isHypokalemic = p.includes("k 2.") || p.includes("potassium 2.") || p.includes("k+ 2.") || p.includes("k 3.1");
     const isBelow200NoDextrose = p.includes("glucose 180") || p.includes("glucose 190") || p.includes("without dextrose");
 

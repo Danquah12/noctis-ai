@@ -1634,7 +1634,7 @@ export function handleNaturalFrontierTracksQuery(prompt: string): string | null 
   const p = prompt.toLowerCase();
 
   // 1. Sabatier ISRU Reactor (Track 1)
-  if (p.includes("sabatier") || (p.includes("methane") && p.includes("water yield") && (p.includes("co2") || p.includes("co 2")))) {
+  if (/\bsabatier\b/i.test(p) || (/\bmethane\b/i.test(p) && /\bwater\s+yield\b/i.test(p) && /\bco\s*2\b/i.test(p))) {
     const co2Match = prompt.match(/(\d+(?:\.\d+)?)\s*(?:kg\/hr|kg\s*\/\s*hr)/i);
     const tempMatch = prompt.match(/(\d{2,4})\s*(?:°\s*c|c\b|degrees)/i);
     const co2Kg = co2Match ? Number(co2Match[1]) : 25;
@@ -1670,7 +1670,7 @@ $$\\text{CO}_2 + 4\\text{H}_2 \\xrightarrow{\\text{Ru}/\\text{Al}_2\\text{O}_3} 
   }
 
   // 2. EUV Lithography & Rayleigh Resolution (Track 2)
-  if (p.includes("rayleigh resolution") || (p.includes("euv") && (p.includes("lithography") || p.includes("pellicle") || p.includes("overlay")))) {
+  if (/\brayleigh\s+resolution\b/i.test(p) || (/\beuv\b/i.test(p) && /\b(?:lithography|pellicle|overlay)\b/i.test(p))) {
     const naMatch = prompt.match(/\bna\s*=\s*(0\.\d+)/i) || prompt.match(/\b(0\.\d+)\s*na\b/i);
     const k1Match = prompt.match(/\bk1\s*=\s*(0\.\d+)/i);
     const tempMatch = prompt.match(/(\d{2,4})\s*(?:°\s*c|c\b)/i);
@@ -1710,7 +1710,7 @@ ${res.safetyVeto ? `Halt wafer exposure immediately. Trigger automated reticle c
   }
 
   // 3. Superconducting Quantum Coherence (Track 2)
-  if (p.includes("transmon") || p.includes("qubit") || (p.includes("cz gate") && p.includes("fidelity"))) {
+  if (/\btransmon\b/i.test(p) || (/\bqubit\b/i.test(p) && /\b(?:t1\b|t2\*?|coherence|dephasing|relaxation|fidelity|cz\s+gate|surface\s+code|superconducting|leakage|microsec|µs|\bns\b)\b/i.test(p)) || (/\bcz\s+gate\b/i.test(p) && /\bfidelity\b/i.test(p))) {
     const t1Match = prompt.match(/t1\s*=\s*(\d+(?:\.\d+)?)/i);
     const t2Match = prompt.match(/t2(?:\*)?\s*=\s*(\d+(?:\.\d+)?)/i);
     const czMatch = prompt.match(/cz\s*gate\s*(?:duration\s*)?(\d+)\s*ns/i);
@@ -1738,7 +1738,7 @@ ${res.safetyVeto ? `Halt wafer exposure immediately. Trigger automated reticle c
   }
 
   // 4. CRISPR-Cas9 Genomic Engineering (Track 4)
-  if (p.includes("spcas9") || (p.includes("crispr") && (p.includes("cfd") || p.includes("pam")))) {
+  if (/\bspcas9\b/i.test(p) || (/\bcrispr\b/i.test(p) && /\b(?:cfd|pam|off-target|cas9)\b/i.test(p))) {
     const pamMatch = prompt.match(/pam\s*(?:sequence\s*)?([A-Za-z]{3})/i);
     const cfdMatch = prompt.match(/cfd\s*(?:score\s*(?:is|of|=|:)?\s*)?(\d+(?:\.\d+)?)/i);
     const pam = pamMatch ? pamMatch[1].toUpperCase() : "AGG";
@@ -1801,7 +1801,7 @@ Robotic instrument arms are automatically frozen in place. Haptic master console
   }
 
   // 6. Taylor Rule & Sovereign Macroeconomics (Track 5)
-  if (p.includes("taylor rule") || (p.includes("monetary") && p.includes("inflation") && p.includes("output gap"))) {
+  if (/\btaylor\s+rule\b/i.test(p) || (/\bmonetary\b/i.test(p) && /\binflation\b/i.test(p) && /\boutput\s+gap\b/i.test(p))) {
     const rStarMatch = prompt.match(/r(?:\*)?\s*=\s*(\d+(?:\.\d+)?)/i);
     const piMatch = prompt.match(/(?:current\s+)?inflation\s*(?:pi\s*)?=\s*(\d+(?:\.\d+)?)/i);
     const piStarMatch = prompt.match(/target\s+inflation\s*=\s*(\d+(?:\.\d+)?)/i);
@@ -1864,7 +1864,7 @@ $$\\mathbf{i} = ${rStar} + ${pi} + 0.5(${pi} - ${piStar}) + 0.5(${yGap}) = \\mat
   }
 
   // 7. Wholesale CBDC Settlement (Track 5 standalone)
-  if (p.includes("cbdc") || (p.includes("pacs.009") && p.includes("settle")) || (p.includes("atomic") && p.includes("dvp"))) {
+  if ((/\bcbdc\b/i.test(p) && /\b(?:wholesale|rtgs|dvp|settlement|pacs\.009|atomic|liquidity\s+reserve|iso\s*20022|\bbic\b)\b/i.test(p)) || (/\bpacs\.009\b/i.test(p) && /\bsettle/i.test(p)) || (/\batomic\b/i.test(p) && /\bdvp\b/i.test(p))) {
     const amountMatch = prompt.match(/\$(\d+(?:\.\d+)?)\s*m/i);
     const reserveMatch = prompt.match(/reserve\s*(?:of\s*)?\$(\d+(?:\.\d+)?)\s*m/i);
     const amount = amountMatch ? Number(amountMatch[1]) : 75;
@@ -1894,10 +1894,13 @@ $$\\mathbf{i} = ${rStar} + ${pi} + 0.5(${pi} - ${piStar}) + 0.5(${yGap}) = \\mat
   }
 
   // 8. COLREGS Autonomous Marine Avoidance & Green Marine Ammonia (Track 6)
-  if (p.includes("colregs") || p.includes("give-way") || p.includes("cpa") || p.includes("green ammonia") || p.includes("ammonia slip")) {
+  const hasMaritimeCpa =
+    /\bcpa\b/i.test(p) &&
+    /\b(?:colregs|vessel|ship|maritime|tcpa|nautical|\bnm\b|knots?|starboard|port\s+bow|heading|bearing|give-way|stand-on|radar|arpa|ais|crossing)\b/i.test(p);
+  if (/\bcolregs\b/i.test(p) || /\bgive-way\b/i.test(p) || hasMaritimeCpa || /\bgreen\s+ammonia\b/i.test(p) || /\bammonia\s+slip\b/i.test(p)) {
     let output = "";
 
-    if (p.includes("colregs") || p.includes("give-way") || p.includes("cpa") || p.includes("tcpa") || p.includes("bearing")) {
+    if (/\bcolregs\b/i.test(p) || /\bgive-way\b/i.test(p) || hasMaritimeCpa || /\btcpa\b/i.test(p) || (/\bbearing\b/i.test(p) && /\b(?:vessel|ship|knots?|starboard|heading|radar)\b/i.test(p))) {
       const res = evaluateColregsAutonomousAvoidance({
         ownShipHeadingDeg: 0,
         targetBearingDeg: 35,
@@ -2006,7 +2009,7 @@ $$\\mathbf{i} = ${rStar} + ${pi} + 0.5(${pi} - ${piStar}) + 0.5(${yGap}) = \\mat
   }
 
   // 10. Hypersonic Flight, Scramjet Propulsion & Aerodynamics (Track 8)
-  if (p.includes("scramjet") || p.includes("hypersonic") || p.includes("inlet unstart") || p.includes("shock train") || (p.includes("mach") && (p.includes("aerothermal") || p.includes("stagnation") || p.includes("tps") || p.includes("isolator")))) {
+  if (/\bscramjet\b/i.test(p) || /\bhypersonic\b/i.test(p) || /\binlet\s+unstart\b/i.test(p) || /\bshock\s+train\b/i.test(p) || (/\bmach\s*\d/i.test(p) && /\b(?:aerothermal|stagnation|tps|isolator|ablation)\b/i.test(p))) {
     const machMatch = prompt.match(/\bmach\s*(\d+(?:\.\d+)?)/i);
     const altMatch = prompt.match(/(\d+(?:\.\d+)?)\s*km/i);
     const dynMatch = prompt.match(/(\d+(?:\.\d+)?)\s*kpa/i);
@@ -2104,7 +2107,15 @@ $$\\mathbf{i} = ${rStar} + ${pi} + 0.5(${pi} - ${piStar}) + 0.5(${yGap}) = \\mat
   }
 
   // 12. Sovereign Biosecurity, BSL-4 Containment & DNA Screening (Track 10)
-  if (p.includes("bsl-4") || p.includes("bsl4") || p.includes("biocontainment") || p.includes("select agent") || p.includes("oligo synthesis") || p.includes("gene synthesis screening") || (p.includes("negative pressure") && (p.includes("cascade") || p.includes("differential") || p.includes("pa")))) {
+  if (
+    /\bbsl-?4\b/i.test(p) ||
+    /\bbiocontainment\b/i.test(p) ||
+    /\bselect\s+agent\b/i.test(p) ||
+    /\boligo\s+synthesis\b/i.test(p) ||
+    /\bgene\s+synthesis\s+screening\b/i.test(p) ||
+    (/\bnegative\s+pressure\b/i.test(p) &&
+      /\b(?:cascade|differential|pascal|-?\d+(?:\.\d+)?\s*pa\b|hepa|airlock|anteroom|bsl)\b/i.test(p))
+  ) {
     const pressMatch = prompt.match(/(?:pressure|drops to|rises to)\s*(-?\d+(?:\.\d+)?)\s*pa/i);
     const homolMatch = prompt.match(/(\d+(?:\.\d+)?)\s*%\s*(?:homology)?/i);
 
@@ -2160,16 +2171,15 @@ $$\\mathbf{i} = ${rStar} + ${pi} + 0.5(${pi} - ${piStar}) + 0.5(${yGap}) = \\mat
 
   // 13. Nuclear Fission SMRs & Gen-IV Reactor Physics (Track 11)
   if (
-    p.includes("smr") ||
-    p.includes("small modular reactor") ||
-    p.includes("fast reactor") ||
-    p.includes("reactor physics") ||
-    p.includes("gen-iv") ||
-    p.includes("gen iv") ||
-    p.includes("keff") ||
-    p.includes("dnbr") ||
-    p.includes("doppler temperature") ||
-    (p.includes("nuclear") && (p.includes("reactor") || p.includes("fission") || p.includes("scram") || p.includes("keff") || p.includes("dnbr")))
+    (/\bsmr\b/i.test(p) && !/\b(?:shingled\s+magnetic|hard\s+drive|hdd|\bcmr\b|storage\s+drive)\b/i.test(p)) ||
+    /\bsmall\s+modular\s+reactor\b/i.test(p) ||
+    /\bfast\s+reactor\b/i.test(p) ||
+    /\breactor\s+physics\b/i.test(p) ||
+    /\bgen[- ]iv\b/i.test(p) ||
+    /\bkeff\b/i.test(p) ||
+    /\bdnbr\b/i.test(p) ||
+    /\bdoppler\s+temperature\b/i.test(p) ||
+    (/\bnuclear\b/i.test(p) && /\b(?:reactor|fission|scram|keff|dnbr)\b/i.test(p))
   ) {
     const keffMatch = prompt.match(/\bkeff\s*(?:reaches|is|=|of)?\s*(1\.\d+)/i) || prompt.match(/\b(1\.\d{3,5})\b/i);
     const dnbrMatch = prompt.match(/\bdnbr\s*(?:reaches|is|=|of)?\s*(\d+(?:\.\d+)?)/i);
@@ -2218,7 +2228,14 @@ $$\\mathbf{i} = ${rStar} + ${pi} + 0.5(${pi} - ${piStar}) + 0.5(${yGap}) = \\mat
   }
 
   // 14. Autonomous Drone Swarm Defense & Electronic Warfare (C-UAS / EW) (Track 12)
-  if (p.includes("drone swarm") || p.includes("c-uas") || p.includes("counter-uas") || (p.includes("swarm") && (p.includes("defense") || p.includes("laser") || p.includes("jamming") || p.includes("iff")))) {
+  if (
+    /\bdrone\s+swarm\b/i.test(p) ||
+    /\bc-uas\b/i.test(p) ||
+    /\bcounter-uas\b/i.test(p) ||
+    (/\bswarm\b/i.test(p) &&
+      /\b(?:defense|laser|jamming|iff|uav|uas|drone|radar|effector)\b/i.test(p) &&
+      !/\b(?:agent\s+swarm|work\s+swarm|docker\s+swarm|subagent\s+swarm)\b/i.test(p))
+  ) {
     const isFriendly = p.includes("friendly") || p.includes("iff mode 5 valid") || p.includes("mode 5 confirmed");
     const countMatch = prompt.match(/(\d+)\s*(?:drones?|targets?|uas)/i);
     const count = countMatch ? Number(countMatch[1]) : 12;
@@ -2256,7 +2273,15 @@ $$\\mathbf{i} = ${rStar} + ${pi} + 0.5(${pi} - ${piStar}) + 0.5(${yGap}) = \\mat
   }
 
   // 15. Quantum Cryptography, Post-Quantum Cryptanalysis & QKD (Track 13)
-  if (p.includes("qkd") || p.includes("bb84") || p.includes("qber") || p.includes("post-quantum") || p.includes("ml-kem") || p.includes("kyber") || (p.includes("quantum") && (p.includes("cryptography") || p.includes("key distribution") || p.includes("eavesdropping")))) {
+  if (
+    /\bqkd\b/i.test(p) ||
+    /\bbb84\b/i.test(p) ||
+    /\bqber\b/i.test(p) ||
+    /\bpost-quantum\b/i.test(p) ||
+    /\bml-kem\b/i.test(p) ||
+    /\bkyber\b/i.test(p) ||
+    (/\bquantum\b/i.test(p) && /\b(?:cryptography|key\s+distribution|eavesdropping)\b/i.test(p))
+  ) {
     const qberMatch = prompt.match(/(\d+(?:\.\d+)?)\s*%\s*(?:qber)?/i);
     const qber = qberMatch ? Number(qberMatch[1]) : (p.includes("exceeds 11") || p.includes("12") ? 13.5 : 3.2);
 
@@ -2290,7 +2315,16 @@ $$\\mathbf{i} = ${rStar} + ${pi} + 0.5(${pi} - ${piStar}) + 0.5(${yGap}) = \\mat
   }
 
   // 16. Agrigenomics & Vertical Farming Biospheres (Track 14)
-  if (p.includes("vertical farm") || p.includes("vertical farming") || p.includes("agrigenomics") || p.includes("cea") || p.includes("root-zone") || (p.includes("biosphere") && (p.includes("farm") || p.includes("crop") || p.includes("hydroponic") || p.includes("aeroponic")))) {
+  if (
+    /\bvertical\s+farm(?:ing|s)?\b/i.test(p) ||
+    /\bagrigenomics\b/i.test(p) ||
+    /\bcontrolled[- ]environment\s+agriculture\b/i.test(p) ||
+    (/\bcea\b/i.test(p) &&
+      /\b(?:hydroponic|aeroponic|vertical\s+farm|biosphere|vpd|ppfd|dli|root[- ]zone|greenhouse|crop|agricultur\w*|nutrient|co2|dissolved\s+oxygen)\b/i.test(p)) ||
+    (/\broot[- ]zone\b/i.test(p) &&
+      /\b(?:hydroponic|aeroponic|\bec\b|\bph\b|dissolved\s+oxygen|hypoxia|nutrient|crop|plant|farm)\b/i.test(p)) ||
+    (/\bbiosphere\b/i.test(p) && /\b(?:farm|crop|hydroponic|aeroponic)\b/i.test(p))
+  ) {
     const doMatch = prompt.match(/(\d+(?:\.\d+)?)\s*(?:mg\/l|ppm\s*do)/i);
     const co2Match = prompt.match(/(\d{3,4})\s*ppm\s*co2/i);
 
@@ -2329,7 +2363,14 @@ $$\\mathbf{i} = ${rStar} + ${pi} + 0.5(${pi} - ${piStar}) + 0.5(${yGap}) = \\mat
   }
 
   // 17. 6G Terahertz & Quantum Telecommunications (Track 15)
-  if (p.includes("6g") || p.includes("terahertz") || p.includes("sub-thz") || (p.includes("telecom") && (p.includes("urllc") || p.includes("preemption") || p.includes("sar")))) {
+  if (
+    (/\b6g\b/i.test(p) &&
+      !/\b6g\s*(?:of\s+)?(?:fat|sugar|protein|carbs?|sodium|fiber|salt|dose|tablet|capsule)\b/i.test(p) &&
+      /\b(?:terahertz|thz|sub-thz|telecom|wireless|network|urllc|beamform|antenna|spectrum|latency|sar|e911|firstnet|preemption|3gpp|imt-2030|cellular|ran|mimo|ghz)\b/i.test(p)) ||
+    /\bterahertz\b/i.test(p) ||
+    /\bsub-thz\b/i.test(p) ||
+    (/\btelecom\b/i.test(p) && /\b(?:urllc|preemption|sar)\b/i.test(p))
+  ) {
     const isE911 = p.includes("e911") || p.includes("firstnet") || p.includes("emergency preemption");
     const freqMatch = prompt.match(/(\d+)\s*ghz/i);
     const freq = freqMatch ? Number(freqMatch[1]) : 140;

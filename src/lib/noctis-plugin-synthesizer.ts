@@ -4,7 +4,7 @@
 // Eliminates cold refusals ("Not in the record") on plugin workflows.
 // ============================================================================
 
-import { SOVEREIGN_PLUGIN_SCENARIOS } from "@/lib/noctis-plugin-scenarios";
+import { SOVEREIGN_PLUGIN_SCENARIOS } from "./noctis-plugin-scenarios.ts";
 
 export interface PluginSynthesisResult {
   isPluginQuery: boolean;
@@ -18,12 +18,10 @@ export interface PluginSynthesisResult {
  */
 export function detectPluginQuery(prompt: string): { isPlugin: boolean; pluginId?: string; pluginName?: string } {
   const p = prompt.trim().toLowerCase();
+  if (!p) return { isPlugin: false };
 
-  // Explicit prompt scenario matches
+  // 1. Exact built-in scenario prompt prefix matches
   for (const [id, scenario] of Object.entries(SOVEREIGN_PLUGIN_SCENARIOS)) {
-    if (p.includes(scenario.name.toLowerCase())) {
-      return { isPlugin: true, pluginId: id, pluginName: scenario.name };
-    }
     for (const promptItem of scenario.prompts) {
       if (p.includes(promptItem.prompt.toLowerCase().slice(0, 30))) {
         return { isPlugin: true, pluginId: id, pluginName: scenario.name };
@@ -31,38 +29,123 @@ export function detectPluginQuery(prompt: string): { isPlugin: boolean; pluginId
     }
   }
 
-  // Common plugin verbs + names
-  const pluginKeywords: { regex: RegExp; id: string; name: string }[] = [
-    { regex: /\b(adobe|photoshop|illustrator|creative cloud)\b/i, id: "adobe", name: "Adobe Creative Cloud" },
-    { regex: /\b(crowdstrike|falcon)\b/i, id: "crowdstrike_falcon", name: "CrowdStrike Falcon X" },
-    { regex: /\b(wiz|cnapp|cloud security graph)\b/i, id: "wiz_cloud", name: "Wiz Cloud Security" },
-    { regex: /\b(nvidia|dgx|nemo|tensorrt)\b/i, id: "nvidia_enterprise", name: "NVIDIA DGX & NeMo" },
-    { regex: /\b(bloomberg|b-pipe|bond yield curve|cds spread)\b/i, id: "bloomberg_terminal", name: "Bloomberg Enterprise" },
-    { regex: /\b(linear|sprint cycle|issue tracking)\b/i, id: "linear_app", name: "Linear Enterprise" },
-    { regex: /\b(datadog|apm trace|service map)\b/i, id: "datadog_apm", name: "Datadog Observability" },
-    { regex: /\b(hashicorp vault|vault secrets|pki lease)\b/i, id: "hashicorp_vault", name: "HashiCorp Vault" },
-    { regex: /\b(gmail|inbox triage|unread emails)\b/i, id: "gmail", name: "Gmail" },
-    { regex: /\b(github|pull request|commit history|ci\/cd workflow)\b/i, id: "github", name: "GitHub" },
-    { regex: /\b(supabase|postgres|postgresql|rls policy)\b/i, id: "supabase", name: "Supabase & PostgreSQL" },
-    { regex: /\b(google drive|docs|sheets|dlp audit)\b/i, id: "google_drive", name: "Google Drive" },
-    { regex: /\b(renal biomarker|ckd-epi|egfr|hyperkalemia|fhir r4)\b/i, id: "health", name: "Health & Clinical Reasoning" },
-    { regex: /\b(xtrike|sast 710|owasp top 10)\b/i, id: "xtrike_sast", name: "XTRIKE SAST Core" },
-    { regex: /\b(trepath|attack path|cvss\/epss)\b/i, id: "trepath_threat", name: "TREPATH Threat Modeler" },
-    { regex: /\b(stripe|arr cohorts|net revenue retention|nrr)\b/i, id: "stripe", name: "Stripe Billing & Payments" },
-    { regex: /\b(pitchbook|venture capital|lp commitment)\b/i, id: "pitchbook_venture", name: "PitchBook Private Markets" },
-    { regex: /\b(carta|cap table|409a valuation)\b/i, id: "carta_equity", name: "Carta Cap Table & 409A" },
-    { regex: /\b(proton|protonmail|pgp)\b/i, id: "proton_sovereign", name: "ProtonMail Sovereign" },
-    { regex: /\b(signal|ephemeral message)\b/i, id: "signal_enterprise", name: "Signal Private Messaging" },
+  const hasPluginOpsIntent =
+    /\b(?:scan\s+my|audit\s+my|triage\s+my|check\s+my|inspect\s+my|query\s+my|pull\s+from|sync\s+with|connect\s+(?:my|our)\s+|connected\s+(?:workspace|connector|plugin|integration)|enterprise\s+(?:plugin|connector|gateway|telemetry|bridge|sandbox)|last\s+24\s+hours|unread\s+emails|inbox\s+triage|dlp\s+audit|arr\s+cohorts|net\s+revenue\s+retention|409a\s+valuation|cap\s+table|rls\s+policy|sast\s+710|b-pipe|cnapp|cloud\s+security\s+graph|pki\s+lease|vault\s+secrets|apm\s+trace|service\s+map|sprint\s+cycle|sovereign\s+(?:plugin|integration))\b/i.test(
+      prompt,
+    );
+
+  const isWebAppOrConceptPrompt =
+    /\b(?:(?:design|build|create|develop|architect|plan|make|code|scaffold)\s+(?:a|an|the|my|our)?\s*(?:[a-z0-9-]+\s+){0,4}(?:web\s*site|website|web\s+app|web\s+application|landing\s+page|homepage|portal|marketplace|platform|e-commerce|store|mobile\s+app|dashboard|saas|blog|portfolio)|(?:what\s+is|explain|how\s+does|how\s+do|compare|difference\s+between|tutorial|guide\s+to)\b)/i.test(
+      prompt,
+    );
+
+  if (isWebAppOrConceptPrompt && !hasPluginOpsIntent) {
+    return { isPlugin: false };
+  }
+
+  // 2. Explicit scenario name matches (require word boundaries, and ops intent for single-word names)
+  for (const [id, scenario] of Object.entries(SOVEREIGN_PLUGIN_SCENARIOS)) {
+    const scenarioName = scenario.name.toLowerCase();
+    const escaped = scenarioName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const nameRe = new RegExp(`(?:^|[^a-z0-9])${escaped}(?:$|[^a-z0-9])`, "i");
+    if (!nameRe.test(p)) continue;
+
+    if (scenarioName.includes(" ")) {
+      return { isPlugin: true, pluginId: id, pluginName: scenario.name };
+    }
+    const directOpsRe = new RegExp(
+      `\\b(?:scan|audit|triage|query|inspect|sync|check|fetch|pull|connect)\\s+(?:my\\s+|our\\s+|the\\s+)?${escaped}\\b`,
+      "i",
+    );
+    if (hasPluginOpsIntent || directOpsRe.test(prompt)) {
+      return { isPlugin: true, pluginId: id, pluginName: scenario.name };
+    }
+  }
+
+  // 3. Common plugin keywords + enterprise telemetry phrases
+  const pluginKeywords: {
+    regex: RegExp;
+    id: string;
+    name: string;
+    opsRegex?: RegExp;
+    telemetryRegex?: RegExp;
+  }[] = [
+    {
+      regex: /\b(?:adobe|photoshop|illustrator|creative\s+cloud)\b/i,
+      opsRegex: /\b(?:scan|audit|triage|query|inspect|sync|check|fetch|pull|connect)\s+(?:my\s+|our\s+|the\s+)?(?:adobe|creative\s+cloud)\b/i,
+      id: "adobe",
+      name: "Adobe Creative Cloud",
+    },
+    {
+      regex: /\b(?:crowdstrike|crowdstrike\s+falcon|falcon\s+(?:edr|xdr|sensor|x))\b/i,
+      id: "crowdstrike_falcon",
+      name: "CrowdStrike Falcon X",
+    },
+    { regex: /\b(?:wiz|cnapp|cloud\s+security\s+graph)\b/i, id: "wiz_cloud", name: "Wiz Cloud Security" },
+    { regex: /\b(?:nvidia|dgx|nemo|tensorrt)\b/i, id: "nvidia_enterprise", name: "NVIDIA DGX & NeMo" },
+    { regex: /\b(?:bloomberg|b-pipe|bond\s+yield\s+curve|cds\s+spread)\b/i, id: "bloomberg_terminal", name: "Bloomberg Enterprise" },
+    {
+      regex: /\b(?:linear\s+(?:app|enterprise|issues?|workspace|sprint)|sprint\s+cycle|issue\s+tracking)\b/i,
+      id: "linear_app",
+      name: "Linear Enterprise",
+    },
+    { regex: /\b(?:datadog|apm\s+trace|service\s+map)\b/i, id: "datadog_apm", name: "Datadog Observability" },
+    { regex: /\b(?:hashicorp\s+vault|vault\s+secrets|pki\s+lease)\b/i, id: "hashicorp_vault", name: "HashiCorp Vault" },
+    {
+      regex: /\b(?:gmail|inbox\s+triage|unread\s+emails)\b/i,
+      opsRegex: /\b(?:scan|audit|triage|query|inspect|sync|check|fetch|pull|connect)\s+(?:my\s+|our\s+|the\s+)?gmail\b/i,
+      telemetryRegex: /\b(?:inbox\s+triage|unread\s+emails)\b/i,
+      id: "gmail",
+      name: "Gmail",
+    },
+    {
+      regex: /\b(?:github|pull\s+request|commit\s+history|ci\/cd\s+workflow)\b/i,
+      opsRegex: /\b(?:scan|audit|triage|query|inspect|sync|check|fetch|pull|connect)\s+(?:my\s+|our\s+|the\s+)?github\b/i,
+      telemetryRegex: /\b(?:pull\s+request|commit\s+history)\b/i,
+      id: "github",
+      name: "GitHub",
+    },
+    {
+      regex: /\b(?:supabase|postgres|postgresql|rls\s+policy)\b/i,
+      opsRegex: /\b(?:scan|audit|triage|query|inspect|sync|check|fetch|pull|connect)\s+(?:my\s+|our\s+|the\s+)?(?:supabase|postgres|postgresql)\b/i,
+      telemetryRegex: /\brls\s+policy\b/i,
+      id: "supabase",
+      name: "Supabase & PostgreSQL",
+    },
+    { regex: /\b(?:google\s+drive|google\s+docs|google\s+sheets|dlp\s+audit)\b/i, id: "google_drive", name: "Google Drive" },
+    { regex: /\b(?:renal\s+biomarker|ckd-epi|egfr|hyperkalemia|fhir\s+r4)\b/i, id: "health", name: "Health & Clinical Reasoning" },
+    { regex: /\b(?:xtrike|sast\s+710|owasp\s+top\s+10)\b/i, id: "xtrike_sast", name: "XTRIKE SAST Core" },
+    { regex: /\b(?:trepath|attack\s+path|cvss\/epss)\b/i, id: "trepath_threat", name: "TREPATH Threat Modeler" },
+    {
+      regex: /\b(?:stripe|arr\s+cohorts|net\s+revenue\s+retention|nrr)\b/i,
+      opsRegex: /\b(?:scan|audit|triage|query|inspect|sync|check|fetch|pull|connect)\s+(?:my\s+|our\s+|the\s+)?stripe\b/i,
+      telemetryRegex: /\b(?:arr\s+cohorts|net\s+revenue\s+retention)\b/i,
+      id: "stripe",
+      name: "Stripe Billing & Payments",
+    },
+    { regex: /\b(?:pitchbook|venture\s+capital|lp\s+commitment)\b/i, id: "pitchbook_venture", name: "PitchBook Private Markets" },
+    { regex: /\b(?:carta|cap\s+table|409a\s+valuation)\b/i, id: "carta_equity", name: "Carta Cap Table & 409A" },
+    { regex: /\b(?:protonmail|proton\s+mail|proton\s+sovereign)\b/i, id: "proton_sovereign", name: "ProtonMail Sovereign" },
+    { regex: /\b(?:signal\s+(?:enterprise|messenger|private\s+messaging|ephemeral)|ephemeral\s+message)\b/i, id: "signal_enterprise", name: "Signal Private Messaging" },
   ];
 
   for (const item of pluginKeywords) {
-    if (item.regex.test(prompt)) {
+    if (!item.regex.test(prompt)) continue;
+    const isStackBrandGuarded = Boolean(item.opsRegex || item.telemetryRegex);
+    if (!isStackBrandGuarded) {
+      return { isPlugin: true, pluginId: item.id, pluginName: item.name };
+    }
+    const hasOpsForBrand = hasPluginOpsIntent || Boolean(item.opsRegex?.test(prompt));
+    const hasTelemetryForBrand = Boolean(item.telemetryRegex?.test(prompt)) && !isWebAppOrConceptPrompt;
+    if (hasOpsForBrand || hasTelemetryForBrand) {
       return { isPlugin: true, pluginId: item.id, pluginName: item.name };
     }
   }
 
-  // Catch-all: "Query [Vendor] for..." or "Use [Vendor] to..."
-  const match = prompt.match(/\b(?:query|audit|triage|scan|inspect|use)\s+([a-zA-Z0-9_\-]+)\s+(?:for|to|across)\b/i);
+  // 4. Catch-all: explicit connector/workspace operation ("Query/Audit/Scan <Vendor> plugin|connector|workspace...")
+  const match = prompt.match(
+    /\b(?:query|audit|triage|scan|inspect)\s+(?:my\s+|our\s+)?([a-zA-Z0-9_\-]+)\s+(?:plugin|connector|integration|workspace|inbox|tenant|account|org)\b/i,
+  );
   if (match && match[1]) {
     const rawName = match[1];
     return { isPlugin: true, pluginId: rawName.toLowerCase(), pluginName: rawName };

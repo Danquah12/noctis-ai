@@ -476,6 +476,16 @@ export function handleNaturalWorkSwarmQuery(question: string): string | null {
   const q = (question || "").trim();
   if (!q) return null;
 
+  const isSoftwareBuildPrompt =
+    /\b(?:build|design|create|develop|architect)\s+(?:a|an|the|my|our)?\s*(?:[a-z0-9-]+\s+){0,4}(?:platform|website|web\s*site|web\s+app|application|system|product|tool|saas)\b/i.test(
+      q,
+    );
+  const hasExplicitSwarmMissionIntent =
+    /\b(?:run|execute|launch|simulate|trigger)\s+(?:a\s+|the\s+)?(?:multi-agent\s+)?(?:work\s*swarm|swarm\s+mission)|solvency|runway|ransomware|harvester\s+quant\s+challenger\b/i.test(
+      q,
+    );
+  if (isSoftwareBuildPrompt && !hasExplicitSwarmMissionIntent) return null;
+
   const isSwarmProbe =
     /\b(?:work\s*swarm|agent\s*swarm|orchestrat\w*\s+swarm|swarm\s+mission|multi-agent\s+pipeline|swarm\s+orchestrat\w*|harvester\s+quant\s+challenger)\b/i.test(
       q

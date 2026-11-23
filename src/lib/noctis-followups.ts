@@ -566,10 +566,12 @@ function stripQuestionVerbPrefix(question: string): string {
     .replace(/^(?:in\s+(?:\d+|one|two|three|four|five)\s+(?:concise\s+|short\s+|brief\s+)?(?:sentences?|paragraphs?|bullets?|bullet\s+points?|lines?|words?|steps?)\s*[,:-]?\s*)/i, "")
     .replace(/^(?:(?:briefly|concisely|simply|step\s+by\s+step)\s*[,:-]?\s*)/i, "")
     .replace(/^(?:please\s+|can\s+you\s+|could\s+you\s+|would\s+you\s+)/i, "")
+    .replace(/^(?:let'?s|let\s+us|help\s+me|i\s+want\s+to|we\s+want\s+to|we\s+can)\s+/i, "")
     .replace(
       /^(?:tell\s+me(?:\s+more)?\s+about|explain(?:\s+to\s+me)?(?:\s+(?:how|why|what))?|describe|summarize|summarise|analyze|analyse|compare|interpret|elaborate\s+on|walk\s+me\s+through|break\s+down|what(?:\s+(?:is|are|was|were))?|who(?:\s+(?:is|are|was|were))?|how(?:\s+(?:does|do|did|can|to))?|why(?:\s+(?:does|do|did|is|are))?|write(?:\s+(?:a|an|the))?|create(?:\s+(?:a|an|the))?|design(?:\s+(?:a|an|the))?|build(?:\s+(?:a|an|the))?|investigate|look\s+up|review)\s+/i,
       "",
     )
+    .replace(/^(?:web\s*site|website)\s+(?:about(?:e)?|for|on)\s+(?=[a-z0-9])/i, "")
     .replace(/^(?:the|a|an)\s+(?=(?:\d{4}\s+)?(?:[A-Z]|album|song|film|cve|protocol|concept|process))/i, "")
     .replace(/[?!.]+$/, "")
     .replace(/\s+/g, " ")

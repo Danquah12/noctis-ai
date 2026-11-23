@@ -1361,7 +1361,7 @@ export function handleNaturalBibleQuery(question: string): string | null {
   const q = question.trim();
   if (!q) return null;
 
-  // Guard: do not intercept cyber, clinical, automotive, engineering, or financial/investment queries
+  // Guard: do not intercept cyber, clinical, automotive, engineering, financial/investment, or website/app design queries
   if (
     /\b(cwe-\d+|cve-\d{4}-\d+|sast|dast|ssrf|sql\s+injection|command\s+injection|bola\b|idor\b|mitre\s+att&ck|ransomware)\b/i.test(
       q
@@ -1371,7 +1371,13 @@ export function handleNaturalBibleQuery(question: string): string | null {
     ) ||
     /\b(obd-ii|fuel\s+trim|crankcase|dpf\b|ifc\s*4\.3|buildingsmart|eurocode|microgrid|operating\s+cash\s+flow|receivables\s+rise|sec\s+edgar|noctis-invest-001)\b/i.test(
       q
-    )
+    ) ||
+    (/\b(?:design|build|create|develop|architect)\s+(?:a|an|the|my|our)?\s*(?:[a-z0-9-]+\s+){0,4}(?:web\s*site|website|web\s+app|web\s+application|portal|platform|landing\s+page|homepage|mobile\s+app)\b/i.test(
+      q
+    ) &&
+      !/\b(?:noctis\s+bible\s+intelligence|noctis-bible-001|prepare\s+a\s+.*sermon|sermon\s+on\b|bible\s+study\s+lesson|genesis\s+to\s+revelation)\b/i.test(
+        q
+      ))
   ) {
     return null;
   }

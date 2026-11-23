@@ -573,14 +573,24 @@ export function generateAllInformationTechnologyScenarios(): ItScenarioTest[] {
 export function handleNaturalInformationTechnologyQuery(prompt: string): string | null {
   const p = prompt.toLowerCase();
 
+  const isWebOrAppDesignBrief =
+    /\b(?:design|build|create|develop|architect)\s+(?:a|an|the|my|our)?\s*(?:[a-z0-9-]+\s+){0,4}(?:web\s*site|website|web\s+app|web\s+application|landing\s+page|homepage|portal|marketplace|e-commerce|store|mobile\s+app|saas)\b/i.test(
+      p,
+    );
+  const hasExplicitItDomainTrigger =
+    /\b(?:raft\s+consensus|split[- ]brain|bgp\s+route|route\s+flap|rpki|mvcc|serializable\s+snapshot|write\s+skew|sre\s+error\s+budget|burn\s+rate|ebpf\s+verifier|cgroups\s+v2|oauth2\s+pkce|code_challenge|kv[- ]cache|pagedattention|vllm|ure\s+failure|raid\s+[56]|zfs|10\s+domains\s+in\s+information\s+technology|it\s+domains)\b/i.test(
+      p,
+    );
+  if (isWebOrAppDesignBrief && !hasExplicitItDomainTrigger) return null;
+
   const isItQuery =
     /\b(raft consensus|split[- ]brain|kubernetes|k8s|service mesh|bgp route|route flap|rpki|ip route|mvcc|serializable snapshot isolation|write skew|acid isolation|sre error budget|slo|sla|burn rate|amdahl['’]?s law|ebpf verifier|cgroups v2|oauth2 pkce|pkce|code_challenge|kv[- ]cache|pagedattention|vllm|rto|rpo|ure failure|raid 5|raid 6|zfs raidz|zfs zil|information technology|it domains)\b/i.test(p);
 
   if (!isItQuery) return null;
 
   // 1. Raft & Distributed Systems
-  if (p.includes("raft") || p.includes("consensus") || p.includes("split brain") || p.includes("split-brain") || p.includes("quorum")) {
-    const res = evaluateDistributedRaftQuorum({ clusterNodes: 5, unresponsiveNodes: 2, splitBrainDetected: p.includes("split") });
+  if (/\braft\b/i.test(p) || /\bconsensus\b/i.test(p) || /\bsplit[- ]brain\b/i.test(p) || /\bquorum\b/i.test(p)) {
+    const res = evaluateDistributedRaftQuorum({ clusterNodes: 5, unresponsiveNodes: 2, splitBrainDetected: /\bsplit\b/i.test(p) });
     let md = `### Noctis Sovereign Distributed Systems & Consensus Engine (${res.engineId})\n`;
     md += `**Subsystem Domain:** \`${res.domain}\` · **Standard:** ${res.standardsReferenced.join(" · ")}\n\n`;
     md += `#### 1. Cluster Quorum & Consensus Telemetry\n`;
@@ -599,7 +609,7 @@ export function handleNaturalInformationTechnologyQuery(prompt: string): string 
   }
 
   // 2. BGP & Networking
-  if (p.includes("bgp") || p.includes("route flap") || p.includes("dampen") || p.includes("rpki")) {
+  if (/\bbgp\b/i.test(p) || /\broute\s+flap\b/i.test(p) || /\bdampen/i.test(p) || /\brpki\b/i.test(p)) {
     const res = evaluateBgpRouteFlapDampening({ routeFlapCount: 3, flapTimeWindowSeconds: 60 });
     let md = `### Noctis Enterprise Core Networking Engine (${res.engineId})\n`;
     md += `**Subsystem Domain:** \`${res.domain}\` · **Standard:** ${res.standardsReferenced.join(" · ")}\n\n`;
@@ -613,7 +623,7 @@ export function handleNaturalInformationTechnologyQuery(prompt: string): string 
   }
 
   // 3. PostgreSQL MVCC & ACID
-  if (p.includes("postgres") || p.includes("mvcc") || p.includes("write skew") || p.includes("serializable") || p.includes("isolation level")) {
+  if (/\bpostgres(?:ql)?\b/i.test(p) || /\bmvcc\b/i.test(p) || /\bwrite\s+skew\b/i.test(p) || /\bserializable\b/i.test(p) || /\bisolation\s+level\b/i.test(p)) {
     const res = evaluatePostgresMvccIsolation({ isolationLevel: "SERIALIZABLE", concurrentWriteDetected: false, writeSkewPotential: false });
     let md = `### Noctis Sovereign Relational Database Engine (${res.engineId})\n`;
     md += `**Subsystem Domain:** \`${res.domain}\` · **Standard:** ${res.standardsReferenced.join(" · ")}\n\n`;
@@ -628,7 +638,7 @@ export function handleNaturalInformationTechnologyQuery(prompt: string): string 
   }
 
   // 4. SRE & Error Budgets
-  if (p.includes("error budget") || p.includes("slo") || p.includes("sla") || p.includes("burn rate")) {
+  if (/\berror\s+budget\b/i.test(p) || /\bslo\b/i.test(p) || /\bsla\b/i.test(p) || /\bburn\s+rate\b/i.test(p)) {
     const res = evaluateSreErrorBudget({ targetSloPercent: 99.9, periodDays: 30, currentOutageMinutes: 12 });
     let md = `### Noctis Site Reliability Engineering Engine (${res.engineId})\n`;
     md += `**Subsystem Domain:** \`${res.domain}\` · **Standard:** ${res.standardsReferenced.join(" · ")}\n\n`;
@@ -643,7 +653,7 @@ export function handleNaturalInformationTechnologyQuery(prompt: string): string 
   }
 
   // 5. eBPF & Linux Kernel
-  if (p.includes("ebpf") || p.includes("verifier") || p.includes("cgroups") || p.includes("kernel")) {
+  if (/\bebpf\b/i.test(p) || /\bverifier\b/i.test(p) || /\bcgroups\b/i.test(p) || /\bkernel\b/i.test(p)) {
     const res = evaluateLinuxEbpfSafety({ instructionCount: 8400, unboundedLoopDetected: false, unalignedMemoryAccess: false, helperFunctionIdValid: true });
     let md = `### Noctis Operating Systems & Systems Programming Engine (${res.engineId})\n`;
     md += `**Subsystem Domain:** \`${res.domain}\` · **Standard:** ${res.standardsReferenced.join(" · ")}\n\n`;
@@ -658,7 +668,7 @@ export function handleNaturalInformationTechnologyQuery(prompt: string): string 
   }
 
   // 6. OAuth2 & PKCE
-  if (p.includes("oauth") || p.includes("pkce") || p.includes("code_challenge") || p.includes("authorization code")) {
+  if (/\boauth\b/i.test(p) || /\bpkce\b/i.test(p) || /\bcode_challenge\b/i.test(p) || /\bauthorization\s+code\b/i.test(p)) {
     const res = evaluateOAuth2PkceSecurity({ codeChallengeMethod: "S256", hasClientSecretOnPublicClient: false, tokenEndpointTlsVersion: 1.3 });
     let md = `### Noctis Identity, Access & Cryptographic Security Engine (${res.engineId})\n`;
     md += `**Subsystem Domain:** \`${res.domain}\` · **Standard:** ${res.standardsReferenced.join(" · ")}\n\n`;
@@ -672,7 +682,7 @@ export function handleNaturalInformationTechnologyQuery(prompt: string): string 
   }
 
   // 7. LLM Inference & KV Cache
-  if (p.includes("kv-cache") || p.includes("kv cache") || p.includes("vllm") || p.includes("pagedattention") || p.includes("vram")) {
+  if (/\bkv[- ]cache\b/i.test(p) || /\bvllm\b/i.test(p) || /\bpagedattention\b/i.test(p) || /\bvram\b/i.test(p)) {
     const res = evaluateLlmInferenceMemory({ parameterCountBillion: 70, contextWindowTokens: 8192, precisionBytes: 2, layersCount: 80, hiddenDim: 8192, numAttentionHeads: 64 });
     let md = `### Noctis AI/ML Infrastructure & MLOps Engine (${res.engineId})\n`;
     md += `**Subsystem Domain:** \`${res.domain}\` · **Standard:** ${res.standardsReferenced.join(" · ")}\n\n`;
