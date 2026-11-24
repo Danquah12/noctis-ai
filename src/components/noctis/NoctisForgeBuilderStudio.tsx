@@ -224,11 +224,15 @@ function normalizeLoadedProject(rawProject: any, fallbackRevisions?: any[]) {
 export interface NoctisForgeBuilderStudioProps {
   initialPrompt?: string;
   initialNonce?: number;
+  initialProjectId?: string;
+  initialProjectNonce?: number;
 }
 
 export function NoctisForgeBuilderStudio({
   initialPrompt,
   initialNonce,
+  initialProjectId,
+  initialProjectNonce,
 }: NoctisForgeBuilderStudioProps = {}) {
   const [prompt, setPrompt] = useState<string>(PRIMARY_STARTERS[0].prompt);
   const [category, setCategory] = useState("");
@@ -323,12 +327,28 @@ export function NoctisForgeBuilderStudio({
     }
   }
 
+  function syncForgeUrlProject(projectId: string) {
+    if (typeof window === "undefined" || window.location.pathname !== "/noctis" || !projectId) return;
+    try {
+      const nextUrl = new URL(window.location.href);
+      nextUrl.searchParams.set("panel", "forge");
+      nextUrl.searchParams.set("project", projectId);
+      const nextTarget = `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`;
+      const currTarget = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+      if (nextTarget !== currTarget) {
+        window.history.replaceState(null, "", nextTarget);
+      }
+    } catch {
+      /* ignore URL sync errors in restricted sandboxes */
+    }
+  }
+
   async function refreshProjects(skipAutoLoad = false) {
     try {
       const [st, env] = await Promise.all([api("/api/v2/forge/status"), api("/api/v2/forge/environment")]);
       setProjectsList(Array.isArray(st.projects) ? st.projects : []);
       setEnvAudit(env);
-      if (!skipAutoLoad && !activeProject && !initialPrompt && Array.isArray(st.projects) && st.projects[0]?.id) {
+      if (!skipAutoLoad && !activeProject && !initialPrompt && !initialProjectId && Array.isArray(st.projects) && st.projects[0]?.id) {
         await loadProjectById(String(st.projects[0].id));
       }
     } catch {
@@ -341,6 +361,7 @@ export function NoctisForgeBuilderStudio({
     if (full.project) {
       const normalized = normalizeLoadedProject(full.project);
       setActiveProject(normalized);
+      syncForgeUrlProject(String(normalized.projectId || id));
       syncVisualControlsFromProject(normalized);
       setRevisions(Array.isArray(full.revisions) ? full.revisions : []);
       setDeployOut(null);
@@ -351,9 +372,17 @@ export function NoctisForgeBuilderStudio({
   }
 
   useEffect(() => {
-    void refreshProjects(Boolean(initialPrompt));
+    void refreshProjects(Boolean(initialPrompt || initialProjectId));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (initialProjectId && initialProjectNonce) {
+      setStage("Preview");
+      void loadProjectById(initialProjectId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialProjectId, initialProjectNonce]);
 
   async function generateProject(promptOverride?: string, categoryOverride?: string) {
     const basePrompt = (promptOverride ?? prompt).trim();
@@ -375,6 +404,7 @@ export function NoctisForgeBuilderStudio({
         accentHex: categoryOverride === "" ? undefined : accentHex,
       });
       setActiveProject(res);
+      syncForgeUrlProject(String(res.projectId || ""));
       syncVisualControlsFromProject(res);
       setStage("Preview");
       setDeployOut(null);

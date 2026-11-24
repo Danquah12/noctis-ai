@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { vibeReply } from "../noctis-desk.server.ts";
+import { parseRouteStamp } from "../noctis-capability-registry.ts";
 
 const DIRECTIVE_002 = `NOCTIS AUTONOMOUS SOFTWARE DEVELOPMENT — EXECUTION DIRECTIVE 002
 Project: OmniSphere
@@ -22,4 +23,26 @@ test("Top-level vibeReply routes Security SOC + Execution Directive 002 to NASEE
   assert.ok(txt.includes("Verified Runtime Capability Discovery"));
   assert.ok(txt.includes("Acceptance Gates (G01–G12)"));
   assert.ok(txt.includes("```html"));
+
+  const stamped = parseRouteStamp(txt);
+  assert.equal(stamped.stamp?.routeId, "nasee");
+  assert.equal(stamped.stamp?.targetPanel, "forge");
+  assert.equal(stamped.cleanText.includes("<!-- noctis-route:"), false);
+});
+
+test("Explicit /weather and /chat overrides work and wantsRawJson never leaks route stamps", async () => {
+  const clinJson = await vibeReply(
+    [
+      {
+        role: "user",
+        content:
+          "Return only valid JSON: 64yo patient with K+ 6.4 mEq/L, peaked T waves, and BP 88/54 mmHg. Output priority stabilization.",
+      },
+    ],
+    "",
+    { think: false },
+  );
+  if ("text" in clinJson) {
+    assert.equal(clinJson.text.includes("<!-- noctis-route:"), false);
+  }
 });

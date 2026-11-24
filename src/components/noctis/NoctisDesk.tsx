@@ -95,6 +95,15 @@ import { textFromDocx, textFromPdf, textFromRtf } from "@/lib/read-document";
 import { saveShareLink } from "@/lib/share-link";
 import { resolveNoctisEngine } from "@/lib/noctis-engine-registry";
 import { buildContextualFollowUps } from "@/lib/noctis-followups";
+import { NoctisCommandPalette } from "@/components/noctis/NoctisCommandPalette";
+import {
+  getPanelSpec,
+  isValidNoctisPanelId,
+  NOCTIS_SLASH_ROUTES,
+  parseRouteStamp,
+  stripLeadingSlashOverride,
+  type NoctisPanelId,
+} from "@/lib/noctis-capability-registry";
 
 function lazyWithRetry<T extends ComponentType<any>>(importer: () => Promise<{ default: T }>) {
   return lazy(() =>
@@ -170,7 +179,8 @@ type Thread = { id: string; title: string; turns: Turn[]; temp?: boolean };
 type Upload = { id: string; name: string; kind: "text" | "image"; text?: string; dataUrl?: string };
 
 function stripThinkBlock(text: string): string {
-  return (text || "").replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+  const withoutThink = (text || "").replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+  return parseRouteStamp(withoutThink).cleanText;
 }
 
 const STORE_BASE = "vibetok-vibe-threads";
@@ -3505,6 +3515,7 @@ function AnswerBody({ text, durationSeconds, engineName, sourcePrompt = "" }: { 
     rawThought = thinkMatch[1].trim();
     lesson = lesson.replace(/<think>[\s\S]*?<\/think>/i, "").trim();
   }
+  lesson = parseRouteStamp(lesson).cleanText;
 
   const clinicalJson = tryParseClinicalHandoffJson(lesson);
   return (
@@ -3602,7 +3613,11 @@ export function NoctisDesk() {
   const [canaryModalOpen, setCanaryModalOpen] = useState(false);
   const [patientDiagnosisModalOpen, setPatientDiagnosisModalOpen] = useState(false);
   const [capabilityMatrixOpen, setCapabilityMatrixOpen] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [forgeBuilderHandoff, setForgeBuilderHandoff] = useState<{ prompt: string; nonce: number } | null>(null);
+  const [forgeProjectHandoff, setForgeProjectHandoff] = useState<{ projectId: string; nonce: number } | null>(null);
+  const [openRouteMenuIdx, setOpenRouteMenuIdx] = useState<number | null>(null);
+  const urlHydratedRef = useRef(false);
   const [factoryStudioOpen, setFactoryStudioOpen] = useState(false);
   const [factoryStudioSystemId, setFactoryStudioSystemId] = useState<string>("noctis-cyber");
   const [factoryStudioTab, setFactoryStudioTab] = useState<"matrix" | "inspector" | "architecture" | "lifecycle" | "bus" | "templates" | "proof">("matrix");
@@ -3968,6 +3983,8 @@ export function NoctisDesk() {
     setZkProofModalOpen(false);
     setLexModalOpen(false);
     setCanaryModalOpen(false);
+    setCommandPaletteOpen(false);
+    setOpenRouteMenuIdx(null);
     setExecutorOpen(false);
     setVoiceModalOpen(false);
     setLibraryPickerOpen(false);
@@ -4060,11 +4077,69 @@ export function NoctisDesk() {
       if ((event.ctrlKey || event.metaKey) && (event.key === "b" || event.key === "B")) {
         event.preventDefault();
         setSidebarOpen((v) => !v);
+      } else if ((event.ctrlKey || event.metaKey) && (event.key === "k" || event.key === "K")) {
+        event.preventDefault();
+        setCommandPaletteOpen((v) => !v);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const syncFromLocation = () => {
+      const params = new URLSearchParams(window.location.search);
+      const panelParam = params.get("panel");
+      const projectParam = params.get("project");
+      const promptParam = params.get("prompt");
+      if (isValidNoctisPanelId(panelParam)) {
+        setDesk(panelParam);
+        setShelf("chats");
+      } else if (projectParam) {
+        setDesk("forge");
+        setShelf("chats");
+      }
+      if (projectParam && projectParam.trim()) {
+        setForgeProjectHandoff({ projectId: projectParam.trim(), nonce: Date.now() });
+      }
+      if (promptParam && promptParam.trim()) {
+        if (panelParam === "forge" || projectParam) {
+          setForgeBuilderHandoff({ prompt: promptParam.trim(), nonce: Date.now() });
+        } else {
+          setDraft(promptParam.trim());
+        }
+      }
+      urlHydratedRef.current = true;
+    };
+    syncFromLocation();
+    window.addEventListener("popstate", syncFromLocation);
+    return () => window.removeEventListener("popstate", syncFromLocation);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !urlHydratedRef.current) return;
+    if (window.location.pathname !== "/noctis") return;
+    try {
+      const nextUrl = new URL(window.location.href);
+      if (desk === "chat") {
+        nextUrl.searchParams.delete("panel");
+        nextUrl.searchParams.delete("project");
+      } else if (desk === "forge") {
+        nextUrl.searchParams.set("panel", "forge");
+      } else {
+        nextUrl.searchParams.set("panel", desk);
+        nextUrl.searchParams.delete("project");
+      }
+      const nextTarget = `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`;
+      const currTarget = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+      if (nextTarget !== currTarget) {
+        window.history.replaceState(null, "", nextTarget);
+      }
+    } catch {
+      /* ignore URL write-back errors */
+    }
+  }, [desk]);
 
   useEffect(() => {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: "smooth" });
@@ -7871,8 +7946,19 @@ export function NoctisDesk() {
             </div>
           </div>
 
-          {/* Right: Studio Capabilities, Brain, Agents, Utilities & Logout */}
+          {/* Right: Quick Switcher, Studio Capabilities, Brain, Agents, Utilities & Logout */}
           <div className="flex items-center gap-1 2xl:gap-1.5 shrink-0">
+            <button
+              type="button"
+              aria-label="Open Command Palette"
+              onClick={() => setCommandPaletteOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.04] hover:border-[#e4b86a]/45 hover:bg-white/10 px-2 sm:px-2.5 py-1 text-xs font-medium text-zinc-200 transition cursor-pointer"
+              title="Jump to any Noctis console, saved Forge app, or /command (Ctrl+K)"
+            >
+              <Search className="size-3.5 text-[#e4b86a] shrink-0" />
+              <span className="hidden lg:inline">Jump</span>
+              <kbd className="hidden sm:inline rounded bg-black/40 px-1 py-0.5 font-mono text-[10px] text-zinc-400">⌘K</kbd>
+            </button>
             <button
               type="button"
               aria-label="Capabilities"
@@ -8133,6 +8219,8 @@ export function NoctisDesk() {
                   onOpenInCanvas={(title, md) => openInCanvas(title, md)}
                   initialBuilderPrompt={forgeBuilderHandoff?.prompt}
                   initialBuilderNonce={forgeBuilderHandoff?.nonce}
+                  initialProjectId={forgeProjectHandoff?.projectId}
+                  initialProjectNonce={forgeProjectHandoff?.nonce}
                 />
               </Suspense>
             ) : desk === "frontier" ? (
@@ -8451,9 +8539,11 @@ export function NoctisDesk() {
                         break;
                       }
                     }
+                    const parsedRoute = parseRouteStamp(turn.content);
+                    const cleanTurnContent = parsedRoute.cleanText;
                     const followUps =
                       last && !busy
-                        ? buildContextualFollowUps(asked, turn.content, {
+                        ? buildContextualFollowUps(asked, cleanTurnContent, {
                             desk,
                             priorQuestion,
                             engineId: activeEngineId,
@@ -8466,27 +8556,103 @@ export function NoctisDesk() {
                           className="noctis-answer-card rounded-3xl border border-[#e4b86a]/40 px-5 py-4 shadow-[inset_0_1px_0_rgba(228,184,106,0.16)] transition-colors duration-200"
                           style={{ background: "var(--noctis-card-bg)", color: "var(--color-fg)" }}
                         >
-                          <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#e4b86a]">{desk === "study" ? "Study board" : "Noctis"}</p>
+                          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#e4b86a]">
+                              {desk === "study" ? "Study board" : "Noctis"}
+                            </p>
+                            {parsedRoute.stamp ? (
+                              <div className="relative flex items-center gap-1.5">
+                                <span
+                                  className="inline-flex items-center gap-1 rounded-full border border-[#e4b86a]/25 bg-white/[0.04] px-2.5 py-0.5 text-[10px] font-medium text-zinc-300"
+                                  title={`Routing confidence: ${parsedRoute.stamp.confidence}%`}
+                                >
+                                  <span className="size-1.5 rounded-full bg-emerald-400" />
+                                  <span>Routed to: {parsedRoute.stamp.label}</span>
+                                  {parsedRoute.stamp.override ? (
+                                    <span className="rounded bg-[#e4b86a]/20 px-1 text-[9px] font-bold uppercase text-[#e4b86a]">
+                                      override
+                                    </span>
+                                  ) : null}
+                                </span>
+                                {asked ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => setOpenRouteMenuIdx((cur) => (cur === index ? null : index))}
+                                    className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[10px] font-medium text-zinc-400 hover:border-[#e4b86a]/40 hover:text-zinc-100 transition cursor-pointer"
+                                    title="Re-run this prompt on a different Noctis engine"
+                                  >
+                                    <span>Switch</span>
+                                    <ChevronDown className="size-3" />
+                                  </button>
+                                ) : null}
+                                {openRouteMenuIdx === index ? (
+                                  <div className="noctis-route-switch-menu absolute right-0 top-7 z-40 w-64 rounded-2xl border border-[#e4b86a]/30 bg-[#121620]/95 p-1.5 shadow-2xl backdrop-blur-xl">
+                                    <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                                      Re-run prompt with engine
+                                    </p>
+                                    {NOCTIS_SLASH_ROUTES.filter((r) => r.quickSwitch).map((r) => {
+                                      const baseAsked = stripLeadingSlashOverride(asked).strippedPrompt || asked;
+                                      return (
+                                        <button
+                                          key={r.command}
+                                          type="button"
+                                          onClick={() => {
+                                            setOpenRouteMenuIdx(null);
+                                            void send(`${r.command} ${baseAsked}`);
+                                          }}
+                                          className={cn(
+                                            "flex w-full items-center justify-between rounded-xl px-2.5 py-1.5 text-left text-[11px] transition cursor-pointer",
+                                            parsedRoute.stamp?.routeId === r.routeId
+                                              ? "bg-[#e4b86a]/15 text-[#e4b86a] font-semibold"
+                                              : "text-zinc-300 hover:bg-white/10 hover:text-white",
+                                          )}
+                                        >
+                                          <span className="truncate">{r.label}</span>
+                                          <span className="ml-2 shrink-0 font-mono text-[10px] text-zinc-500">{r.command}</span>
+                                        </button>
+                                      );
+                                    })}
+                                    {parsedRoute.stamp.targetPanel && parsedRoute.stamp.targetPanel !== "chat" ? (
+                                      <>
+                                        <div className="my-1 h-px bg-white/10" />
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setOpenRouteMenuIdx(null);
+                                            switchDesk(parsedRoute.stamp!.targetPanel);
+                                          }}
+                                          className="flex w-full items-center justify-between rounded-xl px-2.5 py-1.5 text-left text-[11px] font-semibold text-emerald-300 hover:bg-emerald-500/10 transition cursor-pointer"
+                                        >
+                                          <span>Open {getPanelSpec(parsedRoute.stamp.targetPanel).shortLabel} Workspace</span>
+                                          <span className="font-mono text-[10px]">↗</span>
+                                        </button>
+                                      </>
+                                    ) : null}
+                                  </div>
+                                ) : null}
+                              </div>
+                            ) : null}
+                          </div>
                           {turn.audio ? <audio src={turn.audio} controls className="mb-3 w-full" /> : null}
                           {turn.clips?.length ? <FilmPlay clips={turn.clips} /> : turn.video ? <video src={turn.video} controls playsInline className="mb-3 aspect-[4/5] w-full rounded-2xl border border-white/10 bg-black object-cover" /> : turn.images?.map((src, shot) => (
                             <img key={shot} src={src} alt="" className="mb-3 max-h-80 rounded-2xl border border-white/10" />
                           ))}
                           <div className="space-y-3">
-                            {/(?:autonomous\s+(?:react\s+loop|closed-loop|engineering|code\s+repair)|ratelimiter\.ts|zerodayradar)/i.test(turn.content) ? (
+                            {/(?:autonomous\s+(?:react\s+loop|closed-loop|engineering|code\s+repair)|ratelimiter\.ts|zerodayradar)/i.test(cleanTurnContent) ? (
                               <NoctisAgentStepper />
                             ) : null}
-                            {/```|powershell|bash|terraform|set-aduser|remediation|dispatch|klist|audit passport|invariant|spoilage/i.test(turn.content) ? (
+                            {/```|powershell|bash|terraform|set-aduser|remediation|dispatch|klist|audit passport|invariant|spoilage/i.test(cleanTurnContent) ? (
                               <NoctisBlastRadiusStrip
-                                content={turn.content}
+                                content={cleanTurnContent}
                                 title="Sovereign Execution Artifact"
                                 onOpenPassport={() => {
                                   setCanvasTitle("Sovereign Audit Passport");
-                                  setCanvasContent(turn.content);
+                                  setCanvasContent(cleanTurnContent);
                                   setCanvasOpen(true);
                                 }}
                               />
                             ) : null}
-                            <AnswerBody text={turn.content} durationSeconds={turn.thoughtSeconds} engineName={turn.engineName} sourcePrompt={asked} />
+                            <AnswerBody text={cleanTurnContent} durationSeconds={turn.thoughtSeconds} engineName={turn.engineName} sourcePrompt={asked} />
                           </div>
                           {turn.video || (turn.images?.length && /Written by Noctis/i.test(turn.content)) ? (
                             <MadeShare words={plainAnswer(stripThinkBlock(turn.content))} picture={turn.images?.[0] || ""} video={turn.video || turn.clips?.[0] || ""} clips={turn.clips} />
@@ -9055,6 +9221,24 @@ export function NoctisDesk() {
         open={capabilityMatrixOpen}
         onClose={() => setCapabilityMatrixOpen(false)}
         onSelectEngine={handleSelectEngine}
+      />
+      <NoctisCommandPalette
+        open={commandPaletteOpen}
+        activePanel={desk}
+        onClose={() => setCommandPaletteOpen(false)}
+        onSelectPanel={(panel: NoctisPanelId) => switchDesk(panel)}
+        onOpenProject={(projectId: string) => {
+          setForgeProjectHandoff({ projectId, nonce: Date.now() });
+          switchDesk("forge");
+        }}
+        onPrefillCommand={(prefix: string) => {
+          switchDesk("chat");
+          setDraft((prev) => {
+            const cleaned = stripLeadingSlashOverride(prev).strippedPrompt || prev.trim();
+            return cleaned ? `${prefix}${cleaned}` : prefix;
+          });
+          setTimeout(() => box.current?.focus(), 60);
+        }}
       />
       <NoctisBrainModal
         isOpen={brainModalOpen}

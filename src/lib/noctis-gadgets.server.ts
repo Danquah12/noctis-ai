@@ -471,8 +471,11 @@ export function isExplicitWebsiteBuildIntent(question: string): boolean {
   return true;
 }
 
-export async function naseeAutonomousExecutionGadget(question: string): Promise<string | null> {
-  if (!isAutonomousSoftwareEngineeringDirective(question)) {
+export async function naseeAutonomousExecutionGadget(
+  question: string,
+  opts?: { force?: boolean },
+): Promise<string | null> {
+  if (!opts?.force && !isAutonomousSoftwareEngineeringDirective(question)) {
     return null;
   }
 
@@ -490,8 +493,11 @@ export async function naseeAutonomousExecutionGadget(question: string): Promise<
   ].join("\n");
 }
 
-export async function webPageBuilderGadget(question: string): Promise<string | null> {
-  if (!isExplicitWebsiteBuildIntent(question)) {
+export async function webPageBuilderGadget(
+  question: string,
+  opts?: { force?: boolean },
+): Promise<string | null> {
+  if (!opts?.force && !isExplicitWebsiteBuildIntent(question)) {
     return null;
   }
 
@@ -648,15 +654,24 @@ function wmoDescription(code: number): string {
   return "Variable cloudiness";
 }
 
-export async function weatherPredictionGadget(question: string): Promise<string | null> {
-  if (/^(?:Read this answer again\.|Write a short original|Write the words for this picture)/i.test(question.trim())) {
+export async function weatherPredictionGadget(
+  question: string,
+  opts?: { force?: boolean },
+): Promise<string | null> {
+  if (!opts?.force && /^(?:Read this answer again\.|Write a short original|Write the words for this picture)/i.test(question.trim())) {
     return null;
   }
-  const q = question.split(/\n\s*ANSWER:/i)[0]!.replace(/\s+/g, " ").trim();
-  if (isExplicitWebsiteBuildIntent(q)) {
+  const rawQ = question.split(/\n\s*ANSWER:/i)[0]!.replace(/\s+/g, " ").trim();
+  const q =
+    opts?.force &&
+    !/\b(rain|raing|rian|raining|rainfall|precip(?:itation)?|weather|forecast|snow|storm|world)\b/i.test(rawQ)
+      ? `weather forecast in ${rawQ}`
+      : rawQ;
+  if (!opts?.force && isExplicitWebsiteBuildIntent(q)) {
     return null;
   }
   const hasWeatherKeyword =
+    Boolean(opts?.force) ||
     /\b(rain|raing|rian|raining|rainfall|precip(?:itation)?|weather|forecast|snow(?:ing|fall)?|thunderstorm|storm|drizzle|downpour|flood(?:ing)?|heat\s*wave|cold\s+front|humidity|barometric|meteorolog(?:y|ical))\b/i.test(
       q
     ) ||
@@ -665,6 +680,7 @@ export async function weatherPredictionGadget(question: string): Promise<string 
 
   if (!hasWeatherKeyword) return null;
   if (
+    !opts?.force &&
     /\b(bearing|pump|motor|centrifugal|engine\s+coolant|exhaust|boiler|furnace|reactor|patient|fever|sepsis|blood|creatinine|egfr|cyber|ddos|sql\s+injection|cold-?chain|cold-?storage|reefer|logistics|maritime|vessel|charter|website|web\s*app|platform|portal|marketplace|checkout|calculator|postgresql|postgis|schema)\b/i.test(
       q
     )

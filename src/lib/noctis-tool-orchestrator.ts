@@ -42,6 +42,28 @@ export interface OrchestrationResult {
   error?: string;
 }
 
+const AMBIGUOUS_SINGLE_KEYWORDS = new Set([
+  "soc",
+  "dac",
+  "sar",
+  "ppm",
+  "lif",
+  "spike",
+  "docking",
+  "deformation",
+  "spacecraft",
+  "reactivity",
+  "heat flux",
+  "safety factor",
+  "dls",
+  "tvd",
+  "mli",
+  "rabi",
+  "synapse",
+  "entanglement",
+  "link budget",
+]);
+
 /**
  * Evaluates a user natural language query against the 16 registered sovereign tools.
  */
@@ -52,13 +74,21 @@ export function matchSovereignTool(query: string): ToolMatchResult | null {
   const isClinicalEncounter =
     /\b(patient|female|male|years?-old|yo|y\/o|triage|resuscitation|symptom|presents? with|blood pressure|\b(?:bp|hr|rr|spo2)\b|cardiac|ecg|troponin|chest pain|cough|fever|dyspnea|hypotension|tachycardia|bradycardia|potassium|hyperkalemia|sodium|hyponatremia|magnesium|calcium|creatinine|egfr|ckd|stroke|sepsis|shock|infection)\b/i.test(query);
 
-  if (isClinicalEncounter) {
-    // Only allow sovereign physical tool if query specifically requests that engineering domain
-    const hasExplicitPhysicalEngineIntent =
-      /\b(tokamak|hypersonic|fay-riddell|stellarator|orbital rendezvous|clohessy|water hammer|joukowsky|cryogenic propellant|boil-off|insar|interferogram|deep space optical|neuromorphic|rydberg|otec|ocean thermal|directional drilling|vlbi)\b/i.test(query);
-    if (!hasExplicitPhysicalEngineIntent) {
-      return null;
-    }
+  const hasExplicitPhysicalEngineIntent =
+    /\b(tokamak|kruskal-shafranov|butler-volmer|lithium\s+plating|dendrite|hypersonic|fay-riddell|direct\s+air\s+capture|stellarator|orbital\s+rendezvous|clohessy|water\s+hammer|joukowsky|cryogenic\s+propellant|boil-off|zero\s+boil-off|point\s+kinetics|prompt\s+critical|insar|interferometry|interferogram|deep\s+space\s+optical|neuromorphic|rydberg|otec|ocean\s+thermal|directional\s+drilling|dogleg\s+severity|vlbi)\b/i.test(query);
+
+  if (isClinicalEncounter && !hasExplicitPhysicalEngineIntent) {
+    return null;
+  }
+
+  // Software/Website/Security/Compliance exclusion guard: prevents words like "Security SOC",
+  // "cold-storage", "SOC 2", or "ship docking" in software/cyber specs from triggering physics tools.
+  const isSoftwareOrSecurityIntent =
+    (/\b(build|design|create|develop|architect|generate|implement|scaffold)\b[\s\S]{0,120}\b(web\s*site|website|web\s*app|platform|marketplace|portal|dashboard|monorepo|saas|application|e-?commerce|storefront|omnisphere|reefers)\b/i.test(query) ||
+      /\b(security\s+soc|soc\s*2|soc\s+analyst|soc\s+governance|siem|nist\s*800|rmf|poa&m|dodi\s*8510|icd\s*503|cve-\d{4}|zero\s+trust|rbac|postgresql|postgis|rls|nasee|execution\s+directive\s+002)\b/i.test(query));
+
+  if (isSoftwareOrSecurityIntent && !hasExplicitPhysicalEngineIntent) {
+    return null;
   }
 
   let bestMatch: ToolMatchResult | null = null;
@@ -70,6 +100,12 @@ export function matchSovereignTool(query: string): ToolMatchResult | null {
       return new RegExp(`\\b${escaped}\\b`, "i").test(q);
     });
     if (matched.length === 0) continue;
+
+    // Require >= 2 matched signals OR an unambiguous domain keyword so bare acronyms like "SOC"
+    // or generic terms like "docking" cannot hijack unrelated queries.
+    if (matched.length === 1 && AMBIGUOUS_SINGLE_KEYWORDS.has(matched[0]!.toLowerCase())) {
+      continue;
+    }
 
     // Base score for any keyword match: at least 0.35 + proportional keyword bonus
     let score = 0.35 + (matched.length / tool.keywords.length) * 0.65;

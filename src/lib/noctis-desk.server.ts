@@ -27,6 +27,17 @@ import {
   cleanTurnsForHistory,
   resolveFollowUpContext,
 } from "@/lib/noctis-followup-resolver";
+import {
+  attachRouteStamp,
+  getSlashRouteByEngine,
+  type NoctisRouteEngineId,
+  type NoctisRouteStamp,
+} from "./noctis-capability-registry.ts";
+import {
+  classifyNoctisIntent,
+  decisionToRouteStamp,
+  type NoctisIntentDecision,
+} from "./noctis-intent-router.server.ts";
 
 export type VibeTurn = { role: "user" | "assistant"; content: string; images?: string[] };
 
@@ -1011,31 +1022,271 @@ async function executeVibeReply(
   style: { desk?: "chat" | "study"; think?: boolean; code?: boolean; skill?: string; depth?: "plain" | "deep"; level?: "beginner" | "intermediate" | "advanced" | "expert"; context?: string; language?: string; engine?: string; brain?: { provider?: string; apiKey?: string; model?: string; endpoint?: string } } = {},
 ): Promise<{ text: string } | { error: string }> {
   const kept = retainSources(turns);
-  const last = [...kept].reverse().find((turn) => turn.role === "user");
-  const latest = (last?.content || "").replace(/\n--- [^\n]+ ---\n[\s\S]*$/g, "").replace(/\[Image:[^\]]*\]/g, "").trim();
-  const scenario = scenarioText(kept, latest);
+  let lastUserIdx = -1;
+  for (let i = kept.length - 1; i >= 0; i--) {
+    if (kept[i]?.role === "user") {
+      lastUserIdx = i;
+      break;
+    }
+  }
+  const last = lastUserIdx >= 0 ? kept[lastUserIdx] : undefined;
+  const rawLastContent = last?.content || "";
+  const attachmentSuffixMatch = rawLastContent.match(/(\n--- [^\n]+ ---\n[\s\S]*)$/);
+  const latest = rawLastContent.replace(/\n--- [^\n]+ ---\n[\s\S]*$/g, "").replace(/\[Image:[^\]]*\]/g, "").trim();
+
+  const intent = classifyNoctisIntent(latest);
+  const effectiveLatest = intent.override ? intent.effectivePrompt : latest;
+  const effectiveKept: VibeTurn[] =
+    intent.override && lastUserIdx >= 0
+      ? kept.map((t, idx) =>
+          idx === lastUserIdx
+            ? {
+                ...t,
+                content: `${effectiveLatest}${attachmentSuffixMatch ? attachmentSuffixMatch[1] : ""}`,
+              }
+            : t,
+        )
+      : kept;
+
+  const scenario = scenarioText(effectiveKept, effectiveLatest);
   const activeEngine = resolveNoctisEngine(style.engine);
   const shouldThink = style.think !== false;
-  const wantsRawJson = /\b(?:return|output|respond)\s+(?:only|strictly)\s+(?:valid\s+)?json\b/i.test(latest);
+  const wantsRawJson = /\b(?:return|output|respond)\s+(?:only|strictly)\s+(?:valid\s+)?json\b/i.test(effectiveLatest);
+  const routeTracker: { routeId: NoctisRouteEngineId } = { routeId: intent.routeId };
+
+  const buildStamp = (actualRouteId: NoctisRouteEngineId): NoctisRouteStamp => {
+    if (actualRouteId === intent.routeId) {
+      return decisionToRouteStamp(intent);
+    }
+    const spec = getSlashRouteByEngine(actualRouteId);
+    return {
+      routeId: actualRouteId,
+      label: spec?.label || actualRouteId,
+      confidence: 92,
+      override: false,
+      targetPanel: spec?.targetPanel || "chat",
+    };
+  };
+
+  const finishText = (text: string, actualRouteId: NoctisRouteEngineId): string =>
+    attachRouteStamp(text, buildStamp(actualRouteId), wantsRawJson);
+
   const withThink = (text: string, routeSummary: string) =>
     ensureDeepThinkEnvelope(text, {
       shouldThink,
       wantsRawJson,
       engineId: activeEngine.id,
-      prompt: latest,
+      prompt: effectiveLatest,
       routeSummary,
     });
 
   if (scenario.length > 400) {
-    console.info(JSON.stringify({ vibeTask: true, turns: kept.length, scenarioChars: scenario.length, inputs: extractInputs(scenario).length, titled: /STRESS TEST/i.test(scenario) }));
+    console.info(JSON.stringify({ vibeTask: true, turns: effectiveKept.length, scenarioChars: scenario.length, inputs: extractInputs(scenario).length, titled: /STRESS TEST/i.test(scenario) }));
   }
-  const report = retrievalReport(kept, latest);
-  if (report) return { text: withThink(report, "Retrieved authoritative source evidence & verified grounding boundaries") };
 
-  if (/\b(schwarzschild|de broglie|henderson-?hasselbalch|lorentz factor|relativistic lorentz|melting temp.*(?:dna|primer)|dna.*melting temp|hubble.*recession|event horizon radius)\b/i.test(latest)) {
+  // Fail-Closed Classification Boundary Gate always enforced before any explicit override
+  if (intent.override) {
+    const { evaluateClassificationGate } = await import("@/lib/dod-ic/classification-gateway");
+    const preGate = evaluateClassificationGate({ text: effectiveLatest });
+    if (preGate.action === "FAIL_CLOSED_BLOCK") {
+      const { executeDodIcReasoning } = await import("@/lib/dod-ic/dod-ic-reasoning.server");
+      const blockedReply = await executeDodIcReasoning(effectiveLatest, {
+        shouldThink,
+        language: style.language || "English",
+        engineName: activeEngine.name,
+      });
+      return { text: finishText(blockedReply, "dod_ic") };
+    }
+
+    const {
+      naseeAutonomousExecutionGadget,
+      webPageBuilderGadget,
+      weatherPredictionGadget,
+      cveAndKevGadget,
+    } = await import("@/lib/noctis-gadgets.server");
+
+    if (intent.routeId === "nasee") {
+      const naseeOut = await naseeAutonomousExecutionGadget(effectiveLatest, { force: true });
+      if (naseeOut) {
+        return {
+          text: finishText(
+            withThink(
+              naseeOut,
+              `Explicit ${intent.overrideCommand || "/nasee"} override dispatched directly to Noctis Autonomous Software Engineering Engine (NASEE).`,
+            ),
+            "nasee",
+          ),
+        };
+      }
+    }
+
+    if (intent.routeId === "website_builder") {
+      const webOut = await webPageBuilderGadget(effectiveLatest, { force: true });
+      if (webOut) {
+        return {
+          text: finishText(
+            withThink(
+              webOut,
+              `Explicit ${intent.overrideCommand || "/build"} override dispatched directly to Noctis Forge Website & Full-Stack Builder.`,
+            ),
+            "website_builder",
+          ),
+        };
+      }
+    }
+
+    if (intent.routeId === "weather") {
+      const wxOut = await weatherPredictionGadget(effectiveLatest, { force: true });
+      if (wxOut) {
+        return {
+          text: finishText(
+            withThink(
+              wxOut,
+              `Explicit ${intent.overrideCommand || "/weather"} override dispatched directly to Global NWP Weather & Forecast Engine.`,
+            ),
+            "weather",
+          ),
+        };
+      }
+    }
+
+    if (intent.routeId === "clinical") {
+      const { executeUniversalClinicalReasoning } = await import("@/lib/noctis-universal-clinical.server");
+      const clinOut = await executeUniversalClinicalReasoning(effectiveLatest, { brain: style.brain });
+      if (clinOut) {
+        return { text: finishText(clinOut, "clinical") };
+      }
+    }
+
+    if (intent.routeId === "rmf_grc") {
+      const { executeUniversalRmfReasoning } = await import("@/lib/noctis-rmf-reasoning.server");
+      const rmfOut = await executeUniversalRmfReasoning(effectiveLatest, {
+        turns: cleanTurnsForHistory(effectiveKept),
+        brain: style.brain,
+        engineName: activeEngine.name,
+        language: style.language || "English",
+        shouldThink,
+      });
+      if (rmfOut) {
+        return { text: finishText(rmfOut, "rmf_grc") };
+      }
+    }
+
+    if (intent.routeId === "dod_ic") {
+      const { executeDodIcReasoning } = await import("@/lib/dod-ic/dod-ic-reasoning.server");
+      const dodOut = await executeDodIcReasoning(effectiveLatest, {
+        turns: cleanTurnsForHistory(effectiveKept),
+        brain: style.brain,
+        engineName: activeEngine.name,
+        language: style.language || "English",
+        shouldThink,
+      });
+      if (dodOut) {
+        return { text: finishText(dodOut, "dod_ic") };
+      }
+    }
+
+    if (intent.routeId === "cve_cyber") {
+      const cveMatch = effectiveLatest.match(/\b(CVE-\d{4}-\d{4,7})\b/i);
+      if (cveMatch) {
+        const { resolveCveIntelligenceLive, formatCveResponse } = await import("@/lib/noctis-cve-knowledge");
+        const profile = await resolveCveIntelligenceLive(cveMatch[1], effectiveLatest);
+        return {
+          text: finishText(
+            withThink(formatCveResponse(profile), `Queried MITRE/NVD vulnerability records for ${cveMatch[1].toUpperCase()}.`),
+            "cve_cyber",
+          ),
+        };
+      }
+      const kevOut = await cveAndKevGadget(effectiveLatest);
+      if (kevOut) {
+        return {
+          text: finishText(
+            withThink(kevOut, "Executed CISA KEV & cybersecurity vulnerability lookup."),
+            "cve_cyber",
+          ),
+        };
+      }
+    }
+
+    if (intent.routeId === "enterprise") {
+      const { tryHandleEnterpriseChatQuery } = await import("@/lib/enterprise/chat-bridge.server");
+      const entOut = await tryHandleEnterpriseChatQuery(effectiveLatest);
+      if (entOut) {
+        return { text: finishText(withThink(entOut, "Queried Noctis Enterprise Intelligence Command."), "enterprise") };
+      }
+    }
+
+    if (intent.routeId === "nups") {
+      const { tryHandleNupsChatQuery } = await import("@/lib/nups/chat-bridge.server");
+      const nupsOut = await tryHandleNupsChatQuery(effectiveLatest);
+      if (nupsOut) {
+        return { text: finishText(withThink(nupsOut, "Executed Noctis Universal Problem Solver (NUPS)."), "nups") };
+      }
+    }
+
+    if (intent.routeId === "catalog260") {
+      const { tryHandleCatalog260ChatQuery } = await import("@/lib/catalog260/chat-bridge.server");
+      const catOut = await tryHandleCatalog260ChatQuery(effectiveLatest);
+      if (catOut) {
+        return { text: finishText(withThink(catOut, "Audited Noctis Master Capability Catalog 260."), "catalog260") };
+      }
+    }
+
+    if (intent.routeId === "assistant") {
+      const { tryHandleAssistantChatQuery } = await import("@/lib/assistant/chat-bridge.server");
+      const asstOut = await tryHandleAssistantChatQuery(effectiveLatest);
+      if (asstOut) {
+        return { text: finishText(withThink(asstOut, "Executed Universal Assistant v1.0 pipeline."), "assistant") };
+      }
+    }
+
+    if (intent.routeId === "sovereign_physics") {
+      const { orchestrateSovereignQuery } = await import("@/lib/noctis-tool-orchestrator");
+      const toolResult = orchestrateSovereignQuery(effectiveLatest);
+      if (toolResult.handled && toolResult.formattedMarkdown) {
+        return {
+          text: finishText(
+            withThink(toolResult.formattedMarkdown, "Executed Sovereign Physics Computational Tool Orchestrator."),
+            "sovereign_physics",
+          ),
+        };
+      }
+    }
+
+    if (intent.routeId === "science") {
+      const { solveScienceQuestion, formatScienceResponse } = await import("@/lib/noctis-universal-science-engine");
+      const sol = solveScienceQuestion(effectiveLatest);
+      return {
+        text: finishText(withThink(formatScienceResponse(sol), "Executed deterministic scientific formula verification."), "science"),
+      };
+    }
+
+    if (intent.routeId === "ndkrs_rule") {
+      const { tryExecuteNdkrsDeterministicRuleFromChat } = await import("@/lib/ndkrs/chat-bridge.server");
+      const ndkrsOut = await tryExecuteNdkrsDeterministicRuleFromChat(effectiveLatest, { explicitRuleIdOnly: false });
+      if (ndkrsOut) {
+        return { text: finishText(withThink(ndkrsOut, "Executed NDKRS deterministic Fact-Lock rule."), "ndkrs_rule") };
+      }
+    }
+  }
+
+  const report = retrievalReport(effectiveKept, effectiveLatest);
+  if (report) {
+    return {
+      text: finishText(
+        withThink(report, "Retrieved authoritative source evidence & verified grounding boundaries"),
+        "general_chat",
+      ),
+    };
+  }
+
+  if (!intent.override && intent.routeId === "science") {
     const { solveScienceQuestion, formatScienceResponse } = await import("@/lib/noctis-universal-science-engine");
-    const sol = solveScienceQuestion(latest);
-    return { text: withThink(formatScienceResponse(sol), "Executed deterministic scientific formula verification") };
+    const sol = solveScienceQuestion(effectiveLatest);
+    return {
+      text: finishText(withThink(formatScienceResponse(sol), "Executed deterministic scientific formula verification"), "science"),
+    };
   }
 
   const {
@@ -1043,32 +1294,44 @@ async function executeVibeReply(
     isExplicitWebsiteBuildIntent,
   } = await import("@/lib/noctis-gadgets.server");
   const isNaseeOrSiteBuild =
-    isAutonomousSoftwareEngineeringDirective(latest) ||
-    isExplicitWebsiteBuildIntent(latest);
+    intent.routeId === "nasee" ||
+    intent.routeId === "website_builder" ||
+    isAutonomousSoftwareEngineeringDirective(effectiveLatest) ||
+    isExplicitWebsiteBuildIntent(effectiveLatest);
 
-  if (!isNaseeOrSiteBuild) {
+  // High-assurance safety gate: Do not route acute clinical/medical emergencies to physical engineering tools
+  const isClinicalInquiry =
+    intent.routeId === "clinical" ||
+    /\b(patient|female|male|years?-old|yo|y\/o|triage|resuscitation|symptom|presents? with|blood pressure|\b(?:bp|hr|rr|spo2)\b|cardiac|ecg|troponin|chest pain|cough|fever|dyspnea|hypotension|tachycardia|bradycardia|potassium|hyperkalemia|sodium|hyponatremia|magnesium|calcium|creatinine|egfr|ckd|stroke|sepsis|shock|infection)\b/i.test(effectiveLatest);
+
+  if (!intent.override && !isNaseeOrSiteBuild && !isClinicalInquiry) {
     const { isSovereignInquiry, resolveSovereignResponse } = await import("@/lib/noctis-sovereign-grounding");
-    if (isSovereignInquiry(latest)) {
-      const sovereignText = resolveSovereignResponse(latest);
+    if (isSovereignInquiry(effectiveLatest)) {
+      const sovereignText = resolveSovereignResponse(effectiveLatest);
       if (sovereignText) {
-        return { text: withThink(sovereignText, "Verified sovereign architecture specification & SQDEC governance bounds") };
+        return {
+          text: finishText(
+            withThink(sovereignText, "Verified sovereign architecture specification & SQDEC governance bounds"),
+            "general_chat",
+          ),
+        };
       }
     }
   }
 
-  // High-assurance safety gate: Do not route acute clinical/medical emergencies to physical engineering tools
-  const isClinicalInquiry = /\b(patient|female|male|years?-old|yo|y\/o|triage|resuscitation|symptom|presents? with|blood pressure|\b(?:bp|hr|rr|spo2)\b|cardiac|ecg|troponin|chest pain|cough|fever|dyspnea|hypotension|tachycardia|bradycardia|potassium|hyperkalemia|sodium|hyponatremia|magnesium|calcium|creatinine|egfr|ckd|stroke|sepsis|shock|infection)\b/i.test(latest);
-
   // Unified Sovereign Tool Orchestrator (16 Core Deterministic Computational Engines)
-  if (!isClinicalInquiry && !isNaseeOrSiteBuild) {
+  if (!intent.override && !isClinicalInquiry && !isNaseeOrSiteBuild && intent.routeId !== "rmf_grc" && intent.routeId !== "dod_ic") {
     try {
       const { orchestrateSovereignQuery } = await import("@/lib/noctis-tool-orchestrator");
-      const toolResult = orchestrateSovereignQuery(latest);
+      const toolResult = orchestrateSovereignQuery(effectiveLatest);
       if (toolResult.handled && toolResult.formattedMarkdown) {
         return {
-          text: withThink(
-            toolResult.formattedMarkdown,
-            "Executed Sovereign Tool Orchestrator computational solver and audited result invariants",
+          text: finishText(
+            withThink(
+              toolResult.formattedMarkdown,
+              "Executed Sovereign Tool Orchestrator computational solver and audited result invariants",
+            ),
+            "sovereign_physics",
           ),
         };
       }
@@ -1076,7 +1339,13 @@ async function executeVibeReply(
       /* Fallback to LLM / standard synthesis if tool execution errors */
     }
   }
-  const reply = await composeVibeReply(kept, keyOverride, style);
+
+  const reply = await composeVibeReply(effectiveKept, keyOverride, {
+    ...style,
+    _intentDecision: intent,
+    _routeTracker: routeTracker,
+    _skipAutoSpecialists: intent.override && intent.routeId === "general_chat",
+  });
   if (
     !("text" in reply) ||
     reply.text.includes("Independent check") ||
@@ -1084,6 +1353,9 @@ async function executeVibeReply(
     /CLINICAL_VALIDATION_FAILED/i.test(reply.text) ||
     (reply.text.trim().startsWith("{") && reply.text.trim().endsWith("}"))
   ) {
+    if ("text" in reply) {
+      return { text: finishText(reply.text, routeTracker.routeId) };
+    }
     return reply;
   }
 
@@ -1097,23 +1369,23 @@ async function executeVibeReply(
     const { isCatalog260ChatQuery } = await import("@/lib/catalog260/chat-bridge.server");
     const { isAssistantChatQuery } = await import("@/lib/assistant/chat-bridge.server");
     const { rememberAnswer, rememberRule, inferDomain } = await import("@/lib/noctis-train.server");
-    const followUpCacheCheck = resolveFollowUpContext(kept, latest);
+    const followUpCacheCheck = resolveFollowUpContext(effectiveKept, effectiveLatest);
     const skipClinicalCache =
       isClinicalInquiry ||
       followUpCacheCheck.isFollowUp ||
       followUpCacheCheck.activeDomain === "clinical" ||
-      isUniversalClinicalQuestion(latest) ||
-      isRmfGrcQuery(latest) ||
-      isDodIcQuery(latest) ||
-      isEnterpriseChatQuery(latest) ||
-      isNupsChatQuery(latest) ||
-      isCatalog260ChatQuery(latest) ||
-      isAssistantChatQuery(latest);
+      isUniversalClinicalQuestion(effectiveLatest) ||
+      isRmfGrcQuery(effectiveLatest) ||
+      isDodIcQuery(effectiveLatest) ||
+      isEnterpriseChatQuery(effectiveLatest) ||
+      isNupsChatQuery(effectiveLatest) ||
+      isCatalog260ChatQuery(effectiveLatest) ||
+      isAssistantChatQuery(effectiveLatest);
     const cleanReplyForMemory = reply.text.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
     if (!skipClinicalCache && reply && "text" in reply && cleanReplyForMemory.length > 60 && !cleanReplyForMemory.includes("could not finish")) {
-      const domain = inferDomain(latest);
+      const domain = inferDomain(effectiveLatest);
       if (domain !== "medical") {
-        rememberAnswer(latest, cleanReplyForMemory, "noctis-continuous-learner", domain);
+        rememberAnswer(effectiveLatest, cleanReplyForMemory, "noctis-continuous-learner", domain);
 
         // Auto-extract rule if a critical non-encounter invariant or guideline violation was resolved:
         if (/(?:override|wrong weight metric|predicted body weight|safety invariant|rule fails|absolute contraindication|hard safety veto|do not wait|ecmo criteria|winter['’]?s formula)/i.test(cleanReplyForMemory)) {
@@ -1130,10 +1402,13 @@ async function executeVibeReply(
   const parsedFinal = parseThinkEnvelope(reply.text);
   const attached = attachHard(scenario, parsedFinal.body || reply.text);
   if (parsedFinal.thought && shouldThink && !wantsRawJson && !attached.trim().startsWith("{")) {
-    return { text: `<think>\n${parsedFinal.thought}\n</think>\n\n${attached}` };
+    return { text: finishText(`<think>\n${parsedFinal.thought}\n</think>\n\n${attached}`, routeTracker.routeId) };
   }
   return {
-    text: withThink(attached, "Synthesized and audited complete response against scenario inputs"),
+    text: finishText(
+      withThink(attached, "Synthesized and audited complete response against scenario inputs"),
+      routeTracker.routeId,
+    ),
   };
 }
 
@@ -1162,8 +1437,27 @@ export async function vibeReply(
 async function composeVibeReply(
   turns: VibeTurn[],
   keyOverride = "",
-  style: { desk?: "chat" | "study"; think?: boolean; code?: boolean; skill?: string; depth?: "plain" | "deep"; level?: "beginner" | "intermediate" | "advanced" | "expert"; context?: string; language?: string; engine?: string; brain?: { provider?: string; apiKey?: string; model?: string; endpoint?: string } } = {},
+  style: {
+    desk?: "chat" | "study";
+    think?: boolean;
+    code?: boolean;
+    skill?: string;
+    depth?: "plain" | "deep";
+    level?: "beginner" | "intermediate" | "advanced" | "expert";
+    context?: string;
+    language?: string;
+    engine?: string;
+    brain?: { provider?: string; apiKey?: string; model?: string; endpoint?: string };
+    _intentDecision?: NoctisIntentDecision;
+    _routeTracker?: { routeId: NoctisRouteEngineId };
+    _skipAutoSpecialists?: boolean;
+  } = {},
 ): Promise<{ text: string } | { error: string }> {
+  const skipAutoSpecialists = Boolean(style._skipAutoSpecialists);
+  const setResolvedRoute = (rid: NoctisRouteEngineId) => {
+    if (style._routeTracker) style._routeTracker.routeId = rid;
+  };
+  const intentRoute = style._intentDecision?.routeId;
   const skill = noctisSkill(style.skill || "talk");
   const last = [...turns].reverse().find((turn) => turn.role === "user");
   const question = (last?.content || "").replace(/\n--- [^\n]+ ---\n[\s\S]*$/g, "").replace(/\[Image:[^\]]*\]/g, "").trim();
@@ -1247,7 +1541,8 @@ async function composeVibeReply(
     runVibeGadgets,
   } = await import("@/lib/noctis-gadgets.server");
 
-  if (isAutonomousSoftwareEngineeringDirective(fullQuestion)) {
+  if (!skipAutoSpecialists && (intentRoute === "nasee" || isAutonomousSoftwareEngineeringDirective(fullQuestion))) {
+    setResolvedRoute("nasee");
     const naseeOut = await naseeAutonomousExecutionGadget(fullQuestion);
     if (naseeOut) {
       return {
@@ -1259,9 +1554,13 @@ async function composeVibeReply(
     }
   }
 
-  const explicitWebBuildPre = isExplicitWebsiteBuildIntent(question) || isExplicitWebsiteBuildIntent(fullQuestion);
+  const explicitWebBuildPre =
+    intentRoute === "website_builder" ||
+    isExplicitWebsiteBuildIntent(question) ||
+    isExplicitWebsiteBuildIntent(fullQuestion);
   const isCodingRequest =
     !explicitWebBuildPre &&
+    intentRoute !== "clinical" &&
     (/\b(architect and implement|build|create|code|develop|generate|write)\b[\s\S]{0,60}?\b(in react|in typescript|in python|react component|single-file|with tailwind|app|application|ui|unit test|microservice)\b/i.test(
       fullQuestion
     ) ||
@@ -1294,10 +1593,11 @@ async function composeVibeReply(
     isAssistantChatQuery(fullQuestion) ||
     isAssistantChatQuery(question);
 
-  if (!isCodingRequest) {
+  if (!skipAutoSpecialists && !isCodingRequest) {
     // Authoritative Live MITRE CVE Program & NVD Resolver: Guarantees official names and full intelligence for all CVEs
     const cveMatch = fullQuestion.match(/\b(CVE-\d{4}-\d{4,7})\b/i);
-    if (cveMatch && !isDodIcQuery(fullQuestion)) {
+    if (cveMatch && !isDodIcQuery(fullQuestion) && !explicitWebBuildPre) {
+      setResolvedRoute("cve_cyber");
       const { resolveCveIntelligenceLive, formatCveResponse } = await import("@/lib/noctis-cve-knowledge");
       const profile = await resolveCveIntelligenceLive(cveMatch[1], fullQuestion);
       return {
@@ -1313,8 +1613,9 @@ async function composeVibeReply(
       tryHandlePlatformStatusOrLedgerQuery,
       tryExecuteNdkrsDeterministicRuleFromChat,
     } = await import("@/lib/ndkrs/chat-bridge.server");
-    const platformStatusOut = await tryHandlePlatformStatusOrLedgerQuery(fullQuestion);
+    const platformStatusOut = explicitWebBuildPre ? null : await tryHandlePlatformStatusOrLedgerQuery(fullQuestion);
     if (platformStatusOut) {
+      setResolvedRoute("ndkrs_rule");
       return {
         text: wrapDeterministicThink(
           platformStatusOut,
@@ -1324,10 +1625,13 @@ async function composeVibeReply(
     }
 
     // Explicit NDKRS Rule ID Execution (e.g., ENG-REYNOLDS, CLIN-ANION-GAP, RMF-POAM-SLA, LEGAL-CDS-21USC360J)
-    const explicitNdkrsRuleOut = await tryExecuteNdkrsDeterministicRuleFromChat(fullQuestion, {
-      explicitRuleIdOnly: true,
-    });
+    const explicitNdkrsRuleOut = explicitWebBuildPre
+      ? null
+      : await tryExecuteNdkrsDeterministicRuleFromChat(fullQuestion, {
+          explicitRuleIdOnly: true,
+        });
     if (explicitNdkrsRuleOut) {
+      setResolvedRoute("ndkrs_rule");
       return {
         text: wrapDeterministicThink(
           explicitNdkrsRuleOut,
@@ -1337,9 +1641,10 @@ async function composeVibeReply(
     }
 
     // Noctis Enterprise Intelligence Platform (6-Panel Command Center, Tests 046/047 Investigator, 10 Enterprise Capabilities, Gov Readiness & Master Plan)
-    if (isEnterpriseChatQuery(fullQuestion)) {
+    if (!explicitWebBuildPre && isEnterpriseChatQuery(fullQuestion)) {
       const enterpriseOut = await tryHandleEnterpriseChatQuery(fullQuestion);
       if (enterpriseOut) {
+        setResolvedRoute("enterprise");
         return {
           text: wrapDeterministicThink(
             enterpriseOut,
@@ -1350,9 +1655,10 @@ async function composeVibeReply(
     }
 
     // Noctis Universal Problem Solver (NUPS) & 40-Engine Master Capability Matrix
-    if (isNupsChatQuery(fullQuestion)) {
+    if (!explicitWebBuildPre && isNupsChatQuery(fullQuestion)) {
       const nupsOut = await tryHandleNupsChatQuery(fullQuestion);
       if (nupsOut) {
+        setResolvedRoute("nups");
         return {
           text: wrapDeterministicThink(
             nupsOut,
@@ -1363,9 +1669,10 @@ async function composeVibeReply(
     }
 
     // Catalog 260 Master Capability Audit, Dependability Suite (#251-#260) & Deterministic Gap Solvers
-    if (isCatalog260ChatQuery(fullQuestion)) {
+    if (!explicitWebBuildPre && isCatalog260ChatQuery(fullQuestion)) {
       const catOut = await tryHandleCatalog260ChatQuery(fullQuestion);
       if (catOut) {
+        setResolvedRoute("catalog260");
         return {
           text: wrapDeterministicThink(
             catOut,
@@ -1376,9 +1683,10 @@ async function composeVibeReply(
     }
 
     // Noctis Universal Assistant v1.0 (100-Capability Parity, 100-Task Benchmark, Deep Research) & Noctis Forge Builder
-    if (isAssistantChatQuery(fullQuestion)) {
+    if (!explicitWebBuildPre && isAssistantChatQuery(fullQuestion)) {
       const asstOut = await tryHandleAssistantChatQuery(fullQuestion);
       if (asstOut) {
+        setResolvedRoute("assistant");
         return {
           text: wrapDeterministicThink(
             asstOut,
@@ -1389,17 +1697,19 @@ async function composeVibeReply(
     }
 
     // Universal Engine-Agnostic Neuro-Symbolic Clinical LLM Pipeline (Isolated Encounter)
-    if (isUniversalClinicalQuestion(fullQuestion)) {
+    if (intentRoute === "clinical" || (!explicitWebBuildPre && isUniversalClinicalQuestion(fullQuestion))) {
       const universalOut = await executeUniversalClinicalReasoning(fullQuestion, {
         brain: style.brain,
       });
       if (universalOut) {
+        setResolvedRoute("clinical");
         return { text: universalOut };
       }
     }
 
     // DoD RMF (DoDI 8510.01) + IC Security (ICD 503/502/501) + CNSSI 1253 + Cross-Domain Engine (NDIMP Wave 1)
     if (
+      !explicitWebBuildPre &&
       (isDodIcQuery(fullQuestion) || (followUp.isFollowUp && followUp.activeDomain === "dod_ic" && !wantsCode)) &&
       !followUp.shouldIsolateEncounter &&
       !isUniversalClinicalQuestion(fullQuestion)
@@ -1412,12 +1722,14 @@ async function composeVibeReply(
         shouldThink,
       });
       if (dodIcOut) {
+        setResolvedRoute("dod_ic");
         return { text: dodIcOut };
       }
     }
 
     // Deterministic RMF Knowledge DB + 10-Control Rule Engine + Neuro-Symbolic Chat Pipeline (Option B)
     if (
+      !explicitWebBuildPre &&
       (isRmfGrcQuery(fullQuestion) || (followUp.isFollowUp && followUp.activeDomain === "rmf_grc" && !wantsCode)) &&
       !followUp.shouldIsolateEncounter &&
       !isUniversalClinicalQuestion(fullQuestion)
@@ -1431,6 +1743,7 @@ async function composeVibeReply(
         shouldThink,
       });
       if (rmfOut) {
+        setResolvedRoute("rmf_grc");
         return { text: rmfOut };
       }
     }
@@ -1444,6 +1757,7 @@ async function composeVibeReply(
           explicitRuleIdOnly: false,
         });
     if (naturalNdkrsRuleOut) {
+      setResolvedRoute("ndkrs_rule");
       return {
         text: wrapDeterministicThink(
           naturalNdkrsRuleOut,
@@ -1455,6 +1769,7 @@ async function composeVibeReply(
     const { runFollowUpIntelligence } = await import("@/lib/noctis-response-intelligence");
     const followUpOut = explicitWebBuild ? null : runFollowUpIntelligence(turns, fullQuestion);
     if (followUpOut) {
+      setResolvedRoute("general_chat");
       const careerLang = languageNow(question, style.language || "");
       if (followUpOut.startsWith("# 🧭") && !/^(english|en([-_][a-z]+)?)$/i.test(careerLang.trim())) {
         return {
@@ -1480,6 +1795,15 @@ async function composeVibeReply(
       allowWebsiteRebuild,
     }).catch(() => null);
     if (gadgetOut) {
+      if (/##\s+(?:Global World )?Weather/i.test(gadgetOut)) {
+        setResolvedRoute("weather");
+      } else if (explicitWebBuild || /Forge Builder Studio|Customize in Builder Studio|```html/i.test(gadgetOut)) {
+        setResolvedRoute("website_builder");
+      } else if (/\bCVE-\d{4}|Header Audit|JWT|Zero Trust|SAST/i.test(gadgetOut)) {
+        setResolvedRoute("cve_cyber");
+      } else {
+        setResolvedRoute("general_chat");
+      }
       return {
         text: wrapDeterministicThink(
           gadgetOut,

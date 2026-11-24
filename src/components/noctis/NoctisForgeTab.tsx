@@ -400,6 +400,8 @@ interface NoctisForgeTabProps {
   onOpenInCanvas?: (title: string, markdown: string) => void;
   initialBuilderPrompt?: string;
   initialBuilderNonce?: number;
+  initialProjectId?: string;
+  initialProjectNonce?: number;
 }
 
 export function NoctisForgeTab({
@@ -408,6 +410,8 @@ export function NoctisForgeTab({
   onOpenInCanvas,
   initialBuilderPrompt,
   initialBuilderNonce,
+  initialProjectId,
+  initialProjectNonce,
 }: NoctisForgeTabProps) {
   const [recents, setRecents] = useState<BuildRecentItem[]>(INITIAL_RECENTS);
   const [activeRecentId, setActiveRecentId] = useState<string>("1");
@@ -430,10 +434,10 @@ export function NoctisForgeTab({
   const [viewMode, setViewMode] = useState<"code" | "canvas" | "split" | "builder">("builder");
 
   useEffect(() => {
-    if (initialBuilderPrompt && initialBuilderNonce) {
+    if ((initialBuilderPrompt && initialBuilderNonce) || (initialProjectId && initialProjectNonce)) {
       setViewMode("builder");
     }
-  }, [initialBuilderPrompt, initialBuilderNonce]);
+  }, [initialBuilderPrompt, initialBuilderNonce, initialProjectId, initialProjectNonce]);
   const [highlightedText, setHighlightedText] = useState<string>("");
   const [highlightInterpretation, setHighlightInterpretation] = useState<HighlightInterpretation | null>(null);
   const [inspectorOpen, setInspectorOpen] = useState(false);
@@ -1032,6 +1036,8 @@ describe("${textToBuild} - Verification", () => {
               <NoctisForgeBuilderStudio
                 initialPrompt={initialBuilderPrompt}
                 initialNonce={initialBuilderNonce}
+                initialProjectId={initialProjectId}
+                initialProjectNonce={initialProjectNonce}
               />
             </div>
           ) : buildArtifact ? (

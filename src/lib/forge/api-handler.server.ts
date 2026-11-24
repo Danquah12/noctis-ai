@@ -35,6 +35,11 @@ import {
   executeNaseeAutonomousPipeline,
   runNaseeCapabilityDiscovery,
 } from "./nasee-engine.server.ts";
+import {
+  NOCTIS_API_ROUTES,
+  NOCTIS_PANELS,
+  NOCTIS_SLASH_ROUTES,
+} from "../noctis-capability-registry.ts";
 import type { BlueprintVisualPatch } from "./website-blueprint-engine.ts";
 
 const CORS_HEADERS = {
@@ -92,6 +97,25 @@ export async function handleForgeV2Request(request: Request): Promise<Response> 
 
   if (subPath === "environment") {
     return jsonRes(validateDevelopmentEnvironment());
+  }
+
+  if (subPath === "platform-routes") {
+    const projects = await listForgeProjectRecords(20).catch(() => []);
+    return jsonRes({
+      ok: true,
+      panels: NOCTIS_PANELS,
+      slashRoutes: NOCTIS_SLASH_ROUTES,
+      apiRoutes: NOCTIS_API_ROUTES,
+      recentProjects: projects.map((p: any) => ({
+        id: String(p.id),
+        name: String(p.name || p.id),
+        category: String(p.category || "Web App"),
+        status: String(p.status || "READY"),
+        currentRevision: Number(p.current_revision || 1),
+        deepLink: `/noctis?panel=forge&project=${encodeURIComponent(String(p.id))}`,
+        previewUrl: `/api/v2/forge/preview?projectId=${encodeURIComponent(String(p.id))}`,
+      })),
+    });
   }
 
   if (subPath === "nasee/capabilities") {
