@@ -66,46 +66,70 @@ const UNIVERSAL_QUICK_STARTERS: Array<{ id: string; label: string; category: str
     prompt: "Build a worldwide travel and adventure booking website with interactive destination search, itinerary planner, local tour guides, and luxury stays.",
   },
   {
-    id: "ecommerce",
-    label: "E-Commerce Storefront",
-    category: "E-commerce",
-    prompt: "Build a modern direct-to-consumer e-commerce storefront with product category filters, shopping bag drawer, bundle pricing, and Stripe checkout.",
-  },
-  {
     id: "real-estate",
     label: "Real Estate Marketplace",
     category: "Real estate",
     prompt: "Build a modern real estate marketplace website with property search, neighborhood filters, virtual tour scheduling, PostGIS spatial search, and a mortgage calculator.",
   },
   {
+    id: "ecommerce",
+    label: "E-Commerce Storefront",
+    category: "E-commerce",
+    prompt: "Build a modern direct-to-consumer e-commerce storefront with product category filters, shopping bag drawer, bundle pricing, and Stripe checkout.",
+  },
+  {
     id: "healthcare",
-    label: "Healthcare Clinic Portal",
+    label: "Healthcare & Dental Clinic",
     category: "Healthcare",
     prompt: "Build a healthcare clinic website and patient portal with online appointment scheduling, telehealth visits, specialty search, and HIPAA-conscious intake.",
   },
   {
-    id: "saas",
-    label: "SaaS Analytics Platform",
-    category: "SaaS products",
-    prompt: "Build a B2B SaaS analytics platform website with interactive telemetry modules, RBAC enterprise security, seat pricing calculator, and live trial onboarding.",
+    id: "solar",
+    label: "Solar & Clean Energy",
+    category: "Construction",
+    prompt: "Build a residential solar panel and home battery installation company website with roof savings calculator, utility incentive lookup, and installer booking.",
+  },
+  {
+    id: "veterinary",
+    label: "Veterinary Animal Hospital",
+    category: "Healthcare",
+    prompt: "Design a veterinary animal hospital website for dogs and cats with vaccinations, dental cleanings, wellness plans, and urgent triage booking.",
+  },
+  {
+    id: "legal",
+    label: "Law Firm & Legal Counsel",
+    category: "Legal services",
+    prompt: "Build a corporate and litigation law firm website with practice areas, conflict-checked intake forms, FRCP deadline tracking, and attorney scheduling.",
   },
   {
     id: "hospitality",
-    label: "Restaurant & Reservations",
+    label: "Restaurant & Artisan Bakery",
     category: "Hospitality",
     prompt: "Build an artisan bakery and restaurant website with seasonal menu filtering, table reservations, catering estimator, and online takeaway ordering.",
   },
   {
-    id: "portfolio",
-    label: "Creative Portfolio",
-    category: "Portfolio websites",
-    prompt: "Build an independent design and engineering studio portfolio website with filterable case studies, scope timeline calculator, and client inquiry booking.",
+    id: "beauty",
+    label: "Beauty Salon & MedSpa",
+    category: "Hospitality",
+    prompt: "Design a luxury hair salon and clinical skincare MedSpa website with specialist stylist booking, treatment packages, and monthly glow memberships.",
   },
   {
-    id: "ai-platforms",
-    label: "AI Agent Workspace",
-    category: "AI platforms",
-    prompt: "Build an AI platform website for orchestrating agents, RAG knowledge search, safety evaluations, and API developer tooling.",
+    id: "aviation",
+    label: "Private Aviation Charter",
+    category: "Transportation",
+    prompt: "Build a private aviation and jet charter booking platform with fleet range filters, empty-leg alerts, and interactive flight-hour pricing.",
+  },
+  {
+    id: "saas",
+    label: "SaaS & AI Workspace",
+    category: "SaaS products",
+    prompt: "Build a B2B SaaS analytics and AI agent workspace website with telemetry modules, RBAC enterprise security, seat pricing calculator, and live trial onboarding.",
+  },
+  {
+    id: "logistics",
+    label: "Global Freight & Logistics",
+    category: "Logistics",
+    prompt: "Build a global multimodal ocean freight and cold-chain 3PL logistics portal with corridor tracking, customs brokerage, and pallet freight estimator.",
   },
 ];
 
@@ -266,7 +290,7 @@ export function NoctisForgeBuilderStudio({ initialPrompt, initialNonce }: Noctis
               Noctis Forge Builder Studio — AI Website, App & Software Factory v1.0
             </h2>
             <p className="text-[11px] text-zinc-400">
-              40 Categories · 35 Software-Company Capabilities · 12 Coordinated Agents · Interactive Live Preview · PostgreSQL Migrations · Full-Stack .ZIP Export
+              All-Industry Universal Architect · 40 Categories · 24+ Deep Verticals · Any Custom Domain · Live Preview & Full-Stack Export
             </p>
           </div>
           <div className="flex flex-wrap gap-1.5">
@@ -293,7 +317,7 @@ export function NoctisForgeBuilderStudio({ initialPrompt, initialNonce }: Noctis
             onChange={(e) => setCategory(e.target.value)}
             className="rounded-lg border border-white/15 bg-black/60 px-2.5 py-1.5 text-white"
           >
-            <option value="">Auto-Detect (Any Website · 40 Categories)</option>
+            <option value="">Auto-Detect (Any Industry · 40 Categories + Unlimited Custom Verticals)</option>
             {FORGE_40_CATEGORIES.map((c) => (
               <option key={c.id} value={c.name}>{`#${c.id} ${c.name}${c.regulated ? " (Regulated)" : ""}`}</option>
             ))}
@@ -406,6 +430,11 @@ export function NoctisForgeBuilderStudio({ initialPrompt, initialNonce }: Noctis
               <span className="text-[11px] font-semibold text-zinc-300 shrink-0">
                 {`Rev #${activeProject.currentRevision} · ${activeProject.name}`}
               </span>
+              {(activeProject.blueprint?.industrySpecialty || activeProject.spec?.industrySpecialty) && (
+                <span className="rounded-full border border-[#e4b86a]/40 bg-[#e4b86a]/15 px-2.5 py-0.5 text-[10px] font-semibold text-[#e4b86a] shrink-0">
+                  {activeProject.blueprint?.industrySpecialty || activeProject.spec?.industrySpecialty}
+                </span>
+              )}
               <input
                 type="text"
                 value={editInstruction}
@@ -444,7 +473,14 @@ export function NoctisForgeBuilderStudio({ initialPrompt, initialNonce }: Noctis
 
       {activeProject && stage === "Design" && (
         <div className="rounded-xl border border-white/10 bg-[#121722] p-4 space-y-3">
-          <h3 className="text-sm font-semibold text-white">12-Agent Architecture, Regulated Compliance & 35 Capabilities</h3>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-sm font-semibold text-white">12-Agent Architecture, Regulated Compliance & 35 Capabilities</h3>
+            {(activeProject.blueprint?.industrySpecialty || activeProject.spec?.industrySpecialty) && (
+              <span className="rounded-full border border-[#e4b86a]/45 bg-[#e4b86a]/15 px-3 py-0.5 text-[11px] font-semibold text-[#e4b86a]">
+                {`Industry Specialty: ${activeProject.blueprint?.industrySpecialty || activeProject.spec?.industrySpecialty}`}
+              </span>
+            )}
+          </div>
           {activeProject.spec?.specialistAdvisory && (
             <div className="rounded-lg border border-amber-500/35 bg-amber-500/10 p-3 text-amber-200">
               {activeProject.spec.specialistAdvisory}

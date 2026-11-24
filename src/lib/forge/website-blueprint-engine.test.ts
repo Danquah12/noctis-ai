@@ -1,7 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { FORGE_40_CATEGORIES } from "./forge-catalog.ts";
-import { classifyWebsiteCategory } from "./website-blueprint-engine.ts";
+import {
+  buildDeterministicWebsiteBlueprint,
+  classifyWebsiteCategory,
+  mergeAiJsonIntoBlueprint,
+} from "./website-blueprint-engine.ts";
 import {
   editForgeProjectConversationally,
   generateForgeProject,
@@ -88,8 +92,15 @@ test("generateForgeProject produces domain-authentic interactive sites across 6 
       mustExclude: ["Uganda", "Kyoto"],
     },
     {
-      name: "Dental & Medical Clinic",
-      prompt: "Create a dental clinic and healthcare website with online appointment scheduling and light theme",
+      name: "Dental & Orthodontics Clinic",
+      prompt: "Create a dental clinic and orthodontics website with online appointment scheduling and light theme",
+      expectedSlug: "healthcare",
+      mustInclude: ["app_appointments", "ClearSmile Dental", "F8FAFC"],
+      mustExclude: ["Uganda"],
+    },
+    {
+      name: "Healthcare Medical Clinic",
+      prompt: "Create a healthcare clinic and telehealth portal with online appointment scheduling and light theme",
       expectedSlug: "healthcare",
       mustInclude: ["Appointment", "Meridian Care", "F8FAFC"],
       mustExclude: ["Uganda"],
@@ -146,6 +157,181 @@ test("generateForgeProject produces domain-authentic interactive sites across 6 
   }
 });
 
+test("all 40 Forge categories build authentic non-boilerplate blueprints", () => {
+  for (const cat of FORGE_40_CATEGORIES) {
+    const bp = buildDeterministicWebsiteBlueprint({
+      prompt: `Build a complete interactive platform for ${cat.name}`,
+      categoryHint: cat.name,
+    });
+    assert.equal(bp.categorySlug, cat.slug);
+    assert.ok(bp.showcase.items.length >= 6, `${cat.slug} should have >= 6 showcase cards`);
+    assert.ok(bp.sections.items.length >= 6, `${cat.slug} should have >= 6 sections`);
+    const titles = bp.showcase.items.map((i) => i.title).join(" ");
+    assert.ok(
+      !/Flagship Suite|Interactive Workspace|Pro Automation/i.test(titles),
+      `${cat.slug} still emitted generic boilerplate item titles: ${titles}`,
+    );
+  }
+});
+
+test("specialized industry verticals and open-domain niche prompts build deep domain websites", async () => {
+  const verticalCases = [
+    {
+      name: "Veterinary Animal Hospital",
+      prompt: "Design a veterinary animal hospital website for dogs and cats with vaccinations, wellness plans, and urgent triage booking",
+      expectedSpecialty: "Veterinary & Animal Hospital",
+      expectedMotif: "clinical",
+      mustInclude: ["Oakwood Veterinary", "Vaccines", "app_pets", "app_vaccinations"],
+    },
+    {
+      name: "Solar & Clean Energy",
+      prompt: "Build a residential solar panel and home battery installation company website with roof savings calculator and installer booking",
+      expectedSpecialty: "Solar & Clean Home Energy",
+      expectedMotif: "organic",
+      mustInclude: ["HeliosGrid", "kWh", "postgis", "app_solar_quotes", "app_installations"],
+    },
+    {
+      name: "Beauty Salon & MedSpa",
+      prompt: "Create a hair salon and clinical skincare MedSpa website with specialist stylist booking and HydraFacial glow memberships",
+      expectedSpecialty: "Beauty Salon, Aesthetics & MedSpa",
+      expectedMotif: "editorial",
+      mustInclude: ["Atelier Lumière", "Balayage", "app_treatments", "app_stylists"],
+    },
+    {
+      name: "Private Aviation Charter",
+      prompt: "Build a private jet charter and aviation fleet platform with empty-leg alerts and flight-hour pricing estimator",
+      expectedSpecialty: "Private Aviation & Aerospace Charter",
+      expectedMotif: "waves",
+      mustInclude: ["Meridian Jet", "Phenom", "app_aircraft", "app_charter_legs"],
+    },
+    {
+      name: "Home Services HVAC & Plumbing",
+      prompt: "Build a licensed HVAC, plumbing, and electrical home repair company website with flat-rate dispatch windows",
+      expectedSpecialty: "Home Services, HVAC, Plumbing & Electrical",
+      expectedMotif: "blueprint",
+      mustInclude: ["TrueCraft", "Heat Pump", "app_service_calls", "app_technicians"],
+    },
+    {
+      name: "Biotech & Genomics Research",
+      prompt: "Create a biotech genomics and clinical trial research platform website with assay services and biomarker workflows",
+      expectedSpecialty: "Biotech, Genomics & Clinical Research",
+      expectedMotif: "clinical",
+      mustInclude: ["HelixVault", "Spatial", "app_clinical_trials", "app_specimens"],
+    },
+    {
+      name: "Winery & Vineyard Tasting Room",
+      prompt: "Build an estate winery, vineyard, and tasting room website with reserve bottles and seasonal club allocations",
+      expectedSpecialty: "Winery, Vineyard & Tasting Room",
+      expectedMotif: "organic",
+      mustInclude: ["CellarStone", "Cabernet", "app_wines", "app_tastings"],
+    },
+    {
+      name: "Precision CNC & Robotics Manufacturing",
+      prompt: "Design a CNC machining and robotic assembly manufacturing website with RFQ estimating and ISO 9001 quality tracking",
+      expectedSpecialty: "Precision Manufacturing, CNC & Robotics",
+      expectedMotif: "circuit",
+      mustInclude: ["ForgeLine", "5-Axis", "app_work_orders", "app_rfqs"],
+    },
+  ];
+
+  for (const vc of verticalCases) {
+    const res = await generateForgeProject({ prompt: vc.prompt, persist: false, useAi: false });
+    assert.equal(res.blueprint.industrySpecialty, vc.expectedSpecialty, `${vc.name} specialty mismatch`);
+    assert.equal(res.blueprint.visualMotif, vc.expectedMotif, `${vc.name} visualMotif mismatch`);
+    assert.equal(res.qaSecurity.passedAll, true, `${vc.name} failed QA/SAST/WCAG`);
+    const combined = `${res.files["index.html"]}\n${res.files["migrations/0001_init.sql"]}`;
+    for (const token of vc.mustInclude) {
+      assert.ok(combined.includes(token), `${vc.name} expected to include "${token}"`);
+    }
+  }
+
+  // Completely unlisted niche industries must synthesize topic-grounded sites instead of Apex Advisory Group
+  const horology = await generateForgeProject({
+    prompt: "Build a bespoke watchmaking and vintage horology repair atelier website with movement diagnostics, authenticity certification, and appraisal booking",
+    persist: false,
+    useAi: false,
+  });
+  assert.equal(horology.qaSecurity.passedAll, true);
+  assert.ok(!horology.name.includes("Apex Advisory"), "Watchmaking atelier must not fall back to Apex Advisory Group");
+  assert.ok(horology.files["index.html"]!.includes("Watchmaking"), "Expected Watchmaking copy in HTML");
+  assert.ok(horology.files["index.html"]!.includes("Movement Diagnostics"), "Expected feature hint card in HTML");
+  assert.ok(horology.files["migrations/0001_init.sql"]!.includes("app_movement_diagnostics"), "Expected topic-derived table");
+
+  const apiary = await generateForgeProject({
+    prompt: "Build an urban beekeeping and raw honey apiary tour website with hive sponsorships",
+    persist: false,
+    useAi: false,
+  });
+  assert.equal(apiary.qaSecurity.passedAll, true);
+  assert.ok(!apiary.name.includes("Apex Advisory"), "Urban beekeeping must not fall back to Apex Advisory Group");
+  assert.ok(apiary.files["index.html"]!.includes("Beekeeping"), "Expected Beekeeping copy in HTML");
+  assert.ok(apiary.files["migrations/0001_init.sql"]!.includes("app_hive_sponsorships"), "Expected hive_sponsorships table");
+});
+
+test("mergeAiJsonIntoBlueprint validates and merges full-fidelity AI industry specs safely", () => {
+  const base = buildDeterministicWebsiteBlueprint({
+    prompt: "Build a boutique coffee roastery website",
+  });
+  const merged = mergeAiJsonIntoBlueprint(base, {
+    brandName: "Solstice Roasters & Guild",
+    domain: "solsticeroasters.co",
+    industrySpecialty: "Specialty Coffee Micro-Roastery",
+    visualMotif: "organic",
+    themeMode: "light",
+    themePalette: "gold",
+    navLinks: ["Single Origins", "Roasting", "Box Calc", "Cafes", "FAQ"],
+    hero: {
+      eyebrow: "Direct Trade · Roasted Every Tuesday",
+      headline: "Bright Washed Micro-Lots From Family Estates",
+      subheadline: "Subscribe cleanly to rotating seasonal single origins roasted to order.",
+      primaryCta: "Shop Roasts",
+      secondaryCta: "Calculate Box",
+      searchBar: { field1Label: "Origin", field1Placeholder: "Search Ethiopia, Colombia...", field2Label: "Roast" },
+      stats: [
+        { value: "48h", label: "Roast To Dispatch" },
+        { value: "100%", label: "Direct Producer Pay" },
+        { value: "88+ Pts", label: "Cupping Minimum" },
+        { value: "Weekly", label: "Fresh Schedules" },
+      ],
+    },
+    showcaseTitle: "Current Seasonal Micro-Lots",
+    showcaseSubtitle: "Filter light washed and natural process harvests.",
+    showcaseItems: [
+      { title: "Kirinyaga AA Peaberry", subtitle: "Kenya · Light Filter", category: "Washed", badge: "90 Pts", metric: "$24 / bag", rating: "4.99", description: "Blackcurrant and bergamot brightness.", features: ["Washed", "300g", "Tuesday Roast"], actionLabel: "Add Bag" },
+      { title: "Huila Pink Bourbon", subtitle: "Colombia · Whole Bean", category: "Natural", badge: "Sweet", metric: "$22 / bag", rating: "4.97", description: "Ripe guava and raw cane caramel finish.", features: ["Sun Dried", "Filter/Esp.", "Farm Direct"], actionLabel: "Add Bag" },
+      { title: "Monthly Two-Bag Explorer Box", subtitle: "Free Grind Profile Option", category: "Subscriptions", badge: "Most Popular", metric: "$39 / box", rating: "4.98", description: "Two rotating 300g bags shipped 48h off roast.", features: ["Pause Anytime", "Tasting Cards", "Free Ship"], actionLabel: "Start Box" },
+    ],
+    interactiveTool: {
+      kind: "cart_checkout",
+      title: "Roastery Bag & Espresso Office Estimator",
+      subtitle: "Price rotating whole-bean shipments.",
+      unitLabel: "Bags",
+      baseRate: 22,
+      options: [
+        { label: "Apply Subscriber 15% Discount (-$3/bag)", delta: -3 },
+        { label: "Upgrade To Reserve Gesha Lot (+$14/bag)", delta: 14 },
+      ],
+    },
+    testimonials: [
+      { quote: "Best filter roast subscription in the country.", author: "Samir", role: "Barista" },
+      { quote: "Always arrives three days off roast cleanly.", author: "Nora", role: "Subscriber" },
+    ],
+    ctaBanner: { headline: "Brew Brighter Mornings", subheadline: "Start a custom roast schedule today.", buttonLabel: "Pick Your Box" },
+    entities: ["roasts", "coffee_subscriptions", "cupping_notes"],
+  });
+
+  assert.equal(merged.brandName, "Solstice Roasters & Guild");
+  assert.equal(merged.industrySpecialty, "Specialty Coffee Micro-Roastery");
+  assert.equal(merged.visualMotif, "organic");
+  assert.equal(merged.theme.mode, "light");
+  assert.equal(merged.navLinks[0]?.label, "Single Origins");
+  assert.equal(merged.hero.stats[0]?.value, "48h");
+  assert.equal(merged.interactiveTool.kind, "cart_checkout");
+  assert.equal(merged.interactiveTool.baseRate, 22);
+  assert.ok(merged.entities.some((e) => e.name === "coffee_subscriptions"));
+  assert.equal(merged.ctaBanner.buttonLabel, "Pick Your Box");
+});
+
 test("editForgeProjectConversationally updates theme mode, entities, multilingual, and restores cleanly", async () => {
   const gen = await generateForgeProject({
     prompt: "Build a worldwide travel booking portal",
@@ -182,10 +368,17 @@ test("webPageBuilderGadget generates tailored websites universally and ignores n
   assert.ok(bakeryOut!.includes("Hospitality"), "Expected Hospitality category");
   assert.ok(!bakeryOut!.includes("Uganda"), "Must never hardcode Uganda");
 
+  const solarOut = await webPageBuilderGadget(
+    "Design a solar panel installation site with savings calculator",
+  );
+  assert.ok(solarOut && solarOut.includes("HeliosGrid"), "Expected Solar & Clean Energy vertical");
+  assert.ok(solarOut!.includes("Solar & Clean Home Energy"), "Expected specialized header badge");
+  assert.ok(solarOut!.includes("solar_quotes"), "Expected solar entity suggestion");
+
   const realEstateOut = await webPageBuilderGadget(
     "Design a modern real estate listing website with interactive property filters and mortgage calculator",
   );
-  assert.ok(realEstateOut && realEstateOut.includes("Real estate"), "Expected Real estate category");
+  assert.ok(realEstateOut && realEstateOut.includes("Real Estate"), "Expected Real estate specialty");
   assert.ok(realEstateOut!.includes("PostGIS spatial indexing enabled"), "Expected PostGIS annotation");
 
   const tourWorldOut = await webPageBuilderGadget(
@@ -198,6 +391,7 @@ test("webPageBuilderGadget generates tailored websites universally and ignores n
   const nonWebPrompts = [
     "Outline the PostgreSQL + PostGIS schema and core booking flow for our travel platform.",
     "Write a Python binary search function with unit tests.",
+    "What is PostGIS?",
     "Explain how mutual TLS (mTLS) authenticates client and server.",
     "Write a React component for a hotel search bar.",
   ];

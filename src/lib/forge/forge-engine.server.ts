@@ -340,6 +340,8 @@ export async function generateForgeProject(input: {
     projectId,
     name: projectName,
     category: cat.name,
+    industrySpecialty: blueprint.industrySpecialty,
+    visualMotif: blueprint.visualMotif,
     regulated: cat.regulated,
     specialistAdvisory: cat.specialistAdvisory,
     stack,

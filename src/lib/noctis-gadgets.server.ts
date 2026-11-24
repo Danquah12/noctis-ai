@@ -407,12 +407,13 @@ export async function headerAuditGadget(question: string): Promise<string | null
 
 function isExplicitWebsiteBuildIntent(question: string): boolean {
   return (
-    /\b(?:build|create|make|design|generate|code|develop|draft|scaffold)\b[\s\S]{0,90}\b(?:web\s*site|website|web\s*page|webpage|landing\s*page|html\s*page|homepage|home\s*page|storefront|web\s*app|web\s+application|portal|marketplace|portfolio)\b/i.test(
+    /\b(?:build|create|make|design|generate|code|develop|draft|scaffold)\b[\s\S]{0,110}\b(?:web\s*site|website|web\s*page|webpage|landing\s*page|html\s*page|homepage|home\s*page|storefront|web\s*app|web\s+application|portal|marketplace|portfolio|booking\s+page|site)\b/i.test(
       question,
     ) ||
     /^\s*(?:web\s*site|website|web\s*page|webpage|landing\s*page)\s+(?:for|of|on|about|covering)\b/i.test(
       question,
-    )
+    ) ||
+    /\bwebsite\s+for\s+(?:my|our|a|an|the)\b/i.test(question)
   );
 }
 
@@ -434,7 +435,7 @@ export async function webPageBuilderGadget(question: string): Promise<string | n
   const htmlCode = renderWebsiteBlueprintHtml(blueprint);
 
   return [
-    `## Universal Website Build: ${blueprint.brandName} (\`${blueprint.categoryName}\` · ${blueprint.scopeLabel})`,
+    `## Universal Website Build: ${blueprint.brandName} (\`${blueprint.industrySpecialty}\` · ${blueprint.scopeLabel})`,
     `- **Interactive Preview Ready:** Live search & category filtering, interactive action modal & saved drawer, Light/Dark theme toggle, and a **${blueprint.interactiveTool.title}** (${blueprint.showcase.items.length} curated items).`,
     `- **Suggested Full-Stack Entities:** \`${blueprint.entities.map((e) => e.name).join("`, `")}\`${blueprint.needsPostGis ? " (PostGIS spatial indexing enabled)" : ""}`,
     blueprint.specialistAdvisory ? `- **Compliance Advisory:** ${blueprint.specialistAdvisory}` : "",

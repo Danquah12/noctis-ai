@@ -11,6 +11,16 @@
  */
 
 import { FORGE_40_CATEGORIES, type ForgeCategorySpec } from "./forge-catalog.ts";
+import {
+  ENHANCED_CATEGORY_SEEDS,
+  EXTRA_ENTITY_COLUMNS,
+  extractArbitraryIndustrySubject,
+  matchSpecializedVertical,
+  type RichIndustryBlueprintSeed,
+  type VisualMotif,
+} from "./industry-specializations.ts";
+
+export type { VisualMotif };
 
 export interface WebsiteTheme {
   mode: "light" | "dark";
@@ -64,6 +74,8 @@ export interface WebsiteBlueprint {
   tagline: string;
   categorySlug: string;
   categoryName: string;
+  industrySpecialty: string;
+  visualMotif: VisualMotif;
   regulated: boolean;
   specialistAdvisory: string | null;
   scopeLabel: string;
@@ -122,6 +134,8 @@ interface DomainPresetTemplate {
   brandName: string;
   domain: string;
   tagline: string;
+  industrySpecialty?: string;
+  visualMotif?: VisualMotif;
   navLinks: string[];
   ctaLabel: string;
   defaultTheme: { mode: "light" | "dark"; palette: string };
@@ -234,8 +248,8 @@ export function classifyWebsiteCategory(categoryHint?: string, prompt?: string):
     { slug: "hospitality", primary: /\b(?:hospitality|restaurant|bakery|cafe|coffee\s*shop|bistro|catering|menu|dining|chef|pastry|hotel\s+(?:chain|website|booking|reservation)|room\s+booking|table\s+reservation|guest\s*house|resort\s+spa)\b/i, secondary: /\b(?:rooms?|orders?|reservations?|desserts?|brunch)\b/i, boost: 3 },
     { slug: "ecommerce", primary: /\b(?:e-?commerce|online\s+store|storefront|product\s+catalog|shopping\s+cart|checkout|boutique|merchandise|handmade|retail\s+shop|sneakers?|apparel|fashion\s+store|jewelry\s+shop)\b/i, secondary: /\b(?:products?|skus?|inventory|orders?|shipping|discounts?)\b/i, boost: 3 },
     { slug: "real-estate", primary: /\b(?:real\s*estate|property\s+listing|properties|realtor|brokerage|apartment|rentals?|condos?|homes?\s+for\s+sale|mortgage\s+calculator|mls\s+idx|commercial\s+leasing|landlords?)\b/i, secondary: /\b(?:tenants?|leases?|floor\s*plan|open\s+house|neighborhood)\b/i, boost: 4 },
-    { slug: "healthcare", primary: /\b(?:healthcare|hospital|clinic|medical|patient\s+portal|telehealth|doctor|physician|dental|dentist|pharmacy|fhir|hipaa|appointment\s+scheduling|diagnostic|therapy|mental\s+health|pediatric|urgent\s+care)\b/i, secondary: /\b(?:patients?|providers?|prescriptions?|ehr|triage)\b/i, boost: 4 },
-    { slug: "legal-services", primary: /\b(?:law\s+firm|legal\s+services|attorney|lawyer|litigation|docket|court\s+filing|legal\s+research|paralegal|frcp|contracts?|legal\s+practice|notary)\b/i, secondary: /\b(?:cases?|filings?|briefs?|retainer|counsel)\b/i, boost: 4 },
+    { slug: "healthcare", primary: /\b(?:healthcare|hospital|clinic|medical|patient\s+portal|telehealth|doctor|physician|dental|dentist|pharmacy|fhir|hipaa|appointment\s+scheduling|(?:medical|clinical|lab|imaging)\s+diagnostics?|(?:physical|occupational|speech|clinical|behavioral)\s+therapy|psychotherapy|mental\s+health|pediatric|urgent\s+care)\b/i, secondary: /\b(?:patients?|providers?|prescriptions?|ehr|triage)\b/i, boost: 4 },
+    { slug: "legal-services", primary: /\b(?:law\s+firm|legal\s+services|attorney|lawyer|litigation|docket|court\s+filing|legal\s+research|paralegal|frcp|(?:commercial|legal)\s+contracts?|legal\s+practice|notary)\b/i, secondary: /\b(?:cases?|filings?|briefs?|retainer|counsel)\b/i, boost: 4 },
     { slug: "government", primary: /\b(?:government|municipal|city\s+portal|public\s+service|agency\s+website|citizen\s+portal|permits?|civic|federal|state\s+portal|section\s+508)\b/i, secondary: /\b(?:licensing|public\s+records|ordinance|benefits)\b/i, boost: 3 },
     { slug: "education", primary: /\b(?:school|university|college|academy|e-?learning|lms|course\s+catalog|online\s+courses?|curriculum|student\s+portal|tutoring|bootcamp|classroom|edtech)\b/i, secondary: /\b(?:lessons?|quizzes?|certificates?|enrollments?|grades?|faculty)\b/i, boost: 4 },
     { slug: "banking", primary: /\b(?:banking|digital\s+bank|credit\s+union|neobank|checking\s+account|savings\s+account|wire\s+transfer|core\s+banking|retail\s+banking|wealth\s+portal)\b/i, secondary: /\b(?:accounts?|ledgers?|balances?|cards?|kyc)\b/i, boost: 4 },
@@ -243,12 +257,12 @@ export function classifyWebsiteCategory(categoryHint?: string, prompt?: string):
     { slug: "insurance", primary: /\b(?:insurance|insurtech|policy\s+management|claims?\s+portal|underwriting|actuarial|auto\s+quote|health\s+plan|coverage\s+quote)\b/i, secondary: /\b(?:policies|premiums?|deductibles?|adjusters?)\b/i, boost: 4 },
     { slug: "social-media", primary: /\b(?:social\s+media|social\s+network|community\s+network|short[- ]video|creator\s+feed|microblogging|photo\s+sharing|follow\s+feed|live\s+comments)\b/i, secondary: /\b(?:posts?|likes?|followers?|hashtags?|moderation)\b/i, boost: 3 },
     { slug: "professional-networking", primary: /\b(?:professional\s+network|linkedin|talent\s+network|mentor\s+network|alumni\s+network|clinician\s+network|credentialed\s+profiles)\b/i, secondary: /\b(?:connections?|endorsements?|recruiters?|resumes?)\b/i, boost: 4 },
-    { slug: "transportation", primary: /\b(?:ride[- ]?booking|ride[- ]?sharing|taxi|shuttle|transit|fleet\s+management|dispatch|charter|ev\s+charging\s+network|mobility)\b/i, secondary: /\b(?:drivers?|routes?|vehicles?|gps|fares?)\b/i, boost: 3 },
+    { slug: "transportation", primary: /\b(?:ride[- ]?booking|ride[- ]?sharing|taxi|shuttle|transit|fleet\s+management|dispatch|(?:bus|coach|van|shuttle)\s+charter|ev\s+charging\s+network|mobility)\b/i, secondary: /\b(?:drivers?|routes?|vehicles?|gps|fares?)\b/i, boost: 3 },
     { slug: "logistics", primary: /\b(?:logistics|freight|supply\s+chain|shipping\s+tracker|warehouse|3pl|customs|parcel\s+tracking|container\s+shipping|fulfillment)\b/i, secondary: /\b(?:shipments?|manifests?|barcodes?|carriers?)\b/i, boost: 4 },
     { slug: "job-boards", primary: /\b(?:job\s+board|careers?\s+portal|recruitment|hiring\s+platform|applicant\s+tracking|job\s+listings?|talent\s+search|resume\s+builder)\b/i, secondary: /\b(?:candidates?|employers?|interviews?|salary)\b/i, boost: 4 },
     { slug: "freelance-marketplaces", primary: /\b(?:freelance|gig\s+marketplace|service\s+marketplace|contractor\s+marketplace|fiverr|upwork|hire\s+designers?|escrow\s+milestones)\b/i, secondary: /\b(?:proposals?|hourly\s+rate|reviews?|milestones?)\b/i, boost: 4 },
     { slug: "construction", primary: /\b(?:construction|contractor\s+portal|general\s+contractor|architecture\s+firm|remodeling|engineering\s+firm|blueprints?|job\s+site|rfi|subcontractor)\b/i, secondary: /\b(?:bids?|permits?|schedules?|inspections?)\b/i, boost: 4 },
-    { slug: "automotive", primary: /\b(?:automotive|car\s+dealership|auto\s+repair|mechanic|garage|vehicle\s+inventory|test\s+drive|ev\s+showroom|detailing|diagnostics)\b/i, secondary: /\b(?:vin|mileage|service\s+bay|parts?|financing)\b/i, boost: 4 },
+    { slug: "automotive", primary: /\b(?:automotive|car\s+dealership|auto\s+repair|mechanic|garage|vehicle\s+inventory|test\s+drive|ev\s+showroom|(?:auto|car)\s+detailing|(?:auto|vehicle|engine|obd)\s+diagnostics)\b/i, secondary: /\b(?:vin|mileage|service\s+bay|parts?|financing)\b/i, boost: 4 },
     { slug: "agriculture", primary: /\b(?:agriculture|agritech|farm\s+management|agricultural\s+market|farmers?\s+cooperative|crop\s+monitoring|greenhouse|livestock|hydroponic|irrigation)\b/i, secondary: /\b(?:harvest|soil|yield|acreage|produce)\b/i, boost: 4 },
     { slug: "nonprofits", primary: /\b(?:nonprofit|non-?profit|charity|fundraising|donation\s+portal|ngo|foundation|volunteer\s+signup|humanitarian|grantmaking)\b/i, secondary: /\b(?:donors?|campaigns?|impact|501c3|pledges?)\b/i, boost: 4 },
     { slug: "religious-organizations", primary: /\b(?:church|ministry|parish|cathedral|mosque|synagogue|temple|sermons?|bible\s+study|worship|pastoral|congregation|tithing)\b/i, secondary: /\b(?:fellowship|prayer|events?|volunteers?)\b/i, boost: 4 },
@@ -285,10 +299,26 @@ export function classifyWebsiteCategory(categoryHint?: string, prompt?: string):
     }
   }
 
+  const hasStrongCorporateIntent =
+    /\b(?:consulting\s+firm|corporate\s+advisory|b2b\s+agency|marketing\s+agency|corporate\s+website|advisory\s+practice)\b/i.test(
+      prompt || "",
+    );
+  if (bestScore === 0 || (bestSlug === "business" && !hasStrongCorporateIntent)) {
+    const vert = matchSpecializedVertical(prompt || "");
+    if (vert) {
+      return (
+        FORGE_40_CATEGORIES.find((c) => c.slug === vert.parentCategorySlug) ||
+        FORGE_40_CATEGORIES.find((c) => c.slug === bestSlug) ||
+        FORGE_40_CATEGORIES[0]!
+      );
+    }
+  }
+
   return FORGE_40_CATEGORIES.find((c) => c.slug === bestSlug) || FORGE_40_CATEGORIES[0]!;
 }
 
 const ENTITY_COLUMNS_BY_NAME: Record<string, string[]> = {
+  ...EXTRA_ENTITY_COLUMNS,
   destinations: ["name TEXT NOT NULL", "country TEXT NOT NULL", "region TEXT", "category TEXT NOT NULL", "rating NUMERIC(3,2) DEFAULT 4.8", "price_from_cents INTEGER DEFAULT 0", "location_point GEOGRAPHY(POINT, 4326)"],
   itineraries: ["title TEXT NOT NULL", "duration_days INTEGER NOT NULL DEFAULT 5", "travelers_count INTEGER NOT NULL DEFAULT 2", "budget_cents INTEGER NOT NULL DEFAULT 150000", "status TEXT NOT NULL DEFAULT 'DRAFT'"],
   bookings: ["customer_name TEXT NOT NULL", "customer_email TEXT NOT NULL", "item_ref TEXT NOT NULL", "quantity INTEGER NOT NULL DEFAULT 1", "total_cents INTEGER NOT NULL", "payment_status TEXT NOT NULL DEFAULT 'PENDING'"],
@@ -1044,138 +1074,169 @@ const PRESETS_BY_SLUG: Record<string, DomainPresetTemplate> = {
   ),
 };
 
-const SYNTHESIZED_CATEGORY_PROFILES: Record<
-  string,
-  {
-    brand: string;
-    domain: string;
-    palette: string;
-    mode: "light" | "dark";
-    headline: string;
-    subheadline: string;
-    searchPlaceholder: string;
-    cats: [string, string, string];
-    metricUnit: string;
-    rate: number;
-    unitLabel: string;
-    toolKind: InteractiveToolKind;
-  }
-> = {
-  business: { brand: "Apex Advisory Group", domain: "apexadvisory.co", palette: "slate", mode: "light", headline: "Strategic Advisory & Measurable Execution for Growing Companies", subheadline: "Showcase core capabilities, publish verified client outcomes, and convert high-intent consultations cleanly.", searchPlaceholder: "Search strategy, digital transformation, operations...", cats: ["Strategy", "Operations", "Technology"], metricUnit: "Engagement", rate: 2500, unitLabel: "Workshop Days", toolKind: "lead_estimator" },
-  "social-media": { brand: "PulseStream Network", domain: "pulsestream.social", palette: "violet", mode: "dark", headline: "Where Creators & Communities Share Stories in Real Time", subheadline: "Ranked discovery feeds, creator channels, community moderation queues, and live reactions built for engagement.", searchPlaceholder: "Search creators, channels, video series...", cats: ["Trending Reels", "Creator Channels", "Live Spaces"], metricUnit: "Followers", rate: 19, unitLabel: "Creator Boost Seats", toolKind: "pricing_calculator" },
-  "professional-networking": { brand: "Vanguard Network", domain: "vanguardwork.io", palette: "ocean", mode: "dark", headline: "Connect Credentialed Talent, Mentors & High-Trust Opportunities", subheadline: "Verified industry profiles, role-matched opportunities, peer endorsements, and direct messaging.", searchPlaceholder: "Search specialists, mentors, open roles...", cats: ["Verified Profiles", "Open Roles", "Peer Mentors"], metricUnit: "Verified", rate: 39, unitLabel: "Recruiter Seats", toolKind: "pricing_calculator" },
-  "legal-services": { brand: "Harbor & Grant LLP", domain: "harborgrantlaw.com", palette: "gold", mode: "dark", headline: "Authoritative Legal Counsel, Matter Tracking & Client Intake", subheadline: "Showcase practice areas, conflict-checked intake forms, deadline trackers, and attorney credentials cleanly.", searchPlaceholder: "Search corporate, litigation, IP, regulatory...", cats: ["Corporate Law", "Litigation", "Compliance & IP"], metricUnit: "Case Brief", rate: 350, unitLabel: "Consultation Hours", toolKind: "appointment_scheduler" },
-  government: { brand: "CivicBridge Public Portal", domain: "civicbridge.gov.example", palette: "slate", mode: "light", headline: "Transparent Public Services, Permits & Citizen Access", subheadline: "Section 508 & WCAG 2.2 AA accessible service directory, permit lookup, and digital citizen requests.", searchPlaceholder: "Search permits, licenses, public records...", cats: ["Permits & Licensing", "Citizen Services", "Public Notices"], metricUnit: "Online", rate: 45, unitLabel: "Permit Applications", toolKind: "lead_estimator" },
-  banking: { brand: "Northbridge Private Banking", domain: "northbridgebank.example", palette: "emerald", mode: "dark", headline: "Intelligent Treasury, Everyday Banking & Real-Time Controls", subheadline: "Transparent account tiers, instant ledger previews, savings calculators, and multi-factor security governance.", searchPlaceholder: "Search checking, treasury, CDs, transfers...", cats: ["Personal Banking", "Business Treasury", "Wealth & Rates"], metricUnit: "APY / Tier", rate: 1000, unitLabel: "Deposit ($1k units)", toolKind: "pricing_calculator" },
-  fintech: { brand: "ClearLedger Financial", domain: "clearledger.app", palette: "emerald", mode: "dark", headline: "Automated Invoicing, Global Payouts & Cash-Flow Intelligence", subheadline: "Real-time invoice reconciliation, multi-currency fee calculators, and PCI-conscious treasury workflows.", searchPlaceholder: "Search invoicing, payouts, FX, budgeting...", cats: ["Global Payouts", "Automated Billing", "Cash Analytics"], metricUnit: "Platform Fee", rate: 49, unitLabel: "Team Members", toolKind: "pricing_calculator" },
-  insurance: { brand: "ShieldCover Assurance", domain: "shieldcover.insure", palette: "ocean", mode: "light", headline: "Clear Coverage, Instant Quotes & Transparent Claims Tracking", subheadline: "Compare policy tiers side by side, estimate monthly premiums live, and guide policyholders through claims cleanly.", searchPlaceholder: "Search home, auto, commercial, health plans...", cats: ["Personal Plans", "Commercial Coverage", "Claims Support"], metricUnit: "Est. Monthly", rate: 68, unitLabel: "Coverage Units ($100k)", toolKind: "pricing_calculator" },
-  transportation: { brand: "SwiftRoute Mobility", domain: "swiftroutemobility.com", palette: "ocean", mode: "dark", headline: "Smart Fleet Dispatch, Charter Booking & Real-Time Transit", subheadline: "Route estimators, live vehicle availability, driver verification, and corporate shuttle management.", searchPlaceholder: "Search routes, charters, EV fleets...", cats: ["City Rides", "Airport Transfers", "Fleet Management"], metricUnit: "Est. Fare", rate: 55, unitLabel: "Trip Miles (x10)", toolKind: "booking_estimator" },
-  logistics: { brand: "AtlasFreight Command", domain: "atlasfreight.io", palette: "amber", mode: "dark", headline: "End-to-End Freight Tracking, Warehouse Sync & Customs Clarity", subheadline: "Calculate lane freight quotes, inspect carrier SLA scores, and monitor container shipments live.", searchPlaceholder: "Search ocean freight, air cargo, warehouses...", cats: ["Air & Express", "Ocean Container", "Cold Chain"], metricUnit: "SLA Tier", rate: 180, unitLabel: "Pallet Units", toolKind: "booking_estimator" },
-  "job-boards": { brand: "TalentBeacon Careers", domain: "talentbeacon.jobs", palette: "ocean", mode: "light", headline: "Curated Roles & Direct Connections With Verified Hiring Teams", subheadline: "Salary-transparent listings, instant role filters, candidate profiles, and structured applicant pipelines.", searchPlaceholder: "Search engineering, healthcare, remote roles...", cats: ["Remote Roles", "Engineering", "Healthcare & Ops"], metricUnit: "Base Range", rate: 149, unitLabel: "Active Job Posts", toolKind: "pricing_calculator" },
-  "freelance-marketplaces": { brand: "CraftGrid Talent Network", domain: "craftgrid.work", palette: "coral", mode: "light", headline: "Hire Vetted Independent Specialists With Milestone Protection", subheadline: "Compare verified portfolios, hourly rates, and escrow milestones for design, engineering, and consulting.", searchPlaceholder: "Search designers, developers, editors, consultants...", cats: ["Product & Design", "Engineering", "Growth & Video"], metricUnit: "Hourly / Fixed", rate: 85, unitLabel: "Project Hours", toolKind: "booking_estimator" },
-  construction: { brand: "Ironwood Build Partners", domain: "ironwoodbuild.com", palette: "amber", mode: "dark", headline: "Precision Commercial & Residential Construction Delivery", subheadline: "Showcase completed builds, subcontractor pre-qualification, schedule milestones, and instant project estimates.", searchPlaceholder: "Search commercial buildout, custom homes, green retrofit...", cats: ["Commercial", "Custom Homes", "Renovations"], metricUnit: "Completed", rate: 210, unitLabel: "Sq Ft (x10)", toolKind: "lead_estimator" },
-  automotive: { brand: "ApexDrive Motors & Service", domain: "apexdrivemotors.com", palette: "crimson", mode: "dark", headline: "Curated Vehicle Inventory, Transparent Financing & Service Bays", subheadline: "Filter inspected EVs and certified pre-owned models, estimate monthly payments, and schedule maintenance slots.", searchPlaceholder: "Search SUV, electric, sedan, brake service...", cats: ["Electric & Hybrid", "Certified Pre-Owned", "Service & Care"], metricUnit: "Inspected", rate: 420, unitLabel: "Price Tier ($10k units)", toolKind: "property_mortgage" },
-  agriculture: { brand: "HarvestLink Cooperative", domain: "harvestlink.ag", palette: "emerald", mode: "light", headline: "Connecting Farms, Cold-Chain Logistics & Direct Wholesale Buyers", subheadline: "Real-time harvest availability, agronomic lot traceability, and direct farm-to-market fulfillment orders.", searchPlaceholder: "Search grains, organic produce, irrigation, cold chain...", cats: ["Fresh Harvest", "Wholesale Lots", "Farm Services"], metricUnit: "Farm Direct", rate: 140, unitLabel: "Crate / Ton Units", toolKind: "cart_checkout" },
-  nonprofits: { brand: "Beacon Impact Foundation", domain: "beaconimpact.org", palette: "emerald", mode: "light", headline: "Empowering Communities Through Transparent Action & Giving", subheadline: "Explore active field programs, track impact allocations transparently, sign up to volunteer, or donate securely.", searchPlaceholder: "Search clean water, youth STEM, food relief...", cats: ["Active Campaigns", "Volunteer Roles", "Impact Reports"], metricUnit: "100% Direct", rate: 50, unitLabel: "Impact Units ($50)", toolKind: "cart_checkout" },
-  "religious-organizations": { brand: "Grace Harbor Fellowship", domain: "graceharbor.church", palette: "gold", mode: "light", headline: "A Welcoming Community Rooted in Faith, Service & Study", subheadline: "Watch weekly sermons, join neighborhood study groups, RSVP to fellowship gatherings, and support outreach.", searchPlaceholder: "Search sermons, small groups, Sunday services...", cats: ["Sermons & Audio", "Study Groups", "Community Events"], metricUnit: "Weekly", rate: 25, unitLabel: "Event RSVPs / Gifts", toolKind: "appointment_scheduler" },
-  "news-media": { brand: "The Meridian Dispatch", domain: "meridiandispatch.press", palette: "slate", mode: "light", headline: "Independent Longform Reporting, Briefings & Deep Investigations", subheadline: "Readable editorial typography, topic channels, member newsletter management, and curated investigative series.", searchPlaceholder: "Search climate, markets, tech policy, culture...", cats: ["Investigations", "World Briefings", "Newsletters"], metricUnit: "Subscriber", rate: 12, unitLabel: "Member Months", toolKind: "pricing_calculator" },
-  entertainment: { brand: "NovaWave Studio & Streaming", domain: "novawavestream.tv", palette: "crimson", mode: "dark", headline: "Original Series, Live Audio Sessions & Creator Channels On Demand", subheadline: "Interactive media catalog, playlist queue builder, lossless audio streaming tiers, and creator spotlights.", searchPlaceholder: "Search originals, podcasts, soundtracks, live sets...", cats: ["Originals", "Audio & Podcasts", "Live Events"], metricUnit: "4K / Lossless", rate: 15, unitLabel: "Family Screens", toolKind: "pricing_calculator" },
-  sports: { brand: "Summit Athletics & Club", domain: "summitathletics.club", palette: "emerald", mode: "dark", headline: "Train Harder With Pro Coaching, Match Schedules & Club Membership", subheadline: "Explore training programs, upcoming league fixtures, coaching rosters, and instant facility memberships.", searchPlaceholder: "Search fitness, tennis, youth league, conditioning...", cats: ["Performance Labs", "Leagues & Fixtures", "Memberships"], metricUnit: "Open Slot", rate: 89, unitLabel: "Member Passes", toolKind: "booking_estimator" },
-  events: { brand: "Stagecraft Live & Ticketing", domain: "stagecraftlive.events", palette: "violet", mode: "dark", headline: "Unforgettable Conferences, Festivals & Seamless Ticket Experiences", subheadline: "Browse speaker lineups, compare ticket passes, reserve workshops, and estimate group conference pricing.", searchPlaceholder: "Search tech summit, concerts, workshops, passes...", cats: ["Keynote Summits", "Workshops", "VIP & Group"], metricUnit: "Instant Pass", rate: 195, unitLabel: "Event Passes", toolKind: "cart_checkout" },
-  cybersecurity: { brand: "SentinelMesh SecOps", domain: "sentinelmesh.sec", palette: "ocean", mode: "dark", headline: "Unified Threat Visibility, Vulnerability Governance & SOC Automation", subheadline: "Asset attack-surface dashboards, CISA KEV SLA tracking, least-privilege RBAC, and incident playbooks.", searchPlaceholder: "Search SOC triage, KEV tracker, SAST, IAM...", cats: ["Threat Detection", "KEV Governance", "AppSec Gates"], metricUnit: "SOC Verified", rate: 120, unitLabel: "Monitored Hosts (x10)", toolKind: "pricing_calculator" },
-  "rmf-grc": { brand: "SovereignGRC Compliance Hub", domain: "sovereigngrc.io", palette: "gold", mode: "dark", headline: "Continuous RMF Authorization, Control Evidence & POA&M Readiness", subheadline: "Organize NIST 800-53 / FedRAMP control families, automate OSCAL exports, and enforce AO approval workflows.", searchPlaceholder: "Search NIST 800-53, FedRAMP, CMMC, POA&M...", cats: ["Control Baselines", "POA&M Tracker", "Audit Packages"], metricUnit: "ATO Ready", rate: 450, unitLabel: "Authorized Enclaves", toolKind: "pricing_calculator" },
-  "ai-platforms": { brand: "Noctis Studio AI Workspace", domain: "studioai.platform", palette: "violet", mode: "dark", headline: "Build, Evaluate & Orchestrate Grounded AI Agents in Production", subheadline: "Interactive prompt playgrounds, tool connectors, RAG knowledge indexing, and deterministic safety evals.", searchPlaceholder: "Search agents, RAG pipelines, evaluations, models...", cats: ["Agent Workflows", "RAG Knowledge", "Safety Evals"], metricUnit: "Low Latency", rate: 75, unitLabel: "Active Builders", toolKind: "pricing_calculator" },
-  "customer-portals": { brand: "ClearDesk Client Portal", domain: "cleardeskportal.com", palette: "ocean", mode: "light", headline: "Self-Service Account Management, Billing & Priority Support", subheadline: "Give customers instant access to invoices, support tickets, knowledge base guides, and onboarding status.", searchPlaceholder: "Search tickets, invoices, guides, onboarding...", cats: ["Support Tickets", "Billing & Invoices", "Knowledge Base"], metricUnit: "SLA 2h", rate: 29, unitLabel: "Portal Agents", toolKind: "pricing_calculator" },
-  "admin-dashboards": { brand: "PulseOps Executive Console", domain: "pulseops.internal", palette: "slate", mode: "dark", headline: "Real-Time Operations, Reporting & SLA Telemetry at a Glance", subheadline: "Role-scoped KPI scorecards, anomaly timelines, CSV exports, and immutable administrative audit trails.", searchPlaceholder: "Search revenue KPIs, uptime alerts, audit logs...", cats: ["Revenue & Ops", "System Health", "Audit Logs"], metricUnit: "Live Stream", rate: 45, unitLabel: "Admin Operators", toolKind: "pricing_calculator" },
-  "crm-systems": { brand: "PipelineFlow CRM", domain: "pipelineflow.crm", palette: "ocean", mode: "light", headline: "Turn Inbound Conversations Into Predictable Revenue", subheadline: "Track deal stages, automate follow-up reminders, monitor win rates, and forecast quarterly revenue cleanly.", searchPlaceholder: "Search deals, accounts, sequences, forecasts...", cats: ["Active Pipeline", "Customer Accounts", "Automations"], metricUnit: "Win Lift", rate: 49, unitLabel: "Sales Seats", toolKind: "pricing_calculator" },
-  "erp-systems": { brand: "CoreAxis Enterprise ERP", domain: "coreaxiserp.com", palette: "emerald", mode: "dark", headline: "Unify Finance, Procurement, HR & Multi-Warehouse Inventory", subheadline: "Real-time general ledger visibility, vendor purchase-order approvals, payroll readiness, and audit controls.", searchPlaceholder: "Search procurement, general ledger, HR, stock...", cats: ["Finance & GL", "Procurement", "HR & Inventory"], metricUnit: "Audit Synced", rate: 65, unitLabel: "Department Seats", toolKind: "pricing_calculator" },
-  "project-management": { brand: "Cadence Work OS", domain: "cadencework.app", palette: "violet", mode: "dark", headline: "Align Roadmaps, Sprints & Cross-Functional Delivery Effortlessly", subheadline: "Kanban workflows, milestone health trackers, workload balancing, and instant status updates for hybrid teams.", searchPlaceholder: "Search sprints, roadmaps, tasks, milestones...", cats: ["Roadmaps", "Sprint Boards", "Team Docs"], metricUnit: "On Track", rate: 18, unitLabel: "Workspace Members", toolKind: "pricing_calculator" },
-  forums: { brand: "Agora Community Forum", domain: "agoraboard.community", palette: "ocean", mode: "light", headline: "Thoughtful Discussions, Expert Answers & Verified Topic Hubs", subheadline: "Search threaded discussions, upvote verified solutions, follow topic tags, and engage safely.", searchPlaceholder: "Search threads, solved answers, guides, tags...", cats: ["Top Discussions", "Solved Q&A", "Member Guides"], metricUnit: "Verified", rate: 15, unitLabel: "Moderator Seats", toolKind: "pricing_calculator" },
-  auctions: { brand: "GavelHouse Live Auctions", domain: "gavelhouse.bid", palette: "gold", mode: "dark", headline: "Curated Live Bidding, Verified Provenance & Protected Escrow", subheadline: "Track real-time countdown lots, inspect condition reports, calculate buyer premiums, and place bids securely.", searchPlaceholder: "Search fine art, collectibles, rare watches, charity...", cats: ["Live Now", "Ending Soon", "Verified Lots"], metricUnit: "Reserve Met", rate: 500, unitLabel: "Lot Value ($1k units)", toolKind: "cart_checkout" },
-  "custom-apps": { brand: "Noctis Custom Web Platform", domain: "customplatform.app", palette: "ocean", mode: "dark", headline: "Tailored Full-Stack Web Experience Engineered for Your Workflow", subheadline: "Responsive UI, live search, interactive configurators, clean PostgreSQL data modeling, and verified security.", searchPlaceholder: "Search modules, workflows, records...", cats: ["Core Modules", "Interactive Tools", "Integrations"], metricUnit: "Production", rate: 120, unitLabel: "Users / Month (x10)", toolKind: "pricing_calculator" },
+const HANDCRAFTED_PRESET_META: Record<string, { specialty: string; motif: VisualMotif }> = {
+  travel: { specialty: "Global Travel, Safaris & Booking", motif: "waves" },
+  ecommerce: { specialty: "Direct-to-Consumer E-Commerce", motif: "editorial" },
+  "real-estate": { specialty: "Real Estate & Property Search", motif: "blueprint" },
+  healthcare: { specialty: "Healthcare Clinic & Telehealth", motif: "clinical" },
+  hospitality: { specialty: "Hospitality, Dining & Reservations", motif: "editorial" },
+  "saas-products": { specialty: "B2B SaaS & Analytics Platform", motif: "circuit" },
+  portfolio: { specialty: "Design & Engineering Studio", motif: "editorial" },
+  education: { specialty: "Education, LMS & Academy Portal", motif: "organic" },
 };
 
-function synthesizePresetForSlug(cat: ForgeCategorySpec): DomainPresetTemplate {
-  const meta = SYNTHESIZED_CATEGORY_PROFILES[cat.slug] || SYNTHESIZED_CATEGORY_PROFILES["custom-apps"]!;
-  const [c1, c2, c3] = meta.cats;
-  return makePreset(
-    meta.brand,
-    meta.domain,
-    `${cat.name} — ${cat.examples}`,
-    meta.palette,
-    meta.mode,
-    ["Catalog", "Platform", "Estimator", "Stories", "FAQ"],
-    "Get Started",
-    {
-      eyebrow: `${cat.name} · Noctis Builder v2.0`,
-      headline: meta.headline,
-      subheadline: meta.subheadline,
-      primaryCta: "Explore Solutions",
-      secondaryCta: "Interactive Calculator",
+function seedToPreset(seed: RichIndustryBlueprintSeed): DomainPresetTemplate {
+  return {
+    brandName: seed.brandName,
+    domain: seed.domain,
+    tagline: seed.tagline,
+    industrySpecialty: seed.industrySpecialty,
+    visualMotif: seed.visualMotif,
+    navLinks: [...seed.navLinks],
+    ctaLabel: seed.ctaLabel,
+    defaultTheme: { mode: seed.mode, palette: seed.palette },
+    hero: {
+      eyebrow: seed.eyebrow,
+      headline: seed.headline,
+      subheadline: seed.subheadline,
+      primaryCta: seed.primaryCta,
+      secondaryCta: seed.secondaryCta,
       searchBar: {
-        field1Label: "Search Catalog",
-        field1Placeholder: meta.searchPlaceholder,
-        field2Label: "Focus Area",
-        field2Options: ["All", c1, c2, c3],
+        field1Label: seed.searchBar.field1Label,
+        field1Placeholder: seed.searchBar.field1Placeholder,
+        field2Label: seed.searchBar.field2Label,
+        field2Options: [...seed.searchBar.field2Options],
+        submitLabel: seed.searchBar.submitLabel,
+      },
+      stats: seed.stats.map((s) => ({ ...s })),
+    },
+    showcaseTitle: seed.showcaseTitle,
+    showcaseSubtitle: seed.showcaseSubtitle,
+    items: seed.items.map((it) => ({ ...it, features: [...it.features] })),
+    sectionsTitle: seed.sectionsTitle,
+    sectionsSubtitle: seed.sectionsSubtitle,
+    sectionItems: seed.sectionItems.map((s) => ({ ...s })),
+    tool: {
+      kind: seed.tool.kind,
+      title: seed.tool.title,
+      subtitle: seed.tool.subtitle,
+      unitLabel: seed.tool.unitLabel,
+      baseRate: seed.tool.baseRate,
+      options: seed.tool.options.map((o) => ({ ...o })),
+    },
+    testimonials: seed.testimonials.map((t) => ({ ...t })),
+    faqs: seed.faqs.map((f) => ({ ...f })),
+    ctaBanner: { ...seed.ctaBanner },
+    entities: seed.entityNames.map(buildEntitySpec),
+  };
+}
+
+function synthesizePresetForSlug(cat: ForgeCategorySpec): DomainPresetTemplate {
+  const seed = ENHANCED_CATEGORY_SEEDS[cat.slug] || ENHANCED_CATEGORY_SEEDS["custom-apps"]!;
+  return seedToPreset(seed);
+}
+
+function buildCustomTopicTemplate(prompt: string, cat: ForgeCategorySpec): DomainPresetTemplate | null {
+  const custom = extractArbitraryIndustrySubject(prompt);
+  if (!custom) return null;
+
+  const hints = custom.featureHints;
+  const h1 = hints[0] || `Custom ${custom.brandName} Session`;
+  const h2 = hints[1] || `${custom.brandName} Specialist Consultation`;
+  const h3 = hints[2] || `Curated ${custom.brandName} Package`;
+  const catNames: [string, string, string] = ["Featured", "Specialist Care", "Memberships"];
+
+  return makePreset(
+    custom.brandName,
+    custom.domain,
+    `${custom.subject} — tailored interactive portal, bookings & SQL backend.`,
+    custom.palette,
+    custom.mode,
+    ["Offerings", "Craft", "Estimator", "Reviews", "FAQ"],
+    "Book Session",
+    {
+      eyebrow: `${custom.subject} · Bespoke Portal`,
+      headline: `${custom.subject}, Tailored Digital Booking & Client Experience`,
+      subheadline: `Discover curated ${custom.subject.toLowerCase()} offerings${hints.length ? ` including ${hints.join(", ").toLowerCase()}` : ""} with live filtering, interactive quotes, and instant scheduling.`,
+      primaryCta: `Explore ${custom.brandName}`,
+      secondaryCta: "Estimate Scope & Cost",
+      searchBar: {
+        field1Label: "Search Services & Options",
+        field1Placeholder: `Search ${hints.length ? hints.join(", ") : custom.subject.toLowerCase()}...`,
+        field2Label: "Focus",
+        field2Options: ["All", ...catNames],
         submitLabel: "Search",
       },
       stats: [
-        { value: "99.9%", label: "Reliability SLA" },
-        { value: "4.94 ★", label: "User Satisfaction" },
-        { value: "WCAG AA", label: "Contrast Audited" },
-        { value: "24/7", label: "Live Portal Access" },
+        { value: "100%", label: "Bespoke Tailoring" },
+        { value: "4.97 ★", label: "Client Trust" },
+        { value: "Same-Week", label: "Booking Windows" },
+        { value: "Verified", label: "Transparent Pricing" },
       ],
     },
-    `Explore ${meta.brand} Modules & Offerings`,
-    `Filter across ${c1}, ${c2}, and ${c3} or open any item for interactive configuration.`,
+    `${custom.brandName} Services & Signature Programs`,
+    `Filter specialized ${custom.subject.toLowerCase()} packages or click any option to configure quantities and reserve.`,
     [
-      { id: `${cat.slug}-1`, title: `${c1} Flagship Suite`, subtitle: `${c1} · Instant Setup`, category: c1, badge: "Featured", metric: `$${meta.rate} ${meta.metricUnit}`, rating: "4.96", description: `Complete interactive ${c1.toLowerCase()} experience built cleanly for high conversion and speed.`, features: ["Responsive UI", "Audit Logged", "Fast Sync"], actionLabel: "Select Option" },
-      { id: `${cat.slug}-2`, title: `${c2} Interactive Workspace`, subtitle: `${c2} · Real-Time`, category: c2, badge: "Popular", metric: `$${Math.round(meta.rate * 1.4)} ${meta.metricUnit}`, rating: "4.94", description: `Streamlined ${c2.toLowerCase()} workflows with transparent validation, notifications, and exports.`, features: ["Role Scoped", "CSV / API", "Mobile Ready"], actionLabel: "Select Option" },
-      { id: `${cat.slug}-3`, title: `${c3} Pro Automation`, subtitle: `${c3} · Scalable`, category: c3, badge: "Verified", metric: `$${Math.round(meta.rate * 1.8)} ${meta.metricUnit}`, rating: "4.95", description: `Enterprise-ready ${c3.toLowerCase()} capabilities connecting seamlessly with your database and alerts.`, features: ["Webhooks", "SLA Guard", "24/7 Access"], actionLabel: "Select Option" },
-      { id: `${cat.slug}-4`, title: `${c1} Starter Kit`, subtitle: `${c1} · Fast Launch`, category: c1, badge: "Best Value", metric: `$${Math.max(15, Math.round(meta.rate * 0.7))} ${meta.metricUnit}`, rating: "4.91", description: `Essential ${c1.toLowerCase()} tier for rapid onboarding with clean defaults and clear metrics.`, features: ["1-Click Start", "Templates", "Guided Docs"], actionLabel: "Select Option" },
-      { id: `${cat.slug}-5`, title: `${c2} Insights & Reporting`, subtitle: `${c2} · Analytics`, category: c2, badge: "Live Data", metric: `$${Math.round(meta.rate * 1.2)} ${meta.metricUnit}`, rating: "4.93", description: `Real-time trend tracking and custom filters for ${c2.toLowerCase()} decision makers.`, features: ["Custom Views", "Instant PDF", "Alerts"], actionLabel: "Select Option" },
-      { id: `${cat.slug}-6`, title: `${c3} Enterprise Governance`, subtitle: `${c3} · Compliant`, category: c3, badge: cat.regulated ? "Compliance Ready" : "Enterprise", metric: `$${Math.round(meta.rate * 2.5)} ${meta.metricUnit}`, rating: "4.98", description: `Dedicated SLA, granular permissions, and verifiable security controls tailored for ${cat.name.toLowerCase()}.`, features: ["SSO / RBAC", "Audit Log", "Dedicated Support"], actionLabel: "Request Access" },
+      { id: "cst-1", title: `${h1}`, subtitle: `${custom.brandName} · Priority Slot`, category: catNames[0], badge: "Most Requested", metric: "$195 / session", rating: "4.98", description: `Dedicated ${h1.toLowerCase()} tailored around ${custom.subject.toLowerCase()} quality standards and documented handoff.`, features: ["Verified Quality", "Digital Report", "Direct Follow-Up"], actionLabel: "Reserve Now" },
+      { id: "cst-2", title: `${h2}`, subtitle: `${custom.brandName} · 1-on-1 Guidance`, category: catNames[1], badge: "Specialist Pick", metric: "$280 / review", rating: "4.97", description: `In-depth ${h2.toLowerCase()} pairing domain craft with clear timeline milestones and written documentation.`, features: ["Written Summary", "Private Review", "Fast Turnaround"], actionLabel: "Schedule Review" },
+      { id: "cst-3", title: `${h3}`, subtitle: `${custom.brandName} · End-to-End`, category: catNames[0], badge: "Full Package", metric: "$450 complete", rating: "4.99", description: `Turnkey ${h3.toLowerCase()} combining hands-on execution, custom specifications, and guaranteed satisfaction.`, features: ["Turnkey Care", "Dedicated Lead", "Portal Updates"], actionLabel: "Select Package" },
+      { id: "cst-4", title: `Guided Discovery & Intake Consultation`, subtitle: "45-Min Deep-Dive Scoping", category: catNames[1], badge: "Quick Start", metric: "$95 / consult", rating: "4.95", description: `Clarify goals, condition assessment, or requirements for ${custom.subject.toLowerCase()} with an itemized action plan.`, features: ["Upfront Estimate", "Credited To Order", "Flexible Slots"], actionLabel: "Book Consult" },
+      { id: "cst-5", title: `Hands-On Workshop & Patron Experience`, subtitle: "Small Group · Curated Materials", category: catNames[2], badge: "Community", metric: "$140 / guest", rating: "4.96", description: `Immersive guided session sharing behind-the-scenes ${custom.subject.toLowerCase()} techniques and artisan craft.`, features: ["All Supplies Incl.", "Take-Home Kit", "Small Group"], actionLabel: "Claim Seat" },
+      { id: "cst-6", title: `Annual Patronage & Priority Care Plan`, subtitle: "Seasonal Checkups + Member Perks", category: catNames[2], badge: "Member Value", metric: "$320 / year", rating: "4.98", description: `Priority seasonal scheduling, preferred pricing on specialty requests, and archived client history records.`, features: ["Priority Access", "15% Member Perk", "Care Archive"], actionLabel: "Join Plan" },
     ],
-    `Core ${cat.name} Capabilities`,
-    `Everything required to run a modern, responsive, full-stack ${cat.name.toLowerCase()} web experience.`,
+    `Built Around Authentic ${custom.subject} Standards`,
+    `Crafted cleanly for visitors seeking verified expertise, transparent pricing, and direct scheduling.`,
     [
-      { icon: "🚀", title: `${c1} Discovery`, description: `Intuitive filtering, fast search, and transparent cards for ${c1.toLowerCase()}.` },
-      { icon: "⚙️", title: `${c2} Workflows`, description: `Reliable state management and step-by-step confirmation flows built for ${c2.toLowerCase()}.` },
-      { icon: "🛡️", title: `${c3} Safeguards`, description: `Validation checks, RBAC permissions, and audit trails safeguarding user data.` },
-      { icon: "📱", title: "Mobile-First Ergonomics", description: "Adaptive layouts tested smoothly across phone, tablet, and widescreen viewports." },
-      { icon: "📊", title: "Live Interactive Estimators", description: "Instant cost, capacity, or scheduling calculators that eliminate guesswork." },
-      { icon: "🗄️", title: "PostgreSQL & API Ready", description: "Backed by typed REST routes and normalized SQL schemas ready for scale." },
+      { icon: "✨", title: `${h1} Craftsmanship`, description: `Focused workflows highlighting ${h1.toLowerCase()} without generic corporate clutter.` },
+      { icon: "🗓️", title: "Direct Online Scheduling", description: "Pick an available slot cleanly and receive instant calendar and email confirmations." },
+      { icon: "📋", title: "Transparent Upfront Quotes", description: "Interactive calculators show realistic budget ranges before committing." },
+      { icon: "🛡️", title: "Documented Provenance & QA", description: "Keep inspection logs, condition certificates, and customer milestones neatly organized." },
+      { icon: "💬", title: "Direct Specialist Messaging", description: "Ask technical follow-up questions cleanly inside your saved client record." },
+      { icon: "🗄️", title: `Tailored ${custom.entityNames[0] || "Records"} Backend`, description: "Backed by typed PostgreSQL tables designed around your exact domain entities." },
     ],
     {
-      kind: meta.toolKind,
-      title: `Interactive ${cat.name} Estimator`,
-      subtitle: `Configure quantity and optional capabilities to calculate a live estimate for ${meta.brand}.`,
-      unitLabel: meta.unitLabel,
-      baseRate: meta.rate,
+      kind: "booking_estimator",
+      title: `${custom.brandName} Scope & Service Estimator`,
+      subtitle: `Configure sessions or units alongside optional ${hints[0]?.toLowerCase() || "priority"} add-ons.`,
+      unitLabel: "Sessions / Units",
+      baseRate: 185,
       options: [
-        { label: "Priority Onboarding & Concierge Setup (+25%)", delta: Math.round(meta.rate * 0.25) },
-        { label: "Advanced Analytics & Custom Exports (+15%)", delta: Math.round(meta.rate * 0.15) },
-        { label: "Multi-Region / Multilingual Support (+10%)", delta: Math.round(meta.rate * 0.1) },
+        { label: `Include ${h1} Enhancement (+$65/unit)`, delta: 65 },
+        { label: `Include ${h2} Documentation Pack (+$45/unit)`, delta: 45 },
+        { label: "Priority Expedited Completion (+$55/unit)", delta: 55 },
       ],
     },
     [
-      { quote: `Moving our operations onto ${meta.brand} cut manual coordination time in half during week one.`, author: "Taylor Brooks", role: "Operations Lead" },
-      { quote: `Customers immediately praised how effortless and trustworthy the interface feels on mobile.`, author: "Amina Diallo", role: "Digital Director" },
-      { quote: `Clean architecture, fast filters, and zero friction from discovery to confirmation.`, author: "Lucas Weber", role: "Program Manager" },
+      { quote: `Every step—from booking ${h1.toLowerCase()} online to final delivery—felt remarkably thoughtful.`, author: "Claire Henderson", role: "Returning Client" },
+      { quote: `Upfront transparency and genuine ${custom.subject.toLowerCase()} expertise made all the difference.`, author: "David Park", role: "Patron" },
+      { quote: `Clear written estimates and fast communication earned our repeat referrals.`, author: "Nadia Mensah", role: "Member" },
     ],
     [
-      { q: `How quickly can we customize ${meta.brand}?`, a: "Update branding, palette, sections, and database entities conversationally anytime inside Noctis Forge." },
-      { q: "Is this mobile responsive and accessible?", a: "Yes. Every layout uses fluid CSS grids, accessible semantic landmarks, and WCAG 2.2 AA contrast verification." },
-      { q: "Can we export full source code and SQL migrations?", a: "Yes—download the standalone HTML or the complete React + TypeScript + PostgreSQL .ZIP repository." },
-      { q: "How are payments or reservations confirmed?", a: "Interactive modals validate customer details cleanly and wire directly into Stripe or custom REST API endpoints." },
+      { q: `How quickly can we book ${h1.toLowerCase()}?`, a: "Select any available package or slot above to submit your booking immediately with same-business-day confirmation." },
+      { q: "Are upfront estimates itemized before work starts?", a: "Yes—our interactive calculator and written consultation summary detail every line item clearly." },
+      { q: `Can ${custom.brandName} be customized further in Noctis Forge?`, a: "Yes! Refine branding, add custom database tables, switch palettes, or export complete source code anytime." },
+      { q: "Is this platform mobile-ready?", a: "Yes—every filter, booking modal, and saved drawer adapts smoothly across mobile and desktop screens." },
     ],
-    { headline: `Ready to Launch ${meta.brand}?`, subheadline: "Start interacting with the live prototype or export full-stack source files.", buttonLabel: "Launch Action" },
-    cat.defaultEntities,
+    {
+      headline: `Start Your ${custom.subject} Journey`,
+      subheadline: `Reserve a tailored session or request a custom scope from ${custom.brandName} today.`,
+      buttonLabel: "Book Consultation",
+    },
+    custom.entityNames.length ? custom.entityNames : cat.defaultEntities,
   );
 }
 
 function getTemplateForCategory(cat: ForgeCategorySpec): DomainPresetTemplate {
-  return PRESETS_BY_SLUG[cat.slug] || synthesizePresetForSlug(cat);
+  const handcrafted = PRESETS_BY_SLUG[cat.slug];
+  if (handcrafted) {
+    const meta = HANDCRAFTED_PRESET_META[cat.slug];
+    return {
+      ...handcrafted,
+      industrySpecialty: meta?.specialty || cat.name,
+      visualMotif: meta?.motif || "editorial",
+    };
+  }
+  return synthesizePresetForSlug(cat);
 }
 
 function extractCustomBrandAndDomain(prompt: string, defaultBrand: string, defaultDomain: string) {
@@ -1259,7 +1320,38 @@ export function buildDeterministicWebsiteBlueprint(input: {
 }): WebsiteBlueprint {
   const prompt = (input.prompt || "Build a modern full-stack web platform").trim();
   const cat = classifyWebsiteCategory(input.categoryHint, prompt);
-  const preset = getTemplateForCategory(cat);
+  const rawHint = (input.categoryHint || "").trim();
+  const hasExplicitCategoryHint = Boolean(rawHint && !/^auto(?:[-\s]?detect)?(?:\s*\(.*\))?$/i.test(rawHint));
+  const suffixCandidate = prompt.match(/[—–-]\s*([A-Za-z0-9 &/+()-]+)$/)?.[1]?.trim();
+  const hasExplicitCategorySuffix = Boolean(
+    suffixCandidate &&
+      FORGE_40_CATEGORIES.some(
+        (c) =>
+          c.name.toLowerCase() === suffixCandidate.toLowerCase() ||
+          c.slug.toLowerCase() === suffixCandidate.toLowerCase(),
+      ),
+  );
+
+  const vertical = !hasExplicitCategoryHint && !hasExplicitCategorySuffix ? matchSpecializedVertical(prompt) : null;
+  const isExplicitCorporateConsult =
+    /\b(?:consulting\s+firm|corporate\s+website|company\s+website|b2b\s+agency|corporate\s+advisory|marketing\s+agency|small\s+business)\b/i.test(
+      prompt,
+    );
+
+  let preset: DomainPresetTemplate;
+  if (vertical) {
+    preset = seedToPreset(vertical);
+  } else if (
+    !hasExplicitCategoryHint &&
+    !hasExplicitCategorySuffix &&
+    (cat.slug === "business" || cat.slug === "custom-apps") &&
+    !isExplicitCorporateConsult
+  ) {
+    preset = buildCustomTopicTemplate(prompt, cat) || getTemplateForCategory(cat);
+  } else {
+    preset = getTemplateForCategory(cat);
+  }
+
   const { brandName: parsedBrand, domain } = extractCustomBrandAndDomain(prompt, preset.brandName, preset.domain);
   const brandName = input.projectName?.trim() || parsedBrand;
   const scopeLabel = extractScopeLabel(prompt);
@@ -1271,9 +1363,13 @@ export function buildDeterministicWebsiteBlueprint(input: {
 
   const filterTabs = ["All", ...Array.from(new Set(preset.items.map((i) => i.category)))].slice(0, 6);
   const needsPostGis =
+    Boolean(vertical?.needsPostGis) ||
     /\b(postgis|geospatial|mapbox|google\s+maps|coordinates|latitude|longitude|radius|location\s+search|interactive\s+.*maps?|real\s+estate)\b/i.test(
       prompt,
-    ) || cat.slug === "travel" || cat.slug === "real-estate" || cat.slug === "logistics";
+    ) ||
+    cat.slug === "travel" ||
+    cat.slug === "real-estate" ||
+    cat.slug === "logistics";
   const multilingual = /\b(multilingual|multi-language|spanish|french|translations?|localized)\b/i.test(prompt);
   const includeMobileWrapper = Boolean(input.includeMobileWrapper || /\b(mobile\s*app|ios|android|capacitor|pwa)\b/i.test(prompt));
 
@@ -1303,6 +1399,8 @@ export function buildDeterministicWebsiteBlueprint(input: {
     tagline: preset.tagline,
     categorySlug: cat.slug,
     categoryName: cat.name,
+    industrySpecialty: preset.industrySpecialty || cat.name,
+    visualMotif: preset.visualMotif || "editorial",
     regulated: cat.regulated,
     specialistAdvisory: cat.specialistAdvisory,
     scopeLabel,
@@ -1348,8 +1446,42 @@ function cleanStr(val: unknown, fallback: string, maxLen = 220): string {
   return trimmed.length >= 2 ? trimmed.slice(0, maxLen) : fallback;
 }
 
-export function mergeAiJsonIntoBlueprint(base: WebsiteBlueprint, aiJson: Record<string, unknown>): WebsiteBlueprint {
+const VALID_VISUAL_MOTIFS = new Set<VisualMotif>([
+  "waves",
+  "peaks",
+  "blueprint",
+  "organic",
+  "editorial",
+  "circuit",
+  "luxury",
+  "clinical",
+]);
+
+const VALID_TOOL_KINDS = new Set<InteractiveToolKind>([
+  "booking_estimator",
+  "cart_checkout",
+  "pricing_calculator",
+  "appointment_scheduler",
+  "property_mortgage",
+  "lead_estimator",
+]);
+
+export function mergeAiJsonIntoBlueprint(
+  base: WebsiteBlueprint,
+  aiJson: Record<string, unknown>,
+  opts?: { preserveExplicitTheme?: boolean; preserveExplicitBrand?: boolean },
+): WebsiteBlueprint {
   const aiHero = (aiJson.hero && typeof aiJson.hero === "object" ? aiJson.hero : {}) as Record<string, unknown>;
+  const aiSearch = (aiHero.searchBar && typeof aiHero.searchBar === "object"
+    ? aiHero.searchBar
+    : {}) as Record<string, unknown>;
+  const aiTool = (aiJson.interactiveTool && typeof aiJson.interactiveTool === "object"
+    ? aiJson.interactiveTool
+    : {}) as Record<string, unknown>;
+  const aiBanner = (aiJson.ctaBanner && typeof aiJson.ctaBanner === "object"
+    ? aiJson.ctaBanner
+    : {}) as Record<string, unknown>;
+
   const aiItemsRaw = Array.isArray(aiJson.showcaseItems)
     ? aiJson.showcaseItems
     : Array.isArray((aiJson.showcase as Record<string, unknown> | undefined)?.items)
@@ -1411,11 +1543,102 @@ export function mergeAiJsonIntoBlueprint(base: WebsiteBlueprint, aiJson: Record<
     .filter((x): x is { q: string; a: string } => Boolean(x))
     .slice(0, 5);
 
+  const aiTestimonialsRaw = Array.isArray(aiJson.testimonials) ? aiJson.testimonials : [];
+  const testimonials = aiTestimonialsRaw
+    .map((t) => {
+      if (!t || typeof t !== "object") return null;
+      const to = t as Record<string, unknown>;
+      const quote = cleanStr(to.quote, "", 220);
+      const author = cleanStr(to.author, "", 48);
+      const role = cleanStr(to.role, "Client", 48);
+      return quote && author ? { quote, author, role } : null;
+    })
+    .filter((x): x is { quote: string; author: string; role: string } => Boolean(x))
+    .slice(0, 3);
+
+  const aiStatsRaw = Array.isArray(aiHero.stats) ? aiHero.stats : [];
+  const stats = aiStatsRaw
+    .map((st) => {
+      if (!st || typeof st !== "object") return null;
+      const so = st as Record<string, unknown>;
+      const value = cleanStr(so.value, "", 24);
+      const label = cleanStr(so.label, "", 32);
+      return value && label ? { value, label } : null;
+    })
+    .filter((x): x is { value: string; label: string } => Boolean(x))
+    .slice(0, 4);
+
+  const navHrefs = ["#showcase", "#capabilities", "#estimator", "#testimonials", "#contact"];
+  const aiNavLinksRaw = Array.isArray(aiJson.navLinks) ? (aiJson.navLinks as unknown[]) : [];
+  const navLinks =
+    aiNavLinksRaw.length >= 3
+      ? navHrefs.map((href, idx) => ({
+          label: cleanStr(aiNavLinksRaw[idx], base.navLinks[idx]?.label || "Explore", 22),
+          href,
+        }))
+      : base.navLinks;
+
+  let mergedTheme = base.theme;
+  if (!opts?.preserveExplicitTheme) {
+    const rawMode = aiJson.themeMode === "light" || aiJson.themeMode === "dark" ? aiJson.themeMode : base.theme.mode;
+    const rawPalette = typeof aiJson.themePalette === "string" ? aiJson.themePalette.toLowerCase().trim() : "";
+    if (aiJson.themeMode === "light" || aiJson.themeMode === "dark" || (rawPalette && ACCENT_PALETTES[rawPalette])) {
+      mergedTheme = buildThemePalette(rawMode, ACCENT_PALETTES[rawPalette] ? rawPalette : "ocean");
+    }
+  }
+
+  const rawMotif = typeof aiJson.visualMotif === "string" ? (aiJson.visualMotif.toLowerCase().trim() as VisualMotif) : undefined;
+  const visualMotif = rawMotif && VALID_VISUAL_MOTIFS.has(rawMotif) ? rawMotif : base.visualMotif;
+
+  const toolKindCandidate = typeof aiTool.kind === "string" ? (aiTool.kind.trim() as InteractiveToolKind) : undefined;
+  const toolBaseRateNum = Number(aiTool.baseRate);
+  const toolOptionsRaw = Array.isArray(aiTool.options) ? aiTool.options : [];
+  const toolOptions = toolOptionsRaw
+    .map((op) => {
+      if (!op || typeof op !== "object") return null;
+      const oo = op as Record<string, unknown>;
+      const label = cleanStr(oo.label, "", 80);
+      const delta = Number(oo.delta);
+      return label && Number.isFinite(delta) ? { label, delta: Math.max(-50000, Math.min(50000, Math.round(delta))) } : null;
+    })
+    .filter((x): x is { label: string; delta: number } => Boolean(x))
+    .slice(0, 4);
+
+  let mergedEntities = base.entities;
+  if (Array.isArray(aiJson.entities) && aiJson.entities.length >= 2) {
+    const aiEntitySpecs: WebsiteEntitySpec[] = [];
+    const seen = new Set<string>();
+    for (const rawName of aiJson.entities) {
+      if (typeof rawName !== "string") continue;
+      const cleaned = cleanStr(rawName, "", 40);
+      if (!cleaned) continue;
+      const norm = normalizeEntityName(cleaned);
+      if (!seen.has(norm)) {
+        aiEntitySpecs.push(buildEntitySpec(norm));
+        seen.add(norm);
+      }
+      if (aiEntitySpecs.length >= 6) break;
+    }
+    if (aiEntitySpecs.length >= 2) {
+      for (const existing of base.entities) {
+        if (!seen.has(existing.name) && aiEntitySpecs.length < 6) {
+          aiEntitySpecs.push(existing);
+          seen.add(existing.name);
+        }
+      }
+      mergedEntities = aiEntitySpecs;
+    }
+  }
+
   return {
     ...base,
-    brandName: cleanStr(aiJson.brandName, base.brandName, 56),
+    brandName: opts?.preserveExplicitBrand ? base.brandName : cleanStr(aiJson.brandName, base.brandName, 56),
     domain: cleanStr(aiJson.domain, base.domain, 56),
     tagline: cleanStr(aiJson.tagline, base.tagline, 120),
+    industrySpecialty: cleanStr(aiJson.industrySpecialty, base.industrySpecialty, 64),
+    visualMotif,
+    theme: mergedTheme,
+    navLinks,
     ctaLabel: cleanStr(aiJson.ctaLabel, base.ctaLabel, 24),
     hero: {
       ...base.hero,
@@ -1424,6 +1647,14 @@ export function mergeAiJsonIntoBlueprint(base: WebsiteBlueprint, aiJson: Record<
       subheadline: cleanStr(aiHero.subheadline, base.hero.subheadline, 240),
       primaryCta: cleanStr(aiHero.primaryCta, base.hero.primaryCta, 28),
       secondaryCta: cleanStr(aiHero.secondaryCta, base.hero.secondaryCta, 28),
+      searchBar: {
+        field1Label: cleanStr(aiSearch.field1Label, base.hero.searchBar.field1Label, 32),
+        field1Placeholder: cleanStr(aiSearch.field1Placeholder, base.hero.searchBar.field1Placeholder, 88),
+        field2Label: cleanStr(aiSearch.field2Label, base.hero.searchBar.field2Label, 28),
+        field2Options: filterTabs,
+        submitLabel: cleanStr(aiSearch.submitLabel, base.hero.searchBar.submitLabel, 24),
+      },
+      stats: stats.length >= 3 ? stats : base.hero.stats,
     },
     showcase: {
       title: cleanStr(aiJson.showcaseTitle, base.showcase.title, 80),
@@ -1432,10 +1663,29 @@ export function mergeAiJsonIntoBlueprint(base: WebsiteBlueprint, aiJson: Record<
       items: finalItems,
     },
     sections: {
-      ...base.sections,
+      title: cleanStr((aiJson.sectionsTitle as unknown) ?? base.sections.title, base.sections.title, 72),
+      subtitle: cleanStr((aiJson.sectionsSubtitle as unknown) ?? base.sections.subtitle, base.sections.subtitle, 150),
       items: sanitizedSections.length >= 3 ? sanitizedSections : base.sections.items,
     },
+    interactiveTool: {
+      kind: toolKindCandidate && VALID_TOOL_KINDS.has(toolKindCandidate) ? toolKindCandidate : base.interactiveTool.kind,
+      title: cleanStr(aiTool.title, base.interactiveTool.title, 72),
+      subtitle: cleanStr(aiTool.subtitle, base.interactiveTool.subtitle, 150),
+      unitLabel: cleanStr(aiTool.unitLabel, base.interactiveTool.unitLabel, 32),
+      baseRate:
+        Number.isFinite(toolBaseRateNum) && toolBaseRateNum >= 5 && toolBaseRateNum <= 100000
+          ? Math.round(toolBaseRateNum)
+          : base.interactiveTool.baseRate,
+      options: toolOptions.length >= 2 ? toolOptions : base.interactiveTool.options,
+    },
+    testimonials: testimonials.length >= 2 ? testimonials : base.testimonials,
     faqs: faqs.length >= 2 ? faqs : base.faqs,
+    ctaBanner: {
+      headline: cleanStr(aiBanner.headline, base.ctaBanner.headline, 90),
+      subheadline: cleanStr(aiBanner.subheadline, base.ctaBanner.subheadline, 180),
+      buttonLabel: cleanStr(aiBanner.buttonLabel, base.ctaBanner.buttonLabel, 28),
+    },
+    entities: mergedEntities,
     aiGenerated: true,
   };
 }
@@ -1452,8 +1702,8 @@ function hasAnyConfiguredLlmKey(): boolean {
 }
 
 /**
- * Generates a WebsiteBlueprint, optionally enriching copy & domain items via LLM
- * with an 18s bounded timeout and instant deterministic fallback.
+ * Generates a WebsiteBlueprint, optionally enriching copy, visual identity, tools & entities via LLM
+ * with a 24s bounded timeout and rich deterministic fallback.
  */
 export async function synthesizeWebsiteBlueprintWithAi(input: {
   prompt: string;
@@ -1474,10 +1724,10 @@ export async function synthesizeWebsiteBlueprintWithAi(input: {
   try {
     const { modelChat } = await import("../video-mind.server.ts");
     const systemPrompt = [
-      "You are the Noctis Universal Website Architect.",
-      "Return ONLY valid JSON matching the schema below so a website for ANY domain requested by the user is completely tailored to their prompt.",
-      "Never mention unrelated countries or industries not requested in the prompt.",
-      'Schema: { "brandName": string, "domain": string, "tagline": string, "ctaLabel": string, "hero": { "eyebrow": string, "headline": string, "subheadline": string, "primaryCta": string, "secondaryCta": string }, "showcaseTitle": string, "showcaseSubtitle": string, "showcaseItems": [{ "title": string, "subtitle": string, "category": string, "badge": string, "metric": string, "rating": string, "description": string, "features": [string, string, string], "actionLabel": string }] (6 items), "sections": [{ "icon": string, "title": string, "description": string }] (6 items), "faqs": [{ "q": string, "a": string }] (4 items) }',
+      "You are the Noctis All-Industry Universal Website Architect.",
+      "Design a deeply specialized, 100% authentic website blueprint tailored to ANY industry, niche, profession, or workflow the user requested.",
+      "Never mention unrelated countries, boilerplate placeholder labels, or unrelated industries not requested in the prompt.",
+      'Return ONLY valid JSON matching this schema: { "brandName": string, "domain": string, "tagline": string, "industrySpecialty": string, "visualMotif": "waves"|"peaks"|"blueprint"|"organic"|"editorial"|"circuit"|"luxury"|"clinical", "themeMode": "light"|"dark", "themePalette": "ocean"|"emerald"|"gold"|"amber"|"coral"|"violet"|"crimson"|"slate", "navLinks": [string,string,string,string,string], "ctaLabel": string, "hero": { "eyebrow": string, "headline": string, "subheadline": string, "primaryCta": string, "secondaryCta": string, "searchBar": { "field1Label": string, "field1Placeholder": string, "field2Label": string, "submitLabel": string }, "stats": [{ "value": string, "label": string }] (4 items) }, "showcaseTitle": string, "showcaseSubtitle": string, "showcaseItems": [{ "title": string, "subtitle": string, "category": string, "badge": string, "metric": string, "rating": string, "description": string, "features": [string, string, string], "actionLabel": string }] (6 items), "sectionsTitle": string, "sectionsSubtitle": string, "sections": [{ "icon": string, "title": string, "description": string }] (6 items), "interactiveTool": { "kind": "booking_estimator"|"cart_checkout"|"pricing_calculator"|"appointment_scheduler"|"property_mortgage"|"lead_estimator", "title": string, "subtitle": string, "unitLabel": string, "baseRate": number, "options": [{ "label": string, "delta": number }] (3 items) }, "testimonials": [{ "quote": string, "author": string, "role": string }] (3 items), "faqs": [{ "q": string, "a": string }] (4 items), "ctaBanner": { "headline": string, "subheadline": string, "buttonLabel": string }, "entities": [string] (4 snake_case SQL table names) }',
     ].join("\n");
 
     const llmCall = modelChat(
@@ -1485,12 +1735,12 @@ export async function synthesizeWebsiteBlueprintWithAi(input: {
         { role: "system", content: systemPrompt },
         {
           role: "user",
-          content: `Detected Category: ${base.categoryName}\nScope: ${base.scopeLabel}\nUser Prompt:\n${input.prompt.slice(0, 3500)}`,
+          content: `Detected Category: ${base.categoryName}\nIndustry Specialty Seed: ${base.industrySpecialty}\nScope: ${base.scopeLabel}\nUser Prompt:\n${input.prompt.slice(0, 3500)}`,
         },
       ],
       {
         json: true,
-        maxTokens: 3200,
+        maxTokens: 4200,
         temperature: 0.35,
         thinkingLevel: "low",
         brain: input.brain as never,
@@ -1499,7 +1749,7 @@ export async function synthesizeWebsiteBlueprintWithAi(input: {
     );
 
     const timeout = new Promise<{ error: string }>((resolve) =>
-      setTimeout(() => resolve({ error: "Blueprint AI synthesis timeout" }), 18000),
+      setTimeout(() => resolve({ error: "Blueprint AI synthesis timeout" }), 24000),
     );
     const res = await Promise.race([llmCall, timeout]);
     if ("error" in res || !res.text) return base;
@@ -1507,7 +1757,14 @@ export async function synthesizeWebsiteBlueprintWithAi(input: {
     const jsonMatch = res.text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) return base;
     const parsed = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
-    return mergeAiJsonIntoBlueprint(base, parsed);
+    const preserveExplicitTheme = Boolean(
+      input.accentHex ||
+        /\b(?:light|dark)\s*(?:mode|theme|palette)|emerald|gold|coral|violet|crimson|ocean\b/i.test(input.prompt),
+    );
+    return mergeAiJsonIntoBlueprint(base, parsed, {
+      preserveExplicitTheme,
+      preserveExplicitBrand: Boolean(input.projectName?.trim()),
+    });
   } catch {
     return base;
   }
@@ -1636,14 +1893,51 @@ function escHtml(s: string): string {
     .replace(/'/g, "&#39;");
 }
 
-function buildCardArtworkSvg(idx: number, accent: string, accent2: string, category: string): string {
-  const variants = [
-    `<path d="M0 95 Q 80 45 160 80 T 320 65 L320 130 L0 130 Z" fill="${accent}" opacity="0.28"/><path d="M0 108 Q 110 70 210 96 T 320 82 L320 130 L0 130 Z" fill="${accent2}" opacity="0.22"/><circle cx="265" cy="34" r="18" fill="${accent}" opacity="0.35"/>`,
-    `<polygon points="20,120 95,40 165,120" fill="${accent}" opacity="0.28"/><polygon points="120,120 210,28 300,120" fill="${accent2}" opacity="0.22"/><circle cx="52" cy="34" r="14" fill="${accent}" opacity="0.4"/>`,
-    `<rect x="24" y="28" width="90" height="72" rx="12" fill="${accent}" opacity="0.22"/><rect x="130" y="18" width="160" height="44" rx="10" fill="${accent2}" opacity="0.2"/><rect x="130" y="72" width="110" height="28" rx="8" fill="${accent}" opacity="0.32"/>`,
-    `<circle cx="70" cy="65" r="46" fill="${accent}" opacity="0.22"/><circle cx="155" cy="55" r="34" fill="${accent2}" opacity="0.24"/><path d="M195 95 C235 35, 275 35, 305 88" stroke="${accent}" stroke-width="5" fill="none" opacity="0.5"/>`,
-  ];
-  return `<svg viewBox="0 0 320 130" width="100%" height="116" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${escHtml(category)} illustration" style="display:block;border-radius:12px 12px 0 0;background:linear-gradient(135deg, rgba(15,23,42,0.18), rgba(148,163,184,0.08));">${variants[idx % variants.length]}</svg>`;
+const MOTIF_SVG_SHAPES: Record<VisualMotif, (accent: string, accent2: string) => string[]> = {
+  waves: (accent, accent2) => [
+    `<path d="M0 92 Q 80 42 160 78 T 320 64 L320 130 L0 130 Z" fill="${accent}" opacity="0.28"/><path d="M0 108 Q 110 70 210 96 T 320 82 L320 130 L0 130 Z" fill="${accent2}" opacity="0.22"/><circle cx="265" cy="34" r="18" fill="${accent}" opacity="0.35"/>`,
+    `<path d="M0 78 Q 95 110 185 68 T 320 88 L320 130 L0 130 Z" fill="${accent2}" opacity="0.25"/><path d="M0 54 C 90 22 210 96 320 42" stroke="${accent}" stroke-width="3" fill="none" opacity="0.5"/><circle cx="58" cy="36" r="12" fill="${accent2}" opacity="0.4"/>`,
+  ],
+  peaks: (accent, accent2) => [
+    `<polygon points="20,120 95,38 170,120" fill="${accent}" opacity="0.28"/><polygon points="120,120 210,26 300,120" fill="${accent2}" opacity="0.24"/><circle cx="52" cy="34" r="14" fill="${accent}" opacity="0.4"/>`,
+    `<polygon points="10,120 75,54 140,120" fill="${accent2}" opacity="0.24"/><polygon points="115,120 200,32 290,120" fill="${accent}" opacity="0.3"/><polyline points="175,60 200,32 225,60" stroke="${accent2}" stroke-width="3" fill="none" opacity="0.7"/>`,
+  ],
+  blueprint: (accent, accent2) => [
+    `<path d="M0 32 H320 M0 64 H320 M0 96 H320 M64 0 V130 M160 0 V130 M256 0 V130" stroke="${accent}" stroke-width="1" opacity="0.16"/><rect x="44" y="24" width="136" height="82" rx="6" fill="none" stroke="${accent}" stroke-width="2" opacity="0.55"/><rect x="196" y="42" width="82" height="64" rx="6" fill="${accent2}" opacity="0.2"/>`,
+    `<path d="M0 32 H320 M0 64 H320 M0 96 H320 M80 0 V130 M160 0 V130 M240 0 V130" stroke="${accent2}" stroke-width="1" opacity="0.16"/><polygon points="56,102 150,24 264,102" fill="none" stroke="${accent}" stroke-width="2.5" opacity="0.55"/><circle cx="150" cy="68" r="18" fill="${accent}" opacity="0.26"/>`,
+  ],
+  organic: (accent, accent2) => [
+    `<path d="M40 120 C 40 50, 140 24, 175 74 C 210 124, 285 45, 295 25 L320 130 Z" fill="${accent}" opacity="0.22"/><ellipse cx="105" cy="64" rx="52" ry="28" transform="rotate(-24 105 64)" fill="${accent2}" opacity="0.24"/><circle cx="242" cy="40" r="16" fill="${accent}" opacity="0.35"/>`,
+    `<circle cx="72" cy="65" r="46" fill="${accent}" opacity="0.2"/><circle cx="158" cy="54" r="34" fill="${accent2}" opacity="0.24"/><path d="M190 96 C235 32, 275 38, 304 88" stroke="${accent}" stroke-width="4.5" fill="none" opacity="0.55"/>`,
+  ],
+  editorial: (accent, accent2) => [
+    `<rect x="26" y="22" width="110" height="86" rx="8" fill="${accent}" opacity="0.22"/><rect x="152" y="24" width="142" height="16" rx="6" fill="${accent2}" opacity="0.35"/><rect x="152" y="52" width="122" height="10" rx="5" fill="${accent}" opacity="0.22"/><rect x="152" y="72" width="96" height="10" rx="5" fill="${accent}" opacity="0.18"/>`,
+    `<rect x="26" y="24" width="154" height="38" rx="8" fill="${accent2}" opacity="0.24"/><rect x="196" y="24" width="98" height="82" rx="10" fill="${accent}" opacity="0.28"/><rect x="26" y="74" width="154" height="32" rx="8" fill="${accent}" opacity="0.18"/>`,
+  ],
+  circuit: (accent, accent2) => [
+    `<path d="M24 34 H116 L142 62 H234 M24 94 H94 L126 62 M198 62 L226 94 H296" stroke="${accent}" stroke-width="2.5" fill="none" opacity="0.5"/><circle cx="24" cy="34" r="5" fill="${accent}"/><circle cx="234" cy="62" r="7" fill="${accent2}"/><circle cx="296" cy="94" r="5" fill="${accent}"/>`,
+    `<rect x="34" y="28" width="64" height="72" rx="10" fill="${accent}" opacity="0.2" stroke="${accent}" stroke-width="1.5" stroke-opacity="0.45"/><path d="M98 48 H282 M98 78 H212 L242 48" stroke="${accent2}" stroke-width="2.5" fill="none" opacity="0.55"/><circle cx="282" cy="48" r="6" fill="${accent2}"/>`,
+  ],
+  luxury: (accent, accent2) => [
+    `<polygon points="160,18 228,65 160,112 92,65" fill="${accent}" opacity="0.24" stroke="${accent}" stroke-width="1.5" stroke-opacity="0.65"/><polygon points="160,34 204,65 160,96 116,65" fill="${accent2}" opacity="0.22"/><line x1="28" y1="65" x2="78" y2="65" stroke="${accent}" stroke-width="1.5" opacity="0.45"/><line x1="242" y1="65" x2="292" y2="65" stroke="${accent}" stroke-width="1.5" opacity="0.45"/>`,
+    `<circle cx="160" cy="65" r="44" fill="none" stroke="${accent}" stroke-width="2" opacity="0.55"/><circle cx="160" cy="65" r="28" fill="${accent}" opacity="0.2"/><rect x="44" y="42" width="48" height="46" rx="24" fill="${accent2}" opacity="0.18"/><rect x="228" y="42" width="48" height="46" rx="24" fill="${accent2}" opacity="0.18"/>`,
+  ],
+  clinical: (accent, accent2) => [
+    `<rect x="132" y="24" width="56" height="82" rx="28" fill="${accent}" opacity="0.18"/><rect x="119" y="54" width="82" height="22" rx="11" fill="${accent2}" opacity="0.32"/><rect x="149" y="32" width="22" height="66" rx="11" fill="${accent}" opacity="0.35"/><path d="M24 68 H74 L90 42 L106 86 L120 68" stroke="${accent2}" stroke-width="2.5" fill="none" opacity="0.65"/>`,
+    `<circle cx="88" cy="65" r="38" fill="${accent}" opacity="0.18"/><path d="M36 65 H96 L114 34 L132 94 L152 52 L168 65 H284" stroke="${accent}" stroke-width="3" fill="none" opacity="0.62"/><circle cx="236" cy="65" r="22" fill="${accent2}" opacity="0.22"/>`,
+  ],
+};
+
+function buildCardArtworkSvg(
+  idx: number,
+  accent: string,
+  accent2: string,
+  category: string,
+  motif: VisualMotif = "editorial",
+): string {
+  const family = MOTIF_SVG_SHAPES[motif] || MOTIF_SVG_SHAPES.editorial;
+  const shapes = family(accent, accent2);
+  return `<svg viewBox="0 0 320 130" width="100%" height="116" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${escHtml(category)} illustration" style="display:block;border-radius:12px 12px 0 0;background:linear-gradient(135deg, rgba(15,23,42,0.18), rgba(148,163,184,0.08));">${shapes[idx % shapes.length]}</svg>`;
 }
 
 /**
@@ -1666,7 +1960,7 @@ export function renderWebsiteBlueprintHtml(blueprint: WebsiteBlueprint): string 
     .map(
       (item, idx) => `
       <article class="card item-card" data-category="${escHtml(item.category)}" data-search="${escHtml(`${item.title} ${item.subtitle} ${item.category} ${item.description}`.toLowerCase())}">
-        <div class="card-art">${buildCardArtworkSvg(idx, theme.accent, theme.accent2, item.category)}<span class="card-badge">${escHtml(item.badge)}</span></div>
+        <div class="card-art">${buildCardArtworkSvg(idx, theme.accent, theme.accent2, item.category, blueprint.visualMotif)}<span class="card-badge">${escHtml(item.badge)}</span></div>
         <div class="card-body">
           <div class="card-meta"><span>${escHtml(item.subtitle)}</span><span class="rating">★ ${escHtml(item.rating)}</span></div>
           <h3>${escHtml(item.title)}</h3>
