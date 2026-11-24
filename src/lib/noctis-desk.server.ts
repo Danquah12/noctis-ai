@@ -30,14 +30,18 @@ import {
 import {
   attachRouteStamp,
   getSlashRouteByEngine,
+  parseRouteStamp,
+  upsertRouteStampResponseId,
   type NoctisRouteEngineId,
   type NoctisRouteStamp,
 } from "./noctis-capability-registry.ts";
 import {
+  classifyMultiTurnIntent,
   classifyNoctisIntent,
   decisionToRouteStamp,
   type NoctisIntentDecision,
 } from "./noctis-intent-router.server.ts";
+import { saveRoutedChatResponse } from "./noctis-response-store.server.ts";
 
 export type VibeTurn = { role: "user" | "assistant"; content: string; images?: string[] };
 
@@ -1034,7 +1038,7 @@ async function executeVibeReply(
   const attachmentSuffixMatch = rawLastContent.match(/(\n--- [^\n]+ ---\n[\s\S]*)$/);
   const latest = rawLastContent.replace(/\n--- [^\n]+ ---\n[\s\S]*$/g, "").replace(/\[Image:[^\]]*\]/g, "").trim();
 
-  const intent = classifyNoctisIntent(latest);
+  const intent = classifyMultiTurnIntent(kept);
   const effectiveLatest = intent.override ? intent.effectivePrompt : latest;
   const effectiveKept: VibeTurn[] =
     intent.override && lastUserIdx >= 0
@@ -1423,12 +1427,36 @@ export async function vibeReply(
   const latest = (last?.content || "").replace(/\n--- [^\n]+ ---\n[\s\S]*$/g, "").replace(/\[Image:[^\]]*\]/g, "").trim();
   const isClinicalHint = /\b(patient|female|male|years?-old|yo|y\/o|triage|resuscitation|symptom|presents? with|blood pressure|\b(?:bp|hr|rr|spo2)\b|cardiac|ecg|troponin|chest pain|cough|fever|dyspnea|hypotension|tachycardia|bradycardia|potassium|hyperkalemia|sodium|hyponatremia|magnesium|calcium|creatinine|egfr|ckd|stroke|sepsis|shock|infection)\b/i.test(latest);
 
+  const wantsRawJsonCheck = /\b(?:return|output|respond)\s+(?:only|strictly)\s+(?:valid\s+)?json\b/i.test(latest);
   const out = await executeVibeReply(turns, keyOverride, style);
   if (out && "text" in out) {
     const trimmed = out.text.trim();
-    const isGenericJson = trimmed.startsWith("{") && trimmed.endsWith("}");
+    const isGenericJson =
+      wantsRawJsonCheck ||
+      (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+      (trimmed.startsWith("[") && trimmed.endsWith("]"));
     if (!isGenericJson) {
-      await logChatVerificationTelemetry(latest, out.text, Date.now() - startedAt, isClinicalHint);
+      const latencyMs = Date.now() - startedAt;
+      try {
+        const parsedStamp = parseRouteStamp(out.text).stamp;
+        if (parsedStamp) {
+          const saved = await saveRoutedChatResponse({
+            routeId: parsedStamp.routeId,
+            routeLabel: parsedStamp.label,
+            targetPanel: parsedStamp.targetPanel,
+            confidence: parsedStamp.confidence,
+            override: parsedStamp.override,
+            command: parsedStamp.command,
+            prompt: latest,
+            rawText: out.text,
+            latencyMs,
+          });
+          out.text = upsertRouteStampResponseId(out.text, saved.id);
+        }
+      } catch {
+        /* response archival never blocks chat delivery */
+      }
+      await logChatVerificationTelemetry(latest, out.text, latencyMs, isClinicalHint);
     }
   }
   return out;

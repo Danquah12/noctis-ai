@@ -37,9 +37,15 @@ import {
 } from "./nasee-engine.server.ts";
 import {
   NOCTIS_API_ROUTES,
+  NOCTIS_CHAT_RETRIEVAL_ENDPOINTS,
   NOCTIS_PANELS,
   NOCTIS_SLASH_ROUTES,
 } from "../noctis-capability-registry.ts";
+import {
+  getRoutedResponseStats,
+  listRoutedChatResponses,
+} from "../noctis-response-store.server.ts";
+import { classifyNoctisIntent } from "../noctis-intent-router.server.ts";
 import type { BlueprintVisualPatch } from "./website-blueprint-engine.ts";
 
 const CORS_HEADERS = {
@@ -100,12 +106,102 @@ export async function handleForgeV2Request(request: Request): Promise<Response> 
   }
 
   if (subPath === "platform-routes") {
-    const projects = await listForgeProjectRecords(20).catch(() => []);
+    const [projects, recentResponses] = await Promise.all([
+      listForgeProjectRecords(20).catch(() => []),
+      listRoutedChatResponses({ limit: 12 }).catch(() => []),
+    ]);
+
+    const includeHealth = url.searchParams.get("health") === "1";
+    let health:
+      | {
+          checkedAt: string;
+          overallStatus: "healthy" | "degraded";
+          dbSource: string;
+          sandboxReady: boolean;
+          totalOk: number;
+          totalRoutes: number;
+          routes: Array<{ id: string; ok: boolean; latencyMs: number; detail: string }>;
+        }
+      | undefined;
+
+    if (includeHealth) {
+      const probe = async (id: string, fn: () => Promise<string>) => {
+        const started = Date.now();
+        try {
+          const detail = await fn();
+          return { id, ok: true, latencyMs: Math.max(1, Date.now() - started), detail };
+        } catch (err) {
+          return {
+            id,
+            ok: false,
+            latencyMs: Math.max(1, Date.now() - started),
+            detail: err instanceof Error ? err.message : "probe failed",
+          };
+        }
+      };
+
+      const envInfo = validateDevelopmentEnvironment();
+      let resolvedDbSource = process.env.DATABASE_URL ? "neon-postgres" : "pglite";
+
+      const routes = await Promise.all([
+        probe("forge", async () => {
+          const stats = await getForgeSqlStats();
+          return `${stats.forgeProjects} projects · ${stats.forgeRevisions} revisions (${resolvedDbSource})`;
+        }),
+        probe("platform-routes", async () => `${NOCTIS_PANELS.length} panels · ${NOCTIS_SLASH_ROUTES.length} slash routes`),
+        probe("noctis", async () => {
+          const stats = await getRoutedResponseStats();
+          const check = classifyNoctisIntent("/weather Laurel MD");
+          return `${stats.totalSaved} archived responses · router=${check.routeId}`;
+        }),
+        probe("rmf", async () => {
+          const mod = await import("../noctis-rmf-engine.ts");
+          return typeof mod.isRmfGrcQuery === "function" ? "NIST 800-53 engine ready" : "unavailable";
+        }),
+        probe("dod-ic", async () => {
+          const mod = await import("../dod-ic/dod-ic-reasoning.server.ts");
+          return typeof mod.isDodIcQuery === "function" ? "NDIMP DoD/IC engine ready" : "unavailable";
+        }),
+        probe("enterprise", async () => {
+          const mod = await import("../enterprise/chat-bridge.server.ts");
+          return typeof mod.isEnterpriseChatQuery === "function" ? "Enterprise command engine ready" : "unavailable";
+        }),
+        probe("ndkrs", async () => {
+          const mod = await import("../ndkrs/chat-bridge.server.ts");
+          return typeof mod.tryHandlePlatformStatusOrLedgerQuery === "function" ? "NDKRS Fact-Lock ready" : "unavailable";
+        }),
+        probe("nups", async () => {
+          const mod = await import("../nups/chat-bridge.server.ts");
+          return typeof mod.isNupsChatQuery === "function" ? "NUPS 40-engine solver ready" : "unavailable";
+        }),
+        probe("catalog", async () => {
+          const mod = await import("../catalog260/chat-bridge.server.ts");
+          return typeof mod.isCatalog260ChatQuery === "function" ? "Catalog 260 suite ready" : "unavailable";
+        }),
+        probe("assistant", async () => {
+          const mod = await import("../assistant/chat-bridge.server.ts");
+          return typeof mod.isAssistantChatQuery === "function" ? "Universal Assistant v1.0 ready" : "unavailable";
+        }),
+      ]);
+
+      const totalOk = routes.filter((r) => r.ok).length;
+      health = {
+        checkedAt: new Date().toISOString(),
+        overallStatus: totalOk === routes.length ? "healthy" : "degraded",
+        dbSource: resolvedDbSource,
+        sandboxReady: Boolean((envInfo as any)?.ready ?? true),
+        totalOk,
+        totalRoutes: routes.length,
+        routes,
+      };
+    }
+
     return jsonRes({
       ok: true,
       panels: NOCTIS_PANELS,
       slashRoutes: NOCTIS_SLASH_ROUTES,
       apiRoutes: NOCTIS_API_ROUTES,
+      retrievalEndpoints: NOCTIS_CHAT_RETRIEVAL_ENDPOINTS,
       recentProjects: projects.map((p: any) => ({
         id: String(p.id),
         name: String(p.name || p.id),
@@ -115,6 +211,18 @@ export async function handleForgeV2Request(request: Request): Promise<Response> 
         deepLink: `/noctis?panel=forge&project=${encodeURIComponent(String(p.id))}`,
         previewUrl: `/api/v2/forge/preview?projectId=${encodeURIComponent(String(p.id))}`,
       })),
+      recentResponses: recentResponses.map((r) => ({
+        id: r.id,
+        routeId: r.routeId,
+        routeLabel: r.routeLabel,
+        targetPanel: r.targetPanel,
+        prompt: r.prompt,
+        summary: r.summary,
+        createdAt: r.createdAt,
+        deepLink: `/noctis?response=${encodeURIComponent(r.id)}`,
+        retrievalUrl: `/api/noctis?responseId=${encodeURIComponent(r.id)}`,
+      })),
+      ...(health ? { health } : {}),
     });
   }
 

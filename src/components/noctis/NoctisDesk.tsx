@@ -97,6 +97,7 @@ import { resolveNoctisEngine } from "@/lib/noctis-engine-registry";
 import { buildContextualFollowUps } from "@/lib/noctis-followups";
 import { NoctisCommandPalette } from "@/components/noctis/NoctisCommandPalette";
 import {
+  attachRouteStamp,
   getPanelSpec,
   isValidNoctisPanelId,
   NOCTIS_SLASH_ROUTES,
@@ -3617,6 +3618,8 @@ export function NoctisDesk() {
   const [forgeBuilderHandoff, setForgeBuilderHandoff] = useState<{ prompt: string; nonce: number } | null>(null);
   const [forgeProjectHandoff, setForgeProjectHandoff] = useState<{ projectId: string; nonce: number } | null>(null);
   const [openRouteMenuIdx, setOpenRouteMenuIdx] = useState<number | null>(null);
+  const [slashMenuIdx, setSlashMenuIdx] = useState(0);
+  const [slashMenuDismissed, setSlashMenuDismissed] = useState(false);
   const urlHydratedRef = useRef(false);
   const [factoryStudioOpen, setFactoryStudioOpen] = useState(false);
   const [factoryStudioSystemId, setFactoryStudioSystemId] = useState<string>("noctis-cyber");
@@ -4086,6 +4089,55 @@ export function NoctisDesk() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  async function recallSavedResponse(responseId: string) {
+    const id = String(responseId || "").trim();
+    if (!id) return;
+    try {
+      const res = await fetch(`/api/noctis?responseId=${encodeURIComponent(id)}`);
+      const data = res.ok ? ((await res.json()) as { ok?: boolean; response?: any }) : null;
+      const resp = data?.response;
+      if (!resp) {
+        setError(`Saved response ${id} was not found.`);
+        return;
+      }
+      const stampedContent = attachRouteStamp(
+        String(resp.responseText || ""),
+        {
+          routeId: resp.routeId,
+          label: resp.routeLabel || resp.routeId,
+          confidence: Number(resp.confidence ?? 90),
+          override: Boolean(resp.override),
+          ...(resp.command ? { command: resp.command } : {}),
+          targetPanel: isValidNoctisPanelId(resp.targetPanel) ? resp.targetPanel : "chat",
+          responseId: String(resp.id || id),
+        },
+        false,
+      );
+      const recalledId = `recalled-${id}`;
+      const recalledThread: Thread = {
+        id: recalledId,
+        title: String(resp.prompt || id).slice(0, 48),
+        turns: [
+          { role: "user", content: String(resp.prompt || "") },
+          { role: "assistant", content: stampedContent },
+        ],
+      };
+      setThreads((rows) => [recalledThread, ...rows.filter((r) => r.id !== recalledId)]);
+      setActive(recalledId);
+      switchDesk("chat");
+      setError("");
+      if (typeof window !== "undefined" && window.location.pathname === "/noctis") {
+        const nextUrl = new URL(window.location.href);
+        nextUrl.searchParams.delete("panel");
+        nextUrl.searchParams.delete("project");
+        nextUrl.searchParams.set("response", id);
+        window.history.replaceState(null, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
+      }
+    } catch {
+      setError(`Could not retrieve saved response ${id}.`);
+    }
+  }
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     const syncFromLocation = () => {
@@ -4093,7 +4145,10 @@ export function NoctisDesk() {
       const panelParam = params.get("panel");
       const projectParam = params.get("project");
       const promptParam = params.get("prompt");
-      if (isValidNoctisPanelId(panelParam)) {
+      const responseParam = params.get("response");
+      if (responseParam && responseParam.trim()) {
+        void recallSavedResponse(responseParam.trim());
+      } else if (isValidNoctisPanelId(panelParam)) {
         setDesk(panelParam);
         setShelf("chats");
       } else if (projectParam) {
@@ -4172,6 +4227,15 @@ export function NoctisDesk() {
   function openNew() {
     closeAllOverlays();
     setDesk("chat");
+    if (typeof window !== "undefined" && window.location.pathname === "/noctis") {
+      try {
+        const nextUrl = new URL(window.location.href);
+        if (nextUrl.searchParams.has("response")) {
+          nextUrl.searchParams.delete("response");
+          window.history.replaceState(null, "", `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`);
+        }
+      } catch {}
+    }
     const blank = threads.find((row) => row.title === "New chat" && row.turns.length === 0 && Boolean(row.temp) === priv);
     setDraft("");
     setError("");
@@ -6467,6 +6531,56 @@ export function NoctisDesk() {
           </div>
         </div>
       ) : null}
+      {(() => {
+        const trimmedDraft = draft.trimStart();
+        const showSlash =
+          !slashMenuDismissed &&
+          trimmedDraft.startsWith("/") &&
+          !draft.includes("\n") &&
+          !/\s/.test(trimmedDraft);
+        if (!showSlash) return null;
+        const slashToken = trimmedDraft.toLowerCase();
+        const slashMatches = NOCTIS_SLASH_ROUTES.filter(
+          (r) =>
+            r.command.includes(slashToken) ||
+            r.aliases.some((a) => a.includes(slashToken)) ||
+            r.label.toLowerCase().includes(slashToken.slice(1)),
+        ).slice(0, 8);
+        if (slashMatches.length === 0) return null;
+        const safeIdx = slashMenuIdx % slashMatches.length;
+        return (
+          <div className="noctis-slash-autocomplete absolute bottom-full left-0 right-0 mb-2 z-50 max-w-lg rounded-2xl border border-[#e4b86a]/30 bg-[#0d1017]/95 p-1.5 shadow-2xl backdrop-blur-xl">
+            <div className="flex items-center justify-between px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+              <span>Direct Engine Route Commands</span>
+              <span>↑↓ · Tab/Enter Select · Esc Dismiss</span>
+            </div>
+            {slashMatches.map((r, idx) => (
+              <button
+                key={r.command}
+                type="button"
+                onMouseEnter={() => setSlashMenuIdx(idx)}
+                onClick={() => {
+                  setDraft(`${r.command} `);
+                  setSlashMenuDismissed(false);
+                  setTimeout(() => box.current?.focus(), 20);
+                }}
+                className={cn(
+                  "flex w-full items-center justify-between gap-3 rounded-xl px-2.5 py-1.5 text-left transition cursor-pointer",
+                  idx === safeIdx ? "bg-[#e4b86a]/15 text-white" : "text-zinc-300 hover:bg-white/10",
+                )}
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs font-semibold text-[#e4b86a]">{r.command}</span>
+                    <span className="truncate text-xs font-medium">{r.label}</span>
+                  </div>
+                  <p className="truncate text-[10px] text-zinc-400">{r.description}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        );
+      })()}
       <div
         className="noctis-composer-pill flex min-w-0 items-center gap-1.5 rounded-[28px] py-1.5 pr-2 pl-2 ring-1 ring-white/12 shadow-[0_8px_30px_rgba(0,0,0,0.22)] transition-colors duration-200"
         style={{ background: "var(--noctis-composer-bg)", boxShadow: "var(--shadow-border)" }}
@@ -6539,10 +6653,51 @@ export function NoctisDesk() {
           onPaste={pasteImage}
           onChange={(event) => {
             setDraft(event.target.value);
+            setSlashMenuDismissed(false);
+            setSlashMenuIdx(0);
             event.target.style.height = "auto";
             event.target.style.height = `${Math.min(event.target.scrollHeight, 160)}px`;
           }}
           onKeyDown={(event) => {
+            const trimmedDraft = draft.trimStart();
+            const showSlash =
+              !slashMenuDismissed &&
+              trimmedDraft.startsWith("/") &&
+              !draft.includes("\n") &&
+              !/\s/.test(trimmedDraft);
+            if (showSlash) {
+              const slashToken = trimmedDraft.toLowerCase();
+              const slashMatches = NOCTIS_SLASH_ROUTES.filter(
+                (r) =>
+                  r.command.includes(slashToken) ||
+                  r.aliases.some((a) => a.includes(slashToken)) ||
+                  r.label.toLowerCase().includes(slashToken.slice(1)),
+              ).slice(0, 8);
+              if (slashMatches.length > 0) {
+                if (event.key === "ArrowDown") {
+                  event.preventDefault();
+                  setSlashMenuIdx((prev) => (prev + 1) % slashMatches.length);
+                  return;
+                }
+                if (event.key === "ArrowUp") {
+                  event.preventDefault();
+                  setSlashMenuIdx((prev) => (prev - 1 + slashMatches.length) % slashMatches.length);
+                  return;
+                }
+                if (event.key === "Escape") {
+                  event.preventDefault();
+                  setSlashMenuDismissed(true);
+                  return;
+                }
+                if (event.key === "Tab" || (event.key === "Enter" && !event.shiftKey)) {
+                  event.preventDefault();
+                  const picked = slashMatches[slashMenuIdx % slashMatches.length]!;
+                  setDraft(`${picked.command} `);
+                  setSlashMenuDismissed(false);
+                  return;
+                }
+              }
+            }
             if (event.key === "Enter" && !event.shiftKey) {
               event.preventDefault();
               void send();
@@ -8628,6 +8783,24 @@ export function NoctisDesk() {
                                         </button>
                                       </>
                                     ) : null}
+                                    {parsedRoute.stamp.responseId ? (
+                                      <>
+                                        <div className="my-1 h-px bg-white/10" />
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const rid = parsedRoute.stamp!.responseId!;
+                                            const url = typeof window !== "undefined" ? `${window.location.origin}/noctis?response=${encodeURIComponent(rid)}` : `/noctis?response=${encodeURIComponent(rid)}`;
+                                            setOpenRouteMenuIdx(null);
+                                            void copyText(url, `recall-${rid}`);
+                                          }}
+                                          className="flex w-full items-center justify-between rounded-xl px-2.5 py-1.5 text-left text-[11px] font-medium text-violet-300 hover:bg-violet-500/10 transition cursor-pointer"
+                                        >
+                                          <span>Copy Recall Link</span>
+                                          <span className="font-mono text-[10px]">{parsedRoute.stamp.responseId}</span>
+                                        </button>
+                                      </>
+                                    ) : null}
                                   </div>
                                 ) : null}
                               </div>
@@ -9230,6 +9403,9 @@ export function NoctisDesk() {
         onOpenProject={(projectId: string) => {
           setForgeProjectHandoff({ projectId, nonce: Date.now() });
           switchDesk("forge");
+        }}
+        onOpenResponse={(responseId: string) => {
+          void recallSavedResponse(responseId);
         }}
         onPrefillCommand={(prefix: string) => {
           switchDesk("chat");

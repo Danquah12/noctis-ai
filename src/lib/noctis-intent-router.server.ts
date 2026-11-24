@@ -15,11 +15,13 @@
 import {
   getPanelSpec,
   NOCTIS_SLASH_ROUTES,
+  parseRouteStamp,
   stripLeadingSlashOverride,
   type NoctisPanelId,
   type NoctisRouteEngineId,
   type NoctisRouteStamp,
 } from "./noctis-capability-registry.ts";
+import { resolveFollowUpContext } from "./noctis-followup-resolver.ts";
 import { matchSovereignTool } from "./noctis-tool-orchestrator.ts";
 
 export interface NoctisIntentDecision {
@@ -310,6 +312,11 @@ export function classifyNoctisIntent(rawPrompt: string): NoctisIntentDecision {
     delete scores.cve_cyber;
   }
 
+  if (scores.dod_ic && scores.cve_cyber) {
+    vetoedRoutes.cve_cyber = "Superseded by DoD/IC authorization & cross-domain boundary context";
+    delete scores.cve_cyber;
+  }
+
   // Pick highest scoring route (deterministic tie-break priority order)
   const PRIORITY_ORDER: NoctisRouteEngineId[] = [
     "clinical",
@@ -354,4 +361,93 @@ export function classifyNoctisIntent(rawPrompt: string): NoctisIntentDecision {
     scores,
     targetPanel: slashMeta?.targetPanel || getPanelSpec(meta.targetPanel).id,
   };
+}
+
+const WEBSITE_REFINEMENT_CUE_RE =
+  /\b(?:dark\s+(?:mode|theme)|light\s+(?:mode|theme)|add\s+(?:french|spanish|arabic|german|multilingual|booking|checkout|table|section|pricing|faq|testimonials?)|switch\s+(?:it\s+|the\s+\w+\s+|to\s+)?(?:dark|light|vector|photo|french|spanish)|change\s+(?:the\s+)?(?:color|palette|accent|theme|layout|font)|rebuild|regenerate)\b/i;
+
+export function classifyMultiTurnIntent(
+  turns: Array<{ role: "user" | "assistant"; content: string }>,
+): NoctisIntentDecision {
+  const cleanList = Array.isArray(turns) ? turns : [];
+  let lastUserIdx = -1;
+  for (let i = cleanList.length - 1; i >= 0; i--) {
+    if (cleanList[i]?.role === "user") {
+      lastUserIdx = i;
+      break;
+    }
+  }
+  const latest = lastUserIdx >= 0 ? cleanList[lastUserIdx]!.content : "";
+  const direct = classifyNoctisIntent(latest);
+
+  if (direct.override || direct.routeId !== "general_chat" || lastUserIdx <= 0) {
+    return direct;
+  }
+
+  // Latest message had no standalone specialized engine trigger; evaluate prior conversation context
+  const priorTurns = cleanList.slice(0, lastUserIdx);
+  let priorRoute: NoctisRouteEngineId | null = null;
+  for (let i = priorTurns.length - 1; i >= 0; i--) {
+    const t = priorTurns[i];
+    if (!t) continue;
+    if (t.role === "assistant") {
+      const stamped = parseRouteStamp(t.content).stamp?.routeId;
+      if (stamped && stamped !== "general_chat") {
+        priorRoute = stamped;
+        break;
+      }
+    } else if (t.role === "user") {
+      const classified = classifyNoctisIntent(t.content).routeId;
+      if (classified !== "general_chat") {
+        priorRoute = classified;
+        break;
+      }
+    }
+  }
+
+  if (!priorRoute) {
+    return direct;
+  }
+
+  // Handle explicit website builder refinements cleanly without losing Forge routing
+  if ((priorRoute === "website_builder" || priorRoute === "nasee") && WEBSITE_REFINEMENT_CUE_RE.test(direct.effectivePrompt)) {
+    const meta = ROUTE_LABELS.website_builder;
+    const slashMeta = NOCTIS_SLASH_ROUTES.find((r) => r.routeId === "website_builder");
+    return {
+      routeId: "website_builder",
+      label: slashMeta?.label || meta.label,
+      confidence: 84,
+      override: false,
+      effectivePrompt: direct.effectivePrompt,
+      matchedSignals: ["multi-turn:website-refinement"],
+      vetoedRoutes: {},
+      scores: { ...direct.scores, website_builder: 84 },
+      targetPanel: slashMeta?.targetPanel || meta.targetPanel,
+    };
+  }
+
+  const followUp = resolveFollowUpContext(cleanList, direct.effectivePrompt);
+  if (followUp.isFollowUp && !followUp.topicShiftDetected && !followUp.shouldIsolateEncounter) {
+    if (
+      (priorRoute === "clinical" && followUp.relation === "same_patient_followup") ||
+      ((priorRoute === "rmf_grc" || priorRoute === "dod_ic" || priorRoute === "weather" || priorRoute === "sovereign_physics" || priorRoute === "cve_cyber") &&
+        (followUp.relation === "coreference" || followUp.relation === "what_if_parameter_shift" || followUp.relation === "continuation"))
+    ) {
+      const meta = ROUTE_LABELS[priorRoute];
+      const slashMeta = NOCTIS_SLASH_ROUTES.find((r) => r.routeId === priorRoute);
+      return {
+        routeId: priorRoute,
+        label: slashMeta?.label || meta.label,
+        confidence: 82,
+        override: false,
+        effectivePrompt: direct.effectivePrompt,
+        matchedSignals: [`multi-turn:carry-${priorRoute}`],
+        vetoedRoutes: {},
+        scores: { ...direct.scores, [priorRoute]: 82 },
+        targetPanel: slashMeta?.targetPanel || meta.targetPanel,
+      };
+    }
+  }
+
+  return direct;
 }

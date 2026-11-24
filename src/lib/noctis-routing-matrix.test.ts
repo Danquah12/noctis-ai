@@ -3,18 +3,27 @@ import assert from "node:assert/strict";
 import {
   attachRouteStamp,
   getPanelSpec,
+  getSlashCommandForRouteId,
   isValidNoctisPanelId,
   NOCTIS_API_ROUTES,
   NOCTIS_PANELS,
   NOCTIS_SLASH_ROUTES,
   parseRouteStamp,
   stripLeadingSlashOverride,
+  upsertRouteStampResponseId,
   type NoctisRouteEngineId,
 } from "./noctis-capability-registry.ts";
+import { cleanAssistantTurnForHistory } from "./noctis-followup-resolver.ts";
 import {
+  classifyMultiTurnIntent,
   classifyNoctisIntent,
   decisionToRouteStamp,
 } from "./noctis-intent-router.server.ts";
+import {
+  getRoutedChatResponseById,
+  listRoutedChatResponses,
+  saveRoutedChatResponse,
+} from "./noctis-response-store.server.ts";
 import { matchSovereignTool } from "./noctis-tool-orchestrator.ts";
 
 test("Capability registry invariants: unique IDs, valid deep links, and unique slash commands", () => {
@@ -487,4 +496,152 @@ test("matchSovereignTool rejects Security SOC, clinical shock, and maritime cold
 
   const hypersonic = matchSovereignTool("Compute hypersonic Fay-Riddell heat flux at Mach 12 altitude 40 km R_n=0.15m");
   assert.equal(hypersonic?.tool.id, "sovereign_hypersonic_aero");
+
+  // Bare acronyms SAR + DAC in compliance prompt must never match InSAR #109 or Direct Air Capture #104
+  assert.equal(
+    matchSovereignTool(
+      "Compare SAR suspicious activity reporting and DAC discretionary access control enforcement under NIST 800-53 AC-3 and AU-6",
+    ),
+    null,
+  );
+  assert.equal(
+    classifyNoctisIntent(
+      "Compare SAR suspicious activity reporting and DAC discretionary access control enforcement under NIST 800-53 AC-3 and AU-6",
+    ).routeId,
+    "rmf_grc",
+  );
+  // DoD/IC priority over standalone CVE lookup
+  assert.equal(
+    classifyNoctisIntent(
+      "Assess CVE-2024-3094 impact under DoDI 8510.01 and ICD 503 cross-domain guard rules between NIPR and SIPR",
+    ).routeId,
+    "dod_ic",
+  );
+  assert.equal(getSlashCommandForRouteId("rmf_grc"), "/rmf");
+  assert.equal(getSlashCommandForRouteId("weather"), "/weather");
+  assert.equal(getSlashCommandForRouteId("/site"), "/build");
+});
+
+test("Multi-turn intent router isolates cross-domain whiplash and carries contextual follow-ups cleanly", () => {
+  // Chain A: Clinical -> Weather -> Website Builder (no bleed)
+  const clinStamp = attachRouteStamp("Administer IV calcium gluconate.", {
+    routeId: "clinical",
+    label: "Clinical · Neuro-Symbolic",
+    confidence: 96,
+    override: false,
+    targetPanel: "frontier",
+  });
+  const wxStamp = attachRouteStamp("Tomorrow in Accra: dry and sunny.", {
+    routeId: "weather",
+    label: "Weather · Global NWP",
+    confidence: 87,
+    override: false,
+    targetPanel: "chat",
+  });
+
+  const turn2Wx = classifyMultiTurnIntent([
+    { role: "user", content: "64yo patient with K+ 6.4 mEq/L, peaked T waves, BP 88/54." },
+    { role: "assistant", content: clinStamp },
+    { role: "user", content: "Will it rain tomorrow in Accra, Ghana?" },
+  ]);
+  assert.equal(turn2Wx.routeId, "weather");
+
+  const turn3Site = classifyMultiTurnIntent([
+    { role: "user", content: "64yo patient with K+ 6.4 mEq/L, peaked T waves, BP 88/54." },
+    { role: "assistant", content: clinStamp },
+    { role: "user", content: "Will it rain tomorrow in Accra, Ghana?" },
+    { role: "assistant", content: wxStamp },
+    { role: "user", content: "Build a boutique dental clinic website with online appointment booking and treatment estimator." },
+  ]);
+  assert.equal(turn3Site.routeId, "website_builder");
+
+  // Chain B: Website refinement carries website_builder, then topic shift moves to RMF
+  const siteStamp = attachRouteStamp("Generated Meridian Reefers site.", {
+    routeId: "website_builder",
+    label: "Forge · Website & App Builder",
+    confidence: 91,
+    override: false,
+    targetPanel: "forge",
+  });
+  const siteRefine = classifyMultiTurnIntent([
+    { role: "user", content: "Build Meridian Reefers cold-chain maritime platform" },
+    { role: "assistant", content: siteStamp },
+    { role: "user", content: "Switch it to dark mode and add French localization" },
+  ]);
+  assert.equal(siteRefine.routeId, "website_builder");
+
+  const switchToRmf = classifyMultiTurnIntent([
+    { role: "user", content: "Build Meridian Reefers cold-chain maritime platform" },
+    { role: "assistant", content: siteStamp },
+    { role: "user", content: "Switch it to dark mode and add French localization" },
+    { role: "assistant", content: siteStamp },
+    { role: "user", content: "Now evaluate NIST 800-53 AC-2 control readiness" },
+  ]);
+  assert.equal(switchToRmf.routeId, "rmf_grc");
+
+  // Chain C: Same-patient clinical follow-up stays clinical, weather follow-up ("What about Sunday?") stays weather
+  const clinFollow = classifyMultiTurnIntent([
+    { role: "user", content: "64yo patient with K+ 6.4 mEq/L, peaked T waves, BP 88/54." },
+    { role: "assistant", content: clinStamp },
+    { role: "user", content: "What if creatinine rises to 3.4 or we hold insulin?" },
+  ]);
+  assert.equal(clinFollow.routeId, "clinical");
+
+  const wxFollow = classifyMultiTurnIntent([
+    { role: "user", content: "Will it rain tomorrow in Accra, Ghana?" },
+    { role: "assistant", content: wxStamp },
+    { role: "user", content: "What about Sunday?" },
+  ]);
+  assert.equal(wxFollow.routeId, "weather");
+
+  // History cleaner strips route stamp comments
+  assert.equal(cleanAssistantTurnForHistory(clinStamp).includes("noctis-route"), false);
+});
+
+test("Routed response store persists, searches, retrieves by ID, and redacts fail-closed blocks", async () => {
+  const savedWx = await saveRoutedChatResponse({
+    routeId: "weather",
+    routeLabel: "Weather · Global NWP",
+    targetPanel: "chat",
+    confidence: 100,
+    override: true,
+    command: "/weather",
+    prompt: "UniqueTestCity Laurel MD rain check",
+    rawText: "<think>trace</think>\n## Weather Forecast for Laurel\nLow rain chance (5%).",
+    latencyMs: 120,
+  });
+  assert.ok(savedWx.id.startsWith("RSP-"));
+  const updated = upsertRouteStampResponseId(
+    attachRouteStamp("## Weather Forecast", {
+      routeId: "weather",
+      label: "Weather · Global NWP",
+      confidence: 100,
+      override: true,
+      targetPanel: "chat",
+    }),
+    savedWx.id,
+  );
+  assert.equal(parseRouteStamp(updated).stamp?.responseId, savedWx.id);
+
+  const fetched = await getRoutedChatResponseById(savedWx.id);
+  assert.equal(fetched?.id, savedWx.id);
+  assert.equal(fetched?.routeId, "weather");
+  assert.equal(fetched?.responseText.includes("<think>"), false);
+
+  const searched = await listRoutedChatResponses({ engine: "weather", q: "UniqueTestCity", limit: 10 });
+  assert.ok(searched.some((item) => item.id === savedWx.id));
+
+  // Fail-closed security invariant: never persist classified prompt text
+  const redacted = await saveRoutedChatResponse({
+    routeId: "dod_ic",
+    routeLabel: "NDIMP · DoD / IC Defense",
+    targetPanel: "dod-ic",
+    confidence: 95,
+    override: false,
+    prompt: "TOP SECRET // SI // JWICS secret payload",
+    rawText: "FAIL_CLOSED_BLOCK: Classified data blocked from commercial cloud.",
+    latencyMs: 12,
+  });
+  assert.equal(redacted.prompt.includes("TOP SECRET"), false);
+  assert.equal(redacted.prompt, "[REDACTED — Classification Boundary Gate]");
 });

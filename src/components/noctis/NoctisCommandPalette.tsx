@@ -6,12 +6,14 @@ import {
   Compass,
   ExternalLink,
   FolderGit2,
+  MessageSquareText,
   Search,
   Terminal,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
+  NOCTIS_API_ROUTES,
   NOCTIS_PANELS,
   NOCTIS_SLASH_ROUTES,
   type NoctisPanelId,
@@ -27,19 +29,50 @@ interface RecentForgeProjectItem {
   previewUrl: string;
 }
 
+interface RecentRoutedResponseItem {
+  id: string;
+  routeId: string;
+  routeLabel: string;
+  targetPanel: NoctisPanelId;
+  prompt: string;
+  summary: string;
+  createdAt: string;
+  deepLink: string;
+  retrievalUrl: string;
+}
+
+interface RouteHealthEntry {
+  id: string;
+  ok: boolean;
+  latencyMs: number;
+  detail: string;
+}
+
+interface RouteHealthSummary {
+  checkedAt: string;
+  overallStatus: "healthy" | "degraded";
+  dbSource: string;
+  sandboxReady: boolean;
+  totalOk: number;
+  totalRoutes: number;
+  routes: RouteHealthEntry[];
+}
+
 interface NoctisCommandPaletteProps {
   open: boolean;
   activePanel: NoctisPanelId;
   onClose: () => void;
   onSelectPanel: (panel: NoctisPanelId) => void;
   onOpenProject: (projectId: string) => void;
+  onOpenResponse?: (responseId: string) => void;
   onPrefillCommand: (prefix: string) => void;
 }
 
 type PaletteEntry =
-  | { kind: "panel"; key: string; panelId: NoctisPanelId; title: string; subtitle: string; badge: string; hint: string }
-  | { kind: "project"; key: string; project: RecentForgeProjectItem; title: string; subtitle: string; badge: string; hint: string }
-  | { kind: "command"; key: string; command: string; title: string; subtitle: string; badge: string; hint: string };
+  | { kind: "panel"; key: string; panelId: NoctisPanelId; title: string; subtitle: string; badge: string; healthOk?: boolean }
+  | { kind: "project"; key: string; project: RecentForgeProjectItem; title: string; subtitle: string; badge: string }
+  | { kind: "response"; key: string; response: RecentRoutedResponseItem; title: string; subtitle: string; badge: string }
+  | { kind: "command"; key: string; command: string; title: string; subtitle: string; badge: string };
 
 export function NoctisCommandPalette({
   open,
@@ -47,11 +80,14 @@ export function NoctisCommandPalette({
   onClose,
   onSelectPanel,
   onOpenProject,
+  onOpenResponse,
   onPrefillCommand,
 }: NoctisCommandPaletteProps) {
   const [query, setQuery] = useState("");
   const [recentProjects, setRecentProjects] = useState<RecentForgeProjectItem[]>([]);
-  const [loadingProjects, setLoadingProjects] = useState(false);
+  const [recentResponses, setRecentResponses] = useState<RecentRoutedResponseItem[]>([]);
+  const [health, setHealth] = useState<RouteHealthSummary | null>(null);
+  const [loadingDirectory, setLoadingDirectory] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -62,22 +98,38 @@ export function NoctisCommandPalette({
     setTimeout(() => inputRef.current?.focus(), 20);
 
     let cancelled = false;
-    setLoadingProjects(true);
-    fetch("/api/v2/forge/platform-routes")
+    setLoadingDirectory(true);
+    fetch("/api/v2/forge/platform-routes?health=1")
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (cancelled || !data || !Array.isArray(data.recentProjects)) return;
-        setRecentProjects(data.recentProjects);
+        if (cancelled || !data) return;
+        if (Array.isArray(data.recentProjects)) setRecentProjects(data.recentProjects);
+        if (Array.isArray(data.recentResponses)) setRecentResponses(data.recentResponses);
+        if (data.health) setHealth(data.health);
       })
       .catch(() => {})
       .finally(() => {
-        if (!cancelled) setLoadingProjects(false);
+        if (!cancelled) setLoadingDirectory(false);
       });
 
     return () => {
       cancelled = true;
     };
   }, [open]);
+
+  const panelHealthMap = useMemo(() => {
+    const map = new Map<NoctisPanelId, boolean>();
+    if (!health?.routes?.length) return map;
+    const statusById = new Map(health.routes.map((r) => [r.id, r.ok]));
+    for (const api of NOCTIS_API_ROUTES) {
+      const ok = statusById.get(api.id);
+      if (typeof ok === "boolean") {
+        const prev = map.get(api.panelId);
+        map.set(api.panelId, prev === undefined ? ok : prev && ok);
+      }
+    }
+    return map;
+  }, [health]);
 
   const entries = useMemo<PaletteEntry[]>(() => {
     const q = query.trim().toLowerCase();
@@ -93,7 +145,21 @@ export function NoctisCommandPalette({
           title: panel.label,
           subtitle: panel.description,
           badge: panel.group,
-          hint: panel.deepLink,
+          healthOk: panelHealthMap.get(panel.id),
+        });
+      }
+    }
+
+    for (const resp of recentResponses) {
+      const hay = `${resp.id} ${resp.prompt} ${resp.summary} ${resp.routeLabel} ${resp.routeId}`.toLowerCase();
+      if (!q || hay.includes(q)) {
+        list.push({
+          kind: "response",
+          key: `resp:${resp.id}`,
+          response: resp,
+          title: resp.prompt.slice(0, 72) || resp.id,
+          subtitle: `${resp.routeLabel} · ${resp.summary}`,
+          badge: resp.id,
         });
       }
     }
@@ -108,7 +174,6 @@ export function NoctisCommandPalette({
           title: proj.name,
           subtitle: `${proj.category} · Rev #${proj.currentRevision} · ${proj.status}`,
           badge: proj.id,
-          hint: proj.deepLink,
         });
       }
     }
@@ -123,13 +188,12 @@ export function NoctisCommandPalette({
           title: `${cmd.command} — ${cmd.label}`,
           subtitle: cmd.description,
           badge: "Slash Route",
-          hint: cmd.command,
         });
       }
     }
 
-    return list.slice(0, 28);
-  }, [query, recentProjects]);
+    return list.slice(0, 32);
+  }, [query, recentProjects, recentResponses, panelHealthMap]);
 
   useEffect(() => {
     if (activeIndex >= entries.length) {
@@ -140,6 +204,13 @@ export function NoctisCommandPalette({
   function triggerEntry(entry: PaletteEntry) {
     if (entry.kind === "panel") {
       onSelectPanel(entry.panelId);
+      onClose();
+      return;
+    }
+    if (entry.kind === "response") {
+      if (onOpenResponse) {
+        onOpenResponse(entry.response.id);
+      }
       onClose();
       return;
     }
@@ -191,7 +262,7 @@ export function NoctisCommandPalette({
               setQuery(e.target.value);
               setActiveIndex(0);
             }}
-            placeholder="Jump to any Noctis console, saved Forge app (FRG-...), or /command override..."
+            placeholder="Jump to any console, saved Forge app (FRG-...), recent reply (RSP-...), or /command..."
             className="flex-1 bg-transparent text-sm text-white placeholder:text-zinc-500 focus:outline-none"
           />
           <button
@@ -207,7 +278,7 @@ export function NoctisCommandPalette({
         <div className="max-h-[420px] overflow-y-auto p-2 space-y-1 noctis-thin-scroll">
           {entries.length === 0 ? (
             <div className="px-4 py-10 text-center text-xs text-zinc-400">
-              No consoles, saved apps, or slash commands matched &ldquo;{query}&rdquo;.
+              No consoles, saved replies, apps, or slash commands matched &ldquo;{query}&rdquo;.
             </div>
           ) : (
             entries.map((entry, idx) => {
@@ -231,13 +302,17 @@ export function NoctisCommandPalette({
                         "grid size-8 shrink-0 place-items-center rounded-xl border",
                         entry.kind === "panel"
                           ? "border-sky-500/25 bg-sky-500/10 text-sky-300"
-                          : entry.kind === "project"
-                            ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-300"
-                            : "border-amber-500/25 bg-amber-500/10 text-[#e4b86a]",
+                          : entry.kind === "response"
+                            ? "border-violet-500/25 bg-violet-500/10 text-violet-300"
+                            : entry.kind === "project"
+                              ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-300"
+                              : "border-amber-500/25 bg-amber-500/10 text-[#e4b86a]",
                       )}
                     >
                       {entry.kind === "panel" ? (
                         <Compass className="size-4" />
+                      ) : entry.kind === "response" ? (
+                        <MessageSquareText className="size-4" />
                       ) : entry.kind === "project" ? (
                         <FolderGit2 className="size-4" />
                       ) : (
@@ -246,6 +321,15 @@ export function NoctisCommandPalette({
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
+                        {entry.kind === "panel" && typeof entry.healthOk === "boolean" ? (
+                          <span
+                            className={cn(
+                              "size-1.5 shrink-0 rounded-full",
+                              entry.healthOk ? "bg-emerald-400" : "bg-amber-400",
+                            )}
+                            title={entry.healthOk ? "Route API healthy" : "Route degraded"}
+                          />
+                        ) : null}
                         <span className="truncate text-xs font-semibold">{entry.title}</span>
                         {isCurrentPanel ? (
                           <span className="rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[9px] font-bold uppercase text-emerald-300">
@@ -287,11 +371,19 @@ export function NoctisCommandPalette({
             <span>↵ Open</span>
             <span>Esc Close</span>
           </div>
-          <span>
-            {loadingProjects
-              ? "Syncing saved Forge apps..."
-              : `${NOCTIS_PANELS.length} Consoles · ${recentProjects.length} Saved Apps · ${NOCTIS_SLASH_ROUTES.length} Slash Routes`}
-          </span>
+          <div className="flex items-center gap-2">
+            {health ? (
+              <span className={cn("inline-flex items-center gap-1 font-medium", health.overallStatus === "healthy" ? "text-emerald-300" : "text-amber-300")}>
+                <span className={cn("size-1.5 rounded-full", health.overallStatus === "healthy" ? "bg-emerald-400" : "bg-amber-400")} />
+                {health.totalOk}/{health.totalRoutes} Routes Healthy
+              </span>
+            ) : null}
+            <span>
+              {loadingDirectory
+                ? "Checking routes..."
+                : `${NOCTIS_PANELS.length} Consoles · ${recentProjects.length} Apps · ${recentResponses.length} Recent Replies`}
+            </span>
+          </div>
         </div>
       </div>
     </div>

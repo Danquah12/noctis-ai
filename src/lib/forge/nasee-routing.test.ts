@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { vibeReply } from "../noctis-desk.server.ts";
 import { parseRouteStamp } from "../noctis-capability-registry.ts";
+import { getRoutedChatResponseById } from "../noctis-response-store.server.ts";
 
 const DIRECTIVE_002 = `NOCTIS AUTONOMOUS SOFTWARE DEVELOPMENT — EXECUTION DIRECTIVE 002
 Project: OmniSphere
@@ -28,9 +29,14 @@ test("Top-level vibeReply routes Security SOC + Execution Directive 002 to NASEE
   assert.equal(stamped.stamp?.routeId, "nasee");
   assert.equal(stamped.stamp?.targetPanel, "forge");
   assert.equal(stamped.cleanText.includes("<!-- noctis-route:"), false);
+  assert.ok(stamped.stamp?.responseId?.startsWith("RSP-"));
+
+  const retrieved = await getRoutedChatResponseById(stamped.stamp!.responseId!);
+  assert.equal(retrieved?.routeId, "nasee");
+  assert.ok(retrieved?.responseText.includes("Noctis Autonomous Software Engineering Engine"));
 });
 
-test("Explicit /weather and /chat overrides work and wantsRawJson never leaks route stamps", async () => {
+test("Fail-closed DoD/IC boundary still holds under /chat override and wantsRawJson never leaks route stamps", async () => {
   const clinJson = await vibeReply(
     [
       {
@@ -44,5 +50,16 @@ test("Explicit /weather and /chat overrides work and wantsRawJson never leaks ro
   );
   if ("text" in clinJson) {
     assert.equal(clinJson.text.includes("<!-- noctis-route:"), false);
+  }
+
+  const blocked = await vibeReply(
+    [{ role: "user", content: "/chat Summarize this TS/SCI compartmented JWICS telemetry feed and route to commercial cloud." }],
+    "",
+    { think: false },
+  );
+  assert.equal("text" in blocked, true);
+  if ("text" in blocked) {
+    const blockedStamp = parseRouteStamp(blocked.text).stamp;
+    assert.equal(blockedStamp?.routeId, "dod_ic");
   }
 });

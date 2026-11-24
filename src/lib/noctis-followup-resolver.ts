@@ -16,6 +16,8 @@ export type FollowUpDomainTag =
   | "dod_ic"
   | "cve_cyber"
   | "coding"
+  | "website_builder"
+  | "weather"
   | "legal"
   | "finance"
   | "scripture"
@@ -119,7 +121,8 @@ export function cleanAssistantTurnForHistory(raw: string, maxChars = 6000): stri
   if (!raw || typeof raw !== "string") return "";
   const withoutThink = raw
     .replace(/<think>[\s\S]*?<\/think>/gi, "")
-    .replace(/<think>[\s\S]*$/gi, "");
+    .replace(/<think>[\s\S]*$/gi, "")
+    .replace(/\n?<!--\s*noctis-route:\{[\s\S]*?\}\s*-->/gi, "");
 
   const withoutFooter = withoutThink
     .split(
@@ -257,21 +260,6 @@ export function extractCarriedAttachment(priorTurns: ConversationTurn[]): Carrie
 function detectDomainTag(text: string): FollowUpDomainTag {
   const sample = (text || "").slice(0, 6000);
   if (
-    /\b(?:DoDI\s*85\d{2}\.\d{2}|DoD\s+85\d{2}|ICD\s*50[123]|CNSSI\s*1253|DISA\s+STIG|STIG\s+V-\d+|V-\d{6}|CCI-\d{6}|SCAP|XCCDF|ACAS|\.nessus|eMASS|SIPR|JWICS|SCIF|NSM-8|ZTMM|DoD\s+7-Pillar|Top\s+Secret)\b/i.test(
-      sample,
-    )
-  ) {
-    return "dod_ic";
-  }
-  if (
-    /\b(?:NIST\s+(?:SP\s*)?800-(?:53|37|30|171)|FedRAMP|CMMC|FIPS\s*(?:199|200)|OSCAL|POA&M|POAM|\bRMF\b|Authorizing\s+Official|3PAO|SSP|SAR|\bATO\b)\b/i.test(
-      sample,
-    ) ||
-    /\b(?:AC|AT|AU|CA|CM|CP|IA|IR|MA|MP|PE|PL|PM|PS|PT|RA|SA|SC|SI|SR)-\d{1,2}(?:\(\d{1,2}\))?(?![A-Za-z0-9_])/.test(sample)
-  ) {
-    return "rmf_grc";
-  }
-  if (
     /\[Patient Diagnostic Intake Encounter\]|\bEncounter(?:\s+ID)?:\s*NPDE-[A-Z0-9-]+|\bNOCTIS-ICU-CRIT-\d+/i.test(sample) ||
     (/\b(?:patient|female|male|years?-old|yo|y\/o|potassium|hyperkalemia|creatinine|troponin|sepsis|septic\s+shock|tachycardia|bradycardia|hypotension|ecg|ekg|lisinopril|norepinephrine|vasopressor|AKI|resuscitation|triage)\b|\b\d{1,3}\s*[MF]\b(?![A-Za-z])/i.test(
       sample,
@@ -280,6 +268,33 @@ function detectDomainTag(text: string): FollowUpDomainTag {
         /\bK\+(?!\w)/i.test(sample)))
   ) {
     return "clinical";
+  }
+  if (
+    /\b(?:build|create|make|design|generate|code|develop|draft|scaffold|architect)\b[\s\S]{0,180}\b(?:web\s*site|website|web\s*page|webpage|landing\s*page|storefront|web\s*app|web\s+application|portal|marketplace|booking\s+page)\b/i.test(sample) &&
+    !/\b(?:explain\s+how|what\s+is\s+(?:a|an|the))\b/i.test(sample)
+  ) {
+    return "website_builder";
+  }
+  if (
+    /\b(?:DoDI\s*85\d{2}\.\d{2}|DoD\s+85\d{2}|ICD\s*50[123]|CNSSI\s*1253|DISA\s+STIG|STIG\s+V-\d+|V-\d{6}|CCI-\d{6}|SCAP|XCCDF|ACAS|\.nessus|eMASS|SIPR|JWICS|SCIF|NSM-8|ZTMM|DoD\s+7-Pillar|Top\s+Secret)\b/i.test(
+      sample,
+    )
+  ) {
+    return "dod_ic";
+  }
+  if (
+    /\b(?:NIST\s+(?:SP\s*)?800-(?:53|37|30|171)|FedRAMP|CMMC|FIPS\s*(?:199|200)|OSCAL|POA&M|POAM|\bRMF\b|Authorizing\s+Official|3PAO|SSP|Security\s+Assessment\s+Report|\bATO\b)\b/i.test(
+      sample,
+    ) ||
+    /\b(?:AC|AT|AU|CA|CM|CP|IA|IR|MA|MP|PE|PL|PM|PS|PT|RA|SA|SC|SI|SR)-\d{1,2}(?:\(\d{1,2}\))?(?![A-Za-z0-9_])/.test(sample)
+  ) {
+    return "rmf_grc";
+  }
+  if (
+    /\b(?:will\s+it\s+rain|weather\s+forecast|7-day\s+weather|precipitation|rainfall|snowfall|thunderstorm|barometric|meteorolog(?:y|ical))\b/i.test(sample) &&
+    !/\b(?:cold-?chain|reefer|maritime|vessel|website|portal|platform|postgresql|patient|sepsis)\b/i.test(sample)
+  ) {
+    return "weather";
   }
   if (
     /\bCVE-\d{4}-\d{4,7}\b/i.test(sample) ||

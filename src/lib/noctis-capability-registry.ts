@@ -86,7 +86,17 @@ export interface NoctisRouteStamp {
   override: boolean;
   command?: string;
   targetPanel: NoctisPanelId;
+  responseId?: string;
 }
+
+export const NOCTIS_CHAT_RETRIEVAL_ENDPOINTS = {
+  chatPost: "/api/noctis",
+  routesDirectory: "/api/noctis?routes=1",
+  platformRoutesHealth: "/api/v2/forge/platform-routes?health=1",
+  listResponses: "/api/noctis?responses=1&engine={routeId}&q={query}&limit=20",
+  getResponseById: "/api/noctis?responseId={responseId}",
+  deepLinkResponse: "/noctis?response={responseId}",
+} as const;
 
 export const NOCTIS_PANELS: NoctisPanelSpec[] = [
   {
@@ -403,6 +413,16 @@ export function getSlashRouteByEngine(routeId: NoctisRouteEngineId): NoctisSlash
   return NOCTIS_SLASH_ROUTES.find((r) => r.routeId === routeId);
 }
 
+export function getSlashCommandForRouteId(routeOrCommand: string | null | undefined): string | null {
+  const raw = String(routeOrCommand || "").trim().toLowerCase();
+  if (!raw) return null;
+  const withSlash = raw.startsWith("/") ? raw : `/${raw}`;
+  const spec = NOCTIS_SLASH_ROUTES.find(
+    (item) => item.routeId.toLowerCase() === raw || item.command === withSlash || item.aliases.includes(withSlash),
+  );
+  return spec?.command || null;
+}
+
 export function stripLeadingSlashOverride(rawPrompt: string): {
   command: string | null;
   routeId: NoctisRouteEngineId | null;
@@ -454,6 +474,7 @@ export function parseRouteStamp(text: string): {
           override: Boolean(parsed.override),
           command: typeof parsed.command === "string" ? parsed.command : undefined,
           targetPanel: isValidNoctisPanelId(parsed.targetPanel) ? parsed.targetPanel : "chat",
+          responseId: typeof parsed.responseId === "string" ? parsed.responseId : undefined,
         };
       }
     } catch {
@@ -478,4 +499,14 @@ export function attachRouteStamp(
     return raw;
   }
   return `${raw}\n<!-- noctis-route:${JSON.stringify(stamp)} -->`;
+}
+
+export function upsertRouteStampResponseId(text: string, responseId: string): string {
+  const raw = String(text || "");
+  if (!responseId || !ROUTE_STAMP_REGEX.test(raw)) {
+    return raw;
+  }
+  const { cleanText, stamp } = parseRouteStamp(raw);
+  if (!stamp) return raw;
+  return `${cleanText}\n<!-- noctis-route:${JSON.stringify({ ...stamp, responseId })} -->`;
 }

@@ -1,5 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { resolveNoctisEngine } from "@/lib/noctis-engine-registry";
+import {
+  getSlashCommandForRouteId,
+  NOCTIS_API_ROUTES,
+  NOCTIS_CHAT_RETRIEVAL_ENDPOINTS,
+  NOCTIS_PANELS,
+  NOCTIS_SLASH_ROUTES,
+  parseRouteStamp,
+} from "@/lib/noctis-capability-registry";
 
 type Turn = { role?: unknown; content?: unknown; images?: unknown };
 
@@ -30,6 +38,41 @@ export const Route = createFileRoute("/api/noctis")({
       OPTIONS: async () => new Response(null, { status: 204, headers: CORS_HEADERS }),
       GET: async ({ request }) => {
         const url = new URL(request.url);
+        if (url.searchParams.get("routes") === "1") {
+          return Response.json(
+            {
+              ok: true,
+              chatEndpoint: "/api/noctis",
+              retrievalEndpoints: NOCTIS_CHAT_RETRIEVAL_ENDPOINTS,
+              panels: NOCTIS_PANELS,
+              slashRoutes: NOCTIS_SLASH_ROUTES,
+              apiRoutes: NOCTIS_API_ROUTES,
+            },
+            { headers: CORS_HEADERS },
+          );
+        }
+        const lookupResponseId = url.searchParams.get("responseId");
+        if (lookupResponseId) {
+          const { getRoutedChatResponseById } = await import("@/lib/noctis-response-store.server");
+          const found = await getRoutedChatResponseById(lookupResponseId);
+          return Response.json(
+            found ? { ok: true, response: found } : { ok: false, error: "RESPONSE_NOT_FOUND" },
+            { status: found ? 200 : 404, headers: CORS_HEADERS },
+          );
+        }
+        if (url.searchParams.get("responses") === "1") {
+          const { listRoutedChatResponses } = await import("@/lib/noctis-response-store.server");
+          const limit = Number(url.searchParams.get("limit") || 20);
+          const responses = await listRoutedChatResponses({
+            engine: url.searchParams.get("engine") || undefined,
+            q: url.searchParams.get("q") || undefined,
+            limit: Number.isFinite(limit) ? limit : 20,
+          });
+          return Response.json(
+            { ok: true, count: responses.length, responses },
+            { headers: CORS_HEADERS },
+          );
+        }
         if (url.searchParams.get("sast")) {
           const mode = url.searchParams.get("sast") || "repository";
           const {
@@ -849,6 +892,8 @@ export const Route = createFileRoute("/api/noctis")({
             encounterId?: string;
           };
           ingest?: unknown;
+          route?: string;
+          engineRoute?: string;
           consensus_incident?: {
             scenario?: string;
             title?: string;
@@ -1196,6 +1241,25 @@ export const Route = createFileRoute("/api/noctis")({
             }
           }
 
+          const requestedRouteCmd = getSlashCommandForRouteId(
+            typeof body?.route === "string"
+              ? body.route
+              : typeof body?.engineRoute === "string"
+                ? body.engineRoute
+                : "",
+          );
+          if (requestedRouteCmd && turns.length > 0) {
+            for (let i = turns.length - 1; i >= 0; i--) {
+              if (turns[i]?.role === "user") {
+                const cur = turns[i]!.content.trim();
+                if (!cur.startsWith("/")) {
+                  turns[i] = { ...turns[i]!, content: `${requestedRouteCmd} ${cur}` };
+                }
+                break;
+              }
+            }
+          }
+
           const resolvedEngine = resolveNoctisEngine(body?.engine || body?.model);
           const reply = await vibeReply(retainSources(turns), baked, {
             skill: typeof body?.skill === "string" ? body.skill : "talk",
@@ -1209,6 +1273,8 @@ export const Route = createFileRoute("/api/noctis")({
           });
 
           if ("text" in reply) {
+            const parsedRoute = parseRouteStamp(reply.text);
+            const responseId = parsedRoute.stamp?.responseId || null;
             const promptChars = turns.map((t) => t.content).join(" ").length;
             const completionChars = reply.text.length;
             const promptTokens = Math.max(1, Math.ceil(promptChars / 4));
@@ -1216,6 +1282,10 @@ export const Route = createFileRoute("/api/noctis")({
             return Response.json(
               {
                 text: reply.text,
+                cleanText: parsedRoute.cleanText,
+                route: parsedRoute.stamp,
+                responseId,
+                retrievalUrl: responseId ? `/api/noctis?responseId=${encodeURIComponent(responseId)}` : null,
                 engine: resolvedEngine.id,
                 model: typeof body?.model === "string" ? body.model : targetBrain?.provider ? `Noctis (${targetBrain.provider})` : resolvedEngine.name,
                 usage: {
