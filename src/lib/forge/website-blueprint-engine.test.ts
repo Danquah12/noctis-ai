@@ -15,7 +15,12 @@ import {
   restoreForgeProjectRevision,
 } from "./forge-engine.server.ts";
 import { handleForgeV2Request } from "./api-handler.server.ts";
-import { webPageBuilderGadget } from "../noctis-gadgets.server.ts";
+import {
+  isExplicitWebsiteBuildIntent,
+  runVibeGadgets,
+  weatherPredictionGadget,
+  webPageBuilderGadget,
+} from "../noctis-gadgets.server.ts";
 
 test("classifyWebsiteCategory routes representative prompts accurately across all 40 Forge categories", () => {
   const sampleBySlug: Record<string, string> = {
@@ -555,4 +560,43 @@ test("REST /api/v2/forge/live, /submissions, /checkout, visualPatch edit & deplo
   const deployJson = (await deployRes.json()) as { approved: boolean; liveUrl: string };
   assert.equal(deployJson.approved, true);
   assert.equal(deployJson.liveUrl, `/api/v2/forge/live?id=${encodeURIComponent(projectId)}`);
+});
+
+test("complex dynamic platform prompts route to website builder instead of weather/domain gadgets and honor custom brands & SQL tables", async () => {
+  const maritimePrompt =
+    "Design and build a complex dynamic global maritime cold-chain logistics and refrigerated vessel charter platform called Meridian Reefers with multi-lane port-to-port filtering, dynamic container and cold-storage rate calculator (temperature class, tonnage, customs clearance, marine insurance), live slot reservation and checkout, operator admin ledger with CSV export, multilingual EN/ES/FR switcher, and PostgreSQL + PostGIS tables for vessels, cold_containers, customs_manifests, port_berths, and charter_bookings.";
+
+  assert.equal(isExplicitWebsiteBuildIntent(maritimePrompt), true);
+  assert.equal(await weatherPredictionGadget(maritimePrompt), null);
+
+  const chatOut = await runVibeGadgets(maritimePrompt);
+  assert.ok(chatOut && chatOut.includes("Universal Website Build: Meridian Reefers"));
+  assert.ok(!chatOut!.includes("Weather & Rain Forecast"), "Weather gadget must not hijack cold-chain maritime platform build");
+  assert.ok(chatOut!.includes("meridianreefers.com"));
+  assert.ok(chatOut!.includes("cold_containers"));
+  assert.ok(chatOut!.includes("customs_manifests"));
+  assert.ok(chatOut!.includes("port_berths"));
+  assert.ok(chatOut!.includes("charter_bookings"));
+  assert.ok(chatOut!.includes('id="langSelect"'));
+
+  const healthPrompt =
+    "Build a complex dynamic healthcare, clinical trial matching, and precision diagnostics platform called HelixCare Global with specialty filterable care pathways, interactive treatment & insurance copay estimator, appointment booking and deposit checkout, WCAG AA light editorial theme, and PostgreSQL tables for patients, clinical_trials, diagnostic_panels, referrals, and telehealth_sessions.";
+  const healthBp = buildDeterministicWebsiteBlueprint({ prompt: healthPrompt });
+  assert.equal(healthBp.brandName, "HelixCare Global");
+  assert.equal(healthBp.theme.mode, "light");
+  const healthEntities = healthBp.entities.map((e) => e.name);
+  assert.ok(healthEntities.includes("diagnostic_panels"));
+  assert.ok(healthEntities.includes("telehealth_sessions"));
+
+  const abyssalPrompt =
+    "Build a dynamic deep-sea submersible research expedition and ocean carbon sequestration charter platform called Abyssal Dynamics with expedition filtering, mission cost calculator, crew & scientist booking checkout, and PostgreSQL tables for submersibles, dive_sites, carbon_cores, expedition_permits, and mission_bookings.";
+  const abyssalBp = buildDeterministicWebsiteBlueprint({ prompt: abyssalPrompt });
+  assert.equal(abyssalBp.brandName, "Abyssal Dynamics");
+  assert.notEqual(abyssalBp.categorySlug, "ecommerce");
+  assert.notEqual(abyssalBp.industrySpecialty, "Business websites");
+  const abyssalEntities = abyssalBp.entities.map((e) => e.name);
+  assert.ok(abyssalEntities.includes("submersibles"));
+  assert.ok(abyssalEntities.includes("carbon_cores"));
+
+  assert.equal(isExplicitWebsiteBuildIntent("Will it rain tomorrow in Laurel, Maryland?"), false);
 });

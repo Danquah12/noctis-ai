@@ -270,7 +270,7 @@ export function classifyWebsiteCategory(categoryHint?: string, prompt?: string):
   const rules: Array<{ slug: string; primary: RegExp; secondary?: RegExp; boost?: number }> = [
     { slug: "travel", primary: /\b(?:tourism|tourist|travel(?:er|s|ing)?|safari|itinerar(?:y|ies)|vacation|tour\s+guide|destinations?|excursions?|trip\s+planner|sightseeing|ecotourism|adventure\s+tours?)\b/i, secondary: /\b(?:resorts?|lodges?|hotels?|flights?|visa|wildlife|beach|mountains?)\b/i, boost: 4 },
     { slug: "hospitality", primary: /\b(?:hospitality|restaurant|bakery|cafe|coffee\s*shop|bistro|catering|menu|dining|chef|pastry|hotel\s+(?:chain|website|booking|reservation)|room\s+booking|table\s+reservation|guest\s*house|resort\s+spa)\b/i, secondary: /\b(?:rooms?|orders?|reservations?|desserts?|brunch)\b/i, boost: 3 },
-    { slug: "ecommerce", primary: /\b(?:e-?commerce|online\s+store|storefront|product\s+catalog|shopping\s+cart|checkout|boutique|merchandise|handmade|retail\s+shop|sneakers?|apparel|fashion\s+store|jewelry\s+shop)\b/i, secondary: /\b(?:products?|skus?|inventory|orders?|shipping|discounts?)\b/i, boost: 3 },
+    { slug: "ecommerce", primary: /\b(?:e-?commerce|online\s+store|storefront|product\s+catalog|shopping\s+cart|cart\s+checkout|e-?commerce\s+checkout|boutique|merchandise|handmade|retail\s+shop|sneakers?|apparel|fashion\s+store|jewelry\s+shop)\b/i, secondary: /\b(?:products?|skus?|inventory|orders?|shipping|discounts?|checkout)\b/i, boost: 3 },
     { slug: "real-estate", primary: /\b(?:real\s*estate|property\s+listing|properties|realtor|brokerage|apartment|rentals?|condos?|homes?\s+for\s+sale|mortgage\s+calculator|mls\s+idx|commercial\s+leasing|landlords?)\b/i, secondary: /\b(?:tenants?|leases?|floor\s*plan|open\s+house|neighborhood)\b/i, boost: 4 },
     { slug: "healthcare", primary: /\b(?:healthcare|hospital|clinic|medical|patient\s+portal|telehealth|doctor|physician|dental|dentist|pharmacy|fhir|hipaa|appointment\s+scheduling|(?:medical|clinical|lab|imaging)\s+diagnostics?|(?:physical|occupational|speech|clinical|behavioral)\s+therapy|psychotherapy|mental\s+health|pediatric|urgent\s+care)\b/i, secondary: /\b(?:patients?|providers?|prescriptions?|ehr|triage)\b/i, boost: 4 },
     { slug: "legal-services", primary: /\b(?:law\s+firm|legal\s+services|attorney|lawyer|litigation|docket|court\s+filing|legal\s+research|paralegal|frcp|(?:commercial|legal)\s+contracts?|legal\s+practice|notary)\b/i, secondary: /\b(?:cases?|filings?|briefs?|retainer|counsel)\b/i, boost: 4 },
@@ -1170,7 +1170,7 @@ function buildCustomTopicTemplate(prompt: string, cat: ForgeCategorySpec): Domai
   const h3 = hints[2] || `Curated ${custom.brandName} Package`;
   const catNames: [string, string, string] = ["Featured", "Specialist Care", "Memberships"];
 
-  return makePreset(
+  const built = makePreset(
     custom.brandName,
     custom.domain,
     `${custom.subject} — tailored interactive portal, bookings & SQL backend.`,
@@ -1248,6 +1248,10 @@ function buildCustomTopicTemplate(prompt: string, cat: ForgeCategorySpec): Domai
     },
     custom.entityNames.length ? custom.entityNames : cat.defaultEntities,
   );
+  return {
+    ...built,
+    industrySpecialty: custom.subject || undefined,
+  };
 }
 
 function getTemplateForCategory(cat: ForgeCategorySpec): DomainPresetTemplate {
@@ -1266,7 +1270,9 @@ function getTemplateForCategory(cat: ForgeCategorySpec): DomainPresetTemplate {
 function extractCustomBrandAndDomain(prompt: string, defaultBrand: string, defaultDomain: string) {
   const domainMatch = prompt.match(/\b([a-z0-9-]{3,32}\.(?:com|io|ai|app|org|edu|net|travel|shop|co|dev))\b/i);
   const handoffBrandMatch = prompt.match(/\bfor\s+([A-Z][A-Za-z0-9&'\- ]{2,44}?)\s+[—–]\s+[A-Z]/);
-  const namedMatch = prompt.match(/\b(?:called|named|brand(?:ed)?|title[d]?)\s+["']?([A-Z][A-Za-z0-9&'\- ]{2,36})["']?/);
+  const namedMatch = prompt.match(
+    /\b(?:called|named|brand(?:ed)?|title[d]?)\s+["']?([A-Z][A-Za-z0-9&'\- ]{1,36}?)(?=["']|\s+\b(?:with|featuring|offering|including|that|which|having|for|where|focused|built|powered|designed|using|to|in|on)\b|\s+\band\s+[a-z]|[.,;!?()]|$)/,
+  );
   const quoteMatch = prompt.match(/["']([A-Z][A-Za-z0-9&'\- ]{3,32})["']/);
 
   let domain = defaultDomain;
@@ -1283,7 +1289,9 @@ function extractCustomBrandAndDomain(prompt: string, defaultBrand: string, defau
     const slug = brandName.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 22);
     if (slug.length >= 3) domain = `${slug}.com`;
   } else if (namedMatch?.[1]) {
-    brandName = namedMatch[1].trim();
+    brandName = namedMatch[1].trim().replace(/[.,;:'"\-]+$/, "").trim();
+    const slug = brandName.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 22);
+    if (slug.length >= 3) domain = `${slug}.com`;
   } else if (quoteMatch?.[1] && !/destination|experience|all adventures|mole safari/i.test(quoteMatch[1])) {
     brandName = quoteMatch[1].trim();
   }
@@ -1325,8 +1333,8 @@ function extractUserRequestedSections(prompt: string): WebsiteSectionItem[] {
 
 function detectThemeOverrides(text: string, fallbackMode: "light" | "dark", fallbackPalette: string, explicitHex?: string) {
   let mode: "light" | "dark" = fallbackMode;
-  if (/\blight\s*(?:mode|theme|palette|background)\b|\bbright\s+editorial\b/i.test(text)) mode = "light";
-  else if (/\bdark\s*(?:mode|theme|palette|background)\b|\bmidnight\b/i.test(text)) mode = "dark";
+  if (/\blight\b(?:\s+[a-z-]+){0,2}\s+\b(?:mode|theme|palette|background)\b|\bbright\s+editorial\b/i.test(text)) mode = "light";
+  else if (/\bdark\b(?:\s+[a-z-]+){0,2}\s+\b(?:mode|theme|palette|background)\b|\bmidnight\b/i.test(text)) mode = "dark";
 
   let palette = fallbackPalette;
   if (/\b(?:emerald|green|forest|mint)\b/i.test(text)) palette = "emerald";
@@ -1417,6 +1425,24 @@ export function buildDeterministicWebsiteBlueprint(input: {
   for (const m of extraMatches) {
     if (m[1]) {
       const norm = normalizeEntityName(m[1]);
+      if (!existingNames.has(norm)) {
+        entities.push(buildEntitySpec(norm));
+        existingNames.add(norm);
+      }
+    }
+  }
+  const tableListMatches = prompt.matchAll(
+    /\b(?:tables?|entities)\s+(?:for|like|including|covering|:)\s+([a-z0-9_,\s-]+?)(?=[.;!?]|$|\b(?:with|using|supporting|featuring)\b)/gi,
+  );
+  const stopEntityWords = new Set(["the", "and", "or", "all", "our", "your", "each", "their", "a", "an", "for", "postgresql", "postgis", "sql", "schema", "data"]);
+  for (const lm of tableListMatches) {
+    const rawList = lm[1] || "";
+    const parts = rawList.split(/(?:,|\band\b)/i);
+    for (const part of parts) {
+      const cleaned = part.trim().toLowerCase().replace(/[^a-z0-9_ ]+/g, "").replace(/\s+/g, "_");
+      if (!cleaned || cleaned.length < 3 || stopEntityWords.has(cleaned)) continue;
+      if (cleaned.split("_").length > 3) continue;
+      const norm = normalizeEntityName(cleaned);
       if (!existingNames.has(norm)) {
         entities.push(buildEntitySpec(norm));
         existingNames.add(norm);

@@ -405,28 +405,50 @@ export async function headerAuditGadget(question: string): Promise<string | null
   }
 }
 
-function isExplicitWebsiteBuildIntent(question: string): boolean {
-  return (
-    /\b(?:build|create|make|design|generate|code|develop|draft|scaffold)\b[\s\S]{0,110}\b(?:web\s*site|website|web\s*page|webpage|landing\s*page|html\s*page|homepage|home\s*page|storefront|web\s*app|web\s+application|portal|marketplace|portfolio|booking\s+page|site)\b/i.test(
+export function isExplicitWebsiteBuildIntent(question: string): boolean {
+  if (
+    /\b(python|rust|golang|c\+\+|unit\s+test|test\s+suite|cve-\d|cvss|outline\s+the\s+postgresql|algorithm|assert|what\s+is|explain\s+how)\b/i.test(
+      question,
+    ) ||
+    /^\s*(?:write|create)\s+(?:a\s+)?react\s+component\b/i.test(question)
+  ) {
+    return false;
+  }
+
+  const hasExplicitSiteNoun =
+    /\b(?:build|create|make|design|generate|code|develop|draft|scaffold|architect)\b[\s\S]{0,180}\b(?:web\s*site|website|web\s*page|webpage|landing\s*page|html\s*page|homepage|home\s*page|storefront|web\s*app|web\s+application|portal|marketplace|portfolio|booking\s+page|site)\b/i.test(
       question,
     ) ||
     /^\s*(?:web\s*site|website|web\s*page|webpage|landing\s*page)\s+(?:for|of|on|about|covering)\b/i.test(
       question,
     ) ||
-    /\bwebsite\s+for\s+(?:my|our|a|an|the)\b/i.test(question)
-  );
+    /\bwebsite\s+for\s+(?:my|our|a|an|the)\b/i.test(question);
+
+  const hasPlatformAppWithUiCues =
+    /\b(?:build|create|make|design|generate|code|develop|draft|scaffold|architect)\b[\s\S]{0,180}\b(?:(?:web\s+)?platform|dashboard|app(?:lication)?)\b/i.test(
+      question,
+    ) &&
+    /\b(?:dynamic|interactive|booking|checkout|calculator|filtering|switcher|ledger|multi-?lane|reservation|tables?\s+for|called\s+[A-Z]|theme|responsive|e-?commerce|saas)\b/i.test(
+      question,
+    );
+
+  if (!hasExplicitSiteNoun && !hasPlatformAppWithUiCues) {
+    return false;
+  }
+
+  if (
+    /\b(?:sql\s+schema|postgis\s+schema|database\s+schema)\b/i.test(question) &&
+    !/\b(?:build|design|create|generate)\b[\s\S]{0,90}\b(?:website|web\s*app|portal|marketplace|platform)\b/i.test(
+      question,
+    )
+  ) {
+    return false;
+  }
+
+  return true;
 }
 
 export async function webPageBuilderGadget(question: string): Promise<string | null> {
-  if (
-    /\b(python|rust|golang|c\+\+|unit\s+test|test\s+suite|cve-\d|cvss|sql\s+schema|postgis\s+schema|database\s+schema|outline\s+the\s+postgresql|algorithm|assert|what\s+is|explain\s+how)\b/i.test(
-      question,
-    ) ||
-    /^\s*(?:write|create)\s+(?:a\s+)?react\s+component\b/i.test(question)
-  ) {
-    return null;
-  }
-
   if (!isExplicitWebsiteBuildIntent(question)) {
     return null;
   }
@@ -565,16 +587,19 @@ export async function weatherPredictionGadget(question: string): Promise<string 
     return null;
   }
   const q = question.split(/\n\s*ANSWER:/i)[0]!.replace(/\s+/g, " ").trim();
+  if (isExplicitWebsiteBuildIntent(q)) {
+    return null;
+  }
   const hasWeatherKeyword =
     /\b(rain|raing|rian|raining|rainfall|precip(?:itation)?|weather|forecast|snow(?:ing|fall)?|thunderstorm|storm|drizzle|downpour|flood(?:ing)?|heat\s*wave|cold\s+front|humidity|barometric|meteorolog(?:y|ical))\b/i.test(
       q
     ) ||
     (/\b(temperature|wind\s+speed|degrees)\b/i.test(q) &&
-      /\b(tomorrow|today|tonight|this\s+week|next\s+week|weekend|forecast|weather|outside|world|global)\b/i.test(q));
+      /\b(tomorrow|today|tonight|this\s+week|next\s+week|weekend|forecast|weather|outside)\b/i.test(q));
 
   if (!hasWeatherKeyword) return null;
   if (
-    /\b(bearing|pump|motor|centrifugal|engine\s+coolant|exhaust|boiler|furnace|reactor|patient|fever|sepsis|blood|creatinine|egfr|cyber|ddos|sql\s+injection)\b/i.test(
+    /\b(bearing|pump|motor|centrifugal|engine\s+coolant|exhaust|boiler|furnace|reactor|patient|fever|sepsis|blood|creatinine|egfr|cyber|ddos|sql\s+injection|cold-?chain|cold-?storage|reefer|logistics|maritime|vessel|charter|website|web\s*app|platform|portal|marketplace|checkout|calculator|postgresql|postgis|schema)\b/i.test(
       q
     )
   ) {
@@ -1056,6 +1081,11 @@ export async function runVibeGadgets(
   if (/^(?:Read this answer again\.|Write a short original|Write the words for this picture)/i.test(question.trim())) {
     return null;
   }
+  const shouldRunWebBuilder = opts?.allowWebsiteRebuild !== false;
+  if (shouldRunWebBuilder && isExplicitWebsiteBuildIntent(question)) {
+    const webHit = await webPageBuilderGadget(question);
+    if (webHit) return webHit;
+  }
   const syncHit =
     sastIntelligenceGadget(question) ||
     evalBenchmarkGadget(question) ||
@@ -1072,7 +1102,6 @@ export async function runVibeGadgets(
     owaspCodeGadget(question) ||
     handleNaturalCyberSecurityQuery(question);
   if (syncHit) return syncHit;
-  const shouldRunWebBuilder = opts?.allowWebsiteRebuild !== false;
   const asyncHit =
     (await weatherPredictionGadget(question)) ||
     (shouldRunWebBuilder ? await webPageBuilderGadget(question) : null) ||

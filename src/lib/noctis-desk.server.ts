@@ -1404,10 +1404,15 @@ async function composeVibeReply(
       }
     }
 
+    const { isExplicitWebsiteBuildIntent, runVibeGadgets } = await import("@/lib/noctis-gadgets.server");
+    const explicitWebBuild = isExplicitWebsiteBuildIntent(question);
+
     // Natural-Language NDKRS Cross-Domain Rule Execution (Reynolds, Ohm's Law, Ideal Gas, Henderson-Hasselbalch, FDA CDS, POA&M SLA)
-    const naturalNdkrsRuleOut = await tryExecuteNdkrsDeterministicRuleFromChat(fullQuestion, {
-      explicitRuleIdOnly: false,
-    });
+    const naturalNdkrsRuleOut = explicitWebBuild
+      ? null
+      : await tryExecuteNdkrsDeterministicRuleFromChat(fullQuestion, {
+          explicitRuleIdOnly: false,
+        });
     if (naturalNdkrsRuleOut) {
       return {
         text: wrapDeterministicThink(
@@ -1418,7 +1423,7 @@ async function composeVibeReply(
     }
 
     const { runFollowUpIntelligence } = await import("@/lib/noctis-response-intelligence");
-    const followUpOut = runFollowUpIntelligence(turns, fullQuestion);
+    const followUpOut = explicitWebBuild ? null : runFollowUpIntelligence(turns, fullQuestion);
     if (followUpOut) {
       const careerLang = languageNow(question, style.language || "");
       if (followUpOut.startsWith("# 🧭") && !/^(english|en([-_][a-z]+)?)$/i.test(careerLang.trim())) {
@@ -1436,8 +1441,8 @@ async function composeVibeReply(
         ),
       };
     }
-    const { runVibeGadgets } = await import("@/lib/noctis-gadgets.server");
     const allowWebsiteRebuild =
+      explicitWebBuild ||
       !followUp.isFollowUp ||
       /\b(rebuild|regenerate|switch\s+to\s+a\s+new\s+website|build\s+a\s+new\s+website)\b/i.test(question);
     const gadgetOut = await runVibeGadgets(fullQuestion, {
