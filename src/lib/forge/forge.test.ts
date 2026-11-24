@@ -28,7 +28,14 @@ test("Noctis Forge catalogs cover 40 website categories, 35 software-company cap
 
   const env = validateDevelopmentEnvironment();
   assert.ok(env.summary.liveInRepo >= 4);
-  assert.equal(env.checks.some((c) => c.status === "EXTERNAL_MICROVM_BOUNDARY"), true);
+  assert.equal(
+    env.checks.some(
+      (c) =>
+        c.component.includes("Isolated Execution Sandbox") &&
+        (c.status === "LIVE_IN_REPO" || c.status === "LIVE_IN_REPO_LOCAL_SANDBOX"),
+    ),
+    true,
+  );
 });
 
 test("Noctis Forge 12-agent pipeline generates full-stack app, edits conversationally, restores revisions, zips binary & enforces human deploy gate", async () => {

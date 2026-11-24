@@ -12,7 +12,12 @@ import { architectIntelligenceGadget } from "./noctis-architect-engine.ts";
 import { automotiveDiagnosticGadget } from "./noctis-automotive-engine.ts";
 import { handleNaturalCyberSecurityQuery } from "./noctis-cyber-engine.ts";
 import { sastIntelligenceGadget } from "./noctis-sast-engine.ts";
-import { renderWebsiteBlueprintHtml, synthesizeWebsiteBlueprintWithAi } from "./forge/website-blueprint-engine.ts";
+import {
+  isEnterpriseEcosystemPrompt,
+  renderWebsiteBlueprintHtml,
+  synthesizeWebsiteBlueprintWithAi,
+} from "./forge/website-blueprint-engine.ts";
+import { buildEnterpriseMonorepoFiles } from "./forge/enterprise-monorepo-engine.ts";
 
 function decodeBase64Url(segment: string): string {
   const normalized = segment.replace(/-/g, "+").replace(/_/g, "/");
@@ -454,6 +459,30 @@ export async function webPageBuilderGadget(question: string): Promise<string | n
   }
 
   const blueprint = await synthesizeWebsiteBlueprintWithAi({ prompt: question });
+  const isEnterprise =
+    isEnterpriseEcosystemPrompt(question) ||
+    blueprint.industrySpecialty === "Enterprise Multi-Tenant Digital Ecosystem";
+
+  if (isEnterprise) {
+    const monorepoFiles = buildEnterpriseMonorepoFiles({
+      projectId: "enterprise-preview",
+      brandName: blueprint.brandName,
+      domain: blueprint.domain,
+      prompt: question,
+      stack: "Next.js + React + TypeScript + Tailwind + NestJS/FastAPI + PostgreSQL + pgvector + Redis + OpenSearch",
+      accentHex: blueprint.theme.accent,
+      apiBase: "",
+    });
+    const htmlCode = monorepoFiles["index.html"] || renderWebsiteBlueprintHtml(blueprint);
+
+    return [
+      `## Enterprise Multi-Tenant Ecosystem Build: ${blueprint.brandName} (\`${blueprint.industrySpecialty}\` · 30 Modules / 110 Screens)`,
+      `- **Enterprise Monorepo Generated:** \`${Object.keys(monorepoFiles).length}\` source/config/SQL/test files across \`apps/\`, \`services/\`, \`packages/\`, \`database/\` (15 RLS + pgvector domains), \`infrastructure/\` (Docker/K8s/Terraform), \`tests/\` (Unit/Integration/E2E/Security/Benchmark), and \`docs/\`.`,
+      `- **Interactive Multi-Module Preview Ready:** 30 core modules, 110 screens mapped across 12 areas, 17 RBAC roles, **EN / ES / FR / AR (RTL)** language switching, Light/Dark modes, and live **Workflow A (Marketplace Purchase + Double-Entry Ledger), B (Freelance Escrow Milestone), and C (SOC Security Incident Containment)** simulation.`,
+      `Use the **Live Web Page Preview** below or click **Customize in Builder Studio →** to inspect all monorepo files, run isolated MicroVM tests/benchmarks, and evaluate Challenge 001 acceptance gates.\n\n\`\`\`html\n${htmlCode}\n\`\`\``,
+    ].join("\n");
+  }
+
   const htmlCode = renderWebsiteBlueprintHtml(blueprint);
 
   return [

@@ -236,3 +236,16 @@ export async function listForgeSubmissions(projectId: string, limit = 50) {
     [projectId, Math.max(1, Math.min(100, limit))],
   );
 }
+
+export async function updateForgeProjectQaSecurity(
+  projectId: string,
+  qaSecurity: Record<string, unknown>,
+) {
+  const { sql } = await ensureForgeSchema();
+  await sql.query(
+    `UPDATE enterprise.forge_projects
+     SET qa_security_json = $2::jsonb, updated_at = now()
+     WHERE id = $1`,
+    [projectId, JSON.stringify(qaSecurity)],
+  );
+}

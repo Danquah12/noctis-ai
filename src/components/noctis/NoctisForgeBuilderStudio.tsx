@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import {
   ArrowDown,
   ArrowUp,
+  Award,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -26,6 +27,7 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   Sparkles,
+  Terminal,
   Wrench,
   X,
 } from "lucide-react";
@@ -89,6 +91,12 @@ const PRIMARY_STARTERS = [
 ] as const;
 
 const MORE_INDUSTRIES = [
+  {
+    id: "omnisphere",
+    label: "OmniSphere (Enterprise Challenge 001)",
+    prompt:
+      "Build OmniSphere, an enterprise multi-tenant digital marketplace and professional services ecosystem combining e-commerce, professional networking, freelance escrow, LMS, payments, analytics, and SOC governance with 30 modules, 110 screens, 17 RBAC roles, PostgreSQL RLS, pgvector, and multilingual EN/ES/FR/AR RTL support.",
+  },
   {
     id: "solar",
     label: "Solar & Clean Energy",
@@ -242,6 +250,8 @@ export function NoctisForgeBuilderStudio({
   const [envAudit, setEnvAudit] = useState<any>(null);
   const [prOut, setPrOut] = useState<any>(null);
   const [deployOut, setDeployOut] = useState<any>(null);
+  const [sandboxOut, setSandboxOut] = useState<any>(null);
+  const [challengeOut, setChallengeOut] = useState<any>(null);
 
   const [visualEditMode, setVisualEditMode] = useState(false);
   const [pendingFieldEdits, setPendingFieldEdits] = useState<Record<string, string>>({});
@@ -335,6 +345,8 @@ export function NoctisForgeBuilderStudio({
       setRevisions(Array.isArray(full.revisions) ? full.revisions : []);
       setDeployOut(null);
       setPrOut(null);
+      setSandboxOut(normalized.qaSecurity?.sandboxExecution || null);
+      setChallengeOut(normalized.qaSecurity?.challenge001Scorecard || null);
     }
   }
 
@@ -367,6 +379,8 @@ export function NoctisForgeBuilderStudio({
       setStage("Preview");
       setDeployOut(null);
       setPrOut(null);
+      setSandboxOut(null);
+      setChallengeOut(null);
       const full = await api(`/api/v2/forge/projects?id=${encodeURIComponent(res.projectId)}`);
       if (Array.isArray(full.revisions)) setRevisions(full.revisions);
       await refreshProjects(true);
@@ -1416,6 +1430,153 @@ export function NoctisForgeBuilderStudio({
                     </div>
                   ))}
                 </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    disabled={Boolean(busy)}
+                    onClick={async () => {
+                      setBusy("Running isolated test suite & benchmark...");
+                      setErr("");
+                      try {
+                        const r = await fetch("/api/v2/forge/projects/sandbox-run", {
+                          method: "POST",
+                          headers: { "content-type": "application/json" },
+                          body: JSON.stringify({ projectId: activeProject.projectId }),
+                        });
+                        const data = await r.json().catch(() => ({}));
+                        if (r.status >= 500 || r.status === 404) {
+                          setErr(data?.error || `Sandbox run failed (${r.status})`);
+                        } else {
+                          setSandboxOut(data);
+                        }
+                      } catch (e) {
+                        setErr(e instanceof Error ? e.message : "Sandbox execution failed");
+                      } finally {
+                        setBusy("");
+                      }
+                    }}
+                    className="rounded-xl border border-emerald-500/35 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-200 font-semibold py-2 px-3 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    <Terminal className="size-3.5 text-emerald-300" /> Run Isolated Tests (MicroVM)
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={Boolean(busy)}
+                    onClick={async () => {
+                      setBusy("Evaluating Challenge 001 acceptance scorecard...");
+                      setErr("");
+                      try {
+                        const res = await api("/api/v2/forge/projects/evaluate-challenge", "POST", {
+                          projectId: activeProject.projectId,
+                          runSandbox: !sandboxOut,
+                        });
+                        if (res.sandboxExecution) setSandboxOut(res.sandboxExecution);
+                        setChallengeOut(res.scorecard || res);
+                      } catch (e) {
+                        setErr(e instanceof Error ? e.message : "Challenge 001 evaluation failed");
+                      } finally {
+                        setBusy("");
+                      }
+                    }}
+                    className="rounded-xl border border-amber-500/35 bg-amber-500/10 hover:bg-amber-500/20 text-amber-200 font-semibold py-2 px-3 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    <Award className="size-3.5 text-amber-300" /> Challenge 001 Scorecard
+                  </button>
+                </div>
+
+                {sandboxOut && (
+                  <div className="rounded-xl border border-emerald-500/25 bg-black/50 p-3 space-y-1.5 text-[11px]">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-semibold text-white">
+                        {`Sandbox: ${sandboxOut.backend || "ISOLATED"} (${sandboxOut.networkPolicy || "isolated"})`}
+                      </span>
+                      <span
+                        className={cn(
+                          "px-2 py-0.5 rounded-full text-[10px] font-bold",
+                          sandboxOut.passed
+                            ? "bg-emerald-500/20 text-emerald-300"
+                            : "bg-rose-500/20 text-rose-300",
+                        )}
+                      >
+                        {sandboxOut.passed
+                          ? `PASS (${sandboxOut.testsPassed}/${sandboxOut.testsTotal})`
+                          : `FAIL (${sandboxOut.testsPassed || 0}/${sandboxOut.testsTotal || 0})`}
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-zinc-400">
+                      {`Duration: ${sandboxOut.durationMs ?? 0}ms · Auto-repairs: ${sandboxOut.repairsAttempted ?? 0}`}
+                      {sandboxOut.benchmark
+                        ? ` · p50=${sandboxOut.benchmark.p50Ms}ms · p95=${sandboxOut.benchmark.p95Ms}ms · ${sandboxOut.benchmark.rps} req/s`
+                        : ""}
+                    </div>
+                    {sandboxOut.isolationNote && (
+                      <div className="text-[10px] text-zinc-400">{sandboxOut.isolationNote}</div>
+                    )}
+                    {sandboxOut.error && (
+                      <div className="text-[10px] text-rose-300">{sandboxOut.error}</div>
+                    )}
+                  </div>
+                )}
+
+                {challengeOut && (
+                  <div className="rounded-xl border border-amber-500/25 bg-black/50 p-3 space-y-2 text-[11px]">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-semibold text-white">
+                        {`Challenge 001 Score: ${challengeOut.totalScore ?? 0} / ${challengeOut.maxScore ?? 100}`}
+                      </span>
+                      <span
+                        className={cn(
+                          "px-2 py-0.5 rounded-full text-[10px] font-bold",
+                          challengeOut.vetoTriggered
+                            ? "bg-rose-500/20 text-rose-300"
+                            : challengeOut.releaseReady
+                              ? "bg-emerald-500/20 text-emerald-300"
+                              : "bg-amber-500/20 text-amber-300",
+                        )}
+                      >
+                        {challengeOut.vetoTriggered
+                          ? "VETO BLOCKED"
+                          : challengeOut.releaseReady
+                            ? "RELEASE READY"
+                            : "SANDBOX REQUIRED"}
+                      </span>
+                    </div>
+                    {challengeOut.counts && (
+                      <div className="text-[10px] text-zinc-300">
+                        {`Verified: ${challengeOut.counts.implementedVerified} · Partial: ${challengeOut.counts.partiallyImplemented} · External Blockers: ${challengeOut.counts.blockedExternal} (Total ${challengeOut.counts.totalItems})`}
+                      </div>
+                    )}
+                    {Array.isArray(challengeOut.vetoReasons) && challengeOut.vetoReasons.length > 0 && (
+                      <div className="text-[10px] text-rose-300">
+                        {challengeOut.vetoReasons.join(" | ")}
+                      </div>
+                    )}
+                    <div className="max-h-36 overflow-y-auto space-y-1 pr-1">
+                      {(challengeOut.checklist || []).map((item: any) => (
+                        <div
+                          key={item.id}
+                          className="flex items-center justify-between gap-2 rounded border border-white/5 bg-white/[0.02] px-2 py-1 text-[10px]"
+                        >
+                          <span className="text-zinc-200 truncate">{`${item.id}. ${item.title}`}</span>
+                          <span
+                            className={cn(
+                              "shrink-0 font-semibold",
+                              item.status === "IMPLEMENTED_VERIFIED"
+                                ? "text-emerald-300"
+                                : item.status === "BLOCKED_EXTERNAL"
+                                  ? "text-amber-300"
+                                  : "text-rose-300",
+                            )}
+                          >
+                            {item.status}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <button
                   type="button"

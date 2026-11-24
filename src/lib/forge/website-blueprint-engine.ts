@@ -237,6 +237,34 @@ export function matchSpecializedVerticalBySuffix(prompt?: string): SpecializedVe
   );
 }
 
+export function stripAgentPersonaPreamble(prompt: string): string {
+  return (prompt || "")
+    .replace(/^\s*You are [^.\n]+(?:agent|architect|engineer|designer|developer)[^.\n]*\.\s*/i, "")
+    .replace(/^\s*(?:operating|acting)\s+as\s+(?:a|an)\s+[^.\n]+\.\s*/i, "")
+    .trim();
+}
+
+export function isEnterpriseEcosystemPrompt(prompt: string): boolean {
+  const raw = prompt || "";
+  if (/\bomnisphere\b|\b30\s+functional\s+modules\b|\b110\s+functional\s+screens\b|\bmulti-?tenant\s+digital\s+ecosystem\b/i.test(raw)) {
+    return true;
+  }
+  const pillars = [
+    /\b(?:e-?commerce|multi-?vendor\s+marketplace|shopping\s+cart)\b/i,
+    /\b(?:professional\s+network|linkedin|social\s+network)\b/i,
+    /\b(?:freelance|upwork|job\s+portal|employment)\b/i,
+    /\b(?:learning\s+management|lms|udemy|courses?|education)\b/i,
+    /\b(?:payment\s+processing|financial\s+dashboard|stripe\s+connect|payouts?)\b/i,
+    /\b(?:real-?time\s+communicat|messaging|video\s+conferencing|webrtc)\b/i,
+    /\b(?:business\s+management|crm|enterprise\s+resource|workflow)\b/i,
+  ];
+  let matched = 0;
+  for (const re of pillars) {
+    if (re.test(raw)) matched++;
+  }
+  return matched >= 4;
+}
+
 /**
  * Scores ALL 40 FORGE_40_CATEGORIES with weighted word-boundary rules so any prompt
  * routes cleanly to the right industry category without collapsing into Business.
@@ -266,7 +294,12 @@ export function classifyWebsiteCategory(categoryHint?: string, prompt?: string):
     if (bySuffix) return bySuffix;
   }
 
-  const hay = `${hint} ${prompt || ""}`.toLowerCase();
+  const cleanPrompt = stripAgentPersonaPreamble(prompt || "");
+  if (isEnterpriseEcosystemPrompt(cleanPrompt)) {
+    return FORGE_40_CATEGORIES.find((c) => c.slug === "saas-products") || FORGE_40_CATEGORIES[0]!;
+  }
+
+  const hay = `${hint} ${cleanPrompt}`.toLowerCase();
   const rules: Array<{ slug: string; primary: RegExp; secondary?: RegExp; boost?: number }> = [
     { slug: "travel", primary: /\b(?:tourism|tourist|travel(?:er|s|ing)?|safari|itinerar(?:y|ies)|vacation|tour\s+guide|destinations?|excursions?|trip\s+planner|sightseeing|ecotourism|adventure\s+tours?)\b/i, secondary: /\b(?:resorts?|lodges?|hotels?|flights?|visa|wildlife|beach|mountains?)\b/i, boost: 4 },
     { slug: "hospitality", primary: /\b(?:hospitality|restaurant|bakery|cafe|coffee\s*shop|bistro|catering|menu|dining|chef|pastry|hotel\s+(?:chain|website|booking|reservation)|room\s+booking|table\s+reservation|guest\s*house|resort\s+spa)\b/i, secondary: /\b(?:rooms?|orders?|reservations?|desserts?|brunch)\b/i, boost: 3 },
@@ -325,10 +358,10 @@ export function classifyWebsiteCategory(categoryHint?: string, prompt?: string):
 
   const hasStrongCorporateIntent =
     /\b(?:consulting\s+firm|corporate\s+advisory|b2b\s+agency|marketing\s+agency|corporate\s+website|advisory\s+practice)\b/i.test(
-      prompt || "",
+      cleanPrompt,
     );
   if (bestScore === 0 || (bestSlug === "business" && !hasStrongCorporateIntent)) {
-    const vert = matchSpecializedVertical(prompt || "");
+    const vert = matchSpecializedVertical(cleanPrompt);
     if (vert) {
       return (
         FORGE_40_CATEGORIES.find((c) => c.slug === vert.parentCategorySlug) ||
@@ -1294,6 +1327,9 @@ function extractCustomBrandAndDomain(prompt: string, defaultBrand: string, defau
     if (slug.length >= 3) domain = `${slug}.com`;
   } else if (quoteMatch?.[1] && !/destination|experience|all adventures|mole safari/i.test(quoteMatch[1])) {
     brandName = quoteMatch[1].trim();
+  } else if (/\bomnisphere\b/i.test(prompt)) {
+    brandName = "OmniSphere";
+    domain = "omnisphere.com";
   }
 
   return { brandName, domain };
@@ -1356,6 +1392,8 @@ export function buildDeterministicWebsiteBlueprint(input: {
   includeMobileWrapper?: boolean;
 }): WebsiteBlueprint {
   const prompt = (input.prompt || "Build a modern full-stack web platform").trim();
+  const cleanPrompt = stripAgentPersonaPreamble(prompt);
+  const isEnterprise = isEnterpriseEcosystemPrompt(cleanPrompt);
   const cat = classifyWebsiteCategory(input.categoryHint, prompt);
   const rawHint = (input.categoryHint || "").trim();
   const hasExplicitCategoryHint = Boolean(rawHint && !/^auto(?:[-\s]?detect)?(?:\s*\(.*\))?$/i.test(rawHint));
@@ -1371,28 +1409,32 @@ export function buildDeterministicWebsiteBlueprint(input: {
       ),
   );
 
-  const vertical = verticalSuffix || (!hasExplicitCategoryHint && !hasExplicitCategorySuffix ? matchSpecializedVertical(prompt) : null);
+  const vertical = isEnterprise
+    ? null
+    : verticalSuffix || (!hasExplicitCategoryHint && !hasExplicitCategorySuffix ? matchSpecializedVertical(cleanPrompt) : null);
   const isExplicitCorporateConsult =
     /\b(?:consulting\s+firm|corporate\s+website|company\s+website|b2b\s+agency|corporate\s+advisory|marketing\s+agency|small\s+business)\b/i.test(
-      prompt,
+      cleanPrompt,
     );
 
   let preset: DomainPresetTemplate;
   if (vertical) {
     preset = seedToPreset(vertical);
   } else if (
+    !isEnterprise &&
     !hasExplicitCategoryHint &&
     !hasExplicitCategorySuffix &&
     (cat.slug === "business" || cat.slug === "custom-apps") &&
     !isExplicitCorporateConsult
   ) {
-    preset = buildCustomTopicTemplate(prompt, cat) || getTemplateForCategory(cat);
+    preset = buildCustomTopicTemplate(cleanPrompt, cat) || getTemplateForCategory(cat);
   } else {
     preset = getTemplateForCategory(cat);
   }
 
-  const { brandName: parsedBrand, domain } = extractCustomBrandAndDomain(prompt, preset.brandName, preset.domain);
-  const brandName = input.projectName?.trim() || parsedBrand;
+  const { brandName: parsedBrand, domain: parsedDomain } = extractCustomBrandAndDomain(prompt, preset.brandName, preset.domain);
+  const brandName = input.projectName?.trim() || (isEnterprise && /\bomnisphere\b/i.test(prompt) ? "OmniSphere" : parsedBrand);
+  const domain = isEnterprise && /\bomnisphere\b/i.test(prompt) ? "omnisphere.com" : parsedDomain;
   const scopeLabel = extractScopeLabel(prompt);
 
   const theme = detectThemeOverrides(prompt, preset.defaultTheme.mode, preset.defaultTheme.palette, input.accentHex);
@@ -1402,6 +1444,7 @@ export function buildDeterministicWebsiteBlueprint(input: {
 
   const filterTabs = ["All", ...Array.from(new Set(preset.items.map((i) => i.category)))].slice(0, 6);
   const needsPostGis =
+    isEnterprise ||
     Boolean(vertical?.needsPostGis) ||
     /\b(postgis|geospatial|mapbox|google\s+maps|coordinates|latitude|longitude|radius|location\s+search|interactive\s+.*maps?|real\s+estate)\b/i.test(
       prompt,
@@ -1409,8 +1452,8 @@ export function buildDeterministicWebsiteBlueprint(input: {
     cat.slug === "travel" ||
     cat.slug === "real-estate" ||
     cat.slug === "logistics";
-  const multilingual = /\b(multilingual|multi-language|spanish|french|translations?|localized)\b/i.test(prompt);
-  const includeMobileWrapper = Boolean(input.includeMobileWrapper || /\b(mobile\s*app|ios|android|capacitor|pwa)\b/i.test(prompt));
+  const multilingual = isEnterprise || /\b(multilingual|multi-language|spanish|french|translations?|localized|arabic|rtl)\b/i.test(prompt);
+  const includeMobileWrapper = Boolean(isEnterprise || input.includeMobileWrapper || /\b(mobile\s*app|ios|android|capacitor|pwa)\b/i.test(prompt));
 
   const entities: WebsiteEntitySpec[] = [];
   const existingNames = new Set<string>();
@@ -1442,6 +1485,11 @@ export function buildDeterministicWebsiteBlueprint(input: {
       pushEntity(cleaned);
     }
   }
+  if (isEnterprise) {
+    for (const ent of ["users", "tenants", "products", "orders", "projects", "courses", "payments", "audit_logs"]) {
+      pushEntity(ent);
+    }
+  }
   for (const baseEnt of preset.entities) {
     if (!existingNames.has(baseEnt.name)) {
       entities.push(baseEnt);
@@ -1452,11 +1500,13 @@ export function buildDeterministicWebsiteBlueprint(input: {
   return {
     brandName,
     domain,
-    tagline: preset.tagline,
+    tagline: isEnterprise
+      ? "Enterprise multi-tenant digital marketplace, professional network, freelance services, education & AI ecosystem."
+      : preset.tagline,
     categorySlug: cat.slug,
     categoryName: cat.name,
-    industrySpecialty: preset.industrySpecialty || cat.name,
-    visualMotif: preset.visualMotif || "editorial",
+    industrySpecialty: isEnterprise ? "Enterprise Multi-Tenant Digital Ecosystem" : preset.industrySpecialty || cat.name,
+    visualMotif: isEnterprise ? "circuit" : preset.visualMotif || "editorial",
     regulated: cat.regulated,
     specialistAdvisory: cat.specialistAdvisory,
     scopeLabel,

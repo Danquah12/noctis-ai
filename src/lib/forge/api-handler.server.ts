@@ -28,6 +28,8 @@ import {
   listForgeSubmissions,
   saveForgeSubmission,
 } from "./forge-persistence.server.ts";
+import { runForgeProjectInSandbox } from "./sandbox-runner.server.ts";
+import { evaluateChallenge001ForProject } from "./challenge-001-evaluator.server.ts";
 import type { BlueprintVisualPatch } from "./website-blueprint-engine.ts";
 
 const CORS_HEADERS = {
@@ -364,6 +366,32 @@ export async function handleForgeV2Request(request: Request): Promise<Response> 
         created_at: new Date().toISOString(),
       },
     });
+  }
+
+  if (subPath === "projects/sandbox-run") {
+    const projectId = String(body.projectId || "").trim();
+    if (!projectId) return jsonRes({ error: "Missing projectId." }, 400);
+    const preferred =
+      body.preferredBackend === "vercel-sandbox" || body.preferredBackend === "local-isolated"
+        ? body.preferredBackend
+        : "auto";
+    const out = await runForgeProjectInSandbox(projectId, {
+      preferredBackend: preferred,
+      autoRepair: body.autoRepair !== false,
+    });
+    return jsonRes(out, out.ok ? 200 : out.error === "Project not found." ? 404 : 422);
+  }
+
+  if (subPath === "projects/evaluate-challenge") {
+    const projectId = String(body.projectId || "").trim();
+    if (!projectId) return jsonRes({ error: "Missing projectId." }, 400);
+    const sandboxExecution = body.runSandbox === true
+      ? await runForgeProjectInSandbox(projectId, { autoRepair: true })
+      : undefined;
+    const scorecard = await evaluateChallenge001ForProject(projectId, {
+      sandboxExecution: sandboxExecution ?? undefined,
+    });
+    return jsonRes({ ok: scorecard.ok, scorecard, sandboxExecution: sandboxExecution ?? null }, 200);
   }
 
   if (subPath === "convert-design") {
