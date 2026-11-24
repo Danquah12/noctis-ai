@@ -1,0 +1,13 @@
+# Paired model smoke comparison — 2026-11-24
+
+Draft-only extension of PR #18, parent fb5a21b0efaaf1c17d138c0e58c169303b0f154b. PRs #1–#19 and 30 branch refs inspected; #12 and #15 merged separately; other PRs remain open. Main at 1e69bd4722796be576e612e21c254f5f4c2e9051 (CI run 45389149943 succeeded), 15 commits beyond the previous audited main. New Forge, follow-up, intent and provider-routing code exists, not measured model training. Current modelChat defaults to custom, xAI, Gemini, OpenAI, Groq, then native fallback; pinned provider can move to front and explicit BYOK/local serving can precede this. Text and image routes differ. Local IDs noctis-7b/noctis-7b-v1.0 are configured names, not evidence of weights. Actual deployed credentials/models not inspected. Native memory, deterministic specialist outputs, retrieval and dataset exports are not optimizer updates. Main tree has Python SFT/DPO scripts but no tracked safetensors, adapter_config.json or trainer_state.json; external artifact evidence remains outstanding. The M3 adapter and simulated tests on training-foundation remain untouched. Reviewed MASTER-TRAINING-READINESS-AUDIT.md; follow model-facing objective without customer submissions.
+
+## Offline paired comparison
+
+Run only on previously obtained, authorized artifacts:
+    
+    node scripts/noctis-compare-baselines.mjs data/noctis-general-smoke-v1.jsonl baseline.json candidate.json
+
+Recompute v1 audit (dataset/prompt/response hashes) and deterministic outcomes, ignoring stored summary. Enforce identical frozen public smoke dataset, full ordered runnable cohort (at most 25), fixed generation protocol and no fallback, consistent server-advertised model per run, and explicit request errors. Report per-case paired transitions, separate manual review, missing results and untested vision; do not count transport failure as model regression. Unexpected tool proposals on deterministic cases are not credited. No composite score or release approval. No network, provider calls, private data, training jobs, or deployment. CI explicitly includes the new nine synthetic regression tests.
+
+Limitations: unsigned v1 artifacts can be fabricated or resealed; protocol metadata is self-reported; server model names do not authenticate weights. No true held-out data, citation entailment, executed code/tool correctness, multimodal performance or clinical review established. Public test fixtures cannot be held out. Next: independently reviewed private frozen evaluation manifest and approved model revisions, add traceable adjudication and benchmark live models only with authorized compute/credentials. No real training or evaluation executed in this change. Exact-head CI status to be recorded in PR after observation.
