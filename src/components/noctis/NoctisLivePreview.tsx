@@ -18,6 +18,10 @@ interface NoctisLivePreviewProps {
   code: string;
   title?: string;
   className?: string;
+  visualEditMode?: boolean;
+  onFieldEdited?: (field: string, value: string) => void;
+  liveUrl?: string;
+  apiBase?: string;
 }
 
 
@@ -184,9 +188,16 @@ export function buildSandboxedHtml(extracted: { type: "html" | "react" | "js"; c
 export default function NoctisLivePreview({
   code,
   title = "Live Sandboxed Artifact",
-  className = ""
+  className = "",
+  visualEditMode = false,
+  onFieldEdited,
+  liveUrl,
+  apiBase,
 }: NoctisLivePreviewProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const onFieldEditedRef = useRef(onFieldEdited);
+  onFieldEditedRef.current = onFieldEdited;
+
   const [viewport, setViewport] = useState<"desktop" | "tablet" | "mobile">("desktop");
   const [consoleLogs, setConsoleLogs] = useState<Array<{ level: string; msg: string; time: string }>>([]);
   const [showConsole, setShowConsole] = useState(false);
@@ -195,15 +206,37 @@ export default function NoctisLivePreview({
   const extracted = useMemo(() => extractRunnableCode(code), [code]);
   const sandboxedHtml = useMemo(() => buildSandboxedHtml(extracted), [extracted]);
 
-  // Listen for console logs emitted from the iframe sandbox
+  const syncIframeState = () => {
+    const win = iframeRef.current?.contentWindow;
+    if (!win) return;
+    const origin = (apiBase || (typeof window !== "undefined" ? window.location.origin : "")).trim();
+    if (origin) {
+      win.postMessage({ type: "NOCTIS_SET_API_BASE", apiBase: origin }, "*");
+    }
+    win.postMessage({ type: "NOCTIS_VISUAL_EDIT_MODE", enabled: Boolean(visualEditMode) }, "*");
+  };
+
+  useEffect(() => {
+    syncIframeState();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visualEditMode, apiBase, sandboxedHtml, sandboxKey]);
+
+  // Listen for console logs and inline visual edits emitted from the iframe sandbox
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
+      if (iframeRef.current?.contentWindow && event.source !== iframeRef.current.contentWindow) return;
       if (event.data?.type === "NOCTIS_SANDBOX_CONSOLE") {
         const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
         setConsoleLogs((prev) => [
           ...prev.slice(-49),
           { level: event.data.level, msg: event.data.args.join(" "), time }
         ]);
+      } else if (event.data?.type === "NOCTIS_FIELD_EDITED") {
+        const field = typeof event.data.field === "string" ? event.data.field.trim() : "";
+        const value = typeof event.data.value === "string" ? event.data.value : "";
+        if (field && value) {
+          onFieldEditedRef.current?.(field, value);
+        }
       }
     };
     window.addEventListener("message", handleMessage);
@@ -231,10 +264,27 @@ export default function NoctisLivePreview({
           <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/5 text-zinc-400 border border-white/10 uppercase">
             {extracted.type.toUpperCase()} SANDBOX
           </span>
+          {visualEditMode ? (
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 uppercase tracking-wide">
+              Visual Edit ON
+            </span>
+          ) : null}
         </div>
 
-        {/* Viewport Toggles & Reload */}
+        {/* Viewport Toggles, Live URL & Reload */}
         <div className="flex items-center gap-1.5">
+          {liveUrl ? (
+            <a
+              href={liveUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-mono border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 transition"
+              title="Open Hosted Live URL in New Tab"
+            >
+              Open Live
+              <ExternalLink className="size-3" />
+            </a>
+          ) : null}
           <div className="flex items-center p-0.5 rounded-lg bg-white/5 border border-white/10">
             <button
               onClick={() => setViewport("desktop")}
@@ -285,6 +335,7 @@ export default function NoctisLivePreview({
           <iframe
             key={sandboxKey}
             ref={iframeRef}
+            onLoad={syncIframeState}
             srcDoc={sandboxedHtml}
             sandbox="allow-scripts allow-modals allow-forms allow-popups"
             title="Noctis Live Component Sandbox"

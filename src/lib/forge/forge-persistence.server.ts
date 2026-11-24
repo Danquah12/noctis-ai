@@ -46,6 +46,23 @@ export async function ensureForgeSchema() {
         CREATE INDEX IF NOT EXISTS idx_enterprise_forge_revisions_proj
           ON enterprise.forge_revisions (project_id, revision_number DESC)
       `);
+      await sql.query(`
+        CREATE TABLE IF NOT EXISTS enterprise.forge_submissions (
+          id TEXT PRIMARY KEY,
+          project_id TEXT NOT NULL,
+          submission_type TEXT NOT NULL DEFAULT 'INQUIRY',
+          customer_name TEXT,
+          customer_email TEXT,
+          payload_json JSONB NOT NULL,
+          amount_cents INTEGER NOT NULL DEFAULT 0,
+          payment_status TEXT NOT NULL DEFAULT 'RECORDED',
+          created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )
+      `);
+      await sql.query(`
+        CREATE INDEX IF NOT EXISTS idx_enterprise_forge_submissions_proj
+          ON enterprise.forge_submissions (project_id, created_at DESC)
+      `);
     })().catch((err) => {
       forgeSchemaReady = null;
       throw err;
@@ -150,15 +167,72 @@ export async function listForgeProjectRevisions(projectId: string, limit = 20) {
 export async function getForgeSqlStats() {
   try {
     const { sql } = await ensureForgeSchema();
-    const [p, r] = await Promise.all([
+    const [p, r, s] = await Promise.all([
       sql.query<{ c: number }>("SELECT count(*)::int AS c FROM enterprise.forge_projects"),
       sql.query<{ c: number }>("SELECT count(*)::int AS c FROM enterprise.forge_revisions"),
+      sql.query<{ c: number }>("SELECT count(*)::int AS c FROM enterprise.forge_submissions"),
     ]);
     return {
       forgeProjects: Number(p[0]?.c ?? 0),
       forgeRevisions: Number(r[0]?.c ?? 0),
+      forgeSubmissions: Number(s[0]?.c ?? 0),
     };
   } catch {
-    return { forgeProjects: 0, forgeRevisions: 0 };
+    return { forgeProjects: 0, forgeRevisions: 0, forgeSubmissions: 0 };
   }
+}
+
+export async function saveForgeSubmission(input: {
+  projectId: string;
+  submissionType: string;
+  customerName?: string;
+  customerEmail?: string;
+  payload: Record<string, unknown>;
+  amountCents?: number;
+  paymentStatus?: string;
+}) {
+  const { sql } = await ensureForgeSchema();
+  const id = `FSUB-${sha256Sync(`${input.projectId}|${input.customerEmail || ""}|${Date.now()}|${Math.random()}`).slice(0, 10).toUpperCase()}`;
+  const amountCents = Math.max(0, Math.round(Number(input.amountCents || 0)));
+  const submissionType = (input.submissionType || "INQUIRY").trim().slice(0, 32);
+  const paymentStatus = (input.paymentStatus || "RECORDED").trim().slice(0, 32);
+
+  await sql.query(
+    `INSERT INTO enterprise.forge_submissions
+      (id, project_id, submission_type, customer_name, customer_email, payload_json, amount_cents, payment_status)
+     VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8)`,
+    [
+      id,
+      input.projectId,
+      submissionType,
+      (input.customerName || "Guest").trim().slice(0, 120),
+      (input.customerEmail || "").trim().slice(0, 160),
+      JSON.stringify(input.payload || {}),
+      amountCents,
+      paymentStatus,
+    ],
+  );
+
+  return {
+    id,
+    projectId: input.projectId,
+    submissionType,
+    customerName: (input.customerName || "Guest").trim().slice(0, 120),
+    customerEmail: (input.customerEmail || "").trim().slice(0, 160),
+    amountCents,
+    paymentStatus,
+    createdAt: new Date().toISOString(),
+  };
+}
+
+export async function listForgeSubmissions(projectId: string, limit = 50) {
+  const { sql } = await ensureForgeSchema();
+  return sql.query<Record<string, unknown>>(
+    `SELECT id, project_id, submission_type, customer_name, customer_email, payload_json, amount_cents, payment_status, created_at
+     FROM enterprise.forge_submissions
+     WHERE project_id = $1
+     ORDER BY created_at DESC
+     LIMIT $2`,
+    [projectId, Math.max(1, Math.min(100, limit))],
+  );
 }

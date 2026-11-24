@@ -35,6 +35,7 @@ import {
   renderSqlFromBlueprint,
   renderWebsiteBlueprintHtml,
   synthesizeWebsiteBlueprintWithAi,
+  type BlueprintVisualPatch,
   type WebsiteBlueprint,
 } from "./website-blueprint-engine.ts";
 
@@ -156,7 +157,7 @@ function buildProjectFiles(input: {
   const { projectId, name, category, stack, prompt, accentHex, entities, blueprint } = input;
   const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "noctis-app";
 
-  const indexHtml = renderWebsiteBlueprintHtml(blueprint);
+  const indexHtml = renderWebsiteBlueprintHtml(blueprint, { projectId, apiBase: "" });
   const appTsx = renderReactAppFromBlueprint(blueprint, stack);
   const blueprintTs = `export const WEBSITE_BLUEPRINT = ${JSON.stringify(blueprint, null, 2)} as const;\n`;
   const { initSql, seedSql } = renderSqlFromBlueprint(blueprint);
@@ -402,9 +403,10 @@ export async function generateForgeProject(input: {
 /** Conversational & Visual Editing with Revision Tracking */
 export async function editForgeProjectConversationally(input: {
   projectId: string;
-  instruction: string;
+  instruction?: string;
   accentHex?: string;
   addEntity?: string;
+  visualPatch?: BlueprintVisualPatch;
   actorId?: string;
   useAi?: boolean;
 }) {
@@ -412,6 +414,7 @@ export async function editForgeProjectConversationally(input: {
   if (!row) {
     return { ok: false as const, error: `Forge project '${input.projectId}' not found.` };
   }
+  const instructionText = (input.instruction || "").trim() || (input.visualPatch ? "Visual editor update" : "Design polish update");
   const spec = (row.spec_json && typeof row.spec_json === "object" ? row.spec_json : {}) as Record<string, unknown>;
   const currentRev = Number(row.current_revision || 1);
   const nextRev = currentRev + 1;
@@ -430,9 +433,10 @@ export async function editForgeProjectConversationally(input: {
           addEntities: legacyEntities,
         });
 
-  const nextBlueprint = await applyBlueprintConversationalEdit(baseBlueprint, input.instruction, {
+  const nextBlueprint = await applyBlueprintConversationalEdit(baseBlueprint, instructionText, {
     accentHex: input.accentHex,
     addEntity: input.addEntity,
+    visualPatch: input.visualPatch,
     useAi: input.useAi,
   });
 
@@ -444,11 +448,11 @@ export async function editForgeProjectConversationally(input: {
     name: nextBlueprint.brandName || String(row.name),
     category: cat,
     stack: String(row.stack),
-    prompt: `${String(row.prompt)} | Revision ${nextRev}: ${input.instruction}`,
+    prompt: `${String(row.prompt)} | Revision ${nextRev}: ${instructionText}`,
     accentHex,
     entities: prevEntities,
     blueprint: nextBlueprint,
-    includeMobileWrapper: nextBlueprint.includeMobileWrapper || /\bmobile|ios|android\b/i.test(input.instruction),
+    includeMobileWrapper: nextBlueprint.includeMobileWrapper || /\bmobile|ios|android\b/i.test(instructionText),
   });
 
   const qaSecurity = runStaticQaAndSecurityScan(
@@ -462,7 +466,7 @@ export async function editForgeProjectConversationally(input: {
     blueprint: nextBlueprint,
     entities: prevEntities,
     accentHex,
-    lastInstruction: input.instruction,
+    lastInstruction: instructionText,
   };
 
   await saveForgeProjectRecord({
@@ -478,7 +482,9 @@ export async function editForgeProjectConversationally(input: {
     files: updatedFiles,
     qaSecurity,
     deployState: (row.deploy_state_json as Record<string, unknown>) || { canAutoDeploy: false },
-    changeSummary: `Conversational edit: ${input.instruction.slice(0, 140)}`,
+    changeSummary: input.visualPatch && !input.instruction
+      ? `Visual editor update (rev ${nextRev})`
+      : `Conversational edit: ${instructionText.slice(0, 140)}`,
     createdBy: input.actorId || "noctis-forge-user",
   });
 
@@ -564,13 +570,21 @@ export async function prepareForgeGitHubPr(projectId: string, repo = "Danquah12/
     patchedCode: files["src/App.tsx"] || "",
     vulnerabilitySummary: `Generated ${Object.keys(files).length} full-stack files via Noctis Forge 12-agent pipeline for repo ${repo}.`,
   });
-  return { ok: true as const, repo, requiresHumanApproval: true, canAutoMerge: false, ...pr };
+  return {
+    ok: true as const,
+    repo,
+    requiresHumanApproval: true,
+    canAutoMerge: false,
+    githubTokenConfigured: Boolean(process.env.GITHUB_TOKEN || process.env.GH_TOKEN),
+    ...pr,
+  };
 }
 
 export async function requestOrApproveForgeDeploy(input: {
   projectId: string;
   target: "STAGING" | "PRODUCTION";
   approver?: string;
+  dispatchExternal?: boolean;
 }) {
   const proj = await getForgeProjectRecord(input.projectId);
   if (!proj) return { approved: false, status: "NOT_FOUND", error: "Project not found." };
@@ -584,10 +598,28 @@ export async function requestOrApproveForgeDeploy(input: {
   }
   const files = (proj.files_json && typeof proj.files_json === "object" ? proj.files_json : {}) as Record<string, string>;
   const qa = (proj.qa_security_json as Record<string, unknown>) || {};
+  const liveUrl = `/api/v2/forge/live?id=${encodeURIComponent(input.projectId)}`;
+  const vercelTokenConfigured = Boolean(process.env.VERCEL_TOKEN);
+  const deployHookUrl = process.env.VERCEL_DEPLOY_HOOK_URL || "";
+
+  let externalDispatch: { triggered: boolean; status?: number; note?: string } | undefined;
+  if (input.dispatchExternal && deployHookUrl && /^https:\/\//i.test(deployHookUrl)) {
+    try {
+      const res = await fetch(deployHookUrl, { method: "POST" });
+      externalDispatch = { triggered: res.ok, status: res.status };
+    } catch (err) {
+      externalDispatch = { triggered: false, note: err instanceof Error ? err.message : "Hook request failed" };
+    }
+  }
+
   const deployState = {
     stagingStatus: input.target === "STAGING" ? "APPROVED_FOR_STAGING" : "PROMOTED",
     productionStatus: input.target === "PRODUCTION" ? "APPROVED_FOR_PRODUCTION" : "PENDING_PROD_APPROVAL",
     canAutoDeploy: false,
+    liveUrl,
+    vercelTokenConfigured,
+    deployHookConfigured: Boolean(deployHookUrl),
+    ...(externalDispatch ? { externalDispatch } : {}),
     approvedBy: input.approver,
     approvedAt: new Date().toISOString(),
   };
@@ -609,7 +641,7 @@ export async function requestOrApproveForgeDeploy(input: {
     createdBy: input.approver,
   });
 
-  return { approved: true, projectId: input.projectId, target: input.target, deployState };
+  return { approved: true, projectId: input.projectId, target: input.target, liveUrl, deployState };
 }
 
 /** Section 7 Advanced Features: Screenshot/Figma-to-Code & SEO/A11y Optimizer */

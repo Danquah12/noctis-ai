@@ -14,11 +14,14 @@ import { FORGE_40_CATEGORIES, type ForgeCategorySpec } from "./forge-catalog.ts"
 import {
   ENHANCED_CATEGORY_SEEDS,
   EXTRA_ENTITY_COLUMNS,
+  SPECIALIZED_VERTICALS,
   extractArbitraryIndustrySubject,
   matchSpecializedVertical,
   type RichIndustryBlueprintSeed,
+  type SpecializedVerticalSpec,
   type VisualMotif,
 } from "./industry-specializations.ts";
+import { resolveIndustryMedia } from "./industry-media.ts";
 
 export type { VisualMotif };
 
@@ -128,6 +131,10 @@ export interface WebsiteBlueprint {
   multilingual: boolean;
   includeMobileWrapper: boolean;
   aiGenerated: boolean;
+  visualStyle?: "photography" | "vector";
+  sectionOrder?: string[];
+  hiddenSections?: string[];
+  customMedia?: { heroUrl?: string; cardUrls?: Record<string, string> };
 }
 
 interface DomainPresetTemplate {
@@ -219,6 +226,17 @@ export function buildThemePalette(mode: "light" | "dark", paletteName = "ocean",
   };
 }
 
+export function matchSpecializedVerticalBySuffix(prompt?: string): SpecializedVerticalSpec | null {
+  const suffixMatch = (prompt || "").match(/[—–-]\s*([A-Za-z0-9 &/+(),.-]+)$/)?.[1]?.trim();
+  if (!suffixMatch) return null;
+  const lower = suffixMatch.toLowerCase();
+  return (
+    SPECIALIZED_VERTICALS.find(
+      (v) => v.industrySpecialty.toLowerCase() === lower || v.slug.toLowerCase() === lower,
+    ) || null
+  );
+}
+
 /**
  * Scores ALL 40 FORGE_40_CATEGORIES with weighted word-boundary rules so any prompt
  * routes cleanly to the right industry category without collapsing into Business.
@@ -230,6 +248,12 @@ export function classifyWebsiteCategory(categoryHint?: string, prompt?: string):
       (c) => c.name.toLowerCase() === hint.toLowerCase() || c.slug.toLowerCase() === hint.toLowerCase(),
     );
     if (byName) return byName;
+  }
+
+  const verticalSuffix = matchSpecializedVerticalBySuffix(prompt);
+  if (verticalSuffix) {
+    const parent = FORGE_40_CATEGORIES.find((c) => c.slug === verticalSuffix.parentCategorySlug);
+    if (parent) return parent;
   }
 
   const suffixMatch = (prompt || "").match(/[—–-]\s*([A-Za-z0-9 &/+()-]+)$/)?.[1]?.trim();
@@ -1241,6 +1265,7 @@ function getTemplateForCategory(cat: ForgeCategorySpec): DomainPresetTemplate {
 
 function extractCustomBrandAndDomain(prompt: string, defaultBrand: string, defaultDomain: string) {
   const domainMatch = prompt.match(/\b([a-z0-9-]{3,32}\.(?:com|io|ai|app|org|edu|net|travel|shop|co|dev))\b/i);
+  const handoffBrandMatch = prompt.match(/\bfor\s+([A-Z][A-Za-z0-9&'\- ]{2,44}?)\s+[—–]\s+[A-Z]/);
   const namedMatch = prompt.match(/\b(?:called|named|brand(?:ed)?|title[d]?)\s+["']?([A-Z][A-Za-z0-9&'\- ]{2,36})["']?/);
   const quoteMatch = prompt.match(/["']([A-Z][A-Za-z0-9&'\- ]{3,32})["']/);
 
@@ -1253,6 +1278,10 @@ function extractCustomBrandAndDomain(prompt: string, defaultBrand: string, defau
     brandName = base
       .replace(/([a-z])([A-Z])/g, "$1 $2")
       .replace(/\b\w/g, (ch) => ch.toUpperCase());
+  } else if (handoffBrandMatch?.[1]) {
+    brandName = handoffBrandMatch[1].trim();
+    const slug = brandName.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 22);
+    if (slug.length >= 3) domain = `${slug}.com`;
   } else if (namedMatch?.[1]) {
     brandName = namedMatch[1].trim();
   } else if (quoteMatch?.[1] && !/destination|experience|all adventures|mole safari/i.test(quoteMatch[1])) {
@@ -1322,9 +1351,11 @@ export function buildDeterministicWebsiteBlueprint(input: {
   const cat = classifyWebsiteCategory(input.categoryHint, prompt);
   const rawHint = (input.categoryHint || "").trim();
   const hasExplicitCategoryHint = Boolean(rawHint && !/^auto(?:[-\s]?detect)?(?:\s*\(.*\))?$/i.test(rawHint));
+  const verticalSuffix = matchSpecializedVerticalBySuffix(prompt);
   const suffixCandidate = prompt.match(/[—–-]\s*([A-Za-z0-9 &/+()-]+)$/)?.[1]?.trim();
   const hasExplicitCategorySuffix = Boolean(
-    suffixCandidate &&
+    !verticalSuffix &&
+      suffixCandidate &&
       FORGE_40_CATEGORIES.some(
         (c) =>
           c.name.toLowerCase() === suffixCandidate.toLowerCase() ||
@@ -1332,7 +1363,7 @@ export function buildDeterministicWebsiteBlueprint(input: {
       ),
   );
 
-  const vertical = !hasExplicitCategoryHint && !hasExplicitCategorySuffix ? matchSpecializedVertical(prompt) : null;
+  const vertical = verticalSuffix || (!hasExplicitCategoryHint && !hasExplicitCategorySuffix ? matchSpecializedVertical(prompt) : null);
   const isExplicitCorporateConsult =
     /\b(?:consulting\s+firm|corporate\s+website|company\s+website|b2b\s+agency|corporate\s+advisory|marketing\s+agency|small\s+business)\b/i.test(
       prompt,
@@ -1770,23 +1801,173 @@ export async function synthesizeWebsiteBlueprintWithAi(input: {
   }
 }
 
+export interface BlueprintVisualPatch {
+  fieldEdits?: Record<string, string>;
+  sectionOrder?: string[];
+  hiddenSections?: string[];
+  visualStyle?: "photography" | "vector";
+  customHeroImage?: string;
+  customCardImages?: Record<string, string>;
+}
+
+const STANDARD_SECTION_IDS = [
+  "hero",
+  "showcase",
+  "capabilities",
+  "estimator",
+  "testimonials",
+  "faq",
+  "contact",
+] as const;
+
+function sanitizeMediaUrl(url?: string): string | undefined {
+  if (typeof url !== "string") return undefined;
+  const trimmed = url.trim();
+  if (!trimmed) return undefined;
+  if (/^https:\/\/[a-z0-9.-]+\/[^\s"'<>]{4,480}$/i.test(trimmed)) return trimmed;
+  if (/^data:image\/(?:png|jpeg|jpg|webp|gif);base64,[A-Za-z0-9+/=]{16,250000}$/.test(trimmed)) {
+    return trimmed;
+  }
+  return undefined;
+}
+
 /**
- * Applies deterministic theme/mode/entity/rename/multilingual/mobile edits first,
+ * Applies inline visual field edits, section ordering/hiding, and custom media
+ * safely onto an existing WebsiteBlueprint without disturbing SQL schemas or routes.
+ */
+export function applyBlueprintVisualPatch(
+  current: WebsiteBlueprint,
+  patch: BlueprintVisualPatch,
+): WebsiteBlueprint {
+  const next: WebsiteBlueprint = {
+    ...current,
+    hero: {
+      ...current.hero,
+      searchBar: { ...current.hero.searchBar },
+      stats: current.hero.stats.map((s) => ({ ...s })),
+    },
+    showcase: {
+      ...current.showcase,
+      filterTabs: [...current.showcase.filterTabs],
+      items: current.showcase.items.map((it) => ({ ...it, features: [...it.features] })),
+    },
+    sections: {
+      ...current.sections,
+      items: current.sections.items.map((s) => ({ ...s })),
+    },
+    ctaBanner: { ...current.ctaBanner },
+    customMedia: current.customMedia
+      ? { heroUrl: current.customMedia.heroUrl, cardUrls: { ...(current.customMedia.cardUrls || {}) } }
+      : {},
+  };
+
+  if (patch.visualStyle === "photography" || patch.visualStyle === "vector") {
+    next.visualStyle = patch.visualStyle;
+  }
+
+  if (Array.isArray(patch.sectionOrder) && patch.sectionOrder.length > 0) {
+    const validSet = new Set<string>(STANDARD_SECTION_IDS);
+    const ordered: string[] = [];
+    for (const id of patch.sectionOrder) {
+      if (typeof id === "string" && validSet.has(id) && !ordered.includes(id)) {
+        ordered.push(id);
+      }
+    }
+    for (const defId of STANDARD_SECTION_IDS) {
+      if (!ordered.includes(defId)) ordered.push(defId);
+    }
+    next.sectionOrder = ordered;
+  }
+
+  if (Array.isArray(patch.hiddenSections)) {
+    const validSet = new Set<string>(STANDARD_SECTION_IDS);
+    next.hiddenSections = Array.from(
+      new Set(patch.hiddenSections.filter((s) => typeof s === "string" && validSet.has(s) && s !== "hero")),
+    );
+  }
+
+  const safeHeroImg = sanitizeMediaUrl(patch.customHeroImage);
+  if (safeHeroImg) {
+    next.customMedia = { ...(next.customMedia || {}), heroUrl: safeHeroImg };
+    next.visualStyle = "photography";
+  }
+
+  if (patch.customCardImages && typeof patch.customCardImages === "object") {
+    const cleanedMap: Record<string, string> = { ...(next.customMedia?.cardUrls || {}) };
+    for (const [cardId, rawUrl] of Object.entries(patch.customCardImages)) {
+      const safe = sanitizeMediaUrl(rawUrl);
+      if (safe) cleanedMap[cleanStr(cardId, "", 32)] = safe;
+    }
+    next.customMedia = { ...(next.customMedia || {}), cardUrls: cleanedMap };
+  }
+
+  if (patch.fieldEdits && typeof patch.fieldEdits === "object") {
+    for (const [rawKey, rawVal] of Object.entries(patch.fieldEdits)) {
+      if (typeof rawVal !== "string") continue;
+      const val = cleanStr(rawVal, "", 220);
+      if (!val) continue;
+      switch (rawKey) {
+        case "brandName":
+          next.brandName = val.slice(0, 56);
+          break;
+        case "hero.eyebrow":
+          next.hero.eyebrow = val.slice(0, 72);
+          break;
+        case "hero.headline":
+          next.hero.headline = val.slice(0, 120);
+          break;
+        case "hero.subheadline":
+          next.hero.subheadline = val;
+          break;
+        case "hero.primaryCta":
+          next.hero.primaryCta = val.slice(0, 32);
+          break;
+        case "showcase.title":
+          next.showcase.title = val.slice(0, 90);
+          break;
+        case "showcase.subtitle":
+          next.showcase.subtitle = val.slice(0, 160);
+          break;
+        case "ctaBanner.headline":
+          next.ctaBanner.headline = val.slice(0, 96);
+          break;
+        default: {
+          const itemMatch = rawKey.match(/^item\.([^.]+)\.(title|metric|description|subtitle|actionLabel)$/);
+          if (itemMatch?.[1] && itemMatch[2]) {
+            const target = next.showcase.items.find((it) => it.id === itemMatch[1]);
+            if (target) {
+              const prop = itemMatch[2] as "title" | "metric" | "description" | "subtitle" | "actionLabel";
+              target[prop] = val.slice(0, prop === "description" ? 200 : 80);
+            }
+          }
+          break;
+        }
+      }
+    }
+  }
+
+  return next;
+}
+
+/**
+ * Applies deterministic theme/mode/entity/rename/multilingual/mobile/visual-style edits first,
  * then optionally refines copy via AI if requested.
  */
 export async function applyBlueprintConversationalEdit(
   current: WebsiteBlueprint,
   instruction: string,
-  opts?: { accentHex?: string; addEntity?: string; useAi?: boolean },
+  opts?: { accentHex?: string; addEntity?: string; useAi?: boolean; visualPatch?: BlueprintVisualPatch },
 ): Promise<WebsiteBlueprint> {
   const inst = (instruction || "").trim();
-  let next: WebsiteBlueprint = {
-    ...current,
-    entities: [...current.entities],
-    showcase: { ...current.showcase, items: [...current.showcase.items], filterTabs: [...current.showcase.filterTabs] },
-    sections: { ...current.sections, items: [...current.sections.items] },
-    hero: { ...current.hero },
-  };
+  let next: WebsiteBlueprint = opts?.visualPatch
+    ? applyBlueprintVisualPatch(current, opts.visualPatch)
+    : {
+        ...current,
+        entities: [...current.entities],
+        showcase: { ...current.showcase, items: [...current.showcase.items], filterTabs: [...current.showcase.filterTabs] },
+        sections: { ...current.sections, items: [...current.sections.items] },
+        hero: { ...current.hero },
+      };
 
   // 1. Theme mode & palette updates
   const explicitHexMatch = opts?.accentHex || inst.match(/#[0-9a-f]{6}\b/i)?.[0];
@@ -1795,6 +1976,12 @@ export async function applyBlueprintConversationalEdit(
   );
   if (mentionsTheme) {
     next.theme = detectThemeOverrides(inst, next.theme.mode, "ocean", explicitHexMatch);
+  }
+
+  if (/\b(?:vector|svg)\s+(?:only|artwork|style)\b/i.test(inst)) {
+    next.visualStyle = "vector";
+  } else if (/\b(?:photo(?:graphy)?|real\s+photos?)\b/i.test(inst)) {
+    next.visualStyle = "photography";
   }
 
   // 2. Rename brand / domain / hero
@@ -1941,38 +2128,61 @@ function buildCardArtworkSvg(
 }
 
 /**
- * Renders a complete, responsive, interactive HTML5 + CSS3 + vanilla JS website
- * from any WebsiteBlueprint with zero eval() and zero external broken asset dependencies.
+ * Renders a complete, responsive, multi-page, interactive HTML5 + CSS3 + vanilla JS website
+ * with optional curated photography, SVG fallback artwork, live submissions/checkout API wiring,
+ * inline visual edit messaging, and zero eval() / inline event handlers.
  */
-export function renderWebsiteBlueprintHtml(blueprint: WebsiteBlueprint): string {
+export function renderWebsiteBlueprintHtml(
+  blueprint: WebsiteBlueprint,
+  opts?: { projectId?: string; apiBase?: string },
+): string {
   const { theme } = blueprint;
+  const visualStyle = blueprint.visualStyle || "photography";
+  const media = resolveIndustryMedia(blueprint.categorySlug, blueprint.industrySpecialty, blueprint.visualMotif);
+  const heroPhotoUrl = blueprint.customMedia?.heroUrl || media.heroPhoto;
+  const sectionOrder = (blueprint.sectionOrder && blueprint.sectionOrder.length
+    ? blueprint.sectionOrder
+    : [...STANDARD_SECTION_IDS]) as string[];
+  const hiddenSet = new Set(blueprint.hiddenSections || []);
+  const projectId = opts?.projectId || "";
+  const apiBase = opts?.apiBase || "";
+
   const safeDataJson = JSON.stringify({
     items: blueprint.showcase.items,
     tool: blueprint.interactiveTool,
     brand: blueprint.brandName,
+    specialty: blueprint.industrySpecialty,
     multilingual: blueprint.multilingual,
     lightTheme: buildThemePalette("light", "ocean", theme.mode === "light" ? theme.accent : undefined),
     darkTheme: buildThemePalette("dark", "ocean", theme.mode === "dark" ? theme.accent : undefined),
     initialMode: theme.mode,
+    projectId,
+    apiBase,
   }).replace(/</g, "\\u003c");
 
   const cardsHtml = blueprint.showcase.items
-    .map(
-      (item, idx) => `
-      <article class="card item-card" data-category="${escHtml(item.category)}" data-search="${escHtml(`${item.title} ${item.subtitle} ${item.category} ${item.description}`.toLowerCase())}">
-        <div class="card-art">${buildCardArtworkSvg(idx, theme.accent, theme.accent2, item.category, blueprint.visualMotif)}<span class="card-badge">${escHtml(item.badge)}</span></div>
+    .map((item, idx) => {
+      const cardPhoto =
+        blueprint.customMedia?.cardUrls?.[item.id] || media.cardPhotos[idx % media.cardPhotos.length] || "";
+      const imgOverlay =
+        visualStyle !== "vector" && cardPhoto
+          ? `<img class="card-photo" src="${escHtml(cardPhoto)}" alt="${escHtml(item.title)}" loading="lazy" />`
+          : "";
+      return `
+      <article class="card item-card" data-index="${idx}" data-category="${escHtml(item.category)}" data-title="${escHtml(item.title.toLowerCase())}" data-search="${escHtml(`${item.title} ${item.subtitle} ${item.category} ${item.description}`.toLowerCase())}">
+        <div class="card-art">${buildCardArtworkSvg(idx, theme.accent, theme.accent2, item.category, blueprint.visualMotif)}${imgOverlay}<span class="card-badge">${escHtml(item.badge)}</span></div>
         <div class="card-body">
           <div class="card-meta"><span>${escHtml(item.subtitle)}</span><span class="rating">★ ${escHtml(item.rating)}</span></div>
-          <h3>${escHtml(item.title)}</h3>
-          <p class="muted">${escHtml(item.description)}</p>
+          <h3 data-edit-field="item.${escHtml(item.id)}.title">${escHtml(item.title)}</h3>
+          <p class="muted" data-edit-field="item.${escHtml(item.id)}.description">${escHtml(item.description)}</p>
           <div class="tags">${item.features.map((f) => `<span class="tag">${escHtml(f)}</span>`).join("")}</div>
           <div class="card-footer">
-            <strong class="metric">${escHtml(item.metric)}</strong>
+            <strong class="metric" data-edit-field="item.${escHtml(item.id)}.metric">${escHtml(item.metric)}</strong>
             <button type="button" class="btn btn-primary btn-sm open-item-btn" data-id="${escHtml(item.id)}">${escHtml(item.actionLabel)}</button>
           </div>
         </div>
-      </article>`,
-    )
+      </article>`;
+    })
     .join("");
 
   const tabsHtml = blueprint.showcase.filterTabs
@@ -2023,122 +2233,26 @@ export function renderWebsiteBlueprintHtml(blueprint: WebsiteBlueprint): string 
     )
     .join("");
 
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>${escHtml(blueprint.brandName)} — ${escHtml(blueprint.categoryName)}</title>
-  <style>
-    :root {
-      --bg: ${theme.bg};
-      --surface: ${theme.surface};
-      --surface-alt: ${theme.surfaceAlt};
-      --border: ${theme.border};
-      --text: ${theme.text};
-      --muted: ${theme.muted};
-      --accent: ${theme.accent};
-      --accent-text: ${theme.accentText};
-      --accent2: ${theme.accent2};
-      --hero-bg: ${theme.heroBg};
-    }
-    * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
-    body { margin: 0; font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.55; }
-    a { color: inherit; text-decoration: none; }
-    .container { max-width: 1180px; margin: 0 auto; padding: 0 20px; }
-    header.nav { position: sticky; top: 0; z-index: 40; backdrop-filter: blur(12px); background: color-mix(in srgb, var(--bg) 86%, transparent); border-bottom: 1px solid var(--border); }
-    .nav-inner { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 60px; flex-wrap: nowrap; padding: 8px 0; }
-    .brand { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 16px; letter-spacing: -0.02em; white-space: nowrap; flex-shrink: 0; }
-    .brand-dot { width: 12px; height: 12px; border-radius: 999px; background: var(--accent); box-shadow: 0 0 12px var(--accent); }
-    .nav-links { display: flex; gap: 14px; font-size: 12.5px; font-weight: 500; color: var(--muted); flex-wrap: nowrap; overflow: hidden; }
-    .nav-links a:hover { color: var(--text); }
-    .nav-actions { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; flex-shrink: 0; }
-    .btn { border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 999px; padding: 9px 16px; font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: opacity .15s, transform .15s; }
-    .btn:hover { opacity: 0.92; }
-    .btn-primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
-    .btn-sm { padding: 7px 13px; font-size: 12px; }
-    .pill { border: 1px solid var(--border); background: var(--surface); color: var(--muted); border-radius: 999px; padding: 7px 14px; font-size: 12px; font-weight: 600; cursor: pointer; }
-    .pill.active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
-    .hero { background: var(--hero-bg); border-bottom: 1px solid var(--border); padding: 52px 0 44px; }
-    .eyebrow { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--accent); margin-bottom: 14px; }
-    .hero h1 { font-size: clamp(28px, 4.4vw, 48px); line-height: 1.1; margin: 0 0 14px; letter-spacing: -0.03em; max-width: 780px; }
-    .hero p.lead { font-size: 16px; color: var(--muted); max-width: 680px; margin: 0 0 22px; }
-    .hero-ctas { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 26px; }
-    .search-dock { display: grid; grid-template-columns: 1.4fr 1fr auto; gap: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 12px; margin-bottom: 26px; box-shadow: 0 12px 30px rgba(0,0,0,0.12); }
-    .search-dock label { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 4px; font-weight: 700; }
-    input, select, textarea { width: 100%; background: var(--surface-alt); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 9px 12px; font-size: 13px; }
-    .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
-    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px; }
-    .stat-val { font-size: 22px; font-weight: 800; color: var(--accent); }
-    .stat-lbl { font-size: 12px; color: var(--muted); }
-    section.block { padding: 52px 0; border-bottom: 1px solid var(--border); }
-    .section-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
-    .section-head h2 { margin: 0 0 6px; font-size: clamp(22px, 3vw, 30px); letter-spacing: -0.02em; }
-    .muted { color: var(--muted); font-size: 13.5px; }
-    .filter-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
-    .grid-3 { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 18px; }
-    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
-    .card-art { position: relative; border-bottom: 1px solid var(--border); }
-    .card-badge { position: absolute; top: 10px; right: 10px; background: var(--surface); border: 1px solid var(--border); color: var(--accent); font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; }
-    .card-body { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
-    .card-meta { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); font-weight: 600; }
-    .rating { color: var(--accent); }
-    .card h3 { margin: 0; font-size: 16px; line-height: 1.3; }
-    .tags { display: flex; gap: 6px; flex-wrap: wrap; }
-    .tag { font-size: 11px; padding: 3px 8px; border-radius: 999px; background: var(--surface-alt); border: 1px solid var(--border); color: var(--muted); }
-    .card-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 8px; border-top: 1px solid var(--border); margin-top: auto; }
-    .metric { font-size: 15px; color: var(--text); }
-    .feature-card { padding: 18px; }
-    .feature-icon { font-size: 24px; margin-bottom: 10px; }
-    .tool-box { display: grid; grid-template-columns: 1.2fr 1fr; gap: 22px; background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 24px; }
-    .check-row { display: flex; align-items: center; gap: 10px; font-size: 13px; padding: 8px 10px; border-radius: 10px; background: var(--surface-alt); margin-bottom: 8px; cursor: pointer; }
-    .check-row input { width: auto; }
-    .est-result { background: var(--surface-alt); border: 1px solid var(--border); border-radius: 14px; padding: 20px; display: flex; flex-direction: column; justify-content: center; gap: 10px; }
-    .est-price { font-size: 36px; font-weight: 800; color: var(--accent); }
-    .quote-card { padding: 18px; margin: 0; display: flex; flex-direction: column; justify-content: space-between; gap: 12px; }
-    .quote-card p { margin: 0; font-size: 14px; }
-    .faq-item { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; }
-    .faq-item summary { font-weight: 700; font-size: 14px; cursor: pointer; }
-    .advisory { margin-top: 14px; padding: 11px 14px; border-radius: 12px; border: 1px solid rgba(245,158,11,0.45); background: rgba(245,158,11,0.1); font-size: 12.5px; }
-    .cta-panel { background: var(--hero-bg); border: 1px solid var(--border); border-radius: 20px; padding: 32px; display: grid; grid-template-columns: 1.1fr 1fr; gap: 24px; align-items: center; }
-    footer.site-foot { padding: 28px 0; font-size: 12.5px; color: var(--muted); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
-    .backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 60; display: none; align-items: center; justify-content: center; padding: 16px; }
-    .backdrop.open { display: flex; }
-    .modal { width: 100%; max-width: 480px; background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 22px; box-shadow: 0 24px 60px rgba(0,0,0,0.45); }
-    .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(390px, 100vw); background: var(--surface); border-left: 1px solid var(--border); z-index: 70; padding: 20px; display: none; flex-direction: column; gap: 12px; box-shadow: -12px 0 40px rgba(0,0,0,0.4); }
-    .drawer.open { display: flex; }
-    .toast { position: fixed; bottom: 20px; right: 20px; z-index: 80; background: var(--accent); color: var(--accent-text); padding: 11px 16px; border-radius: 12px; font-weight: 700; font-size: 13px; display: none; box-shadow: 0 10px 28px rgba(0,0,0,0.3); }
-    @media (max-width: 960px) { .nav-links { display: none; } }
-    @media (max-width: 820px) { .search-dock, .tool-box, .cta-panel { grid-template-columns: 1fr; } }
-    @media (max-width: 480px) { .nav-inner { flex-wrap: wrap; } .nav-actions { width: 100%; justify-content: flex-end; flex-wrap: wrap; } }
-  </style>
-</head>
-<body>
-  <header class="nav">
-    <div class="container nav-inner">
-      <a href="#" class="brand"><span class="brand-dot"></span><span>${escHtml(blueprint.brandName)}</span></a>
-      <nav class="nav-links">
-        ${blueprint.navLinks.map((n) => `<a href="${escHtml(n.href)}">${escHtml(n.label)}</a>`).join("")}
-      </nav>
-      <div class="nav-actions">
-        ${blueprint.multilingual ? `<select id="langSelect" aria-label="Language" style="width:auto;padding:6px 10px;border-radius:999px;font-size:12px;"><option value="en">EN</option><option value="es">ES</option><option value="fr">FR</option></select>` : ""}
-        <button type="button" id="themeToggleBtn" class="btn btn-sm">${theme.mode === "dark" ? "Light Theme" : "Dark Theme"}</button>
-        <button type="button" id="openDrawerBtn" class="btn btn-sm">Saved (<span id="savedCount">0</span>)</button>
-        <a href="#showcase" class="btn btn-primary btn-sm">${escHtml(blueprint.ctaLabel)}</a>
-      </div>
-    </div>
-  </header>
+  const heroMediaMarkup =
+    visualStyle !== "vector" && heroPhotoUrl
+      ? `<div class="hero-media-card" aria-hidden="true">${buildCardArtworkSvg(0, theme.accent, theme.accent2, blueprint.industrySpecialty, blueprint.visualMotif)}<img class="hero-photo" src="${escHtml(heroPhotoUrl)}" alt="${escHtml(blueprint.brandName)}" loading="lazy" /><div class="hero-media-caption"><span>${escHtml(blueprint.industrySpecialty)}</span><strong>${escHtml(blueprint.scopeLabel)}</strong></div></div>`
+      : "";
 
-  <main>
-    <section class="hero">
+  const sectionBlocks: Record<string, string> = {
+    hero: `
+    <section id="home" data-section-id="hero" class="hero page-sec${hiddenSet.has("hero") ? " is-hidden-sec" : ""}">
       <div class="container">
-        <span class="eyebrow">${escHtml(blueprint.hero.eyebrow)}</span>
-        <h1>${escHtml(blueprint.hero.headline)}</h1>
-        <p class="lead">${escHtml(blueprint.hero.subheadline)}</p>
-        <div class="hero-ctas">
-          <a href="#showcase" class="btn btn-primary">${escHtml(blueprint.hero.primaryCta)}</a>
-          <a href="#estimator" class="btn">${escHtml(blueprint.hero.secondaryCta)}</a>
+        <div class="${heroMediaMarkup ? "hero-grid" : ""}">
+          <div>
+            <span class="eyebrow" data-edit-field="hero.eyebrow">${escHtml(blueprint.hero.eyebrow)}</span>
+            <h1 data-edit-field="hero.headline">${escHtml(blueprint.hero.headline)}</h1>
+            <p class="lead" data-edit-field="hero.subheadline">${escHtml(blueprint.hero.subheadline)}</p>
+            <div class="hero-ctas">
+              <a href="#showcase" class="btn btn-primary" data-jump-page="catalog" data-edit-field="hero.primaryCta">${escHtml(blueprint.hero.primaryCta)}</a>
+              <a href="#estimator" class="btn" data-jump-page="booking">${escHtml(blueprint.hero.secondaryCta)}</a>
+            </div>
+          </div>
+          ${heroMediaMarkup}
         </div>
         <form id="heroSearchForm" class="search-dock">
           <div>
@@ -2160,23 +2274,29 @@ export function renderWebsiteBlueprintHtml(blueprint: WebsiteBlueprint): string 
         </div>
         ${blueprint.specialistAdvisory ? `<div class="advisory"><strong>Regulatory Advisory:</strong> ${escHtml(blueprint.specialistAdvisory)}</div>` : ""}
       </div>
-    </section>
-
-    <section id="showcase" class="block">
+    </section>`,
+    showcase: `
+    <section id="showcase" data-section-id="showcase" class="block page-sec${hiddenSet.has("showcase") ? " is-hidden-sec" : ""}">
       <div class="container">
         <div class="section-head">
           <div>
-            <h2>${escHtml(blueprint.showcase.title)}</h2>
-            <p class="muted" style="margin:0;">${escHtml(blueprint.showcase.subtitle)}</p>
+            <h2 data-edit-field="showcase.title">${escHtml(blueprint.showcase.title)}</h2>
+            <p class="muted" style="margin:0;" data-edit-field="showcase.subtitle">${escHtml(blueprint.showcase.subtitle)}</p>
           </div>
-          <span id="visibleBadge" class="tag">${blueprint.showcase.items.length} items shown</span>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <select id="catalogSort" aria-label="Sort items" style="width:auto;padding:5px 10px;font-size:12px;">
+              <option value="featured">Sort: Featured</option>
+              <option value="alpha">Sort: Name A-Z</option>
+            </select>
+            <span id="visibleBadge" class="tag">${blueprint.showcase.items.length} items shown</span>
+          </div>
         </div>
         <div id="filterBar" class="filter-bar">${tabsHtml}</div>
         <div id="cardsGrid" class="grid-3">${cardsHtml}</div>
       </div>
-    </section>
-
-    <section id="capabilities" class="block">
+    </section>`,
+    capabilities: `
+    <section id="capabilities" data-section-id="capabilities" class="block page-sec${hiddenSet.has("capabilities") ? " is-hidden-sec" : ""}">
       <div class="container">
         <div class="section-head">
           <div>
@@ -2186,9 +2306,9 @@ export function renderWebsiteBlueprintHtml(blueprint: WebsiteBlueprint): string 
         </div>
         <div class="grid-3">${sectionsHtml}</div>
       </div>
-    </section>
-
-    <section id="estimator" class="block">
+    </section>`,
+    estimator: `
+    <section id="estimator" data-section-id="estimator" class="block page-sec${hiddenSet.has("estimator") ? " is-hidden-sec" : ""}">
       <div class="container">
         <div class="section-head">
           <div>
@@ -2208,13 +2328,33 @@ export function renderWebsiteBlueprintHtml(blueprint: WebsiteBlueprint): string 
             <div class="muted">Estimated Total</div>
             <div id="estTotal" class="est-price">$${(blueprint.interactiveTool.baseRate * 3).toLocaleString("en-US")}</div>
             <p id="estBreakdown" class="muted" style="margin:0;">Base rate $${blueprint.interactiveTool.baseRate.toLocaleString("en-US")} × 3 units</p>
-            <button type="button" id="saveEstimateBtn" class="btn btn-primary" style="width:max-content;">Save Quote to List</button>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button type="button" id="saveEstimateBtn" class="btn btn-primary" style="width:max-content;">Save Quote to List</button>
+              <button type="button" id="openBookingTabBtn" class="btn" data-jump-page="booking">Book / Checkout Online →</button>
+            </div>
           </div>
         </div>
+        <div id="bookingCheckoutPanel" class="cta-panel" style="margin-top:22px;display:none;">
+          <div>
+            <span class="eyebrow">Direct Online Reservation & Checkout</span>
+            <h3 style="margin:0 0 8px;font-size:22px;">Complete Booking or Test Payment</h3>
+            <p class="muted" style="margin:0 0 12px;">Selected quote or saved items are recorded directly into the platform database and visible in the Admin Inbox.</p>
+            <div id="bookingSummaryLine" class="tag" style="display:inline-block;">Estimated Order: $${(blueprint.interactiveTool.baseRate * 3).toLocaleString("en-US")}</div>
+          </div>
+          <form id="bookingForm" style="display:grid;gap:10px;">
+            <input id="bookName" type="text" required placeholder="Full name" />
+            <input id="bookEmail" type="email" required placeholder="Email address" />
+            <input id="bookNotes" type="text" placeholder="Preferred date, service notes, or organization..." />
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button type="submit" class="btn" style="flex:1;justify-content:center;">Submit Request</button>
+              <button type="button" id="checkoutPayBtn" class="btn btn-primary" style="flex:1;justify-content:center;">Pay & Complete Booking</button>
+            </div>
+          </form>
+        </div>
       </div>
-    </section>
-
-    <section id="testimonials" class="block">
+    </section>`,
+    testimonials: `
+    <section id="testimonials" data-section-id="testimonials" class="block page-sec${hiddenSet.has("testimonials") ? " is-hidden-sec" : ""}">
       <div class="container">
         <div class="section-head">
           <div>
@@ -2223,18 +2363,26 @@ export function renderWebsiteBlueprintHtml(blueprint: WebsiteBlueprint): string 
           </div>
         </div>
         <div class="grid-3">${testimonialsHtml}</div>
-        <div style="margin-top:34px;" id="faq">
-          <h3 style="margin-bottom:14px;">Frequently Asked Questions</h3>
-          ${faqsHtml}
-        </div>
       </div>
-    </section>
-
-    <section id="contact" class="block">
+    </section>`,
+    faq: `
+    <section id="faq" data-section-id="faq" class="block page-sec${hiddenSet.has("faq") ? " is-hidden-sec" : ""}">
+      <div class="container">
+        <div class="section-head">
+          <div>
+            <h2>Frequently Asked Questions</h2>
+            <p class="muted" style="margin:0;">Clear answers regarding ${escHtml(blueprint.industrySpecialty)} workflows, pricing & security.</p>
+          </div>
+        </div>
+        ${faqsHtml}
+      </div>
+    </section>`,
+    contact: `
+    <section id="contact" data-section-id="contact" class="block page-sec${hiddenSet.has("contact") ? " is-hidden-sec" : ""}">
       <div class="container">
         <div class="cta-panel">
           <div>
-            <h2 style="margin:0 0 10px;font-size:28px;">${escHtml(blueprint.ctaBanner.headline)}</h2>
+            <h2 style="margin:0 0 10px;font-size:28px;" data-edit-field="ctaBanner.headline">${escHtml(blueprint.ctaBanner.headline)}</h2>
             <p class="muted" style="margin:0;">${escHtml(blueprint.ctaBanner.subheadline)}</p>
           </div>
           <form id="contactForm" style="display:grid;gap:10px;">
@@ -2245,11 +2393,176 @@ export function renderWebsiteBlueprintHtml(blueprint: WebsiteBlueprint): string 
           </form>
         </div>
       </div>
-    </section>
+    </section>`,
+  };
+
+  const orderedHomeSections = sectionOrder.map((id) => sectionBlocks[id] || "").join("\n");
+
+  const adminSection = `
+    <section id="adminView" class="block" style="display:none;">
+      <div class="container">
+        <div class="section-head">
+          <div>
+            <span class="eyebrow">Operations Inbox & Analytics</span>
+            <h2>Live Submissions & Order Ledger</h2>
+            <p class="muted" style="margin:0;">Monitor customer bookings, quotes, and checkout receipts across ${escHtml(blueprint.entities.map((e) => e.name).join(", "))}.</p>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button type="button" id="refreshAdminBtn" class="btn btn-sm">Refresh Inbox</button>
+            <button type="button" id="exportAdminCsvBtn" class="btn btn-primary btn-sm">Export CSV</button>
+          </div>
+        </div>
+        <div class="stats-row" style="margin-bottom:20px;">
+          <div class="stat-card"><div id="admTotalCount" class="stat-val">0</div><div class="stat-lbl">Total Submissions</div></div>
+          <div class="stat-card"><div id="admPaidCount" class="stat-val">0</div><div class="stat-lbl">Confirmed / Paid</div></div>
+          <div class="stat-card"><div id="admVolume" class="stat-val">$0</div><div class="stat-lbl">Recorded Volume</div></div>
+        </div>
+        <div id="adminRowsWrap" class="card" style="padding:16px;overflow-x:auto;">
+          <p class="muted" style="margin:0;">No submissions recorded yet. Test booking or inquiry submission on the Home or Book / Pay pages.</p>
+        </div>
+      </div>
+    </section>`;
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="noctis-specialty" content="${escHtml(blueprint.industrySpecialty)}" />
+  <meta name="noctis-category" content="${escHtml(blueprint.categoryName)}" />
+  <title>${escHtml(blueprint.brandName)} — ${escHtml(blueprint.categoryName)}</title>
+  <style>
+    :root {
+      --bg: ${theme.bg};
+      --surface: ${theme.surface};
+      --surface-alt: ${theme.surfaceAlt};
+      --border: ${theme.border};
+      --text: ${theme.text};
+      --muted: ${theme.muted};
+      --accent: ${theme.accent};
+      --accent-text: ${theme.accentText};
+      --accent2: ${theme.accent2};
+      --hero-bg: ${theme.heroBg};
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.55; }
+    a { color: inherit; text-decoration: none; }
+    .container { max-width: 1180px; margin: 0 auto; padding: 0 20px; }
+    header.nav { position: sticky; top: 0; z-index: 40; backdrop-filter: blur(12px); background: color-mix(in srgb, var(--bg) 88%, transparent); border-bottom: 1px solid var(--border); }
+    .nav-inner { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 60px; flex-wrap: nowrap; padding: 8px 0; }
+    .brand { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 15.5px; letter-spacing: -0.02em; white-space: nowrap; flex-shrink: 0; max-width: 240px; overflow: hidden; text-overflow: ellipsis; }
+    .brand-dot { width: 11px; height: 11px; border-radius: 999px; background: var(--accent); box-shadow: 0 0 12px var(--accent); flex-shrink: 0; }
+    .page-tabs { display: flex; align-items: center; gap: 4px; background: var(--surface-alt); border: 1px solid var(--border); border-radius: 999px; padding: 3px; flex-shrink: 0; }
+    .page-tab { border: 0; background: transparent; color: var(--muted); border-radius: 999px; padding: 5px 11px; font-size: 11.5px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+    .page-tab.active { background: var(--accent); color: var(--accent-text); }
+    .nav-actions { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; flex-shrink: 0; }
+    .mobile-pages { display: none; border-top: 1px solid var(--border); padding: 6px 20px; gap: 6px; overflow-x: auto; }
+    .btn { border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 999px; padding: 9px 16px; font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: opacity .15s, transform .15s; white-space: nowrap; }
+    .btn:hover { opacity: 0.92; }
+    .btn-primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+    .btn-sm { padding: 7px 12px; font-size: 12px; }
+    .pill { border: 1px solid var(--border); background: var(--surface); color: var(--muted); border-radius: 999px; padding: 7px 14px; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .pill.active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+    .hero { background: var(--hero-bg); border-bottom: 1px solid var(--border); padding: 48px 0 42px; }
+    .hero-grid { display: grid; grid-template-columns: 1.35fr 0.9fr; gap: 28px; align-items: center; margin-bottom: 24px; }
+    .hero-media-card { position: relative; border-radius: 18px; overflow: hidden; border: 1px solid var(--border); height: 260px; background: var(--surface); box-shadow: 0 18px 40px rgba(0,0,0,0.22); }
+    .hero-media-card svg { height: 260px !important; border-radius: 0 !important; }
+    .hero-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .hero-media-caption { position: absolute; left: 12px; right: 12px; bottom: 12px; background: rgba(9,13,22,0.78); backdrop-filter: blur(8px); color: #F8FAFC; border: 1px solid rgba(255,255,255,0.16); border-radius: 12px; padding: 9px 12px; display: flex; justify-content: space-between; align-items: center; font-size: 11.5px; gap: 8px; }
+    .eyebrow { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--accent); margin-bottom: 14px; }
+    .hero h1 { font-size: clamp(27px, 4.1vw, 44px); line-height: 1.1; margin: 0 0 14px; letter-spacing: -0.03em; max-width: 780px; }
+    .hero p.lead { font-size: 15.5px; color: var(--muted); max-width: 680px; margin: 0 0 20px; }
+    .hero-ctas { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 22px; }
+    .search-dock { display: grid; grid-template-columns: 1.4fr 1fr auto; gap: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 12px; margin-bottom: 24px; box-shadow: 0 12px 30px rgba(0,0,0,0.12); }
+    .search-dock label { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 4px; font-weight: 700; }
+    input, select, textarea { width: 100%; background: var(--surface-alt); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 9px 12px; font-size: 13px; }
+    .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px; }
+    .stat-val { font-size: 22px; font-weight: 800; color: var(--accent); }
+    .stat-lbl { font-size: 12px; color: var(--muted); }
+    section.block { padding: 48px 0; border-bottom: 1px solid var(--border); }
+    .is-hidden-sec { display: none !important; }
+    .section-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+    .section-head h2 { margin: 0 0 6px; font-size: clamp(22px, 3vw, 30px); letter-spacing: -0.02em; }
+    .muted { color: var(--muted); font-size: 13.5px; }
+    .filter-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 18px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+    .card-art { position: relative; border-bottom: 1px solid var(--border); height: 116px; overflow: hidden; }
+    .card-photo { position: absolute; inset: 0; width: 100%; height: 116px; object-fit: cover; }
+    .card-badge { position: absolute; top: 10px; right: 10px; background: var(--surface); border: 1px solid var(--border); color: var(--accent); font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; z-index: 2; }
+    .card-body { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+    .card-meta { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); font-weight: 600; }
+    .rating { color: var(--accent); }
+    .card h3 { margin: 0; font-size: 16px; line-height: 1.3; }
+    .tags { display: flex; gap: 6px; flex-wrap: wrap; }
+    .tag { font-size: 11px; padding: 3px 8px; border-radius: 999px; background: var(--surface-alt); border: 1px solid var(--border); color: var(--muted); }
+    .card-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 8px; border-top: 1px solid var(--border); margin-top: auto; }
+    .metric { font-size: 15px; color: var(--text); }
+    .feature-card { padding: 18px; }
+    .feature-icon { font-size: 24px; margin-bottom: 10px; }
+    .tool-box { display: grid; grid-template-columns: 1.2fr 1fr; gap: 22px; background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 24px; }
+    .check-row { display: flex; align-items: center; gap: 10px; font-size: 13px; padding: 8px 10px; border-radius: 10px; background: var(--surface-alt); margin-bottom: 8px; cursor: pointer; }
+    .check-row input { width: auto; }
+    .est-result { background: var(--surface-alt); border: 1px solid var(--border); border-radius: 14px; padding: 20px; display: flex; flex-direction: column; justify-content: center; gap: 10px; }
+    .est-price { font-size: 36px; font-weight: 800; color: var(--accent); }
+    .quote-card { padding: 18px; margin: 0; display: flex; flex-direction: column; justify-content: space-between; gap: 12px; }
+    .quote-card p { margin: 0; font-size: 14px; }
+    .faq-item { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; }
+    .faq-item summary { font-weight: 700; font-size: 14px; cursor: pointer; }
+    .advisory { margin-top: 14px; padding: 11px 14px; border-radius: 12px; border: 1px solid rgba(245,158,11,0.45); background: rgba(245,158,11,0.1); font-size: 12.5px; }
+    .cta-panel { background: var(--hero-bg); border: 1px solid var(--border); border-radius: 20px; padding: 30px; display: grid; grid-template-columns: 1.1fr 1fr; gap: 24px; align-items: center; }
+    footer.site-foot { padding: 28px 0; font-size: 12.5px; color: var(--muted); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+    .backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 60; display: none; align-items: center; justify-content: center; padding: 16px; }
+    .backdrop.open { display: flex; }
+    .modal { width: 100%; max-width: 480px; background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 22px; box-shadow: 0 24px 60px rgba(0,0,0,0.45); }
+    .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(390px, 100vw); background: var(--surface); border-left: 1px solid var(--border); z-index: 70; padding: 20px; display: none; flex-direction: column; gap: 12px; box-shadow: -12px 0 40px rgba(0,0,0,0.4); }
+    .drawer.open { display: flex; }
+    .toast { position: fixed; bottom: 20px; right: 20px; z-index: 80; background: var(--accent); color: var(--accent-text); padding: 11px 16px; border-radius: 12px; font-weight: 700; font-size: 13px; display: none; box-shadow: 0 10px 28px rgba(0,0,0,0.3); }
+    body.visual-edit-active [data-edit-field] { outline: 1.5px dashed var(--accent); outline-offset: 3px; border-radius: 6px; cursor: text; }
+    body.visual-edit-active [data-edit-field]:focus { outline: 2px solid var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--surface)); }
+    table.adm-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    table.adm-table th, table.adm-table td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--border); }
+    table.adm-table th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+    @media (max-width: 900px) { .hero-grid { grid-template-columns: 1fr; } .hero-media-card { display: none; } }
+    @media (max-width: 820px) { .search-dock, .tool-box, .cta-panel { grid-template-columns: 1fr; } }
+    @media (max-width: 720px) { .nav-inner .page-tabs { display: none; } .mobile-pages { display: flex; } }
+    @media (max-width: 480px) { .nav-inner { flex-wrap: wrap; } .nav-actions { width: 100%; justify-content: flex-end; flex-wrap: wrap; } }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <div class="container nav-inner">
+      <a href="#home" class="brand" data-jump-page="home"><span class="brand-dot"></span><span data-edit-field="brandName">${escHtml(blueprint.brandName)}</span></a>
+      <nav class="page-tabs" aria-label="Site Pages">
+        <button type="button" class="page-tab active" data-page="home">Home</button>
+        <button type="button" class="page-tab" data-page="catalog">Catalog</button>
+        <button type="button" class="page-tab" data-page="booking">Book / Pay</button>
+        <button type="button" class="page-tab" data-page="admin">Admin</button>
+      </nav>
+      <div class="nav-actions">
+        ${blueprint.multilingual ? `<select id="langSelect" aria-label="Language" style="width:auto;padding:5px 9px;border-radius:999px;font-size:11.5px;"><option value="en">EN</option><option value="es">ES</option><option value="fr">FR</option></select>` : ""}
+        <button type="button" id="themeToggleBtn" class="btn btn-sm">${theme.mode === "dark" ? "Light Theme" : "Dark Theme"}</button>
+        <button type="button" id="openDrawerBtn" class="btn btn-sm">Saved (<span id="savedCount">0</span>)</button>
+        <a href="#bookingCheckoutPanel" class="btn btn-primary btn-sm" data-jump-page="booking">${escHtml(blueprint.ctaLabel)}</a>
+      </div>
+    </div>
+    <div class="mobile-pages" aria-label="Mobile Pages">
+      <button type="button" class="page-tab active" data-page="home">Home</button>
+      <button type="button" class="page-tab" data-page="catalog">Catalog</button>
+      <button type="button" class="page-tab" data-page="booking">Book / Pay</button>
+      <button type="button" class="page-tab" data-page="admin">Admin</button>
+    </div>
+  </header>
+
+  <main id="mainFlow">
+${orderedHomeSections}
+${adminSection}
   </main>
 
   <footer class="container site-foot">
-    <span>© 2026 ${escHtml(blueprint.brandName)} (${escHtml(blueprint.domain)}) · ${escHtml(blueprint.categoryName)}</span>
+    <span>© 2026 ${escHtml(blueprint.brandName)} (${escHtml(blueprint.domain)}) · ${escHtml(blueprint.industrySpecialty)}</span>
     <span>Built with Noctis Universal Website Builder · Tables: ${escHtml(blueprint.entities.map((e) => e.name).join(", "))}</span>
   </footer>
 
@@ -2276,7 +2589,7 @@ export function renderWebsiteBlueprintHtml(blueprint: WebsiteBlueprint): string 
       <button type="button" id="closeDrawerBtn" class="btn btn-sm">Close</button>
     </div>
     <div id="drawerItems" style="flex:1;overflow:auto;display:grid;gap:8px;align-content:start;"></div>
-    <button type="button" id="checkoutDrawerBtn" class="btn btn-primary" style="justify-content:center;">Submit Request / Checkout</button>
+    <button type="button" id="checkoutDrawerBtn" class="btn btn-primary" style="justify-content:center;">Proceed to Book / Checkout</button>
   </aside>
 
   <div id="toast" class="toast"></div>
@@ -2285,9 +2598,16 @@ export function renderWebsiteBlueprintHtml(blueprint: WebsiteBlueprint): string 
     (function() {
       const APP_DATA = ${safeDataJson};
       let activeFilter = "All";
+      let activePage = "home";
       let currentThemeMode = APP_DATA.initialMode || "dark";
+      let visualEditEnabled = false;
       let modalItem = null;
       const savedList = [];
+      const localStoreKey = "noctis_forge_subs_" + (APP_DATA.projectId || APP_DATA.brand || "local");
+
+      document.querySelectorAll("img.card-photo, img.hero-photo").forEach((img) => {
+        img.addEventListener("error", () => { img.style.display = "none"; });
+      });
 
       function showToast(msg) {
         const t = document.getElementById("toast");
@@ -2296,9 +2616,119 @@ export function renderWebsiteBlueprintHtml(blueprint: WebsiteBlueprint): string 
         setTimeout(() => { t.style.display = "none"; }, 2800);
       }
 
+      const memSubs = [];
+      let lastAdminRows = [];
+      let runtimeApiBase = APP_DATA.apiBase || "";
+
+      function escHtml(v) {
+        return String(v == null ? "" : v)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+
+      function readLocalSubs() {
+        try {
+          const raw = localStorage.getItem(localStoreKey);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) return parsed;
+          }
+        } catch {}
+        return memSubs.slice();
+      }
+
+      function writeLocalSub(sub) {
+        memSubs.unshift(sub);
+        if (memSubs.length > 50) memSubs.length = 50;
+        try {
+          const prev = readLocalSubs().filter((r) => r.id !== sub.id);
+          prev.unshift(sub);
+          localStorage.setItem(localStoreKey, JSON.stringify(prev.slice(0, 50)));
+        } catch {}
+      }
+
+      async function recordSubmission(payload) {
+        const localRow = {
+          id: "LOC-" + Math.random().toString(36).slice(2, 8).toUpperCase(),
+          submission_type: payload.submissionType || "INQUIRY",
+          customer_name: payload.customerName || "Guest",
+          customer_email: payload.customerEmail || "",
+          amount_cents: Number(payload.amountCents || 0),
+          payment_status: payload.paymentStatus || "RECORDED",
+          created_at: new Date().toISOString(),
+        };
+        writeLocalSub(localRow);
+        if (!APP_DATA.projectId) return { ok: true, submission: localRow };
+        try {
+          const endpoint = payload.isCheckout ? "/api/v2/forge/checkout" : "/api/v2/forge/submissions";
+          const res = await fetch((runtimeApiBase || "") + endpoint, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ projectId: APP_DATA.projectId, ...payload }),
+          });
+          if (res.ok) return await res.json();
+        } catch {}
+        return { ok: true, submission: localRow };
+      }
+
+      function switchPage(page) {
+        activePage = page || "home";
+        document.querySelectorAll(".page-tab").forEach((btn) => {
+          btn.classList.toggle("active", btn.getAttribute("data-page") === activePage);
+        });
+        const homeSections = document.querySelectorAll(".page-sec");
+        const adminEl = document.getElementById("adminView");
+        const bookingPanel = document.getElementById("bookingCheckoutPanel");
+        if (activePage === "home") {
+          homeSections.forEach((el) => { el.style.display = ""; });
+          if (bookingPanel) bookingPanel.style.display = "none";
+          if (adminEl) adminEl.style.display = "none";
+        } else if (activePage === "catalog") {
+          homeSections.forEach((el) => {
+            el.style.display = el.getAttribute("data-section-id") === "showcase" ? "" : "none";
+          });
+          if (bookingPanel) bookingPanel.style.display = "none";
+          if (adminEl) adminEl.style.display = "none";
+        } else if (activePage === "booking") {
+          homeSections.forEach((el) => {
+            el.style.display = el.getAttribute("data-section-id") === "estimator" ? "" : "none";
+          });
+          if (bookingPanel) bookingPanel.style.display = "grid";
+          if (adminEl) adminEl.style.display = "none";
+        } else if (activePage === "admin") {
+          homeSections.forEach((el) => { el.style.display = "none"; });
+          if (adminEl) adminEl.style.display = "block";
+          void loadAdminInbox();
+        }
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+
+      document.querySelectorAll("[data-page]").forEach((btn) => {
+        btn.addEventListener("click", () => switchPage(btn.getAttribute("data-page") || "home"));
+      });
+      document.querySelectorAll("[data-jump-page]").forEach((el) => {
+        el.addEventListener("click", (e) => {
+          if (visualEditEnabled && el.hasAttribute("data-edit-field")) return;
+          e.preventDefault();
+          switchPage(el.getAttribute("data-jump-page") || "home");
+        });
+      });
+
       function applyFilters() {
         const q = (document.getElementById("searchInput").value || "").trim().toLowerCase();
-        const cards = document.querySelectorAll(".item-card");
+        const sortBy = (document.getElementById("catalogSort") && document.getElementById("catalogSort").value) || "featured";
+        const grid = document.getElementById("cardsGrid");
+        const cards = Array.from(document.querySelectorAll(".item-card"));
+        cards.sort((a, b) => {
+          if (sortBy === "alpha") {
+            return (a.getAttribute("data-title") || "").localeCompare(b.getAttribute("data-title") || "");
+          }
+          return Number(a.getAttribute("data-index") || 0) - Number(b.getAttribute("data-index") || 0);
+        });
+        cards.forEach((c) => grid.appendChild(c));
         let shown = 0;
         cards.forEach((c) => {
           const cat = c.getAttribute("data-category") || "";
@@ -2321,6 +2751,8 @@ export function renderWebsiteBlueprintHtml(blueprint: WebsiteBlueprint): string 
         applyFilters();
       });
 
+      const sortEl = document.getElementById("catalogSort");
+      if (sortEl) sortEl.addEventListener("change", applyFilters);
       document.getElementById("searchInput").addEventListener("input", applyFilters);
       document.getElementById("categorySelect").addEventListener("change", (e) => {
         activeFilter = e.target.value || "All";
@@ -2346,6 +2778,10 @@ export function renderWebsiteBlueprintHtml(blueprint: WebsiteBlueprint): string 
         const total = Math.max(rate, 10) * units;
         document.getElementById("estTotal").textContent = "$" + total.toLocaleString("en-US");
         document.getElementById("estBreakdown").textContent = "$" + Math.max(rate, 10).toLocaleString("en-US") + "/unit × " + units + " units";
+        const sumEl = document.getElementById("bookingSummaryLine");
+        if (sumEl) {
+          sumEl.textContent = "Estimated Order: $" + total.toLocaleString("en-US") + (savedList.length ? " (" + savedList.length + " saved items)" : "");
+        }
         return total;
       }
 
@@ -2361,10 +2797,11 @@ export function renderWebsiteBlueprintHtml(blueprint: WebsiteBlueprint): string 
         }
         box.innerHTML = savedList.map((entry, idx) =>
           '<div style="border:1px solid var(--border);border-radius:12px;padding:10px;background:var(--surface-alt);">' +
-          '<div style="font-weight:700;font-size:13px;">' + entry.title + '</div>' +
-          '<div class="muted" style="font-size:12px;">' + entry.detail + '</div>' +
+          '<div style="font-weight:700;font-size:13px;">' + escHtml(entry.title) + '</div>' +
+          '<div class="muted" style="font-size:12px;">' + escHtml(entry.detail) + '</div>' +
           '<button type="button" class="btn btn-sm remove-saved-btn" data-idx="' + idx + '" style="margin-top:6px;">Remove</button></div>'
         ).join("");
+        recalcEstimate();
       }
 
       document.addEventListener("click", (e) => {
@@ -2412,18 +2849,115 @@ export function renderWebsiteBlueprintHtml(blueprint: WebsiteBlueprint): string 
         document.getElementById("savedDrawer").classList.remove("open");
       });
       document.getElementById("checkoutDrawerBtn").addEventListener("click", () => {
-        if (!savedList.length) { showToast("Add an item first"); return; }
-        savedList.length = 0;
-        renderDrawer();
         document.getElementById("savedDrawer").classList.remove("open");
-        showToast("Request confirmed with " + APP_DATA.brand + "!");
+        switchPage("booking");
       });
 
-      document.getElementById("contactForm").addEventListener("submit", (e) => {
+      document.getElementById("bookingForm").addEventListener("submit", async (e) => {
         e.preventDefault();
+        const name = document.getElementById("bookName").value.trim();
+        const email = document.getElementById("bookEmail").value.trim();
+        const notes = document.getElementById("bookNotes").value.trim();
+        const total = recalcEstimate();
+        await recordSubmission({
+          submissionType: "BOOKING",
+          customerName: name,
+          customerEmail: email,
+          amountCents: total * 100,
+          paymentStatus: "BOOKED",
+          payload: { notes, savedItems: savedList },
+        });
+        document.getElementById("bookingForm").reset();
+        showToast("Booking recorded for " + name + "!");
+      });
+
+      document.getElementById("checkoutPayBtn").addEventListener("click", async () => {
+        const nameEl = document.getElementById("bookName");
+        const emailEl = document.getElementById("bookEmail");
+        const name = (nameEl.value || "Sandbox Customer").trim();
+        const email = (emailEl.value || "customer@example.com").trim();
+        const notes = (document.getElementById("bookNotes").value || "").trim();
+        const total = recalcEstimate();
+        const res = await recordSubmission({
+          isCheckout: true,
+          submissionType: "CHECKOUT",
+          customerName: name,
+          customerEmail: email,
+          amountCents: total * 100,
+          paymentStatus: "TEST_SANDBOX_PAID",
+          payload: { itemName: APP_DATA.brand + " Booking", notes, savedItems: savedList },
+        });
+        if (res && res.checkoutUrl) {
+          window.open(res.checkoutUrl, "_blank", "noopener,noreferrer");
+        } else {
+          showToast("Payment Confirmed ($" + total.toLocaleString("en-US") + ") · View in Admin");
+        }
+        savedList.length = 0;
+        renderDrawer();
+      });
+
+      document.getElementById("contactForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const name = document.getElementById("contactName").value.trim();
         const email = document.getElementById("contactEmail").value.trim();
+        const msg = document.getElementById("contactMsg").value.trim();
+        await recordSubmission({
+          submissionType: "INQUIRY",
+          customerName: name,
+          customerEmail: email,
+          amountCents: 0,
+          paymentStatus: "RECORDED",
+          payload: { message: msg },
+        });
         document.getElementById("contactForm").reset();
-        showToast("Inquiry received for " + email + "!");
+        showToast("Inquiry recorded for " + email + "!");
+      });
+
+      async function loadAdminInbox() {
+        let rows = readLocalSubs();
+        if (APP_DATA.projectId) {
+          try {
+            const res = await fetch((runtimeApiBase || "") + "/api/v2/forge/submissions?projectId=" + encodeURIComponent(APP_DATA.projectId));
+            if (res.ok) {
+              const json = await res.json();
+              if (Array.isArray(json.submissions) && json.submissions.length) {
+                rows = json.submissions;
+              }
+            }
+          } catch {}
+        }
+        lastAdminRows = rows;
+        document.getElementById("admTotalCount").textContent = String(rows.length);
+        const paid = rows.filter((r) => /PAID|BOOKED/i.test(String(r.payment_status || "")));
+        document.getElementById("admPaidCount").textContent = String(paid.length);
+        const volCents = rows.reduce((acc, r) => acc + Number(r.amount_cents || 0), 0);
+        document.getElementById("admVolume").textContent = "$" + Math.round(volCents / 100).toLocaleString("en-US");
+        const wrap = document.getElementById("adminRowsWrap");
+        if (!rows.length) {
+          wrap.innerHTML = '<p class="muted" style="margin:0;">No submissions recorded yet. Test booking or inquiry submission on the Home or Book / Pay pages.</p>';
+          return;
+        }
+        wrap.innerHTML = '<table class="adm-table"><thead><tr><th>ID</th><th>Type</th><th>Customer</th><th>Email</th><th>Amount</th><th>Status</th></tr></thead><tbody>' +
+          rows.map((r) =>
+            '<tr><td><code>' + escHtml(r.id || "") + '</code></td><td>' + escHtml(r.submission_type || "") + '</td><td>' + escHtml(r.customer_name || "") + '</td><td>' + escHtml(r.customer_email || "") + '</td><td>$' + Math.round(Number(r.amount_cents || 0) / 100).toLocaleString("en-US") + '</td><td><span class="tag">' + escHtml(r.payment_status || "") + '</span></td></tr>'
+          ).join("") +
+          '</tbody></table>';
+      }
+
+      document.getElementById("refreshAdminBtn").addEventListener("click", () => { void loadAdminInbox(); });
+      document.getElementById("exportAdminCsvBtn").addEventListener("click", () => {
+        const rows = lastAdminRows.length ? lastAdminRows : readLocalSubs();
+        const csvCell = (v) => JSON.stringify(String(v == null ? "" : v));
+        const csv = ["id,type,name,email,amount_usd,status"].concat(
+          rows.map((r) => [csvCell(r.id), csvCell(r.submission_type), csvCell(r.customer_name), csvCell(r.customer_email), (Number(r.amount_cents || 0) / 100).toFixed(2), csvCell(r.payment_status)].join(","))
+        ).join("\\n");
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "submissions.csv";
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
       });
 
       document.getElementById("themeToggleBtn").addEventListener("click", () => {
@@ -2446,6 +2980,44 @@ export function renderWebsiteBlueprintHtml(blueprint: WebsiteBlueprint): string 
           showToast("Switched locale to " + e.target.value.toUpperCase());
         });
       }
+
+      // Inline Visual Edit & API Base Bridge with parent Noctis Studio
+      window.addEventListener("message", (event) => {
+        if (event.data && event.data.type === "NOCTIS_SET_API_BASE") {
+          const cand = String(event.data.apiBase || "").trim().replace(/\/+$/, "");
+          if (/^https?:\/\/[a-z0-9.-]+(?::\d+)?$/i.test(cand)) {
+            runtimeApiBase = cand;
+          }
+        }
+        if (event.data && event.data.type === "NOCTIS_VISUAL_EDIT_MODE") {
+          visualEditEnabled = Boolean(event.data.enabled);
+          document.body.classList.toggle("visual-edit-active", visualEditEnabled);
+          document.querySelectorAll("[data-edit-field]").forEach((el) => {
+            el.setAttribute("contenteditable", visualEditEnabled ? "true" : "false");
+          });
+        }
+      });
+
+      document.querySelectorAll("[data-edit-field]").forEach((el) => {
+        el.addEventListener("click", (e) => {
+          if (visualEditEnabled) { e.preventDefault(); }
+        });
+        el.addEventListener("keydown", (e) => {
+          if (visualEditEnabled && e.key === "Enter") {
+            e.preventDefault();
+            el.blur();
+          }
+        });
+        el.addEventListener("blur", () => {
+          if (!visualEditEnabled) return;
+          const field = el.getAttribute("data-edit-field");
+          const value = (el.textContent || "").trim();
+          if (field && value) {
+            window.parent.postMessage({ type: "NOCTIS_FIELD_EDITED", field, value }, "*");
+          }
+        });
+      });
+
       renderDrawer();
     })();
   </script>

@@ -25,7 +25,10 @@ import {
   getForgeSqlStats,
   listForgeProjectRecords,
   listForgeProjectRevisions,
+  listForgeSubmissions,
+  saveForgeSubmission,
 } from "./forge-persistence.server.ts";
+import type { BlueprintVisualPatch } from "./website-blueprint-engine.ts";
 
 const CORS_HEADERS = {
   "access-control-allow-origin": "*",
@@ -119,13 +122,20 @@ export async function handleForgeV2Request(request: Request): Promise<Response> 
   if (subPath === "projects/edit") {
     if (request.method !== "POST") return jsonRes({ error: "Use POST." }, 405);
     const projectId = String(body.projectId || "");
-    const instruction = String(body.instruction || "");
-    if (!projectId || !instruction) return jsonRes({ error: "Missing projectId or instruction." }, 400);
+    const instruction = String(body.instruction || "").trim();
+    const visualPatch =
+      body.visualPatch && typeof body.visualPatch === "object"
+        ? (body.visualPatch as BlueprintVisualPatch)
+        : undefined;
+    if (!projectId || (!instruction && !visualPatch)) {
+      return jsonRes({ error: "Missing projectId or instruction/visualPatch." }, 400);
+    }
     const out = await editForgeProjectConversationally({
       projectId,
       instruction,
       accentHex: typeof body.accentHex === "string" ? body.accentHex : undefined,
       addEntity: typeof body.addEntity === "string" ? body.addEntity : undefined,
+      visualPatch,
       actorId: caller.actorId,
       useAi: body.useAi !== false,
     });
@@ -176,8 +186,184 @@ export async function handleForgeV2Request(request: Request): Promise<Response> 
       projectId: String(body.projectId || ""),
       target: (body.target === "PRODUCTION" ? "PRODUCTION" : "STAGING"),
       approver: typeof body.approver === "string" ? body.approver : undefined,
+      dispatchExternal: Boolean(body.dispatchExternal),
     });
     return jsonRes(out, out.approved ? 200 : 403);
+  }
+
+  if (subPath === "live" || subPath.startsWith("live/")) {
+    const id = (url.searchParams.get("id") || (subPath.startsWith("live/") ? subPath.slice("live/".length) : "")).trim();
+    if (!id) {
+      return new Response("<!doctype html><html><body><h1>Missing project id</h1></body></html>", {
+        status: 400,
+        headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", ...CORS_HEADERS },
+      });
+    }
+    const proj = await getForgeProjectRecord(id);
+    const files = (proj?.files_json && typeof proj.files_json === "object" ? proj.files_json : {}) as Record<string, string>;
+    const html = files["index.html"] || "";
+    if (!proj || !html) {
+      return new Response("<!doctype html><html><body><h1>Live Forge site not found</h1></body></html>", {
+        status: 404,
+        headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", ...CORS_HEADERS },
+      });
+    }
+    return new Response(html, {
+      status: 200,
+      headers: {
+        "content-type": "text/html; charset=utf-8",
+        "x-content-type-options": "nosniff",
+        "cache-control": "no-store",
+        ...CORS_HEADERS,
+      },
+    });
+  }
+
+  if (subPath === "submissions") {
+    if (request.method === "GET") {
+      const projectId = (url.searchParams.get("projectId") || "").trim();
+      if (!projectId) return jsonRes({ error: "Missing projectId." }, 400);
+      const limit = Number(url.searchParams.get("limit") || 50);
+      const submissions = await listForgeSubmissions(projectId, limit);
+      return jsonRes({ ok: true, projectId, submissions });
+    }
+    if (request.method === "POST") {
+      const projectId = String(body.projectId || "").trim();
+      if (!projectId) return jsonRes({ error: "Missing projectId." }, 400);
+      const submissionType = String(body.submissionType || "INQUIRY").trim().slice(0, 32);
+      const customerName = typeof body.customerName === "string" ? body.customerName.trim().slice(0, 120) : "Guest";
+      const customerEmail = typeof body.customerEmail === "string" ? body.customerEmail.trim().slice(0, 160) : "";
+      const amountCents = Math.max(0, Math.round(Number(body.amountCents || 0)));
+      const paymentStatus = String(body.paymentStatus || "RECORDED").trim().slice(0, 32);
+      const payload = (body.payload && typeof body.payload === "object" ? body.payload : body) as Record<string, unknown>;
+      const saved = await saveForgeSubmission({
+        projectId,
+        submissionType,
+        customerName,
+        customerEmail,
+        payload,
+        amountCents,
+        paymentStatus,
+      });
+      return jsonRes(
+        {
+          ok: true,
+          submission: {
+            id: saved.id,
+            project_id: projectId,
+            submission_type: saved.submissionType,
+            customer_name: customerName,
+            customer_email: customerEmail,
+            amount_cents: amountCents,
+            payment_status: saved.paymentStatus,
+            payload_json: payload,
+            created_at: new Date().toISOString(),
+          },
+        },
+        201,
+      );
+    }
+    return jsonRes({ error: "Method not allowed." }, 405);
+  }
+
+  if (subPath === "checkout") {
+    if (request.method !== "POST") return jsonRes({ error: "Use POST." }, 405);
+    const projectId = String(body.projectId || "").trim();
+    if (!projectId) return jsonRes({ error: "Missing projectId." }, 400);
+    const itemTitle = String(body.itemTitle || body.service || "Custom Booking & Deposit").trim().slice(0, 160);
+    const amountCents = Math.max(100, Math.round(Number(body.amountCents || 4900)));
+    const currency = (typeof body.currency === "string" ? body.currency : "usd").toLowerCase().replace(/[^a-z]/g, "").slice(0, 3) || "usd";
+    const customerName = typeof body.customerName === "string" ? body.customerName.trim().slice(0, 120) : "Guest";
+    const customerEmail = typeof body.customerEmail === "string" ? body.customerEmail.trim().slice(0, 160) : "";
+    const payload = (body.payload && typeof body.payload === "object" ? body.payload : { itemTitle, currency }) as Record<string, unknown>;
+
+    const stripeKey = process.env.STRIPE_SECRET_KEY || "";
+    if (stripeKey) {
+      try {
+        const origin = url.origin || "https://www.dstrike.app";
+        const form = new URLSearchParams();
+        form.set("mode", "payment");
+        form.set("success_url", `${origin}/api/v2/forge/live?id=${encodeURIComponent(projectId)}&checkout=success`);
+        form.set("cancel_url", `${origin}/api/v2/forge/live?id=${encodeURIComponent(projectId)}&checkout=cancelled`);
+        form.set("line_items[0][price_data][currency]", currency);
+        form.set("line_items[0][price_data][unit_amount]", String(amountCents));
+        form.set("line_items[0][price_data][product_data][name]", itemTitle);
+        form.set("line_items[0][quantity]", "1");
+        if (customerEmail && customerEmail.includes("@")) {
+          form.set("customer_email", customerEmail);
+        }
+        const stripeRes = await fetch("https://api.stripe.com/v1/checkout/sessions", {
+          method: "POST",
+          headers: {
+            authorization: `Bearer ${stripeKey}`,
+            "content-type": "application/x-www-form-urlencoded",
+          },
+          body: form.toString(),
+        });
+        const stripeData = (await stripeRes.json().catch(() => ({}))) as { id?: string; url?: string; error?: { message?: string } };
+        if (stripeRes.ok && stripeData.url) {
+          const saved = await saveForgeSubmission({
+            projectId,
+            submissionType: "CHECKOUT",
+            customerName,
+            customerEmail,
+            payload: { ...payload, itemTitle, stripeSessionId: stripeData.id },
+            amountCents,
+            paymentStatus: "STRIPE_SESSION_CREATED",
+          });
+          return jsonRes({
+            ok: true,
+            mode: "STRIPE_LIVE",
+            checkoutUrl: stripeData.url,
+            sessionId: stripeData.id,
+            paymentStatus: "STRIPE_SESSION_CREATED",
+            amountCents,
+            currency,
+            submission: {
+              id: saved.id,
+              project_id: projectId,
+              submission_type: "CHECKOUT",
+              customer_name: customerName,
+              customer_email: customerEmail,
+              amount_cents: amountCents,
+              payment_status: "STRIPE_SESSION_CREATED",
+              created_at: new Date().toISOString(),
+            },
+          });
+        }
+      } catch {
+        // Fall back cleanly to sandbox booking receipt below
+      }
+    }
+
+    const saved = await saveForgeSubmission({
+      projectId,
+      submissionType: "CHECKOUT",
+      customerName,
+      customerEmail,
+      payload: { ...payload, itemTitle, currency },
+      amountCents,
+      paymentStatus: "TEST_SANDBOX_PAID",
+    });
+    return jsonRes({
+      ok: true,
+      mode: "SANDBOX_MODE",
+      receiptId: saved.id,
+      paymentStatus: "TEST_SANDBOX_PAID",
+      amountCents,
+      currency,
+      submission: {
+        id: saved.id,
+        project_id: projectId,
+        submission_type: "CHECKOUT",
+        customer_name: customerName,
+        customer_email: customerEmail,
+        amount_cents: amountCents,
+        payment_status: "TEST_SANDBOX_PAID",
+        payload_json: { ...payload, itemTitle, currency },
+        created_at: new Date().toISOString(),
+      },
+    });
   }
 
   if (subPath === "convert-design") {

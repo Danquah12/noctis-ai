@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { Activity, AlertCircle, AlertTriangle, Info, ArrowUp, Bot, Boxes, Brain, Calendar, Cpu, Crosshair, EyeOff, Fingerprint, FileLock, Globe, Key, Layers, Lock, LogOut, Network, Sparkles, Stethoscope, Swords, Target, ShieldAlert, Terminal, WifiOff, Zap, ChevronDown, ChevronLeft, Code2, Copy, CornerDownLeft, FileText, GraduationCap, Image, Library, Mail, Menu, Mic, MoreHorizontal, PanelLeftClose, PanelLeftOpen, PanelRight, PanelRightOpen, Pencil, Phone, PhoneOff, Plus, Printer, RotateCcw, Search, Square, SquarePen, Trash2, Users2, Video, Volume2, VolumeX, Wrench, X, TrendingUp, Scale, Atom, Landmark, Building2, Server, Microscope, FileCheck, Shield, CheckCircle2 } from "lucide-react";
 import { SOVEREIGN_SYSTEMS_PORTFOLIO } from "@/lib/noctis-sovereign-factory";
 import { askNoctis, drawVibe, hearVibe, sayVibe, trainVibe } from "@/lib/noctis-api";
-import { bringImagineFile, bringPortrait } from "@/lib/imagine-api";
+import { bringImagineFile, bringPortrait, readImagine, startImagine } from "@/lib/imagine-api";
 import { playHarmonicTone, playSovereignChime, stopAudioSynth } from "@/lib/noctis-audio-synth";
 import { KnowledgeMap } from "@/components/learn/KnowledgeMap";
 import { VIBE_SKILLS, skillFromWords, noctisSkill, type NoctisSkillId } from "@/lib/noctis-skills";
@@ -671,6 +671,14 @@ function paintShareLines(
       row += 1;
       if (row >= rows) return;
     }
+  }
+}
+
+async function loadImg(src: string): Promise<HTMLImageElement | null> {
+  try {
+    return await loadPortrait(src);
+  } catch {
+    return null;
   }
 }
 
@@ -2325,17 +2333,26 @@ function CodeBlock({ body, lang = "" }: { body: string; lang?: string }) {
             <button
               type="button"
               onClick={() => {
+                const decodeHtml = (raw: string) =>
+                  raw
+                    .replace(/&amp;/g, "&")
+                    .replace(/&quot;/g, '"')
+                    .replace(/&#39;/g, "'")
+                    .replace(/&lt;/g, "<")
+                    .replace(/&gt;/g, ">");
                 const rawTitle = body.match(/<title>([^<]+)<\/title>/i)?.[1]?.trim() || "Custom Web Platform";
-                const decodedTitle = rawTitle
-                  .replace(/&amp;/g, "&")
-                  .replace(/&quot;/g, '"')
-                  .replace(/&#39;/g, "'")
-                  .replace(/&lt;/g, "<")
-                  .replace(/&gt;/g, ">");
+                const decodedTitle = decodeHtml(rawTitle);
                 const cleanTitle = decodedTitle.replace(/\s+—\s+Noctis.*$/i, "").trim();
+                const rawSpecialty =
+                  body.match(/<meta\s+name=["']noctis-specialty["']\s+content=["']([^"']+)["']/i)?.[1]?.trim() ||
+                  body.match(/<meta\s+content=["']([^"']+)["']\s+name=["']noctis-specialty["']/i)?.[1]?.trim() ||
+                  "";
+                const decodedSpecialty = decodeHtml(rawSpecialty);
+                const brandOnly = cleanTitle.replace(/\s+[—–-]\s+[^—–-]+$/, "").trim() || cleanTitle;
+                const specSuffix = decodedSpecialty ? ` — ${decodedSpecialty}` : "";
                 window.dispatchEvent(
                   new CustomEvent("noctis:open-forge-builder", {
-                    detail: { prompt: `Build a complete interactive website and full-stack app for ${cleanTitle}` },
+                    detail: { prompt: `Build a complete interactive website and full-stack app for ${brandOnly}${specSuffix}` },
                   }),
                 );
               }}
@@ -3658,7 +3675,7 @@ export function NoctisDesk() {
           skill: "write",
           think: true,
           engine: activeEngineId,
-          speaks: "English",
+          language: "English",
         },
       });
       const picked = pickAnswer(res);
@@ -4951,6 +4968,7 @@ export function NoctisDesk() {
     | "investment"
     | "cyber_sast"
     | "clinical"
+    | "report_validator"
   >("");
   const [libraryPickerOpen, setLibraryPickerOpen] = useState(false);
   const [libraryFilter, setLibraryFilter] = useState("");
@@ -5346,7 +5364,7 @@ export function NoctisDesk() {
     }
     if (plugin.id === "sovereign_voice") {
       setDesk("chat");
-      void startVoice();
+      void toggleVoice();
       return;
     }
     setExecutorPlugin(plugin);
@@ -5481,7 +5499,7 @@ export function NoctisDesk() {
       ),
       action: () => {
         setAddOpen(false);
-        setSkill("news");
+        setSkill("search");
         setActivePlugin("web_search");
         box.current?.focus();
       },
@@ -5788,6 +5806,7 @@ export function NoctisDesk() {
     investment: "Investment & Finance",
     cyber_sast: "XTRIKE SAST & Cyber",
     clinical: "Clinical Intelligence",
+    report_validator: "Report Validator",
   };
 
   const composer = (
@@ -7441,7 +7460,7 @@ export function NoctisDesk() {
             </div>
 
             <div className="flex items-center justify-between px-3 pb-1 border-t border-white/5 pt-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">{shelf === "pictures" ? "Pictures" : "Recent conversations"}</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Recent conversations</p>
               {shelf === "chats" && listed.length ? (
                 <button type="button" onClick={clearHistory} className="text-xs text-zinc-500 hover:text-zinc-100">
                   Clear
@@ -7507,7 +7526,7 @@ export function NoctisDesk() {
               })
             ) : (
               <p className="px-3 py-2 text-sm text-zinc-500">
-                {shelf === "pictures" ? "No picture chats yet." : query.trim() ? "No matches." : "No chats yet."}
+                {query.trim() ? "No matches." : "No chats yet."}
               </p>
             )}
             </div>
@@ -7675,7 +7694,7 @@ export function NoctisDesk() {
             </div>
             <div className="flex flex-1 flex-col items-center justify-center px-4 py-6 overflow-y-auto">
               <NoctisVoiceVisualizer
-                phase={voicePhase}
+                phase={voicePhase === "think" ? "transcribe" : voicePhase}
                 spokenText={voiceSaid}
                 responseText={voiceReply}
                 audioLevel={voiceAudioLevel}
@@ -8408,9 +8427,6 @@ export function NoctisDesk() {
                     />
                   </Suspense>
                 ) : null}
-                {shelf === "pictures" ? <p className="text-center text-xs text-zinc-500">Describe the next picture below.</p> : null}
-                {shelf === "library" ? <p className="text-center text-xs text-zinc-500">Answers come from the library notes, with the source named.</p> : null}
-                {shelf === "tools" && skill ? <p className="text-center text-xs text-zinc-500">{noctisSkill(skill).line}</p> : null}
                 {thread?.turns.map((turn, index) => {
                   if (!turn || typeof turn.content !== "string") return null;
                   const last = index === (thread?.turns.length || 0) - 1;

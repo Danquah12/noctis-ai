@@ -2,15 +2,18 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { FORGE_40_CATEGORIES } from "./forge-catalog.ts";
 import {
+  applyBlueprintVisualPatch,
   buildDeterministicWebsiteBlueprint,
   classifyWebsiteCategory,
   mergeAiJsonIntoBlueprint,
+  renderWebsiteBlueprintHtml,
 } from "./website-blueprint-engine.ts";
 import {
   editForgeProjectConversationally,
   generateForgeProject,
   restoreForgeProjectRevision,
 } from "./forge-engine.server.ts";
+import { handleForgeV2Request } from "./api-handler.server.ts";
 import { webPageBuilderGadget } from "../noctis-gadgets.server.ts";
 
 test("classifyWebsiteCategory routes representative prompts accurately across all 40 Forge categories", () => {
@@ -399,4 +402,152 @@ test("webPageBuilderGadget generates tailored websites universally and ignores n
     const res = await webPageBuilderGadget(q);
     assert.equal(res, null, `Expected webPageBuilderGadget to return null for "${q}"`);
   }
+});
+
+test("exact specialty <meta> handoff, visual patch, multi-page views, and XSS escaping", () => {
+  const bp = buildDeterministicWebsiteBlueprint({
+    prompt: "Design a veterinary clinic and animal hospital website with urgent pet triage and wellness plans",
+  });
+  const html = renderWebsiteBlueprintHtml(bp, { projectId: "FORGE-TEST-1" });
+  assert.ok(html.includes('<meta name="noctis-specialty" content="Veterinary &amp; Animal Hospital" />'));
+  assert.ok(html.includes('data-page="home"'));
+  assert.ok(html.includes('data-page="catalog"'));
+  assert.ok(html.includes('data-page="booking"'));
+  assert.ok(html.includes('data-page="admin"'));
+  assert.ok(html.includes("NOCTIS_VISUAL_EDIT_MODE"));
+  assert.ok(html.includes("NOCTIS_SET_API_BASE"));
+  assert.ok(html.includes("function escHtml("));
+  assert.ok(html.includes('class="hero-photo"'));
+
+  const handoffBp = buildDeterministicWebsiteBlueprint({
+    prompt: "Build a complete interactive website and full-stack app for Paws & Claws — Veterinary & Animal Hospital",
+  });
+  assert.equal(handoffBp.brandName, "Paws & Claws");
+  assert.equal(handoffBp.industrySpecialty, "Veterinary & Animal Hospital");
+
+  const patched = applyBlueprintVisualPatch(bp, {
+    fieldEdits: { "hero.headline": "Compassionate Pet Care 24/7" },
+    visualStyle: "vector",
+    hiddenSections: ["faq"],
+    sectionOrder: ["hero", "estimator", "showcase", "capabilities", "testimonials", "faq", "contact"],
+  });
+  assert.equal(patched.hero.headline, "Compassionate Pet Care 24/7");
+  assert.equal(patched.visualStyle, "vector");
+  const patchedHtml = renderWebsiteBlueprintHtml(patched, { projectId: "FORGE-TEST-1" });
+  assert.ok(patchedHtml.includes("Compassionate Pet Care 24/7"));
+  assert.ok(!patchedHtml.includes('<img class="hero-photo"'));
+  assert.ok(patchedHtml.includes('data-section-id="faq" class="block page-sec is-hidden-sec"'));
+  assert.ok(patchedHtml.indexOf('data-section-id="estimator"') < patchedHtml.indexOf('data-section-id="showcase"'));
+});
+
+test("REST /api/v2/forge/live, /submissions, /checkout, visualPatch edit & deploy liveUrl", async () => {
+  const genReq = new Request("http://localhost/api/v2/forge/projects/generate", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      prompt: "Build a luxury safari tourism website with tour checkout",
+      useAi: false,
+    }),
+  });
+  const genRes = await handleForgeV2Request(genReq);
+  assert.equal(genRes.status, 200);
+  const genJson = (await genRes.json()) as { projectId: string };
+  const projectId = genJson.projectId;
+  assert.ok(projectId);
+
+  const liveRes = await handleForgeV2Request(
+    new Request(`http://localhost/api/v2/forge/live?id=${encodeURIComponent(projectId)}`, { method: "GET" }),
+  );
+  assert.equal(liveRes.status, 200);
+  assert.ok((liveRes.headers.get("content-type") || "").includes("text/html"));
+  assert.equal(liveRes.headers.get("x-content-type-options"), "nosniff");
+  const liveBody = await liveRes.text();
+  assert.ok(liveBody.includes("<!DOCTYPE html>"));
+
+  const postSub = await handleForgeV2Request(
+    new Request("http://localhost/api/v2/forge/submissions", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        projectId,
+        submissionType: "BOOKING",
+        customerName: "Ada Lovelace",
+        customerEmail: "ada@example.com",
+        amountCents: 15000,
+        paymentStatus: "BOOKED",
+        payload: { notes: "Sunrise safari slot" },
+      }),
+    }),
+  );
+  assert.equal(postSub.status, 201);
+
+  const listSubRes = await handleForgeV2Request(
+    new Request(`http://localhost/api/v2/forge/submissions?projectId=${encodeURIComponent(projectId)}`, {
+      method: "GET",
+    }),
+  );
+  assert.equal(listSubRes.status, 200);
+  const listSubJson = (await listSubRes.json()) as { submissions: Array<{ customer_name: string }> };
+  assert.ok(listSubJson.submissions.some((s) => s.customer_name === "Ada Lovelace"));
+
+  const checkoutRes = await handleForgeV2Request(
+    new Request("http://localhost/api/v2/forge/checkout", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        projectId,
+        itemTitle: "Safari Deposit",
+        amountCents: 25000,
+        customerName: "Kwame Mensah",
+        customerEmail: "kwame@example.com",
+      }),
+    }),
+  );
+  assert.equal(checkoutRes.status, 200);
+  const checkoutJson = (await checkoutRes.json()) as { ok: boolean; paymentStatus: string };
+  assert.equal(checkoutJson.ok, true);
+  assert.ok(
+    checkoutJson.paymentStatus === "TEST_SANDBOX_PAID" || checkoutJson.paymentStatus === "STRIPE_SESSION_CREATED",
+  );
+
+  const visualEditRes = await handleForgeV2Request(
+    new Request("http://localhost/api/v2/forge/projects/edit", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        projectId,
+        instruction: "",
+        visualPatch: {
+          fieldEdits: { "hero.headline": "Custom Edited Headline" },
+          visualStyle: "vector",
+        },
+        useAi: false,
+      }),
+    }),
+  );
+  assert.equal(visualEditRes.status, 200);
+  const visualEditJson = (await visualEditRes.json()) as {
+    ok: boolean;
+    revisionNumber: number;
+    files: Record<string, string>;
+  };
+  assert.equal(visualEditJson.ok, true);
+  assert.equal(visualEditJson.revisionNumber, 2);
+  assert.ok((visualEditJson.files["index.html"] || "").includes("Custom Edited Headline"));
+
+  const deployRes = await handleForgeV2Request(
+    new Request("http://localhost/api/v2/forge/projects/deploy", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        projectId,
+        target: "STAGING",
+        approver: "release-engineer",
+      }),
+    }),
+  );
+  assert.equal(deployRes.status, 200);
+  const deployJson = (await deployRes.json()) as { approved: boolean; liveUrl: string };
+  assert.equal(deployJson.approved, true);
+  assert.equal(deployJson.liveUrl, `/api/v2/forge/live?id=${encodeURIComponent(projectId)}`);
 });
