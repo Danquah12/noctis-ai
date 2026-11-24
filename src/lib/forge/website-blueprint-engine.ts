@@ -1412,24 +1412,21 @@ export function buildDeterministicWebsiteBlueprint(input: {
   const multilingual = /\b(multilingual|multi-language|spanish|french|translations?|localized)\b/i.test(prompt);
   const includeMobileWrapper = Boolean(input.includeMobileWrapper || /\b(mobile\s*app|ios|android|capacitor|pwa)\b/i.test(prompt));
 
-  const entities = [...preset.entities];
-  const existingNames = new Set(entities.map((e) => e.name));
-  for (const extra of input.addEntities || []) {
-    const norm = normalizeEntityName(extra);
+  const entities: WebsiteEntitySpec[] = [];
+  const existingNames = new Set<string>();
+  const pushEntity = (rawName: string) => {
+    const norm = normalizeEntityName(rawName);
     if (!existingNames.has(norm)) {
       entities.push(buildEntitySpec(norm));
       existingNames.add(norm);
     }
+  };
+  for (const extra of input.addEntities || []) {
+    pushEntity(extra);
   }
   const extraMatches = prompt.matchAll(/\b(?:add\s+)?(?:table|entity)\s+([a-z0-9_]+)\b/gi);
   for (const m of extraMatches) {
-    if (m[1]) {
-      const norm = normalizeEntityName(m[1]);
-      if (!existingNames.has(norm)) {
-        entities.push(buildEntitySpec(norm));
-        existingNames.add(norm);
-      }
-    }
+    if (m[1]) pushEntity(m[1]);
   }
   const tableListMatches = prompt.matchAll(
     /\b(?:tables?|entities)\s+(?:for|like|including|covering|:)\s+([a-z0-9_,\s-]+?)(?=[.;!?]|$|\b(?:with|using|supporting|featuring)\b)/gi,
@@ -1442,11 +1439,13 @@ export function buildDeterministicWebsiteBlueprint(input: {
       const cleaned = part.trim().toLowerCase().replace(/[^a-z0-9_ ]+/g, "").replace(/\s+/g, "_");
       if (!cleaned || cleaned.length < 3 || stopEntityWords.has(cleaned)) continue;
       if (cleaned.split("_").length > 3) continue;
-      const norm = normalizeEntityName(cleaned);
-      if (!existingNames.has(norm)) {
-        entities.push(buildEntitySpec(norm));
-        existingNames.add(norm);
-      }
+      pushEntity(cleaned);
+    }
+  }
+  for (const baseEnt of preset.entities) {
+    if (!existingNames.has(baseEnt.name)) {
+      entities.push(baseEnt);
+      existingNames.add(baseEnt.name);
     }
   }
 
@@ -1674,11 +1673,11 @@ export function mergeAiJsonIntoBlueprint(
         aiEntitySpecs.push(buildEntitySpec(norm));
         seen.add(norm);
       }
-      if (aiEntitySpecs.length >= 6) break;
+      if (aiEntitySpecs.length >= 4) break;
     }
     if (aiEntitySpecs.length >= 2) {
       for (const existing of base.entities) {
-        if (!seen.has(existing.name) && aiEntitySpecs.length < 6) {
+        if (!seen.has(existing.name) && aiEntitySpecs.length < 8) {
           aiEntitySpecs.push(existing);
           seen.add(existing.name);
         }
@@ -2456,6 +2455,7 @@ export function renderWebsiteBlueprintHtml(
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="noctis-specialty" content="${escHtml(blueprint.industrySpecialty)}" />
   <meta name="noctis-category" content="${escHtml(blueprint.categoryName)}" />
+  <meta name="noctis-entities" content="${escHtml(blueprint.entities.map((e) => e.name).join(", "))}" />
   <title>${escHtml(blueprint.brandName)} — ${escHtml(blueprint.categoryName)}</title>
   <style>
     :root {
@@ -2986,6 +2986,70 @@ ${adminSection}
         setTimeout(() => URL.revokeObjectURL(url), 1000);
       });
 
+      let currentLocale = "en";
+      const LOCALE_UI = {
+        en: {
+          home: "Home",
+          catalog: "Catalog",
+          booking: "Book / Pay",
+          admin: "Admin",
+          lightTheme: "Light Theme",
+          darkTheme: "Dark Theme",
+          payBtn: "Pay & Complete Booking",
+          refreshBtn: "Refresh Inbox",
+          exportBtn: "Export CSV",
+          searchSubmit: null,
+          toast: "Locale set to EN",
+        },
+        es: {
+          home: "Inicio",
+          catalog: "Catálogo",
+          booking: "Reservar",
+          admin: "Admin",
+          lightTheme: "Tema Claro",
+          darkTheme: "Tema Oscuro",
+          payBtn: "Pagar y Confirmar",
+          refreshBtn: "Actualizar",
+          exportBtn: "Exportar CSV",
+          searchSubmit: "Buscar",
+          toast: "Idioma cambiado a Español (ES)",
+        },
+        fr: {
+          home: "Accueil",
+          catalog: "Catalogue",
+          booking: "Réserver",
+          admin: "Admin",
+          lightTheme: "Thème Clair",
+          darkTheme: "Thème Sombre",
+          payBtn: "Payer et Réserver",
+          refreshBtn: "Actualiser",
+          exportBtn: "Exporter CSV",
+          searchSubmit: "Rechercher",
+          toast: "Langue changée en Français (FR)",
+        },
+      };
+
+      const searchSubmitEl = document.querySelector('#heroSearchForm button[type="submit"]');
+      const initialSearchSubmit = searchSubmitEl ? searchSubmitEl.textContent : "";
+
+      function applyLocaleUi(lang) {
+        currentLocale = LOCALE_UI[lang] ? lang : "en";
+        const dict = LOCALE_UI[currentLocale];
+        document.documentElement.setAttribute("lang", currentLocale);
+        document.querySelectorAll('[data-page="home"]').forEach((el) => { el.textContent = dict.home; });
+        document.querySelectorAll('[data-page="catalog"]').forEach((el) => { el.textContent = dict.catalog; });
+        document.querySelectorAll('[data-page="booking"]').forEach((el) => { el.textContent = dict.booking; });
+        document.querySelectorAll('[data-page="admin"]').forEach((el) => { el.textContent = dict.admin; });
+        document.getElementById("themeToggleBtn").textContent = currentThemeMode === "dark" ? dict.lightTheme : dict.darkTheme;
+        if (searchSubmitEl) searchSubmitEl.textContent = dict.searchSubmit || initialSearchSubmit;
+        const payEl = document.getElementById("checkoutPayBtn");
+        if (payEl) payEl.textContent = dict.payBtn;
+        const refEl = document.getElementById("refreshAdminBtn");
+        if (refEl) refEl.textContent = dict.refreshBtn;
+        const expEl = document.getElementById("exportAdminCsvBtn");
+        if (expEl) expEl.textContent = dict.exportBtn;
+      }
+
       document.getElementById("themeToggleBtn").addEventListener("click", () => {
         currentThemeMode = currentThemeMode === "dark" ? "light" : "dark";
         const pal = currentThemeMode === "light" ? APP_DATA.lightTheme : APP_DATA.darkTheme;
@@ -2997,13 +3061,15 @@ ${adminSection}
         root.setProperty("--text", pal.text);
         root.setProperty("--muted", pal.muted);
         root.setProperty("--hero-bg", pal.heroBg);
-        document.getElementById("themeToggleBtn").textContent = currentThemeMode === "dark" ? "Light Theme" : "Dark Theme";
+        const dict = LOCALE_UI[currentLocale] || LOCALE_UI.en;
+        document.getElementById("themeToggleBtn").textContent = currentThemeMode === "dark" ? dict.lightTheme : dict.darkTheme;
       });
 
       const langEl = document.getElementById("langSelect");
       if (langEl) {
         langEl.addEventListener("change", (e) => {
-          showToast("Switched locale to " + e.target.value.toUpperCase());
+          applyLocaleUi(e.target.value);
+          showToast((LOCALE_UI[currentLocale] || LOCALE_UI.en).toast);
         });
       }
 

@@ -578,6 +578,22 @@ test("complex dynamic platform prompts route to website builder instead of weath
   assert.ok(chatOut!.includes("port_berths"));
   assert.ok(chatOut!.includes("charter_bookings"));
   assert.ok(chatOut!.includes('id="langSelect"'));
+  assert.ok(chatOut!.includes('<meta name="noctis-entities"'));
+  assert.ok(chatOut!.includes("LOCALE_UI"));
+  const chatScriptMatch = chatOut!.match(/<script>([\s\S]*?)<\/script>/);
+  assert.ok(chatScriptMatch && chatScriptMatch[1]);
+  assert.doesNotThrow(() => new vm.Script(chatScriptMatch[1], { filename: "chat-preview.js" }));
+
+  const meridianBase = buildDeterministicWebsiteBlueprint({ prompt: maritimePrompt });
+  const meridianMerged = mergeAiJsonIntoBlueprint(meridianBase, {
+    brandName: "Meridian Reefers",
+    industrySpecialty: "Maritime Cold-Chain Logistics",
+    entities: ["vessels", "cold_containers", "customs_manifests", "charter_bookings", "routes", "clients"],
+  });
+  const mergedNames = meridianMerged.entities.map((e) => e.name);
+  for (const reqTbl of ["vessels", "cold_containers", "customs_manifests", "port_berths", "charter_bookings"]) {
+    assert.ok(mergedNames.includes(reqTbl), `Expected merged blueprint to retain ${reqTbl}`);
+  }
 
   const healthPrompt =
     "Build a complex dynamic healthcare, clinical trial matching, and precision diagnostics platform called HelixCare Global with specialty filterable care pathways, interactive treatment & insurance copay estimator, appointment booking and deposit checkout, WCAG AA light editorial theme, and PostgreSQL tables for patients, clinical_trials, diagnostic_panels, referrals, and telehealth_sessions.";

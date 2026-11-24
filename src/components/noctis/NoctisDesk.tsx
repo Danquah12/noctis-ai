@@ -2075,7 +2075,7 @@ function printAnswerReport(question: string, markdown: string) {
 }
 
 
-function CodeBlock({ body, lang = "" }: { body: string; lang?: string }) {
+function CodeBlock({ body, lang = "", sourcePrompt = "" }: { body: string; lang?: string; sourcePrompt?: string }) {
   const [done, setDone] = useState(false);
   const isHtmlPage = /^\s*<!doctype\s+html/i.test(body) || /^\s*<html[\s>]/i.test(body);
   const isMermaid =
@@ -2347,12 +2347,24 @@ function CodeBlock({ body, lang = "" }: { body: string; lang?: string }) {
                   body.match(/<meta\s+name=["']noctis-specialty["']\s+content=["']([^"']+)["']/i)?.[1]?.trim() ||
                   body.match(/<meta\s+content=["']([^"']+)["']\s+name=["']noctis-specialty["']/i)?.[1]?.trim() ||
                   "";
+                const rawEntities =
+                  body.match(/<meta\s+name=["']noctis-entities["']\s+content=["']([^"']+)["']/i)?.[1]?.trim() ||
+                  body.match(/<meta\s+content=["']([^"']+)["']\s+name=["']noctis-entities["']/i)?.[1]?.trim() ||
+                  "";
                 const decodedSpecialty = decodeHtml(rawSpecialty);
+                const decodedEntities = decodeHtml(rawEntities);
                 const brandOnly = cleanTitle.replace(/\s+[—–-]\s+[^—–-]+$/, "").trim() || cleanTitle;
                 const specSuffix = decodedSpecialty ? ` — ${decodedSpecialty}` : "";
+                const trimmedSource = sourcePrompt.trim();
+                const handoffPrompt =
+                  trimmedSource.length >= 30
+                    ? trimmedSource
+                    : `Build a complete interactive website and full-stack app for ${brandOnly}${specSuffix}${
+                        decodedEntities ? `. PostgreSQL tables for ${decodedEntities}` : ""
+                      }`;
                 window.dispatchEvent(
                   new CustomEvent("noctis:open-forge-builder", {
-                    detail: { prompt: `Build a complete interactive website and full-stack app for ${brandOnly}${specSuffix}` },
+                    detail: { prompt: handoffPrompt },
                   }),
                 );
               }}
@@ -2664,13 +2676,13 @@ function isTableRule(line: string) {
   return cells.length > 1 && cells.every((cell) => /^:?-{3,}:?$/.test(cell));
 }
 
-function renderBlocks(source: string) {
+function renderBlocks(source: string, sourcePrompt = "") {
   return source.split("```").map((part, index) => {
     if (index % 2 === 1) {
       const nl = part.indexOf("\n");
       const lang = (nl >= 0 ? part.slice(0, nl) : "").trim().toLowerCase();
       const body = (nl >= 0 ? part.slice(nl + 1) : part).replace(/\n$/, "");
-      return <CodeBlock key={index} body={body} lang={lang} />;
+      return <CodeBlock key={index} body={body} lang={lang} sourcePrompt={sourcePrompt} />;
     }
     const normalized = part
       .replace(/(^|\n)\s*-{3,}\s*(\n|$)/g, "\n\n---\n\n")
@@ -3482,7 +3494,7 @@ function ClinicalHandoffView({ data, rawJson }: { data: Record<string, unknown>;
   );
 }
 
-function AnswerBody({ text, durationSeconds, engineName }: { text: string; durationSeconds?: number; engineName?: string }) {
+function AnswerBody({ text, durationSeconds, engineName, sourcePrompt = "" }: { text: string; durationSeconds?: number; engineName?: string; sourcePrompt?: string }) {
   const cut = text.search(/\n\s*Claim standing:/i);
   let lesson = (cut >= 0 ? text.slice(0, cut) : text).trim();
   const stamp = cut >= 0 ? text.slice(cut).trim() : "";
@@ -3500,7 +3512,7 @@ function AnswerBody({ text, durationSeconds, engineName }: { text: string; durat
       {rawThought ? (
         <NoctisThinkingAccordion rawThought={rawThought} durationSeconds={durationSeconds ?? 3} engineName={engineName} />
       ) : null}
-      {clinicalJson ? <ClinicalHandoffView data={clinicalJson} rawJson={lesson} /> : renderBlocks(lesson)}
+      {clinicalJson ? <ClinicalHandoffView data={clinicalJson} rawJson={lesson} /> : renderBlocks(lesson, sourcePrompt)}
       {stamp ? (
         <details className="rounded-2xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-400">
           <summary className="cursor-pointer text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500">Sources and check</summary>
@@ -8474,7 +8486,7 @@ export function NoctisDesk() {
                                 }}
                               />
                             ) : null}
-                            <AnswerBody text={turn.content} durationSeconds={turn.thoughtSeconds} engineName={turn.engineName} />
+                            <AnswerBody text={turn.content} durationSeconds={turn.thoughtSeconds} engineName={turn.engineName} sourcePrompt={asked} />
                           </div>
                           {turn.video || (turn.images?.length && /Written by Noctis/i.test(turn.content)) ? (
                             <MadeShare words={plainAnswer(stripThinkBlock(turn.content))} picture={turn.images?.[0] || ""} video={turn.video || turn.clips?.[0] || ""} clips={turn.clips} />
