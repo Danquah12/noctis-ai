@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import vm from "node:vm";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { Sandbox } from "@vercel/sandbox";
@@ -31,6 +32,11 @@ export interface SandboxExecutionResult {
   isolationNote: string;
   sastPrecheckPassed: boolean;
   sastFindingsCount: number;
+  compilePassed: boolean;
+  compiledFilesCount: number;
+  compileNote: string;
+  gitCommitSha: string | null;
+  gitStatusNote: string;
   testFilesExecuted: string[];
   passed: boolean;
   testsTotal: number;
@@ -39,11 +45,41 @@ export interface SandboxExecutionResult {
   durationMs: number;
   repairsAttempted: number;
   repairApplied: string | null;
+  initialFailureExcerpt: string | null;
   benchmark: SandboxBenchmarkMetrics | null;
   stdoutExcerpt: string;
   stderrExcerpt: string;
   error?: string;
   ranAt: string;
+}
+
+function validateClientHtmlScript(files: Record<string, string>): { ok: boolean; note: string } {
+  const html = files["index.html"];
+  if (!html) return { ok: true, note: "No index.html present." };
+  const matches = [...html.matchAll(/<script(?:\s+[^>]*)?>([\s\S]*?)<\/script>/gi)];
+  for (const m of matches) {
+    const tag = m[0] || "";
+    if (/type\s*=\s*["']application\/(?:ld\+)?json["']/i.test(tag)) continue;
+    const body = m[1] || "";
+    if (!body.trim()) continue;
+    try {
+      new vm.Script(body);
+    } catch (err) {
+      return {
+        ok: false,
+        note: `index.html inline script syntax error: ${err instanceof Error ? err.message : String(err)}`,
+      };
+    }
+  }
+  return { ok: true, note: "index.html inline <script> parsed via vm.Script." };
+}
+
+function collectSyntaxCheckFiles(files: Record<string, string>): string[] {
+  return Object.keys(files)
+    .map(sanitizeRelativePath)
+    .filter((f): f is string => Boolean(f))
+    .filter((f) => /\.(ts|mts|js|mjs)$/i.test(f) && !/\.tsx$/i.test(f) && !f.startsWith("tests/"))
+    .slice(0, 20);
 }
 
 function sanitizeRelativePath(relPath: string): string | null {
@@ -169,6 +205,11 @@ async function runInVercelMicroVm(
   stdout: string;
   stderr: string;
   benchmark: SandboxBenchmarkMetrics | null;
+  compilePassed: boolean;
+  compiledFilesCount: number;
+  compileNote: string;
+  gitCommitSha: string | null;
+  gitStatusNote: string;
   isolationNote: string;
 }> {
   const explicitCreds =
@@ -224,6 +265,46 @@ async function runInVercelMicroVm(
       await sandbox.writeFiles(writeEntries.slice(i, i + 40));
     }
 
+    const htmlCheck = validateClientHtmlScript(files);
+    const tsTargets = collectSyntaxCheckFiles(files);
+    let compilePassed = htmlCheck.ok;
+    let compiledFilesCount = files["index.html"] ? 1 : 0;
+    const compileNotes: string[] = [htmlCheck.note];
+    for (const tsFile of tsTargets) {
+      const chk = await sandbox.runCommand({
+        cmd: "node",
+        args: ["--experimental-strip-types", "--check", tsFile],
+        cwd: projectRoot,
+      });
+      if (chk.exitCode === 0) {
+        compiledFilesCount += 1;
+      } else {
+        compilePassed = false;
+        const cErr = await chk.stderr();
+        compileNotes.push(`${tsFile}: ${cErr.slice(0, 120)}`);
+      }
+    }
+
+    let gitCommitSha: string | null = null;
+    let gitStatusNote = "git unavailable in Vercel MicroVM image.";
+    try {
+      const gCmd = await sandbox.runCommand({
+        cmd: "sh",
+        args: [
+          "-c",
+          "if command -v git >/dev/null 2>&1; then git init -q && git config user.name 'Noctis NASEE' && git config user.email 'nasee@noctis.local' && git add . && git commit -q -m 'chore: initial autonomous build' && git rev-parse --short HEAD; fi",
+        ],
+        cwd: projectRoot,
+      });
+      const shaOut = (await gCmd.stdout()).trim();
+      if (gCmd.exitCode === 0 && /^[0-9a-f]{6,40}$/i.test(shaOut)) {
+        gitCommitSha = shaOut;
+        gitStatusNote = `Committed isolated workspace snapshot (${shaOut}).`;
+      }
+    } catch {
+      // keep honest fallback note
+    }
+
     const testCmd = await sandbox.runCommand({
       cmd: "node",
       args: ["--experimental-strip-types", "--test-reporter=tap", "--test", ...testFiles],
@@ -254,6 +335,11 @@ async function runInVercelMicroVm(
       stdout: combinedStdout,
       stderr: combinedStderr,
       benchmark,
+      compilePassed,
+      compiledFilesCount,
+      compileNote: compileNotes.join(" "),
+      gitCommitSha,
+      gitStatusNote,
       isolationNote: "Executed inside ephemeral Vercel Firecracker MicroVM (node:24, networkPolicy=deny-all).",
     };
   } finally {
@@ -270,6 +356,11 @@ async function runInLocalTempDir(
   stdout: string;
   stderr: string;
   benchmark: SandboxBenchmarkMetrics | null;
+  compilePassed: boolean;
+  compiledFilesCount: number;
+  compileNote: string;
+  gitCommitSha: string | null;
+  gitStatusNote: string;
   isolationNote: string;
 }> {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "noctis-forge-sandbox-"));
@@ -287,6 +378,44 @@ async function runInLocalTempDir(
       if (!absTarget.startsWith(tempDir + path.sep) && absTarget !== tempDir) continue;
       await fs.mkdir(path.dirname(absTarget), { recursive: true });
       await fs.writeFile(absTarget, content, "utf8");
+    }
+
+    const htmlCheck = validateClientHtmlScript(files);
+    const tsTargets = collectSyntaxCheckFiles(files);
+    let compilePassed = htmlCheck.ok;
+    let compiledFilesCount = files["index.html"] ? 1 : 0;
+    const compileNotes: string[] = [htmlCheck.note];
+    for (const tsFile of tsTargets) {
+      try {
+        await execFileAsync(
+          process.execPath,
+          ["--experimental-strip-types", "--check", tsFile],
+          { cwd: tempDir, env: scrubbedEnv, timeout: 10_000 },
+        );
+        compiledFilesCount += 1;
+      } catch (err) {
+        compilePassed = false;
+        const e = err as { stderr?: string; message?: string };
+        compileNotes.push(`${tsFile}: ${String(e.stderr || e.message || "").slice(0, 120)}`);
+      }
+    }
+
+    let gitCommitSha: string | null = null;
+    let gitStatusNote = "git binary unavailable in runtime container.";
+    try {
+      await execFileAsync("git", ["init", "-q"], { cwd: tempDir, env: scrubbedEnv, timeout: 8_000 });
+      await execFileAsync("git", ["config", "user.name", "Noctis NASEE"], { cwd: tempDir, env: scrubbedEnv, timeout: 5_000 });
+      await execFileAsync("git", ["config", "user.email", "nasee@noctis.local"], { cwd: tempDir, env: scrubbedEnv, timeout: 5_000 });
+      await execFileAsync("git", ["add", "."], { cwd: tempDir, env: scrubbedEnv, timeout: 10_000 });
+      await execFileAsync("git", ["commit", "-q", "-m", "chore: initial autonomous build"], { cwd: tempDir, env: scrubbedEnv, timeout: 10_000 });
+      const rev = await execFileAsync("git", ["rev-parse", "--short", "HEAD"], { cwd: tempDir, env: scrubbedEnv, timeout: 5_000 });
+      const sha = rev.stdout.trim();
+      if (/^[0-9a-f]{6,40}$/i.test(sha)) {
+        gitCommitSha = sha;
+        gitStatusNote = `Committed isolated git repo (${sha}).`;
+      }
+    } catch {
+      // serverless container without git binary falls back cleanly
     }
 
     let exitCode = 0;
@@ -340,6 +469,11 @@ async function runInLocalTempDir(
       stdout,
       stderr,
       benchmark,
+      compilePassed,
+      compiledFilesCount,
+      compileNote: compileNotes.join(" "),
+      gitCommitSha,
+      gitStatusNote,
       isolationNote:
         "Executed in isolated OS temporary workspace with scrubbed environment variables (no Vercel Sandbox MicroVM OIDC/token configured in runtime).",
     };
@@ -369,6 +503,11 @@ export async function runForgeFilesInSandbox(input: {
       isolationNote: "Blocked execution before sandbox launch due to static security findings.",
       sastPrecheckPassed: false,
       sastFindingsCount,
+      compilePassed: false,
+      compiledFilesCount: 0,
+      compileNote: "Skipped due to SAST precheck block.",
+      gitCommitSha: null,
+      gitStatusNote: "Not initialized.",
       testFilesExecuted: [],
       passed: false,
       testsTotal: 0,
@@ -377,6 +516,7 @@ export async function runForgeFilesInSandbox(input: {
       durationMs: Date.now() - startedAt,
       repairsAttempted: 0,
       repairApplied: null,
+      initialFailureExcerpt: null,
       benchmark: null,
       stdoutExcerpt: "",
       stderrExcerpt: "",
@@ -394,6 +534,11 @@ export async function runForgeFilesInSandbox(input: {
       isolationNote: "No executable tests/*.test.* files found in project artifacts.",
       sastPrecheckPassed: true,
       sastFindingsCount: 0,
+      compilePassed: false,
+      compiledFilesCount: 0,
+      compileNote: "No test files found.",
+      gitCommitSha: null,
+      gitStatusNote: "Not initialized.",
       testFilesExecuted: [],
       passed: false,
       testsTotal: 0,
@@ -402,6 +547,7 @@ export async function runForgeFilesInSandbox(input: {
       durationMs: Date.now() - startedAt,
       repairsAttempted: 0,
       repairApplied: null,
+      initialFailureExcerpt: null,
       benchmark: null,
       stdoutExcerpt: "",
       stderrExcerpt: "",
@@ -442,8 +588,10 @@ export async function runForgeFilesInSandbox(input: {
     let passed = run.exitCode === 0 && counts.failed === 0 && counts.passed > 0;
     let repairsAttempted = 0;
     let repairApplied: string | null = null;
+    let initialFailureExcerpt: string | null = null;
 
     if (!passed && input.autoRepair !== false) {
+      initialFailureExcerpt = (run.stderr || run.stdout || "").slice(0, 500) || null;
       const repair = attemptSingleAutoRepair(workingFiles, `${run.stdout}\n${run.stderr}`);
       if (repair) {
         repairsAttempted = 1;
@@ -463,6 +611,11 @@ export async function runForgeFilesInSandbox(input: {
       isolationNote: run.isolationNote,
       sastPrecheckPassed: true,
       sastFindingsCount: 0,
+      compilePassed: run.compilePassed,
+      compiledFilesCount: run.compiledFilesCount,
+      compileNote: run.compileNote,
+      gitCommitSha: run.gitCommitSha,
+      gitStatusNote: run.gitStatusNote,
       testFilesExecuted: testFiles,
       passed,
       testsTotal: counts.total,
@@ -471,6 +624,7 @@ export async function runForgeFilesInSandbox(input: {
       durationMs: Date.now() - startedAt,
       repairsAttempted,
       repairApplied,
+      initialFailureExcerpt,
       benchmark: run.benchmark,
       stdoutExcerpt: run.stdout.slice(-3000),
       stderrExcerpt: run.stderr.slice(-1500),
@@ -485,6 +639,11 @@ export async function runForgeFilesInSandbox(input: {
       isolationNote: "Sandbox runner aborted with runtime exception.",
       sastPrecheckPassed: true,
       sastFindingsCount: 0,
+      compilePassed: false,
+      compiledFilesCount: 0,
+      compileNote: "Aborted before compilation.",
+      gitCommitSha: null,
+      gitStatusNote: "Not initialized.",
       testFilesExecuted: testFiles,
       passed: false,
       testsTotal: 0,
@@ -493,6 +652,7 @@ export async function runForgeFilesInSandbox(input: {
       durationMs: Date.now() - startedAt,
       repairsAttempted: 0,
       repairApplied: null,
+      initialFailureExcerpt: null,
       benchmark: null,
       stdoutExcerpt: "",
       stderrExcerpt: "",
@@ -519,6 +679,11 @@ export async function runForgeProjectInSandbox(
       isolationNote: "Forge project record not found.",
       sastPrecheckPassed: false,
       sastFindingsCount: 0,
+      compilePassed: false,
+      compiledFilesCount: 0,
+      compileNote: "Project not found.",
+      gitCommitSha: null,
+      gitStatusNote: "Not initialized.",
       testFilesExecuted: [],
       passed: false,
       testsTotal: 0,
@@ -527,6 +692,7 @@ export async function runForgeProjectInSandbox(
       durationMs: 0,
       repairsAttempted: 0,
       repairApplied: null,
+      initialFailureExcerpt: null,
       benchmark: null,
       stdoutExcerpt: "",
       stderrExcerpt: "",

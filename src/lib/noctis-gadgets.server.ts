@@ -18,6 +18,7 @@ import {
   synthesizeWebsiteBlueprintWithAi,
 } from "./forge/website-blueprint-engine.ts";
 import { buildEnterpriseMonorepoFiles } from "./forge/enterprise-monorepo-engine.ts";
+import { executeNaseeAutonomousPipeline } from "./forge/nasee-engine.server.ts";
 
 function decodeBase64Url(segment: string): string {
   const normalized = segment.replace(/-/g, "+").replace(/_/g, "/");
@@ -410,18 +411,35 @@ export async function headerAuditGadget(question: string): Promise<string | null
   }
 }
 
+export function isAutonomousSoftwareEngineeringDirective(question: string): boolean {
+  const q = String(question || "");
+  if (!q.trim()) return false;
+  return (
+    /EXECUTION DIRECTIVE 002|NOCTIS AUTONOMOUS SOFTWARE DEVELOPMENT|DEVELOPMENT CAPABILITY DISCOVERY|Noctis Autonomous Software Engineering (?:Agent|Engine)|NASEE/i.test(
+      q,
+    ) ||
+    (/\b(?:complete enterprise-grade web application|autonomous software engineering)\b/i.test(q) &&
+      /\b(?:omni ?sphere|30\s+(?:functional\s+)?modules|20\s+(?:initial\s+)?screens|isolated\s+(?:development\s+)?workspace|acceptance\s+gates)\b/i.test(
+        q,
+      ))
+  );
+}
+
 export function isExplicitWebsiteBuildIntent(question: string): boolean {
+  const isDirective = isAutonomousSoftwareEngineeringDirective(question);
   if (
-    /\b(python|rust|golang|c\+\+|unit\s+test|test\s+suite|cve-\d|cvss|outline\s+the\s+postgresql|algorithm|assert|what\s+is|explain\s+how)\b/i.test(
+    !isDirective &&
+    (/\b(python|rust|golang|c\+\+|unit\s+test|test\s+suite|cve-\d|cvss|outline\s+the\s+postgresql|algorithm|assert|what\s+is|explain\s+how)\b/i.test(
       question,
     ) ||
-    /^\s*(?:write|create)\s+(?:a\s+)?react\s+component\b/i.test(question)
+      /^\s*(?:write|create)\s+(?:a\s+)?react\s+component\b/i.test(question))
   ) {
     return false;
   }
+  if (isDirective) return true;
 
   const hasExplicitSiteNoun =
-    /\b(?:build|create|make|design|generate|code|develop|draft|scaffold|architect)\b[\s\S]{0,180}\b(?:web\s*site|website|web\s*page|webpage|landing\s*page|html\s*page|homepage|home\s*page|storefront|web\s*app|web\s+application|portal|marketplace|portfolio|booking\s+page|site)\b/i.test(
+    /\b(?:build|create|make|design|generate|code|develop|draft|scaffold|architect|prepare)\b[\s\S]{0,180}\b(?:web\s*site|website|web\s*page|webpage|landing\s*page|html\s*page|homepage|home\s*page|storefront|web\s*app|web\s+application|portal|marketplace|portfolio|booking\s+page|site)\b/i.test(
       question,
     ) ||
     /^\s*(?:web\s*site|website|web\s*page|webpage|landing\s*page)\s+(?:for|of|on|about|covering)\b/i.test(
@@ -433,7 +451,7 @@ export function isExplicitWebsiteBuildIntent(question: string): boolean {
     /\b(?:build|create|make|design|generate|code|develop|draft|scaffold|architect)\b[\s\S]{0,180}\b(?:(?:web\s+)?platform|dashboard|app(?:lication)?)\b/i.test(
       question,
     ) &&
-    /\b(?:dynamic|interactive|booking|checkout|calculator|filtering|switcher|ledger|multi-?lane|reservation|tables?\s+for|called\s+[A-Z]|theme|responsive|e-?commerce|saas)\b/i.test(
+    /\b(?:dynamic|interactive|booking|checkout|calculator|filtering|switcher|ledger|multi-?lane|reservation|tables?\s+for|called\s+[A-Z]|theme|responsive|e-?commerce|saas|omnisphere)\b/i.test(
       question,
     );
 
@@ -443,7 +461,7 @@ export function isExplicitWebsiteBuildIntent(question: string): boolean {
 
   if (
     /\b(?:sql\s+schema|postgis\s+schema|database\s+schema)\b/i.test(question) &&
-    !/\b(?:build|design|create|generate)\b[\s\S]{0,90}\b(?:website|web\s*app|portal|marketplace|platform)\b/i.test(
+    !/\b(?:build|design|create|generate|develop)\b[\s\S]{0,90}\b(?:website|web\s*app|web\s+application|portal|marketplace|platform)\b/i.test(
       question,
     )
   ) {
@@ -451,6 +469,25 @@ export function isExplicitWebsiteBuildIntent(question: string): boolean {
   }
 
   return true;
+}
+
+export async function naseeAutonomousExecutionGadget(question: string): Promise<string | null> {
+  if (!isAutonomousSoftwareEngineeringDirective(question)) {
+    return null;
+  }
+
+  const report = await executeNaseeAutonomousPipeline({
+    prompt: question,
+    persist: true,
+    actorId: "noctis-chat-nasee",
+    originUrl: "https://www.dstrike.app",
+  });
+  const htmlCode = report.generatedFiles["index.html"] || "";
+  return [
+    report.markdownSummary,
+    "",
+    `Click **Customize in Builder Studio →** below to edit files, run live MicroVM tests, or download the complete repository archive.${htmlCode ? `\n\n\`\`\`html\n${htmlCode}\n\`\`\`` : ""}`,
+  ].join("\n");
 }
 
 export async function webPageBuilderGadget(question: string): Promise<string | null> {

@@ -1507,6 +1507,10 @@ export function NoctisForgeBuilderStudio({
                     </div>
                     <div className="text-[10px] text-zinc-400">
                       {`Duration: ${sandboxOut.durationMs ?? 0}ms · Auto-repairs: ${sandboxOut.repairsAttempted ?? 0}`}
+                      {sandboxOut.compilePassed !== undefined
+                        ? ` · Compile: ${sandboxOut.compilePassed ? "PASS" : "FAIL"} (${sandboxOut.compiledFilesCount || 0} files)`
+                        : ""}
+                      {sandboxOut.gitCommitSha ? ` · Git: ${sandboxOut.gitCommitSha}` : ""}
                       {sandboxOut.benchmark
                         ? ` · p50=${sandboxOut.benchmark.p50Ms}ms · p95=${sandboxOut.benchmark.p95Ms}ms · ${sandboxOut.benchmark.rps} req/s`
                         : ""}

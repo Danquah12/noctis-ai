@@ -2,34 +2,32 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { generateForgeProject } from "../src/lib/forge/forge-engine.server.ts";
-import { runForgeFilesInSandbox } from "../src/lib/forge/sandbox-runner.server.ts";
-import { evaluateChallenge001 } from "../src/lib/forge/challenge-001-evaluator.server.ts";
+import { executeNaseeAutonomousPipeline } from "../src/lib/forge/nasee-engine.server.ts";
 
 const execFileAsync = promisify(execFile);
 
-const CHALLENGE_001_PROMPT = `You are Noctis AI, a principal cloud-native full-stack software engineer and cybersecurity architect.
-NOCTIS WEBSITE DEVELOPMENT CHALLENGE 001
-Build OmniSphere, an enterprise multi-tenant global digital marketplace and professional services ecosystem combining e-commerce, multi-vendor storefronts, professional networking, freelance escrow marketplace, job portal, booking system, learning management, video platform, messaging, WebRTC video conferencing, Stripe Connect split payments, double-entry financial ledger, CRM, document management, electronic signatures, AI assistant, recommendation engine, semantic search, advertising platform, customer support, notification center, analytics, admin console, security operations, content moderation, and developer portal across 30 core functional modules, 110 mapped screens, 17 RBAC roles, PostgreSQL + pgvector with Row-Level Security, and EN/ES/FR/AR RTL multilingual support.`;
+const DIRECTIVE_002_PROMPT = `NOCTIS AUTONOMOUS SOFTWARE DEVELOPMENT — EXECUTION DIRECTIVE 002
+Project: OmniSphere
+Design, develop, test and prepare for deployment OmniSphere: an enterprise multi-tenant global digital ecosystem combining e-commerce, multi-vendor marketplace, professional networking, freelance escrow, job portal, LMS courses, video platform, messaging, WebRTC, Stripe Connect sandbox payments, double-entry ledger, CRM, documents, e-signatures, Noctis AI assistant, recommendations, semantic search, advertising, customer support, notifications, analytics, administration, SOC security operations, moderation, and developer portal across 30 modules, 20 live foundation screens, 110 mapped screens, 17 RBAC roles, and PostgreSQL + pgvector with Row-Level Security.`;
 
 async function main() {
   const repoRoot = path.resolve(import.meta.dirname, "..");
   const omnisphereDir = path.resolve(repoRoot, "..", "omnisphere");
 
-  console.log("[Challenge 001] Generating OmniSphere enterprise monorepo...");
-  const generated = await generateForgeProject({
-    prompt: CHALLENGE_001_PROMPT,
-    useAi: false,
+  console.log("[NASEE / Directive 002] Executing autonomous development pipeline...");
+  const report = await executeNaseeAutonomousPipeline({
+    prompt: DIRECTIVE_002_PROMPT,
     persist: false,
-    actorId: "challenge-001-runner",
-    stack: "Next.js + React + TypeScript + Tailwind + FastAPI/NestJS + PostgreSQL + pgvector + Redis + OpenSearch",
+    actorId: "nasee-directive-002-runner",
+    preferredBackend: "local-isolated",
+    repositoryLocation: omnisphereDir,
   });
 
-  // Reset destination safely inside omnisphereDir before writing fresh tree
+  // Materialize isolated omnisphere workspace
   await fs.rm(omnisphereDir, { recursive: true, force: true });
   await fs.mkdir(omnisphereDir, { recursive: true });
 
-  const fileEntries = Object.entries(generated.files);
+  const fileEntries = Object.entries(report.generatedFiles);
   for (const [relPath, content] of fileEntries) {
     const cleanRel = relPath.replace(/\\/g, "/").replace(/^\/+/, "");
     if (!cleanRel || cleanRel.includes("..") || path.isAbsolute(cleanRel)) continue;
@@ -38,20 +36,9 @@ async function main() {
     await fs.mkdir(path.dirname(absTarget), { recursive: true });
     await fs.writeFile(absTarget, content, "utf8");
   }
-  console.log(`[Challenge 001] Materialized ${fileEntries.length} files to ${omnisphereDir}`);
+  console.log(`[NASEE] Materialized ${fileEntries.length} files to ${omnisphereDir}`);
 
-  // Run isolated sandbox verification & benchmark
-  const sandboxExecution = await runForgeFilesInSandbox({
-    projectId: generated.projectId,
-    files: generated.files,
-    sastFindingsCount: Array.isArray(generated.qaSecurity?.securityFindings)
-      ? generated.qaSecurity.securityFindings.length
-      : 0,
-    preferredBackend: "local-isolated",
-    autoRepair: true,
-  });
-
-  // Directly execute generated test suite and benchmark inside omnisphere directory
+  // Directly execute npm test and performance benchmark inside standalone omnisphere/
   const directTestRes =
     process.platform === "win32"
       ? await execFileAsync("cmd.exe", ["/d", "/s", "/c", "npm test"], {
@@ -75,53 +62,43 @@ async function main() {
     },
   );
 
-  const scorecard = evaluateChallenge001({
-    projectId: generated.projectId,
-    files: generated.files,
-    qaSecurity: generated.qaSecurity,
-    sandboxExecution,
-  });
+  // Initialize standalone Git repository inside omnisphere/ (excluding runtime tmp)
+  await fs.writeFile(path.join(omnisphereDir, ".gitignore"), "node_modules/\n.env\n*.log\n", "utf8");
+  let workspaceCommitSha = "UNAVAILABLE";
+  try {
+    await execFileAsync("git", ["init", "-q"], { cwd: omnisphereDir, timeout: 8_000 });
+    await execFileAsync("git", ["config", "user.name", "Noctis NASEE"], { cwd: omnisphereDir, timeout: 5_000 });
+    await execFileAsync("git", ["config", "user.email", "nasee@noctis.local"], { cwd: omnisphereDir, timeout: 5_000 });
+    await execFileAsync("git", ["add", "."], { cwd: omnisphereDir, timeout: 10_000 });
+    await execFileAsync(
+      "git",
+      ["commit", "-q", "-m", "feat(omnisphere): initial NASEE 20-screen foundation & 30-module ecosystem"],
+      { cwd: omnisphereDir, timeout: 10_000 },
+    );
+    const rev = await execFileAsync("git", ["rev-parse", "--short", "HEAD"], { cwd: omnisphereDir, timeout: 5_000 });
+    workspaceCommitSha = rev.stdout.trim() || "UNAVAILABLE";
+  } catch (err) {
+    console.warn("[NASEE] Standalone git init warning:", err instanceof Error ? err.message : err);
+  }
 
   const acceptanceLines = [
-    "# OmniSphere — Noctis Website Development Challenge 001 Acceptance Report",
+    "# OmniSphere — Noctis Autonomous Software Engineering Engine (NASEE) Acceptance Report",
     "",
-    `- **Project ID:** \`${generated.projectId}\``,
-    `- **Project Name:** ${generated.name}`,
-    `- **Classified Specialty:** \`${generated.spec.industrySpecialty}\` (Persona preamble stripped cleanly)`,
+    `- **Project / Workspace ID:** \`${report.projectId}\``,
+    `- **Standalone Repository Location:** \`${omnisphereDir}\``,
+    `- **Standalone Git Commit:** \`${workspaceCommitSha}\` (Sandbox Git Commit: \`${report.gitCommitSha || "N/A"}\`)`,
     `- **Generated Artifacts:** ${fileEntries.length} monorepo files`,
-    `- **Evaluated At:** ${scorecard.evaluatedAt}`,
-    `- **Acceptance Score:** **${scorecard.totalScore} / ${scorecard.maxScore}**`,
-    `- **Release Ready:** ${scorecard.releaseReady ? "YES" : "NO"}`,
-    `- **Hard Veto Triggered:** ${scorecard.vetoTriggered ? `YES (${scorecard.vetoReasons.join("; ")})` : "NO (All hard security/RLS/workflow/sandbox gates passed)"}`,
+    `- **Executed At:** ${report.executedAt}`,
+    `- **Acceptance Score:** **${report.scorecard.totalScore} / ${report.scorecard.maxScore}**`,
+    `- **Release Ready:** ${report.scorecard.releaseReady ? "YES" : "NO"}`,
+    `- **Hard Veto Triggered:** ${report.scorecard.vetoTriggered ? `YES (${report.scorecard.vetoReasons.join("; ")})` : "NO"}`,
     "",
-    "## Isolated Sandbox & Direct Execution Verification",
+    report.markdownSummary,
     "",
-    `- **Sandbox Backend:** \`${sandboxExecution.backend}\` (\`${sandboxExecution.networkPolicy}\`)`,
-    `- **Sandbox Tests Passed:** ${sandboxExecution.testsPassed} / ${sandboxExecution.testsTotal} in ${sandboxExecution.durationMs}ms (auto-repairs: ${sandboxExecution.repairsAttempted})`,
-    sandboxExecution.benchmark
-      ? `- **Measured Local HTTP Benchmark:** ${sandboxExecution.benchmark.requests} requests · p50=${sandboxExecution.benchmark.p50Ms}ms · p95=${sandboxExecution.benchmark.p95Ms}ms · ${sandboxExecution.benchmark.rps} req/s`
-      : "- **Measured Local HTTP Benchmark:** N/A",
+    "## Direct Execution inside Standalone `omnisphere/`",
+    "",
     `- **Direct \`npm test\` in \`omnisphere/\`:** EXITED 0`,
     `- **Direct Benchmark in \`omnisphere/\`:** \`${directBenchRes.stdout.trim()}\``,
-    "",
-    "## 12-Category Scorecard Breakdown (100 Points)",
-    "",
-    "| Category | Score | Max | Evidence |",
-    "| --- | ---: | ---: | --- |",
-    ...scorecard.categories.map(
-      (c) => `| ${c.category} | ${c.score} | ${c.maxPoints} | ${c.evidence} |`,
-    ),
-    "",
-    `## 28-Item Challenge 001 Checklist (${scorecard.counts.implementedVerified} Verified / ${scorecard.counts.partiallyImplemented} Partial / ${scorecard.counts.blockedExternal} Blocked External)`,
-    "",
-    "| # | Item | Status | Evidence / External Blocker |",
-    "| ---: | --- | --- | --- |",
-    ...scorecard.checklist.map(
-      (item) =>
-        `| ${item.id} | ${item.title} | \`${item.status}\` | ${item.evidence}${item.blockerNote ? ` **Blocker:** ${item.blockerNote}` : ""} |`,
-    ),
-    "",
-    "## Direct `npm test` Output Excerpt",
     "",
     "```text",
     directTestRes.stdout.trim().slice(-2500),
@@ -130,17 +107,24 @@ async function main() {
   ];
 
   await fs.writeFile(path.join(omnisphereDir, "ACCEPTANCE_REPORT.md"), acceptanceLines.join("\n"), "utf8");
+  if (workspaceCommitSha !== "UNAVAILABLE") {
+    await execFileAsync("git", ["add", "ACCEPTANCE_REPORT.md"], { cwd: omnisphereDir, timeout: 5_000 }).catch(() => undefined);
+    await execFileAsync("git", ["commit", "-q", "-m", "docs: add NASEE acceptance report"], { cwd: omnisphereDir, timeout: 5_000 }).catch(() => undefined);
+    const revFinal = await execFileAsync("git", ["rev-parse", "--short", "HEAD"], { cwd: omnisphereDir, timeout: 5_000 }).catch(() => null);
+    if (revFinal?.stdout?.trim()) workspaceCommitSha = revFinal.stdout.trim();
+  }
+
   console.log(
-    `[Challenge 001] Scorecard: ${scorecard.totalScore}/${scorecard.maxScore} | Verified=${scorecard.counts.implementedVerified} BlockedExternal=${scorecard.counts.blockedExternal} | ReleaseReady=${scorecard.releaseReady}`,
+    `[NASEE] Done | Git=${workspaceCommitSha} | DB tables=${report.pgliteMigration.tablesCreated} policies=${report.pgliteMigration.rlsPoliciesCreated} RLS_verified=${report.pgliteMigration.rlsCrossTenantVerified} | Sandbox=${report.sandboxExecution.testsPassed}/${report.sandboxExecution.testsTotal} | Score=${report.scorecard.totalScore}/100`,
   );
 
-  if (!sandboxExecution.passed || scorecard.vetoTriggered || !scorecard.releaseReady) {
-    console.error("[Challenge 001] Verification gate failed:", scorecard.vetoReasons);
+  if (!report.ok || report.scorecard.vetoTriggered) {
+    console.error("[NASEE] Verification gate failed:", report.scorecard.vetoReasons);
     process.exit(1);
   }
 }
 
 void main().catch((err) => {
-  console.error("[Challenge 001] Runner error:", err);
+  console.error("[NASEE] Runner error:", err);
   process.exit(1);
 });

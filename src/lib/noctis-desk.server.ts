@@ -1230,13 +1230,34 @@ async function composeVibeReply(
     return { text: blockedReply };
   }
 
+  const {
+    isAutonomousSoftwareEngineeringDirective,
+    isExplicitWebsiteBuildIntent,
+    naseeAutonomousExecutionGadget,
+    runVibeGadgets,
+  } = await import("@/lib/noctis-gadgets.server");
+
+  if (isAutonomousSoftwareEngineeringDirective(fullQuestion)) {
+    const naseeOut = await naseeAutonomousExecutionGadget(fullQuestion);
+    if (naseeOut) {
+      return {
+        text: wrapDeterministicThink(
+          naseeOut,
+          "Executed Noctis Autonomous Software Engineering Engine (NASEE): real runtime capability discovery, monorepo generation, PostgreSQL PGlite migration + RLS proof, isolated MicroVM/sandbox build & test verification, and 12-Gate assessment.",
+        ),
+      };
+    }
+  }
+
+  const explicitWebBuildPre = isExplicitWebsiteBuildIntent(question) || isExplicitWebsiteBuildIntent(fullQuestion);
   const isCodingRequest =
-    /\b(architect and implement|build|create|code|develop|generate|write)\b[\s\S]{0,60}?\b(in react|in typescript|in python|react component|single-file|with tailwind|app|application|ui|unit test|microservice)\b/i.test(
+    !explicitWebBuildPre &&
+    (/\b(architect and implement|build|create|code|develop|generate|write)\b[\s\S]{0,60}?\b(in react|in typescript|in python|react component|single-file|with tailwind|app|application|ui|unit test|microservice)\b/i.test(
       fullQuestion
     ) ||
     /\b(react with tailwind|single-file interactive|component in react|unit tests ensuring|merkle tree.*in react|dashboard in react)\b/i.test(
       fullQuestion
-    );
+    ));
 
   const { isUniversalClinicalQuestion, executeUniversalClinicalReasoning } = await import(
     "@/lib/noctis-universal-clinical.server"
@@ -1404,8 +1425,7 @@ async function composeVibeReply(
       }
     }
 
-    const { isExplicitWebsiteBuildIntent, runVibeGadgets } = await import("@/lib/noctis-gadgets.server");
-    const explicitWebBuild = isExplicitWebsiteBuildIntent(question);
+    const explicitWebBuild = explicitWebBuildPre;
 
     // Natural-Language NDKRS Cross-Domain Rule Execution (Reynolds, Ohm's Law, Ideal Gas, Henderson-Hasselbalch, FDA CDS, POA&M SLA)
     const naturalNdkrsRuleOut = explicitWebBuild

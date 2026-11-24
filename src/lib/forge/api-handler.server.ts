@@ -30,6 +30,11 @@ import {
 } from "./forge-persistence.server.ts";
 import { runForgeProjectInSandbox } from "./sandbox-runner.server.ts";
 import { evaluateChallenge001ForProject } from "./challenge-001-evaluator.server.ts";
+import {
+  NASEE_28_ENGINES,
+  executeNaseeAutonomousPipeline,
+  runNaseeCapabilityDiscovery,
+} from "./nasee-engine.server.ts";
 import type { BlueprintVisualPatch } from "./website-blueprint-engine.ts";
 
 const CORS_HEADERS = {
@@ -87,6 +92,35 @@ export async function handleForgeV2Request(request: Request): Promise<Response> 
 
   if (subPath === "environment") {
     return jsonRes(validateDevelopmentEnvironment());
+  }
+
+  if (subPath === "nasee/capabilities") {
+    const capabilities = await runNaseeCapabilityDiscovery();
+    return jsonRes({
+      ok: true,
+      engineCount: NASEE_28_ENGINES.length,
+      engines: NASEE_28_ENGINES,
+      capabilities,
+    });
+  }
+
+  if (subPath === "nasee/execute") {
+    if (request.method !== "POST") return jsonRes({ error: "Use POST." }, 405);
+    const prompt = typeof body.prompt === "string" && body.prompt.trim()
+      ? body.prompt.trim()
+      : "Execute Directive 002 for OmniSphere 20-screen foundation and 30-module ecosystem.";
+    const report = await executeNaseeAutonomousPipeline({
+      prompt,
+      persist: body.persist !== false,
+      actorId: caller?.actorId || "nasee-api-caller",
+      originUrl: url.origin,
+      preferredBackend:
+        body.preferredBackend === "vercel-sandbox" || body.preferredBackend === "local-isolated"
+          ? body.preferredBackend
+          : "auto",
+    });
+    const { generatedFiles: _files, ...rest } = report;
+    return jsonRes({ ...rest, fileNames: Object.keys(_files) }, report.ok ? 200 : 422);
   }
 
   if (subPath === "projects") {
