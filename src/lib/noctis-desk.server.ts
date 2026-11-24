@@ -1038,11 +1038,21 @@ async function executeVibeReply(
     return { text: withThink(formatScienceResponse(sol), "Executed deterministic scientific formula verification") };
   }
 
-  const { isSovereignInquiry, resolveSovereignResponse } = await import("@/lib/noctis-sovereign-grounding");
-  if (isSovereignInquiry(latest)) {
-    const sovereignText = resolveSovereignResponse(latest);
-    if (sovereignText) {
-      return { text: withThink(sovereignText, "Verified sovereign architecture specification & SQDEC governance bounds") };
+  const {
+    isAutonomousSoftwareEngineeringDirective,
+    isExplicitWebsiteBuildIntent,
+  } = await import("@/lib/noctis-gadgets.server");
+  const isNaseeOrSiteBuild =
+    isAutonomousSoftwareEngineeringDirective(latest) ||
+    isExplicitWebsiteBuildIntent(latest);
+
+  if (!isNaseeOrSiteBuild) {
+    const { isSovereignInquiry, resolveSovereignResponse } = await import("@/lib/noctis-sovereign-grounding");
+    if (isSovereignInquiry(latest)) {
+      const sovereignText = resolveSovereignResponse(latest);
+      if (sovereignText) {
+        return { text: withThink(sovereignText, "Verified sovereign architecture specification & SQDEC governance bounds") };
+      }
     }
   }
 
@@ -1050,7 +1060,7 @@ async function executeVibeReply(
   const isClinicalInquiry = /\b(patient|female|male|years?-old|yo|y\/o|triage|resuscitation|symptom|presents? with|blood pressure|\b(?:bp|hr|rr|spo2)\b|cardiac|ecg|troponin|chest pain|cough|fever|dyspnea|hypotension|tachycardia|bradycardia|potassium|hyperkalemia|sodium|hyponatremia|magnesium|calcium|creatinine|egfr|ckd|stroke|sepsis|shock|infection)\b/i.test(latest);
 
   // Unified Sovereign Tool Orchestrator (16 Core Deterministic Computational Engines)
-  if (!isClinicalInquiry) {
+  if (!isClinicalInquiry && !isNaseeOrSiteBuild) {
     try {
       const { orchestrateSovereignQuery } = await import("@/lib/noctis-tool-orchestrator");
       const toolResult = orchestrateSovereignQuery(latest);
