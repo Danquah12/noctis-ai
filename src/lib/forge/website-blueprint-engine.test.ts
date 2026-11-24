@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import vm from "node:vm";
 import { FORGE_40_CATEGORIES } from "./forge-catalog.ts";
 import {
   applyBlueprintVisualPatch,
@@ -418,6 +419,10 @@ test("exact specialty <meta> handoff, visual patch, multi-page views, and XSS es
   assert.ok(html.includes("NOCTIS_SET_API_BASE"));
   assert.ok(html.includes("function escHtml("));
   assert.ok(html.includes('class="hero-photo"'));
+  assert.ok(!html.includes(".hero-media-card { display: none; }"), "Hero media card must stay visible in Studio preview");
+  const scriptMatch = html.match(/<script>([\s\S]*?)<\/script>/);
+  assert.ok(scriptMatch && scriptMatch[1], "Expected inline client script in rendered HTML");
+  assert.doesNotThrow(() => new vm.Script(scriptMatch[1], { filename: "generated-site.js" }), "Generated client JS must parse without SyntaxError");
 
   const handoffBp = buildDeterministicWebsiteBlueprint({
     prompt: "Build a complete interactive website and full-stack app for Paws & Claws — Veterinary & Animal Hospital",

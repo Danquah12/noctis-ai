@@ -2525,9 +2525,8 @@ export function renderWebsiteBlueprintHtml(
     table.adm-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
     table.adm-table th, table.adm-table td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--border); }
     table.adm-table th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
-    @media (max-width: 900px) { .hero-grid { grid-template-columns: 1fr; } .hero-media-card { display: none; } }
     @media (max-width: 820px) { .search-dock, .tool-box, .cta-panel { grid-template-columns: 1fr; } }
-    @media (max-width: 720px) { .nav-inner .page-tabs { display: none; } .mobile-pages { display: flex; } }
+    @media (max-width: 720px) { .hero-grid { grid-template-columns: 1fr; } .hero-media-card { height: 220px; } .hero-media-card svg { height: 220px !important; } .nav-inner .page-tabs { display: none; } .mobile-pages { display: flex; } }
     @media (max-width: 480px) { .nav-inner { flex-wrap: wrap; } .nav-actions { width: 100%; justify-content: flex-end; flex-wrap: wrap; } }
   </style>
 </head>
@@ -2700,6 +2699,7 @@ ${adminSection}
           if (adminEl) adminEl.style.display = "none";
         } else if (activePage === "admin") {
           homeSections.forEach((el) => { el.style.display = "none"; });
+          if (bookingPanel) bookingPanel.style.display = "none";
           if (adminEl) adminEl.style.display = "block";
           void loadAdminInbox();
         }
@@ -2984,10 +2984,12 @@ ${adminSection}
       // Inline Visual Edit & API Base Bridge with parent Noctis Studio
       window.addEventListener("message", (event) => {
         if (event.data && event.data.type === "NOCTIS_SET_API_BASE") {
-          const cand = String(event.data.apiBase || "").trim().replace(/\/+$/, "");
-          if (/^https?:\/\/[a-z0-9.-]+(?::\d+)?$/i.test(cand)) {
-            runtimeApiBase = cand;
-          }
+          try {
+            const parsedUrl = new URL(String(event.data.apiBase || "").trim());
+            if (parsedUrl.protocol === "http:" || parsedUrl.protocol === "https:") {
+              runtimeApiBase = parsedUrl.origin;
+            }
+          } catch {}
         }
         if (event.data && event.data.type === "NOCTIS_VISUAL_EDIT_MODE") {
           visualEditEnabled = Boolean(event.data.enabled);
