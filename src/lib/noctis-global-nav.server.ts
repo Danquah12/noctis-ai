@@ -215,11 +215,17 @@ function findHubByToken(token: string): GeoHub | null {
   return byName || null;
 }
 
-function extractRoutePair(prompt: string): { origin: GeoHub; dest: GeoHub } | null {
-  const icaoHits = [...prompt.matchAll(/\b([A-Z]{4})\b/g)]
-    .map((m) => findHubByToken(m[1]!))
-    .filter((h): h is GeoHub => h !== null);
-  if (icaoHits.length >= 2 && icaoHits[0]!.code !== icaoHits[1]!.code) {
+export function extractRoutePair(prompt: string): { origin: GeoHub; dest: GeoHub } | null {
+  const seenCodes = new Set<string>();
+  const icaoHits: GeoHub[] = [];
+  for (const m of prompt.matchAll(/\b([A-Z]{4})\b/g)) {
+    const hub = findHubByToken(m[1]!);
+    if (hub && !seenCodes.has(hub.code)) {
+      seenCodes.add(hub.code);
+      icaoHits.push(hub);
+    }
+  }
+  if (icaoHits.length >= 2) {
     return { origin: icaoHits[0]!, dest: icaoHits[1]! };
   }
 

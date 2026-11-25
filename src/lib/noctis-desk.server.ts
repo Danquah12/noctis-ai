@@ -29,6 +29,7 @@ import {
 } from "@/lib/noctis-followup-resolver";
 import {
   attachRouteStamp,
+  extractMultiSlashOverrides,
   getSlashRouteByEngine,
   parseRouteStamp,
   upsertRouteStampResponseId,
@@ -1109,200 +1110,228 @@ async function executeVibeReply(
       cveAndKevGadget,
     } = await import("@/lib/noctis-gadgets.server");
 
-    if (intent.routeId === "nasee") {
-      const naseeOut = await naseeAutonomousExecutionGadget(effectiveLatest, { force: true });
-      if (naseeOut) {
+    const runOverrideEngine = async (
+      routeId: NoctisRouteEngineId,
+      promptText: string,
+      overrideCmd?: string,
+    ): Promise<{ text: string; summary: string; preWrapped?: boolean } | null> => {
+      if (routeId === "nasee") {
+        const naseeOut = await naseeAutonomousExecutionGadget(promptText, { force: true });
+        if (naseeOut) {
+          return {
+            text: naseeOut,
+            summary: `Explicit ${overrideCmd || "/nasee"} override dispatched directly to Noctis Autonomous Software Engineering Engine (NASEE).`,
+          };
+        }
+      }
+
+      if (routeId === "website_builder") {
+        const webOut = await webPageBuilderGadget(promptText, { force: true });
+        if (webOut) {
+          return {
+            text: webOut,
+            summary: `Explicit ${overrideCmd || "/build"} override dispatched directly to Noctis Forge Website & Full-Stack Builder.`,
+          };
+        }
+      }
+
+      if (routeId === "weather") {
+        const wxOut = await weatherPredictionGadget(promptText, { force: true });
+        if (wxOut) {
+          return {
+            text: wxOut,
+            summary: `Explicit ${overrideCmd || "/weather"} override dispatched directly to Global NWP Weather & Forecast Engine.`,
+          };
+        }
+      }
+
+      if (routeId === "clinical") {
+        const { executeUniversalClinicalReasoning } = await import("@/lib/noctis-universal-clinical.server");
+        const clinOut = await executeUniversalClinicalReasoning(promptText, { brain: style.brain });
+        if (clinOut) {
+          return { text: clinOut, summary: "Executed Universal Clinical Reasoning Engine.", preWrapped: true };
+        }
+      }
+
+      if (routeId === "rmf_grc") {
+        const { executeUniversalRmfReasoning } = await import("@/lib/noctis-rmf-reasoning.server");
+        const rmfOut = await executeUniversalRmfReasoning(promptText, {
+          turns: cleanTurnsForHistory(effectiveKept),
+          brain: style.brain,
+          engineName: activeEngine.name,
+          language: style.language || "English",
+          shouldThink,
+        });
+        if (rmfOut) {
+          return { text: rmfOut, summary: "Executed RMF v2.0 Intelligence Reasoning Engine.", preWrapped: true };
+        }
+      }
+
+      if (routeId === "dod_ic") {
+        const { executeDodIcReasoning } = await import("@/lib/dod-ic/dod-ic-reasoning.server");
+        const dodOut = await executeDodIcReasoning(promptText, {
+          turns: cleanTurnsForHistory(effectiveKept),
+          brain: style.brain,
+          engineName: activeEngine.name,
+          language: style.language || "English",
+          shouldThink,
+        });
+        if (dodOut) {
+          return { text: dodOut, summary: "Executed NDIMP DoD/IC Reasoning Engine.", preWrapped: true };
+        }
+      }
+
+      if (routeId === "cve_cyber") {
+        const cveMatch = promptText.match(/\b(CVE-\d{4}-\d{4,7})\b/i);
+        if (cveMatch) {
+          const { resolveCveIntelligenceLive, formatCveResponse } = await import("@/lib/noctis-cve-knowledge");
+          const profile = await resolveCveIntelligenceLive(cveMatch[1], promptText);
+          return {
+            text: formatCveResponse(profile),
+            summary: `Queried MITRE/NVD vulnerability records for ${cveMatch[1].toUpperCase()}.`,
+          };
+        }
+        const kevOut = await cveAndKevGadget(promptText);
+        if (kevOut) {
+          return { text: kevOut, summary: "Executed CISA KEV & cybersecurity vulnerability lookup." };
+        }
+      }
+
+      if (routeId === "enterprise") {
+        const { tryHandleEnterpriseChatQuery } = await import("@/lib/enterprise/chat-bridge.server");
+        const entOut = await tryHandleEnterpriseChatQuery(promptText);
+        if (entOut) {
+          return { text: entOut, summary: "Queried Noctis Enterprise Intelligence Command." };
+        }
+      }
+
+      if (routeId === "nups") {
+        const { tryHandleNupsChatQuery } = await import("@/lib/nups/chat-bridge.server");
+        const nupsOut = await tryHandleNupsChatQuery(promptText);
+        if (nupsOut) {
+          return { text: nupsOut, summary: "Executed Noctis Universal Problem Solver (NUPS)." };
+        }
+      }
+
+      if (routeId === "catalog260") {
+        const { tryHandleCatalog260ChatQuery } = await import("@/lib/catalog260/chat-bridge.server");
+        const catOut = await tryHandleCatalog260ChatQuery(promptText);
+        if (catOut) {
+          return { text: catOut, summary: "Audited Noctis Master Capability Catalog 260." };
+        }
+      }
+
+      if (routeId === "assistant") {
+        const { tryHandleAssistantChatQuery } = await import("@/lib/assistant/chat-bridge.server");
+        const asstOut = await tryHandleAssistantChatQuery(promptText);
+        if (asstOut) {
+          return { text: asstOut, summary: "Executed Universal Assistant v1.0 pipeline." };
+        }
+      }
+
+      if (routeId === "sovereign_physics") {
+        const { orchestrateSovereignQuery } = await import("@/lib/noctis-tool-orchestrator");
+        const toolResult = orchestrateSovereignQuery(promptText);
+        if (toolResult.handled && toolResult.formattedMarkdown) {
+          return {
+            text: toolResult.formattedMarkdown,
+            summary: "Executed Sovereign Physics Computational Tool Orchestrator.",
+          };
+        }
+      }
+
+      if (routeId === "science") {
+        const { solveScienceQuestion, formatScienceResponse } = await import("@/lib/noctis-universal-science-engine");
+        const sol = solveScienceQuestion(promptText);
         return {
-          text: finishText(
-            withThink(
-              naseeOut,
-              `Explicit ${intent.overrideCommand || "/nasee"} override dispatched directly to Noctis Autonomous Software Engineering Engine (NASEE).`,
-            ),
-            "nasee",
-          ),
+          text: formatScienceResponse(sol),
+          summary: "Executed deterministic scientific formula verification.",
         };
       }
-    }
 
-    if (intent.routeId === "website_builder") {
-      const webOut = await webPageBuilderGadget(effectiveLatest, { force: true });
-      if (webOut) {
+      if (routeId === "ndkrs_rule") {
+        const { tryExecuteNdkrsDeterministicRuleFromChat } = await import("@/lib/ndkrs/chat-bridge.server");
+        const ndkrsOut = await tryExecuteNdkrsDeterministicRuleFromChat(promptText, { explicitRuleIdOnly: false });
+        if (ndkrsOut) {
+          return { text: ndkrsOut, summary: "Executed NDKRS deterministic Fact-Lock rule." };
+        }
+      }
+
+      if (routeId === "space_universe") {
+        const { executeSpaceUniverseQuery } = await import("./noctis-space-universe.server.ts");
+        const spaceOut = await executeSpaceUniverseQuery(promptText);
         return {
-          text: finishText(
-            withThink(
-              webOut,
-              `Explicit ${intent.overrideCommand || "/build"} override dispatched directly to Noctis Forge Website & Full-Stack Builder.`,
-            ),
-            "website_builder",
-          ),
+          text: spaceOut,
+          summary: `Explicit ${overrideCmd || "/space"} override fetched live NOAA SWPC, NASA JPL CAD, and ISS orbital telemetry.`,
         };
       }
-    }
 
-    if (intent.routeId === "weather") {
-      const wxOut = await weatherPredictionGadget(effectiveLatest, { force: true });
-      if (wxOut) {
+      if (routeId === "earth_hazards") {
+        const { executeEarthHazardsQuery } = await import("./noctis-earth-hazards.server.ts");
+        const earthOut = await executeEarthHazardsQuery(promptText);
         return {
-          text: finishText(
-            withThink(
-              wxOut,
-              `Explicit ${intent.overrideCommand || "/weather"} override dispatched directly to Global NWP Weather & Forecast Engine.`,
-            ),
-            "weather",
-          ),
+          text: earthOut,
+          summary: `Explicit ${overrideCmd || "/earth"} override fetched live USGS seismic, NASA EONET, and Open-Meteo AQI feeds.`,
         };
       }
-    }
 
-    if (intent.routeId === "clinical") {
-      const { executeUniversalClinicalReasoning } = await import("@/lib/noctis-universal-clinical.server");
-      const clinOut = await executeUniversalClinicalReasoning(effectiveLatest, { brain: style.brain });
-      if (clinOut) {
-        return { text: finishText(clinOut, "clinical") };
-      }
-    }
-
-    if (intent.routeId === "rmf_grc") {
-      const { executeUniversalRmfReasoning } = await import("@/lib/noctis-rmf-reasoning.server");
-      const rmfOut = await executeUniversalRmfReasoning(effectiveLatest, {
-        turns: cleanTurnsForHistory(effectiveKept),
-        brain: style.brain,
-        engineName: activeEngine.name,
-        language: style.language || "English",
-        shouldThink,
-      });
-      if (rmfOut) {
-        return { text: finishText(rmfOut, "rmf_grc") };
-      }
-    }
-
-    if (intent.routeId === "dod_ic") {
-      const { executeDodIcReasoning } = await import("@/lib/dod-ic/dod-ic-reasoning.server");
-      const dodOut = await executeDodIcReasoning(effectiveLatest, {
-        turns: cleanTurnsForHistory(effectiveKept),
-        brain: style.brain,
-        engineName: activeEngine.name,
-        language: style.language || "English",
-        shouldThink,
-      });
-      if (dodOut) {
-        return { text: finishText(dodOut, "dod_ic") };
-      }
-    }
-
-    if (intent.routeId === "cve_cyber") {
-      const cveMatch = effectiveLatest.match(/\b(CVE-\d{4}-\d{4,7})\b/i);
-      if (cveMatch) {
-        const { resolveCveIntelligenceLive, formatCveResponse } = await import("@/lib/noctis-cve-knowledge");
-        const profile = await resolveCveIntelligenceLive(cveMatch[1], effectiveLatest);
+      if (routeId === "global_nav") {
+        const { executeGlobalNavQuery } = await import("./noctis-global-nav.server.ts");
+        const navOut = await executeGlobalNavQuery(promptText);
         return {
-          text: finishText(
-            withThink(formatCveResponse(profile), `Queried MITRE/NVD vulnerability records for ${cveMatch[1].toUpperCase()}.`),
-            "cve_cyber",
-          ),
+          text: navOut,
+          summary: `Explicit ${overrideCmd || "/nav"} override fetched live NOAA METAR & orthodromic navigation vectors.`,
         };
       }
-      const kevOut = await cveAndKevGadget(effectiveLatest);
-      if (kevOut) {
-        return {
-          text: finishText(
-            withThink(kevOut, "Executed CISA KEV & cybersecurity vulnerability lookup."),
-            "cve_cyber",
-          ),
-        };
-      }
-    }
 
-    if (intent.routeId === "enterprise") {
-      const { tryHandleEnterpriseChatQuery } = await import("@/lib/enterprise/chat-bridge.server");
-      const entOut = await tryHandleEnterpriseChatQuery(effectiveLatest);
-      if (entOut) {
-        return { text: finishText(withThink(entOut, "Queried Noctis Enterprise Intelligence Command."), "enterprise") };
-      }
-    }
+      return null;
+    };
 
-    if (intent.routeId === "nups") {
-      const { tryHandleNupsChatQuery } = await import("@/lib/nups/chat-bridge.server");
-      const nupsOut = await tryHandleNupsChatQuery(effectiveLatest);
-      if (nupsOut) {
-        return { text: finishText(withThink(nupsOut, "Executed Noctis Universal Problem Solver (NUPS)."), "nups") };
-      }
-    }
+    const multiSegments = extractMultiSlashOverrides(latest);
+    if (multiSegments.length >= 2) {
+      const segmentResults = await Promise.all(
+        multiSegments.map(async (seg, idx) => {
+          try {
+            const out = await runOverrideEngine(seg.routeId, seg.prompt || seg.spec.description || seg.command, seg.command);
+            const strippedThink = out ? parseThinkEnvelope(out.text).body : "";
+            const body = strippedThink
+              ? parseRouteStamp(strippedThink).cleanText.trim()
+              : `No specialized engine output produced for \`${seg.command}\`.`;
+            return { idx, seg, body };
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : "Engine execution error";
+            return {
+              idx,
+              seg,
+              body: `Engine \`${seg.command}\` (${seg.spec.label}) reported an isolated error: ${msg}`,
+            };
+          }
+        }),
+      );
 
-    if (intent.routeId === "catalog260") {
-      const { tryHandleCatalog260ChatQuery } = await import("@/lib/catalog260/chat-bridge.server");
-      const catOut = await tryHandleCatalog260ChatQuery(effectiveLatest);
-      if (catOut) {
-        return { text: finishText(withThink(catOut, "Audited Noctis Master Capability Catalog 260."), "catalog260") };
-      }
-    }
-
-    if (intent.routeId === "assistant") {
-      const { tryHandleAssistantChatQuery } = await import("@/lib/assistant/chat-bridge.server");
-      const asstOut = await tryHandleAssistantChatQuery(effectiveLatest);
-      if (asstOut) {
-        return { text: finishText(withThink(asstOut, "Executed Universal Assistant v1.0 pipeline."), "assistant") };
-      }
-    }
-
-    if (intent.routeId === "sovereign_physics") {
-      const { orchestrateSovereignQuery } = await import("@/lib/noctis-tool-orchestrator");
-      const toolResult = orchestrateSovereignQuery(effectiveLatest);
-      if (toolResult.handled && toolResult.formattedMarkdown) {
-        return {
-          text: finishText(
-            withThink(toolResult.formattedMarkdown, "Executed Sovereign Physics Computational Tool Orchestrator."),
-            "sovereign_physics",
-          ),
-        };
-      }
-    }
-
-    if (intent.routeId === "science") {
-      const { solveScienceQuestion, formatScienceResponse } = await import("@/lib/noctis-universal-science-engine");
-      const sol = solveScienceQuestion(effectiveLatest);
-      return {
-        text: finishText(withThink(formatScienceResponse(sol), "Executed deterministic scientific formula verification."), "science"),
-      };
-    }
-
-    if (intent.routeId === "ndkrs_rule") {
-      const { tryExecuteNdkrsDeterministicRuleFromChat } = await import("@/lib/ndkrs/chat-bridge.server");
-      const ndkrsOut = await tryExecuteNdkrsDeterministicRuleFromChat(effectiveLatest, { explicitRuleIdOnly: false });
-      if (ndkrsOut) {
-        return { text: finishText(withThink(ndkrsOut, "Executed NDKRS deterministic Fact-Lock rule."), "ndkrs_rule") };
-      }
-    }
-
-    if (intent.routeId === "space_universe") {
-      const { executeSpaceUniverseQuery } = await import("./noctis-space-universe.server.ts");
-      const spaceOut = await executeSpaceUniverseQuery(effectiveLatest);
+      const header = `## Multi-Domain Command Brief (${segmentResults.length} Routed Engines: ${multiSegments.map((s) => s.command).join(" · ")})`;
+      const sections = segmentResults.map(
+        ({ idx, seg, body }) =>
+          `> **Routed Engine ${idx + 1}/${segmentResults.length}:** \`${seg.command}\` → **${seg.spec.label}**\n\n${body}`,
+      );
+      const combinedMarkdown = `${header}\n\n${sections.join("\n\n---\n\n")}`;
       return {
         text: finishText(
-          withThink(spaceOut, `Explicit ${intent.overrideCommand || "/space"} override fetched live NOAA SWPC, NASA JPL CAD, and ISS orbital telemetry.`),
-          "space_universe",
+          withThink(
+            combinedMarkdown,
+            `Executed parallel multi-command dispatch across ${multiSegments.map((s) => `${s.command} (${s.spec.label})`).join(", ")}.`,
+          ),
+          multiSegments[0]!.routeId,
         ),
       };
     }
 
-    if (intent.routeId === "earth_hazards") {
-      const { executeEarthHazardsQuery } = await import("./noctis-earth-hazards.server.ts");
-      const earthOut = await executeEarthHazardsQuery(effectiveLatest);
+    const singleOut = await runOverrideEngine(intent.routeId, effectiveLatest, intent.overrideCommand);
+    if (singleOut) {
       return {
         text: finishText(
-          withThink(earthOut, `Explicit ${intent.overrideCommand || "/earth"} override fetched live USGS seismic, NASA EONET, and Open-Meteo AQI feeds.`),
-          "earth_hazards",
-        ),
-      };
-    }
-
-    if (intent.routeId === "global_nav") {
-      const { executeGlobalNavQuery } = await import("./noctis-global-nav.server.ts");
-      const navOut = await executeGlobalNavQuery(effectiveLatest);
-      return {
-        text: finishText(
-          withThink(navOut, `Explicit ${intent.overrideCommand || "/nav"} override fetched live NOAA METAR & orthodromic navigation vectors.`),
-          "global_nav",
+          singleOut.preWrapped ? singleOut.text : withThink(singleOut.text, singleOut.summary),
+          intent.routeId,
         ),
       };
     }

@@ -13,6 +13,7 @@
  */
 
 import {
+  extractMultiSlashOverrides,
   getPanelSpec,
   NOCTIS_SLASH_ROUTES,
   parseRouteStamp,
@@ -147,6 +148,25 @@ export function decisionToRouteStamp(decision: NoctisIntentDecision): NoctisRout
 
 export function classifyNoctisIntent(rawPrompt: string): NoctisIntentDecision {
   const original = String(rawPrompt || "").trim();
+
+  // 0. Multi-slash batch dispatch (`/space ... \n /earth ... \n /nav ...`)
+  const multi = extractMultiSlashOverrides(original);
+  if (multi.length >= 2) {
+    const first = multi[0]!;
+    const combinedCmds = multi.map((s) => s.command).join(" + ");
+    return {
+      routeId: first.routeId,
+      label: `Multi-Route · ${combinedCmds}`,
+      confidence: 100,
+      override: true,
+      overrideCommand: combinedCmds,
+      effectivePrompt: original,
+      matchedSignals: multi.map((s) => `multi-override:${s.command}`),
+      vetoedRoutes: {},
+      scores: Object.fromEntries(multi.map((s) => [s.routeId, 100])) as Partial<Record<NoctisRouteEngineId, number>>,
+      targetPanel: "chat",
+    };
+  }
 
   // 1. Explicit slash command override always wins with 100% confidence
   const slash = stripLeadingSlashOverride(original);

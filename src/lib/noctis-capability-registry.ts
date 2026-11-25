@@ -486,6 +486,106 @@ export function stripLeadingSlashOverride(rawPrompt: string): {
   };
 }
 
+export interface NoctisSlashSegment {
+  command: string;
+  routeId: NoctisRouteEngineId;
+  spec: NoctisSlashRouteSpec;
+  prompt: string;
+}
+
+function findSlashSpec(tokenWithSlash: string): NoctisSlashRouteSpec | undefined {
+  const normalized = tokenWithSlash.toLowerCase();
+  return NOCTIS_SLASH_ROUTES.find(
+    (item) => item.command === normalized || item.aliases.includes(normalized),
+  );
+}
+
+/**
+ * Splits a single chat message containing 2..maxSegments stacked `/command ...`
+ * directives so Noctis executes all requested engines in one coordinated pass.
+ * Returns `[]` for single-slash prompts, prose, code blocks, or file paths.
+ */
+export function extractMultiSlashOverrides(rawPrompt: string, maxSegments = 5): NoctisSlashSegment[] {
+  const lines = String(rawPrompt || "").split(/\r?\n/);
+  let inCodeFence = false;
+  let explicitSlashCount = 0;
+  const working: Array<{
+    command: string;
+    routeId: NoctisRouteEngineId;
+    spec: NoctisSlashRouteSpec;
+    lines: string[];
+  }> = [];
+
+  for (const rawLine of lines) {
+    const trimmed = rawLine.trim();
+    if (trimmed.startsWith("```")) {
+      if (working.length === 0) return [];
+      inCodeFence = !inCodeFence;
+      working[working.length - 1]!.lines.push(rawLine.trimEnd());
+      continue;
+    }
+
+    if (!trimmed) {
+      if (working.length > 0 && working[working.length - 1]!.lines.length > 0) {
+        working[working.length - 1]!.lines.push("");
+      }
+      continue;
+    }
+
+    if (!inCodeFence) {
+      const unbulleted = trimmed.replace(/^(?:[-*•]\s+|\d+[.)]\s+)/, "").trim();
+      const slashMatch = unbulleted.match(/^(\/[a-z][a-z0-9_-]*)(?:\s+([\s\S]*))?$/i);
+      if (slashMatch) {
+        const spec = findSlashSpec(slashMatch[1]!);
+        if (spec) {
+          if (working.length < maxSegments) {
+            explicitSlashCount += 1;
+            const rest = (slashMatch[2] || "").trim();
+            working.push({
+              command: spec.command,
+              routeId: spec.routeId,
+              spec,
+              lines: rest ? [rest] : [],
+            });
+            continue;
+          }
+        }
+      }
+
+      if (working.length === 0) {
+        const bareMatch = unbulleted.match(/^([a-z][a-z0-9_-]*)\s+([\s\S]+)$/i);
+        const bareSpec = bareMatch ? findSlashSpec(`/${bareMatch[1]!}`) : undefined;
+        if (bareSpec) {
+          const rest = bareMatch![2]!.trim();
+          working.push({
+            command: bareSpec.command,
+            routeId: bareSpec.routeId,
+            spec: bareSpec,
+            lines: rest ? [rest] : [],
+          });
+          continue;
+        }
+        return [];
+      }
+    }
+
+    if (working.length > 0) {
+      working[working.length - 1]!.lines.push(rawLine.trimEnd());
+    }
+  }
+
+  if (working.length < 2 || explicitSlashCount < 1) {
+    return [];
+  }
+
+  return working.map((seg) => ({
+    command: seg.command,
+    routeId: seg.routeId,
+    spec: seg.spec,
+    prompt: seg.lines.join("\n").trim(),
+  }));
+}
+
 export const ROUTE_STAMP_REGEX = /<!--\s*noctis-route:(\{[\s\S]*?\})\s*-->/i;
 const ROUTE_STAMP_GLOBAL_REGEX = /\n?<!--\s*noctis-route:\{[\s\S]*?\}\s*-->/gi;
 

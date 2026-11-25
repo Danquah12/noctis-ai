@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   attachRouteStamp,
+  extractMultiSlashOverrides,
   getPanelSpec,
   getSlashCommandForRouteId,
   isValidNoctisPanelId,
@@ -716,4 +717,62 @@ test("Global & Universe Bundle (/space, /earth, /nav) routes accurately with zer
     assert.equal(d.override, true);
     assert.equal(d.routeId, expected, `Override ${cmd} expected ${expected}`);
   }
+});
+
+test("Multi-slash batch parser splits multi-command prompts cleanly with zero false positives", () => {
+  const threeBatch = [
+    "/space Live ISS position, NOAA Kp geomagnetic index, and Hohmann transfer from 400 km LEO to 35786 km GEO",
+    "",
+    "/earth Live USGS earthquakes M4.5+, NASA active wildfires, and air quality in Accra, Ghana",
+    "",
+    "/nav Live METAR for KJFK with runway 31L crosswind and great-circle flight distance from KJFK to EGLL",
+  ].join("\n");
+
+  const segs = extractMultiSlashOverrides(threeBatch);
+  assert.equal(segs.length, 3);
+  assert.deepEqual(
+    segs.map((s) => s.routeId),
+    ["space_universe", "earth_hazards", "global_nav"],
+  );
+  assert.ok(segs[0]!.prompt.includes("Hohmann transfer"));
+  assert.ok(segs[1]!.prompt.includes("Accra, Ghana"));
+  assert.ok(segs[2]!.prompt.includes("KJFK to EGLL"));
+
+  const decision = classifyNoctisIntent(threeBatch);
+  assert.equal(decision.override, true);
+  assert.equal(decision.label, "Multi-Route · /space + /earth + /nav");
+  assert.equal(decision.targetPanel, "chat");
+
+  // Bare first command followed by explicit /earth and /nav
+  const bareFirst = threeBatch.replace(/^\/space/, "space");
+  const bareSegs = extractMultiSlashOverrides(bareFirst);
+  assert.equal(bareSegs.length, 3);
+  assert.deepEqual(
+    bareSegs.map((s) => s.routeId),
+    ["space_universe", "earth_hazards", "global_nav"],
+  );
+
+  // Bulleted slash commands
+  const bulleted = [
+    "- /space Live ISS position and Kp index",
+    "- /earth Live USGS earthquakes M4.5+",
+    "- /nav Live METAR for KJFK",
+  ].join("\n");
+  assert.deepEqual(
+    extractMultiSlashOverrides(bulleted).map((s) => s.routeId),
+    ["space_universe", "earth_hazards", "global_nav"],
+  );
+
+  // Single slash command stays single-override (returns [])
+  assert.deepEqual(extractMultiSlashOverrides("/space Live ISS position"), []);
+
+  // File paths, regular prose, and code blocks must return []
+  assert.deepEqual(
+    extractMultiSlashOverrides("Inspect /api/v2/forge and /etc/passwd before deploying"),
+    [],
+  );
+  assert.deepEqual(
+    extractMultiSlashOverrides("```bash\n/space test\n/earth test\n```"),
+    [],
+  );
 });

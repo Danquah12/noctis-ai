@@ -17,6 +17,7 @@ import {
   computeDensityAltitude,
   computeGreatCircle,
   computeRunwayWindComponents,
+  extractRoutePair,
 } from "./noctis-global-nav.server.ts";
 
 test("Space & Universe deterministic orbital, Hohmann, impact, and habitable zone physics", () => {
@@ -82,4 +83,15 @@ test("Global Navigation great-circle, runway wind components, and density altitu
   // Hot/high day density altitude
   const da = computeDensityAltitude(5000, 29.92, 30);
   assert.ok(da.densityAltitudeFt > 7500 && da.densityAltitudeFt < 8500);
+
+  // Repeated ICAO codes before destination must deduplicate cleanly
+  const pair1 = extractRoutePair(
+    "Live METAR for KJFK with runway 31L crosswind and great-circle flight distance from KJFK to EGLL",
+  );
+  assert.equal(pair1?.origin.code, "KJFK");
+  assert.equal(pair1?.dest.code, "EGLL");
+
+  const pair2 = extractRoutePair("KJFK METAR and KJFK to EGLL");
+  assert.equal(pair2?.origin.code, "KJFK");
+  assert.equal(pair2?.dest.code, "EGLL");
 });

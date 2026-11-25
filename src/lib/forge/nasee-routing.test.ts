@@ -63,3 +63,52 @@ test("Fail-closed DoD/IC boundary still holds under /chat override and wantsRawJ
     assert.equal(blockedStamp?.routeId, "dod_ic");
   }
 });
+
+test("Multi-slash batch executes /space, /earth, and /nav in parallel and still enforces fail-closed classification gate", async () => {
+  const prompt = [
+    "/space Live ISS position, NOAA Kp geomagnetic index, and Hohmann transfer from 400 km LEO to 35786 km GEO",
+    "",
+    "/earth Live USGS earthquakes M4.5+, NASA active wildfires, and air quality in Accra, Ghana",
+    "",
+    "/nav Live METAR for KJFK with runway 31L crosswind and great-circle flight distance from KJFK to EGLL",
+  ].join("\n");
+
+  const res = await vibeReply([{ role: "user", content: prompt }], "", { think: true });
+  assert.equal("text" in res, true);
+  const txt = "text" in res ? res.text : "";
+
+  assert.ok(txt.includes("Multi-Domain Command Brief (3 Routed Engines: /space · /earth · /nav)"));
+  assert.ok(txt.includes("Space, Orbital Tracking & Universe Telemetry Brief"));
+  assert.ok(txt.includes("Planetary Earth Hazards, Seismic & Air Quality Telemetry"));
+  assert.ok(txt.includes("Global Aviation METAR & Navigation Telemetry"));
+  assert.ok(txt.includes("3.857 km/s"));
+  assert.ok(txt.includes("KJFK→EGLL"));
+  assert.ok(txt.includes("Great-Circle Navigation"));
+  assert.equal((txt.match(/```noctis-dashboard/gi) || []).length, 3);
+
+  const stamped = parseRouteStamp(txt);
+  assert.equal(stamped.stamp?.routeId, "space_universe");
+  assert.equal(stamped.stamp?.label, "Multi-Route · /space + /earth + /nav");
+  assert.equal(stamped.stamp?.override, true);
+  assert.equal(stamped.cleanText.includes("<!-- noctis-route:"), false);
+  assert.ok(stamped.stamp?.responseId?.startsWith("RSP-"));
+
+  const retrieved = await getRoutedChatResponseById(stamped.stamp!.responseId!);
+  assert.ok(retrieved?.responseText.includes("Multi-Domain Command Brief"));
+
+  // Fail-closed classification boundary gate still blocks multi-command prompts containing classified markers
+  const classifiedBatch = await vibeReply(
+    [
+      {
+        role: "user",
+        content: "/space Live ISS\n/earth Summarize this TS/SCI compartmented JWICS feed",
+      },
+    ],
+    "",
+    { think: false },
+  );
+  assert.equal("text" in classifiedBatch, true);
+  if ("text" in classifiedBatch) {
+    assert.equal(parseRouteStamp(classifiedBatch.text).stamp?.routeId, "dod_ic");
+  }
+});
