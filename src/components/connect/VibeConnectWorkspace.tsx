@@ -54,20 +54,10 @@ const ACTOR_FALLBACK_KEY = "vibe_connect_actor_id_v1";
 
 export function VibeConnectWorkspace({ initialInviteCode = "" }: { initialInviteCode?: string }) {
   const { user } = useCurrentUserState();
-  const [actorId] = useState<string>(() => {
-    if (typeof window === "undefined") return "guest-actor";
-    const savedProfile = getSavedWorldPhoneProfile();
-    if (savedProfile?.phoneE164) return savedProfile.phoneE164;
-    const stored = window.localStorage.getItem(ACTOR_FALLBACK_KEY)?.trim();
-    if (stored) return stored;
-    const dev = getOrCreateWorldDeviceId();
-    window.localStorage.setItem(ACTOR_FALLBACK_KEY, dev);
-    return dev;
-  });
-
-  const savedWorld = typeof window !== "undefined" ? getSavedWorldPhoneProfile() : null;
-  const actorName = savedWorld?.displayName || user?.displayName || "Vibe User";
-  const actorPhone = savedWorld?.phoneE164 || "";
+  const [actorId, setActorId] = useState<string>("");
+  const [actorPhone, setActorPhone] = useState<string>("");
+  const [actorNameOverride, setActorNameOverride] = useState<string>("");
+  const actorName = actorNameOverride || user?.displayName || "Vibe User";
 
   const [keys, setKeys] = useState<{ publicKeyJwk: string; privateKeyJwk: string }>({
     publicKeyJwk: "",
@@ -78,7 +68,7 @@ export function VibeConnectWorkspace({ initialInviteCode = "" }: { initialInvite
   const [threadSearch, setThreadSearch] = useState("");
   const [toast, setToast] = useState("");
 
-  const [flags, setFlags] = useState<VibeConnectFeatureFlags>(() => loadLocalVibeConnectFlags());
+  const [flags, setFlags] = useState<VibeConnectFeatureFlags>(() => ({ ...DEFAULT_VIBE_CONNECT_FLAGS }));
   const [profile, setProfile] = useState<ConnectProfile | null>(null);
   const [threads, setThreads] = useState<ConnectThread[]>([]);
   const [activeThreadId, setActiveThreadId] = useState<string>("");
@@ -103,8 +93,33 @@ export function VibeConnectWorkspace({ initialInviteCode = "" }: { initialInvite
     window.setTimeout(() => setToast(""), 3200);
   };
 
-  // Auto-generate E2EE keypair & register Vibe Connect identity on mount
+  // Hydrate browser identity deterministically on mount (zero SSR hydration mismatch)
   useEffect(() => {
+    setFlags(loadLocalVibeConnectFlags());
+    const savedProfile = getSavedWorldPhoneProfile();
+    if (savedProfile?.displayName) setActorNameOverride(savedProfile.displayName);
+    if (savedProfile?.phoneE164) {
+      setActorPhone(savedProfile.phoneE164);
+      setActorId(savedProfile.phoneE164);
+      return;
+    }
+    const stored = window.localStorage.getItem(ACTOR_FALLBACK_KEY)?.trim();
+    if (stored) {
+      setActorId(stored);
+      return;
+    }
+    const dev = getOrCreateWorldDeviceId();
+    try {
+      window.localStorage.setItem(ACTOR_FALLBACK_KEY, dev);
+    } catch {
+      /* ignore */
+    }
+    setActorId(dev);
+  }, []);
+
+  // Auto-generate E2EE keypair & register Vibe Connect identity once actorId resolves
+  useEffect(() => {
+    if (!actorId) return;
     let cancelled = false;
     async function init() {
       let pair: { publicKeyJwk: string; privateKeyJwk: string } | null = null;
@@ -150,6 +165,7 @@ export function VibeConnectWorkspace({ initialInviteCode = "" }: { initialInvite
   }, [actorId]);
 
   async function refreshAll(preferThreadId?: string) {
+    if (!actorId) return;
     try {
       const data = await connectGet<{
         flags: VibeConnectFeatureFlags;
@@ -188,6 +204,7 @@ export function VibeConnectWorkspace({ initialInviteCode = "" }: { initialInvite
   }
 
   useEffect(() => {
+    if (!actorId) return;
     const timer = window.setInterval(() => void refreshAll(), 6000);
     return () => window.clearInterval(timer);
   }, [actorId, activeThreadId]);
