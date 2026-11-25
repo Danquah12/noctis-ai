@@ -6,6 +6,8 @@ import { useFeedStore } from "@/lib/feed-store";
 import { studyClearRing, studyRings } from "@/lib/study-group-api";
 import {
   getSavedWorldPhoneProfile,
+  getSilenceUnknownCallers,
+  getWorldContacts,
   subscribeWorldPhoneProfile,
   type WorldPhoneProfile,
 } from "@/lib/world-call-client";
@@ -57,7 +59,13 @@ export function StudyRingBar() {
         });
         if (!res.ok) return;
         const json = (await res.json()) as { ok?: boolean; rings?: WorldRing[] };
-        const next = json.rings?.[0] ?? null;
+        const rawNext = json.rings?.[0] ?? null;
+        const knownContacts = getWorldContacts();
+        const isUnknownSilenced =
+          Boolean(rawNext) &&
+          getSilenceUnknownCallers() &&
+          !knownContacts.some((c) => c.phoneE164 === rawNext?.fromPhoneE164);
+        const next = isUnknownSilenced ? null : rawNext;
         if (!stop) setWorldRing(next);
         if (next && next.id !== heardWorld.current) {
           heardWorld.current = next.id;

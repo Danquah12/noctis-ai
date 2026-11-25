@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ClipboardEvent } from "react";
+import { Link } from "@tanstack/react-router";
 import { BookmarkPlus, Check, ChevronDown, Copy, Delete, Globe, Info, Link2, MessageSquare, Mic, MicOff, Phone, PhoneOff, Plus, Search, Share2, Smartphone, Trash2, UserPlus, Users, Video, X } from "lucide-react";
 import { StudyCall, type CallToolbarActions } from "@/components/learn/StudyCall";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
@@ -1077,6 +1078,14 @@ export function NoctisCall({
             Vibe
           </button>
           <div className="flex flex-wrap items-center justify-end gap-2">
+            <Link
+              to="/connect"
+              data-testid="vibe-connect-pill"
+              className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/35 bg-emerald-500/15 px-3 py-1 text-[11px] font-medium text-emerald-200 backdrop-blur-sm transition hover:bg-emerald-500/25"
+            >
+              <MessageSquare className="size-3.5 text-emerald-400" />
+              Vibe Connect
+            </Link>
             <button
               type="button"
               data-testid="call-groups-trigger"

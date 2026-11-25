@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as BattleRouteImport } from './routes/battle'
 import { Route as CallsRouteImport } from './routes/calls'
 import { Route as CampusRouteImport } from './routes/campus'
+import { Route as ConnectRouteImport } from './routes/connect'
 import { Route as DeskRouteImport } from './routes/desk'
 import { Route as ExploreRouteImport } from './routes/explore'
 import { Route as HallRouteImport } from './routes/hall'
@@ -35,6 +36,7 @@ import { Route as StudyRouteImport } from './routes/study'
 import { Route as WorkRouteImport } from './routes/work'
 import { Route as YouRouteImport } from './routes/you'
 import { Route as ApiCallRoomRouteImport } from './routes/api/call-room'
+import { Route as ApiConnectRouteImport } from './routes/api/connect'
 import { Route as ApiCveStreamRouteImport } from './routes/api/cve-stream'
 import { Route as ApiNoctisRouteImport } from './routes/api/noctis'
 import { Route as ApiShareCardRouteImport } from './routes/api/share-card'
@@ -125,6 +127,11 @@ const CallsRoute = CallsRouteImport.update({
 const CampusRoute = CampusRouteImport.update({
   id: '/campus',
   path: '/campus',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConnectRoute = ConnectRouteImport.update({
+  id: '/connect',
+  path: '/connect',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DeskRoute = DeskRouteImport.update({
@@ -235,6 +242,11 @@ const YouRoute = YouRouteImport.update({
 const ApiCallRoomRoute = ApiCallRoomRouteImport.update({
   id: '/api/call-room',
   path: '/api/call-room',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiConnectRoute = ApiConnectRouteImport.update({
+  id: '/api/connect',
+  path: '/api/connect',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiCveStreamRoute = ApiCveStreamRouteImport.update({
@@ -603,6 +615,7 @@ export interface FileRoutesByFullPath {
   '/battle': typeof BattleRoute
   '/calls': typeof CallsRoute
   '/campus': typeof CampusRoute
+  '/connect': typeof ConnectRoute
   '/desk': typeof DeskRouteWithChildren
   '/explore': typeof ExploreRoute
   '/hall': typeof HallRoute
@@ -625,6 +638,7 @@ export interface FileRoutesByFullPath {
   '/work': typeof WorkRoute
   '/you': typeof YouRoute
   '/api/call-room': typeof ApiCallRoomRoute
+  '/api/connect': typeof ApiConnectRoute
   '/api/cve-stream': typeof ApiCveStreamRoute
   '/api/noctis': typeof ApiNoctisRouteWithChildren
   '/api/share-card': typeof ApiShareCardRoute
@@ -702,6 +716,7 @@ export interface FileRoutesByTo {
   '/battle': typeof BattleRoute
   '/calls': typeof CallsRoute
   '/campus': typeof CampusRoute
+  '/connect': typeof ConnectRoute
   '/explore': typeof ExploreRoute
   '/hall': typeof HallRoute
   '/home': typeof HomeRoute
@@ -721,6 +736,7 @@ export interface FileRoutesByTo {
   '/work': typeof WorkRoute
   '/you': typeof YouRoute
   '/api/call-room': typeof ApiCallRoomRoute
+  '/api/connect': typeof ApiConnectRoute
   '/api/cve-stream': typeof ApiCveStreamRoute
   '/api/noctis': typeof ApiNoctisRouteWithChildren
   '/api/share-card': typeof ApiShareCardRoute
@@ -798,6 +814,7 @@ export interface FileRoutesById {
   '/battle': typeof BattleRoute
   '/calls': typeof CallsRoute
   '/campus': typeof CampusRoute
+  '/connect': typeof ConnectRoute
   '/desk': typeof DeskRouteWithChildren
   '/explore': typeof ExploreRoute
   '/hall': typeof HallRoute
@@ -820,6 +837,7 @@ export interface FileRoutesById {
   '/work': typeof WorkRoute
   '/you': typeof YouRoute
   '/api/call-room': typeof ApiCallRoomRoute
+  '/api/connect': typeof ApiConnectRoute
   '/api/cve-stream': typeof ApiCveStreamRoute
   '/api/noctis': typeof ApiNoctisRouteWithChildren
   '/api/share-card': typeof ApiShareCardRoute
@@ -899,6 +917,7 @@ export interface FileRouteTypes {
     | '/battle'
     | '/calls'
     | '/campus'
+    | '/connect'
     | '/desk'
     | '/explore'
     | '/hall'
@@ -921,6 +940,7 @@ export interface FileRouteTypes {
     | '/work'
     | '/you'
     | '/api/call-room'
+    | '/api/connect'
     | '/api/cve-stream'
     | '/api/noctis'
     | '/api/share-card'
@@ -998,6 +1018,7 @@ export interface FileRouteTypes {
     | '/battle'
     | '/calls'
     | '/campus'
+    | '/connect'
     | '/explore'
     | '/hall'
     | '/home'
@@ -1017,6 +1038,7 @@ export interface FileRouteTypes {
     | '/work'
     | '/you'
     | '/api/call-room'
+    | '/api/connect'
     | '/api/cve-stream'
     | '/api/noctis'
     | '/api/share-card'
@@ -1093,6 +1115,7 @@ export interface FileRouteTypes {
     | '/battle'
     | '/calls'
     | '/campus'
+    | '/connect'
     | '/desk'
     | '/explore'
     | '/hall'
@@ -1115,6 +1138,7 @@ export interface FileRouteTypes {
     | '/work'
     | '/you'
     | '/api/call-room'
+    | '/api/connect'
     | '/api/cve-stream'
     | '/api/noctis'
     | '/api/share-card'
@@ -1193,6 +1217,7 @@ export interface RootRouteChildren {
   BattleRoute: typeof BattleRoute
   CallsRoute: typeof CallsRoute
   CampusRoute: typeof CampusRoute
+  ConnectRoute: typeof ConnectRoute
   DeskRoute: typeof DeskRouteWithChildren
   ExploreRoute: typeof ExploreRoute
   HallRoute: typeof HallRoute
@@ -1215,6 +1240,7 @@ export interface RootRouteChildren {
   WorkRoute: typeof WorkRoute
   YouRoute: typeof YouRoute
   ApiCallRoomRoute: typeof ApiCallRoomRoute
+  ApiConnectRoute: typeof ApiConnectRoute
   ApiCveStreamRoute: typeof ApiCveStreamRoute
   ApiNoctisRoute: typeof ApiNoctisRouteWithChildren
   ApiShareCardRoute: typeof ApiShareCardRoute
@@ -1262,6 +1288,13 @@ declare module '@tanstack/react-router' {
       path: '/campus'
       fullPath: '/campus'
       preLoaderRoute: typeof CampusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/connect': {
+      id: '/connect'
+      path: '/connect'
+      fullPath: '/connect'
+      preLoaderRoute: typeof ConnectRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/desk': {
@@ -1416,6 +1449,13 @@ declare module '@tanstack/react-router' {
       path: '/api/call-room'
       fullPath: '/api/call-room'
       preLoaderRoute: typeof ApiCallRoomRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/connect': {
+      id: '/api/connect'
+      path: '/api/connect'
+      fullPath: '/api/connect'
+      preLoaderRoute: typeof ApiConnectRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/cve-stream': {
@@ -2075,6 +2115,7 @@ const rootRouteChildren: RootRouteChildren = {
   BattleRoute: BattleRoute,
   CallsRoute: CallsRoute,
   CampusRoute: CampusRoute,
+  ConnectRoute: ConnectRoute,
   DeskRoute: DeskRouteWithChildren,
   ExploreRoute: ExploreRoute,
   HallRoute: HallRoute,
@@ -2097,6 +2138,7 @@ const rootRouteChildren: RootRouteChildren = {
   WorkRoute: WorkRoute,
   YouRoute: YouRoute,
   ApiCallRoomRoute: ApiCallRoomRoute,
+  ApiConnectRoute: ApiConnectRoute,
   ApiCveStreamRoute: ApiCveStreamRoute,
   ApiNoctisRoute: ApiNoctisRouteWithChildren,
   ApiShareCardRoute: ApiShareCardRoute,

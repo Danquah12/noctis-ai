@@ -449,6 +449,29 @@ export async function ringWorldPhone(input: {
   const room = await sql`select 1 as ok from world_call_room where id = ${roomId} limit 1`;
   if (!room.length) throw new Error("Call room does not exist");
 
+  try {
+    const blocked = (await sql.query(
+      `select 1 as hit from vc_block
+       where (blocker_id = $1 and blocked_id = $2)
+          or (blocker_id = $2 and blocked_id = $1)
+       limit 1`,
+      [toPhoneE164, fromPhoneE164 || fromName],
+    )) as { hit: number }[];
+    if (blocked.length) {
+      return {
+        ok: false as const,
+        blocked: true as const,
+        ringId: 0,
+        toDisplayName: "",
+        online: false,
+        pushSent: false,
+        error: "Blocked by recipient",
+      };
+    }
+  } catch {
+    /* vc_block table may not exist yet before first /api/connect call */
+  }
+
   const target = await sql<{
     display_name: string;
     push_subscription: string | null;
@@ -645,12 +668,29 @@ export async function ringWorldGroup(input: {
 
   await sql`delete from world_call_ring where created_at < now() - interval '5 minutes'`;
 
-  const registeredRows = (await sql.query(
+  const registeredRowsAll = (await sql.query(
     `select phone_e164, display_name, push_subscription, (last_seen_at > now() - interval '90 seconds') as online
      from world_call_directory
      where phone_e164 = any($1::text[])`,
     [phones],
   )) as { phone_e164: string; display_name: string; push_subscription: string | null; online: boolean }[];
+
+  let blockedPhones = new Set<string>();
+  try {
+    const blockRows = (await sql.query(
+      `select blocker_id, blocked_id from vc_block
+       where blocker_id = any($1::text[]) or blocked_id = any($1::text[])`,
+      [phones],
+    )) as { blocker_id: string; blocked_id: string }[];
+    const callerKey = fromPhoneE164 || baseFromName;
+    for (const row of blockRows) {
+      if (row.blocked_id === callerKey) blockedPhones.add(row.blocker_id);
+      if (row.blocker_id === callerKey) blockedPhones.add(row.blocked_id);
+    }
+  } catch {
+    /* vc_block table optional before first connect use */
+  }
+  const registeredRows = registeredRowsAll.filter((r) => !blockedPhones.has(r.phone_e164));
 
   const byPhone = new Map(registeredRows.map((r) => [r.phone_e164, r]));
   const notRegistered = phones.filter((p) => !byPhone.has(p));

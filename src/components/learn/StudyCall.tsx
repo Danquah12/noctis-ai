@@ -1,4 +1,4 @@
-import { AudioLines, Calendar, Captions, Check, ChevronUp, Circle, Copy, FileText, Hand, ImagePlus, Link2, MessageSquare, Mic, MicOff, MonitorUp, MoreHorizontal, Phone, PhoneOff, Pin, Share2, Smile, Sparkles, UserPlus, Video, VideoOff } from "lucide-react";
+import { AudioLines, BookmarkCheck, Calendar, Captions, Check, ChevronUp, Circle, Copy, FileText, Gauge, Hand, ImagePlus, Link2, MessageSquare, Mic, MicOff, MonitorUp, MoreHorizontal, Phone, PhoneOff, PictureInPicture2, Pin, RefreshCw, Share2, Smile, Sparkles, UserPlus, Video, VideoOff } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent, type ReactNode, type RefObject } from "react";
 import { defaultIceServers } from "@/lib/multiplayer/p2p";
 import { useFeedStore } from "@/lib/feed-store";
@@ -101,6 +101,10 @@ export function StudyCall({
   const [draft, setDraft] = useState("");
   const [note, setNote] = useState<string | null>(null);
   const after = useRef(0);
+  const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
+  const [lowBandwidth, setLowBandwidth] = useState(false);
+  const [pipActive, setPipActive] = useState(false);
+  const [savedMinutesNote, setSavedMinutesNote] = useState("");
 
   useEffect(() => {
     const setPlayingId = useFeedStore.getState().setPlayingId;
@@ -1040,6 +1044,94 @@ export function StudyCall({
     setCam(true);
   }
 
+  async function flipCamera() {
+    if (sharing) return;
+    const nextMode: "user" | "environment" = facingMode === "user" ? "environment" : "user";
+    try {
+      const fresh = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: nextMode }, width: { ideal: 1280 }, height: { ideal: 720 } },
+      });
+      const track = fresh.getVideoTracks()[0];
+      if (!track) return;
+      track.contentHint = "motion";
+      if (!streamRef.current) streamRef.current = new MediaStream();
+      await swapTrack("video", track);
+      setFacingMode(nextMode);
+      setCam(true);
+    } catch {
+      setErr("Could not switch camera on this device.");
+    }
+  }
+
+  async function togglePip() {
+    try {
+      if (document.pictureInPictureElement) {
+        await document.exitPictureInPicture();
+        setPipActive(false);
+        return;
+      }
+      const root = document.querySelector("[data-meeting]");
+      const videos = root ? ([...root.querySelectorAll("video")] as HTMLVideoElement[]) : [];
+      const target =
+        videos.find((el) => el !== localRef.current && el.videoWidth > 0) ||
+        videos.find((el) => el.videoWidth > 0) ||
+        localRef.current;
+      if (!target || typeof target.requestPictureInPicture !== "function") {
+        setErr("Picture-in-Picture is unavailable until video is active.");
+        return;
+      }
+      await target.requestPictureInPicture();
+      setPipActive(true);
+    } catch {
+      setErr("Browser blocked Picture-in-Picture.");
+    }
+  }
+
+  async function toggleLowBandwidth() {
+    const next = !lowBandwidth;
+    setLowBandwidth(next);
+    const bitrate = next ? 150_000 : 650_000;
+    links.current.forEach((pc) => {
+      pc.getSenders().forEach((sender) => {
+        if (sender.track?.kind !== "video") return;
+        try {
+          const params = sender.getParameters();
+          if (!params.encodings.length) params.encodings = [{}];
+          params.encodings[0]!.maxBitrate = bitrate;
+          params.encodings[0]!.maxFramerate = next ? 15 : 30;
+          void sender.setParameters(params).catch(() => undefined);
+        } catch {
+          /* ignore */
+        }
+      });
+    });
+  }
+
+  async function saveNotesToConnect(transcriptText: string) {
+    try {
+      const content =
+        transcriptText.trim() ||
+        `Joined call "${title || "Noctis Call"}"${targetE164 ? ` with ${targetE164}` : ""}. Enable Captions during the call to capture full transcript lines.`;
+      const res = await fetch("/api/connect", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          action: "save_call_notes",
+          actorId: activeSelfId,
+          actorName: peerName || "Noctis Caller",
+          roomId: groupId,
+          title: title || "Noctis Call",
+          notes: content,
+        }),
+      });
+      if (!res.ok) throw new Error("Save failed");
+      setSavedMinutesNote("Saved to Vibe Connect Saved Messages!");
+      window.setTimeout(() => setSavedMinutesNote(""), 3200);
+    } catch {
+      setSavedMinutesNote("Could not save call notes right now.");
+    }
+  }
+
   async function holdFront(_nextFollow: boolean, pin: string) {
     const who = pin === "self" ? activeSelfId : pin;
     if (who) setHostPin(who);
@@ -1175,6 +1267,13 @@ export function StudyCall({
       initialScene={video ? FOREST_MEET : null}
       marks={marks}
       onPresence={tellPresence}
+      onFlipCamera={() => void flipCamera()}
+      onTogglePip={() => void togglePip()}
+      pipActive={pipActive}
+      onToggleLowBandwidth={() => void toggleLowBandwidth()}
+      lowBandwidth={lowBandwidth}
+      onSaveNotesToConnect={(txt) => void saveNotesToConnect(txt)}
+      savedMinutesNote={savedMinutesNote}
       onClose={leave}
     />
   ) : (
@@ -1398,6 +1497,13 @@ function Meet({
   initialScene = null,
   marks,
   onPresence,
+  onFlipCamera,
+  onTogglePip,
+  pipActive,
+  onToggleLowBandwidth,
+  lowBandwidth,
+  onSaveNotesToConnect,
+  savedMinutesNote,
   onClose,
 }: {
   title: string;
@@ -1439,6 +1545,13 @@ function Meet({
   initialScene?: MeetScene | null;
   marks: Record<string, { hand: boolean; muted: boolean }>;
   onPresence: (hand: boolean, muted: boolean) => void;
+  onFlipCamera?: () => void;
+  onTogglePip?: () => void;
+  pipActive?: boolean;
+  onToggleLowBandwidth?: () => void;
+  lowBandwidth?: boolean;
+  onSaveNotesToConnect?: (transcriptText: string) => void;
+  savedMinutesNote?: string;
   onClose: () => void;
 }) {
   const [pinned, setPinned] = useState("");
@@ -1513,6 +1626,7 @@ function Meet({
   const [burst, setBurst] = useState("");
   const [captions, setCaptions] = useState(false);
   const [caption, setCaption] = useState("");
+  const transcriptLogRef = useRef<string[]>([]);
   const [scene, setScene] = useState<MeetScene | null>(initialScene);
   const ownScene = useRef("");
   const mark = (title || "?").slice(0, 1).toUpperCase();
@@ -1543,7 +1657,14 @@ function Meet({
     rec.onresult = (event) => {
       const row = event.results[event.results.length - 1];
       const said = row?.[0]?.transcript?.trim();
-      if (said) setCaption(said);
+      if (said) {
+        setCaption(said);
+        const list = transcriptLogRef.current;
+        if (list[list.length - 1] !== said) {
+          list.push(said);
+          if (list.length > 60) list.shift();
+        }
+      }
     };
     rec.onend = () => {
       try {
@@ -1994,14 +2115,43 @@ function Meet({
                 Calendar (.ics)
               </button>
             ) : null}
+            {onSaveNotesToConnect ? (
+              <button
+                type="button"
+                onClick={() => onSaveNotesToConnect(transcriptLogRef.current.join("\n"))}
+                className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/35 bg-emerald-500/15 px-3 py-1 text-[11px] font-semibold text-emerald-200 hover:bg-emerald-500/25"
+              >
+                <BookmarkCheck className="size-3.5" />
+                Save notes to Vibe Connect
+              </button>
+            ) : null}
           </div>
+          {savedMinutesNote ? <p className="mt-2 text-[11px] text-emerald-300">{savedMinutesNote}</p> : null}
           {callActions?.actionStatus ? (
             <p className="mt-2 text-[11px] text-[#e4b86a]">{callActions.actionStatus}</p>
           ) : null}
         </div>
       ) : null}
       {open === "more" ? (
-        <div className="mx-auto mb-2 flex w-fit gap-1 rounded-full bg-[#2a2a2a] p-1 ring-1 ring-white/10">
+        <div className="mx-auto mb-2 flex w-fit flex-wrap justify-center gap-1 rounded-full bg-[#2a2a2a] p-1 ring-1 ring-white/10">
+          {onFlipCamera ? (
+            <button type="button" onClick={() => { setOpen(""); onFlipCamera(); }} className="inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm hover:bg-white/10">
+              <RefreshCw className="size-4" />
+              Flip camera
+            </button>
+          ) : null}
+          {onTogglePip ? (
+            <button type="button" onClick={() => { setOpen(""); onTogglePip(); }} className={`inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm hover:bg-white/10 ${pipActive ? "bg-white text-black" : ""}`}>
+              <PictureInPicture2 className="size-4" />
+              PiP
+            </button>
+          ) : null}
+          {onToggleLowBandwidth ? (
+            <button type="button" onClick={() => { setOpen(""); onToggleLowBandwidth(); }} className={`inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm hover:bg-white/10 ${lowBandwidth ? "bg-emerald-500 text-black font-semibold" : ""}`}>
+              <Gauge className="size-4" />
+              {lowBandwidth ? "Low data ON" : "Low data"}
+            </button>
+          ) : null}
           {onAdd ? (
             <button type="button" onClick={() => { setOpen(""); onAdd(); }} className="inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm hover:bg-white/10">
               <UserPlus className="size-4" />

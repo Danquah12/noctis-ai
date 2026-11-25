@@ -287,3 +287,24 @@ export async function subscribeDeviceToWebPush(
     return { ok: false, reason: err instanceof Error ? err.message : "Push registration skipped" };
   }
 }
+
+const SILENCE_UNKNOWN_KEY = "noctis_silence_unknown_callers";
+
+export function getSilenceUnknownCallers(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(SILENCE_UNKNOWN_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function setSilenceUnknownCallers(enabled: boolean): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(SILENCE_UNKNOWN_KEY, enabled ? "1" : "0");
+    window.dispatchEvent(new CustomEvent(CHANGE_EVENT));
+  } catch {
+    /* ignore storage errors */
+  }
+}
