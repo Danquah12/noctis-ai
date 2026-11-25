@@ -35,6 +35,8 @@ export function StudyCall({
   targetE164 = "",
   joinUrl = "",
   peerName = "",
+  directRingId,
+  directRingName = "",
   callActions,
   onAdd,
   onShare,
@@ -51,6 +53,8 @@ export function StudyCall({
   targetE164?: string;
   joinUrl?: string;
   peerName?: string;
+  directRingId?: number;
+  directRingName?: string;
   callActions?: CallToolbarActions;
   onAdd?: () => void;
   onShare?: () => void | Promise<"shared" | "copied" | "aborted" | "failed" | void>;
@@ -1105,6 +1109,8 @@ export function StudyCall({
       targetE164={targetE164}
       joinUrl={joinUrl}
       peerName={peerName}
+      directRingId={directRingId}
+      directRingName={directRingName}
       callActions={callActions}
       onHold={(next, pin) => void holdFront(next, pin)}
       onMic={() => setMic((on) => !on)}
@@ -1324,6 +1330,8 @@ function Meet({
   targetE164 = "",
   joinUrl = "",
   peerName = "",
+  directRingId,
+  directRingName = "",
   callActions,
   onHold,
   onMic,
@@ -1361,6 +1369,8 @@ function Meet({
   targetE164?: string;
   joinUrl?: string;
   peerName?: string;
+  directRingId?: number;
+  directRingName?: string;
   callActions?: CallToolbarActions;
   onHold: (follow: boolean, pin: string) => void;
   onMic: () => void;
@@ -1380,6 +1390,65 @@ function Meet({
   onClose: () => void;
 }) {
   const [pinned, setPinned] = useState("");
+  const [ringStatus, setRingStatus] = useState<"ringing" | "accepted" | "declined" | "missed" | "expired">("ringing");
+  useEffect(() => {
+    if (!isWorld || !waiting || !directRingId) return;
+    let stop = false;
+    async function poll() {
+      try {
+        const res = await fetch("/api/call-room", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ action: "ring_status", ringId: directRingId }),
+        });
+        if (!res.ok) return;
+        const json = (await res.json()) as { ok?: boolean; status?: string };
+        if (!stop && json.status && (json.status === "ringing" || json.status === "accepted" || json.status === "declined" || json.status === "missed" || json.status === "expired")) {
+          setRingStatus(json.status);
+        }
+      } catch {
+        /* next poll retries */
+      }
+    }
+    void poll();
+    const timer = window.setInterval(() => void poll(), 2000);
+    return () => {
+      stop = true;
+      window.clearInterval(timer);
+    };
+  }, [isWorld, waiting, directRingId]);
+  useEffect(() => {
+    if (!isWorld || !waiting || !directRingId || ringStatus !== "ringing" || typeof window === "undefined") return;
+    const Ctx = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!Ctx) return;
+    let ctx: AudioContext | null = null;
+    try {
+      ctx = new Ctx();
+    } catch {
+      return;
+    }
+    const chime = () => {
+      if (!ctx || ctx.state === "closed") return;
+      if (ctx.state === "suspended") void ctx.resume().catch(() => undefined);
+      const t = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(440, t);
+      gain.gain.setValueAtTime(0.025, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.56);
+    };
+    chime();
+    const timer = window.setInterval(chime, 3000);
+    return () => {
+      window.clearInterval(timer);
+      void ctx?.close().catch(() => undefined);
+    };
+  }, [isWorld, waiting, directRingId, ringStatus]);
   useEffect(() => {
     if (!hostPin) return;
     setPinned(hostPin === selfId ? "self" : hostPin);
@@ -1542,8 +1611,22 @@ function Meet({
                   <div className="max-w-md">
                     <div className="mx-auto grid size-24 place-items-center rounded-full border border-white/15 bg-white/10 text-4xl font-semibold">{mark}</div>
                     <p className="mt-4 text-2xl font-semibold tracking-tight text-white">{strip ? stageName : targetE164 || title}</p>
-                    <p className="mt-1 text-xs uppercase tracking-[0.2em] text-emerald-400">
-                      {isWorld ? (waiting ? "Ringing / Waiting for peer to join link" : "Encrypted HD Internet Audio Active") : waiting ? "Calling…" : "Connected"}
+                    <p className={`mt-1 text-xs uppercase tracking-[0.2em] ${ringStatus === "declined" ? "text-rose-400" : "text-emerald-400"}`}>
+                      {isWorld
+                        ? waiting
+                          ? directRingId
+                            ? ringStatus === "declined"
+                              ? "Call declined · Send invite link below"
+                              : ringStatus === "accepted"
+                                ? "Accepted · Connecting audio…"
+                                : ringStatus === "missed" || ringStatus === "expired"
+                                  ? "No answer · Share link below ($0)"
+                                  : `Ringing ${directRingName || targetE164 || "peer"} on Noctis… ($0)`
+                            : "Free internet call link ready · Share to ring ($0)"
+                          : "Encrypted HD Internet Audio Active"
+                        : waiting
+                          ? "Calling…"
+                          : "Connected"}
                     </p>
                     {isWorld ? (
                       <button
@@ -1595,6 +1678,11 @@ function Meet({
                       <Phone className="size-3.5" />
                       Carrier dialer
                     </a>
+                  ) : null}
+                  {!directRingId ? (
+                    <p className="w-full text-center text-[10px] text-zinc-400">
+                      WhatsApp-style $0 direct ringing works when that phone registers under &quot;My Number&quot; on Noctis.
+                    </p>
                   ) : null}
                 </div>
               ) : null}

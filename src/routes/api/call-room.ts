@@ -6,10 +6,18 @@ export const Route = createFileRoute("/api/call-room")({
       GET: async ({ request }) => {
         try {
           const url = new URL(request.url);
+          const lookup = (url.searchParams.get("lookup") ?? "").trim();
+          if (lookup) {
+            const defaultDial = (url.searchParams.get("dial") ?? "").trim() || undefined;
+            const { lookupWorldPhone } = await import("@/lib/world-call.server");
+            const hit = await lookupWorldPhone(lookup, defaultDial);
+            return Response.json(hit, { headers: { "cache-control": "no-store" } });
+          }
+
           const roomId = (url.searchParams.get("roomId") ?? "").trim();
           if (!roomId) {
             return Response.json(
-              { ok: false, error: "roomId query parameter is required" },
+              { ok: false, error: "roomId or lookup query parameter is required" },
               { status: 400, headers: { "cache-control": "no-store" } },
             );
           }
@@ -79,6 +87,57 @@ export const Route = createFileRoute("/api/call-room")({
               roomId: String(body.roomId ?? ""),
               peerId: String(body.peerId ?? ""),
             });
+            return Response.json(res, { headers: { "cache-control": "no-store" } });
+          }
+
+          if (action === "register_phone") {
+            const res = await mod.registerWorldPhone({
+              phoneE164: String(body.phoneE164 ?? body.phone ?? ""),
+              deviceId: String(body.deviceId ?? body.peerId ?? ""),
+              displayName: typeof body.displayName === "string" ? body.displayName : undefined,
+              countryIso: typeof body.countryIso === "string" ? body.countryIso : undefined,
+              defaultDial: typeof body.defaultDial === "string" ? body.defaultDial : undefined,
+            });
+            return Response.json(res, { headers: { "cache-control": "no-store" } });
+          }
+
+          if (action === "lookup_phone") {
+            const res = await mod.lookupWorldPhone(
+              String(body.phone ?? body.phoneE164 ?? ""),
+              typeof body.defaultDial === "string" ? body.defaultDial : undefined,
+            );
+            return Response.json(res, { headers: { "cache-control": "no-store" } });
+          }
+
+          if (action === "ring_phone") {
+            const res = await mod.ringWorldPhone({
+              roomId: String(body.roomId ?? ""),
+              fromPhoneE164: typeof body.fromPhoneE164 === "string" ? body.fromPhoneE164 : undefined,
+              fromName: typeof body.fromName === "string" ? body.fromName : undefined,
+              toPhoneE164: String(body.toPhoneE164 ?? body.phoneE164 ?? ""),
+              mode: typeof body.mode === "string" ? body.mode : "voice",
+            });
+            return Response.json(res, { headers: { "cache-control": "no-store" } });
+          }
+
+          if (action === "poll_rings") {
+            const res = await mod.pollWorldRings({
+              phoneE164: String(body.phoneE164 ?? ""),
+              deviceId: typeof body.deviceId === "string" ? body.deviceId : undefined,
+            });
+            return Response.json(res, { headers: { "cache-control": "no-store" } });
+          }
+
+          if (action === "respond_ring") {
+            const res = await mod.respondWorldRing({
+              ringId: Number(body.ringId),
+              status: String(body.status ?? ""),
+            });
+            return Response.json(res, { headers: { "cache-control": "no-store" } });
+          }
+
+          if (action === "ring_status") {
+            const res = await mod.getWorldRingStatus(Number(body.ringId));
             return Response.json(res, { headers: { "cache-control": "no-store" } });
           }
 
