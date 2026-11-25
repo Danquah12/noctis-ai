@@ -971,7 +971,7 @@ export function NoctisCall({
           <div className="mx-auto mb-2 w-[min(26rem,calc(100%-2rem))] rounded-2xl border border-white/15 bg-[#121318]/95 p-3 text-xs text-zinc-300 shadow-xl backdrop-blur-md">
             <p className="font-semibold text-white">Worldwide $0 Internet Calling</p>
             <p className="mt-1 text-[11px] text-zinc-400">
-              100% free WebRTC voice & video across all {voipDetails?.countriesSupported ?? WORLD_DIAL_CODES.length}+ countries. Register &quot;My Number&quot; on any device for WhatsApp-style direct ringing, or share the call link for instant browser join.
+              100% free WebRTC voice & video across all {voipDetails?.countriesSupported ?? WORLD_DIAL_CODES.length}+ countries. Register {"\"My Number\""} on any device for WhatsApp-style direct ringing, or share the call link for instant browser join.
             </p>
             {internet ? (
               <p className="mt-1.5 text-[11px] text-emerald-300">

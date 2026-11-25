@@ -1681,7 +1681,7 @@ function Meet({
                   ) : null}
                   {!directRingId ? (
                     <p className="w-full text-center text-[10px] text-zinc-400">
-                      WhatsApp-style $0 direct ringing works when that phone registers under &quot;My Number&quot; on Noctis.
+                      WhatsApp-style $0 direct ringing works when that phone registers under {"\"My Number\""} on Noctis.
                     </p>
                   ) : null}
                 </div>
