@@ -607,3 +607,119 @@ export async function getWorldRingStatus(ringIdRaw: number) {
     toPhoneE164: row.to_phone_e164,
   };
 }
+
+export async function ringWorldGroup(input: {
+  roomId: string;
+  groupName?: string;
+  fromPhoneE164?: string;
+  fromName?: string;
+  memberPhones: string[];
+  mode?: string;
+}) {
+  const roomId = cleanRoomId(input.roomId);
+  const fromPhoneE164 = input.fromPhoneE164 ? cleanPhoneE164(input.fromPhoneE164) : "";
+  const baseFromName = cleanName(input.fromName, fromPhoneE164 || "Noctis Caller");
+  const groupName = String(input.groupName ?? "").replace(/\s+/g, " ").trim().slice(0, 40);
+  const fromLabel = groupName ? `${baseFromName} · ${groupName}` : baseFromName;
+  const mode: WorldCallMode = input.mode === "video" ? "video" : "voice";
+
+  const seen = new Set<string>();
+  const phones: string[] = [];
+  for (const raw of Array.isArray(input.memberPhones) ? input.memberPhones.slice(0, 50) : []) {
+    const clean = cleanPhoneE164(raw);
+    if (!clean || clean === fromPhoneE164 || seen.has(clean)) continue;
+    seen.add(clean);
+    phones.push(clean);
+  }
+  if (!phones.length) {
+    return {
+      ok: true as const,
+      rung: [] as { phoneE164: string; displayName: string; ringId: number; online: boolean; pushSent: boolean }[],
+      notRegistered: [] as string[],
+    };
+  }
+
+  const sql = await ready();
+  const room = await sql`select 1 as ok from world_call_room where id = ${roomId} limit 1`;
+  if (!room.length) throw new Error("Call room does not exist");
+
+  await sql`delete from world_call_ring where created_at < now() - interval '5 minutes'`;
+
+  const registeredRows = (await sql.query(
+    `select phone_e164, display_name, push_subscription, (last_seen_at > now() - interval '90 seconds') as online
+     from world_call_directory
+     where phone_e164 = any($1::text[])`,
+    [phones],
+  )) as { phone_e164: string; display_name: string; push_subscription: string | null; online: boolean }[];
+
+  const byPhone = new Map(registeredRows.map((r) => [r.phone_e164, r]));
+  const notRegistered = phones.filter((p) => !byPhone.has(p));
+
+  const keys = registeredRows.some((r) => r.push_subscription) ? await getOrCreateVapidKeys(sql) : null;
+  const webpush = keys ? ((await import("web-push")).default ?? (await import("web-push"))) : null;
+  if (webpush && keys) {
+    webpush.setVapidDetails("mailto:calls@dstrike.app", keys.publicKey, keys.privateKey);
+  }
+
+  const rung = await Promise.all(
+    registeredRows.map(async (target) => {
+      const inserted = await sql<{ id: number }>`
+        insert into world_call_ring (room_id, from_phone_e164, from_name, to_phone_e164, mode, status)
+        values (${roomId}, ${fromPhoneE164 || null}, ${fromLabel}, ${target.phone_e164}, ${mode}, 'ringing')
+        returning id
+      `;
+      const ringId = Number(inserted[0]!.id);
+      let pushSent = false;
+      if (target.push_subscription && webpush) {
+        try {
+          const sub = JSON.parse(target.push_subscription);
+          await webpush.sendNotification(
+            sub,
+            JSON.stringify({
+              title: `Incoming Noctis ${mode === "video" ? "Video" : "Voice"} Call`,
+              body: `${fromLabel}${fromPhoneE164 ? ` (${fromPhoneE164})` : ""} · Tap Answer Call ($0)`,
+              roomId,
+              mode,
+              fromName: fromLabel,
+              fromPhoneE164,
+              url: `/noctis?join=${roomId}&mode=${mode}`,
+            }),
+            { TTL: 60, urgency: "high" },
+          );
+          pushSent = true;
+        } catch (err) {
+          const statusCode = (err as { statusCode?: number } | null)?.statusCode;
+          if (statusCode === 404 || statusCode === 410) {
+            await sql`update world_call_directory set push_subscription = null where phone_e164 = ${target.phone_e164}`;
+          }
+        }
+      }
+      return {
+        phoneE164: target.phone_e164,
+        displayName: target.display_name,
+        ringId,
+        online: Boolean(target.online),
+        pushSent,
+      };
+    }),
+  );
+
+  return { ok: true as const, rung, notRegistered };
+}
+
+export async function cancelWorldRings(ringIdsRaw: unknown[]) {
+  const cleanIds = Array.from(
+    new Set(
+      (Array.isArray(ringIdsRaw) ? ringIdsRaw : [])
+        .map((n) => Number(n))
+        .filter((n) => Number.isInteger(n) && n > 0),
+    ),
+  ).slice(0, 100);
+  if (!cleanIds.length) return { ok: true as const, cancelled: 0 };
+  const sql = await ready();
+  await sql.query(
+    `update world_call_ring set status = 'cancelled' where id = any($1::int[]) and status = 'ringing'`,
+    [cleanIds],
+  );
+  return { ok: true as const, cancelled: cleanIds.length };
+}

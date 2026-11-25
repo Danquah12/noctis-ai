@@ -38,6 +38,8 @@ export function StudyCall({
   peerName = "",
   directRingId,
   directRingName = "",
+  groupRingCount,
+  groupLabel = "",
   callActions,
   onAdd,
   onShare,
@@ -56,6 +58,8 @@ export function StudyCall({
   peerName?: string;
   directRingId?: number;
   directRingName?: string;
+  groupRingCount?: number;
+  groupLabel?: string;
   callActions?: CallToolbarActions;
   onAdd?: () => void;
   onShare?: () => void | Promise<"shared" | "copied" | "aborted" | "failed" | void>;
@@ -139,27 +143,30 @@ export function StudyCall({
     }
     const names = new Map<string, string>();
     const restarted = new Set<string>();
+    const makingOffer = new Map<string, boolean>();
     let cursor = 0;
     let timer = 0;
 
-    function show() {
+    function show(force = false) {
       const next: Remote[] = [];
       pcs.forEach((pc, id) => {
-        const tracks = pc.getReceivers().map((r) => r.track).filter((track): track is MediaStreamTrack => Boolean(track));
+        const tracks = pc
+          .getReceivers()
+          .map((r) => r.track)
+          .filter((track): track is MediaStreamTrack => Boolean(track && track.readyState !== "ended"));
         if (!tracks.length) return;
-        let media = streams.get(id);
-        if (!media) {
-          media = new MediaStream();
+        const prev = streams.get(id);
+        const prevIds = prev ? prev.getTracks().map((t) => `${t.id}:${t.muted}`).join(",") : "";
+        const nextIds = tracks.map((t) => `${t.id}:${t.muted}`).join(",");
+        let media = prev;
+        if (!media || force || prevIds !== nextIds) {
+          media = new MediaStream(tracks);
           streams.set(id, media);
-        }
-        const have = new Set(media.getTracks());
-        for (const track of tracks) {
-          if (!have.has(track)) media.addTrack(track);
         }
         next.push({ id, name: names.get(id) ?? "Member", stream: media });
       });
       setRemotes((cur) => {
-        if (cur.length === next.length && cur.every((row, i) => row.id === next[i]?.id && row.stream === next[i]?.stream && row.name === next[i]?.name)) return cur;
+        if (!force && cur.length === next.length && cur.every((row, i) => row.id === next[i]?.id && row.stream === next[i]?.stream && row.name === next[i]?.name)) return cur;
         return next;
       });
     }
@@ -183,18 +190,51 @@ export function StudyCall({
       await studyLiveSignal({ data: { groupId, to, kind, payload: JSON.stringify(payload) } });
     }
 
+    async function negotiate(pc: RTCPeerConnection, id: string) {
+      if (makingOffer.get(id) || pc.signalingState !== "stable") return;
+      makingOffer.set(id, true);
+      try {
+        const offer = await pc.createOffer();
+        if (pc.signalingState !== "stable") return;
+        await pc.setLocalDescription(offer);
+        await signal(id, "offer", pc.localDescription ?? offer);
+        await takeAnswer(pc, id);
+        pc.getSenders().forEach((sender) => void sharp(sender));
+      } catch {
+        /* transient glare or closed pc */
+      } finally {
+        makingOffer.set(id, false);
+      }
+    }
+
     function peer(id: string) {
       const existing = pcs.get(id);
       if (existing) return existing;
       const pc = new RTCPeerConnection({ iceServers: defaultIceServers() });
-      streamRef.current?.getTracks().forEach((track) => {
+      const liveTracks = streamRef.current?.getTracks() ?? [];
+      liveTracks.forEach((track) => {
         const sender = pc.addTrack(track, streamRef.current!);
         if (track.kind === "video") void sharp(sender);
       });
+      if (!liveTracks.some((t) => t.kind === "video")) {
+        try {
+          pc.addTransceiver("video", { direction: "sendrecv" });
+        } catch {
+          /* browser fallback uses addTrack later */
+        }
+      }
       pc.onicecandidate = (ev) => {
         if (ev.candidate) void signal(id, "ice", ev.candidate.toJSON());
       };
-      pc.ontrack = () => show();
+      pc.ontrack = (ev) => {
+        ev.track.addEventListener("unmute", () => show(true));
+        ev.track.addEventListener("mute", () => show(true));
+        ev.track.addEventListener("ended", () => show(true));
+        show(true);
+      };
+      pc.onnegotiationneeded = () => {
+        if (pcs.has(id)) void negotiate(pc, id);
+      };
       pc.onconnectionstatechange = () => {
         if (pc.connectionState !== "failed" || restarted.has(id)) return;
         if (activeSelfId < id || pc.signalingState !== "stable") return;
@@ -203,21 +243,13 @@ export function StudyCall({
           .createOffer({ iceRestart: true })
           .then(async (offer) => {
             await pc.setLocalDescription(offer);
-            await signal(id, "offer", offer);
+            await signal(id, "offer", pc.localDescription ?? offer);
           })
           .catch(() => undefined);
       };
       pcs.set(id, pc);
       if (activeSelfId > id) {
-        void pc
-          .createOffer()
-          .then(async (offer) => {
-            await pc.setLocalDescription(offer);
-            await signal(id, "offer", offer);
-            await takeAnswer(pc, id);
-            pc.getSenders().forEach((sender) => void sharp(sender));
-          })
-          .catch(() => undefined);
+        void negotiate(pc, id);
       }
       return pc;
     }
@@ -234,23 +266,26 @@ export function StudyCall({
       }
       const pc = peer(from);
       const body = JSON.parse(raw) as RTCSessionDescriptionInit | RTCIceCandidateInit;
-      if (kind === "offer" && activeSelfId < from) {
+      if (kind === "offer") {
+        const polite = activeSelfId < from;
+        const offerCollision = Boolean(makingOffer.get(from)) || pc.signalingState !== "stable";
+        if (offerCollision && !polite) return;
+        if (offerCollision && polite) {
+          try {
+            await pc.setLocalDescription({ type: "rollback" });
+          } catch {
+            /* ignore if already rolled back */
+          }
+        }
         await pc.setRemoteDescription(body as RTCSessionDescriptionInit);
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
-        await signal(from, "answer", answer);
+        await signal(from, "answer", pc.localDescription ?? answer);
         pc.getSenders().forEach((sender) => void sharp(sender));
-        for (const ice of pendingIce.get(from) ?? []) {
-          try {
-            await pc.addIceCandidate(ice);
-          } catch {
-            /* ignore a candidate that arrived too early */
-          }
-        }
-        pendingIce.delete(from);
+        await flushIce(pc, from);
         return;
       }
-      if (kind === "answer" && activeSelfId > from) {
+      if (kind === "answer") {
         if (pc.signalingState === "have-local-offer") {
           await pc.setRemoteDescription(body as RTCSessionDescriptionInit);
           await flushIce(pc, from);
@@ -591,11 +626,25 @@ export function StudyCall({
     });
     stream.addTrack(track);
     links.current.forEach((pc) => {
-      const sender = pc.getSenders().find((row) => row.track?.kind === kind);
-      if (sender) void sender.replaceTrack(track);
-      else pc.addTrack(track, stream);
+      const transceiver = pc
+        .getTransceivers()
+        .find((t) => t.receiver.track?.kind === kind || t.sender.track?.kind === kind);
+      if (transceiver?.sender) {
+        if (transceiver.direction === "recvonly" || transceiver.direction === "inactive") {
+          transceiver.direction = "sendrecv";
+        }
+        void transceiver.sender.replaceTrack(track).then(() => {
+          if (kind === "video") void sharp(transceiver.sender);
+        });
+      } else {
+        const sender = pc.addTrack(track, stream);
+        if (kind === "video") void sharp(sender);
+      }
     });
-    if (localRef.current) localRef.current.srcObject = stream;
+    if (localRef.current) {
+      localRef.current.srcObject = stream;
+      void localRef.current.play().catch(() => undefined);
+    }
   }
 
   useEffect(() => {
@@ -1108,6 +1157,8 @@ export function StudyCall({
       peerName={peerName}
       directRingId={directRingId}
       directRingName={directRingName}
+      groupRingCount={groupRingCount}
+      groupLabel={groupLabel}
       callActions={callActions}
       onHold={(next, pin) => void holdFront(next, pin)}
       onMic={() => setMic((on) => !on)}
@@ -1329,6 +1380,8 @@ function Meet({
   peerName = "",
   directRingId,
   directRingName = "",
+  groupRingCount,
+  groupLabel = "",
   callActions,
   onHold,
   onMic,
@@ -1368,6 +1421,8 @@ function Meet({
   peerName?: string;
   directRingId?: number;
   directRingName?: string;
+  groupRingCount?: number;
+  groupLabel?: string;
   callActions?: CallToolbarActions;
   onHold: (follow: boolean, pin: string) => void;
   onMic: () => void;
@@ -1612,16 +1667,18 @@ function Meet({
                     <p className={`mt-1 text-xs uppercase tracking-[0.2em] ${ringStatus === "declined" ? "text-rose-400" : "text-emerald-400"}`}>
                       {isWorld
                         ? waiting
-                          ? directRingId
-                            ? ringStatus === "declined"
-                              ? "Call declined · Send invite link below"
-                              : ringStatus === "accepted"
-                                ? "Accepted · Connecting audio…"
-                                : ringStatus === "missed" || ringStatus === "expired"
-                                  ? "No answer · Share link below ($0)"
-                                  : `Ringing ${directRingName || targetE164 || "peer"} on Noctis… ($0)`
-                            : "Free internet call link ready · Share to ring ($0)"
-                          : "Encrypted HD Internet Audio Active"
+                          ? groupRingCount && groupRingCount > 0
+                            ? `Ringing ${groupLabel || "Group"} (${groupRingCount} members) on Noctis… ($0)`
+                            : directRingId
+                              ? ringStatus === "declined"
+                                ? "Call declined · Send invite link below"
+                                : ringStatus === "accepted"
+                                  ? "Accepted · Connecting audio…"
+                                  : ringStatus === "missed" || ringStatus === "expired"
+                                    ? "No answer · Share link below ($0)"
+                                    : `Ringing ${directRingName || targetE164 || "peer"} on Noctis… ($0)`
+                              : "Free internet call link ready · Share to ring ($0)"
+                          : "Encrypted HD Internet Call Active"
                         : waiting
                           ? "Calling…"
                           : "Connected"}
@@ -2021,6 +2078,11 @@ function Meet({
           <button type="button" aria-label={hand ? "Lower hand" : "Raise hand"} onClick={() => setHand((on) => !on)} className={`${iconBase} ${hand ? "bg-[#e4b86a] text-[#1a1408]" : "text-white hover:bg-white/10"}`}>
             <Hand className="size-5" />
           </button>
+          {onAdd ? (
+            <button type="button" aria-label="Add people to call" title="Add people to call" data-testid="call-toolbar-add-people" onClick={onAdd} className={`${iconBase} text-white hover:bg-white/10`}>
+              <UserPlus className="size-5" />
+            </button>
+          ) : null}
           <button type="button" aria-label="Noctis Actions" title="Noctis Actions" onClick={() => setOpen((now) => (now === "actions" ? "" : "actions"))} className={`${iconBase} ${open === "actions" ? "bg-[#e4b86a] text-[#1a1408]" : "text-white hover:bg-white/10"}`}>
             <Sparkles className="size-5" />
           </button>
@@ -2144,16 +2206,19 @@ function RemoteAudioTrack({
 function RemoteTile({ name, stream, fill = false, tall = false, quiet = false, live = false }: { name: string; stream: MediaStream; fill?: boolean; tall?: boolean; quiet?: boolean; live?: boolean }) {
   const ref = useRef<HTMLVideoElement>(null);
   const [needsTap, setNeedsTap] = useState(false);
-  const hasLiveVideo = videoLive(stream);
+  const [hasLiveVideo, setHasLiveVideo] = useState(() => videoLive(stream));
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const clone = stream.clone();
-    el.srcObject = clone;
+    el.srcObject = stream;
     el.playsInline = true;
     el.volume = 1;
     el.muted = quiet;
+    const syncVideo = () => {
+      setHasLiveVideo(videoLive(stream) || (el.videoWidth > 0 && stream.getVideoTracks().some((t) => t.readyState === "live")));
+    };
     const start = () => {
+      syncVideo();
       if (!el.paused && el.readyState >= 2) {
         el.muted = quiet;
         setNeedsTap(false);
@@ -2164,20 +2229,44 @@ function RemoteTile({ name, stream, fill = false, tall = false, quiet = false, l
         .then(() => {
           el.muted = quiet;
           setNeedsTap(false);
+          syncVideo();
         })
         .catch(() => {
           el.muted = true;
           void el
             .play()
-            .then(() => setNeedsTap(!quiet))
+            .then(() => {
+              setNeedsTap(!quiet);
+              syncVideo();
+            })
             .catch(() => setNeedsTap(!quiet));
         });
     };
     start();
-    const tracks = clone.getTracks();
-    tracks.forEach((track) => track.addEventListener("unmute", start));
+    const tracks = stream.getTracks();
+    const onState = () => {
+      syncVideo();
+      start();
+    };
+    tracks.forEach((track) => {
+      track.addEventListener("unmute", onState);
+      track.addEventListener("mute", syncVideo);
+      track.addEventListener("ended", syncVideo);
+    });
+    el.addEventListener("loadedmetadata", syncVideo);
+    el.addEventListener("resize", syncVideo);
+    el.addEventListener("playing", syncVideo);
+    const pollId = window.setInterval(syncVideo, 1000);
     return () => {
-      tracks.forEach((track) => track.removeEventListener("unmute", start));
+      window.clearInterval(pollId);
+      tracks.forEach((track) => {
+        track.removeEventListener("unmute", onState);
+        track.removeEventListener("mute", syncVideo);
+        track.removeEventListener("ended", syncVideo);
+      });
+      el.removeEventListener("loadedmetadata", syncVideo);
+      el.removeEventListener("resize", syncVideo);
+      el.removeEventListener("playing", syncVideo);
       el.srcObject = null;
     };
   }, [stream, quiet]);

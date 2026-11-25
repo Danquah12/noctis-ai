@@ -157,6 +157,23 @@ export const Route = createFileRoute("/api/call-room")({
             return Response.json(res, { headers: { "cache-control": "no-store" } });
           }
 
+          if (action === "ring_group") {
+            const res = await mod.ringWorldGroup({
+              roomId: String(body.roomId ?? ""),
+              groupName: typeof body.groupName === "string" ? body.groupName : undefined,
+              fromPhoneE164: typeof body.fromPhoneE164 === "string" ? body.fromPhoneE164 : undefined,
+              fromName: typeof body.fromName === "string" ? body.fromName : undefined,
+              memberPhones: Array.isArray(body.memberPhones) ? body.memberPhones.map(String) : [],
+              mode: typeof body.mode === "string" ? body.mode : "voice",
+            });
+            return Response.json(res, { headers: { "cache-control": "no-store" } });
+          }
+
+          if (action === "cancel_rings") {
+            const res = await mod.cancelWorldRings(Array.isArray(body.ringIds) ? body.ringIds : []);
+            return Response.json(res, { headers: { "cache-control": "no-store" } });
+          }
+
           return Response.json({ ok: false, error: `Unknown action: ${action}` }, { status: 400 });
         } catch (err) {
           const message = err instanceof Error ? err.message : "Call room request failed";

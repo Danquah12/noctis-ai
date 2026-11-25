@@ -19,10 +19,18 @@ export interface RecentWorldCall {
   timestamp: number;
 }
 
+export interface WorldCallGroup {
+  id: string;
+  name: string;
+  members: { phoneE164: string; name: string }[];
+  createdAt: number;
+}
+
 const DEVICE_ID_KEY = "noctis_world_device_id";
 const PROFILE_KEY = "noctis_world_phone_profile";
 const CONTACTS_KEY = "noctis_world_contacts";
 const RECENTS_KEY = "noctis_world_recent_calls";
+const GROUPS_KEY = "noctis_world_call_groups";
 const CHANGE_EVENT = "noctis-world-phone-changed";
 
 export function getOrCreateWorldDeviceId(): string {
@@ -160,6 +168,59 @@ export function recordWorldCall(call: Omit<RecentWorldCall, "timestamp">): Recen
   if (typeof window !== "undefined") {
     try {
       window.localStorage.setItem(RECENTS_KEY, JSON.stringify(next));
+    } catch {
+      /* ignore */
+    }
+  }
+  return next;
+}
+
+export function getWorldCallGroups(): WorldCallGroup[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(GROUPS_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr)
+      ? (arr as WorldCallGroup[]).filter((g) => g && typeof g.id === "string" && Array.isArray(g.members))
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveWorldCallGroup(group: {
+  id?: string;
+  name: string;
+  members: { phoneE164: string; name: string }[];
+}): WorldCallGroup[] {
+  const id =
+    group.id ||
+    (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `grp-${Date.now()}`);
+  const nextGroup: WorldCallGroup = {
+    id,
+    name: group.name.trim().slice(0, 40) || "Call Group",
+    members: group.members.slice(0, 30),
+    createdAt: Date.now(),
+  };
+  const next = [nextGroup, ...getWorldCallGroups().filter((g) => g.id !== id)].slice(0, 20);
+  if (typeof window !== "undefined") {
+    try {
+      window.localStorage.setItem(GROUPS_KEY, JSON.stringify(next));
+    } catch {
+      /* ignore */
+    }
+  }
+  return next;
+}
+
+export function deleteWorldCallGroup(id: string): WorldCallGroup[] {
+  const next = getWorldCallGroups().filter((g) => g.id !== id);
+  if (typeof window !== "undefined") {
+    try {
+      window.localStorage.setItem(GROUPS_KEY, JSON.stringify(next));
     } catch {
       /* ignore */
     }
