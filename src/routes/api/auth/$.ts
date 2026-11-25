@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { auth } from "@/lib/auth/server";
+import { auth, SESSION_TOKEN_COOKIE } from "@/lib/auth/server";
 import {
+  buildLegacyMemberClearCookie,
   buildMemberClearCookie,
   buildMemberSetCookie,
   readMemberCookieFromHeaders,
@@ -73,9 +74,11 @@ async function ensureCredentialUserInDb(emailRaw: string, passwordRaw: string, n
   return { id: user.id, email: user.email, name: user.name || display };
 }
 
-function appendSetCookie(res: Response, cookieValue: string): Response {
+function appendSetCookies(res: Response, cookieValues: string[]): Response {
   const headers = new Headers(res.headers);
-  headers.append("set-cookie", cookieValue);
+  for (const cookieValue of cookieValues) {
+    headers.append("set-cookie", cookieValue);
+  }
   return new Response(res.body, {
     status: res.status,
     statusText: res.statusText,
@@ -122,7 +125,12 @@ async function handle(request: Request): Promise<Response> {
     const res = await auth.handler(reqToPass);
 
     if (isSignOut) {
-      return appendSetCookie(res, buildMemberClearCookie());
+      return appendSetCookies(res, [
+        buildMemberClearCookie(),
+        buildLegacyMemberClearCookie(),
+        `${SESSION_TOKEN_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`,
+        "__Host-grok-auth.session_data=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0",
+      ]);
     }
 
     if ((isSignInEmail || isSignUpEmail) && res.ok) {
@@ -133,7 +141,7 @@ async function handle(request: Request): Promise<Response> {
         ? { id: data.user.id, email: data.user.email, name: data.user.name ?? null }
         : provisionedUser;
       if (u) {
-        return appendSetCookie(res, buildMemberSetCookie(u));
+        return appendSetCookies(res, [buildMemberSetCookie(u)]);
       }
       return res;
     }

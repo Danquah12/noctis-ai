@@ -374,7 +374,8 @@ export const rememberSignedInAccount = createServerFn({ method: "POST" })
         path: "/",
         httpOnly: true,
         secure: true,
-        sameSite: "lax",
+        sameSite: "none",
+        partitioned: true,
         maxAge: 60 * 60 * 24 * 30,
       });
     } catch {

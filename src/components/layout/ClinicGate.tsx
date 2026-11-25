@@ -1,5 +1,15 @@
 import { useEffect, useState, useSyncExternalStore, type FormEvent, type ReactNode } from "react";
-import { GROK_PROVIDERS, authClient, authEnabled, clearSignedOut, signIn, signedOutOnPurpose } from "@/lib/auth/client";
+import {
+  GROK_PROVIDERS,
+  authClient,
+  authEnabled,
+  clearSignedOut,
+  getBearerToken,
+  isEmbeddedIframe,
+  setBearerToken,
+  signIn,
+  signedOutOnPurpose,
+} from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { NoctisLockup } from "@/components/brand/NoctisMark";
 import { LanguageMenu } from "@/components/layout/LanguageMenu";
@@ -39,7 +49,11 @@ function PresenceBeat() {
 
 function subscribeOut(onChange: () => void) {
   window.addEventListener("storage", onChange);
-  return () => window.removeEventListener("storage", onChange);
+  window.addEventListener("vibetok-auth-change", onChange);
+  return () => {
+    window.removeEventListener("storage", onChange);
+    window.removeEventListener("vibetok-auth-change", onChange);
+  };
 }
 
 type LoginScene = { src: string; alt: string; film?: boolean };
@@ -160,6 +174,22 @@ export function SignedOutScreen({ quiet = false }: { quiet?: boolean }) {
     setAgain("");
   }, []);
 
+  async function finishClinicSignIn(token?: string | null) {
+    if (isEmbeddedIframe() && token && !getBearerToken()) {
+      setBearerToken(token);
+    }
+    armClinicPlay();
+    stopJazzBed();
+    clearSignedOut();
+    const refreshed = await authClient.getSession().catch(() => null);
+    const dest = hereAfterSignIn();
+    if (isEmbeddedIframe() && window.location.pathname === dest && refreshed?.data?.user) {
+      setBusy(false);
+      return;
+    }
+    window.location.assign(dest);
+  }
+
   async function onEmail(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (busy) return;
@@ -193,7 +223,7 @@ export function SignedOutScreen({ quiet = false }: { quiet?: boolean }) {
     setBusy(true);
     setErr(null);
     try {
-      const minLen = mode === "in" ? 4 : 6;
+      const minLen = mode === "reset" ? 8 : mode === "in" ? 4 : 6;
       if (mode !== "forgot" && typedPassword.length < minLen) {
         throw new Error(`The password needs at least ${minLen} characters.`);
       }
@@ -212,10 +242,11 @@ export function SignedOutScreen({ quiet = false }: { quiet?: boolean }) {
         const { email: saved } = await resetPassword({ data: { token: resetToken, password: typedPassword } });
         const res = await authClient.signIn.email({ email: saved, password: typedPassword });
         if (res.error) throw new Error(res.error.message);
-        armClinicPlay();
-        stopJazzBed();
-        clearSignedOut();
-        window.location.assign(hereAfterSignIn());
+        if (isEmbeddedIframe() && res.data?.token) {
+          setBearerToken(res.data.token);
+        }
+        await rememberSignedInAccount({ data: { name: "" } }).catch(() => null);
+        await finishClinicSignIn(res.data?.token);
         return;
       }
       if (mode === "up" && effectiveName.trim().length < 2) {
@@ -223,6 +254,7 @@ export function SignedOutScreen({ quiet = false }: { quiet?: boolean }) {
       }
       const wanted = typedEmail;
       let saved: { email: string; name?: string; created?: boolean } = { email: wanted, name: effectiveName, created: false };
+      let alreadyRegistered = false;
       try {
         saved = await withTimeout(
           registerClinicMember({
@@ -233,7 +265,11 @@ export function SignedOutScreen({ quiet = false }: { quiet?: boolean }) {
         );
       } catch (caught) {
         const message = caught instanceof Error ? caught.message : "";
-        if (!(mode === "up" && /already registered/i.test(message))) throw caught;
+        if (mode === "up" && /already registered/i.test(message)) {
+          alreadyRegistered = true;
+        } else {
+          throw caught;
+        }
       }
       const res = await withTimeout(
         authClient.signIn.email({ email: wanted, password: typedPassword }),
@@ -241,21 +277,26 @@ export function SignedOutScreen({ quiet = false }: { quiet?: boolean }) {
         "Sign-in did not answer. Press Sign in again.",
       );
       if (res.error) {
+        if (alreadyRegistered && /invalid email or password/i.test(res.error.message || "")) {
+          throw new Error(
+            "That email already has a Noctis Clinic account with a different password. Switch to Sign in, or click Forgot password? below to set a new password.",
+          );
+        }
         throw new Error(
           saved.created
             ? `${saved.email} is in the member list. Sign-in said: ${res.error.message}`
             : res.error.message || "Could not sign in",
         );
       }
+      if (isEmbeddedIframe() && res.data?.token) {
+        setBearerToken(res.data.token);
+      }
       const who = await rememberSignedInAccount({ data: { name: mode === "up" ? effectiveName : "" } }).catch(() => null);
       const signedInEmail = (who?.email || res.data?.user?.email || wanted).trim().toLowerCase();
       if (!signedInEmail || signedInEmail !== wanted) {
         throw new Error("That sign-in did not stick to this email. Press Sign in again.");
       }
-      armClinicPlay();
-      stopJazzBed();
-      clearSignedOut();
-      window.location.assign(hereAfterSignIn());
+      await finishClinicSignIn(res.data?.token);
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : "Could not continue";
       const missing = mode === "in" && /invalid email or password/i.test(message);
@@ -284,11 +325,11 @@ export function SignedOutScreen({ quiet = false }: { quiet?: boolean }) {
       }).catch(() => null);
       const res = await authClient.signIn.email({ email: guestEmail, password: guestPass });
       if (res.error) throw new Error(res.error.message || "Guest sign-in could not complete.");
+      if (isEmbeddedIframe() && res.data?.token) {
+        setBearerToken(res.data.token);
+      }
       await rememberSignedInAccount({ data: { name: "Guest Explorer" } }).catch(() => null);
-      armClinicPlay();
-      stopJazzBed();
-      clearSignedOut();
-      window.location.assign(hereAfterSignIn());
+      await finishClinicSignIn(res.data?.token);
     } catch (caught) {
       setErr(caught instanceof Error ? caught.message : "Guest access did not open. Please try signing in.");
       setBusy(false);
@@ -391,11 +432,11 @@ export function SignedOutScreen({ quiet = false }: { quiet?: boolean }) {
                     name="noctis_auth_password"
                     id="noctis_auth_password"
                     className="min-h-11 w-full rounded-xl border border-[#e4ddd2] bg-white px-3 text-base sm:text-sm"
-                    placeholder={mode === "reset" ? "New password" : "Password"}
+                    placeholder={mode === "reset" ? "New password (8+ characters)" : "Password"}
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    autoComplete="new-password"
+                    autoComplete={mode === "in" ? "current-password" : "new-password"}
                     data-lpignore="true"
                     data-1p-ignore="true"
                     data-form-type="other"
@@ -455,6 +496,8 @@ export function SignedOutScreen({ quiet = false }: { quiet?: boolean }) {
                   setMode((m) => (m === "up" ? "in" : m === "in" ? "up" : "in"));
                   setErr(null);
                   setResetToken(null);
+                  setPassword("");
+                  setAgain("");
                 }}
                 className="w-full py-2 text-center text-xs font-semibold text-[#8a6428] underline-offset-4 hover:underline touch-manipulation"
               >
@@ -477,7 +520,7 @@ export function SignedOutScreen({ quiet = false }: { quiet?: boolean }) {
               ) : null}
             </div>
         </div>
-        {mode === "in" ? (
+        {mode === "in" || mode === "up" ? (
           <button
             type="button"
             onClick={() => {

@@ -72,7 +72,8 @@ async function emitSessionCookie(
       path: cookieOptions.path ?? "/",
       httpOnly: cookieOptions.httpOnly ?? true,
       secure: cookieOptions.secure ?? true,
-      sameSite: (cookieOptions.sameSite as "lax" | "strict" | "none") ?? "lax",
+      sameSite: (cookieOptions.sameSite as "lax" | "strict" | "none") ?? "none",
+      partitioned: cookieOptions.partitioned ?? true,
       maxAge: typeof maxAge === "number" ? maxAge : undefined,
       domain: cookieOptions.domain,
     });
@@ -115,13 +116,19 @@ async function expireSessionDataCookie(
       path,
       httpOnly: true,
       secure,
-      sameSite: "lax",
+      sameSite: "none",
+      partitioned: true,
       maxAge: 0,
     });
   } catch (err) {
     console.error(`${LOG} TanStack setCookie (expire session_data) failed`, err);
   }
   try {
+    ctx.context.responseHeaders?.append(
+      "set-cookie",
+      `${cookie.name}=; Path=${path}; HttpOnly; ` +
+        `${secure ? "Secure; " : ""}SameSite=None; Partitioned; Max-Age=0`,
+    );
     ctx.context.responseHeaders?.append(
       "set-cookie",
       `${cookie.name}=; Path=${path}; HttpOnly; ` +
@@ -158,7 +165,8 @@ async function writeGateMarkerCookie(
       path: "/",
       httpOnly: false,
       secure: true,
-      sameSite: "lax",
+      sameSite: "none",
+      partitioned: true,
       maxAge,
     });
   } catch (err) {
@@ -167,7 +175,7 @@ async function writeGateMarkerCookie(
   try {
     ctx.context.responseHeaders?.append(
       "set-cookie",
-      `${GATE_SESSION_MARKER_COOKIE}=${value}; Path=/; Secure; SameSite=Lax` +
+      `${GATE_SESSION_MARKER_COOKIE}=${value}; Path=/; Secure; SameSite=None; Partitioned` +
         (maxAge === undefined ? "" : `; Max-Age=${maxAge}`),
     );
   } catch (err) {

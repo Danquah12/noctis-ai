@@ -25,6 +25,18 @@ export const authClient = createAuthClient({
       if (token) ctx.headers.set("Authorization", `Bearer ${token}`);
       return ctx;
     },
+    onSuccess(ctx) {
+      if (!isEmbeddedIframe()) return;
+      const headerToken = ctx.response?.headers?.get("set-auth-token");
+      const bodyToken =
+        ctx.data && typeof ctx.data === "object" && typeof (ctx.data as { token?: unknown }).token === "string"
+          ? (ctx.data as { token: string }).token
+          : null;
+      const nextToken = headerToken || bodyToken;
+      if (nextToken) {
+        setBearerToken(nextToken);
+      }
+    },
   },
 });
 
@@ -46,18 +58,35 @@ export { GROK_PROVIDERS };
 // to server functions, via `@/lib/auth/middleware`). Empty everywhere except the
 // preview after a popup sign-in, so the cookie path is untouched elsewhere.
 const BEARER_KEY = "grok-auth.bearer-token";
+let memoryBearerToken: string | null = null;
 
-/** The stored preview bearer token, or null. */
-export function getBearerToken(): string | null {
-  if (typeof window === "undefined") return null;
+/** True when running inside any embedded iframe (cross-origin or sandboxed). */
+export function isEmbeddedIframe(): boolean {
+  if (typeof window === "undefined") return false;
   try {
-    return window.sessionStorage.getItem(BEARER_KEY);
+    return window.self !== window.top;
   } catch {
-    return null;
+    return true;
   }
 }
 
-function setBearerToken(token: string | null): void {
+/** The stored preview/iframe bearer token, or null. */
+export function getBearerToken(): string | null {
+  if (typeof window === "undefined") return memoryBearerToken;
+  try {
+    const stored = window.sessionStorage.getItem(BEARER_KEY);
+    if (stored) {
+      memoryBearerToken = stored;
+      return stored;
+    }
+  } catch {
+    /* storage unavailable — fall back to memory */
+  }
+  return memoryBearerToken;
+}
+
+export function setBearerToken(token: string | null): void {
+  memoryBearerToken = token || null;
   if (typeof window === "undefined") return;
   try {
     if (token) window.sessionStorage.setItem(BEARER_KEY, token);
@@ -300,9 +329,10 @@ export async function signOut(redirectTo = "/"): Promise<void> {
       .catch(() => undefined),
     new Promise((resolve) => window.setTimeout(resolve, 800)),
   ]);
+  const embedded = inLivePreview() || isEmbeddedIframe();
   await runSignOut({
-    livePreview: inLivePreview(),
-    hasBearer: Boolean(getBearerToken()),
+    livePreview: embedded,
+    hasBearer: Boolean(getBearerToken()) || isEmbeddedIframe(),
     // Better Auth resolves with `{ error }` instead of rejecting, so surface a
     // failed response as a rejection for the sequence to act on.
     requestSignOut: async () => {
@@ -330,6 +360,7 @@ export function signedOutOnPurpose(): boolean {
 export function clearSignedOut() {
   try {
     sessionStorage.removeItem(OUT_KEY);
+    window.dispatchEvent(new Event("vibetok-auth-change"));
   } catch {
     /* private mode */
   }
@@ -339,6 +370,7 @@ export function clearSignedOut() {
 export async function leaveHall(): Promise<void> {
   try {
     sessionStorage.setItem(OUT_KEY, "1");
+    window.dispatchEvent(new Event("vibetok-auth-change"));
   } catch {
     /* private mode */
   }

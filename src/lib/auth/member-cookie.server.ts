@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
-const COOKIE_NAME = "vibetok_member";
+export const MEMBER_COOKIE = "vibetok_member";
 const SECRET =
   (typeof process !== "undefined" && process.env.BETTER_AUTH_SECRET?.trim()) ||
   "vibetok-meet-session-7f3c9a1e6b2048d5a0c1e2f3948576ab";
@@ -16,7 +16,8 @@ function signData(dataB64: string): string {
   return createHmac("sha256", SECRET).update(dataB64).digest("base64url");
 }
 
-export function buildMemberSetCookie(user: { id: string; email: string; name?: string | null }): string {
+/** Sign the fallback member payload for use in cookies. */
+export function signMemberCookie(user: { id: string; email: string; name?: string | null }): string {
   const payload: MemberCookiePayload = {
     id: user.id,
     email: user.email.trim().toLowerCase(),
@@ -25,12 +26,20 @@ export function buildMemberSetCookie(user: { id: string; email: string; name?: s
   };
   const dataB64 = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
   const sig = signData(dataB64);
+  return `${dataB64}.${sig}`;
+}
+
+export function buildMemberSetCookie(user: { id: string; email: string; name?: string | null }): string {
   const maxAge = 60 * 60 * 24 * 30; // 30 days
-  return `${COOKIE_NAME}=${dataB64}.${sig}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}`;
+  return `${MEMBER_COOKIE}=${signMemberCookie(user)}; Path=/; HttpOnly; Secure; SameSite=None; Partitioned; Max-Age=${maxAge}`;
 }
 
 export function buildMemberClearCookie(): string {
-  return `${COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
+  return `${MEMBER_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=None; Partitioned; Max-Age=0`;
+}
+
+export function buildLegacyMemberClearCookie(): string {
+  return `${MEMBER_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`;
 }
 
 export function readMemberCookieFromHeaders(headers: Headers): MemberCookiePayload | null {
@@ -40,8 +49,8 @@ export function readMemberCookieFromHeaders(headers: Headers): MemberCookiePaylo
   let token = "";
   for (const part of parts) {
     const trimmed = part.trim();
-    if (trimmed.startsWith(`${COOKIE_NAME}=`)) {
-      token = trimmed.slice(COOKIE_NAME.length + 1).trim();
+    if (trimmed.startsWith(`${MEMBER_COOKIE}=`)) {
+      token = trimmed.slice(MEMBER_COOKIE.length + 1).trim();
       break;
     }
   }
