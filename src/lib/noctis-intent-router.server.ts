@@ -69,6 +69,12 @@ const ROUTE_LABELS: Record<NoctisRouteEngineId, { label: string; targetPanel: No
   career: { label: "Career · Pathways & Wages", targetPanel: "chat" },
   deep_research: { label: "Research · Deep Evidence & RIC", targetPanel: "chat" },
   omni_solver: { label: "Omni · 81-Domain STEM Solver", targetPanel: "chat" },
+  global_markets: { label: "Markets · Live FX & Macro", targetPanel: "chat" },
+  world_intel: { label: "World · Bank GDP & Macro", targetPanel: "chat" },
+  science_papers: { label: "Papers · arXiv & PubMed", targetPanel: "chat" },
+  med_labs: { label: "Labs · Medical Records & Biopsy", targetPanel: "chat" },
+  predictive: { label: "Predict · 15-Engine Forecasting", targetPanel: "chat" },
+  secops_suite: { label: "SecOps · Twin, WarRoom & PQC", targetPanel: "chat" },
   general_chat: { label: "Core · General Reasoning", targetPanel: "chat" },
 };
 
@@ -177,6 +183,24 @@ const ENERGY_GRID_RE =
 
 const DEEP_RESEARCH_RE =
   /\b(?:noctis\s+deep\s+research|noctis-deep-research-001|research\s+intelligence\s+controller|noctis-ric-001|claim-level\s+evidence\s+ledger|reproducible\s+research\s+laboratory|research\s+orchestration|disputed\s+engineering\s+claim|national\s+resilience\s+strategy|source\s+independence\s+and\s+information\s+lineage|adversarial\s+research\s+team|\/v1\/research\/jobs|ric-benchmark)\b/i;
+
+const GLOBAL_MARKETS_RE =
+  /\b(?:usd\s*(?:to|\/)\s*(?:ghs|eur|gbp|jpy|ngn|kes|cad|chf|zar|ugx|cny|inr)|(?:eur|gbp|ghs)\s*(?:to|\/)\s*usd|exchange\s+rate|fx\s+rate|bitcoin\s+price|ethereum\s+price|crypto\s+prices?|fisher\s+real\s+yield|parametric\s+var)\b/i;
+
+const WORLD_INTEL_RE =
+  /\b(?:world\s+bank|gdp\s+(?:of|for|per\s+capita|trajectory)|[a-z]+\s+gdp\b|country\s+profile|domar\s+debt|debt[-\s]to[-\s]gdp\s+(?:sustainability|trajectory)|electricity\s+access\s+in|cpi\s+inflation\s+(?:of|in))\b/i;
+
+const SCIENCE_PAPERS_RE =
+  /\b(?:arxiv|pubmed|find\s+(?:recent\s+)?(?:research\s+)?papers?\s+(?:on|about)|literature\s+(?:search|review)\s+(?:on|for)|bibtex\s+citation|peer[-\s]reviewed\s+papers?\s+on)\b/i;
+
+const MED_LABS_RE =
+  /\b(?:noctis-med-record-001|interpret\s+(?:my|these|this)\s+(?:lab|pathology|biopsy|radiology|mri|ct\s+scan|doctor'?s?\s+note)|biopsy\s+report|pathology\s+report|(?:hba1c|tsh|ldl)\s*(?:is|of|=|:)?\s*[\d.]+)\b/i;
+
+const PREDICTIVE_RE =
+  /\b(?:noctis-pred-001|pred-1042|unified\s+predictive\s+intelligence|15\s+prediction\s+engines|prediction[-\s]to[-\s]action|chronological\s+backtest|probability\s+calibration|prediction\s+drift\s+monitor)\b/i;
+
+const SECOPS_SUITE_RE =
+  /\b(?:noctis-twin-001|noctis-war-room-001|noctis-pqc-001|noctis-zkproof-001|xtrike\s+sast|topological\s+attack[-\s]graph|red\s+vs\.?\s+blue\s+war\s+room|post-quantum\s+(?:crypto|migration)\s+sentinel|zero-knowledge\s+audit\s+proof)\b/i;
 
 export function decisionToRouteStamp(decision: NoctisIntentDecision): NoctisRouteStamp {
   return {
@@ -409,6 +433,30 @@ export function classifyNoctisIntent(rawPrompt: string): NoctisIntentDecision {
     scores.deep_research = 89;
     matchedSignals.push("research:deep-evidence-ric");
   }
+  if (!hasHigherPriority && GLOBAL_MARKETS_RE.test(prompt)) {
+    scores.global_markets = 90;
+    matchedSignals.push("markets:live-fx-macro");
+  }
+  if (!hasHigherPriority && WORLD_INTEL_RE.test(prompt)) {
+    scores.world_intel = 90;
+    matchedSignals.push("world:worldbank-domar");
+  }
+  if (!hasHigherPriority && SCIENCE_PAPERS_RE.test(prompt)) {
+    scores.science_papers = 90;
+    matchedSignals.push("papers:arxiv-pubmed");
+  }
+  if (!hasHigherPriority && MED_LABS_RE.test(prompt)) {
+    scores.med_labs = 89;
+    matchedSignals.push("labs:med-record-interpreter");
+  }
+  if (!hasHigherPriority && PREDICTIVE_RE.test(prompt)) {
+    scores.predictive = 89;
+    matchedSignals.push("predict:15-engines");
+  }
+  if (!hasHigherPriority && SECOPS_SUITE_RE.test(prompt)) {
+    scores.secops_suite = 90;
+    matchedSignals.push("secops:twin-warroom-pqc-zkp");
+  }
 
   // Evaluate Weather (strictly vetoed when building platforms, cold-chain maritime, clinical, defense, architect, space/earth/nav, promoted domain engines, or physics)
   const hasWeatherSignal =
@@ -431,7 +479,13 @@ export function classifyNoctisIntent(rawPrompt: string): NoctisIntentDecision {
       scores.bible ||
       scores.energy_grid ||
       scores.career ||
-      scores.deep_research
+      scores.deep_research ||
+      scores.global_markets ||
+      scores.world_intel ||
+      scores.science_papers ||
+      scores.med_labs ||
+      scores.predictive ||
+      scores.secops_suite
     ) {
       vetoedRoutes.weather = "Vetoed by higher-priority software build, architect, clinical, defense, planetary, or promoted specialist intent";
     } else if (/\b(?:cold-?chain|cold-?storage|reefer|maritime|vessel|charter|postgis|postgresql|reactor|boiler|furnace|patient|sepsis)\b/i.test(prompt)) {
@@ -520,8 +574,14 @@ export function classifyNoctisIntent(rawPrompt: string): NoctisIntentDecision {
     "catalog260",
     "enterprise",
     "assistant",
+    "secops_suite",
     "automotive",
     "energy_grid",
+    "global_markets",
+    "world_intel",
+    "science_papers",
+    "med_labs",
+    "predictive",
     "legal",
     "invest",
     "bible",
@@ -646,7 +706,13 @@ export function classifyMultiTurnIntent(
         priorRoute === "energy_grid" ||
         priorRoute === "career" ||
         priorRoute === "deep_research" ||
-        priorRoute === "omni_solver") &&
+        priorRoute === "omni_solver" ||
+        priorRoute === "global_markets" ||
+        priorRoute === "world_intel" ||
+        priorRoute === "science_papers" ||
+        priorRoute === "med_labs" ||
+        priorRoute === "predictive" ||
+        priorRoute === "secops_suite") &&
         (followUp.relation === "coreference" || followUp.relation === "what_if_parameter_shift" || followUp.relation === "continuation"))
     ) {
       const meta = ROUTE_LABELS[priorRoute];

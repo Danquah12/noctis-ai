@@ -19,6 +19,22 @@ import {
   computeRunwayWindComponents,
   extractRoutePair,
 } from "./noctis-global-nav.server.ts";
+import { dispatchUniversalLifeQuery } from "./noctis-universal-life-router.ts";
+import {
+  computeFisherRealYield,
+  computeParametricVaR,
+  convertCurrencyAmount,
+} from "./noctis-global-markets.server.ts";
+import {
+  computeDomarDebtTrajectory,
+  computeGrowthDoublingYears,
+  resolveCountryIso3,
+} from "./noctis-world-intel.server.ts";
+import {
+  formatApaCitation,
+  formatBibtexCitation,
+  parseArxivAtomXml,
+} from "./noctis-papers-intel.server.ts";
 
 test("Space & Universe deterministic orbital, Hohmann, impact, and habitable zone physics", () => {
   const leo = computeOrbitalMechanics(400);
@@ -94,4 +110,53 @@ test("Global Navigation great-circle, runway wind components, and density altitu
   const pair2 = extractRoutePair("KJFK METAR and KJFK to EGLL");
   assert.equal(pair2?.origin.code, "KJFK");
   assert.equal(pair2?.dest.code, "EGLL");
+});
+
+test("Option A: /omni custom numeric parameter extraction updates solver results and runs Taylor Rule", () => {
+  const civilA = dispatchUniversalLifeQuery("Calculate ASCE 7 seismic base shear with Sds=1.8 weight=80000 kips R=6");
+  const civilB = dispatchUniversalLifeQuery("Calculate ASCE 7 seismic base shear with Sds=0.6 weight=20000 kips R=8");
+  assert.notEqual(civilA.response, civilB.response);
+  assert.ok(civilA.response.includes("80,000"));
+  assert.ok(civilB.response.includes("20,000"));
+
+  const acousticsA = dispatchUniversalLifeQuery("Evaluate Sabine RT60 architectural acoustics volume 850 m3 sabin 420");
+  assert.ok(acousticsA.response.includes("850"));
+  assert.ok(acousticsA.response.includes("420"));
+
+  const hydro = dispatchUniversalLifeQuery("Evaluate Manning open channel flow width 12 m depth 3.5 m slope 0.004 manning 0.014");
+  assert.ok(hydro.response.includes("Width=12 m"));
+
+  const quantum = dispatchUniversalLifeQuery("Surface code quantum error correction distance d=11 error rate 0.002");
+  assert.ok(quantum.response.includes("d=11"));
+
+  const macro = dispatchUniversalLifeQuery("Evaluate Taylor rule interest rate inflation 4.5% target 2.0% output gap 1.2%");
+  assert.equal(macro.domain, "MACROECONOMICS_FINANCE");
+  assert.ok(macro.response.includes("TAYLOR_MONETARY_POLICY_RATE_RECOMMENDED"));
+});
+
+test("Option B: Markets, World Intel & Papers deterministic math and XML/citation formatters", () => {
+  assert.equal(convertCurrencyAmount(1000, 1, 15.5), 15500);
+
+  const fisher = computeFisherRealYield(8, 3);
+  assert.ok(fisher.exactRealPct > 4.84 && fisher.exactRealPct < 4.86);
+  assert.equal(fisher.approxRealPct, 5);
+
+  const var99 = computeParametricVaR(1_000_000, 18, 10, 99);
+  assert.ok(var99.varUsd > 80_000 && var99.varUsd < 86_000);
+
+  assert.equal(resolveCountryIso3("Ghana GDP and inflation").iso3, "GHA");
+  assert.equal(resolveCountryIso3("Nigeria CPI inflation").iso3, "NGA");
+  assert.equal(resolveCountryIso3("United Kingdom economic output").iso3, "GBR");
+
+  const domarSteady = computeDomarDebtTrajectory(70, 4, 4, 0);
+  assert.equal(domarSteady.deltaDebtPct, 0);
+  const dbl = computeGrowthDoublingYears(7.0);
+  assert.ok(dbl > 10.1 && dbl < 10.4);
+
+  const sampleXml = `<feed><entry><id>http://arxiv.org/abs/2601.01234v1</id><published>2026-01-10T00:00:00Z</published><title>Quantum Surface Codes</title><summary>Abstract text here.</summary><author><name>Alice Smith</name></author></entry></feed>`;
+  const parsed = parseArxivAtomXml(sampleXml);
+  assert.equal(parsed.length, 1);
+  assert.equal(parsed[0]!.id, "arXiv:2601.01234v1");
+  assert.ok(formatApaCitation(parsed[0]!).includes("Alice Smith (2026)"));
+  assert.ok(formatBibtexCitation(parsed[0]!).includes("@article{alice2026"));
 });

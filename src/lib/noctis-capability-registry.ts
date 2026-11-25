@@ -52,6 +52,12 @@ export type NoctisRouteEngineId =
   | "career"
   | "deep_research"
   | "omni_solver"
+  | "global_markets"
+  | "world_intel"
+  | "science_papers"
+  | "med_labs"
+  | "predictive"
+  | "secops_suite"
   | "general_chat";
 
 export type NoctisPanelGroup =
@@ -496,6 +502,60 @@ export const NOCTIS_SLASH_ROUTES: NoctisSlashRouteSpec[] = [
     quickSwitch: true,
   },
   {
+    command: "/markets",
+    aliases: ["/fx", "/crypto", "/macro"],
+    routeId: "global_markets",
+    label: "Markets · Live FX & Macro",
+    description: "Live ExchangeRate-API currency conversions, CoinGecko crypto spot, Fisher real yield & parametric VaR.",
+    targetPanel: "chat",
+    quickSwitch: false,
+  },
+  {
+    command: "/world",
+    aliases: ["/country", "/gdp", "/demographics"],
+    routeId: "world_intel",
+    label: "World · Bank GDP & Macro",
+    description: "Live World Bank v2 country GDP, inflation, population, power access & Domar debt sustainability.",
+    targetPanel: "chat",
+    quickSwitch: false,
+  },
+  {
+    command: "/papers",
+    aliases: ["/arxiv", "/pubmed", "/lit"],
+    routeId: "science_papers",
+    label: "Papers · arXiv & PubMed",
+    description: "Live arXiv + NCBI PubMed scientific literature search with APA & BibTeX citations.",
+    targetPanel: "chat",
+    quickSwitch: false,
+  },
+  {
+    command: "/labs",
+    aliases: ["/records", "/pathology"],
+    routeId: "med_labs",
+    label: "Labs · Medical Records & Biopsy",
+    description: "Non-urgent interpretation of lab panels, pathology biopsies, imaging notes & clinician reports.",
+    targetPanel: "chat",
+    quickSwitch: false,
+  },
+  {
+    command: "/predict",
+    aliases: ["/anomaly", "/backtest"],
+    routeId: "predictive",
+    label: "Predict · 15-Engine Forecasting",
+    description: "Point-in-time forecasting, chronological backtesting, probability calibration & drift monitoring.",
+    targetPanel: "chat",
+    quickSwitch: false,
+  },
+  {
+    command: "/secops",
+    aliases: ["/warroom", "/pqc", "/zkp", "/twin"],
+    routeId: "secops_suite",
+    label: "SecOps · Twin, WarRoom & PQC",
+    description: "Digital Twin attack graphs, Red vs Blue War Room, Post-Quantum Crypto sentinel, ZK proofs & SAST.",
+    targetPanel: "chat",
+    quickSwitch: false,
+  },
+  {
     command: "/chat",
     aliases: ["/core"],
     routeId: "general_chat",
@@ -528,6 +588,12 @@ export const NOCTIS_API_ROUTES: NoctisApiRouteSpec[] = [
   { id: "career", name: "Noctis Career Pathways Repository API (NOCTIS-CAREERS-001)", basePath: "/api/noctis?career=1", statusPath: "/api/noctis?career=1", panelId: "chat" },
   { id: "research", name: "Noctis Deep Research & RIC Evidence API (NOCTIS-RIC-001)", basePath: "/api/noctis?research=1", statusPath: "/api/noctis?research=1", panelId: "chat" },
   { id: "omni", name: "Noctis 81-Domain Universal STEM Solver API (NOCTIS-OMNI-ROUTER-001)", basePath: "/api/noctis?omni=1", statusPath: "/api/noctis?omni=1", panelId: "chat" },
+  { id: "markets", name: "Noctis Global FX, Crypto & Macro API", basePath: "/api/noctis?markets=1", statusPath: "/api/noctis?markets=1", panelId: "chat" },
+  { id: "world", name: "Noctis World Bank Country Intelligence API", basePath: "/api/noctis?world=GHA", statusPath: "/api/noctis?world=GHA", panelId: "chat" },
+  { id: "papers", name: "Noctis Live arXiv & PubMed Literature API", basePath: "/api/noctis?papers=1", statusPath: "/api/noctis?papers=1", panelId: "chat" },
+  { id: "labs", name: "Noctis Medical Record & Lab Interpreter API", basePath: "/api/noctis?labs=1", statusPath: "/api/noctis?labs=1", panelId: "chat" },
+  { id: "predict", name: "Noctis Predictive Intelligence 15-Engine API", basePath: "/api/noctis?predict=1", statusPath: "/api/noctis?predict=1", panelId: "chat" },
+  { id: "secops", name: "Noctis SecOps Twin, WarRoom, PQC & ZKP API", basePath: "/api/noctis?secops=pqc", statusPath: "/api/noctis?secops=pqc", panelId: "chat" },
   { id: "noctis", name: "Core Noctis Chat Endpoint", basePath: "/api/noctis", statusPath: "/api/v1/health", panelId: "chat" },
 ];
 

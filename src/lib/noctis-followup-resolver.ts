@@ -27,6 +27,12 @@ export type FollowUpDomainTag =
   | "career"
   | "deep_research"
   | "omni_solver"
+  | "global_markets"
+  | "world_intel"
+  | "science_papers"
+  | "med_labs"
+  | "predictive"
+  | "secops_suite"
   | "legal"
   | "finance"
   | "scripture"
@@ -375,6 +381,48 @@ function detectDomainTag(text: string): FollowUpDomainTag {
     )
   ) {
     return "deep_research";
+  }
+  if (
+    /\b(?:usd\s*(?:to|\/)\s*(?:ghs|eur|gbp|jpy|ngn|kes|cad|chf|zar|ugx)|exchange\s+rate|fx\s+rate|bitcoin\s+price|ethereum\s+price|crypto\s+prices?|fisher\s+real\s+yield|parametric\s+var)\b/i.test(
+      sample,
+    )
+  ) {
+    return "global_markets";
+  }
+  if (
+    /\b(?:world\s+bank|gdp\s+(?:of|for|per\s+capita)|country\s+profile|domar\s+debt|debt[-\s]to[-\s]gdp\s+(?:sustainability|trajectory)|electricity\s+access\s+in)\b/i.test(
+      sample,
+    )
+  ) {
+    return "world_intel";
+  }
+  if (
+    /\b(?:arxiv|pubmed|literature\s+(?:review|search)|bibtex\s+citation|peer[-\s]reviewed\s+papers?\s+on|find\s+(?:recent\s+)?(?:research\s+)?papers?\s+(?:on|about))\b/i.test(
+      sample,
+    )
+  ) {
+    return "science_papers";
+  }
+  if (
+    /\b(?:noctis-med-record-001|interpret\s+(?:my|these|this)\s+(?:lab|pathology|biopsy|radiology|mri|ct\s+scan|doctor'?s?\s+note)|biopsy\s+report|pathology\s+report)\b/i.test(
+      sample,
+    )
+  ) {
+    return "med_labs";
+  }
+  if (
+    /\b(?:noctis-pred-001|pred-1042|unified\s+predictive\s+intelligence|15\s+prediction\s+engines|chronological\s+backtest|probability\s+calibration|prediction\s+drift\s+monitor)\b/i.test(
+      sample,
+    )
+  ) {
+    return "predictive";
+  }
+  if (
+    /\b(?:noctis-twin-001|noctis-war-room-001|noctis-pqc-001|noctis-zkproof-001|xtrike\s+sast|topological\s+attack[-\s]graph|red\s+vs\.?\s+blue\s+war\s+room|post-quantum\s+(?:crypto|migration)\s+sentinel|zero-knowledge\s+audit\s+proof)\b/i.test(
+      sample,
+    )
+  ) {
+    return "secops_suite";
   }
   if (
     /\b(?:noctis-omni-router-001|surface\s+code|asce\s*7|seismic\s+base\s+shear|manning.*flow|sabine|rt60|euv\s+photolithography|taylor\s+rule)\b/i.test(

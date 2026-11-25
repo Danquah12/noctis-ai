@@ -1021,6 +1021,36 @@ async function logChatVerificationTelemetry(
   }
 }
 
+async function resolveSecOpsSuiteMarkdown(promptText: string, rawHint = ""): Promise<string> {
+  const hint = `${rawHint}\n${promptText}`;
+  if (/^\s*\/warroom\b/i.test(rawHint) || /\b(war[- ]?room|red\s+vs\.?\s+blue|noctis-war-room-001)\b/i.test(hint)) {
+    const { handleNaturalWarRoomQuery, runWarRoomSimulation, formatWarRoomDossierMarkdown } = await import(
+      "./noctis-war-room.ts"
+    );
+    return handleNaturalWarRoomQuery(promptText) || formatWarRoomDossierMarkdown(runWarRoomSimulation());
+  }
+  if (/^\s*\/pqc\b/i.test(rawHint) || /\b(pqc|post-quantum|ml-kem|ml-dsa|noctis-pqc-001)\b/i.test(hint)) {
+    const { handleNaturalPqcQuery, evaluatePqcMigration, formatPqcMigrationMarkdown } = await import(
+      "./noctis-pqc-shield.ts"
+    );
+    return handleNaturalPqcQuery(promptText) || formatPqcMigrationMarkdown(evaluatePqcMigration());
+  }
+  if (/^\s*\/zkp\b/i.test(rawHint) || /\b(zkp|zero-knowledge|groth16|plonk|noctis-zkproof-001)\b/i.test(hint)) {
+    const { handleNaturalZkProofQuery, generateZeroKnowledgeProof, formatZkProofMarkdown } = await import(
+      "./noctis-zk-proof.ts"
+    );
+    return handleNaturalZkProofQuery(promptText) || formatZkProofMarkdown(generateZeroKnowledgeProof());
+  }
+  if (/\b(sast|xtrike)\b/i.test(hint)) {
+    const { sastIntelligenceGadget, buildCompleteSastKnowledgeReport } = await import("./noctis-sast-engine.ts");
+    return sastIntelligenceGadget(promptText) || buildCompleteSastKnowledgeReport(promptText);
+  }
+  const { handleNaturalDigitalTwinQuery, simulateDigitalTwin, formatDigitalTwinDossierMarkdown, TWIN_PRESETS } = await import(
+    "./noctis-digital-twin.ts"
+  );
+  return handleNaturalDigitalTwinQuery(promptText) || formatDigitalTwinDossierMarkdown(simulateDigitalTwin(TWIN_PRESETS[0].defaultControls));
+}
+
 async function executeVibeReply(
   turns: VibeTurn[],
   keyOverride = "",
@@ -1413,6 +1443,63 @@ async function executeVibeReply(
         };
       }
 
+      if (routeId === "global_markets") {
+        const { executeGlobalMarketsQuery } = await import("./noctis-global-markets.server.ts");
+        return {
+          text: await executeGlobalMarketsQuery(promptText),
+          summary: `Explicit ${overrideCmd || "/markets"} override fetched live ExchangeRate FX, CoinGecko spot, and deterministic macro/VaR telemetry.`,
+        };
+      }
+
+      if (routeId === "world_intel") {
+        const { executeWorldIntelQuery } = await import("./noctis-world-intel.server.ts");
+        return {
+          text: await executeWorldIntelQuery(promptText),
+          summary: `Explicit ${overrideCmd || "/world"} override fetched live World Bank v2 country indicators and Domar debt sustainability metrics.`,
+        };
+      }
+
+      if (routeId === "science_papers") {
+        const { executePapersIntelQuery } = await import("./noctis-papers-intel.server.ts");
+        return {
+          text: await executePapersIntelQuery(promptText),
+          summary: `Explicit ${overrideCmd || "/papers"} override queried live arXiv and NCBI PubMed literature with APA/BibTeX citations.`,
+        };
+      }
+
+      if (routeId === "med_labs") {
+        const {
+          handleNaturalMedicalRecordInterpretationQuery,
+          buildMedicalRecordInterpretation,
+          formatMedicalRecordInterpretationMarkdown,
+        } = await import("./noctis-medical-record-interpreter.ts");
+        const labsOut =
+          handleNaturalMedicalRecordInterpretationQuery(promptText) ||
+          formatMedicalRecordInterpretationMarkdown(buildMedicalRecordInterpretation(promptText));
+        return {
+          text: labsOut,
+          summary: `Explicit ${overrideCmd || "/labs"} override executed Noctis Medical Record & Lab Interpreter (NOCTIS-MED-RECORD-001).`,
+        };
+      }
+
+      if (routeId === "predictive") {
+        const {
+          handleNaturalPredictiveIntelligenceQuery,
+          buildPredictiveIntelligenceReport,
+        } = await import("./noctis-predictive-intelligence.ts");
+        return {
+          text: handleNaturalPredictiveIntelligenceQuery(promptText) || buildPredictiveIntelligenceReport(),
+          summary: `Explicit ${overrideCmd || "/predict"} override executed Noctis Unified Predictive Intelligence Platform (NOCTIS-PRED-001).`,
+        };
+      }
+
+      if (routeId === "secops_suite") {
+        return {
+          text: await resolveSecOpsSuiteMarkdown(promptText, latest),
+          summary: `Explicit ${overrideCmd || "/secops"} override executed Noctis Sovereign SecOps Suite (Digital Twin, War Room, PQC, ZKP & SAST).`,
+        };
+      }
+
       return null;
     };
 
@@ -1669,6 +1756,90 @@ async function executeVibeReply(
           "Executed Noctis 81-Domain Universal Sovereign STEM Solver (NOCTIS-OMNI-ROUTER-001).",
         ),
         "omni_solver",
+      ),
+    };
+  }
+
+  if (!intent.override && intent.routeId === "global_markets") {
+    const { executeGlobalMarketsQuery } = await import("./noctis-global-markets.server.ts");
+    return {
+      text: finishText(
+        withThink(
+          await executeGlobalMarketsQuery(effectiveLatest),
+          "Fetched live ExchangeRate-API FX, CoinGecko spot, Fisher real yield, and parametric VaR telemetry.",
+        ),
+        "global_markets",
+      ),
+    };
+  }
+
+  if (!intent.override && intent.routeId === "world_intel") {
+    const { executeWorldIntelQuery } = await import("./noctis-world-intel.server.ts");
+    return {
+      text: finishText(
+        withThink(
+          await executeWorldIntelQuery(effectiveLatest),
+          "Fetched live World Bank v2 macroeconomic country indicators and Domar debt-sustainability analysis.",
+        ),
+        "world_intel",
+      ),
+    };
+  }
+
+  if (!intent.override && intent.routeId === "science_papers") {
+    const { executePapersIntelQuery } = await import("./noctis-papers-intel.server.ts");
+    return {
+      text: finishText(
+        withThink(
+          await executePapersIntelQuery(effectiveLatest),
+          "Searched live arXiv and NCBI PubMed repositories and generated verified APA & BibTeX citations.",
+        ),
+        "science_papers",
+      ),
+    };
+  }
+
+  if (!intent.override && intent.routeId === "med_labs") {
+    const {
+      handleNaturalMedicalRecordInterpretationQuery,
+      buildMedicalRecordInterpretation,
+      formatMedicalRecordInterpretationMarkdown,
+    } = await import("./noctis-medical-record-interpreter.ts");
+    const labsOut =
+      handleNaturalMedicalRecordInterpretationQuery(effectiveLatest) ||
+      formatMedicalRecordInterpretationMarkdown(buildMedicalRecordInterpretation(effectiveLatest));
+    return {
+      text: finishText(
+        withThink(labsOut, "Executed Noctis Medical Record & Lab Interpreter (NOCTIS-MED-RECORD-001)."),
+        "med_labs",
+      ),
+    };
+  }
+
+  if (!intent.override && intent.routeId === "predictive") {
+    const {
+      handleNaturalPredictiveIntelligenceQuery,
+      buildPredictiveIntelligenceReport,
+    } = await import("./noctis-predictive-intelligence.ts");
+    return {
+      text: finishText(
+        withThink(
+          handleNaturalPredictiveIntelligenceQuery(effectiveLatest) || buildPredictiveIntelligenceReport(),
+          "Executed Noctis Unified Predictive Intelligence Platform (NOCTIS-PRED-001).",
+        ),
+        "predictive",
+      ),
+    };
+  }
+
+  if (!intent.override && intent.routeId === "secops_suite") {
+    return {
+      text: finishText(
+        withThink(
+          await resolveSecOpsSuiteMarkdown(effectiveLatest),
+          "Executed Noctis Sovereign SecOps Suite (Digital Twin, War Room, PQC Sentinel, ZKP & SAST).",
+        ),
+        "secops_suite",
       ),
     };
   }

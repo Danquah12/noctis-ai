@@ -906,3 +906,52 @@ test("Promoted 8-engine bundle (/legal, /invest, /auto, /bible, /energy, /career
     "general_chat",
   );
 });
+
+test("Options B + C (/markets, /world, /papers, /labs, /predict, /secops) route accurately with strict collision guards", () => {
+  const naturalCases: Array<[string, NoctisRouteEngineId]> = [
+    ["Convert 1000 USD to GHS and check Bitcoin price and Fisher real yield", "global_markets"],
+    ["What is Ghana GDP, CPI inflation, and Domar debt sustainability on World Bank?", "world_intel"],
+    ["Search arXiv and PubMed for peer-reviewed papers on quantum error correction with BibTeX citation", "science_papers"],
+    ["Interpret my lab report with HbA1c 8.4% and TSH 6.2", "med_labs"],
+    ["Run Unified Predictive Intelligence Platform NOCTIS-PRED-001 chronological backtest", "predictive"],
+    ["Simulate Digital Twin topological attack-graph NOCTIS-TWIN-001 and PQC migration sentinel", "secops_suite"],
+  ];
+
+  for (const [prompt, expected] of naturalCases) {
+    const d = classifyNoctisIntent(prompt);
+    assert.equal(d.routeId, expected, `Expected ${expected} for "${prompt}", got ${d.routeId}`);
+  }
+
+  for (const [cmd, expected] of [
+    ["/markets USD to GHS", "global_markets"],
+    ["/fx EUR/USD", "global_markets"],
+    ["/crypto BTC", "global_markets"],
+    ["/world Ghana GDP", "world_intel"],
+    ["/papers quantum error correction", "science_papers"],
+    ["/arxiv surface code", "science_papers"],
+    ["/pubmed hyperkalemia", "science_papers"],
+    ["/labs HbA1c 8.4%", "med_labs"],
+    ["/predict PRED-1042", "predictive"],
+    ["/secops PQC sentinel", "secops_suite"],
+    ["/warroom ransomware", "secops_suite"],
+    ["/pqc ML-KEM-768", "secops_suite"],
+    ["/zkp Groth16 audit", "secops_suite"],
+  ] as const) {
+    const d = classifyNoctisIntent(cmd);
+    assert.equal(d.override, true);
+    assert.equal(d.routeId, expected, `Override ${cmd} expected ${expected}`);
+  }
+
+  const batch = "/markets Convert 1000 USD to GHS\n\n/world Ghana GDP\n\n/papers quantum error correction";
+  assert.deepEqual(
+    extractMultiSlashOverrides(batch).map((s) => s.routeId),
+    ["global_markets", "world_intel", "science_papers"],
+  );
+  assert.equal(classifyNoctisIntent(batch).label, "Multi-Route · /markets + /world + /papers");
+
+  // Acute clinical resuscitation NEVER gets intercepted by /labs
+  assert.equal(
+    classifyNoctisIntent("64yo patient presents with K+ 6.4 mEq/L, peaked T waves, and BP 88/54 mmHg. Interpret labs and stabilize!").routeId,
+    "clinical",
+  );
+});

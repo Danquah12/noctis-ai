@@ -206,6 +206,88 @@ export const Route = createFileRoute("/api/noctis")({
           const markdown = executeOmniSolverQuery(q);
           return Response.json({ ok: true, routeId: "omni_solver", query: q, markdown }, { headers: CORS_HEADERS });
         }
+        const marketsParam = url.searchParams.get("markets");
+        if (marketsParam) {
+          const { executeGlobalMarketsQuery } = await import("@/lib/noctis-global-markets.server");
+          const q =
+            url.searchParams.get("q") ||
+            (marketsParam === "1" ? "Convert 1000 USD to GHS and Fisher real yield at 8% nominal 3.2% inflation" : marketsParam);
+          const markdown = await executeGlobalMarketsQuery(q);
+          return Response.json({ ok: true, routeId: "global_markets", query: q, markdown }, { headers: CORS_HEADERS });
+        }
+        const worldParam = url.searchParams.get("world");
+        if (worldParam) {
+          const { executeWorldIntelQuery } = await import("@/lib/noctis-world-intel.server");
+          const q =
+            url.searchParams.get("q") ||
+            (worldParam === "1" ? "Ghana GDP, inflation, population, and Domar debt sustainability" : worldParam);
+          const markdown = await executeWorldIntelQuery(q);
+          return Response.json({ ok: true, routeId: "world_intel", query: q, markdown }, { headers: CORS_HEADERS });
+        }
+        const papersParam = url.searchParams.get("papers");
+        if (papersParam) {
+          const { executePapersIntelQuery } = await import("@/lib/noctis-papers-intel.server");
+          const q =
+            url.searchParams.get("q") ||
+            (papersParam === "1" ? "quantum error correction" : papersParam);
+          const markdown = await executePapersIntelQuery(q);
+          return Response.json({ ok: true, routeId: "science_papers", query: q, markdown }, { headers: CORS_HEADERS });
+        }
+        const labsParam = url.searchParams.get("labs");
+        if (labsParam) {
+          const {
+            handleNaturalMedicalRecordInterpretationQuery,
+            buildMedicalRecordInterpretation,
+            formatMedicalRecordInterpretationMarkdown,
+          } = await import("@/lib/noctis-medical-record-interpreter");
+          const q =
+            url.searchParams.get("q") ||
+            (labsParam === "1" ? "Interpret HbA1c 8.4%, TSH 6.2 mIU/L, LDL 165 mg/dL lab report" : labsParam);
+          const markdown =
+            handleNaturalMedicalRecordInterpretationQuery(q) ||
+            formatMedicalRecordInterpretationMarkdown(buildMedicalRecordInterpretation(q));
+          return Response.json({ ok: true, routeId: "med_labs", query: q, markdown }, { headers: CORS_HEADERS });
+        }
+        const predictParam = url.searchParams.get("predict");
+        if (predictParam) {
+          const { handleNaturalPredictiveIntelligenceQuery, buildPredictiveIntelligenceReport } = await import(
+            "@/lib/noctis-predictive-intelligence"
+          );
+          const q =
+            url.searchParams.get("q") ||
+            (predictParam === "1" ? "Unified Predictive Intelligence Platform NOCTIS-PRED-001" : predictParam);
+          const markdown = handleNaturalPredictiveIntelligenceQuery(q) || buildPredictiveIntelligenceReport();
+          return Response.json({ ok: true, routeId: "predictive", query: q, markdown }, { headers: CORS_HEADERS });
+        }
+        const secopsParam = url.searchParams.get("secops");
+        if (secopsParam) {
+          const q =
+            url.searchParams.get("q") ||
+            (secopsParam === "1" ? "digital twin attack graph" : secopsParam);
+          let markdown = "";
+          if (/pqc|post-quantum/i.test(q)) {
+            const { handleNaturalPqcQuery, evaluatePqcMigration, formatPqcMigrationMarkdown } = await import(
+              "@/lib/noctis-pqc-shield"
+            );
+            markdown = handleNaturalPqcQuery(q) || formatPqcMigrationMarkdown(evaluatePqcMigration());
+          } else if (/war[- ]?room|red/i.test(q)) {
+            const { handleNaturalWarRoomQuery, runWarRoomSimulation, formatWarRoomDossierMarkdown } = await import(
+              "@/lib/noctis-war-room"
+            );
+            markdown = handleNaturalWarRoomQuery(q) || formatWarRoomDossierMarkdown(runWarRoomSimulation());
+          } else if (/zkp|zero-knowledge/i.test(q)) {
+            const { handleNaturalZkProofQuery, generateZeroKnowledgeProof, formatZkProofMarkdown } = await import(
+              "@/lib/noctis-zk-proof"
+            );
+            markdown = handleNaturalZkProofQuery(q) || formatZkProofMarkdown(generateZeroKnowledgeProof());
+          } else {
+            const { handleNaturalDigitalTwinQuery, simulateDigitalTwin, formatDigitalTwinDossierMarkdown, TWIN_PRESETS } = await import(
+              "@/lib/noctis-digital-twin"
+            );
+            markdown = handleNaturalDigitalTwinQuery(q) || formatDigitalTwinDossierMarkdown(simulateDigitalTwin(TWIN_PRESETS[0].defaultControls));
+          }
+          return Response.json({ ok: true, routeId: "secops_suite", query: q, markdown }, { headers: CORS_HEADERS });
+        }
         if (url.searchParams.get("sast")) {
           const mode = url.searchParams.get("sast") || "repository";
           const {
@@ -759,7 +841,7 @@ export const Route = createFileRoute("/api/noctis")({
                 verboseEvents: result.latestSummary.verboseEvents,
                 markdown: formatCompleteTrainingRunMarkdown(result),
               },
-              { headers: { "cache-control": "no-store", ...CORS_HEADERS } }
+              { headers: { ...CORS_HEADERS, "cache-control": "no-store" } }
             );
           }
           if (isVerboseReq) {
@@ -773,7 +855,7 @@ export const Route = createFileRoute("/api/noctis")({
                 verboseEvents: summary.verboseEvents,
                 markdown: formatContinuousTrainingMarkdown(summary, { verbose: true }),
               },
-              { headers: { "cache-control": "no-store", ...CORS_HEADERS } }
+              { headers: { ...CORS_HEADERS, "cache-control": "no-store" } }
             );
           }
           if (mode === "run" || mode === "epoch") {
@@ -786,7 +868,7 @@ export const Route = createFileRoute("/api/noctis")({
                 verboseEvents: summary.verboseEvents,
                 markdown: formatContinuousTrainingMarkdown(summary),
               },
-              { headers: { "cache-control": "no-store", ...CORS_HEADERS } }
+              { headers: { ...CORS_HEADERS, "cache-control": "no-store" } }
             );
           }
           const status = getContinuousTrainingStatus();
@@ -799,7 +881,7 @@ export const Route = createFileRoute("/api/noctis")({
               verboseEvents: latest?.verboseEvents || [],
               markdown: latest ? formatContinuousTrainingMarkdown(latest) : null,
             },
-            { headers: { "cache-control": "no-store", ...CORS_HEADERS } }
+            { headers: { ...CORS_HEADERS, "cache-control": "no-store" } }
           );
         }
         if (url.searchParams.get("daily_challenge") || url.searchParams.get("challenge") === "daily") {
@@ -808,7 +890,7 @@ export const Route = createFileRoute("/api/noctis")({
           const connectInUrl = url.searchParams.get("connectin_url") || "https://conectln.com";
           const summary = await executeDailyChallengeWorkflow({ seed, connectInUrl });
           return Response.json(summary, {
-            headers: { "cache-control": "no-store", ...CORS_HEADERS }
+            headers: { ...CORS_HEADERS, "cache-control": "no-store" }
           });
         }
         if (url.searchParams.get("training") === "dpo-jsonl") {
@@ -853,10 +935,27 @@ export const Route = createFileRoute("/api/noctis")({
               fusionTripleProduct: solveFusionTokamak006().tripleProductKeVSM3,
               dacAirVolumeKm3: solveDacEnergetics011().airVolumeProcessedKm3PerYear,
               asteroidMissDistanceKm: solveAsteroidDeflection020().deflectionDistanceKm,
-              quantRiskVaR99: calculateMonteCarloVaR({ portfolioValue: 1000000 }).valueAtRiskAmount,
-              edgeModel1_5BFootprintMB: calculateEdgeModelProfile({ parameterCountBillions: 1.5, precision: "NF4" }).weightVramMB,
-              plcSafetyStatus: auditPlcStructuredText("IF emergency_stop THEN motor_drive := FALSE; END_IF;").safetyStatus,
-              hipaaSafeguardsStatus: auditHipaaTechnicalSafeguards({ encryptionAtRestEnforced: true, uniqueUserIdsRequired: true, automaticSessionTimeoutMinutes: 15, immutableAuditLogsActive: true, emergencyAccessMfaEnforced: true }).status,
+              quantRiskVaR99: calculateMonteCarloVaR({
+                portfolioValue: 1000000,
+                annualMeanReturn: 0.08,
+                annualVolatility: 0.18,
+                horizonDays: 10,
+                confidencePercent: 99,
+              }).valueAtRiskAmount,
+              edgeModel1_5BFootprintMB: calculateEdgeModelProfile({
+                parameterCountBillions: 1.5,
+                quantizationBits: 4,
+                contextWindow: 8192,
+              }).memoryFootprintMb,
+              plcSafetyStatus: auditPlcStructuredText("IF emergency_stop THEN motor_drive := FALSE; END_IF;").safetyCategory,
+              hipaaSafeguardsStatus: auditHipaaTechnicalSafeguards({
+                encryptionAtRestCipher: "AES-256-GCM",
+                tlsVersionInTransit: "TLS 1.3",
+                uniqueUserIdsEnforced: true,
+                autoLogoffMinutes: 15,
+                emergencyAccessPlanDocumented: true,
+                auditLoggingEnabled: true,
+              }).overallCompliant,
             }
           }, { headers: CORS_HEADERS });
         }
@@ -925,7 +1024,7 @@ export const Route = createFileRoute("/api/noctis")({
           if (!sameOrigin && !isSovereignKey && supplied !== requiredKey) {
             return Response.json(
               { error: "Unauthorized. Send a valid Bearer token or x-noctis-key header." },
-              { status: 401, headers: { "cache-control": "no-store", ...CORS_HEADERS } }
+              { status: 401, headers: { ...CORS_HEADERS, "cache-control": "no-store" } }
             );
           }
         }
@@ -1089,7 +1188,7 @@ export const Route = createFileRoute("/api/noctis")({
             case 1: result = challenges.solveSmartCity001(params); break;
             case 2: result = challenges.solveSpacecraftTrajectory002(params); break;
             case 3: result = challenges.solveSmrThermalHydraulics003(params); break;
-            case 4: result = challenges.solveSemiconductorCleanroom004(params); break;
+            case 4: result = challenges.solveSemiconductorCleanroom004(); break;
             case 5: result = challenges.solveHypersonicAeroheating005(params); break;
             case 6: result = challenges.solveFusionTokamak006(params as any); break;
             case 7: result = challenges.solveSubseaHvdc007(params); break;
@@ -1270,13 +1369,21 @@ export const Route = createFileRoute("/api/noctis")({
         if (body?.research_revision && typeof body.research_revision === "object") {
           const { noctisDeepResearch } = await import("@/lib/noctis-deep-research");
           const jobId = body.research_revision.job_id || "res-job-national-grid-01";
-          const revised = noctisDeepResearch.reviseJob(jobId, {
-            newScopeOrConstraint:
-              body.research_revision.newScopeOrConstraint ||
+          const scopeNotes = [
+            body.research_revision.newScopeOrConstraint ||
               "Scale population and recalculate all dependent figures",
+            body.research_revision.updatedInverterMw
+              ? `Inverter: ${body.research_revision.updatedInverterMw} MW`
+              : "",
+            body.research_revision.updatedBatteryMwh
+              ? `Battery: ${body.research_revision.updatedBatteryMwh} MWh`
+              : "",
+          ]
+            .filter(Boolean)
+            .join(" · ");
+          const revised = noctisDeepResearch.reviseJob(jobId, {
+            newScopeOrConstraint: scopeNotes,
             updatedPopulation: body.research_revision.updatedPopulation,
-            updatedInverterMw: body.research_revision.updatedInverterMw,
-            updatedBatteryMwh: body.research_revision.updatedBatteryMwh,
           });
           return Response.json(revised || { error: "RESEARCH_JOB_NOT_FOUND" }, {
             status: revised ? 200 : 404,

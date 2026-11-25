@@ -92,7 +92,7 @@ export function executeAllAcousticsScenarios(): AcousticsScenario[] {
           "m(F) = (1 / sqrt(1 + (2*pi*F*T_60/13.8)^2)) * (1 / (1 + 10^(-SNR/10)))",
           "STI = sum_k w_k * [ (SNR_{app,k} + 15) / 30 ]"
         ],
-        acousticMetrics: { speechTransmissionIndex: 0.76, rating: "EXCELLENT", snrDb: 18.5, emergencyCompliant: true }
+        acousticMetrics: { speechTransmissionIndex: 0.76, rating: "EXCELLENT", snrDb: 18.5, emergencyCompliant: "YES" }
       })
     });
   }

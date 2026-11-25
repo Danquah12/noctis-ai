@@ -216,6 +216,24 @@ export interface UniversalRouteResult {
 }
 
 /**
+ * Extracts a numeric parameter from a natural-language STEM prompt cleanly,
+ * returning `fallback` when absent or outside `[min, max]`.
+ */
+export function extractOmniParam(
+  query: string,
+  pattern: RegExp,
+  fallback: number,
+  min = -Infinity,
+  max = Infinity,
+): number {
+  const m = String(query || "").match(pattern);
+  if (!m?.[1]) return fallback;
+  const parsed = Number(m[1].replace(/,/g, ""));
+  if (!Number.isFinite(parsed) || parsed < min || parsed > max) return fallback;
+  return parsed;
+}
+
+/**
  * Accurately detects and classifies any question across all aspects of life.
  */
 export function detectLifeDomain(query: string): SovereignLifeDomain {
@@ -693,12 +711,17 @@ export function dispatchUniversalLifeQuery(query: string): UniversalRouteResult 
     }
 
     case "CIVIL_INFRASTRUCTURE": {
+      const sds = extractOmniParam(q, /(?:sds|spectral\s+accel(?:eration)?)\s*(?:=|is|of|:)?\s*([\d.]+)/i, 1.35, 0.05, 5.0);
+      const weightKips = extractOmniParam(q, /(?:weight|W)\s*(?:=|is|of|:)?\s*([\d,.]+)\s*(?:kips?|k\b)/i, 50000, 100, 1e8);
+      const rMod = extractOmniParam(q, /\bR\s*(?:=|:)\s*([\d.]+)/i, 8.0, 1.0, 12.0);
+      const imp = extractOmniParam(q, /(?:importance|I_e|\bI)\s*(?:=|:)\s*([\d.]+)/i, 1.25, 0.8, 2.0);
+      const periodSec = extractOmniParam(q, /(?:period|T)\s*(?:=|is|of|:)?\s*([\d.]+)\s*s\b/i, 2.2, 0.05, 15.0);
       const res = evaluateSeismicBaseShear({
-        spectralAccelerationSds: 1.35,
-        seismicWeightKips: 50000,
-        responseModificationR: 8.0,
-        importanceFactorI: 1.25,
-        fundamentalPeriodSec: 2.2
+        spectralAccelerationSds: sds,
+        seismicWeightKips: weightKips,
+        responseModificationR: rMod,
+        importanceFactorI: imp,
+        fundamentalPeriodSec: periodSec
       });
       return {
         domain,
@@ -706,16 +729,20 @@ export function dispatchUniversalLifeQuery(query: string): UniversalRouteResult 
         governingStandards: ["ASCE 7-22", "IBC 2024", "ACI 318-19", "AASHTO LRFD"],
         invariantsEnforced: ["Seismic Equivalent Lateral Force", "Aeroelastic Flutter Margin >= 1.2x"],
         dispatchedEngine: "noctis-civil-structural-engine.ts",
-        response: `# Noctis Civil Infrastructure & Structural Engineering Analysis\n\n**Governing Code**: ASCE 7-22 Minimum Design Loads & Associated Criteria\n**Verdict**: ${res.verdict}\n\n### Governing Formulae\n${res.engineeringFormulae.map(f => `- \`${f}\``).join("\n")}`
+        response: `# Noctis Civil Infrastructure & Structural Engineering Analysis\n\n**Governing Code**: ASCE 7-22 Minimum Design Loads & Associated Criteria\n**Inputs Used**: $S_{DS}=${sds}$, $W=${weightKips.toLocaleString()} \\text{ kips}$, $R=${rMod}$, $I_e=${imp}$, $T=${periodSec}\\text{ s}$\n**Verdict**: ${res.verdict}\n\n### Governing Formulae\n${res.engineeringFormulae.map(f => `- \`${f}\``).join("\n")}`
       };
     }
 
     case "MATERIALS_SCIENCE": {
+      const tempC = extractOmniParam(q, /([\d,.]+)\s*°?c\b/i, NaN, -200, 3000);
+      const tempK = Number.isFinite(tempC) ? tempC + 273.15 : extractOmniParam(q, /([\d,.]+)\s*k\b/i, 1273, 50, 4000);
+      const stressMpa = extractOmniParam(q, /([\d,.]+)\s*mpa/i, 250, 1, 5000);
+      const lifeHours = extractOmniParam(q, /([\d,.]+)\s*(?:hr|hours?)/i, 10000, 10, 1e6);
       const res = evaluateTurbineBladeCreepRupture({
-        temperatureKelvin: 1273,
-        appliedStressMpa: 250,
+        temperatureKelvin: tempK,
+        appliedStressMpa: stressMpa,
         larsonMillerConstantC: 20,
-        designLifeHours: 10000
+        designLifeHours: lifeHours
       });
       return {
         domain,
@@ -723,7 +750,7 @@ export function dispatchUniversalLifeQuery(query: string): UniversalRouteResult 
         governingStandards: ["ASTM E139", "ASME BPVC Section III Div. 5", "IEC 61788"],
         invariantsEnforced: ["Larson-Miller Parameter <= 28.5", "YBCO Magnetic Flux Pinning"],
         dispatchedEngine: "noctis-materials-metallurgy-engine.ts",
-        response: `# Noctis Materials Science & Advanced Metallurgy Assessment\n\n**Material**: Single-Crystal Nickel-Base Superalloy (CMSX-4) / YBCO Superconductor\n**Verdict**: ${res.verdict}\n\n### Microstructural Equations\n${res.physicalEquations.map(e => `- \`${e}\``).join("\n")}`
+        response: `# Noctis Materials Science & Advanced Metallurgy Assessment\n\n**Material**: Single-Crystal Nickel-Base Superalloy (CMSX-4) / YBCO Superconductor\n**Inputs Used**: $T=${tempK.toFixed(1)}\\text{ K}$, $\\sigma=${stressMpa}\\text{ MPa}$, Design Life=${lifeHours.toLocaleString()}\\text{ hr}$\n**Verdict**: ${res.verdict}\n\n### Microstructural Equations\n${res.physicalEquations.map(e => `- \`${e}\``).join("\n")}`
       };
     }
 
@@ -796,11 +823,14 @@ export function dispatchUniversalLifeQuery(query: string): UniversalRouteResult 
     }
 
     case "QUANTUM_COMPUTING": {
+      const pPhys = extractOmniParam(q, /(?:error\s+rate|p_?phys|\bp)\s*(?:=|is|of|:)?\s*(0?\.\d+|[\d.]+e-\d+)/i, 0.001, 1e-7, 0.25);
+      const distD = Math.round(extractOmniParam(q, /(?:distance|\bd)\s*(?:=|is|of|:)?\s*(\d{1,2})\b/i, 7, 3, 51));
+      const pThresh = extractOmniParam(q, /(?:threshold|p_?th)\s*(?:=|is|of|:)?\s*(0?\.\d+)/i, 0.01, 0.0001, 0.2);
       const res = evaluateSurfaceCodeErrorCorrection({
-        physicalGateErrorRate: 0.001,
-        codeDistanceD: 7,
+        physicalGateErrorRate: pPhys,
+        codeDistanceD: distD,
         syndromeExtractionCycleMicroSec: 1.0,
-        thresholdErrorRate: 0.01
+        thresholdErrorRate: pThresh
       });
       return {
         domain,
@@ -808,14 +838,16 @@ export function dispatchUniversalLifeQuery(query: string): UniversalRouteResult 
         governingStandards: ["IEEE Quantum Computing Standards", "NIST PQC Standardization"],
         invariantsEnforced: ["Surface Code Fault-Tolerance Threshold (< 1%)", "Fault-Tolerant Logical Qubit Fidelity"],
         dispatchedEngine: "noctis-quantum-computing-engine.ts",
-        response: `# Noctis Sovereign Quantum Information Science Assessment\n\n**Architecture**: Fault-Tolerant Topological Quantum Computing\n**Verdict**: ${res.verdict}\n\n### Quantum Formalisms\n${res.quantumFormalisms.map(e => `- \`${e}\``).join("\n")}`
+        response: `# Noctis Sovereign Quantum Information Science Assessment\n\n**Architecture**: Fault-Tolerant Topological Quantum Computing\n**Inputs Used**: $p_{\\text{phys}}=${pPhys}$, Distance $d=${distD}$, $p_{\\text{th}}=${pThresh}$\n**Verdict**: ${res.verdict}\n\n### Quantum Formalisms\n${res.quantumFormalisms.map(e => `- \`${e}\``).join("\n")}`
       };
     }
 
     case "NEUROTECH_BCI": {
+      const betaPower = extractOmniParam(q, /beta\s*(?:power|=|:)?\s*([\d.]+)/i, 32.0, 0.1, 500);
+      const gammaPower = extractOmniParam(q, /gamma\s*(?:power|=|:)?\s*([\d.]+)/i, 12.5, 0.1, 500);
       const res = evaluateClosedLoopDbsFeedback({
-        betaBandPowerMicroV2: 32.0,
-        gammaBandPowerMicroV2: 12.5,
+        betaBandPowerMicroV2: betaPower,
+        gammaBandPowerMicroV2: gammaPower,
         phaseAmplitudeCouplingCfc: 0.42,
         baselineBetaThresholdMicroV2: 18.0
       });
@@ -825,16 +857,19 @@ export function dispatchUniversalLifeQuery(query: string): UniversalRouteResult 
         governingStandards: ["IEEE 2794 Standard for Neural Interface Systems", "OECD Recommendation on Neurotechnology"],
         invariantsEnforced: ["Closed-Loop Therapeutic Window (0.5 - 4.5 mA)", "Cognitive Liberty & Neural Data Privacy"],
         dispatchedEngine: "noctis-neurotech-bci-engine.ts",
-        response: `# Noctis Sovereign Neurotechnology & BCI Assessment\n\n**Subsystem**: Closed-Loop Biomarker-Responsive Neuromodulation\n**Verdict**: ${res.verdict}\n\n### Neural Equations\n${res.neuralEquations.map(e => `- \`${e}\``).join("\n")}`
+        response: `# Noctis Sovereign Neurotechnology & BCI Assessment\n\n**Subsystem**: Closed-Loop Biomarker-Responsive Neuromodulation\n**Inputs Used**: Beta=${betaPower} µV², Gamma=${gammaPower} µV²\n**Verdict**: ${res.verdict}\n\n### Neural Equations\n${res.neuralEquations.map(e => `- \`${e}\``).join("\n")}`
       };
     }
 
     case "RENEWABLE_ENERGY": {
+      const currDens = extractOmniParam(q, /([\d.]+)\s*a\/cm/i, 2.2, 0.1, 10);
+      const cellVolt = extractOmniParam(q, /([\d.]+)\s*v(?:olts?)?\b/i, 1.85, 1.0, 3.0);
+      const tempC = extractOmniParam(q, /([\d.]+)\s*(?:°?c|celsius)/i, 75.0, 20, 950);
       const res = evaluatePemElectrolyzerEfficiency({
-        currentDensityAcm2: 2.2,
-        cellVoltageVolts: 1.85,
+        currentDensityAcm2: currDens,
+        cellVoltageVolts: cellVolt,
         faradaicEfficiencyPercent: 99.2,
-        operatingTempCelsius: 75.0
+        operatingTempCelsius: tempC
       });
       return {
         domain,
@@ -842,16 +877,18 @@ export function dispatchUniversalLifeQuery(query: string): UniversalRouteResult 
         governingStandards: ["ISO 22734 Hydrogen Generators", "IEEE 2800 Inverter-Based Resources"],
         invariantsEnforced: ["Electrolyte Specific Energy Bound (< 55 kWh/kg)", "Grid Synthetic Inertia RoCoF Invariant"],
         dispatchedEngine: "noctis-renewable-energy-engine.ts",
-        response: `# Noctis Sovereign Clean Energy & Decarbonization Intelligence\n\n**Subsystem**: Multi-Megawatt Green Hydrogen & Inverter-Based Grid Dynamics\n**Verdict**: ${res.verdict}\n\n### Thermodynamic & Grid Equations\n${res.energyEquations.map(e => `- \`${e}\``).join("\n")}`
+        response: `# Noctis Sovereign Clean Energy & Decarbonization Intelligence\n\n**Subsystem**: Multi-Megawatt Green Hydrogen & Inverter-Based Grid Dynamics\n**Inputs Used**: $J=${currDens}\\text{ A/cm}^2$, $V=${cellVolt}\\text{ V}$, $T=${tempC}^\\circ\\text{C}$\n**Verdict**: ${res.verdict}\n\n### Thermodynamic & Grid Equations\n${res.energyEquations.map(e => `- \`${e}\``).join("\n")}`
       };
     }
 
     case "PHARMACOLOGY_DRUG_DESIGN": {
+      const dar = extractOmniParam(q, /dar\s*(?:=|of|:)?\s*([\d.]+)/i, 4.0, 0.5, 12.0);
+      const ic50 = extractOmniParam(q, /ic50\s*(?:=|of|:)?\s*([\d.]+)/i, 0.25, 0.001, 1000);
       const res = evaluateAdcTherapeuticWindow({
-        drugToAntibodyRatioDar: 4.0,
+        drugToAntibodyRatioDar: dar,
         plasmaLinkerDeconjugationRatePercentPerDay: 1.2,
         targetAntigenReceptorDensity: 500000,
-        payloadIc50NanoMolar: 0.25
+        payloadIc50NanoMolar: ic50
       });
       return {
         domain,
@@ -859,15 +896,17 @@ export function dispatchUniversalLifeQuery(query: string): UniversalRouteResult 
         governingStandards: ["ICH M3(R2) Nonclinical Safety", "FDA Guidance for Antibody-Drug Conjugates"],
         invariantsEnforced: ["DAR Therapeutic Index Stability (3.5 - 4.5)", "Premature Systemic Deconjugation Avoidance"],
         dispatchedEngine: "noctis-pharma-drug-design-engine.ts",
-        response: `# Noctis Sovereign Pharmacology & Molecular Drug Design Assessment\n\n**Modality**: Next-Gen Antibody-Drug Conjugate (ADC) / Targeted Protein Degradation\n**Verdict**: ${res.verdict}\n\n### Biopharmaceutical Equations\n${res.pharmacologicalEquations.map(e => `- \`${e}\``).join("\n")}`
+        response: `# Noctis Sovereign Pharmacology & Molecular Drug Design Assessment\n\n**Modality**: Next-Gen Antibody-Drug Conjugate (ADC) / Targeted Protein Degradation\n**Inputs Used**: DAR=${dar}, $\\text{IC}_{50}=${ic50}\\text{ nM}$\n**Verdict**: ${res.verdict}\n\n### Biopharmaceutical Equations\n${res.pharmacologicalEquations.map(e => `- \`${e}\``).join("\n")}`
       };
     }
 
     case "AEROSPACE_DEFENSE": {
+      const missM = extractOmniParam(q, /(?:miss(?:\s+distance)?|separation)\s*(?:=|of|:)?\s*([\d,.]+)\s*m\b/i, 450, 1, 500000);
+      const relVel = extractOmniParam(q, /([\d.]+)\s*km\/s/i, 10.2, 0.1, 30);
       const res = evaluateSatelliteConjunctionCollisionRisk({
-        missDistanceMeters: 450,
+        missDistanceMeters: missM,
         combinedHardBodyRadiusMeters: 8.5,
-        relativeVelocityKmpSec: 10.2,
+        relativeVelocityKmpSec: relVel,
         conjunctionCovarianceSigmaMeters: 280
       });
       return {
@@ -876,16 +915,18 @@ export function dispatchUniversalLifeQuery(query: string): UniversalRouteResult 
         governingStandards: ["NASA CARA Collision Avoidance Protocol", "AIAA Hypersonic Waverider Standards"],
         invariantsEnforced: ["Conjunction Probability Threshold (Pc < 1e-4)", "Atmospheric Blooming Strehl > 0.7"],
         dispatchedEngine: "noctis-aerospace-defense-engine.ts",
-        response: `# Noctis Sovereign Aerospace & Planetary Defense Intelligence\n\n**Domain**: Orbital Mechanics, High-Energy Directed Energy & Hypersonics\n**Verdict**: ${res.verdict}\n\n### Astrodynamics Formulations\n${res.aerospaceEquations.map(e => `- \`${e}\``).join("\n")}`
+        response: `# Noctis Sovereign Aerospace & Planetary Defense Intelligence\n\n**Domain**: Orbital Mechanics, High-Energy Directed Energy & Hypersonics\n**Inputs Used**: Miss=${missM} m, $v_{\\text{rel}}=${relVel}\\text{ km/s}$\n**Verdict**: ${res.verdict}\n\n### Astrodynamics Formulations\n${res.aerospaceEquations.map(e => `- \`${e}\``).join("\n")}`
       };
     }
 
     case "OCEANOGRAPHY_DEEP_SEA": {
+      const depthM = extractOmniParam(q, /(?:depth\s*(?:of|=|:)?\s*)?([\d,.]+)\s*m\b/i, 10925, 10, 12000);
+      const yieldMpa = extractOmniParam(q, /([\d,.]+)\s*mpa/i, 880, 100, 3000);
       const res = evaluateDeepSubmergenceHydrostaticPressure({
-        depthMeters: 10925,
+        depthMeters: depthM,
         hullOuterDiameterMeters: 2.2,
         hullWallThicknessMeters: 0.095,
-        yieldStrengthMpa: 880,
+        yieldStrengthMpa: yieldMpa,
         safetyFactorTarget: 1.5
       });
       return {
@@ -894,7 +935,7 @@ export function dispatchUniversalLifeQuery(query: string): UniversalRouteResult 
         governingStandards: ["ASME PVHO-1 Pressure Vessels for Human Occupancy", "DNV-GL Submersible Rules"],
         invariantsEnforced: ["Hydrostatic Buckling Safety Margin (SF >= 1.5)", "Martin Biological Carbon Flux Conservation"],
         dispatchedEngine: "noctis-oceanography-deep-sea-engine.ts",
-        response: `# Noctis Sovereign Oceanography & Deep Sea Geophysics Assessment\n\n**Subsystem**: Abyssal Hadal Pressure Hulls & Deep Oceanic Circulation\n**Verdict**: ${res.verdict}\n\n### Oceanographic Formulations\n${res.oceanEquations.map(e => `- \`${e}\``).join("\n")}`
+        response: `# Noctis Sovereign Oceanography & Deep Sea Geophysics Assessment\n\n**Subsystem**: Abyssal Hadal Pressure Hulls & Deep Oceanic Circulation\n**Inputs Used**: Depth=${depthM.toLocaleString()} m, $\\sigma_y=${yieldMpa}\\text{ MPa}$\n**Verdict**: ${res.verdict}\n\n### Oceanographic Formulations\n${res.oceanEquations.map(e => `- \`${e}\``).join("\n")}`
       };
     }
 
@@ -917,11 +958,14 @@ export function dispatchUniversalLifeQuery(query: string): UniversalRouteResult 
     }
 
     case "EPIDEMIOLOGY_PANDEMIC": {
+      const r0 = extractOmniParam(q, /r0\s*(?:=|is|of|:)?\s*([\d.]+)/i, 3.2, 0.1, 25);
+      const susc = extractOmniParam(q, /susceptible\s*(?:=|of|:)?\s*(0?\.\d+)/i, 0.65, 0.01, 1.0);
+      const vaxCov = extractOmniParam(q, /vaccine\s+coverage\s*(?:=|of|:)?\s*(0?\.\d+)/i, 0.70, 0, 1.0);
       const res = evaluateEffectiveReproductionNumberRt({
-        basicReproductionNumberR0: 3.2,
-        susceptibleFraction: 0.65,
+        basicReproductionNumberR0: r0,
+        susceptibleFraction: susc,
         transmissionReductionFractionNpi: 0.35,
-        vaccineCoverageFraction: 0.70,
+        vaccineCoverageFraction: vaxCov,
         vaccineEfficacyFraction: 0.85
       });
       return {
@@ -930,15 +974,18 @@ export function dispatchUniversalLifeQuery(query: string): UniversalRouteResult 
         governingStandards: ["WHO International Health Regulations (IHR)", "CDC Epidemic Modeling Standards"],
         invariantsEnforced: ["Critical Transmission Suppression (Rt < 1.0)", "ICU Capacity Invariant Ceiling"],
         dispatchedEngine: "noctis-epidemiology-pandemic-engine.ts",
-        response: `# Noctis Sovereign Epidemiology & Global Pandemic Preparedness Intelligence\n\n**Model**: SEIR Metapopulation Contagion & Variant Phylodynamics\n**Verdict**: ${res.verdict}\n\n### Epidemiological Models\n${res.epidemEquations.map(e => `- \`${e}\``).join("\n")}`
+        response: `# Noctis Sovereign Epidemiology & Global Pandemic Preparedness Intelligence\n\n**Model**: SEIR Metapopulation Contagion & Variant Phylodynamics\n**Inputs Used**: $R_0=${r0}$, Susceptible=${susc}$, Vaccine Cov=${vaxCov}$\n**Verdict**: ${res.verdict}\n\n### Epidemiological Models\n${res.epidemEquations.map(e => `- \`${e}\``).join("\n")}`
       };
     }
 
     case "ROBOTICS_AUTONOMOUS": {
+      const distM = extractOmniParam(q, /distance\s*(?:=|of|:)?\s*([\d.]+)\s*m/i, 6.5, 0.1, 1000);
+      const velMs = extractOmniParam(q, /([\d.]+)\s*m\/s\b/i, 2.5, 0.01, 100);
+      const maxDecel = extractOmniParam(q, /([\d.]+)\s*m\/s\^?2/i, 4.5, 0.1, 50);
       const res = evaluateControlBarrierFunctionSafety({
-        currentDistanceMeters: 6.5,
-        relativeVelocityMps: 2.5,
-        maxDecelerationMps2: 4.5,
+        currentDistanceMeters: distM,
+        relativeVelocityMps: velMs,
+        maxDecelerationMps2: maxDecel,
         safetyMarginMeters: 1.0
       });
       return {
@@ -947,7 +994,7 @@ export function dispatchUniversalLifeQuery(query: string): UniversalRouteResult 
         governingStandards: ["IEEE 7000 Autonomous Safety-Critical Standards", "ISO 26262 ASIL-D"],
         invariantsEnforced: ["Control Barrier Function Forward Invariance (h(x) >= 0)", "ZMP Dynamic Locomotion Stability"],
         dispatchedEngine: "noctis-robotics-autonomous-systems-engine.ts",
-        response: `# Noctis Sovereign Robotics & Autonomous Field Systems Intelligence\n\n**Subsystem**: Safety-Critical Control Barrier Functions & Legged Locomotion\n**Verdict**: ${res.verdict}\n\n### Control Invariant Formulations\n${res.robotEquations.map(e => `- \`${e}\``).join("\n")}`
+        response: `# Noctis Sovereign Robotics & Autonomous Field Systems Intelligence\n\n**Subsystem**: Safety-Critical Control Barrier Functions & Legged Locomotion\n**Inputs Used**: $d=${distM}\\text{ m}$, $v_{\\text{rel}}=${velMs}\\text{ m/s}$, $a_{\\max}=${maxDecel}\\text{ m/s}^2$\n**Verdict**: ${res.verdict}\n\n### Control Invariant Formulations\n${res.robotEquations.map(e => `- \`${e}\``).join("\n")}`
       };
     }
 
@@ -971,12 +1018,16 @@ export function dispatchUniversalLifeQuery(query: string): UniversalRouteResult 
     }
 
     case "HYDROLOGY_WATER": {
+      const chWidth = extractOmniParam(q, /width\s*(?:=|of|:)?\s*([\d.]+)\s*m/i, 5.0, 0.1, 1000);
+      const chDepth = extractOmniParam(q, /depth\s*(?:=|of|:)?\s*([\d.]+)\s*m/i, 2.0, 0.05, 100);
+      const chSlope = extractOmniParam(q, /slope\s*(?:=|of|:)?\s*(0?\.\d+)/i, 0.002, 1e-5, 0.5);
+      const manningN = extractOmniParam(q, /(?:manning|roughness|\bn)\s*(?:=|of|:)?\s*(0?\.\d+)/i, 0.016, 0.005, 0.25);
       const res = evaluateManningOpenChannelFlow({
-        channelWidthMeters: 5.0,
-        waterDepthMeters: 2.0,
+        channelWidthMeters: chWidth,
+        waterDepthMeters: chDepth,
         sideSlopeZ: 1.5,
-        bedSlopeMPerM: 0.002,
-        manningRoughnessN: 0.016
+        bedSlopeMPerM: chSlope,
+        manningRoughnessN: manningN
       });
       return {
         domain,
@@ -984,15 +1035,18 @@ export function dispatchUniversalLifeQuery(query: string): UniversalRouteResult 
         governingStandards: ["USACE EM 1110-2-1601", "FAO-56 Irrigation Drainage", "EPA SWMM Standards"],
         invariantsEnforced: ["Manning Open Channel Continuity", "Theis Groundwater Drawdown Invariant"],
         dispatchedEngine: "noctis-hydrology-water-resources-engine.ts",
-        response: `# Noctis Sovereign Hydrology & Water Resources Engineering\n\n**Subsystem**: Open Channel Hydraulics & Watershed Flood Wave Dynamics\n**Verdict**: ${res.verdict}\n\n### Hydrologic Formulations\n${res.hydroEquations.map(e => `- \`${e}\``).join("\n")}`
+        response: `# Noctis Sovereign Hydrology & Water Resources Engineering\n\n**Subsystem**: Open Channel Hydraulics & Watershed Flood Wave Dynamics\n**Inputs Used**: Width=${chWidth} m, Depth=${chDepth} m, Slope=${chSlope}, Manning $n=${manningN}$\n**Verdict**: ${res.verdict}\n\n### Hydrologic Formulations\n${res.hydroEquations.map(e => `- \`${e}\``).join("\n")}`
       };
     }
 
     case "URBAN_TRANSIT": {
+      const vFree = extractOmniParam(q, /([\d.]+)\s*(?:kph|km\/h)/i, 100, 10, 350);
+      const kJam = extractOmniParam(q, /jam\s+density\s*(?:=|of|:)?\s*([\d.]+)/i, 140, 20, 400);
+      const kObs = extractOmniParam(q, /(?:observed|density)\s*(?:=|of|:)?\s*([\d.]+)\s*veh/i, 50, 1, 350);
       const res = evaluateGreenshieldsTrafficFlow({
-        freeFlowSpeedKph: 100,
-        jamDensityVehPerKm: 140,
-        observedDensityVehPerKm: 50
+        freeFlowSpeedKph: vFree,
+        jamDensityVehPerKm: kJam,
+        observedDensityVehPerKm: kObs
       });
       return {
         domain,
@@ -1000,15 +1054,17 @@ export function dispatchUniversalLifeQuery(query: string): UniversalRouteResult 
         governingStandards: ["TRB Highway Capacity Manual (HCM 7th)", "IEEE 1474 CBTC Rail Standards"],
         invariantsEnforced: ["Greenshields Traffic Parabolic Equilibrium", "Webster Signal Delay Minimization"],
         dispatchedEngine: "noctis-urban-transit-mobility-engine.ts",
-        response: `# Noctis Sovereign Urban Transit & Smart Mobility Intelligence\n\n**Subsystem**: Macroscopic Traffic Flow & Automated CBTC Rail Transit\n**Verdict**: ${res.verdict}\n\n### Mobility Equations\n${res.transitEquations.map(e => `- \`${e}\``).join("\n")}`
+        response: `# Noctis Sovereign Urban Transit & Smart Mobility Intelligence\n\n**Subsystem**: Macroscopic Traffic Flow & Automated CBTC Rail Transit\n**Inputs Used**: $v_f=${vFree}\\text{ km/h}$, $k_j=${kJam}\\text{ veh/km}$, $k=${kObs}\\text{ veh/km}$\n**Verdict**: ${res.verdict}\n\n### Mobility Equations\n${res.transitEquations.map(e => `- \`${e}\``).join("\n")}`
       };
     }
 
     case "VETERINARY_MEDICINE": {
+      const humanDose = extractOmniParam(q, /([\d.]+)\s*mg/i, 500, 0.1, 50000);
+      const animalKg = extractOmniParam(q, /([\d.]+)\s*kg/i, 35, 0.05, 8000);
       const res = evaluateMultispeciesMetabolicDrugDose({
-        humanStandardDoseMg: 500,
+        humanStandardDoseMg: humanDose,
         humanWeightKg: 70,
-        targetAnimalWeightKg: 35,
+        targetAnimalWeightKg: animalKg,
         speciesSpecificClearanceFactor: 1.0
       });
       return {
@@ -1017,7 +1073,7 @@ export function dispatchUniversalLifeQuery(query: string): UniversalRouteResult 
         governingStandards: ["FDA-CVM Guidance #191", "WOAH Terrestrial Animal Health Code"],
         invariantsEnforced: ["Kleiber Allometric Metabolic Scaling (M^0.75)", "Rumen Fermentation SARA Safeguards"],
         dispatchedEngine: "noctis-veterinary-medicine-engine.ts",
-        response: `# Noctis Sovereign Veterinary Medicine & Animal Physiology\n\n**Subsystem**: Multispecies Allometric Pharmacology & Critical Care\n**Verdict**: ${res.verdict}\n\n### Veterinary Formulations\n${res.vetEquations.map(e => `- \`${e}\``).join("\n")}`
+        response: `# Noctis Sovereign Veterinary Medicine & Animal Physiology\n\n**Subsystem**: Multispecies Allometric Pharmacology & Critical Care\n**Inputs Used**: Human Ref Dose=${humanDose} mg, Animal Mass=${animalKg} kg\n**Verdict**: ${res.verdict}\n\n### Veterinary Formulations\n${res.vetEquations.map(e => `- \`${e}\``).join("\n")}`
       };
     }
 
@@ -1038,11 +1094,15 @@ export function dispatchUniversalLifeQuery(query: string): UniversalRouteResult 
     }
 
     case "MINING_GEOMETALLURGY": {
+      const f80 = extractOmniParam(q, /f80\s*(?:=|of|:)?\s*([\d,.]+)/i, 9500, 10, 500000);
+      const p80 = extractOmniParam(q, /p80\s*(?:=|of|:)?\s*([\d,.]+)/i, 75, 1, 50000);
+      const wi = extractOmniParam(q, /(?:wi|work\s+index)\s*(?:=|of|:)?\s*([\d.]+)/i, 14.5, 1, 50);
+      const tph = extractOmniParam(q, /([\d,.]+)\s*(?:tph|t\/h)/i, 1200, 1, 50000);
       const res = evaluateBondComminutionEnergy({
-        feedSizeMicronsF80: 9500,
-        productSizeMicronsP80: 75,
-        bondWorkIndexKwhPerTonne: 14.5,
-        throughputTonnesPerHour: 1200
+        feedSizeMicronsF80: f80,
+        productSizeMicronsP80: p80,
+        bondWorkIndexKwhPerTonne: wi,
+        throughputTonnesPerHour: tph
       });
       return {
         domain,
@@ -1050,7 +1110,7 @@ export function dispatchUniversalLifeQuery(query: string): UniversalRouteResult 
         governingStandards: ["GISTM Global Tailings Standard", "SME Mineral Processing Standards"],
         invariantsEnforced: ["Bond Third Theory Comminution Power Sizing", "Bishop Slope Stability FoS Invariant"],
         dispatchedEngine: "noctis-mining-geometallurgy-engine.ts",
-        response: `# Noctis Sovereign Mining, Geometallurgy & Extraction Intelligence\n\n**Subsystem**: Comminution Energy Balances & Tailings Dam Stability\n**Verdict**: ${res.verdict}\n\n### Mining Equations\n${res.miningEquations.map(e => `- \`${e}\``).join("\n")}`
+        response: `# Noctis Sovereign Mining, Geometallurgy & Extraction Intelligence\n\n**Subsystem**: Comminution Energy Balances & Tailings Dam Stability\n**Inputs Used**: $F_{80}=${f80}\\text{ µm}$, $P_{80}=${p80}\\text{ µm}$, $W_i=${wi}\\text{ kWh/t}$, Throughput=${tph}\\text{ t/h}$\n**Verdict**: ${res.verdict}\n\n### Mining Equations\n${res.miningEquations.map(e => `- \`${e}\``).join("\n")}`
       };
     }
 
@@ -1075,11 +1135,15 @@ export function dispatchUniversalLifeQuery(query: string): UniversalRouteResult 
     }
 
     case "SUPPLY_CHAIN_LOGISTICS": {
+      const demand = extractOmniParam(q, /demand\s*(?:=|of|:)?\s*([\d,.]+)/i, 100000, 1, 1e9);
+      const orderCost = extractOmniParam(q, /order\s+cost\s*(?:=|of|:)?\s*\$?([\d,.]+)/i, 250, 1, 1e6);
+      const holdCost = extractOmniParam(q, /holding\s+cost\s*(?:=|of|:)?\s*\$?([\d,.]+)/i, 8.0, 0.01, 1e5);
+      const leadDays = extractOmniParam(q, /lead\s+time\s*(?:=|of|:)?\s*([\d.]+)\s*days?/i, 14, 0.1, 365);
       const res = evaluateEoqAndSafetyStock({
-        annualDemandUnits: 100000,
-        orderCostPerOrder: 250,
-        holdingCostPerUnitYear: 8.0,
-        leadTimeDays: 14,
+        annualDemandUnits: demand,
+        orderCostPerOrder: orderCost,
+        holdingCostPerUnitYear: holdCost,
+        leadTimeDays: leadDays,
         dailyDemandStandardDeviation: 40,
         serviceLevelZScore: 2.33
       });
@@ -1089,7 +1153,7 @@ export function dispatchUniversalLifeQuery(query: string): UniversalRouteResult 
         governingStandards: ["APICS / ASCM CSCP Standards", "CSCMP Supply Chain Network Guidelines"],
         invariantsEnforced: ["Wilson Stochastic Economic Order Quantity", "Little's Law WIP Throughput Invariant"],
         dispatchedEngine: "noctis-supply-chain-logistics-engine.ts",
-        response: `# Noctis Sovereign Supply Chain & Logistics Optimization\n\n**Subsystem**: Multi-Echelon Stochastic Inventory & VRPTW Fleet Routing\n**Verdict**: ${res.verdict}\n\n### Operations Research Formulations\n${res.logisticsEquations.map(e => `- \`${e}\``).join("\n")}`
+        response: `# Noctis Sovereign Supply Chain & Logistics Optimization\n\n**Subsystem**: Multi-Echelon Stochastic Inventory & VRPTW Fleet Routing\n**Inputs Used**: $D=${demand.toLocaleString()}/\\text{yr}$, Order Cost=$\\$${orderCost}$, Holding Cost=$\\$${holdCost}/\\text{yr}$, Lead=${leadDays}\\text{ days}$\n**Verdict**: ${res.verdict}\n\n### Operations Research Formulations\n${res.logisticsEquations.map(e => `- \`${e}\``).join("\n")}`
       };
     }
 
@@ -1181,11 +1245,14 @@ export function dispatchUniversalLifeQuery(query: string): UniversalRouteResult 
     }
 
     case "DEFENSE_AVIONICS_RADAR": {
+      const powerKw = extractOmniParam(q, /([\d,.]+)\s*kw/i, 50, 0.01, 100000);
+      const freqGhz = extractOmniParam(q, /([\d.]+)\s*ghz/i, 10, 0.1, 300);
+      const rcs = extractOmniParam(q, /rcs\s*(?:=|of|:)?\s*([\d.]+(?:e-?\d+)?)/i, 0.0001, 1e-8, 10000);
       const res = evaluateRadarDetectionRangeAndRcs({
-        peakTransmittedPowerKw: 50,
+        peakTransmittedPowerKw: powerKw,
         antennaGainDbi: 34,
-        radarFrequencyGhz: 10,
-        targetRcsM2: 0.0001,
+        radarFrequencyGhz: freqGhz,
+        targetRcsM2: rcs,
         minimumDetectableSignalDbm: -110
       });
       return {
@@ -1194,7 +1261,7 @@ export function dispatchUniversalLifeQuery(query: string): UniversalRouteResult 
         governingStandards: ["IEEE 686 Radar Definitions", "RTCA DO-178C DAL-A", "MIL-STD-1553B"],
         invariantsEnforced: ["Radar Range Detection Envelope", "DO-178C DAL-A 100% MC/DC Determinism"],
         dispatchedEngine: "noctis-defense-avionics-radar-engine.ts",
-        response: `# Noctis Sovereign Defense Avionics & Stealth RCS Intelligence\n\n**Domain**: Radar Range Equations, VLO Low-Observability & Electronic Warfare\n**Verdict**: ${res.verdict}\n\n### Radar Formulations\n${res.radarEquations.map(e => `- \`${e}\``).join("\n")}`
+        response: `# Noctis Sovereign Defense Avionics & Stealth RCS Intelligence\n\n**Domain**: Radar Range Equations, VLO Low-Observability & Electronic Warfare\n**Inputs Used**: $P_t=${powerKw}\\text{ kW}$, $f=${freqGhz}\\text{ GHz}$, $\\sigma=${rcs}\\text{ m}^2$\n**Verdict**: ${res.verdict}\n\n### Radar Formulations\n${res.radarEquations.map(e => `- \`${e}\``).join("\n")}`
       };
     }
 
@@ -1215,9 +1282,11 @@ export function dispatchUniversalLifeQuery(query: string): UniversalRouteResult 
     }
 
     case "ARCHITECTURAL_ACOUSTICS": {
+      const volM3 = extractOmniParam(q, /(?:volume\s*(?:of|=|:)?\s*)?([\d,.]+)\s*m(?:\^?3|³)/i, 15000, 10, 5e6);
+      const sabinM2 = extractOmniParam(q, /(?:absorption|sabin)\s*(?:of|=|:)?\s*([\d,.]+)/i, 1250, 1, 5e5);
       const res = evaluateRoomReverberationAndSchroeder({
-        roomVolumeM3: 15000,
-        totalAbsorptionSabinM2: 1250,
+        roomVolumeM3: volM3,
+        totalAbsorptionSabinM2: sabinM2,
         airAttenuationCoefficientPerM: 0.0015
       });
       return {
@@ -1226,7 +1295,7 @@ export function dispatchUniversalLifeQuery(query: string): UniversalRouteResult 
         governingStandards: ["ISO 3382-1 Room Acoustics", "IEC 60268-16 STI", "ASTM E90 STC-58"],
         invariantsEnforced: ["Sabine/Eyring Reverberation RT60 Bound", "Speech Transmission Index Intelligibility (> 0.75)"],
         dispatchedEngine: "noctis-architectural-acoustics-engine.ts",
-        response: `# Noctis Sovereign Architectural Acoustics & Sound Engineering\n\n**Subsystem**: Concert Hall Reverberation & Speech Transmission Index\n**Verdict**: ${res.verdict}\n\n### Acoustic Formulations\n${res.acousticEquations.map(e => `- \`${e}\``).join("\n")}`
+        response: `# Noctis Sovereign Architectural Acoustics & Sound Engineering\n\n**Subsystem**: Concert Hall Reverberation & Speech Transmission Index\n**Inputs Used**: $V=${volM3.toLocaleString()}\\text{ m}^3$, $A=${sabinM2.toLocaleString()}\\text{ sabin m}^2$\n**Verdict**: ${res.verdict}\n\n### Acoustic Formulations\n${res.acousticEquations.map(e => `- \`${e}\``).join("\n")}`
       };
     }
 
@@ -1248,11 +1317,13 @@ export function dispatchUniversalLifeQuery(query: string): UniversalRouteResult 
     }
 
     case "CHEMICAL_ENGINEERING": {
+      const kRate = extractOmniParam(q, /\bk\s*(?:=|:)\s*([\d.]+)/i, 0.05, 1e-5, 100);
+      const rVol = extractOmniParam(q, /volume\s*(?:of|=|:)?\s*([\d.]+)\s*m/i, 3.0, 0.01, 10000);
       const res = evaluateCstrAndPfrConversion({
         reactionOrder: 1,
-        rateConstantPerSec: 0.05,
+        rateConstantPerSec: kRate,
         volumetricFlowRateM3ps: 0.05,
-        reactorVolumeM3: 3.0,
+        reactorVolumeM3: rVol,
         feedConcentrationMolM3: 2000
       });
       return {
@@ -1261,15 +1332,18 @@ export function dispatchUniversalLifeQuery(query: string): UniversalRouteResult 
         governingStandards: ["OSHA 1910.119 PSM", "AIChE CCPS Reactor Safety", "API 520 DIERS Standards"],
         invariantsEnforced: ["Damkohler Conversion Scaling", "Semenov Runaway Thermal Stability Invariant"],
         dispatchedEngine: "noctis-chemical-reactor-process-engine.ts",
-        response: `# Noctis Sovereign Chemical Process & Reactor Kinetics Intelligence\n\n**Subsystem**: Continuous Reactor Engineering & Runaway Explosion Prevention\n**Verdict**: ${res.verdict}\n\n### Chemical Engineering Formulations\n${res.chemEquations.map(e => `- \`${e}\``).join("\n")}`
+        response: `# Noctis Sovereign Chemical Process & Reactor Kinetics Intelligence\n\n**Subsystem**: Continuous Reactor Engineering & Runaway Explosion Prevention\n**Inputs Used**: $k=${kRate}\\text{ s}^{-1}$, $V=${rVol}\\text{ m}^3$\n**Verdict**: ${res.verdict}\n\n### Chemical Engineering Formulations\n${res.chemEquations.map(e => `- \`${e}\``).join("\n")}`
       };
     }
 
     case "SEMICONDUCTOR_LITHOGRAPHY": {
+      const naVal = extractOmniParam(q, /\bna\s*(?:=|of|:)?\s*(0?\.\d+)/i, 0.55, 0.1, 1.4);
+      const k1Val = extractOmniParam(q, /\bk1\s*(?:=|of|:)?\s*(0?\.\d+)/i, 0.30, 0.2, 0.8);
+      const wlNm = extractOmniParam(q, /([\d.]+)\s*nm\b/i, 13.5, 1, 500);
       const res = evaluateEuvPhotolithographyResolution({
-        numericalApertureNa: 0.55,
-        k1Factor: 0.30,
-        laserWavelengthNm: 13.5,
+        numericalApertureNa: naVal,
+        k1Factor: k1Val,
+        laserWavelengthNm: wlNm,
         doseToClearMjCm2: 55
       });
       return {
@@ -1278,7 +1352,7 @@ export function dispatchUniversalLifeQuery(query: string): UniversalRouteResult 
         governingStandards: ["IEEE IEDM Standards", "JEDEC JESD85 Electromigration", "SEMI International Standards"],
         invariantsEnforced: ["High-NA EUV Rayleigh Resolution Limit", "Gate-All-Around Subthreshold Swing (< 65 mV/dec)"],
         dispatchedEngine: "noctis-semiconductor-photolithography-engine.ts",
-        response: `# Noctis Sovereign Microelectronics & Semiconductor Physics Assessment\n\n**Subsystem**: High-NA EUV Photolithography & Gate-All-Around Nanosheet Physics\n**Verdict**: ${res.verdict}\n\n### Semiconductor Equations\n${res.semiEquations.map(e => `- \`${e}\``).join("\n")}`
+        response: `# Noctis Sovereign Microelectronics & Semiconductor Physics Assessment\n\n**Subsystem**: High-NA EUV Photolithography & Gate-All-Around Nanosheet Physics\n**Inputs Used**: $\\text{NA}=${naVal}$, $k_1=${k1Val}$, $\\lambda=${wlNm}\\text{ nm}$\n**Verdict**: ${res.verdict}\n\n### Semiconductor Equations\n${res.semiEquations.map(e => `- \`${e}\``).join("\n")}`
       };
     }
 
@@ -2029,9 +2103,11 @@ export function dispatchUniversalLifeQuery(query: string): UniversalRouteResult 
     }
 
     case "OTEC_OCEAN_THERMAL": {
+      const warmC = extractOmniParam(q, /warm\s*(?:seawater|water|temp)?\s*(?:=|is|of|:)?\s*([\d.]+)\s*°?c?/i, 27.5, 10, 45);
+      const coldC = extractOmniParam(q, /cold\s*(?:seawater|water|temp)?\s*(?:=|is|of|:)?\s*([\d.]+)\s*°?c?/i, 4.8, -2, 20);
       const res = evaluateOtecPowerPlant({
-        surfaceWarmSeawaterTempC: 27.5,
-        deepColdSeawaterTempC: 4.8,
+        surfaceWarmSeawaterTempC: warmC,
+        deepColdSeawaterTempC: coldC,
         coldWaterPipeDepthMeters: 950.0,
         coldWaterPipeDiameterMeters: 2.5,
         warmWaterFlowRateM3S: 22.0,
@@ -2044,13 +2120,15 @@ export function dispatchUniversalLifeQuery(query: string): UniversalRouteResult 
         governingStandards: ["IEC 62600-20 Marine Energy OTEC Guidelines", "ASME PTC 46 Overall Plant Performance", "US DOE Water Power Technologies"],
         invariantsEnforced: ["Closed-Cycle Ammonia Rankine Thermocline Invariant (Delta T >= 20C)", "Cold Water Pipe Darcy-Weisbach Hydraulic Friction", "Net Positive Power Generation (Parasitic Fraction <= 35%)"],
         dispatchedEngine: "noctis-otec-ocean-thermal-engine.ts",
-        response: `# Noctis Sovereign Ocean Thermal Energy Conversion (OTEC)\n\n**Diagnostic**: ${res.diagnostic}\n- Delta T: ${res.temperatureDifferenceDeltaTCelsius.toFixed(1)} C (Carnot: ${res.carnotIdealEfficiencyPercent.toFixed(2)}%, Rankine: ${res.grossRankineThermalEfficiencyPercent.toFixed(2)}%)\n- CWP Head Loss: ${res.coldWaterPipingHeadLossMeters.toFixed(2)} m\n- Gross Power: 3.5 MWe -> Parasitic: ${res.parasiticPumpingPowerMWe.toFixed(2)} MWe (${res.parasiticLossFractionPercent.toFixed(1)}%)\n- Net Electrical Power: ${res.netElectricalPowerMWe.toFixed(2)} MWe (Viable: ${res.isNetPositivePowerVerified})`
+        response: `# Noctis Sovereign Ocean Thermal Energy Conversion (OTEC)\n\n**Inputs Used**: $T_{\\text{warm}}=${warmC}^\\circ\\text{C}$, $T_{\\text{cold}}=${coldC}^\\circ\\text{C}$\n**Diagnostic**: ${res.diagnostic}\n- Delta T: ${res.temperatureDifferenceDeltaTCelsius.toFixed(1)} C (Carnot: ${res.carnotIdealEfficiencyPercent.toFixed(2)}%, Rankine: ${res.grossRankineThermalEfficiencyPercent.toFixed(2)}%)\n- CWP Head Loss: ${res.coldWaterPipingHeadLossMeters.toFixed(2)} m\n- Gross Power: 3.5 MWe -> Parasitic: ${res.parasiticPumpingPowerMWe.toFixed(2)} MWe (${res.parasiticLossFractionPercent.toFixed(1)}%)\n- Net Electrical Power: ${res.netElectricalPowerMWe.toFixed(2)} MWe (Viable: ${res.isNetPositivePowerVerified})`
       };
     }
 
     case "DIRECTIONAL_DRILLING_GEOMECH": {
+      const mdM = extractOmniParam(q, /(?:md|measured\s+depth|depth)\s*(?:=|of|:)?\s*([\d,.]+)\s*m/i, 5200.0, 100, 15000);
+      const mudPpg = extractOmniParam(q, /(?:mud(?:\s+weight)?|ecd)\s*(?:=|of|:)?\s*([\d.]+)\s*ppg/i, 12.0, 6.0, 22.0);
       const res = evaluateDirectionalDrilling({
-        measuredDepthMeters: 5200.0,
+        measuredDepthMeters: mdM,
         inclinationAngleDegrees: 88.5,
         azimuthAngleDegrees: 180.0,
         courseLengthMeters: 30.0,
@@ -2058,7 +2136,7 @@ export function dispatchUniversalLifeQuery(query: string): UniversalRouteResult 
         previousAzimuthDegrees: 179.0,
         formationPorePressureEcdPpg: 10.5,
         formationFractureGradientEcdPpg: 15.8,
-        drillingMudDensityEcdPpg: 12.0
+        drillingMudDensityEcdPpg: mudPpg
       });
       return {
         domain,
@@ -2066,7 +2144,28 @@ export function dispatchUniversalLifeQuery(query: string): UniversalRouteResult 
         governingStandards: ["API Spec 7-1 Rotary Drilling Equipment", "API RP 13B Field Testing Drilling Fluids", "IADC Drilling Manual"],
         invariantsEnforced: ["Minimum Curvature 3D Trajectory Formulation", "Dogleg Severity Fatigue Bounds (DLS <= 10 deg/30m)", "Hydrostatic Mud Weight Safe Geomechanical Window"],
         dispatchedEngine: "noctis-directional-drilling-geomechanics-engine.ts",
-        response: `# Noctis Sovereign Directional Drilling & Wellbore Geomechanics\n\n**Diagnostic**: ${res.diagnostic}\n- Dogleg Severity: ${res.doglegSeverityDegPer30Meters.toFixed(2)} deg/30m (DLS Safe: ${res.isDoglegSeverityWithinLimits})\n- Mud Window Margins: Pore +${res.porePressureMarginPpg.toFixed(2)} ppg, Frac +${res.fractureMarginPpg.toFixed(2)} ppg (Window Safe: ${res.isMudWeightWithinSafeDrillingWindow})\n- TVD: ${res.trueVerticalDepthEstimateM.toFixed(0)} m\n- BHA Buckling SF: ${res.bhaBucklingSafetyFactor.toFixed(2)}`
+        response: `# Noctis Sovereign Directional Drilling & Wellbore Geomechanics\n\n**Inputs Used**: MD=${mdM.toLocaleString()} m, Mud Weight=${mudPpg} ppg\n**Diagnostic**: ${res.diagnostic}\n- Dogleg Severity: ${res.doglegSeverityDegPer30Meters.toFixed(2)} deg/30m (DLS Safe: ${res.isDoglegSeverityWithinLimits})\n- Mud Window Margins: Pore +${res.porePressureMarginPpg.toFixed(2)} ppg, Frac +${res.fractureMarginPpg.toFixed(2)} ppg (Window Safe: ${res.isMudWeightWithinSafeDrillingWindow})\n- TVD: ${res.trueVerticalDepthEstimateM.toFixed(0)} m\n- BHA Buckling SF: ${res.bhaBucklingSafetyFactor.toFixed(2)}`
+      };
+    }
+
+    case "MACROECONOMICS_FINANCE": {
+      const rStar = extractOmniParam(q, /neutral(?:\s+real)?(?:\s+rate)?\s*(?:r\*|=|:)?\s*([\d.]+)/i, 1.0, -2, 10);
+      const currInf = extractOmniParam(q, /(?:current\s+)?inflation\s*(?:=|is|of|:)?\s*([\d.]+)/i, 3.2, -5, 100);
+      const targetInf = extractOmniParam(q, /target(?:\s+inflation)?\s*(?:=|is|of|:)?\s*([\d.]+)/i, 2.0, 0, 20);
+      const gapPct = extractOmniParam(q, /output\s+gap\s*(?:=|is|of|:)?\s*([-+]?[\d.]+)/i, 0.8, -25, 25);
+      const res = evaluateTaylorRuleInterestRate({
+        neutralRealRatePercent: rStar,
+        currentInflationPercent: currInf,
+        targetInflationPercent: targetInf,
+        outputGapPercent: gapPct
+      });
+      return {
+        domain,
+        confidenceScore: 0.99,
+        governingStandards: ["Federal Reserve FOMC Taylor (1993) Rule", "BIS Basel III / Liquidity Framework"],
+        invariantsEnforced: ["Taylor Principle (>= 1.0x Inflation Response)", "Effective Lower Bound Non-Negativity (i >= 0%)"],
+        dispatchedEngine: "noctis-macroeconomics-monetary-engine.ts",
+        response: `# Noctis Sovereign Macroeconomics & Monetary Policy Intelligence\n\n**Inputs Used**: $r^*=${rStar}\\%$, $\\pi_t=${currInf}\\%$, $\\pi^*=${targetInf}\\%$, Output Gap=${gapPct}\\%\n**Verdict**: ${res.verdict}\n\n### Monetary Equations\n${res.macroEquations.map(e => `- \`${e}\``).join("\n")}`
       };
     }
 

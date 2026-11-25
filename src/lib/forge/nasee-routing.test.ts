@@ -203,3 +203,27 @@ test("Promoted 8-engine bundle executes via natural prompts, slash overrides, an
   const recalled = await getRoutedChatResponseById(batchStamp.stamp!.responseId!);
   assert.ok(recalled?.responseText.includes("Multi-Domain Command Brief"));
 });
+
+test("Options B + C batch runs /markets, /world, and /secops PQC in parallel with RSP archival", async () => {
+  const prompt = [
+    "/markets Convert 1000 USD to GHS and Fisher real yield at 8% nominal 3% inflation",
+    "",
+    "/world Ghana GDP and Domar debt sustainability",
+    "",
+    "/secops Post-Quantum Crypto migration sentinel",
+  ].join("\n");
+
+  const res = await vibeReply([{ role: "user", content: prompt }], "", { think: true });
+  assert.equal("text" in res, true);
+  const txt = "text" in res ? res.text : "";
+  const stamp = parseRouteStamp(txt);
+  assert.equal(stamp.stamp?.label, "Multi-Route · /markets + /world + /secops");
+  assert.equal(stamp.cleanText.includes("<!-- noctis-route:"), false);
+  assert.ok(txt.includes("Fisher Equation"));
+  assert.ok(txt.includes("Domar Debt-to-GDP"));
+  assert.ok(/NOCTIS-PQC-001|ML-KEM/i.test(txt));
+  assert.ok(stamp.stamp?.responseId?.startsWith("RSP-"));
+
+  const recalled = await getRoutedChatResponseById(stamp.stamp!.responseId!);
+  assert.ok(recalled?.responseText.includes("Multi-Domain Command Brief"));
+});

@@ -248,6 +248,42 @@ export async function handleForgeV2Request(request: Request): Promise<Response> 
             ? "NOCTIS-OMNI-ROUTER-001 81 STEM solvers ready"
             : "unavailable";
         }),
+        probe("markets", async () => {
+          const mod = await import("../noctis-global-markets.server.ts");
+          return typeof mod.executeGlobalMarketsQuery === "function"
+            ? "FX/Crypto/Fisher/VaR markets engine ready"
+            : "unavailable";
+        }),
+        probe("world", async () => {
+          const mod = await import("../noctis-world-intel.server.ts");
+          return typeof mod.executeWorldIntelQuery === "function"
+            ? "World Bank v2 & Domar country intel ready"
+            : "unavailable";
+        }),
+        probe("papers", async () => {
+          const mod = await import("../noctis-papers-intel.server.ts");
+          return typeof mod.executePapersIntelQuery === "function"
+            ? "arXiv & PubMed literature engine ready"
+            : "unavailable";
+        }),
+        probe("labs", async () => {
+          const mod = await import("../noctis-medical-record-interpreter.ts");
+          return typeof mod.buildMedicalRecordInterpretation === "function"
+            ? "NOCTIS-MED-RECORD-001 lab interpreter ready"
+            : "unavailable";
+        }),
+        probe("predict", async () => {
+          const mod = await import("../noctis-predictive-intelligence.ts");
+          return typeof mod.buildPredictiveIntelligenceReport === "function"
+            ? "NOCTIS-PRED-001 15-engine forecasting ready"
+            : "unavailable";
+        }),
+        probe("secops", async () => {
+          const mod = await import("../noctis-pqc-shield.ts");
+          return typeof mod.evaluatePqcMigration === "function"
+            ? "SecOps Twin/WarRoom/PQC/ZKP suite ready"
+            : "unavailable";
+        }),
       ]);
 
       const totalOk = routes.filter((r) => r.ok).length;
