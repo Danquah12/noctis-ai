@@ -105,6 +105,107 @@ export const Route = createFileRoute("/api/noctis")({
           const markdown = buildArchitecturalIntelligenceReport(q);
           return Response.json({ ok: true, routeId: "architect", query: q, markdown }, { headers: CORS_HEADERS });
         }
+        const legalParam = url.searchParams.get("legal");
+        if (legalParam) {
+          const { handleNaturalLegalQuery, buildGeneralLegalAssessment, resolveJurisdiction } = await import(
+            "@/lib/noctis-legal-engine"
+          );
+          const q =
+            url.searchParams.get("q") ||
+            (legalParam === "1"
+              ? "Analyze federal government contract breach remedies under FAR Part 49"
+              : legalParam);
+          const markdown = handleNaturalLegalQuery(q) || buildGeneralLegalAssessment(q, resolveJurisdiction(q));
+          return Response.json({ ok: true, routeId: "legal", query: q, markdown }, { headers: CORS_HEADERS });
+        }
+        const investParam = url.searchParams.get("invest");
+        if (investParam) {
+          const { handleNaturalInvestmentQuery, buildDynamicFinancialScenarioResponse } = await import(
+            "@/lib/noctis-investment-engine"
+          );
+          const q =
+            url.searchParams.get("q") ||
+            (investParam === "1"
+              ? "Analyze operating cash flow vs rising receivables working-capital divergence"
+              : investParam);
+          const markdown = handleNaturalInvestmentQuery(q) || buildDynamicFinancialScenarioResponse(q);
+          return Response.json({ ok: true, routeId: "invest", query: q, markdown }, { headers: CORS_HEADERS });
+        }
+        const autoParam = url.searchParams.get("auto");
+        if (autoParam) {
+          const { automotiveDiagnosticGadget, buildAutomotiveDiagnosticIntelligenceReport } = await import(
+            "@/lib/noctis-automotive-engine"
+          );
+          const q =
+            url.searchParams.get("q") ||
+            (autoParam === "1"
+              ? "Diagnose OBD-II P0302 misfire under load with LTFT +18% fuel trim"
+              : autoParam);
+          const markdown = automotiveDiagnosticGadget(q) || buildAutomotiveDiagnosticIntelligenceReport(q);
+          return Response.json({ ok: true, routeId: "automotive", query: q, markdown }, { headers: CORS_HEADERS });
+        }
+        const bibleParam = url.searchParams.get("bible");
+        if (bibleParam) {
+          const { handleNaturalBibleQuery, buildDynamicBibleQueryResponse } = await import(
+            "@/lib/noctis-bible-engine"
+          );
+          const q =
+            url.searchParams.get("q") ||
+            (bibleParam === "1" ? "Prepare a structured Bible study on Romans 8 and Psalm 23" : bibleParam);
+          const markdown = handleNaturalBibleQuery(q) || buildDynamicBibleQueryResponse(q);
+          return Response.json({ ok: true, routeId: "bible", query: q, markdown }, { headers: CORS_HEADERS });
+        }
+        const energyParam = url.searchParams.get("energy");
+        if (energyParam) {
+          const { handleNaturalEnergyQuery } = await import("@/lib/noctis-energy-grid");
+          const q =
+            url.searchParams.get("q") ||
+            (energyParam === "1"
+              ? "Evaluate BESS thermal safety and 60 Hz frequency droop response under IEEE 1547 and NFPA 855"
+              : energyParam);
+          const markdown =
+            handleNaturalEnergyQuery(q) ||
+            handleNaturalEnergyQuery(
+              "Evaluate BESS thermal safety and 60 Hz frequency droop response under IEEE 1547 and NFPA 855",
+            ) ||
+            "Noctis Sovereign Energy & Smart Grid Engine (NOCTIS-ENERGY-GRID-001) ready.";
+          return Response.json({ ok: true, routeId: "energy_grid", query: q, markdown }, { headers: CORS_HEADERS });
+        }
+        const careerParam = url.searchParams.get("career");
+        if (careerParam) {
+          const { handleNaturalCareerQuery } = await import("@/lib/noctis-career-query");
+          const q =
+            url.searchParams.get("q") || (careerParam === "1" ? "How do I become a registered nurse?" : careerParam);
+          const markdown =
+            handleNaturalCareerQuery(q) ||
+            handleNaturalCareerQuery(`How do I become ${q}`) ||
+            handleNaturalCareerQuery("career pathways repository") ||
+            "Noctis Career Pathway Repository ready.";
+          return Response.json({ ok: true, routeId: "career", query: q, markdown }, { headers: CORS_HEADERS });
+        }
+        const researchParam = url.searchParams.get("research");
+        if (researchParam) {
+          const { buildDeepResearchReport } = await import("@/lib/noctis-deep-research");
+          const { buildRicIntelligenceReport } = await import("@/lib/noctis-ric");
+          const q =
+            url.searchParams.get("q") ||
+            (researchParam === "1"
+              ? "Noctis Research Intelligence Controller claim-level evidence ledger"
+              : researchParam);
+          const markdown = /\b(ric|research\s+intelligence\s+controller|disputed)\b/i.test(q)
+            ? buildRicIntelligenceReport(q)
+            : buildDeepResearchReport(q);
+          return Response.json({ ok: true, routeId: "deep_research", query: q, markdown }, { headers: CORS_HEADERS });
+        }
+        const omniParam = url.searchParams.get("omni");
+        if (omniParam) {
+          const { executeOmniSolverQuery } = await import("@/lib/noctis-universal-life-router");
+          const q =
+            url.searchParams.get("q") ||
+            (omniParam === "1" ? "Surface code quantum error correction" : omniParam);
+          const markdown = executeOmniSolverQuery(q);
+          return Response.json({ ok: true, routeId: "omni_solver", query: q, markdown }, { headers: CORS_HEADERS });
+        }
         if (url.searchParams.get("sast")) {
           const mode = url.searchParams.get("sast") || "repository";
           const {

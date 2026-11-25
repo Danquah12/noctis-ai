@@ -44,6 +44,14 @@ export type NoctisRouteEngineId =
   | "earth_hazards"
   | "global_nav"
   | "architect"
+  | "legal"
+  | "invest"
+  | "automotive"
+  | "bible"
+  | "energy_grid"
+  | "career"
+  | "deep_research"
+  | "omni_solver"
   | "general_chat";
 
 export type NoctisPanelGroup =
@@ -416,6 +424,78 @@ export const NOCTIS_SLASH_ROUTES: NoctisSlashRouteSpec[] = [
     quickSwitch: true,
   },
   {
+    command: "/legal",
+    aliases: ["/law", "/lex"],
+    routeId: "legal",
+    label: "Legal · Attorney & Lex",
+    description: "IRAC/CREAC legal analysis, federal FAR procurement, HIPAA/APA litigation & cross-border conflict-of-laws.",
+    targetPanel: "chat",
+    quickSwitch: false,
+  },
+  {
+    command: "/invest",
+    aliases: ["/finance", "/valuation"],
+    routeId: "invest",
+    label: "Invest · Research & Valuation",
+    description: "Wall Street & Main Street equity analysis, working-capital divergence, DCF/WACC, SEC filings & SaaS modeling.",
+    targetPanel: "chat",
+    quickSwitch: false,
+  },
+  {
+    command: "/auto",
+    aliases: ["/obd", "/mechanic"],
+    routeId: "automotive",
+    label: "Auto · OBD-II & Diagnostics",
+    description: "OBD-II DTCs, fuel trims (STFT/LTFT), crank/no-start, CKP signals, misfires & causal automotive fault trees.",
+    targetPanel: "chat",
+    quickSwitch: false,
+  },
+  {
+    command: "/bible",
+    aliases: ["/scripture", "/theology"],
+    routeId: "bible",
+    label: "Bible · Exegesis & Study",
+    description: "Genesis-to-Revelation biblical exegesis, sermon prep, Bible study lessons & historical-grammatical analysis.",
+    targetPanel: "chat",
+    quickSwitch: false,
+  },
+  {
+    command: "/energy",
+    aliases: ["/grid", "/bess"],
+    routeId: "energy_grid",
+    label: "Energy · Smart Grid & BESS",
+    description: "NERC BAL-003 frequency droop, IEEE 1547 anti-islanding, black-start sync & NFPA 855 BESS thermal runaway gates.",
+    targetPanel: "chat",
+    quickSwitch: false,
+  },
+  {
+    command: "/career",
+    aliases: ["/jobs", "/pathways"],
+    routeId: "career",
+    label: "Career · Pathways & Wages",
+    description: "Step-by-step career pathways, licensing, skills, regional wage data & multilingual profession guides.",
+    targetPanel: "chat",
+    quickSwitch: false,
+  },
+  {
+    command: "/research",
+    aliases: ["/ric", "/evidence"],
+    routeId: "deep_research",
+    label: "Research · Deep Evidence & RIC",
+    description: "Research Intelligence Controller, claim-level evidence ledger, contradiction audit & reproducible research lab.",
+    targetPanel: "chat",
+    quickSwitch: false,
+  },
+  {
+    command: "/omni",
+    aliases: ["/solver", "/stem"],
+    routeId: "omni_solver",
+    label: "Omni · 81-Domain STEM Solver",
+    description: "81 specialized scientific, civil, quantum, acoustics, hydrology, naval, EUV, pharma, macro & engineering solvers.",
+    targetPanel: "chat",
+    quickSwitch: true,
+  },
+  {
     command: "/chat",
     aliases: ["/core"],
     routeId: "general_chat",
@@ -440,6 +520,14 @@ export const NOCTIS_API_ROUTES: NoctisApiRouteSpec[] = [
   { id: "earth", name: "Earth Hazards & Air Quality API", basePath: "/api/noctis?earth=1", statusPath: "/api/noctis?earth=1", panelId: "chat" },
   { id: "nav", name: "Aviation METAR & Global Navigation API", basePath: "/api/noctis?nav=KJFK", statusPath: "/api/noctis?nav=KJFK", panelId: "chat" },
   { id: "architect", name: "Noctis Architectural Intelligence API (NOCTIS-ARCH-001)", basePath: "/api/noctis?architect=1", statusPath: "/api/noctis?architect=1", panelId: "chat" },
+  { id: "legal", name: "Noctis Legal & Cross-Border Lex API (NOCTIS-LEGAL-001)", basePath: "/api/noctis?legal=1", statusPath: "/api/noctis?legal=1", panelId: "chat" },
+  { id: "invest", name: "Noctis Research & Investment Valuation API (NOCTIS-INVEST-001)", basePath: "/api/noctis?invest=1", statusPath: "/api/noctis?invest=1", panelId: "chat" },
+  { id: "auto", name: "Noctis Automotive OBD-II Diagnostic API (NOCTIS-AUTO-001)", basePath: "/api/noctis?auto=1", statusPath: "/api/noctis?auto=1", panelId: "chat" },
+  { id: "bible", name: "Noctis Bible Exegesis & Study API (NOCTIS-BIBLE-001)", basePath: "/api/noctis?bible=1", statusPath: "/api/noctis?bible=1", panelId: "chat" },
+  { id: "energy", name: "Noctis Energy & Smart Grid BESS API (NOCTIS-ENERGY-GRID-001)", basePath: "/api/noctis?energy=1", statusPath: "/api/noctis?energy=1", panelId: "chat" },
+  { id: "career", name: "Noctis Career Pathways Repository API (NOCTIS-CAREERS-001)", basePath: "/api/noctis?career=1", statusPath: "/api/noctis?career=1", panelId: "chat" },
+  { id: "research", name: "Noctis Deep Research & RIC Evidence API (NOCTIS-RIC-001)", basePath: "/api/noctis?research=1", statusPath: "/api/noctis?research=1", panelId: "chat" },
+  { id: "omni", name: "Noctis 81-Domain Universal STEM Solver API (NOCTIS-OMNI-ROUTER-001)", basePath: "/api/noctis?omni=1", statusPath: "/api/noctis?omni=1", panelId: "chat" },
   { id: "noctis", name: "Core Noctis Chat Endpoint", basePath: "/api/noctis", statusPath: "/api/v1/health", panelId: "chat" },
 ];
 

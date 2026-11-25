@@ -2094,3 +2094,32 @@ export function dispatchUniversalLifeQuery(query: string): UniversalRouteResult 
     }
   }
 }
+
+export function executeOmniSolverQuery(prompt: string): string {
+  const res = dispatchUniversalLifeQuery(prompt);
+  const parts: string[] = [
+    "## Noctis Sovereign Universal Solver (`NOCTIS-OMNI-ROUTER-001`)",
+    `- **Domain:** \`${res.domain}\` · **Engine:** \`${res.dispatchedEngine}\` · **Confidence:** ${Math.round(res.confidenceScore * 100)}%`,
+    `- **Governing Standards:** ${res.governingStandards.join(" · ")}`,
+    `- **Invariants Enforced:** ${res.invariantsEnforced.join(" · ")}`,
+    "",
+    res.response,
+  ];
+
+  if (res.domain === "GENERAL_SOVEREIGN") {
+    parts.push(
+      "",
+      "### Active 81-Domain Sovereign STEM Solver Directory (Examples)",
+      "| Domain Cluster | Sample Deterministic Solvers | Example Prompt Trigger |",
+      "| :--- | :--- | :--- |",
+      "| **Civil, Hydrology & Transit** | ASCE 7 Seismic Base Shear, Manning Open-Channel Flow, Greenshields Traffic Flow, Terzaghi/Seed-Idriss Liquefaction | `Calculate ASCE 7 seismic base shear` · `Evaluate Manning open channel flow` |",
+      "| **Quantum, PQC & Nano** | Quantum Surface Code Error Correction, Rydberg Quantum Simulation, ML-KEM PQC Lattice Security, EUV Photolithography | `Surface code quantum error correction` · `EUV photolithography resolution` |",
+      "| **Materials, Reactors & Mining** | Turbine Blade Creep (CMSX-4), CSTR/PFR Chemical Reactors, Bond Comminution Work Index, Pyrometallurgy Ellingham | `Evaluate CSTR and PFR conversion` · `Bond work index ball mill power` |",
+      "| **Energy, Photonics & Acoustics** | PEM Electrolyzer Efficiency, EGS Geothermal Drawdown, OTEC Rankine Cycle, Sabine RT60 Acoustics, 6G Shannon Capacity | `Evaluate Sabine RT60 architectural acoustics` · `PEM electrolyzer efficiency` |",
+      "| **Bio, Neuro, Pharma & Sea** | Antibody-Drug Conjugate (ADC) Window, DBS BCI Closed-Loop, SEIR Epidemic Rt, Kleiber Veterinary Dose, Challenger Deep | `Calculate ADC therapeutic window` · `SEIR effective reproduction number Rt` |",
+      "| **Macro, Supply Chain & Law** | Monetary Taylor Rule, EOQ & Safety Stock Bullwhip, Radar Range Equation (RCS), STR DNA Forensics | `Evaluate Taylor rule interest rate` · `EOQ safety stock reorder point` |",
+    );
+  }
+
+  return parts.join("\n");
+}

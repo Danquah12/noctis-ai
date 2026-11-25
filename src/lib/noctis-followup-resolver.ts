@@ -22,6 +22,11 @@ export type FollowUpDomainTag =
   | "earth_hazards"
   | "global_nav"
   | "architect"
+  | "automotive"
+  | "energy_grid"
+  | "career"
+  | "deep_research"
+  | "omni_solver"
   | "legal"
   | "finance"
   | "scripture"
@@ -343,13 +348,48 @@ function detectDomainTag(text: string): FollowUpDomainTag {
   ) {
     return "coding";
   }
-  if (/\b(?:NDA|non-compete|indemnif\w*|liability\s+cap|arbitration|governing\s+law|jurisdiction|statute|plaintiff|defendant|fiduciary|contract\s+clause|termination\s+clause)\b/i.test(sample)) {
+  if (
+    /\b(?:noctis-auto-001|obd-?ii|\b[pbu][0-3]\d{3}\b|crank[- ]?no[- ]?start|clicking\s+no[- ]?start|fuel\s+trims?|\bstft\b|\bltft\b|ckp\s+(?:sensor|circuit)|misfire\s+under\s+load)\b/i.test(
+      sample,
+    )
+  ) {
+    return "automotive";
+  }
+  if (
+    /\b(?:noctis-energy-grid-001|\bbess\b|nfpa\s*855|ieee\s*1547|nerc\s+bal-003|anti-?islanding|black-?start|frequency\s+droop|thermal\s+runaway)\b/i.test(
+      sample,
+    )
+  ) {
+    return "energy_grid";
+  }
+  if (
+    /\b(?:how\s+(?:do|can|should)\s+(?:i|one)\s+become|career\s+(?:pathways?|repository)|steps?\s+to\s+become)\b/i.test(
+      sample,
+    )
+  ) {
+    return "career";
+  }
+  if (
+    /\b(?:noctis\s+deep\s+research|research\s+intelligence\s+controller|noctis-ric-001|claim-level\s+evidence\s+ledger|reproducible\s+research\s+laboratory|disputed\s+engineering\s+claim)\b/i.test(
+      sample,
+    )
+  ) {
+    return "deep_research";
+  }
+  if (
+    /\b(?:noctis-omni-router-001|surface\s+code|asce\s*7|seismic\s+base\s+shear|manning.*flow|sabine|rt60|euv\s+photolithography|taylor\s+rule)\b/i.test(
+      sample,
+    )
+  ) {
+    return "omni_solver";
+  }
+  if (/\b(?:NDA|non-compete|indemnif\w*|liability\s+cap|arbitration|governing\s+law|jurisdiction|statute|plaintiff|defendant|fiduciary|contract\s+clause|termination\s+clause|far\s+part\s*\d+|noctis\s+legal|irac\b|creac\b)\b/i.test(sample)) {
     return "legal";
   }
-  if (/\b(?:WACC|DCF|discounted\s+cash\s+flow|EBITDA|10-K|10-Q|free\s+cash\s+flow|NPV|ASC\s*606|working\s+capital|valuation)\b/i.test(sample)) {
+  if (/\b(?:WACC|DCF|discounted\s+cash\s+flow|EBITDA|10-K|10-Q|free\s+cash\s+flow|NPV|ASC\s*606|working\s+capital|earnings[-\s]quality|operating\s+cash\s+flow|valuation)\b/i.test(sample)) {
     return "finance";
   }
-  if (/\b(?:Genesis|Exodus|Psalms?|Proverbs|Isaiah|Matthew|Mark|Luke|John|Romans|Corinthians|Revelation)\s+\d+:\d+|\b(?:scripture|gospel|theology|exegesis)\b/i.test(sample)) {
+  if (/\b(?:Genesis|Exodus|Psalms?|Proverbs|Isaiah|Matthew|Mark|Luke|John|Romans|Corinthians|Ephesians|Revelation)\s+\d+(?::\d+)?|\b(?:scripture|gospel|theology|exegesis|bible\s+study|sermon)\b/i.test(sample)) {
     return "scripture";
   }
   if (/\b(?:CRISPR|Cas9|Schwarzschild|de\s+Broglie|Henderson-?Hasselbalch|Lorentz\s+factor|Reynolds\s+number|Ohm'?s\s+law|thermodynamic|quantum)\b/i.test(sample)) {

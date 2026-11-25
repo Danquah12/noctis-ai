@@ -158,3 +158,48 @@ test("Noctis Architect routes directly via /architect, natural sloping-site prom
   assert.ok(multiTxt.includes("Planetary Earth Hazards"));
   assert.equal(parseRouteStamp(multiTxt).stamp?.label, "Multi-Route · /architect + /earth");
 });
+
+test("Promoted 8-engine bundle executes via natural prompts, slash overrides, and multi-slash dispatch with RSP archival", async () => {
+  const omniRes = await vibeReply(
+    [{ role: "user", content: "Calculate ASCE 7 seismic base shear for a structural frame" }],
+    "",
+    { think: false },
+  );
+  assert.equal("text" in omniRes, true);
+  const omniTxt = "text" in omniRes ? omniRes.text : "";
+  const omniStamp = parseRouteStamp(omniTxt);
+  assert.equal(omniStamp.stamp?.routeId, "omni_solver");
+  assert.ok(omniTxt.includes("NOCTIS-OMNI-ROUTER-001"));
+  assert.ok(omniTxt.includes("CIVIL_INFRASTRUCTURE"));
+
+  const careerRes = await vibeReply(
+    [{ role: "user", content: "How do I become an electrician?" }],
+    "",
+    { think: false },
+  );
+  assert.equal("text" in careerRes, true);
+  const careerTxt = "text" in careerRes ? careerRes.text : "";
+  assert.equal(parseRouteStamp(careerTxt).stamp?.routeId, "career");
+  assert.ok(careerTxt.includes("How to become:"));
+
+  const batchPrompt = [
+    "/legal FAR Part 49 federal contract breach",
+    "",
+    "/invest Operating cash flow vs receivables working capital divergence",
+    "",
+    "/omni Surface code quantum error correction",
+  ].join("\n");
+  const batchRes = await vibeReply([{ role: "user", content: batchPrompt }], "", { think: true });
+  assert.equal("text" in batchRes, true);
+  const batchTxt = "text" in batchRes ? batchRes.text : "";
+  const batchStamp = parseRouteStamp(batchTxt);
+  assert.equal(batchStamp.stamp?.label, "Multi-Route · /legal + /invest + /omni");
+  assert.equal(batchStamp.cleanText.includes("<!-- noctis-route:"), false);
+  assert.ok(batchTxt.includes("FAR"));
+  assert.ok(batchTxt.includes("NOCTIS-OMNI-ROUTER-001"));
+  assert.ok(batchTxt.includes("QUANTUM_COMPUTING"));
+  assert.ok(batchStamp.stamp?.responseId?.startsWith("RSP-"));
+
+  const recalled = await getRoutedChatResponseById(batchStamp.stamp!.responseId!);
+  assert.ok(recalled?.responseText.includes("Multi-Domain Command Brief"));
+});

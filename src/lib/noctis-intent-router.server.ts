@@ -24,6 +24,9 @@ import {
 } from "./noctis-capability-registry.ts";
 import { resolveFollowUpContext } from "./noctis-followup-resolver.ts";
 import { matchesAnyArchitect40BenchmarkPrompt } from "./noctis-architect-benchmarks.ts";
+import { isLegalQuery } from "./noctis-legal-engine.ts";
+import { isCareerPathwayQuery } from "./noctis-career-query.ts";
+import { detectLifeDomain } from "./noctis-universal-life-router.ts";
 import { matchSovereignTool } from "./noctis-tool-orchestrator.ts";
 
 export interface NoctisIntentDecision {
@@ -58,6 +61,14 @@ const ROUTE_LABELS: Record<NoctisRouteEngineId, { label: string; targetPanel: No
   earth_hazards: { label: "Earth · Hazards & AQI", targetPanel: "chat" },
   global_nav: { label: "Nav · Aviation & Sea", targetPanel: "chat" },
   architect: { label: "Architect · BIM & CAD", targetPanel: "chat" },
+  legal: { label: "Legal · Attorney & Lex", targetPanel: "chat" },
+  invest: { label: "Invest · Research & Valuation", targetPanel: "chat" },
+  automotive: { label: "Auto · OBD-II & Diagnostics", targetPanel: "chat" },
+  bible: { label: "Bible · Exegesis & Study", targetPanel: "chat" },
+  energy_grid: { label: "Energy · Smart Grid & BESS", targetPanel: "chat" },
+  career: { label: "Career · Pathways & Wages", targetPanel: "chat" },
+  deep_research: { label: "Research · Deep Evidence & RIC", targetPanel: "chat" },
+  omni_solver: { label: "Omni · 81-Domain STEM Solver", targetPanel: "chat" },
   general_chat: { label: "Core · General Reasoning", targetPanel: "chat" },
 };
 
@@ -148,6 +159,24 @@ const ARCHITECT_EXPLICIT_RE =
 
 const ARCHITECT_RESIDENTIAL_RE =
   /\b(?:design|create|build|generate|draw|plan|draft|sketch|layout|model)\b[\s\S]{0,120}\b(?:house|home|residence|villa|bungalow|duplex|cottage|townhouse|apartment\s+building|floor\s+plan|house\s+plan|building\s+plan|architectural\s+plan|architectural\s+package|cad\s+blueprint|blueprint|bim\s+model|house\s+design)\b|\b(?:\d+|two|three|four|five|six|seven|eight)\s*(?:-|\s)?(?:bed(?:room)?s?|br)\b[\s\S]{0,100}\b(?:house|home|residence|villa|bungalow|duplex|floor\s+plan|blueprint|bath(?:room)?s?|ba\b|lot\b|plot\b|sq\.?\s*ft|m²|m2)\b/i;
+
+const LEX_CROSS_BORDER_RE =
+  /\b(?:noctis-lex-001|cross-border\s+conflict[-\s]of[-\s]laws|regulatory\s+harmonization|gdpr\s+(?:vs|versus|and)\s+hipaa|eu\s+ai\s+act\s+conflict)\b/i;
+
+const INVEST_EXPLICIT_RE =
+  /\b(?:noctis-invest-001|noctis\s+research\s*(?:&|and)\s*investment|main\s+street\s+and\s+wall\s+street|working[-\s]capital\s+divergence|earnings[-\s]quality|channel\s+stuffing|dcf\s+(?:model|valuation|sensitivity)|wacc\b|ev\/ebitda|enterprise\s+value|free\s+cash\s+flow|\bfcf\b|sec\s+(?:10-k|10-q|edgar|filing)|saas\s+(?:arr|nrr|cac|ltv)|equity\s+valuation|investment\s+(?:memo|thesis|dossier))\b|\b(?:operating\s+cash\s+flow|\bocf\b)\b[\s\S]{0,140}\b(?:receivables?|dso\b|dio\b|inventor(?:y|ies)|working\s+capital|revenue\s+growth)\b/i;
+
+const AUTOMOTIVE_EXPLICIT_RE =
+  /\b(?:noctis-auto-001|auto-ac-\d+|auto-trap-\d+|obd-?ii|\b[pbu][0-3]\d{3}\b|crank[- ]?no[- ]?start|clicking\s+no[- ]?start|fuel\s+trims?|\bstft\b|\bltft\b|ckp\s+(?:sensor|circuit|signal)|misfire\s+under\s+load|cylinder\s+\d+\s+misfire|catalytic\s+converter|ignition\s+coil|spark\s+plugs?|freeze[-\s]frame|scan[-\s]tool\s+disagreement)\b/i;
+
+const BIBLE_EXPLICIT_RE =
+  /\b(?:noctis-bible-001|noctis\s+bible|genesis\s+to\s+revelation|bible\s+study|sunday\s+school|sermon\s+on\b|prepare\s+a\s+[\w\s-]{0,30}sermon|preach\s+on\b|biblical\s+exegesis|koine\s+greek|hebrew\s+term\s+hesed|old\s+testament|new\s+testament|scripture\s+(?:study|exegesis|commentary)|(?:genesis|exodus|psalms?|proverbs|isaiah|matthew|mark|luke|john|acts|romans|corinthians|galatians|ephesians|philippians|hebrews|james|revelation)\s+\d+(?::\d+)?)\b/i;
+
+const ENERGY_GRID_RE =
+  /\b(?:noctis-energy-grid-001|\bbess\b|nfpa\s*855|ieee\s*1547|nerc\s+bal-003|anti-?islanding|black-?start|frequency\s+droop|frequency\s+regulation|microgrid|thermal\s+runaway)\b/i;
+
+const DEEP_RESEARCH_RE =
+  /\b(?:noctis\s+deep\s+research|noctis-deep-research-001|research\s+intelligence\s+controller|noctis-ric-001|claim-level\s+evidence\s+ledger|reproducible\s+research\s+laboratory|research\s+orchestration|disputed\s+engineering\s+claim|national\s+resilience\s+strategy|source\s+independence\s+and\s+information\s+lineage|adversarial\s+research\s+team|\/v1\/research\/jobs|ric-benchmark)\b/i;
 
 export function decisionToRouteStamp(decision: NoctisIntentDecision): NoctisRouteStamp {
   return {
@@ -337,13 +366,74 @@ export function classifyNoctisIntent(rawPrompt: string): NoctisIntentDecision {
     matchedSignals.push("nav:metar-greatcircle");
   }
 
-  // Evaluate Weather (strictly vetoed when building platforms, cold-chain maritime, clinical, defense, architect, space/earth/nav, or physics)
+  // Evaluate Promoted 7 Domain Engines (guarded strictly against higher-priority clinical/builder/architect/defense/cyber routes)
+  const hasHigherPriority = Boolean(
+    scores.clinical ||
+      hasClinicalVitalsOrSyndrome ||
+      scores.nasee ||
+      scores.website_builder ||
+      scores.architect ||
+      scores.dod_ic ||
+      scores.rmf_grc ||
+      scores.cve_cyber,
+  );
+  if (!hasHigherPriority && AUTOMOTIVE_EXPLICIT_RE.test(prompt)) {
+    scores.automotive = 90;
+    matchedSignals.push("auto:obd-diagnostics");
+  }
+  if (!hasHigherPriority && !EXPLICIT_HARD_PHYSICS_RE.test(prompt) && ENERGY_GRID_RE.test(prompt)) {
+    scores.energy_grid = 89;
+    matchedSignals.push("energy:smart-grid-bess");
+  }
+  if (!hasHigherPriority && !scores.automotive && (isLegalQuery(prompt) || LEX_CROSS_BORDER_RE.test(prompt))) {
+    scores.legal = 89;
+    matchedSignals.push("legal:attorney-lex");
+  }
+  if (!hasHigherPriority && !scores.automotive && !scores.energy_grid && INVEST_EXPLICIT_RE.test(prompt)) {
+    scores.invest = 89;
+    matchedSignals.push("invest:valuation-research");
+  }
+  if (!hasHigherPriority && !scores.automotive && !scores.invest && BIBLE_EXPLICIT_RE.test(prompt)) {
+    scores.bible = 89;
+    matchedSignals.push("bible:scripture-exegesis");
+  }
+  if (
+    !hasHigherPriority &&
+    !/\b(?:patient|symptoms?|diagnos\w*|dosage|dose|\d+\s?mg|lab\s+results?|egfr|creatinine|fhir|chest\s+pain|fever)\b/i.test(prompt) &&
+    isCareerPathwayQuery(prompt)
+  ) {
+    scores.career = 88;
+    matchedSignals.push("career:pathway-repo");
+  }
+  if (!hasHigherPriority && DEEP_RESEARCH_RE.test(prompt)) {
+    scores.deep_research = 89;
+    matchedSignals.push("research:deep-evidence-ric");
+  }
+
+  // Evaluate Weather (strictly vetoed when building platforms, cold-chain maritime, clinical, defense, architect, space/earth/nav, promoted domain engines, or physics)
   const hasWeatherSignal =
     WEATHER_EXPLICIT_RE.test(prompt) ||
     (WEATHER_TEMP_WITH_TIME_RE.test(prompt) && WEATHER_TIME_RE.test(prompt));
   if (hasWeatherSignal) {
-    if (scores.nasee || scores.website_builder || scores.architect || hasClinicalVitalsOrSyndrome || scores.dod_ic || scores.rmf_grc || scores.space_universe || scores.earth_hazards || scores.global_nav) {
-      vetoedRoutes.weather = "Vetoed by higher-priority software build, architect, clinical, defense, space, earth hazards, or navigation intent";
+    if (
+      scores.nasee ||
+      scores.website_builder ||
+      scores.architect ||
+      hasClinicalVitalsOrSyndrome ||
+      scores.dod_ic ||
+      scores.rmf_grc ||
+      scores.space_universe ||
+      scores.earth_hazards ||
+      scores.global_nav ||
+      scores.legal ||
+      scores.invest ||
+      scores.automotive ||
+      scores.bible ||
+      scores.energy_grid ||
+      scores.career ||
+      scores.deep_research
+    ) {
+      vetoedRoutes.weather = "Vetoed by higher-priority software build, architect, clinical, defense, planetary, or promoted specialist intent";
     } else if (/\b(?:cold-?chain|cold-?storage|reefer|maritime|vessel|charter|postgis|postgresql|reactor|boiler|furnace|patient|sepsis)\b/i.test(prompt)) {
       vetoedRoutes.weather = "Vetoed by non-meteorological domain terms";
     } else {
@@ -362,6 +452,21 @@ export function classifyNoctisIntent(rawPrompt: string): NoctisIntentDecision {
     } else {
       scores.sovereign_physics = Math.max(82, Math.round(physicsMatch.confidence * 92));
       matchedSignals.push(`physics:${physicsMatch.tool.id}`);
+    }
+  }
+
+  // Evaluate 81-Domain Omni STEM Solver only when no dedicated engine scored
+  const hasAnySpecializedRoute = Object.keys(scores).some((k) => k !== "general_chat");
+  if (!hasAnySpecializedRoute) {
+    const omniDomain = detectLifeDomain(prompt);
+    if (
+      omniDomain !== "GENERAL_SOVEREIGN" &&
+      omniDomain !== "CLINICAL_MEDICINE" &&
+      omniDomain !== "RMF_CYBER_GRC" &&
+      omniDomain !== "IT_DISTRIBUTED_SYSTEMS"
+    ) {
+      scores.omni_solver = 84;
+      matchedSignals.push(`omni:${omniDomain}`);
     }
   }
 
@@ -415,11 +520,19 @@ export function classifyNoctisIntent(rawPrompt: string): NoctisIntentDecision {
     "catalog260",
     "enterprise",
     "assistant",
+    "automotive",
+    "energy_grid",
+    "legal",
+    "invest",
+    "bible",
+    "deep_research",
+    "career",
     "sovereign_physics",
     "space_universe",
     "earth_hazards",
     "global_nav",
     "weather",
+    "omni_solver",
     "general_chat",
   ];
 
@@ -517,7 +630,23 @@ export function classifyMultiTurnIntent(
   if (followUp.isFollowUp && !followUp.topicShiftDetected && !followUp.shouldIsolateEncounter) {
     if (
       (priorRoute === "clinical" && followUp.relation === "same_patient_followup") ||
-      ((priorRoute === "rmf_grc" || priorRoute === "dod_ic" || priorRoute === "weather" || priorRoute === "sovereign_physics" || priorRoute === "cve_cyber" || priorRoute === "space_universe" || priorRoute === "earth_hazards" || priorRoute === "global_nav" || priorRoute === "architect") &&
+      ((priorRoute === "rmf_grc" ||
+        priorRoute === "dod_ic" ||
+        priorRoute === "weather" ||
+        priorRoute === "sovereign_physics" ||
+        priorRoute === "cve_cyber" ||
+        priorRoute === "space_universe" ||
+        priorRoute === "earth_hazards" ||
+        priorRoute === "global_nav" ||
+        priorRoute === "architect" ||
+        priorRoute === "legal" ||
+        priorRoute === "invest" ||
+        priorRoute === "automotive" ||
+        priorRoute === "bible" ||
+        priorRoute === "energy_grid" ||
+        priorRoute === "career" ||
+        priorRoute === "deep_research" ||
+        priorRoute === "omni_solver") &&
         (followUp.relation === "coreference" || followUp.relation === "what_if_parameter_shift" || followUp.relation === "continuation"))
     ) {
       const meta = ROUTE_LABELS[priorRoute];

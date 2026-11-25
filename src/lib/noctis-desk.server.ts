@@ -1293,6 +1293,126 @@ async function executeVibeReply(
         };
       }
 
+      if (routeId === "legal") {
+        const {
+          handleNaturalLegalQuery,
+          buildGeneralLegalAssessment,
+          resolveJurisdiction,
+        } = await import("./noctis-legal-engine.ts");
+        const { handleNaturalLexQuery } = await import("./noctis-lex-synthesizer.ts");
+        const asksLex =
+          /^\s*\/lex\b/i.test(latest) ||
+          /\b(?:noctis-lex-001|cross-border\s+conflict[-\s]of[-\s]laws|regulatory\s+harmonization|gdpr\s+(?:vs|versus|and)\s+hipaa|eu\s+ai\s+act\s+conflict)\b/i.test(
+            promptText,
+          );
+        const legalOut =
+          (asksLex ? handleNaturalLexQuery(promptText) : null) ||
+          handleNaturalLegalQuery(promptText) ||
+          handleNaturalLexQuery(promptText) ||
+          buildGeneralLegalAssessment(promptText, resolveJurisdiction(promptText));
+        return {
+          text: legalOut,
+          summary: `Explicit ${overrideCmd || "/legal"} override executed Noctis Legal & Cross-Border Lex Intelligence (NOCTIS-LEGAL-001).`,
+        };
+      }
+
+      if (routeId === "invest") {
+        const {
+          handleNaturalInvestmentQuery,
+          buildDynamicFinancialScenarioResponse,
+          buildInvestmentEngineMasterBlueprint,
+        } = await import("./noctis-investment-engine.ts");
+        const investOut =
+          handleNaturalInvestmentQuery(promptText) ||
+          buildDynamicFinancialScenarioResponse(promptText) ||
+          buildInvestmentEngineMasterBlueprint(promptText);
+        return {
+          text: investOut,
+          summary: `Explicit ${overrideCmd || "/invest"} override executed Noctis Research & Investment Engine (NOCTIS-INVEST-001).`,
+        };
+      }
+
+      if (routeId === "automotive") {
+        const {
+          automotiveDiagnosticGadget,
+          buildAutomotiveDiagnosticIntelligenceReport,
+        } = await import("./noctis-automotive-engine.ts");
+        const autoOut =
+          automotiveDiagnosticGadget(promptText) || buildAutomotiveDiagnosticIntelligenceReport(promptText);
+        return {
+          text: autoOut,
+          summary: `Explicit ${overrideCmd || "/auto"} override executed Noctis Automotive OBD-II & Fault-Tree Diagnostic Engine (NOCTIS-AUTO-001).`,
+        };
+      }
+
+      if (routeId === "bible") {
+        const { handleNaturalBibleQuery, buildDynamicBibleQueryResponse } = await import("./noctis-bible-engine.ts");
+        const bibleOut = handleNaturalBibleQuery(promptText) || buildDynamicBibleQueryResponse(promptText);
+        return {
+          text: bibleOut,
+          summary: `Explicit ${overrideCmd || "/bible"} override executed Noctis Bible Exegesis & Study Engine (NOCTIS-BIBLE-001).`,
+        };
+      }
+
+      if (routeId === "energy_grid") {
+        const { handleNaturalEnergyQuery } = await import("./noctis-energy-grid.ts");
+        const energyOut =
+          handleNaturalEnergyQuery(promptText) ||
+          handleNaturalEnergyQuery(
+            "Evaluate BESS thermal safety and 60 Hz frequency droop response under IEEE 1547 and NFPA 855",
+          ) ||
+          "Noctis Sovereign Energy & Smart Grid Engine (NOCTIS-ENERGY-GRID-001) ready.";
+        return {
+          text: energyOut,
+          summary: `Explicit ${overrideCmd || "/energy"} override executed Noctis Sovereign Energy & Smart Grid Engine (NOCTIS-ENERGY-GRID-001).`,
+        };
+      }
+
+      if (routeId === "career") {
+        const { handleNaturalCareerQuery } = await import("./noctis-career-query.ts");
+        let careerOut =
+          handleNaturalCareerQuery(promptText) ||
+          handleNaturalCareerQuery(`How do I become ${promptText}`) ||
+          handleNaturalCareerQuery("career pathways repository") ||
+          "Noctis Career Pathway Repository (NOCTIS-CAREERS-001) ready.";
+        const careerLang = languageNow(promptText, style.language || "");
+        if (careerOut.startsWith("# 🧭") && !/^(english|en([-_][a-z]+)?)$/i.test(careerLang.trim())) {
+          careerOut = await translateCareerAnswer(careerOut, careerLang);
+        }
+        return {
+          text: careerOut,
+          summary: `Explicit ${overrideCmd || "/career"} override executed Noctis Career Pathway Repository (NOCTIS-CAREERS-001).`,
+        };
+      }
+
+      if (routeId === "deep_research") {
+        const asksRic =
+          /^\s*\/ric\b/i.test(latest) ||
+          /\b(ric|research\s+intelligence\s+controller|disputed\s+engineering|12\s+advanced|challenge\s+team)\b/i.test(
+            promptText,
+          );
+        if (asksRic) {
+          const { buildRicIntelligenceReport } = await import("./noctis-ric.ts");
+          return {
+            text: buildRicIntelligenceReport(promptText),
+            summary: `Explicit ${overrideCmd || "/research"} override executed Research Intelligence Controller (NOCTIS-RIC-001).`,
+          };
+        }
+        const { buildDeepResearchReport } = await import("./noctis-deep-research.ts");
+        return {
+          text: buildDeepResearchReport(promptText),
+          summary: `Explicit ${overrideCmd || "/research"} override executed Noctis Deep Research Evidence Engine (NOCTIS-DEEP-RESEARCH-001).`,
+        };
+      }
+
+      if (routeId === "omni_solver") {
+        const { executeOmniSolverQuery } = await import("./noctis-universal-life-router.ts");
+        return {
+          text: executeOmniSolverQuery(promptText),
+          summary: `Explicit ${overrideCmd || "/omni"} override executed Noctis 81-Domain Sovereign STEM Solver (NOCTIS-OMNI-ROUTER-001).`,
+        };
+      }
+
       return null;
     };
 
@@ -1407,6 +1527,148 @@ async function executeVibeReply(
           "Executed Noctis Architectural Intelligence Engine (NOCTIS-ARCH-001): Shared IFC 4.3, buildingSMART IDS, 4-Sheet CAD SVG, cost QTO & 15-gate verification.",
         ),
         "architect",
+      ),
+    };
+  }
+
+  if (!intent.override && intent.routeId === "legal") {
+    const { handleNaturalLegalQuery, buildGeneralLegalAssessment, resolveJurisdiction } = await import(
+      "./noctis-legal-engine.ts"
+    );
+    const { handleNaturalLexQuery } = await import("./noctis-lex-synthesizer.ts");
+    const legalOut =
+      (/\b(?:noctis-lex-001|cross-border\s+conflict|regulatory\s+harmonization|gdpr\s+(?:vs|versus|and)\s+hipaa|eu\s+ai\s+act)\b/i.test(
+        effectiveLatest,
+      )
+        ? handleNaturalLexQuery(effectiveLatest)
+        : null) ||
+      handleNaturalLegalQuery(effectiveLatest) ||
+      handleNaturalLexQuery(effectiveLatest) ||
+      buildGeneralLegalAssessment(effectiveLatest, resolveJurisdiction(effectiveLatest));
+    return {
+      text: finishText(
+        withThink(legalOut, "Executed Noctis Legal & Cross-Border Jurisprudence Engine (NOCTIS-LEGAL-001)."),
+        "legal",
+      ),
+    };
+  }
+
+  if (!intent.override && intent.routeId === "invest") {
+    const {
+      handleNaturalInvestmentQuery,
+      buildDynamicFinancialScenarioResponse,
+      buildInvestmentEngineMasterBlueprint,
+    } = await import("./noctis-investment-engine.ts");
+    const investOut =
+      handleNaturalInvestmentQuery(effectiveLatest) ||
+      buildDynamicFinancialScenarioResponse(effectiveLatest) ||
+      buildInvestmentEngineMasterBlueprint(effectiveLatest);
+    return {
+      text: finishText(
+        withThink(investOut, "Executed Noctis Research & Investment Valuation Engine (NOCTIS-INVEST-001)."),
+        "invest",
+      ),
+    };
+  }
+
+  if (!intent.override && intent.routeId === "automotive") {
+    const {
+      automotiveDiagnosticGadget,
+      buildAutomotiveDiagnosticIntelligenceReport,
+    } = await import("./noctis-automotive-engine.ts");
+    const autoOut =
+      automotiveDiagnosticGadget(effectiveLatest) || buildAutomotiveDiagnosticIntelligenceReport(effectiveLatest);
+    return {
+      text: finishText(
+        withThink(autoOut, "Executed Noctis Automotive OBD-II & Fault-Tree Diagnostic Engine (NOCTIS-AUTO-001)."),
+        "automotive",
+      ),
+    };
+  }
+
+  if (!intent.override && intent.routeId === "bible") {
+    const { handleNaturalBibleQuery, buildDynamicBibleQueryResponse } = await import("./noctis-bible-engine.ts");
+    const bibleOut = handleNaturalBibleQuery(effectiveLatest) || buildDynamicBibleQueryResponse(effectiveLatest);
+    return {
+      text: finishText(
+        withThink(bibleOut, "Executed Noctis Bible Exegesis & Study Intelligence Engine (NOCTIS-BIBLE-001)."),
+        "bible",
+      ),
+    };
+  }
+
+  if (!intent.override && intent.routeId === "energy_grid") {
+    const { handleNaturalEnergyQuery } = await import("./noctis-energy-grid.ts");
+    const energyOut =
+      handleNaturalEnergyQuery(effectiveLatest) ||
+      handleNaturalEnergyQuery(
+        "Evaluate BESS thermal safety and 60 Hz frequency droop response under IEEE 1547 and NFPA 855",
+      ) ||
+      "Noctis Sovereign Energy & Smart Grid Engine (NOCTIS-ENERGY-GRID-001) ready.";
+    return {
+      text: finishText(
+        withThink(energyOut, "Executed Noctis Sovereign Energy & Smart Grid Resilience Engine (NOCTIS-ENERGY-GRID-001)."),
+        "energy_grid",
+      ),
+    };
+  }
+
+  if (!intent.override && intent.routeId === "career") {
+    const { handleNaturalCareerQuery } = await import("./noctis-career-query.ts");
+    let careerOut =
+      handleNaturalCareerQuery(effectiveLatest) ||
+      handleNaturalCareerQuery(`How do I become ${effectiveLatest}`) ||
+      handleNaturalCareerQuery("career pathways repository") ||
+      "Noctis Career Pathway Repository (NOCTIS-CAREERS-001) ready.";
+    const careerLang = languageNow(effectiveLatest, style.language || "");
+    if (careerOut.startsWith("# 🧭") && !/^(english|en([-_][a-z]+)?)$/i.test(careerLang.trim())) {
+      careerOut = await translateCareerAnswer(careerOut, careerLang);
+    }
+    return {
+      text: finishText(
+        withThink(careerOut, "Executed Noctis Career Pathway Repository & Regional Guidance Engine (NOCTIS-CAREERS-001)."),
+        "career",
+      ),
+    };
+  }
+
+  if (!intent.override && intent.routeId === "deep_research") {
+    const asksRic = /\b(ric|research\s+intelligence\s+controller|disputed\s+engineering|12\s+advanced|challenge\s+team)\b/i.test(
+      effectiveLatest,
+    );
+    if (asksRic) {
+      const { buildRicIntelligenceReport } = await import("./noctis-ric.ts");
+      return {
+        text: finishText(
+          withThink(
+            buildRicIntelligenceReport(effectiveLatest),
+            "Executed Research Intelligence Controller (NOCTIS-RIC-001) & reproducible evidence verification.",
+          ),
+          "deep_research",
+        ),
+      };
+    }
+    const { buildDeepResearchReport } = await import("./noctis-deep-research.ts");
+    return {
+      text: finishText(
+        withThink(
+          buildDeepResearchReport(effectiveLatest),
+          "Executed Noctis Deep Research Orchestration & Contradiction Verification (NOCTIS-DEEP-RESEARCH-001).",
+        ),
+        "deep_research",
+      ),
+    };
+  }
+
+  if (!intent.override && intent.routeId === "omni_solver") {
+    const { executeOmniSolverQuery } = await import("./noctis-universal-life-router.ts");
+    return {
+      text: finishText(
+        withThink(
+          executeOmniSolverQuery(effectiveLatest),
+          "Executed Noctis 81-Domain Universal Sovereign STEM Solver (NOCTIS-OMNI-ROUTER-001).",
+        ),
+        "omni_solver",
       ),
     };
   }

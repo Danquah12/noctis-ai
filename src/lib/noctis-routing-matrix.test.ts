@@ -834,3 +834,75 @@ test("Noctis Architect (NOCTIS-ARCH-001) routes cleanly as first-class engine wi
     "clinical",
   );
 });
+
+test("Promoted 8-engine bundle (/legal, /invest, /auto, /bible, /energy, /career, /research, /omni) routes accurately with zero collisions", () => {
+  const naturalCases: Array<[string, NoctisRouteEngineId]> = [
+    ["Analyze federal government contract breach remedies under FAR Part 49", "legal"],
+    ["Evaluate cross-border conflict-of-laws regulatory harmonization for GDPR vs HIPAA (NOCTIS-LEX-001)", "legal"],
+    ["Operating cash flow fell while receivables and DSO surged — check working capital divergence", "invest"],
+    ["Build a DCF valuation model with WACC and EV/EBITDA sensitivity for this 10-K filing", "invest"],
+    ["Diagnose OBD-II P0302 cylinder misfire under load with LTFT +18% fuel trim", "automotive"],
+    ["Prepare a sermon on Ephesians 2:1-10 and exegesis of Romans 8", "bible"],
+    ["Prepare a structured Bible study on Psalm 23", "bible"],
+    ["Evaluate BESS thermal runaway at 58 C under NFPA 855 and IEEE 1547 anti-islanding", "energy_grid"],
+    ["How do I become a nurse?", "career"],
+    ["Run Noctis Research Intelligence Controller claim-level evidence ledger audit (NOCTIS-RIC-001)", "deep_research"],
+    ["Evaluate quantum surface code error correction syndrome extraction threshold", "omni_solver"],
+    ["Calculate ASCE 7 seismic base shear for reinforced concrete building", "omni_solver"],
+    ["Evaluate Sabine RT60 architectural acoustics and Schroeder frequency", "omni_solver"],
+    ["Compute Manning open channel flow roughness and Froude number", "omni_solver"],
+  ];
+
+  for (const [prompt, expected] of naturalCases) {
+    const d = classifyNoctisIntent(prompt);
+    assert.equal(d.routeId, expected, `Expected ${expected} for "${prompt}", got ${d.routeId}`);
+  }
+
+  for (const [cmd, expected] of [
+    ["/legal FAR Part 49", "legal"],
+    ["/law breach of contract", "legal"],
+    ["/lex GDPR vs HIPAA", "legal"],
+    ["/invest DCF WACC", "invest"],
+    ["/finance working capital", "invest"],
+    ["/auto P0302 misfire", "automotive"],
+    ["/obd fuel trim LTFT", "automotive"],
+    ["/bible Romans 8", "bible"],
+    ["/scripture Psalm 23", "bible"],
+    ["/energy BESS NFPA 855", "energy_grid"],
+    ["/bess thermal runaway", "energy_grid"],
+    ["/career electrician", "career"],
+    ["/research evidence ledger", "deep_research"],
+    ["/ric disputed claim", "deep_research"],
+    ["/omni surface code quantum error correction", "omni_solver"],
+    ["/stem ASCE 7 seismic base shear", "omni_solver"],
+  ] as const) {
+    const d = classifyNoctisIntent(cmd);
+    assert.equal(d.override, true);
+    assert.equal(d.routeId, expected, `Override ${cmd} expected ${expected}`);
+  }
+
+  const multiBatch = "/legal FAR Part 49 breach\n\n/invest DCF valuation\n\n/omni surface code quantum error correction";
+  assert.deepEqual(
+    extractMultiSlashOverrides(multiBatch).map((s) => s.routeId),
+    ["legal", "invest", "omni_solver"],
+  );
+  assert.equal(classifyNoctisIntent(multiBatch).label, "Multi-Route · /legal + /invest + /omni");
+
+  // Strict collision guards
+  assert.equal(
+    classifyNoctisIntent("Design and build an interactive residential solar microgrid website with kWh bill offset calculator and site survey booking").routeId,
+    "website_builder",
+  );
+  assert.equal(
+    classifyNoctisIntent("Calculate Butler-Volmer exchange current density and lithium plating onset for a battery at 4.0C charge rate, SoC 0.85, and -5°C").routeId,
+    "sovereign_physics",
+  );
+  assert.equal(
+    classifyNoctisIntent("Patient has chest pain, fever 39.2C, BP 80/50 mmHg, K+ 6.4 mEq/L").routeId,
+    "clinical",
+  );
+  assert.equal(
+    classifyNoctisIntent("Compare PostgreSQL row-level security policies vs schema-per-tenant isolation for multi-tenant SaaS tradeoffs").routeId,
+    "general_chat",
+  );
+});

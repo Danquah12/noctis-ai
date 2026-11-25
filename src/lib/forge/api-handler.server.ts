@@ -200,6 +200,54 @@ export async function handleForgeV2Request(request: Request): Promise<Response> 
             ? "NOCTIS-ARCH-001 IFC/CAD/IDS engine ready"
             : "unavailable";
         }),
+        probe("legal", async () => {
+          const mod = await import("../noctis-legal-engine.ts");
+          return typeof mod.handleNaturalLegalQuery === "function"
+            ? "NOCTIS-LEGAL-001 Attorney/Lex engine ready"
+            : "unavailable";
+        }),
+        probe("invest", async () => {
+          const mod = await import("../noctis-investment-engine.ts");
+          return typeof mod.handleNaturalInvestmentQuery === "function"
+            ? "NOCTIS-INVEST-001 Valuation/Research engine ready"
+            : "unavailable";
+        }),
+        probe("auto", async () => {
+          const mod = await import("../noctis-automotive-engine.ts");
+          return typeof mod.automotiveDiagnosticGadget === "function"
+            ? "NOCTIS-AUTO-001 OBD-II diagnostic engine ready"
+            : "unavailable";
+        }),
+        probe("bible", async () => {
+          const mod = await import("../noctis-bible-engine.ts");
+          return typeof mod.handleNaturalBibleQuery === "function"
+            ? "NOCTIS-BIBLE-001 Exegesis/Study engine ready"
+            : "unavailable";
+        }),
+        probe("energy", async () => {
+          const mod = await import("../noctis-energy-grid.ts");
+          return typeof mod.handleNaturalEnergyQuery === "function"
+            ? "NOCTIS-ENERGY-GRID-001 BESS/Droop engine ready"
+            : "unavailable";
+        }),
+        probe("career", async () => {
+          const mod = await import("../noctis-career-query.ts");
+          return typeof mod.handleNaturalCareerQuery === "function"
+            ? "NOCTIS-CAREERS-001 Pathway repository ready"
+            : "unavailable";
+        }),
+        probe("research", async () => {
+          const mod = await import("../noctis-ric.ts");
+          return typeof mod.buildRicIntelligenceReport === "function"
+            ? "NOCTIS-RIC-001 Deep Evidence/RIC ready"
+            : "unavailable";
+        }),
+        probe("omni", async () => {
+          const mod = await import("../noctis-universal-life-router.ts");
+          return typeof mod.executeOmniSolverQuery === "function"
+            ? "NOCTIS-OMNI-ROUTER-001 81 STEM solvers ready"
+            : "unavailable";
+        }),
       ]);
 
       const totalOk = routes.filter((r) => r.ok).length;
