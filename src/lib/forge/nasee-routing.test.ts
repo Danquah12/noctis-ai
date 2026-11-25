@@ -112,3 +112,49 @@ test("Multi-slash batch executes /space, /earth, and /nav in parallel and still 
     assert.equal(parseRouteStamp(classifiedBatch.text).stamp?.routeId, "dod_ic");
   }
 });
+
+test("Noctis Architect routes directly via /architect, natural sloping-site prompt, and multi-slash batch", async () => {
+  const overrideRes = await vibeReply(
+    [{ role: "user", content: "/architect Design a 3-bedroom house on a 15m x 30m plot in Accra under Ghana Building Code GS 1207" }],
+    "",
+    { think: true },
+  );
+  assert.equal("text" in overrideRes, true);
+  const overrideTxt = "text" in overrideRes ? overrideRes.text : "";
+  assert.ok(overrideTxt.includes("NOCTIS-ARCH-001"));
+  const overrideStamp = parseRouteStamp(overrideTxt);
+  assert.equal(overrideStamp.stamp?.routeId, "architect");
+  assert.equal(overrideStamp.stamp?.label, "Architect · BIM & CAD");
+  assert.equal(overrideStamp.stamp?.override, true);
+  assert.ok(overrideStamp.stamp?.responseId?.startsWith("RSP-"));
+  const stored = await getRoutedChatResponseById(overrideStamp.stamp!.responseId!);
+  assert.equal(stored?.routeId, "architect");
+
+  const naturalRes = await vibeReply(
+    [{ role: "user", content: "Design a 4-bedroom house on a sloping site with 3.5 baths" }],
+    "",
+    { think: false },
+  );
+  assert.equal("text" in naturalRes, true);
+  const naturalTxt = "text" in naturalRes ? naturalRes.text : "";
+  const naturalStamp = parseRouteStamp(naturalTxt);
+  assert.equal(naturalStamp.stamp?.routeId, "architect");
+  assert.ok(naturalTxt.includes("NOCTIS-ARCH-001"));
+
+  const multiRes = await vibeReply(
+    [
+      {
+        role: "user",
+        content:
+          "/architect 3BR house in Accra under Ghana Building Code GS 1207\n\n/earth Live USGS earthquakes M4.5+",
+      },
+    ],
+    "",
+    { think: true },
+  );
+  assert.equal("text" in multiRes, true);
+  const multiTxt = "text" in multiRes ? multiRes.text : "";
+  assert.ok(multiTxt.includes("NOCTIS-ARCH-001"));
+  assert.ok(multiTxt.includes("Planetary Earth Hazards"));
+  assert.equal(parseRouteStamp(multiTxt).stamp?.label, "Multi-Route · /architect + /earth");
+});

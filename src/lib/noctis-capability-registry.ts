@@ -43,6 +43,7 @@ export type NoctisRouteEngineId =
   | "space_universe"
   | "earth_hazards"
   | "global_nav"
+  | "architect"
   | "general_chat";
 
 export type NoctisPanelGroup =
@@ -406,6 +407,15 @@ export const NOCTIS_SLASH_ROUTES: NoctisSlashRouteSpec[] = [
     quickSwitch: true,
   },
   {
+    command: "/architect",
+    aliases: ["/arch", "/bim", "/house"],
+    routeId: "architect",
+    label: "Architect · BIM & CAD",
+    description: "Shared IFC 4.3 + buildingSMART IDS house design, 4-sheet CAD SVG, cost QTO, ripple resize & 15-gate verification.",
+    targetPanel: "chat",
+    quickSwitch: true,
+  },
+  {
     command: "/chat",
     aliases: ["/core"],
     routeId: "general_chat",
@@ -429,6 +439,7 @@ export const NOCTIS_API_ROUTES: NoctisApiRouteSpec[] = [
   { id: "space", name: "Space & Universe Live Telemetry API", basePath: "/api/noctis?space=1", statusPath: "/api/noctis?space=1", panelId: "chat" },
   { id: "earth", name: "Earth Hazards & Air Quality API", basePath: "/api/noctis?earth=1", statusPath: "/api/noctis?earth=1", panelId: "chat" },
   { id: "nav", name: "Aviation METAR & Global Navigation API", basePath: "/api/noctis?nav=KJFK", statusPath: "/api/noctis?nav=KJFK", panelId: "chat" },
+  { id: "architect", name: "Noctis Architectural Intelligence API (NOCTIS-ARCH-001)", basePath: "/api/noctis?architect=1", statusPath: "/api/noctis?architect=1", panelId: "chat" },
   { id: "noctis", name: "Core Noctis Chat Endpoint", basePath: "/api/noctis", statusPath: "/api/v1/health", panelId: "chat" },
 ];
 

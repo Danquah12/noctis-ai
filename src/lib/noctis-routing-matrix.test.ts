@@ -776,3 +776,61 @@ test("Multi-slash batch parser splits multi-command prompts cleanly with zero fa
     [],
   );
 });
+
+test("Noctis Architect (NOCTIS-ARCH-001) routes cleanly as first-class engine with strict collision guards", () => {
+  const archNaturalPrompts = [
+    "Design a single-storey 3-bedroom house on a 15m x 30m sloping site with 2 baths and Ghana Building Code GS 1207",
+    "Run NOCTIS ARCHITECTURAL VALIDATION CHALLENGE ARCH-AT-11 through ARCH-AT-15 with Shared IFC 4.3 and buildingSMART IDS",
+    "Enlarge bedroom 2 from 12x12 to 14x14 and recalculate joist span and door/window schedule",
+    "Design a 4-bedroom villa in Accra with rainfall drainage and seismic shear walls",
+  ];
+  for (const p of archNaturalPrompts) {
+    const d = classifyNoctisIntent(p);
+    assert.equal(d.routeId, "architect", `Expected architect for: ${p}, got ${d.routeId}`);
+  }
+
+  // Explicit slash overrides
+  for (const cmd of ["/architect 4BR family home", "/arch 3BR villa", "/bim IFC 4.3 house", "/house 15x30 plot"]) {
+    const d = classifyNoctisIntent(cmd);
+    assert.equal(d.override, true);
+    assert.equal(d.routeId, "architect", `Expected override architect for ${cmd}`);
+  }
+
+  // Multi-slash batch combining /architect and /earth
+  const archEarthBatch = "/architect 3BR house in Accra\n\n/earth Air quality in Accra, Ghana";
+  assert.deepEqual(
+    extractMultiSlashOverrides(archEarthBatch).map((s) => s.routeId),
+    ["architect", "earth_hazards"],
+  );
+  assert.equal(classifyNoctisIntent(archEarthBatch).label, "Multi-Route · /architect + /earth");
+
+  // Multi-turn carryover stays on architect
+  const archStamp = attachRouteStamp("Generated NOCTIS-ARCH-001 Shared IFC 4.3 residential plan.", {
+    routeId: "architect",
+    label: "Architect · BIM & CAD",
+    confidence: 100,
+    override: true,
+    command: "/architect",
+    targetPanel: "chat",
+  });
+  const archFollowUp = classifyMultiTurnIntent([
+    { role: "user", content: "/architect 4BR family house" },
+    { role: "assistant", content: archStamp },
+    { role: "user", content: "What if we enlarge Bedroom 2 to 14x14?" },
+  ]);
+  assert.equal(archFollowUp.routeId, "architect");
+
+  // Strict non-regression collision guards
+  assert.equal(
+    classifyNoctisIntent("Build a luxury villa real-estate website with interactive floor plan viewer and booking checkout").routeId,
+    "website_builder",
+  );
+  assert.notEqual(
+    classifyNoctisIntent("Design a data warehouse schema and in-house ETL pipeline").routeId,
+    "architect",
+  );
+  assert.equal(
+    classifyNoctisIntent("67yo male patient 4 days after flight, HR 126, BP 92/64, SpO2 88% — prioritize stabilization").routeId,
+    "clinical",
+  );
+});

@@ -1284,6 +1284,15 @@ async function executeVibeReply(
         };
       }
 
+      if (routeId === "architect") {
+        const { buildArchitecturalIntelligenceReport } = await import("./noctis-architect-engine.ts");
+        const archOut = buildArchitecturalIntelligenceReport(promptText);
+        return {
+          text: archOut,
+          summary: `Explicit ${overrideCmd || "/architect"} override executed Noctis Architectural Intelligence Engine (NOCTIS-ARCH-001: Shared IFC 4.3, buildingSMART IDS, 4-Sheet CAD SVG & 15-Gate Verification).`,
+        };
+      }
+
       return null;
     };
 
@@ -1384,6 +1393,20 @@ async function executeVibeReply(
       text: finishText(
         withThink(navOut, "Fetched live NOAA METAR airport telemetry and computed runway wind/density altitude and great-circle vectors."),
         "global_nav",
+      ),
+    };
+  }
+
+  if (!intent.override && intent.routeId === "architect") {
+    const { architectIntelligenceGadget, buildArchitecturalIntelligenceReport } = await import("./noctis-architect-engine.ts");
+    const archOut = architectIntelligenceGadget(effectiveLatest) || buildArchitecturalIntelligenceReport(effectiveLatest);
+    return {
+      text: finishText(
+        withThink(
+          archOut,
+          "Executed Noctis Architectural Intelligence Engine (NOCTIS-ARCH-001): Shared IFC 4.3, buildingSMART IDS, 4-Sheet CAD SVG, cost QTO & 15-gate verification.",
+        ),
+        "architect",
       ),
     };
   }
@@ -1892,7 +1915,7 @@ async function composeVibeReply(
     const { runFollowUpIntelligence } = await import("@/lib/noctis-response-intelligence");
     const followUpOut = explicitWebBuild ? null : runFollowUpIntelligence(turns, fullQuestion);
     if (followUpOut) {
-      setResolvedRoute("general_chat");
+      setResolvedRoute(/NOCTIS-ARCH-001|Noctis Architectural Intelligence Engine/i.test(followUpOut) ? "architect" : "general_chat");
       const careerLang = languageNow(question, style.language || "");
       if (followUpOut.startsWith("# 🧭") && !/^(english|en([-_][a-z]+)?)$/i.test(careerLang.trim())) {
         return {
@@ -1920,6 +1943,8 @@ async function composeVibeReply(
     if (gadgetOut) {
       if (/##\s+(?:Global World )?Weather/i.test(gadgetOut)) {
         setResolvedRoute("weather");
+      } else if (/NOCTIS-ARCH-001|Noctis Architectural Intelligence Engine/i.test(gadgetOut)) {
+        setResolvedRoute("architect");
       } else if (explicitWebBuild || /Forge Builder Studio|Customize in Builder Studio|```html/i.test(gadgetOut)) {
         setResolvedRoute("website_builder");
       } else if (/\bCVE-\d{4}|Header Audit|JWT|Zero Trust|SAST/i.test(gadgetOut)) {

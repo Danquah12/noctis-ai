@@ -21,6 +21,7 @@ export type FollowUpDomainTag =
   | "space_universe"
   | "earth_hazards"
   | "global_nav"
+  | "architect"
   | "legal"
   | "finance"
   | "scripture"
@@ -271,6 +272,18 @@ function detectDomainTag(text: string): FollowUpDomainTag {
         /\bK\+(?!\w)/i.test(sample)))
   ) {
     return "clinical";
+  }
+  if (
+    !/\b(?:web\s*site|website|web\s*page|webpage|landing\s*page|storefront|web\s*app|web\s+application|portal|marketplace|e-?commerce|saas|booking\s+page)\b/i.test(sample) &&
+    !/\b(?:data\s+warehouse|clearing\s*house|white\s+house|house\s+of\s+representatives|in-house\s+team)\b/i.test(sample) &&
+    (/\b(?:noctis\s+architect|noctis-arch-001|ifcopenshell|ifc\s*4\.3|buildingsmart\s+ids|arch-at-\d+|arch-bench-\d+|ghana\s+building\s+code|gs\s*1207|uganda\s+national\s+building\s+code|sheet\s+a-101|4-sheet\s+cad|door\s+and\s+window\s+schedule|room[-\s]adjacency\s+matrix|enlarge\s+(?:a\s+|the\s+)?bedroom|resize\s+(?:a\s+|the\s+)?bedroom)\b/i.test(
+      sample,
+    ) ||
+      /\b(?:design|create|build|generate|draw|plan|draft|sketch|layout|model)\b[\s\S]{0,120}\b(?:house|home|residence|villa|bungalow|duplex|cottage|townhouse|apartment\s+building|floor\s+plan|house\s+plan|building\s+plan|architectural\s+plan|cad\s+blueprint|bim\s+model|house\s+design)\b|\b(?:\d+|two|three|four|five|six|seven|eight)\s*(?:-|\s)?(?:bed(?:room)?s?|br)\b[\s\S]{0,100}\b(?:house|home|residence|villa|bungalow|duplex|floor\s+plan|blueprint|bath(?:room)?s?|ba\b|lot\b|plot\b|sq\.?\s*ft)/i.test(
+        sample,
+      ))
+  ) {
+    return "architect";
   }
   if (
     /\b(?:build|create|make|design|generate|code|develop|draft|scaffold|architect)\b[\s\S]{0,180}\b(?:web\s*site|website|web\s*page|webpage|landing\s*page|storefront|web\s*app|web\s+application|portal|marketplace|booking\s+page)\b/i.test(sample) &&

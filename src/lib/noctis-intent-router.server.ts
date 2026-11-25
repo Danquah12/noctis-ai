@@ -23,6 +23,7 @@ import {
   type NoctisRouteStamp,
 } from "./noctis-capability-registry.ts";
 import { resolveFollowUpContext } from "./noctis-followup-resolver.ts";
+import { matchesAnyArchitect40BenchmarkPrompt } from "./noctis-architect-benchmarks.ts";
 import { matchSovereignTool } from "./noctis-tool-orchestrator.ts";
 
 export interface NoctisIntentDecision {
@@ -56,6 +57,7 @@ const ROUTE_LABELS: Record<NoctisRouteEngineId, { label: string; targetPanel: No
   space_universe: { label: "Space · Orbital & SWPC", targetPanel: "chat" },
   earth_hazards: { label: "Earth · Hazards & AQI", targetPanel: "chat" },
   global_nav: { label: "Nav · Aviation & Sea", targetPanel: "chat" },
+  architect: { label: "Architect · BIM & CAD", targetPanel: "chat" },
   general_chat: { label: "Core · General Reasoning", targetPanel: "chat" },
 };
 
@@ -87,7 +89,7 @@ const RMF_STRONG_RE =
   /\b(?:fedramp|nist\s+(?:sp\s*)?800-53|800-53[ab]?\b|800-37\b|800-171\b|nist\s+csf\b|rmf\b|grc\b|poa&m|poam\b|3pao\b|c3pao\b|oscal\b|fips\s*(?:199|200)|cmmc\b|system\s+security\s+plan|\bssp\b|ato\s+readiness|cato\b|fisma\b|disa\s+stig|authorizing\s+official|\bisso\b|\bissm\b|control\s+baseline)\b/i;
 
 const NIST_CONTROL_ID_RE =
-  /\b(?:AC|AT|AU|CA|CM|CP|IA|IR|MA|MP|PE|PL|PM|PS|PT|RA|SA|SC|SI|SR)-\d{1,2}(?:\(\d{1,2}\))?\b/i;
+  /(?<![A-Za-z0-9-])(?:AC|AT|AU|CA|CM|CP|IA|IR|MA|MP|PE|PL|PM|PS|PT|RA|SA|SC|SI|SR)-\d{1,2}(?:\(\d{1,2}\))?\b/i;
 
 const CVE_ID_RE = /\bCVE-\d{4}-\d{4,7}\b/i;
 
@@ -134,6 +136,18 @@ const EARTH_HAZARDS_RE =
 
 const GLOBAL_NAV_RE =
   /\b(?:live\s+metar|\bmetar\b|\btaf\b|flight\s+category|\bfltcat\b|runway\s+\d{1,2}[LCR]?|crosswind|headwind\s+component|density\s+altitude|great[-\s]?circle\s+(?:distance|flight|route)|orthodromic|strait\s+of\s+(?:malacca|hormuz)|suez\s+canal|panama\s+canal|cape\s+of\s+good\s+hope|\b(?:KJFK|KLAX|KORD|KATL|KIAD|KDCA|KBWI|EGLL|LFPG|EDDF|EHAM|OMDB|RJTT|WSSS|DGAA|DNMM|FAOR|YSSY|SBGR)\b)\b/i;
+
+const EXPLICIT_SOFTWARE_WEB_NOUN_RE =
+  /\b(?:web\s*site|website|web\s*page|webpage|landing\s*page|html\s*page|homepage|home\s*page|storefront|web\s*app|web\s+application|portal|marketplace|e-?commerce|saas|booking\s+page|react\s+(?:app|component)|nextjs)\b/i;
+
+const ARCHITECT_NON_BUILDING_EXCLUDE_RE =
+  /\b(?:data\s+warehouse|clearing\s*house|white\s+house|house\s+of\s+representatives|in-house\s+team)\b/i;
+
+const ARCHITECT_EXPLICIT_RE =
+  /\b(?:design\s+houses?\s+like\s+(?:a\s+|an\s+)?(?:professional\s+)?architect|architectural\s+intelligence\s+(?:system|engine)|noctis\s+architect|noctis-arch-001|architectural\s+validation\s+challenge|arch-at-\d+|arch-bench-\d+|ifcopenshell|ifc\s*4\.3|buildingsmart\s+ids|ghana\s+building\s+code|gs\s*1207|uganda\s+national\s+building\s+code|sheet\s+a-101|4-sheet\s+cad|door\s+and\s+window\s+schedule|room[-\s]adjacency\s+matrix|parametric\s+house\s+generator|residential\s+design\s+feasibility\s+report|(?:12\s*[x×]\s*12|enlarge\s+(?:a\s+|the\s+)?bedroom|resize\s+(?:a\s+|the\s+)?bedroom)[\s\S]{0,60}(?:\d+\s*[x×]\s*\d+|circulation|footprint|joist|schedule))\b/i;
+
+const ARCHITECT_RESIDENTIAL_RE =
+  /\b(?:design|create|build|generate|draw|plan|draft|sketch|layout|model)\b[\s\S]{0,120}\b(?:house|home|residence|villa|bungalow|duplex|cottage|townhouse|apartment\s+building|floor\s+plan|house\s+plan|building\s+plan|architectural\s+plan|architectural\s+package|cad\s+blueprint|blueprint|bim\s+model|house\s+design)\b|\b(?:\d+|two|three|four|five|six|seven|eight)\s*(?:-|\s)?(?:bed(?:room)?s?|br)\b[\s\S]{0,100}\b(?:house|home|residence|villa|bungalow|duplex|floor\s+plan|blueprint|bath(?:room)?s?|ba\b|lot\b|plot\b|sq\.?\s*ft|m²|m2)\b/i;
 
 export function decisionToRouteStamp(decision: NoctisIntentDecision): NoctisRouteStamp {
   return {
@@ -286,27 +300,50 @@ export function classifyNoctisIntent(rawPrompt: string): NoctisIntentDecision {
     matchedSignals.push("ndkrs:explicit-rule");
   }
 
+  // Evaluate Noctis Architect (NOCTIS-ARCH-001) before planetary telemetry & weather; veto website_builder on bare "site"
+  const isArchitectIntent =
+    !EXPLICIT_SOFTWARE_WEB_NOUN_RE.test(prompt) &&
+    (matchesAnyArchitect40BenchmarkPrompt(prompt) ||
+      ARCHITECT_EXPLICIT_RE.test(prompt) ||
+      (!ARCHITECT_NON_BUILDING_EXCLUDE_RE.test(prompt) && ARCHITECT_RESIDENTIAL_RE.test(prompt)));
+
+  if (
+    isArchitectIntent &&
+    !hasClinicalVitalsOrSyndrome &&
+    !scores.nasee &&
+    !scores.dod_ic &&
+    !scores.rmf_grc &&
+    !scores.cve_cyber
+  ) {
+    scores.architect = 92;
+    matchedSignals.push("architect:noctis-arch-001");
+    if (scores.website_builder) {
+      vetoedRoutes.website_builder = "Architectural house/BIM design brief (not a web site build)";
+      delete scores.website_builder;
+    }
+  }
+
   // Evaluate Space & Universe, Earth Hazards, and Global Navigation before Weather so "space weather" / "METAR weather" / "wildfire" route accurately
-  if (SPACE_UNIVERSE_RE.test(prompt) && !EXPLICIT_HARD_PHYSICS_RE.test(prompt) && !scores.science && !scores.nasee && !scores.website_builder && !hasClinicalVitalsOrSyndrome && !scores.dod_ic && !scores.rmf_grc) {
+  if (SPACE_UNIVERSE_RE.test(prompt) && !EXPLICIT_HARD_PHYSICS_RE.test(prompt) && !scores.architect && !scores.science && !scores.nasee && !scores.website_builder && !hasClinicalVitalsOrSyndrome && !scores.dod_ic && !scores.rmf_grc) {
     scores.space_universe = 90;
     matchedSignals.push("space:orbital-swpc-neo");
   }
-  if (EARTH_HAZARDS_RE.test(prompt) && !EXPLICIT_HARD_PHYSICS_RE.test(prompt) && !scores.nasee && !scores.website_builder && !hasClinicalVitalsOrSyndrome && !scores.dod_ic && !scores.rmf_grc) {
+  if (EARTH_HAZARDS_RE.test(prompt) && !EXPLICIT_HARD_PHYSICS_RE.test(prompt) && !scores.architect && !scores.nasee && !scores.website_builder && !hasClinicalVitalsOrSyndrome && !scores.dod_ic && !scores.rmf_grc) {
     scores.earth_hazards = 90;
     matchedSignals.push("earth:hazards-aqi");
   }
-  if (GLOBAL_NAV_RE.test(prompt) && !EXPLICIT_HARD_PHYSICS_RE.test(prompt) && !scores.nasee && !scores.website_builder && !hasClinicalVitalsOrSyndrome && !scores.dod_ic && !scores.rmf_grc && !scores.cve_cyber) {
+  if (GLOBAL_NAV_RE.test(prompt) && !EXPLICIT_HARD_PHYSICS_RE.test(prompt) && !scores.architect && !scores.nasee && !scores.website_builder && !hasClinicalVitalsOrSyndrome && !scores.dod_ic && !scores.rmf_grc && !scores.cve_cyber) {
     scores.global_nav = 90;
     matchedSignals.push("nav:metar-greatcircle");
   }
 
-  // Evaluate Weather (strictly vetoed when building platforms, cold-chain maritime, clinical, defense, space/earth/nav, or physics)
+  // Evaluate Weather (strictly vetoed when building platforms, cold-chain maritime, clinical, defense, architect, space/earth/nav, or physics)
   const hasWeatherSignal =
     WEATHER_EXPLICIT_RE.test(prompt) ||
     (WEATHER_TEMP_WITH_TIME_RE.test(prompt) && WEATHER_TIME_RE.test(prompt));
   if (hasWeatherSignal) {
-    if (scores.nasee || scores.website_builder || hasClinicalVitalsOrSyndrome || scores.dod_ic || scores.rmf_grc || scores.space_universe || scores.earth_hazards || scores.global_nav) {
-      vetoedRoutes.weather = "Vetoed by higher-priority software build, clinical, defense, space, earth hazards, or navigation intent";
+    if (scores.nasee || scores.website_builder || scores.architect || hasClinicalVitalsOrSyndrome || scores.dod_ic || scores.rmf_grc || scores.space_universe || scores.earth_hazards || scores.global_nav) {
+      vetoedRoutes.weather = "Vetoed by higher-priority software build, architect, clinical, defense, space, earth hazards, or navigation intent";
     } else if (/\b(?:cold-?chain|cold-?storage|reefer|maritime|vessel|charter|postgis|postgresql|reactor|boiler|furnace|patient|sepsis)\b/i.test(prompt)) {
       vetoedRoutes.weather = "Vetoed by non-meteorological domain terms";
     } else {
@@ -368,6 +405,7 @@ export function classifyNoctisIntent(rawPrompt: string): NoctisIntentDecision {
     "clinical",
     "nasee",
     "website_builder",
+    "architect",
     "dod_ic",
     "cve_cyber",
     "science",
@@ -479,7 +517,7 @@ export function classifyMultiTurnIntent(
   if (followUp.isFollowUp && !followUp.topicShiftDetected && !followUp.shouldIsolateEncounter) {
     if (
       (priorRoute === "clinical" && followUp.relation === "same_patient_followup") ||
-      ((priorRoute === "rmf_grc" || priorRoute === "dod_ic" || priorRoute === "weather" || priorRoute === "sovereign_physics" || priorRoute === "cve_cyber" || priorRoute === "space_universe" || priorRoute === "earth_hazards" || priorRoute === "global_nav") &&
+      ((priorRoute === "rmf_grc" || priorRoute === "dod_ic" || priorRoute === "weather" || priorRoute === "sovereign_physics" || priorRoute === "cve_cyber" || priorRoute === "space_universe" || priorRoute === "earth_hazards" || priorRoute === "global_nav" || priorRoute === "architect") &&
         (followUp.relation === "coreference" || followUp.relation === "what_if_parameter_shift" || followUp.relation === "continuation"))
     ) {
       const meta = ROUTE_LABELS[priorRoute];

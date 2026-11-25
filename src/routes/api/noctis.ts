@@ -94,6 +94,17 @@ export const Route = createFileRoute("/api/noctis")({
           const markdown = await executeGlobalNavQuery(q);
           return Response.json({ ok: true, routeId: "global_nav", query: q, markdown }, { headers: CORS_HEADERS });
         }
+        const architectParam = url.searchParams.get("architect");
+        if (architectParam) {
+          const { buildArchitecturalIntelligenceReport } = await import("@/lib/noctis-architect-engine");
+          const q =
+            url.searchParams.get("q") ||
+            (architectParam === "1"
+              ? "Design a 4-bedroom, 3.5-bath family house with Shared IFC 4.3, 4-sheet CAD SVG, and 15-gate verification"
+              : architectParam);
+          const markdown = buildArchitecturalIntelligenceReport(q);
+          return Response.json({ ok: true, routeId: "architect", query: q, markdown }, { headers: CORS_HEADERS });
+        }
         if (url.searchParams.get("sast")) {
           const mode = url.searchParams.get("sast") || "repository";
           const {

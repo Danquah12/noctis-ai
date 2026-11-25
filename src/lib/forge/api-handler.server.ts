@@ -194,6 +194,12 @@ export async function handleForgeV2Request(request: Request): Promise<Response> 
           const mod = await import("../noctis-global-nav.server.ts");
           return typeof mod.executeGlobalNavQuery === "function" ? "METAR/Great-Circle nav engine ready" : "unavailable";
         }),
+        probe("architect", async () => {
+          const mod = await import("../noctis-architect-engine.ts");
+          return typeof mod.buildArchitecturalIntelligenceReport === "function"
+            ? "NOCTIS-ARCH-001 IFC/CAD/IDS engine ready"
+            : "unavailable";
+        }),
       ]);
 
       const totalOk = routes.filter((r) => r.ok).length;
