@@ -10,6 +10,13 @@ function publicUrl(request: Request) {
 export const Route = createFileRoute("/api/voip")({
   server: {
     handlers: {
+      GET: async () => {
+        const { voipStatus } = await import("@/lib/voip.server");
+        return Response.json(
+          { ok: true, ...voipStatus() },
+          { headers: { "cache-control": "no-store" } },
+        );
+      },
       POST: async ({ request }) => {
         const { twilioSigned, voiceTwiml } = await import("@/lib/voip.server");
         const form = await request.formData();
@@ -22,7 +29,8 @@ export const Route = createFileRoute("/api/voip")({
           return new Response("Forbidden", { status: 403 });
         }
         const to = params.To || params.to || "";
-        return new Response(voiceTwiml(to), {
+        const countryDial = params.CountryDial || params.countryDial || "";
+        return new Response(voiceTwiml(to, countryDial || undefined), {
           headers: { "content-type": "text/xml; charset=utf-8", "cache-control": "no-store" },
         });
       },

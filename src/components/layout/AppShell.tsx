@@ -63,14 +63,43 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [user, sessionUser]);
 
   useEffect(() => {
-    const id = new URLSearchParams(window.location.search).get("join");
-    if (!id || !/^[0-9a-f-]{36}$/i.test(id) || !user?.id || user.isDevFallback) return;
-    const url = new URL(window.location.href);
-    url.searchParams.delete("join");
-    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
-    void joinStudyGroup({ data: { id } })
-      .then(() => useFeedStore.getState().openModal({ type: "phone", video: true, join: id }))
-      .catch(() => undefined);
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("join");
+    if (!id || !/^[0-9a-f-]{36}$/i.test(id)) return;
+    let cancelled = false;
+    const clearJoinParams = () => {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("join");
+      url.searchParams.delete("mode");
+      window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+    };
+    const requestedMode = params.get("mode");
+    void fetch(`/api/call-room?roomId=${encodeURIComponent(id)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((room: { exists?: boolean; mode?: string } | null) => {
+        if (cancelled) return;
+        if (room?.exists) {
+          clearJoinParams();
+          const video = requestedMode === "video" || room.mode === "video";
+          useFeedStore.getState().openModal({ type: "phone", video, join: id });
+          return;
+        }
+        if (!user?.id || user.isDevFallback) return;
+        clearJoinParams();
+        void joinStudyGroup({ data: { id } })
+          .then(() => useFeedStore.getState().openModal({ type: "phone", video: true, join: id }))
+          .catch(() => undefined);
+      })
+      .catch(() => {
+        if (cancelled || !user?.id || user.isDevFallback) return;
+        clearJoinParams();
+        void joinStudyGroup({ data: { id } })
+          .then(() => useFeedStore.getState().openModal({ type: "phone", video: true, join: id }))
+          .catch(() => undefined);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [user?.id, user?.isDevFallback]);
 
   useEffect(() => {

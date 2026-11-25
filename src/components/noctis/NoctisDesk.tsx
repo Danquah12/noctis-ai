@@ -7807,9 +7807,9 @@ export function NoctisDesk() {
                 {actionsOpen ? (
                 <>
                 <ActionGroup title="This chat" items={[
-                  ["Create quiz", () => void send("Generate a 5-question quiz from this conversation. Use only what we already said.")],
-                  ["Generate notes", () => void send("Write study notes, a bullet summary, and revision notes from this conversation.")],
-                  ["Write the brief", () => void send("Write the brief in this order: background, lead, open questions, limits, deadline, next step. Use only this chat. Do not invent a company, a price, or a date.")],
+                  ["Create quiz", () => { setCallOpen(false); void send("Generate a 5-question quiz from this conversation. Use only what we already said."); }],
+                  ["Generate notes", () => { setCallOpen(false); void send("Write study notes, a bullet summary, and revision notes from this conversation."); }],
+                  ["Write the brief", () => { setCallOpen(false); void send("Write the brief in this order: background, lead, open questions, limits, deadline, next step. Use only this chat. Do not invent a company, a price, or a date."); }],
                   ["Share insight", () => shareInsight()],
                 ]} />
                 <ActionGroup title="Meet" items={[
@@ -7902,6 +7902,24 @@ export function NoctisDesk() {
               join={meetId}
               startVideo={Boolean(meetId)}
               onRecorded={setRecordingUrl}
+              callActions={{
+                onQuiz: () => {
+                  setMeetNote("Generating quiz in chat…");
+                  void send("Generate a 5-question quiz from this conversation. Use only what we already said.");
+                },
+                onNotes: () => {
+                  setMeetNote("Generating study notes in chat…");
+                  void send("Write study notes, a bullet summary, and revision notes from this conversation.");
+                },
+                onBrief: () => {
+                  setMeetNote("Writing structured brief in chat…");
+                  void send("Write the brief in this order: background, lead, open questions, limits, deadline, next step. Use only this chat. Do not invent a company, a price, or a date.");
+                },
+                onShareInsight: () => shareInsight(),
+                onCalendar: meetId ? () => addToCalendar() : undefined,
+                onMinimizeToChat: () => setCallOpen(false),
+                actionStatus: meetNote,
+              }}
               onClose={() => setCallOpen(false)}
               onVibe={() => {
                 setCallOpen(false);

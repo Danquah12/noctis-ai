@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { STUDY_HOUSES } from "@/lib/study-desk";
+import { normalizeWorldE164 } from "@/lib/world-dial-codes";
 
 const INTERESTS = new Set(STUDY_HOUSES.map((house) => house.id).filter((id) => id !== "all"));
 
@@ -83,7 +84,7 @@ export const studyLiveBeat = createServerFn({ method: "POST" })
 export const studyLiveSignal = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: { groupId?: string; to?: string; kind?: string; payload?: string }) => {
-    const kind = input?.kind === "offer" || input?.kind === "answer" || input?.kind === "ice" || input?.kind === "stage" ? input.kind : "";
+    const kind = input?.kind === "offer" || input?.kind === "answer" || input?.kind === "ice" || input?.kind === "stage" || input?.kind === "mark" ? input.kind : "";
     const payload = String(input?.payload ?? "");
     if (!kind || payload.length < 2 || payload.length > 20000) throw new Error("Bad signal");
     const to = String(input?.to ?? "").trim();
@@ -298,10 +299,9 @@ export const studyRings = createServerFn({ method: "GET" })
   });
 
 export function dialHref(phone: string) {
-  const digits = phone.replace(/\D/g, "");
-  if (digits.length < 7) return "";
-  const e164 = digits.length === 10 ? `1${digits}` : digits;
-  return `tel:+${e164}`;
+  const norm = normalizeWorldE164(phone);
+  if (norm.emergency) return `tel:${norm.national}`;
+  return norm.valid ? `tel:${norm.e164}` : "";
 }
 
 export const studyJoined = createServerFn({ method: "GET" })

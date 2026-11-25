@@ -34,6 +34,7 @@ import { Route as StartRouteImport } from './routes/start'
 import { Route as StudyRouteImport } from './routes/study'
 import { Route as WorkRouteImport } from './routes/work'
 import { Route as YouRouteImport } from './routes/you'
+import { Route as ApiCallRoomRouteImport } from './routes/api/call-room'
 import { Route as ApiCveStreamRouteImport } from './routes/api/cve-stream'
 import { Route as ApiNoctisRouteImport } from './routes/api/noctis'
 import { Route as ApiShareCardRouteImport } from './routes/api/share-card'
@@ -229,6 +230,11 @@ const WorkRoute = WorkRouteImport.update({
 const YouRoute = YouRouteImport.update({
   id: '/you',
   path: '/you',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCallRoomRoute = ApiCallRoomRouteImport.update({
+  id: '/api/call-room',
+  path: '/api/call-room',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiCveStreamRoute = ApiCveStreamRouteImport.update({
@@ -618,6 +624,7 @@ export interface FileRoutesByFullPath {
   '/study': typeof StudyRoute
   '/work': typeof WorkRoute
   '/you': typeof YouRoute
+  '/api/call-room': typeof ApiCallRoomRoute
   '/api/cve-stream': typeof ApiCveStreamRoute
   '/api/noctis': typeof ApiNoctisRouteWithChildren
   '/api/share-card': typeof ApiShareCardRoute
@@ -713,6 +720,7 @@ export interface FileRoutesByTo {
   '/study': typeof StudyRoute
   '/work': typeof WorkRoute
   '/you': typeof YouRoute
+  '/api/call-room': typeof ApiCallRoomRoute
   '/api/cve-stream': typeof ApiCveStreamRoute
   '/api/noctis': typeof ApiNoctisRouteWithChildren
   '/api/share-card': typeof ApiShareCardRoute
@@ -811,6 +819,7 @@ export interface FileRoutesById {
   '/study': typeof StudyRoute
   '/work': typeof WorkRoute
   '/you': typeof YouRoute
+  '/api/call-room': typeof ApiCallRoomRoute
   '/api/cve-stream': typeof ApiCveStreamRoute
   '/api/noctis': typeof ApiNoctisRouteWithChildren
   '/api/share-card': typeof ApiShareCardRoute
@@ -911,6 +920,7 @@ export interface FileRouteTypes {
     | '/study'
     | '/work'
     | '/you'
+    | '/api/call-room'
     | '/api/cve-stream'
     | '/api/noctis'
     | '/api/share-card'
@@ -1006,6 +1016,7 @@ export interface FileRouteTypes {
     | '/study'
     | '/work'
     | '/you'
+    | '/api/call-room'
     | '/api/cve-stream'
     | '/api/noctis'
     | '/api/share-card'
@@ -1103,6 +1114,7 @@ export interface FileRouteTypes {
     | '/study'
     | '/work'
     | '/you'
+    | '/api/call-room'
     | '/api/cve-stream'
     | '/api/noctis'
     | '/api/share-card'
@@ -1202,6 +1214,7 @@ export interface RootRouteChildren {
   StudyRoute: typeof StudyRoute
   WorkRoute: typeof WorkRoute
   YouRoute: typeof YouRoute
+  ApiCallRoomRoute: typeof ApiCallRoomRoute
   ApiCveStreamRoute: typeof ApiCveStreamRoute
   ApiNoctisRoute: typeof ApiNoctisRouteWithChildren
   ApiShareCardRoute: typeof ApiShareCardRoute
@@ -1396,6 +1409,13 @@ declare module '@tanstack/react-router' {
       path: '/you'
       fullPath: '/you'
       preLoaderRoute: typeof YouRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/call-room': {
+      id: '/api/call-room'
+      path: '/api/call-room'
+      fullPath: '/api/call-room'
+      preLoaderRoute: typeof ApiCallRoomRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/cve-stream': {
@@ -2076,6 +2096,7 @@ const rootRouteChildren: RootRouteChildren = {
   StudyRoute: StudyRoute,
   WorkRoute: WorkRoute,
   YouRoute: YouRoute,
+  ApiCallRoomRoute: ApiCallRoomRoute,
   ApiCveStreamRoute: ApiCveStreamRoute,
   ApiNoctisRoute: ApiNoctisRouteWithChildren,
   ApiShareCardRoute: ApiShareCardRoute,

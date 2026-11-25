@@ -1,9 +1,20 @@
-import { AudioLines, Captions, ChevronUp, Circle, Download, Hand, ImagePlus, Link2, Mic, MicOff, MonitorUp, MoreHorizontal, PhoneOff, Pin, Smile, UserPlus, Video, VideoOff } from "lucide-react";
+import { AudioLines, Calendar, Captions, Check, ChevronUp, Circle, Copy, FileText, Hand, ImagePlus, Link2, MessageSquare, Mic, MicOff, MonitorUp, MoreHorizontal, Phone, PhoneOff, Pin, Share2, Smile, Sparkles, UserPlus, Video, VideoOff } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent, type ReactNode, type RefObject } from "react";
 import { defaultIceServers } from "@/lib/multiplayer/p2p";
 import { useFeedStore } from "@/lib/feed-store";
 import { holdMeeting, silenceStage } from "@/lib/playback";
 import { dialHref, studyChat, studyLiveBeat, studyLiveLeave, studyLiveSignal, studyRing, studyRoom, studySavePhone, studySend } from "@/lib/study-group-api";
+import { buildSmsCallInviteUrl, buildWhatsAppCallInviteUrl } from "@/lib/world-dial-codes";
+
+export interface CallToolbarActions {
+  onQuiz?: () => void;
+  onNotes?: () => void;
+  onBrief?: () => void;
+  onShareInsight?: () => void;
+  onCalendar?: () => void;
+  onMinimizeToChat?: () => void;
+  actionStatus?: string;
+}
 
 type Remote = { id: string; name: string; stream: MediaStream };
 type Note = { id: number; mine: boolean; name: string; body: string };
@@ -20,6 +31,11 @@ export function StudyCall({
   video = true,
   muted = false,
   console: askedMeet = false,
+  transport = "study",
+  targetE164 = "",
+  joinUrl = "",
+  peerName = "",
+  callActions,
   onAdd,
   onShare,
   onRecorded,
@@ -31,11 +47,23 @@ export function StudyCall({
   video?: boolean;
   muted?: boolean;
   console?: boolean;
+  transport?: "study" | "world";
+  targetE164?: string;
+  joinUrl?: string;
+  peerName?: string;
+  callActions?: CallToolbarActions;
   onAdd?: () => void;
   onShare?: () => void | Promise<"shared" | "copied" | "aborted" | "failed" | void>;
   onRecorded?: (url: string) => void;
 }) {
-  const meet = askedMeet || video;
+  const isWorld = transport === "world";
+  const meet = askedMeet || video || isWorld;
+  const [guestId] = useState(() =>
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? `caller-${crypto.randomUUID().slice(0, 8)}`
+      : `caller-${Math.random().toString(36).slice(2, 10)}`,
+  );
+  const activeSelfId = selfId || guestId;
   const localRef = useRef<HTMLVideoElement>(null);
   const [remotes, setRemotes] = useState<Remote[]>([]);
   const [mic, setMic] = useState(true);
@@ -136,6 +164,21 @@ export function StudyCall({
     }
 
     async function signal(to: string, kind: "offer" | "answer" | "ice", payload: unknown) {
+      if (isWorld) {
+        await fetch("/api/call-room", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            action: "signal",
+            roomId: groupId,
+            fromId: activeSelfId,
+            toId: to,
+            kind,
+            payload: JSON.stringify(payload),
+          }),
+        });
+        return;
+      }
       await studyLiveSignal({ data: { groupId, to, kind, payload: JSON.stringify(payload) } });
     }
 
@@ -153,7 +196,7 @@ export function StudyCall({
       pc.ontrack = () => show();
       pc.onconnectionstatechange = () => {
         if (pc.connectionState !== "failed" || restarted.has(id)) return;
-        if (selfId < id || pc.signalingState !== "stable") return;
+        if (activeSelfId < id || pc.signalingState !== "stable") return;
         restarted.add(id);
         void pc
           .createOffer({ iceRestart: true })
@@ -164,7 +207,7 @@ export function StudyCall({
           .catch(() => undefined);
       };
       pcs.set(id, pc);
-      if (selfId > id) {
+      if (activeSelfId > id) {
         void pc
           .createOffer()
           .then(async (offer) => {
@@ -190,7 +233,7 @@ export function StudyCall({
       }
       const pc = peer(from);
       const body = JSON.parse(raw) as RTCSessionDescriptionInit | RTCIceCandidateInit;
-      if (kind === "offer" && selfId < from) {
+      if (kind === "offer" && activeSelfId < from) {
         await pc.setRemoteDescription(body as RTCSessionDescriptionInit);
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
@@ -206,7 +249,7 @@ export function StudyCall({
         pendingIce.delete(from);
         return;
       }
-      if (kind === "answer" && selfId > from) {
+      if (kind === "answer" && activeSelfId > from) {
         if (pc.signalingState === "have-local-offer") {
           await pc.setRemoteDescription(body as RTCSessionDescriptionInit);
           await flushIce(pc, from);
@@ -232,11 +275,35 @@ export function StudyCall({
     async function loop() {
       if (dead) return;
       try {
-        const beat = await studyLiveBeat({ data: { groupId, cursor } });
+        const beat = isWorld
+          ? await fetch("/api/call-room", {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({
+                action: "beat",
+                roomId: groupId,
+                peerId: activeSelfId,
+                name: peerName || "Noctis Caller",
+                cursor,
+              }),
+            }).then(async (res) => {
+              const json = (await res.json()) as {
+                ok?: boolean;
+                error?: string;
+                cursor: number;
+                seats: { userId: string; name: string }[];
+                hostId: string;
+                stage: string;
+                signals: { id: number; from: string; kind: string; payload: string }[];
+              };
+              if (!res.ok || json.ok === false) throw new Error(json.error || "The room dropped");
+              return json;
+            })
+          : await studyLiveBeat({ data: { groupId, cursor } });
         cursor = beat.cursor;
-        const others = beat.seats.filter((seat) => seat.userId !== selfId);
+        const others = beat.seats.filter((seat) => seat.userId !== activeSelfId);
         setCount(beat.seats.length || 1);
-        setHost(beat.hostId === selfId);
+        setHost(beat.hostId === activeSelfId);
         if (beat.stage) {
           try {
             const body = JSON.parse(beat.stage) as { pin?: string };
@@ -282,7 +349,7 @@ export function StudyCall({
     }
 
     void navigator.mediaDevices
-      .getUserMedia({
+      ?.getUserMedia({
         video: video
           ? {
               facingMode: "user",
@@ -298,21 +365,28 @@ export function StudyCall({
           stream.getTracks().forEach((track) => track.stop());
           return;
         }
-        const video = localRef.current;
-        if (!video) {
-          stream.getTracks().forEach((track) => track.stop());
-          return;
-        }
+        const vidEl = localRef.current;
         const picture = stream.getVideoTracks()[0];
         if (picture) picture.contentHint = "motion";
         streamRef.current = stream;
-        video.srcObject = stream;
-        setCamReady(true);
-        await video.play();
+        if (vidEl && picture) {
+          vidEl.srcObject = stream;
+          setCamReady(true);
+          await vidEl.play().catch(() => undefined);
+        }
         void loop();
       })
       .catch(() => {
-        if (!dead) setErr(video ? "Allow the camera and microphone to study live." : "Allow the microphone to place the call.");
+        if (dead) return;
+        streamRef.current = new MediaStream();
+        setErr(
+          isWorld
+            ? "Microphone/camera access blocked — connected in listen-only mode."
+            : video
+              ? "Allow the camera and microphone to study live."
+              : "Allow the microphone to place the call.",
+        );
+        void loop();
       });
 
     return () => {
@@ -352,9 +426,18 @@ export function StudyCall({
       }
       pcs.forEach((pc) => pc.close());
       links.current = new Map();
-      void studyLiveLeave({ data: { groupId } }).catch(() => undefined);
+      if (isWorld) {
+        void fetch("/api/call-room", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ action: "leave", roomId: groupId, peerId: activeSelfId }),
+          keepalive: true,
+        }).catch(() => undefined);
+      } else {
+        void studyLiveLeave({ data: { groupId } }).catch(() => undefined);
+      }
     };
-  }, [groupId, selfId, video]);
+  }, [groupId, activeSelfId, video, isWorld]);
 
   useEffect(() => {
     const video = localRef.current;
@@ -450,6 +533,7 @@ export function StudyCall({
   }, [remotes, mic]);
 
   useEffect(() => {
+    if (isWorld) return;
     let stop = false;
     async function pull() {
       try {
@@ -467,7 +551,7 @@ export function StudyCall({
       stop = true;
       window.clearInterval(timer);
     };
-  }, [groupId]);
+  }, [groupId, isWorld]);
 
   useEffect(() => {
     if (panel !== "people") return;
@@ -514,7 +598,7 @@ export function StudyCall({
   }
 
   useEffect(() => {
-    if (!backdrop || sharing) return;
+    if (!cam || !backdrop || sharing) return;
     const stream = streamRef.current;
     const live = stream?.getVideoTracks().find((track) => track.readyState === "live" && track !== cameraHold.current);
     const camera = cameraHold.current?.readyState === "live" ? cameraHold.current : live;
@@ -879,11 +963,57 @@ export function StudyCall({
     }
   }
 
+  async function toggleCam() {
+    if (cam) {
+      setCam(false);
+      return;
+    }
+    const stream = streamRef.current;
+    const hasLiveVideo = Boolean(stream?.getVideoTracks().some((t) => t.readyState === "live"));
+    if (!hasLiveVideo && navigator.mediaDevices?.getUserMedia) {
+      try {
+        const camStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
+        });
+        const track = camStream.getVideoTracks()[0];
+        if (track) {
+          track.contentHint = "motion";
+          if (!streamRef.current) streamRef.current = new MediaStream();
+          await swapTrack("video", track);
+          setCamReady(true);
+        }
+      } catch {
+        setErr("Allow camera access to turn video on.");
+        return;
+      }
+    }
+    setCam(true);
+  }
+
   async function holdFront(_nextFollow: boolean, pin: string) {
-    const who = pin === "self" ? selfId : pin;
+    const who = pin === "self" ? activeSelfId : pin;
     if (who) setHostPin(who);
     const payload = JSON.stringify({ follow: false, pin: who });
-    const targets = [...new Set([selfId, ...roster.map((person) => person.id)])];
+    const targets = [...new Set([activeSelfId, ...roster.map((person) => person.id)])];
+    if (isWorld) {
+      await Promise.all(
+        targets.map((to) =>
+          fetch("/api/call-room", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              action: "signal",
+              roomId: groupId,
+              fromId: activeSelfId,
+              toId: to,
+              kind: "stage",
+              payload,
+            }),
+          }).catch(() => undefined),
+        ),
+      );
+      return;
+    }
     await Promise.all(
       targets.map((to) => studyLiveSignal({ data: { groupId, to, kind: "stage", payload } }).catch(() => undefined)),
     );
@@ -895,6 +1025,25 @@ export function StudyCall({
     const key = `${payload}|${who}`;
     if (key === sentMark.current || !who) return;
     sentMark.current = key;
+    if (isWorld) {
+      void Promise.all(
+        roster.map((person) =>
+          fetch("/api/call-room", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              action: "signal",
+              roomId: groupId,
+              fromId: activeSelfId,
+              toId: person.id,
+              kind: "mark",
+              payload,
+            }),
+          }).catch(() => undefined),
+        ),
+      );
+      return;
+    }
     void Promise.all(
       roster.map((person) => studyLiveSignal({ data: { groupId, to: person.id, kind: "mark", payload } }).catch(() => undefined)),
     );
@@ -951,10 +1100,15 @@ export function StudyCall({
       speaker={speaker}
       host={host}
       hostPin={hostPin}
-      selfId={selfId}
+      selfId={activeSelfId}
+      isWorld={isWorld}
+      targetE164={targetE164}
+      joinUrl={joinUrl}
+      peerName={peerName}
+      callActions={callActions}
       onHold={(next, pin) => void holdFront(next, pin)}
       onMic={() => setMic((on) => !on)}
-      onCam={() => setCam((on) => !on)}
+      onCam={() => void toggleCam()}
       onHear={() => setHear((on) => !on)}
       onPresent={() => void present()}
       onRecord={record}
@@ -964,7 +1118,7 @@ export function StudyCall({
       onAdd={onAdd}
       onShare={onShare}
       onScene={setBackdrop}
-      initialScene={FOREST_MEET}
+      initialScene={video ? FOREST_MEET : null}
       marks={marks}
       onPresence={tellPresence}
       onClose={leave}
@@ -1166,6 +1320,11 @@ function Meet({
   host,
   hostPin,
   selfId,
+  isWorld = false,
+  targetE164 = "",
+  joinUrl = "",
+  peerName = "",
+  callActions,
   onHold,
   onMic,
   onCam,
@@ -1198,6 +1357,11 @@ function Meet({
   host: boolean;
   hostPin: string;
   selfId: string;
+  isWorld?: boolean;
+  targetE164?: string;
+  joinUrl?: string;
+  peerName?: string;
+  callActions?: CallToolbarActions;
   onHold: (follow: boolean, pin: string) => void;
   onMic: () => void;
   onCam: () => void;
@@ -1221,7 +1385,8 @@ function Meet({
     setPinned(hostPin === selfId ? "self" : hostPin);
   }, [hostPin, selfId]);
   const [sent, setSent] = useState("");
-  const [open, setOpen] = useState<"" | "gear" | "react" | "more" | "scene">("");
+  const [copiedBanner, setCopiedBanner] = useState(false);
+  const [open, setOpen] = useState<"" | "gear" | "react" | "more" | "scene" | "actions">("");
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [hand, setHand] = useState(false);
   const [burst, setBurst] = useState("");
@@ -1308,7 +1473,21 @@ function Meet({
     setOpen("");
   }
 
-  const icon = "grid size-10 shrink-0 place-items-center rounded-full text-white hover:bg-white/10";
+  const iconBase = "grid size-10 shrink-0 place-items-center rounded-full transition";
+  const iconTone = (inverted: boolean) => (inverted ? "bg-white text-black hover:bg-zinc-200" : "text-white hover:bg-white/10");
+  const resolvedJoinUrl = joinUrl || (typeof window !== "undefined" ? window.location.href : "");
+  const whatsappHref = buildWhatsAppCallInviteUrl(targetE164, resolvedJoinUrl, peerName || "Noctis");
+  const smsHref = buildSmsCallInviteUrl(targetE164, resolvedJoinUrl);
+  const telHref = targetE164 ? dialHref(targetE164) : "";
+  const copyWorldInvite = async () => {
+    if (onShare) {
+      await Promise.resolve(onShare());
+    } else if (resolvedJoinUrl) {
+      await navigator.clipboard?.writeText(resolvedJoinUrl).catch(() => undefined);
+    }
+    setCopiedBanner(true);
+    window.setTimeout(() => setCopiedBanner(false), 2400);
+  };
   const strip = roster.length > 0;
   const pin = pinned === "self" || roster.some((person) => person.id === pinned) ? pinned : sharing ? "self" : roster[0]?.id || "self";
   const selfLarge = !strip || pin === "self";
@@ -1323,7 +1502,14 @@ function Meet({
     <div data-meeting="" className="flex h-full min-h-0 flex-col bg-[#0c0c0c] text-white">
       <div className="flex min-h-0 flex-1 flex-col">
         <div className="relative min-h-0 min-w-0 flex-1">
-          <p className="absolute top-3 left-4 z-30 rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-semibold text-white">{count} / 200</p>
+          <div className="absolute top-3 left-4 z-30 flex items-center gap-2">
+            <p className="rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-semibold text-white">{count} / 200</p>
+            {isWorld ? (
+              <span className="rounded-full border border-emerald-400/30 bg-emerald-500/15 px-2.5 py-1 text-[11px] font-semibold text-emerald-300">
+                Global Internet Call · WebRTC
+              </span>
+            ) : null}
+          </div>
           {recording ? <span className="absolute top-3 left-1/2 z-30 -translate-x-1/2 rounded-full bg-[#ea4335] px-3 py-1 text-[11px] font-semibold">Recording</span> : null}
           {host && speaker && speaker !== pin ? (
             <button
@@ -1352,13 +1538,66 @@ function Meet({
                 className={cam || sharing ? `h-full w-full bg-black ${sharing ? "object-contain" : "-scale-x-100 object-cover"}` : "hidden"}
               />
               {cam || sharing ? null : (
-                <div className="grid h-full place-items-center text-center text-white/70">
-                  <div>
-                    <div className="mx-auto grid size-24 place-items-center rounded-full bg-white/10 text-4xl font-semibold">{mark}</div>
-                    <p className="mt-4 text-2xl font-semibold tracking-tight text-white">{strip ? "You" : title}</p>
+                <div className="grid h-full place-items-center bg-gradient-to-b from-[#171923] via-[#11131a] to-[#0c0c0c] px-4 text-center text-white/80">
+                  <div className="max-w-md">
+                    <div className="mx-auto grid size-24 place-items-center rounded-full border border-white/15 bg-white/10 text-4xl font-semibold">{mark}</div>
+                    <p className="mt-4 text-2xl font-semibold tracking-tight text-white">{strip ? stageName : targetE164 || title}</p>
+                    <p className="mt-1 text-xs uppercase tracking-[0.2em] text-emerald-400">
+                      {isWorld ? (waiting ? "Ringing / Waiting for peer to join link" : "Encrypted HD Internet Audio Active") : waiting ? "Calling…" : "Connected"}
+                    </p>
+                    {isWorld ? (
+                      <button
+                        type="button"
+                        onClick={onCam}
+                        className="mt-4 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-xs font-semibold text-white hover:bg-white/20"
+                      >
+                        <Video className="size-3.5" />
+                        Turn on Video
+                      </button>
+                    ) : null}
                   </div>
                 </div>
               )}
+              {isWorld && waiting && resolvedJoinUrl ? (
+                <div className="absolute right-4 bottom-12 left-4 z-20 mx-auto flex max-w-xl flex-wrap items-center justify-center gap-2 rounded-2xl border border-white/10 bg-black/75 px-3 py-2.5 backdrop-blur-md">
+                  <span className="text-[11px] text-zinc-300">
+                    {targetE164 ? `Invite ${targetE164} from any country:` : "Share call link with anyone worldwide:"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => void copyWorldInvite()}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-black hover:bg-zinc-200"
+                  >
+                    {copiedBanner ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+                    {copiedBanner ? "Link copied" : "Copy link"}
+                  </button>
+                  <a
+                    href={whatsappHref}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-full bg-[#25D366] px-3 py-1 text-[11px] font-semibold text-black hover:opacity-90"
+                  >
+                    <Share2 className="size-3.5" />
+                    WhatsApp
+                  </a>
+                  <a
+                    href={smsHref}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-white hover:bg-white/20"
+                  >
+                    <MessageSquare className="size-3.5" />
+                    SMS
+                  </a>
+                  {telHref ? (
+                    <a
+                      href={telHref}
+                      className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-zinc-200 hover:bg-white/20"
+                    >
+                      <Phone className="size-3.5" />
+                      Carrier dialer
+                    </a>
+                  ) : null}
+                </div>
+              ) : null}
               {sharing ? <span className="absolute top-3 left-3 rounded-full bg-[#e4b86a] px-2.5 py-1 text-[11px] font-semibold text-[#1a1408]">Screen</span> : null}
               {hand ? <span className="absolute top-3 left-3 z-20 text-4xl leading-none">👋</span> : null}
               {!mic ? (
@@ -1515,6 +1754,107 @@ function Meet({
           ))}
         </div>
       ) : null}
+      {open === "actions" ? (
+        <div
+          data-testid="noctis-call-actions-popover"
+          className="mx-auto mb-2 w-[min(32rem,calc(100%-1.5rem))] rounded-2xl border border-[#e4b86a]/40 bg-[#171920] p-3 text-white shadow-2xl"
+        >
+          <div className="flex items-center justify-between gap-2 pb-2">
+            <div>
+              <p className="text-xs font-semibold text-zinc-100">Noctis Actions</p>
+              <p className="text-[11px] text-zinc-400">Quiz, notes, brief &amp; global call invite</p>
+            </div>
+            {callActions?.onMinimizeToChat ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen("");
+                  callActions.onMinimizeToChat?.();
+                }}
+                className="rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-semibold text-zinc-100 hover:bg-white/20"
+              >
+                View in chat
+              </button>
+            ) : null}
+          </div>
+          {callActions ? (
+            <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+              {callActions.onQuiz ? (
+                <button
+                  type="button"
+                  onClick={() => callActions.onQuiz?.()}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-white/10 px-2.5 py-2 text-xs font-medium text-zinc-100 hover:bg-white/20"
+                >
+                  <Sparkles className="size-3.5 text-[#e4b86a]" />
+                  Create quiz
+                </button>
+              ) : null}
+              {callActions.onNotes ? (
+                <button
+                  type="button"
+                  onClick={() => callActions.onNotes?.()}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-white/10 px-2.5 py-2 text-xs font-medium text-zinc-100 hover:bg-white/20"
+                >
+                  <FileText className="size-3.5 text-[#e4b86a]" />
+                  Generate notes
+                </button>
+              ) : null}
+              {callActions.onBrief ? (
+                <button
+                  type="button"
+                  onClick={() => callActions.onBrief?.()}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-white/10 px-2.5 py-2 text-xs font-medium text-zinc-100 hover:bg-white/20"
+                >
+                  <FileText className="size-3.5 text-sky-300" />
+                  Write the brief
+                </button>
+              ) : null}
+              {callActions.onShareInsight ? (
+                <button
+                  type="button"
+                  onClick={() => callActions.onShareInsight?.()}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-white/10 px-2.5 py-2 text-xs font-medium text-zinc-100 hover:bg-white/20"
+                >
+                  <Share2 className="size-3.5 text-emerald-300" />
+                  Share insight
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+          <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-white/10 pt-2">
+            <button
+              type="button"
+              onClick={() => void copyWorldInvite()}
+              className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-black hover:bg-zinc-200"
+            >
+              <Link2 className="size-3.5" />
+              {copiedBanner ? "Copied link" : "Copy call link"}
+            </button>
+            <a
+              href={whatsappHref}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-full bg-[#25D366] px-3 py-1 text-[11px] font-semibold text-black hover:opacity-90"
+            >
+              <Share2 className="size-3.5" />
+              WhatsApp invite
+            </a>
+            {callActions?.onCalendar ? (
+              <button
+                type="button"
+                onClick={() => callActions.onCalendar?.()}
+                className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-zinc-100 hover:bg-white/20"
+              >
+                <Calendar className="size-3.5" />
+                Calendar (.ics)
+              </button>
+            ) : null}
+          </div>
+          {callActions?.actionStatus ? (
+            <p className="mt-2 text-[11px] text-[#e4b86a]">{callActions.actionStatus}</p>
+          ) : null}
+        </div>
+      ) : null}
       {open === "more" ? (
         <div className="mx-auto mb-2 flex w-fit gap-1 rounded-full bg-[#2a2a2a] p-1 ring-1 ring-white/10">
           {onAdd ? (
@@ -1544,10 +1884,10 @@ function Meet({
       ) : null}
       <div className="flex shrink-0 justify-center px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <div className="flex max-w-full items-center gap-1 overflow-x-auto rounded-full bg-[#2a2a2a] px-2 py-2 ring-1 ring-white/10 scrollbar-none">
-          <button type="button" aria-label={hear ? "Mute speaker" : "Unmute speaker"} onClick={onHear} className={`${icon} ${hear ? "" : "bg-white text-black"}`}>
+          <button type="button" aria-label={hear ? "Mute speaker" : "Unmute speaker"} onClick={onHear} className={`${iconBase} ${iconTone(!hear)}`}>
             <AudioLines className="size-5" />
           </button>
-          <button type="button" aria-label={mic ? "Mute microphone" : "Unmute microphone"} onClick={onMic} className={`${icon} ${mic ? "" : "bg-white text-black"}`}>
+          <button type="button" aria-label={mic ? "Mute microphone" : "Unmute microphone"} onClick={onMic} className={`${iconBase} ${iconTone(!mic)}`}>
             {mic ? <Mic className="size-5" /> : <MicOff className="size-5" />}
           </button>
           <button
@@ -1563,20 +1903,20 @@ function Meet({
                 setOpen("gear");
               });
             }}
-            className={icon}
+            className={`${iconBase} ${iconTone(open === "gear")}`}
           >
             <ChevronUp className="size-5" />
           </button>
-          <button type="button" aria-label={cam ? "Turn camera off" : "Turn camera on"} onClick={onCam} className={`${icon} ${cam ? "" : "bg-white text-black"}`}>
+          <button type="button" aria-label={cam ? "Turn camera off" : "Turn camera on"} onClick={onCam} className={`${iconBase} ${iconTone(!cam)}`}>
             {cam ? <Video className="size-5" /> : <VideoOff className="size-5" />}
           </button>
-          <button type="button" aria-label="Choose a meeting background" onClick={() => setOpen((now) => (now === "scene" ? "" : "scene"))} className={`${icon} ${scene ? "bg-white text-black" : ""}`}>
+          <button type="button" aria-label="Choose a meeting background" onClick={() => setOpen((now) => (now === "scene" ? "" : "scene"))} className={`${iconBase} ${iconTone(Boolean(scene) || open === "scene")}`}>
             <ImagePlus className="size-5" />
           </button>
-          <button type="button" aria-label={sharing ? "Stop sharing" : "Share your screen"} onClick={onPresent} className={`${icon} ${sharing ? "bg-white text-black" : ""}`}>
+          <button type="button" aria-label={sharing ? "Stop sharing" : "Share your screen"} onClick={onPresent} className={`${iconBase} ${iconTone(sharing)}`}>
             <MonitorUp className="size-5" />
           </button>
-          <button type="button" aria-label={recording ? "Stop recording" : "Record the meeting"} onClick={onRecord} className={`${icon} ${recording ? "bg-[#ea4335] text-white" : ""}`}>
+          <button type="button" aria-label={recording ? "Stop recording" : "Record the meeting"} onClick={onRecord} className={`${iconBase} ${recording ? "bg-[#ea4335] text-white" : "text-white hover:bg-white/10"}`}>
             <Circle className={`size-5 ${recording ? "fill-white" : ""}`} />
           </button>
           {recordingUrl ? (
@@ -1584,16 +1924,19 @@ function Meet({
               Download
             </a>
           ) : null}
-          <button type="button" aria-label="Send a reaction" onClick={() => setOpen((now) => (now === "react" ? "" : "react"))} className={`${icon} ${open === "react" ? "bg-white/15" : ""}`}>
+          <button type="button" aria-label="Send a reaction" onClick={() => setOpen((now) => (now === "react" ? "" : "react"))} className={`${iconBase} ${open === "react" ? "bg-white/15 text-white" : "text-white hover:bg-white/10"}`}>
             <Smile className="size-5" />
           </button>
-          <button type="button" aria-label={captions ? "Hide captions" : "Show captions"} onClick={() => setCaptions((on) => !on)} className={`${icon} ${captions ? "bg-white text-black" : ""}`}>
+          <button type="button" aria-label={captions ? "Hide captions" : "Show captions"} onClick={() => setCaptions((on) => !on)} className={`${iconBase} ${iconTone(captions)}`}>
             <Captions className="size-5" />
           </button>
-          <button type="button" aria-label={hand ? "Lower hand" : "Raise hand"} onClick={() => setHand((on) => !on)} className={`${icon} ${hand ? "bg-[#e4b86a] text-[#1a1408]" : ""}`}>
+          <button type="button" aria-label={hand ? "Lower hand" : "Raise hand"} onClick={() => setHand((on) => !on)} className={`${iconBase} ${hand ? "bg-[#e4b86a] text-[#1a1408]" : "text-white hover:bg-white/10"}`}>
             <Hand className="size-5" />
           </button>
-          <button type="button" aria-label="More" onClick={() => setOpen((now) => (now === "more" ? "" : "more"))} className={`${icon} ${open === "more" ? "bg-white/15" : ""}`}>
+          <button type="button" aria-label="Noctis Actions" title="Noctis Actions" onClick={() => setOpen((now) => (now === "actions" ? "" : "actions"))} className={`${iconBase} ${open === "actions" ? "bg-[#e4b86a] text-[#1a1408]" : "text-white hover:bg-white/10"}`}>
+            <Sparkles className="size-5" />
+          </button>
+          <button type="button" aria-label="More" onClick={() => setOpen((now) => (now === "more" ? "" : "more"))} className={`${iconBase} ${open === "more" ? "bg-white/15 text-white" : "text-white hover:bg-white/10"}`}>
             <MoreHorizontal className="size-5" />
           </button>
           <button type="button" onClick={onClose} aria-label="End call" className="grid size-12 shrink-0 place-items-center rounded-full bg-[#ea4335] text-white">

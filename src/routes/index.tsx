@@ -2,8 +2,12 @@ import { useEffect } from "react";
 import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/")({
-  beforeLoad: () => {
-    throw redirect({ to: "/noctis", replace: true });
+  beforeLoad: ({ location }) => {
+    throw redirect({
+      to: "/noctis",
+      search: location.search as Record<string, unknown>,
+      replace: true,
+    });
   },
   component: RedirectToNoctis,
 });
@@ -11,7 +15,13 @@ export const Route = createFileRoute("/")({
 function RedirectToNoctis() {
   const router = useRouter();
   useEffect(() => {
-    void router.navigate({ to: "/noctis", replace: true });
+    const params = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+    const join = params?.get("join") ?? undefined;
+    const mode = params?.get("mode") ?? undefined;
+    const search: Record<string, string> = {};
+    if (join) search.join = join;
+    if (mode) search.mode = mode;
+    void router.navigate({ to: "/noctis", search, replace: true });
   }, [router]);
   return (
     <main className="grid min-h-dvh place-items-center bg-[#0b1220] px-6 text-[#f6e7c8]">

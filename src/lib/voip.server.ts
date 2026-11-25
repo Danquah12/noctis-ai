@@ -1,5 +1,15 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { env } from "@/lib/env.server";
+import { env } from "./env.server.ts";
+import { normalizeWorldE164, WORLD_DIAL_CODES } from "./world-dial-codes.ts";
+
+const REQUIRED_TWILIO_KEYS = [
+  "TWILIO_ACCOUNT_SID",
+  "TWILIO_API_KEY",
+  "TWILIO_API_SECRET",
+  "TWILIO_TWIML_APP_SID",
+  "TWILIO_CALLER_ID",
+  "TWILIO_AUTH_TOKEN",
+] as const;
 
 function required() {
   return {
@@ -17,8 +27,42 @@ export function voipConfigured() {
   return Boolean(row.account && row.key && row.secret && row.app && row.caller && row.auth);
 }
 
+export interface VoipStatus {
+  ready: boolean;
+  provider: "twilio" | "webrtc";
+  callerIdMasked: string;
+  missing: string[];
+  globalWebRtcReady: true;
+  countriesSupported: number;
+}
+
+export function voipStatus(): VoipStatus {
+  const missing = REQUIRED_TWILIO_KEYS.filter((key) => !env(key));
+  const caller = env("TWILIO_CALLER_ID") ?? "";
+  const digits = caller.replace(/\D/g, "");
+  const callerIdMasked = digits.length >= 4 ? `••••${digits.slice(-4)}` : "";
+  const ready = missing.length === 0;
+  return {
+    ready,
+    provider: ready ? "twilio" : "webrtc",
+    callerIdMasked,
+    missing: [...missing],
+    globalWebRtcReady: true,
+    countriesSupported: WORLD_DIAL_CODES.length,
+  };
+}
+
 function b64url(value: string) {
   return Buffer.from(value).toString("base64url");
+}
+
+function escapeXml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
 }
 
 export function mintVoiceToken(userId: string) {
@@ -47,19 +91,19 @@ export function mintVoiceToken(userId: string) {
   return `${body}.${sig}`;
 }
 
-export function toE164(raw: string) {
-  const digits = raw.replace(/\D/g, "");
-  if (digits.length === 10) return `+1${digits}`;
-  if (digits.length >= 8 && digits.length <= 15) return `+${digits}`;
-  return "";
+export function toE164(raw: string, defaultDial?: string) {
+  const norm = normalizeWorldE164(raw, defaultDial);
+  return norm.valid ? norm.e164 : "";
 }
 
-export function voiceTwiml(to: string) {
+export function voiceTwiml(to: string, defaultDial?: string) {
   const caller = env("TWILIO_CALLER_ID") ?? "";
-  const dest = toE164(to);
+  const dest = toE164(to, defaultDial);
   const from = toE164(caller);
-  if (!dest || !from) return `<?xml version="1.0" encoding="UTF-8"?><Response><Say>That number cannot be called.</Say></Response>`;
-  return `<?xml version="1.0" encoding="UTF-8"?><Response><Dial callerId="${from}" answerOnBridge="true"><Number>${dest}</Number></Dial></Response>`;
+  if (!dest || !from) {
+    return `<?xml version="1.0" encoding="UTF-8"?><Response><Say>That number cannot be called.</Say></Response>`;
+  }
+  return `<?xml version="1.0" encoding="UTF-8"?><Response><Dial callerId="${escapeXml(from)}" answerOnBridge="true" timeout="35"><Number>${escapeXml(dest)}</Number></Dial></Response>`;
 }
 
 export function twilioSigned(url: string, params: Record<string, string>, signature: string) {
