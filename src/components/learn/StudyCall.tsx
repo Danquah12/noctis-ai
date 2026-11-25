@@ -4,6 +4,7 @@ import { defaultIceServers } from "@/lib/multiplayer/p2p";
 import { useFeedStore } from "@/lib/feed-store";
 import { holdMeeting, silenceStage } from "@/lib/playback";
 import { dialHref, studyChat, studyLiveBeat, studyLiveLeave, studyLiveSignal, studyRing, studyRoom, studySavePhone, studySend } from "@/lib/study-group-api";
+import { createTabPeerId } from "@/lib/world-call-client";
 import { buildSmsCallInviteUrl, buildWhatsAppCallInviteUrl } from "@/lib/world-dial-codes";
 
 export interface CallToolbarActions {
@@ -62,11 +63,7 @@ export function StudyCall({
 }) {
   const isWorld = transport === "world";
   const meet = askedMeet || video || isWorld;
-  const [guestId] = useState(() =>
-    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-      ? `caller-${crypto.randomUUID().slice(0, 8)}`
-      : `caller-${Math.random().toString(36).slice(2, 10)}`,
-  );
+  const [guestId] = useState(() => createTabPeerId());
   const activeSelfId = selfId || guestId;
   const localRef = useRef<HTMLVideoElement>(null);
   const [remotes, setRemotes] = useState<Remote[]>([]);
@@ -1569,6 +1566,7 @@ function Meet({
   }
   return (
     <div data-meeting="" className="flex h-full min-h-0 flex-col bg-[#0c0c0c] text-white">
+      <RemoteAudioPlayer remotes={remotes} hear={hear} />
       <div className="flex min-h-0 flex-1 flex-col">
         <div className="relative min-h-0 min-w-0 flex-1">
           <div className="absolute top-3 left-4 z-30 flex items-center gap-2">
@@ -1658,7 +1656,8 @@ function Meet({
                     href={whatsappHref}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 rounded-full bg-[#25D366] px-3 py-1 text-[11px] font-semibold text-black hover:opacity-90"
+                    style={{ backgroundColor: "#25D366", color: "#07140c" }}
+                    className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold hover:opacity-90"
                   >
                     <Share2 className="size-3.5" />
                     WhatsApp
@@ -1698,7 +1697,7 @@ function Meet({
               )}
             </div>
           ) : stageRemote ? (
-            <RemoteTile fill live={stageRemote.id === speaker} name={stageRemote.name} stream={stageRemote.stream} quiet={!hear} />
+            <RemoteTile fill live={stageRemote.id === speaker} name={stageRemote.name} stream={stageRemote.stream} quiet={true} />
           ) : (
             <div className={`absolute inset-2 grid place-items-center rounded-2xl bg-zinc-900 sm:inset-3 ${pin === speaker ? "border-4 border-[#34a853]" : ""}`}>
               <div className="text-center">
@@ -1733,7 +1732,7 @@ function Meet({
                   className={`relative h-full w-40 shrink-0 overflow-hidden rounded-xl bg-[#202124] text-left ${talking ? "ring-[3px] ring-[#34a853]" : pin === person.id ? "ring-2 ring-white/70" : ""}`}
                 >
                   {remote && picture ? (
-                    <RemoteTile tall name={remote.name} stream={remote.stream} quiet={!hear || person.id === stageRemote?.id} />
+                    <RemoteTile tall name={remote.name} stream={remote.stream} quiet={true} />
                   ) : (
                     <span className="grid h-full place-items-center">
                       <span className="grid size-12 place-items-center rounded-2xl text-xl font-semibold text-white" style={{ background: tileTint(person.name) }}>
@@ -1922,7 +1921,8 @@ function Meet({
               href={whatsappHref}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-full bg-[#25D366] px-3 py-1 text-[11px] font-semibold text-black hover:opacity-90"
+              style={{ backgroundColor: "#25D366", color: "#07140c" }}
+              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold hover:opacity-90"
             >
               <Share2 className="size-3.5" />
               WhatsApp invite
@@ -2057,9 +2057,94 @@ function Stage({ children, gold = false }: { children: ReactNode; gold?: boolean
   return <div className={`relative aspect-video w-full overflow-hidden rounded-xl bg-black ${gold ? "border-4 border-[#e4b86a]" : ""}`}>{children}</div>;
 }
 
+function RemoteAudioPlayer({ remotes, hear }: { remotes: Remote[]; hear: boolean }) {
+  const [needsTap, setNeedsTap] = useState(false);
+  const refs = useRef(new Map<string, HTMLAudioElement>());
+
+  const retryAll = () => {
+    refs.current.forEach((el) => {
+      el.muted = !hear;
+      void el
+        .play()
+        .then(() => setNeedsTap(false))
+        .catch(() => setNeedsTap(true));
+    });
+  };
+
+  if (!remotes.length) return null;
+  return (
+    <>
+      {remotes.map((remote) => (
+        <RemoteAudioTrack
+          key={remote.id}
+          remote={remote}
+          hear={hear}
+          registerEl={(el) => {
+            if (el) refs.current.set(remote.id, el);
+            else refs.current.delete(remote.id);
+          }}
+          onBlocked={() => setNeedsTap(true)}
+          onPlaying={() => setNeedsTap(false)}
+        />
+      ))}
+      {needsTap && hear ? (
+        <button
+          type="button"
+          onClick={retryAll}
+          className="fixed top-14 left-1/2 z-40 -translate-x-1/2 rounded-full bg-emerald-500 px-4 py-1.5 text-xs font-semibold text-black shadow-lg hover:bg-emerald-400"
+        >
+          Tap to enable call audio
+        </button>
+      ) : null}
+    </>
+  );
+}
+
+function RemoteAudioTrack({
+  remote,
+  hear,
+  registerEl,
+  onBlocked,
+  onPlaying,
+}: {
+  remote: Remote;
+  hear: boolean;
+  registerEl: (el: HTMLAudioElement | null) => void;
+  onBlocked: () => void;
+  onPlaying: () => void;
+}) {
+  const ref = useRef<HTMLAudioElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    registerEl(el);
+    if (!el) return () => registerEl(null);
+    el.srcObject = remote.stream;
+    el.muted = !hear;
+    el.volume = 1;
+    const play = () => {
+      el.muted = !hear;
+      if (!remote.stream.getAudioTracks().length) return;
+      void el
+        .play()
+        .then(() => onPlaying())
+        .catch(() => onBlocked());
+    };
+    play();
+    const tracks = remote.stream.getAudioTracks();
+    tracks.forEach((t) => t.addEventListener("unmute", play));
+    return () => {
+      tracks.forEach((t) => t.removeEventListener("unmute", play));
+      el.srcObject = null;
+      registerEl(null);
+    };
+  }, [remote.stream, hear]);
+  return <audio ref={ref} autoPlay playsInline className="hidden" />;
+}
+
 function RemoteTile({ name, stream, fill = false, tall = false, quiet = false, live = false }: { name: string; stream: MediaStream; fill?: boolean; tall?: boolean; quiet?: boolean; live?: boolean }) {
   const ref = useRef<HTMLVideoElement>(null);
   const [needsTap, setNeedsTap] = useState(false);
+  const hasLiveVideo = videoLive(stream);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -2069,7 +2154,7 @@ function RemoteTile({ name, stream, fill = false, tall = false, quiet = false, l
     el.volume = 1;
     el.muted = quiet;
     const start = () => {
-      if (!el.paused && el.readyState >= 2 && el.videoWidth > 0) {
+      if (!el.paused && el.readyState >= 2) {
         el.muted = quiet;
         setNeedsTap(false);
         return;
@@ -2084,8 +2169,8 @@ function RemoteTile({ name, stream, fill = false, tall = false, quiet = false, l
           el.muted = true;
           void el
             .play()
-            .then(() => setNeedsTap(true))
-            .catch(() => setNeedsTap(true));
+            .then(() => setNeedsTap(!quiet))
+            .catch(() => setNeedsTap(!quiet));
         });
     };
     start();
@@ -2102,11 +2187,25 @@ function RemoteTile({ name, stream, fill = false, tall = false, quiet = false, l
       <video
         ref={ref}
         autoPlay
+        muted={quiet}
         playsInline
         disablePictureInPicture
-        className={`absolute inset-0 h-full w-full bg-black ${fill || framed ? "object-contain" : "object-cover"}`}
+        className={hasLiveVideo ? `absolute inset-0 h-full w-full bg-black ${fill || framed ? "object-contain" : "object-cover"}` : "hidden"}
       />
-      {needsTap ? (
+      {!hasLiveVideo ? (
+        <div className="grid h-full place-items-center bg-gradient-to-b from-[#171923] via-[#11131a] to-[#0c0c0c] px-4 text-center text-white">
+          <div>
+            <div className={`mx-auto grid size-24 place-items-center rounded-full border bg-white/10 text-4xl font-semibold ${live ? "border-[#34a853] ring-4 ring-[#34a853]/30" : "border-white/15"}`}>
+              {(name || "?").slice(0, 1).toUpperCase()}
+            </div>
+            <p className="mt-4 text-2xl font-semibold tracking-tight">{name}</p>
+            <p className="mt-1 text-xs uppercase tracking-[0.2em] text-emerald-400">
+              Connected · HD Internet Audio ($0)
+            </p>
+          </div>
+        </div>
+      ) : null}
+      {needsTap && !quiet ? (
         <button
           type="button"
           onClick={() => {

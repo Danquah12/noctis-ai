@@ -6,6 +6,12 @@ export const Route = createFileRoute("/api/call-room")({
       GET: async ({ request }) => {
         try {
           const url = new URL(request.url);
+          if (url.searchParams.get("vapid") === "1") {
+            const { getWorldPushPublicKey } = await import("@/lib/world-call.server");
+            const res = await getWorldPushPublicKey();
+            return Response.json(res, { headers: { "cache-control": "no-store" } });
+          }
+
           const lookup = (url.searchParams.get("lookup") ?? "").trim();
           if (lookup) {
             const defaultDial = (url.searchParams.get("dial") ?? "").trim() || undefined;
@@ -17,7 +23,7 @@ export const Route = createFileRoute("/api/call-room")({
           const roomId = (url.searchParams.get("roomId") ?? "").trim();
           if (!roomId) {
             return Response.json(
-              { ok: false, error: "roomId or lookup query parameter is required" },
+              { ok: false, error: "roomId, lookup, or vapid=1 query parameter is required" },
               { status: 400, headers: { "cache-control": "no-store" } },
             );
           }
@@ -97,6 +103,16 @@ export const Route = createFileRoute("/api/call-room")({
               displayName: typeof body.displayName === "string" ? body.displayName : undefined,
               countryIso: typeof body.countryIso === "string" ? body.countryIso : undefined,
               defaultDial: typeof body.defaultDial === "string" ? body.defaultDial : undefined,
+            });
+            return Response.json(res, { headers: { "cache-control": "no-store" } });
+          }
+
+          if (action === "save_push") {
+            const res = await mod.saveWorldPushSubscription({
+              phoneE164: String(body.phoneE164 ?? ""),
+              deviceId: String(body.deviceId ?? ""),
+              displayName: typeof body.displayName === "string" ? body.displayName : undefined,
+              subscription: body.subscription,
             });
             return Response.json(res, { headers: { "cache-control": "no-store" } });
           }

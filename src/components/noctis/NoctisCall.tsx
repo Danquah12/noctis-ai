@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ClipboardEvent } from "react";
-import { Check, ChevronDown, Delete, Globe, Info, Link2, Mic, MicOff, Phone, PhoneOff, Search, Smartphone, UserPlus, Video, X } from "lucide-react";
+import { BookmarkPlus, Check, ChevronDown, Copy, Delete, Globe, Info, Link2, Mic, MicOff, Phone, PhoneOff, Search, Smartphone, UserPlus, Video, X } from "lucide-react";
 import { StudyCall, type CallToolbarActions } from "@/components/learn/StudyCall";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { studyClearRing, studyInvite, studyJoined, studyOpenCall, studyRing, studyRings, studyRoom } from "@/lib/study-group-api";
@@ -7,9 +7,18 @@ import { voipReady, voipToken } from "@/lib/voip-api";
 import type { VoipStatus } from "@/lib/voip.server";
 import {
   clearWorldPhoneProfile,
+  createTabPeerId,
   getOrCreateWorldDeviceId,
+  getRecentWorldCalls,
   getSavedWorldPhoneProfile,
+  getWorldContacts,
+  recordWorldCall,
+  removeWorldContact,
+  saveWorldContact,
   saveWorldPhoneProfile,
+  subscribeDeviceToWebPush,
+  type RecentWorldCall,
+  type WorldContact,
   type WorldPhoneProfile,
 } from "@/lib/world-call-client";
 import {
@@ -45,7 +54,7 @@ type Live = {
 type Ring = { id: number; groupId: string; from: string; title: string; interest: string };
 type Line = { hangup: () => void; mute: (on: boolean) => void; sendDigits?: (digits: string) => void };
 type Pstn = { number: string; line: Line };
-type DirectoryHit = { e164: string; registered: boolean; displayName: string; online: boolean };
+type DirectoryHit = { e164: string; registered: boolean; displayName: string; online: boolean; pushReady?: boolean };
 
 const KEYS: [string, string][] = [
   ["1", ""],
@@ -99,6 +108,7 @@ export function NoctisCall({
   onVibe,
   startVideo = false,
   join = "",
+  openRegister = false,
   onRecorded,
   callActions,
 }: {
@@ -106,22 +116,30 @@ export function NoctisCall({
   onVibe: () => void;
   startVideo?: boolean;
   join?: string;
+  openRegister?: boolean;
   onRecorded?: (url: string) => void;
   callActions?: CallToolbarActions;
 }) {
   const { user } = useCurrentUserState();
-  const [guestPeerId] = useState(() => getOrCreateWorldDeviceId());
+  const [worldPeerId] = useState(() => createTabPeerId());
   const [people, setPeople] = useState<Person[]>([]);
   const [countryIso, setCountryIso] = useState<string>(() => detectDefaultCountryIso());
   const [pickerOpen, setPickerOpen] = useState(false);
   const [countryQuery, setCountryQuery] = useState("");
   const [infoOpen, setInfoOpen] = useState(false);
-  const [myPhoneOpen, setMyPhoneOpen] = useState(false);
+  const [myPhoneOpen, setMyPhoneOpen] = useState(
+    () => openRegister || (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("register") === "1"),
+  );
   const [myPhoneProfile, setMyPhoneProfile] = useState<WorldPhoneProfile | null>(() => getSavedWorldPhoneProfile());
   const [myPhoneInput, setMyPhoneInput] = useState(() => getSavedWorldPhoneProfile()?.phoneE164 ?? "");
   const [myNameInput, setMyNameInput] = useState(() => getSavedWorldPhoneProfile()?.displayName ?? "");
   const [myPhoneBusy, setMyPhoneBusy] = useState(false);
   const [myPhoneNote, setMyPhoneNote] = useState<string | null>(null);
+  const [copiedSetup, setCopiedSetup] = useState(false);
+  const [contacts, setContacts] = useState<WorldContact[]>(() => getWorldContacts());
+  const [recents, setRecents] = useState<RecentWorldCall[]>(() => getRecentWorldCalls());
+  const [savingContact, setSavingContact] = useState(false);
+  const [contactNameInput, setContactNameInput] = useState("");
   const [dirLookup, setDirLookup] = useState<DirectoryHit | null>(null);
   const [number, setNumber] = useState("");
   const [note, setNote] = useState<string | null>(null);
@@ -145,6 +163,7 @@ export function NoctisCall({
   const selectedCountry = findCountryByIso(countryIso) ?? WORLD_DIAL_CODES[0]!;
   const normalized = normalizeWorldE164(number, selectedCountry.dial);
   const matched = people.find((person) => samePhone(normalized.e164 || number, person.phone));
+  const savedContactMatch = normalized.valid ? contacts.find((c) => c.phoneE164 === normalized.e164) : undefined;
   const filteredCountries = searchWorldCountries(countryQuery);
 
   function playDtmf(key: string) {
@@ -178,6 +197,7 @@ export function NoctisCall({
   useEffect(() => {
     if (!normalized.valid || !normalized.e164) {
       setDirLookup(null);
+      setSavingContact(false);
       return;
     }
     const targetE164 = normalized.e164;
@@ -185,13 +205,14 @@ export function NoctisCall({
     const timer = window.setTimeout(() => {
       void fetch(`/api/call-room?lookup=${encodeURIComponent(targetE164)}`)
         .then((res) => (res.ok ? res.json() : null))
-        .then((hit: { registered?: boolean; phoneE164?: string; displayName?: string; online?: boolean } | null) => {
+        .then((hit: { registered?: boolean; phoneE164?: string; displayName?: string; online?: boolean; pushReady?: boolean } | null) => {
           if (stop || !hit) return;
           setDirLookup({
             e164: hit.phoneE164 || targetE164,
             registered: Boolean(hit.registered),
             displayName: hit.displayName || "",
             online: Boolean(hit.online),
+            pushReady: Boolean(hit.pushReady),
           });
         })
         .catch(() => undefined);
@@ -430,7 +451,7 @@ export function NoctisCall({
   }
 
   useEffect(() => {
-    if (live || ring || pstn || pickerOpen || myPhoneOpen) return;
+    if (live || ring || pstn || pickerOpen || myPhoneOpen || savingContact) return;
     function onKeyDown(event: KeyboardEvent) {
       const target = event.target as HTMLElement | null;
       if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) return;
@@ -497,12 +518,43 @@ export function NoctisCall({
       setMyPhoneProfile(nextProfile);
       setMyPhoneInput(nextProfile.phoneE164);
       setMyNameInput(nextProfile.displayName);
-      setMyPhoneNote(`Registered ${nextProfile.phoneE164} · Ready for $0 direct rings!`);
+
+      const pushRes = await subscribeDeviceToWebPush(nextProfile.phoneE164, deviceId, nextProfile.displayName);
+      if (pushRes.ok) {
+        setMyPhoneNote(`Registered ${nextProfile.phoneE164} · Background Web Push & open-tab ringing active ($0)!`);
+      } else {
+        setMyPhoneNote(`Registered ${nextProfile.phoneE164} · Open-tab ringing active (${pushRes.reason || "grant notifications for background push"}).`);
+      }
     } catch (caught) {
       setMyPhoneNote(caught instanceof Error ? caught.message : "Registration failed");
     } finally {
       setMyPhoneBusy(false);
     }
+  }
+
+  async function copySetupLink() {
+    if (typeof window === "undefined") return;
+    const link = `${window.location.origin}/noctis?register=1`;
+    await navigator.clipboard?.writeText(link).catch(() => undefined);
+    setCopiedSetup(true);
+    window.setTimeout(() => setCopiedSetup(false), 2400);
+  }
+
+  function handleSaveSpeedContact() {
+    if (!normalized.valid || !normalized.e164) return;
+    const name =
+      contactNameInput.trim() ||
+      (dirLookup?.e164 === normalized.e164 && dirLookup.displayName) ||
+      normalized.country?.name ||
+      normalized.e164;
+    const next = saveWorldContact({
+      phoneE164: normalized.e164,
+      name: name.slice(0, 40),
+      countryIso: normalized.country?.iso || selectedCountry.iso,
+    });
+    setContacts(next);
+    setSavingContact(false);
+    setContactNameInput("");
   }
 
   async function startWorldCall(targetE164: string, withVideo: boolean) {
@@ -514,8 +566,16 @@ export function NoctisCall({
         : withVideo
           ? "Global Video Call"
           : "Global Voice Call";
-    const peerId = user?.id && !user.isDevFallback ? user.id : guestPeerId;
     const hostName = myPhoneProfile?.displayName || user?.displayName?.trim() || "Noctis Caller";
+    if (targetE164) {
+      setRecents(
+        recordWorldCall({
+          phoneE164: targetE164,
+          name: savedContactMatch?.name || dirLookup?.displayName || targetE164,
+          mode: withVideo ? "video" : "voice",
+        }),
+      );
+    }
     try {
       const res = await fetch("/api/call-room", {
         method: "POST",
@@ -525,7 +585,7 @@ export function NoctisCall({
           title: label,
           mode: withVideo ? "video" : "voice",
           targetE164,
-          hostPeerId: peerId,
+          hostPeerId: worldPeerId,
           hostName,
         }),
       });
@@ -569,7 +629,7 @@ export function NoctisCall({
         groupId: json.id,
         title: label,
         video: withVideo,
-        name: directRingName || targetE164 || label,
+        name: directRingName || savedContactMatch?.name || targetE164 || label,
         userId: "",
         transport: "world",
         targetE164,
@@ -803,7 +863,7 @@ export function NoctisCall({
   }
 
   if (live) {
-    const activeSelfId = user?.id && !user.isDevFallback ? user.id : guestPeerId;
+    const activeSelfId = live.transport === "world" ? worldPeerId : user?.id && !user.isDevFallback ? user.id : worldPeerId;
     return (
       <div className="relative h-full min-h-0 bg-black">
         <StudyCall
@@ -853,6 +913,14 @@ export function NoctisCall({
       </div>
     );
   }
+
+  const quickEntries: { phoneE164: string; label: string; isContact: boolean }[] = [
+    ...contacts.map((c) => ({ phoneE164: c.phoneE164, label: c.name, isContact: true })),
+    ...recents
+      .filter((r) => !contacts.some((c) => c.phoneE164 === r.phoneE164))
+      .slice(0, 6)
+      .map((r) => ({ phoneE164: r.phoneE164, label: r.name, isContact: false })),
+  ].slice(0, 8);
 
   return (
     <div
@@ -908,10 +976,10 @@ export function NoctisCall({
         {myPhoneOpen ? (
           <div
             data-testid="my-number-drawer"
-            className="mx-auto mb-2 w-[min(24rem,calc(100%-2rem))] rounded-2xl border border-emerald-400/30 bg-[#12141a]/95 p-3 text-xs text-zinc-200 shadow-2xl backdrop-blur-md"
+            className="mx-auto mb-2 w-[min(25rem,calc(100%-2rem))] rounded-2xl border border-emerald-400/30 bg-[#12141a]/95 p-3 text-xs text-zinc-200 shadow-2xl backdrop-blur-md"
           >
             <div className="flex items-center justify-between gap-2">
-              <p className="font-semibold text-white">Register Your Phone ($0 WhatsApp-Style)</p>
+              <p className="font-semibold text-white">Register This Device ($0 WhatsApp-Style)</p>
               <button
                 type="button"
                 onClick={() => setMyPhoneOpen(false)}
@@ -922,13 +990,13 @@ export function NoctisCall({
               </button>
             </div>
             <p className="mt-1 text-[11px] text-zinc-400">
-              Register this phone or browser to receive instant $0 incoming Noctis calls when anyone dials your number.
+              Save your phone number on this phone or laptop to receive free $0 Noctis rings (with background Web Push notifications).
             </p>
             <div className="mt-2.5 space-y-2">
               <input
                 value={myNameInput}
                 onChange={(e) => setMyNameInput(e.target.value)}
-                placeholder="Your name (shown when ringing)"
+                placeholder="Your name (shown when calling)"
                 className="w-full rounded-xl border border-white/10 bg-black/50 px-3 py-2 text-xs text-white outline-none placeholder:text-zinc-500"
               />
               <input
@@ -948,6 +1016,15 @@ export function NoctisCall({
                   <Check className="size-3.5" />
                   {myPhoneBusy ? "Saving…" : "Save & Enable Ringing"}
                 </button>
+                <button
+                  type="button"
+                  onClick={() => void copySetupLink()}
+                  className="inline-flex items-center gap-1 rounded-xl bg-white/10 px-2.5 py-2 text-[11px] text-zinc-200 hover:bg-white/20"
+                  title="Copy 1-tap setup link for your phone"
+                >
+                  <Copy className="size-3.5" />
+                  {copiedSetup ? "Copied" : "Phone link"}
+                </button>
                 {myPhoneProfile ? (
                   <button
                     type="button"
@@ -956,7 +1033,7 @@ export function NoctisCall({
                       setMyPhoneProfile(null);
                       setMyPhoneNote("Removed this device from the Noctis directory.");
                     }}
-                    className="rounded-xl bg-white/10 px-3 py-2 text-xs text-zinc-300 hover:bg-white/20"
+                    className="rounded-xl bg-white/10 px-2.5 py-2 text-xs text-zinc-300 hover:bg-white/20"
                   >
                     Clear
                   </button>
@@ -971,7 +1048,7 @@ export function NoctisCall({
           <div className="mx-auto mb-2 w-[min(26rem,calc(100%-2rem))] rounded-2xl border border-white/15 bg-[#121318]/95 p-3 text-xs text-zinc-300 shadow-xl backdrop-blur-md">
             <p className="font-semibold text-white">Worldwide $0 Internet Calling</p>
             <p className="mt-1 text-[11px] text-zinc-400">
-              100% free WebRTC voice & video across all {voipDetails?.countriesSupported ?? WORLD_DIAL_CODES.length}+ countries. Register {"\"My Number\""} on any device for WhatsApp-style direct ringing, or share the call link for instant browser join.
+              100% free WebRTC voice & video across all {voipDetails?.countriesSupported ?? WORLD_DIAL_CODES.length}+ countries. Register {"\"My Number\""} on any phone or laptop for direct WhatsApp-style ringing + background push notifications.
             </p>
             {internet ? (
               <p className="mt-1.5 text-[11px] text-emerald-300">
@@ -1055,24 +1132,88 @@ export function NoctisCall({
           ) : normalized.emergency ? (
             <p className="mt-1 text-xs text-amber-300">Emergency service · opens device dialer</p>
           ) : number ? (
-            dirLookup && dirLookup.e164 === normalized.e164 && dirLookup.registered ? (
-              <p className="mt-1 text-xs font-medium text-emerald-300">
-                On Noctis ({dirLookup.displayName}){dirLookup.online ? " · Online" : ""} · Free Direct Ring ($0)
-              </p>
-            ) : (
-              <p className="mt-1 text-xs text-zinc-300">
-                {normalized.country?.flag ?? selectedCountry.flag}{" "}
-                {normalized.country?.name ?? selectedCountry.name}
-                {normalized.valid ? ` · Ready (${normalized.e164} · $0 Link Call)` : " · Enter 7–15 digits"}
-              </p>
-            )
+            <div className="mt-1 flex flex-wrap items-center justify-center gap-2">
+              {dirLookup && dirLookup.e164 === normalized.e164 && dirLookup.registered ? (
+                <p className="text-xs font-medium text-emerald-300">
+                  On Noctis ({dirLookup.displayName}){dirLookup.online ? " · Online" : dirLookup.pushReady ? " · Push Ready" : ""} · Free Direct Ring ($0)
+                </p>
+              ) : (
+                <p className="text-xs text-zinc-300">
+                  {normalized.country?.flag ?? selectedCountry.flag}{" "}
+                  {normalized.country?.name ?? selectedCountry.name}
+                  {normalized.valid ? ` · Ready (${normalized.e164} · $0 Link Call)` : " · Enter 7–15 digits"}
+                </p>
+              )}
+              {normalized.valid && !savedContactMatch ? (
+                <button
+                  type="button"
+                  data-testid="add-speed-contact-btn"
+                  onClick={() => {
+                    setContactNameInput(dirLookup?.displayName || "");
+                    setSavingContact((v) => !v);
+                  }}
+                  className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-0.5 text-[10px] font-semibold text-zinc-100 hover:bg-white/25"
+                >
+                  <BookmarkPlus className="size-3" />
+                  Save contact
+                </button>
+              ) : null}
+            </div>
           ) : (
             <p className="mt-1 text-[11px] text-zinc-400">
               Hold 0 for + · Example: +{selectedCountry.dial} {selectedCountry.example}
             </p>
           )}
+          {savingContact && normalized.valid ? (
+            <div className="mt-2 flex items-center gap-1.5 rounded-full border border-white/15 bg-black/70 px-3 py-1 backdrop-blur-md">
+              <input
+                value={contactNameInput}
+                onChange={(e) => setContactNameInput(e.target.value)}
+                placeholder="Contact name"
+                autoFocus
+                className="w-32 bg-transparent text-xs text-white outline-none placeholder:text-zinc-500"
+              />
+              <button
+                type="button"
+                data-testid="confirm-save-contact-btn"
+                onClick={handleSaveSpeedContact}
+                className="rounded-full bg-emerald-500 px-2.5 py-0.5 text-[11px] font-semibold text-black hover:bg-emerald-400"
+              >
+                Save
+              </button>
+            </div>
+          ) : null}
           {note ? <p className="mt-1 text-center text-xs text-[#e4b86a]">{note}</p> : null}
         </div>
+
+        {quickEntries.length > 0 ? (
+          <div data-testid="speed-dial-strip" className="mx-auto mt-2 flex max-w-md shrink-0 flex-wrap items-center justify-center gap-1.5 px-4">
+            {quickEntries.map((item) => (
+              <div key={item.phoneE164} className="inline-flex items-center rounded-full border border-white/15 bg-black/50 pl-2.5 pr-1.5 py-1 text-[11px] text-zinc-200 backdrop-blur-sm">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNote(null);
+                    setNumber(item.phoneE164);
+                  }}
+                  className="hover:text-white"
+                >
+                  {item.label}
+                </button>
+                {item.isContact ? (
+                  <button
+                    type="button"
+                    aria-label={`Remove ${item.label}`}
+                    onClick={() => setContacts(removeWorldContact(item.phoneE164))}
+                    className="ml-1.5 text-zinc-500 hover:text-zinc-200"
+                  >
+                    <X className="size-3" />
+                  </button>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        ) : null}
 
         {people.length ? (
           <div className="mt-2 flex shrink-0 gap-3 overflow-x-auto px-4 pb-1">

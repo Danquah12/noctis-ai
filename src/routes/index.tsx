@@ -18,9 +18,11 @@ function RedirectToNoctis() {
     const params = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
     const join = params?.get("join") ?? undefined;
     const mode = params?.get("mode") ?? undefined;
+    const register = params?.get("register") ?? undefined;
     const search: Record<string, string> = {};
     if (join) search.join = join;
     if (mode) search.mode = mode;
+    if (register) search.register = register;
     void router.navigate({ to: "/noctis", search, replace: true });
   }, [router]);
   return (

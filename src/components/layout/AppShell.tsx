@@ -64,6 +64,13 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    if (params.get("register") === "1") {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("register");
+      window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+      useFeedStore.getState().openModal({ type: "phone", video: false, register: true });
+      return;
+    }
     const id = params.get("join");
     if (!id || !/^[0-9a-f-]{36}$/i.test(id)) return;
     let cancelled = false;

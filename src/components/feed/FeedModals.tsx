@@ -49,7 +49,12 @@ export function FeedModals() {
       />
       <AlertSheet open={modal.type === "alerts"} page={modal.type === "alerts" ? modal.page : undefined} />
       <StudyCalls open={modal.type === "calls"} />
-      <PhoneSheet open={modal.type === "phone"} video={modal.type === "phone" && Boolean(modal.video)} join={modal.type === "phone" ? (modal.join ?? "") : ""} />
+      <PhoneSheet
+        open={modal.type === "phone"}
+        video={modal.type === "phone" && Boolean(modal.video)}
+        join={modal.type === "phone" ? (modal.join ?? "") : ""}
+        openRegister={modal.type === "phone" && Boolean(modal.register)}
+      />
     </>
   );
 }

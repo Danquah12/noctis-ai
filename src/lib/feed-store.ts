@@ -198,7 +198,7 @@ export type UiModal =
   | { type: "video"; postId: string; title?: string; caption?: string; youtubeId?: string }
   | { type: "alerts"; page?: "explain" | "explore" | "versus" | "prefs" | "algo" | "weights" | "diversity" | "spread" }
   | { type: "calls" }
-  | { type: "phone"; video?: boolean; join?: string };
+  | { type: "phone"; video?: boolean; join?: string; register?: boolean };
 
 type HeartBurst = { x: number; y: number; id: number } | null;
 

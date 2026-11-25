@@ -45,6 +45,13 @@ async function ready() {
     last_seen_at timestamptz not null default now(),
     created_at timestamptz not null default now()
   )`);
+  await sql.query(`alter table world_call_directory add column if not exists push_subscription text`);
+  await sql.query(`create table if not exists world_call_vapid (
+    id text primary key,
+    public_key text not null,
+    private_key text not null,
+    created_at timestamptz not null default now()
+  )`);
   await sql.query(`create table if not exists world_call_ring (
     id serial primary key,
     room_id text not null references world_call_room (id) on delete cascade,
@@ -80,6 +87,76 @@ function cleanPhoneE164(raw: unknown, defaultDial?: string): string {
   if (E164_RE.test(value)) return value;
   const norm = normalizeWorldE164(value, defaultDial);
   return norm.valid ? norm.e164 : "";
+}
+
+async function getOrCreateVapidKeys(sql: Awaited<ReturnType<typeof getSql>>) {
+  const envPub = process.env.VAPID_PUBLIC_KEY?.trim();
+  const envPriv = process.env.VAPID_PRIVATE_KEY?.trim();
+  if (envPub && envPriv) {
+    return { publicKey: envPub, privateKey: envPriv };
+  }
+  const existing = await sql<{ public_key: string; private_key: string }>`
+    select public_key, private_key from world_call_vapid where id = 'default' limit 1
+  `;
+  if (existing.length) {
+    return { publicKey: existing[0]!.public_key, privateKey: existing[0]!.private_key };
+  }
+  const webpushMod = await import("web-push");
+  const webpush = webpushMod.default ?? webpushMod;
+  const generated = webpush.generateVAPIDKeys();
+  await sql`
+    insert into world_call_vapid (id, public_key, private_key)
+    values ('default', ${generated.publicKey}, ${generated.privateKey})
+    on conflict (id) do nothing
+  `;
+  const confirmed = await sql<{ public_key: string; private_key: string }>`
+    select public_key, private_key from world_call_vapid where id = 'default' limit 1
+  `;
+  return {
+    publicKey: confirmed[0]?.public_key ?? generated.publicKey,
+    privateKey: confirmed[0]?.private_key ?? generated.privateKey,
+  };
+}
+
+export async function getWorldPushPublicKey() {
+  const sql = await ready();
+  const keys = await getOrCreateVapidKeys(sql);
+  return { ok: true as const, publicKey: keys.publicKey };
+}
+
+export async function saveWorldPushSubscription(input: {
+  phoneE164: string;
+  deviceId: string;
+  displayName?: string;
+  subscription: unknown;
+}) {
+  const phoneE164 = cleanPhoneE164(input.phoneE164);
+  if (!phoneE164) throw new Error("Valid E.164 phone number is required");
+  const deviceId = cleanPeerId(input.deviceId);
+  const displayName = cleanName(input.displayName, "Noctis User");
+  const sub = input.subscription as { endpoint?: unknown; keys?: { p256dh?: unknown; auth?: unknown } } | null;
+  if (
+    !sub ||
+    typeof sub.endpoint !== "string" ||
+    !sub.endpoint.startsWith("https://") ||
+    typeof sub.keys?.p256dh !== "string" ||
+    typeof sub.keys?.auth !== "string"
+  ) {
+    throw new Error("Invalid browser push subscription");
+  }
+  const subJson = JSON.stringify(sub);
+  if (subJson.length > 4096) throw new Error("Push subscription too large");
+
+  const sql = await ready();
+  await sql`
+    insert into world_call_directory (phone_e164, device_id, display_name, last_seen_at, push_subscription)
+    values (${phoneE164}, ${deviceId}, ${displayName}, now(), ${subJson})
+    on conflict (phone_e164) do update set
+      device_id = excluded.device_id,
+      push_subscription = excluded.push_subscription,
+      last_seen_at = now()
+  `;
+  return { ok: true as const, phoneE164 };
 }
 
 async function sweepStaleRooms(sql: Awaited<ReturnType<typeof getSql>>) {
@@ -310,6 +387,7 @@ export async function lookupWorldPhone(phoneRaw: string, defaultDial?: string) {
       displayName: "",
       countryIso: "",
       online: false,
+      pushReady: false,
     };
   }
   const sql = await ready();
@@ -317,12 +395,14 @@ export async function lookupWorldPhone(phoneRaw: string, defaultDial?: string) {
     phone_e164: string;
     display_name: string;
     country_iso: string | null;
+    push_subscription: string | null;
     online: boolean;
   }>`
     select
       phone_e164,
       display_name,
       country_iso,
+      push_subscription,
       (last_seen_at > now() - interval '90 seconds') as online
     from world_call_directory
     where phone_e164 = ${phoneE164}
@@ -336,6 +416,7 @@ export async function lookupWorldPhone(phoneRaw: string, defaultDial?: string) {
       displayName: "",
       countryIso: "",
       online: false,
+      pushReady: false,
     };
   }
   const row = rows[0]!;
@@ -346,6 +427,7 @@ export async function lookupWorldPhone(phoneRaw: string, defaultDial?: string) {
     displayName: row.display_name,
     countryIso: row.country_iso ?? "",
     online: Boolean(row.online),
+    pushReady: Boolean(row.push_subscription),
   };
 }
 
@@ -369,9 +451,10 @@ export async function ringWorldPhone(input: {
 
   const target = await sql<{
     display_name: string;
+    push_subscription: string | null;
     online: boolean;
   }>`
-    select display_name, (last_seen_at > now() - interval '90 seconds') as online
+    select display_name, push_subscription, (last_seen_at > now() - interval '90 seconds') as online
     from world_call_directory
     where phone_e164 = ${toPhoneE164}
     limit 1
@@ -387,11 +470,43 @@ export async function ringWorldPhone(input: {
     returning id
   `;
 
+  let pushSent = false;
+  const rawSub = target[0]!.push_subscription;
+  if (rawSub) {
+    try {
+      const sub = JSON.parse(rawSub);
+      const keys = await getOrCreateVapidKeys(sql);
+      const webpushMod = await import("web-push");
+      const webpush = webpushMod.default ?? webpushMod;
+      webpush.setVapidDetails("mailto:calls@dstrike.app", keys.publicKey, keys.privateKey);
+      await webpush.sendNotification(
+        sub,
+        JSON.stringify({
+          title: `Incoming Noctis ${mode === "video" ? "Video" : "Voice"} Call`,
+          body: `${fromName}${fromPhoneE164 ? ` (${fromPhoneE164})` : ""} · Tap Answer Call ($0)`,
+          roomId,
+          mode,
+          fromName,
+          fromPhoneE164,
+          url: `/noctis?join=${roomId}&mode=${mode}`,
+        }),
+        { TTL: 60, urgency: "high" },
+      );
+      pushSent = true;
+    } catch (err) {
+      const statusCode = (err as { statusCode?: number } | null)?.statusCode;
+      if (statusCode === 404 || statusCode === 410) {
+        await sql`update world_call_directory set push_subscription = null where phone_e164 = ${toPhoneE164}`;
+      }
+    }
+  }
+
   return {
     ok: true as const,
     ringId: Number(inserted[0]!.id),
     toDisplayName: target[0]!.display_name,
     online: Boolean(target[0]!.online),
+    pushSent,
   };
 }
 
