@@ -182,6 +182,18 @@ export async function handleForgeV2Request(request: Request): Promise<Response> 
           const mod = await import("../assistant/chat-bridge.server.ts");
           return typeof mod.isAssistantChatQuery === "function" ? "Universal Assistant v1.0 ready" : "unavailable";
         }),
+        probe("space", async () => {
+          const mod = await import("../noctis-space-universe.server.ts");
+          return typeof mod.executeSpaceUniverseQuery === "function" ? "Space/SWPC/JPL/ISS telemetry ready" : "unavailable";
+        }),
+        probe("earth", async () => {
+          const mod = await import("../noctis-earth-hazards.server.ts");
+          return typeof mod.executeEarthHazardsQuery === "function" ? "USGS/EONET/AQI hazards engine ready" : "unavailable";
+        }),
+        probe("nav", async () => {
+          const mod = await import("../noctis-global-nav.server.ts");
+          return typeof mod.executeGlobalNavQuery === "function" ? "METAR/Great-Circle nav engine ready" : "unavailable";
+        }),
       ]);
 
       const totalOk = routes.filter((r) => r.ok).length;

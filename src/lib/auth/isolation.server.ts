@@ -1,5 +1,5 @@
 import { getRequest } from "@tanstack/react-start/server";
-import { isAllowedSameSiteRequest } from "./isolation-policy";
+import { isAllowedSameSiteRequest } from "./isolation-policy.ts";
 
 export { isAllowedSameSiteRequest };
 

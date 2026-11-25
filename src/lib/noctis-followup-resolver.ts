@@ -18,6 +18,9 @@ export type FollowUpDomainTag =
   | "coding"
   | "website_builder"
   | "weather"
+  | "space_universe"
+  | "earth_hazards"
+  | "global_nav"
   | "legal"
   | "finance"
   | "scripture"
@@ -289,6 +292,21 @@ function detectDomainTag(text: string): FollowUpDomainTag {
     /\b(?:AC|AT|AU|CA|CM|CP|IA|IR|MA|MP|PE|PL|PM|PS|PT|RA|SA|SC|SI|SR)-\d{1,2}(?:\(\d{1,2}\))?(?![A-Za-z0-9_])/.test(sample)
   ) {
     return "rmf_grc";
+  }
+  if (
+    /\b(?:iss\s+(?:position|location|altitude|orbit)|space\s+weather|geomagnetic\s+storm|kp\s+index|hohmann\s+transfer|near[-\s]earth\s+(?:object|asteroid)|exoplanet\s+habitable\s+zone)\b/i.test(sample)
+  ) {
+    return "space_universe";
+  }
+  if (
+    /\b(?:usgs|earthquakes?|tsunami|nasa\s+eonet|\bus\s*aqi\b|\baqi\b|pm2\.?5|air\s+quality|active\s+wildfires?)\b/i.test(sample)
+  ) {
+    return "earth_hazards";
+  }
+  if (
+    /\b(?:metar|runway\s+\d{1,2}|crosswind|density\s+altitude|great[-\s]?circle\s+(?:distance|flight|route)|suez\s+canal|panama\s+canal)\b/i.test(sample)
+  ) {
+    return "global_nav";
   }
   if (
     /\b(?:will\s+it\s+rain|weather\s+forecast|7-day\s+weather|precipitation|rainfall|snowfall|thunderstorm|barometric|meteorolog(?:y|ical))\b/i.test(sample) &&

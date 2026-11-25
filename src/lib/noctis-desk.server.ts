@@ -1273,6 +1273,39 @@ async function executeVibeReply(
         return { text: finishText(withThink(ndkrsOut, "Executed NDKRS deterministic Fact-Lock rule."), "ndkrs_rule") };
       }
     }
+
+    if (intent.routeId === "space_universe") {
+      const { executeSpaceUniverseQuery } = await import("./noctis-space-universe.server.ts");
+      const spaceOut = await executeSpaceUniverseQuery(effectiveLatest);
+      return {
+        text: finishText(
+          withThink(spaceOut, `Explicit ${intent.overrideCommand || "/space"} override fetched live NOAA SWPC, NASA JPL CAD, and ISS orbital telemetry.`),
+          "space_universe",
+        ),
+      };
+    }
+
+    if (intent.routeId === "earth_hazards") {
+      const { executeEarthHazardsQuery } = await import("./noctis-earth-hazards.server.ts");
+      const earthOut = await executeEarthHazardsQuery(effectiveLatest);
+      return {
+        text: finishText(
+          withThink(earthOut, `Explicit ${intent.overrideCommand || "/earth"} override fetched live USGS seismic, NASA EONET, and Open-Meteo AQI feeds.`),
+          "earth_hazards",
+        ),
+      };
+    }
+
+    if (intent.routeId === "global_nav") {
+      const { executeGlobalNavQuery } = await import("./noctis-global-nav.server.ts");
+      const navOut = await executeGlobalNavQuery(effectiveLatest);
+      return {
+        text: finishText(
+          withThink(navOut, `Explicit ${intent.overrideCommand || "/nav"} override fetched live NOAA METAR & orthodromic navigation vectors.`),
+          "global_nav",
+        ),
+      };
+    }
   }
 
   const report = retrievalReport(effectiveKept, effectiveLatest);
@@ -1290,6 +1323,39 @@ async function executeVibeReply(
     const sol = solveScienceQuestion(effectiveLatest);
     return {
       text: finishText(withThink(formatScienceResponse(sol), "Executed deterministic scientific formula verification"), "science"),
+    };
+  }
+
+  if (!intent.override && intent.routeId === "space_universe") {
+    const { executeSpaceUniverseQuery } = await import("./noctis-space-universe.server.ts");
+    const spaceOut = await executeSpaceUniverseQuery(effectiveLatest);
+    return {
+      text: finishText(
+        withThink(spaceOut, "Fetched live NOAA SWPC geomagnetic index, NASA JPL NEO close approaches, ISS position, and orbital calculations."),
+        "space_universe",
+      ),
+    };
+  }
+
+  if (!intent.override && intent.routeId === "earth_hazards") {
+    const { executeEarthHazardsQuery } = await import("./noctis-earth-hazards.server.ts");
+    const earthOut = await executeEarthHazardsQuery(effectiveLatest);
+    return {
+      text: finishText(
+        withThink(earthOut, "Fetched live USGS earthquakes, NASA EONET natural hazards, and Open-Meteo atmospheric air quality telemetry."),
+        "earth_hazards",
+      ),
+    };
+  }
+
+  if (!intent.override && intent.routeId === "global_nav") {
+    const { executeGlobalNavQuery } = await import("./noctis-global-nav.server.ts");
+    const navOut = await executeGlobalNavQuery(effectiveLatest);
+    return {
+      text: finishText(
+        withThink(navOut, "Fetched live NOAA METAR airport telemetry and computed runway wind/density altitude and great-circle vectors."),
+        "global_nav",
+      ),
     };
   }
 

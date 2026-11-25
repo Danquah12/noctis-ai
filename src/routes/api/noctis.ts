@@ -73,6 +73,27 @@ export const Route = createFileRoute("/api/noctis")({
             { headers: CORS_HEADERS },
           );
         }
+        const spaceParam = url.searchParams.get("space");
+        if (spaceParam) {
+          const { executeSpaceUniverseQuery } = await import("@/lib/noctis-space-universe.server");
+          const q = url.searchParams.get("q") || (spaceParam === "1" ? "Live ISS position, NOAA Kp geomagnetic index, and upcoming NASA NEO close approaches" : spaceParam);
+          const markdown = await executeSpaceUniverseQuery(q);
+          return Response.json({ ok: true, routeId: "space_universe", query: q, markdown }, { headers: CORS_HEADERS });
+        }
+        const earthParam = url.searchParams.get("earth");
+        if (earthParam) {
+          const { executeEarthHazardsQuery } = await import("@/lib/noctis-earth-hazards.server");
+          const q = url.searchParams.get("q") || (earthParam === "1" ? "Live USGS earthquakes M4.5+, NASA EONET hazards, and air quality in Laurel, Maryland" : earthParam);
+          const markdown = await executeEarthHazardsQuery(q);
+          return Response.json({ ok: true, routeId: "earth_hazards", query: q, markdown }, { headers: CORS_HEADERS });
+        }
+        const navParam = url.searchParams.get("nav");
+        if (navParam) {
+          const { executeGlobalNavQuery } = await import("@/lib/noctis-global-nav.server");
+          const q = url.searchParams.get("q") || (navParam === "1" ? "Live METAR for KJFK and runway 31 crosswind" : `Live METAR and navigation brief for ${navParam}`);
+          const markdown = await executeGlobalNavQuery(q);
+          return Response.json({ ok: true, routeId: "global_nav", query: q, markdown }, { headers: CORS_HEADERS });
+        }
         if (url.searchParams.get("sast")) {
           const mode = url.searchParams.get("sast") || "repository";
           const {

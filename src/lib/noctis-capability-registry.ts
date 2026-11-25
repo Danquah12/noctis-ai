@@ -40,6 +40,9 @@ export type NoctisRouteEngineId =
   | "sovereign_physics"
   | "science"
   | "ndkrs_rule"
+  | "space_universe"
+  | "earth_hazards"
+  | "global_nav"
   | "general_chat";
 
 export type NoctisPanelGroup =
@@ -376,6 +379,33 @@ export const NOCTIS_SLASH_ROUTES: NoctisSlashRouteSpec[] = [
     quickSwitch: false,
   },
   {
+    command: "/space",
+    aliases: ["/astro", "/iss", "/orbit"],
+    routeId: "space_universe",
+    label: "Space · Orbital & SWPC",
+    description: "Live NOAA geomagnetic Kp index, ISS position, NASA JPL close-approach asteroids, Hohmann Δv & impact energy.",
+    targetPanel: "chat",
+    quickSwitch: true,
+  },
+  {
+    command: "/earth",
+    aliases: ["/quake", "/aqi", "/hazards"],
+    routeId: "earth_hazards",
+    label: "Earth · Hazards & AQI",
+    description: "Live USGS earthquakes, NASA EONET wildfires/volcanoes, city US AQI/PM2.5 & tsunami travel physics.",
+    targetPanel: "chat",
+    quickSwitch: true,
+  },
+  {
+    command: "/nav",
+    aliases: ["/metar", "/flight", "/maritime"],
+    routeId: "global_nav",
+    label: "Nav · Aviation & Sea",
+    description: "Live NOAA METAR airport weather, runway crosswind/density altitude & great-circle flight/sea routing.",
+    targetPanel: "chat",
+    quickSwitch: true,
+  },
+  {
     command: "/chat",
     aliases: ["/core"],
     routeId: "general_chat",
@@ -396,6 +426,9 @@ export const NOCTIS_API_ROUTES: NoctisApiRouteSpec[] = [
   { id: "nups", name: "NUPS Problem Solver API", basePath: "/api/v2/nups", statusPath: "/api/v2/nups/status", panelId: "console" },
   { id: "catalog", name: "Catalog 260 Capability API", basePath: "/api/v2/catalog", statusPath: "/api/v2/catalog/status", panelId: "console" },
   { id: "assistant", name: "Universal Assistant v1.0 API", basePath: "/api/v2/assistant", statusPath: "/api/v2/assistant/status", panelId: "assistant" },
+  { id: "space", name: "Space & Universe Live Telemetry API", basePath: "/api/noctis?space=1", statusPath: "/api/noctis?space=1", panelId: "chat" },
+  { id: "earth", name: "Earth Hazards & Air Quality API", basePath: "/api/noctis?earth=1", statusPath: "/api/noctis?earth=1", panelId: "chat" },
+  { id: "nav", name: "Aviation METAR & Global Navigation API", basePath: "/api/noctis?nav=KJFK", statusPath: "/api/noctis?nav=KJFK", panelId: "chat" },
   { id: "noctis", name: "Core Noctis Chat Endpoint", basePath: "/api/noctis", statusPath: "/api/v1/health", panelId: "chat" },
 ];
 

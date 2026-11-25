@@ -645,3 +645,75 @@ test("Routed response store persists, searches, retrieves by ID, and redacts fai
   assert.equal(redacted.prompt.includes("TOP SECRET"), false);
   assert.equal(redacted.prompt, "[REDACTED — Classification Boundary Gate]");
 });
+
+test("Global & Universe Bundle (/space, /earth, /nav) routes accurately with zero cross-domain collisions", () => {
+  const spaceCases = [
+    "Where is the ISS right now and what is the current NOAA SWPC Kp geomagnetic storm index?",
+    "Calculate Hohmann transfer delta-v from 400 km LEO to 35786 km GEO orbit",
+    "Estimate kinetic impact energy in megatons TNT for a 150m asteroid at 22 km/s and check NASA NEO close approaches",
+    "Compute exoplanet habitable zone bounds for a star with 2.5 solar luminosities",
+  ];
+  for (const p of spaceCases) {
+    assert.equal(classifyNoctisIntent(p).routeId, "space_universe", `Failed space routing: ${p}`);
+  }
+
+  const earthCases = [
+    "Show live USGS earthquakes M4.5+ and NASA EONET active wildfires",
+    "Check current US AQI, PM2.5, and wildfire smoke risk in Accra, Ghana",
+    "Calculate tsunami wave speed and ETA across 1500 km at 4000m ocean depth and M7.8 seismic moment energy",
+  ];
+  for (const p of earthCases) {
+    assert.equal(classifyNoctisIntent(p).routeId, "earth_hazards", `Failed earth routing: ${p}`);
+  }
+
+  const navCases = [
+    "Fetch live METAR for KJFK and compute runway 31L crosswind and density altitude",
+    "Calculate great-circle distance and jet flight time from KJFK to EGLL",
+    "Evaluate orthodromic maritime route distance from Port of Rotterdam to Port of Singapore via Suez Canal",
+  ];
+  for (const p of navCases) {
+    assert.equal(classifyNoctisIntent(p).routeId, "global_nav", `Failed nav routing: ${p}`);
+  }
+
+  // Strict non-regression collision guards
+  assert.equal(
+    classifyNoctisIntent("Calculate orbital rendezvous Clohessy-Wiltshire V-bar docking at 400 km altitude with 0.08 m/s closing velocity").routeId,
+    "sovereign_physics",
+  );
+  assert.equal(
+    classifyNoctisIntent("Compute InSAR Sentinel-1 critical baseline for 5.55 cm C-band and B_perp 85m").routeId,
+    "sovereign_physics",
+  );
+  assert.equal(
+    classifyNoctisIntent("Calculate the Schwarzschild event horizon radius for a 10 solar mass black hole").routeId,
+    "science",
+  );
+  assert.equal(
+    classifyNoctisIntent("Will it rain tomorrow in Laurel, Maryland?").routeId,
+    "weather",
+  );
+  assert.equal(
+    classifyNoctisIntent("Design and build Meridian Reefers global maritime cold-chain logistics and refrigerated vessel charter platform with live slot reservation and PostgreSQL tables").routeId,
+    "website_builder",
+  );
+  assert.equal(
+    classifyNoctisIntent("64yo asthmatic patient exposed to wildfire smoke presents with SpO2 85% and BP 88/54 mmHg. Immediate stabilization?").routeId,
+    "clinical",
+  );
+
+  // Explicit slash overrides
+  for (const [cmd, expected] of [
+    ["/space Kp index", "space_universe"],
+    ["/astro NEO list", "space_universe"],
+    ["/iss track", "space_universe"],
+    ["/earth quakes", "earth_hazards"],
+    ["/aqi Accra", "earth_hazards"],
+    ["/nav KJFK", "global_nav"],
+    ["/metar EGLL", "global_nav"],
+    ["/flight KJFK to EGLL", "global_nav"],
+  ] as const) {
+    const d = classifyNoctisIntent(cmd);
+    assert.equal(d.override, true);
+    assert.equal(d.routeId, expected, `Override ${cmd} expected ${expected}`);
+  }
+});

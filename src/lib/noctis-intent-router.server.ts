@@ -52,6 +52,9 @@ const ROUTE_LABELS: Record<NoctisRouteEngineId, { label: string; targetPanel: No
   sovereign_physics: { label: "Sovereign Physics (#101-#116)", targetPanel: "console" },
   science: { label: "Science · Deterministic Formulas", targetPanel: "study" },
   ndkrs_rule: { label: "NDKRS · Fact-Lock Ledger", targetPanel: "ndkrs" },
+  space_universe: { label: "Space · Orbital & SWPC", targetPanel: "chat" },
+  earth_hazards: { label: "Earth · Hazards & AQI", targetPanel: "chat" },
+  global_nav: { label: "Nav · Aviation & Sea", targetPanel: "chat" },
   general_chat: { label: "Core · General Reasoning", targetPanel: "chat" },
 };
 
@@ -121,6 +124,15 @@ const EXPLICIT_HARD_PHYSICS_RE =
 
 const PURE_CODE_ALGO_EXCLUDE_RE =
   /\b(?:cve-\d|cvss|outline\s+the\s+postgresql|write\s+(?:a\s+)?(?:react\s+component|binary\s+search|quicksort|unit\s+test)|explain\s+how|what\s+is\s+(?:a|an|the))\b/i;
+
+const SPACE_UNIVERSE_RE =
+  /\b(?:iss\s+(?:position|location|altitude|tracking|orbit)|where\s+is\s+the\s+iss|space\s+weather|geomagnetic\s+storm|kp\s+index|noaa\s+swpc|solar\s+flare|coronal\s+mass\s+ejection|aurora\s+(?:forecast|reach)|near[-\s]earth\s+(?:object|asteroid)|nasa\s+(?:neo|cad|close\s+approach)|hohmann\s+(?:transfer|orbit)|asteroid\s+impact\s+(?:energy|kinetic)|exoplanet\s+habitable\s+zone|goldilocks\s+zone|escape\s+velocity|orbital\s+period)\b/i;
+
+const EARTH_HAZARDS_RE =
+  /\b(?:usgs|earthquakes?|seismic\s+(?:moment|energy)|richter|moment\s+magnitude|tsunami\s+(?:wave|speed|travel|warning|alert)|nasa\s+eonet|active\s+(?:wildfires?|volcan(?:o|oes))|air\s+quality|\bus\s*aqi\b|\baqi\b|\bpm2\.?5\b|\bpm10\b|wildfire\s+smoke)\b/i;
+
+const GLOBAL_NAV_RE =
+  /\b(?:live\s+metar|\bmetar\b|\btaf\b|flight\s+category|\bfltcat\b|runway\s+\d{1,2}[LCR]?|crosswind|headwind\s+component|density\s+altitude|great[-\s]?circle\s+(?:distance|flight|route)|orthodromic|strait\s+of\s+(?:malacca|hormuz)|suez\s+canal|panama\s+canal|cape\s+of\s+good\s+hope|\b(?:KJFK|KLAX|KORD|KATL|KIAD|KDCA|KBWI|EGLL|LFPG|EDDF|EHAM|OMDB|RJTT|WSSS|DGAA|DNMM|FAOR|YSSY|SBGR)\b)\b/i;
 
 export function decisionToRouteStamp(decision: NoctisIntentDecision): NoctisRouteStamp {
   return {
@@ -254,13 +266,27 @@ export function classifyNoctisIntent(rawPrompt: string): NoctisIntentDecision {
     matchedSignals.push("ndkrs:explicit-rule");
   }
 
-  // Evaluate Weather (strictly vetoed when building platforms, cold-chain maritime, clinical, defense, or physics)
+  // Evaluate Space & Universe, Earth Hazards, and Global Navigation before Weather so "space weather" / "METAR weather" / "wildfire" route accurately
+  if (SPACE_UNIVERSE_RE.test(prompt) && !EXPLICIT_HARD_PHYSICS_RE.test(prompt) && !scores.science && !scores.nasee && !scores.website_builder && !hasClinicalVitalsOrSyndrome && !scores.dod_ic && !scores.rmf_grc) {
+    scores.space_universe = 90;
+    matchedSignals.push("space:orbital-swpc-neo");
+  }
+  if (EARTH_HAZARDS_RE.test(prompt) && !EXPLICIT_HARD_PHYSICS_RE.test(prompt) && !scores.nasee && !scores.website_builder && !hasClinicalVitalsOrSyndrome && !scores.dod_ic && !scores.rmf_grc) {
+    scores.earth_hazards = 90;
+    matchedSignals.push("earth:hazards-aqi");
+  }
+  if (GLOBAL_NAV_RE.test(prompt) && !EXPLICIT_HARD_PHYSICS_RE.test(prompt) && !scores.nasee && !scores.website_builder && !hasClinicalVitalsOrSyndrome && !scores.dod_ic && !scores.rmf_grc && !scores.cve_cyber) {
+    scores.global_nav = 90;
+    matchedSignals.push("nav:metar-greatcircle");
+  }
+
+  // Evaluate Weather (strictly vetoed when building platforms, cold-chain maritime, clinical, defense, space/earth/nav, or physics)
   const hasWeatherSignal =
     WEATHER_EXPLICIT_RE.test(prompt) ||
     (WEATHER_TEMP_WITH_TIME_RE.test(prompt) && WEATHER_TIME_RE.test(prompt));
   if (hasWeatherSignal) {
-    if (scores.nasee || scores.website_builder || hasClinicalVitalsOrSyndrome || scores.dod_ic || scores.rmf_grc) {
-      vetoedRoutes.weather = "Vetoed by higher-priority software build, clinical, or defense intent";
+    if (scores.nasee || scores.website_builder || hasClinicalVitalsOrSyndrome || scores.dod_ic || scores.rmf_grc || scores.space_universe || scores.earth_hazards || scores.global_nav) {
+      vetoedRoutes.weather = "Vetoed by higher-priority software build, clinical, defense, space, earth hazards, or navigation intent";
     } else if (/\b(?:cold-?chain|cold-?storage|reefer|maritime|vessel|charter|postgis|postgresql|reactor|boiler|furnace|patient|sepsis)\b/i.test(prompt)) {
       vetoedRoutes.weather = "Vetoed by non-meteorological domain terms";
     } else {
@@ -332,6 +358,9 @@ export function classifyNoctisIntent(rawPrompt: string): NoctisIntentDecision {
     "enterprise",
     "assistant",
     "sovereign_physics",
+    "space_universe",
+    "earth_hazards",
+    "global_nav",
     "weather",
     "general_chat",
   ];
@@ -430,7 +459,7 @@ export function classifyMultiTurnIntent(
   if (followUp.isFollowUp && !followUp.topicShiftDetected && !followUp.shouldIsolateEncounter) {
     if (
       (priorRoute === "clinical" && followUp.relation === "same_patient_followup") ||
-      ((priorRoute === "rmf_grc" || priorRoute === "dod_ic" || priorRoute === "weather" || priorRoute === "sovereign_physics" || priorRoute === "cve_cyber") &&
+      ((priorRoute === "rmf_grc" || priorRoute === "dod_ic" || priorRoute === "weather" || priorRoute === "sovereign_physics" || priorRoute === "cve_cyber" || priorRoute === "space_universe" || priorRoute === "earth_hazards" || priorRoute === "global_nav") &&
         (followUp.relation === "coreference" || followUp.relation === "what_if_parameter_shift" || followUp.relation === "continuation"))
     ) {
       const meta = ROUTE_LABELS[priorRoute];
