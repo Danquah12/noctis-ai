@@ -1762,7 +1762,7 @@ function Meet({
           <div className="flex items-center justify-between gap-2 pb-2">
             <div>
               <p className="text-xs font-semibold text-zinc-100">Noctis Actions</p>
-              <p className="text-[11px] text-zinc-400">Quiz, notes, brief &amp; global call invite</p>
+              <p className="text-[11px] text-zinc-400">Quiz, notes, brief & global call invite</p>
             </div>
             {callActions?.onMinimizeToChat ? (
               <button

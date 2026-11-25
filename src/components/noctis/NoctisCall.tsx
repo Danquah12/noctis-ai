@@ -752,7 +752,7 @@ export function NoctisCall({
           <div className="mx-auto mb-2 w-[min(26rem,calc(100%-2rem))] rounded-2xl border border-white/15 bg-[#121318]/95 p-3 text-xs text-zinc-300 shadow-xl backdrop-blur-md">
             <p className="font-semibold text-white">Worldwide Calling Status</p>
             <p className="mt-1 text-[11px] text-zinc-400">
-              Instant encrypted WebRTC audio &amp; video calls work globally across all {voipDetails?.countriesSupported ?? WORLD_DIAL_CODES.length}+ countries via shareable join links (no fees, guest-ready).
+              Instant encrypted WebRTC audio & video calls work globally across all {voipDetails?.countriesSupported ?? WORLD_DIAL_CODES.length}+ countries via shareable join links (no fees, guest-ready).
             </p>
             {internet ? (
               <p className="mt-1.5 text-[11px] text-emerald-300">
