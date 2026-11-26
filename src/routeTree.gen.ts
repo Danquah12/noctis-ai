@@ -29,6 +29,7 @@ import { Route as NoctisRouteImport } from './routes/noctis'
 import { Route as OpeningsRouteImport } from './routes/openings'
 import { Route as PathsRouteImport } from './routes/paths'
 import { Route as PlatformRouteImport } from './routes/platform'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ReelsRouteImport } from './routes/reels'
 import { Route as SRouteImport } from './routes/s'
 import { Route as StartRouteImport } from './routes/start'
@@ -207,6 +208,11 @@ const PathsRoute = PathsRouteImport.update({
 const PlatformRoute = PlatformRouteImport.update({
   id: '/platform',
   path: '/platform',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReelsRoute = ReelsRouteImport.update({
@@ -631,6 +637,7 @@ export interface FileRoutesByFullPath {
   '/openings': typeof OpeningsRoute
   '/paths': typeof PathsRoute
   '/platform': typeof PlatformRoute
+  '/privacy': typeof PrivacyRoute
   '/reels': typeof ReelsRoute
   '/s': typeof SRoute
   '/start': typeof StartRoute
@@ -729,6 +736,7 @@ export interface FileRoutesByTo {
   '/openings': typeof OpeningsRoute
   '/paths': typeof PathsRoute
   '/platform': typeof PlatformRoute
+  '/privacy': typeof PrivacyRoute
   '/reels': typeof ReelsRoute
   '/s': typeof SRoute
   '/start': typeof StartRoute
@@ -830,6 +838,7 @@ export interface FileRoutesById {
   '/openings': typeof OpeningsRoute
   '/paths': typeof PathsRoute
   '/platform': typeof PlatformRoute
+  '/privacy': typeof PrivacyRoute
   '/reels': typeof ReelsRoute
   '/s': typeof SRoute
   '/start': typeof StartRoute
@@ -933,6 +942,7 @@ export interface FileRouteTypes {
     | '/openings'
     | '/paths'
     | '/platform'
+    | '/privacy'
     | '/reels'
     | '/s'
     | '/start'
@@ -1031,6 +1041,7 @@ export interface FileRouteTypes {
     | '/openings'
     | '/paths'
     | '/platform'
+    | '/privacy'
     | '/reels'
     | '/s'
     | '/start'
@@ -1131,6 +1142,7 @@ export interface FileRouteTypes {
     | '/openings'
     | '/paths'
     | '/platform'
+    | '/privacy'
     | '/reels'
     | '/s'
     | '/start'
@@ -1233,6 +1245,7 @@ export interface RootRouteChildren {
   OpeningsRoute: typeof OpeningsRoute
   PathsRoute: typeof PathsRoute
   PlatformRoute: typeof PlatformRoute
+  PrivacyRoute: typeof PrivacyRoute
   ReelsRoute: typeof ReelsRoute
   SRoute: typeof SRoute
   StartRoute: typeof StartRoute
@@ -1400,6 +1413,13 @@ declare module '@tanstack/react-router' {
       path: '/platform'
       fullPath: '/platform'
       preLoaderRoute: typeof PlatformRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reels': {
@@ -2131,6 +2151,7 @@ const rootRouteChildren: RootRouteChildren = {
   OpeningsRoute: OpeningsRoute,
   PathsRoute: PathsRoute,
   PlatformRoute: PlatformRoute,
+  PrivacyRoute: PrivacyRoute,
   ReelsRoute: ReelsRoute,
   SRoute: SRoute,
   StartRoute: StartRoute,

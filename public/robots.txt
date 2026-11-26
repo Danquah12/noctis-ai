@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Allow: /privacy
+Disallow: /api/
+Disallow: /desk/
+Disallow: /login
+Disallow: /__grok/

@@ -33,6 +33,20 @@ if (existsSync(file)) {
   const config = JSON.parse(readFileSync(file, "utf8"));
   const routes = Array.isArray(config.routes) ? config.routes : [];
 
+  const securityHeadersRule = {
+    src: "/(.*)",
+    headers: {
+      "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
+      "X-Content-Type-Options": "nosniff",
+      "X-Frame-Options": "SAMEORIGIN",
+      "Referrer-Policy": "strict-origin-when-cross-origin",
+      "Permissions-Policy":
+        "camera=(self), microphone=(self), display-capture=(self), geolocation=(self), picture-in-picture=(self), payment=(), usb=()",
+      "X-DNS-Prefetch-Control": "off",
+    },
+    continue: true,
+  };
+
   const styleFallback = {
     src: "/assets/styles-.*\\.css",
     dest: "/styles.css",
@@ -48,9 +62,12 @@ if (existsSync(file)) {
     headers: { "cache-control": "no-store", "content-type": "text/plain; charset=utf-8" },
   };
 
-  const next = [];
+  const next = [securityHeadersRule];
   let placed = false;
   for (const route of routes) {
+    if (route?.continue === true && route?.headers?.["X-Content-Type-Options"]) {
+      continue;
+    }
     if (route?.src === "/assets/(.*)" && route?.status === 404) {
       continue; // replace existing 404 handler
     }

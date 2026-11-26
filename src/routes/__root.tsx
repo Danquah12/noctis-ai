@@ -72,6 +72,7 @@ export const Route = createRootRoute({
     ],
     links: [
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
+      { rel: "privacy-policy", href: "/privacy" },
       { rel: "stylesheet", href: appCss },
       { rel: "stylesheet", href: "/styles.css" },
       { rel: "manifest", href: "/manifest.json" },
