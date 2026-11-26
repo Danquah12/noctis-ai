@@ -1213,8 +1213,8 @@ export function NoctisCall({
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/25 via-black/20 to-black/70" />
       <div className="relative flex min-h-0 flex-1 flex-col">
         <div className="flex shrink-0 items-center justify-between gap-2 px-4 py-3">
-          <button type="button" onClick={onVibe} className="text-sm text-zinc-300 hover:text-white">
-            Vibe
+          <button type="button" onClick={onVibe} className="text-sm font-medium text-zinc-300 hover:text-white">
+            Noctis
           </button>
           <div className="flex items-center gap-2">
             <button
