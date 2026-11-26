@@ -38,10 +38,11 @@ if (existsSync(file)) {
     headers: {
       "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
       "X-Content-Type-Options": "nosniff",
-      "X-Frame-Options": "SAMEORIGIN",
+      "Content-Security-Policy":
+        "frame-ancestors 'self' https://conectln.com https://www.conectln.com https://connectln.app https://www.connectln.app https://noctis.social https://www.noctis.social https://dstrike.app https://www.dstrike.app http://localhost:* http://127.0.0.1:*",
       "Referrer-Policy": "strict-origin-when-cross-origin",
       "Permissions-Policy":
-        "camera=(self), microphone=(self), display-capture=(self), geolocation=(self), picture-in-picture=(self), payment=(), usb=()",
+        'camera=(self "https://conectln.com" "https://www.conectln.com" "https://connectln.app" "https://www.connectln.app"), microphone=(self "https://conectln.com" "https://www.conectln.com" "https://connectln.app" "https://www.connectln.app"), display-capture=(self "https://conectln.com" "https://www.conectln.com" "https://connectln.app" "https://www.connectln.app"), geolocation=(self), picture-in-picture=(self "https://conectln.com" "https://www.conectln.com" "https://connectln.app" "https://www.connectln.app"), payment=(), usb=()',
       "X-DNS-Prefetch-Control": "off",
     },
     continue: true,
