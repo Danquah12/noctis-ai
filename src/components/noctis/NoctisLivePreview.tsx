@@ -11,8 +11,10 @@ import {
   CheckCircle2,
   Code2,
   Copy,
-  Maximize2
+  Maximize2,
+  Minimize2
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface NoctisLivePreviewProps {
   code: string;
@@ -201,6 +203,7 @@ export default function NoctisLivePreview({
   const [viewport, setViewport] = useState<"desktop" | "tablet" | "mobile">("desktop");
   const [consoleLogs, setConsoleLogs] = useState<Array<{ level: string; msg: string; time: string }>>([]);
   const [showConsole, setShowConsole] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const [sandboxKey, setSandboxKey] = useState(0);
 
   const extracted = useMemo(() => extractRunnableCode(code), [code]);
@@ -255,7 +258,13 @@ export default function NoctisLivePreview({
   }[viewport];
 
   return (
-    <div className={`flex flex-col h-full bg-[#090d13] text-zinc-100 rounded-2xl border border-white/10 overflow-hidden shadow-2xl font-sans ${className}`}>
+    <div
+      className={cn(
+        "flex flex-col h-full bg-[#090d13] text-zinc-100 rounded-2xl border border-white/10 overflow-hidden shadow-2xl font-sans",
+        className,
+        expanded && "fixed inset-4 z-[90] h-auto max-h-none",
+      )}
+    >
       {/* Top Toolbar */}
       <div className="flex items-center justify-between px-4 py-2.5 bg-white/[0.02] border-b border-white/10 text-xs">
         <div className="flex items-center gap-2">
@@ -326,12 +335,22 @@ export default function NoctisLivePreview({
             <Terminal className="size-3" />
             Logs {consoleLogs.length > 0 && `(${consoleLogs.length})`}
           </button>
+
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5 border border-white/10 transition cursor-pointer"
+            title={expanded ? "Minimize Preview" : "Expand Preview Fullscreen"}
+            aria-label={expanded ? "Minimize Preview" : "Expand Preview Fullscreen"}
+          >
+            {expanded ? <Minimize2 className="size-3.5" /> : <Maximize2 className="size-3.5" />}
+          </button>
         </div>
       </div>
 
       {/* Main Sandbox Frame Container */}
-      <div className="flex-1 overflow-auto bg-[#070a0e] flex items-center justify-center p-2 relative">
-        <div className={`h-full transition-all duration-300 ${viewportWidthClass} bg-transparent flex flex-col`}>
+      <div className="min-h-0 flex-1 overflow-auto bg-[#070a0e] flex items-center justify-center p-2 relative">
+        <div className={`h-full min-h-0 transition-all duration-300 ${viewportWidthClass} bg-transparent flex flex-col`}>
           <iframe
             key={sandboxKey}
             ref={iframeRef}
@@ -339,7 +358,7 @@ export default function NoctisLivePreview({
             srcDoc={sandboxedHtml}
             sandbox="allow-scripts allow-modals allow-forms allow-popups"
             title="Noctis Live Component Sandbox"
-            className="w-full h-full border-0 rounded-xl bg-[#0d1117] shadow-lg"
+            className="w-full h-full flex-1 border-0 rounded-xl bg-[#0d1117] shadow-lg"
           />
         </div>
 

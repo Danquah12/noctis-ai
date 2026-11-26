@@ -917,7 +917,7 @@ export function NoctisForgeBuilderStudio({
                   <NoctisLivePreview
                     code={files["index.html"] || "<p>No preview generated.</p>"}
                     title={`${activeProject.name} — Multi-Page Preview`}
-                    className="h-[580px]"
+                    className="h-[72vh] min-h-[620px]"
                     visualEditMode={visualEditMode}
                     liveUrl={liveUrl}
                     apiBase={typeof window !== "undefined" ? window.location.origin : ""}
