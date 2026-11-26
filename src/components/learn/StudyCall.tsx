@@ -2027,7 +2027,7 @@ function Meet({
           <div className="flex items-center justify-between gap-2 pb-2">
             <div>
               <p className="text-xs font-semibold text-zinc-100">Noctis Actions</p>
-              <p className="text-[11px] text-zinc-400">Quiz, notes, brief & global call invite</p>
+              <p className="text-[11px] text-zinc-400">Connect, notes, brief & call invite</p>
             </div>
             {callActions?.onMinimizeToChat ? (
               <button
@@ -2042,50 +2042,35 @@ function Meet({
               </button>
             ) : null}
           </div>
-          {callActions ? (
-            <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
-              {callActions.onQuiz ? (
-                <button
-                  type="button"
-                  onClick={() => callActions.onQuiz?.()}
-                  className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-white/10 px-2.5 py-2 text-xs font-medium text-zinc-100 hover:bg-white/20"
-                >
-                  <Sparkles className="size-3.5 text-[#e4b86a]" />
-                  Create quiz
-                </button>
-              ) : null}
-              {callActions.onNotes ? (
-                <button
-                  type="button"
-                  onClick={() => callActions.onNotes?.()}
-                  className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-white/10 px-2.5 py-2 text-xs font-medium text-zinc-100 hover:bg-white/20"
-                >
-                  <FileText className="size-3.5 text-[#e4b86a]" />
-                  Generate notes
-                </button>
-              ) : null}
-              {callActions.onBrief ? (
-                <button
-                  type="button"
-                  onClick={() => callActions.onBrief?.()}
-                  className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-white/10 px-2.5 py-2 text-xs font-medium text-zinc-100 hover:bg-white/20"
-                >
-                  <FileText className="size-3.5 text-sky-300" />
-                  Write the brief
-                </button>
-              ) : null}
-              {callActions.onShareInsight ? (
-                <button
-                  type="button"
-                  onClick={() => callActions.onShareInsight?.()}
-                  className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-white/10 px-2.5 py-2 text-xs font-medium text-zinc-100 hover:bg-white/20"
-                >
-                  <Share2 className="size-3.5 text-emerald-300" />
-                  Share insight
-                </button>
-              ) : null}
-            </div>
-          ) : null}
+          <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+            <a
+              href="/connect"
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-emerald-400/35 bg-emerald-500/15 px-2.5 py-2 text-xs font-semibold text-emerald-200 hover:bg-emerald-500/25"
+            >
+              <MessageSquare className="size-3.5 text-emerald-400" />
+              Connect
+            </a>
+            {callActions?.onNotes ? (
+              <button
+                type="button"
+                onClick={() => callActions.onNotes?.()}
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-white/10 px-2.5 py-2 text-xs font-medium text-zinc-100 hover:bg-white/20"
+              >
+                <FileText className="size-3.5 text-[#e4b86a]" />
+                Generate notes
+              </button>
+            ) : null}
+            {callActions?.onBrief ? (
+              <button
+                type="button"
+                onClick={() => callActions.onBrief?.()}
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-white/10 px-2.5 py-2 text-xs font-medium text-zinc-100 hover:bg-white/20"
+              >
+                <FileText className="size-3.5 text-sky-300" />
+                Write the brief
+              </button>
+            ) : null}
+          </div>
           <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-white/10 pt-2">
             <button
               type="button"
@@ -2105,16 +2090,6 @@ function Meet({
               <Share2 className="size-3.5" />
               WhatsApp invite
             </a>
-            {callActions?.onCalendar ? (
-              <button
-                type="button"
-                onClick={() => callActions.onCalendar?.()}
-                className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-zinc-100 hover:bg-white/20"
-              >
-                <Calendar className="size-3.5" />
-                Calendar (.ics)
-              </button>
-            ) : null}
             {onSaveNotesToConnect ? (
               <button
                 type="button"

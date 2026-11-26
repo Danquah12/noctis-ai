@@ -6,6 +6,14 @@ export const Route = createFileRoute("/api/call-room")({
       GET: async ({ request }) => {
         try {
           const url = new URL(request.url);
+          if (url.searchParams.get("contacts") === "1") {
+            const owner = (url.searchParams.get("owner") ?? "").trim();
+            const q = (url.searchParams.get("q") ?? "").trim();
+            const { listCallDirectoryEntries } = await import("@/lib/call-directory-store.server");
+            const res = await listCallDirectoryEntries(owner, q);
+            return Response.json({ ok: true, ...res }, { headers: { "cache-control": "no-store" } });
+          }
+
           if (url.searchParams.get("vapid") === "1") {
             const { getWorldPushPublicKey } = await import("@/lib/world-call.server");
             const res = await getWorldPushPublicKey();
@@ -171,6 +179,51 @@ export const Route = createFileRoute("/api/call-room")({
 
           if (action === "cancel_rings") {
             const res = await mod.cancelWorldRings(Array.isArray(body.ringIds) ? body.ringIds : []);
+            return Response.json(res, { headers: { "cache-control": "no-store" } });
+          }
+
+          if (action === "save_contact") {
+            const store = await import("@/lib/call-directory-store.server");
+            const res = await store.upsertCallContact({
+              ownerKey: String(body.ownerKey ?? ""),
+              phoneE164: String(body.phoneE164 ?? ""),
+              name: String(body.name ?? ""),
+              countryIso: typeof body.countryIso === "string" ? body.countryIso : "",
+            });
+            return Response.json(res, { headers: { "cache-control": "no-store" } });
+          }
+
+          if (action === "delete_contact") {
+            const store = await import("@/lib/call-directory-store.server");
+            const res = await store.deleteCallContact(String(body.ownerKey ?? ""), String(body.phoneE164 ?? ""));
+            return Response.json(res, { headers: { "cache-control": "no-store" } });
+          }
+
+          if (action === "save_group") {
+            const store = await import("@/lib/call-directory-store.server");
+            const res = await store.upsertCallGroup({
+              ownerKey: String(body.ownerKey ?? ""),
+              id: typeof body.id === "string" ? body.id : undefined,
+              name: String(body.name ?? ""),
+              members: Array.isArray(body.members)
+                ? (body.members as { phoneE164: string; name: string }[])
+                : [],
+            });
+            return Response.json(res, { headers: { "cache-control": "no-store" } });
+          }
+
+          if (action === "delete_group") {
+            const store = await import("@/lib/call-directory-store.server");
+            const res = await store.deleteCallGroup(String(body.ownerKey ?? ""), String(body.groupId ?? ""));
+            return Response.json(res, { headers: { "cache-control": "no-store" } });
+          }
+
+          if (action === "lookup_contact") {
+            const store = await import("@/lib/call-directory-store.server");
+            const res = await store.lookupCallContactByNumber(
+              String(body.ownerKey ?? ""),
+              String(body.phoneE164 ?? ""),
+            );
             return Response.json(res, { headers: { "cache-control": "no-store" } });
           }
 

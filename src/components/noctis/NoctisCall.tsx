@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, type ClipboardEvent } from "react";
-import { Link } from "@tanstack/react-router";
-import { BookmarkPlus, Check, ChevronDown, Copy, Delete, Globe, Info, Link2, MessageSquare, Mic, MicOff, Phone, PhoneOff, Plus, Search, Share2, Smartphone, Trash2, UserPlus, Users, Video, X } from "lucide-react";
+import { BookmarkPlus, Check, ChevronDown, Copy, Database, Delete, Link2, MessageSquare, Mic, MicOff, Phone, PhoneOff, Plus, Search, Share2, Smartphone, Trash2, UserPlus, Users, Video, X } from "lucide-react";
 import { StudyCall, type CallToolbarActions } from "@/components/learn/StudyCall";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { studyClearRing, studyInvite, studyJoined, studyOpenCall, studyRing, studyRings, studyRoom } from "@/lib/study-group-api";
@@ -9,19 +8,12 @@ import type { VoipStatus } from "@/lib/voip.server";
 import {
   clearWorldPhoneProfile,
   createTabPeerId,
-  deleteWorldCallGroup,
   getOrCreateWorldDeviceId,
-  getRecentWorldCalls,
   getSavedWorldPhoneProfile,
   getWorldCallGroups,
   getWorldContacts,
-  recordWorldCall,
-  removeWorldContact,
-  saveWorldCallGroup,
-  saveWorldContact,
   saveWorldPhoneProfile,
   subscribeDeviceToWebPush,
-  type RecentWorldCall,
   type WorldCallGroup,
   type WorldContact,
   type WorldPhoneProfile,
@@ -135,20 +127,23 @@ export function NoctisCall({
   const [countryIso, setCountryIso] = useState<string>(() => detectDefaultCountryIso());
   const [pickerOpen, setPickerOpen] = useState(false);
   const [countryQuery, setCountryQuery] = useState("");
-  const [infoOpen, setInfoOpen] = useState(false);
   const [myPhoneOpen, setMyPhoneOpen] = useState(
     () => openRegister || (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("register") === "1"),
   );
   const [groupsOpen, setGroupsOpen] = useState(false);
+  const [contactsTab, setContactsTab] = useState<"contacts" | "groups">("contacts");
+  const [contactsSearch, setContactsSearch] = useState("");
+  const [contactsLoading, setContactsLoading] = useState(false);
+  const [directoryBackend, setDirectoryBackend] = useState<"mongodb" | "postgres">("postgres");
   const [myPhoneProfile, setMyPhoneProfile] = useState<WorldPhoneProfile | null>(() => getSavedWorldPhoneProfile());
   const [myPhoneInput, setMyPhoneInput] = useState(() => getSavedWorldPhoneProfile()?.phoneE164 ?? "");
   const [myNameInput, setMyNameInput] = useState(() => getSavedWorldPhoneProfile()?.displayName ?? "");
   const [myPhoneBusy, setMyPhoneBusy] = useState(false);
   const [myPhoneNote, setMyPhoneNote] = useState<string | null>(null);
   const [copiedSetup, setCopiedSetup] = useState(false);
-  const [contacts, setContacts] = useState<WorldContact[]>(() => getWorldContacts());
-  const [recents, setRecents] = useState<RecentWorldCall[]>(() => getRecentWorldCalls());
-  const [groups, setGroups] = useState<WorldCallGroup[]>(() => getWorldCallGroups());
+  const [contacts, setContacts] = useState<WorldContact[]>([]);
+  const [groups, setGroups] = useState<WorldCallGroup[]>([]);
+  const [dialedContactMatch, setDialedContactMatch] = useState<WorldContact | null>(null);
   const [groupNameInput, setGroupNameInput] = useState("");
   const [groupPhoneDraft, setGroupPhoneDraft] = useState("");
   const [groupMembersDraft, setGroupMembersDraft] = useState<{ phoneE164: string; name: string }[]>([]);
@@ -176,11 +171,56 @@ export function NoctisCall({
   const zeroHeldPlus = useRef(false);
   const deviceRef = useRef<{ destroy: () => void } | null>(null);
 
+  const ownerKey =
+    (user?.id && !user.isDevFallback ? user.id : "") ||
+    myPhoneProfile?.phoneE164 ||
+    getOrCreateWorldDeviceId();
   const selectedCountry = findCountryByIso(countryIso) ?? WORLD_DIAL_CODES[0]!;
   const normalized = normalizeWorldE164(number, selectedCountry.dial);
   const matched = people.find((person) => samePhone(normalized.e164 || number, person.phone));
-  const savedContactMatch = normalized.valid ? contacts.find((c) => c.phoneE164 === normalized.e164) : undefined;
+  const savedContactMatch =
+    dialedContactMatch && normalized.valid && dialedContactMatch.phoneE164 === normalized.e164
+      ? dialedContactMatch
+      : undefined;
   const filteredCountries = searchWorldCountries(countryQuery);
+
+  async function loadDbDirectory(queryText = contactsSearch) {
+    if (!ownerKey) return;
+    setContactsLoading(true);
+    try {
+      const res = await fetch(
+        `/api/call-room?contacts=1&owner=${encodeURIComponent(ownerKey)}&q=${encodeURIComponent(queryText)}`,
+      );
+      if (!res.ok) return;
+      const json = (await res.json()) as {
+        ok?: boolean;
+        backend?: "mongodb" | "postgres";
+        contacts?: { phoneE164: string; name: string; countryIso?: string; updatedAt?: string }[];
+        groups?: { id: string; name: string; members: { phoneE164: string; name: string }[]; updatedAt?: string }[];
+      };
+      if (json.backend) setDirectoryBackend(json.backend);
+      setContacts(
+        (json.contacts ?? []).map((c) => ({
+          phoneE164: c.phoneE164,
+          name: c.name,
+          countryIso: c.countryIso ?? "",
+          createdAt: c.updatedAt ? Date.parse(c.updatedAt) || Date.now() : Date.now(),
+        })),
+      );
+      setGroups(
+        (json.groups ?? []).map((g) => ({
+          id: g.id,
+          name: g.name,
+          members: g.members ?? [],
+          createdAt: g.updatedAt ? Date.parse(g.updatedAt) || Date.now() : Date.now(),
+        })),
+      );
+    } catch {
+      /* ignore transient fetch failure */
+    } finally {
+      setContactsLoading(false);
+    }
+  }
 
   function playDtmf(key: string) {
     const pair = DTMF_FREQS[key];
@@ -213,6 +253,7 @@ export function NoctisCall({
   useEffect(() => {
     if (!normalized.valid || !normalized.e164) {
       setDirLookup(null);
+      setDialedContactMatch(null);
       setSavingContact(false);
       return;
     }
@@ -232,12 +273,81 @@ export function NoctisCall({
           });
         })
         .catch(() => undefined);
+      void fetch("/api/call-room", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action: "lookup_contact", ownerKey, phoneE164: targetE164 }),
+      })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((hit: { contact?: { phoneE164: string; name: string; countryIso?: string } | null } | null) => {
+          if (stop) return;
+          setDialedContactMatch(
+            hit?.contact
+              ? {
+                  phoneE164: hit.contact.phoneE164,
+                  name: hit.contact.name,
+                  countryIso: hit.contact.countryIso ?? "",
+                  createdAt: Date.now(),
+                }
+              : null,
+          );
+        })
+        .catch(() => undefined);
     }, 250);
     return () => {
       stop = true;
       window.clearTimeout(timer);
     };
-  }, [normalized.valid, normalized.e164]);
+  }, [normalized.valid, normalized.e164, ownerKey]);
+
+  // Migrate any legacy browser-stored contacts/groups to server DB silently without displaying on idle screen
+  useEffect(() => {
+    if (!ownerKey || typeof window === "undefined") return;
+    const migKey = `noctis_migrated_contacts_${ownerKey}`;
+    if (window.localStorage.getItem(migKey) === "1") return;
+    const legacyContacts = getWorldContacts();
+    const legacyGroups = getWorldCallGroups();
+    if (!legacyContacts.length && !legacyGroups.length) {
+      window.localStorage.setItem(migKey, "1");
+      return;
+    }
+    void Promise.all([
+      ...legacyContacts.map((c) =>
+        fetch("/api/call-room", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            action: "save_contact",
+            ownerKey,
+            phoneE164: c.phoneE164,
+            name: c.name,
+            countryIso: c.countryIso,
+          }),
+        }).catch(() => undefined),
+      ),
+      ...legacyGroups.map((g) =>
+        fetch("/api/call-room", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            action: "save_group",
+            ownerKey,
+            id: g.id,
+            name: g.name,
+            members: g.members,
+          }),
+        }).catch(() => undefined),
+      ),
+    ]).then(() => {
+      window.localStorage.setItem(migKey, "1");
+    });
+  }, [ownerKey]);
+
+  // Fetch contacts & groups on demand only when Contacts drawer or in-call InviteSheet opens
+  useEffect(() => {
+    if (!groupsOpen && !adding) return;
+    void loadDbDirectory(contactsSearch);
+  }, [groupsOpen, adding, contactsSearch, ownerKey]);
 
   useEffect(() => {
     let stop = false;
@@ -556,21 +666,44 @@ export function NoctisCall({
     window.setTimeout(() => setCopiedSetup(false), 2400);
   }
 
-  function handleSaveSpeedContact() {
+  async function handleSaveSpeedContact() {
     if (!normalized.valid || !normalized.e164) return;
-    const name =
+    const name = (
       contactNameInput.trim() ||
       (dirLookup?.e164 === normalized.e164 && dirLookup.displayName) ||
       normalized.country?.name ||
-      normalized.e164;
-    const next = saveWorldContact({
-      phoneE164: normalized.e164,
-      name: name.slice(0, 40),
-      countryIso: normalized.country?.iso || selectedCountry.iso,
-    });
-    setContacts(next);
+      normalized.e164
+    ).slice(0, 40);
+    const countryIsoCode = normalized.country?.iso || selectedCountry.iso;
     setSavingContact(false);
     setContactNameInput("");
+    setDialedContactMatch({
+      phoneE164: normalized.e164,
+      name,
+      countryIso: countryIsoCode,
+      createdAt: Date.now(),
+    });
+    await fetch("/api/call-room", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        action: "save_contact",
+        ownerKey,
+        phoneE164: normalized.e164,
+        name,
+        countryIso: countryIsoCode,
+      }),
+    }).catch(() => undefined);
+    if (groupsOpen) void loadDbDirectory(contactsSearch);
+  }
+
+  async function handleDeleteDbContact(phoneE164: string) {
+    setContacts((prev) => prev.filter((c) => c.phoneE164 !== phoneE164));
+    await fetch("/api/call-room", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action: "delete_contact", ownerKey, phoneE164 }),
+    }).catch(() => undefined);
   }
 
   function addMemberPhoneToGroup() {
@@ -601,7 +734,7 @@ export function NoctisCall({
     );
   }
 
-  function saveNewCallGroup() {
+  async function saveNewCallGroup() {
     const name = groupNameInput.trim();
     if (!name) {
       setGroupNote("Enter a group name (e.g. Family or Ops Team).");
@@ -611,12 +744,35 @@ export function NoctisCall({
       setGroupNote("Add at least 1 phone number or contact to the group.");
       return;
     }
-    const next = saveWorldCallGroup({ name, members: groupMembersDraft });
-    setGroups(next);
+    const res = await fetch("/api/call-room", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        action: "save_group",
+        ownerKey,
+        name,
+        members: groupMembersDraft,
+      }),
+    }).catch(() => null);
+    if (!res?.ok) {
+      setGroupNote("Could not save call group right now.");
+      return;
+    }
+    const memberCount = groupMembersDraft.length;
     setGroupNameInput("");
     setGroupPhoneDraft("");
     setGroupMembersDraft([]);
-    setGroupNote(`Saved group "${name}" (${groupMembersDraft.length} members).`);
+    setGroupNote(`Saved "${name}" (${memberCount} members) to database.`);
+    await loadDbDirectory(contactsSearch);
+  }
+
+  async function handleDeleteDbGroup(groupId: string) {
+    setGroups((prev) => prev.filter((g) => g.id !== groupId));
+    await fetch("/api/call-room", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action: "delete_group", ownerKey, groupId }),
+    }).catch(() => undefined);
   }
 
   async function startGroupCall(group: WorldCallGroup, withVideo: boolean) {
@@ -691,15 +847,6 @@ export function NoctisCall({
           ? "Global Video Call"
           : "Global Voice Call";
     const hostName = myPhoneProfile?.displayName || user?.displayName?.trim() || "Noctis Caller";
-    if (targetE164) {
-      setRecents(
-        recordWorldCall({
-          phoneE164: targetE164,
-          name: savedContactMatch?.name || dirLookup?.displayName || targetE164,
-          mode: withVideo ? "video" : "voice",
-        }),
-      );
-    }
     try {
       const res = await fetch("/api/call-room", {
         method: "POST",
@@ -1056,14 +1203,6 @@ export function NoctisCall({
     );
   }
 
-  const quickEntries: { phoneE164: string; label: string; isContact: boolean }[] = [
-    ...contacts.map((c) => ({ phoneE164: c.phoneE164, label: c.name, isContact: true })),
-    ...recents
-      .filter((r) => !contacts.some((c) => c.phoneE164 === r.phoneE164))
-      .slice(0, 6)
-      .map((r) => ({ phoneE164: r.phoneE164, label: r.name, isContact: false })),
-  ].slice(0, 8);
-
   return (
     <div
       onPaste={handlePaste}
@@ -1077,21 +1216,12 @@ export function NoctisCall({
           <button type="button" onClick={onVibe} className="text-sm text-zinc-300 hover:text-white">
             Vibe
           </button>
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <Link
-              to="/connect"
-              data-testid="vibe-connect-pill"
-              className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/35 bg-emerald-500/15 px-3 py-1 text-[11px] font-medium text-emerald-200 backdrop-blur-sm transition hover:bg-emerald-500/25"
-            >
-              <MessageSquare className="size-3.5 text-emerald-400" />
-              Vibe Connect
-            </Link>
+          <div className="flex items-center gap-2">
             <button
               type="button"
               data-testid="call-groups-trigger"
               onClick={() => {
                 setPickerOpen(false);
-                setInfoOpen(false);
                 setMyPhoneOpen(false);
                 setGroupsOpen((v) => !v);
               }}
@@ -1102,41 +1232,37 @@ export function NoctisCall({
               }`}
             >
               <Users className="size-3.5" />
-              Groups{groups.length ? ` (${groups.length})` : ""}
+              Contacts
             </button>
             <button
               type="button"
               data-testid="my-number-trigger"
+              aria-label={myPhoneProfile ? `My Number ${myPhoneProfile.phoneE164}` : "My Number ($0 Ring)"}
+              title={myPhoneProfile ? `My Number: ${myPhoneProfile.phoneE164}` : "Register My Number ($0 Ring)"}
               onClick={() => {
                 setPickerOpen(false);
-                setInfoOpen(false);
                 setGroupsOpen(false);
                 if (!myPhoneInput && normalized.valid && normalized.e164) {
                   setMyPhoneInput(normalized.e164);
                 }
                 setMyPhoneOpen((v) => !v);
               }}
-              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-medium backdrop-blur-sm transition ${
-                myPhoneProfile
-                  ? "border-emerald-400/35 bg-emerald-500/15 text-emerald-200 hover:bg-emerald-500/25"
-                  : "border-[#e4b86a]/40 bg-black/50 text-[#e4b86a] hover:bg-black/70"
+              className={`relative grid size-8 place-items-center rounded-full border backdrop-blur-sm transition ${
+                myPhoneOpen
+                  ? "border-white bg-white text-black"
+                  : myPhoneProfile
+                    ? "border-emerald-400/35 bg-emerald-500/15 text-emerald-200 hover:bg-emerald-500/25"
+                    : "border-[#e4b86a]/40 bg-black/45 text-[#e4b86a] hover:bg-black/65"
               }`}
             >
-              <Smartphone className="size-3.5" />
-              {myPhoneProfile ? `My Number: ${myPhoneProfile.phoneE164}` : "My Number ($0 Ring)"}
+              <Smartphone className="size-4" />
+              <span
+                className={`absolute -top-0.5 -right-0.5 size-2 rounded-full ${
+                  myPhoneProfile ? "bg-emerald-400" : "bg-amber-400"
+                }`}
+              />
             </button>
-            <button
-              type="button"
-              onClick={() => setInfoOpen((v) => !v)}
-              className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/45 px-3 py-1 text-[11px] font-medium text-zinc-200 backdrop-blur-sm hover:bg-black/65"
-            >
-              <Globe className="size-3.5 text-emerald-400" />
-              {internet
-                ? `Global PSTN + WebRTC (${voipDetails?.countriesSupported ?? WORLD_DIAL_CODES.length}+)`
-                : `Free WebRTC · ${voipDetails?.countriesSupported ?? WORLD_DIAL_CODES.length}+ Countries`}
-              <Info className="size-3 text-zinc-400" />
-            </button>
-            <button type="button" onClick={onClose} aria-label="Close" className="grid size-9 place-items-center rounded-full text-zinc-300 hover:bg-white/10">
+            <button type="button" onClick={onClose} aria-label="Close" className="grid size-8 place-items-center rounded-full text-zinc-300 hover:bg-white/10">
               <X className="size-4" />
             </button>
           </div>
@@ -1145,132 +1271,94 @@ export function NoctisCall({
         {groupsOpen ? (
           <div
             data-testid="call-groups-drawer"
-            className="mx-auto mb-2 max-h-[68vh] w-[min(27rem,calc(100%-2rem))] overflow-y-auto rounded-2xl border border-white/15 bg-[#12141a]/95 p-3.5 text-xs text-zinc-200 shadow-2xl backdrop-blur-md"
+            className="mx-auto mb-2 max-h-[70vh] w-[min(27rem,calc(100%-2rem))] overflow-y-auto rounded-2xl border border-white/15 bg-[#12141a]/95 p-3.5 text-xs text-zinc-200 shadow-2xl backdrop-blur-md"
           >
             <div className="flex items-center justify-between gap-2">
-              <p className="font-semibold text-white">Call Groups · Ring Everyone Simultaneously ($0)</p>
-              <button type="button" onClick={() => setGroupsOpen(false)} aria-label="Close groups" className="text-zinc-400 hover:text-white">
+              <div className="flex items-center gap-2">
+                <p className="font-semibold text-white">Directory & Groups</p>
+                <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-emerald-300">
+                  <Database className="size-2.5" />
+                  {directoryBackend === "mongodb" ? "MongoDB" : "Cloud DB"}
+                </span>
+              </div>
+              <button type="button" onClick={() => setGroupsOpen(false)} aria-label="Close contacts" className="text-zinc-400 hover:text-white">
                 <X className="size-3.5" />
               </button>
             </div>
-            <div className="mt-2.5 space-y-2 rounded-xl border border-white/10 bg-black/40 p-2.5">
+
+            <div className="mt-2.5 flex items-center gap-2 rounded-xl border border-white/10 bg-black/45 px-3 py-1.5">
+              <Search className="size-3.5 text-zinc-400" />
               <input
-                value={groupNameInput}
-                onChange={(e) => setGroupNameInput(e.target.value)}
-                placeholder="New group name (e.g. Family, Medical Team)"
-                className="w-full rounded-lg border border-white/10 bg-black/50 px-3 py-2 text-xs text-white outline-none placeholder:text-zinc-500"
+                value={contactsSearch}
+                onChange={(e) => setContactsSearch(e.target.value)}
+                placeholder="Search saved contacts or groups..."
+                className="flex-1 bg-transparent text-xs text-white outline-none placeholder:text-zinc-500"
               />
-              {contacts.length > 0 ? (
-                <div>
-                  <p className="mb-1 text-[10px] uppercase tracking-wider text-zinc-400">Tap contacts to include:</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {contacts.map((c) => {
-                      const picked = groupMembersDraft.some((m) => m.phoneE164 === c.phoneE164);
-                      return (
-                        <button
-                          key={c.phoneE164}
-                          type="button"
-                          onClick={() => toggleContactInGroup(c)}
-                          className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] transition ${
-                            picked
-                              ? "border-emerald-400 bg-emerald-500/20 text-emerald-200"
-                              : "border-white/15 bg-white/5 text-zinc-300 hover:bg-white/10"
-                          }`}
-                        >
-                          {picked ? <Check className="size-3" /> : <Plus className="size-3" />}
-                          {c.name}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : null}
-              <div className="flex gap-1.5">
-                <input
-                  value={groupPhoneDraft}
-                  onChange={(e) => setGroupPhoneDraft(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      addMemberPhoneToGroup();
-                    }
-                  }}
-                  placeholder={`Add phone (+${selectedCountry.dial} ...)`}
-                  className="min-w-0 flex-1 rounded-lg border border-white/10 bg-black/50 px-3 py-2 text-xs text-white outline-none placeholder:text-zinc-500"
-                />
-                <button
-                  type="button"
-                  onClick={addMemberPhoneToGroup}
-                  className="shrink-0 rounded-lg bg-white/15 px-3 py-2 text-xs font-semibold text-white hover:bg-white/25"
-                >
-                  Add
-                </button>
-              </div>
-              {groupMembersDraft.length > 0 ? (
-                <div className="flex flex-wrap gap-1.5 pt-0.5">
-                  {groupMembersDraft.map((m) => (
-                    <span
-                      key={m.phoneE164}
-                      className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-0.5 text-[11px] text-zinc-100"
-                    >
-                      {m.name}
-                      <button
-                        type="button"
-                        aria-label={`Remove ${m.name}`}
-                        onClick={() => setGroupMembersDraft((prev) => prev.filter((x) => x.phoneE164 !== m.phoneE164))}
-                        className="text-zinc-400 hover:text-white"
-                      >
-                        <X className="size-3" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              ) : null}
-              <button
-                type="button"
-                data-testid="save-call-group-btn"
-                onClick={saveNewCallGroup}
-                className="w-full rounded-xl bg-emerald-500 py-2 text-xs font-semibold text-black hover:bg-emerald-400"
-              >
-                Save Call Group ({groupMembersDraft.length})
-              </button>
-              {groupNote ? <p className="text-[11px] text-[#e4b86a]">{groupNote}</p> : null}
             </div>
 
-            {groups.length > 0 ? (
+            <div className="mt-2 flex gap-1.5">
+              <button
+                type="button"
+                onClick={() => setContactsTab("contacts")}
+                className={`flex-1 rounded-lg py-1.5 font-medium ${contactsTab === "contacts" ? "bg-emerald-500 font-semibold text-black" : "bg-white/10 text-zinc-200"}`}
+              >
+                Contacts ({contacts.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setContactsTab("groups")}
+                className={`flex-1 rounded-lg py-1.5 font-medium ${contactsTab === "groups" ? "bg-emerald-500 font-semibold text-black" : "bg-white/10 text-zinc-200"}`}
+              >
+                Groups ({groups.length})
+              </button>
+            </div>
+
+            {contactsTab === "contacts" ? (
               <div className="mt-3 space-y-2">
-                <p className="text-[10px] uppercase tracking-wider text-zinc-400">Saved Groups</p>
-                {groups.map((grp) => (
-                  <div key={grp.id} className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-semibold text-white">{grp.name}</p>
-                      <p className="truncate text-[11px] text-zinc-400">
-                        {grp.members.length} members · {grp.members.map((m) => m.name).join(", ")}
-                      </p>
-                    </div>
+                {contactsLoading ? <p className="text-zinc-400">Loading directory from database…</p> : null}
+                {!contactsLoading && contacts.length === 0 ? (
+                  <p className="text-zinc-400">No saved contacts yet. Type a number on the dialpad and tap Save contact.</p>
+                ) : null}
+                {contacts.map((c) => (
+                  <div key={c.phoneE164} className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNumber(c.phoneE164);
+                        setGroupsOpen(false);
+                      }}
+                      className="min-w-0 flex-1 text-left"
+                    >
+                      <p className="truncate font-semibold text-white">{c.name}</p>
+                      <p className="truncate font-mono text-[11px] text-zinc-400">{c.phoneE164}</p>
+                    </button>
                     <div className="flex shrink-0 items-center gap-1.5">
                       <button
                         type="button"
-                        title="Voice Call Group"
-                        aria-label={`Voice call ${grp.name}`}
-                        onClick={() => void startGroupCall(grp, false)}
+                        aria-label={`Voice call ${c.name}`}
+                        onClick={() => {
+                          setGroupsOpen(false);
+                          void startWorldCall(c.phoneE164, false);
+                        }}
                         className="grid size-8 place-items-center rounded-full bg-[#34c759] text-white hover:brightness-105"
                       >
                         <Phone className="size-4" />
                       </button>
                       <button
                         type="button"
-                        title="Video Call Group"
-                        aria-label={`Video call ${grp.name}`}
-                        onClick={() => void startGroupCall(grp, true)}
+                        aria-label={`Video call ${c.name}`}
+                        onClick={() => {
+                          setGroupsOpen(false);
+                          void startWorldCall(c.phoneE164, true);
+                        }}
                         className="grid size-8 place-items-center rounded-full bg-white text-black hover:bg-zinc-200"
                       >
                         <Video className="size-4" />
                       </button>
                       <button
                         type="button"
-                        aria-label={`Delete ${grp.name}`}
-                        onClick={() => setGroups(deleteWorldCallGroup(grp.id))}
+                        aria-label={`Delete ${c.name}`}
+                        onClick={() => void handleDeleteDbContact(c.phoneE164)}
                         className="grid size-8 place-items-center rounded-full text-zinc-400 hover:bg-white/10 hover:text-rose-300"
                       >
                         <Trash2 className="size-3.5" />
@@ -1278,8 +1366,159 @@ export function NoctisCall({
                     </div>
                   </div>
                 ))}
+                {people.length > 0 ? (
+                  <div className="pt-2">
+                    <p className="mb-1.5 text-[10px] uppercase tracking-wider text-zinc-400">Workspace Members</p>
+                    <div className="space-y-1.5">
+                      {people.map((person) => (
+                        <div key={person.userId} className="flex items-center justify-between gap-2 rounded-xl bg-black/40 px-3 py-2">
+                          <span className="truncate font-medium text-white">{person.name}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setGroupsOpen(false);
+                              void start(person, video);
+                            }}
+                            className="rounded-full bg-emerald-500 px-3 py-1 text-[11px] font-semibold text-black"
+                          >
+                            Call
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
               </div>
-            ) : null}
+            ) : (
+              <div className="mt-3 space-y-3">
+                <div className="space-y-2 rounded-xl border border-white/10 bg-black/40 p-2.5">
+                  <input
+                    value={groupNameInput}
+                    onChange={(e) => setGroupNameInput(e.target.value)}
+                    placeholder="New group name (e.g. Family, Medical Team)"
+                    className="w-full rounded-lg border border-white/10 bg-black/50 px-3 py-2 text-xs text-white outline-none placeholder:text-zinc-500"
+                  />
+                  {contacts.length > 0 ? (
+                    <div>
+                      <p className="mb-1 text-[10px] uppercase tracking-wider text-zinc-400">Tap contacts to include:</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {contacts.map((c) => {
+                          const picked = groupMembersDraft.some((m) => m.phoneE164 === c.phoneE164);
+                          return (
+                            <button
+                              key={c.phoneE164}
+                              type="button"
+                              onClick={() => toggleContactInGroup(c)}
+                              className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] transition ${
+                                picked
+                                  ? "border-emerald-400 bg-emerald-500/20 text-emerald-200"
+                                  : "border-white/15 bg-white/5 text-zinc-300 hover:bg-white/10"
+                              }`}
+                            >
+                              {picked ? <Check className="size-3" /> : <Plus className="size-3" />}
+                              {c.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : null}
+                  <div className="flex gap-1.5">
+                    <input
+                      value={groupPhoneDraft}
+                      onChange={(e) => setGroupPhoneDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          addMemberPhoneToGroup();
+                        }
+                      }}
+                      placeholder={`Add phone (+${selectedCountry.dial} ...)`}
+                      className="min-w-0 flex-1 rounded-lg border border-white/10 bg-black/50 px-3 py-2 text-xs text-white outline-none placeholder:text-zinc-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={addMemberPhoneToGroup}
+                      className="shrink-0 rounded-lg bg-white/15 px-3 py-2 text-xs font-semibold text-white hover:bg-white/25"
+                    >
+                      Add
+                    </button>
+                  </div>
+                  {groupMembersDraft.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5 pt-0.5">
+                      {groupMembersDraft.map((m) => (
+                        <span
+                          key={m.phoneE164}
+                          className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-0.5 text-[11px] text-zinc-100"
+                        >
+                          {m.name}
+                          <button
+                            type="button"
+                            aria-label={`Remove ${m.name}`}
+                            onClick={() => setGroupMembersDraft((prev) => prev.filter((x) => x.phoneE164 !== m.phoneE164))}
+                            className="text-zinc-400 hover:text-white"
+                          >
+                            <X className="size-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+                  <button
+                    type="button"
+                    data-testid="save-call-group-btn"
+                    onClick={() => void saveNewCallGroup()}
+                    className="w-full rounded-xl bg-emerald-500 py-2 text-xs font-semibold text-black hover:bg-emerald-400"
+                  >
+                    Save Call Group ({groupMembersDraft.length})
+                  </button>
+                  {groupNote ? <p className="text-[11px] text-[#e4b86a]">{groupNote}</p> : null}
+                </div>
+
+                {groups.length > 0 ? (
+                  <div className="space-y-2">
+                    {groups.map((grp) => (
+                      <div key={grp.id} className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-semibold text-white">{grp.name}</p>
+                          <p className="truncate text-[11px] text-zinc-400">
+                            {grp.members.length} members · {grp.members.map((m) => m.name).join(", ")}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-1.5">
+                          <button
+                            type="button"
+                            title="Voice Call Group"
+                            aria-label={`Voice call ${grp.name}`}
+                            onClick={() => void startGroupCall(grp, false)}
+                            className="grid size-8 place-items-center rounded-full bg-[#34c759] text-white hover:brightness-105"
+                          >
+                            <Phone className="size-4" />
+                          </button>
+                          <button
+                            type="button"
+                            title="Video Call Group"
+                            aria-label={`Video call ${grp.name}`}
+                            onClick={() => void startGroupCall(grp, true)}
+                            className="grid size-8 place-items-center rounded-full bg-white text-black hover:bg-zinc-200"
+                          >
+                            <Video className="size-4" />
+                          </button>
+                          <button
+                            type="button"
+                            aria-label={`Delete ${grp.name}`}
+                            onClick={() => void handleDeleteDbGroup(grp.id)}
+                            className="grid size-8 place-items-center rounded-full text-zinc-400 hover:bg-white/10 hover:text-rose-300"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            )}
           </div>
         ) : null}
 
@@ -1289,7 +1528,7 @@ export function NoctisCall({
             className="mx-auto mb-2 w-[min(25rem,calc(100%-2rem))] rounded-2xl border border-emerald-400/30 bg-[#12141a]/95 p-3 text-xs text-zinc-200 shadow-2xl backdrop-blur-md"
           >
             <div className="flex items-center justify-between gap-2">
-              <p className="font-semibold text-white">Register This Device ($0 WhatsApp-Style)</p>
+              <p className="font-semibold text-white">Register This Device ($0 Worldwide)</p>
               <button
                 type="button"
                 onClick={() => setMyPhoneOpen(false)}
@@ -1300,7 +1539,7 @@ export function NoctisCall({
               </button>
             </div>
             <p className="mt-1 text-[11px] text-zinc-400">
-              Save your phone number on this phone or laptop to receive free $0 Noctis rings (with background Web Push notifications).
+              Free WebRTC across {voipDetails?.countriesSupported ?? WORLD_DIAL_CODES.length}+ countries. Save your number to receive $0 direct rings & background push.
             </p>
             <div className="mt-2.5 space-y-2">
               <input
@@ -1350,29 +1589,16 @@ export function NoctisCall({
                 ) : null}
               </div>
               {myPhoneNote ? <p className="text-[11px] text-emerald-300">{myPhoneNote}</p> : null}
+              {internet ? (
+                <p className="text-[11px] text-emerald-300">
+                  Direct carrier PSTN gateway active ({voipDetails?.callerIdMasked || "verified"}).
+                </p>
+              ) : null}
             </div>
           </div>
         ) : null}
 
-        {infoOpen ? (
-          <div className="mx-auto mb-2 w-[min(26rem,calc(100%-2rem))] rounded-2xl border border-white/15 bg-[#121318]/95 p-3 text-xs text-zinc-300 shadow-xl backdrop-blur-md">
-            <p className="font-semibold text-white">Worldwide $0 Internet Calling</p>
-            <p className="mt-1 text-[11px] text-zinc-400">
-              100% free WebRTC voice & video across all {voipDetails?.countriesSupported ?? WORLD_DIAL_CODES.length}+ countries. Register {"\"My Number\""} on any phone or laptop for direct WhatsApp-style ringing + background push notifications.
-            </p>
-            {internet ? (
-              <p className="mt-1.5 text-[11px] text-emerald-300">
-                Direct carrier cellular/landline gateway active (Caller ID {voipDetails?.callerIdMasked || "verified"}).
-              </p>
-            ) : (
-              <p className="mt-1.5 text-[11px] text-[#e4b86a]">
-                Optional SIM/landline PSTN carrier calling requires Twilio ({voipDetails?.missing?.join(", ") || "TWILIO_*"} in Vercel). Internet calls cost $0 forever.
-              </p>
-            )}
-          </div>
-        ) : null}
-
-        <div className="relative mx-auto flex shrink-0 items-center justify-center gap-2 px-4 pt-1">
+        <div className="relative mx-auto flex shrink-0 items-center justify-center px-4 pt-1">
           <button
             type="button"
             data-testid="world-country-picker-trigger"
@@ -1383,14 +1609,6 @@ export function NoctisCall({
             <span>{selectedCountry.name}</span>
             <span className="text-zinc-300">+{selectedCountry.dial}</span>
             <ChevronDown className="size-3.5 text-zinc-400" />
-          </button>
-          <button
-            type="button"
-            onClick={() => press("+")}
-            aria-label="Insert international plus prefix"
-            className="rounded-full border border-white/15 bg-black/50 px-2.5 py-1.5 text-xs font-semibold text-zinc-200 backdrop-blur-md hover:bg-black/70"
-          >
-            +
           </button>
         </div>
 
@@ -1438,14 +1656,21 @@ export function NoctisCall({
         <div className="flex min-h-[4.25rem] shrink-0 flex-col items-center justify-end px-6">
           <p className="max-w-full truncate text-center text-3xl font-light tracking-wide sm:text-4xl">{shown || " "}</p>
           {matched ? (
-            <p className="mt-1 text-xs text-emerald-300">In the app · {matched.groupTitle}</p>
+            <p className="mt-1 text-xs text-emerald-300">{matched.name} · {matched.groupTitle}</p>
           ) : normalized.emergency ? (
             <p className="mt-1 text-xs text-amber-300">Emergency service · opens device dialer</p>
           ) : number ? (
             <div className="mt-1 flex flex-wrap items-center justify-center gap-2">
-              {dirLookup && dirLookup.e164 === normalized.e164 && dirLookup.registered ? (
+              {savedContactMatch ? (
                 <p className="text-xs font-medium text-emerald-300">
-                  On Noctis ({dirLookup.displayName}){dirLookup.online ? " · Online" : dirLookup.pushReady ? " · Push Ready" : ""} · Free Direct Ring ($0)
+                  {savedContactMatch.name}
+                  {dirLookup && dirLookup.e164 === normalized.e164 && dirLookup.registered
+                    ? `${dirLookup.online ? " · Online" : " · Push Ready"} · Free Ring ($0)`
+                    : ` · ${normalized.e164}`}
+                </p>
+              ) : dirLookup && dirLookup.e164 === normalized.e164 && dirLookup.registered ? (
+                <p className="text-xs font-medium text-emerald-300">
+                  {dirLookup.displayName}{dirLookup.online ? " · Online" : dirLookup.pushReady ? " · Push Ready" : ""} · Free Direct Ring ($0)
                 </p>
               ) : (
                 <p className="text-xs text-zinc-300">
@@ -1471,7 +1696,7 @@ export function NoctisCall({
             </div>
           ) : (
             <p className="mt-1 text-[11px] text-zinc-400">
-              Hold 0 for + · Example: +{selectedCountry.dial} {selectedCountry.example}
+              Hold 0 for + · Enter number or open Contacts
             </p>
           )}
           {savingContact && normalized.valid ? (
@@ -1486,7 +1711,7 @@ export function NoctisCall({
               <button
                 type="button"
                 data-testid="confirm-save-contact-btn"
-                onClick={handleSaveSpeedContact}
+                onClick={() => void handleSaveSpeedContact()}
                 className="rounded-full bg-emerald-500 px-2.5 py-0.5 text-[11px] font-semibold text-black hover:bg-emerald-400"
               >
                 Save
@@ -1495,64 +1720,6 @@ export function NoctisCall({
           ) : null}
           {note ? <p className="mt-1 text-center text-xs text-[#e4b86a]">{note}</p> : null}
         </div>
-
-        {groups.length > 0 || quickEntries.length > 0 ? (
-          <div data-testid="speed-dial-strip" className="mx-auto mt-2 flex max-w-md shrink-0 flex-wrap items-center justify-center gap-1.5 px-4">
-            {groups.map((grp) => (
-              <button
-                key={grp.id}
-                type="button"
-                onClick={() => void startGroupCall(grp, video)}
-                className="inline-flex items-center gap-1 rounded-full border border-emerald-400/35 bg-emerald-500/15 px-2.5 py-1 text-[11px] font-medium text-emerald-200 backdrop-blur-sm hover:bg-emerald-500/25"
-              >
-                <Users className="size-3" />
-                {grp.name} ({grp.members.length})
-              </button>
-            ))}
-            {quickEntries.map((item) => (
-              <div key={item.phoneE164} className="inline-flex items-center rounded-full border border-white/15 bg-black/50 pl-2.5 pr-1.5 py-1 text-[11px] text-zinc-200 backdrop-blur-sm">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setNote(null);
-                    setNumber(item.phoneE164);
-                  }}
-                  className="hover:text-white"
-                >
-                  {item.label}
-                </button>
-                {item.isContact ? (
-                  <button
-                    type="button"
-                    aria-label={`Remove ${item.label}`}
-                    onClick={() => setContacts(removeWorldContact(item.phoneE164))}
-                    className="ml-1.5 text-zinc-500 hover:text-zinc-200"
-                  >
-                    <X className="size-3" />
-                  </button>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        ) : null}
-
-        {people.length ? (
-          <div className="mt-2 flex shrink-0 gap-3 overflow-x-auto px-4 pb-1">
-            {people.map((person) => (
-              <button
-                key={person.userId}
-                type="button"
-                onClick={() => void start(person, video)}
-                className="flex w-16 shrink-0 flex-col items-center gap-1"
-              >
-                <span className="grid size-12 place-items-center rounded-full bg-white/10 text-sm font-semibold">
-                  {person.name.slice(0, 1).toUpperCase()}
-                </span>
-                <span className="w-full truncate text-center text-[11px] text-zinc-400">{person.name.split(" ")[0]}</span>
-              </button>
-            ))}
-          </div>
-        ) : null}
 
         {video ? (
           <button

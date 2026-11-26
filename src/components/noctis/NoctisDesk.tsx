@@ -1,5 +1,6 @@
 import { Component, useEffect, useRef, useState, lazy, Suspense, type ClipboardEvent, type ComponentType, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
+import { MessageSquare } from "lucide-react";
 import { Activity, AlertCircle, AlertTriangle, Info, ArrowUp, Bot, Boxes, Brain, Calendar, Cpu, Crosshair, EyeOff, Fingerprint, FileLock, Globe, Key, Layers, Lock, LogOut, Network, Sparkles, Stethoscope, Swords, Target, ShieldAlert, Terminal, WifiOff, Zap, ChevronDown, ChevronLeft, Code2, Copy, CornerDownLeft, FileText, GraduationCap, Image, Library, Mail, Menu, Mic, MoreHorizontal, PanelLeftClose, PanelLeftOpen, PanelRight, PanelRightOpen, Pencil, Phone, PhoneOff, Plus, Printer, RotateCcw, Search, Square, SquarePen, Trash2, Users2, Video, Volume2, VolumeX, Wrench, X, TrendingUp, Scale, Atom, Landmark, Building2, Server, Microscope, FileCheck, Shield, CheckCircle2 } from "lucide-react";
 import { SOVEREIGN_SYSTEMS_PORTFOLIO } from "@/lib/noctis-sovereign-factory";
 import { askNoctis, drawVibe, hearVibe, sayVibe, trainVibe } from "@/lib/noctis-api";
@@ -7781,7 +7782,7 @@ export function NoctisDesk() {
                     className="min-w-0 flex-1 py-1 text-left"
                   >
                     <span className="block text-xs font-semibold text-zinc-100">Noctis Actions</span>
-                    <span className="block text-[11px] text-zinc-500">{actionsOpen ? "Quiz, notes, a brief, and the room" : "Show the actions"}</span>
+                    <span className="block text-[11px] text-zinc-500">{actionsOpen ? "Connect, notes, brief & room" : "Show the actions"}</span>
                   </button>
                   {actionsOpen ? (
                     <button
@@ -7806,79 +7807,30 @@ export function NoctisDesk() {
                 </div>
                 {actionsOpen ? (
                 <>
-                <ActionGroup title="This chat" items={[
-                  ["Create quiz", () => { setCallOpen(false); void send("Generate a 5-question quiz from this conversation. Use only what we already said."); }],
+                <Link
+                  to="/connect"
+                  data-testid="noctis-actions-connect-btn"
+                  className="flex items-center justify-center gap-2 rounded-xl border border-emerald-400/35 bg-emerald-500/15 px-3 py-2 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-500/25"
+                >
+                  <MessageSquare className="size-3.5 text-emerald-400" />
+                  Connect
+                </Link>
+                <ActionGroup title="Tools" items={[
                   ["Generate notes", () => { setCallOpen(false); void send("Write study notes, a bullet summary, and revision notes from this conversation."); }],
                   ["Write the brief", () => { setCallOpen(false); void send("Write the brief in this order: background, lead, open questions, limits, deadline, next step. Use only this chat. Do not invent a company, a price, or a date."); }],
-                  ["Share insight", () => shareInsight()],
+                  ["Open room", () => void startMeet()],
                 ]} />
-                <ActionGroup title="Meet" items={[
-                  ["Open the room", () => void startMeet()],
-                ]} />
-                {place === "hall" ? (
-                  <ActionGroup title="This lesson" items={[
-                    ["Explain lesson", () => void send("Explain the Hall lesson I have open. Use the lesson summary in context. Do not invent a transcript.")],
-                    ["Certification mapping", () => void send("Which certification targets fit the open Hall lesson? Mark them as targets, not credentials I hold.")],
-                  ]} />
-                ) : place === "career" ? (
-                  <ActionGroup title="This path" items={[
-                    ["Skill gaps", () => void send("Name the skill gaps between where I am and the goal in my journey.")],
-                    ["AI mentor", () => void send("Act as the mentor named in my context. Use my goal, path, DNA, and progress. Do not invent a person or a salary. Give the next step.")],
-                  ]} />
-                ) : place === "news" ? (
-                  <ActionGroup title="This story" items={[
-                    ["Summarize", () => void send("Summarize the news story I was just reading, and say why it matters.")],
-                    ["Explain impact", () => void send("Explain the career and study impact of the news I was just reading.")],
-                  ]} />
-                ) : null}
                 {meetId ? (
                   <div className="border-t border-white/10 pt-2">
-                    <p className="px-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">This room</p>
+                    <p className="px-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Active room</p>
                     <div className="mt-1.5 grid grid-cols-3 gap-1.5">
                       <button type="button" onClick={() => setCallOpen(true)} className="flex h-8 items-center justify-center rounded-full bg-white/10 text-[11px] font-semibold text-zinc-100">Show room</button>
-                      <button type="button" onClick={() => setCallOpen(false)} className="flex h-8 items-center justify-center rounded-full bg-[#ff3b30] text-[11px] font-semibold text-white">End</button>
                       <button type="button" onClick={() => void copyInvite()} className="flex h-8 items-center justify-center gap-1 rounded-full bg-white text-[11px] font-semibold text-black">
                         <Copy className="size-3.5" />
                         Copy link
                       </button>
-                      <button type="button" onClick={addToCalendar} className="flex h-8 items-center justify-center gap-1 rounded-full bg-white/10 text-[11px] font-semibold text-zinc-100">
-                        <Calendar className="size-3.5" />
-                        Calendar
-                      </button>
-                      <button type="button" disabled={inviteBusy || !inviteTo.trim()} onClick={() => void sendInvite()} className="col-span-2 flex h-8 items-center justify-center gap-1 rounded-full bg-white text-[11px] font-semibold text-black disabled:opacity-40">
-                        <Mail className="size-3.5" />
-                        {inviteBusy ? "Sending" : "Email invite"}
-                      </button>
+                      <button type="button" onClick={() => setCallOpen(false)} className="flex h-8 items-center justify-center rounded-full bg-[#ff3b30] text-[11px] font-semibold text-white">End</button>
                     </div>
-                    <input
-                      value={inviteTo}
-                      onChange={(event) => setInviteTo(event.target.value)}
-                      placeholder="name@email.com, another@email.com"
-                      disabled={inviteBusy}
-                      className="mt-1.5 h-8 w-full rounded-full bg-black/40 px-3 text-xs text-zinc-100 outline-none placeholder:text-zinc-500"
-                    />
-                    <div className="mt-1.5 grid grid-cols-4 gap-1">
-                      {(
-                        [
-                          ["whatsapp", "WhatsApp"],
-                          ["linkedin", "LinkedIn"],
-                          ["instagram", "Instagram"],
-                          ["facebook", "Facebook"],
-                        ] as const
-                      ).map(([where, label]) => (
-                        <button
-                          key={where}
-                          type="button"
-                          onClick={() => shareInvite(where)}
-                          className="flex h-8 items-center justify-center rounded-full bg-white/10 px-1 text-[10px] font-semibold text-zinc-100"
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                    <button type="button" onClick={() => void copyInvite()} className="mt-1 truncate px-1 text-left text-[10px] text-[#e4b86a] underline">
-                      {`${typeof window === "undefined" ? "" : window.location.origin}/?join=${meetId}`}
-                    </button>
                   </div>
                 ) : null}
                 {recordingUrl ? (
