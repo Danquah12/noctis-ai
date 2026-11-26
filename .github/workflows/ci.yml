@@ -17,6 +17,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run typecheck
+      - run: python3 -m unittest discover -s scripts -p test_noctis_governed_sft_input.py -v
       - run: npm run build
         env:
           VITE_AUTH_ENABLED: "true"
