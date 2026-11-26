@@ -14,6 +14,8 @@ export function isCyberSecurityReport(raw: string): boolean {
 export function buildPlainLanguagePrompt(rawAnswer: string): string {
   const cleaned = String(rawAnswer ?? "")
     .replace(/<!--[\s\S]*?-->/g, " ")
+    .replace(/(?:^|\n)\s*---+\s*\n*\*{0,2}NDKRS Verified Knowledge Grounding[\s\S]*$/i, "")
+    .replace(/^\s*(?:Routed to:.*|Switch|Thought for .*|View steps|\(Chain of Thought.*|NDKRS Verified Knowledge Grounding.*)\s*$/gim, "")
     .trim()
     .slice(0, 10_000);
 
@@ -59,7 +61,7 @@ export function isValidPlainLanguageOutput(candidate: string, originalRaw?: stri
   const txt = String(candidate ?? "").trim();
   if (txt.length < 60) return false;
   if (
-    /<!--\s*noctis-route:|Sovereign Vulnerability Intelligence|Official Vulnerability Name:|Non-Destructive Interactive Verification Harness|\[!IMPORTANT\]|^###\s|NDKRS Verified Knowledge Grounding|Structured Reference Table|Export CSV|\(Chain of Thought & Domain Reasoning\)/im.test(
+    /<!--\s*noctis-route:|Sovereign Vulnerability Intelligence|Official Vulnerability Name:|Non-Destructive Interactive Verification Harness|\[!IMPORTANT\]|^###\s|NDKRS Verified Knowledge Grounding|NDKRS Live Platform Status|Verified Authoritative Sources \/ Records \/ Chunks|Executable Deterministic Rules|Recent Signed Validation Certificates|Structured Reference Table|Export CSV|\(Chain of Thought & Domain Reasoning\)/im.test(
       txt,
     )
   ) {

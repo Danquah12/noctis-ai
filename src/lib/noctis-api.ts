@@ -20,7 +20,7 @@ function cleanImages(value: unknown) {
 }
 
 export const askNoctis = createServerFn({ method: "POST" })
-  .validator((input: { turns?: VibeTurn[]; desk?: unknown; think?: unknown; code?: unknown; skill?: unknown; depth?: unknown; level?: unknown; context?: unknown; language?: unknown; engine?: unknown; brain?: unknown }) => {
+  .validator((input: { turns?: VibeTurn[]; desk?: unknown; think?: unknown; code?: unknown; skill?: unknown; depth?: unknown; level?: unknown; context?: unknown; language?: unknown; engine?: unknown; brain?: unknown; plainRewrite?: unknown }) => {
     const turns: VibeTurn[] = [];
     if (Array.isArray(input?.turns)) {
       for (const turn of input.turns) {
@@ -39,6 +39,7 @@ export const askNoctis = createServerFn({ method: "POST" })
       desk: input?.desk === "study" ? ("study" as const) : ("chat" as const),
       think: input?.think !== false,
       code: input?.code === true,
+      plainRewrite: input?.plainRewrite === true,
       skill: picked.id as NoctisSkillId,
       depth: input?.depth === "deep" ? ("deep" as const) : ("plain" as const),
       level,
@@ -88,7 +89,7 @@ export const askNoctis = createServerFn({ method: "POST" })
     } catch {
       baked = "";
     }
-    return vibeReply(data.turns, baked, { desk: data.desk, think: data.think, code: data.code, skill: data.skill, depth: data.depth, level: data.level, context: data.context, language: data.language, engine: data.engine, brain: data.brain });
+    return vibeReply(data.turns, baked, { desk: data.desk, think: data.think, code: data.code, plainRewrite: data.plainRewrite, skill: data.skill, depth: data.depth, level: data.level, context: data.context, language: data.language, engine: data.engine, brain: data.brain });
   });
 
 async function bakedKey() {

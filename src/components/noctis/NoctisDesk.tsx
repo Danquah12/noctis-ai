@@ -995,6 +995,7 @@ async function vibePlainLanguage(raw: string): Promise<string> {
       data: {
         skill: "talk",
         think: false,
+        plainRewrite: true,
         turns: [{ role: "user", content: buildPlainLanguagePrompt(body) }],
       },
     });

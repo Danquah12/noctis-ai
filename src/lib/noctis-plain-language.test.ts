@@ -38,10 +38,15 @@ test("buildPlainLanguagePrompt tailors instructions for cyber reports vs general
   assert.match(cyberPrompt, /CVE-2026-103406/);
 
   const generalPrompt = buildPlainLanguagePrompt(
-    "An architect designs systems by creating formal architecture descriptions according to ISO/IEC/IEEE 42010.",
+    "An architect designs systems by creating formal architecture descriptions according to ISO/IEC/IEEE 42010.\n\n---\n**NDKRS Verified Knowledge Grounding** · Citations: `IEEE-42010` · SHA-256: `50d969071561`",
   );
   assert.match(generalPrompt, /In simple words/i);
   assert.match(generalPrompt, /Do NOT add unrelated cybersecurity warnings/i);
+  assert.doesNotMatch(generalPrompt, /NDKRS Verified Knowledge Grounding/i);
+  assert.equal(
+    isValidPlainLanguageOutput("NDKRS Live Platform Status\n- Database Backend: neon\n- Verified Authoritative Sources / Records / Chunks: 145"),
+    false,
+  );
 });
 
 test("buildDeterministicPlainLanguage translates zero-day & CVE jargon clearly for non-cyber readers", () => {

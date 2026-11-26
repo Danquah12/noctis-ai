@@ -1054,9 +1054,16 @@ async function resolveSecOpsSuiteMarkdown(promptText: string, rawHint = ""): Pro
 async function executeVibeReply(
   turns: VibeTurn[],
   keyOverride = "",
-  style: { desk?: "chat" | "study"; think?: boolean; code?: boolean; skill?: string; depth?: "plain" | "deep"; level?: "beginner" | "intermediate" | "advanced" | "expert"; context?: string; language?: string; engine?: string; brain?: { provider?: string; apiKey?: string; model?: string; endpoint?: string } } = {},
+  style: { desk?: "chat" | "study"; think?: boolean; code?: boolean; plainRewrite?: boolean; skill?: string; depth?: "plain" | "deep"; level?: "beginner" | "intermediate" | "advanced" | "expert"; context?: string; language?: string; engine?: string; brain?: { provider?: string; apiKey?: string; model?: string; endpoint?: string } } = {},
 ): Promise<{ text: string } | { error: string }> {
   const kept = retainSources(turns);
+  if (style.plainRewrite) {
+    return composeVibeReply(kept, keyOverride, {
+      ...style,
+      _plainRewrite: true,
+      _skipAutoSpecialists: true,
+    });
+  }
   let lastUserIdx = -1;
   for (let i = kept.length - 1; i >= 0; i--) {
     if (kept[i]?.role === "user") {
@@ -1970,8 +1977,11 @@ async function executeVibeReply(
 export async function vibeReply(
   turns: VibeTurn[],
   keyOverride = "",
-  style: { desk?: "chat" | "study"; think?: boolean; code?: boolean; skill?: string; depth?: "plain" | "deep"; level?: "beginner" | "intermediate" | "advanced" | "expert"; context?: string; language?: string; engine?: string; brain?: { provider?: string; apiKey?: string; model?: string; endpoint?: string } } = {},
+  style: { desk?: "chat" | "study"; think?: boolean; code?: boolean; plainRewrite?: boolean; skill?: string; depth?: "plain" | "deep"; level?: "beginner" | "intermediate" | "advanced" | "expert"; context?: string; language?: string; engine?: string; brain?: { provider?: string; apiKey?: string; model?: string; endpoint?: string } } = {},
 ): Promise<{ text: string } | { error: string }> {
+  if (style.plainRewrite) {
+    return executeVibeReply(turns, keyOverride, style);
+  }
   const startedAt = Date.now();
   const kept = retainSources(turns);
   const last = [...kept].reverse().find((turn) => turn.role === "user");
@@ -2030,6 +2040,7 @@ async function composeVibeReply(
     _intentDecision?: NoctisIntentDecision;
     _routeTracker?: { routeId: NoctisRouteEngineId };
     _skipAutoSpecialists?: boolean;
+    _plainRewrite?: boolean;
   } = {},
 ): Promise<{ text: string } | { error: string }> {
   const skipAutoSpecialists = Boolean(style._skipAutoSpecialists);
@@ -2044,6 +2055,27 @@ async function composeVibeReply(
   const followUp = resolveFollowUpContext(turns, question);
   const retrievalQuery = followUp.isFollowUp ? followUp.standaloneQuery : question;
   const activeEngine = resolveNoctisEngine(style.engine);
+  if (style._plainRewrite && last?.content) {
+    const { modelChat } = await import("@/lib/video-mind.server");
+    const plainRes = await modelChat(
+      [
+        {
+          role: "system",
+          content:
+            "You rewrite technical or complex answers into clear, simple, everyday English for someone with zero technical background. Follow the user's exact section structure, stay strictly grounded in the provided text, do not invent facts, and return plain readable text with no HTML comments or grounding footers.",
+        },
+        { role: "user", content: last.content },
+      ],
+      {
+        temperature: 0.25,
+        maxTokens: 1600,
+        brain: style.brain,
+        preferredProvider: activeEngine.preferredProviderHint,
+      },
+    );
+    if ("error" in plainRes) return plainRes;
+    return { text: (parseThinkEnvelope(plainRes.text).body || plainRes.text).trim() };
+  }
   const shouldThink = style.think !== false;
   const wantsRawJson = /\b(?:return|output|respond)\s+(?:only|strictly)\s+(?:valid\s+)?json\b/i.test(question);
   const THINKING_DIRECTIVE = activeEngine.thinkingDirective;
