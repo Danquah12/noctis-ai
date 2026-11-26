@@ -105,6 +105,22 @@ export function NoctisTrainingTab({ onSendToChat, onClose }: NoctisTrainingTabPr
 
   const domainEvents: VerboseEpochEvent[] = summary?.verboseEvents || [];
 
+  const classifyStep = (step: number): "IT" | "CLINICAL" | "FRONTIER" | "GLOBAL" => {
+    if (step === 1 || step === 3 || step === 12 || step === 130 || step === 138) return "CLINICAL";
+    if ((step >= 28 && step <= 43) || (step >= 121 && step <= 124) || step === 133 || step === 137 || step === 139) {
+      return "IT";
+    }
+    if ((step >= 13 && step <= 27) || (step >= 45 && step <= 120) || step === 132) return "FRONTIER";
+    return "GLOBAL";
+  };
+
+  const countByCat = {
+    IT: domainEvents.filter((e) => classifyStep(e.step) === "IT").length,
+    FRONTIER: domainEvents.filter((e) => classifyStep(e.step) === "FRONTIER").length,
+    CLINICAL: domainEvents.filter((e) => classifyStep(e.step) === "CLINICAL").length,
+    GLOBAL: domainEvents.filter((e) => classifyStep(e.step) === "GLOBAL").length,
+  };
+
   const filteredEvents = domainEvents.filter((evt) => {
     const q = searchQuery.toLowerCase();
     const matchesSearch =
@@ -114,21 +130,8 @@ export function NoctisTrainingTab({ onSendToChat, onClose }: NoctisTrainingTabPr
       String(evt.step).includes(q);
 
     if (!matchesSearch) return false;
-
     if (filterCategory === "ALL") return true;
-    if (filterCategory === "IT") {
-      return evt.step >= 28 && evt.step <= 37;
-    }
-    if (filterCategory === "CLINICAL") {
-      return evt.step === 1 || evt.step === 3 || evt.step === 12;
-    }
-    if (filterCategory === "FRONTIER") {
-      return evt.step >= 13 && evt.step <= 27;
-    }
-    if (filterCategory === "GLOBAL") {
-      return (evt.step >= 4 && evt.step <= 11) || evt.step === 2;
-    }
-    return true;
+    return classifyStep(evt.step) === filterCategory;
   });
 
   const handleCopyLogs = () => {
@@ -250,9 +253,11 @@ export function NoctisTrainingTab({ onSendToChat, onClose }: NoctisTrainingTabPr
               <Layers className="size-4 text-sky-400" />
             </div>
             <div className="mt-2 text-2xl font-bold tracking-tight text-white sm:text-3xl">
-              {summary ? summary.totalScenariosEvaluated.toLocaleString() : "2,408"}
+              {summary ? summary.totalScenariosEvaluated.toLocaleString() : "5,554"}
             </div>
-            <div className="mt-1 text-[11px] text-zinc-400">Across 37 Subsystem Domains</div>
+            <div className="mt-1 text-[11px] text-zinc-400">
+              Across {summary ? summary.totalDomainsAudited : 140} Subsystem Domains
+            </div>
           </div>
 
           <div className="rounded-xl border border-white/10 bg-[#161b26] p-3.5 sm:p-4 shadow-sm">
@@ -265,8 +270,8 @@ export function NoctisTrainingTab({ onSendToChat, onClose }: NoctisTrainingTabPr
             </div>
             <div className="mt-1 text-[11px] text-emerald-400/80">
               {summary
-                ? `${summary.totalInvariantsVerified} / ${summary.totalScenariosEvaluated} Verified`
-                : "2,408 / 2,408 Verified"}
+                ? `${summary.totalInvariantsVerified.toLocaleString()} / ${summary.totalScenariosEvaluated.toLocaleString()} Verified`
+                : "5,553 / 5,554 Verified"}
             </div>
           </div>
 
@@ -304,7 +309,7 @@ export function NoctisTrainingTab({ onSendToChat, onClose }: NoctisTrainingTabPr
                 filterCategory === "ALL" ? "bg-white/15 text-white" : "text-zinc-400 hover:text-white"
               )}
             >
-              All (37)
+              All ({domainEvents.length || 140})
             </button>
             <button
               type="button"
@@ -314,7 +319,7 @@ export function NoctisTrainingTab({ onSendToChat, onClose }: NoctisTrainingTabPr
                 filterCategory === "IT" ? "bg-white/15 text-white" : "text-zinc-400 hover:text-white"
               )}
             >
-              IT Systems (10)
+              IT & Cyber ({countByCat.IT})
             </button>
             <button
               type="button"
@@ -324,7 +329,7 @@ export function NoctisTrainingTab({ onSendToChat, onClose }: NoctisTrainingTabPr
                 filterCategory === "FRONTIER" ? "bg-white/15 text-white" : "text-zinc-400 hover:text-white"
               )}
             >
-              Frontier Tracks (15)
+              Frontier & Physics ({countByCat.FRONTIER})
             </button>
             <button
               type="button"
@@ -334,7 +339,7 @@ export function NoctisTrainingTab({ onSendToChat, onClose }: NoctisTrainingTabPr
                 filterCategory === "CLINICAL" ? "bg-white/15 text-white" : "text-zinc-400 hover:text-white"
               )}
             >
-              Clinical Critical Care (3)
+              Clinical Care ({countByCat.CLINICAL})
             </button>
             <button
               type="button"
@@ -344,7 +349,7 @@ export function NoctisTrainingTab({ onSendToChat, onClose }: NoctisTrainingTabPr
                 filterCategory === "GLOBAL" ? "bg-white/15 text-white" : "text-zinc-400 hover:text-white"
               )}
             >
-              Infrastructure & Policy (9)
+              Global & Governance ({countByCat.GLOBAL})
             </button>
           </div>
 

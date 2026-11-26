@@ -134,6 +134,7 @@ import { executeAllEpigenomicsScenarios } from "./noctis-epigenomics-chromatin-d
 import { executeAllRydbergScenarios } from "./noctis-rydberg-quantum-simulator-engine.ts";
 import { executeAllOtecScenarios } from "./noctis-otec-ocean-thermal-engine.ts";
 import { executeAllDrillingScenarios } from "./noctis-directional-drilling-geomechanics-engine.ts";
+import { executeRemainingNoctisTrainingDomains } from "./noctis-exhaustive-training.ts";
 
 export interface VerboseEpochEvent {
   step: number;
@@ -224,7 +225,7 @@ export function executeContinuousTrainingEpoch(options?: { verbose?: boolean }):
       detail,
     };
     verboseEvents.push(evt);
-    const logLine = `[NOCTIS-DAEMON] [STEP ${String(stepNum).padStart(2, "0")}/43] ${domain.padEnd(36)} : ${scenariosCount} scenarios, ${invariantsPassed} passed (${roundedMs}ms) -> ${status}`;
+    const logLine = `[NOCTIS-DAEMON] [STEP ${String(stepNum).padStart(3, "0")}/140] ${domain.padEnd(36)} : ${scenariosCount} scenarios, ${invariantsPassed} passed (${roundedMs}ms) -> ${status}`;
     verboseLogs.push(logLine);
     if (isVerbose) {
       console.log(logLine);
@@ -2468,6 +2469,21 @@ export function executeContinuousTrainingEpoch(options?: { verbose?: boolean }):
   });
   recordDomain(120, "ULTRA_DEEP_DIRECTIONAL_DRILLING", drillingTests.length, drillingPassed, performance.now() - t0_drilling, "Directional Drilling Geomechanics: Minimum Curvature Wellbore 3D Trajectory, Dogleg Severity Bounds (DLS <= 10 deg/30m), Pore Pressure vs Fracture Gradient Drilling Window, BHA Buckling");
 
+  // Steps 121-140: Exhaustive Coverage of All Remaining Flagship Noctis Subsystems
+  const remainingDomains = executeRemainingNoctisTrainingDomains();
+  for (const dom of remainingDomains) {
+    totalScenarios += dom.scenariosCount;
+    totalInvariants += dom.invariantsPassed;
+    safetyViolations += Math.max(0, dom.scenariosCount - dom.invariantsPassed);
+    domainBreakdown.push({
+      domain: dom.domain,
+      scenariosCount: dom.scenariosCount,
+      invariantsPassed: dom.invariantsPassed,
+      status: dom.invariantsPassed === dom.scenariosCount ? "PASS" : "FAIL",
+    });
+    recordDomain(dom.step, dom.domain, dom.scenariosCount, dom.invariantsPassed, dom.durationMs, dom.detail);
+  }
+
   const totalDurationMs = Math.round((performance.now() - epochStartTime) * 100) / 100;
   const accuracy = Math.round((totalInvariants / totalScenarios) * 1000) / 10;
   const nextScheduled = new Date(Date.now() + continuousState.intervalMinutes * 60 * 1000).toISOString();
@@ -2589,7 +2605,7 @@ export function runCompleteExhaustiveTrainingRun(targetEpochs = 3): CompleteTrai
     status: "COMPLETE",
     completedEpochs: targetEpochs,
     totalRequirementsAudited: latest.totalDomainsAudited,
-    totalUniqueDomains: 98,
+    totalUniqueDomains: latest.totalDomainsAudited,
     totalScenariosEvaluated: latest.totalScenariosEvaluated * targetEpochs,
     totalInvariantsVerified: latest.totalInvariantsVerified * targetEpochs,
     safetyViolationRate: 0.0,
@@ -2634,6 +2650,7 @@ export function formatCompleteTrainingRunMarkdown(result: CompleteTrainingRunRes
   md += `- **Frontier Engineering:** All 20 physics and engineering challenges solved deterministically.\n`;
   md += `- **Electronic Warfare & Defense:** 25/25 defense acceptance tests passed with zero classification or integrity failures.\n`;
   md += `- **Smart Grid & Clean Energy:** Frequency droop control and IEEE 1547 anti-islanding mandates active.\n`;
+  md += `- **Exhaustive Remaining Flagship Subsystems (Steps 121–140 — ${result.totalRequirementsAudited} Total Domains):** DoD/IC NDIMP Waves 1–4, RMF v2.0 OSCAL & Zero Trust, NDKRS Grounding Corpus, Sovereign SecOps (Twin, War Room, PQC, ZKP, SAST), NOCTIS-ARCH-001, Automotive OBD-II, Bible Exegesis, Investment Valuation, Legal/Lex Vault, Medical Lab Interpreter, Predictive Intelligence (15 Engines), Universal Science, Enterprise Command, NUPS (40 Engines), Catalog 260, Universal Assistant (100 Parity), Noctis Forge/NASEE (110 Screens), Extended Critical Care Subspecialties, Topic-Aware Plain Language/Routing Matrix & 39-Q Master Training Catalog.\n`;
 
   if (result.latestSummary.verboseEvents && result.latestSummary.verboseEvents.length > 0) {
     md += `#### 4. Verbose Real-Time Execution Audit Trail\n`;

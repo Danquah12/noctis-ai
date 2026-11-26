@@ -48,6 +48,7 @@ import {
   buildAutonomous20AreaSeedPairs,
   runAutonomousZeroTouchTrainingSuite,
 } from "./noctis-autonomous-trainer.ts";
+import { buildRemainingNoctisSeedPairs } from "./noctis-exhaustive-training.ts";
 import { buildNoctisSastTrainingPairs } from "./noctis-sast-engine.ts";
 import { isUniversalClinicalQuestion } from "./noctis-universal-clinical.server.ts";
 import { isRmfGrcQuery } from "./noctis-rmf-engine.ts";
@@ -371,6 +372,7 @@ const OWASP_SEED_CORPUS: TrainingPair[] = [
     at: "2026-10-27T11:20:00.000Z",
   },
   ...buildAutonomous20AreaSeedPairs(),
+  ...buildRemainingNoctisSeedPairs(),
 ];
 
 const SEED_CORPUS: TrainingPair[] = [
@@ -939,7 +941,7 @@ export async function executeZeroTouchAutonomous20AreaTraining(options?: {
   let committedRulesCount = 0;
 
   if (options?.commitToMemory !== false) {
-    const seedPairs = buildAutonomous20AreaSeedPairs();
+    const seedPairs = [...buildAutonomous20AreaSeedPairs(), ...buildRemainingNoctisSeedPairs()];
     for (const item of seedPairs) {
       rememberAnswer(item.question, item.answer, "api-trained", item.domain);
       committedPairsCount += 1;
