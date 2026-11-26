@@ -4,7 +4,11 @@ import { MessageSquare } from "lucide-react";
 import { Activity, AlertCircle, AlertTriangle, Info, ArrowUp, Bot, Boxes, Brain, Calendar, Cpu, Crosshair, EyeOff, Fingerprint, FileLock, Globe, Key, Layers, Lock, LogOut, Network, Sparkles, Stethoscope, Swords, Target, ShieldAlert, Terminal, WifiOff, Zap, ChevronDown, ChevronLeft, Code2, Copy, CornerDownLeft, FileText, GraduationCap, Image, Library, Mail, Menu, Mic, MoreHorizontal, PanelLeftClose, PanelLeftOpen, PanelRight, PanelRightOpen, Pencil, Phone, PhoneOff, Plus, Printer, RotateCcw, Search, Square, SquarePen, Trash2, Users2, Video, Volume2, VolumeX, Wrench, X, TrendingUp, Scale, Atom, Landmark, Building2, Server, Microscope, FileCheck, Shield, CheckCircle2 } from "lucide-react";
 import { SOVEREIGN_SYSTEMS_PORTFOLIO } from "@/lib/noctis-sovereign-factory";
 import { askNoctis, drawVibe, hearVibe, sayVibe, trainVibe } from "@/lib/noctis-api";
-import { buildDeterministicPlainLanguage, buildPlainLanguagePrompt } from "@/lib/noctis-plain-language";
+import {
+  buildDeterministicPlainLanguage,
+  buildPlainLanguagePrompt,
+  isValidPlainLanguageOutput,
+} from "@/lib/noctis-plain-language";
 import { bringImagineFile, bringPortrait, readImagine, startImagine } from "@/lib/imagine-api";
 import { playHarmonicTone, playSovereignChime, stopAudioSynth } from "@/lib/noctis-audio-synth";
 import { KnowledgeMap } from "@/components/learn/KnowledgeMap";
@@ -996,9 +1000,9 @@ async function vibePlainLanguage(raw: string): Promise<string> {
     });
     const text =
       result && typeof result === "object" && "text" in result && typeof result.text === "string"
-        ? plainAnswer(result.text).trim()
+        ? plainAnswer(result.text).replace(/<!--[\s\S]*?-->/g, "").trim()
         : "";
-    if (text.length > 60 && !/could not finish|write a question|unavailable/i.test(text)) {
+    if (isValidPlainLanguageOutput(text)) {
       return text;
     }
   } catch {

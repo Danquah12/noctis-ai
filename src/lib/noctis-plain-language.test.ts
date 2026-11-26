@@ -3,7 +3,22 @@ import test from "node:test";
 import {
   buildDeterministicPlainLanguage,
   buildPlainLanguagePrompt,
+  isValidPlainLanguageOutput,
 } from "./noctis-plain-language.ts";
+
+test("isValidPlainLanguageOutput rejects echoed CVE intelligence reports and accepts plain explanations", () => {
+  const echoed =
+    "Noctis Sovereign Vulnerability Intelligence: CVE-2026-123158\n[!IMPORTANT]\n### OpenBSD OpenSSH Security Advisory\n<!-- noctis-route:test -->";
+  assert.equal(isValidPlainLanguageOutput(echoed), false);
+
+  const plain = buildDeterministicPlainLanguage(
+    "Official Vulnerability Name: OpenBSD OpenSSH Security Advisory\nAffected Target: OpenBSD — OpenSSH\nCISA KEV Status: CONFIRMED IN CISA KEV CATALOG\nCVSS 3.1 Base Score: 8.1 / 10.0\nEPSS Exploit Probability: 97.2419999%\nRansomware / Threat Campaigns: Enterprise Extortion",
+  );
+  assert.equal(isValidPlainLanguageOutput(plain), true);
+  assert.match(plain, /OpenBSD OpenSSH/);
+  assert.match(plain, /97\.2%/);
+  assert.match(plain, /URGENT \(Fix Right Away\)/);
+});
 
 test("buildPlainLanguagePrompt asks for jargon-free 4-section non-cyber explanation", () => {
   const prompt = buildPlainLanguagePrompt("CVE-2026-103406 RCE in Juniper Session Smart Conductor");
