@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   buildDeterministicPlainLanguage,
   buildPlainLanguagePrompt,
+  isCyberSecurityReport,
   isValidPlainLanguageOutput,
 } from "./noctis-plain-language.ts";
 
@@ -20,17 +21,34 @@ test("isValidPlainLanguageOutput rejects echoed CVE intelligence reports and acc
   assert.match(plain, /URGENT \(Fix Right Away\)/);
 });
 
-test("buildPlainLanguagePrompt asks for jargon-free 4-section non-cyber explanation", () => {
-  const prompt = buildPlainLanguagePrompt("CVE-2026-103406 RCE in Juniper Session Smart Conductor");
-  assert.match(prompt, /ZERO cybersecurity or technical background/i);
-  assert.match(prompt, /What this is/i);
-  assert.match(prompt, /CVE-2026-103406/);
+test("isValidPlainLanguageOutput accepts genuine general plain-English rewrites and rejects verbatim opening echoes", () => {
+  const orig =
+    "An architect designs systems by creating formal architecture descriptions that link stakeholder concerns to governing viewpoints and ensure cross-boundary consistency according to ISO/IEC/IEEE 42010.";
+  assert.equal(isValidPlainLanguageOutput(orig, orig), false);
+
+  const aiRewrite =
+    "1. In simple words\nDesigning complex software is like drawing building blueprints so everyone from the owner to the plumber agrees on how things connect.\n\n2. Key ideas in plain English\n- Stakeholders are the people who care about the system.\n- Views are tailored maps drawn for each group.";
+  assert.equal(isValidPlainLanguageOutput(aiRewrite, orig), true);
+});
+
+test("buildPlainLanguagePrompt tailors instructions for cyber reports vs general topics", () => {
+  const cyberPrompt = buildPlainLanguagePrompt("CVE-2026-103406 RCE in Juniper Session Smart Conductor");
+  assert.match(cyberPrompt, /ZERO cybersecurity or technical background/i);
+  assert.match(cyberPrompt, /What this is/i);
+  assert.match(cyberPrompt, /CVE-2026-103406/);
+
+  const generalPrompt = buildPlainLanguagePrompt(
+    "An architect designs systems by creating formal architecture descriptions according to ISO/IEC/IEEE 42010.",
+  );
+  assert.match(generalPrompt, /In simple words/i);
+  assert.match(generalPrompt, /Do NOT add unrelated cybersecurity warnings/i);
 });
 
 test("buildDeterministicPlainLanguage translates zero-day & CVE jargon clearly for non-cyber readers", () => {
   const raw =
     "Zero-day critical vulnerability CVE-2026-103406 affecting Juniper Networks Session Smart Conductor (CVSS 9.8, CISA KEV actively exploited, EPSS: 94%). Allows remote code execution and unauthorized persistence. Step 2: Patch acquisition and SHA-256 verification.";
 
+  assert.equal(isCyberSecurityReport(raw), true);
   const plain = buildDeterministicPlainLanguage(raw);
   assert.match(plain, /1\. What this means \(in everyday words\)/);
   assert.match(plain, /lock defect/i);
@@ -43,8 +61,43 @@ test("buildDeterministicPlainLanguage translates zero-day & CVE jargon clearly f
   assert.match(plain, /official manufacturer security update/i);
 });
 
-test("buildDeterministicPlainLanguage handles general non-CVE technical text gracefully", () => {
+test("buildDeterministicPlainLanguage handles general non-CVE cyber advisories", () => {
   const plain = buildDeterministicPlainLanguage("Privilege escalation risk in admin portal due to weak token checks.");
   assert.match(plain, /full administrator control/i);
   assert.match(plain, /Simple next steps/);
+});
+
+test("buildDeterministicPlainLanguage explains ISO/IEC/IEEE 42010 architecture in plain words without cyber boilerplate", () => {
+  const archRaw = [
+    "Routed to:Core · General Reasoning",
+    "Thought for 8 seconds· Noctis Ultra",
+    "(Chain of Thought & Domain Reasoning)",
+    "An architect designs systems by creating formal architecture descriptions that link stakeholder concerns to governing viewpoints and ensure cross-boundary consistency according to ISO/IEC/IEEE 42010.",
+    "",
+    "Core Components of an Architecture Description",
+    "An architecture description organizes how a system is understood, built, and evaluated. Every view in this description must trace back to real stakeholder concerns.",
+    "",
+    "Structured Reference Table (3 Columns)",
+    "Export CSV (.csv)",
+    "Component\tDefinition\tPurpose",
+    "Stakeholder\tAn individual or organization with interests in the system.\tDefines what concerns must be addressed.",
+    "Viewpoint\tSpecifications, conventions, and rules for creating a view.\tProvides a template for addressing concerns.",
+    "View\tA work product expressing the architecture from a viewpoint.\tShows how the system satisfies specific concerns.",
+    "Correspondence Rule\tRules checking consistency across system boundaries.\tEnsures functional, security, and deployment alignment.",
+    "",
+    "Concrete Example",
+    "For example, when designing an online banking platform, the Chief Information Security Officer (a stakeholder) has a primary concern regarding data privacy. The architect creates a security viewpoint, generates a security view showing encrypted data pipelines, and applies correspondence rules to verify that the deployment view never exposes unencrypted storage endpoints.",
+    "",
+    "NDKRS Verified Knowledge Grounding · Citations: IEEE-42010 · SHA-256: 50d969071561",
+  ].join("\n");
+
+  assert.equal(isCyberSecurityReport(archRaw), false);
+  const plain = buildDeterministicPlainLanguage(archRaw);
+  assert.match(plain, /1\. In simple words/);
+  assert.match(plain, /architect/i);
+  assert.match(plain, /Stakeholder/i);
+  assert.match(plain, /Viewpoint/i);
+  assert.match(plain, /Chief Information Security Officer/i);
+  assert.doesNotMatch(plain, /software weakness|sign-in logs|IT team|official manufacturer security update/i);
+  assert.equal(isValidPlainLanguageOutput(plain, archRaw), true);
 });

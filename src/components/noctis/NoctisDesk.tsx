@@ -1002,7 +1002,7 @@ async function vibePlainLanguage(raw: string): Promise<string> {
       result && typeof result === "object" && "text" in result && typeof result.text === "string"
         ? plainAnswer(result.text).replace(/<!--[\s\S]*?-->/g, "").trim()
         : "";
-    if (isValidPlainLanguageOutput(text)) {
+    if (isValidPlainLanguageOutput(text, body)) {
       return text;
     }
   } catch {
@@ -1193,7 +1193,7 @@ function AnswerShare({ text }: { text: string }) {
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-300">
                 Plain Language · Everyday Guide
               </p>
-              <p className="text-[11px] text-zinc-400">Explained simply for non-technical & non-cybersecurity readers</p>
+              <p className="text-[11px] text-zinc-400">Explained simply in everyday words</p>
             </div>
             <div className="flex items-center gap-1.5">
               <button
