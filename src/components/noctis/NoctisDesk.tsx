@@ -4,6 +4,7 @@ import { MessageSquare } from "lucide-react";
 import { Activity, AlertCircle, AlertTriangle, Info, ArrowUp, Bot, Boxes, Brain, Calendar, Cpu, Crosshair, EyeOff, Fingerprint, FileLock, Globe, Key, Layers, Lock, LogOut, Network, Sparkles, Stethoscope, Swords, Target, ShieldAlert, Terminal, WifiOff, Zap, ChevronDown, ChevronLeft, Code2, Copy, CornerDownLeft, FileText, GraduationCap, Image, Library, Mail, Menu, Mic, MoreHorizontal, PanelLeftClose, PanelLeftOpen, PanelRight, PanelRightOpen, Pencil, Phone, PhoneOff, Plus, Printer, RotateCcw, Search, Square, SquarePen, Trash2, Users2, Video, Volume2, VolumeX, Wrench, X, TrendingUp, Scale, Atom, Landmark, Building2, Server, Microscope, FileCheck, Shield, CheckCircle2 } from "lucide-react";
 import { SOVEREIGN_SYSTEMS_PORTFOLIO } from "@/lib/noctis-sovereign-factory";
 import { askNoctis, drawVibe, hearVibe, sayVibe, trainVibe } from "@/lib/noctis-api";
+import { buildDeterministicPlainLanguage, buildPlainLanguagePrompt } from "@/lib/noctis-plain-language";
 import { bringImagineFile, bringPortrait, readImagine, startImagine } from "@/lib/imagine-api";
 import { playHarmonicTone, playSovereignChime, stopAudioSynth } from "@/lib/noctis-audio-synth";
 import { KnowledgeMap } from "@/components/learn/KnowledgeMap";
@@ -982,17 +983,45 @@ async function vibeSummary(raw: string, byline = "NOCTIS@Noctis") {
   return fullShare(raw, byline);
 }
 
+async function vibePlainLanguage(raw: string): Promise<string> {
+  const body = shareBody(raw).slice(0, 10000);
+  if (!body) return buildDeterministicPlainLanguage(raw);
+  try {
+    const result = await askNoctis({
+      data: {
+        skill: "talk",
+        think: false,
+        turns: [{ role: "user", content: buildPlainLanguagePrompt(body) }],
+      },
+    });
+    const text =
+      result && typeof result === "object" && "text" in result && typeof result.text === "string"
+        ? plainAnswer(result.text).trim()
+        : "";
+    if (text.length > 60 && !/could not finish|write a question|unavailable/i.test(text)) {
+      return text;
+    }
+  } catch {
+    /* fall through to instant deterministic non-technical explanation */
+  }
+  return buildDeterministicPlainLanguage(body || raw);
+}
+
 function AnswerShare({ text }: { text: string }) {
   const person = useCurrentUser();
   const byline = signedByline(person?.displayName);
   const photo = person?.profileImageUrl || "/media/avatars/kwesi.jpg";
   const [note, setNote] = useState("");
   const [summary, setSummary] = useState("");
+  const [plainText, setPlainText] = useState("");
+  const [plainLoading, setPlainLoading] = useState(false);
+  const [plainCopied, setPlainCopied] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
   const [reading, setReading] = useState(false);
   const [sending, setSending] = useState(false);
   const [who, setWho] = useState("");
   const sheet = useRef<HTMLDivElement>(null);
+  const plainSheet = useRef<HTMLDivElement>(null);
   const places = [
     ["linkedin", "LinkedIn"],
     ["whatsapp", "WhatsApp"],
@@ -1010,6 +1039,20 @@ function AnswerShare({ text }: { text: string }) {
     setSummary(next);
     setReading(false);
     window.setTimeout(() => sheet.current?.scrollIntoView({ block: "nearest", behavior: "smooth" }), 40);
+  }
+
+  async function preparePlainLanguage() {
+    if (plainLoading) return;
+    if (plainText) {
+      setPlainText("");
+      return;
+    }
+    setPlainLoading(true);
+    setPlainCopied(false);
+    const next = await vibePlainLanguage(text);
+    setPlainText(next);
+    setPlainLoading(false);
+    window.setTimeout(() => plainSheet.current?.scrollIntoView({ block: "nearest", behavior: "smooth" }), 40);
   }
 
   async function downloadCard() {
@@ -1128,7 +1171,61 @@ function AnswerShare({ text }: { text: string }) {
       <button type="button" onClick={openSend} className="h-8 rounded-full border border-[#e4b86a]/70 px-3 text-xs font-semibold text-[#e4b86a]">
         Send
       </button>
+      <button
+        type="button"
+        data-testid="plain-language-btn"
+        onClick={() => void preparePlainLanguage()}
+        disabled={plainLoading}
+        className="h-8 rounded-full border border-emerald-400/60 bg-emerald-500/15 px-3 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-500/25 disabled:opacity-40"
+      >
+        {plainLoading ? "Translating..." : "Plain Language"}
+      </button>
       {reading ? <span className="text-[11px] text-zinc-400">Noctis is reading this again.</span> : null}
+      {plainLoading ? <span className="text-[11px] text-emerald-300">Writing everyday explanation…</span> : null}
+      {plainText ? (
+        <div ref={plainSheet} data-testid="plain-language-card" className="mt-3 w-full basis-full rounded-2xl border border-emerald-400/35 bg-[#0e1718] p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-300">
+                Plain Language · Everyday Guide
+              </p>
+              <p className="text-[11px] text-zinc-400">Explained simply for non-technical & non-cybersecurity readers</p>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  void navigator.clipboard?.writeText(plainText).catch(() => undefined);
+                  setPlainCopied(true);
+                  window.setTimeout(() => setPlainCopied(false), 2000);
+                }}
+                className="rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold text-zinc-100 hover:bg-white/20"
+              >
+                {plainCopied ? "Copied" : "Copy"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSummary(`${plainText}\n\n${byline}`);
+                  setSending(true);
+                  window.setTimeout(() => sheet.current?.scrollIntoView({ block: "nearest", behavior: "smooth" }), 40);
+                }}
+                className="rounded-full bg-emerald-500 px-3 py-1 text-[11px] font-semibold text-black hover:bg-emerald-400"
+              >
+                Use in Send
+              </button>
+              <button
+                type="button"
+                onClick={() => setPlainText("")}
+                className="rounded-full bg-white/10 px-2.5 py-1 text-[11px] text-zinc-300 hover:bg-white/20"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+          <p className="mt-2.5 whitespace-pre-wrap text-xs sm:text-sm leading-6 text-zinc-100">{plainText}</p>
+        </div>
+      ) : null}
       {sending || summary ? (
         <div ref={sheet} className="mt-3 w-full basis-full rounded-2xl border border-[#e4b86a]/40 bg-[#111] p-4">
           <div className="flex items-center gap-3">
