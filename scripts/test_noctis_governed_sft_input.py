@@ -9,6 +9,7 @@ import tempfile
 import unittest
 
 from noctis_governed_sft_input import InputBlocked, load_governed_export
+from noctis_sft_job_binding import prepare_job, canonical
 
 
 def sha(data):
@@ -135,6 +136,83 @@ class GovernedInputTests(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertIn("manifest_pin_mismatch", result.stderr)
         self.assertEqual(result.stdout, "")
+
+    def job_config(self):
+        return {
+            "schema": "noctis.sft.job.v1", "base_model": "ExampleOrg/TestModel",
+            "base_revision": "a" * 40, "trainer_code_revision": "c" * 40,
+            "dependency_lock_sha256": "d" * 64, "dataset_manifest_sha256": self.pin,
+            "seed": 42, "epochs": 3, "batch_size": 2, "gradient_accumulation": 8,
+            "learning_rate_millionths": 200, "lora_rank": 64, "lora_alpha": 128,
+            "max_sequence_length": 2048,
+        }
+
+    def bind(self, config=None, pin=None):
+        raw = canonical(self.job_config() if config is None else config)
+        return prepare_job(self.root, raw, sha(raw) if pin is None else pin)
+
+    def test_job_binding_deterministic_and_no_execution_claim(self):
+        train, dev, record = self.bind()
+        self.assertEqual(len(train), 1)
+        self.assertEqual(len(dev), 1)
+        self.assertEqual(record, self.bind()[2])
+        self.assertEqual(record["outcome"], "offline_job_binding_only")
+        for key in ("training_executed", "execution_authorized", "model_revision_verified",
+                    "dependency_lock_verified", "trainer_code_verified", "resume_supported"):
+            self.assertFalse(record[key])
+        self.assertNotIn("primary color", json.dumps(record))
+        self.assertEqual(record["dataset"]["manifest_sha256"], self.pin)
+
+    def test_job_binding_changes_with_seed_or_model_revision(self):
+        original = self.bind()[2]["job_binding_sha256"]
+        for field, value in (("seed", 43), ("base_revision", "b" * 40)):
+            config = self.job_config()
+            config[field] = value
+            self.assertNotEqual(original, self.bind(config)[2]["job_binding_sha256"])
+
+    def test_job_config_pin_is_required_and_detects_changes(self):
+        for pin in ("", "0" * 64):
+            with self.subTest(pin=pin), self.assertRaises(InputBlocked):
+                self.bind(pin=pin)
+
+    def test_job_refuses_mutable_model_or_code_revision(self):
+        for field in ("base_revision", "trainer_code_revision"):
+            for value in ("main", "latest", "0" * 40):
+                config = self.job_config()
+                config[field] = value
+                with self.subTest(field=field, value=value), self.assertRaisesRegex(InputBlocked, "immutable_revision_required"):
+                    self.bind(config)
+
+    def test_job_refuses_unexpected_execution_flags(self):
+        for flag in ("resume_from_checkpoint", "push_to_hub", "trust_remote_code", "heldout_path"):
+            config = self.job_config()
+            config[flag] = True
+            with self.subTest(flag=flag), self.assertRaisesRegex(InputBlocked, "invalid_job_schema"):
+                self.bind(config)
+
+    def test_job_rejects_boolean_or_out_of_bounds_config(self):
+        for field, value in (("epochs", True), ("seed", -1), ("batch_size", 0),
+                             ("learning_rate_millionths", 100001)):
+            config = self.job_config()
+            config[field] = value
+            with self.subTest(field=field), self.assertRaisesRegex(InputBlocked, "invalid_" + field):
+                self.bind(config)
+
+    def test_job_binding_rechecks_dataset_bytes(self):
+        self.write_private("train.jsonl", b"{}\n")
+        with self.assertRaisesRegex(InputBlocked, "split_file_checksum_mismatch"):
+            self.bind()
+
+    def test_job_refuses_unapproved_dataset_pin(self):
+        config = self.job_config()
+        config["dataset_manifest_sha256"] = "0" * 64
+        with self.assertRaisesRegex(InputBlocked, "manifest_pin_mismatch"):
+            self.bind(config)
+
+    def test_job_config_duplicate_key_rejected(self):
+        raw = b'{"schema":"noctis.sft.job.v1","schema":"noctis.sft.job.v1"}'
+        with self.assertRaisesRegex(InputBlocked, "duplicate_json_key"):
+            prepare_job(self.root, raw, sha(raw))
 
 
 if __name__ == "__main__":
