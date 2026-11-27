@@ -4,7 +4,7 @@ import {
   formulateDailyChallengeQuestion,
   runChallengeInChat,
   DAILY_CHALLENGE_CATALOG
-} from "./noctis-daily-challenge-engine";
+} from "./noctis-daily-challenge-engine.ts";
 
 test("NOCTIS-CHALLENGE-ALERT-001: Daily Challenge Engine", async (t) => {
   await t.test("formulates challenge questions across all three suites", () => {

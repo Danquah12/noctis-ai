@@ -122,7 +122,8 @@ export function NoctisTrainingTab({ onSendToChat, onClose }: NoctisTrainingTabPr
       step === 154 ||
       step === 155 ||
       step === 156 ||
-      step === 159
+      step === 159 ||
+      (step >= 161 && step <= 171)
     ) {
       return "CLINICAL";
     }
@@ -137,11 +138,16 @@ export function NoctisTrainingTab({ onSendToChat, onClose }: NoctisTrainingTabPr
       step === 152 ||
       step === 153 ||
       step === 157 ||
-      step === 158
+      step === 158 ||
+      (step >= 172 && step <= 179) ||
+      (step >= 181 && step <= 183) ||
+      (step >= 186 && step <= 193)
     ) {
       return "IT";
     }
-    if ((step >= 13 && step <= 27) || (step >= 45 && step <= 120) || step === 132) return "FRONTIER";
+    if ((step >= 13 && step <= 27) || (step >= 45 && step <= 120) || step === 132 || step === 180 || step === 195) {
+      return "FRONTIER";
+    }
     return "GLOBAL";
   };
 
@@ -288,10 +294,10 @@ export function NoctisTrainingTab({ onSendToChat, onClose }: NoctisTrainingTabPr
               <Layers className="size-4 text-sky-400" />
             </div>
             <div className="mt-2 text-2xl font-bold tracking-tight text-white sm:text-3xl">
-              {summary ? summary.totalScenariosEvaluated.toLocaleString() : "5,676"}
+              {summary ? summary.totalScenariosEvaluated.toLocaleString() : "5,795"}
             </div>
             <div className="mt-1 text-[11px] text-zinc-400">
-              {`Across ${summary ? summary.totalDomainsAudited : 160} Subsystem Domains`}
+              {`Across ${summary ? summary.totalDomainsAudited : 200} Subsystem Domains`}
             </div>
           </div>
 
@@ -306,7 +312,7 @@ export function NoctisTrainingTab({ onSendToChat, onClose }: NoctisTrainingTabPr
             <div className="mt-1 text-[11px] text-emerald-400/80">
               {summary
                 ? `${summary.totalInvariantsVerified.toLocaleString()} / ${summary.totalScenariosEvaluated.toLocaleString()} Verified`
-                : "5,676 / 5,676 Verified"}
+                : "5,795 / 5,795 Verified"}
             </div>
           </div>
 
@@ -344,7 +350,7 @@ export function NoctisTrainingTab({ onSendToChat, onClose }: NoctisTrainingTabPr
                 filterCategory === "ALL" ? "bg-white/15 text-white" : "text-zinc-400 hover:text-white"
               )}
             >
-              All ({domainEvents.length || 160})
+              All ({domainEvents.length || 200})
             </button>
             <button
               type="button"

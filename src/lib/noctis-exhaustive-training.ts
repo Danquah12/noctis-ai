@@ -26,6 +26,10 @@
  */
 
 import { evaluateClassificationGate } from "./dod-ic/classification-gateway.ts";
+import {
+  buildRemainingNoctisSeedPairsPart2,
+  runExhaustiveRemainingDomainsPart2,
+} from "./noctis-exhaustive-training-part2.ts";
 import { evaluateDod8510Authorization } from "./dod-ic/dod-rmf-engine.ts";
 import { evaluateIcd503Authorization } from "./dod-ic/ic-security-engine.ts";
 import { evaluateScifIcd705Compliance } from "./dod-ic/classified-systems-engine.ts";
@@ -1462,7 +1466,7 @@ export function executeRemainingNoctisTrainingDomains(): ExhaustiveTrainingDomai
     detail: `Worldwide ITU-T Directory (${WORLD_DIAL_CODES.length} Countries, E.164 Trunk Rules) & Vibe Connect Identity/Idempotency Invariants`,
   });
 
-  return results;
+  return [...results, ...runExhaustiveRemainingDomainsPart2()];
 }
 
 const FLAGSHIP_SUBSYSTEM_SEED_PAIRS: ExhaustiveSeedPair[] = [
@@ -1706,7 +1710,7 @@ export function buildRemainingNoctisSeedPairs(): ExhaustiveSeedPair[] {
   const seen = new Set<string>();
   const out: ExhaustiveSeedPair[] = [];
 
-  for (const item of [...NOCTIS_MASTER_TRAINING_QUESTIONS, ...FLAGSHIP_SUBSYSTEM_SEED_PAIRS]) {
+  for (const item of [...NOCTIS_MASTER_TRAINING_QUESTIONS, ...FLAGSHIP_SUBSYSTEM_SEED_PAIRS, ...buildRemainingNoctisSeedPairsPart2()]) {
     const key = item.question.trim().toLowerCase();
     if (!key || seen.has(key)) continue;
     seen.add(key);

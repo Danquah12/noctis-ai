@@ -185,6 +185,20 @@ const libTestSuites = [
   "src/lib/rmf-v2/rmf-v2-enterprise-full.test.ts",
   "src/lib/rmf-v2/rmf-v2.test.ts",
   "src/lib/triad-acceptance.test.ts",
+  "src/lib/noctis-daily-challenge-engine.test.ts",
+  "src/lib/assistant/assistant.test.ts",
+  "src/lib/catalog260/catalog260.test.ts",
+  "src/lib/dod-ic/dod-ic.test.ts",
+  "src/lib/dod-ic/enterprise-tooling.test.ts",
+  "src/lib/dod-ic/policy-change.test.ts",
+  "src/lib/dod-ic/zero-trust-icam.test.ts",
+  "src/lib/enterprise/enterprise.test.ts",
+  "src/lib/forge/enterprise-challenge.test.ts",
+  "src/lib/forge/forge.test.ts",
+  "src/lib/forge/nasee-engine.test.ts",
+  "src/lib/forge/website-blueprint-engine.test.ts",
+  "src/lib/ndkrs/ndkrs.test.ts",
+  "src/lib/nups/nups.test.ts",
 ];
 
 if (scriptTests.length > 0) {
