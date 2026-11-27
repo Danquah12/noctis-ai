@@ -82,6 +82,135 @@ export interface ExternalDomainSummaryInput {
   status: string;
 }
 
+export const EMBEDDING_DIM = 256;
+
+const SEMANTIC_CONCEPT_CLUSTERS: ReadonlyArray<readonly string[]> = [
+  ["database", "postgres", "postgresql", "sql", "mvcc", "snapshot", "transaction", "reader", "writer", "readers", "writers", "lock", "blocking", "isolation", "vacuum", "index", "btree", "wal", "acid"],
+  ["kubernetes", "k8s", "container", "pod", "cluster", "orchestration", "networkpolicy", "nonroot", "distroless", "helm", "ingress", "etcd", "crd", "autoscaling"],
+  ["distributed", "consensus", "raft", "paxos", "quorum", "leader", "election", "fencing", "lease", "partition", "splitbrain", "clock", "crdt", "linearizability"],
+  ["security", "cve", "vulnerability", "exploit", "kev", "cisa", "ransomware", "patch", "remediation", "advisory", "mitre", "attack", "technique", "tactic", "nvd", "cvss", "cwe"],
+  ["owasp", "injection", "sqli", "xss", "ssrf", "csrf", "idor", "bola", "authentication", "authorization", "rbac", "abac", "jwt", "oauth", "oidc", "mfa", "session"],
+  ["encryption", "tls", "mtls", "cipher", "aes", "gcm", "pqc", "quantum", "signature", "hash", "sha256", "certificate", "pki", "kms", "secret"],
+  ["networking", "dns", "dnssec", "bgp", "rpki", "tcp", "udp", "quic", "http", "grpc", "rfc", "ietf", "latency", "packet", "routing", "cdn"],
+  ["ai", "llm", "transformer", "attention", "lora", "qlora", "dpo", "sft", "fine", "tuning", "embedding", "vector", "rag", "retrieval", "bm25", "eval", "hallucination"],
+  ["clinical", "patient", "sepsis", "hyperkalemia", "potassium", "creatinine", "egfr", "ventilator", "ards", "ecmo", "cardiac", "ecg", "pubmed", "guideline", "dosing", "fhir"],
+  ["finance", "gaap", "ifrs", "asc606", "revenue", "recognition", "accounting", "audit", "sox", "ledger", "dcf", "wacc", "fcf", "ebitda", "valuation", "margin", "churn", "arr", "ndr"],
+  ["leadership", "executive", "okr", "management", "org", "organization", "strategy", "roadmap", "product", "discovery", "stakeholder", "negotiation", "batna", "zopa", "bluf", "communication"],
+  ["delivery", "project", "pmbok", "scrum", "agile", "kanban", "sprint", "critical", "path", "float", "milestone", "raid", "supply", "chain", "procurement", "eoq", "inventory"],
+  ["rust", "memory", "borrow", "ownership", "lifetime", "unsafe", "concurrency", "async", "allocator", "linux", "kernel", "ebpf", "posix", "thread"],
+  ["compliance", "nist", "rmf", "800-53", "fedramp", "ato", "poam", "oscal", "hipaa", "gdpr", "privacy", "contract", "msa", "dpa", "sbom", "license"],
+  ["observability", "metrics", "logs", "traces", "opentelemetry", "slo", "sli", "error", "budget", "circuit", "breaker", "backpressure", "retry", "jitter", "idempotency"],
+  ["experiment", "abtest", "causal", "srm", "simpson", "paradox", "statistics", "confidence", "hypothesis", "cohort", "retention", "marketing", "attribution", "funnel"],
+] as const;
+
+const CLUSTER_OFFSET = 0;
+const CLUSTER_SLOTS = 32; // dims 0..31 capture dense synonym concepts
+const HASH_OFFSET = 32;
+const HASH_SLOTS = EMBEDDING_DIM - HASH_OFFSET; // dims 32..255 capture tokens, bigrams & trigrams
+
+function fnvHashStr(str: string, seed = 2166136261): number {
+  let h = seed >>> 0;
+  for (let i = 0; i < str.length; i += 1) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  return h;
+}
+
+/**
+ * Deterministic 256-dim semantic + subword embedding combining curated concept clusters
+ * (capturing synonym paraphrases) with signed feature-hashing over words, bigrams & trigrams.
+ * Always L2-normalized for cosine `<=>` search in pgvector and in-memory scoring.
+ */
+export function computeSemanticEmbedding256(text: string): number[] {
+  const vec = new Float64Array(EMBEDDING_DIM);
+  const tokens = String(text || "")
+    .toLowerCase()
+    .replace(/c\+\+/g, " cpp ")
+    .replace(/c#/g, " csharp ")
+    .replace(/[^a-z0-9.+-]+/g, " ")
+    .split(/\s+/)
+    .map((t) => t.replace(/^[.+-]+|[.+-]+$/g, ""))
+    .filter((t) => t.length >= 2);
+
+  if (!tokens.length) {
+    vec[0] = 1;
+    return Array.from(vec);
+  }
+
+  // 1. Concept cluster projections (paraphrase & synonym alignment)
+  for (let cIdx = 0; cIdx < SEMANTIC_CONCEPT_CLUSTERS.length; cIdx += 1) {
+    const cluster = SEMANTIC_CONCEPT_CLUSTERS[cIdx]!;
+    let hits = 0;
+    for (const tok of tokens) {
+      if (cluster.includes(tok) || cluster.some((kw) => tok.length >= 5 && kw.startsWith(tok.slice(0, 5)))) {
+        hits += 1;
+      }
+    }
+    if (hits > 0) {
+      const weight = 2.6 * Math.min(3.5, Math.sqrt(hits));
+      vec[(CLUSTER_OFFSET + (cIdx * 2) % CLUSTER_SLOTS)] += weight;
+      vec[(CLUSTER_OFFSET + (cIdx * 2 + 1) % CLUSTER_SLOTS)] += weight * 0.7;
+    }
+  }
+
+  // 2. Signed feature-hashing over tokens, bigrams, and 4-char subword n-grams
+  const capped = tokens.slice(0, 120);
+  for (let i = 0; i < capped.length; i += 1) {
+    const tok = capped[i]!;
+    const w = ROUTER_STOP_WORDS.has(tok) ? 0.25 : 1.35;
+    const h1 = fnvHashStr(tok, 2166136261);
+    const sign1 = (h1 & 1) === 0 ? 1 : -1;
+    vec[HASH_OFFSET + ((h1 >>> 1) % HASH_SLOTS)] += sign1 * w;
+
+    if (i + 1 < capped.length) {
+      const bg = `${tok}_${capped[i + 1]!}`;
+      const h2 = fnvHashStr(bg, 374761393);
+      const sign2 = (h2 & 1) === 0 ? 1 : -1;
+      vec[HASH_OFFSET + ((h2 >>> 1) % HASH_SLOTS)] += sign2 * 1.15;
+    }
+
+    if (tok.length >= 4 && !ROUTER_STOP_WORDS.has(tok)) {
+      for (let s = 0; s <= tok.length - 4; s += 1) {
+        const sub = tok.slice(s, s + 4);
+        const h3 = fnvHashStr(sub, 668265263);
+        const sign3 = (h3 & 1) === 0 ? 1 : -1;
+        vec[HASH_OFFSET + ((h3 >>> 1) % HASH_SLOTS)] += sign3 * 0.45;
+      }
+    }
+  }
+
+  let normSq = 0;
+  for (let i = 0; i < EMBEDDING_DIM; i += 1) normSq += vec[i]! * vec[i]!;
+  const norm = Math.sqrt(normSq) || 1;
+  const out = new Array<number>(EMBEDDING_DIM);
+  for (let i = 0; i < EMBEDDING_DIM; i += 1) {
+    out[i] = Number((vec[i]! / norm).toFixed(6));
+  }
+  return out;
+}
+
+export function formatVectorLiteral(vec: readonly number[]): string {
+  return `[${vec.map((v) => (Number.isFinite(v) ? v.toFixed(6) : "0")).join(",")}]`;
+}
+
+export function cosineSimilarity(a: readonly number[], b: readonly number[]): number {
+  const len = Math.min(a.length, b.length);
+  if (len === 0) return 0;
+  let dot = 0;
+  let na = 0;
+  let nb = 0;
+  for (let i = 0; i < len; i += 1) {
+    const x = a[i] ?? 0;
+    const y = b[i] ?? 0;
+    dot += x * y;
+    na += x * x;
+    nb += y * y;
+  }
+  const denom = Math.sqrt(na) * Math.sqrt(nb);
+  return denom > 0 ? Number((dot / denom).toFixed(5)) : 0;
+}
+
 const ROUTER_STOP_WORDS = new Set([
   "the", "and", "for", "with", "that", "this", "from", "into", "your", "about",
   "what", "when", "where", "which", "would", "could", "should", "please", "how",

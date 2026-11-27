@@ -70,7 +70,94 @@ export function NoctisTrainingTab({ onSendToChat, onClose }: NoctisTrainingTabPr
   const [copiedLog, setCopiedLog] = useState(false);
   const [visibleCount, setVisibleCount] = useState(12);
   const [showStream, setShowStream] = useState(false);
+  const [hudView, setHudView] = useState<"daemon" | "knowledge">("daemon");
+  const [ingestLoading, setIngestLoading] = useState(false);
+  const [knowledgeStatus, setKnowledgeStatus] = useState<{
+    sources?: Array<{ id: string; name: string; license: string }>;
+    knowledgeStats?: {
+      dbTotalPairs?: number;
+      totalTracks?: number;
+      totalSubtopics?: number;
+      continuousDomains?: number;
+    };
+    telemetry?: {
+      vectorIndexedCount?: number;
+      staleSupersededCount?: number;
+      recentRuns?: Array<{
+        runId: string;
+        startedAt: string;
+        durationMs: number;
+        totalFetched: number;
+        postgresUpserted: number;
+        dbTotalAfter: number | null;
+      }>;
+    };
+  } | null>(null);
+  const [kbQuery, setKbQuery] = useState("");
+  const [kbLoading, setKbLoading] = useState(false);
+  const [kbResults, setKbResults] = useState<Array<{ id: string; source: string; domain: string; title: string; summary: string; score: number }>>([]);
+  const [ingestBanner, setIngestBanner] = useState<string | null>(null);
   const consoleBottomRef = useRef<HTMLDivElement>(null);
+
+  const loadKnowledgeStatus = async () => {
+    try {
+      const res = await fetch("/api/noctis/knowledge/ingest?status=1");
+      if (res.ok) {
+        const data = await res.json();
+        setKnowledgeStatus(data);
+      }
+    } catch {
+      /* ignore non-fatal UI status fetch errors */
+    }
+  };
+
+  const runKnowledgeSearch = async (queryText: string) => {
+    setKbLoading(true);
+    try {
+      const q = encodeURIComponent(queryText.trim() || "kubernetes security mvcc");
+      const res = await fetch(`/api/noctis/knowledge?q=${q}&format=json&limit=10`);
+      if (res.ok) {
+        const data = await res.json();
+        setKbResults(Array.isArray(data.results) ? data.results : []);
+      }
+    } catch {
+      setKbResults([]);
+    } finally {
+      setKbLoading(false);
+    }
+  };
+
+  const triggerLiveIngestion = async () => {
+    setIngestLoading(true);
+    setIngestBanner(null);
+    try {
+      const res = await fetch("/api/noctis/knowledge/ingest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ perSourceLimit: 8 }),
+      });
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        setIngestBanner(
+          `Ingested ${data.postgresUpserted} new pairs (${data.embeddingsWritten} vectors, ${data.dbTotalPairsAfter ?? "live"} active DB pairs) in ${data.durationMs}ms.`,
+        );
+        await loadKnowledgeStatus();
+      } else {
+        setIngestBanner(data?.error || "Ingestion completed with partial sources.");
+      }
+    } catch {
+      setIngestBanner("Failed to reach ingestion endpoint.");
+    } finally {
+      setIngestLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (hudView === "knowledge") {
+      void loadKnowledgeStatus();
+      if (kbResults.length === 0) void runKnowledgeSearch("kubernetes postgres mitre gaap");
+    }
+  }, [hudView]);
 
   useEffect(() => {
     setVisibleCount(12);
@@ -228,6 +315,29 @@ export function NoctisTrainingTab({ onSendToChat, onClose }: NoctisTrainingTabPr
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center rounded-lg border border-white/10 bg-[#0d1117] p-0.5 text-xs">
+            <button
+              type="button"
+              onClick={() => setHudView("daemon")}
+              className={cn(
+                "rounded-md px-2.5 py-1 font-medium transition cursor-pointer",
+                hudView === "daemon" ? "bg-emerald-600/25 text-emerald-300" : "text-zinc-400 hover:text-white",
+              )}
+            >
+              Daemon (200D)
+            </button>
+            <button
+              type="button"
+              onClick={() => setHudView("knowledge")}
+              className={cn(
+                "rounded-md px-2.5 py-1 font-medium transition cursor-pointer",
+                hudView === "knowledge" ? "bg-sky-600/25 text-sky-300" : "text-zinc-400 hover:text-white",
+              )}
+            >
+              Knowledge &amp; Ingestion (40T)
+            </button>
+          </div>
+
           <button
             type="button"
             onClick={() => void fetchStatus(true)}
@@ -286,6 +396,135 @@ export function NoctisTrainingTab({ onSendToChat, onClose }: NoctisTrainingTabPr
 
       {/* Main Scrollable Content */}
       <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-6 space-y-6">
+        {hudView === "knowledge" ? (
+          <div className="space-y-5">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+              <div className="rounded-xl border border-white/10 bg-[#161b26] p-3.5 shadow-sm">
+                <div className="flex items-center justify-between text-xs text-zinc-400">
+                  <span>Neon DB Pairs</span>
+                  <Layers className="size-4 text-emerald-400" />
+                </div>
+                <div className="mt-2 text-2xl font-bold text-white">
+                  {knowledgeStatus?.knowledgeStats?.dbTotalPairs?.toLocaleString() || "..."}
+                </div>
+                <div className="mt-1 text-[11px] text-zinc-400">Verified Active Records</div>
+              </div>
+
+              <div className="rounded-xl border border-white/10 bg-[#161b26] p-3.5 shadow-sm">
+                <div className="flex items-center justify-between text-xs text-zinc-400">
+                  <span>Open Curriculum</span>
+                  <Sparkles className="size-4 text-sky-400" />
+                </div>
+                <div className="mt-2 text-2xl font-bold text-sky-300">
+                  {`${knowledgeStatus?.knowledgeStats?.totalTracks || 40} Tracks`}
+                </div>
+                <div className="mt-1 text-[11px] text-zinc-400">
+                  {`${knowledgeStatus?.knowledgeStats?.totalSubtopics || 480} Subtopics (Tech & Business)`}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-white/10 bg-[#161b26] p-3.5 shadow-sm">
+                <div className="flex items-center justify-between text-xs text-zinc-400">
+                  <span>Open Sources</span>
+                  <Globe className="size-4 text-amber-400" />
+                </div>
+                <div className="mt-2 text-2xl font-bold text-amber-300">
+                  {knowledgeStatus?.sources?.length || 11}
+                </div>
+                <div className="mt-1 text-[11px] text-zinc-400">Daily Cron @ 08:00 UTC</div>
+              </div>
+
+              <div className="rounded-xl border border-white/10 bg-[#161b26] p-3.5 shadow-sm">
+                <div className="flex items-center justify-between text-xs text-zinc-400">
+                  <span>pgvector HNSW</span>
+                  <Cpu className="size-4 text-emerald-400" />
+                </div>
+                <div className="mt-2 text-2xl font-bold text-emerald-400">
+                  {knowledgeStatus?.telemetry?.vectorIndexedCount?.toLocaleString() || "..."}
+                </div>
+                <div className="mt-1 text-[11px] text-zinc-400">256-dim Hybrid Semantic Index</div>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-[#161b26] p-3">
+              <div className="relative flex-1 min-w-[220px]">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-zinc-400" />
+                <input
+                  type="text"
+                  placeholder="Semantic & lexical search across Neon DB, MITRE ATT&CK, OWASP, arXiv, GAAP, Leadership..."
+                  value={kbQuery}
+                  onChange={(e) => setKbQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") void runKnowledgeSearch(kbQuery);
+                  }}
+                  className="w-full rounded-lg border border-white/10 bg-[#0d1117] pl-8 pr-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:border-sky-500 focus:outline-none"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => void runKnowledgeSearch(kbQuery)}
+                disabled={kbLoading}
+                className="rounded-lg border border-sky-500/40 bg-sky-500/15 px-3 py-1.5 text-xs font-semibold text-sky-300 hover:bg-sky-500/25 transition cursor-pointer"
+              >
+                {kbLoading ? "Searching..." : "Search Knowledge"}
+              </button>
+              {onSendToChat && (
+                <button
+                  type="button"
+                  onClick={() => onSendToChat(`/table ${kbQuery.trim() || "Executive leadership OKRs, GAAP revenue recognition, MITRE ATT&CK"}`)}
+                  className="rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-medium text-zinc-200 hover:bg-white/10 transition cursor-pointer"
+                >
+                  Open /table in Chat
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => void triggerLiveIngestion()}
+                disabled={ingestLoading}
+                className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-50 transition cursor-pointer"
+              >
+                {ingestLoading ? "Ingesting 11 Sources..." : "Run Ingestion Batch"}
+              </button>
+            </div>
+
+            {ingestBanner && (
+              <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3.5 py-2 text-xs text-emerald-300">
+                {ingestBanner}
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
+              {kbResults.map((item) => (
+                <div key={item.id} className="rounded-xl border border-white/10 bg-[#141923] p-3.5 space-y-1.5">
+                  <div className="flex items-center justify-between gap-2 text-[10px] uppercase tracking-wider">
+                    <span className="rounded bg-sky-500/15 px-1.5 py-0.5 font-semibold text-sky-300">{item.source}</span>
+                    <span className="text-zinc-400">{item.domain} · score {item.score}</span>
+                  </div>
+                  <h4 className="text-xs font-bold text-white line-clamp-2">{item.title}</h4>
+                  <p className="text-[11px] text-zinc-400 line-clamp-2">{item.summary}</p>
+                </div>
+              ))}
+            </div>
+
+            {knowledgeStatus?.telemetry?.recentRuns && knowledgeStatus.telemetry.recentRuns.length > 0 && (
+              <div className="rounded-xl border border-white/10 bg-[#121620] p-3.5 space-y-2">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                  Recent SQL Ingestion Ledger Runs
+                </h4>
+                <div className="space-y-1 text-[11px] font-mono text-zinc-300">
+                  {knowledgeStatus.telemetry.recentRuns.slice(0, 5).map((r) => (
+                    <div key={r.runId} className="flex flex-wrap items-center justify-between gap-2 border-b border-white/5 py-1">
+                      <span className="text-emerald-300">{r.runId}</span>
+                      <span>Fetched {r.totalFetched} → Upserted {r.postgresUpserted} (Total {r.dbTotalAfter ?? "—"})</span>
+                      <span className="text-zinc-500">{r.durationMs}ms</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+        <>
         {/* Metric Cards Row */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
           <div className="rounded-xl border border-white/10 bg-[#161b26] p-3.5 sm:p-4 shadow-sm">
@@ -585,6 +824,8 @@ export function NoctisTrainingTab({ onSendToChat, onClose }: NoctisTrainingTabPr
             </div>
           )}
         </div>
+        </>
+        )}
       </div>
     </div>
   );

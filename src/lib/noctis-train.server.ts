@@ -51,7 +51,10 @@ import {
 import { buildRemainingNoctisSeedPairs } from "./noctis-exhaustive-training.ts";
 import { buildTrackMasterySeedPairs } from "./noctis-open-curriculum-1m.ts";
 import {
+  computeSemanticEmbedding256,
+  cosineSimilarity,
   formatKnowledgeReportMarkdown,
+  formatVectorLiteral,
   fuseRankedResults,
   isTableFormatRequested,
   scoreExternalTrainingPairs,
@@ -741,10 +744,26 @@ export async function hydrateFromDb(): Promise<void> {
         select id, question, answer, domain, model, hits, updated_at::text as updated_at
         from vibe_training_pair
         where verified = true
+          and coalesce(stale, false) = false
           and model not in ('vibe', 'vibe-native', 'vibe-gadget')
         order by updated_at desc
         limit 10000
-      `;
+      `.catch(async () => sql<{
+        id: string;
+        question: string;
+        answer: string;
+        domain: string;
+        model: string;
+        hits: number;
+        updated_at: string;
+      }>`
+        select id, question, answer, domain, model, hits, updated_at::text as updated_at
+        from vibe_training_pair
+        where verified = true
+          and model not in ('vibe', 'vibe-native', 'vibe-gadget')
+        order by updated_at desc
+        limit 10000
+      `);
       for (let i = pairs.length - 1; i >= 0; i -= 1) {
         if (pairs[i]?.model === "vibe" || pairs[i]?.model === "vibe-native" || pairs[i]?.model === "vibe-gadget") {
           pairs.splice(i, 1);
@@ -826,16 +845,29 @@ export function rememberAnswer(question: string, answer: string, model = "vibe-n
     try {
       const { getSql } = await import("@/lib/db");
       const sql = await getSql();
+      const vecLit = formatVectorLiteral(computeSemanticEmbedding256(`${asked} ${said.slice(0, 1200)}`));
       await sql`
-        insert into vibe_training_pair (id, question, answer, domain, model, hits, verified, updated_at)
-        values (${id}, ${asked}, ${said}, ${resolvedDomain}, ${next.model}, 1, true, now())
+        insert into vibe_training_pair (id, question, answer, domain, model, hits, verified, embedding, updated_at)
+        values (${id}, ${asked}, ${said}, ${resolvedDomain}, ${next.model}, 1, true, ${vecLit}::vector, now())
         on conflict (id) do update set
           answer = excluded.answer,
           domain = excluded.domain,
           model = excluded.model,
+          embedding = excluded.embedding,
           hits = vibe_training_pair.hits + 1,
           updated_at = now()
-      `;
+      `.catch(async () =>
+        sql`
+          insert into vibe_training_pair (id, question, answer, domain, model, hits, verified, updated_at)
+          values (${id}, ${asked}, ${said}, ${resolvedDomain}, ${next.model}, 1, true, now())
+          on conflict (id) do update set
+            answer = excluded.answer,
+            domain = excluded.domain,
+            model = excluded.model,
+            hits = vibe_training_pair.hits + 1,
+            updated_at = now()
+        `,
+      );
     } catch {
       /* non-blocking DB write */
     }
@@ -1083,55 +1115,102 @@ export async function searchTrainingPairsInDb(
   const cleanQuery = query.trim();
 
   const candidatePairs = new Map<string, TrainingPair>();
+  const vecSimById = new Map<string, number>();
 
   if (dbHydrated && cleanQuery) {
     try {
       const { getSql } = await import("@/lib/db");
       const sql = await getSql();
+      const qVec = computeSemanticEmbedding256(cleanQuery);
+      const qVecLit = formatVectorLiteral(qVec);
 
-      // 1. PostgreSQL GIN full-text index search
-      const ftsRows = domainFilter
-        ? await sql<{
-            id: string;
-            question: string;
-            answer: string;
-            domain: string;
-            model: string;
-            hits: number;
-            updated_at: string;
-          }>`
-            select id, question, answer, domain, model, hits, updated_at::text as updated_at
-            from vibe_training_pair
-            where verified = true
-              and lower(domain) = ${domainFilter}
-              and to_tsvector('english', coalesce(question, '') || ' ' || coalesce(answer, ''))
-                  @@ plainto_tsquery('english', ${cleanQuery})
-            order by ts_rank_cd(
-              to_tsvector('english', coalesce(question, '') || ' ' || coalesce(answer, '')),
-              plainto_tsquery('english', ${cleanQuery})
-            ) desc, hits desc
-            limit ${limit * 2}
-          `
-        : await sql<{
-            id: string;
-            question: string;
-            answer: string;
-            domain: string;
-            model: string;
-            hits: number;
-            updated_at: string;
-          }>`
-            select id, question, answer, domain, model, hits, updated_at::text as updated_at
-            from vibe_training_pair
-            where verified = true
-              and to_tsvector('english', coalesce(question, '') || ' ' || coalesce(answer, ''))
-                  @@ plainto_tsquery('english', ${cleanQuery})
-            order by ts_rank_cd(
-              to_tsvector('english', coalesce(question, '') || ' ' || coalesce(answer, '')),
-              plainto_tsquery('english', ${cleanQuery})
-            ) desc, hits desc
-            limit ${limit * 2}
-          `;
+      // 1 & 2. Run PostgreSQL GIN Full-Text Search and pgvector HNSW Cosine Search in parallel
+      const [ftsRows, vecRows] = await Promise.all([
+        (domainFilter
+          ? sql<{
+              id: string;
+              question: string;
+              answer: string;
+              domain: string;
+              model: string;
+              hits: number;
+              updated_at: string;
+            }>`
+              select id, question, answer, domain, model, hits, updated_at::text as updated_at
+              from vibe_training_pair
+              where verified = true
+                and coalesce(stale, false) = false
+                and lower(domain) = ${domainFilter}
+                and to_tsvector('english', coalesce(question, '') || ' ' || coalesce(answer, ''))
+                    @@ plainto_tsquery('english', ${cleanQuery})
+              order by ts_rank_cd(
+                to_tsvector('english', coalesce(question, '') || ' ' || coalesce(answer, '')),
+                plainto_tsquery('english', ${cleanQuery})
+              ) desc, hits desc
+              limit ${limit * 2}
+            `
+          : sql<{
+              id: string;
+              question: string;
+              answer: string;
+              domain: string;
+              model: string;
+              hits: number;
+              updated_at: string;
+            }>`
+              select id, question, answer, domain, model, hits, updated_at::text as updated_at
+              from vibe_training_pair
+              where verified = true
+                and coalesce(stale, false) = false
+                and to_tsvector('english', coalesce(question, '') || ' ' || coalesce(answer, ''))
+                    @@ plainto_tsquery('english', ${cleanQuery})
+              order by ts_rank_cd(
+                to_tsvector('english', coalesce(question, '') || ' ' || coalesce(answer, '')),
+                plainto_tsquery('english', ${cleanQuery})
+              ) desc, hits desc
+              limit ${limit * 2}
+            `).catch(() => []),
+        (domainFilter
+          ? sql<{
+              id: string;
+              question: string;
+              answer: string;
+              domain: string;
+              model: string;
+              hits: number;
+              updated_at: string;
+              vec_sim: number;
+            }>`
+              select id, question, answer, domain, model, hits, updated_at::text as updated_at,
+                     (1 - (embedding <=> ${qVecLit}::vector))::float8 as vec_sim
+              from vibe_training_pair
+              where verified = true
+                and coalesce(stale, false) = false
+                and embedding is not null
+                and lower(domain) = ${domainFilter}
+              order by embedding <=> ${qVecLit}::vector asc
+              limit ${limit * 2}
+            `
+          : sql<{
+              id: string;
+              question: string;
+              answer: string;
+              domain: string;
+              model: string;
+              hits: number;
+              updated_at: string;
+              vec_sim: number;
+            }>`
+              select id, question, answer, domain, model, hits, updated_at::text as updated_at,
+                     (1 - (embedding <=> ${qVecLit}::vector))::float8 as vec_sim
+              from vibe_training_pair
+              where verified = true
+                and coalesce(stale, false) = false
+                and embedding is not null
+              order by embedding <=> ${qVecLit}::vector asc
+              limit ${limit * 2}
+            `).catch(() => []),
+      ]);
 
       for (const r of ftsRows) {
         candidatePairs.set(r.id, {
@@ -1145,7 +1224,22 @@ export async function searchTrainingPairsInDb(
         });
       }
 
-      // 2. ILIKE keyword fallback for acronyms/identifiers when FTS returns few rows
+      for (const r of vecRows) {
+        vecSimById.set(r.id, Number(r.vec_sim) || 0);
+        if (!candidatePairs.has(r.id)) {
+          candidatePairs.set(r.id, {
+            id: r.id,
+            question: r.question,
+            answer: r.answer,
+            domain: r.domain || inferDomain(r.question),
+            model: r.model || "vibe-seed",
+            hits: Number(r.hits) || 1,
+            at: r.updated_at || new Date().toISOString(),
+          });
+        }
+      }
+
+      // 3. ILIKE keyword fallback for acronyms/identifiers when FTS+vector return few rows
       if (candidatePairs.size < limit) {
         const tokens = tokenizeKnowledgeQuery(cleanQuery).slice(0, 4);
         for (const tok of tokens) {
@@ -1163,8 +1257,8 @@ export async function searchTrainingPairsInDb(
                 select id, question, answer, domain, model, hits, updated_at::text as updated_at
                 from vibe_training_pair
                 where verified = true
-                  and lower(domain) = ${domainFilter}
                   and (question ilike ${pattern} or answer ilike ${pattern})
+                  and lower(domain) = ${domainFilter}
                 order by hits desc, updated_at desc
                 limit ${limit}
               `
@@ -1212,11 +1306,49 @@ export async function searchTrainingPairsInDb(
     }
   }
 
-  return scoreExternalTrainingPairs(cleanQuery, [...candidatePairs.values()], {
+  const allCandidates = [...candidatePairs.values()];
+  const lexicalHits = scoreExternalTrainingPairs(cleanQuery, allCandidates, {
     domain: domainFilter,
-    limit,
+    limit: limit * 2,
     defaultSource: dbHydrated ? "postgres_training" : "seed_corpus",
   });
+
+  if (!cleanQuery) return lexicalHits.slice(0, limit);
+
+  // Hybrid Semantic + Lexical Fusion (captures paraphrased queries via pgvector or in-memory cosine)
+  const qVec = computeSemanticEmbedding256(cleanQuery);
+  const fusedMap = new Map<string, KnowledgeRecord>();
+  for (const hit of lexicalHits) {
+    const sim = vecSimById.get(hit.id) ?? cosineSimilarity(qVec, computeSemanticEmbedding256(`${hit.title} ${hit.summary}`));
+    fusedMap.set(hit.id, {
+      ...hit,
+      score: Number((hit.score + Math.max(0, sim) * 14).toFixed(2)),
+    });
+  }
+
+  for (const [id, sim] of vecSimById.entries()) {
+    if (sim < 0.28 || fusedMap.has(id)) continue;
+    const item = candidatePairs.get(id);
+    if (!item) continue;
+    const d = (item.domain || "general").toLowerCase();
+    if (domainFilter && d !== domainFilter) continue;
+    fusedMap.set(id, {
+      id,
+      source: "postgres_training",
+      domain: d,
+      title: item.question,
+      summary: item.answer.replace(/\s+/g, " ").trim().slice(0, 200),
+      content: item.answer,
+      model: item.model,
+      hits: item.hits,
+      score: Number((sim * 22).toFixed(2)),
+      matchedTerms: ["semantic:pgvector"],
+    });
+  }
+
+  return [...fusedMap.values()]
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
 }
 
 export function lessonBlock(question: string) {

@@ -1,9 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  computeSemanticEmbedding256,
+  cosineSimilarity,
+  EMBEDDING_DIM,
   formatCurriculumTracksTableMarkdown,
   formatKnowledgeReportMarkdown,
   formatKnowledgeTableMarkdown,
+  formatVectorLiteral,
   fuseRankedResults,
   isTableFormatRequested,
   scoreExternalTrainingPairs,
@@ -160,10 +164,10 @@ test("Unified server retrieval fuses DB/seed pairs + 40-track Open Curriculum + 
   assert.ok(fused.length >= 2);
 });
 
-test("Open ingestion registry exposes 6 lawful public sources and deterministic deduplication", () => {
-  assert.equal(OPEN_INGESTION_SOURCE_SPECS.length, 6);
+test("Open ingestion registry exposes 11 lawful public sources and deterministic deduplication", () => {
+  assert.equal(OPEN_INGESTION_SOURCE_SPECS.length, 11);
   assert.equal(stripNullBytes("hello\u0000world"), "helloworld");
-  assert.equal(classifyOpenDomain("CISA KEV CVE-2025-1234 zero trust vulnerability"), "cybersecurity");
+  assert.equal(classifyOpenDomain("CISA KEV CVE-2025-1234 MITRE ATT&CK T1059 zero trust"), "cybersecurity");
   assert.equal(classifyOpenDomain("ASC 606 GAAP revenue recognition WACC DCF"), "finance");
   assert.equal(classifyOpenDomain("PMBOK sprint OKR net dollar retention"), "business");
   assert.equal(classifyOpenDomain("PubMed randomized sepsis trial clinical guideline"), "healthcare");
@@ -198,4 +202,17 @@ test("Open ingestion registry exposes 6 lawful public sources and deterministic 
     },
   ]);
   assert.equal(deduped.length, 1);
+});
+
+test("Semantic 256-dim embeddings align paraphrased technical concepts via cosine similarity", () => {
+  const q = computeSemanticEmbedding256("prevent database readers from blocking writers");
+  const relevant = computeSemanticEmbedding256("PostgreSQL MVCC snapshot isolation avoids read locks");
+  const unrelated = computeSemanticEmbedding256("acute hyperkalemia calcium gluconate insulin ECG potassium");
+
+  assert.equal(q.length, EMBEDDING_DIM);
+  const simRelevant = cosineSimilarity(q, relevant);
+  const simUnrelated = cosineSimilarity(q, unrelated);
+  assert.ok(simRelevant > 0.35, `Expected semantic similarity > 0.35, got ${simRelevant}`);
+  assert.ok(simRelevant > simUnrelated + 0.2, `Relevant (${simRelevant}) must beat unrelated (${simUnrelated})`);
+  assert.ok(formatVectorLiteral(q).startsWith("[") && formatVectorLiteral(q).endsWith("]"));
 });

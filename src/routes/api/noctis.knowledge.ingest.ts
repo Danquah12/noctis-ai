@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
   computeDailyOffsetSeed,
+  getIngestionTelemetryFromDb,
   OPEN_INGESTION_SOURCE_SPECS,
   runContinuousOpenKnowledgeIngestion,
   type OpenIngestionSourceId,
@@ -21,6 +22,11 @@ const VALID_SOURCES = new Set<OpenIngestionSourceId>([
   "ietf-rfc",
   "cisa-kev",
   "pubmed",
+  "mitre-attack",
+  "owasp-cheatsheets",
+  "nist-nvd",
+  "world-bank",
+  "open-tech-docs",
 ]);
 
 function parseSources(raw: string | string[] | null | undefined): OpenIngestionSourceId[] | undefined {
@@ -66,7 +72,10 @@ export const Route = createFileRoute("/api/noctis/knowledge/ingest")({
         const isRun = url.searchParams.get("run") === "1";
 
         if (!isCron && !isRun) {
-          const stats = await getNoctisKnowledgeStats();
+          const [stats, telemetry] = await Promise.all([
+            getNoctisKnowledgeStats(),
+            getIngestionTelemetryFromDb(),
+          ]);
           return Response.json(
             {
               ok: true,
@@ -74,6 +83,7 @@ export const Route = createFileRoute("/api/noctis/knowledge/ingest")({
               nextDailyOffsetSeed: computeDailyOffsetSeed(),
               sources: OPEN_INGESTION_SOURCE_SPECS,
               knowledgeStats: stats,
+              telemetry,
             },
             { headers: CORS_HEADERS },
           );
@@ -109,8 +119,8 @@ export const Route = createFileRoute("/api/noctis/knowledge/ingest")({
           dryRun?: boolean;
         } | null;
 
-        const limitRaw = typeof body?.perSourceLimit === "number" ? body.perSourceLimit : 20;
-        const perSourceLimit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(50, limitRaw)) : 20;
+        const limitRaw = typeof body?.perSourceLimit === "number" ? body.perSourceLimit : 15;
+        const perSourceLimit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(50, limitRaw)) : 15;
         const offsetSeed = typeof body?.offset === "number" && Number.isFinite(body.offset) ? body.offset : undefined;
 
         const result = await runContinuousOpenKnowledgeIngestion({

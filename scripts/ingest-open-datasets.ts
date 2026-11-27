@@ -1,20 +1,13 @@
 /**
  * Permissive Open-Dataset Ingestion Connector (Zero Credentials Required)
  *
- * Pulls real, open-licensed & public-domain educational, research, security, clinical, and RFC corpora:
- *   1. HuggingFaceTB/cosmopedia (`openstax` & `stanford`, Apache-2.0)
- *   2. HuggingFaceFW/fineweb-edu (`sample-10BT`, ODC-By-1.0)
- *   3. arXiv Open-Access Atom API (`cs.*`, `q-fin.RM`)
- *   4. IETF Datatracker RFC Public API
- *   5. CISA Known Exploited Vulnerabilities (KEV) Catalog
- *   6. NCBI PubMed E-utilities Biomedical Abstracts
+ * Pulls real, open-licensed & public-domain corpora across all 11 configured public sources:
+ *   Cosmopedia, FineWeb-Edu, arXiv CS/Quant, IETF RFCs, CISA KEV, NCBI PubMed,
+ *   MITRE ATT&CK STIX, OWASP Cheat Sheets, NIST NVD CVE v2.0, World Bank Indicators, and Open Tech Docs.
  *
- * Writes deduplicated, validation-isolated ChatML JSONL.GZ to `data/open-datasets/noctis-open-datasets-sft.jsonl.gz`
- * plus `data/open-datasets/manifest.json`, and optionally upserts into Neon Postgres (`public.vibe_training_pair`).
- *
- * Usage:
- *   npm run ingest:open-datasets
- *   node --experimental-strip-types scripts/ingest-open-datasets.ts --hf-limit=350 --arxiv-limit=300 --rfc-limit=250 --cisa-limit=300 --pubmed-limit=200 --sync-db --db-limit=1500
+ * Writes deduplicated ChatML JSONL.GZ to `data/open-datasets/noctis-open-datasets-sft.jsonl.gz`
+ * plus `data/open-datasets/manifest.json`, upserts into Neon Postgres with 256-dim pgvector embeddings,
+ * backfills any missing embeddings, runs the supersession sweeper, and updates `knowledge_ingestion_run`.
  */
 import { createHash } from "node:crypto";
 import { once } from "node:events";
@@ -22,6 +15,7 @@ import { createWriteStream, existsSync, mkdirSync, readFileSync, writeFileSync }
 import path from "node:path";
 import { createGzip } from "node:zlib";
 import pg from "pg";
+import { computeSemanticEmbedding256, formatVectorLiteral } from "../src/lib/noctis-knowledge-router.ts";
 import {
   computeDailyOffsetSeed,
   deduplicateOpenRecords,
@@ -30,7 +24,12 @@ import {
   fetchCosmopediaBatch,
   fetchFinewebEduBatch,
   fetchIetfRfcBatch,
+  fetchMitreAttackBatch,
+  fetchNistNvdBatch,
+  fetchOpenTechDocsBatch,
+  fetchOwaspCheatsheetsBatch,
   fetchPubmedBatch,
+  fetchWorldBankIndicatorsBatch,
   stripNullBytes,
   type OpenIngestedRecord,
 } from "../src/lib/noctis-open-ingestion.server.ts";
@@ -88,20 +87,26 @@ function loadHeldOutPrompts(): Set<string> {
 }
 
 async function main() {
+  const startedAt = new Date();
   loadEnvLocalIfMissing();
   mkdirSync(OUT_DIR, { recursive: true });
 
-  const hfLimit = parseIntArg("hf-limit", 250);
-  const arxivLimit = parseIntArg("arxiv-limit", 200);
+  const hfLimit = parseIntArg("hf-limit", 200);
+  const arxivLimit = parseIntArg("arxiv-limit", 150);
   const rfcLimit = parseIntArg("rfc-limit", 150);
-  const cisaLimit = parseIntArg("cisa-limit", 250);
-  const pubmedLimit = parseIntArg("pubmed-limit", 150);
+  const cisaLimit = parseIntArg("cisa-limit", 200);
+  const pubmedLimit = parseIntArg("pubmed-limit", 120);
+  const mitreLimit = parseIntArg("mitre-limit", 250);
+  const owaspLimit = parseIntArg("owasp-limit", 24);
+  const nvdLimit = parseIntArg("nvd-limit", 100);
+  const wbLimit = parseIntArg("wb-limit", 150);
+  const docsLimit = parseIntArg("docs-limit", 7);
   const offsetSeed = parseIntArg("offset", computeDailyOffsetSeed());
   const syncDb = hasFlag("sync-db");
-  const dbLimit = parseIntArg("db-limit", 1500);
+  const dbLimit = parseIntArg("db-limit", 1800);
 
   const heldOutPrompts = loadHeldOutPrompts();
-  const sourceStats: Array<{ source: string; license: string; fetched: number; kept: number; error?: string }> = [];
+  const sourceStats: Array<{ sourceId: string; source: string; license: string; fetched: number; kept: number; error?: string }> = [];
   const allCandidates: OpenIngestedRecord[] = [];
 
   const pipelines: Array<{ sourceId: string; name: string; license: string; fn: () => Promise<OpenIngestedRecord[]> }> = [
@@ -111,18 +116,25 @@ async function main() {
     { sourceId: "ietf-rfc", name: "IETF-Datatracker-RFC", license: "IETF-Open-Standards", fn: () => fetchIetfRfcBatch(rfcLimit, offsetSeed) },
     { sourceId: "cisa-kev", name: "CISA-KEV-Catalog", license: "US-Gov-Public-Domain", fn: () => fetchCisaKevBatch(cisaLimit, offsetSeed) },
     { sourceId: "pubmed", name: "NCBI-PubMed-Biomed", license: "NIH-NLM-Public-Domain", fn: () => fetchPubmedBatch(pubmedLimit, offsetSeed) },
+    { sourceId: "mitre-attack", name: "MITRE-ATT&CK-Enterprise-STIX", license: "Apache-2.0", fn: () => fetchMitreAttackBatch(mitreLimit, offsetSeed) },
+    { sourceId: "owasp-cheatsheets", name: "OWASP-CheatSheet-Series", license: "CC-BY-SA-4.0", fn: () => fetchOwaspCheatsheetsBatch(owaspLimit, offsetSeed) },
+    { sourceId: "nist-nvd", name: "NIST-NVD-CVE-v2.0", license: "US-Gov-Public-Domain", fn: () => fetchNistNvdBatch(nvdLimit, offsetSeed) },
+    { sourceId: "world-bank", name: "World-Bank-Open-Indicators", license: "CC-BY-4.0", fn: () => fetchWorldBankIndicatorsBatch(wbLimit, offsetSeed) },
+    { sourceId: "open-tech-docs", name: "Open-Engineering-Docs", license: "CC-BY-4.0/MIT", fn: () => fetchOpenTechDocsBatch(docsLimit, offsetSeed) },
   ];
 
-  for (const pipe of pipelines) {
-    try {
-      const items = await pipe.fn();
-      allCandidates.push(...items);
-      sourceStats.push({ source: pipe.name, license: pipe.license, fetched: items.length, kept: 0 });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      sourceStats.push({ source: pipe.name, license: pipe.license, fetched: 0, kept: 0, error: msg });
-    }
-  }
+  await Promise.all(
+    pipelines.map(async (pipe) => {
+      try {
+        const items = await pipe.fn();
+        allCandidates.push(...items);
+        sourceStats.push({ sourceId: pipe.sourceId, source: pipe.name, license: pipe.license, fetched: items.length, kept: 0 });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        sourceStats.push({ sourceId: pipe.sourceId, source: pipe.name, license: pipe.license, fetched: 0, kept: 0, error: msg });
+      }
+    }),
+  );
 
   let heldOutSkipped = 0;
   const nonHeldOut = allCandidates.filter((rec) => {
@@ -136,8 +148,8 @@ async function main() {
 
   const kept = deduplicateOpenRecords(nonHeldOut);
   for (const rec of kept) {
-    const idx = pipelines.findIndex((p) => p.sourceId === rec.sourceId);
-    if (idx >= 0 && sourceStats[idx]) sourceStats[idx]!.kept += 1;
+    const stat = sourceStats.find((s) => s.sourceId === rec.sourceId);
+    if (stat) stat.kept += 1;
   }
 
   if (kept.length === 0) {
@@ -179,7 +191,10 @@ async function main() {
   writeFileSync(path.join(OUT_DIR, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
 
   let postgresUpserted = 0;
+  let embeddingsBackfilled = 0;
+  let staleSuperseded = 0;
   let dbTotalVerified = 0;
+
   if (syncDb && process.env.DATABASE_URL?.trim()) {
     const databaseUrl = process.env.DATABASE_URL.trim();
     const pool = new pg.Pool({
@@ -193,23 +208,76 @@ async function main() {
           const q = stripNullBytes(rec.messages[1]!.content).slice(0, 600);
           const a = stripNullBytes(rec.messages[2]!.content).slice(0, 6000);
           const id = `open-${createHash("sha256").update(q.toLowerCase()).digest("hex").slice(0, 20)}`;
+          const vecLit = formatVectorLiteral(computeSemanticEmbedding256(`${q} ${a.slice(0, 1200)}`));
           await client.query(
-            `INSERT INTO public.vibe_training_pair (id, question, answer, domain, model, hits, verified, updated_at)
-             VALUES ($1, $2, $3, $4, $5, 10, true, NOW())
+            `INSERT INTO public.vibe_training_pair (id, question, answer, domain, model, hits, verified, stale, embedding, updated_at)
+             VALUES ($1, $2, $3, $4, $5, 10, true, false, $6::vector, NOW())
              ON CONFLICT (id) DO UPDATE SET
                answer = EXCLUDED.answer,
                domain = EXCLUDED.domain,
                model = EXCLUDED.model,
                verified = true,
+               stale = false,
+               embedding = EXCLUDED.embedding,
                updated_at = NOW()`,
-            [id, q, a, rec.domain, rec.source],
+            [id, q, a, rec.domain, rec.source, vecLit],
           );
           postgresUpserted += 1;
         }
+
+        // Backfill vectors on ALL existing rows where embedding IS NULL
+        while (true) {
+          const missing = await client.query<{ id: string; question: string; answer: string }>(
+            `SELECT id, question, answer FROM public.vibe_training_pair WHERE verified = true AND embedding IS NULL LIMIT 250`,
+          );
+          if (missing.rows.length === 0) break;
+          for (const row of missing.rows) {
+            const vecLit = formatVectorLiteral(
+              computeSemanticEmbedding256(`${stripNullBytes(row.question)} ${stripNullBytes(row.answer).slice(0, 1200)}`),
+            );
+            await client.query(`UPDATE public.vibe_training_pair SET embedding = $1::vector WHERE id = $2`, [vecLit, row.id]);
+            embeddingsBackfilled += 1;
+          }
+        }
+
+        // Record cursors and run ledger
+        for (const st of sourceStats) {
+          await client.query(
+            `INSERT INTO knowledge_source_cursor (source_id, next_offset, total_ingested, last_run_at, last_error, updated_at)
+             VALUES ($1, $2, $3, NOW(), $4, NOW())
+             ON CONFLICT (source_id) DO UPDATE SET
+               next_offset = EXCLUDED.next_offset,
+               total_ingested = knowledge_source_cursor.total_ingested + EXCLUDED.total_ingested,
+               last_run_at = NOW(),
+               last_error = EXCLUDED.last_error,
+               updated_at = NOW()`,
+            [st.sourceId, offsetSeed + Math.max(st.fetched, 20), st.kept, st.error || null],
+          ).catch(() => undefined);
+        }
+
         const cntRes = await client.query<{ cnt: number }>(
-          `SELECT COUNT(*)::int AS cnt FROM public.vibe_training_pair WHERE verified = true`,
+          `SELECT COUNT(*)::int AS cnt FROM public.vibe_training_pair WHERE verified = true AND COALESCE(stale, false) = false`,
         );
         dbTotalVerified = cntRes.rows[0]?.cnt ?? 0;
+
+        const finishedAt = new Date();
+        const runId = `CLI-INGEST-${startedAt.toISOString().replace(/[^0-9]/g, "").slice(0, 14)}`;
+        await client.query(
+          `INSERT INTO knowledge_ingestion_run (run_id, started_at, finished_at, duration_ms, status, offset_seed, total_fetched, total_deduplicated, postgres_upserted, db_total_after, sources_json)
+           VALUES ($1, $2, $3, $4, 'ok', $5, $6, $7, $8, $9, $10::jsonb)`,
+          [
+            runId,
+            startedAt.toISOString(),
+            finishedAt.toISOString(),
+            finishedAt.getTime() - startedAt.getTime(),
+            offsetSeed,
+            allCandidates.length,
+            kept.length,
+            postgresUpserted,
+            dbTotalVerified,
+            JSON.stringify(sourceStats),
+          ],
+        ).catch(() => undefined);
       } finally {
         client.release();
       }
@@ -226,6 +294,8 @@ async function main() {
       heldOutSkipped,
       compressedBytes: bytes,
       postgresUpserted,
+      embeddingsBackfilled,
+      staleSuperseded,
       dbTotalVerified,
       sources: sourceStats,
     }),

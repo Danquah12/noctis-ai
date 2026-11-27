@@ -2819,7 +2819,8 @@ function renderBlocks(source: string, sourcePrompt = "") {
           const [head, ...body] = rows;
           if (head) {
             const numCols = head.length;
-            const minTableWidth = numCols >= 5 ? "min-w-[52rem]" : numCols >= 4 ? "min-w-[42rem]" : "min-w-[32rem]";
+            const compactSixPlus = numCols >= 5;
+            const minTableWidth = compactSixPlus ? "min-w-full" : numCols >= 4 ? "min-w-[40rem]" : "min-w-[30rem]";
             return (
               <div key={`${index}-${p}`} className="my-3 overflow-x-auto rounded-xl border border-white/15 bg-black/40 p-3 shadow-lg">
                 <div className="mb-2 flex items-center justify-between px-1">
@@ -2832,18 +2833,29 @@ function renderBlocks(source: string, sourcePrompt = "") {
                     Export CSV (.csv)
                   </button>
                 </div>
-                <table className={cn("w-full border-collapse text-left text-xs sm:text-sm", minTableWidth)}>
+                <table className={cn("w-full border-collapse text-left", compactSixPlus ? "text-xs" : "text-xs sm:text-sm", minTableWidth)}>
                   <thead>
                     <tr className="bg-white/[0.04]">
                       {head.map((cell, hIdx) => {
-                        const isId = hIdx === 0;
-                        const isStatus = /status|result|state|check/i.test(cell);
+                        const cleanHead = cell.replace(/<[^>]+>/g, "").trim();
+                        const isNarrowIndex = hIdx === 0 && /^(?:#|no\.?|step|rank)$/i.test(cleanHead);
+                        const isId = hIdx === 0 && !isNarrowIndex;
+                        const isStatus = /status|result|state|check|source/i.test(cleanHead);
                         return (
                           <th
                             key={`${cell}-${hIdx}`}
                             className={cn(
-                              "border-b border-[#e4b86a]/30 px-3.5 py-2.5 font-bold text-[#e4b86a]",
-                              isId ? "whitespace-nowrap min-w-[110px]" : isStatus ? "whitespace-nowrap min-w-[100px]" : "min-w-[170px] whitespace-normal leading-snug"
+                              "border-b border-[#e4b86a]/30 font-bold text-[#e4b86a]",
+                              compactSixPlus ? "px-2.5 py-2" : "px-3.5 py-2.5",
+                              isNarrowIndex
+                                ? "w-9 px-2 text-center whitespace-nowrap"
+                                : isId
+                                  ? "whitespace-nowrap min-w-[96px]"
+                                  : isStatus
+                                    ? "whitespace-nowrap min-w-[84px]"
+                                    : compactSixPlus
+                                      ? "min-w-[100px] whitespace-normal leading-snug"
+                                      : "min-w-[160px] whitespace-normal leading-snug"
                             )}
                             dangerouslySetInnerHTML={{ __html: inlineHtml(cell) }}
                           />
@@ -2856,14 +2868,23 @@ function renderBlocks(source: string, sourcePrompt = "") {
                       <tr key={rowIndex} className="hover:bg-white/[0.03] transition-colors">
                         {row.map((cell, cellIndex) => {
                           const cleanCell = cell.replace(/<[^>]+>/g, "").trim();
+                          const headCell = (head[cellIndex] || "").replace(/<[^>]+>/g, "").trim();
+                          const isNarrowIndex = cellIndex === 0 && /^(?:#|no\.?|step|rank)$/i.test(headCell);
                           const isStatus = /PASSED|TRIPPED|FAILED|WARNING|VERIFIED/i.test(cleanCell) && cleanCell.length <= 16;
-                          const isId = cellIndex === 0;
+                          const isId = cellIndex === 0 && !isNarrowIndex;
                           return (
                             <td
                               key={cellIndex}
                               className={cn(
-                                "px-3.5 py-2.5 align-top leading-relaxed text-zinc-200",
-                                isId ? "font-mono text-xs text-[#e4b86a] whitespace-nowrap min-w-[110px]" : "min-w-[170px] break-words whitespace-normal"
+                                "align-top leading-relaxed text-zinc-200",
+                                compactSixPlus ? "px-2.5 py-2" : "px-3.5 py-2.5",
+                                isNarrowIndex
+                                  ? "w-9 px-2 text-center font-mono text-xs text-[#e4b86a] whitespace-nowrap"
+                                  : isId
+                                    ? "font-mono text-xs text-[#e4b86a] whitespace-nowrap min-w-[96px]"
+                                    : compactSixPlus
+                                      ? "min-w-[96px] break-words whitespace-normal"
+                                      : "min-w-[160px] break-words whitespace-normal"
                               )}
                             >
                               {isStatus ? (
