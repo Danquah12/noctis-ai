@@ -265,9 +265,7 @@ export function NoctisTrainingTab({ onSendToChat, onClose }: NoctisTrainingTabPr
               {summary ? summary.totalScenariosEvaluated.toLocaleString() : "5,642"}
             </div>
             <div className="mt-1 text-[11px] text-zinc-400">
-              {"Across "}
-              {summary ? summary.totalDomainsAudited : 150}
-              {" Subsystem Domains"}
+              {`Across ${summary ? summary.totalDomainsAudited : 150} Subsystem Domains`}
             </div>
           </div>
 
