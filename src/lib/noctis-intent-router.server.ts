@@ -75,6 +75,7 @@ const ROUTE_LABELS: Record<NoctisRouteEngineId, { label: string; targetPanel: No
   med_labs: { label: "Labs · Medical Records & Biopsy", targetPanel: "chat" },
   predictive: { label: "Predict · 15-Engine Forecasting", targetPanel: "chat" },
   secops_suite: { label: "SecOps · Twin, WarRoom & PQC", targetPanel: "chat" },
+  knowledge_library: { label: "Knowledge · Training & Table Router", targetPanel: "training" },
   general_chat: { label: "Core · General Reasoning", targetPanel: "chat" },
 };
 
@@ -201,6 +202,9 @@ const PREDICTIVE_RE =
 
 const SECOPS_SUITE_RE =
   /\b(?:noctis-twin-001|noctis-war-room-001|noctis-pqc-001|noctis-zkproof-001|xtrike\s+sast|topological\s+attack[-\s]graph|red\s+vs\.?\s+blue\s+war\s+room|post-quantum\s+(?:crypto|migration)\s+sentinel|zero-knowledge\s+audit\s+proof)\b/i;
+
+const KNOWLEDGE_LIBRARY_RE =
+  /\b(?:noctis\s+(?:knowledge|curriculum|training\s+(?:library|corpus|tracks?|table))|open\s+technical\s+curriculum|25\s+(?:technical\s+)?tracks|search\s+(?:the\s+)?(?:knowledge\s+base|training\s+(?:db|database|library|store|corpus))|query\s+(?:the\s+)?(?:knowledge\s+base|training\s+(?:db|database|library|table))|list\s+(?:all\s+)?(?:25\s+)?curriculum\s+tracks)\b|\b(?:put|show|display|query|retrieve|summarize|list|compare|organize)\b[\s\S]{0,80}\b(?:on\s+a\s+table|in\s+a\s+table|as\s+a\s+table|into\s+a\s+table|table\s+of\s+(?:tracks|topics|standards|invariants|training))\b/i;
 
 export function decisionToRouteStamp(decision: NoctisIntentDecision): NoctisRouteStamp {
   return {
@@ -457,6 +461,29 @@ export function classifyNoctisIntent(rawPrompt: string): NoctisIntentDecision {
     scores.secops_suite = 90;
     matchedSignals.push("secops:twin-warroom-pqc-zkp");
   }
+  if (
+    !hasHigherPriority &&
+    !scores.automotive &&
+    !scores.energy_grid &&
+    !scores.legal &&
+    !scores.invest &&
+    !scores.bible &&
+    !scores.career &&
+    !scores.deep_research &&
+    !scores.global_markets &&
+    !scores.world_intel &&
+    !scores.science_papers &&
+    !scores.med_labs &&
+    !scores.predictive &&
+    !scores.secops_suite &&
+    !scores.space_universe &&
+    !scores.earth_hazards &&
+    !scores.global_nav &&
+    KNOWLEDGE_LIBRARY_RE.test(prompt)
+  ) {
+    scores.knowledge_library = 88;
+    matchedSignals.push("knowledge:curriculum-or-table-query");
+  }
 
   // Evaluate Weather (strictly vetoed when building platforms, cold-chain maritime, clinical, defense, architect, space/earth/nav, promoted domain engines, or physics)
   const hasWeatherSignal =
@@ -593,6 +620,7 @@ export function classifyNoctisIntent(rawPrompt: string): NoctisIntentDecision {
     "global_nav",
     "weather",
     "omni_solver",
+    "knowledge_library",
     "general_chat",
   ];
 
@@ -712,7 +740,8 @@ export function classifyMultiTurnIntent(
         priorRoute === "science_papers" ||
         priorRoute === "med_labs" ||
         priorRoute === "predictive" ||
-        priorRoute === "secops_suite") &&
+        priorRoute === "secops_suite" ||
+        priorRoute === "knowledge_library") &&
         (followUp.relation === "coreference" || followUp.relation === "what_if_parameter_shift" || followUp.relation === "continuation"))
     ) {
       const meta = ROUTE_LABELS[priorRoute];

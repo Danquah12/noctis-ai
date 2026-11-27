@@ -58,6 +58,7 @@ export type NoctisRouteEngineId =
   | "med_labs"
   | "predictive"
   | "secops_suite"
+  | "knowledge_library"
   | "general_chat";
 
 export type NoctisPanelGroup =
@@ -111,6 +112,8 @@ export const NOCTIS_CHAT_RETRIEVAL_ENDPOINTS = {
   chatPost: "/api/noctis",
   routesDirectory: "/api/noctis?routes=1",
   platformRoutesHealth: "/api/v2/forge/platform-routes?health=1",
+  knowledgeSearch: "/api/noctis/knowledge?q={query}&format=table&limit=10",
+  curriculumTracks: "/api/noctis/knowledge?tracks=1&format=table",
   listResponses: "/api/noctis?responses=1&engine={routeId}&q={query}&limit=20",
   getResponseById: "/api/noctis?responseId={responseId}",
   deepLinkResponse: "/noctis?response={responseId}",
@@ -556,6 +559,15 @@ export const NOCTIS_SLASH_ROUTES: NoctisSlashRouteSpec[] = [
     quickSwitch: false,
   },
   {
+    command: "/knowledge",
+    aliases: ["/library", "/curriculum", "/table"],
+    routeId: "knowledge_library",
+    label: "Knowledge · Training & Table Router",
+    description: "Query Noctis's Neon training DB, 25 open technical curriculum tracks (300 subtopics), and render structured Markdown tables.",
+    targetPanel: "training",
+    quickSwitch: true,
+  },
+  {
     command: "/chat",
     aliases: ["/core"],
     routeId: "general_chat",
@@ -594,6 +606,8 @@ export const NOCTIS_API_ROUTES: NoctisApiRouteSpec[] = [
   { id: "labs", name: "Noctis Medical Record & Lab Interpreter API", basePath: "/api/noctis?labs=1", statusPath: "/api/noctis?labs=1", panelId: "chat" },
   { id: "predict", name: "Noctis Predictive Intelligence 15-Engine API", basePath: "/api/noctis?predict=1", statusPath: "/api/noctis?predict=1", panelId: "chat" },
   { id: "secops", name: "Noctis SecOps Twin, WarRoom, PQC & ZKP API", basePath: "/api/noctis?secops=pqc", statusPath: "/api/noctis?secops=pqc", panelId: "chat" },
+  { id: "knowledge", name: "Noctis Unified Knowledge & Table Retrieval API", basePath: "/api/noctis/knowledge", statusPath: "/api/noctis/knowledge?stats=1", panelId: "training" },
+  { id: "curriculum", name: "Noctis 25-Track Open Technical Curriculum API", basePath: "/api/noctis?curriculum=1", statusPath: "/api/noctis?curriculum=1", panelId: "training" },
   { id: "noctis", name: "Core Noctis Chat Endpoint", basePath: "/api/noctis", statusPath: "/api/v1/health", panelId: "chat" },
 ];
 

@@ -1,0 +1,150 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {
+  formatCurriculumTracksTableMarkdown,
+  formatKnowledgeReportMarkdown,
+  formatKnowledgeTableMarkdown,
+  fuseRankedResults,
+  isTableFormatRequested,
+  scoreExternalTrainingPairs,
+  searchCurriculumKnowledge,
+  tokenizeKnowledgeQuery,
+} from "./noctis-knowledge-router.ts";
+import { classifyNoctisIntent } from "./noctis-intent-router.server.ts";
+import { extractMultiSlashOverrides } from "./noctis-capability-registry.ts";
+import { retrieveNoctisKnowledge, getNoctisKnowledgeStats } from "./noctis-knowledge-retrieval.server.ts";
+
+test("Open curriculum retrieval matches technical topics across 25 tracks & 300 subtopics", () => {
+  const cases: Array<{ query: string; expectedTrack: string }> = [
+    { query: "Kubernetes Pod Security Standards non-root NetworkPolicy", expectedTrack: "cloud-kubernetes" },
+    { query: "PostgreSQL MVCC vacuum B-tree partial index", expectedTrack: "databases-storage" },
+    { query: "Raft leader election fencing tokens leases", expectedTrack: "distributed-systems" },
+    { query: "LoRA 4-bit QLoRA DPO alignment KV-cache", expectedTrack: "ai-ml-llms" },
+    { query: "BGP RPKI DNSSEC TLS 1.3 mTLS", expectedTrack: "networking-protocols" },
+    { query: "Rust borrow checker ownership unsafe invariants", expectedTrack: "rust-systems" },
+  ];
+
+  for (const tc of cases) {
+    const hits = searchCurriculumKnowledge(tc.query, { limit: 6 });
+    assert.ok(hits.length > 0, `Expected matches for "${tc.query}"`);
+    assert.equal(
+      hits[0]!.trackId,
+      tc.expectedTrack,
+      `Expected top match track "${tc.expectedTrack}" for "${tc.query}", got "${hits[0]!.trackId}" (${hits[0]!.title})`,
+    );
+  }
+});
+
+test("External training pair scorer matches numbers cleanly and searches Q&A bodies", () => {
+  const tokens = tokenizeKnowledgeQuery("PostgreSQL 16 MVCC RLS and C++");
+  assert.ok(tokens.includes("postgresql"));
+  assert.ok(tokens.includes("16"));
+  assert.ok(tokens.includes("mvcc"));
+  assert.ok(tokens.includes("cpp"));
+
+  const pairs = [
+    {
+      id: "pg-1",
+      question: "How does PostgreSQL MVCC prevent readers from blocking writers?",
+      answer: "PostgreSQL stores tuple xmin/xmax transaction visibility metadata so snapshot reads avoid write locks and vacuum reclaims dead tuples.",
+      domain: "databases",
+      model: "user-taught",
+      hits: 12,
+    },
+    {
+      id: "dns-1",
+      question: "What is DNS and how does resolution work?",
+      answer: "DNS translates domain names to IP addresses via recursive, root, TLD, and authoritative resolvers under RFC 1034.",
+      domain: "cybersecurity",
+      model: "vibe-seed",
+      hits: 25,
+    },
+  ];
+
+  const scored = scoreExternalTrainingPairs("PostgreSQL 16 MVCC snapshot vacuum", pairs, { limit: 5 });
+  assert.equal(scored.length, 1);
+  assert.equal(scored[0]!.id, "pg-1");
+  assert.equal(scored[0]!.source, "postgres_training");
+});
+
+test("Table intent detection & GitHub-flavored Markdown table rendering", () => {
+  assert.equal(isTableFormatRequested("/table Raft fencing tokens"), true);
+  assert.equal(isTableFormatRequested("Put Kubernetes security standards on a table"), true);
+  assert.equal(isTableFormatRequested("Show PostgreSQL MVCC invariants in a table"), true);
+  assert.equal(isTableFormatRequested("Explain PostgreSQL MVCC briefly"), false);
+
+  const hits = searchCurriculumKnowledge("Kubernetes security | PodDisruptionBudget", { limit: 4 });
+  const tableMd = formatKnowledgeTableMarkdown("/table Kubernetes security", hits);
+  const rows = tableMd.split("\n").filter((l) => l.startsWith("|"));
+  assert.ok(rows.length >= 3, "Markdown table must contain header, separator, and >= 1 data row");
+  assert.ok(rows[1]!.includes("---"), "Second row must be Markdown table separator");
+
+  const tracksTable = formatCurriculumTracksTableMarkdown();
+  const trackRows = tracksTable.split("\n").filter((l) => l.startsWith("|"));
+  assert.equal(trackRows.length, 27, "25 track rows + 1 header + 1 separator = 27 Markdown table rows");
+
+  const report = formatKnowledgeReportMarkdown("Kubernetes security", hits, {
+    dbTotalPairs: 736,
+    dbConnected: true,
+    tableRequested: true,
+    tracksMatched: hits.length,
+  });
+  assert.ok(report.includes("### Noctis Unified Knowledge & Table Router"));
+  assert.ok(report.includes("Retrieved Knowledge Table"));
+  assert.ok(report.includes("736 pairs (Neon Postgres)"));
+});
+
+test("Intent router maps /knowledge, /library, /curriculum, /table & table prompts cleanly without regressions", () => {
+  for (const [cmd, expectedCmd] of [
+    ["/knowledge PostgreSQL MVCC", "/knowledge"],
+    ["/library distributed systems", "/knowledge"],
+    ["/curriculum ai-ml-llms", "/knowledge"],
+    ["/table Kubernetes Pod Security", "/knowledge"],
+  ] as const) {
+    const d = classifyNoctisIntent(cmd);
+    assert.equal(d.override, true);
+    assert.equal(d.routeId, "knowledge_library");
+    assert.equal(d.overrideCommand, expectedCmd);
+    assert.equal(d.targetPanel, "training");
+  }
+
+  const batch = "/knowledge Raft fencing tokens\n\n/table Kubernetes security";
+  assert.deepEqual(
+    extractMultiSlashOverrides(batch).map((s) => s.routeId),
+    ["knowledge_library", "knowledge_library"],
+  );
+
+  const natural = classifyNoctisIntent("Put Noctis's distributed systems and Kubernetes security standards on a table");
+  assert.equal(natural.routeId, "knowledge_library");
+
+  // Existing collision guard must stay untouched
+  const unaffected = classifyNoctisIntent(
+    "Compare PostgreSQL row-level security policies vs schema-per-tenant isolation for multi-tenant SaaS tradeoffs",
+  );
+  assert.equal(unaffected.routeId, "general_chat");
+});
+
+test("Unified server retrieval fuses DB/seed pairs + Open Curriculum + 200 continuous domains", async () => {
+  const stats = await getNoctisKnowledgeStats();
+  assert.equal(stats.ok, true);
+  assert.equal(stats.totalTracks, 25);
+  assert.equal(stats.totalSubtopics, 300);
+  assert.equal(stats.continuousDomains, 200);
+  assert.ok(stats.dbTotalPairs >= 100);
+
+  const res = await retrieveNoctisKnowledge("Put Kubernetes security and PostgreSQL MVCC on a table", {
+    limit: 8,
+    format: "table",
+  });
+  assert.equal(res.ok, true);
+  assert.equal(res.tableRequested, true);
+  assert.ok(res.results.length >= 2);
+  assert.ok(res.markdownTable.includes("| # | Source |"));
+  assert.ok(res.markdownReport.includes("Retrieved Knowledge Table"));
+
+  const fused = fuseRankedResults([
+    res.results.slice(0, 3),
+    res.results.slice(1, 4),
+  ], 5);
+  assert.ok(fused.length >= 2);
+});

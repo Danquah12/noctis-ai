@@ -1507,6 +1507,21 @@ async function executeVibeReply(
         };
       }
 
+      if (routeId === "knowledge_library") {
+        const { retrieveNoctisKnowledge } = await import("./noctis-knowledge-retrieval.server.ts");
+        const { isTableFormatRequested } = await import("./noctis-knowledge-router.ts");
+        const tableWanted = overrideCmd === "/table" || isTableFormatRequested(promptText) || isTableFormatRequested(latest);
+        const queryInput = promptText || "all";
+        const res = await retrieveNoctisKnowledge(queryInput, {
+          format: tableWanted ? "table" : "markdown",
+          limit: tableWanted ? 10 : 8,
+        });
+        return {
+          text: res.markdownReport,
+          summary: `Explicit ${overrideCmd || "/knowledge"} override queried Noctis Unified Knowledge Router (${res.dbTotalPairs} DB pairs + ${res.totalIndexedTracks} Open Curriculum tracks) and formatted ${res.totalMatches} grounded results.`,
+        };
+      }
+
       return null;
     };
 
@@ -1847,6 +1862,25 @@ async function executeVibeReply(
           "Executed Noctis Sovereign SecOps Suite (Digital Twin, War Room, PQC Sentinel, ZKP & SAST).",
         ),
         "secops_suite",
+      ),
+    };
+  }
+
+  if (!intent.override && intent.routeId === "knowledge_library") {
+    const { retrieveNoctisKnowledge } = await import("./noctis-knowledge-retrieval.server.ts");
+    const { isTableFormatRequested } = await import("./noctis-knowledge-router.ts");
+    const tableWanted = isTableFormatRequested(effectiveLatest);
+    const res = await retrieveNoctisKnowledge(effectiveLatest, {
+      format: tableWanted ? "table" : "markdown",
+      limit: 10,
+    });
+    return {
+      text: finishText(
+        withThink(
+          res.markdownReport,
+          `Queried Noctis Unified Knowledge & Table Router across ${res.dbTotalPairs} trained pairs and ${res.totalIndexedTracks} Open Technical Curriculum tracks.`,
+        ),
+        "knowledge_library",
       ),
     };
   }
@@ -2696,7 +2730,7 @@ async function composeVibeReply(
   const brain = brainQuestion(question, skill.id) && !design && !wantsCode;
   const strict = !wantsCode && (["evidence", "library", "search", "tools", "check", "extract", "film"].includes(skill.id) || fresh);
   const lesson = teachingQuestion(question) && !hasHardRows && !wantsCode;
-  const [pulled, ndkrsGrounding] = await Promise.all([
+  const [pulled, ndkrsGrounding, knowledgeGrounding] = await Promise.all([
     Promise.all([
       skill.source === "study" || skill.source === "both" || (brain && libraryQuestion(retrievalQuery)) ? libraryNotes(retrievalQuery).catch(() => "") : Promise.resolve(""),
       !lesson && (skill.source === "web" || skill.source === "both" || lookUp || brain) ? within(liveBrief(retrievalQuery), 12000) : Promise.resolve(""),
@@ -2706,6 +2740,11 @@ async function composeVibeReply(
     !wantsCode
       ? import("@/lib/ndkrs/chat-bridge.server").then((m) => m.fetchNdkrsChatGrounding(retrievalQuery, { limit: 3 }))
       : Promise.resolve({ hits: [], systemBlock: "", footer: "" }),
+    !isClinicalCacheBypass
+      ? import("./noctis-knowledge-retrieval.server.ts").then((m) =>
+          m.buildChatKnowledgeGroundingBlock(retrievalQuery, { limit: 5 }),
+        )
+      : Promise.resolve({ systemBlock: "", tableRequested: false, matchCount: 0, sourcesUsed: [] }),
   ]);
   const notes = [...pulled, ndkrsGrounding.systemBlock].filter(Boolean).join("\n\n");
   const walk = walkGraph(retrievalQuery);
@@ -2777,6 +2816,7 @@ async function composeVibeReply(
         : []),
       ...(persistedRules ? [{ role: "system" as const, content: persistedRules }] : []),
       ...(prior ? [{ role: "system" as const, content: prior }] : []),
+      ...(knowledgeGrounding.systemBlock ? [{ role: "system" as const, content: knowledgeGrounding.systemBlock }] : []),
       ...(ndkrsGroundingBlock ? [{ role: "system" as const, content: ndkrsGroundingBlock }] : []),
       ...(notes && !wantsCode
         ? [{ role: "system" as const, content: `Background, if it helps this question. Ignore a page about a different subject. Do not let it replace the answer.\n\n${notes.slice(0, 4000)}` }]
@@ -2860,6 +2900,7 @@ async function composeVibeReply(
       : []),
     { role: "system", content: `${pipe.route.note} ${reasonBrief(scenario)} The pipeline packet below was computed in code. Copy it. Do not replace a pipeline line with a guess. A feasibility sentence comes after the figures, never instead of them.` },
     ...(packet ? [{ role: "system" as const, content: packet }] : []),
+    ...(knowledgeGrounding.systemBlock ? [{ role: "system" as const, content: knowledgeGrounding.systemBlock }] : []),
     ...(stance ? [{ role: "system" as const, content: stance }] : []),
     ...(style.context
       ? [{ role: "system" as const, content: style.context }]

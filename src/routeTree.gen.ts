@@ -81,6 +81,7 @@ import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiNoctisBenchmarkRouteImport } from './routes/api/noctis.benchmark'
 import { Route as ApiNoctisConsensusRouteImport } from './routes/api/noctis.consensus'
 import { Route as ApiNoctisIngestRouteImport } from './routes/api/noctis.ingest'
+import { Route as ApiNoctisKnowledgeRouteImport } from './routes/api/noctis.knowledge'
 import { Route as ApiNoctisSmartFhirRouteImport } from './routes/api/noctis.smart-fhir'
 import { Route as ApiV1HealthRouteImport } from './routes/api/v1.health'
 import { Route as HubCareerIdRouteImport } from './routes/hub.career.$id'
@@ -470,6 +471,11 @@ const ApiNoctisIngestRoute = ApiNoctisIngestRouteImport.update({
   path: '/ingest',
   getParentRoute: () => ApiNoctisRoute,
 } as any)
+const ApiNoctisKnowledgeRoute = ApiNoctisKnowledgeRouteImport.update({
+  id: '/knowledge',
+  path: '/knowledge',
+  getParentRoute: () => ApiNoctisRoute,
+} as any)
 const ApiNoctisSmartFhirRoute = ApiNoctisSmartFhirRouteImport.update({
   id: '/smart-fhir',
   path: '/smart-fhir',
@@ -689,6 +695,7 @@ export interface FileRoutesByFullPath {
   '/api/noctis/benchmark': typeof ApiNoctisBenchmarkRoute
   '/api/noctis/consensus': typeof ApiNoctisConsensusRoute
   '/api/noctis/ingest': typeof ApiNoctisIngestRoute
+  '/api/noctis/knowledge': typeof ApiNoctisKnowledgeRoute
   '/api/noctis/smart-fhir': typeof ApiNoctisSmartFhirRoute
   '/api/v1/health': typeof ApiV1HealthRoute
   '/hub/career/$id': typeof HubCareerIdRoute
@@ -787,6 +794,7 @@ export interface FileRoutesByTo {
   '/api/noctis/benchmark': typeof ApiNoctisBenchmarkRoute
   '/api/noctis/consensus': typeof ApiNoctisConsensusRoute
   '/api/noctis/ingest': typeof ApiNoctisIngestRoute
+  '/api/noctis/knowledge': typeof ApiNoctisKnowledgeRoute
   '/api/noctis/smart-fhir': typeof ApiNoctisSmartFhirRoute
   '/api/v1/health': typeof ApiV1HealthRoute
   '/hub/career/$id': typeof HubCareerIdRoute
@@ -890,6 +898,7 @@ export interface FileRoutesById {
   '/api/noctis/benchmark': typeof ApiNoctisBenchmarkRoute
   '/api/noctis/consensus': typeof ApiNoctisConsensusRoute
   '/api/noctis/ingest': typeof ApiNoctisIngestRoute
+  '/api/noctis/knowledge': typeof ApiNoctisKnowledgeRoute
   '/api/noctis/smart-fhir': typeof ApiNoctisSmartFhirRoute
   '/api/v1/health': typeof ApiV1HealthRoute
   '/hub/career/$id': typeof HubCareerIdRoute
@@ -994,6 +1003,7 @@ export interface FileRouteTypes {
     | '/api/noctis/benchmark'
     | '/api/noctis/consensus'
     | '/api/noctis/ingest'
+    | '/api/noctis/knowledge'
     | '/api/noctis/smart-fhir'
     | '/api/v1/health'
     | '/hub/career/$id'
@@ -1092,6 +1102,7 @@ export interface FileRouteTypes {
     | '/api/noctis/benchmark'
     | '/api/noctis/consensus'
     | '/api/noctis/ingest'
+    | '/api/noctis/knowledge'
     | '/api/noctis/smart-fhir'
     | '/api/v1/health'
     | '/hub/career/$id'
@@ -1194,6 +1205,7 @@ export interface FileRouteTypes {
     | '/api/noctis/benchmark'
     | '/api/noctis/consensus'
     | '/api/noctis/ingest'
+    | '/api/noctis/knowledge'
     | '/api/noctis/smart-fhir'
     | '/api/v1/health'
     | '/hub/career/$id'
@@ -1779,6 +1791,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiNoctisIngestRouteImport
       parentRoute: typeof ApiNoctisRoute
     }
+    '/api/noctis/knowledge': {
+      id: '/api/noctis/knowledge'
+      path: '/knowledge'
+      fullPath: '/api/noctis/knowledge'
+      preLoaderRoute: typeof ApiNoctisKnowledgeRouteImport
+      parentRoute: typeof ApiNoctisRoute
+    }
     '/api/noctis/smart-fhir': {
       id: '/api/noctis/smart-fhir'
       path: '/smart-fhir'
@@ -2116,6 +2135,7 @@ interface ApiNoctisRouteChildren {
   ApiNoctisBenchmarkRoute: typeof ApiNoctisBenchmarkRoute
   ApiNoctisConsensusRoute: typeof ApiNoctisConsensusRoute
   ApiNoctisIngestRoute: typeof ApiNoctisIngestRoute
+  ApiNoctisKnowledgeRoute: typeof ApiNoctisKnowledgeRoute
   ApiNoctisSmartFhirRoute: typeof ApiNoctisSmartFhirRoute
 }
 
@@ -2123,6 +2143,7 @@ const ApiNoctisRouteChildren: ApiNoctisRouteChildren = {
   ApiNoctisBenchmarkRoute: ApiNoctisBenchmarkRoute,
   ApiNoctisConsensusRoute: ApiNoctisConsensusRoute,
   ApiNoctisIngestRoute: ApiNoctisIngestRoute,
+  ApiNoctisKnowledgeRoute: ApiNoctisKnowledgeRoute,
   ApiNoctisSmartFhirRoute: ApiNoctisSmartFhirRoute,
 }
 

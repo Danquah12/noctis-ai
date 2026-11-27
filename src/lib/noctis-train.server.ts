@@ -49,6 +49,16 @@ import {
   runAutonomousZeroTouchTrainingSuite,
 } from "./noctis-autonomous-trainer.ts";
 import { buildRemainingNoctisSeedPairs } from "./noctis-exhaustive-training.ts";
+import { buildTrackMasterySeedPairs } from "./noctis-open-curriculum-1m.ts";
+import {
+  formatKnowledgeReportMarkdown,
+  fuseRankedResults,
+  isTableFormatRequested,
+  scoreExternalTrainingPairs,
+  searchCurriculumKnowledge,
+  tokenizeKnowledgeQuery,
+  type KnowledgeRecord,
+} from "./noctis-knowledge-router.ts";
 import { buildNoctisSastTrainingPairs } from "./noctis-sast-engine.ts";
 import { isUniversalClinicalQuestion } from "./noctis-universal-clinical.server.ts";
 import { isRmfGrcQuery } from "./noctis-rmf-engine.ts";
@@ -373,6 +383,7 @@ const OWASP_SEED_CORPUS: TrainingPair[] = [
   },
   ...buildAutonomous20AreaSeedPairs(),
   ...buildRemainingNoctisSeedPairs(),
+  ...buildTrackMasterySeedPairs(),
 ];
 
 const SEED_CORPUS: TrainingPair[] = [
@@ -677,7 +688,7 @@ function words(text: string) {
 function saveToDisk() {
   try {
     mkdirSync(path.dirname(FILE), { recursive: true });
-    writeFileSync(FILE, JSON.stringify(pairs.slice(-600), null, 2));
+    writeFileSync(FILE, JSON.stringify(pairs.slice(-2000), null, 2));
   } catch {
     /* serverless read-only disk does not block Postgres persistence */
   }
@@ -732,7 +743,7 @@ export async function hydrateFromDb(): Promise<void> {
         where verified = true
           and model not in ('vibe', 'vibe-native', 'vibe-gadget')
         order by updated_at desc
-        limit 500
+        limit 5000
       `;
       for (let i = pairs.length - 1; i >= 0; i -= 1) {
         if (pairs[i]?.model === "vibe" || pairs[i]?.model === "vibe-native" || pairs[i]?.model === "vibe-gadget") {
@@ -808,7 +819,7 @@ export function rememberAnswer(question: string, answer: string, model = "vibe-n
   };
   if (same >= 0) pairs.splice(same, 1);
   pairs.push(next);
-  if (pairs.length > 600) pairs.splice(0, pairs.length - 600);
+  if (pairs.length > 5000) pairs.splice(0, pairs.length - 5000);
   saveToDisk();
 
   void (async () => {
@@ -1053,22 +1064,179 @@ export function recallTrainedAnswer(question: string): { answer: string; questio
   };
 }
 
+export function getHydratedTrainingPairs(): TrainingPair[] {
+  return [...pairs];
+}
+
+export async function searchTrainingPairsInDb(
+  query: string,
+  opts: { domain?: string; limit?: number } = {},
+): Promise<KnowledgeRecord[]> {
+  await hydrateFromDb();
+  const limit = Math.max(1, Math.min(50, opts.limit ?? 12));
+  const domainFilter = opts.domain?.trim().toLowerCase();
+  const cleanQuery = query.trim();
+
+  const candidatePairs = new Map<string, TrainingPair>();
+
+  if (dbHydrated && cleanQuery) {
+    try {
+      const { getSql } = await import("@/lib/db");
+      const sql = await getSql();
+
+      // 1. PostgreSQL GIN full-text index search
+      const ftsRows = domainFilter
+        ? await sql<{
+            id: string;
+            question: string;
+            answer: string;
+            domain: string;
+            model: string;
+            hits: number;
+            updated_at: string;
+          }>`
+            select id, question, answer, domain, model, hits, updated_at::text as updated_at
+            from vibe_training_pair
+            where verified = true
+              and lower(domain) = ${domainFilter}
+              and to_tsvector('english', coalesce(question, '') || ' ' || coalesce(answer, ''))
+                  @@ plainto_tsquery('english', ${cleanQuery})
+            order by ts_rank_cd(
+              to_tsvector('english', coalesce(question, '') || ' ' || coalesce(answer, '')),
+              plainto_tsquery('english', ${cleanQuery})
+            ) desc, hits desc
+            limit ${limit * 2}
+          `
+        : await sql<{
+            id: string;
+            question: string;
+            answer: string;
+            domain: string;
+            model: string;
+            hits: number;
+            updated_at: string;
+          }>`
+            select id, question, answer, domain, model, hits, updated_at::text as updated_at
+            from vibe_training_pair
+            where verified = true
+              and to_tsvector('english', coalesce(question, '') || ' ' || coalesce(answer, ''))
+                  @@ plainto_tsquery('english', ${cleanQuery})
+            order by ts_rank_cd(
+              to_tsvector('english', coalesce(question, '') || ' ' || coalesce(answer, '')),
+              plainto_tsquery('english', ${cleanQuery})
+            ) desc, hits desc
+            limit ${limit * 2}
+          `;
+
+      for (const r of ftsRows) {
+        candidatePairs.set(r.id, {
+          id: r.id,
+          question: r.question,
+          answer: r.answer,
+          domain: r.domain || inferDomain(r.question),
+          model: r.model || "vibe-seed",
+          hits: Number(r.hits) || 1,
+          at: r.updated_at || new Date().toISOString(),
+        });
+      }
+
+      // 2. ILIKE keyword fallback for acronyms/identifiers when FTS returns few rows
+      if (candidatePairs.size < limit) {
+        const tokens = tokenizeKnowledgeQuery(cleanQuery).slice(0, 4);
+        for (const tok of tokens) {
+          const pattern = `%${tok}%`;
+          const ilikeRows = domainFilter
+            ? await sql<{
+                id: string;
+                question: string;
+                answer: string;
+                domain: string;
+                model: string;
+                hits: number;
+                updated_at: string;
+              }>`
+                select id, question, answer, domain, model, hits, updated_at::text as updated_at
+                from vibe_training_pair
+                where verified = true
+                  and lower(domain) = ${domainFilter}
+                  and (question ilike ${pattern} or answer ilike ${pattern})
+                order by hits desc, updated_at desc
+                limit ${limit}
+              `
+            : await sql<{
+                id: string;
+                question: string;
+                answer: string;
+                domain: string;
+                model: string;
+                hits: number;
+                updated_at: string;
+              }>`
+                select id, question, answer, domain, model, hits, updated_at::text as updated_at
+                from vibe_training_pair
+                where verified = true
+                  and (question ilike ${pattern} or answer ilike ${pattern})
+                order by hits desc, updated_at desc
+                limit ${limit}
+              `;
+          for (const r of ilikeRows) {
+            if (!candidatePairs.has(r.id)) {
+              candidatePairs.set(r.id, {
+                id: r.id,
+                question: r.question,
+                answer: r.answer,
+                domain: r.domain || inferDomain(r.question),
+                model: r.model || "vibe-seed",
+                hits: Number(r.hits) || 1,
+                at: r.updated_at || new Date().toISOString(),
+              });
+            }
+          }
+        }
+      }
+    } catch {
+      /* fall through to in-memory hydrated pairs */
+    }
+  }
+
+  // Merge hydrated memory snapshot so locally seeded pairs & DB pairs are both searchable
+  for (const p of pairs) {
+    const key = p.id || pairId(p.question);
+    if (!candidatePairs.has(key)) {
+      candidatePairs.set(key, p);
+    }
+  }
+
+  return scoreExternalTrainingPairs(cleanQuery, [...candidatePairs.values()], {
+    domain: domainFilter,
+    limit,
+    defaultSource: dbHydrated ? "postgres_training" : "seed_corpus",
+  });
+}
+
 export function lessonBlock(question: string) {
-  const asked = words(question);
-  if (!asked.size) return "";
-  const ranked = pairs
-    .map((pair) => {
-      const sim = similarityScore(question, pair.question);
-      return { pair, shared: sim.shared, ratio: sim.ratio };
-    })
-    .filter((row) => row.shared >= 1.5)
-    .sort((a, b) => b.ratio - a.ratio || b.shared - a.shared)
-    .slice(0, 3);
-  if (!ranked.length) return "";
-  const body = ranked
-    .map((row) => `Question: ${row.pair.question}\nAnswer: ${row.pair.answer}`)
+  const pairHits = scoreExternalTrainingPairs(question, pairs, {
+    limit: 3,
+    defaultSource: dbHydrated ? "postgres_training" : "seed_corpus",
+  }).filter((h) => h.score >= 5.5);
+
+  const curriculumHits = searchCurriculumKnowledge(question, { limit: 2 }).filter((h) => h.score >= 6);
+
+  if (!pairHits.length && !curriculumHits.length) return "";
+
+  const pairBody = pairHits
+    .map((row) => `Question: ${row.title}\nAnswer: ${row.content.slice(0, 1400)}`)
     .join("\n\n");
-  return `Lessons Vibe has already learned in its training store. Use one when this question is the same subject. Match the clarity. Do not copy facts from a different subject.\n\n${body}`;
+
+  const currBody = curriculumHits
+    .map(
+      (c) =>
+        `Track: ${c.title} (${c.domain})\nStandards: ${(c.standards || []).join(" | ")}\nInvariants: ${(c.invariants || []).slice(0, 2).join(" ; ")}`,
+    )
+    .join("\n\n");
+
+  const sections = [pairBody, currBody].filter(Boolean).join("\n\n");
+  return `Lessons & Open Curriculum standards Vibe has already learned in its training store. Use them when the question is on the same subject. Match the clarity and invariants. Do not copy facts from a different subject.\n\n${sections}`;
 }
 
 export async function trainingStatus() {
@@ -1456,10 +1624,29 @@ export async function vibeNativeComplete(
     return { text: `${combined}\n\n${tagMatch}` };
   }
 
-  // 3. Direct Trained Memory Recall (Postgres + Seed Corpus)
+  // 3. Direct Trained Memory Recall (Postgres + Seed Corpus + Open Curriculum Table Mode)
+  const tableMode = isTableFormatRequested(question);
   const recalled = recallTrainedAnswer(question);
-  if (recalled && recalled.score >= 0.58) {
+  if (!tableMode && recalled && recalled.score >= 0.58) {
     return { text: recalled.answer };
+  }
+  if (tableMode) {
+    const dbScored = scoreExternalTrainingPairs(question, pairs, {
+      limit: 6,
+      defaultSource: dbHydrated ? "postgres_training" : "seed_corpus",
+    });
+    const currScored = searchCurriculumKnowledge(question, { limit: 6 });
+    const fused = fuseRankedResults([dbScored, currScored], 8);
+    if (fused.length > 0) {
+      return {
+        text: formatKnowledgeReportMarkdown(question, fused, {
+          dbTotalPairs: pairs.length,
+          dbConnected: dbHydrated,
+          tableRequested: true,
+          tracksMatched: currScored.length,
+        }),
+      };
+    }
   }
 
   // 4. Curated Knowledge Engine Shelf Match
@@ -1552,9 +1739,25 @@ export async function vibeNativeComplete(
     }
   }
 
-  // 8. Closest Learned Lesson or Guided Study Response
+  // 8. Closest Learned Lesson or Open Curriculum Unified Retrieval
   if (recalled) {
     return { text: recalled.answer };
+  }
+  const nativeDbHits = scoreExternalTrainingPairs(question, pairs, {
+    limit: 5,
+    defaultSource: dbHydrated ? "postgres_training" : "seed_corpus",
+  });
+  const nativeCurrHits = searchCurriculumKnowledge(question, { limit: 5 });
+  const nativeFused = fuseRankedResults([nativeDbHits, nativeCurrHits], 6);
+  if (nativeFused.length > 0 && nativeFused[0]!.score >= 8) {
+    return {
+      text: formatKnowledgeReportMarkdown(question, nativeFused, {
+        dbTotalPairs: pairs.length,
+        dbConnected: dbHydrated,
+        tableRequested: tableMode,
+        tracksMatched: nativeCurrHits.length,
+      }),
+    };
   }
 
   return {

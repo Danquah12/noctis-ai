@@ -288,6 +288,44 @@ export const Route = createFileRoute("/api/noctis")({
           }
           return Response.json({ ok: true, routeId: "secops_suite", query: q, markdown }, { headers: CORS_HEADERS });
         }
+        const knowledgeParam = url.searchParams.get("knowledge");
+        if (knowledgeParam) {
+          const { retrieveNoctisKnowledge } = await import("@/lib/noctis-knowledge-retrieval.server");
+          const { isTableFormatRequested } = await import("@/lib/noctis-knowledge-router");
+          const q = url.searchParams.get("q") || (knowledgeParam === "1" ? "all" : knowledgeParam);
+          const rawFormat = (url.searchParams.get("format") || "").toLowerCase();
+          const format = rawFormat === "table" || rawFormat === "markdown" || rawFormat === "json"
+            ? rawFormat
+            : isTableFormatRequested(q)
+              ? "table"
+              : "markdown";
+          const limitNum = Number(url.searchParams.get("limit") || 10);
+          const result = await retrieveNoctisKnowledge(q, {
+            track: url.searchParams.get("track") || undefined,
+            domain: url.searchParams.get("domain") || undefined,
+            format,
+            limit: Number.isFinite(limitNum) ? limitNum : 10,
+          });
+          return Response.json({ ...result, routeId: "knowledge_library" }, { headers: CORS_HEADERS });
+        }
+        const curriculumParam = url.searchParams.get("curriculum");
+        if (curriculumParam) {
+          const { getOpenCurriculumStats, OPEN_CURRICULUM_TRACKS } = await import("@/lib/noctis-open-curriculum-1m");
+          const { formatCurriculumTracksTableMarkdown } = await import("@/lib/noctis-knowledge-router");
+          const domain = url.searchParams.get("domain") || (curriculumParam !== "1" && curriculumParam !== "all" ? curriculumParam : undefined);
+          return Response.json(
+            {
+              ok: true,
+              routeId: "knowledge_library",
+              stats: getOpenCurriculumStats(),
+              tracks: domain
+                ? OPEN_CURRICULUM_TRACKS.filter((t) => t.domain.toLowerCase() === domain.toLowerCase())
+                : OPEN_CURRICULUM_TRACKS,
+              markdownTable: formatCurriculumTracksTableMarkdown(domain),
+            },
+            { headers: CORS_HEADERS },
+          );
+        }
         if (url.searchParams.get("sast")) {
           const mode = url.searchParams.get("sast") || "repository";
           const {

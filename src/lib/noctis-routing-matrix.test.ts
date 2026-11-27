@@ -954,4 +954,12 @@ test("Options B + C (/markets, /world, /papers, /labs, /predict, /secops) route 
     classifyNoctisIntent("64yo patient presents with K+ 6.4 mEq/L, peaked T waves, and BP 88/54 mmHg. Interpret labs and stabilize!").routeId,
     "clinical",
   );
+
+  // Unified Knowledge & Table Router (/knowledge, /library, /curriculum, /table)
+  for (const cmd of ["/knowledge Raft", "/library DNSSEC", "/curriculum Rust", "/table Kubernetes"]) {
+    const kd = classifyNoctisIntent(cmd);
+    assert.equal(kd.override, true);
+    assert.equal(kd.routeId, "knowledge_library");
+  }
+  assert.ok(NOCTIS_API_ROUTES.some((r) => r.basePath === "/api/noctis/knowledge"));
 });
