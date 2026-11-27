@@ -18,6 +18,12 @@ import { classifyNoctisIntent } from "./noctis-intent-router.server.ts";
 import { extractMultiSlashOverrides } from "./noctis-capability-registry.ts";
 import { retrieveNoctisKnowledge, getNoctisKnowledgeStats } from "./noctis-knowledge-retrieval.server.ts";
 import {
+  buildNistSpTrainingPairs,
+  NIST_SP_800_37_TASKS,
+  NIST_SP_800_60_INFO_TYPES,
+  NIST_SP_PUBLICATIONS,
+} from "./noctis-nist-sp-catalog.ts";
+import {
   classifyOpenDomain,
   computeDailyOffsetSeed,
   deduplicateOpenRecords,
@@ -164,10 +170,12 @@ test("Unified server retrieval fuses DB/seed pairs + 40-track Open Curriculum + 
   assert.ok(fused.length >= 2);
 });
 
-test("Open ingestion registry exposes 11 lawful public sources and deterministic deduplication", () => {
-  assert.equal(OPEN_INGESTION_SOURCE_SPECS.length, 11);
+test("Open ingestion registry exposes 12 lawful public sources including nist-csrc-rmf and deterministic deduplication", () => {
+  assert.equal(OPEN_INGESTION_SOURCE_SPECS.length, 12);
+  assert.ok(OPEN_INGESTION_SOURCE_SPECS.some((s) => s.id === "nist-csrc-rmf"));
   assert.equal(stripNullBytes("hello\u0000world"), "helloworld");
   assert.equal(classifyOpenDomain("CISA KEV CVE-2025-1234 MITRE ATT&CK T1059 zero trust"), "cybersecurity");
+  assert.equal(classifyOpenDomain("NIST SP 800-37 Task P-11 SP 800-30 risk assessment ISCM"), "cybersecurity");
   assert.equal(classifyOpenDomain("ASC 606 GAAP revenue recognition WACC DCF"), "finance");
   assert.equal(classifyOpenDomain("PMBOK sprint OKR net dollar retention"), "business");
   assert.equal(classifyOpenDomain("PubMed randomized sepsis trial clinical guideline"), "healthcare");
@@ -215,4 +223,32 @@ test("Semantic 256-dim embeddings align paraphrased technical concepts via cosin
   assert.ok(simRelevant > 0.35, `Expected semantic similarity > 0.35, got ${simRelevant}`);
   assert.ok(simRelevant > simUnrelated + 0.2, `Relevant (${simRelevant}) must beat unrelated (${simUnrelated})`);
   assert.ok(formatVectorLiteral(q).startsWith("[") && formatVectorLiteral(q).endsWith("]"));
+});
+
+test("Complete NIST SP RMF catalog (47 SP 800-37 tasks, 19 publications, 30+ SP 800-60 info types) bridges into /knowledge table retrieval", async () => {
+  assert.equal(NIST_SP_800_37_TASKS.length, 47);
+  assert.equal(NIST_SP_PUBLICATIONS.length, 19);
+  assert.ok(NIST_SP_800_60_INFO_TYPES.length >= 30);
+  const generatedPairs = buildNistSpTrainingPairs();
+  assert.ok(generatedPairs.length >= 90);
+
+  const prepRes = await retrieveNoctisKnowledge(
+    "Put NIST SP 800-37 Prepare tasks P-1 through P-7 and SP 800-30 risk assessment on a table",
+    { format: "table", limit: 10 },
+  );
+  assert.equal(prepRes.ok, true);
+  assert.equal(prepRes.tableRequested, true);
+  assert.ok(prepRes.sourcesUsed.includes("nist_sp_rmf_db"));
+  assert.ok(prepRes.markdownTable.includes("`NIST RMF DB`"));
+  assert.ok(prepRes.results.some((r) => r.id === "rmf-task-P-1"));
+  assert.ok(prepRes.results.some((r) => r.id === "rmf-pub-SP-800-30r1"));
+
+  const rmfOnly = await retrieveNoctisKnowledge("AC-2(3) and SP 800-207 Zero Trust Architecture", {
+    source: "rmf",
+    format: "table",
+    limit: 8,
+  });
+  assert.ok(rmfOnly.sourcesUsed.includes("nist_sp_rmf_db"));
+  assert.ok(rmfOnly.results.some((r) => r.id === "rmf-ctrl-AC-2(3)"));
+  assert.ok(rmfOnly.results.some((r) => r.id === "rmf-pub-SP-800-207"));
 });

@@ -20,6 +20,7 @@
 
 import { createHash } from "node:crypto";
 import { computeSemanticEmbedding256, formatVectorLiteral } from "./noctis-knowledge-router.ts";
+import { buildNistSpTrainingPairs } from "./noctis-nist-sp-catalog.ts";
 import type { ChatMlMessage } from "./noctis-open-curriculum-1m.ts";
 
 export type OpenIngestionSourceId =
@@ -33,7 +34,8 @@ export type OpenIngestionSourceId =
   | "owasp-cheatsheets"
   | "nist-nvd"
   | "world-bank"
-  | "open-tech-docs";
+  | "open-tech-docs"
+  | "nist-csrc-rmf";
 
 export interface OpenIngestionSourceSpec {
   id: OpenIngestionSourceId;
@@ -121,6 +123,13 @@ export const OPEN_INGESTION_SOURCE_SPECS: readonly OpenIngestionSourceSpec[] = [
     endpointSummary: "https://raw.githubusercontent.com/{kubernetes/website,rust-lang/book}/",
     defaultDomain: "engineering",
   },
+  {
+    id: "nist-csrc-rmf",
+    name: "NIST CSRC SP 800-Series & RMF Standards (US Gov Public Domain)",
+    license: "US-Gov-Public-Domain",
+    endpointSummary: "https://csrc.nist.gov/pubs/sp/800/* + usnistgov/{800-63-4,oscal-content}",
+    defaultDomain: "cybersecurity",
+  },
 ] as const;
 
 export interface OpenIngestedRecord {
@@ -166,7 +175,7 @@ const BROAD_EDUCATIONAL_FILTER_RE =
 
 export function classifyOpenDomain(text: string, defaultDomain = "engineering"): string {
   const lower = text.toLowerCase();
-  if (/\b(cve-\d{4}|cisa|kev|owasp|mitre|att&ck|cryptograph|tls|auth|vulnerability|malware|ransomware|exploit|zero trust|nist 800-53|firewall)\b/.test(lower)) {
+  if (/\b(cve-\d{4}|cisa|kev|owasp|mitre|att&ck|cryptograph|tls|auth|vulnerability|malware|ransomware|exploit|zero trust|nist|800-53|800-37|800-30|800-39|800-60|800-61|800-63|800-137|800-160|800-171|800-172|800-207|fips 199|fips 200|rmf|iscm|poa&m|fedramp|ai rmf|firewall)\b/.test(lower)) {
     return "cybersecurity";
   }
   if (/\b(patient|clinical|pubmed|nih|biomedical|cardio|oncology|sepsis|pharmacology|diagnosis|therapy|randomized trial|cohort)\b/.test(lower)) {
@@ -851,6 +860,75 @@ export async function fetchOpenTechDocsBatch(limit: number, offsetSeed = 0): Pro
   return records;
 }
 
+const USNISTGOV_PUBLIC_DOCS: ReadonlyArray<{ id: string; title: string; rawUrl: string; canonicalRef: string }> = [
+  {
+    id: "NIST-GH-800-63-4-INDEX",
+    title: "NIST SP 800-63-4 Digital Identity Guidelines Overview",
+    rawUrl: "https://raw.githubusercontent.com/usnistgov/800-63-4/main/sp800-63-4/sp800-63-4.md",
+    canonicalRef: "NIST SP 800-63-4",
+  },
+  {
+    id: "NIST-GH-800-63B-4",
+    title: "NIST SP 800-63B-4 Authentication & Authenticator Lifecycle Management",
+    rawUrl: "https://raw.githubusercontent.com/usnistgov/800-63-4/main/sp800-63b-4/sp800-63b-4.md",
+    canonicalRef: "NIST SP 800-63B-4",
+  },
+];
+
+export async function fetchNistCsrcRmfBatch(limit: number, offsetSeed = 0): Promise<OpenIngestedRecord[]> {
+  if (limit <= 0) return [];
+  const corpus = buildNistSpTrainingPairs();
+  const records: OpenIngestedRecord[] = [];
+  const start = Math.abs(offsetSeed) % Math.max(1, corpus.length);
+  const rotated = [...corpus.slice(start), ...corpus.slice(0, start)];
+
+  for (const item of rotated.slice(0, limit)) {
+    records.push({
+      id: item.id,
+      sourceId: "nist-csrc-rmf",
+      source: "open:nist-csrc-rmf",
+      license: "US-Gov-Public-Domain",
+      domain: "cybersecurity",
+      url: item.url,
+      canonicalRef: item.canonicalRef,
+      messages: [
+        { role: "system", content: item.systemPrompt },
+        { role: "user", content: item.question },
+        { role: "assistant", content: item.answer },
+      ],
+    });
+  }
+
+  // Optionally supplement with live upstream NIST usnistgov markdown chapters when room remains
+  if (records.length < limit && USNISTGOV_PUBLIC_DOCS.length > 0) {
+    const doc = USNISTGOV_PUBLIC_DOCS[Math.abs(offsetSeed) % USNISTGOV_PUBLIC_DOCS.length]!;
+    try {
+      const md = stripNullBytes(await fetchText(doc.rawUrl, 8_000));
+      if (md.length >= 250) {
+        const excerpt = md.replace(/^---[\s\S]*?---\s*/m, "").replace(/\n{3,}/g, "\n\n").slice(0, 2800);
+        records.push({
+          id: doc.id,
+          sourceId: "nist-csrc-rmf",
+          source: "open:nist-csrc-rmf",
+          license: "US-Gov-Public-Domain",
+          domain: "cybersecurity",
+          url: doc.rawUrl,
+          canonicalRef: doc.canonicalRef,
+          messages: [
+            { role: "system", content: `You are Noctis Federal RMF Intelligence citing official ${doc.canonicalRef}.` },
+            { role: "user", content: `Summarize authoritative requirements from official ${doc.title}.` },
+            { role: "assistant", content: `### ${doc.title}\n- **Official NIST Source:** ${doc.rawUrl}\n\n${excerpt}` },
+          ],
+        });
+      }
+    } catch {
+      /* non-fatal fallback if offline or GitHub branch layout shifts */
+    }
+  }
+
+  return records.slice(0, limit);
+}
+
 export function deduplicateOpenRecords(candidates: readonly OpenIngestedRecord[]): OpenIngestedRecord[] {
   const seen = new Set<string>();
   const kept: OpenIngestedRecord[] = [];
@@ -1085,6 +1163,7 @@ export async function runContinuousOpenKnowledgeIngestion(options: {
     { id: "nist-nvd", spec: OPEN_INGESTION_SOURCE_SPECS[8]!, run: (c) => fetchNistNvdBatch(perSourceLimit, c) },
     { id: "world-bank", spec: OPEN_INGESTION_SOURCE_SPECS[9]!, run: (c) => fetchWorldBankIndicatorsBatch(perSourceLimit, c) },
     { id: "open-tech-docs", spec: OPEN_INGESTION_SOURCE_SPECS[10]!, run: (c) => fetchOpenTechDocsBatch(Math.min(7, perSourceLimit), c) },
+    { id: "nist-csrc-rmf", spec: OPEN_INGESTION_SOURCE_SPECS[11]!, run: (c) => fetchNistCsrcRmfBatch(perSourceLimit, c) },
   ];
   const runners = allRunners.filter((r) => enabledSources.has(r.id));
 

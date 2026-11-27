@@ -22,9 +22,9 @@ function parseFormat(raw: string | null | undefined, query: string): "json" | "m
   return isTableFormatRequested(query) ? "table" : "json";
 }
 
-function parseSource(raw: string | null | undefined): "all" | "db" | "curriculum" | "domains" {
+function parseSource(raw: string | null | undefined): "all" | "db" | "curriculum" | "domains" | "rmf" {
   const s = (raw || "").toLowerCase().trim();
-  if (s === "db" || s === "curriculum" || s === "domains") return s;
+  if (s === "db" || s === "curriculum" || s === "domains" || s === "rmf") return s;
   return "all";
 }
 

@@ -393,4 +393,15 @@ Use Examine only for the assessment.
     assert.equal(json.replayVerification.reproducible, true);
     assert.equal(json.bundle.ruleEvaluations?.length, 2);
   });
+
+  it("grounds SP 800-37 Rev. 2 tasks (P-1..M-7), supporting NIST SP publications, and SP 800-60 info types", () => {
+    const packet = buildRmfGroundingPacket(
+      "Explain SP 800-37 task P-11 authorization boundary, SP 800-30 risk assessment, and SP 800-60 Clinical PHI impact levels",
+    );
+    assert.ok(packet.rmfTasksReferenced.some((t) => t.taskId === "P-11"));
+    assert.ok(packet.nistPublicationsReferenced.some((p) => p.sourceId === "SP-800-30r1"));
+    assert.ok(packet.sp80060InfoTypesReferenced.some((it) => it.code === "D.18.1"));
+    assert.ok(packet.markdownContext.includes("### 7B. NIST SP 800-37 REV. 2 OFFICIAL TASKS REFERENCED"));
+    assert.ok(packet.markdownContext.includes("### 7C. SUPPORTING NIST SP / FIPS PUBLICATIONS GROUNDING"));
+  });
 });

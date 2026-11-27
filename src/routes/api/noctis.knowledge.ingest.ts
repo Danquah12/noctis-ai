@@ -27,6 +27,7 @@ const VALID_SOURCES = new Set<OpenIngestionSourceId>([
   "nist-nvd",
   "world-bank",
   "open-tech-docs",
+  "nist-csrc-rmf",
 ]);
 
 function parseSources(raw: string | string[] | null | undefined): OpenIngestionSourceId[] | undefined {

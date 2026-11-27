@@ -22,6 +22,7 @@ export type KnowledgeSourceKind =
   | "open_curriculum"
   | "curriculum_subtopic"
   | "training_domain"
+  | "nist_rmf_db"
   | "seed_corpus";
 
 export interface KnowledgeRecord {
@@ -45,7 +46,7 @@ export interface KnowledgeRecord {
 export interface KnowledgeSearchOptions {
   track?: string;
   domain?: string;
-  source?: "all" | "db" | "curriculum" | "domains";
+  source?: "all" | "db" | "curriculum" | "domains" | "rmf";
   limit?: number;
   format?: "json" | "markdown" | "table";
 }
@@ -98,7 +99,7 @@ const SEMANTIC_CONCEPT_CLUSTERS: ReadonlyArray<readonly string[]> = [
   ["leadership", "executive", "okr", "management", "org", "organization", "strategy", "roadmap", "product", "discovery", "stakeholder", "negotiation", "batna", "zopa", "bluf", "communication"],
   ["delivery", "project", "pmbok", "scrum", "agile", "kanban", "sprint", "critical", "path", "float", "milestone", "raid", "supply", "chain", "procurement", "eoq", "inventory"],
   ["rust", "memory", "borrow", "ownership", "lifetime", "unsafe", "concurrency", "async", "allocator", "linux", "kernel", "ebpf", "posix", "thread"],
-  ["compliance", "nist", "rmf", "800-53", "fedramp", "ato", "poam", "oscal", "hipaa", "gdpr", "privacy", "contract", "msa", "dpa", "sbom", "license"],
+  ["compliance", "nist", "rmf", "800-53", "800-37", "800-30", "800-39", "800-53a", "800-53b", "800-60", "800-61", "800-63", "800-137", "800-160", "800-171", "800-172", "800-207", "fips", "199", "200", "fedramp", "ato", "poam", "oscal", "csf", "iscm", "conmon", "ssp", "sar", "sap", "categorize", "authorize", "zero-trust", "ial3", "aal3", "cmmc", "cui", "hipaa", "gdpr", "privacy", "contract", "msa", "dpa", "sbom", "license"],
   ["observability", "metrics", "logs", "traces", "opentelemetry", "slo", "sli", "error", "budget", "circuit", "breaker", "backpressure", "retry", "jitter", "idempotency"],
   ["experiment", "abtest", "causal", "srm", "simpson", "paradox", "statistics", "confidence", "hypothesis", "cohort", "retention", "marketing", "attribution", "funnel"],
 ] as const;
@@ -637,6 +638,8 @@ function sourceBadge(source: KnowledgeSourceKind): string {
       return "1M Blueprint";
     case "training_domain":
       return "200D Audit";
+    case "nist_rmf_db":
+      return "NIST RMF DB";
     case "seed_corpus":
       return "Seed Corpus";
   }

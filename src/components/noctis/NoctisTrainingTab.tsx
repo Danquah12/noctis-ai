@@ -429,7 +429,7 @@ export function NoctisTrainingTab({ onSendToChat, onClose }: NoctisTrainingTabPr
                   <Globe className="size-4 text-amber-400" />
                 </div>
                 <div className="mt-2 text-2xl font-bold text-amber-300">
-                  {knowledgeStatus?.sources?.length || 11}
+                  {knowledgeStatus?.sources?.length || 12}
                 </div>
                 <div className="mt-1 text-[11px] text-zinc-400">Daily Cron @ 08:00 UTC</div>
               </div>
@@ -451,7 +451,7 @@ export function NoctisTrainingTab({ onSendToChat, onClose }: NoctisTrainingTabPr
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-zinc-400" />
                 <input
                   type="text"
-                  placeholder="Semantic & lexical search across Neon DB, MITRE ATT&CK, OWASP, arXiv, GAAP, Leadership..."
+                  placeholder="Semantic & lexical search across Neon DB, NIST SP / RMF, MITRE ATT&CK, OWASP, arXiv, GAAP..."
                   value={kbQuery}
                   onChange={(e) => setKbQuery(e.target.value)}
                   onKeyDown={(e) => {
@@ -483,7 +483,7 @@ export function NoctisTrainingTab({ onSendToChat, onClose }: NoctisTrainingTabPr
                 disabled={ingestLoading}
                 className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-50 transition cursor-pointer"
               >
-                {ingestLoading ? "Ingesting 11 Sources..." : "Run Ingestion Batch"}
+                {ingestLoading ? "Ingesting 12 Sources..." : "Run Ingestion Batch"}
               </button>
             </div>
 

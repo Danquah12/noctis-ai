@@ -29,6 +29,30 @@ import {
   createExplanationBundle,
   type ExplanationBundle,
 } from "./rmf-v2/graph-and-trace.ts";
+import {
+  listRmfTasksByStep,
+  lookupNistPublication,
+  lookupRmfTask,
+  lookupSp80060InfoType,
+  NIST_SP_800_37_TASKS,
+  NIST_SP_800_60_INFO_TYPES,
+  NIST_SP_PUBLICATIONS,
+  searchNistSpCatalog,
+  type NistRmfTask,
+  type NistSpPublication,
+  type Sp80060InfoType,
+} from "./noctis-nist-sp-catalog.ts";
+
+export {
+  listRmfTasksByStep,
+  lookupNistPublication,
+  lookupRmfTask,
+  lookupSp80060InfoType,
+  searchNistSpCatalog,
+  type NistRmfTask,
+  type NistSpPublication,
+  type Sp80060InfoType,
+};
 
 export interface FedrampProfileMeta {
   id: string;
@@ -138,6 +162,9 @@ export interface RmfGroundingPacket {
     counts: Record<string, number>;
   };
   rmfStepsReferenced: { step: number; title: string; pub: string; deliverables: string[]; summary: string }[];
+  rmfTasksReferenced: NistRmfTask[];
+  nistPublicationsReferenced: NistSpPublication[];
+  sp80060InfoTypesReferenced: Sp80060InfoType[];
   controls: NormalizedRmfControl[];
   authoritativeRecords: AuthoritativeControlRecord[];
   cuiRequirements: Normalized800171Req[];
@@ -782,6 +809,59 @@ export function buildRmfGroundingPacket(question: string): RmfGroundingPacket {
     lines.push("");
   }
 
+  // SP 800-37 Tasks, Supporting NIST SP Publications & SP 800-60 Information Types
+  const catalogHits = searchNistSpCatalog(q, 14);
+  const rmfTasksReferenced: NistRmfTask[] = [];
+  const seenTasks = new Set<string>();
+  const addTask = (t: NistRmfTask) => {
+    if (!seenTasks.has(t.taskId) && rmfTasksReferenced.length < 10) {
+      seenTasks.add(t.taskId);
+      rmfTasksReferenced.push(t);
+    }
+  };
+  for (const hit of catalogHits) {
+    if (hit.kind === "rmf_task" && hit.task) addTask(hit.task);
+  }
+  for (const st of rmfStepsReferenced) {
+    if (/\btasks?\b/i.test(q)) {
+      for (const t of listRmfTasksByStep(st.step)) addTask(t);
+    }
+  }
+
+  const nistPublicationsReferenced: NistSpPublication[] = catalogHits
+    .filter((h): h is typeof h & { publication: NistSpPublication } => h.kind === "publication" && Boolean(h.publication))
+    .slice(0, 4)
+    .map((h) => h.publication);
+
+  const sp80060InfoTypesReferenced: Sp80060InfoType[] = catalogHits
+    .filter((h): h is typeof h & { infoType: Sp80060InfoType } => h.kind === "sp800_60_info_type" && Boolean(h.infoType))
+    .slice(0, 4)
+    .map((h) => h.infoType);
+
+  if (rmfTasksReferenced.length > 0) {
+    lines.push("### 7B. NIST SP 800-37 REV. 2 OFFICIAL TASKS REFERENCED");
+    for (const t of rmfTasksReferenced) {
+      lines.push(`- **Task ${t.taskId} (${t.title}, Step ${t.stepNumber} ${t.stepCode}, ${t.level})** — Roles: ${t.primaryRoles.join(", ")} | Outputs: ${t.expectedOutputs.join("; ")} | ${t.description}`);
+    }
+    lines.push("");
+  }
+
+  if (nistPublicationsReferenced.length > 0) {
+    lines.push("### 7C. SUPPORTING NIST SP / FIPS PUBLICATIONS GROUNDING");
+    for (const pub of nistPublicationsReferenced) {
+      lines.push(`- **${pub.docNumber}: ${pub.title}** (${pub.version}) — ${pub.summary} Key Concepts: ${pub.keyConcepts.slice(0, 4).join(", ")}. Invariant: ${pub.invariants[0] || ""}`);
+    }
+    lines.push("");
+  }
+
+  if (sp80060InfoTypesReferenced.length > 0) {
+    lines.push("### 7D. NIST SP 800-60 VOL. 2 INFORMATION TYPES");
+    for (const it of sp80060InfoTypesReferenced) {
+      lines.push(`- **${it.code} (${it.name})**: Provisional C=${it.confidentiality}, I=${it.integrity}, A=${it.availability} -> High-Watermark **${it.highWatermark}**. ${it.tailoringNotes}`);
+    }
+    lines.push("");
+  }
+
   // Optional Unified DoD / CNSSI 1253 / SCCA / CMMC Overlay Reference (Option D bridge)
   if (/\b(?:dod|il[2456]|scca|bcap|vdss|vdms|tccm|cnssi\s*1253|cmmc|sprs|stig|cato|dodi\s*8510)\b/i.test(q)) {
     lines.push("### 8. UNIFIED DEFENSE & CMMC OVERLAY CONTEXT (DoD CC SRG / CNSSI 1253 / SCCA / CMMC)");
@@ -921,9 +1001,17 @@ export function buildRmfGroundingPacket(question: string): RmfGroundingPacket {
       fedrampVersion: DB.manifest.fedrampVersion,
       fedrampPublished: DB.manifest.fedrampPublished,
       dbSha256: DB.manifest.dbSha256,
-      counts: DB.manifest.counts,
+      counts: {
+        ...DB.manifest.counts,
+        sp80037Tasks: NIST_SP_800_37_TASKS.length,
+        nistSpPublications: NIST_SP_PUBLICATIONS.length,
+        sp80060InfoTypes: NIST_SP_800_60_INFO_TYPES.length,
+      },
     },
     rmfStepsReferenced,
+    rmfTasksReferenced,
+    nistPublicationsReferenced,
+    sp80060InfoTypesReferenced,
     controls,
     authoritativeRecords,
     cuiRequirements,
