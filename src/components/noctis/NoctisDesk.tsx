@@ -3740,7 +3740,11 @@ export function NoctisDesk() {
     }, 80);
   };
   const [brainModalOpen, setBrainModalOpen] = useState(false);
-  const [suitesExpanded, setSuitesExpanded] = useState(true);
+  const [suitesExpanded, setSuitesExpanded] = useState(false);
+  const [consolesExpanded, setConsolesExpanded] = useState(false);
+  const [mediaExpanded, setMediaExpanded] = useState(false);
+  const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
+  const [threatRadarOpen, setThreatRadarOpen] = useState(false);
   const [studioMenuOpen, setStudioMenuOpen] = useState(false);
   const [mediaMenuOpen, setMediaMenuOpen] = useState(false);
   const [activeCustomAgent, setActiveCustomAgent] = useState<NoctisCustomAgent | null>(null);
@@ -4058,6 +4062,7 @@ export function NoctisDesk() {
     setSkillsMore(false);
     setStudioMenuOpen(false);
     setMediaMenuOpen(false);
+    setWorkspaceMenuOpen(false);
     setGadgetsOpen(false);
     setCapabilityMatrixOpen(false);
     setBrainModalOpen(false);
@@ -7094,6 +7099,9 @@ export function NoctisDesk() {
     </form>
   );
 
+  const showConsoles = consolesExpanded || ["console", "frontier", "rmf", "dod-ic", "enterprise", "ndkrs"].includes(desk);
+  const showMedia = mediaExpanded || (desk === "chat" && ["pictures", "library", "tools", "more"].includes(shelf));
+
   const activeRoutes =
     desk === "study"
       ? routes.length > 0
@@ -7119,7 +7127,7 @@ export function NoctisDesk() {
         className={cn(
           "noctis-sidebar vibe-rail noctis-thin-scroll z-30 h-full shrink-0 flex-col overflow-y-auto px-2 py-2 transition-all duration-200",
           menu ? "fixed inset-y-0 left-0 flex w-full max-w-[20rem]" : "hidden",
-          sidebarOpen ? "md:flex md:w-[310px] lg:w-[340px]" : "md:hidden"
+          sidebarOpen ? "md:flex md:w-[260px] lg:w-[276px]" : "md:hidden"
         )}
         style={{ background: "var(--noctis-sidebar-bg)", borderRight: "1px solid var(--color-border)" }}
       >
@@ -7160,40 +7168,7 @@ export function NoctisDesk() {
           </button>
         </div>
 
-        {/* Background Atmosphere Palettes — Inside Menu Drawer for Mobile & Desktop */}
-        <div className="mb-2 rounded-2xl bg-white/[0.04] p-2.5 border border-white/8 shadow-xs">
-          <div className="mb-2 flex items-center justify-between px-0.5">
-            <span className="text-[10px] font-semibold tracking-wider uppercase text-zinc-400">Atmosphere Palette</span>
-            <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-full bg-white/5 text-[#e4b86a] border border-white/10 capitalize">{theme}</span>
-          </div>
-          <div className="flex items-center justify-between gap-1 rounded-xl bg-black/30 p-1.5 border border-white/5">
-            {CANVASES.map((row) => {
-              const isActive = theme === row.id;
-              return (
-                <button
-                  key={row.id}
-                  type="button"
-                  aria-label={row.label}
-                  aria-pressed={isActive}
-                  title={`${row.label}: ${row.blurb}`}
-                  onClick={() => setTheme(row.id)}
-                  className={cn(
-                    "group relative grid size-8 place-items-center rounded-full transition-all duration-200 touch-manipulation",
-                    isActive ? "scale-110" : "hover:scale-105 opacity-70 hover:opacity-100"
-                  )}
-                  style={{
-                    boxShadow: isActive
-                      ? `0 0 0 2px ${row.accent}, 0 0 10px ${row.accent}80`
-                      : "0 0 0 1px rgba(255,255,255,0.2)"
-                  }}
-                >
-                  <span className="size-5 rounded-full transition-transform" style={{ background: row.swatch, border: "1px solid rgba(127, 127, 127, 0.4)" }} />
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
+        {/* Primary Workspace Links */}
         <button type="button" onClick={openNew} className={item(empty && shelf === "chats" && desk === "chat")}>
           <SquarePen className="size-4 shrink-0" />
           New chat
@@ -7209,33 +7184,6 @@ export function NoctisDesk() {
         </button>
         <button
           type="button"
-          onClick={() => switchDesk("console")}
-          className={item(desk === "console")}
-        >
-          <Activity className="size-4 shrink-0 text-emerald-400" />
-          <span>Developer Console</span>
-          <span className="ml-auto rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-bold text-emerald-300">GATEWAY</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => switchDesk("plugins")}
-          className={item(desk === "plugins")}
-        >
-          <Layers className="size-4 shrink-0 text-sky-400" />
-          <span>Plugins & Systems</span>
-          <span className="ml-auto rounded-full bg-sky-500/20 px-1.5 py-0.5 text-[10px] font-bold text-sky-300">50+</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => switchDesk("frontier")}
-          className={item(desk === "frontier")}
-        >
-          <Cpu className="size-4 shrink-0 text-violet-400" />
-          <span>Frontier & Benchmarks</span>
-          <span className="ml-auto rounded-full bg-violet-500/20 px-1.5 py-0.5 text-[10px] font-bold text-violet-300">500+</span>
-        </button>
-        <button
-          type="button"
           onClick={() => switchDesk("training")}
           className={item(desk === "training")}
         >
@@ -7245,76 +7193,126 @@ export function NoctisDesk() {
         </button>
         <button
           type="button"
-          onClick={() => switchDesk("rmf")}
-          className={item(desk === "rmf")}
-        >
-          <Shield className="size-4 shrink-0 text-[#e4b86a]" />
-          <span>RMF v2.0 Command</span>
-          <span className="ml-auto rounded-full bg-[#e4b86a]/20 px-1.5 py-0.5 text-[10px] font-bold text-[#e4b86a]">25/25</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => switchDesk("dod-ic")}
-          className={item(desk === "dod-ic")}
-        >
-          <Shield className="size-4 shrink-0 text-emerald-400" />
-          <span>DoD & IC Command</span>
-          <span className="ml-auto rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-bold text-emerald-300">v4.0</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => switchDesk("enterprise")}
-          className={item(desk === "enterprise")}
-        >
-          <Server className="size-4 shrink-0 text-cyan-400" />
-          <span>Intelligence Command</span>
-          <span className="ml-auto rounded-full bg-cyan-500/20 px-1.5 py-0.5 text-[10px] font-bold text-cyan-300">10/10</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => switchDesk("ndkrs")}
-          className={item(desk === "ndkrs")}
-        >
-          <Server className="size-4 shrink-0 text-sky-400" />
-          <span>NDKRS Knowledge DB</span>
-          <span className="ml-auto rounded-full bg-sky-500/20 px-1.5 py-0.5 text-[10px] font-bold text-sky-300">v1.0</span>
-        </button>
-        <button
-          type="button"
           onClick={() => switchDesk("assistant")}
           className={item(desk === "assistant")}
         >
           <Sparkles className="size-4 shrink-0 text-cyan-300" />
           <span>Universal Assistant</span>
-          <span className="ml-auto rounded-full bg-cyan-500/20 px-1.5 py-0.5 text-[10px] font-bold text-cyan-200">v1.0</span>
-        </button>
-        <button type="button" onClick={() => openShelf("pictures")} className={item(desk === "chat" && shelf === "pictures")}>
-          <Image className="size-4 shrink-0" />
-          Pictures
-        </button>
-        <button type="button" onClick={() => openShelf("library")} className={item(desk === "chat" && shelf === "library")}>
-          <Library className="size-4 shrink-0" />
-          Library
-        </button>
-        <button type="button" onClick={() => openShelf("tools")} className={item(desk === "chat" && shelf === "tools")}>
-          <Wrench className="size-4 shrink-0" />
-          Tools
         </button>
         <button
           type="button"
-          onClick={() => {
-            if (desk === "chat" && shelf === "more") {
-              openShelf("chats");
-            } else {
-              openShelf("more");
-            }
-          }}
-          className={item(desk === "chat" && shelf === "more")}
+          onClick={() => switchDesk("plugins")}
+          className={item(desk === "plugins")}
         >
-          <MoreHorizontal className="size-4 shrink-0" />
-          <span>More & Business</span>
-          <span className="ml-auto rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] font-bold text-zinc-400">30+</span>
+          <Layers className="size-4 shrink-0 text-sky-400" />
+          <span>Plugins & Systems</span>
         </button>
+
+        {/* Collapsible Command Consoles Group */}
+        <div className="mt-2 border-t border-white/10 pt-2">
+          <button
+            type="button"
+            onClick={() => setConsolesExpanded((v) => !v)}
+            className="flex w-full items-center justify-between px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-zinc-400 hover:text-zinc-200 transition"
+          >
+            <span>Command Consoles (6)</span>
+            <ChevronDown className={cn("size-3 transition-transform", showConsoles ? "" : "-rotate-90")} />
+          </button>
+          {showConsoles ? (
+            <div className="mt-0.5 space-y-0.5">
+              <button
+                type="button"
+                onClick={() => switchDesk("console")}
+                className={item(desk === "console")}
+              >
+                <Activity className="size-4 shrink-0 text-emerald-400" />
+                <span>Developer Console</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => switchDesk("frontier")}
+                className={item(desk === "frontier")}
+              >
+                <Cpu className="size-4 shrink-0 text-violet-400" />
+                <span>Frontier & Benchmarks</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => switchDesk("rmf")}
+                className={item(desk === "rmf")}
+              >
+                <Shield className="size-4 shrink-0 text-[#e4b86a]" />
+                <span>RMF v2.0 Command</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => switchDesk("dod-ic")}
+                className={item(desk === "dod-ic")}
+              >
+                <Shield className="size-4 shrink-0 text-emerald-400" />
+                <span>DoD & IC Command</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => switchDesk("enterprise")}
+                className={item(desk === "enterprise")}
+              >
+                <Server className="size-4 shrink-0 text-cyan-400" />
+                <span>Intelligence Command</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => switchDesk("ndkrs")}
+                className={item(desk === "ndkrs")}
+              >
+                <Server className="size-4 shrink-0 text-sky-400" />
+                <span>NDKRS Knowledge DB</span>
+              </button>
+            </div>
+          ) : null}
+        </div>
+
+        {/* Collapsible Workspace & Media Group */}
+        <div className="mt-1.5 border-t border-white/10 pt-2">
+          <button
+            type="button"
+            onClick={() => setMediaExpanded((v) => !v)}
+            className="flex w-full items-center justify-between px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-zinc-400 hover:text-zinc-200 transition"
+          >
+            <span>Workspace & Media (4)</span>
+            <ChevronDown className={cn("size-3 transition-transform", showMedia ? "" : "-rotate-90")} />
+          </button>
+          {showMedia ? (
+            <div className="mt-0.5 space-y-0.5">
+              <button type="button" onClick={() => openShelf("pictures")} className={item(desk === "chat" && shelf === "pictures")}>
+                <Image className="size-4 shrink-0" />
+                Pictures
+              </button>
+              <button type="button" onClick={() => openShelf("library")} className={item(desk === "chat" && shelf === "library")}>
+                <Library className="size-4 shrink-0" />
+                Library
+              </button>
+              <button type="button" onClick={() => openShelf("tools")} className={item(desk === "chat" && shelf === "tools")}>
+                <Wrench className="size-4 shrink-0" />
+                Tools
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (desk === "chat" && shelf === "more") {
+                    openShelf("chats");
+                  } else {
+                    openShelf("more");
+                  }
+                }}
+                className={item(desk === "chat" && shelf === "more")}
+              >
+                <MoreHorizontal className="size-4 shrink-0" />
+                <span>More & Business</span>
+              </button>
+            </div>
+          ) : null}
+        </div>
         {more ? (
           <div className="ml-4 space-y-0.5 border-l border-white/10 pl-1">
             <button type="button" onClick={() => setCode((on) => !on)} className={item(code)}>
@@ -7947,6 +7945,36 @@ export function NoctisDesk() {
             ) : null}
           </div>
         )}
+        {/* Compact 1-Line Theme Strip */}
+        <div className="mt-2 shrink-0 border-t border-white/10 px-2 pt-2 pb-1 flex items-center justify-between gap-2">
+          <span className="text-[11px] font-medium text-zinc-400">Theme</span>
+          <div className="flex items-center gap-1.5">
+            {CANVASES.map((row) => {
+              const isActive = theme === row.id;
+              return (
+                <button
+                  key={row.id}
+                  type="button"
+                  aria-label={row.label}
+                  aria-pressed={isActive}
+                  title={`${row.label}: ${row.blurb}`}
+                  onClick={() => setTheme(row.id)}
+                  className={cn(
+                    "grid size-6 place-items-center rounded-full transition-all duration-150 touch-manipulation cursor-pointer",
+                    isActive ? "scale-110" : "opacity-70 hover:opacity-100 hover:scale-105"
+                  )}
+                  style={{
+                    boxShadow: isActive
+                      ? `0 0 0 2px ${row.accent}, 0 0 8px ${row.accent}66`
+                      : "0 0 0 1px rgba(255,255,255,0.18)"
+                  }}
+                >
+                  <span className="size-4 rounded-full" style={{ background: row.swatch, border: "1px solid rgba(127, 127, 127, 0.4)" }} />
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </aside>
 
       <div className="relative flex min-w-0 flex-1 flex-col h-full min-h-0 overflow-hidden">
@@ -8173,13 +8201,13 @@ export function NoctisDesk() {
             </div>
           </div>
 
-          {/* Right: Quick Switcher, Studio Capabilities, Brain, Agents, Utilities & Logout */}
-          <div className="flex items-center gap-1 2xl:gap-1.5 shrink-0">
+          {/* Right: Streamlined Quick Switcher, Capabilities, Radar, Workspace Menu & Sign Out */}
+          <div className="flex items-center gap-1.5 shrink-0">
             <button
               type="button"
               aria-label="Open Command Palette"
               onClick={() => setCommandPaletteOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.04] hover:border-[#e4b86a]/45 hover:bg-white/10 px-2 sm:px-2.5 py-1 text-xs font-medium text-zinc-200 transition cursor-pointer"
+              className="inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.04] hover:border-[#e4b86a]/45 hover:bg-white/10 px-2.5 py-1 text-xs font-medium text-zinc-200 transition cursor-pointer"
               title="Jump to any Noctis console, saved Forge app, or /command (Ctrl+K)"
             >
               <Search className="size-3.5 text-[#e4b86a] shrink-0" />
@@ -8191,97 +8219,53 @@ export function NoctisDesk() {
               aria-label="Capabilities"
               onClick={() => setCapabilityMatrixOpen(true)}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-2 sm:px-2.5 py-1 text-xs font-semibold transition",
+                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition cursor-pointer",
                 capabilityMatrixOpen
                   ? "bg-[#e4b86a] text-[#1a1408]"
-                  : "bg-amber-500/10 border border-amber-500/25 text-amber-300 hover:border-amber-400 hover:text-white"
+                  : "border border-white/12 bg-white/[0.04] text-zinc-200 hover:border-white/25 hover:text-white"
               )}
               title="Sovereign Capability Matrix: 16 Autonomous Engines"
             >
               <Cpu className="size-3.5 text-amber-400 shrink-0" />
               <span className="hidden lg:inline">Capabilities</span>
-              <span className="hidden sm:inline rounded-full bg-amber-400/20 px-1.5 py-0.2 text-[10px] font-bold text-amber-300">
-                16
-              </span>
             </button>
             <button
               type="button"
-              aria-label="Brain"
-              onClick={() => setBrainModalOpen(true)}
+              aria-label="Toggle Threat Radar"
+              aria-expanded={threatRadarOpen}
+              onClick={() => setThreatRadarOpen((v) => !v)}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-2 sm:px-2.5 py-1 text-xs font-semibold transition",
-                brainModalOpen
-                  ? "bg-[#e4b86a] text-[#1a1408]"
-                  : "bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 hover:border-emerald-400 hover:text-white"
+                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition cursor-pointer border",
+                threatRadarOpen
+                  ? "border-rose-500/40 bg-rose-500/15 text-rose-200"
+                  : "border-white/12 bg-white/[0.04] text-zinc-300 hover:border-white/25 hover:text-white"
               )}
-              title="Sovereign Brain & Provider Gateway: Google Gemini, Groq, OpenAI, Ollama"
+              title="Show or hide live Zero-Day CVE Threat Radar"
             >
-              <Brain className="size-3.5 text-emerald-400 shrink-0" />
-              <span className="hidden lg:inline">Brain</span>
-              <span className="hidden sm:inline rounded-full bg-emerald-400/20 px-1.5 py-0.2 text-[10px] font-bold text-emerald-300">
-                BYOK
-              </span>
+              <ShieldAlert className={cn("size-3.5 shrink-0", threatRadarOpen ? "text-rose-400" : "text-zinc-400")} />
+              <span className="hidden sm:inline">Radar</span>
             </button>
             <button
               type="button"
-              aria-label="Agents"
-              onClick={() => setAgentBuilderModalOpen(true)}
+              aria-label="Workspace Tools"
+              aria-expanded={workspaceMenuOpen}
+              onClick={() => setWorkspaceMenuOpen((v) => !v)}
               className={cn(
-                "inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] sm:text-xs text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition border border-white/5",
-                activeCustomAgent
-                  ? "bg-[#e4b86a]/15 text-[#e4b86a] border-[#e4b86a]/30 font-semibold"
-                  : agentBuilderModalOpen
-                  ? "bg-[#3a3a3a] text-[#e4b86a]"
-                  : ""
+                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition cursor-pointer border",
+                workspaceMenuOpen
+                  ? "border-[#e4b86a]/50 bg-[#e4b86a]/15 text-[#e4b86a]"
+                  : "border-white/12 bg-white/[0.04] text-zinc-200 hover:border-white/25 hover:text-white"
               )}
-              title="Specialist Agent Builder (Noctis GPTs)"
+              title="Open Brain, Agents, Vault, Memory, Projects & Governance"
             >
-              <Bot className="size-3.5 shrink-0" />
-              <span className="hidden 2xl:inline">{activeCustomAgent ? `${activeCustomAgent.avatarEmoji} ${activeCustomAgent.name}` : "Agents"}</span>
-            </button>
-            <button
-              type="button"
-              aria-label="Vault"
-              onClick={() => setVaultModalOpen(true)}
-              className={cn(
-                "inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] sm:text-xs text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition border border-white/5",
-                vaultModalOpen ? "bg-[#3a3a3a] text-purple-400" : ""
-              )}
-              title="Encrypted Vault Backup"
-            >
-              <Lock className="size-3.5 shrink-0" />
-              <span className="hidden 2xl:inline">Vault</span>
-            </button>
-            <button
-              type="button"
-              aria-label="Memory"
-              onClick={() => setMemoryModalOpen(true)}
-              className={cn(
-                "inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] sm:text-xs text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition border border-white/5",
-                memoryModalOpen ? "bg-[#3a3a3a] text-[#e4b86a]" : ""
-              )}
-              title="Personal Memory & Custom Instructions"
-            >
-              <Brain className="size-3.5 shrink-0" />
-              <span className="hidden 2xl:inline">Memory</span>
-            </button>
-            <button
-              type="button"
-              aria-label="Projects"
-              onClick={() => setWorkspaceExplorerOpen(true)}
-              className={cn(
-                "inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] sm:text-xs text-zinc-400 hover:text-zinc-200 hover:bg-white/5 transition border border-white/5",
-                workspaceExplorerOpen ? "bg-[#3a3a3a] text-[#e4b86a]" : ""
-              )}
-              title="Project Workspace & Files"
-            >
-              <Library className="size-3.5 shrink-0" />
-              <span className="hidden 2xl:inline">Projects</span>
+              <Boxes className="size-3.5 text-emerald-400 shrink-0" />
+              <span className="hidden sm:inline">Workspace</span>
+              <ChevronDown className={cn("size-3 transition-transform", workspaceMenuOpen && "rotate-180")} />
             </button>
 
             <div className="h-4 w-px bg-white/10 hidden sm:block" />
 
-            {/* Phone call (mobile) & Sign out (single unified desktop/mobile location) */}
+            {/* Phone call (mobile) & Sign out */}
             <button
               type="button"
               aria-label="Call someone"
@@ -8296,7 +8280,7 @@ export function NoctisDesk() {
               onClick={handleSignOut}
               disabled={signingOut}
               title="Sign out of Noctis and DStrike"
-              className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] sm:text-xs font-medium text-zinc-400 hover:bg-rose-500/20 hover:text-rose-200 transition border border-white/10 hover:border-rose-500/30 disabled:opacity-50 touch-manipulation"
+              className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] sm:text-xs font-medium text-zinc-400 hover:bg-rose-500/20 hover:text-rose-200 transition border border-white/10 hover:border-rose-500/30 disabled:opacity-50 touch-manipulation cursor-pointer"
             >
               <LogOut className="size-3.5 shrink-0 text-zinc-400" />
               <span className="hidden xl:inline">{signingOut ? "Signing out..." : "Log out"}</span>
@@ -8304,7 +8288,109 @@ export function NoctisDesk() {
           </div>
         </header>
 
-        {/* Sovereign Threat Radar & Live Intelligence Ribbon (Unified Row 2) */}
+        {/* Streamlined Workspace Popover (sibling outside overflow-x-auto header) */}
+        {workspaceMenuOpen ? (
+          <>
+            <button
+              type="button"
+              aria-label="Close Workspace menu"
+              className="fixed inset-0 z-40 cursor-default"
+              onClick={() => setWorkspaceMenuOpen(false)}
+            />
+            <div className="absolute right-3 top-14 z-50 w-64 rounded-2xl border border-white/10 bg-[#141821]/95 p-2 shadow-2xl backdrop-blur-xl">
+              <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                AI & Workspace
+              </div>
+              <div className="space-y-0.5">
+                <button
+                  type="button"
+                  onClick={() => { setWorkspaceMenuOpen(false); setBrainModalOpen(true); }}
+                  className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-xs text-zinc-200 hover:bg-white/10 hover:text-white transition text-left cursor-pointer"
+                >
+                  <Brain className="size-3.5 text-emerald-400 shrink-0" />
+                  <span>Brain (BYOK Gateway)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setWorkspaceMenuOpen(false); setAgentBuilderModalOpen(true); }}
+                  className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-xs text-zinc-200 hover:bg-white/10 hover:text-white transition text-left cursor-pointer"
+                >
+                  <Bot className="size-3.5 text-amber-400 shrink-0" />
+                  <span className="truncate">{activeCustomAgent ? `${activeCustomAgent.avatarEmoji} ${activeCustomAgent.name}` : "Specialist Agents"}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setWorkspaceMenuOpen(false); setVaultModalOpen(true); }}
+                  className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-xs text-zinc-200 hover:bg-white/10 hover:text-white transition text-left cursor-pointer"
+                >
+                  <Lock className="size-3.5 text-purple-400 shrink-0" />
+                  <span>Encrypted Vault</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setWorkspaceMenuOpen(false); setMemoryModalOpen(true); }}
+                  className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-xs text-zinc-200 hover:bg-white/10 hover:text-white transition text-left cursor-pointer"
+                >
+                  <Brain className="size-3.5 text-sky-400 shrink-0" />
+                  <span>Personal Memory</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setWorkspaceMenuOpen(false); setWorkspaceExplorerOpen(true); }}
+                  className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-xs text-zinc-200 hover:bg-white/10 hover:text-white transition text-left cursor-pointer"
+                >
+                  <Library className="size-3.5 text-zinc-300 shrink-0" />
+                  <span>Project Workspace</span>
+                </button>
+              </div>
+              <div className="my-1.5 border-t border-white/10" />
+              <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                Governance & Session
+              </div>
+              <div className="space-y-0.5">
+                <button
+                  type="button"
+                  onClick={() => { setWorkspaceMenuOpen(false); setDualPlaneModalOpen(true); }}
+                  className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-xs text-zinc-200 hover:bg-white/10 hover:text-white transition text-left cursor-pointer"
+                >
+                  <span className="size-1.5 rounded-full bg-emerald-400 shrink-0" />
+                  <span>Dual-Plane Enclave</span>
+                  <span className="ml-auto rounded bg-emerald-500/20 px-1.5 py-0.5 text-[9px] font-mono text-emerald-300">SQDEC P1</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setWorkspaceMenuOpen(false); setFactoryStudioTab("proof"); setFactoryStudioOpen(true); }}
+                  className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-xs text-zinc-200 hover:bg-white/10 hover:text-white transition text-left cursor-pointer"
+                >
+                  <Shield className="size-3.5 text-emerald-400 shrink-0" />
+                  <span>Proof & SQDEC Studio</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setWorkspaceMenuOpen(false); setThreatRadarOpen((v) => !v); }}
+                  className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-xs text-zinc-200 hover:bg-white/10 hover:text-white transition text-left cursor-pointer"
+                >
+                  <ShieldAlert className="size-3.5 text-rose-400 shrink-0" />
+                  <span>Threat Radar (Zero-Day)</span>
+                  <span className={cn("ml-auto rounded px-1.5 py-0.5 text-[9px] font-bold", threatRadarOpen ? "bg-rose-500/25 text-rose-300" : "bg-white/10 text-zinc-400")}>
+                    {threatRadarOpen ? "On" : "Off"}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setWorkspaceMenuOpen(false); clearHistory(); }}
+                  className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-xs text-zinc-300 hover:bg-rose-500/15 hover:text-rose-200 transition text-left cursor-pointer"
+                >
+                  <Trash2 className="size-3.5 text-zinc-400 shrink-0" />
+                  <span>Clear Chat History</span>
+                </button>
+              </div>
+            </div>
+          </>
+        ) : null}
+
+        {/* Sovereign Threat Radar & Live Intelligence Ribbon (Collapsible, Hidden by Default) */}
+        {threatRadarOpen ? (
         <NoctisLiveCveTicker
           onSelectCve={(cveId, prompt) => {
             setShelf("chats");
@@ -8342,17 +8428,17 @@ export function NoctisDesk() {
             <div className="flex items-center shrink-0 border-l border-white/10 pl-2">
               <button
                 type="button"
-                onClick={clearHistory}
-                title="Clear previous chat history and start fresh"
-                className="inline-flex shrink-0 items-center gap-1 sm:gap-1.5 rounded-full bg-white/5 hover:bg-rose-500/20 px-2 sm:px-2.5 py-0.5 text-xs font-medium text-zinc-300 hover:text-rose-200 transition border border-white/10 hover:border-rose-500/30 touch-manipulation shadow-xs"
+                onClick={() => setThreatRadarOpen(false)}
+                title="Collapse Threat Radar bar"
+                className="inline-flex shrink-0 items-center gap-1 rounded-full bg-white/5 hover:bg-white/15 px-2 py-0.5 text-xs font-medium text-zinc-300 hover:text-white transition border border-white/10 shadow-xs cursor-pointer"
               >
-                <Trash2 className="size-3 text-zinc-400" />
-                <span className="hidden sm:inline text-[11px] font-sans">Clear chat</span>
-                <span className="sm:hidden text-[10px]">Clear</span>
+                <X className="size-3 text-zinc-400" />
+                <span className="hidden sm:inline text-[11px] font-sans">Hide</span>
               </button>
             </div>
           }
         />
+        ) : null}
         {shelf === "chats" && listed.length ? (
           <div className="border-b border-white/10 px-3 py-2 md:hidden">
             <div className="mb-1 flex items-center justify-between">
