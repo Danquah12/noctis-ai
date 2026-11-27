@@ -10,7 +10,7 @@
  * 5. Calibrated Abstention (Refuses to fabricate unprovided patient data or guess unknown labs)
  */
 
-import { sha256Sync } from "./universal-crypto";
+import { sha256Sync } from "./universal-crypto.ts";
 
 export interface AuthoritativeChunk {
   chunkId: string;

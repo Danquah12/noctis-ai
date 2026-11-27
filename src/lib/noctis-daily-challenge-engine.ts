@@ -10,7 +10,7 @@
  * and dispatches high-priority alerts to ConnectIn's Alert Menu (https://conectln.com/connectin).
  */
 
-import { runFollowUpIntelligence } from "./noctis-response-intelligence";
+import { runFollowUpIntelligence } from "./noctis-response-intelligence.ts";
 
 export interface ChallengeDefinition {
   id: string;

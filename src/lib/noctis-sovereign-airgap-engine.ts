@@ -4,7 +4,7 @@
 // Regulatory: 21 U.S.C. § 360j(o)(1)(E) FDA Non-Device Clinical Decision Support
 // ============================================================================
 
-import { sha256Sync } from "./universal-crypto";
+import { sha256Sync } from "./universal-crypto.ts";
 
 export interface AirgapAuditLogEntry {
   timestamp: string;

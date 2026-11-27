@@ -58,6 +58,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { NoctisAdvancedTrainingSection } from "./NoctisAdvancedTrainingSection";
 
 import {
   solveSmartCity001,

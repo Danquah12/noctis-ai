@@ -225,7 +225,7 @@ export function executeContinuousTrainingEpoch(options?: { verbose?: boolean }):
       detail,
     };
     verboseEvents.push(evt);
-    const logLine = `[NOCTIS-DAEMON] [STEP ${String(stepNum).padStart(3, "0")}/140] ${domain.padEnd(36)} : ${scenariosCount} scenarios, ${invariantsPassed} passed (${roundedMs}ms) -> ${status}`;
+    const logLine = `[NOCTIS-DAEMON] [STEP ${String(stepNum).padStart(3, "0")}/150] ${domain.padEnd(36)} : ${scenariosCount} scenarios, ${invariantsPassed} passed (${roundedMs}ms) -> ${status}`;
     verboseLogs.push(logLine);
     if (isVerbose) {
       console.log(logLine);
@@ -240,7 +240,18 @@ export function executeContinuousTrainingEpoch(options?: { verbose?: boolean }):
   clinicalInvariants += vent.trippedInvariants.length > 0 ? 1 : 0;
 
   // Step 2: Pediatric & Neonatal Resuscitation
-  const nrp = evaluateNeonatalResuscitationProtocol({ gestationalAgeWeeks: 39, birthWeightGrams: 3400, secondsSinceBirth: 45, heartRateBpm: 75, isBreathingOrCrying: false });
+  const nrp = evaluateNeonatalResuscitationProtocol({
+    gestationalAgeWeeks: 39,
+    birthWeightGrams: 3400,
+    secondsSinceBirth: 45,
+    heartRateBpm: 75,
+    isBreathingOrCrying: false,
+    muscleTone: "FLACCID",
+    currentFiO2Percent: 21,
+    ppvActive: false,
+    chestCompressionsActive: false,
+    vascularAccess: "NONE",
+  });
   clinicalInvariants += nrp ? 1 : 0;
 
   // Step 3: Toxicology & Toxidromes
@@ -262,15 +273,43 @@ export function executeContinuousTrainingEpoch(options?: { verbose?: boolean }):
   clinicalInvariants += neuro.safetyVetoes.length > 0 ? 1 : 0;
 
   // Step 5: Nephrology & CRRT KDIGO
-  const crrt = evaluateCrrtPrescription({ patientWeightKg: 70, modality: "CVVHDF", dialysateRateMlHr: 1000, replacementRateMlHr: 600, netUltrafiltrationRateMlHr: 150, regionalCitrateAnticoagulation: true });
+  const crrt = evaluateCrrtPrescription({
+    patientWeightKg: 70,
+    modality: "CVVHDF",
+    dialysateRateMlHr: 1000,
+    replacementRateMlHr: 600,
+    netUltrafiltrationRateMlHr: 150,
+    preFilterReplacementFraction: 0.25,
+    anticoagulationType: "REGIONAL_CITRATE",
+  });
   clinicalInvariants += crrt.deliveredEffluentDoseMlKgHr > 20 ? 1 : 0;
 
   // Step 6: Hematology & Massive Transfusion Protocol
-  const mtp = evaluateMassiveTransfusion({ patientWeightKg: 80, penetratingTrauma: true, systolicBpMmHg: 85, heartRateBpm: 125, positiveFastExam: true, abcScore: 3, proposedRatioPrbcFfpPlatelets: "1:1:1" });
+  const mtp = evaluateMassiveTransfusion({
+    patientWeightKg: 80,
+    penetratingTrauma: true,
+    systolicBpMmHg: 85,
+    heartRateBpm: 125,
+    positiveFastExam: true,
+    hoursSinceInjury: 1,
+    unitsPrbcTransfused: 4,
+    unitsFfpTransfused: 4,
+    unitsPlateletsTransfused: 4,
+    crystalloidInfusedLiters: 1,
+    bodyTemperatureCelsius: 36.2,
+  });
   clinicalInvariants += mtp.mtpActivated ? 1 : 0;
 
   // Step 7: Trauma & Severe Burn Resuscitation
-  const burn = evaluateSevereBurnResuscitation({ patientWeightKg: 70, totalBodySurfaceAreaBurnPercent: 50, hoursSinceBurnInjury: 2, crystalloidInfusedSoFarMl: 1000, urineOutputMlPerHour: 35 });
+  const burn = evaluateSevereBurnResuscitation({
+    patientWeightKg: 70,
+    totalBodySurfaceAreaBurnPercent: 50,
+    hoursSinceBurnInjury: 2,
+    crystalloidInfusedSoFarMl: 1000,
+    urineOutputMlPerHour: 35,
+    inhalationInjurySuspected: false,
+    electricalBurnWithMyoglobinuria: false,
+  });
   clinicalInvariants += burn.adjustedRateForTimeElapsedMlHr > 0 ? 1 : 0;
 
   // Step 8: Sepsis & DTR-GNR Infectious Disease
@@ -278,7 +317,17 @@ export function executeContinuousTrainingEpoch(options?: { verbose?: boolean }):
   clinicalInvariants += sepsis.safetyVetoes.length > 0 ? 1 : 0;
 
   // Step 9: Cardiology MCS
-  const impella = evaluateImpellaManagement({ deviceType: "Impella CP", currentPLevel: "P-8", flowRateLpm: 0.9, purgePressureMmhg: 150, purgeFlowMlH: 15, suctionAlarmActive: true, activeBleedingAtAccessSite: false });
+  const impella = evaluateImpellaManagement({
+    deviceType: "Impella CP",
+    currentPLevel: "P-8",
+    flowRateLpm: 0.9,
+    purgePressureMmhg: 150,
+    purgeFlowMlh: 15,
+    suctionAlarmActive: true,
+    lactateMmol: 4.2,
+    anticoagulationActive: true,
+    activeBleeding: false,
+  });
   clinicalInvariants += impella.safetyVetoesTriggered.length > 0 ? 1 : 0;
 
   const iabp = evaluateIabpManagement({
@@ -2650,7 +2699,7 @@ export function formatCompleteTrainingRunMarkdown(result: CompleteTrainingRunRes
   md += `- **Frontier Engineering:** All 20 physics and engineering challenges solved deterministically.\n`;
   md += `- **Electronic Warfare & Defense:** 25/25 defense acceptance tests passed with zero classification or integrity failures.\n`;
   md += `- **Smart Grid & Clean Energy:** Frequency droop control and IEEE 1547 anti-islanding mandates active.\n`;
-  md += `- **Exhaustive Remaining Flagship Subsystems (Steps 121–140 — ${result.totalRequirementsAudited} Total Domains):** DoD/IC NDIMP Waves 1–4, RMF v2.0 OSCAL & Zero Trust, NDKRS Grounding Corpus, Sovereign SecOps (Twin, War Room, PQC, ZKP, SAST), NOCTIS-ARCH-001, Automotive OBD-II, Bible Exegesis, Investment Valuation, Legal/Lex Vault, Medical Lab Interpreter, Predictive Intelligence (15 Engines), Universal Science, Enterprise Command, NUPS (40 Engines), Catalog 260, Universal Assistant (100 Parity), Noctis Forge/NASEE (110 Screens), Extended Critical Care Subspecialties, Topic-Aware Plain Language/Routing Matrix & 39-Q Master Training Catalog.\n`;
+  md += `- **Exhaustive Remaining Flagship Subsystems (Steps 121–150 — ${result.totalRequirementsAudited} Total Domains):** DoD/IC NDIMP Waves 1–4, RMF v2.0 OSCAL & Zero Trust, NDKRS Grounding Corpus, Sovereign SecOps (Twin, War Room, PQC, ZKP, SAST), NOCTIS-ARCH-001, Automotive OBD-II, Bible Exegesis, Investment Valuation, Legal/Lex Vault, Medical Lab Interpreter, Predictive Intelligence (15 Engines), Universal Science, Enterprise Command, NUPS (40 Engines), Catalog 260, Universal Assistant (100 Parity), Noctis Forge/NASEE (110 Screens), Extended Critical Care Subspecialties, Topic-Aware Plain Language/Routing Matrix, Master Catalog Parity, Health-500 & 18 Clinical Engines, Cardiovascular/Endocrine, Hematology TMA/HIT, ID/Neuro, OB/Peds/Onc/PGx, Global RAG Vault, Attack Path/SOC, Canary/Airgap, Enterprise Protocols & Daily Challenge Curriculum.\n`;
 
   if (result.latestSummary.verboseEvents && result.latestSummary.verboseEvents.length > 0) {
     md += `#### 4. Verbose Real-Time Execution Audit Trail\n`;

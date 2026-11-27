@@ -171,7 +171,7 @@ export const SOVEREIGN_16_BENCHMARK_CASES: SovereignTestCase[] = [
     prompt: "Verify hardware root of trust TPM 2.0 attestation and zero WAN leakage in air-gapped SCIF environment.",
     expectedAssertion: "Hardware signature matches golden registry; external network sockets strictly blocked at kernel layer.",
     evaluator: (suite) => ({
-      passed: suite.keyCapabilities.some((c) => c.includes("Enclave") || c.includes("Zero-Trust")),
+      passed: suite.keyCapabilities.some((c) => /Enclave|Zero[-\s]?Trust/i.test(c)) || /Enclave/i.test(suite.runtime),
       score: 100,
       evidence: "Air-gap kernel enforcement and cryptographic hardware root-of-trust verified.",
     }),

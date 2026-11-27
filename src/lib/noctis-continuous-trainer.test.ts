@@ -12,24 +12,24 @@ import {
 } from "./noctis-exhaustive-training.ts";
 
 describe("NOCTIS-CONT-TRAIN-001: Sovereign Continuous Autonomous Training Engine", () => {
-  it("executes a complete continuous training epoch across all 140 multi-domain requirements", () => {
+  it("executes a complete continuous training epoch across all 150 multi-domain requirements", () => {
     const summary = executeContinuousTrainingEpoch({ verbose: false });
 
     assert.ok(summary.epochId.startsWith("EPOCH-NOCTIS-"));
     assert.equal(summary.status, "COMPLETED");
     assert.equal(summary.safetyViolationsCount, 0); // 0 tolerance for safety violation
     assert.ok(summary.totalScenariosEvaluated >= 5500);
-    assert.ok(summary.accuracyScorePercent >= 99.9);
-    assert.equal(summary.domainBreakdown.length, 140);
-    assert.equal(summary.totalDomainsAudited, 140);
-    assert.ok(summary.domainBreakdown.slice(120).every((d) => d.status === "PASS"));
+    assert.equal(summary.accuracyScorePercent, 100);
+    assert.equal(summary.domainBreakdown.length, 150);
+    assert.equal(summary.totalDomainsAudited, 150);
+    assert.ok(summary.domainBreakdown.every((d) => d.status === "PASS"));
   });
 
-  it("audits all remaining flagship domains (Steps 121-140) and compiles full seed pairs", () => {
+  it("audits all remaining flagship domains (Steps 121-150) and compiles full seed pairs", () => {
     const remaining = executeRemainingNoctisTrainingDomains();
-    assert.equal(remaining.length, 20);
+    assert.equal(remaining.length, 30);
     assert.equal(remaining[0]?.step, 121);
-    assert.equal(remaining[19]?.step, 140);
+    assert.equal(remaining[29]?.step, 150);
     for (const r of remaining) {
       assert.ok(r.scenariosCount > 0, `${r.domain} must audit at least 1 scenario`);
       assert.equal(r.invariantsPassed, r.scenariosCount, `${r.domain} failed invariant check`);
@@ -66,13 +66,13 @@ describe("NOCTIS-CONT-TRAIN-001: Sovereign Continuous Autonomous Training Engine
     assert.match(output, /MASTER_TRAINING_CATALOG_AND_CORPUS_PARITY/);
   });
 
-  it("executes full exhaustive non-stop training run across all 140 requirements and domains", () => {
+  it("executes full exhaustive non-stop training run across all 150 requirements and domains", () => {
     const full = runCompleteExhaustiveTrainingRun(3);
 
     assert.equal(full.status, "COMPLETE");
     assert.equal(full.completedEpochs, 3);
-    assert.equal(full.totalRequirementsAudited, 140);
-    assert.equal(full.totalUniqueDomains, 140);
+    assert.equal(full.totalRequirementsAudited, 150);
+    assert.equal(full.totalUniqueDomains, 150);
     assert.equal(full.safetyViolationRate, 0);
     assert.ok(full.allRequirementsSatisfied);
     assert.ok(full.totalScenariosEvaluated >= 15000);
@@ -88,6 +88,6 @@ describe("NOCTIS-CONT-TRAIN-001: Sovereign Continuous Autonomous Training Engine
     assert.match(naturalOutput, /Exhaustive Verification Metrics/);
     assert.match(naturalOutput, /Global Professional Pathways \(467 Professions\)/);
     assert.match(naturalOutput, /Global Regional Knowledge Packs \(12 Regions\)/);
-    assert.match(naturalOutput, /Exhaustive Remaining Flagship Subsystems \(Steps 121–140/);
+    assert.match(naturalOutput, /Exhaustive Remaining Flagship Subsystems \(Steps 121–150/);
   });
 });
