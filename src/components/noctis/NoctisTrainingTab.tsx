@@ -68,7 +68,13 @@ export function NoctisTrainingTab({ onSendToChat, onClose }: NoctisTrainingTabPr
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<VerboseEpochEvent | null>(null);
   const [copiedLog, setCopiedLog] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(12);
+  const [showStream, setShowStream] = useState(false);
   const consoleBottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setVisibleCount(12);
+  }, [filterCategory]);
 
   const fetchStatus = async (runNewEpoch = false) => {
     setLoading(true);
@@ -106,7 +112,18 @@ export function NoctisTrainingTab({ onSendToChat, onClose }: NoctisTrainingTabPr
   const domainEvents: VerboseEpochEvent[] = summary?.verboseEvents || [];
 
   const classifyStep = (step: number): "IT" | "CLINICAL" | "FRONTIER" | "GLOBAL" => {
-    if (step === 1 || step === 3 || step === 12 || step === 130 || step === 138 || (step >= 141 && step <= 146)) {
+    if (
+      step === 1 ||
+      step === 3 ||
+      step === 12 ||
+      step === 130 ||
+      step === 138 ||
+      (step >= 141 && step <= 146) ||
+      step === 154 ||
+      step === 155 ||
+      step === 156 ||
+      step === 159
+    ) {
       return "CLINICAL";
     }
     if (
@@ -115,7 +132,12 @@ export function NoctisTrainingTab({ onSendToChat, onClose }: NoctisTrainingTabPr
       step === 133 ||
       step === 137 ||
       step === 139 ||
-      (step >= 147 && step <= 149)
+      (step >= 147 && step <= 149) ||
+      step === 151 ||
+      step === 152 ||
+      step === 153 ||
+      step === 157 ||
+      step === 158
     ) {
       return "IT";
     }
@@ -142,6 +164,10 @@ export function NoctisTrainingTab({ onSendToChat, onClose }: NoctisTrainingTabPr
     if (filterCategory === "ALL") return true;
     return classifyStep(evt.step) === filterCategory;
   });
+
+  const displayedEvents = searchQuery.trim()
+    ? filteredEvents
+    : filteredEvents.slice(0, visibleCount);
 
   const handleCopyLogs = () => {
     if (!summary?.verboseLogs) return;
@@ -262,10 +288,10 @@ export function NoctisTrainingTab({ onSendToChat, onClose }: NoctisTrainingTabPr
               <Layers className="size-4 text-sky-400" />
             </div>
             <div className="mt-2 text-2xl font-bold tracking-tight text-white sm:text-3xl">
-              {summary ? summary.totalScenariosEvaluated.toLocaleString() : "5,642"}
+              {summary ? summary.totalScenariosEvaluated.toLocaleString() : "5,676"}
             </div>
             <div className="mt-1 text-[11px] text-zinc-400">
-              {`Across ${summary ? summary.totalDomainsAudited : 150} Subsystem Domains`}
+              {`Across ${summary ? summary.totalDomainsAudited : 160} Subsystem Domains`}
             </div>
           </div>
 
@@ -280,7 +306,7 @@ export function NoctisTrainingTab({ onSendToChat, onClose }: NoctisTrainingTabPr
             <div className="mt-1 text-[11px] text-emerald-400/80">
               {summary
                 ? `${summary.totalInvariantsVerified.toLocaleString()} / ${summary.totalScenariosEvaluated.toLocaleString()} Verified`
-                : "5,642 / 5,642 Verified"}
+                : "5,676 / 5,676 Verified"}
             </div>
           </div>
 
@@ -318,7 +344,7 @@ export function NoctisTrainingTab({ onSendToChat, onClose }: NoctisTrainingTabPr
                 filterCategory === "ALL" ? "bg-white/15 text-white" : "text-zinc-400 hover:text-white"
               )}
             >
-              All ({domainEvents.length || 150})
+              All ({domainEvents.length || 160})
             </button>
             <button
               type="button"
@@ -374,17 +400,59 @@ export function NoctisTrainingTab({ onSendToChat, onClose }: NoctisTrainingTabPr
           </div>
         </div>
 
-        {/* 27 Subsystem Domains Card Grid */}
+        {/* Selected Domain Detail Drawer (pinned above grid when active for zero-scroll inspection) */}
+        {selectedEvent && (
+          <div className="rounded-xl border border-emerald-500/40 bg-[#121926] p-4 shadow-xl">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 font-mono text-xs font-bold text-emerald-300">
+                    Step {String(selectedEvent.step).padStart(2, "0")}
+                  </span>
+                  <h4 className="text-sm font-bold text-white">{selectedEvent.domain}</h4>
+                </div>
+                <p className="mt-1 text-xs text-zinc-300 leading-relaxed">{selectedEvent.detail}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedEvent(null)}
+                className="rounded p-1 text-zinc-400 hover:text-white cursor-pointer"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+            <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 pt-3 border-t border-white/10 text-xs">
+              <div>
+                <span className="text-zinc-500 block text-[10px]">Scenarios Audited</span>
+                <span className="font-semibold text-white">{selectedEvent.scenariosCount}</span>
+              </div>
+              <div>
+                <span className="text-zinc-500 block text-[10px]">Invariants Passed</span>
+                <span className="font-semibold text-emerald-400">{selectedEvent.invariantsPassed}</span>
+              </div>
+              <div>
+                <span className="text-zinc-500 block text-[10px]">Execution Latency</span>
+                <span className="font-semibold text-amber-300">{selectedEvent.durationMs}ms</span>
+              </div>
+              <div>
+                <span className="text-zinc-500 block text-[10px]">Safety Status</span>
+                <span className="font-semibold text-emerald-400">100% INVARIANT SATISFIED</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Paginated Subsystem Domains Card Grid */}
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
-              Subsystem Verification Breakdown ({filteredEvents.length} Domains)
+              {`Showing ${displayedEvents.length} of ${filteredEvents.length} Domains`}
             </h3>
             <span className="text-[11px] text-zinc-500">Click any card for invariant milestone details</span>
           </div>
 
           <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2 lg:grid-cols-3">
-            {filteredEvents.map((evt) => {
+            {displayedEvents.map((evt) => {
               const isSelected = selectedEvent?.step === evt.step;
               return (
                 <div
@@ -425,51 +493,46 @@ export function NoctisTrainingTab({ onSendToChat, onClose }: NoctisTrainingTabPr
               );
             })}
           </div>
+
+          {!searchQuery.trim() && filteredEvents.length > 12 && (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-[#121620] px-3.5 py-2.5 text-xs">
+              <span className="text-zinc-400">
+                {`Showing ${displayedEvents.length} of ${filteredEvents.length} domains`}
+              </span>
+              <div className="flex items-center gap-2">
+                {visibleCount < filteredEvents.length && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setVisibleCount((prev) => Math.min(prev + 24, filteredEvents.length))}
+                      className="rounded-lg border border-white/15 bg-white/5 px-2.5 py-1 font-medium text-zinc-200 hover:bg-white/10 transition cursor-pointer"
+                    >
+                      Show 24 More
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setVisibleCount(filteredEvents.length)}
+                      className="rounded-lg border border-emerald-500/30 bg-emerald-500/15 px-2.5 py-1 font-medium text-emerald-300 hover:bg-emerald-500/25 transition cursor-pointer"
+                    >
+                      {`Show All (${filteredEvents.length})`}
+                    </button>
+                  </>
+                )}
+                {visibleCount > 12 && (
+                  <button
+                    type="button"
+                    onClick={() => setVisibleCount(12)}
+                    className="rounded-lg border border-white/15 bg-white/5 px-2.5 py-1 font-medium text-zinc-300 hover:bg-white/10 transition cursor-pointer"
+                  >
+                    Collapse to 12
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Selected Domain Detail Drawer (if selected) */}
-        {selectedEvent && (
-          <div className="rounded-xl border border-emerald-500/40 bg-[#121926] p-4 shadow-xl">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 font-mono text-xs font-bold text-emerald-300">
-                    Step {String(selectedEvent.step).padStart(2, "0")}
-                  </span>
-                  <h4 className="text-sm font-bold text-white">{selectedEvent.domain}</h4>
-                </div>
-                <p className="mt-1 text-xs text-zinc-300 leading-relaxed">{selectedEvent.detail}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedEvent(null)}
-                className="rounded p-1 text-zinc-400 hover:text-white"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
-            <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 pt-3 border-t border-white/10 text-xs">
-              <div>
-                <span className="text-zinc-500 block text-[10px]">Scenarios Audited</span>
-                <span className="font-semibold text-white">{selectedEvent.scenariosCount}</span>
-              </div>
-              <div>
-                <span className="text-zinc-500 block text-[10px]">Invariants Passed</span>
-                <span className="font-semibold text-emerald-400">{selectedEvent.invariantsPassed}</span>
-              </div>
-              <div>
-                <span className="text-zinc-500 block text-[10px]">Execution Latency</span>
-                <span className="font-semibold text-amber-300">{selectedEvent.durationMs}ms</span>
-              </div>
-              <div>
-                <span className="text-zinc-500 block text-[10px]">Safety Status</span>
-                <span className="font-semibold text-emerald-400">100% INVARIANT SATISFIED</span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Raw Daemon Telemetry Console View */}
+        {/* Raw Daemon Telemetry Console View (Collapsed by default to keep HUD clean) */}
         <div className="rounded-xl border border-white/10 bg-[#0a0d12] overflow-hidden shadow-2xl">
           <div className="flex items-center justify-between border-b border-white/10 bg-[#121620] px-4 py-2.5">
             <div className="flex items-center gap-2 text-xs font-semibold text-zinc-300">
@@ -479,31 +542,42 @@ export function NoctisTrainingTab({ onSendToChat, onClose }: NoctisTrainingTabPr
                 LIVE
               </span>
             </div>
-            <button
-              type="button"
-              onClick={handleCopyLogs}
-              className="flex items-center gap-1 rounded bg-white/5 px-2 py-1 text-[11px] text-zinc-400 hover:bg-white/10 hover:text-white transition cursor-pointer"
-            >
-              {copiedLog ? <Check className="size-3 text-emerald-400" /> : <Copy className="size-3" />}
-              <span>{copiedLog ? "Copied" : "Copy Stream"}</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowStream((s) => !s)}
+                className="flex items-center gap-1 rounded bg-white/5 px-2 py-1 text-[11px] text-zinc-300 hover:bg-white/10 hover:text-white transition cursor-pointer"
+              >
+                {showStream ? "Hide Stream" : "Show Stream"}
+              </button>
+              <button
+                type="button"
+                onClick={handleCopyLogs}
+                className="flex items-center gap-1 rounded bg-white/5 px-2 py-1 text-[11px] text-zinc-400 hover:bg-white/10 hover:text-white transition cursor-pointer"
+              >
+                {copiedLog ? <Check className="size-3 text-emerald-400" /> : <Copy className="size-3" />}
+                <span>{copiedLog ? "Copied" : "Copy Stream"}</span>
+              </button>
+            </div>
           </div>
 
-          <div className="max-h-72 overflow-y-auto p-4 font-mono text-[11px] leading-relaxed text-zinc-300 space-y-1">
-            {summary?.verboseLogs && summary.verboseLogs.length > 0 ? (
-              summary.verboseLogs.map((log, idx) => (
-                <div key={idx} className="hover:bg-white/5 px-1 rounded transition">
-                  <span className="text-emerald-500 font-bold">▶</span>{" "}
-                  <span className={cn(log.includes("COMPLETED") ? "text-emerald-300 font-bold" : "text-zinc-300")}>
-                    {log}
-                  </span>
-                </div>
-              ))
-            ) : (
-              <div className="text-zinc-500 italic">Standing by for next epoch telemetry stream...</div>
-            )}
-            <div ref={consoleBottomRef} />
-          </div>
+          {showStream && (
+            <div className="max-h-72 overflow-y-auto p-4 font-mono text-[11px] leading-relaxed text-zinc-300 space-y-1">
+              {summary?.verboseLogs && summary.verboseLogs.length > 0 ? (
+                summary.verboseLogs.map((log, idx) => (
+                  <div key={idx} className="hover:bg-white/5 px-1 rounded transition">
+                    <span className="text-emerald-500 font-bold">▶</span>{" "}
+                    <span className={cn(log.includes("COMPLETED") ? "text-emerald-300 font-bold" : "text-zinc-300")}>
+                      {log}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <div className="text-zinc-500 italic">Standing by for next epoch telemetry stream...</div>
+              )}
+              <div ref={consoleBottomRef} />
+            </div>
+          )}
         </div>
       </div>
     </div>

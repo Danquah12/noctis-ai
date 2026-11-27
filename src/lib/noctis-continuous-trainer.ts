@@ -225,7 +225,7 @@ export function executeContinuousTrainingEpoch(options?: { verbose?: boolean }):
       detail,
     };
     verboseEvents.push(evt);
-    const logLine = `[NOCTIS-DAEMON] [STEP ${String(stepNum).padStart(3, "0")}/150] ${domain.padEnd(36)} : ${scenariosCount} scenarios, ${invariantsPassed} passed (${roundedMs}ms) -> ${status}`;
+    const logLine = `[NOCTIS-DAEMON] [STEP ${String(stepNum).padStart(3, "0")}/160] ${domain.padEnd(36)} : ${scenariosCount} scenarios, ${invariantsPassed} passed (${roundedMs}ms) -> ${status}`;
     verboseLogs.push(logLine);
     if (isVerbose) {
       console.log(logLine);
@@ -2699,7 +2699,7 @@ export function formatCompleteTrainingRunMarkdown(result: CompleteTrainingRunRes
   md += `- **Frontier Engineering:** All 20 physics and engineering challenges solved deterministically.\n`;
   md += `- **Electronic Warfare & Defense:** 25/25 defense acceptance tests passed with zero classification or integrity failures.\n`;
   md += `- **Smart Grid & Clean Energy:** Frequency droop control and IEEE 1547 anti-islanding mandates active.\n`;
-  md += `- **Exhaustive Remaining Flagship Subsystems (Steps 121–150 — ${result.totalRequirementsAudited} Total Domains):** DoD/IC NDIMP Waves 1–4, RMF v2.0 OSCAL & Zero Trust, NDKRS Grounding Corpus, Sovereign SecOps (Twin, War Room, PQC, ZKP, SAST), NOCTIS-ARCH-001, Automotive OBD-II, Bible Exegesis, Investment Valuation, Legal/Lex Vault, Medical Lab Interpreter, Predictive Intelligence (15 Engines), Universal Science, Enterprise Command, NUPS (40 Engines), Catalog 260, Universal Assistant (100 Parity), Noctis Forge/NASEE (110 Screens), Extended Critical Care Subspecialties, Topic-Aware Plain Language/Routing Matrix, Master Catalog Parity, Health-500 & 18 Clinical Engines, Cardiovascular/Endocrine, Hematology TMA/HIT, ID/Neuro, OB/Peds/Onc/PGx, Global RAG Vault, Attack Path/SOC, Canary/Airgap, Enterprise Protocols & Daily Challenge Curriculum.\n`;
+  md += `- **Exhaustive Remaining Flagship Subsystems (Steps 121–160 — ${result.totalRequirementsAudited} Total Domains):** DoD/IC NDIMP Waves 1–4, RMF v2.0 OSCAL & Zero Trust, NDKRS Grounding Corpus, Sovereign SecOps, NOCTIS-ARCH-001, Automotive OBD-II, Bible Exegesis, Investment Valuation, Legal/Lex Vault, Medical Lab Interpreter, Predictive Intelligence, Universal Science, Enterprise Command, NUPS, Catalog 260, Universal Assistant, Noctis Forge/NASEE, Extended Clinical Subspecialties, Plain Language/Routing, Master Catalog, Health-500, Multimodal/Self-Play/Edge Quantization, Auto-Remediation/Blast Radius/Circuit Breaker, Truth Ledger/Steganography/Swarms, Ambient/Voice/Telemetry, ECG Vision/Code Blue/TTM/Hemodynamics, SMART-on-FHIR/SaMD, Universal Ingestor/WASM, 40-Vuln/400Q Eval, Emergency-30/Multi-Track & Global Telecom/Vibe Connect.\n`;
 
   if (result.latestSummary.verboseEvents && result.latestSummary.verboseEvents.length > 0) {
     md += `#### 4. Verbose Real-Time Execution Audit Trail\n`;

@@ -219,7 +219,7 @@ export function NoctisAdvancedTrainingSection() {
             </span>
           </div>
           <p className="mt-0.5 text-xs text-zinc-400">
-            Global Continuous Daemon ({continuousData?.latestEpoch?.totalDomainsAudited ?? 150} Domains · {(continuousData?.latestEpoch?.totalScenariosEvaluated ?? 5642).toLocaleString()} Scenarios), Multimodal Cross-Attention, Adversarial Swarms, and Air-Gapped GGUF Quantization.
+            Global Continuous Daemon ({continuousData?.latestEpoch?.totalDomainsAudited ?? 160} Domains · {(continuousData?.latestEpoch?.totalScenariosEvaluated ?? 5676).toLocaleString()} Scenarios), Multimodal Cross-Attention, Adversarial Swarms, and Air-Gapped GGUF Quantization.
           </p>
         </div>
 
@@ -237,7 +237,7 @@ export function NoctisAdvancedTrainingSection() {
           >
             <RefreshCw className={cn("size-3.5", (isLoadingStatus || isTriggeringEpoch) && "animate-spin")} />
             <span>
-              Continuous Daemon ({continuousData?.latestEpoch?.totalDomainsAudited ?? 150}D · {(continuousData?.latestEpoch?.totalScenariosEvaluated ?? 5642).toLocaleString()})
+              Continuous Daemon ({continuousData?.latestEpoch?.totalDomainsAudited ?? 160}D · {(continuousData?.latestEpoch?.totalScenariosEvaluated ?? 5676).toLocaleString()})
             </span>
           </button>
           <button
@@ -290,17 +290,17 @@ export function NoctisAdvancedTrainingSection() {
             <div className="rounded-xl border border-white/10 bg-black/40 p-3">
               <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Total Scenarios</span>
               <p className="mt-1 text-xl font-bold text-white">
-                {(continuousData?.latestEpoch?.totalScenariosEvaluated ?? 5642).toLocaleString()}
+                {(continuousData?.latestEpoch?.totalScenariosEvaluated ?? 5676).toLocaleString()}
               </p>
               <span className="text-[10px] text-zinc-500 font-mono">
-                {(continuousData?.latestEpoch?.totalScenariosEvaluated ?? 5642).toLocaleString()} per epoch
+                {(continuousData?.latestEpoch?.totalScenariosEvaluated ?? 5676).toLocaleString()} per epoch
               </span>
             </div>
 
             <div className="rounded-xl border border-white/10 bg-black/40 p-3">
               <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Domains Audited</span>
               <p className="mt-1 text-xl font-bold text-emerald-400">
-                {continuousData?.latestEpoch?.totalDomainsAudited ?? 150} / {continuousData?.latestEpoch?.totalDomainsAudited ?? 150}
+                {continuousData?.latestEpoch?.totalDomainsAudited ?? 160} / {continuousData?.latestEpoch?.totalDomainsAudited ?? 160}
               </p>
               <span className="text-[10px] text-emerald-500/80 font-mono">100% Global Scope</span>
             </div>
@@ -308,7 +308,7 @@ export function NoctisAdvancedTrainingSection() {
             <div className="rounded-xl border border-white/10 bg-black/40 p-3">
               <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Invariants Verified</span>
               <p className="mt-1 text-xl font-bold text-cyan-400">
-                {(continuousData?.latestEpoch?.totalInvariantsVerified ?? 5642).toLocaleString()}
+                {(continuousData?.latestEpoch?.totalInvariantsVerified ?? 5676).toLocaleString()}
               </p>
               <span className="text-[10px] text-cyan-500/80 font-mono">
                 {continuousData?.latestEpoch?.accuracyScorePercent ?? 100}% Satisfied

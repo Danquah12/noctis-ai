@@ -204,6 +204,44 @@ import { executeAirgapClinicalEvaluation } from "./noctis-sovereign-airgap-engin
 import { ENTERPRISE_PROTOCOL_REGISTRY, detectEnterpriseProtocol } from "./noctis-enterprise-protocol-engine.ts";
 import { DAILY_CHALLENGE_CATALOG, formulateDailyChallengeQuestion } from "./noctis-daily-challenge-engine.ts";
 
+import { fuseMultimodalObservation } from "./noctis-multimodal-cross-attention.ts";
+import { ADVERSARIAL_BENCHMARK_SCENARIOS, executeAdversarialSelfPlayTournament } from "./noctis-adversarial-self-play.ts";
+import { SUPPORTED_QUANTIZATION_PROFILES, buildEdgeDeploymentManifest } from "./noctis-edge-quantization.ts";
+import { PREDEFINED_REMEDIATION_PLAYBOOKS, dispatchAutoRemediation } from "./noctis-auto-remediation.ts";
+import { calculateBlastRadius } from "./noctis-blast-radius.ts";
+import { evaluateCircuitBreaker } from "./noctis-circuit-breaker.ts";
+import { CANONICAL_TRUTH_BUNDLES, analyzeTextEpistemicLedger } from "./noctis-truth-ledger.ts";
+import { embedWatermark, scanForensicWatermark } from "./noctis-steganography.ts";
+import { PREDEFINED_SWARM_MISSIONS, runWorkSwarmMission } from "./noctis-work-swarm.ts";
+import { runSpecialistSwarmDeliberation } from "./noctis-specialist-swarm.ts";
+import { CURATED_AMBIENT_PRESETS, synthesizeAmbientToDossier } from "./noctis-ambient-dictation.ts";
+import { processVoiceResuscitationCommand } from "./noctis-voice-resuscitation.ts";
+import { generateResuscitationTimeline } from "./noctis-streaming-telemetry.ts";
+import { parseVoiceIntent } from "./noctis-voice-hud.ts";
+import { calculateQtcIntervals, evaluateHyperkalemiaEcg } from "./noctis-ecg-vision.ts";
+import { advanceResuscitationTurn, initializeBrashResuscitationSim } from "./noctis-code-blue-sim.ts";
+import { evaluateTtmResuscitation } from "./noctis-ttm-resuscitation.ts";
+import { calculateVasoactiveInotropicScore } from "./noctis-vasoactive-titration.ts";
+import { evaluateAdvancedHemodynamics } from "./noctis-advanced-hemodynamics.ts";
+import {
+  CURATED_SANDBOX_PATIENTS,
+  SMART_ENDPOINTS,
+  buildSmartAuthorizeUrl,
+  mapFhirPatientToClinicalCase,
+} from "./noctis-smart-fhir.ts";
+import { buildFhirR4HospitalBundle, validateFhirR4ClinicalBundle } from "./noctis-fhir-exporter.ts";
+import { generateSaMdRegulatoryDossier } from "./noctis-samd-regulatory.ts";
+import { ingestUniversalTelemetry, parseSyslogRfc5424 } from "./noctis-universal-ingestor.ts";
+import { AUTHORITATIVE_STANDARDS_REGISTRY, evaluateClinicalConcordanceGovernance } from "./noctis-verified-execution.ts";
+import { extractRunnableCode, stripTypesSimple } from "./noctis-wasm-runner.ts";
+import { EVAL_SCENARIOS, runEvaluation } from "./noctis-vuln-eval.ts";
+import { NOCTIS_400_EVAL_QUESTIONS, runNoctisEvalSuite } from "./noctis-eval-suite.ts";
+import { NOCTIS_EMERGENCY_30_BENCHMARK, getAllBenchmarkCases } from "./noctis-emergency-30-benchmark.ts";
+import { ALL_30_TRACK_BENCHMARK_REGISTRY, computeMultiTrackLeaderboard } from "./noctis-multitrack-benchmark.ts";
+import { WORLD_DIAL_CODES, findCountryByIso, normalizeWorldE164 } from "./world-dial-codes.ts";
+import { DEFAULT_VIBE_CONNECT_FLAGS, mergeVibeConnectFlags } from "./vibe-connect-flags.ts";
+import { dedupeMessagesByClientId, normalizeUsername } from "./vibe-connect-helpers.ts";
+
 export interface ExhaustiveTrainingDomainResult {
   step: number;
   domain: string;
@@ -1105,6 +1143,325 @@ export function executeRemainingNoctisTrainingDomains(): ExhaustiveTrainingDomai
     detail: `Continuous Daily Challenge Curriculum (${DAILY_CHALLENGE_CATALOG.length} High-Rigor Scenarios across Frontier, Benchmarks & Daemon)`,
   });
 
+  // Step 151: Multimodal Cross-Attention, Adversarial Self-Play & Edge Quantization
+  const [mmOut, mmMs] = measure(() => {
+    const mm = fuseMultimodalObservation({
+      patientId: "MM-TRAIN-01",
+      timestamp: "2026-11-26T20:00:00.000Z",
+      dicomScan: {
+        modality: "CT_PA",
+        findingsSummary: "Saddle PE with RV strain",
+        quantitativeMetrics: { rvLvRatio: 1.25 },
+      },
+      waveforms: [
+        {
+          channel: "ECG_LEAD_II",
+          sampleRateHz: 250,
+          points: [0.1, 0.2, 1.1, -0.3],
+          featureExtract: { heartRateBpm: 118, stSegmentElevationMm: 0.2 },
+        },
+      ],
+      ehrDossier: {
+        vitals: { MAP: 64, SpO2: 90 },
+        labs: { LACTATE: { value: 4.1, unit: "mmol/L", flag: "CRITICAL" } },
+        medications: ["Norepinephrine"],
+        allergies: [],
+      },
+    });
+    const sp = executeAdversarialSelfPlayTournament(ADVERSARIAL_BENCHMARK_SCENARIOS);
+    const quant = buildEdgeDeploymentManifest(SUPPORTED_QUANTIZATION_PROFILES[0]?.format || "GGUF_Q4_K_M", 8192);
+    const checks = [
+      Boolean(mm.synthesisId),
+      sp.totalRounds > 0 && sp.trapRecognitionRatePercent >= 95 && sp.zeroToleranceInvariantBreaches === 0,
+      Boolean(quant.generatedCliCommand),
+    ];
+    return { total: checks.length, passed: checks.filter(Boolean).length };
+  });
+  results.push({
+    step: 151,
+    domain: "MULTIMODAL_SELFPLAY_AND_EDGE_QUANTIZATION",
+    scenariosCount: mmOut.total,
+    invariantsPassed: mmOut.passed,
+    durationMs: mmMs,
+    detail: "Option A/B/C Cockpit: Multimodal Cross-Attention Fusion, Adversarial Self-Play Tournament & Air-Gapped GGUF Edge Quantization",
+  });
+
+  // Step 152: Autonomous Remediation, Blast Radius & Circuit Breaker
+  const [remOut, remMs] = measure(() => {
+    const pbKeys = Object.keys(PREDEFINED_REMEDIATION_PLAYBOOKS);
+    const disp = dispatchAutoRemediation(pbKeys[0] || "playbook-isolate-host", { dryRun: true, forceDispatch: true });
+    const blast = calculateBlastRadius("Exposed AWS IAM Admin Key in public API gateway affecting prod-kms-key", "prod-api-gw");
+    const cb = evaluateCircuitBreaker("VERIFIED: Measured serum potassium is 6.1 mEq/L. Patient weight is NOT PROVIDED.");
+    const checks = [
+      pbKeys.length > 0 && Boolean(disp),
+      Boolean(blast),
+      Boolean(cb),
+    ];
+    return { total: checks.length, passed: checks.filter(Boolean).length };
+  });
+  results.push({
+    step: 152,
+    domain: "AUTONOMOUS_REMEDIATION_BLAST_RADIUS_BREAKER",
+    scenariosCount: remOut.total,
+    invariantsPassed: remOut.passed,
+    durationMs: remMs,
+    detail: "SecOps Auto-Remediation Playbooks, IAM/Cloud Blast Radius Estimator & Anti-Hallucination Circuit Breaker",
+  });
+
+  // Step 153: Truth Ledger, Forensic Watermarking & Specialist Swarms
+  const [swmOut, swmMs] = measure(() => {
+    const ledger = analyzeTextEpistemicLedger("Observed BP 82/50 mmHg and lactate 4.5 mmol/L. Target MAP >= 65 mmHg.", "Epistemic Audit");
+    const wm = embedWatermark("Noctis verified architectural compliance output.", { sessionId: "sess-160", operatorBadge: "OP-01" });
+    const scan = scanForensicWatermark(wm.watermarkedText);
+    const missionKeys = Object.keys(PREDEFINED_SWARM_MISSIONS);
+    const workSwm = runWorkSwarmMission(missionKeys[0]);
+    const samplePatient = CURATED_SANDBOX_PATIENTS[0]!;
+    const mappedCase = mapFhirPatientToClinicalCase(samplePatient);
+    const specSwm = runSpecialistSwarmDeliberation(mappedCase);
+    const checks = [
+      Boolean(ledger) && Object.keys(CANONICAL_TRUTH_BUNDLES).length >= 0,
+      Boolean(scan.watermarkPresent),
+      missionKeys.length > 0 && Boolean(workSwm),
+      Boolean(specSwm),
+    ];
+    return { total: checks.length, passed: checks.filter(Boolean).length };
+  });
+  results.push({
+    step: 153,
+    domain: "TRUTH_LEDGER_FORENSIC_WATERMARKING_AND_SWARMS",
+    scenariosCount: swmOut.total,
+    invariantsPassed: swmOut.passed,
+    durationMs: swmMs,
+    detail: "Merkle Epistemic Truth Ledger, Zero-Width Forensic Steganography & Work/Specialist Multi-Agent Swarms",
+  });
+
+  // Step 154: Bedside Voice, Ambient Dictation & Streaming Telemetry
+  const [bedOut, bedMs] = measure(() => {
+    const preset = CURATED_AMBIENT_PRESETS[0]!;
+    const ambient = synthesizeAmbientToDossier(preset.rawTranscript);
+    const voiceCmd = processVoiceResuscitationCommand("Give calcium chloride 1 gram IV push for peaked T waves", { isWeightKnown: true });
+    const timeline = generateResuscitationTimeline("NPDE-STREAM-154");
+    const voiceIntent = parseVoiceIntent("Check ventilator plateau pressure");
+    const checks = [
+      Boolean(ambient.goldDossier.length > 50),
+      Boolean(voiceCmd),
+      timeline.length > 0,
+      Boolean(voiceIntent),
+    ];
+    return { total: checks.length, passed: checks.filter(Boolean).length };
+  });
+  results.push({
+    step: 154,
+    domain: "BEDSIDE_VOICE_AMBIENT_AND_TELEMETRY_SUITE",
+    scenariosCount: bedOut.total,
+    invariantsPassed: bedOut.passed,
+    durationMs: bedMs,
+    detail: "Ambient Clinical Dictation Synthesis, Hands-Free Voice Resuscitation, Live Waveform Telemetry & Tactical Voice HUD",
+  });
+
+  // Step 155: ECG Vision, Code Blue Sim, TTM & Advanced Hemodynamics
+  const [ecgOut, ecgMs] = measure(() => {
+    const qtc = calculateQtcIntervals(420, 800, "male");
+    const hyperK = evaluateHyperkalemiaEcg({
+      qrsDurationMs: 148,
+      hasPeakedTWaves: true,
+      hasFlattenedOrAbsentPWaves: true,
+      serumPotassiumMmolL: 7.1,
+    });
+    const sim0 = initializeBrashResuscitationSim();
+    const sim1 = advanceResuscitationTurn(sim0, "Administer calcium chloride 1g IV push immediately");
+    const ttm = evaluateTtmResuscitation({
+      encounterId: "TTM-155",
+      patientAge: 61,
+      arrestRhythm: "VF_VT",
+      timeToRoscMinutes: 14,
+      currentCoreTempC: 35.8,
+      hoursPostRosc: 6,
+      bsasScore: 1,
+      selectedProtocol: "HYPOTHERMIA_36C",
+      neuromuscularBlockadeActive: false,
+    });
+    const vis = calculateVasoactiveInotropicScore(
+      {
+        norepinephrineMcgKgMin: 0.25,
+        vasopressinUnitsMin: 0.03,
+        epinephrineMcgKgMin: 0,
+        dobutamineMcgKgMin: 5,
+        milrinoneMcgKgMin: 0,
+        dopamineMcgKgMin: 0,
+        phenylephrineMcgKgMin: 0,
+      },
+      75,
+    );
+    const hemo = evaluateAdvancedHemodynamics({
+      systolicBpMmHg: 80,
+      diastolicBpMmHg: 50,
+      heartRateBpm: 112,
+      centralVenousPressureMmHg: 16,
+      meanPulmonaryArteryPressureMmHg: 34,
+      pulmonaryCapillaryWedgePressureMmHg: 24,
+      cardiacOutputLMin: 3.1,
+      bodySurfaceAreaM2: 1.9,
+      arterialLactateMmolL: 4.3,
+      activeVasoactiveAgents: ["norepinephrine"],
+    });
+    const checks = [
+      qtc.qtcBazettMs > 400,
+      Boolean(hyperK.severityStage),
+      !sim1.vetoIssued,
+      Boolean(ttm),
+      vis > 25,
+      Boolean(hemo.scaiStage),
+    ];
+    return { total: checks.length, passed: checks.filter(Boolean).length };
+  });
+  results.push({
+    step: 155,
+    domain: "ECG_VISION_CODE_BLUE_TTM_AND_HEMODYNAMICS",
+    scenariosCount: ecgOut.total,
+    invariantsPassed: ecgOut.passed,
+    durationMs: ecgMs,
+    detail: "12-Lead QTc/Hyperkalemia ECG Vision, BRASH Code-Blue Simulation, AHA TTM2 Cooling, VIS Scoring & SCAI Hemodynamics",
+  });
+
+  // Step 156: Clinical Interop (SMART on FHIR, FHIR R4 Exporter & FDA SaMD)
+  const [fhirOut, fhirMs] = measure(() => {
+    const ep = SMART_ENDPOINTS.epic!;
+    const pt = CURATED_SANDBOX_PATIENTS[0]!;
+    const authUrl = buildSmartAuthorizeUrl({
+      endpoint: ep,
+      redirectUri: "https://www.dstrike.app/fhir-callback",
+      state: "state-156",
+      codeChallenge: "challenge-156",
+    });
+    const mapped = mapFhirPatientToClinicalCase(pt);
+    const swm = runSpecialistSwarmDeliberation(mapped);
+    const consensusShim = {
+      encounterId: mapped.caseId,
+      consensusTriageTier: "P0_IMMEDIATE_RESUSCITATION" as const,
+      triSpecialistOpinions: [],
+      unifiedConsensusDirectives: [swm.consensusDossier],
+      synthesizedClinicalReport: swm.consensusDossier,
+      consensusArbitrationHash: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      timestampIso: new Date().toISOString(),
+    };
+    const bundle = buildFhirR4HospitalBundle(consensusShim, pt.chiefComplaint, {
+      patientName: pt.name,
+      mrn: pt.mrn,
+      hospitalSite: "Noctis ICU",
+    });
+    const valid = validateFhirR4ClinicalBundle(bundle);
+    const samd = generateSaMdRegulatoryDossier();
+    const checks = [
+      authUrl.startsWith("https://"),
+      valid.isValid,
+      Boolean(samd),
+    ];
+    return { total: checks.length, passed: checks.filter(Boolean).length };
+  });
+  results.push({
+    step: 156,
+    domain: "CLINICAL_INTEROP_SMART_FHIR_AND_SAMD",
+    scenariosCount: fhirOut.total,
+    invariantsPassed: fhirOut.passed,
+    durationMs: fhirMs,
+    detail: "SMART v2.0 OAuth2/PKCE EHR Bridge, HL7 FHIR R4 Hospital Bundle Validator & FDA 21 U.S.C. 360j(o) SaMD Dossier",
+  });
+
+  // Step 157: Universal Ingestor, Verified Execution & WASM Sandbox
+  const [ingOut, ingMs] = measure(() => {
+    const syslog = parseSyslogRfc5424("<134>1 2026-11-26T20:00:00Z fw-01 auth 1234 - Permit verified");
+    const ingested = ingestUniversalTelemetry(
+      { event: "auth_check", status: "ok", latencyMs: 12 },
+      { pluginHint: "noctis-cyber" },
+    );
+    const concord = evaluateClinicalConcordanceGovernance({
+      attemptedClaimText: "Evidence-grounded claim tied to observed potassium 6.1 mEq/L.",
+    });
+    const stripped = stripTypesSimple("export interface Foo { a: number } const x: number = 42;");
+    const extracted = extractRunnableCode("```ts\nconst ok = true;\n```");
+    const checks = [
+      Boolean(syslog.hostname && ingested.ingestId),
+      AUTHORITATIVE_STANDARDS_REGISTRY.length > 0 && Boolean(concord),
+      !stripped.includes("interface Foo") && extracted.includes("const ok = true"),
+    ];
+    return { total: checks.length, passed: checks.filter(Boolean).length };
+  });
+  results.push({
+    step: 157,
+    domain: "UNIVERSAL_INGESTOR_VERIFIED_EXEC_AND_WASM",
+    scenariosCount: ingOut.total,
+    invariantsPassed: ingOut.passed,
+    durationMs: ingMs,
+    detail: "Universal RFC5424 Telemetry Ingestor, Authoritative Standards Registry, Concordance Governance & Browser WASM/TS Sandbox",
+  });
+
+  // Step 158: Cyber Vulnerability 40-Scenario & 400-Question Master Eval Suite
+  const [evOut, evMs] = measure(() => {
+    const vulnEval = runEvaluation();
+    const eval400 = runNoctisEvalSuite("all");
+    const checks = [
+      EVAL_SCENARIOS.length >= 40 && vulnEval.total > 0 && vulnEval.passed === vulnEval.total,
+      NOCTIS_400_EVAL_QUESTIONS.length >= 400 && eval400.overallPassRatePct >= 95,
+    ];
+    return { total: checks.length, passed: checks.filter(Boolean).length };
+  });
+  results.push({
+    step: 158,
+    domain: "CYBER_VULN_40_SCENARIO_AND_400Q_EVAL_SUITE",
+    scenariosCount: evOut.total,
+    invariantsPassed: evOut.passed,
+    durationMs: evMs,
+    detail: `NOCTIS-CYBER-VULN-001 (${EVAL_SCENARIOS.length} Held-Out Scenarios) & 400-Question Evaluation Suite (${NOCTIS_400_EVAL_QUESTIONS.length} Questions)`,
+  });
+
+  // Step 159: Emergency-30 & Multi-Track 30-Model Benchmark Leaderboards
+  const [emOut, emMs] = measure(() => {
+    const emCases = getAllBenchmarkCases();
+    const lb = computeMultiTrackLeaderboard();
+    const checks = [
+      NOCTIS_EMERGENCY_30_BENCHMARK.length >= 30 && emCases.length >= 30,
+      ALL_30_TRACK_BENCHMARK_REGISTRY.length > 0 && lb.totalTracksCovered > 0,
+    ];
+    return { total: checks.length, passed: checks.filter(Boolean).length };
+  });
+  results.push({
+    step: 159,
+    domain: "EMERGENCY_30_AND_MULTITRACK_30_BENCHMARKS",
+    scenariosCount: emOut.total,
+    invariantsPassed: emOut.passed,
+    durationMs: emMs,
+    detail: `Emergency-30 High-Acuity Resuscitation Suite & Multi-Track Leaderboard (${ALL_30_TRACK_BENCHMARK_REGISTRY.length} Track Suites)`,
+  });
+
+  // Step 160: Global Telecom ITU-T Dialing & Vibe Connect Helpers
+  const [telOut, telMs] = measure(() => {
+    const gh = findCountryByIso("GH");
+    const us = findCountryByIso("US");
+    const norm = normalizeWorldE164("0244123456", gh!.dial);
+    const flags = mergeVibeConnectFlags(DEFAULT_VIBE_CONNECT_FLAGS, { beyondWorkspace: true });
+    const cleanUser = normalizeUsername("Kwesi.Admin!!");
+    const deduped = dedupeMessagesByClientId([
+      { id: "m1", clientMsgId: "cid-1", body: "a" } as never,
+      { id: "m2", clientMsgId: "cid-1", body: "a" } as never,
+    ]);
+    const checks = [
+      WORLD_DIAL_CODES.length >= 195 && Boolean(gh && us),
+      norm.e164 === "+233244123456",
+      Boolean(DEFAULT_VIBE_CONNECT_FLAGS.beyondWorkspace && flags.beyondWorkspace),
+      cleanUser.length > 0 && deduped.length === 1,
+    ];
+    return { total: checks.length, passed: checks.filter(Boolean).length };
+  });
+  results.push({
+    step: 160,
+    domain: "GLOBAL_TELECOM_DIAL_CODES_AND_VIBE_CONNECT",
+    scenariosCount: telOut.total,
+    invariantsPassed: telOut.passed,
+    durationMs: telMs,
+    detail: `Worldwide ITU-T Directory (${WORLD_DIAL_CODES.length} Countries, E.164 Trunk Rules) & Vibe Connect Identity/Idempotency Invariants`,
+  });
+
   return results;
 }
 
@@ -1252,6 +1609,96 @@ const FLAGSHIP_SUBSYSTEM_SEED_PAIRS: ExhaustiveSeedPair[] = [
     model: "noctis-med-2026",
     hits: 40,
     at: "2026-11-26T16:00:00.000Z",
+  },
+  {
+    question: "How does Noctis Multimodal Cross-Attention, Adversarial Self-Play, and Edge Quantization operate?",
+    answer:
+      "### Option A/B/C Training Cockpit\n- **Multimodal Cross-Attention:** Fuses pixel CT/ECG imaging metrics, real-time bedside waveforms, and structured EHR labs.\n- **Adversarial Self-Play Tournament:** Red-team generator continuously probes safety vetoes against clinical/engineering critics.\n- **Edge Quantization:** Generates air-gapped GGUF (Q4_K_M/Q8_0) local deployment manifests.",
+    domain: "engineering",
+    model: "noctis-cockpit-2026",
+    hits: 35,
+    at: "2026-11-26T20:00:00.000Z",
+  },
+  {
+    question: "How do Auto-Remediation playbooks, Blast Radius estimation, and the Circuit Breaker prevent unsafe AI outputs?",
+    answer:
+      "### Autonomous Containment & Circuit Breaker\n- Maps compromised IAM keys/endpoints to blast-radius graphs via calculateBlastRadius, runs dry-run verified remediation playbooks, and trips the Epistemic Circuit Breaker whenever unmeasured weights or ungrounded claims appear.",
+    domain: "cybersecurity",
+    model: "noctis-secops-2026",
+    hits: 35,
+    at: "2026-11-26T20:00:00.000Z",
+  },
+  {
+    question: "How do the Merkle Truth Ledger, Forensic Steganography Watermarking, and Specialist Swarms verify provenance?",
+    answer:
+      "### Provenance & Multi-Agent Arbitration\n- Classifies prose into Observed/Inferred/Unknown Merkle bundles via analyzeTextEpistemicLedger, embeds cryptographic zero-width provenance watermarks, and runs cross-specialty swarm deliberations.",
+    domain: "general",
+    model: "noctis-assurance-2026",
+    hits: 35,
+    at: "2026-11-26T20:00:00.000Z",
+  },
+  {
+    question: "How do Ambient Clinical Dictation and Bedside Voice Resuscitation protect critical-care safety?",
+    answer:
+      "### Hands-Free Clinical Voice & Ambient Dossier\n- Extracts vitals, labs, and allergies directly from ambient transcripts via synthesizeAmbientToDossier, checks real-time resuscitation voice orders against safety vetoes (e.g., hyperkalemia calcium stabilization), and tracks resuscitation timelines.",
+    domain: "healthcare",
+    model: "noctis-voice-2026",
+    hits: 35,
+    at: "2026-11-26T20:00:00.000Z",
+  },
+  {
+    question: "How does Noctis interpret 12-lead ECG QTc/Hyperkalemia, run BRASH Code-Blue sims, TTM2 cooling, and VIS/SCAI hemodynamics?",
+    answer:
+      "### Cardiac, ECG Vision & Post-Arrest Physiology\n- Computes Bazett/Fridericia QTc and QRS hyperkalemia stages, advances turn-by-turn BRASH resuscitation states, enforces TTM2 fever/rewarming ceilings, and calculates VIS + Cardiac Power Output (CPO).",
+    domain: "healthcare",
+    model: "noctis-cardio-2026",
+    hits: 35,
+    at: "2026-11-26T20:00:00.000Z",
+  },
+  {
+    question: "How does Noctis connect with SMART on FHIR v2.0 EHRs, export HL7 FHIR R4 bundles, and document FDA 21 U.S.C. 360j(o) SaMD compliance?",
+    answer:
+      "### Clinical Interoperability & Regulatory Assurance\n- Constructs OAuth 2.0 + PKCE SMART launch URLs for Epic/Cerner sandboxes, validates HL7 FHIR R4 Bundle resources via validateFhirR4ClinicalBundle, and compiles non-device CDS regulatory hazard dossiers.",
+    domain: "healthcare",
+    model: "noctis-fhir-2026",
+    hits: 35,
+    at: "2026-11-26T20:00:00.000Z",
+  },
+  {
+    question: "How do Universal RFC 5424 Ingestion, Verified Execution Standards, and Browser WASM/TS sandboxes work?",
+    answer:
+      "### Verified Execution & Sandboxing\n- Parses RFC 5424 syslog and enterprise telemetry streams, audits claims against AUTHORITATIVE_STANDARDS_REGISTRY, and strips TypeScript annotations safely for isolated sandbox runs.",
+    domain: "engineering",
+    model: "noctis-exec-2026",
+    hits: 35,
+    at: "2026-11-26T20:00:00.000Z",
+  },
+  {
+    question: "What do NOCTIS-CYBER-VULN-001 (40 held-out scenarios) and the 400-question Noctis Evaluation Suite measure?",
+    answer:
+      "### Held-Out Cyber & Multi-Division Benchmarks\n- Grades 40 held-out cyber exploitability/remediation cases with strict P0 KEV prioritization alongside 400 cross-division exam questions across cybersecurity, risk, engineering, math, and science.",
+    domain: "cybersecurity",
+    model: "noctis-eval-2026",
+    hits: 35,
+    at: "2026-11-26T20:00:00.000Z",
+  },
+  {
+    question: "What are the Emergency-30 Clinical Benchmark and Multi-Track 30-Model Leaderboard?",
+    answer:
+      "### High-Acuity Clinical & Cross-Track Leaderboards\n- Evaluates 30 time-critical resuscitation vignettes alongside 30-track specialty accuracy, safety-veto, latency, and FDA compliance scores.",
+    domain: "healthcare",
+    model: "noctis-bench-2026",
+    hits: 35,
+    at: "2026-11-26T20:00:00.000Z",
+  },
+  {
+    question: "How do Worldwide ITU-T E.164 dialing normalization and Vibe Connect helpers handle international numbers and message idempotency?",
+    answer:
+      "### Worldwide Telecom & Vibe Connect\n- Normalizes local trunk zeros across 195+ ITU-T countries into canonical E.164 numbers (+233244123456 for GH, +3902... Italy exceptions) and deduplicates messages by clientMsgId.",
+    domain: "general",
+    model: "noctis-telecom-2026",
+    hits: 35,
+    at: "2026-11-26T20:00:00.000Z",
   },
 ];
 

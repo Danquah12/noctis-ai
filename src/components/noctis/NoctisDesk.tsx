@@ -6346,7 +6346,7 @@ export function NoctisDesk() {
                 }}
                 className="rounded-full bg-emerald-500/20 border border-emerald-500/40 px-2.5 py-1 text-[11px] font-semibold text-emerald-300 hover:bg-emerald-500/30 cursor-pointer"
               >
-                Continuous Daemon (150D · 5,642 Scenarios)
+                Continuous Daemon (160D · 5,676 Scenarios)
               </button>
               <button
                 type="button"
@@ -7241,7 +7241,7 @@ export function NoctisDesk() {
         >
           <Activity className="size-4 shrink-0 text-emerald-400" />
           <span>Continuous Daemon</span>
-          <span className="ml-auto rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-bold text-emerald-300">5,642</span>
+          <span className="ml-auto rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-bold text-emerald-300">5,676</span>
         </button>
         <button
           type="button"

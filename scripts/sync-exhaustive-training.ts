@@ -17,6 +17,24 @@ import { buildRemainingNoctisSeedPairs } from "../src/lib/noctis-exhaustive-trai
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1")), "..");
 const DATA_DIR = path.join(ROOT, "data");
 
+function loadEnvLocalIfMissing() {
+  if (process.env.DATABASE_URL?.trim()) return;
+  const envPath = path.join(ROOT, ".env.local");
+  if (!existsSync(envPath)) return;
+  for (const rawLine of readFileSync(envPath, "utf8").split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+    const eq = line.indexOf("=");
+    if (eq <= 0) continue;
+    const key = line.slice(0, eq).trim();
+    let val = line.slice(eq + 1).trim();
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+      val = val.slice(1, -1);
+    }
+    if (!process.env[key]) process.env[key] = val;
+  }
+}
+
 function deterministicId(prefix: string, text: string): string {
   return `${prefix}-${createHash("sha256").update(text.trim().toLowerCase()).digest("hex").slice(0, 20)}`;
 }
@@ -30,6 +48,7 @@ function readJsonlLines(filePath: string): string[] {
 }
 
 async function main() {
+  loadEnvLocalIfMissing();
   mkdirSync(DATA_DIR, { recursive: true });
 
   const autoPairs = buildAutonomous20AreaSeedPairs();
