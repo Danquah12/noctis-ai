@@ -107,7 +107,7 @@ export function isTrackDirectoryRequested(query: string): boolean {
     .trim();
   if (!clean) return true;
   if (TRACK_DIRECTORY_RE.test(clean)) return true;
-  return /\b(?:all\s+25|25\s+(?:open\s+)?(?:technical\s+)?tracks|list\s+(?:all\s+)?(?:curriculum\s+)?tracks|entire\s+curriculum)\b/i.test(clean);
+  return /\b(?:all\s+(?:25|40)|(?:25|40)\s+(?:open\s+)?(?:technical\s+|professional\s+)?tracks|list\s+(?:all\s+)?(?:curriculum\s+)?tracks|entire\s+curriculum)\b/i.test(clean);
 }
 
 export function normalizeKnowledgeQuery(query: string): string {
@@ -503,7 +503,7 @@ function sourceBadge(source: KnowledgeSourceKind): string {
     case "postgres_training":
       return "Neon DB Pair";
     case "open_curriculum":
-      return "25-Track Core";
+      return "40-Track Core";
     case "curriculum_subtopic":
       return "1M Blueprint";
     case "training_domain":

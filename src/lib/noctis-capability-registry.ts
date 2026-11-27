@@ -563,7 +563,7 @@ export const NOCTIS_SLASH_ROUTES: NoctisSlashRouteSpec[] = [
     aliases: ["/library", "/curriculum", "/table"],
     routeId: "knowledge_library",
     label: "Knowledge · Training & Table Router",
-    description: "Query Noctis's Neon training DB, 25 open technical curriculum tracks (300 subtopics), and render structured Markdown tables.",
+    description: "Query Noctis's Neon training DB, 40 open technical & professional curriculum tracks (480 subtopics), and render structured Markdown tables.",
     targetPanel: "training",
     quickSwitch: true,
   },
@@ -607,7 +607,8 @@ export const NOCTIS_API_ROUTES: NoctisApiRouteSpec[] = [
   { id: "predict", name: "Noctis Predictive Intelligence 15-Engine API", basePath: "/api/noctis?predict=1", statusPath: "/api/noctis?predict=1", panelId: "chat" },
   { id: "secops", name: "Noctis SecOps Twin, WarRoom, PQC & ZKP API", basePath: "/api/noctis?secops=pqc", statusPath: "/api/noctis?secops=pqc", panelId: "chat" },
   { id: "knowledge", name: "Noctis Unified Knowledge & Table Retrieval API", basePath: "/api/noctis/knowledge", statusPath: "/api/noctis/knowledge?stats=1", panelId: "training" },
-  { id: "curriculum", name: "Noctis 25-Track Open Technical Curriculum API", basePath: "/api/noctis?curriculum=1", statusPath: "/api/noctis?curriculum=1", panelId: "training" },
+  { id: "knowledge-ingest", name: "Noctis Continuous Open-Knowledge Ingestion API", basePath: "/api/noctis/knowledge/ingest", statusPath: "/api/noctis/knowledge/ingest?status=1", panelId: "training" },
+  { id: "curriculum", name: "Noctis 40-Track Open Technical & Professional Curriculum API", basePath: "/api/noctis?curriculum=1", statusPath: "/api/noctis?curriculum=1", panelId: "training" },
   { id: "noctis", name: "Core Noctis Chat Endpoint", basePath: "/api/noctis", statusPath: "/api/v1/health", panelId: "chat" },
 ];
 

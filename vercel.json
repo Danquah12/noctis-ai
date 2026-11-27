@@ -42,6 +42,10 @@
     {
       "path": "/api/v2/dod-ic/cron/drift-check",
       "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/noctis/knowledge/ingest?cron=1",
+      "schedule": "0 8 * * *"
     }
   ]
 }

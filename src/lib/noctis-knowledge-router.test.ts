@@ -13,8 +13,15 @@ import {
 import { classifyNoctisIntent } from "./noctis-intent-router.server.ts";
 import { extractMultiSlashOverrides } from "./noctis-capability-registry.ts";
 import { retrieveNoctisKnowledge, getNoctisKnowledgeStats } from "./noctis-knowledge-retrieval.server.ts";
+import {
+  classifyOpenDomain,
+  computeDailyOffsetSeed,
+  deduplicateOpenRecords,
+  OPEN_INGESTION_SOURCE_SPECS,
+  stripNullBytes,
+} from "./noctis-open-ingestion.server.ts";
 
-test("Open curriculum retrieval matches technical topics across 25 tracks & 300 subtopics", () => {
+test("Open curriculum retrieval matches technical and professional tracks across all 40 tracks & 480 subtopics", () => {
   const cases: Array<{ query: string; expectedTrack: string }> = [
     { query: "Kubernetes Pod Security Standards non-root NetworkPolicy", expectedTrack: "cloud-kubernetes" },
     { query: "PostgreSQL MVCC vacuum B-tree partial index", expectedTrack: "databases-storage" },
@@ -22,6 +29,10 @@ test("Open curriculum retrieval matches technical topics across 25 tracks & 300 
     { query: "LoRA 4-bit QLoRA DPO alignment KV-cache", expectedTrack: "ai-ml-llms" },
     { query: "BGP RPKI DNSSEC TLS 1.3 mTLS", expectedTrack: "networking-protocols" },
     { query: "Rust borrow checker ownership unsafe invariants", expectedTrack: "rust-systems" },
+    { query: "PMBOK critical path Agile sprint velocity", expectedTrack: "project-program-delivery" },
+    { query: "GAAP ASC 606 revenue recognition internal controls", expectedTrack: "accounting-audit-controls" },
+    { query: "B2B SaaS net dollar retention cohort churn", expectedTrack: "customer-success-retention" },
+    { query: "BATNA ZOPA BLUF executive memo negotiation", expectedTrack: "negotiation-stakeholder-comms" },
   ];
 
   for (const tc of cases) {
@@ -81,7 +92,7 @@ test("Table intent detection & GitHub-flavored Markdown table rendering", () => 
 
   const tracksTable = formatCurriculumTracksTableMarkdown();
   const trackRows = tracksTable.split("\n").filter((l) => l.startsWith("|"));
-  assert.equal(trackRows.length, 27, "25 track rows + 1 header + 1 separator = 27 Markdown table rows");
+  assert.equal(trackRows.length, 42, "40 track rows + 1 header + 1 separator = 42 Markdown table rows");
 
   const report = formatKnowledgeReportMarkdown("Kubernetes security", hits, {
     dbTotalPairs: 736,
@@ -124,11 +135,11 @@ test("Intent router maps /knowledge, /library, /curriculum, /table & table promp
   assert.equal(unaffected.routeId, "general_chat");
 });
 
-test("Unified server retrieval fuses DB/seed pairs + Open Curriculum + 200 continuous domains", async () => {
+test("Unified server retrieval fuses DB/seed pairs + 40-track Open Curriculum + 200 continuous domains", async () => {
   const stats = await getNoctisKnowledgeStats();
   assert.equal(stats.ok, true);
-  assert.equal(stats.totalTracks, 25);
-  assert.equal(stats.totalSubtopics, 300);
+  assert.equal(stats.totalTracks, 40);
+  assert.equal(stats.totalSubtopics, 480);
   assert.equal(stats.continuousDomains, 200);
   assert.ok(stats.dbTotalPairs >= 100);
 
@@ -147,4 +158,44 @@ test("Unified server retrieval fuses DB/seed pairs + Open Curriculum + 200 conti
     res.results.slice(1, 4),
   ], 5);
   assert.ok(fused.length >= 2);
+});
+
+test("Open ingestion registry exposes 6 lawful public sources and deterministic deduplication", () => {
+  assert.equal(OPEN_INGESTION_SOURCE_SPECS.length, 6);
+  assert.equal(stripNullBytes("hello\u0000world"), "helloworld");
+  assert.equal(classifyOpenDomain("CISA KEV CVE-2025-1234 zero trust vulnerability"), "cybersecurity");
+  assert.equal(classifyOpenDomain("ASC 606 GAAP revenue recognition WACC DCF"), "finance");
+  assert.equal(classifyOpenDomain("PMBOK sprint OKR net dollar retention"), "business");
+  assert.equal(classifyOpenDomain("PubMed randomized sepsis trial clinical guideline"), "healthcare");
+  assert.ok(computeDailyOffsetSeed(new Date("2026-06-15T08:00:00Z")) >= 0);
+
+  const deduped = deduplicateOpenRecords([
+    {
+      id: "1",
+      source: "open:arxiv",
+      sourceId: "arxiv",
+      license: "arXiv-Open-Access-Abstract",
+      domain: "science",
+      url: "https://arxiv.org/abs/1",
+      messages: [
+        { role: "system", content: "sys" },
+        { role: "user", content: "Duplicate prompt?" },
+        { role: "assistant", content: "Ans 1" },
+      ],
+    },
+    {
+      id: "2",
+      source: "open:arxiv",
+      sourceId: "arxiv",
+      license: "arXiv-Open-Access-Abstract",
+      domain: "science",
+      url: "https://arxiv.org/abs/2",
+      messages: [
+        { role: "system", content: "sys" },
+        { role: "user", content: "duplicate prompt?" },
+        { role: "assistant", content: "Ans 2" },
+      ],
+    },
+  ]);
+  assert.equal(deduped.length, 1);
 });

@@ -204,7 +204,7 @@ const SECOPS_SUITE_RE =
   /\b(?:noctis-twin-001|noctis-war-room-001|noctis-pqc-001|noctis-zkproof-001|xtrike\s+sast|topological\s+attack[-\s]graph|red\s+vs\.?\s+blue\s+war\s+room|post-quantum\s+(?:crypto|migration)\s+sentinel|zero-knowledge\s+audit\s+proof)\b/i;
 
 const KNOWLEDGE_LIBRARY_RE =
-  /\b(?:noctis\s+(?:knowledge|curriculum|training\s+(?:library|corpus|tracks?|table))|open\s+technical\s+curriculum|25\s+(?:technical\s+)?tracks|search\s+(?:the\s+)?(?:knowledge\s+base|training\s+(?:db|database|library|store|corpus))|query\s+(?:the\s+)?(?:knowledge\s+base|training\s+(?:db|database|library|table))|list\s+(?:all\s+)?(?:25\s+)?curriculum\s+tracks)\b|\b(?:put|show|display|query|retrieve|summarize|list|compare|organize)\b[\s\S]{0,80}\b(?:on\s+a\s+table|in\s+a\s+table|as\s+a\s+table|into\s+a\s+table|table\s+of\s+(?:tracks|topics|standards|invariants|training))\b/i;
+  /\b(?:noctis\s+(?:knowledge|curriculum|training\s+(?:library|corpus|tracks?|table))|open\s+(?:technical\s+)?curriculum|(?:25|40)\s+(?:open\s+)?(?:technical\s+|professional\s+)?tracks|search\s+(?:the\s+)?(?:knowledge\s+base|training\s+(?:db|database|library|store|corpus))|query\s+(?:the\s+)?(?:knowledge\s+base|training\s+(?:db|database|library|table))|list\s+(?:all\s+)?(?:(?:25|40)\s+)?curriculum\s+tracks)\b|\b(?:put|show|display|query|retrieve|summarize|list|compare|organize)\b[\s\S]{0,80}\b(?:on\s+a\s+table|in\s+a\s+table|as\s+a\s+table|into\s+a\s+table|table\s+of\s+(?:tracks|topics|standards|invariants|training))\b/i;
 
 export function decisionToRouteStamp(decision: NoctisIntentDecision): NoctisRouteStamp {
   return {

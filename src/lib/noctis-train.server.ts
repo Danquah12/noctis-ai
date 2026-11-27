@@ -743,7 +743,7 @@ export async function hydrateFromDb(): Promise<void> {
         where verified = true
           and model not in ('vibe', 'vibe-native', 'vibe-gadget')
         order by updated_at desc
-        limit 5000
+        limit 10000
       `;
       for (let i = pairs.length - 1; i >= 0; i -= 1) {
         if (pairs[i]?.model === "vibe" || pairs[i]?.model === "vibe-native" || pairs[i]?.model === "vibe-gadget") {
@@ -819,7 +819,7 @@ export function rememberAnswer(question: string, answer: string, model = "vibe-n
   };
   if (same >= 0) pairs.splice(same, 1);
   pairs.push(next);
-  if (pairs.length > 5000) pairs.splice(0, pairs.length - 5000);
+  if (pairs.length > 10000) pairs.splice(0, pairs.length - 10000);
   saveToDisk();
 
   void (async () => {
@@ -1062,6 +1062,11 @@ export function recallTrainedAnswer(question: string): { answer: string; questio
     model: best.pair.model,
     score: best.ratio,
   };
+}
+
+export function resetTrainingDbHydration(): void {
+  dbHydrated = false;
+  dbHydrating = null;
 }
 
 export function getHydratedTrainingPairs(): TrainingPair[] {

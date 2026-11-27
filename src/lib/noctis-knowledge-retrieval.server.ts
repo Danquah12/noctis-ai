@@ -113,7 +113,7 @@ export async function retrieveNoctisKnowledge(
 
   const sourcesUsed: string[] = [];
   if (dbHits.length > 0) sourcesUsed.push(trainStats.dbConnected ? "neon_postgres" : "seed_corpus");
-  if (curriculumHits.length > 0 || directoryRequested) sourcesUsed.push("open_curriculum_25_tracks");
+  if (curriculumHits.length > 0 || directoryRequested) sourcesUsed.push("open_curriculum_40_tracks");
   if (domainHits.length > 0) sourcesUsed.push("continuous_200_domains");
 
   const markdownTable = formatKnowledgeTableMarkdown(query, fused, {
