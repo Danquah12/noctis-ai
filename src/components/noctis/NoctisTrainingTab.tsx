@@ -334,7 +334,7 @@ export function NoctisTrainingTab({ onSendToChat, onClose }: NoctisTrainingTabPr
                 hudView === "knowledge" ? "bg-sky-600/25 text-sky-300" : "text-zinc-400 hover:text-white",
               )}
             >
-              Knowledge &amp; Ingestion (40T)
+              {"Knowledge & Ingestion (40T)"}
             </button>
           </div>
 
@@ -498,7 +498,7 @@ export function NoctisTrainingTab({ onSendToChat, onClose }: NoctisTrainingTabPr
                 <div key={item.id} className="rounded-xl border border-white/10 bg-[#141923] p-3.5 space-y-1.5">
                   <div className="flex items-center justify-between gap-2 text-[10px] uppercase tracking-wider">
                     <span className="rounded bg-sky-500/15 px-1.5 py-0.5 font-semibold text-sky-300">{item.source}</span>
-                    <span className="text-zinc-400">{item.domain} · score {item.score}</span>
+                    <span className="text-zinc-400">{`${item.domain} · Score: ${item.score}`}</span>
                   </div>
                   <h4 className="text-xs font-bold text-white line-clamp-2">{item.title}</h4>
                   <p className="text-[11px] text-zinc-400 line-clamp-2">{item.summary}</p>
