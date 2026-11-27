@@ -32,6 +32,8 @@
     "ingest:specs": "npx tsx scripts/ingest-noctis-specs.ts",
     "ingest:rmf": "node scripts/ingest-rmf-oscal.mjs",
     "generate:rmf-dataset": "node scripts/generate-rmf-training-dataset.mjs",
+    "generate:1m-curriculum": "node --experimental-strip-types scripts/generate-1m-curriculum.ts",
+    "ingest:open-datasets": "node --experimental-strip-types scripts/ingest-open-datasets.ts",
     "sync:training": "node --experimental-strip-types scripts/sync-exhaustive-training.ts",
     "check:auth": "node scripts/check-auth-invariant.mjs",
     "test": "node scripts/run-all-tests.mjs",

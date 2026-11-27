@@ -14,6 +14,7 @@ import {
 } from "../src/lib/noctis-autonomous-trainer.ts";
 import { buildRemainingNoctisSeedPairs } from "../src/lib/noctis-exhaustive-training.ts";
 import { INITIAL_DPO_PAIRS, exportDpoDatasetJsonl } from "../src/lib/noctis-cognitive-sandbox.ts";
+import { buildTrackMasterySeedPairs } from "../src/lib/noctis-open-curriculum-1m.ts";
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1")), "..");
 const DATA_DIR = path.join(ROOT, "data");
@@ -76,10 +77,11 @@ async function main() {
   loadEnvLocalIfMissing();
   mkdirSync(DATA_DIR, { recursive: true });
 
-  // Collect all programmatic seed pairs (27 autonomous + 100 exhaustive = 127)
+  // Collect all programmatic seed pairs (27 autonomous + 100 exhaustive + 25 open curriculum tracks = 152)
   // plus the 216 pairs from data/vibe-training.json
   const autoPairs = buildAutonomous20AreaSeedPairs();
   const remainingPairs = buildRemainingNoctisSeedPairs();
+  const trackMasteryPairs = buildTrackMasterySeedPairs();
 
   const vibeJsonPath = path.join(DATA_DIR, "vibe-training.json");
   let vibeFilePairs: VibePairInput[] = [];
@@ -99,7 +101,7 @@ async function main() {
 
   const seenQuestions = new Set<string>();
   const allSeedPairs: VibePairInput[] = [];
-  for (const p of [...autoPairs, ...remainingPairs, ...vibeFilePairs]) {
+  for (const p of [...autoPairs, ...remainingPairs, ...trackMasteryPairs, ...vibeFilePairs]) {
     const k = p.question.trim().toLowerCase();
     if (!k || seenQuestions.has(k)) continue;
     seenQuestions.add(k);

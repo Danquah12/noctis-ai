@@ -39,3 +39,8 @@ wandb/
 *.onnx
 nohup.out
 .env*.local
+
+# Large Generated Training Shards & Open Datasets
+data/shards/
+data/open-datasets/
+data/noctis-unified-*.jsonl

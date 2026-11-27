@@ -1,0 +1,11 @@
+data/shards/
+data/open-datasets/
+data/*.jsonl
+data/*.jsonl.gz
+models/
+lora-weights/
+checkpoints/
+backups/
+screenshots/
+artifacts/
+{}

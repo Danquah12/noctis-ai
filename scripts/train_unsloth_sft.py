@@ -10,10 +10,31 @@ Target: Qwen2.5-7B-Instruct Supervised Fine-Tuning with PEFT QLoRA
 import os
 import sys
 import json
+import glob
+import gzip
 import time
 import argparse
 import hashlib
 import re
+
+def resolve_dataset_files(repo_root: str, spec: str, default_pattern: str = "*.jsonl*") -> list[str]:
+    """Resolves a single .jsonl/.jsonl.gz file, directory of shards, or glob pattern into sorted file paths."""
+    candidate = spec if os.path.isabs(spec) else os.path.join(repo_root, spec)
+    if os.path.isdir(candidate):
+        matched = sorted(glob.glob(os.path.join(candidate, default_pattern)))
+        return [p for p in matched if os.path.isfile(p)]
+    if any(ch in candidate for ch in ("*", "?", "[")):
+        return sorted(p for p in glob.glob(candidate) if os.path.isfile(p))
+    return [candidate] if os.path.exists(candidate) else []
+
+def count_jsonl_rows(files: list[str]) -> int:
+    """Counts non-empty lines across plain .jsonl and gzipped .jsonl.gz files."""
+    total = 0
+    for fp in files:
+        opener = gzip.open if fp.endswith(".gz") else open
+        with opener(fp, "rt", encoding="utf-8") as f:
+            total += sum(1 for line in f if line.strip())
+    return total
 
 # PyTorch 2.6+ Checkpoint Unpickling Compatibility
 try:
@@ -73,8 +94,10 @@ def main():
     args = parser.parse_args()
 
     repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    train_file = os.path.join(repo_root, args.dataset)
-    eval_file = os.path.join(repo_root, args.eval_dataset)
+    train_files = resolve_dataset_files(repo_root, args.dataset, "*sft*.jsonl*")
+    eval_files = resolve_dataset_files(repo_root, args.eval_dataset, "*val*.jsonl*")
+    train_file = train_files[0] if len(train_files) == 1 else (f"{len(train_files)} shards matching {args.dataset}")
+    eval_file = eval_files[0] if len(eval_files) == 1 else (f"{len(eval_files)} files matching {args.eval_dataset}")
     output_dir = os.path.join(repo_root, args.output_dir)
 
     print("\n======================================================================")
@@ -93,15 +116,16 @@ def main():
     print(f"  Output Checkpoint Path:   {output_dir}")
     print("======================================================================\n")
 
-    if not os.path.exists(train_file):
-        print(f"[!] Error: Training dataset not found at {train_file}")
+    if not train_files:
+        print(f"[!] Error: Training dataset not found at {args.dataset}")
+        return 1
+    if not eval_files:
+        print(f"[!] Error: Held-out evaluation dataset not found at {args.eval_dataset}")
         return 1
 
-    with open(train_file, "r", encoding="utf-8") as f:
-        train_count = sum(1 for _ in f)
-    with open(eval_file, "r", encoding="utf-8") as f:
-        eval_count = sum(1 for _ in f)
-    print(f"[+] Loaded {train_count} training examples and {eval_count} locked benchmark examples.")
+    train_count = count_jsonl_rows(train_files)
+    eval_count = count_jsonl_rows(eval_files)
+    print(f"[+] Loaded {train_count} training examples across {len(train_files)} file(s) and {eval_count} locked benchmark examples.")
 
     # Check for PyTorch & CUDA availability
     try:
@@ -176,7 +200,7 @@ def main():
     model.print_trainable_parameters()
 
     # 4. Load Datasets & Establish Grouped Internal Validation
-    raw_train = load_dataset("json", data_files=train_file, split="train")
+    raw_train = load_dataset("json", data_files=train_files if len(train_files) > 1 else train_files[0], split="train")
 
     def split_group(row):
         prompt = next((m.get("content", "") for m in row["messages"] if m.get("role") == "user"), "")

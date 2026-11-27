@@ -199,6 +199,7 @@ const libTestSuites = [
   "src/lib/forge/website-blueprint-engine.test.ts",
   "src/lib/ndkrs/ndkrs.test.ts",
   "src/lib/nups/nups.test.ts",
+  "src/lib/noctis-open-curriculum-1m.test.ts",
 ];
 
 if (scriptTests.length > 0) {
