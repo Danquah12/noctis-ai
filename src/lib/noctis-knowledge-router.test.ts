@@ -225,12 +225,12 @@ test("Semantic 256-dim embeddings align paraphrased technical concepts via cosin
   assert.ok(formatVectorLiteral(q).startsWith("[") && formatVectorLiteral(q).endsWith("]"));
 });
 
-test("Complete NIST SP RMF catalog (47 SP 800-37 tasks, 19 publications, 30+ SP 800-60 info types) bridges into /knowledge table retrieval", async () => {
+test("Complete NIST SP RMF catalog (47 SP 800-37 tasks, 31 publications, 100 SP 800-60 info types) bridges into /knowledge table retrieval", async () => {
   assert.equal(NIST_SP_800_37_TASKS.length, 47);
-  assert.equal(NIST_SP_PUBLICATIONS.length, 19);
-  assert.ok(NIST_SP_800_60_INFO_TYPES.length >= 30);
+  assert.equal(NIST_SP_PUBLICATIONS.length, 31);
+  assert.equal(NIST_SP_800_60_INFO_TYPES.length, 100);
   const generatedPairs = buildNistSpTrainingPairs();
-  assert.ok(generatedPairs.length >= 90);
+  assert.ok(generatedPairs.length >= 120);
 
   const prepRes = await retrieveNoctisKnowledge(
     "Put NIST SP 800-37 Prepare tasks P-1 through P-7 and SP 800-30 risk assessment on a table",
@@ -251,4 +251,12 @@ test("Complete NIST SP RMF catalog (47 SP 800-37 tasks, 19 publications, 30+ SP 
   assert.ok(rmfOnly.sourcesUsed.includes("nist_sp_rmf_db"));
   assert.ok(rmfOnly.results.some((r) => r.id === "rmf-ctrl-AC-2(3)"));
   assert.ok(rmfOnly.results.some((r) => r.id === "rmf-pub-SP-800-207"));
+
+  const extendedRmf = await retrieveNoctisKnowledge("SP 800-88 media sanitization clear purge destroy and FIPS 203 ML-KEM", {
+    source: "rmf",
+    format: "table",
+    limit: 8,
+  });
+  assert.ok(extendedRmf.results.some((r) => r.id === "rmf-pub-SP-800-88r1"));
+  assert.ok(extendedRmf.results.some((r) => r.id === "rmf-pub-FIPS-203-204-205"));
 });

@@ -12,8 +12,10 @@
 
 import { getContinuousTrainingStatus } from "./noctis-continuous-trainer.ts";
 import {
+  computeSemanticEmbedding256,
   formatKnowledgeReportMarkdown,
   formatKnowledgeTableMarkdown,
+  formatVectorLiteral,
   fuseRankedResults,
   isTableFormatRequested,
   isTrackDirectoryRequested,
@@ -177,11 +179,125 @@ function searchRmfDatabaseRecords(
   return out.sort((a, b) => b.score - a.score).slice(0, opts.limit);
 }
 
+async function searchRmfPdfChunksInDb(
+  query: string,
+  opts: { domain?: string; limit: number; forceInclude?: boolean },
+): Promise<KnowledgeRecord[]> {
+  if (opts.domain && !/^(?:cyber|cybersecurity|security|compliance|rmf|gov|defense)$/i.test(opts.domain)) {
+    return [];
+  }
+  const hasRmfSignal = opts.forceInclude || RMF_QUERY_SIGNAL_RE.test(query);
+  if (!hasRmfSignal || query.trim().length < 3) return [];
+
+  try {
+    const { getSql } = await import("@/lib/db");
+    const sql = await getSql();
+    const vecLit = formatVectorLiteral(computeSemanticEmbedding256(query));
+    const lim = Math.max(4, Math.min(12, opts.limit));
+
+    const [ftsRows, vecRows] = await Promise.all([
+      sql<{
+        chunk_id: string;
+        source_id: string;
+        doc_number: string;
+        page_start: number;
+        page_end: number;
+        section_heading: string;
+        content: string;
+        rank_score: number;
+      }>`
+        select chunk_id, source_id, doc_number, page_start, page_end, section_heading, content,
+               ts_rank(to_tsvector('english', doc_number || ' ' || section_heading || ' ' || content),
+                       websearch_to_tsquery('english', ${query}))::float as rank_score
+        from rmf_pdf_chunks
+        where to_tsvector('english', doc_number || ' ' || section_heading || ' ' || content)
+              @@ websearch_to_tsquery('english', ${query})
+        order by rank_score desc
+        limit ${lim}
+      `.catch(() => []),
+      sql<{
+        chunk_id: string;
+        source_id: string;
+        doc_number: string;
+        page_start: number;
+        page_end: number;
+        section_heading: string;
+        content: string;
+        cos_sim: number;
+      }>`
+        select chunk_id, source_id, doc_number, page_start, page_end, section_heading, content,
+               (1.0 - (embedding <=> ${vecLit}::vector))::float as cos_sim
+        from rmf_pdf_chunks
+        where embedding is not null
+        order by embedding <=> ${vecLit}::vector asc
+        limit ${lim}
+      `.catch(() => []),
+    ]);
+
+    const merged = new Map<string, KnowledgeRecord>();
+    for (const r of ftsRows) {
+      merged.set(r.chunk_id, {
+        id: `pdf-${r.chunk_id}`,
+        source: "nist_rmf_db",
+        domain: "cybersecurity",
+        trackName: `${r.doc_number} (pp. ${r.page_start}–${r.page_end})`,
+        title: `${r.doc_number} p.${r.page_start}: ${r.section_heading || "Official NIST Text"}`,
+        summary: r.content.slice(0, 220),
+        content: `### ${r.doc_number} (pp. ${r.page_start}–${r.page_end}) — ${r.section_heading}\n\n${r.content}`,
+        standards: [`${r.doc_number} (pp. ${r.page_start}–${r.page_end})`],
+        invariants: [`Verbatim NIST Public Domain Text · Page ${r.page_start}`],
+        score: Number((46 + Math.min(20, (Number(r.rank_score) || 0) * 35)).toFixed(2)),
+        matchedTerms: [r.doc_number],
+      });
+    }
+    for (const r of vecRows) {
+      const cos = Number(r.cos_sim) || 0;
+      if (cos < 0.28) continue;
+      const existing = merged.get(r.chunk_id);
+      if (existing) {
+        existing.score = Number((existing.score + cos * 22).toFixed(2));
+      } else {
+        merged.set(r.chunk_id, {
+          id: `pdf-${r.chunk_id}`,
+          source: "nist_rmf_db",
+          domain: "cybersecurity",
+          trackName: `${r.doc_number} (pp. ${r.page_start}–${r.page_end})`,
+          title: `${r.doc_number} p.${r.page_start}: ${r.section_heading || "Official NIST Text"}`,
+          summary: r.content.slice(0, 220),
+          content: `### ${r.doc_number} (pp. ${r.page_start}–${r.page_end}) — ${r.section_heading}\n\n${r.content}`,
+          standards: [`${r.doc_number} (pp. ${r.page_start}–${r.page_end})`],
+          invariants: [`Verbatim NIST Public Domain Text · Page ${r.page_start}`],
+          score: Number((34 + cos * 26).toFixed(2)),
+          matchedTerms: [r.doc_number],
+        });
+      }
+    }
+
+    return [...merged.values()].sort((a, b) => b.score - a.score).slice(0, opts.limit);
+  } catch {
+    return [];
+  }
+}
+
 export async function getNoctisKnowledgeStats() {
   const [trainStats, contStatus] = await Promise.all([
     trainingStatus(),
     Promise.resolve(getContinuousTrainingStatus()),
   ]);
+  let verbatimPdfChunks = 0;
+  let deterministicRulesInSql = 0;
+  try {
+    const { getSql } = await import("@/lib/db");
+    const sql = await getSql();
+    const [pdfCnt, ruleCnt] = await Promise.all([
+      sql<{ cnt: number }>`select count(*)::int as cnt from rmf_pdf_chunks`.catch(() => [{ cnt: 0 }]),
+      sql<{ cnt: number }>`select count(*)::int as cnt from rmf_deterministic_rules`.catch(() => [{ cnt: 0 }]),
+    ]);
+    verbatimPdfChunks = pdfCnt[0]?.cnt ?? 0;
+    deterministicRulesInSql = ruleCnt[0]?.cnt ?? 0;
+  } catch {
+    /* non-fatal fallback in unit test mode */
+  }
   const curriculumStats = getOpenCurriculumStats();
   const rmfManifest = getRmfDbManifest();
   const latestEpoch = contStatus.history[0];
@@ -204,6 +320,8 @@ export async function getNoctisKnowledgeStats() {
       cui800171Requirements: rmfManifest.counts.cui800171Requirements ?? 130,
       csf2Items: rmfManifest.counts.csf2Items ?? 225,
       mitreAttackEdges: rmfManifest.counts.mitreAttackEdges ?? 5314,
+      verbatimPdfChunks,
+      deterministicRulesInSql,
     },
     totalTracks: curriculumStats.trackCount,
     totalSubtopics: curriculumStats.totalSubtopics,
@@ -236,7 +354,7 @@ export async function retrieveNoctisKnowledge(
   const domainBreakdown = latestEpoch?.domainBreakdown || [];
   const curriculumStats = getOpenCurriculumStats();
 
-  const [dbHits, trainStats] = await Promise.all([
+  const [dbHits, trainStats, pdfChunkHits] = await Promise.all([
     sourceFilter === "all" || sourceFilter === "db"
       ? searchTrainingPairsInDb(normalizedQuery || query, {
           domain: opts.domain,
@@ -244,6 +362,13 @@ export async function retrieveNoctisKnowledge(
         })
       : Promise.resolve([] as KnowledgeRecord[]),
     trainingStatus(),
+    sourceFilter === "all" || sourceFilter === "rmf"
+      ? searchRmfPdfChunksInDb(normalizedQuery || query, {
+          domain: opts.domain,
+          limit: Math.min(8, limit),
+          forceInclude: sourceFilter === "rmf",
+        })
+      : Promise.resolve([] as KnowledgeRecord[]),
   ]);
 
   const curriculumHits =
@@ -274,10 +399,11 @@ export async function retrieveNoctisKnowledge(
   const directoryRequested = isTrackDirectoryRequested(query) && !opts.track && sourceFilter !== "rmf";
   const fused = directoryRequested
     ? []
-    : fuseRankedResults([rmfHits, dbHits, curriculumHits, domainHits], limit);
+    : fuseRankedResults([rmfHits, pdfChunkHits, dbHits, curriculumHits, domainHits], limit);
 
   const sourcesUsed: string[] = [];
   if (rmfHits.length > 0) sourcesUsed.push("nist_sp_rmf_db");
+  if (pdfChunkHits.length > 0) sourcesUsed.push("nist_pdf_chunks");
   if (dbHits.length > 0) sourcesUsed.push(trainStats.dbConnected ? "neon_postgres" : "seed_corpus");
   if (curriculumHits.length > 0 || directoryRequested) sourcesUsed.push("open_curriculum_40_tracks");
   if (domainHits.length > 0) sourcesUsed.push("continuous_200_domains");

@@ -45,9 +45,10 @@ export interface NistSpPublication {
   title: string;
   version: string;
   releaseDate: string;
-  issuer: "NIST";
+  issuer: "NIST" | "CNSS";
   category: string;
   officialUrl: string;
+  pdfUrl?: string;
   rmfSteps: number[];
   summary: string;
   keyConcepts: string[];
@@ -998,6 +999,75 @@ export const NIST_SP_800_60_INFO_TYPES: readonly Sp80060InfoType[] = [
     highWatermark: "MODERATE",
     tailoringNotes: "Large-scale SSN/biometric/credential PII pools escalate Confidentiality to HIGH per OMB M-17-12 and SP 800-122.",
   },
+  // Expanded 68 Official NIST SP 800-60 Vol. 2 Rev. 1 Information Types (Total = 100)
+  { code: "C.2.1.2", category: "Management & Support", name: "Facilities, Fleet & Equipment Management", confidentiality: "LOW", integrity: "LOW", availability: "LOW", highWatermark: "LOW", tailoringNotes: "Elevate to MODERATE when physical access/SCIF blueprints or fleet GPS tracking are stored." },
+  { code: "C.2.1.3", category: "Management & Support", name: "Help Desk & IT Support Services", confidentiality: "LOW", integrity: "LOW", availability: "LOW", highWatermark: "LOW", tailoringNotes: "Elevate if ticketing captures credentials, PII, or vulnerability exploitation steps." },
+  { code: "C.2.1.4", category: "Management & Support", name: "Security & Physical Badging Management", confidentiality: "MODERATE", integrity: "MODERATE", availability: "LOW", highWatermark: "MODERATE", tailoringNotes: "HSPD-12 / PIV enrollment databases carry PII and physical security implications." },
+  { code: "C.2.1.5", category: "Management & Support", name: "Travel & Relocation Management", confidentiality: "LOW", integrity: "LOW", availability: "LOW", highWatermark: "LOW", tailoringNotes: "Contains government charge card, itinerary, and traveler PII." },
+  { code: "C.2.2.3", category: "Management & Support", name: "Funds Control & Grants Accounting", confidentiality: "LOW", integrity: "MODERATE", availability: "LOW", highWatermark: "MODERATE", tailoringNotes: "Financial disbursement ledgers require strong audit and separation-of-duties controls." },
+  { code: "C.2.2.4", category: "Management & Support", name: "Internal Controls & Financial Audit Compliance (OMB A-123 / FFMIA)", confidentiality: "LOW", integrity: "MODERATE", availability: "LOW", highWatermark: "MODERATE", tailoringNotes: "Protects integrity of audit trails and material-weakness attestations." },
+  { code: "C.2.2.5", category: "Management & Support", name: "Cost Accounting & Asset Valuation", confidentiality: "LOW", integrity: "MODERATE", availability: "LOW", highWatermark: "MODERATE", tailoringNotes: "Standard Moderate Integrity for federal general ledger compliance." },
+  { code: "C.2.2.6", category: "Management & Support", name: "Payments & Collections Processing", confidentiality: "MODERATE", integrity: "MODERATE", availability: "LOW", highWatermark: "MODERATE", tailoringNotes: "ACH/Fedwire disbursement interfaces commonly elevate Integrity/Availability to HIGH." },
+  { code: "C.2.3.2", category: "Management & Support", name: "Staff Acquisition & Background Suitability", confidentiality: "MODERATE", integrity: "MODERATE", availability: "LOW", highWatermark: "MODERATE", tailoringNotes: "SF-85/SF-86 clearance & suitability packets carry sensitive PII (CUI/Privacy Act)." },
+  { code: "C.2.3.3", category: "Management & Support", name: "Compensation, Payroll & Benefits Administration", confidentiality: "MODERATE", integrity: "MODERATE", availability: "MODERATE", highWatermark: "MODERATE", tailoringNotes: "Biweekly payroll continuity and tax withholding require balanced MODERATE C/I/A." },
+  { code: "C.2.3.4", category: "Management & Support", name: "Employee Performance, Labor & EEO Relations", confidentiality: "MODERATE", integrity: "MODERATE", availability: "LOW", highWatermark: "MODERATE", tailoringNotes: "Disciplinary and EEO case files mandate strict RBAC and Privacy baseline enforcement." },
+  { code: "C.2.3.5", category: "Management & Support", name: "Training & Workforce Readiness (AT Family)", confidentiality: "LOW", integrity: "LOW", availability: "LOW", highWatermark: "LOW", tailoringNotes: "Supports RMF role-based training verification (SP 800-50r1)." },
+  { code: "C.2.4.2", category: "Management & Support", name: "Goods & Services Contract Administration", confidentiality: "MODERATE", integrity: "MODERATE", availability: "LOW", highWatermark: "MODERATE", tailoringNotes: "Protects contractor pricing, CPARS ratings, and modifications." },
+  { code: "C.2.5.2", category: "Management & Support", name: "Legislative & Congressional Relations", confidentiality: "LOW", integrity: "LOW", availability: "LOW", highWatermark: "LOW", tailoringNotes: "Pre-decisional testimony/oversight briefs elevate Confidentiality to MODERATE." },
+  { code: "C.2.6.2", category: "Management & Support", name: "Enterprise Architecture & Standards Governance", confidentiality: "LOW", integrity: "LOW", availability: "LOW", highWatermark: "LOW", tailoringNotes: "Elevate Confidentiality if detailed network enclave/SCCA diagrams are stored." },
+  { code: "C.2.6.3", category: "Management & Support", name: "IT Capital Planning & Investment Control (CPIC)", confidentiality: "LOW", integrity: "LOW", availability: "LOW", highWatermark: "LOW", tailoringNotes: "Source-selection budget data elevates Confidentiality to MODERATE." },
+  { code: "C.2.7.1", category: "Management & Support", name: "Knowledge & Records Management (NARA / FOIA)", confidentiality: "LOW", integrity: "MODERATE", availability: "LOW", highWatermark: "MODERATE", tailoringNotes: "Long-term federal records preservation requires immutability and retention compliance." },
+  { code: "C.2.7.2", category: "Management & Support", name: "Freedom of Information Act (FOIA) & Privacy Act Requests", confidentiality: "MODERATE", integrity: "MODERATE", availability: "LOW", highWatermark: "MODERATE", tailoringNotes: "Unredacted responsive packages often contain PII, LE, or proprietary B4 exemptions." },
+  { code: "C.2.8.2", category: "Management & Support", name: "Configuration Management & Change Control", confidentiality: "LOW", integrity: "MODERATE", availability: "LOW", highWatermark: "MODERATE", tailoringNotes: "CM-2/CM-3/CM-6 baseline configs protect system integrity." },
+  { code: "C.2.8.4", category: "Management & Support", name: "Certification, Accreditation & RMF Authorization Packages", confidentiality: "MODERATE", integrity: "MODERATE", availability: "LOW", highWatermark: "MODERATE", tailoringNotes: "SSPs, SARs, and POA&Ms detail exploitable weaknesses; protect at MODERATE+ (CUI Security)." },
+  { code: "C.2.8.5", category: "Management & Support", name: "Asset & Software License Inventory Management", confidentiality: "LOW", integrity: "LOW", availability: "LOW", highWatermark: "LOW", tailoringNotes: "Foundational to RMF Task P-10 and CM-8; elevate to match managed enclave." },
+  { code: "C.2.8.6", category: "Management & Support", name: "Enterprise Network & Telecommunications Transport", confidentiality: "LOW", integrity: "MODERATE", availability: "MODERATE", highWatermark: "MODERATE", tailoringNotes: "Core routing/DNSSEC/BGP/TLS backbone requires MODERATE/HIGH Integrity and Availability." },
+  { code: "C.2.8.7", category: "Management & Support", name: "Cloud Infrastructure & Virtualization Control Plane", confidentiality: "MODERATE", integrity: "MODERATE", availability: "MODERATE", highWatermark: "MODERATE", tailoringNotes: "Hypervisor, IAM, and KMS control planes inherit the high-watermark of hosted tenant workloads." },
+  { code: "C.2.8.8", category: "Management & Support", name: "Database Management & Data Warehouse Operations", confidentiality: "LOW", integrity: "MODERATE", availability: "LOW", highWatermark: "MODERATE", tailoringNotes: "Inherits high-watermark of stored mission/PII tables." },
+  { code: "C.2.8.9", category: "Management & Support", name: "Software Vulnerability & Patch Management", confidentiality: "MODERATE", integrity: "MODERATE", availability: "LOW", highWatermark: "MODERATE", tailoringNotes: "Unpatched CVE/KEV scan findings are sensitive operational CUI until remediated." },
+  { code: "C.2.8.10", category: "Management & Support", name: "Incident Response & Computer Forensics Evidence", confidentiality: "MODERATE", integrity: "HIGH", availability: "MODERATE", highWatermark: "HIGH", tailoringNotes: "Disk images, memory captures, and IR case timelines require HIGH Integrity for chain-of-custody." },
+  { code: "C.2.8.11", category: "Management & Support", name: "Privacy Compliance, PTA/PIA & Breach Reporting", confidentiality: "MODERATE", integrity: "MODERATE", availability: "LOW", highWatermark: "MODERATE", tailoringNotes: "Triggers SP 800-53 PT family and Privacy Baseline." },
+  { code: "C.3.2.1", category: "Management & Support", name: "Strategic Planning & Organizational Governance", confidentiality: "LOW", integrity: "LOW", availability: "LOW", highWatermark: "LOW", tailoringNotes: "Supports RMF Tier 1 governance alignment." },
+  { code: "C.3.3.1", category: "Management & Support", name: "Enterprise Risk & Inspector General Audit Response", confidentiality: "MODERATE", integrity: "MODERATE", availability: "LOW", highWatermark: "MODERATE", tailoringNotes: "FISMA IG audit findings require CUI/MODERATE Confidentiality." },
+  { code: "C.3.4.1", category: "Management & Support", name: "Legal Counsel & Regulatory Enforcement Case Support", confidentiality: "MODERATE", integrity: "MODERATE", availability: "LOW", highWatermark: "MODERATE", tailoringNotes: "Attorney-client privileged & litigation-hold materials require MODERATE Confidentiality/Integrity." },
+  { code: "D.1.3", category: "Mission-Based", name: "Tactical Command, Control, Communications & Computers (C4ISR)", confidentiality: "HIGH", integrity: "HIGH", availability: "HIGH", highWatermark: "HIGH", tailoringNotes: "Real-time battlefield C4ISR requires HIGH C/I/A under CNSSI 1253 / DoD IL5-IL6." },
+  { code: "D.1.4", category: "Mission-Based", name: "Space Operations, Telemetry & Satellite Ground Control", confidentiality: "HIGH", integrity: "HIGH", availability: "HIGH", highWatermark: "HIGH", tailoringNotes: "TT&C links and space-vehicle command authentication mandate HIGH Integrity & CNSSI 1253." },
+  { code: "D.1.5", category: "Mission-Based", name: "Weapon Systems & Defense Industrial Logistics Sustainment", confidentiality: "HIGH", integrity: "HIGH", availability: "MODERATE", highWatermark: "HIGH", tailoringNotes: "Covered Defense Information (CDI) triggers DFARS 252.204-7012 / SP 800-171 / SP 800-172." },
+  { code: "D.2.2", category: "Mission-Based", name: "Consular Services, Visa Adjudication & Passport Records", confidentiality: "MODERATE", integrity: "HIGH", availability: "MODERATE", highWatermark: "HIGH", tailoringNotes: "Biometric/watchlisting integrity is HIGH; PII sensitivity is MODERATE+." },
+  { code: "D.3.2", category: "Mission-Based", name: "Border & Transportation Security Screening", confidentiality: "MODERATE", integrity: "HIGH", availability: "HIGH", highWatermark: "HIGH", tailoringNotes: "Passenger/cargo vetting requires 24x7 HIGH Availability and tampering protection." },
+  { code: "D.3.3", category: "Mission-Based", name: "Key Asset & Critical Infrastructure Sector Risk Models", confidentiality: "MODERATE", integrity: "HIGH", availability: "MODERATE", highWatermark: "HIGH", tailoringNotes: "Protected Critical Infrastructure Information (PCII) triggers statutory confidentiality safeguards." },
+  { code: "D.4.2", category: "Mission-Based", name: "Geospatial Intelligence (GEOINT) & Overhead Imagery", confidentiality: "HIGH", integrity: "HIGH", availability: "MODERATE", highWatermark: "HIGH", tailoringNotes: "ICD 503 classified boundary controls & cross-domain solution (CDS) guards apply." },
+  { code: "D.4.3", category: "Mission-Based", name: "Signals & Cyber Threat Counterintelligence Operations", confidentiality: "HIGH", integrity: "HIGH", availability: "HIGH", highWatermark: "HIGH", tailoringNotes: "Highest CNSSI 1253 overlays and hardware-isolated enclaves required." },
+  { code: "D.5.2", category: "Mission-Based", name: "Disaster Relief Grants & Victim Recovery Case Management", confidentiality: "MODERATE", integrity: "MODERATE", availability: "MODERATE", highWatermark: "MODERATE", tailoringNotes: "Elevate Availability to HIGH during active Presidential disaster declarations." },
+  { code: "D.6.2", category: "Mission-Based", name: "Corrections, Supervision & Prisoner Custody Management", confidentiality: "MODERATE", integrity: "HIGH", availability: "MODERATE", highWatermark: "HIGH", tailoringNotes: "Release calculation integrity directly impacts public safety." },
+  { code: "D.6.3", category: "Mission-Based", name: "Crime Prevention & Biometric Identification (AFIS/CODIS)", confidentiality: "MODERATE", integrity: "HIGH", availability: "MODERATE", highWatermark: "HIGH", tailoringNotes: "CJIS Security Policy overlays apply alongside NIST SP 800-53 High integrity controls." },
+  { code: "D.7.2", category: "Mission-Based", name: "Administrative Adjudication & Benefits Appeals", confidentiality: "LOW", integrity: "MODERATE", availability: "LOW", highWatermark: "MODERATE", tailoringNotes: "Elevate Confidentiality if asylum, medical, or whistleblower filings are processed." },
+  { code: "D.8.1", category: "Mission-Based", name: "Economic & Workforce Development / SBA Lending", confidentiality: "MODERATE", integrity: "MODERATE", availability: "LOW", highWatermark: "MODERATE", tailoringNotes: "Proprietary business financials and applicant SSN/EIN require MODERATE C/I." },
+  { code: "D.9.1", category: "Mission-Based", name: "Higher Education & Federal Student Financial Aid", confidentiality: "MODERATE", integrity: "MODERATE", availability: "MODERATE", highWatermark: "MODERATE", tailoringNotes: "FTI & FERPA PII triggers NIST SP 800-171 / GLBA Safeguards alignment." },
+  { code: "D.10.2", category: "Mission-Based", name: "Energy Supply, Strategic Petroleum & Pipeline Control (OT)", confidentiality: "MODERATE", integrity: "HIGH", availability: "HIGH", highWatermark: "HIGH", tailoringNotes: "Apply NIST SP 800-82 Rev. 3 OT/ICS overlay for SCADA/PLC boundaries." },
+  { code: "D.11.2", category: "Mission-Based", name: "Pollution Remediation & Superfund Hazardous Materials", confidentiality: "LOW", integrity: "MODERATE", availability: "LOW", highWatermark: "MODERATE", tailoringNotes: "Contaminant lab metrics require Integrity protection against enforcement tampering." },
+  { code: "D.12.1", category: "Mission-Based", name: "Natural Resources, Water Systems & Dam Hydro-Telemetry", confidentiality: "LOW", integrity: "HIGH", availability: "HIGH", highWatermark: "HIGH", tailoringNotes: "Dam/reservoir SCADA actuators require HIGH I/A safety interlocks." },
+  { code: "D.13.1", category: "Mission-Based", name: "Agriculture, Food Supply & Veterinary Biosecurity", confidentiality: "LOW", integrity: "MODERATE", availability: "MODERATE", highWatermark: "MODERATE", tailoringNotes: "Select-agent pathogen registries elevate Confidentiality/Integrity to HIGH." },
+  { code: "D.14.2", category: "Mission-Based", name: "Federal Tax Information (FTI) & IRS Pub 1075 Datasets", confidentiality: "MODERATE", integrity: "HIGH", availability: "MODERATE", highWatermark: "HIGH", tailoringNotes: "Statutory IRC 6103 protections mandate FIPS 140-3 encryption and strict audit." },
+  { code: "D.15.2", category: "Mission-Based", name: "Financial Institutions & Capital Markets Supervision (SEC/FDIC/Fed)", confidentiality: "MODERATE", integrity: "HIGH", availability: "MODERATE", highWatermark: "HIGH", tailoringNotes: "Nonpublic bank examination findings carry extreme market-moving sensitivity." },
+  { code: "D.16.1", category: "Mission-Based", name: "General Science, National Labs & Supercomputing HPC", confidentiality: "LOW", integrity: "MODERATE", availability: "MODERATE", highWatermark: "MODERATE", tailoringNotes: "Applied dual-use fusion/quantum experiments escalate to HIGH Confidentiality." },
+  { code: "D.17.1", category: "Mission-Based", name: "Community Housing & Mortgage Insurance Underwriting", confidentiality: "MODERATE", integrity: "MODERATE", availability: "LOW", highWatermark: "MODERATE", tailoringNotes: "Applicant PII/credit records require Privacy baseline controls." },
+  { code: "D.18.3", category: "Mission-Based", name: "Medical Devices, SaMD & Connected ICU Telemetry", confidentiality: "MODERATE", integrity: "HIGH", availability: "HIGH", highWatermark: "HIGH", tailoringNotes: "Patient safety life-critical infusion/ventilator telemetry requires HIGH Integrity/Availability." },
+  { code: "D.18.4", category: "Mission-Based", name: "Public Health Immunization & Prescription Monitoring (PDMP)", confidentiality: "MODERATE", integrity: "HIGH", availability: "MODERATE", highWatermark: "HIGH", tailoringNotes: "Clinical dosing/immunization history tampering risks patient harm." },
+  { code: "D.19.2", category: "Mission-Based", name: "Veterans Disability Claims, Pensions & Compensation", confidentiality: "MODERATE", integrity: "HIGH", availability: "MODERATE", highWatermark: "HIGH", tailoringNotes: "Combines sensitive military service/PHI records with financial benefit accuracy." },
+  { code: "D.20.1", category: "Mission-Based", name: "Workforce Safety, OSHA Inspections & Unemployment Insurance", confidentiality: "MODERATE", integrity: "MODERATE", availability: "LOW", highWatermark: "MODERATE", tailoringNotes: "Employer PII & fraud prevention controls apply." },
+  { code: "D.21.2", category: "Mission-Based", name: "Air Traffic Control (NAS) & Maritime Navigation Safety", confidentiality: "LOW", integrity: "HIGH", availability: "HIGH", highWatermark: "HIGH", tailoringNotes: "Safety-critical real-time operational technology mandates zero-downtime redundancy." },
+  { code: "D.22.1", category: "Mission-Based", name: "Postal, Customs & Cross-Border Trade Manifests", confidentiality: "LOW", integrity: "MODERATE", availability: "MODERATE", highWatermark: "MODERATE", tailoringNotes: "Trade secrets & manifest screening elevate Confidentiality to MODERATE." },
+  { code: "D.24.1", category: "Mission-Based", name: "Federal Elections Assistance & Voter Registration Rolls", confidentiality: "LOW", integrity: "HIGH", availability: "HIGH", highWatermark: "HIGH", tailoringNotes: "Designated Critical Infrastructure requiring HIGH Integrity and Availability." },
+  { code: "D.25.1", category: "Mission-Based", name: "Federal Statistics, Census Decennial & Economic Releases", confidentiality: "HIGH", integrity: "HIGH", availability: "LOW", highWatermark: "HIGH", tailoringNotes: "Title 13 statutory confidentiality prohibits re-identification; pre-release indicators carry market sensitivity." },
+  { code: "D.26.2", category: "Mission-Based", name: "Federal PKI Root CA & Hardware Signing Infrastructure", confidentiality: "HIGH", integrity: "HIGH", availability: "HIGH", highWatermark: "HIGH", tailoringNotes: "Requires FIPS 140-3 Level 3/4 HSMs, dual-person integrity, and SP 800-53 High baseline." },
+  { code: "D.26.3", category: "Mission-Based", name: "Zero Trust Policy Engine & Identity Federation Plane", confidentiality: "HIGH", integrity: "HIGH", availability: "HIGH", highWatermark: "HIGH", tailoringNotes: "Core SP 800-207 / SP 800-63-4 AAL3/FAL3 control plane warrants HIGH protection." },
+  { code: "D.27.2", category: "Mission-Based", name: "Controlled Technical Information (CTI) & Defense Blueprints", confidentiality: "HIGH", integrity: "HIGH", availability: "MODERATE", highWatermark: "HIGH", tailoringNotes: "Triggers DFARS 252.204-7012, SP 800-171 Rev. 3, and SP 800-172 APT enhancements." },
+  { code: "D.28.2", category: "Mission-Based", name: "Biometric Identity Repositories (Facial / Fingerprint / Iris)", confidentiality: "HIGH", integrity: "HIGH", availability: "MODERATE", highWatermark: "HIGH", tailoringNotes: "Immutable biometrics cannot be rotated if leaked; always classify Confidentiality HIGH." },
+  { code: "D.29.1", category: "Mission-Based", name: "Generative AI / Foundation Model Weights & Clinical Decision Models", confidentiality: "MODERATE", integrity: "HIGH", availability: "MODERATE", highWatermark: "HIGH", tailoringNotes: "Follow NIST AI 100-1 / AI 600-1 against data poisoning, prompt injection, and weight exfiltration." },
+  { code: "D.29.2", category: "Mission-Based", name: "Safety-Critical Autonomous Robotics & Cyber-Physical Actuators", confidentiality: "MODERATE", integrity: "HIGH", availability: "HIGH", highWatermark: "HIGH", tailoringNotes: "Command/sensor tampering risks physical injury or fatality; integrate SP 800-160 Vol. 2." },
+  { code: "D.30.1", category: "Mission-Based", name: "Quantum-Vulnerable Long-Lived Classified/Medical Archives (HNDL)", confidentiality: "HIGH", integrity: "HIGH", availability: "LOW", highWatermark: "HIGH", tailoringNotes: "Harvest-Now-Decrypt-Later threats mandate FIPS 203/204/205 PQC migration immediately." },
+  { code: "D.30.2", category: "Mission-Based", name: "Public Open-Data Catalogs & Unclassified Static Releases", confidentiality: "LOW", integrity: "LOW", availability: "LOW", highWatermark: "LOW", tailoringNotes: "Non-sensitive open data still requires basic Integrity (defacement) and Availability protections." },
 ];
 
 /**
@@ -1013,6 +1083,7 @@ export const NIST_SP_PUBLICATIONS: readonly NistSpPublication[] = [
     issuer: "NIST",
     category: "Categorization Standard",
     officialUrl: "https://csrc.nist.gov/pubs/fips/199/final",
+    pdfUrl: "https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.199.pdf",
     rmfSteps: [0, 1],
     summary: "Establishes mandatory LOW, MODERATE, and HIGH impact definitions across Confidentiality, Integrity, and Availability using the high-watermark rule.",
     keyConcepts: ["Security Objectives (C/I/A)", "Potential Impact (Limited/Serious/Severe)", "High-Watermark Principle", "Security Categorization Formula SC = {(C, impact), (I, impact), (A, impact)}"],
@@ -1043,6 +1114,7 @@ export const NIST_SP_PUBLICATIONS: readonly NistSpPublication[] = [
     issuer: "NIST",
     category: "Minimum Security Standard",
     officialUrl: "https://csrc.nist.gov/pubs/fips/200/final",
+    pdfUrl: "https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.200.pdf",
     rmfSteps: [1, 2],
     summary: "Mandates minimum security requirements across 17 security-related areas (now 20 families in SP 800-53 Rev. 5) and binds FIPS 199 categories to SP 800-53/800-53B baselines.",
     keyConcepts: ["Minimum Security Requirements", "17 Core Security Areas", "Mandatory Baseline Selection"],
@@ -1067,6 +1139,7 @@ export const NIST_SP_PUBLICATIONS: readonly NistSpPublication[] = [
     issuer: "NIST",
     category: "Authorization Package Guide",
     officialUrl: "https://csrc.nist.gov/pubs/sp/800/18/r1/final",
+    pdfUrl: "https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-18r1.pdf",
     rmfSteps: [0, 1, 2, 3, 5, 6],
     summary: "Defines the required structure, content, boundary diagrams, and control implementation documentation for a System Security Plan (SSP).",
     keyConcepts: ["Authorization Boundary", "System Interconnections (ISA/MOU)", "Control Implementation Statements (Responsible Role / Implementation Status / How Implemented)", "Common Control Inheritance"],
@@ -1091,6 +1164,7 @@ export const NIST_SP_PUBLICATIONS: readonly NistSpPublication[] = [
     issuer: "NIST",
     category: "Risk Assessment Methodology",
     officialUrl: "https://csrc.nist.gov/pubs/sp/800/30/r1/final",
+    pdfUrl: "https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-30r1.pdf",
     rmfSteps: [0, 2, 4, 5, 6],
     summary: "Provides the authoritative 4-step Risk Assessment process (Prepare, Conduct, Communicate, Maintain) and qualitative/semi-quantitative threat-event likelihood x impact scoring.",
     keyConcepts: ["Threat Source & Capability/Intent/Targeting", "Threat Event vs. Vulnerability/Predisposing Condition", "Likelihood of Initiation x Likelihood of Adverse Impact", "Level of Risk Matrix (Very Low to Very High)", "Tiers 1, 2, 3 Risk Framing"],
@@ -1121,6 +1195,7 @@ export const NIST_SP_PUBLICATIONS: readonly NistSpPublication[] = [
     issuer: "NIST",
     category: "Contingency & Resilience",
     officialUrl: "https://csrc.nist.gov/pubs/sp/800/34/r1/final",
+    pdfUrl: "https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-34r1.pdf",
     rmfSteps: [0, 2, 3, 4, 6],
     summary: "Establishes the 7-step contingency planning process, Business Impact Analysis (BIA), and quantitative RTO, RPO, and MTD recovery objectives aligned to the CP control family.",
     keyConcepts: ["Business Impact Analysis (BIA)", "Maximum Tolerable Downtime (MTD)", "Recovery Time Objective (RTO)", "Recovery Point Objective (RPO)", "Alternate Sites (Cold/Warm/Hot/Mirror)", "CP-2 / CP-4 / CP-9 / CP-10 Alignment"],
@@ -1145,6 +1220,7 @@ export const NIST_SP_PUBLICATIONS: readonly NistSpPublication[] = [
     issuer: "NIST",
     category: "Core RMF Lifecycle",
     officialUrl: "https://csrc.nist.gov/pubs/sp/800/37/r2/final",
+    pdfUrl: "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-37r2.pdf",
     rmfSteps: [0, 1, 2, 3, 4, 5, 6],
     summary: "Governs the end-to-end 7-step Federal Risk Management Framework (Prepare, Categorize, Select, Implement, Assess, Authorize, Monitor) with 47 tasks unifying security, privacy, and supply-chain risk.",
     keyConcepts: ["Step 0 Prepare (P-1..P-18)", "Step 1 Categorize (C-1..C-3)", "Step 2 Select (S-1..S-6)", "Step 3 Implement (I-1..I-2)", "Step 4 Assess (A-1..A-6)", "Step 5 Authorize (R-1..R-5)", "Step 6 Monitor (M-1..M-7)", "Ongoing Authorization"],
@@ -1175,6 +1251,7 @@ export const NIST_SP_PUBLICATIONS: readonly NistSpPublication[] = [
     issuer: "NIST",
     category: "Enterprise Risk Governance",
     officialUrl: "https://csrc.nist.gov/pubs/sp/800/39/final",
+    pdfUrl: "https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-39.pdf",
     rmfSteps: [0, 5, 6],
     summary: "Establishes the three-tier enterprise risk management hierarchy (Tier 1 Organization, Tier 2 Mission/Business Processes, Tier 3 Information Systems) and the 4-component risk cycle (Frame, Assess, Respond, Monitor).",
     keyConcepts: ["Tier 1 (Organization Governance)", "Tier 2 (Mission/Business Processes)", "Tier 3 (Information Systems)", "Frame / Assess / Respond / Monitor", "Trust Models (Validated, Direct Historical, Mediated, Mandated, Hybrid)"],
@@ -1247,6 +1324,7 @@ export const NIST_SP_PUBLICATIONS: readonly NistSpPublication[] = [
     issuer: "NIST",
     category: "Control Baselines",
     officialUrl: "https://csrc.nist.gov/pubs/sp/800/53/b/final",
+    pdfUrl: "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-53B.pdf",
     rmfSteps: [0, 2],
     summary: "Separates the Low (149), Moderate (287), High (370), and Privacy (96) control baselines plus official tailoring rules from the main SP 800-53 Rev. 5 catalog.",
     keyConcepts: ["Low/Moderate/High Baselines", "Privacy Control Baseline", "Scoping Considerations", "Compensating Controls", "ODP Assignment Rules"],
@@ -1271,6 +1349,7 @@ export const NIST_SP_PUBLICATIONS: readonly NistSpPublication[] = [
     issuer: "NIST",
     category: "Information-Type Categorization",
     officialUrl: "https://csrc.nist.gov/pubs/sp/800/60/v1/r1/final",
+    pdfUrl: "https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-60v1r1.pdf",
     rmfSteps: [0, 1],
     summary: "Maps 100+ federal mission-based and management/support information types to provisional FIPS 199 Confidentiality, Integrity, and Availability impact levels with tailoring rationale.",
     keyConcepts: ["Mission-Based Information Types", "Management & Support Information Types", "Provisional Impact Levels", "Context-Driven Impact Adjustment"],
@@ -1295,6 +1374,7 @@ export const NIST_SP_PUBLICATIONS: readonly NistSpPublication[] = [
     issuer: "NIST",
     category: "Incident Response & IR Family",
     officialUrl: "https://csrc.nist.gov/pubs/sp/800/61/r3/final",
+    pdfUrl: "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-61r3.pdf",
     rmfSteps: [3, 4, 6],
     summary: "Modernizes NIST incident response around the 6 NIST CSF 2.0 Functions (Govern, Identify, Protect, Detect, Respond, Recover), replacing standalone lifecycle silos with continuous ERM integration.",
     keyConcepts: ["CSF 2.0 Govern/Identify/Protect/Detect/Respond/Recover Integration", "Incident Triage & Forensic Preservation", "Eradication & Lessons Learned -> RMF M-3/M-4 Updates", "CISA/US-CERT Reporting SLAs"],
@@ -1319,6 +1399,7 @@ export const NIST_SP_PUBLICATIONS: readonly NistSpPublication[] = [
     issuer: "NIST",
     category: "Digital Identity & IA Family",
     officialUrl: "https://csrc.nist.gov/pubs/sp/800/63/4/final",
+    pdfUrl: "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-63-4.pdf",
     rmfSteps: [2, 3, 4],
     summary: "Defines Identity Assurance Levels (IAL1–3), Authentication Assurance Levels (AAL1–3), and Federation Assurance Levels (FAL1–3), phishing-resistant MFA (WebAuthn/FIDO2/PIV), and continuous evaluation.",
     keyConcepts: ["IAL1 / IAL2 / IAL3 (Identity Proofing)", "AAL1 / AAL2 / AAL3 (Phishing-Resistant Hardware Cryptographic MFA)", "FAL1 / FAL2 / FAL3 (SAML/OIDC Federation)", "Synced Passkeys vs. Device-Bound Hardware Keys (AAL3)"],
@@ -1349,6 +1430,7 @@ export const NIST_SP_PUBLICATIONS: readonly NistSpPublication[] = [
     issuer: "NIST",
     category: "Continuous Monitoring (Step 6)",
     officialUrl: "https://csrc.nist.gov/pubs/sp/800/137/final",
+    pdfUrl: "https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-137.pdf",
     rmfSteps: [0, 2, 5, 6],
     summary: "Establishes the 6-step ISCM program (Define, Establish, Implement, Analyze & Report, Respond, Review & Update) powering Ongoing Authorization and automated ConMon telemetry.",
     keyConcepts: ["6-Step ISCM Process", "Control Volatility & Threat-Driven Frequencies", "Automated Security Telemetry Feeds", "Ongoing Authorization (OA) Criteria", "Security Impact Analysis (SIA)"],
@@ -1373,6 +1455,7 @@ export const NIST_SP_PUBLICATIONS: readonly NistSpPublication[] = [
     issuer: "NIST",
     category: "Systems Security Engineering",
     officialUrl: "https://csrc.nist.gov/pubs/sp/800/160/v1/r1/final",
+    pdfUrl: "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-160v1r1.pdf",
     rmfSteps: [0, 2, 3],
     summary: "Provides ISO/IEC/IEEE 15288 systems security engineering processes (Vol. 1) and 14 cyber-resiliency techniques—anticipate, withstand, recover, adapt—against advanced persistent threats (Vol. 2).",
     keyConcepts: ["Stakeholder Protection Needs", "Loss-Driven Systems Engineering", "Anticipate / Withstand / Recover / Adapt", "14 Cyber-Resiliency Techniques (Segmentation, Diversity, Redundancy, Non-Persistence, Deception)"],
@@ -1397,6 +1480,7 @@ export const NIST_SP_PUBLICATIONS: readonly NistSpPublication[] = [
     issuer: "NIST",
     category: "CUI / Defense Industrial Base",
     officialUrl: "https://csrc.nist.gov/pubs/sp/800/171/r3/final",
+    pdfUrl: "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-171r3.pdf",
     rmfSteps: [1, 2, 3, 4],
     summary: "Establishes all CUI protection requirements (aligned to SP 800-53 Rev. 5 with ODP values and assessment procedures in 800-171A Rev. 3) for contractors, CMMC, and DFARS compliance.",
     keyConcepts: ["17 CUI Security Families (incl. SR & PL in Rev. 3)", "CUI Basic vs. CUI Specified", "SP 800-171A Assessment Procedures", "ODP Alignment & CMMC SPRS Scoring"],
@@ -1421,6 +1505,7 @@ export const NIST_SP_PUBLICATIONS: readonly NistSpPublication[] = [
     issuer: "NIST",
     category: "Enhanced CUI / CMMC Level 3",
     officialUrl: "https://csrc.nist.gov/pubs/sp/800/172/final",
+    pdfUrl: "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-172.pdf",
     rmfSteps: [2, 3, 4],
     summary: "Supplements SP 800-171 with 35 enhanced requirements across three defense-in-depth strategies—penetration-resistant architecture, damage-limiting operations, and cyber-resilient design—for High-Value Assets / CMMC Level 3.",
     keyConcepts: ["24–35 Enhanced CUI Requirements (3.x.xe)", "Penetration-Resistant Architecture", "Damage-Limiting Operations (Zero Trust/Micro-segmentation)", "APT Threat Emulation & SOC 24/7 Hunting"],
@@ -1445,6 +1530,7 @@ export const NIST_SP_PUBLICATIONS: readonly NistSpPublication[] = [
     issuer: "NIST",
     category: "Zero Trust Architecture",
     officialUrl: "https://csrc.nist.gov/pubs/sp/800/207/final",
+    pdfUrl: "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-207.pdf",
     rmfSteps: [0, 2, 3, 6],
     summary: "Defines the 7 Zero Trust tenets and the logical Control Plane / Data Plane components—Policy Engine (PE), Policy Administrator (PA), and Policy Enforcement Point (PEP)—eliminating implicit network trust.",
     keyConcepts: ["Policy Engine (PE) & Policy Administrator (PA)", "Policy Enforcement Point (PEP)", "Per-Session Dynamic Access Evaluation", "Micro-Segmentation & Software-Defined Perimeter", "Continuous Telemetry & Device Posture"],
@@ -1469,6 +1555,7 @@ export const NIST_SP_PUBLICATIONS: readonly NistSpPublication[] = [
     issuer: "NIST",
     category: "AI Risk Management",
     officialUrl: "https://csrc.nist.gov/pubs/ai/100/1/final",
+    pdfUrl: "https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.100-1.pdf",
     rmfSteps: [0, 1, 2, 3, 4, 5, 6],
     summary: "Applies risk management to AI/LLM systems through four core functions—GOVERN, MAP, MEASURE, and MANAGE—paired with 7 trustworthiness characteristics and GenAI hallucination/data-privacy mitigations.",
     keyConcepts: ["GOVERN / MAP / MEASURE / MANAGE", "7 Trustworthy AI Characteristics (Valid & Reliable, Safe, Secure & Resilient, Accountable & Transparent, Explainable, Privacy-Enhanced, Fair)", "AI 600-1 GenAI Risks (Confabulation, CBRN, Data Poisoning, Prompt Injection)"],
@@ -1481,6 +1568,306 @@ export const NIST_SP_PUBLICATIONS: readonly NistSpPublication[] = [
         heading: "GOVERN, MAP, MEASURE, MANAGE Core Functions & Trustworthiness Criteria",
         content: "AI RMF 1.0 structures AI lifecycle risk across GOVERN (culture, roles, accountability, legal mapping — runs continuously across all stages), MAP (context, intended use, stakeholder impact, system boundaries), MEASURE (quantitative TEVV benchmarks, red-teaming, bias/hallucination metrics), and MANAGE (risk prioritization, incident/drift mitigation, decommissioning).",
         citation: "NIST AI 100-1 Section 3–5",
+      },
+    ],
+  },
+  // 12 Specialized NIST SP / FIPS / CNSSI Standards (Total = 31 Publications)
+  {
+    sourceId: "SP-800-47r1",
+    docNumber: "NIST SP 800-47 Rev. 1",
+    title: "Managing the Security of Information Exchanges (ISA & MOU Interconnections)",
+    version: "Rev. 1 (July 2021)",
+    releaseDate: "2021-07-12",
+    issuer: "NIST",
+    category: "System Interconnections",
+    officialUrl: "https://csrc.nist.gov/pubs/sp/800/47/r1/final",
+    pdfUrl: "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-47r1.pdf",
+    rmfSteps: [0, 2, 3, 5, 6],
+    summary: "Governs planning, establishing, maintaining, and disconnecting inter-system connections via Interconnection Security Agreements (ISAs), MOUs, and CA-3 compliance.",
+    keyConcepts: ["Interconnection Security Agreement (ISA)", "Memorandum of Understanding (MOU)", "CA-3 System Interconnections", "Data-Exchange Categorization Parity"],
+    deliverables: ["Signed ISA & MOU", "Updated Boundary Interconnection Register (Task P-11)"],
+    invariants: ["Cross-boundary interconnections MUST be covered by an active, AO-reviewed ISA/MOU defining technical controls, data sensitivity, and termination authority."],
+    crossReferences: ["NIST SP 800-53 (CA-3)", "NIST SP 800-37 Rev. 2 (Task P-11)"],
+    sections: [
+      {
+        id: "SP-800-47-ISA",
+        heading: "Lifecycle of System Interconnections (Plan, Establish, Maintain, Disconnect)",
+        content: "SP 800-47 Rev. 1 requires joint risk review, matching or compensating boundary controls (SC-7), formal ISA/MOU execution signed by both AOs, continuous telemetry review, and orderly key/route revocation upon disconnect.",
+        citation: "NIST SP 800-47 Rev. 1 Section 2–3",
+      },
+    ],
+  },
+  {
+    sourceId: "SP-800-50r1",
+    docNumber: "NIST SP 800-50 Rev. 1",
+    title: "Building a Cybersecurity and Privacy Learning Program (AT Family)",
+    version: "Rev. 1 (September 2024)",
+    releaseDate: "2024-09-25",
+    issuer: "NIST",
+    category: "Awareness & Role-Based Training",
+    officialUrl: "https://csrc.nist.gov/pubs/sp/800/50/r1/final",
+    pdfUrl: "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-50r1.pdf",
+    rmfSteps: [0, 3, 4],
+    summary: "Defines organizational awareness, role-based security/privacy training (ISSO, AO, developer, privileged admin), and measurable behavioral effectiveness metrics aligned to AT-2 & AT-3.",
+    keyConcepts: ["Enterprise Learning Program Design", "Role-Based Training (AT-3)", "Phishing Simulation & Awareness Metrics (AT-2)", "NICE Workforce Framework Mapping"],
+    deliverables: ["Cybersecurity & Privacy Learning Strategy", "Annual Role-Based Training Completion Ledger"],
+    invariants: ["Privileged and security-significant roles MUST complete role-based training before gaining elevated access and recertify annually (AT-2 / AT-3)."],
+    crossReferences: ["NIST SP 800-53 (AT-2, AT-3)", "NICE Framework (SP 800-181)"],
+    sections: [
+      {
+        id: "SP-800-50-PROGRAM",
+        heading: "Designing, Developing, Implementing, and Maintaining Learning Programs",
+        content: "SP 800-50 Rev. 1 modernizes learning governance into four continuous stages tying baseline awareness, specialized privacy/engineering training, phishing/tabletop drills, and post-training metrics directly to FISMA and RMF objectives.",
+        citation: "NIST SP 800-50 Rev. 1 Chapter 2–4",
+      },
+    ],
+  },
+  {
+    sourceId: "SP-800-82r3",
+    docNumber: "NIST SP 800-82 Rev. 3",
+    title: "Guide to Operational Technology (OT) Security (ICS / SCADA / PLC)",
+    version: "Rev. 3 (September 2023)",
+    releaseDate: "2023-09-28",
+    issuer: "NIST",
+    category: "Operational Technology / ICS Overlay",
+    officialUrl: "https://csrc.nist.gov/pubs/sp/800/82/r3/final",
+    pdfUrl: "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-82r3.pdf",
+    rmfSteps: [0, 1, 2, 3, 6],
+    summary: "Provides architecture segmentation (Purdue Model / DMZ), safety-first risk assessment, and tailored SP 800-53 Rev. 5 overlays for SCADA, DCS, PLC, and Industrial Control Systems.",
+    keyConcepts: ["Purdue Model Zones & Conduits", "OT vs. IT Availability/Safety Priority", "Unidirectional Security Gateways (Data Diodes)", "OT Control Overlay (Appendix F)"],
+    deliverables: ["OT/IT DMZ Architecture Diagram", "OT Tailored Control Overlay"],
+    invariants: ["NEVER allow direct IT-to-Level-1/0 PLC network routing or invasive active vulnerability scans against live safety-critical OT controllers without offline/maintenance-window verification."],
+    crossReferences: ["NIST SP 800-53 Rev. 5", "IEC 62443", "FIPS 199 Availability/Integrity"],
+    sections: [
+      {
+        id: "SP-800-82-ZONES",
+        heading: "Purdue Reference Architecture & OT/IT DMZ Segmentation",
+        content: "SP 800-82 Rev. 3 isolates Level 0–2 physical process/PLC/HMI control zones behind Level 3–3.5 DMZ jump hosts, historian mirrors, or unidirectional gateways so corporate IT breaches cannot propagate to physical actuators.",
+        citation: "NIST SP 800-82 Rev. 3 Chapter 5 & Appendix F",
+      },
+    ],
+  },
+  {
+    sourceId: "SP-800-88r1",
+    docNumber: "NIST SP 800-88 Rev. 1",
+    title: "Guidelines for Media Sanitization (Clear, Purge, Destroy)",
+    version: "Rev. 1 (December 2014)",
+    releaseDate: "2014-12-17",
+    issuer: "NIST",
+    category: "Media Sanitization & Disposal (MP-6 / M-7)",
+    officialUrl: "https://csrc.nist.gov/pubs/sp/800/88/r1/final",
+    pdfUrl: "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-88r1.pdf",
+    rmfSteps: [3, 4, 6],
+    summary: "Defines authoritative sanitization categories—Clear, Purge (including Cryptographic Erase), and Destroy—and verification certificates across SSD/NVMe flash, HDD, RAM, optical, and paper media.",
+    keyConcepts: ["Clear (Logical Overwrite)", "Purge (Laboratory Recovery Resistant / ATA Secure Erase / Cryptographic Erase)", "Destroy (Shred, Disintegrate, Pulverize, Incinerate, Degauss)", "Certificate of Media Sanitization"],
+    deliverables: ["Signed Certificate of Media Disposition (Appendix G)", "MP-6 Chain-of-Custody Log"],
+    invariants: ["Standard logical file deletion or simple block overwrites CANNOT Purge wear-leveled SSD/NVMe flash; use vendor Cryptographic Erase / ATA-NVMe Sanitize Purge or physical Destroy matching FIPS 199 categorization."],
+    crossReferences: ["NIST SP 800-53 (MP-6)", "NIST SP 800-37 Rev. 2 (Task M-7)"],
+    sections: [
+      {
+        id: "SP-800-88-CATEGORIES",
+        heading: "Clear vs. Purge vs. Destroy Selection Decision Flow",
+        content: "Clear applies logical techniques against simple non-invasive keyboard recovery. Purge applies physical or cryptographic techniques (e.g., Cryptographic Erase with sanitized keys, NVMe Format/Sanitize) making laboratory recovery infeasible when media leaves organizational control. Destroy physically renders media unusable (disintegrate, shred <=2mm for classified, incinerate, degauss magnetic platters) and is MANDATORY for damaged media unable to verify Purge.",
+        citation: "NIST SP 800-88 Rev. 1 Section 2 & Appendix A",
+      },
+    ],
+  },
+  {
+    sourceId: "SP-800-115",
+    docNumber: "NIST SP 800-115",
+    title: "Technical Guide to Information Security Testing and Assessment",
+    version: "September 2008",
+    releaseDate: "2008-09-30",
+    issuer: "NIST",
+    category: "Technical Assessment & Pen Testing",
+    officialUrl: "https://csrc.nist.gov/pubs/sp/800/115/final",
+    pdfUrl: "https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-115.pdf",
+    rmfSteps: [4, 6],
+    summary: "Establishes execution methodology for technical security assessments: log/rule review, network/vulnerability discovery, and the 4-phase Penetration Testing lifecycle (Planning, Discovery, Attack, Reporting).",
+    keyConcepts: ["4-Phase Penetration Test (Planning, Discovery, Attack, Reporting)", "Rules of Engagement (RoE)", "CA-8 Penetration Testing", "RA-5 Scanning & Credentialed Verification"],
+    deliverables: ["Rules of Engagement (RoE)", "3PAO / Red-Team Penetration Test Report"],
+    invariants: ["Penetration testing MUST operate under signed Rules of Engagement with emergency stop contacts, authorized scope boundaries, and immediate Critical exposure escalation."],
+    crossReferences: ["NIST SP 800-53A Rev. 5", "NIST SP 800-53 (CA-8, RA-5)"],
+    sections: [
+      {
+        id: "SP-800-115-PENTEST",
+        heading: "4-Phase Technical Penetration Testing Methodology & Rules of Engagement",
+        content: "Phase 1 Planning establishes written RoE, legal authorization, IP allowlists, and test window limits. Phase 2 Discovery executes passive/active enumeration and vulnerability mapping. Phase 3 Attack validates exploitability, privilege escalation, and lateral movement paths (CA-8). Phase 4 Reporting produces reproducible attack chains mapped to control weaknesses for SAR/POA&M remediation.",
+        citation: "NIST SP 800-115 Section 5–6",
+      },
+    ],
+  },
+  {
+    sourceId: "SP-800-122",
+    docNumber: "NIST SP 800-122",
+    title: "Guide to Protecting the Confidentiality of Personally Identifiable Information (PII)",
+    version: "April 2010",
+    releaseDate: "2010-04-02",
+    issuer: "NIST",
+    category: "Privacy & PII Protection",
+    officialUrl: "https://csrc.nist.gov/pubs/sp/800/122/final",
+    pdfUrl: "https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-122.pdf",
+    rmfSteps: [0, 1, 2, 3],
+    summary: "Guides PII identification, PII Confidentiality Impact Level evaluation (Identifiability, Quantity, Context, Field Sensitivity, Obligation), de-identification, and OMB breach-notification readiness.",
+    keyConcepts: ["Linked vs. Linkable PII", "PII Confidentiality Impact Factors", "Data Minimization & Anonymization", "PT Family & Privacy Baseline Alignment"],
+    deliverables: ["PII Inventory & Minimization Plan", "Privacy Impact Assessment (PIA) Input"],
+    invariants: ["Bulk aggregation or sensitive combinations (SSN, biometrics, medical diagnosis) raise PII Confidentiality Impact to MODERATE/HIGH even if isolated attributes appear Low."],
+    crossReferences: ["NIST SP 800-53 Rev. 5 (PT Family)", "OMB M-17-12"],
+    sections: [
+      {
+        id: "SP-800-122-FACTORS",
+        heading: "Criteria for Evaluating PII Confidentiality Impact Levels",
+        content: "Determine PII Confidentiality Impact across six factors: Identifiability, Quantity of PII (population scale), Data Field Sensitivity (SSN/financial/PHI), Context of Use, Obligation to Protect Confidentiality (statutes/HIPAA/Title 13), and Access to/Location of PII.",
+        citation: "NIST SP 800-122 Section 3",
+      },
+    ],
+  },
+  {
+    sourceId: "SP-800-161r1",
+    docNumber: "NIST SP 800-161 Rev. 1 (incl. Upd. 1)",
+    title: "Cybersecurity Supply Chain Risk Management (C-SCRM) Practices for Systems and Organizations",
+    version: "Rev. 1 Update 1 (November 2024)",
+    releaseDate: "2024-11-01",
+    issuer: "NIST",
+    category: "Supply Chain Risk Management (SR Family)",
+    officialUrl: "https://csrc.nist.gov/pubs/sp/800/161/r1/upd1/final",
+    pdfUrl: "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-161r1-upd1.pdf",
+    rmfSteps: [0, 2, 3, 4, 6],
+    summary: "Operationalizes EO 14028 software/hardware supply chain provenance across Tiers 1–3, SBOM verification, vendor criticality assessments, and SP 800-53 SR family controls.",
+    keyConcepts: ["C-SCRM Tiers 1–3", "Software Bill of Materials (SBOM — SPDX/CycloneDX)", "Criticality Analysis & Supplier Risk Assessments", "SR-1..SR-12 Control Guidance"],
+    deliverables: ["Organizational C-SCRM Plan (SR-2)", "System Criticality Analysis & SBOM Provenance Ledger"],
+    invariants: ["High/Criticality software and hardware suppliers MUST undergo SCRM provenance & foreign-ownership/influence review before production deployment (SR-3 / SR-6)."],
+    crossReferences: ["NIST SP 800-53 (SR Family)", "NIST SP 800-218 (SSDF)"],
+    sections: [
+      {
+        id: "SP-800-161-SCRM",
+        heading: "C-SCRM Integration Across RMF Steps & SR Control Family",
+        content: "SP 800-161 Rev. 1 integrates C-SCRM across all 7 RMF steps: Prepare (enterprise C-SCRM PMO, criticality scoring), Categorize (critical components), Select (SR-1..SR-12 tailoring), Implement (SBOM, signed artifacts, tamper-evident shipping), Assess (supplier audits), Authorize (residual supply chain risk acceptance), and Monitor (continuous vendor vulnerability & ownership monitoring).",
+        citation: "NIST SP 800-161 Rev. 1 Section 2–3",
+      },
+    ],
+  },
+  {
+    sourceId: "SP-800-190",
+    docNumber: "NIST SP 800-190",
+    title: "Application Container Security Guide (Images, Registries, Orchestrators, Runtime)",
+    version: "September 2017",
+    releaseDate: "2017-09-25",
+    issuer: "NIST",
+    category: "Cloud & Container Security",
+    officialUrl: "https://csrc.nist.gov/pubs/sp/800/190/final",
+    pdfUrl: "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-190.pdf",
+    rmfSteps: [2, 3, 4, 6],
+    summary: "Covers the five architectural tiers of container security—Images, Registries, Orchestrators (Kubernetes), Containers/Runtime, and Host OS—mapping risks directly to RMF controls.",
+    keyConcepts: ["Image Vulnerability Scanning & Signing (CM-7/SI-2)", "Private Trusted Registries", "Kubernetes RBAC & NetworkPolicies (AC-6/SC-7)", "Non-Root / Read-Only RootFS / Seccomp Runtime Isolation"],
+    deliverables: ["Hardened Container Image Admission Policy", "Kubernetes Pod Security Standards Profile"],
+    invariants: ["Production containers MUST run non-root with dropped Linux capabilities, signed immutable digests from a private vetted registry, and admission-controller CVE blocking."],
+    crossReferences: ["NIST SP 800-53 (CM-2, CM-6, CM-7, SC-7, SI-2)", "NIST SP 800-218"],
+    sections: [
+      {
+        id: "SP-800-190-FIVE-TIERS",
+        heading: "Container Stack Risk Tiers (Image, Registry, Orchestrator, Container, Host OS)",
+        content: "SP 800-190 establishes defenses per tier: (1) Images — minimal distroless bases, zero embedded secrets, CVE/malware CI gates; (2) Registries — TLS, immutable tags/digests, RBAC; (3) Orchestrators — least-privilege ServiceAccounts, Pod Security, network segmentation; (4) Containers — read-only rootfs, no `--privileged`, seccomp/AppArmor; (5) Host OS — container-optimized immutable Linux isolating kernel namespaces/cgroups.",
+        citation: "NIST SP 800-190 Section 3–4",
+      },
+    ],
+  },
+  {
+    sourceId: "SP-800-218",
+    docNumber: "NIST SP 800-218 & SP 800-218A",
+    title: "Secure Software Development Framework (SSDF v1.1 & GenAI Profile)",
+    version: "v1.1 (Feb 2022; 218A Jul 2024)",
+    releaseDate: "2024-07-26",
+    issuer: "NIST",
+    category: "Secure SDLC / DevSecOps",
+    officialUrl: "https://csrc.nist.gov/pubs/sp/800/218/final",
+    pdfUrl: "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-218.pdf",
+    rmfSteps: [0, 3, 4, 6],
+    summary: "Establishes four outcome-driven secure software practice groups—PO (Prepare Organization), PS (Protect Software), PW (Produce Well-Secured Software), and RV (Respond to Vulnerabilities)—mandatory under EO 14028 & OMB M-22-18.",
+    keyConcepts: ["PO / PS / PW / RV Practice Groups", "OMB M-22-18 / M-23-16 Self-Attestation", "Signed Provenance / SLSA / SBOM", "Automated SAST / DAST / SCA Gates (SA-11)"],
+    deliverables: ["Federal Secure Software Self-Attestation Form", "CI/CD Security Gate & Provenance Artifacts (SA-11)"],
+    invariants: ["Agencies procuring third-party software MUST obtain SSDF attestation (OMB M-22-18) and verify cryptographically signed build artifacts & SBOMs before authorization."],
+    crossReferences: ["NIST SP 800-53 (SA-11, SA-15, SI-2)", "NIST SP 800-161 Rev. 1"],
+    sections: [
+      {
+        id: "SP-800-218-GROUPS",
+        heading: "SSDF Four Core Practice Groups (PO, PS, PW, RV)",
+        content: "PO (Prepare the Organization) sets roles, toolchains, and security criteria. PS (Protect the Software) enforces MFA/branch protection on repos, signed artifacts, and immutable releases. PW (Produce Well-Secured Software) mandates secure-by-default configs, dependency vetting, SAST/DAST/fuzzing, and SBOM generation. RV (Respond to Vulnerabilities) drives continuous disclosure, root-cause elimination, and rapid patching.",
+        citation: "NIST SP 800-218 Section 2–3",
+      },
+    ],
+  },
+  {
+    sourceId: "FIPS-140-3",
+    docNumber: "FIPS 140-3",
+    title: "Security Requirements for Cryptographic Modules (CMVP Levels 1–4)",
+    version: "March 2019 (ISO/IEC 19790:2012)",
+    releaseDate: "2019-03-22",
+    issuer: "NIST",
+    category: "Cryptographic Validation (SC-12 / SC-13 / SC-28)",
+    officialUrl: "https://csrc.nist.gov/pubs/fips/140-3/final",
+    pdfUrl: "https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.140-3.pdf",
+    rmfSteps: [2, 3, 4],
+    summary: "Mandates CMVP validation across Security Levels 1–4 for cryptographic modules protecting Federal/CUI/FedRAMP data in transit and at rest (aligning FIPS 140-2 sunset -> 140-3).",
+    keyConcepts: ["CMVP Validated Cryptographic Modules", "Security Levels 1, 2, 3, 4 (Tamper-Evidence & Physical HSM Response)", "Approved Algorithms (AES-256-GCM, SHA-2/3, ECDSA)", "Power-Up Self-Tests & Zeroization"],
+    deliverables: ["Active CMVP Certificate Number Ledger (SC-13 Verification)", "FIPS Mode Configuration Proof"],
+    invariants: ["Saying 'we use AES-256' does NOT satisfy SC-13; the executing library/kernel/HSM MUST hold an active NIST CMVP certificate running in FIPS-approved mode."],
+    crossReferences: ["NIST SP 800-53 (SC-12, SC-13, SC-28)", "SP 800-140 Series", "SP 800-131A"],
+    sections: [
+      {
+        id: "FIPS-140-3-LEVELS",
+        heading: "Security Levels 1–4 & FedRAMP / DoD SC-13 Compliance Rule",
+        content: "Level 1 permits software modules on production OS. Level 2 adds tamper-evident seals and role-based authentication. Level 3 requires identity-based auth and physical tamper detection/zeroization circuitry (standard for HSMs/SCCA KMS/AAL3 tokens). Level 4 adds complete physical envelope protection against environmental fault attacks.",
+        citation: "FIPS 140-3 Section 4 & ISO/IEC 19790",
+      },
+    ],
+  },
+  {
+    sourceId: "FIPS-203-204-205",
+    docNumber: "FIPS 203, FIPS 204 & FIPS 205",
+    title: "Post-Quantum Cryptography Standards (ML-KEM, ML-DSA, SLH-DSA)",
+    version: "August 2024 (CNSA 2.0 / NSM-10 Aligned)",
+    releaseDate: "2024-08-13",
+    issuer: "NIST",
+    category: "Post-Quantum Cryptography (PQC)",
+    officialUrl: "https://csrc.nist.gov/pubs/fips/203/final",
+    pdfUrl: "https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.203.pdf",
+    rmfSteps: [0, 2, 3, 6],
+    summary: "Establishes standardized quantum-resistant cryptographic algorithms—FIPS 203 (ML-KEM key encapsulation), FIPS 204 (ML-DSA lattice signatures), and FIPS 205 (SLH-DSA stateless hash signatures)—replacing vulnerable RSA/ECDH/ECDSA against Shor's algorithm & Harvest-Now-Decrypt-Later threats.",
+    keyConcepts: ["FIPS 203 (ML-KEM-512 / ML-KEM-768 / ML-KEM-1024)", "FIPS 204 (ML-DSA-44 / ML-DSA-65 / ML-DSA-87)", "FIPS 205 (SLH-DSA Hash Signatures)", "Crypto-Agility & Cryptographic Discovery Inventory (OMB M-23-02)"],
+    deliverables: ["Cryptographic Inventory (OMB M-23-02)", "PQC Hybrid TLS 1.3 & Code-Signing Migration Roadmap"],
+    invariants: ["Systems handling long-lived High Confidentiality/Classified/PHI data MUST prioritize FIPS 203 hybrid key exchange immediately to defeat Harvest-Now-Decrypt-Later (HNDL) collection."],
+    crossReferences: ["FIPS 140-3", "NIST IR 8547 (Transition to PQC)", "NSA CNSA 2.0"],
+    sections: [
+      {
+        id: "FIPS-PQC-STANDARDS",
+        heading: "ML-KEM (FIPS 203), ML-DSA (FIPS 204), and SLH-DSA (FIPS 205) Migration",
+        content: "FIPS 203 (Module-Lattice Key-Encapsulation Mechanism, derived from CRYSTALS-Kyber) replaces ECDH/RSA key exchange. FIPS 204 (Module-Lattice Digital Signature, derived from CRYSTALS-Dilithium) is the primary replacement for ECDSA/RSA signatures. FIPS 205 (Stateless Hash-Based Signatures, SPHINCS+) provides a conservative non-lattice backup signature family for firmware/root CAs.",
+        citation: "FIPS 203 / 204 / 205 Summary & NIST IR 8547",
+      },
+    ],
+  },
+  {
+    sourceId: "CNSSI-1253",
+    docNumber: "CNSSI No. 1253",
+    title: "Security Categorization and Control Selection for National Security Systems (NSS / DoD IL5-IL6)",
+    version: "July 2022",
+    releaseDate: "2022-07-29",
+    issuer: "CNSS",
+    category: "National Security Systems / DoD / IC Overlay",
+    officialUrl: "https://www.cnss.gov/CNSS/issuances/Instructions.cfm",
+    rmfSteps: [1, 2, 5],
+    summary: "Tailors FIPS 199 and NIST SP 800-53B specifically for National Security Systems (DoD IL5, IL6 SECRET, ICD 503 TS/SCI) via independent C/I/A baseline matrices and mandatory overlays.",
+    keyConcepts: ["Independent C/I/A Level Control Selection (vs. Single High-Watermark Baseline)", "Classified Information & Space/Privacy Overlays", "DoD Instruction 8510.01 & CC SRG IL5/IL6 Bridge", "Cross-Domain Solution (CDS) & NSA/CSS Requirements"],
+    deliverables: ["NSS Categorization & CNSSI 1253 Overlay Selection Sheet", "eMASS Control Correlation Identifier (CCI) Mapping"],
+    invariants: ["National Security Systems MUST apply CNSSI 1253 (per-objective C/I/A selection + Classified Overlay + DoD SCCA/DISA STIGs) rather than FedRAMP-only baselines."],
+    crossReferences: ["NIST SP 800-53 Rev. 5", "DoDI 8510.01", "DoD CC SRG (IL5 / IL6)"],
+    sections: [
+      {
+        id: "CNSSI-1253-SELECTION",
+        heading: "Per-Objective C/I/A Tailoring vs. Federal High-Watermark Baselines",
+        content: "Unlike OMB/FedRAMP systems that take one combined baseline, CNSSI 1253 assigns baseline control enhancements independently for each Confidentiality, Integrity, and Availability impact rating (e.g., High C + Moderate I + Moderate A = H-M-M), then layers mandatory Classified, Privacy, Space, and Cross-Domain overlays.",
+        citation: "CNSSI No. 1253 Chapter 3 & Appendix F",
       },
     ],
   },
@@ -1646,6 +2033,54 @@ export function searchNistSpCatalog(query: string, limit = 8): NistSpSearchHit[]
     if (/\bcyber[- ]?resilien\w*\b|\bsystems?\s+security\s+engineering\b/i.test(qLow) && pub.sourceId === "SP-800-160") {
       score += 24;
       matchedTerms.push("Systems Security Engineering");
+    }
+    if (/\binterconnect\w*\b|\bisa\b|\bmou\b/i.test(qLow) && pub.sourceId === "SP-800-47r1") {
+      score += 26;
+      matchedTerms.push("ISA/MOU Interconnections");
+    }
+    if (/\bawareness\b|\brole[- ]based\s+training\b|\blearning\s+program\b/i.test(qLow) && pub.sourceId === "SP-800-50r1") {
+      score += 24;
+      matchedTerms.push("Security Learning Program");
+    }
+    if (/\bot\b|\bics\b|\bscada\b|\bplc\b|\bpurdue\b/i.test(qLow) && pub.sourceId === "SP-800-82r3") {
+      score += 28;
+      matchedTerms.push("OT/ICS/SCADA");
+    }
+    if (/\bsanitiz\w*\b|\bclear\b.*\bpurge\b|\bdestroy\b|\bdisposal\b|\bcryptographic\s+erase\b/i.test(qLow) && pub.sourceId === "SP-800-88r1") {
+      score += 32;
+      matchedTerms.push("Media Sanitization");
+    }
+    if (/\bpenetration\s+test\w*\b|\broe\b|\brules\s+of\s+engagement\b/i.test(qLow) && pub.sourceId === "SP-800-115") {
+      score += 26;
+      matchedTerms.push("Technical Security Testing");
+    }
+    if (/\bpii\b|\bpersonally\s+identifiable\b/i.test(qLow) && pub.sourceId === "SP-800-122") {
+      score += 26;
+      matchedTerms.push("PII Confidentiality");
+    }
+    if (/\bscrm\b|\bsupply\s+chain\b|\bsbom\b/i.test(qLow) && pub.sourceId === "SP-800-161r1") {
+      score += 28;
+      matchedTerms.push("C-SCRM");
+    }
+    if (/\bcontainer\w*\b|\bkubernetes\b|\bregistry\b/i.test(qLow) && pub.sourceId === "SP-800-190") {
+      score += 26;
+      matchedTerms.push("Container Security");
+    }
+    if (/\bssdf\b|\bsecure\s+software\b|\bm-22-18\b/i.test(qLow) && pub.sourceId === "SP-800-218") {
+      score += 28;
+      matchedTerms.push("SSDF");
+    }
+    if (/\bfips\s*140\b|\bcmvp\b|\bcryptographic\s+module\b/i.test(qLow) && pub.sourceId === "FIPS-140-3") {
+      score += 32;
+      matchedTerms.push("FIPS 140-3");
+    }
+    if (/\bfips\s*20[345]\b|\bml-kem\b|\bml-dsa\b|\bslh-dsa\b|\bpqc\b|\bpost[- ]quantum\b/i.test(qLow) && pub.sourceId === "FIPS-203-204-205") {
+      score += 34;
+      matchedTerms.push("Post-Quantum Cryptography");
+    }
+    if (/\bcnssi\s*1253\b|\bnss\b|\bnational\s+security\s+system\b|\bil[56]\b/i.test(qLow) && pub.sourceId === "CNSSI-1253") {
+      score += 32;
+      matchedTerms.push("CNSSI 1253");
     }
 
     const hay = `${pub.docNumber} ${pub.title} ${pub.summary} ${pub.keyConcepts.join(" ")} ${pub.deliverables.join(" ")} ${pub.sections.map((s) => `${s.heading} ${s.content}`).join(" ")}`.toLowerCase();
