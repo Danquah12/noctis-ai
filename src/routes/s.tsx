@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { readShareLink, type ShareNote } from "@/lib/share-link";
+import { decodeSharedThread, readShareLink, type ShareNote } from "@/lib/share-link";
 import { extractDashboardPayload, PredictionDashboardWidget } from "@/components/noctis/NoctisDesk";
 
 function cleanSharedNote(raw: string): string {
@@ -28,9 +28,12 @@ export const Route = createFileRoute("/s")({
   loader: ({ deps }) => (deps.c ? readShareLink({ data: { code: deps.c } }) : Promise.resolve(null)),
   head: ({ match, loaderData }) => {
     const saved = loaderData as ShareNote | null;
-    const who = saved?.name || match.search.n || "Asiedudanquah @ Noctis";
-    const note = cleanSharedNote(saved?.body || match.search.t || who).replace(/\s+/g, " ").slice(0, 260);
-    const dash = extractDashboardPayload(saved?.body || "");
+    const threadData = decodeSharedThread(saved?.body);
+    const who = threadData?.title || saved?.name || match.search.n || "Asiedudanquah @ Noctis";
+    const note = threadData
+      ? `${threadData.turns.length} turn shared Noctis conversation`
+      : cleanSharedNote(saved?.body || match.search.t || who).replace(/\s+/g, " ").slice(0, 260);
+    const dash = threadData ? null : extractDashboardPayload(saved?.body || "");
     const origin =
       typeof match.context.origin === "string" && match.context.origin.startsWith("http")
         ? match.context.origin
@@ -85,6 +88,46 @@ export const Route = createFileRoute("/s")({
 function ShareCard() {
   const { t, n, a } = Route.useSearch();
   const saved = Route.useLoaderData() as ShareNote | null;
+  const sharedThread = decodeSharedThread(saved?.body);
+  if (sharedThread) {
+    return (
+      <main className="min-h-dvh bg-[#0b1220] text-[#f6f1e6] px-4 py-8">
+        <div className="mx-auto max-w-3xl space-y-5">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-[#e4b86a]/30 bg-[#e4b86a]/10 px-2.5 py-0.5 text-[11px] font-semibold text-[#e4b86a]">
+                Shared Noctis Conversation · {sharedThread.turns.length} turns
+              </div>
+              <h1 className="mt-2 text-2xl font-bold text-white">{sharedThread.title}</h1>
+            </div>
+            <a
+              href="/noctis"
+              className="rounded-full bg-[#e4b86a] px-4 py-1.5 text-xs font-semibold text-[#1a1408] hover:opacity-90"
+            >
+              Open Noctis →
+            </a>
+          </div>
+          <div className="space-y-4">
+            {sharedThread.turns.map((turn, idx) => (
+              <div
+                key={idx}
+                className={
+                  turn.role === "user"
+                    ? "ml-auto max-w-[85%] rounded-2xl border border-white/10 bg-[#1a2234] px-4 py-3 text-sm text-zinc-100"
+                    : "rounded-2xl border border-[#e4b86a]/20 bg-[#111726] px-5 py-4 text-sm text-zinc-200 whitespace-pre-wrap leading-relaxed"
+                }
+              >
+                <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+                  {turn.role === "user" ? "User" : "Noctis"}
+                </div>
+                {turn.content}
+              </div>
+            ))}
+          </div>
+        </div>
+      </main>
+    );
+  }
   const who = saved?.name || n || "Asiedudanquah @ Noctis";
   const face = saved?.avatar || a || "/media/avatars/kwesi.jpg";
   const rawBody = saved?.body || t || who;

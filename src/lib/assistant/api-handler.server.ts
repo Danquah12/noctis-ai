@@ -19,23 +19,31 @@ import {
   renderParityMatrixMarkdown,
 } from "./parity-matrix.ts";
 import {
+  advanceScheduledTaskNextRun,
   approveWorkflowRun,
   createScheduledTask,
   createWorkspace,
   deleteCustomAssistant,
+  deleteScheduledTask,
+  disconnectUserConnector,
   getAssistantSqlStats,
+  getUserPersonalization,
   listAnswerPassports,
   listBenchmarkRuns,
   listCustomAssistants,
   listScheduledTasks,
+  listUserConnectors,
   listWorkflowRuns,
   listWorkspaceDocuments,
   listWorkspaces,
   runScheduledTaskNow,
   saveWorkspaceDocumentRevision,
   syncParityMatrixToSql,
+  updateScheduledTaskStatus,
   updateUserMemory,
   upsertCustomAssistant,
+  upsertUserConnector,
+  upsertUserPersonalization,
 } from "./persistence.server.ts";
 import {
   buildDocxDocumentBuffer,
@@ -73,13 +81,17 @@ import {
 import {
   analyzeAudioTranscript,
   analyzeVisionImage,
+  buildConnectorOAuthUrl,
   createCalendarEventAndIcs,
   draftOrSendEmail,
+  executeScheduledTasksCron,
   generateOrEditImage,
+  generateOrEditImageLive,
   listConnectedAppsStatus,
   prepareMeetingBrief,
   prepareVoiceResponseSpec,
   proposeComputerUsePlan,
+  pullConnectedAppContext,
   runAutonomousWorkflow,
   suggestNextActionsFromWorkspace,
   summarizeMeetingTranscript,
@@ -406,11 +418,15 @@ export async function handleAssistantV2Request(request: Request): Promise<Respon
   // --- IMAGES, VISION, VOICE, TRANSLATION ---
   if (subPath === "images/generate" || subPath === "images/edit") {
     return jsonRes(
-      generateOrEditImage({
+      await generateOrEditImageLive({
         mode: subPath.endsWith("edit") ? "EDIT" : "GENERATE",
         prompt: String(body.prompt || "Noctis Architecture Concept"),
+        sourceImageBase64: typeof body.sourceImageBase64 === "string" ? body.sourceImageBase64 : undefined,
+        maskImageBase64: typeof body.maskImageBase64 === "string" ? body.maskImageBase64 : undefined,
         overlayCaption: typeof body.overlayCaption === "string" ? body.overlayCaption : undefined,
         accentHex: typeof body.accentHex === "string" ? body.accentHex : undefined,
+        size: (typeof body.size === "string" ? body.size : undefined) as "1024x1024" | "1536x1024" | "1024x1536" | undefined,
+        useLiveProvider: body.useLiveProvider !== false,
       }),
     );
   }
@@ -480,6 +496,27 @@ export async function handleAssistantV2Request(request: Request): Promise<Respon
   }
   if (subPath === "translate") {
     return jsonRes(await translateText({ text: String(body.text || ""), targetLang: String(body.targetLang || "es") }));
+  }
+
+  // --- PERSONALIZATION (Memory ON/OFF + Custom Instructions synced to Neon DB) ---
+  if (subPath === "personalization") {
+    const uid = String(url.searchParams.get("userId") || body.userId || caller.actorId || "noctis-user");
+    if (request.method === "GET") {
+      const [settings, memories] = await Promise.all([
+        getUserPersonalization(uid),
+        listUserMemory(uid, 50).catch(() => []),
+      ]);
+      return jsonRes({ ok: true, ...settings, memories });
+    }
+    return jsonRes(
+      await upsertUserPersonalization({
+        userId: uid,
+        memoryEnabled: typeof body.memoryEnabled === "boolean" ? body.memoryEnabled : undefined,
+        aboutUser: typeof body.aboutUser === "string" ? body.aboutUser : undefined,
+        responseStyle: typeof body.responseStyle === "string" ? body.responseStyle : undefined,
+        personaPreset: typeof body.personaPreset === "string" ? body.personaPreset : undefined,
+      }),
+    );
   }
 
   // --- MEMORY (Save, List, Correct/Update, Delete) ---
@@ -565,6 +602,17 @@ export async function handleAssistantV2Request(request: Request): Promise<Respon
       const tasks = await listScheduledTasks();
       return jsonRes({ count: tasks.length, tasks });
     }
+    if (request.method === "PATCH") {
+      const id = String(body.id || "");
+      const status = body.status === "PAUSED" ? "PAUSED" : "ACTIVE";
+      if (!id) return jsonRes({ error: "Missing task id." }, 400);
+      return jsonRes(await updateScheduledTaskStatus(id, status));
+    }
+    if (request.method === "DELETE") {
+      const id = String(url.searchParams.get("id") || body.id || "");
+      if (!id) return jsonRes({ error: "Missing task id." }, 400);
+      return jsonRes(await deleteScheduledTask(id));
+    }
     return jsonRes(
       await createScheduledTask({
         title: String(body.title || "Source Freshness & Research Watch"),
@@ -576,11 +624,58 @@ export async function handleAssistantV2Request(request: Request): Promise<Respon
     );
   }
   if (subPath === "schedules/run") {
-    return jsonRes(await runScheduledTaskNow(String(body.id || "SCH-DEFAULT"), String(body.summary || "Executed verification scan: all checks fresh.")));
+    const id = String(body.id || "SCH-DEFAULT");
+    if (body.executeCron === true) {
+      return jsonRes(await executeScheduledTasksCron({ forceAll: true, taskId: id }));
+    }
+    return jsonRes(await runScheduledTaskNow(id, String(body.summary || "Executed verification scan: all checks fresh.")));
+  }
+  if (subPath === "cron/run-tasks") {
+    const forceAll = url.searchParams.get("force") === "1" || body.forceAll === true;
+    const taskId = typeof body.taskId === "string" ? body.taskId : undefined;
+    return jsonRes(await executeScheduledTasksCron({ forceAll, taskId }));
   }
 
   // --- CONNECTORS, EMAIL, CALENDAR, PRODUCTIVITY, WORKFLOWS, COMPUTER USE ---
-  if (subPath === "connectors") return jsonRes(listConnectedAppsStatus());
+  if (subPath === "connectors") {
+    const userConns = await listUserConnectors(caller.actorId).catch(() => []);
+    return jsonRes(listConnectedAppsStatus(userConns));
+  }
+  if (subPath === "connectors/connect") {
+    const provider = String(body.provider || "").trim().toLowerCase();
+    if (!provider) return jsonRes({ error: "Missing provider." }, 400);
+    return jsonRes(
+      await upsertUserConnector({
+        userId: caller.actorId,
+        provider,
+        accountLabel: String(body.accountLabel || `${provider}-connected`),
+        tokenCiphertext: typeof body.token === "string" ? body.token.trim() : "",
+        scopes: Array.isArray(body.scopes) ? body.scopes.map(String) : ["read"],
+      }),
+    );
+  }
+  if (subPath === "connectors/disconnect") {
+    const provider = String(url.searchParams.get("provider") || body.provider || "").trim().toLowerCase();
+    if (!provider) return jsonRes({ error: "Missing provider." }, 400);
+    return jsonRes(await disconnectUserConnector(caller.actorId, provider));
+  }
+  if (subPath === "connectors/oauth/start") {
+    const provider = String(url.searchParams.get("provider") || "google-drive").trim().toLowerCase();
+    const state = sha256Sync(`${caller.actorId}|${provider}|${Date.now()}`).slice(0, 16);
+    return jsonRes(buildConnectorOAuthUrl(provider, url.origin, state));
+  }
+  if (subPath === "connectors/pull") {
+    const provider = String(body.provider || "github").trim().toLowerCase();
+    const userConns = await listUserConnectors(caller.actorId).catch(() => []);
+    const matched = userConns.find((c) => c.provider === provider);
+    return jsonRes(
+      await pullConnectedAppContext({
+        provider,
+        query: String(body.query || "noctis"),
+        token: typeof body.token === "string" && body.token.trim() ? body.token.trim() : matched?.token_ciphertext || undefined,
+      }),
+    );
+  }
   if (subPath === "connectors/email") {
     return jsonRes(
       draftOrSendEmail({

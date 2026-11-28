@@ -16,6 +16,9 @@ import {
   Building2,
   DollarSign,
   Radio,
+  Plug,
+  Link2,
+  Unlink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -31,14 +34,32 @@ interface NoctisDataConnectorsModalProps {
   open: boolean;
   onClose: () => void;
   onInsertToChat?: (text: string) => void;
+  initialTab?: "apps" | "sec" | "macro" | "cisa";
+}
+
+interface AppConnectorRow {
+  id: string;
+  name: string;
+  status: string;
+  oauthConfigured?: boolean;
+  requiredEnvVars?: string[];
+  accountLabel?: string;
+  capability?: string;
 }
 
 export function NoctisDataConnectorsModal({
   open,
   onClose,
   onInsertToChat,
+  initialTab,
 }: NoctisDataConnectorsModalProps) {
-  const [activeTab, setActiveTab] = useState<"sec" | "macro" | "cisa">("sec");
+  const [activeTab, setActiveTab] = useState<"apps" | "sec" | "macro" | "cisa">(initialTab || "sec");
+  const [apps, setApps] = useState<AppConnectorRow[]>([]);
+  const [appsBusy, setAppsBusy] = useState(false);
+  const [selectedProvider, setSelectedProvider] = useState("github");
+  const [pullQuery, setPullQuery] = useState("noctis");
+  const [tokenInput, setTokenInput] = useState("");
+  const [appMessage, setAppMessage] = useState("");
 
   // SEC EDGAR state
   const [tickerQuery, setTickerQuery] = useState("CRWD");
@@ -54,12 +75,106 @@ export function NoctisDataConnectorsModal({
   const [kevLoading, setKevLoading] = useState(false);
 
   useEffect(() => {
+    if (open && initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [open, initialTab]);
+
+  useEffect(() => {
     if (open) {
       handleSearchSec(tickerQuery);
       setMacroIndicators(fetchLiveMacroIndicators());
       handleSearchKev("");
+      void refreshAppConnectors();
     }
   }, [open]);
+
+  async function refreshAppConnectors() {
+    try {
+      const res = await fetch("/api/v2/assistant/connectors");
+      if (res.ok) {
+        const json = (await res.json()) as { connectors?: AppConnectorRow[] };
+        if (Array.isArray(json.connectors)) setApps(json.connectors);
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  async function handleStartOAuth(providerId: string) {
+    setAppsBusy(true);
+    setAppMessage("");
+    try {
+      const res = await fetch(`/api/v2/assistant/connectors/oauth/start?provider=${encodeURIComponent(providerId)}`);
+      const json = (await res.json()) as { configured?: boolean; authUrl?: string; requiredEnvVars?: string[] };
+      if (json.configured && json.authUrl) {
+        window.open(json.authUrl, "_blank", "noopener,noreferrer");
+        setAppMessage(`Opened OAuth authorization for ${providerId}.`);
+      } else {
+        setSelectedProvider(providerId);
+        setAppMessage(
+          `OAuth client keys (${(json.requiredEnvVars || []).join(", ")}) are not configured in server env yet — paste a scoped token below to connect ${providerId} immediately.`,
+        );
+      }
+    } finally {
+      setAppsBusy(false);
+    }
+  }
+
+  async function handleConnectToken() {
+    if (!tokenInput.trim()) return;
+    setAppsBusy(true);
+    setAppMessage("");
+    try {
+      const res = await fetch("/api/v2/assistant/connectors/connect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: selectedProvider,
+          token: tokenInput.trim(),
+          accountLabel: `${selectedProvider}-token`,
+        }),
+      });
+      if (res.ok) {
+        setTokenInput("");
+        setAppMessage(`Connected ${selectedProvider} to your Noctis workspace.`);
+        await refreshAppConnectors();
+      }
+    } finally {
+      setAppsBusy(false);
+    }
+  }
+
+  async function handleDisconnectApp(providerId: string) {
+    setAppsBusy(true);
+    try {
+      await fetch(`/api/v2/assistant/connectors/disconnect?provider=${encodeURIComponent(providerId)}`, { method: "POST" });
+      setAppMessage(`Disconnected ${providerId}.`);
+      await refreshAppConnectors();
+    } finally {
+      setAppsBusy(false);
+    }
+  }
+
+  async function handlePullIntoChat() {
+    setAppsBusy(true);
+    setAppMessage("");
+    try {
+      const res = await fetch("/api/v2/assistant/connectors/pull", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider: selectedProvider, query: pullQuery.trim() || "noctis" }),
+      });
+      const json = (await res.json()) as { ok?: boolean; markdown?: string; error?: string };
+      if (json.ok && json.markdown) {
+        handleSendToChat(`Use this live ${selectedProvider} context to answer my request:\n\n${json.markdown}`);
+      } else {
+        setAppMessage(json.error || `No live items returned from ${selectedProvider}.`);
+      }
+    } finally {
+      setAppsBusy(false);
+    }
+  }
 
   async function handleSearchSec(t: string) {
     setSecLoading(true);
@@ -125,6 +240,17 @@ export function NoctisDataConnectorsModal({
             <div className="flex items-center rounded-full bg-white/5 p-1 border border-white/10 text-xs">
               <button
                 type="button"
+                onClick={() => setActiveTab("apps")}
+                className={cn(
+                  "rounded-full px-3 py-1 font-medium transition flex items-center gap-1.5",
+                  activeTab === "apps" ? "bg-white/15 text-white" : "text-zinc-400 hover:text-zinc-200"
+                )}
+              >
+                <Plug className="size-3.5 text-[#e4b86a]" />
+                Connected Apps
+              </button>
+              <button
+                type="button"
                 onClick={() => setActiveTab("sec")}
                 className={cn(
                   "rounded-full px-3 py-1 font-medium transition flex items-center gap-1.5",
@@ -170,6 +296,114 @@ export function NoctisDataConnectorsModal({
 
         {/* Modal Body */}
         <div className="flex-1 min-h-0 overflow-y-auto p-6">
+          {/* TAB 0: CONNECTED APPS (Google Drive, OneDrive/SharePoint, GitHub, Slack, Calendar) */}
+          {activeTab === "apps" ? (
+            <div className="space-y-5 max-w-4xl mx-auto">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {apps
+                  .filter((a) => ["google-drive", "onedrive-sharepoint", "github", "slack", "calendar", "gmail-outlook"].includes(a.id))
+                  .map((app) => {
+                    const isConn = app.status === "CONNECTED";
+                    const isSelected = selectedProvider === app.id;
+                    return (
+                      <div
+                        key={app.id}
+                        className={cn(
+                          "rounded-2xl border p-4 space-y-2.5 transition",
+                          isSelected ? "border-[#e4b86a]/60 bg-[#e4b86a]/5" : "border-white/10 bg-[#181818]",
+                        )}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <div className="text-sm font-semibold text-white">{app.name}</div>
+                            <div className="mt-0.5 text-[11px] text-zinc-400">
+                              Status:{" "}
+                              <span className={isConn ? "text-emerald-400 font-semibold" : "text-amber-300"}>
+                                {app.status}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedProvider(app.id)}
+                              className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-zinc-200 hover:bg-white/10"
+                            >
+                              Select
+                            </button>
+                            {isConn ? (
+                              <button
+                                type="button"
+                                onClick={() => void handleDisconnectApp(app.id)}
+                                disabled={appsBusy}
+                                className="inline-flex items-center gap-1 rounded-lg border border-rose-500/30 bg-rose-500/10 px-2.5 py-1 text-[11px] text-rose-300 hover:bg-rose-500/20"
+                              >
+                                <Unlink className="size-3" />
+                                Disconnect
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => void handleStartOAuth(app.id)}
+                                disabled={appsBusy}
+                                className="inline-flex items-center gap-1 rounded-lg bg-[#e4b86a] px-2.5 py-1 text-[11px] font-semibold text-[#1a1408] hover:opacity-90"
+                              >
+                                <Link2 className="size-3" />
+                                Connect
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-[#181818] p-4 space-y-3">
+                <div className="text-xs font-semibold text-white">
+                  Pull Live Data into Chat (<span className="text-[#e4b86a]">{selectedProvider}</span>)
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <input
+                    value={pullQuery}
+                    onChange={(e) => setPullQuery(e.target.value)}
+                    placeholder={`Search query in ${selectedProvider}...`}
+                    className="flex-1 min-w-[200px] rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs text-white placeholder:text-zinc-500 focus:border-[#e4b86a] focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void handlePullIntoChat()}
+                    disabled={appsBusy}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-[#e4b86a] px-4 py-2 text-xs font-semibold text-[#1a1408] disabled:opacity-50"
+                  >
+                    Pull into Chat
+                    <ArrowRight className="size-3.5" />
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 border-t border-white/8 pt-3">
+                  <input
+                    type="password"
+                    value={tokenInput}
+                    onChange={(e) => setTokenInput(e.target.value)}
+                    placeholder={`Optional scoped PAT / OAuth access token for ${selectedProvider}...`}
+                    className="flex-1 min-w-[200px] rounded-xl border border-white/10 bg-black/40 px-3 py-1.5 text-xs text-white placeholder:text-zinc-500 focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void handleConnectToken()}
+                    disabled={appsBusy || !tokenInput.trim()}
+                    className="rounded-xl border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-medium text-zinc-100 hover:bg-white/20 disabled:opacity-40"
+                  >
+                    Save Token
+                  </button>
+                </div>
+
+                {appMessage && <p className="text-xs text-amber-300">{appMessage}</p>}
+              </div>
+            </div>
+          ) : null}
+
           {/* TAB 1: SEC EDGAR */}
           {activeTab === "sec" ? (
             <div className="space-y-6 max-w-4xl mx-auto">

@@ -139,6 +139,29 @@ export async function ensureAssistantSchema() {
           created_at TIMESTAMPTZ NOT NULL DEFAULT now()
         )
       `);
+      await sql.query(`
+        CREATE TABLE IF NOT EXISTS enterprise.user_personalization (
+          user_id TEXT PRIMARY KEY,
+          memory_enabled BOOLEAN NOT NULL DEFAULT true,
+          about_user TEXT NOT NULL DEFAULT '',
+          response_style TEXT NOT NULL DEFAULT '',
+          persona_preset TEXT NOT NULL DEFAULT 'default',
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )
+      `);
+      await sql.query(`
+        CREATE TABLE IF NOT EXISTS enterprise.user_connectors (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL,
+          provider TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'CONNECTED',
+          account_label TEXT NOT NULL DEFAULT '',
+          token_ciphertext TEXT NOT NULL DEFAULT '',
+          scopes_json JSONB NOT NULL DEFAULT '[]'::jsonb,
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+          UNIQUE (user_id, provider)
+        )
+      `);
     })().catch((err) => {
       assistantSchemaReady = null;
       throw err;
@@ -373,6 +396,187 @@ export async function runScheduledTaskNow(id: string, summary: string) {
     [id, summary],
   );
   return { executed: true, id, summary, executedAt: new Date().toISOString() };
+}
+
+export async function updateScheduledTaskStatus(id: string, status: "ACTIVE" | "PAUSED") {
+  const { sql } = await ensureAssistantSchema();
+  await sql.query(
+    "UPDATE enterprise.scheduled_tasks SET status = $2 WHERE id = $1",
+    [id, status],
+  );
+  return { ok: true, id, status };
+}
+
+export async function deleteScheduledTask(id: string) {
+  const { sql } = await ensureAssistantSchema();
+  await sql.query("DELETE FROM enterprise.scheduled_tasks WHERE id = $1", [id]);
+  return { deleted: true, id };
+}
+
+function computeNextRunIso(cronOrIso: string): string {
+  const clean = (cronOrIso || "").trim();
+  const now = Date.now();
+  if (/^\d{4}-\d{2}-\d{2}/.test(clean)) {
+    const parsed = new Date(clean).getTime();
+    if (Number.isFinite(parsed) && parsed > now) return new Date(parsed).toISOString();
+    return new Date(now + 86_400_000).toISOString();
+  }
+  const parts = clean.split(/\s+/);
+  if (parts.length >= 5) {
+    const min = parts[0]!;
+    const hr = parts[1]!;
+    const dow = parts[4]!;
+    if (min.startsWith("*/") || hr === "*") return new Date(now + 3_600_000).toISOString();
+    if (dow === "1" || dow === "0" || dow === "5") return new Date(now + 7 * 86_400_000).toISOString();
+  }
+  return new Date(now + 86_400_000).toISOString();
+}
+
+export async function listDueScheduledTasks(forceAll = false, limit = 25) {
+  const { sql } = await ensureAssistantSchema();
+  if (forceAll) {
+    return sql.query<Record<string, unknown>>(
+      "SELECT id, title, task_type, cron_or_iso, payload_json, status, next_run_at, last_run_at, created_by FROM enterprise.scheduled_tasks WHERE status = 'ACTIVE' ORDER BY created_at DESC LIMIT $1",
+      [Math.max(1, Math.min(100, limit))],
+    );
+  }
+  return sql.query<Record<string, unknown>>(
+    "SELECT id, title, task_type, cron_or_iso, payload_json, status, next_run_at, last_run_at, created_by FROM enterprise.scheduled_tasks WHERE status = 'ACTIVE' AND (next_run_at IS NULL OR next_run_at <= now()) ORDER BY next_run_at ASC NULLS FIRST LIMIT $1",
+    [Math.max(1, Math.min(100, limit))],
+  );
+}
+
+export async function advanceScheduledTaskNextRun(id: string, cronOrIso: string, summary: string) {
+  const { sql } = await ensureAssistantSchema();
+  const nextRunAt = computeNextRunIso(cronOrIso);
+  await sql.query(
+    "UPDATE enterprise.scheduled_tasks SET last_run_at = now(), next_run_at = $2, last_output_summary = $3 WHERE id = $1",
+    [id, nextRunAt, summary.slice(0, 1500)],
+  );
+  return { id, nextRunAt, executedAt: new Date().toISOString(), summary };
+}
+
+export async function getUserPersonalization(userId = "noctis-user") {
+  const { sql } = await ensureAssistantSchema();
+  const rows = await sql.query<{
+    user_id: string;
+    memory_enabled: boolean;
+    about_user: string;
+    response_style: string;
+    persona_preset: string;
+    updated_at: string;
+  }>(
+    "SELECT user_id, memory_enabled, about_user, response_style, persona_preset, updated_at FROM enterprise.user_personalization WHERE user_id = $1 LIMIT 1",
+    [userId || "noctis-user"],
+  );
+  const r = rows[0];
+  return r
+    ? {
+        userId: r.user_id,
+        memoryEnabled: r.memory_enabled !== false,
+        aboutUser: r.about_user || "",
+        responseStyle: r.response_style || "",
+        personaPreset: r.persona_preset || "default",
+        updatedAt: r.updated_at,
+        synced: true,
+      }
+    : {
+        userId: userId || "noctis-user",
+        memoryEnabled: true,
+        aboutUser: "",
+        responseStyle: "",
+        personaPreset: "default",
+        updatedAt: null,
+        synced: true,
+      };
+}
+
+export async function upsertUserPersonalization(input: {
+  userId?: string;
+  memoryEnabled?: boolean;
+  aboutUser?: string;
+  responseStyle?: string;
+  personaPreset?: string;
+}) {
+  const { sql } = await ensureAssistantSchema();
+  const uid = input.userId || "noctis-user";
+  const cur = await getUserPersonalization(uid);
+  const nextEnabled = typeof input.memoryEnabled === "boolean" ? input.memoryEnabled : cur.memoryEnabled;
+  const nextAbout = typeof input.aboutUser === "string" ? input.aboutUser.slice(0, 4000) : cur.aboutUser;
+  const nextStyle = typeof input.responseStyle === "string" ? input.responseStyle.slice(0, 4000) : cur.responseStyle;
+  const nextPreset = typeof input.personaPreset === "string" && input.personaPreset.trim() ? input.personaPreset.trim() : cur.personaPreset;
+
+  await sql.query(
+    `INSERT INTO enterprise.user_personalization (user_id, memory_enabled, about_user, response_style, persona_preset, updated_at)
+     VALUES ($1, $2, $3, $4, $5, now())
+     ON CONFLICT (user_id) DO UPDATE SET
+       memory_enabled = EXCLUDED.memory_enabled,
+       about_user = EXCLUDED.about_user,
+       response_style = EXCLUDED.response_style,
+       persona_preset = EXCLUDED.persona_preset,
+       updated_at = now()`,
+    [uid, nextEnabled, nextAbout, nextStyle, nextPreset],
+  );
+  return {
+    ok: true,
+    userId: uid,
+    memoryEnabled: nextEnabled,
+    aboutUser: nextAbout,
+    responseStyle: nextStyle,
+    personaPreset: nextPreset,
+    synced: true,
+  };
+}
+
+export async function listUserConnectors(userId = "noctis-user") {
+  const { sql } = await ensureAssistantSchema();
+  return sql.query<{
+    id: string;
+    user_id: string;
+    provider: string;
+    status: string;
+    account_label: string;
+    token_ciphertext: string;
+    scopes_json: string[];
+    updated_at: string;
+  }>(
+    "SELECT id, user_id, provider, status, account_label, token_ciphertext, scopes_json, updated_at FROM enterprise.user_connectors WHERE user_id = $1 ORDER BY updated_at DESC",
+    [userId || "noctis-user"],
+  );
+}
+
+export async function upsertUserConnector(input: {
+  userId?: string;
+  provider: string;
+  accountLabel?: string;
+  tokenCiphertext?: string;
+  scopes?: string[];
+}) {
+  const { sql } = await ensureAssistantSchema();
+  const uid = input.userId || "noctis-user";
+  const prov = input.provider.toLowerCase().trim();
+  const id = `CONN-${sha256Sync(`${uid}|${prov}`).slice(0, 12).toUpperCase()}`;
+  await sql.query(
+    `INSERT INTO enterprise.user_connectors (id, user_id, provider, status, account_label, token_ciphertext, scopes_json, updated_at)
+     VALUES ($1, $2, $3, 'CONNECTED', $4, $5, $6::jsonb, now())
+     ON CONFLICT (user_id, provider) DO UPDATE SET
+       status = 'CONNECTED',
+       account_label = CASE WHEN EXCLUDED.account_label <> '' THEN EXCLUDED.account_label ELSE enterprise.user_connectors.account_label END,
+       token_ciphertext = CASE WHEN EXCLUDED.token_ciphertext <> '' THEN EXCLUDED.token_ciphertext ELSE enterprise.user_connectors.token_ciphertext END,
+       scopes_json = EXCLUDED.scopes_json,
+       updated_at = now()`,
+    [id, uid, prov, input.accountLabel || "", input.tokenCiphertext || "", JSON.stringify(input.scopes || [])],
+  );
+  return { ok: true, id, userId: uid, provider: prov, status: "CONNECTED" as const };
+}
+
+export async function disconnectUserConnector(userId: string, provider: string) {
+  const { sql } = await ensureAssistantSchema();
+  await sql.query(
+    "DELETE FROM enterprise.user_connectors WHERE user_id = $1 AND provider = $2",
+    [userId || "noctis-user", provider.toLowerCase().trim()],
+  );
+  return { ok: true, disconnected: true, provider: provider.toLowerCase().trim() };
 }
 
 export async function saveWorkflowRun(input: {

@@ -6,15 +6,23 @@
 import { sha256Sync } from "../universal-crypto.ts";
 import { OPENAI_KEY } from "../openai-key.server.ts";
 import {
+  advanceScheduledTaskNextRun,
   createScheduledTask,
+  listDueScheduledTasks,
   listScheduledTasks,
   listWorkspaces,
   saveWorkflowRun,
 } from "./persistence.server.ts";
 import { runDeepResearchAgent } from "./research-agent.server.ts";
 
+export interface UserConnectorSummary {
+  provider: string;
+  status: string;
+  account_label?: string;
+}
+
 /** #23 Connected Applications Status */
-export function listConnectedAppsStatus() {
+export function listConnectedAppsStatus(userConnectors: readonly UserConnectorSummary[] = []) {
   const hasOpenAi = Boolean(process.env.OPENAI_API_KEY?.trim() || OPENAI_KEY?.trim());
   const hasXai = Boolean(process.env.XAI_API_KEY?.trim());
   const hasGitHub = Boolean(process.env.GITHUB_TOKEN?.trim());
@@ -22,16 +30,178 @@ export function listConnectedAppsStatus() {
   const hasCal = Boolean(process.env.GOOGLE_CALENDAR_TOKEN?.trim());
   const hasDb = Boolean(process.env.DATABASE_URL?.trim());
 
+  const hasGoogleOAuth = Boolean(process.env.GOOGLE_CLIENT_ID?.trim() && process.env.GOOGLE_CLIENT_SECRET?.trim());
+  const hasMicrosoftOAuth = Boolean(process.env.MICROSOFT_CLIENT_ID?.trim() && process.env.MICROSOFT_CLIENT_SECRET?.trim());
+  const hasGitHubOAuth = Boolean(process.env.GITHUB_CLIENT_ID?.trim() && process.env.GITHUB_CLIENT_SECRET?.trim());
+  const hasSlackOAuth = Boolean(process.env.SLACK_CLIENT_ID?.trim() && process.env.SLACK_CLIENT_SECRET?.trim());
+
+  const userConnMap = new Map(userConnectors.map((c) => [c.provider.toLowerCase(), c]));
+  const statusFor = (providerId: string, envConnected: boolean, fallbackStatus: string) => {
+    const userRec = userConnMap.get(providerId);
+    if (userRec?.status === "CONNECTED") return "CONNECTED";
+    return envConnected ? "CONNECTED" : fallbackStatus;
+  };
+
   return {
     connectors: [
-      { id: "neon-postgres", name: "Neon PostgreSQL & pgvector", status: hasDb ? "CONNECTED" : "PGLITE_LOCAL_FALLBACK", capability: "#20,#22,#38,#90" },
-      { id: "openai-llm-audio-vision", name: "OpenAI Models / Whisper / Vision", status: hasOpenAi ? "CONNECTED" : "DETERMINISTIC_LOCAL_MODE", capability: "#13,#14,#17,#18" },
-      { id: "xai-imagine", name: "xAI Imagine Visual Engine", status: hasXai ? "CONNECTED" : "SVG_VECTOR_STUDIO_ACTIVE", capability: "#14,#15" },
-      { id: "github", name: "GitHub Repositories & PRs", status: hasGitHub ? "CONNECTED" : "PR_PATCH_EXPORT_READY", capability: "#5,#6,#62" },
-      { id: "gmail-outlook", name: "Email (Gmail / Outlook / SMTP)", status: hasGmail ? "CONNECTED" : "RFC5322_EML_DRAFT_READY", capability: "#24,#75" },
-      { id: "calendar", name: "Calendar & Reminders (.ics)", status: hasCal ? "CONNECTED" : "RFC5545_ICS_SQL_READY", capability: "#25,#26,#76" },
+      { id: "google-drive", name: "Google Drive & Docs", status: statusFor("google-drive", hasGmail, "OAUTH_OR_TOKEN_READY"), oauthConfigured: hasGoogleOAuth, requiredEnvVars: ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"], accountLabel: userConnMap.get("google-drive")?.account_label || "", capability: "#23,#38" },
+      { id: "onedrive-sharepoint", name: "OneDrive & SharePoint", status: statusFor("onedrive-sharepoint", false, "OAUTH_OR_TOKEN_READY"), oauthConfigured: hasMicrosoftOAuth, requiredEnvVars: ["MICROSOFT_CLIENT_ID", "MICROSOFT_CLIENT_SECRET"], accountLabel: userConnMap.get("onedrive-sharepoint")?.account_label || "", capability: "#23,#38" },
+      { id: "github", name: "GitHub Repositories & PRs", status: statusFor("github", hasGitHub, "PR_PATCH_OR_PAT_READY"), oauthConfigured: hasGitHubOAuth || hasGitHub, requiredEnvVars: ["GITHUB_CLIENT_ID", "GITHUB_CLIENT_SECRET"], accountLabel: userConnMap.get("github")?.account_label || "", capability: "#5,#6,#62" },
+      { id: "slack", name: "Slack Workspaces & Channels", status: statusFor("slack", Boolean(process.env.SLACK_BOT_TOKEN?.trim()), "OAUTH_OR_TOKEN_READY"), oauthConfigured: hasSlackOAuth, requiredEnvVars: ["SLACK_CLIENT_ID", "SLACK_CLIENT_SECRET"], accountLabel: userConnMap.get("slack")?.account_label || "", capability: "#23,#79" },
+      { id: "calendar", name: "Google Calendar & .ics Reminders", status: statusFor("calendar", hasCal, "RFC5545_ICS_SQL_READY"), oauthConfigured: hasGoogleOAuth || hasCal, requiredEnvVars: ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"], accountLabel: userConnMap.get("calendar")?.account_label || "", capability: "#25,#26,#76" },
+      { id: "gmail-outlook", name: "Email (Gmail / Outlook / SMTP)", status: statusFor("gmail-outlook", hasGmail, "RFC5322_EML_DRAFT_READY"), oauthConfigured: hasGoogleOAuth || hasMicrosoftOAuth, requiredEnvVars: ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"], accountLabel: userConnMap.get("gmail-outlook")?.account_label || "", capability: "#24,#75" },
+      { id: "openai-llm-audio-vision", name: "OpenAI Models / gpt-image-1 / Whisper / Vision", status: hasOpenAi ? "CONNECTED" : "DETERMINISTIC_LOCAL_MODE", oauthConfigured: hasOpenAi, requiredEnvVars: ["OPENAI_API_KEY"], accountLabel: "", capability: "#13,#14,#17,#18" },
+      { id: "xai-imagine", name: "xAI Imagine Visual Engine", status: hasXai ? "CONNECTED" : "SVG_VECTOR_STUDIO_ACTIVE", oauthConfigured: hasXai, requiredEnvVars: ["XAI_API_KEY"], accountLabel: "", capability: "#14,#15" },
+      { id: "neon-postgres", name: "Neon PostgreSQL & pgvector", status: hasDb ? "CONNECTED" : "PGLITE_LOCAL_FALLBACK", oauthConfigured: hasDb, requiredEnvVars: ["DATABASE_URL"], accountLabel: "", capability: "#20,#22,#38,#90" },
     ],
   };
+}
+
+export function buildConnectorOAuthUrl(provider: string, origin: string, state: string) {
+  const p = (provider || "").toLowerCase().trim();
+  const redirectUri = `${origin.replace(/\/+$/, "")}/api/v2/assistant/connectors/oauth/callback?provider=${encodeURIComponent(p)}`;
+
+  if (p === "google-drive" || p === "calendar" || p === "gmail-outlook") {
+    const clientId = process.env.GOOGLE_CLIENT_ID?.trim();
+    if (!clientId) return { configured: false, provider: p, requiredEnvVars: ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"] };
+    const scope = p === "calendar"
+      ? "https://www.googleapis.com/auth/calendar.readonly"
+      : p === "gmail-outlook"
+        ? "https://www.googleapis.com/auth/gmail.readonly"
+        : "https://www.googleapis.com/auth/drive.readonly";
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&access_type=offline&state=${encodeURIComponent(state)}`;
+    return { configured: true, provider: p, authUrl };
+  }
+
+  if (p === "onedrive-sharepoint") {
+    const clientId = process.env.MICROSOFT_CLIENT_ID?.trim();
+    if (!clientId) return { configured: false, provider: p, requiredEnvVars: ["MICROSOFT_CLIENT_ID", "MICROSOFT_CLIENT_SECRET"] };
+    const authUrl = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent("Files.Read.All Sites.Read.All offline_access")}&state=${encodeURIComponent(state)}`;
+    return { configured: true, provider: p, authUrl };
+  }
+
+  if (p === "github") {
+    const clientId = process.env.GITHUB_CLIENT_ID?.trim();
+    if (!clientId) return { configured: false, provider: p, requiredEnvVars: ["GITHUB_CLIENT_ID", "GITHUB_CLIENT_SECRET"] };
+    const authUrl = `https://github.com/login/oauth/authorize?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent("repo read:user")}&state=${encodeURIComponent(state)}`;
+    return { configured: true, provider: p, authUrl };
+  }
+
+  if (p === "slack") {
+    const clientId = process.env.SLACK_CLIENT_ID?.trim();
+    if (!clientId) return { configured: false, provider: p, requiredEnvVars: ["SLACK_CLIENT_ID", "SLACK_CLIENT_SECRET"] };
+    const authUrl = `https://slack.com/oauth/v2/authorize?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&user_scope=${encodeURIComponent("channels:read,search:read")}&state=${encodeURIComponent(state)}`;
+    return { configured: true, provider: p, authUrl };
+  }
+
+  return { configured: false, provider: p, requiredEnvVars: ["PROVIDER_CLIENT_ID", "PROVIDER_CLIENT_SECRET"] };
+}
+
+export async function pullConnectedAppContext(input: {
+  provider: string;
+  query: string;
+  token?: string;
+}): Promise<{ ok: boolean; provider: string; items: Array<{ title: string; url: string; snippet: string }>; markdown: string; error?: string }> {
+  const p = (input.provider || "").toLowerCase().trim();
+  const q = (input.query || "").trim() || "noctis";
+
+  if (p === "github") {
+    const tok = input.token?.trim() || process.env.GITHUB_TOKEN?.trim();
+    try {
+      const headers: Record<string, string> = { "User-Agent": "NoctisConnector/1.0", Accept: "application/vnd.github+json" };
+      if (tok) headers.Authorization = `Bearer ${tok}`;
+      const endpoint = tok && q === "my-repos"
+        ? "https://api.github.com/user/repos?sort=updated&per_page=8"
+        : `https://api.github.com/search/repositories?q=${encodeURIComponent(q)}&per_page=6`;
+      const res = await fetch(endpoint, { headers, signal: AbortSignal.timeout(8000) });
+      if (res.ok) {
+        const json = (await res.json()) as { items?: Array<{ full_name?: string; html_url?: string; description?: string }>; [k: string]: unknown };
+        const rawList = Array.isArray(json) ? (json as Array<{ full_name?: string; html_url?: string; description?: string }>) : (json.items || []);
+        const items = rawList.slice(0, 6).map((r) => ({
+          title: r.full_name || "Repository",
+          url: r.html_url || "https://github.com",
+          snippet: r.description || "GitHub repository context",
+        }));
+        const markdown = items.length
+          ? `### GitHub Connected Context (\`${q}\`)\n` + items.map((it) => `- **[${it.title}](${it.url})**: ${it.snippet}`).join("\n")
+          : `No GitHub repositories matched \`${q}\`.`;
+        return { ok: true, provider: p, items, markdown };
+      }
+      return { ok: false, provider: p, items: [], markdown: "", error: `GitHub API returned HTTP ${res.status}` };
+    } catch (err) {
+      return { ok: false, provider: p, items: [], markdown: "", error: err instanceof Error ? err.message : String(err) };
+    }
+  }
+
+  if (p === "google-drive") {
+    const tok = input.token?.trim() || process.env.GOOGLE_DRIVE_TOKEN?.trim();
+    if (!tok) {
+      return { ok: false, provider: p, items: [], markdown: "", error: "Google Drive token not connected yet. Connect via OAuth or paste a scoped Drive access token." };
+    }
+    try {
+      const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(`name contains '${q.replace(/'/g, "")}' and trashed = false`)}&fields=files(id,name,mimeType,webViewLink)&pageSize=8`;
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${tok}` }, signal: AbortSignal.timeout(8000) });
+      if (!res.ok) return { ok: false, provider: p, items: [], markdown: "", error: `Google Drive API returned HTTP ${res.status}` };
+      const json = (await res.json()) as { files?: Array<{ id?: string; name?: string; mimeType?: string; webViewLink?: string }> };
+      const items = (json.files || []).map((f) => ({
+        title: f.name || "Drive File",
+        url: f.webViewLink || `https://drive.google.com/file/d/${f.id}/view`,
+        snippet: `MIME: ${f.mimeType || "document"}`,
+      }));
+      const markdown = `### Google Drive Context (\`${q}\`)\n` + items.map((it) => `- **[${it.title}](${it.url})** (${it.snippet})`).join("\n");
+      return { ok: true, provider: p, items, markdown };
+    } catch (err) {
+      return { ok: false, provider: p, items: [], markdown: "", error: err instanceof Error ? err.message : String(err) };
+    }
+  }
+
+  if (p === "onedrive-sharepoint") {
+    const tok = input.token?.trim() || process.env.MICROSOFT_GRAPH_TOKEN?.trim();
+    if (!tok) {
+      return { ok: false, provider: p, items: [], markdown: "", error: "OneDrive/SharePoint token not connected yet. Connect via Microsoft OAuth or supply a scoped Graph token." };
+    }
+    try {
+      const url = `https://graph.microsoft.com/v1.0/me/drive/root/search(q='${encodeURIComponent(q)}')?$top=8`;
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${tok}` }, signal: AbortSignal.timeout(8000) });
+      if (!res.ok) return { ok: false, provider: p, items: [], markdown: "", error: `Microsoft Graph returned HTTP ${res.status}` };
+      const json = (await res.json()) as { value?: Array<{ name?: string; webUrl?: string; size?: number }> };
+      const items = (json.value || []).map((f) => ({
+        title: f.name || "OneDrive Item",
+        url: f.webUrl || "https://onedrive.live.com",
+        snippet: `Size: ${f.size ?? 0} bytes`,
+      }));
+      const markdown = `### OneDrive / SharePoint Context (\`${q}\`)\n` + items.map((it) => `- **[${it.title}](${it.url})** (${it.snippet})`).join("\n");
+      return { ok: true, provider: p, items, markdown };
+    } catch (err) {
+      return { ok: false, provider: p, items: [], markdown: "", error: err instanceof Error ? err.message : String(err) };
+    }
+  }
+
+  if (p === "slack") {
+    const tok = input.token?.trim() || process.env.SLACK_BOT_TOKEN?.trim();
+    if (!tok) {
+      return { ok: false, provider: p, items: [], markdown: "", error: "Slack token not connected yet. Connect via Slack OAuth or supply a Slack token." };
+    }
+    try {
+      const res = await fetch(`https://slack.com/api/search.messages?query=${encodeURIComponent(q)}&count=6`, {
+        headers: { Authorization: `Bearer ${tok}` },
+        signal: AbortSignal.timeout(8000),
+      });
+      const json = (await res.json()) as { ok?: boolean; error?: string; messages?: { matches?: Array<{ text?: string; permalink?: string; channel?: { name?: string } }> } };
+      if (!json.ok) return { ok: false, provider: p, items: [], markdown: "", error: json.error || "Slack API error" };
+      const items = (json.messages?.matches || []).map((m) => ({
+        title: `#${m.channel?.name || "channel"}`,
+        url: m.permalink || "https://slack.com",
+        snippet: (m.text || "").slice(0, 180),
+      }));
+      const markdown = `### Slack Context (\`${q}\`)\n` + items.map((it) => `- **${it.title}**: ${it.snippet} ([link](${it.url}))`).join("\n");
+      return { ok: true, provider: p, items, markdown };
+    } catch (err) {
+      return { ok: false, provider: p, items: [], markdown: "", error: err instanceof Error ? err.message : String(err) };
+    }
+  }
+
+  return { ok: false, provider: p, items: [], markdown: "", error: `Provider '${p}' requires an active OAuth or token connection.` };
 }
 
 /** #24 / #75 Email Assistant, Thread Triage & RFC 5322 .eml Draft + Approval Gate */
@@ -404,5 +574,167 @@ export async function translateText(input: { text: string; targetLang: string })
     targetLang: input.targetLang,
     original: input.text,
     translatedText: out,
+  };
+}
+
+/** #14 / #15 Live Raster Image Generation & Mask/Region Inpainting Studio (OpenAI gpt-image-1 / xAI Imagine + SVG Fallback) */
+export async function generateOrEditImageLive(input: {
+  mode: "GENERATE" | "EDIT";
+  prompt: string;
+  sourceImageBase64?: string;
+  maskImageBase64?: string;
+  overlayCaption?: string;
+  accentHex?: string;
+  size?: "1024x1024" | "1536x1024" | "1024x1536";
+  useLiveProvider?: boolean;
+}) {
+  const openAiKey = process.env.OPENAI_API_KEY?.trim() || OPENAI_KEY?.trim();
+  const xaiKey = process.env.XAI_API_KEY?.trim();
+  const size = input.size || "1024x1024";
+
+  if (input.useLiveProvider !== false && openAiKey) {
+    try {
+      if (input.mode === "EDIT" && input.sourceImageBase64) {
+        const cleanSrc = input.sourceImageBase64.replace(/^data:image\/[^;]+;base64,/, "");
+        const srcBuf = Buffer.from(cleanSrc, "base64");
+        const fd = new FormData();
+        fd.append("model", "gpt-image-1");
+        fd.append("prompt", input.prompt || "Clean architectural enhancement");
+        fd.append("size", size);
+        fd.append("image", new Blob([srcBuf], { type: "image/png" }), "source.png");
+        if (input.maskImageBase64) {
+          const cleanMask = input.maskImageBase64.replace(/^data:image\/[^;]+;base64,/, "");
+          fd.append("mask", new Blob([Buffer.from(cleanMask, "base64")], { type: "image/png" }), "mask.png");
+        }
+        const res = await fetch("https://api.openai.com/v1/images/edits", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${openAiKey}` },
+          body: fd,
+          signal: AbortSignal.timeout(45_000),
+        });
+        if (res.ok) {
+          const json = (await res.json()) as { data?: Array<{ b64_json?: string; url?: string }> };
+          const first = json.data?.[0];
+          const dataUri = first?.b64_json ? `data:image/png;base64,${first.b64_json}` : first?.url || "";
+          if (dataUri) {
+            return {
+              mode: input.mode,
+              engine: input.maskImageBase64 ? "openai-gpt-image-1-inpaint" : "openai-gpt-image-1-edit",
+              size,
+              mimeType: "image/png",
+              dataUri,
+              sha256: sha256Sync(dataUri.slice(0, 4096)),
+            };
+          }
+        }
+      } else {
+        const res = await fetch("https://api.openai.com/v1/images/generations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${openAiKey}` },
+          signal: AbortSignal.timeout(45_000),
+          body: JSON.stringify({
+            model: "gpt-image-1",
+            prompt: input.prompt || "High-contrast sovereign engineering diagram",
+            size,
+          }),
+        });
+        if (res.ok) {
+          const json = (await res.json()) as { data?: Array<{ b64_json?: string; url?: string }> };
+          const first = json.data?.[0];
+          const dataUri = first?.b64_json ? `data:image/png;base64,${first.b64_json}` : first?.url || "";
+          if (dataUri) {
+            return {
+              mode: input.mode,
+              engine: "openai-gpt-image-1",
+              size,
+              mimeType: "image/png",
+              dataUri,
+              sha256: sha256Sync(dataUri.slice(0, 4096)),
+            };
+          }
+        }
+      }
+    } catch {
+      /* fall through to xAI or deterministic SVG studio */
+    }
+  }
+
+  if (input.useLiveProvider !== false && xaiKey && input.mode === "GENERATE") {
+    try {
+      const res = await fetch("https://api.x.ai/v1/images/generations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${xaiKey}` },
+        signal: AbortSignal.timeout(35_000),
+        body: JSON.stringify({ model: "grok-2-image", prompt: input.prompt, response_format: "b64_json" }),
+      });
+      if (res.ok) {
+        const json = (await res.json()) as { data?: Array<{ b64_json?: string; url?: string }> };
+        const first = json.data?.[0];
+        const dataUri = first?.b64_json ? `data:image/png;base64,${first.b64_json}` : first?.url || "";
+        if (dataUri) {
+          return {
+            mode: input.mode,
+            engine: "xai-grok-2-image",
+            size,
+            mimeType: "image/png",
+            dataUri,
+            sha256: sha256Sync(dataUri.slice(0, 4096)),
+          };
+        }
+      }
+    } catch {
+      /* fallback cleanly */
+    }
+  }
+
+  const fallback = generateOrEditImage({
+    mode: input.mode,
+    prompt: input.prompt,
+    overlayCaption: input.overlayCaption || (input.maskImageBase64 ? "INPAINT MASK REGION (SVG PREVIEW)" : undefined),
+    accentHex: input.accentHex,
+  });
+  return {
+    ...fallback,
+    engine: "svg-deterministic-fallback",
+    providerNote: "Set OPENAI_API_KEY or XAI_API_KEY in environment for live raster generation & region inpainting.",
+  };
+}
+
+/** #26 / #72 Real Cron Runner for User-Scheduled Tasks */
+export async function executeScheduledTasksCron(opts: { forceAll?: boolean; taskId?: string } = {}) {
+  const dueRows = await listDueScheduledTasks(Boolean(opts.forceAll || opts.taskId), 25);
+  const targets = opts.taskId ? dueRows.filter((r) => String(r.id) === opts.taskId) : dueRows;
+  const results: Array<{ id: string; title: string; nextRunAt: string; summary: string }> = [];
+
+  for (const row of targets) {
+    const id = String(row.id);
+    const title = String(row.title || "Scheduled Task");
+    const taskType = String(row.task_type || "RESEARCH_WATCH");
+    const cronOrIso = String(row.cron_or_iso || "0 8 * * *");
+    const payload = (row.payload_json && typeof row.payload_json === "object" ? row.payload_json : {}) as { prompt?: string };
+    const taskPrompt = String(payload.prompt || title);
+
+    let summary = "";
+    try {
+      if (taskType === "RESEARCH_WATCH" || taskType === "POLICY_DRIFT") {
+        const res = await runDeepResearchAgent({ query: taskPrompt, maxSources: 4, includeLiveWeb: false });
+        summary = `${res.sourcesCount || 0} source(s) checked for "${taskPrompt.slice(0, 120)}". Executed at ${new Date().toISOString()}.`;
+      } else {
+        summary = `Executed ${taskType} automation ("${taskPrompt.slice(0, 140)}") at ${new Date().toISOString()}.`;
+      }
+    } catch (err) {
+      summary = `Ran with warning: ${err instanceof Error ? err.message : String(err)}`;
+    }
+
+    const updated = await advanceScheduledTaskNextRun(id, cronOrIso, summary);
+    results.push({ id, title, nextRunAt: updated.nextRunAt, summary });
+  }
+
+  return {
+    ok: true,
+    checkedCount: dueRows.length,
+    executedCount: results.length,
+    ranAt: new Date().toISOString(),
+    results,
   };
 }

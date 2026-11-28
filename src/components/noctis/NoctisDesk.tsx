@@ -1,7 +1,7 @@
 import { Component, useEffect, useRef, useState, lazy, Suspense, type ClipboardEvent, type ComponentType, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { MessageSquare } from "lucide-react";
-import { Activity, AlertCircle, AlertTriangle, Info, ArrowUp, Bot, Boxes, Brain, Calendar, Cpu, Crosshair, EyeOff, Fingerprint, FileLock, Globe, Key, Layers, Lock, LogOut, Network, Sparkles, Stethoscope, Swords, Target, ShieldAlert, Terminal, WifiOff, Zap, ChevronDown, ChevronLeft, Code2, Copy, CornerDownLeft, FileText, GraduationCap, Image, Library, Mail, Menu, Mic, MoreHorizontal, PanelLeftClose, PanelLeftOpen, PanelRight, PanelRightOpen, Pencil, Phone, PhoneOff, Plus, Printer, RotateCcw, Search, Square, SquarePen, Trash2, Users2, Video, Volume2, VolumeX, Wrench, X, TrendingUp, Scale, Atom, Landmark, Building2, Server, Microscope, FileCheck, Shield, CheckCircle2 } from "lucide-react";
+import { Activity, AlertCircle, AlertTriangle, Info, ArrowUp, Bot, Boxes, Brain, Calendar, Clock, Cpu, Crosshair, EyeOff, Fingerprint, FileLock, Globe, Key, Layers, Lock, LogOut, MonitorUp, Network, Plug, Share2, Sparkles, Stethoscope, Swords, Target, ShieldAlert, Terminal, WifiOff, Zap, ChevronDown, ChevronLeft, Code2, Copy, CornerDownLeft, FileText, GraduationCap, Image, Library, Mail, Menu, Mic, MoreHorizontal, PanelLeftClose, PanelLeftOpen, PanelRight, PanelRightOpen, Pencil, Phone, PhoneOff, Plus, Printer, RotateCcw, Search, Square, SquarePen, Trash2, Users2, Video, Volume2, VolumeX, Wrench, X, TrendingUp, Scale, Atom, Landmark, Building2, Server, Microscope, FileCheck, Shield, CheckCircle2 } from "lucide-react";
 import { SOVEREIGN_SYSTEMS_PORTFOLIO } from "@/lib/noctis-sovereign-factory";
 import { askNoctis, drawVibe, hearVibe, sayVibe, trainVibe } from "@/lib/noctis-api";
 import {
@@ -72,6 +72,7 @@ const NoctisPatientDiagnosisModal = lazyWithRetry(() => import("@/components/noc
 import { NoctisCapabilityMatrixModal, type SovereignEngineKey } from "@/components/noctis/NoctisCapabilityMatrixModal";
 import { getActiveCustomAgent, getActiveCustomAgentContext, type NoctisCustomAgent } from "@/lib/noctis-custom-agents";
 import { NoctisMemoryModal, getNoctisPersonalizedContext } from "@/components/noctis/NoctisMemoryModal";
+import { NoctisImageStudioModal } from "@/components/noctis/NoctisImageStudioModal";
 import { studyOpenCall, studySend } from "@/lib/study-group-api";
 import { sendMeetInvite } from "@/lib/meet-mail";
 import {
@@ -98,7 +99,7 @@ import { studyAsks } from "@/lib/study-pass";
 const NoctisBoardExamExplorer = lazyWithRetry(() => import("@/components/noctis/NoctisBoardExamExplorer").then((m) => ({ default: m.NoctisBoardExamExplorer })));
 import { leaveHall } from "@/lib/auth/client";
 import { textFromDocx, textFromPdf, textFromRtf } from "@/lib/read-document";
-import { saveShareLink } from "@/lib/share-link";
+import { encodeSharedThread, saveShareLink } from "@/lib/share-link";
 import { resolveNoctisEngine } from "@/lib/noctis-engine-registry";
 import { buildContextualFollowUps } from "@/lib/noctis-followups";
 import { NoctisCommandPalette } from "@/components/noctis/NoctisCommandPalette";
@@ -3712,11 +3713,15 @@ export function NoctisDesk() {
   const [canvasFullscreen, setCanvasFullscreen] = useState(false);
   const [canvasRevising, setCanvasRevising] = useState(false);
   const [memoryModalOpen, setMemoryModalOpen] = useState(false);
+  const [memoryModalTab, setMemoryModalTab] = useState<"instructions" | "memory" | "schedules">("instructions");
+  const [imageStudioOpen, setImageStudioOpen] = useState(false);
+  const [threadShareCopied, setThreadShareCopied] = useState(false);
   const [workspaceExplorerOpen, setWorkspaceExplorerOpen] = useState(false);
   const [deepResearchModalOpen, setDeepResearchModalOpen] = useState(false);
   const [vaultModalOpen, setVaultModalOpen] = useState(false);
   const [agentBuilderModalOpen, setAgentBuilderModalOpen] = useState(false);
   const [dataConnectorsModalOpen, setDataConnectorsModalOpen] = useState(false);
+  const [connectorsInitialTab, setConnectorsInitialTab] = useState<"apps" | "sec" | "macro" | "cisa">("apps");
   const [councilModalOpen, setCouncilModalOpen] = useState(false);
   const [digitalTwinModalOpen, setDigitalTwinModalOpen] = useState(false);
   const [warRoomModalOpen, setWarRoomModalOpen] = useState(false);
@@ -4549,17 +4554,20 @@ export function NoctisDesk() {
           brain: getBrainForEngine(getBrainConfig(), resolveNoctisEngine(activeEngineId).preferredProviderHint),
           context: (() => {
             try {
+              const isTempSession = priv || Boolean(live.current?.temp);
               const voiceContext = voiceRef.current
                 ? "VOICE MODE CONVERSATION ACTIVE: You are speaking aloud live to the user via Noctis Voice. Give complete, articulate, highly intelligible, and natural conversational answers. Formulate every sentence clearly for spoken audio — avoid raw markdown tables, ascii charts, or dense code blocks unless explicitly requested. Conclude every thought and sentence completely."
                 : "";
               return [
-                formatContext(readNoctisContext(
-                  threads.filter((row) => row.title !== "New chat").map((row) => row.title),
-                  place,
-                )),
+                isTempSession
+                  ? "TEMPORARY CHAT ACTIVE: Do not reference prior chat history, saved user memory, or custom instructions."
+                  : formatContext(readNoctisContext(
+                      threads.filter((row) => row.title !== "New chat").map((row) => row.title),
+                      place,
+                    )),
                 voiceContext,
-                savedRules(person),
-                getNoctisPersonalizedContext(),
+                isTempSession ? "" : savedRules(person),
+                getNoctisPersonalizedContext({ skipAll: isTempSession }),
                 getActiveProjectContext(),
                 getActiveCustomAgentContext(),
               ].filter(Boolean).join("\n\n");
@@ -5334,6 +5342,76 @@ export function NoctisDesk() {
     ctx.fillRect(0, 0, c.width, c.height);
   }
 
+  async function captureScreenVisionFrame() {
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getDisplayMedia) {
+      setError("Screen-sharing capture is not supported in this browser.");
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+      const video = document.createElement("video");
+      video.srcObject = stream;
+      video.muted = true;
+      await video.play();
+      const vw = video.videoWidth || 1280;
+      const vh = video.videoHeight || 720;
+      const scale = Math.min(1, 1280 / Math.max(1, vw));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(vw * scale);
+      canvas.height = Math.round(vh * scale);
+      const ctx = canvas.getContext("2d");
+      if (ctx) ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      stream.getTracks().forEach((t) => t.stop());
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+      setUploads((rows) => [
+        ...rows,
+        {
+          id: `screen-${Date.now()}`,
+          name: `screen-capture-${rows.length + 1}.jpg`,
+          kind: "image",
+          dataUrl,
+        },
+      ]);
+      if (!draft.trim()) setDraft("Analyze what is shown on my captured screen: ");
+      box.current?.focus();
+    } catch (err) {
+      if (err instanceof Error && err.name !== "AbortError" && err.name !== "NotAllowedError") {
+        setError(`Screen capture failed: ${err.message}`);
+      }
+    }
+  }
+
+  function toggleTemporaryChat() {
+    const next = !(priv || Boolean(thread?.temp));
+    setPriv(next);
+    if (thread) {
+      setThreads((rows) => rows.map((row) => (row.id === thread.id ? { ...row, temp: next } : row)));
+    }
+  }
+
+  async function handleShareFullThread() {
+    if (!thread || !thread.turns.length || priv || thread.temp) return;
+    try {
+      const payload = encodeSharedThread({
+        title: thread.title === "New chat" ? "Shared Noctis Conversation" : thread.title,
+        sharedAt: new Date().toISOString(),
+        turns: thread.turns.map((t) => ({ role: t.role, content: t.content })),
+      });
+      const saved = await saveShareLink({
+        data: {
+          name: (thread.title === "New chat" ? "Noctis Conversation" : thread.title).slice(0, 75),
+          body: payload,
+        },
+      });
+      const shareUrl = `${window.location.origin}/s?c=${saved.code}`;
+      await navigator.clipboard?.writeText(shareUrl).catch(() => undefined);
+      setThreadShareCopied(true);
+      setTimeout(() => setThreadShareCopied(false), 2400);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not generate shareable thread link.");
+    }
+  }
+
   function attachSketchImage() {
     const c = sketchCanvasRef.current;
     if (!c) return;
@@ -5503,6 +5581,48 @@ export function NoctisDesk() {
     if (shelf !== "chats") setShelf("chats");
     if (skillOverride !== undefined) setSkill(skillOverride);
     if (box.current) box.current.style.height = "auto";
+
+    // Handle direct `/schedule <prompt>` or `Schedule a task to <prompt>` command
+    const schedMatch = (rawText || text).match(/^(?:\/schedule\s+|schedule\s+(?:a\s+)?(?:recurring\s+)?task\s+(?:to|for)\s+)(.+)$/i);
+    if (schedMatch && preset === undefined) {
+      const goal = schedMatch[1]!.trim();
+      const cron = /\bhourly\b/i.test(goal)
+        ? "0 * * * *"
+        : /\bweekly|monday\b/i.test(goal)
+          ? "0 9 * * 1"
+          : /\bweekday/i.test(goal)
+            ? "0 8 * * 1-5"
+            : "0 8 * * *";
+      try {
+        const res = await fetch("/api/v2/assistant/schedules", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: goal.slice(0, 120),
+            taskType: "RESEARCH_WATCH",
+            cronOrIso: cron,
+            payload: { prompt: goal },
+          }),
+        });
+        const saved = (await res.json()) as { id?: string; nextRunAt?: string };
+        const confirmMsg =
+          `### Scheduled Task Created (\`${saved.id || "SCH"}\`)\n` +
+          `- **Task Prompt:** ${goal}\n` +
+          `- **Schedule (Cron):** \`${cron}\`\n` +
+          `- **Next Run:** ${saved.nextRunAt || "Scheduled"}\n` +
+          `- Manage, pause, run immediately, or delete under **Personalization -> Scheduled Tasks**.`;
+        setThreads((rows) =>
+          rows.map((r) =>
+            r.id === row.id
+              ? { ...r, title, turns: [...turns, { role: "assistant", content: confirmMsg, engineName: "Noctis Scheduler" }] }
+              : r,
+          ),
+        );
+        return;
+      } catch {
+        /* fall through to standard chat reply if offline */
+      }
+    }
 
     if (useSkill === "draw") {
       await paint(row.id, turns, title, text || asked || "A clear diagram");
@@ -5962,8 +6082,8 @@ export function NoctisDesk() {
     },
     {
       id: "personal_memory",
-      title: "Personal Memory",
-      subtitle: "Custom instructions & persistent memory bank",
+      title: "Personalization & Memory",
+      subtitle: "Toggle Memory ON/OFF & custom instructions",
       icon: (
         <span className="grid size-5 shrink-0 place-items-center rounded-md bg-[#8b5cf6] text-white shadow-xs">
           <Brain className="size-3.5" />
@@ -5971,7 +6091,80 @@ export function NoctisDesk() {
       ),
       action: () => {
         setAddOpen(false);
+        setMemoryModalTab("instructions");
         setMemoryModalOpen(true);
+      },
+    },
+    {
+      id: "image_studio_inpaint",
+      title: "Image Studio & Inpainting",
+      subtitle: "Generate raster images or brush-mask edit uploads",
+      icon: (
+        <span className="grid size-5 shrink-0 place-items-center rounded-md bg-sky-500 text-white shadow-xs">
+          <Image className="size-3.5" />
+        </span>
+      ),
+      action: () => {
+        setAddOpen(false);
+        setImageStudioOpen(true);
+      },
+    },
+    {
+      id: "screen_vision",
+      title: "Share Screen (Vision)",
+      subtitle: "Capture your live screen or window & ask Noctis",
+      icon: (
+        <span className="grid size-5 shrink-0 place-items-center rounded-md bg-cyan-600 text-white shadow-xs">
+          <MonitorUp className="size-3.5" />
+        </span>
+      ),
+      action: () => {
+        setAddOpen(false);
+        void captureScreenVisionFrame();
+      },
+    },
+    {
+      id: "scheduled_tasks",
+      title: "Scheduled Tasks & Crons",
+      subtitle: "Automate daily/weekly recurring prompts",
+      icon: (
+        <span className="grid size-5 shrink-0 place-items-center rounded-md bg-amber-500 text-[#1a1408] shadow-xs">
+          <Clock className="size-3.5" />
+        </span>
+      ),
+      action: () => {
+        setAddOpen(false);
+        setMemoryModalTab("schedules");
+        setMemoryModalOpen(true);
+      },
+    },
+    {
+      id: "connected_apps",
+      title: "Connected Apps & Drives",
+      subtitle: "Pull from Google Drive, OneDrive, GitHub, Slack & Feeds",
+      icon: (
+        <span className="grid size-5 shrink-0 place-items-center rounded-md bg-emerald-600 text-white shadow-xs">
+          <Plug className="size-3.5" />
+        </span>
+      ),
+      action: () => {
+        setAddOpen(false);
+        setConnectorsInitialTab("apps");
+        setDataConnectorsModalOpen(true);
+      },
+    },
+    {
+      id: "temporary_chat",
+      title: "Temporary Chat",
+      subtitle: "Private session — skips Memory & history",
+      icon: (
+        <span className="grid size-5 shrink-0 place-items-center rounded-md bg-zinc-700 text-white shadow-xs">
+          <EyeOff className="size-3.5" />
+        </span>
+      ),
+      action: () => {
+        setAddOpen(false);
+        toggleTemporaryChat();
       },
     },
     {
@@ -8226,6 +8419,33 @@ export function NoctisDesk() {
           <div className="flex items-center gap-1.5 shrink-0">
             <button
               type="button"
+              aria-label="Toggle Temporary Chat"
+              onClick={toggleTemporaryChat}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition cursor-pointer border",
+                priv || thread?.temp
+                  ? "border-violet-400/50 bg-violet-500/20 text-violet-200"
+                  : "border-white/12 bg-white/[0.04] text-zinc-300 hover:border-white/25 hover:text-white"
+              )}
+              title="Temporary Chat — isolated session (no Memory, no history saved)"
+            >
+              <EyeOff className={cn("size-3.5 shrink-0", priv || thread?.temp ? "text-violet-300" : "text-zinc-400")} />
+              <span className="hidden xl:inline">{priv || thread?.temp ? "Temp On" : "Temporary"}</span>
+            </button>
+            {desk === "chat" && thread && thread.turns.length > 0 && !priv && !thread.temp ? (
+              <button
+                type="button"
+                aria-label="Share full conversation link"
+                onClick={() => void handleShareFullThread()}
+                className="inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.04] hover:border-[#e4b86a]/45 hover:bg-white/10 px-2.5 py-1 text-xs font-medium text-zinc-200 transition cursor-pointer"
+                title="Create read-only shareable link for this full conversation"
+              >
+                <Share2 className="size-3.5 text-[#e4b86a] shrink-0" />
+                <span className="hidden sm:inline">{threadShareCopied ? "Link Copied" : "Share"}</span>
+              </button>
+            ) : null}
+            <button
+              type="button"
               aria-label="Open Command Palette"
               onClick={() => setCommandPaletteOpen(true)}
               className="inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.04] hover:border-[#e4b86a]/45 hover:bg-white/10 px-2.5 py-1 text-xs font-medium text-zinc-200 transition cursor-pointer"
@@ -8651,6 +8871,12 @@ export function NoctisDesk() {
                   </p>
                 </div>
                 <div className="mx-auto w-full max-w-3xl shrink-0 px-1 pb-2">
+                  {priv || thread?.temp ? (
+                    <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-violet-500/15 border border-violet-400/35 px-3 py-1 text-xs font-medium text-violet-200">
+                      <EyeOff className="size-3.5" />
+                      <span>Temporary Chat active — Memory, Custom Instructions &amp; History are disabled for this session</span>
+                    </div>
+                  ) : null}
                   {code ? (
                     <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-[#e4b86a]/15 border border-[#e4b86a]/30 px-3 py-1 text-xs font-medium text-[#e4b86a]">
                       <Code2 className="size-3.5" />
@@ -9257,7 +9483,18 @@ export function NoctisDesk() {
           ) : null}
         </div>
       </div>
-      <NoctisMemoryModal open={memoryModalOpen} onClose={() => setMemoryModalOpen(false)} />
+      <NoctisMemoryModal open={memoryModalOpen} onClose={() => setMemoryModalOpen(false)} initialTab={memoryModalTab} />
+      <NoctisImageStudioModal
+        open={imageStudioOpen}
+        onClose={() => setImageStudioOpen(false)}
+        onAttachToChat={(dataUrl, caption) => {
+          setUploads((rows) => [
+            ...rows,
+            { id: `gen-${Date.now()}`, name: "noctis-studio-image.png", kind: "image", dataUrl },
+          ]);
+          if (caption && !draft.trim()) setDraft(`Describe or refine this image: ${caption}`);
+        }}
+      />
       <NoctisWorkspaceExplorer
         open={workspaceExplorerOpen}
         onClose={() => setWorkspaceExplorerOpen(false)}
@@ -9290,6 +9527,7 @@ export function NoctisDesk() {
         open={dataConnectorsModalOpen}
         onClose={() => setDataConnectorsModalOpen(false)}
         onInsertToChat={(text) => setDraft(text)}
+        initialTab={connectorsInitialTab}
       />
       <NoctisCouncilModal
         open={councilModalOpen}

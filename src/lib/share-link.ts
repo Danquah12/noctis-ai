@@ -2,6 +2,40 @@ import { createServerFn } from "@tanstack/react-start";
 
 export type ShareNote = { code: string; name: string; avatar: string; body: string };
 
+export const SHARED_THREAD_PREFIX = "NOCTIS_THREAD_V1:";
+
+export interface SharedThreadPayload {
+  title: string;
+  sharedAt: string;
+  turns: Array<{ role: "user" | "assistant"; content: string }>;
+}
+
+export function encodeSharedThread(payload: SharedThreadPayload): string {
+  const safeTurns = (payload.turns || [])
+    .slice(0, 40)
+    .map((t) => ({
+      role: t.role === "user" ? ("user" as const) : ("assistant" as const),
+      content: String(t.content || "").slice(0, 8000),
+    }));
+  const json = JSON.stringify({
+    title: String(payload.title || "Shared Noctis Conversation").slice(0, 120),
+    sharedAt: payload.sharedAt || new Date().toISOString(),
+    turns: safeTurns,
+  });
+  return `${SHARED_THREAD_PREFIX}${json}`;
+}
+
+export function decodeSharedThread(rawBody: string | null | undefined): SharedThreadPayload | null {
+  if (!rawBody || !rawBody.startsWith(SHARED_THREAD_PREFIX)) return null;
+  try {
+    const parsed = JSON.parse(rawBody.slice(SHARED_THREAD_PREFIX.length)) as SharedThreadPayload;
+    if (!parsed || !Array.isArray(parsed.turns)) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
 const ALPHABET = "abcdefghijkmnpqrstuvwxyz23456789";
 
 function cleanCode(value: string) {
@@ -30,7 +64,7 @@ export const saveShareLink = createServerFn({ method: "POST" })
   .validator((input: { name?: string; avatar?: string; body?: string }) => ({
     name: String(input?.name ?? "Noctis").replace(/\s+/g, " ").trim().slice(0, 80) || "Noctis",
     avatar: String(input?.avatar ?? "").startsWith("https://") ? String(input.avatar).slice(0, 800) : "",
-    body: String(input?.body ?? "").trim().slice(0, 14000),
+    body: String(input?.body ?? "").trim().slice(0, 48000),
   }))
   .handler(async ({ data }): Promise<ShareNote> => {
     const sql = await db();

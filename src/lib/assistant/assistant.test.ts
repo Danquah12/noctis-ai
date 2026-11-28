@@ -77,6 +77,7 @@ import {
 import { run100TaskBenchmark } from "./benchmark-100.server.ts";
 import { handleAssistantV2Request } from "./api-handler.server.ts";
 import { isAssistantChatQuery, tryHandleAssistantChatQuery } from "./chat-bridge.server.ts";
+import { decodeSharedThread, encodeSharedThread } from "../share-link.ts";
 
 test("100-Capability Parity Matrix validates sequential #1-#100 and fs.existsSync on all referenced source modules", () => {
   assert.equal(NOCTIS_100_CAPABILITY_PARITY_MATRIX.length, 100);
@@ -276,4 +277,105 @@ test("SQL CRUD, Connectors, Distinctive Moat (#91-#100), 100-Task Benchmark, API
   assert.equal(isAssistantChatQuery("Run 260-capability master capability catalog audit"), false);
   const chatRes = await tryHandleAssistantChatQuery("Generate ChatGPT vs Noctis feature parity matrix");
   assert.ok(chatRes && chatRes.includes("100-Capability Feature Parity Matrix"));
+
+  // Personalization (Memory ON/OFF + Custom Instructions), Scheduled Cron Runner, Live Image Gen/Inpaint, Connectors, & Full Thread Share
+  const persSave = await handleAssistantV2Request(
+    new Request("https://www.dstrike.app/api/v2/assistant/personalization", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        memoryEnabled: false,
+        aboutUser: "Staff Security Architect",
+        responseStyle: "Use Markdown tables first",
+        personaPreset: "cyber",
+      }),
+    }),
+  );
+  assert.equal(persSave.status, 200);
+  const persRead = (await (await handleAssistantV2Request(new Request("https://www.dstrike.app/api/v2/assistant/personalization"))).json()) as {
+    memoryEnabled: boolean;
+    aboutUser: string;
+    personaPreset: string;
+  };
+  assert.equal(persRead.memoryEnabled, false);
+  assert.equal(persRead.aboutUser, "Staff Security Architect");
+  assert.equal(persRead.personaPreset, "cyber");
+
+  const schedCreate = (await (
+    await handleAssistantV2Request(
+      new Request("https://www.dstrike.app/api/v2/assistant/schedules", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ title: "Daily KEV Briefing", taskType: "RESEARCH_WATCH", cronOrIso: "0 8 * * *" }),
+      }),
+    )
+  ).json()) as { id: string };
+  const cronRes = (await (
+    await handleAssistantV2Request(
+      new Request("https://www.dstrike.app/api/v2/assistant/cron/run-tasks", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ forceAll: true, taskId: schedCreate.id }),
+      }),
+    )
+  ).json()) as { ok: boolean; executedCount: number };
+  assert.equal(cronRes.ok, true);
+  assert.equal(cronRes.executedCount, 1);
+
+  const pauseRes = await handleAssistantV2Request(
+    new Request("https://www.dstrike.app/api/v2/assistant/schedules", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id: schedCreate.id, status: "PAUSED" }),
+    }),
+  );
+  assert.equal(pauseRes.status, 200);
+  const delRes = await handleAssistantV2Request(
+    new Request(`https://www.dstrike.app/api/v2/assistant/schedules?id=${encodeURIComponent(schedCreate.id)}`, { method: "DELETE" }),
+  );
+  assert.equal(delRes.status, 200);
+
+  const imgEdit = (await (
+    await handleAssistantV2Request(
+      new Request("https://www.dstrike.app/api/v2/assistant/images/edit", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          prompt: "Highlight boundary gateway",
+          useLiveProvider: false,
+          maskImageBase64: "data:image/png;base64,iVBORw0KGgo=",
+        }),
+      }),
+    )
+  ).json()) as { mode: string; dataUri: string };
+  assert.equal(imgEdit.mode, "EDIT");
+  assert.ok(imgEdit.dataUri.startsWith("data:image/"));
+
+  const connSave = await handleAssistantV2Request(
+    new Request("https://www.dstrike.app/api/v2/assistant/connectors/connect", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ provider: "google-drive", accountLabel: "test-drive@dstrike.app", token: "tok-test" }),
+    }),
+  );
+  assert.equal(connSave.status, 200);
+  const connList = (await (await handleAssistantV2Request(new Request("https://www.dstrike.app/api/v2/assistant/connectors"))).json()) as {
+    connectors: Array<{ id: string; status: string }>;
+  };
+  assert.equal(connList.connectors.find((c) => c.id === "google-drive")?.status, "CONNECTED");
+  const oauthStart = (await (
+    await handleAssistantV2Request(new Request("https://www.dstrike.app/api/v2/assistant/connectors/oauth/start?provider=slack"))
+  ).json()) as { provider: string; requiredEnvVars?: string[] };
+  assert.equal(oauthStart.provider, "slack");
+
+  const encoded = encodeSharedThread({
+    title: "Security Review",
+    sharedAt: "2026-11-27T00:00:00Z",
+    turns: [
+      { role: "user", content: "Check AC-2(3)" },
+      { role: "assistant", content: "Disable separated user accounts within 24h." },
+    ],
+  });
+  const decoded = decodeSharedThread(encoded);
+  assert.ok(decoded && decoded.title === "Security Review" && decoded.turns.length === 2);
 });
