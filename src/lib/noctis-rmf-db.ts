@@ -1349,6 +1349,17 @@ export function verifyRmfResponseAgainstDb(
     );
   }
 
+  // Enforce explicit MP-6 + Purge / Cryptographic Erase / Destroy coverage when SP 800-88 NVMe/SSD sanitization fails
+  if (
+    /\b800-88\b/i.test(question) &&
+    packet.ruleEvaluations.some((r) => r.controlId === "MP-6" && r.verdict === "FAIL") &&
+    !/\bMP-6\b[\s\S]*(?:Purge|Cryptographic\s+Erase|Destroy)/i.test(draftBody)
+  ) {
+    violations.push(
+      "MISSING_MP6_PURGE_DESTROY: Prompt evaluated SP 800-88 NVMe/SSD sanitization failure under MP-6, but draft omitted MP-6 followed by Purge, Cryptographic Erase, or Destroy.",
+    );
+  }
+
   // Enforce Markdown table deliverable when explicitly requested
   if (
     /\b(?:markdown\s+table|on\s+a\s+table|in\s+a\s+table|as\s+a\s+table)\b/i.test(question) &&
