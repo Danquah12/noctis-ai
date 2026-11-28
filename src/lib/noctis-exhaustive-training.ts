@@ -161,6 +161,8 @@ import { generateIsolatedAcutePancreatitisDossier } from "./noctis-acute-pancrea
 import { generateBrashDigoxinMalaEmergencyDossier } from "./noctis-brash-digoxin-engine.ts";
 import { generateDkaSepticShockEmergencyDossier } from "./noctis-dka-sepsis-engine.ts";
 import { buildImmutablePatientContext } from "./noctis-patient-context.ts";
+import { buildClinicalScratchpad } from "./noctis-clinical-scratchpad.ts";
+import { auditAndEnforceClinicalDossier } from "./noctis-clinical-preflight-auditor.ts";
 
 import {
   NOCTIS_PANELS,
@@ -774,6 +776,36 @@ export function executeRemainingNoctisTrainingDomains(): ExhaustiveTrainingDomai
     );
     const dkaDossier = generateDkaSepticShockEmergencyDossier(dkaCtx);
 
+    const ardsRawInput =
+      "A 68-year-old male (175 cm tall, actual body weight 118 kg) with severe ARDS (PaO2/FiO2 88) and septic shock has K+ 7.1 mEq/L, HR 32 bpm, BP 74/42 mmHg, and peaked T waves on ECG. The resident wants to set tidal volume to 708 mL (6 mL/kg actual weight), give IV regular insulin without calcium first, and start a continuous cisatracurium infusion before confirming deep sedation. Audit every order immediately.";
+    const ardsPad = buildClinicalScratchpad(ardsRawInput, "NPDE-CLIN-CC68B152");
+    const section13Flawed = [
+      "# Noctis Patient Diagnostic & Triage Intelligence Dossier (Clinical Decision Support)",
+      "**Encounter ID:** `NPDE-CLIN-CC68B152` · **Triage Urgency:** P0 IMMEDIATE EMERGENCY",
+      "### Executive Summary",
+      "68-year-old male (175 cm, 118 kg) with BP 74/42 mmHg (MAP 52.7 mmHg), HR 32 bpm, K+ 7.1 mmol/L, and severe ARDS (PaO2/FiO2 88). All fluid resuscitation is strictly contraindicated in this patient.",
+      "### Resident Order Audit",
+      "1. Tidal volume: PBW = 70.6 kg, target 6 mL/kg PBW = 424 mL (range 282-424 mL). Reject 708 mL.",
+      "2. Hyperkalemia: Give IV calcium first, then give IV regular insulin 10 units with 50% dextrose.",
+      "3. Cisatracurium: Starting cisatracurium without sedation is severe malpractice; confirm deep sedation (RASS -4 to -5) first.",
+      "### Septic Shock Plan",
+      "Start norepinephrine targeting MAP >= 65 mmHg.",
+      "### Missing Clinical Data Gaps",
+      "- Serum chloride [UNMEASURED], baseline creatinine [UNMEASURED], ABG [UNMEASURED], lactate [UNMEASURED], glucose [UNMEASURED], urine output [UNMEASURED].",
+      "### Independent Fact-Reconciliation Matrix",
+      "| Parameter | Value |",
+      "|---|---|",
+      "| MAP | 52.7 mL/mmHg (target >= 65 mL/mmHg) |",
+      "### SOAP Note",
+      "- Subjective: 68-year-old male in shock and severe ARDS.",
+      "- Objective: BP 74/42 mmHg (MAP 52.7 mmHg), HR 32 bpm, K+ 7.1 mmol/L.",
+      "- Assessment: Septic shock, severe ARDS, critical hyperkalemia with junctional rhythm on ECG. Validator is ISO 14971 and IEC 62304 compliant.",
+      "- Plan: IV calcium then insulin, norepinephrine, TV 424 mL, sedation before cisatracurium.",
+      "### Neuro-Symbolic Scratchpad Verification Trail",
+      ardsPad.markdownScratchpadSummary,
+    ].join("\n\n");
+    const section13Audit = auditAndEnforceClinicalDossier(section13Flawed, ardsRawInput, "NPDE-CLIN-CC68B152", ardsPad);
+
     const checks = [
       burnAirway.trippedInvariants.length > 0,
       burnCreep.trippedInvariants.length > 0,
@@ -785,6 +817,10 @@ export function executeRemainingNoctisTrainingDomains(): ExhaustiveTrainingDomai
       panc.length > 200,
       brash.length > 200,
       dkaDossier.length > 200,
+      ardsPad.derivedCalculations.ardsNetVentilation.predictedBodyWeightKg === 70.6 &&
+        ardsPad.derivedCalculations.ardsNetVentilation.tidalVolume6MlKgMl === 424 &&
+        ardsPad.derivedCalculations.fluidSafety.decisionObject.decision_id === "ICU-FLUID-ARDS-001",
+      !section13Audit.isApproved && !section13Audit.mandatoryReleasePassed && section13Audit.violationsCount >= 8,
     ];
     return { total: checks.length, passed: checks.filter(Boolean).length };
   });
@@ -794,7 +830,7 @@ export function executeRemainingNoctisTrainingDomains(): ExhaustiveTrainingDomai
     scenariosCount: clinExtOut.total,
     invariantsPassed: clinExtOut.passed,
     durationMs: clinExtMs,
-    detail: "Extended Critical Care Subspecialties: ABA Burn Airway/Fluid-Creep, Antimicrobial CrCl Stewardship, DAWN/DEFUSE-3 Stroke EVT, Multi-Specialist Consensus, Pancreatitis, BRASH & DKA-Sepsis",
+    detail: "Extended Critical Care Subspecialties: ABA Burn Airway/Fluid-Creep, Antimicrobial CrCl Stewardship, DAWN/DEFUSE-3 Stroke EVT, Multi-Specialist Consensus, Pancreatitis, BRASH, DKA-Sepsis, Devine PBW ARDSNet & Section 13 8/8 Negative Validator Gate",
   });
 
   // Step 139: Plain Language Topic-Aware Translation & Capability Routing Matrix

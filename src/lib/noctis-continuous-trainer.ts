@@ -2798,7 +2798,12 @@ export function handleNaturalContinuousTrainingQuery(prompt: string): string | n
     p.includes("traning globally") ||
     p.includes("professional areas") ||
     p.includes("proceed without prompting") ||
-    p.includes("without promptin");
+    p.includes("without promptin") ||
+    p.includes("continue to be trained") ||
+    p.includes("cover all areas") ||
+    p.includes("until i ask you to stop") ||
+    p.includes("untill i aks you to stop") ||
+    p.includes("until you stop");
 
   if (isExhaustiveRun) {
     const fullResult = runCompleteExhaustiveTrainingRun(3);

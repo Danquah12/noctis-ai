@@ -89,5 +89,12 @@ describe("NOCTIS-CONT-TRAIN-001: Sovereign Continuous Autonomous Training Engine
     assert.match(naturalOutput, /Global Professional Pathways \(467 Professions\)/);
     assert.match(naturalOutput, /Global Regional Knowledge Packs \(12 Regions\)/);
     assert.match(naturalOutput, /Exhaustive Remaining Flagship Subsystems \(Steps 121–200/);
+
+    const userWishOutput = handleNaturalContinuousTrainingQuery(
+      "I wish Noctis will continue to be trained and cover all areas not covered now untill I aks you to stop",
+    );
+    assert.ok(userWishOutput);
+    assert.match(userWishOutput, /TRAINING 100% COMPLETE WITHOUT INTERRUPTION/);
+    assert.match(userWishOutput, /Section 13 8\/8 Negative Validator Gate/);
   });
 });
