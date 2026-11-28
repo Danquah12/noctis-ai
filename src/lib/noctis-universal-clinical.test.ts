@@ -484,7 +484,7 @@ describe("Universal 3-Stage Neuro-Symbolic Clinical Pipeline (executeUniversalCl
       "**Triage Urgency:** P0 IMMEDIATE EMERGENCY",
       "68-year-old male (175 cm, 118 kg) with BP 74/42 mmHg (MAP 52.7 mmHg), HR 32 bpm, K+ 7.1 mmol/L, and severe ARDS (PaO2/FiO2 88).",
       "$$\\text{PBW} = 50 + 0.91 \\times (175 - 152.4) \\approx 70.6\\text{ kg}$$",
-      "Size tidal volume to 424 mL using PBW $\\approx$ 70.6 kg, maintain MAP $\\ge$ 65 mmHg with norepinephrine, consider prone positioning when P/F $< 150$, administer IV calcium before regular insulin with point-of-care glucose checks, maintain epinephrine and transcutaneous pacing standby, and verify deep sedation before cisatracurium.",
+      "Size tidal volume to 424 mL using PBW $\\approx$ 70.6 kg, maintain MAP $\\ge$ 65 mmHg with norepinephrine, consider prone positioning when P/F $< 150$, administer IV calcium before regular insulin with point-of-care glucose checks and repeat serum potassium monitoring, draw blood cultures and start empiric broad-spectrum IV antibiotics with infection source control, maintain epinephrine and transcutaneous pacing standby, and verify deep sedation before cisatracurium.",
       "### Missing Clinical Data Gaps\n- Serum chloride [UNMEASURED], baseline creatinine [UNMEASURED], ABG pH/PaCO2 [UNMEASURED], lactate [UNMEASURED], glucose [UNMEASURED], urine output [UNMEASURED].",
       "### Independent Fact-Reconciliation Matrix\n| Parameter | Value |\n|---|---|\n| TV | 708 mL<br/>Unsafe |",
       "### SOAP Note\n- Subjective: Acute ICU resuscitation.\n- Objective: 118 kg, 175 cm, BP 74/42 mmHg (MAP 52.7 mmHg), HR 32 bpm, K+ 7.1 mmol/L.\n- Assessment: Septic shock, severe ARDS, critical hyperkalemia.\n- Plan: IV calcium first, norepinephrine target MAP ≥ 65 mmHg, TV ~424 mL, verify sedation prior to cisatracurium.",
@@ -515,7 +515,7 @@ describe("Universal 3-Stage Neuro-Symbolic Clinical Pipeline (executeUniversalCl
       "# Noctis Patient Diagnostic & Triage Intelligence Dossier (Clinical Decision Support)",
       "**Triage Urgency:** P0 IMMEDIATE EMERGENCY",
       "68-year-old male (175 cm, 118 kg) with BP 74/42 mmHg (MAP 52.7 mmHg), HR 32 bpm, K+ 7.1 mmol/L, severe ARDS (PaO2/FiO2 88).",
-      "Immediately administer IV Calcium Gluconate (1–2 g) or Calcium Chloride 10% (500–1000 mg IV over 2–5 minutes). Consider Sodium Bicarbonate 50 mEq IV only if acidemia is confirmed, give balanced crystalloids or 0.9% Sodium Chloride cautiously in small aliquots alongside early norepinephrine (target MAP ≥ 65 mmHg), check point-of-care blood glucose every 30 min (give D50W unless glucose 250 mg/dL), size tidal volume to 424 mL (6 mL/kg PBW 70.6 kg), and verify deep sedation prior to cisatracurium.",
+      "Immediately administer IV Calcium Gluconate (1–2 g) or Calcium Chloride 10% (500–1000 mg IV over 2–5 minutes). Consider Sodium Bicarbonate 50 mEq IV only if acidemia is confirmed, give balanced crystalloids or 0.9% Sodium Chloride cautiously in small aliquots alongside early norepinephrine (target MAP ≥ 65 mmHg), draw blood cultures and administer empiric broad-spectrum IV antibiotics with infection source control, check point-of-care blood glucose every 30 min (give D50W unless glucose 250 mg/dL) and repeat serum potassium monitoring, size tidal volume to 424 mL (6 mL/kg PBW 70.6 kg), and verify deep sedation prior to cisatracurium.",
       "### Missing Clinical Data Gaps\n- Serum chloride [UNMEASURED], serum bicarbonate [UNMEASURED], creatinine [UNMEASURED], ABG [UNMEASURED], lactate [UNMEASURED], glucose [UNMEASURED], urine output [UNMEASURED].",
       "### Independent Fact-Reconciliation Matrix\n| Parameter | Status |\n|---|---|\n| Electrolytes | K+ 7.1 mmol/L; Cl- [UNMEASURED]; HCO3- [UNMEASURED] |",
       "### SOAP Note\n- Subjective: ICU emergency.\n- Objective: 118 kg, 175 cm, BP 74/42 mmHg (MAP 52.7 mmHg), HR 32 bpm, K+ 7.1 mmol/L.\n- Assessment: Septic shock, severe ARDS, critical hyperkalemia.\n- Plan: IV Calcium Chloride 10% (500–1000 mg) or Calcium Gluconate first, norepinephrine, tidal volume 424 mL, verify deep sedation before cisatracurium.",
@@ -555,7 +555,7 @@ describe("Universal 3-Stage Neuro-Symbolic Clinical Pipeline (executeUniversalCl
       "# Noctis Patient Diagnostic & Triage Intelligence Dossier (Clinical Decision Support)",
       "**Triage Urgency:** P0 IMMEDIATE EMERGENCY",
       "68-year-old male (175 cm, 118 kg) with BP 74/42 mmHg (MAP 52.7 mmHg), HR 32 bpm, K+ 7.1 mmol/L, severe ARDS (PaO2/FiO2 88).",
-      "Anion Gap: Cannot calculate — chloride unavailable (do not substitute reference chloride 98 mmol/L; assuming a normal reference chloride of 98 mmol/L is strictly prohibited). Order IV Calcium Gluconate first, norepinephrine, tidal volume 424 mL (6 mL/kg PBW 70.6 kg), and verify deep sedation prior to cisatracurium.",
+      "Anion Gap: Cannot calculate — chloride unavailable (do not substitute reference chloride 98 mmol/L; assuming a normal reference chloride of 98 mmol/L is strictly prohibited). Order IV Calcium Gluconate first, regular insulin with serial blood glucose monitoring and repeat serum potassium monitoring, norepinephrine, blood cultures and empiric broad-spectrum IV antibiotics with infection source control, tidal volume 424 mL (6 mL/kg PBW 70.6 kg), and verify deep sedation prior to cisatracurium.",
       "### Missing Clinical Data Gaps\n- Serum chloride [UNMEASURED], creatinine [UNMEASURED], ABG [UNMEASURED], lactate [UNMEASURED], glucose [UNMEASURED], urine output [UNMEASURED].",
       "### Independent Fact-Reconciliation Matrix\n| Parameter | Status |\n|---|---|\n| Electrolytes | K+ 7.1 mmol/L; Cl- [UNMEASURED] |",
       "### SOAP Note\n- Subjective: ICU emergency.\n- Objective: 118 kg, 175 cm, BP 74/42 mmHg (MAP 52.7 mmHg), HR 32 bpm, K+ 7.1 mmol/L.\n- Assessment: Septic shock, severe ARDS, critical hyperkalemia.\n- Plan: IV Calcium first, norepinephrine, tidal volume 424 mL, verify deep sedation before cisatracurium.",
@@ -585,5 +585,53 @@ describe("Universal 3-Stage Neuro-Symbolic Clinical Pipeline (executeUniversalCl
     assert.ok(blockedAffirmativeOut);
     assert.ok(blockedAffirmativeOut.includes("CLINICAL_VALIDATION_FAILED — SAFETY_INVARIANT_VIOLATION"));
     assert.ok(!blockedAffirmativeOut.includes("APPROVED FOR CLINICAL DECISION SUPPORT"));
+  });
+
+  it("rejects all 8 injected defects in the Section 13 Negative Regression Test on NPDE-CLIN-CC68B152 and retains P0 emergency warning on lockout", async () => {
+    const rawInput =
+      "A 68-year-old male (175 cm tall, actual body weight 118 kg) with severe ARDS (PaO2/FiO2 88) and septic shock has K+ 7.1 mEq/L, HR 32 bpm, BP 74/42 mmHg, and peaked T waves on ECG. The resident wants to set tidal volume to 708 mL (6 mL/kg actual weight), give IV regular insulin without calcium first, and start a continuous cisatracurium infusion before confirming deep sedation. Audit every order immediately.";
+
+    const syntheticSection13Draft = [
+      "# Noctis Patient Diagnostic & Triage Intelligence Dossier (Clinical Decision Support)",
+      "**Encounter ID:** `NPDE-CLIN-CC68B152` · **Triage Urgency:** P0 IMMEDIATE EMERGENCY",
+      "### Executive Summary",
+      "68-year-old male (175 cm, 118 kg) with BP 74/42 mmHg (MAP 52.7 mmHg), HR 32 bpm, K+ 7.1 mmol/L, and severe ARDS (PaO2/FiO2 88). All fluid resuscitation is strictly contraindicated in this patient.",
+      "### Resident Order Audit",
+      "1. Tidal volume: PBW = 70.6 kg, target 6 mL/kg PBW = 424 mL (range 282-424 mL). Reject 708 mL.",
+      "2. Hyperkalemia: Give IV calcium first, then give IV regular insulin 10 units with 50% dextrose.",
+      "3. Cisatracurium: Starting cisatracurium without sedation is severe malpractice; confirm deep sedation (RASS -4 to -5) first.",
+      "### Septic Shock Plan",
+      "Start norepinephrine targeting MAP >= 65 mmHg.",
+      "### Missing Clinical Data Gaps",
+      "- Serum chloride [UNMEASURED], baseline creatinine [UNMEASURED], ABG [UNMEASURED], lactate [UNMEASURED], glucose [UNMEASURED], urine output [UNMEASURED].",
+      "### Independent Fact-Reconciliation Matrix",
+      "| Parameter | Value |",
+      "|---|---|",
+      "| MAP | 52.7 mL/mmHg (target >= 65 mL/mmHg) |",
+      "### SOAP Note",
+      "- Subjective: 68-year-old male in shock and severe ARDS.",
+      "- Objective: BP 74/42 mmHg (MAP 52.7 mmHg), HR 32 bpm, K+ 7.1 mmol/L.",
+      "- Assessment: Septic shock, severe ARDS, critical hyperkalemia with junctional rhythm on ECG. Validator is ISO 14971 and IEC 62304 compliant.",
+      "- Plan: IV calcium then insulin, norepinephrine, TV 424 mL, sedation before cisatracurium.",
+    ].join("\n\n");
+
+    const lockedOut = await executeUniversalClinicalReasoning(rawInput, {
+      modelChatFn: async () => ({ text: syntheticSection13Draft }),
+    });
+    assert.ok(lockedOut);
+    assert.ok(lockedOut.includes("CLINICAL_VALIDATION_FAILED — SAFETY_INVARIANT_VIOLATION"));
+    assert.ok(!lockedOut.includes("APPROVED FOR CLINICAL DECISION SUPPORT"));
+    assert.ok(
+      lockedOut.includes("P0 IMMEDIATE BEDSIDE EMERGENCY WARNING RETAINED (CLIN-VAL-023)"),
+      "Must retain P0 emergency bedside warning when detailed plan release is blocked",
+    );
+    assert.match(lockedOut, /CLINICAL-CROSS-SECTION-001/);
+    assert.match(lockedOut, /CLIN-VAL-010/);
+    assert.match(lockedOut, /CLIN-VAL-012A/);
+    assert.match(lockedOut, /CLIN-VAL-012B/);
+    assert.match(lockedOut, /CLIN-VAL-014/);
+    assert.match(lockedOut, /CLIN-VAL-017/);
+    assert.match(lockedOut, /CLIN-VAL-019/);
+    assert.match(lockedOut, /CLIN-VAL-021/);
   });
 });

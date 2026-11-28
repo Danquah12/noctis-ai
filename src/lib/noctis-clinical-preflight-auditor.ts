@@ -98,7 +98,8 @@ export function evaluateMandatoryReleaseRule(
       v.ruleId.includes("ISOLATION") ||
       v.ruleId.includes("OMISSION") ||
       v.ruleId.includes("CROSS-SECTION") ||
-      /Documented-to-UNMEASURED|Narrative-vs-Scratchpad|Unsupported KDIGO Stage 3|KDIGO Stage 3 Understaging|Temporal Creatinine Substitution|Creatinine Fold-Ratio Mismatch|Anion Gap|Winter's Formula|Cross-section inconsistency in|Provenance Span Mismatch|Medication Gap Contamination|Unsupported Imaging\/Cardiopulmonary Diagnosis|False Full Dataset Claim|Missing Clinical Data Gaps|Missing Required SOAP Note|Missing Fact-Reconciliation Matrix|Incomplete Required Clinical Sections/i.test(
+      v.ruleId.includes("FLUID") ||
+      /CLINICAL-CROSS-SECTION-001|CLIN-VAL-0|Fluid Management Contradiction|Documented-to-UNMEASURED|Narrative-vs-Scratchpad|Unsupported KDIGO Stage 3|KDIGO Stage 3 Understaging|Temporal Creatinine Substitution|Creatinine Fold-Ratio Mismatch|Anion Gap|Winter's Formula|Cross-section inconsistency in|Provenance Span Mismatch|Medication Gap Contamination|Unsupported Imaging\/Cardiopulmonary Diagnosis|False Full Dataset Claim|Missing Clinical Data Gaps|Missing Required SOAP Note|Missing Fact-Reconciliation Matrix|Incomplete Required Clinical Sections/i.test(
         v.description
       )
   );

@@ -126,6 +126,32 @@ export interface DigiFabDosingResult {
   toxicologyConsultationRequired: boolean;
 }
 
+export interface FluidDecisionObject {
+  decision_id: string;
+  encounter_id: string;
+  clinical_context: {
+    septic_shock: boolean;
+    severe_ards: boolean;
+    high_risk_fluid_overload: boolean;
+    map_mmhg: number | null;
+    pf_ratio: number | null;
+    fluid_responsiveness: "UNKNOWN" | "DOCUMENTED";
+  };
+  decision: {
+    fluid_resuscitation:
+      | "CONDITIONALLY_PERMITTED"
+      | "STANDARD_PERMITTED"
+      | "CONTRAINDICATED_ACUTE_RV_FAILURE";
+    unmonitored_large_bolus: "UNSAFE" | "PERMITTED_WITH_MONITORING";
+    absolute_fluid_contraindication: boolean;
+    dynamic_reassessment_required: boolean;
+    early_vasopressor_assessment: boolean;
+  };
+  prohibited_claims: string[];
+  evidence_status: "SCENARIO_BASED";
+  clinical_review_required: true;
+}
+
 export interface FluidResuscitationSafetyResult {
   standard30mLPerKgContraindicated: boolean; // Retained for compatibility
   highRiskFluidOverload: boolean;
@@ -133,6 +159,7 @@ export interface FluidResuscitationSafetyResult {
   isAnuriaDocumented: boolean;
   recommendedResuscitationApproach: string;
   individualizedResuscitationGuidance: string;
+  decisionObject: FluidDecisionObject;
 }
 
 export interface ArdsNetVentilationResult {
@@ -1480,6 +1507,44 @@ export function buildClinicalScratchpad(
     ? `Flag high risk of fluid overload (${conditionsSummary}). Do not automatically prohibit or veto fluids solely because of risk factors, but do not administer unmonitored blanket 30 mL/kg crystalloids. Individualize resuscitation using bedside clinical examination, dynamic fluid responsiveness, lung ultrasound (POCUS for pulmonary congestion/B-lines), and early vasopressor consideration (Norepinephrine). Anuria is NOT documented and must not be invented.`
     : "Standard crystalloid resuscitation permissible with serial hemodynamic and fluid responsiveness monitoring.";
 
+  const fluidDecisionId = isArdsDocumented
+    ? "ICU-FLUID-ARDS-001"
+    : highRiskFluidOverload
+    ? "ICU-FLUID-HIGHRISK-001"
+    : "ICU-FLUID-STD-001";
+  const isSepticShockInInput = /\bseptic\s+shock\b/i.test(norm);
+  const fluidDecisionObject: FluidDecisionObject = {
+    decision_id: fluidDecisionId,
+    encounter_id: encounterId,
+    clinical_context: {
+      septic_shock: isSepticShockInInput,
+      severe_ards: ardsSeverity === "SEVERE",
+      high_risk_fluid_overload: highRiskFluidOverload,
+      map_mmhg: meanArterialPressureMmHg,
+      pf_ratio: paO2FiO2Ratio,
+      fluid_responsiveness: "UNKNOWN",
+    },
+    decision: {
+      fluid_resuscitation: hasAcuteRvFailure
+        ? "CONTRAINDICATED_ACUTE_RV_FAILURE"
+        : highRiskFluidOverload
+        ? "CONDITIONALLY_PERMITTED"
+        : "STANDARD_PERMITTED",
+      unmonitored_large_bolus:
+        hasAcuteRvFailure || highRiskFluidOverload ? "UNSAFE" : "PERMITTED_WITH_MONITORING",
+      absolute_fluid_contraindication: hasAcuteRvFailure,
+      dynamic_reassessment_required: true,
+      early_vasopressor_assessment:
+        Boolean(meanArterialPressureMmHg !== null && meanArterialPressureMmHg < 65) ||
+        isSepticShockInInput,
+    },
+    prohibited_claims: hasAcuteRvFailure
+      ? []
+      : ["ALL_FLUIDS_CONTRAINDICATED", "ARDS_ABSOLUTELY_PROHIBITS_INITIAL_FLUIDS"],
+    evidence_status: "SCENARIO_BASED",
+    clinical_review_required: true,
+  };
+
   const fluidSafety: FluidResuscitationSafetyResult = {
     standard30mLPerKgContraindicated,
     highRiskFluidOverload,
@@ -1487,6 +1552,7 @@ export function buildClinicalScratchpad(
     isAnuriaDocumented,
     recommendedResuscitationApproach: individualizedResuscitationGuidance,
     individualizedResuscitationGuidance,
+    decisionObject: fluidDecisionObject,
   };
 
   const bicarbDisplay =
@@ -2151,8 +2217,9 @@ export function validateCrossSectionClinicalConsistency(
     }
   }
 
-  // Check 11: Contradictory Fluid Recommendations between Narrative and Scratchpad
+  // Check 11: Contradictory Fluid Recommendations between Narrative and Scratchpad (CLINICAL-CROSS-SECTION-001)
   const fluidApproachText = scratchpad.derivedCalculations.fluidSafety?.recommendedResuscitationApproach || "";
+  const fluidDecision = scratchpad.derivedCalculations.fluidSafety?.decisionObject;
   const scratchpadPermitsFluids = /Standard crystalloid resuscitation permissible/i.test(fluidApproachText);
   if (scratchpadPermitsFluids) {
     if (
@@ -2164,6 +2231,20 @@ export function validateCrossSectionClinicalConsistency(
         sectionA: `Scratchpad Assessment ("${fluidApproachText}")`,
         sectionB: "Dossier Narrative",
         issue: "Contradictory fluid recommendations: Main report declares standard fluid resuscitation strictly contraindicated based on unsupported heart failure, while scratchpad permits standard crystalloid resuscitation.",
+      });
+    }
+  }
+  if (fluidDecision && !fluidDecision.decision.absolute_fluid_contraindication) {
+    if (
+      /\b(?:all\s+fluid(?:s|\s+resuscitation)?\s+(?:is|are)\s+(?:strictly\s+)?(?:contraindicated|prohibited|forbidden)|fluid\s+resuscitation\s+is\s+(?:strictly\s+)?(?:contraindicated|prohibited|forbidden))\b/i.test(
+        narrativeOnlyText,
+      )
+    ) {
+      violations.push({
+        item: "CLINICAL-CROSS-SECTION-001 (Fluid Resuscitation Contradiction)",
+        sectionA: `Deterministic Decision Object (${fluidDecision.decision_id}: ${fluidDecision.decision.fluid_resuscitation})`,
+        sectionB: "Dossier Narrative (FLUIDS_CONTRAINDICATED)",
+        issue: `Cross-section contradiction [CLINICAL-CROSS-SECTION-001]: Narrative declares all fluid resuscitation contraindicated (FLUIDS_CONTRAINDICATED), contradicting deterministic decision object ${fluidDecision.decision_id} (${fluidDecision.decision.fluid_resuscitation}; only unmonitored blanket 30 mL/kg large boluses are UNSAFE).`,
       });
     }
   }
@@ -2828,6 +2909,151 @@ export function validateCrossSectionClinicalConsistency(
           `covered ${dedupedItems.size - uncoveredNums.length}/${dedupedItems.size} items` +
           `${uncoveredNums.length > 0 ? `; missing items: ${uncoveredNums.join(", ")}` : ""}` +
           `${endsMidClause ? "; detected mid-sentence truncation" : ""}).`,
+      });
+    }
+  }
+
+  // Check 27 (CLIN-VAL-010): Clinical Diagnosis & ECG Rhythm Subtype Provenance Gate
+  const hasDocumentedRhythmSubtype =
+    /\b(?:junctional|nodal|sinus\s+bradycardia|idioventricular|complete\s+heart\s+block|third[- ]degree|3rd[- ]degree|av\s+block|mobitz|wenckebach|atrial\s+fibrillation|afib|a-fib|ventricular\s+tachycardia|torsades)\b/i.test(
+      scratchpad.rawInputText,
+    );
+  if (!hasDocumentedRhythmSubtype) {
+    const rhythmSubtypeRegex =
+      /\b(?:junctional\s+(?:rhythm|bradycardia|escape)|nodal\s+(?:rhythm|bradycardia)|idioventricular\s+rhythm|complete\s+heart\s+block|junctional\s*\/\s*(?:nodal|sinus)(?:\s*\/\s*sinus)?\s+(?:rhythm|bradycardia))\b/gi;
+    for (const m of narrativeOnly.matchAll(rhythmSubtypeRegex)) {
+      const idx = m.index ?? 0;
+      const preWindow = narrativeOnly.slice(Math.max(0, idx - 110), idx);
+      const lastDot = Math.max(preWindow.lastIndexOf("."), preWindow.lastIndexOf("\n"));
+      const preSent = lastDot >= 0 ? preWindow.slice(lastDot + 1) : preWindow;
+      const postWindow = narrativeOnly.slice(idx + m[0].length, idx + m[0].length + 110);
+      const nextDot = postWindow.search(/[.\n]/);
+      const postSent = nextDot >= 0 ? postWindow.slice(0, nextDot) : postWindow;
+      const sentenceCtx = `${preSent} ${m[0]} ${postSent}`;
+      const isQualifiedUndetermined =
+        /\b(?:undetermined|unspecified|unconfirmed|unknown|cannot\s+be\s+(?:determined|established|confirmed)|not\s+established|differential|rule\s+out|pending\s+(?:12[- ]lead|ecg|rhythm\s+strip)|requires?\s+(?:12[- ]lead|ecg|rhythm\s+strip)|do\s+not\s+diagnose|never\s+diagnose)\b/i.test(
+          sentenceCtx,
+        );
+      if (!isQualifiedUndetermined) {
+        violations.push({
+          item: "CLIN-VAL-010 (Unsupported ECG Rhythm Subtype Diagnosis)",
+          sectionA: "Documented Intake (Only HR / T-wave morphology provided; rhythm subtype unmeasured)",
+          sectionB: `Dossier Narrative ("${m[0]}")`,
+          issue: `Unsupported ECG rhythm diagnosis [CLIN-VAL-010]: Dossier diagnoses "${m[0]}" without supporting P-wave/PR/QRS rhythm-strip evidence in intake. State hemodynamically unstable bradycardia with rhythm subtype undetermined pending 12-lead ECG.`,
+        });
+        break;
+      }
+    }
+  }
+
+  // Check 28 (CLIN-VAL-012A & CLIN-VAL-012B): Hyperkalemia Insulin Monitoring Completeness (Glucose & Repeat Potassium)
+  if (
+    /\b(?:regular\s+insulin|(?:give|administer|order|start|infuse|bolus)\s+(?:iv\s+)?(?:regular\s+)?insulin)\b/i.test(
+      scratchpad.rawInputText,
+    ) &&
+    /\binsulin\b/i.test(narrativeOnly)
+  ) {
+    const hasGlucoseMonitoring =
+      /\b(?:glucose|fingerstick|poc|blood\s+sugar|bg)\b(?![^\n]{0,25}\[\s*UNMEASURED)[^.\n;]{0,75}\b(?:monitor\w*|check\w*|serial|hourly|q\s*\d+|recheck|testing)\b|\b(?:monitor\w*|check\w*|serial|hourly|q\s*\d+|pre-?treatment|recheck)\b[^.\n;]{0,75}\b(?:blood\s+|serum\s+|poc\s+|point-of-care\s+)?(?:glucose|fingerstick|blood\s+sugar|bg)\b(?![^\n]{0,25}\[\s*UNMEASURED)/i.test(
+        narrativeOnly,
+      );
+    if (!hasGlucoseMonitoring) {
+      violations.push({
+        item: "CLIN-VAL-012A (Missing Insulin Blood Glucose Monitoring)",
+        sectionA: "Hyperkalemia Medication Safety Gate (IV Regular Insulin Ordered)",
+        sectionB: "Dossier Treatment Plan",
+        issue:
+          "Missing mandatory medication monitoring [CLIN-VAL-012A]: IV insulin treatment plan omits pre-treatment and serial point-of-care blood glucose monitoring to prevent iatrogenic hypoglycemia.",
+      });
+    }
+
+    const hasRepeatPotassiumMonitoring =
+      /\b(?:repeat|serial|recheck|follow[- ]?up|rebound|q\s*\d+|hourly|monitor\w*|reassess\w*)\b[^.\n]{0,90}\b(?:serum\s+)?(?:potassium|k\+?)\b|\b(?:potassium|k\+?)\b[^.\n]{0,90}\b(?:repeat|serial|recheck|rebound|q\s*\d+|hourly|monitor\w*|reassess\w*)\b/i.test(
+        narrativeOnly,
+      );
+    if (!hasRepeatPotassiumMonitoring) {
+      violations.push({
+        item: "CLIN-VAL-012B (Missing Repeat Serum Potassium Monitoring)",
+        sectionA: "Hyperkalemia Medication Safety Gate (Intracellular K+ Shifting)",
+        sectionB: "Dossier Treatment Plan",
+        issue:
+          "Missing mandatory electrolyte monitoring [CLIN-VAL-012B]: Hyperkalemia treatment plan omits repeat serum potassium measurement and rebound hyperkalemia monitoring after intracellular shifting.",
+      });
+    }
+  }
+
+  // Check 29 (CLIN-VAL-014): Clinical Unit & Dimensional Analysis Gate
+  const badPressureUnitMatch = narrativeOnly.match(
+    /\b\d+(?:\.\d+)?\s*(?:ml\/mmhg|mg\/mmhg|mmhg\/ml|kg\/mmhg)\b/i,
+  );
+  if (badPressureUnitMatch) {
+    violations.push({
+      item: "CLIN-VAL-014 (Clinical Unit & Dimensional Analysis Violation)",
+      sectionA: "Dimensional Analysis Gate (Mean Arterial Pressure unit = mmHg)",
+      sectionB: `Dossier Text ("${badPressureUnitMatch[0]}")`,
+      issue: `Dimensional unit violation [CLIN-VAL-014]: Invalid pressure unit "${badPressureUnitMatch[0]}" detected; Mean Arterial Pressure (MAP) must be expressed strictly in mmHg.`,
+    });
+  }
+  const rangeToPointTvMatch = narrativeOnly.match(
+    /\b4\s*[–-]\s*6\s*ml\/kg(?:\s*pbw)?\s*=\s*42[34](?:\.\d+)?\s*ml\b/i,
+  );
+  if (rangeToPointTvMatch) {
+    const rIdx = rangeToPointTvMatch.index ?? 0;
+    const rCtx = narrativeOnly.slice(Math.max(0, rIdx - 35), Math.min(narrativeOnly.length, rIdx + rangeToPointTvMatch[0].length + 35));
+    if (!/\b28[123]\b/.test(rCtx)) {
+      violations.push({
+        item: "CLIN-VAL-014 (Clinical Unit & Dimensional Analysis Violation)",
+        sectionA: "Dimensional Analysis Gate (4–6 mL/kg PBW = 282–424 mL; 6 mL/kg PBW = 424 mL)",
+        sectionB: `Dossier Text ("${rangeToPointTvMatch[0]}")`,
+        issue: `Dimensional range-to-point mismatch [CLIN-VAL-014]: "${rangeToPointTvMatch[0]}" equates a 4–6 mL/kg PBW range to a single 6 mL/kg volume without stating the 282–424 mL range.`,
+      });
+    }
+  }
+
+  // Check 30 (CLIN-VAL-017): Septic Shock Management Bundle Completeness Gate
+  if (/\bseptic\s+shock\b/i.test(scratchpad.rawInputText)) {
+    const hasAntimicrobials =
+      /\b(?:antibiotic\w*|antimicrobial\w*|empiric\s+(?:iv\s+)?(?:therapy|coverage|antimicrobials?|antibiotics?)|broad[- ]spectrum)\b/i.test(
+        narrativeOnly,
+      );
+    const hasCulturesOrSourceControl =
+      /\b(?:blood\s+cultures?|cultures?|source\s+control|infection\s+source|infectious\s+source)\b/i.test(
+        narrativeOnly,
+      );
+    if (!hasAntimicrobials || !hasCulturesOrSourceControl) {
+      violations.push({
+        item: "CLIN-VAL-017 (Incomplete Septic Shock Management Bundle)",
+        sectionA: "Documented Intake (Septic Shock Confirmed)",
+        sectionB: "Dossier Management / SOAP Plan",
+        issue:
+          "Incomplete septic shock management [CLIN-VAL-017]: Comprehensive septic shock treatment plan omits early empiric broad-spectrum IV antimicrobials, blood/site cultures, or infection source identification and source control.",
+      });
+    }
+  }
+
+  // Check 31 (CLIN-VAL-019 & CLIN-VAL-021): Unsupported Regulatory Compliance & Legal/Malpractice Claims Gate
+  if (!/\b(?:iso\s*14971|iec\s*62304|samd)\b/i.test(scratchpad.rawInputText)) {
+    const regMatch = narrativeOnly.match(/\b(?:iso\s*14971|iec\s*62304)\b/i);
+    if (regMatch && !isProhibitionOrRefusalContext(narrativeOnly, regMatch.index ?? 0, regMatch[0].length)) {
+      violations.push({
+        item: "CLIN-VAL-019 (Unsupported Regulatory Compliance Claim)",
+        sectionA: "Regulatory Provenance Gate",
+        sectionB: `Dossier Narrative ("${regMatch[0]}")`,
+        issue: `Unsupported regulatory compliance assertion [CLIN-VAL-019]: Narrative asserts "${regMatch[0]}" compliance without verified regulatory certification evidence.`,
+      });
+    }
+  }
+  if (!/\b(?:malpractice|negligence|lawsuit|litigation)\b/i.test(scratchpad.rawInputText)) {
+    const malMatch = narrativeOnly.match(/\bmalpractice\b/i);
+    const malIdx = malMatch?.index ?? 0;
+    const malPre = narrativeOnly.slice(Math.max(0, malIdx - 35), malIdx);
+    if (malMatch && !/\b(?:not|never|no|do\s+not\s+(?:label|call|declare|assert))\b[^.\n]{0,25}$/i.test(malPre)) {
+      violations.push({
+        item: "CLIN-VAL-021 (Unsupported Legal / Malpractice Conclusion)",
+        sectionA: "Clinical Scope Gate (Clinical Safety vs. Legal Adjudication)",
+        sectionB: `Dossier Narrative ("${malMatch[0]}")`,
+        issue:
+          'Unsupported legal conclusion [CLIN-VAL-021]: Narrative declares an order "malpractice" (a legal adjudication) rather than evaluating it as a critical clinical safety violation.',
       });
     }
   }

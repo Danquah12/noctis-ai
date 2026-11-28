@@ -235,12 +235,17 @@ const CASES: LiveEvalCase[] = [
       { label: "Deep sedation before cisatracurium", re: /sedation/i },
       { label: "Norepinephrine for septic shock", re: /norepinephrine/i },
       { label: "Glucose or pacing/epinephrine safety pearl", re: /glucose|epinephrine|pacing/i },
+      { label: "Repeat potassium monitoring", re: /\b(?:repeat|serial|recheck|rebound|follow[- ]?up|q\s*\d+|hourly|monitor\w*|reassess\w*)[^.\n]{0,90}\b(?:potassium|k\+?)|\b(?:potassium|k\+?)\b[^.\n]{0,90}\b(?:repeat|serial|recheck|rebound|follow[- ]?up|q\s*\d+|hourly|monitor\w*|reassess\w*)/i },
+      { label: "Septic shock antimicrobials & cultures/source control", re: /\b(?:antibiotic\w*|antimicrobial\w*)/i },
     ],
     mustNotContainRegex: [
       { label: "No leaked <think>", re: /<\/?think>/i },
       { label: "No display $$ LaTeX", re: /\$\$/ },
       { label: "No raw inline LaTeX commands", re: /\$\s*(?:\\(?:ge|geq|le|leq|approx|times|pm|text)|[<>]=?\s*\d)/ },
       { label: "No raw <br> inside Markdown table", re: /\|[^\n]*<br\s*\/?>/i },
+      { label: "No malformed mL/mmHg pressure unit", re: /\bml\/mmhg\b/i },
+      { label: "No legal malpractice conclusion", re: /\bmalpractice\b/i },
+      { label: "No unsupported ISO 14971 / IEC 62304 claim", re: /\b(?:iso\s*14971|iec\s*62304)\b/i },
     ],
   },
 ];

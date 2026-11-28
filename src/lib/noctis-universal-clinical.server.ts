@@ -146,14 +146,16 @@ function buildSystemPrompt(encounterId: string): string {
     "   - DIGIFAB DOSING CLARITY: When weight and digoxin level are documented, state the formula-based estimate [(Digoxin × Weight) / 100, rounded up] separately from empiric emergency dosing (5–10 vials in acute life-threatening shock/arrhythmia when ingestion/distribution timing is uncertain) and lower titrated dosing (3–6 vials) often used in chronic accumulation, note that steady-state equations depend on post-distribution sampling >= 6 hours after last dose, and require Medical Toxicology consultation.",
     "   - CARDIAC & IMAGING SEVERITY FIDELITY: Preserve exact documented ventricular findings (e.g., severe LV systolic dysfunction / LVEF vs. only mild RV dilation). NEVER introduce severe RV dilation, acute cor pulmonale, or massive pulmonary embolism unless explicitly documented in current intake. Follow the Scratchpad individualized fluid resuscitation guidance.",
     "   - Never declare ACE inhibitors / ARBs / MRAs 'permanently contraindicated' during acute hyperkalemia/AKI; state 'acute withholding with individualized post-stabilization reassessment once potassium and renal function recover'.",
-    "   - ARDSNET VENTILATION, SEVERE HYPERKALEMIA/BRADYCARDIA & NMBA SAFETY: When `ardsNetVentilation.isComputable` is true in the Scratchpad, use exact Devine PBW (4–6 mL/kg PBW, never Actual Body Weight) and keep plateau pressure <= 30 cmH2O. For severe hyperkalemia (K+ >= 6.5 or ECG cardiotoxicity/bradycardia), mandate IV calcium (gluconate/chloride) FIRST before IV regular insulin + dextrose, require point-of-care glucose checks before and serially after insulin to prevent iatrogenic hypoglycemia, and if profound symptomatic bradycardia (HR <= 40 with hypotension) persists after calcium, address epinephrine / chronotropic backup and transcutaneous pacing standby. Mandate verified deep sedation and analgesia (RASS -4 to -5 / BIS) prior to any continuous neuromuscular blocker infusion (e.g. cisatracurium).",
+    "   - ARDSNET VENTILATION, SEVERE HYPERKALEMIA/BRADYCARDIA & NMBA SAFETY: When `ardsNetVentilation.isComputable` is true in the Scratchpad, use exact Devine PBW (4–6 mL/kg PBW = 282–424 mL, 6 mL/kg PBW = 424 mL; never Actual Body Weight) and keep plateau pressure <= 30 cmH2O. For severe hyperkalemia (K+ >= 6.5 or ECG cardiotoxicity/bradycardia), mandate IV calcium FIRST before IV regular insulin + dextrose, explicitly state elemental calcium equivalence (10% Calcium Gluconate 1–2 g IV [93–186 mg / ~4.65–9.3 mEq elemental Ca; peripheral/central] vs. 10% Calcium Chloride 500–1000 mg IV [135–270 mg / ~13.6 mEq per 1 g elemental Ca; ~3× elemental calcium potency per gram; central line preferred], repeat ECG/calcium assessment at 3–5 min), require pre-treatment and serial point-of-care blood glucose monitoring for 4–6 hours after insulin, require repeat serum potassium monitoring within 30–60 minutes and serially q1–2h to detect rebound hyperkalemia, and for profound unstable bradycardia (HR <= 40 with hypotension) include active chronotropic infusion (IV epinephrine/dopamine), transcutaneous pacing escalation, and ACLS cardiac arrest contingency. Mandate verified deep sedation and analgesia (RASS -4 to -5 / BIS) prior to any continuous neuromuscular blocker infusion (e.g. cisatracurium).",
+    "   - DETERMINISTIC FLUID DECISION OBJECT (ICU-FLUID-ARDS-001), ECG RHYTHM PROVENANCE & SEPTIC SHOCK BUNDLE: Consume `derived.fluidDecisionObject` across all sections: never state that 'all fluid resuscitation is contraindicated' or 'crystalloids are contraindicated'; state consistently that unmonitored blanket 30 mL/kg large-volume fluid boluses are unsafe in severe ARDS while cautious individualized fluid resuscitation (250–500 mL aliquots guided by dynamic fluid responsiveness and POCUS) is conditionally permitted alongside early Norepinephrine (target MAP ≥ 65 mmHg — always write mmHg, never mL/mmHg). When intake provides only HR (e.g. 32 bpm) and T-wave morphology (peaked T waves) without a formal rhythm-strip diagnosis, state 'hemodynamically unstable bradycardia with suspected hyperkalemic cardiotoxicity (specific rhythm subtype undetermined pending 12-lead ECG)' — NEVER diagnose junctional rhythm, nodal bradycardia, or sinus bradycardia as established facts. When septic shock is documented, ALWAYS include early empiric broad-spectrum IV antimicrobials (within 1 hour), blood and site cultures (obtained prior to antibiotics without delaying administration), serial lactate/tissue perfusion reassessment, and urgent infection source identification and source control.",
+    "   - LEGAL & REGULATORY RESTRAINT: Never label a clinical order 'malpractice' (a legal adjudication; use 'critical clinical safety violation' or 'contraindicated order'), and never assert 'ISO 14971' or 'IEC 62304' compliance in the narrative.",
     "   - CRITICAL BLEEDING + ANTICOAGULATION / INFECTION VS. SHOCK CONFLICT RULE: In active life-threatening hemorrhage (intracranial hemorrhage OR severe gastrointestinal hemorrhage) with anticoagulant/DOAC exposure (Apixaban, Warfarin, Heparin), explicitly address immediate cessation of antithrombotics, urgent reversal/hemostatic resuscitation (e.g., Andexanet alfa or 4F-PCC for FXa inhibitor bleed, pRBC transfusion, urgent endoscopy/angiography) in parallel with thromboprophylaxis risk assessment. Explicitly distinguish suspected/unconfirmed infection (pending cultures/imaging) from confirmed distributive/septic shock.",
     "4. SPECIALTY-AGNOSTIC TRIAGE CALIBRATION & COMPLETE PROMPT COVERAGE:",
     "   - Dynamically calibrate disposition: P0 IMMEDIATE EMERGENCY / ICU / Resuscitation for shock, respiratory failure, severe electrolyte toxicity, aortic dissection, anaphylaxis, eclampsia, thyroid storm, DKA, or critical poisoning; urgent ED evaluation for acute unstable/undifferentiated presentations; evidence-based outpatient/clinic management ONLY when hemodynamically stable without acute red flags.",
     "   - Reconcile EVERY outpatient medication listed in the Scratchpad's `documentedMedications` explicitly (HOLD/STOP/MODIFY/CONTINUE and rationale), and ground all missing-medication questions strictly in `documentedMedications`.",
     "   - COMPLETENESS REQUIREMENT: When the prompt includes numbered clinical questions or analyses (e.g., 1 through 17), explicitly address EVERY numbered item cleanly and concisely without skipping or truncating any requirement.",
     "5. REQUIRED OUTPUT STRUCTURE:",
-    "   - Header (`Noctis Patient Diagnostic & Triage Intelligence Dossier (Clinical Decision Support)`, `Encounter ID`, `Triage Urgency`, `Statutory Classification: 21 U.S.C. § 360j(o)(1)(E)`)",
+    "   - Header (`Noctis Patient Diagnostic & Triage Intelligence Dossier (Clinical Decision Support)`, `Encounter ID`, `Triage Urgency`, `Clinical Governance Scope: Scenario-Based Clinical Decision Support Audit — Requires Qualified Bedside Clinician Verification`)",
     "   - `[!CAUTION]` Emergency / Disposition Callout",
     "   - Executive Clinical Synthesis & Competing Therapeutic Trade-Offs (hemorrhage vs. anticoagulation; suspected infection vs. confirmed shock; LV vs. RV hemodynamics)",
     "   - Complete Point-by-Point Clinical Analyses (covering all prompt questions, calculations, KDIGO dual-pathway + UO staging, DigiFab formula vs. empiric clarification, and explicit missing clinical data gaps)",
@@ -180,6 +182,7 @@ function buildUserPrompt(rawPrompt: string, scratchpad: NeuroSymbolicClinicalScr
         wintersFormula: scratchpad.derivedCalculations.wintersFormula,
         digiFabDosing: scratchpad.derivedCalculations.digiFabDosing,
         fluidSafety: scratchpad.derivedCalculations.fluidSafety,
+        fluidDecisionObject: scratchpad.derivedCalculations.fluidSafety.decisionObject,
         ardsNetVentilation: scratchpad.derivedCalculations.ardsNetVentilation,
         kdigoAki: {
           establishedStage: scratchpad.derivedCalculations.kdigoAki.establishedStage,
@@ -287,7 +290,7 @@ function buildVerifiedCertificate(
     `- **Output Hash (SHA-256):** \`${outputSha256}\`\n` +
     `- **Certificate Signature (HMAC-SHA256):** \`${hmacSignature}\`\n` +
     `- **Signing Key Mode:** ${keyMode}\n` +
-    `- **Independent Validator:** ${validatorVersion} (ISO 14971 / IEC 62304 Compliant)\n` +
+    `- **Independent Validator:** ${validatorVersion} (Deterministic Pre-Release Rule, Unit & Provenance Gate — Computational & Consistency Verification)\n` +
     `- **Gates Verified:**\n` +
     `  1. Encounter Isolation & Single Authoritative Context: PASS\n` +
     `  2. Zero Data Fabrication (Weight, Chloride, Baseline Cr, Meds): PASS\n` +
@@ -317,7 +320,25 @@ function buildFailClosedLockout(
     .map((v) => `- **[${v.ruleId}]** ${v.description}`)
     .join("\n");
 
+  const sp = auditResult.scratchpad;
+  const mapVal = sp.derivedCalculations.meanArterialPressureMmHg;
+  const hrVal = sp.vitals.heartRate;
+  const kVal = sp.labs.potassiumMeqL;
+  const hasEmergencyInstability =
+    (mapVal !== null && mapVal < 65) ||
+    (hrVal !== null && (hrVal <= 45 || hrVal >= 120)) ||
+    (kVal !== null && kVal >= 6.0) ||
+    /\b(?:shock|sepsis|ards|cardiac\s+arrest|emergency|resuscitation)\b/i.test(sp.rawInputText);
+  const emergencyBanner = hasEmergencyInstability
+    ? [
+        "> [!CAUTION]",
+        `> **P0 IMMEDIATE BEDSIDE EMERGENCY WARNING RETAINED (CLIN-VAL-023):** Detailed automated treatment-plan release is **BLOCKED** due to clinical safety validation failures below. Critical physiological instability is documented in intake (BP ${sp.vitals.bloodPressureString ?? "UNMEASURED"}, MAP ${mapVal ?? "UNMEASURED"} mmHg, HR ${hrVal ?? "UNMEASURED"} bpm, K+ ${kVal ?? "UNMEASURED"} mmol/L) — immediate bedside ICU / resuscitation team intervention is required.`,
+        "",
+      ]
+    : [];
+
   return [
+    ...emergencyBanner,
     `**CLINICAL_VALIDATION_FAILED — SAFETY_INVARIANT_VIOLATION**`,
     `- **Encounter ID:** \`${encounterId}\``,
     `- **Source Input Hash (SHA-256):** \`${sourceInputHash}\``,
