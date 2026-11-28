@@ -794,6 +794,11 @@ export function buildClinicalScratchpad(
     for (const m of norm.matchAll(
       /(?<![A-Za-z])\b(?:serum\s+|plasma\s+|bmp\s+|cmp\s+)?(?:chloride|cl-?)(?:\s*\([^)\n]{1,35}\))?\s*(?:[:=]\s*|\s+(?:(?:is|was|of)\s+)?)\s*(\d{2,3}(?:\.\d+)?)\b/gi
     )) {
+      const idx = m.index ?? 0;
+      const pre = norm.slice(Math.max(0, idx - 30), idx);
+      const post = norm.slice(idx + m[0].length, idx + m[0].length + 25);
+      if (/\b(?:calcium|sodium|potassium|magnesium|ammonium)\s+$/i.test(pre)) continue;
+      if (/^\s*(?:[-–]\s*\d+(?:\.\d+)?\s*)?(?:%|mg\b|mcg\b|g\b|grams?\b|ml\b|amp|vial)/i.test(post)) continue;
       const val = parseFloat(m[1]);
       if (val >= 65 && val <= 145) {
         chlorideMeqL = val;
@@ -2295,24 +2300,32 @@ export function validateCrossSectionClinicalConsistency(
     unmeasuredRegex: RegExp;
     measuredRegex: RegExp;
     skipBefore?: RegExp;
+    measuredSkipBefore?: RegExp;
+    skipAfter?: RegExp;
   }> = [
     {
       label: "Sodium",
       isDocumented: scratchpad.labs.sodiumMeqL !== null,
       unmeasuredRegex: /\b(?:sodium|na\+?)\s*(?:\([^)\n]{1,20}\))?\s*[:=]?\s*(?:\[\s*UNMEASURED|\b(?:unmeasured|unavailable|missing|not\s+(?:measured|provided|available|obtained))\b)/gi,
       measuredRegex: /\b(?:sodium|na\+?)\s*(?:\([^)\n]{1,20}\))?\s*(?:[:=]\s*|\s+(?:is|of)\s+)?\d{3}\b/gi,
+      measuredSkipBefore: /\b(?:target|goal|maintain|keep|threshold|normal|cutoff)\b[^.\n]{0,20}$/i,
+      skipAfter: /^\s*(?:[-–]\s*\d+(?:\.\d+)?\s*)?(?:chloride|bicarbonate|bicarb|%|mg\b|g\b|ml\b|iv\b)/i,
     },
     {
       label: "Chloride",
       isDocumented: scratchpad.labs.chlorideMeqL !== null,
       unmeasuredRegex: /(?<![A-Za-z])\b(?:chloride|cl-?)\s*(?:\([^)\n]{1,20}\))?\s*[:=]?\s*(?:\[\s*UNMEASURED|\b(?:unmeasured|unavailable|missing|not\s+(?:measured|provided|available|obtained))\b)/gi,
       measuredRegex: /(?<![A-Za-z])\b(?:chloride|cl-?)\s*(?:\([^)\n]{1,20}\))?\s*(?:[:=]\s*|\s+(?:is|of)\s+)?\d{2,3}\b/gi,
+      measuredSkipBefore: /\b(?:calcium|sodium|potassium|magnesium|ammonium|iv|intravenous|normal|target|goal|threshold)\s+$/i,
+      skipAfter: /^\s*(?:[-–]\s*\d+(?:\.\d+)?\s*)?(?:%|mg\b|mcg\b|g\b|grams?\b|ml\b|amp(?:ule)?s?\b|vials?\b|iv\b|bolus|infusion|push|over\s+\d)/i,
     },
     {
       label: "Potassium",
       isDocumented: scratchpad.labs.potassiumMeqL !== null,
       unmeasuredRegex: /\b(?:potassium|k\+?)\s*(?:\([^)\n]{1,20}\))?\s*[:=]?\s*(?:\[\s*UNMEASURED|\b(?:unmeasured|unavailable|missing|not\s+(?:measured|provided|available|obtained))\b)/gi,
       measuredRegex: /\b(?:potassium|k\+?)\s*(?:\([^)\n]{1,20}\))?\s*(?:[:=]\s*|\s+(?:is|of)\s+)?[1-9](?:\.\d+)?\b/gi,
+      measuredSkipBefore: /\b(?:target|goal|maintain|keep|threshold|normal|cutoff)\b[^.\n]{0,20}$/i,
+      skipAfter: /^\s*(?:[-–]\s*\d+(?:\.\d+)?\s*)?(?:chloride|kcl|mg\b|g\b|ml\b|iv\b)/i,
     },
     {
       label: "Creatinine",
@@ -2332,6 +2345,8 @@ export function validateCrossSectionClinicalConsistency(
       isDocumented: scratchpad.labs.bicarbonateMeqL !== null,
       unmeasuredRegex: /\b(?:bicarbonate|bicarb|hco3-?)\s*(?:\([^)\n]{1,20}\))?\s*[:=]?\s*(?:\[\s*UNMEASURED|\b(?:unmeasured|unavailable|missing|not\s+(?:measured|provided|available|obtained))\b)/gi,
       measuredRegex: /\b(?:bicarbonate|bicarb|hco3-?)\s*(?:\([^)\n]{1,20}\))?\s*(?:[:=]\s*|\s+(?:is|of)\s+)?\d{1,2}(?:\.\d+)?\b/gi,
+      measuredSkipBefore: /\b(?:sodium|iv|intravenous|amp(?:ule)?s?\s+of|target|goal|threshold|normal)\s+$/i,
+      skipAfter: /^\s*(?:[-–]\s*\d+(?:\.\d+)?\s*)?(?:%|mg\b|g\b|ml\b|meq\s+(?:iv|bolus|push|infusion)|amp(?:ule)?s?\b|vials?\b|iv\b|bolus|infusion|over\s+\d)/i,
     },
     {
       label: "Arterial pH",
@@ -2356,15 +2371,26 @@ export function validateCrossSectionClinicalConsistency(
       isDocumented: scratchpad.labs.glucoseMgDl !== null,
       unmeasuredRegex: /\b(?:blood\s+glucose|serum\s+glucose|glucose|bg)\s*(?:\([^)\n]{1,20}\))?\s*[:=]?\s*(?:\[\s*UNMEASURED|\b(?:unmeasured|unavailable|missing|not\s+(?:measured|provided|available|obtained))\b)/gi,
       measuredRegex: /\b(?:blood\s+glucose|serum\s+glucose|glucose|bg)\s*(?:\([^)\n]{1,20}\))?\s*(?:[:=]\s*|\s+(?:is|of)\s+)?\d{2,4}(?:\.\d+)?\b/gi,
+      measuredSkipBefore: /\b(?:target|goal|maintain|keep|if|when|unless|except|below|above|under|over|threshold|cutoff|normal|check|monitor|recheck|every|q|dextrose|d50w?|d50|insulin|hypoglycem\w*)\b[^.\n]{0,30}$/i,
+      skipAfter: /^\s*(?:[-–]\s*\d+(?:\.\d+)?\s*)?(?:min(?:utes?)?|hrs?|hours?|%|g\b|grams?\b|ml\b|iv\b)/i,
     },
   ];
 
-  const hasUnguardedParamMatch = (haystack: string, rx: RegExp, skipBefore?: RegExp): boolean => {
+  const hasUnguardedParamMatch = (
+    haystack: string,
+    rx: RegExp,
+    skipBefore?: RegExp,
+    skipAfter?: RegExp,
+  ): boolean => {
     for (const m of haystack.matchAll(rx)) {
+      const idx = m.index ?? 0;
       if (skipBefore) {
-        const idx = m.index ?? 0;
         const pre = haystack.slice(Math.max(0, idx - 35), idx);
         if (skipBefore.test(pre)) continue;
+      }
+      if (skipAfter) {
+        const post = haystack.slice(idx + m[0].length, idx + m[0].length + 25);
+        if (skipAfter.test(post)) continue;
       }
       return true;
     }
@@ -2390,7 +2416,7 @@ export function validateCrossSectionClinicalConsistency(
     for (const pm of documentedParamMonitors) {
       if (
         hasUnguardedParamMatch(scratchPart, pm.unmeasuredRegex, pm.skipBefore) &&
-        hasUnguardedParamMatch(narrativePart, pm.measuredRegex, pm.skipBefore)
+        hasUnguardedParamMatch(narrativePart, pm.measuredRegex, pm.measuredSkipBefore ?? pm.skipBefore, pm.skipAfter)
       ) {
         violations.push({
           item: `Narrative-vs-Scratchpad Contradiction (${pm.label})`,
@@ -2510,7 +2536,7 @@ export function validateCrossSectionClinicalConsistency(
       regex: /(?<![A-Za-z])\b(?:serum\s+)?(?:chloride|cl-?)\s*(?:\([^)\n]{1,15}\))?\s*(?:is|of|=|:)?\s*(\d{2,3}(?:\.\d+)?)\s*(?:meq\/l|mmol\/l)?\b/gi,
       inputLabelRegex: /(?<![A-Za-z])\b(?:chloride|cl-?)\b[^\n]{0,30}?\b(\d{2,3}(?:\.\d+)?)\b/gi,
       tolerance: 1.0,
-      skipBeforeRegex: /[<>≤≥]|target|goal|normal|range|threshold|reference|hypothetical/i,
+      skipBeforeRegex: /[<>≤≥]|target|goal|normal|range|threshold|reference|hypothetical|calcium|sodium|potassium|magnesium|ammonium/i,
     },
     {
       item: "Serum Lactate",

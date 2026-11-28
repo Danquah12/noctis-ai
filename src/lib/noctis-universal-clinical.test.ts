@@ -506,4 +506,44 @@ describe("Universal 3-Stage Neuro-Symbolic Clinical Pipeline (executeUniversalCl
     assert.ok(visible.includes("MAP ≥ 65 mmHg"));
     assert.ok(visible.includes("P/F < 150"));
   });
+
+  it("does not trigger false Narrative-vs-Scratchpad Chloride/Bicarbonate/Glucose lockouts on Calcium Chloride, Sodium Bicarbonate, or glucose targets while still locking out fabricated serum Cl-", async () => {
+    const prompt =
+      "A 68-year-old male (175 cm tall, actual body weight 118 kg) with severe ARDS (PaO2/FiO2 88) and septic shock has K+ 7.1 mEq/L, HR 32 bpm, BP 74/42 mmHg, and peaked T waves on ECG. Audit every order immediately.";
+
+    const safeMedicationSaltsDraft = [
+      "# Noctis Patient Diagnostic & Triage Intelligence Dossier (Clinical Decision Support)",
+      "**Triage Urgency:** P0 IMMEDIATE EMERGENCY",
+      "68-year-old male (175 cm, 118 kg) with BP 74/42 mmHg (MAP 52.7 mmHg), HR 32 bpm, K+ 7.1 mmol/L, severe ARDS (PaO2/FiO2 88).",
+      "Immediately administer IV Calcium Gluconate (1–2 g) or Calcium Chloride 10% (500–1000 mg IV over 2–5 minutes). Consider Sodium Bicarbonate 50 mEq IV only if acidemia is confirmed, give balanced crystalloids or 0.9% Sodium Chloride cautiously in small aliquots alongside early norepinephrine (target MAP ≥ 65 mmHg), check point-of-care blood glucose every 30 min (give D50W unless glucose 250 mg/dL), size tidal volume to 424 mL (6 mL/kg PBW 70.6 kg), and verify deep sedation prior to cisatracurium.",
+      "### Missing Clinical Data Gaps\n- Serum chloride [UNMEASURED], serum bicarbonate [UNMEASURED], creatinine [UNMEASURED], ABG [UNMEASURED], lactate [UNMEASURED], glucose [UNMEASURED], urine output [UNMEASURED].",
+      "### Independent Fact-Reconciliation Matrix\n| Parameter | Status |\n|---|---|\n| Electrolytes | K+ 7.1 mmol/L; Cl- [UNMEASURED]; HCO3- [UNMEASURED] |",
+      "### SOAP Note\n- Subjective: ICU emergency.\n- Objective: 118 kg, 175 cm, BP 74/42 mmHg (MAP 52.7 mmHg), HR 32 bpm, K+ 7.1 mmol/L.\n- Assessment: Septic shock, severe ARDS, critical hyperkalemia.\n- Plan: IV Calcium Chloride 10% (500–1000 mg) or Calcium Gluconate first, norepinephrine, tidal volume 424 mL, verify deep sedation before cisatracurium.",
+    ].join("\n\n");
+
+    const approvedOut = await executeUniversalClinicalReasoning(prompt, {
+      modelChatFn: async () => ({ text: safeMedicationSaltsDraft }),
+    });
+    assert.ok(approvedOut);
+    assert.ok(
+      approvedOut.includes("APPROVED FOR CLINICAL DECISION SUPPORT"),
+      `Expected approval despite Calcium Chloride / Sodium Bicarbonate / glucose monitoring text, got:\n${approvedOut}`,
+    );
+
+    const fabricatedChlorideDraft = [
+      "# Noctis Patient Diagnostic & Triage Intelligence Dossier (Clinical Decision Support)",
+      "68-year-old male (175 cm, 118 kg) with BP 74/42 mmHg (MAP 52.7 mmHg), HR 32 bpm, K+ 7.1 mmol/L.",
+      "Serum chloride is 98 mmol/L, giving a normal anion gap.",
+      "### Missing Clinical Data Gaps\n- Serum creatinine [UNMEASURED].",
+      "### Independent Fact-Reconciliation Matrix\n| Parameter | Value |\n|---|---|\n| Cl- | 98 mmol/L |",
+      "### SOAP Note\n- Subjective: ICU.\n- Objective: K+ 7.1, Cl- 98.\n- Assessment: Shock.\n- Plan: Treat.",
+    ].join("\n\n");
+
+    const lockedOut = await executeUniversalClinicalReasoning(prompt, {
+      modelChatFn: async () => ({ text: fabricatedChlorideDraft }),
+    });
+    assert.ok(lockedOut);
+    assert.ok(lockedOut.includes("CLINICAL_VALIDATION_FAILED — SAFETY_INVARIANT_VIOLATION"));
+    assert.ok(!lockedOut.includes("APPROVED FOR CLINICAL DECISION SUPPORT"));
+  });
 });
