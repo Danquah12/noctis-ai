@@ -152,7 +152,9 @@ def main():
     tokenizer.save_pretrained(args.output_dir)
 
     # 9. Optional Hugging Face Hub Publishing
-    if args.push_to_hub or (os.getenv("HF_TOKEN") and args.hub_model_id):
+    # Presence of HF_TOKEN must never authorize an outbound model publication.
+    # --push-to-hub is an explicit opt-in; publishing also requires operator approval.
+    if args.push_to_hub:
         try:
             print(f"[+] Publishing aligned weights to Hugging Face Hub ({args.hub_model_id})...")
             trainer.push_to_hub(args.hub_model_id, commit_message="Upload Noctis 7B Clinical v3.1 DPO Weights (1,004 Contrastive Safety Pairs)")
