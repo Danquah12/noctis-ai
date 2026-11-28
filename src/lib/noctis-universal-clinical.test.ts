@@ -474,4 +474,36 @@ describe("Universal 3-Stage Neuro-Symbolic Clinical Pipeline (executeUniversalCl
     assert.match(signed, /Output Hash \(SHA-256\):\*\* `[a-f0-9]{64}`/i);
     assert.match(signed, /Certificate Signature \(HMAC-SHA256\):\*\* `[a-f0-9]{64}`/i);
   });
+
+  it("sanitizes raw LaTeX and table <br/> tags in clinical dossiers before certificate signing", async () => {
+    const prompt =
+      "A 68-year-old male (175 cm tall, actual body weight 118 kg) with severe ARDS (PaO2/FiO2 88) and septic shock has K+ 7.1 mEq/L, HR 32 bpm, BP 74/42 mmHg, and peaked T waves on ECG. Audit every order immediately.";
+
+    const rawLatexDraft = [
+      "# Noctis Patient Diagnostic & Triage Intelligence Dossier (Clinical Decision Support)",
+      "**Triage Urgency:** P0 IMMEDIATE EMERGENCY",
+      "68-year-old male (175 cm, 118 kg) with BP 74/42 mmHg (MAP 52.7 mmHg), HR 32 bpm, K+ 7.1 mmol/L, and severe ARDS (PaO2/FiO2 88).",
+      "$$\\text{PBW} = 50 + 0.91 \\times (175 - 152.4) \\approx 70.6\\text{ kg}$$",
+      "Size tidal volume to 424 mL using PBW $\\approx$ 70.6 kg, maintain MAP $\\ge$ 65 mmHg with norepinephrine, consider prone positioning when P/F $< 150$, administer IV calcium before regular insulin with point-of-care glucose checks, maintain epinephrine and transcutaneous pacing standby, and verify deep sedation before cisatracurium.",
+      "### Missing Clinical Data Gaps\n- Serum chloride [UNMEASURED], baseline creatinine [UNMEASURED], ABG pH/PaCO2 [UNMEASURED], lactate [UNMEASURED], glucose [UNMEASURED], urine output [UNMEASURED].",
+      "### Independent Fact-Reconciliation Matrix\n| Parameter | Value |\n|---|---|\n| TV | 708 mL<br/>Unsafe |",
+      "### SOAP Note\n- Subjective: Acute ICU resuscitation.\n- Objective: 118 kg, 175 cm, BP 74/42 mmHg (MAP 52.7 mmHg), HR 32 bpm, K+ 7.1 mmol/L.\n- Assessment: Septic shock, severe ARDS, critical hyperkalemia.\n- Plan: IV calcium first, norepinephrine target MAP ≥ 65 mmHg, TV ~424 mL, verify sedation prior to cisatracurium.",
+    ].join("\n\n");
+
+    const mockChat: UniversalClinicalModelChatFn = async () => ({ text: rawLatexDraft });
+    const out = await executeUniversalClinicalReasoning(prompt, { modelChatFn: mockChat });
+    assert.ok(out);
+    assert.ok(out.includes("APPROVED FOR CLINICAL DECISION SUPPORT"));
+    const visible = out.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+    assert.ok(!visible.includes("$$"));
+    assert.ok(!visible.includes("\\text{"));
+    assert.ok(!visible.includes("$\\"));
+    assert.ok(!visible.includes("$<"));
+    assert.ok(!visible.includes("<br"));
+    assert.ok(!visible.includes("$"), `Expected zero raw '$' in sanitized output:\n${visible}`);
+    assert.ok(visible.includes("`PBW = 50 + 0.91 × (175 - 152.4) ≈ 70.6 kg`"));
+    assert.ok(visible.includes("708 mL · Unsafe"));
+    assert.ok(visible.includes("MAP ≥ 65 mmHg"));
+    assert.ok(visible.includes("P/F < 150"));
+  });
 });

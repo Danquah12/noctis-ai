@@ -14,6 +14,7 @@ import {
   type NeuroSymbolicClinicalScratchpad,
 } from "./noctis-clinical-scratchpad.ts";
 import { auditAndEnforceClinicalDossier } from "./noctis-clinical-preflight-auditor.ts";
+import { sanitizeRmfMarkdownFormatting } from "./noctis-rmf-reasoning.server.ts";
 import { hmacSha256Sync, sha256Sync } from "./universal-crypto.ts";
 
 export interface UniversalBrainOptions {
@@ -145,6 +146,7 @@ function buildSystemPrompt(encounterId: string): string {
     "   - DIGIFAB DOSING CLARITY: When weight and digoxin level are documented, state the formula-based estimate [(Digoxin × Weight) / 100, rounded up] separately from empiric emergency dosing (5–10 vials in acute life-threatening shock/arrhythmia when ingestion/distribution timing is uncertain) and lower titrated dosing (3–6 vials) often used in chronic accumulation, note that steady-state equations depend on post-distribution sampling >= 6 hours after last dose, and require Medical Toxicology consultation.",
     "   - CARDIAC & IMAGING SEVERITY FIDELITY: Preserve exact documented ventricular findings (e.g., severe LV systolic dysfunction / LVEF vs. only mild RV dilation). NEVER introduce severe RV dilation, acute cor pulmonale, or massive pulmonary embolism unless explicitly documented in current intake. Follow the Scratchpad individualized fluid resuscitation guidance.",
     "   - Never declare ACE inhibitors / ARBs / MRAs 'permanently contraindicated' during acute hyperkalemia/AKI; state 'acute withholding with individualized post-stabilization reassessment once potassium and renal function recover'.",
+    "   - ARDSNET VENTILATION, SEVERE HYPERKALEMIA/BRADYCARDIA & NMBA SAFETY: When `ardsNetVentilation.isComputable` is true in the Scratchpad, use exact Devine PBW (4–6 mL/kg PBW, never Actual Body Weight) and keep plateau pressure <= 30 cmH2O. For severe hyperkalemia (K+ >= 6.5 or ECG cardiotoxicity/bradycardia), mandate IV calcium (gluconate/chloride) FIRST before IV regular insulin + dextrose, require point-of-care glucose checks before and serially after insulin to prevent iatrogenic hypoglycemia, and if profound symptomatic bradycardia (HR <= 40 with hypotension) persists after calcium, address epinephrine / chronotropic backup and transcutaneous pacing standby. Mandate verified deep sedation and analgesia (RASS -4 to -5 / BIS) prior to any continuous neuromuscular blocker infusion (e.g. cisatracurium).",
     "   - CRITICAL BLEEDING + ANTICOAGULATION / INFECTION VS. SHOCK CONFLICT RULE: In active life-threatening hemorrhage (intracranial hemorrhage OR severe gastrointestinal hemorrhage) with anticoagulant/DOAC exposure (Apixaban, Warfarin, Heparin), explicitly address immediate cessation of antithrombotics, urgent reversal/hemostatic resuscitation (e.g., Andexanet alfa or 4F-PCC for FXa inhibitor bleed, pRBC transfusion, urgent endoscopy/angiography) in parallel with thromboprophylaxis risk assessment. Explicitly distinguish suspected/unconfirmed infection (pending cultures/imaging) from confirmed distributive/septic shock.",
     "4. SPECIALTY-AGNOSTIC TRIAGE CALIBRATION & COMPLETE PROMPT COVERAGE:",
     "   - Dynamically calibrate disposition: P0 IMMEDIATE EMERGENCY / ICU / Resuscitation for shock, respiratory failure, severe electrolyte toxicity, aortic dissection, anaphylaxis, eclampsia, thyroid storm, DKA, or critical poisoning; urgent ED evaluation for acute unstable/undifferentiated presentations; evidence-based outpatient/clinic management ONLY when hemodynamically stable without acute red flags.",
@@ -157,7 +159,8 @@ function buildSystemPrompt(encounterId: string): string {
     "   - Complete Point-by-Point Clinical Analyses (covering all prompt questions, calculations, KDIGO dual-pathway + UO staging, DigiFab formula vs. empiric clarification, and explicit missing clinical data gaps)",
     "   - Independent Fact-Reconciliation Matrix (concise table mapping Source Input Facts / Derivations / Documented Unknowns — mandatory whenever requested or for multi-item critical care dossiers)",
     "   - Complete Structured SOAP Note (**Subjective**, **Objective**, **Assessment**, **Plan** — mandatory on EVERY clinical dossier and 100% consistent with every section above)",
-    "6. DO NOT append a Neuro-Symbolic Scratchpad section or a 'NOCTIS INDEPENDENT CLINICAL RELEASE CERTIFICATE' block; the independent validator appends those after verification.",
+    "6. FORMATTING (NO RAW LATEX): NEVER output raw LaTeX delimiters (`$$...$$`, `$...$`, `\\[...\\]`, `\\text{...}`, `\\ge`, `\\approx`). Use clean Unicode operators (`≥`, `≤`, `≈`, `±`, `×`) and plain Markdown inline code for equations.",
+    "7. DO NOT append a Neuro-Symbolic Scratchpad section or a 'NOCTIS INDEPENDENT CLINICAL RELEASE CERTIFICATE' block; the independent validator appends those after verification.",
   ].join("\n");
 }
 
@@ -177,6 +180,7 @@ function buildUserPrompt(rawPrompt: string, scratchpad: NeuroSymbolicClinicalScr
         wintersFormula: scratchpad.derivedCalculations.wintersFormula,
         digiFabDosing: scratchpad.derivedCalculations.digiFabDosing,
         fluidSafety: scratchpad.derivedCalculations.fluidSafety,
+        ardsNetVentilation: scratchpad.derivedCalculations.ardsNetVentilation,
         kdigoAki: {
           establishedStage: scratchpad.derivedCalculations.kdigoAki.establishedStage,
           crFoldRatio: scratchpad.derivedCalculations.kdigoAki.crFoldRatio,
@@ -399,7 +403,7 @@ export async function executeUniversalClinicalReasoning(
 
   const parsedInitial = extractThinkBlock(firstResponse.text);
   let activeThought = parsedInitial.thought;
-  let candidateBody = stripPrematureCertificatesAndScratchpad(parsedInitial.body);
+  let candidateBody = sanitizeRmfMarkdownFormatting(stripPrematureCertificatesAndScratchpad(parsedInitial.body));
   let assembledCandidate = `${candidateBody}\n\n### Neuro-Symbolic Scratchpad Verification Trail\n${scratchpad.markdownScratchpadSummary}`;
 
   // Stage 3: Independent Deterministic Validation Gate + 1-Shot Repair
@@ -429,7 +433,7 @@ export async function executeUniversalClinicalReasoning(
       if (parsedRepair.thought) {
         activeThought = parsedRepair.thought;
       }
-      candidateBody = stripPrematureCertificatesAndScratchpad(parsedRepair.body);
+      candidateBody = sanitizeRmfMarkdownFormatting(stripPrematureCertificatesAndScratchpad(parsedRepair.body));
       assembledCandidate = `${candidateBody}\n\n### Neuro-Symbolic Scratchpad Verification Trail\n${scratchpad.markdownScratchpadSummary}`;
       audit = auditAndEnforceClinicalDossier(assembledCandidate, trimmed, encounterId);
     }
@@ -440,7 +444,7 @@ export async function executeUniversalClinicalReasoning(
       activeThought || buildDeterministicClinicalThought(scratchpad),
       `Stage 3 Independent Validator (NOCTIS-VAL-v2.4-CLINICAL): All 8 invariant safety gates passed${hadRepair ? " after 1-shot safety remediation" : ""}.`,
     ].join("\n\n");
-    const approvedBody = audit.auditedDossier.trim();
+    const approvedBody = sanitizeRmfMarkdownFormatting(audit.auditedDossier).trim();
     const outputSha256 = sha256Sync(approvedBody);
     const cert = buildVerifiedCertificate(encounterId, sourceInputHash, outputSha256);
     if (!opts.modelChatFn || opts.persistCertificate) {

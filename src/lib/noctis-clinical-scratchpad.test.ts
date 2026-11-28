@@ -611,4 +611,23 @@ Clinical Question: Should an anticoagulant be started, or avoid anticoagulants p
     assert.equal(revPad.derivedCalculations.kdigoAki.establishedStage, "indeterminate");
     assert.match(revPad.derivedCalculations.kdigoAki.stageRationale, /resolving\/decreasing trend/i);
   });
+
+  it("extracts height in cm, computes Devine PBW & ARDSNet 6 mL/kg TV, and triggers ARDS conservative fluid guard", () => {
+    const ardsScenario =
+      "A 68-year-old male (175 cm tall, actual body weight 118 kg) with severe ARDS (PaO2/FiO2 88) and septic shock has K+ 7.1 mEq/L, HR 32 bpm, BP 74/42 mmHg, and peaked T waves on ECG. The resident wants to set tidal volume to 708 mL (6 mL/kg actual weight), give IV regular insulin without calcium first, and start a continuous cisatracurium infusion before confirming deep sedation.";
+    const pad = buildClinicalScratchpad(ardsScenario, "NPDE-ARDS-TEST-01");
+
+    assert.equal(pad.demographics.patientHeightCm, 175);
+    assert.equal(pad.demographics.patientWeightKg, 118);
+    assert.equal(pad.derivedCalculations.ardsNetVentilation.isComputable, true);
+    assert.equal(pad.derivedCalculations.ardsNetVentilation.predictedBodyWeightKg, 70.6);
+    assert.equal(pad.derivedCalculations.ardsNetVentilation.tidalVolume6MlKgMl, 424);
+    assert.equal(pad.derivedCalculations.ardsNetVentilation.tidalVolume4MlKgMl, 282);
+    assert.equal(pad.derivedCalculations.ardsNetVentilation.ardsSeverity, "SEVERE");
+    assert.equal(pad.derivedCalculations.fluidSafety.highRiskFluidOverload, true);
+    assert.ok(pad.derivedCalculations.fluidSafety.highRiskConditionsIdentified.some((c) => /ARDS.*88/i.test(c)));
+    assert.match(pad.markdownScratchpadSummary, /70\.6 kg/);
+    assert.match(pad.markdownScratchpadSummary, /424 mL/);
+    assert.ok(!pad.markdownScratchpadSummary.includes("Standard crystalloid resuscitation permissible"));
+  });
 });

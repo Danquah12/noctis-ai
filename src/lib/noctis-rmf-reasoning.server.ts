@@ -130,6 +130,9 @@ function cleanLatexExpression(rawExpr: string): string {
     .replace(/\\times\b/g, "×")
     .replace(/\\rightarrow\b|\\to\b/g, "->")
     .replace(/\\approx\b/g, "≈")
+    .replace(/\\pm\b/g, "±")
+    .replace(/\\cdot\b/g, "·")
+    .replace(/\\div\b/g, "/")
     .replace(/\\(?:quad|qquad|,|;|:)/g, " ")
     .replace(/`/g, "")
     .replace(/\s+/g, " ")
@@ -164,11 +167,18 @@ export function sanitizeRmfMarkdownFormatting(markdown: string): string {
         const cleaned = cleanLatexExpression(inner);
         return cleaned ? `\`${cleaned}\`` : "";
       };
-      return part
+      const cleanedSymbols = part
+        .replace(/\$\s*\\(?:geq|ge)\s*\$/g, "≥")
+        .replace(/\$\s*\\(?:leq|le)\s*\$/g, "≤")
+        .replace(/\$\s*\\approx\s*\$/g, "≈")
+        .replace(/\$\s*\\pm\s*\$/g, "±")
+        .replace(/\$\s*\\times\s*\$/g, "×")
+        .replace(/\$\s*([<>]=?)\s*(\d+(?:\.\d+)?)\s*\$/g, "$1 $2");
+      return cleanedSymbols
         .replace(/\$\$([\s\S]*?)\$\$/g, formatMatch)
         .replace(/\\\[([\s\S]*?)\\\]/g, formatMatch)
         .replace(
-          /\$([^\n$]*\\(?:text|mathrm|textbf|leq|le|geq|ge|times|rightarrow|to|approx|\{|\})[^\n$]*)\$/g,
+          /\$([^\n$]*\\(?:text|mathrm|textbf|leq|le|geq|ge|times|rightarrow|to|approx|pm|cdot|div|\{|\})[^\n$]*)\$/g,
           formatMatch,
         );
     })

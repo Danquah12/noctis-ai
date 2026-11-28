@@ -2,7 +2,7 @@
  * Noctis Live Pre-Deploy / Post-Deploy Evaluation Gate (Pillar #4)
  *
  * Hits the real production (or local preview) `/api/noctis` endpoint across
- * 13 multi-domain, multi-turn, adversarial, paraphrased, and non-regression prompts to
+ * 14 multi-domain, multi-turn, adversarial, paraphrased, and non-regression prompts to
  * catch live LLM routing, truncation, and compliance failures automatically.
  *
  * Usage:
@@ -219,6 +219,27 @@ const CASES: LiveEvalCase[] = [
     ],
     mustNotContainRegex: [
       { label: "No leaked <think>", re: /<\/?think>/i },
+      { label: "No raw <br> inside Markdown table", re: /\|[^\n]*<br\s*\/?>/i },
+    ],
+  },
+  {
+    id: "EVAL-14",
+    name: "Clinical ICU Order Audit (ARDSNet PBW + Calcium First + Sedation Before NMBA + Zero Raw LaTeX)",
+    prompt:
+      "A 68-year-old male (175 cm tall, actual body weight 118 kg) with severe ARDS (PaO2/FiO2 88) and septic shock has K+ 7.1 mEq/L, HR 32 bpm, BP 74/42 mmHg, and peaked T waves on ECG. The resident wants to set tidal volume to 708 mL (6 mL/kg actual weight), give IV regular insulin without calcium first, and start a continuous cisatracurium infusion before confirming deep sedation. Audit every order immediately.",
+    expectedRoutes: ["clinical"],
+    mustContainRegex: [
+      { label: "Devine PBW 70.6 kg", re: /70\.6\s*kg/i },
+      { label: "ARDSNet 6 mL/kg PBW (~424 mL)", re: /42[0-6]\s*mL/i },
+      { label: "Calcium before insulin", re: /calcium/i },
+      { label: "Deep sedation before cisatracurium", re: /sedation/i },
+      { label: "Norepinephrine for septic shock", re: /norepinephrine/i },
+      { label: "Glucose or pacing/epinephrine safety pearl", re: /glucose|epinephrine|pacing/i },
+    ],
+    mustNotContainRegex: [
+      { label: "No leaked <think>", re: /<\/?think>/i },
+      { label: "No display $$ LaTeX", re: /\$\$/ },
+      { label: "No raw inline LaTeX commands", re: /\$\s*(?:\\(?:ge|geq|le|leq|approx|times|pm|text)|[<>]=?\s*\d)/ },
       { label: "No raw <br> inside Markdown table", re: /\|[^\n]*<br\s*\/?>/i },
     ],
   },

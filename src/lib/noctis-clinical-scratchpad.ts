@@ -63,6 +63,7 @@ export interface ClinicalDemographicsExtracted {
   patientAgeYears: number | null;
   patientAgeString: string | null;
   patientSex: "male" | "female" | "indeterminate";
+  patientHeightCm: number | null;
   patientWeightKg: number | null;
 }
 
@@ -134,6 +135,21 @@ export interface FluidResuscitationSafetyResult {
   individualizedResuscitationGuidance: string;
 }
 
+export interface ArdsNetVentilationResult {
+  isComputable: boolean;
+  heightCm: number | null;
+  sexUsed: "male" | "female" | "indeterminate";
+  predictedBodyWeightKg: number | null;
+  tidalVolume6MlKgMl: number | null;
+  tidalVolume4MlKgMl: number | null;
+  tidalVolumeRangeMl: string | null;
+  paO2FiO2Ratio: number | null;
+  ardsSeverity: "SEVERE" | "MODERATE" | "MILD" | "UNSPECIFIED" | null;
+  isArdsDocumented: boolean;
+  formula: string | null;
+  guidance: string;
+}
+
 export type LabTemporalRole = "current" | "historical_baseline" | "serial_prior" | "unknown";
 export type LabCompartment = "serum" | "abg" | "vbg" | "urine" | "unspecified";
 
@@ -164,6 +180,7 @@ export interface NeuroSymbolicClinicalScratchpad {
     wintersFormula: WintersFormulaResult;
     digiFabDosing: DigiFabDosingResult;
     fluidSafety: FluidResuscitationSafetyResult;
+    ardsNetVentilation: ArdsNetVentilationResult;
   };
   markdownScratchpadSummary: string;
 }
@@ -630,6 +647,37 @@ export function buildClinicalScratchpad(
         }
         patientWeightKg = parseFloat(m[1]);
         break;
+      }
+    }
+  }
+
+  let patientHeightCm: number | null = null;
+  for (const m of norm.matchAll(/\b(?:height|ht)?\s*[:=]?\s*(\d{3}(?:\.\d+)?)\s*cm(?:\s+tall)?\b/gi)) {
+    const idx = m.index ?? 0;
+    const pre = norm.slice(Math.max(0, idx - 40), idx);
+    if (/\b(?:assuming|assume|hypothetical|reference)\b/i.test(pre)) continue;
+    const val = parseFloat(m[1]);
+    if (val >= 100 && val <= 240) {
+      patientHeightCm = val;
+      break;
+    }
+  }
+  if (patientHeightCm === null) {
+    const ftInMatch = norm.match(/\b([4-7])\s*(?:'|ft|feet)\s*(\d{1,2})\s*(?:"|in|inches)?\b/i);
+    if (ftInMatch) {
+      const feet = parseInt(ftInMatch[1], 10);
+      const inches = parseInt(ftInMatch[2], 10);
+      if (inches >= 0 && inches < 12) {
+        patientHeightCm = Math.round((feet * 12 + inches) * 2.54 * 10) / 10;
+      }
+    }
+  }
+  if (patientHeightCm === null) {
+    const inMatch = norm.match(/\b(?:height|ht|tall)\s*[:=]?\s*(\d{2}(?:\.\d+)?)\s*(?:in|inches)\b/i);
+    if (inMatch) {
+      const inches = parseFloat(inMatch[1]);
+      if (inches >= 40 && inches <= 96) {
+        patientHeightCm = Math.round(inches * 2.54 * 10) / 10;
       }
     }
   }
@@ -1306,6 +1354,80 @@ export function buildClinicalScratchpad(
     };
   }
 
+  // E2. Devine Predicted Body Weight (PBW) & ARDSNet Lung-Protective Ventilation
+  const pfMatch = norm.match(
+    /\b(?:pao2\s*\/\s*fio2|p\s*\/\s*f(?:\s+ratio)?)\s*(?:[:=]|\s+(?:is|was|of))?\s*(\d{2,3})\b/i,
+  );
+  const pfParsed = pfMatch ? parseInt(pfMatch[1], 10) : null;
+  const paO2FiO2Ratio = pfParsed !== null && pfParsed >= 20 && pfParsed <= 700 ? pfParsed : null;
+
+  const ardsMatch = norm.match(
+    /\b(?:(severe|moderate|mild)\s+)?(?:ards|acute\s+respiratory\s+distress\s+syndrome)\b/i,
+  );
+  const ardsNegated =
+    ardsMatch?.index !== undefined &&
+    /\b(?:no|not|without|denies|ruled\s+out|absence\s+of)\b/i.test(
+      norm.slice(Math.max(0, ardsMatch.index - 35), ardsMatch.index),
+    );
+  const isArdsDocumented =
+    Boolean(ardsMatch && !ardsNegated) || (paO2FiO2Ratio !== null && paO2FiO2Ratio <= 300);
+
+  let ardsSeverity: ArdsNetVentilationResult["ardsSeverity"] = null;
+  if (paO2FiO2Ratio !== null && paO2FiO2Ratio <= 300) {
+    ardsSeverity = paO2FiO2Ratio <= 100 ? "SEVERE" : paO2FiO2Ratio <= 200 ? "MODERATE" : "MILD";
+  } else if (ardsMatch && !ardsNegated) {
+    const sevWord = ardsMatch[1]?.toUpperCase();
+    ardsSeverity =
+      sevWord === "SEVERE" || sevWord === "MODERATE" || sevWord === "MILD"
+        ? sevWord
+        : "UNSPECIFIED";
+  }
+
+  let ardsNetVentilation: ArdsNetVentilationResult;
+  if (patientHeightCm !== null && patientSex !== "indeterminate") {
+    const base = patientSex === "male" ? 50 : 45.5;
+    const pbwRaw = base + 0.91 * (patientHeightCm - 152.4);
+    const predictedBodyWeightKg = Math.round(pbwRaw * 10) / 10;
+    const tidalVolume6MlKgMl = Math.round(predictedBodyWeightKg * 6);
+    const tidalVolume4MlKgMl = Math.round(predictedBodyWeightKg * 4);
+    const tidalVolumeRangeMl = `${tidalVolume4MlKgMl}–${tidalVolume6MlKgMl} mL`;
+    const formula = `PBW = ${base} + 0.91 × (${patientHeightCm} - 152.4) = ${predictedBodyWeightKg} kg`;
+    const needsProne = ardsSeverity === "SEVERE" || (paO2FiO2Ratio !== null && paO2FiO2Ratio < 150);
+    ardsNetVentilation = {
+      isComputable: true,
+      heightCm: patientHeightCm,
+      sexUsed: patientSex,
+      predictedBodyWeightKg,
+      tidalVolume6MlKgMl,
+      tidalVolume4MlKgMl,
+      tidalVolumeRangeMl,
+      paO2FiO2Ratio,
+      ardsSeverity,
+      isArdsDocumented,
+      formula,
+      guidance:
+        `${formula}. Target initial low tidal volume 6 mL/kg PBW = ${tidalVolume6MlKgMl} mL (titratable ${tidalVolumeRangeMl} [4–6 mL/kg PBW] to keep plateau pressure ≤ 30 cmH2O); NEVER size tidal volume using Actual Body Weight.` +
+        (needsProne ? " Severe hypoxemia (PaO2/FiO2 < 150): evaluate prone positioning 16–18 h/day and high-PEEP ARDSNet titration." : ""),
+    };
+  } else {
+    ardsNetVentilation = {
+      isComputable: false,
+      heightCm: patientHeightCm,
+      sexUsed: patientSex,
+      predictedBodyWeightKg: null,
+      tidalVolume6MlKgMl: null,
+      tidalVolume4MlKgMl: null,
+      tidalVolumeRangeMl: null,
+      paO2FiO2Ratio,
+      ardsSeverity,
+      isArdsDocumented,
+      formula: null,
+      guidance: isArdsDocumented
+        ? "Use lung-protective ventilation (4–6 mL/kg Predicted Body Weight from measured height, plateau pressure ≤ 30 cmH2O; NEVER size on Actual Body Weight)."
+        : "ARDS / height not specified for Devine PBW calculation.",
+    };
+  }
+
   // F. Fluid Safety Ceiling (INV-004: Individualized Resuscitation, No Automatic Veto, No Invented Anuria)
   const highRiskConditions: string[] = [];
   const hasAcuteRvFailure = hasDocumentedSevereRvFailureOrMassivePe(norm);
@@ -1330,6 +1452,13 @@ export function buildClinicalScratchpad(
   }
   if (urineOutputMl !== null && urineOutputMl <= 150) {
     highRiskConditions.push("Profound Oliguria");
+  }
+  if (isArdsDocumented) {
+    highRiskConditions.push(
+      paO2FiO2Ratio !== null
+        ? `${ardsSeverity === "SEVERE" ? "Severe " : ""}ARDS (PaO2/FiO2 ${paO2FiO2Ratio}) — Conservative Fluid Strategy Required to Prevent Worsening Pulmonary Edema`
+        : "ARDS — Conservative Fluid Strategy Required to Prevent Worsening Pulmonary Edema",
+    );
   }
 
   // Strict check on anuria: Never infer anuria without evidence!
@@ -1376,7 +1505,9 @@ export function buildClinicalScratchpad(
   mdLines.push(`**Encounter:** \`${encounterId}\``);
   mdLines.push(``);
   mdLines.push(`#### 1. Extracted Patient Parameters`);
-  mdLines.push(`- **Demographics:** ${patientAgeString || "[AGE UNREPORTED]"}, ${patientSex}, Body Weight: ${patientWeightKg ? `${patientWeightKg} kg` : "**[UNMEASURED / NOT PROVIDED]**"}`);
+  mdLines.push(
+    `- **Demographics:** ${patientAgeString || "[AGE UNREPORTED]"}, ${patientSex}${patientHeightCm !== null ? `, Height: ${patientHeightCm} cm` : ""}, Body Weight: ${patientWeightKg ? `${patientWeightKg} kg` : "**[UNMEASURED / NOT PROVIDED]**"}`,
+  );
   mdLines.push(`- **Vitals:** BP ${bloodPressureString || "[UNMEASURED]"} (Calculated MAP: **${meanArterialPressureMmHg ? `${meanArterialPressureMmHg} mmHg` : "[UNMEASURED]"}**), HR ${heartRate ? `${heartRate} bpm` : "[UNMEASURED]"}, RR ${respiratoryRate ? `${respiratoryRate}/min` : "[UNMEASURED]"}, SpO2 ${oxygenSaturation || "[UNMEASURED]"}, Temp ${temperatureCelsius ? `${temperatureCelsius}°C` : "[UNMEASURED]"}, BG ${bloodGlucoseMgDl ? `${bloodGlucoseMgDl} mg/dL` : "[UNMEASURED]"}`);
   mdLines.push(`- **Labs:** K+ ${potassiumMeqL ? `${potassiumMeqL} mmol/L` : "[UNMEASURED]"}, Na+ ${sodiumMeqL ? `${sodiumMeqL} mmol/L` : "[UNMEASURED]"}, Cl- ${chlorideMeqL ? `${chlorideMeqL} mmol/L` : "**[UNMEASURED / NOT PROVIDED]**"}, Cr ${creatinineMgDl ? `${creatinineMgDl} mg/dL` : "[UNMEASURED]"} (Baseline: ${baseCrDisplay}), HCO3- ${bicarbDisplay}, pH ${arterialPh || "[UNMEASURED]"}, PaCO2 ${paco2MmHg ? `${paco2MmHg} mmHg` : "[UNMEASURED]"}, Lactate ${lactateMmolL ? `${lactateMmolL} mmol/L` : "[UNMEASURED]"}, Glucose ${glucoseMgDl ? `${glucoseMgDl} mg/dL` : "[UNMEASURED]"}, Digoxin ${digoxinNgMl ? `${digoxinNgMl} ng/mL` : "[UNMEASURED]"}, Urine Output: ${urineOutputMl !== null ? `${urineOutputMl} mL/${urineOutputDurationHours}h` : "[UNMEASURED]"}`);
   mdLines.push(``);
@@ -1391,6 +1522,9 @@ export function buildClinicalScratchpad(
       : `- **DigiFab Dosing:** ${digiFabDosing.empiricEmergencyVials} (${digiFabDosing.rationale})`
   );
   mdLines.push(`- **Fluid Resuscitation Approach:** ${fluidSafety.recommendedResuscitationApproach}`);
+  if (ardsNetVentilation.isComputable || ardsNetVentilation.isArdsDocumented) {
+    mdLines.push(`- **ARDSNet Lung-Protective Ventilation (PBW):** ${ardsNetVentilation.guidance}`);
+  }
   mdLines.push(``);
   mdLines.push(`#### 3. Actionable Clinical Data Gaps`);
   if (missingDataItems.length > 0) {
@@ -1410,6 +1544,7 @@ export function buildClinicalScratchpad(
       patientAgeYears,
       patientAgeString,
       patientSex,
+      patientHeightCm,
       patientWeightKg,
     },
     vitals: {
@@ -1460,6 +1595,7 @@ export function buildClinicalScratchpad(
       wintersFormula,
       digiFabDosing,
       fluidSafety,
+      ardsNetVentilation,
     },
     markdownScratchpadSummary,
   };
