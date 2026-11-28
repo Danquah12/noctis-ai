@@ -73,6 +73,7 @@ import {
   type Waves234Context,
 } from "./waves234-extractors.ts";
 import { lookupStigRuleById, searchStigLibrary, type StigLibraryRuleHydrated } from "./stig-library.ts";
+import { assessPromptComplexity, type ModelEscalationTier } from "../noctis-model-escalation.ts";
 
 export interface DodIcModelChatFn {
   (
@@ -80,8 +81,10 @@ export interface DodIcModelChatFn {
     opts?: {
       maxTokens?: number;
       temperature?: number;
+      json?: boolean;
       brain?: { provider?: string; apiKey?: string; model?: string; endpoint?: string };
       thinkingLevel?: "minimal" | "low" | "medium" | "high";
+      tier?: ModelEscalationTier;
     },
   ): Promise<{ text: string } | { error: string }>;
 }
@@ -1600,6 +1603,8 @@ export async function executeDodIcReasoning(
   let activeThought = "";
   let audit = verifyDodIcResponse(q, "", rules);
 
+  const complexity = assessPromptComplexity(q, { domainHint: "dod_ic" });
+
   try {
     const sys = buildDodIcSystemPrompt(opts.language || "English", shouldThink);
     const first = await chatFn(
@@ -1608,7 +1613,7 @@ export async function executeDodIcReasoning(
         ...(opts.turns || []).slice(-4, -1).map((t) => ({ role: t.role, content: t.content.slice(0, 1500) })),
         { role: "user", content: `QUESTION:\n${q}\n\nIMMUTABLE DOD/IC PACKET:\n${packetText}` },
       ],
-      { temperature: 0.0, maxTokens: 8192, thinkingLevel: "medium", brain: opts.brain },
+      { temperature: 0.0, maxTokens: 8192, thinkingLevel: "medium", brain: opts.brain, tier: complexity.tier },
     );
 
     if ("text" in first && first.text.trim()) {
@@ -1626,7 +1631,7 @@ export async function executeDodIcReasoning(
                 content: `Fix ALL violations:\n${audit.violations.join("\n")}\n\nPACKET:\n${packetText}\n\nDRAFT:\n${finalBody}`,
               },
             ],
-            { temperature: 0.0, maxTokens: 8192, thinkingLevel: "medium", brain: opts.brain },
+            { temperature: 0.0, maxTokens: 8192, thinkingLevel: "medium", brain: opts.brain, tier: complexity.tier },
           );
           if ("text" in repaired && repaired.text.trim()) {
             const p2 = parseThinkEnvelope(repaired.text);

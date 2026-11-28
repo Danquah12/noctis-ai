@@ -1292,6 +1292,135 @@ function parseDayTimeHours(text: string, markerRegex: RegExp): { hourOffset: num
   };
 }
 
+// ----------------------------------------------------------------------------
+// 11. RMF-MP6-80088-001: Media Sanitization (NIST SP 800-53 MP-6 + SP 800-88)
+// ----------------------------------------------------------------------------
+export interface Mp6SanitizationInput {
+  baseline?: string;
+  mediaType?: "NVME_SSD" | "SSD_FLASH" | "HDD_MAGNETIC" | "PAPER" | "OTHER" | "UNKNOWN";
+  proposedMethod?: "CLEAR_OVERWRITE" | "PURGE_CRYPTO_ERASE" | "PURGE_SANITIZE" | "DEGAUSS" | "DESTROY" | "UNKNOWN";
+  dataSensitivity?: "LOW" | "MODERATE" | "HIGH_PHI_ITAR" | "SECRET" | "TS_SCI" | "UNKNOWN";
+  assessmentMode?: RmfAssessmentMode;
+  evidenceVerified?: boolean;
+}
+
+export function evaluateMp6SanitizationRule(input: Mp6SanitizationInput): RmfRuleEvaluationResult {
+  const ruleId = "RMF-MP6-80088-001";
+  const ruleVersion = "1.0.0";
+  const baseline = input.baseline || "FedRAMP Rev. 5 High";
+  const mediaType = input.mediaType || "UNKNOWN";
+  const proposedMethod = input.proposedMethod || "UNKNOWN";
+  const dataSensitivity = input.dataSensitivity || "HIGH_PHI_ITAR";
+  const evaluatedAt = new Date().toISOString();
+  const isScenarioMode = input.assessmentMode === "SCENARIO_ASSUMPTION" && input.evidenceVerified !== true;
+
+  const isFlashOrNvme = mediaType === "NVME_SSD" || mediaType === "SSD_FLASH";
+  const isHighOrRegulated =
+    dataSensitivity === "HIGH_PHI_ITAR" ||
+    dataSensitivity === "MODERATE" ||
+    dataSensitivity === "SECRET" ||
+    dataSensitivity === "TS_SCI" ||
+    /high|moderate/i.test(baseline);
+
+  const observedFacts: Record<string, string | number | boolean | null> = {
+    mediaType,
+    proposedMethod,
+    dataSensitivity,
+    assessmentMode: input.assessmentMode ?? "FORMAL_EVIDENCE_AUDIT",
+    evidenceVerified: Boolean(input.evidenceVerified),
+  };
+
+  let verdict: RmfVerdict = "INSUFFICIENT_EVIDENCE";
+  let summary = "";
+  let variance = "Missing media sanitization evidence";
+
+  if (isFlashOrNvme && proposedMethod === "DEGAUSS") {
+    verdict = "FAIL";
+    variance = `DEGAUSS physically ineffective on ${mediaType}`;
+    summary = `${isScenarioMode ? "SCENARIO " : ""}FAIL: Magnetic degaussing does NOT erase solid-state/NVMe flash storage (NIST SP 800-88 Rev. 1/2). Execute NVMe Cryptographic Erase / Sanitize (Purge) or physical destruction (Destroy).`;
+  } else if (isFlashOrNvme && proposedMethod === "CLEAR_OVERWRITE" && isHighOrRegulated) {
+    verdict = "FAIL";
+    variance = `Clear/logical overwrite on ${mediaType} holding ${dataSensitivity} data is INSUFFICIENT`;
+    summary = `${isScenarioMode ? "SCENARIO " : ""}FAIL: Under NIST SP 800-53 MP-6 and SP 800-88 Rev. 1, a single logical overwrite ("Clear") on retired NVMe/SSD flash media holding high-sensitivity PHI/ITAR/CUI fails to sanitize wear-leveled blocks, over-provisioned flash, and remapped sectors. Purge (NVMe Format Cryptographic Erase / NVMe Sanitize) or physical Destroy is mandatory.`;
+  } else if (
+    (dataSensitivity === "SECRET" || dataSensitivity === "TS_SCI") &&
+    proposedMethod !== "DESTROY" &&
+    proposedMethod !== "UNKNOWN"
+  ) {
+    verdict = "FAIL";
+    variance = `${proposedMethod} insufficient for ${dataSensitivity} media release`;
+    summary = `${isScenarioMode ? "SCENARIO " : ""}FAIL: Classified (${dataSensitivity}) solid-state media cannot be cleared or released for unclassified reuse via logical overwrite; physical destruction (NSA EPL shred/disintegrate) is required.`;
+  } else if (
+    proposedMethod === "DESTROY" ||
+    ((proposedMethod === "PURGE_CRYPTO_ERASE" || proposedMethod === "PURGE_SANITIZE") &&
+      dataSensitivity !== "SECRET" &&
+      dataSensitivity !== "TS_SCI")
+  ) {
+    verdict = "PASS";
+    variance = `Compliant ${proposedMethod} selected for ${mediaType} (${dataSensitivity})`;
+    summary = `${isScenarioMode ? "SCENARIO " : ""}PASS: Proposed ${proposedMethod} aligns with NIST SP 800-88 Rev. 1 for ${mediaType}.${isScenarioMode ? " Formal compliance remains PENDING_EVIDENCE until signed Certificates of Sanitization and tool verification logs are examined." : ""}`;
+  } else {
+    summary = "INSUFFICIENT_EVIDENCE: Specify media type (NVMe SSD / HDD), data classification/sensitivity, and sanitization method (Clear, Purge, Destroy).";
+  }
+
+  return {
+    ruleId,
+    ruleVersion,
+    controlId: "MP-6",
+    controlTitle: "Media Sanitization",
+    baseline,
+    verdict,
+    assessmentMode: input.assessmentMode ?? "FORMAL_EVIDENCE_AUDIT",
+    formalEvidenceStatus: input.evidenceVerified ? "VERIFIED_ARTIFACTS_PROVIDED" : "PENDING_VERIFIED_EVIDENCE",
+    formalDetermination: isScenarioMode ? "PENDING_EVIDENCE" : verdict,
+    summary,
+    observedFacts,
+    threshold: "NIST SP 800-53 Rev. 5 MP-6 + SP 800-88 Rev. 1: Purge (NVMe Cryptographic Erase / Sanitize) or Destroy required for high-sensitivity flash/NVMe holding PHI/ITAR; Clear alone is disallowed for disposal/release.",
+    variance,
+    missingEvidence: [
+      "Media Sanitization SOP specifying Clear vs. Purge vs. Destroy decision matrix by media type and FIPS 199 impact",
+      "Signed Certificates of Sanitization / Destruction referencing serial numbers, method, and dual-custody verification",
+      "Hardware tool telemetry proving NVMe Format/Sanitize completion or NSA-evaluated physical destruction logs",
+    ],
+    authorityCitations: [
+      {
+        document: "FedRAMP Rev 5 High Baseline & NIST SP 800-88 Rev. 1",
+        version: FEDRAMP_OSCAL_VERSION,
+        section: "MP-6 Media Sanitization & SP 800-88 Appendix A (Flash/NVMe)",
+        url: "https://csrc.nist.gov/pubs/sp/800/88/r1/final",
+        effectiveDate: FEDRAMP_OSCAL_EFFECTIVE_DATE,
+        authorityType: "BASELINE_ODP",
+        scope: "Sanitization of system media prior to disposal, release out of organizational control, or reuse.",
+        exceptions: "Cryptographic Erase (Purge) requires verifiable encrypted-at-rest key lifecycle from birth and zero plain-text block leakage.",
+      },
+    ],
+    poamAuthorityNote: getPoamProgramAuthorityNote(),
+    ...(verdict === "FAIL"
+      ? {
+          draftFinding: {
+            title: "Inadequate Media Sanitization Method ('Clear' on Retired NVMe SSDs Holding PHI/ITAR)",
+            controlId: "MP-6",
+            objectiveId: "MP-06a.[02]",
+            severity: "HIGH",
+            rootCause: "Procedure relies on single-pass logical overwrite ('Clear'), leaving wear-leveled/over-provisioned flash NAND blocks un-erased.",
+            impactSummary: "Residual Clinical PHI and export-controlled ITAR technical data remains recoverable on retired NVMe hardware.",
+          },
+          draftPoam: {
+            poamId: "POAM-MP6-80088-001",
+            controlId: "MP-6",
+            weaknessName: "Use of SP 800-88 Clear instead of Purge/Destroy on retired NVMe SSDs holding PHI/ITAR data",
+            severity: "HIGH",
+            slaDays: 30,
+            remediationPlan: "Mandate NVMe Sanitize / Format Cryptographic Erase (Purge) or physical disintegration (Destroy) before retirement, require signed sanitization certificates, and remove withdrawn AC-13 citations from SSP (cite AC-2 & AU-6 for account supervision/audit review).",
+            requiredTechnicalProof: "Updated Media Sanitization SOP, signed Certificates of Sanitization/Destruction, and verification logs for retired NVMe inventory.",
+          },
+        }
+      : {}),
+    evaluatedAt,
+    auditHash: buildAuditHash(ruleId, ruleVersion, verdict, observedFacts),
+  };
+}
+
 export function extractAc2ElapsedHours(q: string): number | null {
   const patterns: RegExp[] = [
     /(?:remained\s+(?:active|enabled|open|provisioned)|stayed\s+(?:active|enabled|open)|(?:kept|left)\s+(?:active|enabled|open)|not\s+(?:disabled|removed|deprovisioned|revoked))\s*(?:for|over|after)?\s*(\d+(?:\.\d+)?)\s*(hours?|hrs?|days?|d\b)/i,
@@ -1542,6 +1671,53 @@ export function extractAndEvaluateRmfRulesFromText(question: string): RmfRuleEva
   }
 
   const seenRules = new Set(results.map((r) => r.ruleId));
+  if (
+    !seenRules.has("RMF-MP6-80088-001") &&
+    /\b(?:800-88|sanitiz\w*|media\s+disposal|wipe|logical\s+overwrite)\b/i.test(q) &&
+    (/\b(?:nvme|ssd|flash|hdd|magnetic|clear|purge|destroy|degauss|cryptographic\s+erase)\b/i.test(q) || hasEvalIntent)
+  ) {
+    const mediaType: Mp6SanitizationInput["mediaType"] = /\bnvme\b/i.test(q)
+      ? "NVME_SSD"
+      : /\b(?:ssd|flash|solid[- ]state)\b/i.test(q)
+      ? "SSD_FLASH"
+      : /\b(?:hdd|magnetic|spinning\s+disk)\b/i.test(q)
+      ? "HDD_MAGNETIC"
+      : "UNKNOWN";
+    const proposedMethod: Mp6SanitizationInput["proposedMethod"] = /\bdegauss/i.test(q)
+      ? "DEGAUSS"
+      : /\b(?:destroy|shred|disintegrat|incinerat|pulveriz)/i.test(q)
+      ? "DESTROY"
+      : /\bcryptographic\s+erase|\bcrypto\s+erase/i.test(q)
+      ? "PURGE_CRYPTO_ERASE"
+      : /\bpurge|nvme\s+(?:format|sanitize)/i.test(q)
+      ? "PURGE_SANITIZE"
+      : /\b(?:clear|logical\s+overwrite|single\s+(?:logical\s+)?overwrite|quick\s+format|wipe)\b/i.test(q)
+      ? "CLEAR_OVERWRITE"
+      : "UNKNOWN";
+    const dataSensitivity: Mp6SanitizationInput["dataSensitivity"] = /\bts\/?sci\b/i.test(q)
+      ? "TS_SCI"
+      : /\bsecret\b/i.test(q)
+      ? "SECRET"
+      : /\b(?:phi|hipaa|itar|high|cui)\b/i.test(q)
+      ? "HIGH_PHI_ITAR"
+      : /\bmoderate\b/i.test(q)
+      ? "MODERATE"
+      : /\blow\b/i.test(q)
+      ? "LOW"
+      : "UNKNOWN";
+
+    const mp6Res = evaluateMp6SanitizationRule({
+      baseline,
+      mediaType,
+      proposedMethod,
+      dataSensitivity,
+      assessmentMode,
+      evidenceVerified,
+    });
+    results.push(mp6Res);
+    seenRules.add(mp6Res.ruleId);
+  }
+
   for (const ext of extractAndEvaluateExtendedRmfRulesFromText(q)) {
     if (!seenRules.has(ext.ruleId)) {
       seenRules.add(ext.ruleId);

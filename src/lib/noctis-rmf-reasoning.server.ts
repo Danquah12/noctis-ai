@@ -14,6 +14,13 @@ import {
 } from "./noctis-rmf-db.ts";
 import { parseThinkEnvelope } from "./noctis-engine-registry.ts";
 import { saveRmfArtifact } from "./rmf-v2/persistence.server.ts";
+import { assessPromptComplexity, type ModelEscalationTier } from "./noctis-model-escalation.ts";
+import {
+  extractStructuredComplianceFacts,
+  mergeStructuredFactsIntoRmfPacket,
+  type StructuredExtractorChatFn,
+} from "./noctis-structured-extractor.server.ts";
+import { runComposableComplianceTools } from "./noctis-composable-orchestrator.server.ts";
 
 export interface RmfBrainOptions {
   provider?: string;
@@ -27,8 +34,10 @@ export type RmfModelChatFn = (
   opts?: {
     maxTokens?: number;
     temperature?: number;
+    json?: boolean;
     brain?: RmfBrainOptions;
     thinkingLevel?: "minimal" | "low" | "medium" | "high";
+    tier?: ModelEscalationTier;
   },
 ) => Promise<{ text: string } | { error: string }>;
 
@@ -44,6 +53,7 @@ export interface RmfReasoningOptions {
   language?: string;
   shouldThink?: boolean;
   modelChatFn?: RmfModelChatFn;
+  structuredExtractFn?: StructuredExtractorChatFn;
   tenantId?: string;
   persistTrace?: boolean;
 }
@@ -148,13 +158,14 @@ export function sanitizeRmfMarkdownFormatting(markdown: string): string {
     .join("");
 }
 
-function buildRmfUserPrompt(question: string, packet: RmfGroundingPacket): string {
+function buildRmfUserPrompt(question: string, packet: RmfGroundingPacket, toolAppendix = ""): string {
+  const combinedPacket = [packet.markdownContext, toolAppendix].filter(Boolean).join("\n\n");
   return [
     "USER QUESTION / EVIDENCE SCENARIO:",
     question.trim(),
     "",
     "IMMUTABLE DETERMINISTIC RMF KNOWLEDGE & RULE ENGINE PACKET (SINGLE SOURCE OF TRUTH):",
-    packet.markdownContext,
+    combinedPacket,
     "",
     "Synthesize a clear, accurate, traceable RMF response grounded strictly in the authoritative data and deterministic verdicts above.",
   ].join("\n");
@@ -165,7 +176,9 @@ function buildRmfRepairPrompt(
   flawedBody: string,
   packet: RmfGroundingPacket,
   audit: RmfVerificationReport,
+  toolAppendix = "",
 ): string {
+  const combinedPacket = [packet.markdownContext, toolAppendix].filter(Boolean).join("\n\n");
   return [
     "Your previous RMF draft failed independent verification against the Deterministic RMF Knowledge Database:",
     ...audit.violations.map((v, i) => `${i + 1}. ${v}`),
@@ -176,14 +189,14 @@ function buildRmfRepairPrompt(
     question.trim(),
     "",
     "AUTHORITATIVE KNOWLEDGE PACKET:",
-    packet.markdownContext,
+    combinedPacket,
     "",
     "PREVIOUS DRAFT TO CORRECT:",
     flawedBody,
   ].join("\n");
 }
 
-export function renderDeterministicRmfFallback(packet: RmfGroundingPacket): string {
+export function renderDeterministicRmfFallback(packet: RmfGroundingPacket, toolAppendix = ""): string {
   const out: string[] = [];
   const wantsTable = /\btable\b/i.test(packet.question);
   const escapeCell = (v: string): string => v.replace(/\|/g, "\\|").replace(/\s+/g, " ").trim();
@@ -217,21 +230,23 @@ export function renderDeterministicRmfFallback(packet: RmfGroundingPacket): stri
     }
 
     const withdrawnCtrls = packet.controls.filter((c) => c.withdrawn);
-    const hasNvmeSanitize = /\b(?:800-88|sanitiz\w*|nvme|ssd|clear)\b/i.test(packet.question);
-    if (withdrawnCtrls.length > 0 || hasNvmeSanitize) {
+    const hasMp6Rule = packet.ruleEvaluations.some((r) => r.controlId === "MP-6");
+    const hasNvmeSanitize = !hasMp6Rule && /\b(?:800-88|sanitiz\w*|nvme|ssd|clear)\b/i.test(packet.question);
+    if (withdrawnCtrls.length > 0) {
+      const withdrawnNames = withdrawnCtrls.map((c) => c.id).join(", ");
+      const replNames = [...new Set(withdrawnCtrls.flatMap((c) => c.withdrawnInto))].join(", ") || "AC-2, AU-6";
+      out.push(
+        `| **Withdrawn SSP Citation (${escapeCell(withdrawnNames)})** | **FAIL / WITHDRAWN** *(Invalid Control Citation)* | NIST SP 800-53 Rev. 5 Withdrawn Lineage | **Examine:** SSP & Control Mapping; **Interview:** ISSO; **Test:** Audit SSP controls | Audit & Accountability Gap | ${escapeCell(`${withdrawnNames} is WITHDRAWN in Rev. 5 and replaced strictly by ${replNames} (NOT MP-6). Remove ${withdrawnNames} from the SSP and document ${replNames} directly.`)} |`,
+      );
+    }
+    if (hasNvmeSanitize) {
       const mp6 = findCtrl("MP-6");
       const mp6Att =
         (mp6 && packet.attackByControl[mp6.id]?.map((t) => `${t.id} (${t.name})`).join(", ")) ||
         (mp6 && packet.relatedAttackHints[mp6.id]?.map((h) => `${h.viaControl}→${h.id} (${h.name})`).join(", ")) ||
         "T1005 / T1530 / Media Exposure Mitigations";
-      const ac13Note = withdrawnCtrls
-        .map((c) => `${c.id} is **WITHDRAWN** in Rev. 5 -> replaced by **${c.withdrawnInto.join(", ")}**`)
-        .join("; ");
-      const sanNote = hasNvmeSanitize
-        ? "Single logical overwrite (`Clear`) on retired NVMe SSDs holding Clinical PHI/ITAR is **INSUFFICIENT / BLOCKED** due to flash wear-leveling, over-provisioning & bad-block remapping; **Purge** (NVMe Format Cryptographic Erase / Sanitize) or physical **Destroy** required."
-        : "";
       out.push(
-        `| **MP-6 / Media Sanitization & ${withdrawnCtrls.map((c) => c.id).join(", ") || "SSP Citations"}** | **FAIL / BLOCKED** *(Withdrawn Citation & NVMe Clear Rejected)* | NIST SP 800-88 Rev. 1 (Clear vs. Purge/Destroy) & NIST SP 800-53 Rev. 5 MP-6 | **Examine:** Sanitization SOPs, NVMe certificates & SSP (AC-2/AU-6); **Interview:** Custodian/ISSO; **Test:** Verify NVMe Crypto Erase/Sanitize or physical destruction | ${escapeCell(mp6Att)} | ${escapeCell([ac13Note, sanNote, "Replace AC-13 in SSP with AC-2 & AU-6; execute SP 800-88 Purge or Destroy with signed Certificates of Sanitization."].filter(Boolean).join(" "))} |`,
+        `| **MP-6 — Media Sanitization** | **FAIL / BLOCKED** *(NVMe Clear Rejected)* | NIST SP 800-88 Rev. 1 (Clear vs. Purge/Destroy) & NIST SP 800-53 Rev. 5 MP-6 | **Examine:** Sanitization SOPs & NVMe certificates; **Interview:** Custodian/ISSO; **Test:** Verify NVMe Crypto Erase/Sanitize or physical destruction | ${escapeCell(mp6Att)} | Single logical overwrite (Clear) on retired NVMe SSDs holding PHI/ITAR is INSUFFICIENT due to wear-leveling & over-provisioning; execute SP 800-88 Purge (Cryptographic Erase / NVMe Sanitize) or physical Destroy. |`,
       );
     }
 
@@ -386,6 +401,12 @@ export function renderDeterministicRmfFallback(packet: RmfGroundingPacket): stri
     out.push("");
   }
 
+  if (toolAppendix.trim()) {
+    out.push("## Composable Cross-Domain Intelligence");
+    out.push(toolAppendix.trim());
+    out.push("");
+  }
+
   out.push(
     "> **Governance Boundary:** Automated checks verify explicit rules against documented evidence; interviews, compensating-control rationale, and formal ATO risk acceptance remain the exclusive responsibility of the designated **Authorizing Official (AO)** — Noctis cannot issue or grant an ATO.",
   );
@@ -460,13 +481,26 @@ export async function executeUniversalRmfReasoning(
   opts: RmfReasoningOptions = {},
 ): Promise<string> {
   const question = (rawQuestion || "").trim();
-  const packet = buildRmfGroundingPacket(question);
+  const complexity = assessPromptComplexity(question, { domainHint: "rmf_grc" });
 
   let chatFn = opts.modelChatFn;
   if (!chatFn) {
     const mod = await import("./video-mind.server.ts");
     chatFn = mod.modelChat as unknown as RmfModelChatFn;
   }
+
+  let packet = buildRmfGroundingPacket(question);
+  let extractedFacts = null;
+  if (!opts.modelChatFn || opts.structuredExtractFn) {
+    extractedFacts = await extractStructuredComplianceFacts(question, {
+      modelChatFn: (opts.structuredExtractFn || chatFn) as StructuredExtractorChatFn,
+    });
+    packet = mergeStructuredFactsIntoRmfPacket(packet, extractedFacts);
+  }
+
+  const toolBundle = await runComposableComplianceTools(question, packet, extractedFacts, {
+    allowDbQueries: !opts.modelChatFn,
+  });
 
   const systemPrompt = buildRmfSystemPrompt({
     engineName: opts.engineName,
@@ -489,13 +523,14 @@ export async function executeUniversalRmfReasoning(
       [
         { role: "system", content: systemPrompt },
         ...historyTurns,
-        { role: "user", content: buildRmfUserPrompt(question, packet) },
+        { role: "user", content: buildRmfUserPrompt(question, packet, toolBundle.markdownAppendix) },
       ],
       {
         temperature: 0.0,
         maxTokens: 8192,
         thinkingLevel: opts.shouldThink === false ? "low" : "medium",
         brain: opts.brain,
+        tier: complexity.tier,
       },
     );
 
@@ -511,13 +546,14 @@ export async function executeUniversalRmfReasoning(
           const repaired = await chatFn(
             [
               { role: "system", content: systemPrompt },
-              { role: "user", content: buildRmfRepairPrompt(question, finalBody, packet, audit) },
+              { role: "user", content: buildRmfRepairPrompt(question, finalBody, packet, audit, toolBundle.markdownAppendix) },
             ],
             {
               temperature: 0.0,
               maxTokens: 8192,
               thinkingLevel: opts.shouldThink === false ? "low" : "medium",
               brain: opts.brain,
+              tier: complexity.tier,
             },
           );
 
@@ -541,7 +577,7 @@ export async function executeUniversalRmfReasoning(
 
   // Deterministic fail-safe if LLM offline, omitted body (unclosed <think>), or still failed blocking verification
   if (!finalBody || (audit && !audit.passed)) {
-    finalBody = renderDeterministicRmfFallback(packet);
+    finalBody = renderDeterministicRmfFallback(packet, toolBundle.markdownAppendix);
   }
   finalBody = sanitizeRmfMarkdownFormatting(finalBody);
 
@@ -570,7 +606,8 @@ export async function executeUniversalRmfReasoning(
     return `${finalBody.trim()}${footer}`;
   }
 
-  const thought = [activeThought, buildDeterministicThoughtTrace(packet, audit, hadRepair)]
+  const metaLine = `EscalationTier=${complexity.tier} (score=${complexity.score}); Tools=[${toolBundle.toolsInvoked.join(", ") || "none"}]; PdfChunks=${toolBundle.pdfChunksUsed}`;
+  const thought = [activeThought, metaLine, buildDeterministicThoughtTrace(packet, audit, hadRepair)]
     .filter(Boolean)
     .join("\n\n");
 

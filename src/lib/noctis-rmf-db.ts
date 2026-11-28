@@ -1194,14 +1194,41 @@ export function verifyRmfResponseAgainstDb(
 
     if (ctrl.withdrawn) {
       const mentionsWithdrawn = /\b(?:withdrawn|incorporated|moved\s+into|superseded|retired)\b/i.test(draftBody);
+      const upperBody = draftBody.toUpperCase();
       const mentionsReplacement =
         ctrl.withdrawnInto.length === 0 ||
-        ctrl.withdrawnInto.some((repl) => citedIds.includes(repl) || draftBody.toUpperCase().includes(repl));
+        (ctrl.withdrawnInto.length <= 3
+          ? ctrl.withdrawnInto.every((repl) => citedIds.includes(repl) || upperBody.includes(repl))
+          : ctrl.withdrawnInto.some((repl) => citedIds.includes(repl) || upperBody.includes(repl)));
+
+      // Catch direct conflation like "MP-6 (replaces withdrawn AC-13)"
+      let conflatedReplacement: string | null = null;
+      if (ctrl.withdrawnInto.length > 0) {
+        const cidEsc = cid.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        for (const sent of draftBody.split(/\r?\n|(?<=[.!?])\s+/)) {
+          if (!new RegExp(`\\b${cidEsc}\\b`, "i").test(sent)) continue;
+          if (!/\breplac(?:es|ed|ing)\b|\bsupersed(?:es|ed)\b/i.test(sent)) continue;
+          if (/\b(?:not|never)\s+replac/i.test(sent)) continue;
+          const sentIds = extract80053IdsFromText(sent).filter((id) => id !== cid);
+          const hasValidReplInSent = ctrl.withdrawnInto.some((repl) => sentIds.includes(repl));
+          const wrongRepl = sentIds.find((id) => !ctrl.withdrawnInto.includes(id));
+          if (wrongRepl && !hasValidReplInSent) {
+            conflatedReplacement = wrongRepl;
+            break;
+          }
+        }
+      }
+
+      if (conflatedReplacement) {
+        violations.push(
+          `WITHDRAWN_REPLACEMENT_CONFLATION: Draft implied ${conflatedReplacement} replaces withdrawn control ${cid}. In Rev. 5, ${cid} was incorporated strictly into ${ctrl.withdrawnInto.join(" and ")}, NOT ${conflatedReplacement}.`,
+        );
+      }
       if (!mentionsWithdrawn || !mentionsReplacement) {
         violations.push(
-          `UNFLAGGED_WITHDRAWN_CONTROL: Cited withdrawn control "${cid}". Must explicitly state that ${cid} is WITHDRAWN in Rev. 5 and cite replacement(s): ${ctrl.withdrawnInto.join(", ") || "N/A"}.`,
+          `UNFLAGGED_WITHDRAWN_CONTROL: Cited withdrawn control "${cid}". Must explicitly state that ${cid} is WITHDRAWN in Rev. 5 and cite ALL replacement control(s): ${ctrl.withdrawnInto.join(", ") || "N/A"}.`,
         );
-      } else {
+      } else if (!conflatedReplacement) {
         withdrawnNotices.push(`${cid} -> ${ctrl.withdrawnInto.join(", ")}`);
       }
     }
@@ -1304,6 +1331,23 @@ export function verifyRmfResponseAgainstDb(
         `ASSESSMENT_PROCEDURE_INCOMPLETE: Prompt requested NIST SP 800-53A assessment procedures, but response omitted method(s): ${missingMethods.join(", ")}.`,
       );
     }
+  }
+
+  // Enforce explicit FIPS 203 / ML-KEM coverage when explicitly requested
+  if (/\bfips\s*203\b|\bml-?kem\b/i.test(question) && !/\bfips\s*203\b|\bml-?kem\b/i.test(draftBody)) {
+    violations.push(
+      "MISSING_REQUESTED_STANDARD: Prompt explicitly asked about FIPS 203 (ML-KEM), but response omitted FIPS 203 / ML-KEM.",
+    );
+  }
+
+  // Enforce Markdown table deliverable when explicitly requested
+  if (
+    /\b(?:markdown\s+table|on\s+a\s+table|in\s+a\s+table|as\s+a\s+table)\b/i.test(question) &&
+    !/\|[^\n]+\|\r?\n\|[\s:|-]+\|/m.test(draftBody)
+  ) {
+    violations.push(
+      "MISSING_REQUESTED_TABLE: Prompt explicitly requested a Markdown table, but response did not include a properly formatted Markdown table.",
+    );
   }
 
   return {

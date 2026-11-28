@@ -179,7 +179,7 @@ function searchRmfDatabaseRecords(
   return out.sort((a, b) => b.score - a.score).slice(0, opts.limit);
 }
 
-async function searchRmfPdfChunksInDb(
+export async function searchRmfPdfChunksInDb(
   query: string,
   opts: { domain?: string; limit: number; forceInclude?: boolean },
 ): Promise<KnowledgeRecord[]> {

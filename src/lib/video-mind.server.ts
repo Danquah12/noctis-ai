@@ -360,6 +360,7 @@ export async function modelChat(
     brain?: BrainOptions;
     preferredProvider?: PreferredLlmProvider;
     thinkingLevel?: "minimal" | "low" | "medium" | "high";
+    tier?: "fast" | "reasoning";
   } = {},
 ): Promise<{ text: string; provider?: string; model?: string } | { error: string }> {
   const maxTokens = opts.maxTokens ?? 2048;
@@ -478,7 +479,14 @@ export async function modelChat(
   }
 
   let groqServerFailed = false;
-  for (const provider of resolveProviderOrder(opts.preferredProvider, picture)) {
+  const providerChain: ServerLlmProvider[] =
+    opts.tier === "reasoning" && (!opts.preferredProvider || opts.preferredProvider === "noctis")
+      ? picture
+        ? ["openai", "xai", "gemini", "custom"]
+        : ["openai", "xai", "gemini", "custom", "groq"]
+      : resolveProviderOrder(opts.preferredProvider, picture);
+
+  for (const provider of providerChain) {
     if (provider === "custom") {
       const custom = customModelConfig();
       const isDefaultGroqCustom = Boolean(custom?.endpoint.includes("api.groq.com"));
@@ -522,34 +530,39 @@ export async function modelChat(
     if (provider === "gemini") {
       const geminiKey = resolveGeminiKey();
       if (geminiKey && (talk.length || picture)) {
-        try {
-          const m = "gemini-3.5-flash-lite";
-          const genConfig = buildGeminiGenerationConfig(m, {
-            maxTokens,
-            json: json && !picture,
-            temperature,
-            thinkingLevel,
-          });
-          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent?key=${encodeURIComponent(geminiKey)}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            signal: AbortSignal.timeout(60000),
-            body: JSON.stringify({
-              systemInstruction: system ? { parts: [{ text: system }] } : undefined,
-              contents: (talk.length ? talk : packed).map((message) => ({
-                role: message.role === "assistant" ? "model" : "user",
-                parts: picture ? geminiParts(message.content) : [{ text: textOf(message.content).slice(0, 48000) }],
-              })),
-              generationConfig: genConfig,
-            }),
-          });
-          if (res.ok) {
-            const data = (await res.json()) as { candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] } }[] };
-            const text = extractGeminiThoughtAndAnswer(data.candidates?.[0]?.content?.parts);
-            if (text) return { text, provider: "gemini", model: m };
+        const geminiModels =
+          opts.tier === "reasoning" && !json
+            ? ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-3.5-flash-lite"]
+            : ["gemini-3.5-flash-lite"];
+        for (const m of geminiModels) {
+          try {
+            const genConfig = buildGeminiGenerationConfig(m, {
+              maxTokens,
+              json: json && !picture,
+              temperature,
+              thinkingLevel,
+            });
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent?key=${encodeURIComponent(geminiKey)}`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              signal: AbortSignal.timeout(60000),
+              body: JSON.stringify({
+                systemInstruction: system ? { parts: [{ text: system }] } : undefined,
+                contents: (talk.length ? talk : packed).map((message) => ({
+                  role: message.role === "assistant" ? "model" : "user",
+                  parts: picture ? geminiParts(message.content) : [{ text: textOf(message.content).slice(0, 48000) }],
+                })),
+                generationConfig: genConfig,
+              }),
+            });
+            if (res.ok) {
+              const data = (await res.json()) as { candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] } }[] };
+              const text = extractGeminiThoughtAndAnswer(data.candidates?.[0]?.content?.parts);
+              if (text) return { text, provider: "gemini", model: m };
+            }
+          } catch {
+            /* try next candidate or provider */
           }
-        } catch {
-          /* try next provider */
         }
       }
       continue;
