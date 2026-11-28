@@ -73,6 +73,74 @@ def prepare_job(export_dir, config_bytes, expected_config_sha256):
     return train, dev, record
 
 
+
+def prepare_finite_sft_datasets(export_dir, config_bytes, expected_config_sha256,
+                                *, tokenizer, dataset_from_list):
+    """Prepare finite conversational prompt/completion datasets for a future TRL caller.
+
+    The caller supplies an already-approved local tokenizer and Dataset.from_list
+    (or equivalent). This function does not establish their identities, download
+    models, start optimization, or guarantee TRL's actual loss-mask behavior.
+    Only train/development rows from the verified in-memory export are consumed.
+    Reject rather than truncate examples or accept a non-prefix chat template.
+    """
+    train, dev, record = prepare_job(export_dir, config_bytes, expected_config_sha256)
+    limit = record["config"]["max_sequence_length"]
+    require(callable(getattr(tokenizer, "apply_chat_template", None)),
+            "chat_template_required")
+    require(callable(dataset_from_list), "finite_dataset_factory_required")
+
+    def tokens(messages, generation):
+        try:
+            result = tokenizer.apply_chat_template(
+                messages, tokenize=True, add_generation_prompt=generation,
+                truncation=False, return_dict=False,
+            )
+        except Exception:
+            raise InputBlocked("chat_template_failed") from None
+        require(type(result) is list and len(result) > 0
+                and all(type(token) is int and token >= 0 for token in result),
+                "invalid_chat_template_tokens")
+        return result
+
+    def convert(rows):
+        converted = []
+        max_tokens = 0
+        for row in rows:
+            prompt = [dict(row["messages"][0])]
+            completion = [dict(row["messages"][1])]
+            # The prompt must be the exact token prefix of the full conversation.
+            # A later trainer must use this same template and verify loss masking.
+            prefix = tokens(prompt, True)
+            full = tokens(prompt + completion, False)
+            require(len(full) <= limit, "example_exceeds_sequence_limit")
+            require(len(prefix) < len(full) and full[:len(prefix)] == prefix,
+                    "chat_template_completion_boundary_mismatch")
+            converted.append({"prompt": prompt, "completion": completion})
+            max_tokens = max(max_tokens, len(full))
+        return converted, max_tokens
+
+    # Validate both partitions before passing any rows to the dataset factory.
+    train_rows, train_max = convert(train)
+    dev_rows, dev_max = convert(dev)
+    train_dataset = dataset_from_list(train_rows)
+    dev_dataset = dataset_from_list(dev_rows)
+    require(len(train_dataset) == len(train_rows) and len(dev_dataset) == len(dev_rows),
+            "finite_dataset_count_mismatch")
+    return train_dataset, dev_dataset, {
+        **record,
+        "outcome": "finite_sft_dataset_prepared_only",
+        "dataset_format": "conversational_prompt_completion",
+        "train_max_template_tokens": train_max,
+        "development_max_template_tokens": dev_max,
+        "heldout_contents_loaded": False,
+        "tokenizer_identity_verified": False,
+        "completion_loss_mask_verified": False,
+        "trainer_compatibility_verified": False,
+        "training_executed": False,
+    }
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input-dir", required=True)
