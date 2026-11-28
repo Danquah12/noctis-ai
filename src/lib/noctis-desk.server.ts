@@ -43,6 +43,10 @@ import {
   type NoctisIntentDecision,
 } from "./noctis-intent-router.server.ts";
 import { saveRoutedChatResponse } from "./noctis-response-store.server.ts";
+import {
+  sanitizeUniversalNoctisMarkdown,
+  verifyAndEnrichSpecialistDomainOutput,
+} from "./noctis-domain-verifier.server.ts";
 
 export type VibeTurn = { role: "user" | "assistant"; content: string; images?: string[] };
 
@@ -1110,8 +1114,10 @@ async function executeVibeReply(
     };
   };
 
-  const finishText = (text: string, actualRouteId: NoctisRouteEngineId): string =>
-    attachRouteStamp(text, buildStamp(actualRouteId), wantsRawJson);
+  const finishText = (text: string, actualRouteId: NoctisRouteEngineId): string => {
+    const cleaned = wantsRawJson ? text : sanitizeUniversalNoctisMarkdown(text);
+    return attachRouteStamp(cleaned, buildStamp(actualRouteId), wantsRawJson);
+  };
 
   const withThink = (text: string, routeSummary: string) =>
     ensureDeepThinkEnvelope(text, {
@@ -1229,9 +1235,11 @@ async function executeVibeReply(
           };
         }
         const kevOut = await cveAndKevGadget(promptText);
-        if (kevOut) {
-          return { text: kevOut, summary: "Executed CISA KEV & cybersecurity vulnerability lookup." };
-        }
+        const verifiedCyber = verifyAndEnrichSpecialistDomainOutput("cve_cyber", promptText, kevOut || "");
+        return {
+          text: verifiedCyber.verifiedMarkdown,
+          summary: "Executed Noctis Cyber Security, SAST & DFIR Verification Engine (NOCTIS-CYBER-IR-001).",
+        };
       }
 
       if (routeId === "enterprise") {
@@ -1347,8 +1355,9 @@ async function executeVibeReply(
           handleNaturalLegalQuery(promptText) ||
           handleNaturalLexQuery(promptText) ||
           buildGeneralLegalAssessment(promptText, resolveJurisdiction(promptText));
+        const verifiedLegal = verifyAndEnrichSpecialistDomainOutput("legal", promptText, legalOut);
         return {
-          text: legalOut,
+          text: verifiedLegal.verifiedMarkdown,
           summary: `Explicit ${overrideCmd || "/legal"} override executed Noctis Legal & Cross-Border Lex Intelligence (NOCTIS-LEGAL-001).`,
         };
       }
@@ -1363,8 +1372,9 @@ async function executeVibeReply(
           handleNaturalInvestmentQuery(promptText) ||
           buildDynamicFinancialScenarioResponse(promptText) ||
           buildInvestmentEngineMasterBlueprint(promptText);
+        const verifiedInvest = verifyAndEnrichSpecialistDomainOutput("invest", promptText, investOut);
         return {
-          text: investOut,
+          text: verifiedInvest.verifiedMarkdown,
           summary: `Explicit ${overrideCmd || "/invest"} override executed Noctis Research & Investment Engine (NOCTIS-INVEST-001).`,
         };
       }
@@ -1376,8 +1386,9 @@ async function executeVibeReply(
         } = await import("./noctis-automotive-engine.ts");
         const autoOut =
           automotiveDiagnosticGadget(promptText) || buildAutomotiveDiagnosticIntelligenceReport(promptText);
+        const verifiedAuto = verifyAndEnrichSpecialistDomainOutput("automotive", promptText, autoOut);
         return {
-          text: autoOut,
+          text: verifiedAuto.verifiedMarkdown,
           summary: `Explicit ${overrideCmd || "/auto"} override executed Noctis Automotive OBD-II & Fault-Tree Diagnostic Engine (NOCTIS-AUTO-001).`,
         };
       }
@@ -1385,8 +1396,9 @@ async function executeVibeReply(
       if (routeId === "bible") {
         const { handleNaturalBibleQuery, buildDynamicBibleQueryResponse } = await import("./noctis-bible-engine.ts");
         const bibleOut = handleNaturalBibleQuery(promptText) || buildDynamicBibleQueryResponse(promptText);
+        const verifiedBible = verifyAndEnrichSpecialistDomainOutput("bible", promptText, bibleOut);
         return {
-          text: bibleOut,
+          text: verifiedBible.verifiedMarkdown,
           summary: `Explicit ${overrideCmd || "/bible"} override executed Noctis Bible Exegesis & Study Engine (NOCTIS-BIBLE-001).`,
         };
       }
@@ -1640,6 +1652,36 @@ async function executeVibeReply(
     };
   }
 
+  if (!intent.override && intent.routeId === "cve_cyber") {
+    const cveMatch = effectiveLatest.match(/\b(CVE-\d{4}-\d{4,7})\b/i);
+    if (cveMatch) {
+      const { resolveCveIntelligenceLive, formatCveResponse } = await import("@/lib/noctis-cve-knowledge");
+      const profile = await resolveCveIntelligenceLive(cveMatch[1], effectiveLatest);
+      return {
+        text: finishText(
+          withThink(
+            formatCveResponse(profile),
+            `Queried authoritative MITRE/NVD vulnerability records for ${cveMatch[1].toUpperCase()} and verified severity, affected software ranges, and mitigation status.`,
+          ),
+          "cve_cyber",
+        ),
+      };
+    }
+    const { handleNaturalCyberSecurityQuery } = await import("./noctis-cyber-engine.ts");
+    const { cveAndKevGadget } = await import("@/lib/noctis-gadgets.server");
+    const baseCyberOut = handleNaturalCyberSecurityQuery(effectiveLatest) || (await cveAndKevGadget(effectiveLatest)) || "";
+    const verifiedCyber = verifyAndEnrichSpecialistDomainOutput("cve_cyber", effectiveLatest, baseCyberOut);
+    return {
+      text: finishText(
+        withThink(
+          verifiedCyber.verifiedMarkdown,
+          "Executed Noctis Cyber Security, SAST, OWASP & DFIR Intelligence Engine (NOCTIS-CYBER-IR-001).",
+        ),
+        "cve_cyber",
+      ),
+    };
+  }
+
   if (!intent.override && intent.routeId === "legal") {
     const { handleNaturalLegalQuery, buildGeneralLegalAssessment, resolveJurisdiction } = await import(
       "./noctis-legal-engine.ts"
@@ -1654,9 +1696,10 @@ async function executeVibeReply(
       handleNaturalLegalQuery(effectiveLatest) ||
       handleNaturalLexQuery(effectiveLatest) ||
       buildGeneralLegalAssessment(effectiveLatest, resolveJurisdiction(effectiveLatest));
+    const verifiedLegal = verifyAndEnrichSpecialistDomainOutput("legal", effectiveLatest, legalOut);
     return {
       text: finishText(
-        withThink(legalOut, "Executed Noctis Legal & Cross-Border Jurisprudence Engine (NOCTIS-LEGAL-001)."),
+        withThink(verifiedLegal.verifiedMarkdown, "Executed Noctis Legal & Cross-Border Jurisprudence Engine (NOCTIS-LEGAL-001)."),
         "legal",
       ),
     };
@@ -1672,9 +1715,10 @@ async function executeVibeReply(
       handleNaturalInvestmentQuery(effectiveLatest) ||
       buildDynamicFinancialScenarioResponse(effectiveLatest) ||
       buildInvestmentEngineMasterBlueprint(effectiveLatest);
+    const verifiedInvest = verifyAndEnrichSpecialistDomainOutput("invest", effectiveLatest, investOut);
     return {
       text: finishText(
-        withThink(investOut, "Executed Noctis Research & Investment Valuation Engine (NOCTIS-INVEST-001)."),
+        withThink(verifiedInvest.verifiedMarkdown, "Executed Noctis Research & Investment Valuation Engine (NOCTIS-INVEST-001)."),
         "invest",
       ),
     };
@@ -1687,9 +1731,10 @@ async function executeVibeReply(
     } = await import("./noctis-automotive-engine.ts");
     const autoOut =
       automotiveDiagnosticGadget(effectiveLatest) || buildAutomotiveDiagnosticIntelligenceReport(effectiveLatest);
+    const verifiedAuto = verifyAndEnrichSpecialistDomainOutput("automotive", effectiveLatest, autoOut);
     return {
       text: finishText(
-        withThink(autoOut, "Executed Noctis Automotive OBD-II & Fault-Tree Diagnostic Engine (NOCTIS-AUTO-001)."),
+        withThink(verifiedAuto.verifiedMarkdown, "Executed Noctis Automotive OBD-II & Fault-Tree Diagnostic Engine (NOCTIS-AUTO-001)."),
         "automotive",
       ),
     };
@@ -1698,9 +1743,10 @@ async function executeVibeReply(
   if (!intent.override && intent.routeId === "bible") {
     const { handleNaturalBibleQuery, buildDynamicBibleQueryResponse } = await import("./noctis-bible-engine.ts");
     const bibleOut = handleNaturalBibleQuery(effectiveLatest) || buildDynamicBibleQueryResponse(effectiveLatest);
+    const verifiedBible = verifyAndEnrichSpecialistDomainOutput("bible", effectiveLatest, bibleOut);
     return {
       text: finishText(
-        withThink(bibleOut, "Executed Noctis Bible Exegesis & Study Intelligence Engine (NOCTIS-BIBLE-001)."),
+        withThink(verifiedBible.verifiedMarkdown, "Executed Noctis Bible Exegesis & Study Intelligence Engine (NOCTIS-BIBLE-001)."),
         "bible",
       ),
     };
@@ -2415,7 +2461,15 @@ async function composeVibeReply(
     const { runFollowUpIntelligence } = await import("@/lib/noctis-response-intelligence");
     const followUpOut = explicitWebBuild ? null : runFollowUpIntelligence(turns, fullQuestion);
     if (followUpOut) {
-      setResolvedRoute(/NOCTIS-ARCH-001|Noctis Architectural Intelligence Engine/i.test(followUpOut) ? "architect" : "general_chat");
+      setResolvedRoute(
+        /NOCTIS-ARCH-001|Noctis Architectural Intelligence Engine/i.test(followUpOut)
+          ? "architect"
+          : /NOCTIS-CYBER-IR-001/i.test(followUpOut)
+            ? "cve_cyber"
+            : intentRoute && intentRoute !== "general_chat"
+              ? intentRoute
+              : "general_chat",
+      );
       const careerLang = languageNow(question, style.language || "");
       if (followUpOut.startsWith("# 🧭") && !/^(english|en([-_][a-z]+)?)$/i.test(careerLang.trim())) {
         return {

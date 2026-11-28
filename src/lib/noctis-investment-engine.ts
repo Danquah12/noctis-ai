@@ -48,28 +48,28 @@ function round2(n: number): number {
  */
 export function parseWorkingCapitalDivergenceMetrics(question: string): WorkingCapitalDivergenceMetrics {
   const revMatch =
-    question.match(/revenue\s+(?:growth\s+(?:of\s+)?|grows\s+|increases\s+|rises\s+|up\s+)([+-]?\d+(?:\.\d+)?)\s*%/i) ||
-    question.match(/([+-]?\d+(?:\.\d+)?)\s*%\s+revenue\s+growth/i);
+    question.match(/revenue\s+(?:growth\s+(?:of\s+)?|grows\s+|grew\s+|increases\s+|increased\s+|rises\s+|rose\s+|up\s+)\+?([+-]?\d+(?:\.\d+)?)\s*%/i) ||
+    question.match(/\+?([+-]?\d+(?:\.\d+)?)\s*%\s+revenue\s+growth/i);
 
   const ocfDollarDropMatch = question.match(
     /operating\s+cash\s+flow\s*(?:\(ocf\))?\s*(?:dropped|fell|declined)\s+from\s+[+]?\$?(\d+(?:\.\d+)?)\s*(?:m|million)?\s+to\s+[-]?\$?(\d+(?:\.\d+)?)\s*(?:m|million)?/i
   );
 
   const ocfDeclineMatch =
-    question.match(/operating\s+cash\s+flow\s+(?:declines|drops|falls|decreases|down)\s+(?:by\s+)?(\d+(?:\.\d+)?)\s*%/i) ||
-    question.match(/ocf\s+(?:declines|drops|falls|decreases|down)\s+(?:by\s+)?(\d+(?:\.\d+)?)\s*%/i);
+    question.match(/operating\s+cash\s+flow\s*(?:\(ocf\)\s*)?(?:declines|declined|drops|dropped|falls|fell|decreases|decreased|down)\s+(?:by\s+)?[+-]?(\d+(?:\.\d+)?)\s*%/i) ||
+    question.match(/ocf\s+(?:declines|declined|drops|dropped|falls|fell|decreases|decreased|down)\s+(?:by\s+)?[+-]?(\d+(?:\.\d+)?)\s*%/i);
   const ocfSignedMatch =
-    question.match(/operating\s+cash\s+flow\s+(?:changes|grows|increases|rises|is)\s+([+-]?\d+(?:\.\d+)?)\s*%/i) ||
+    question.match(/operating\s+cash\s+flow\s*(?:\(ocf\)\s*)?(?:changes|changed|grows|grew|increases|increased|rises|rose|is)\s+([+-]?\d+(?:\.\d+)?)\s*%/i) ||
     question.match(/([+-]?\d+(?:\.\d+)?)\s*%\s+operating\s+cash\s+flow/i);
 
   const arMatch =
     question.match(/(?:accounts\s+)?receivables?[^\n]*?\(\+?([+-]?\d+(?:\.\d+)?)\s*%\s*(?:YoY)?\)/i) ||
-    question.match(/(?:accounts\s+)?receivables?\s+(?:rise|rises|increase|increases|grow|grows|up|jump|jumps|surged|surges)\s+(?:by\s+|from[^\n]+to[^\n]+)?\+?([+-]?\d+(?:\.\d+)?)\s*%/i) ||
-    question.match(/([+-]?\d+(?:\.\d+)?)\s*%\s+(?:increase\s+in\s+)?(?:accounts\s+)?receivables?/i);
+    question.match(/(?:accounts\s+)?receivables?\s+(?:rise|rises|rose|increase|increases|increased|grow|grows|grew|up|jump|jumps|jumped|surged|surges)\s+(?:by\s+|from[^\n]+to[^\n]+)?\+?([+-]?\d+(?:\.\d+)?)\s*%/i) ||
+    question.match(/\+?([+-]?\d+(?:\.\d+)?)\s*%\s+(?:increase\s+in\s+)?(?:accounts\s+)?receivables?/i);
 
   const invMatch =
-    question.match(/inventor(?:y|ies)\s+(?:rise|rises|increase|increases|grow|grows|up|jump|jumps)\s+(?:by\s+)?([+-]?\d+(?:\.\d+)?)\s*%/i) ||
-    question.match(/([+-]?\d+(?:\.\d+)?)\s*%\s+(?:increase\s+in\s+)?inventor(?:y|ies)/i);
+    question.match(/inventor(?:y|ies)\s+(?:rise|rises|rose|increase|increases|increased|grow|grows|grew|up|jump|jumps|jumped)\s+(?:by\s+)?\+?([+-]?\d+(?:\.\d+)?)\s*%/i) ||
+    question.match(/\+?([+-]?\d+(?:\.\d+)?)\s*%\s+(?:increase\s+in\s+)?inventor(?:y|ies)/i);
 
   const revenueGrowthPct = revMatch ? parseFloat(revMatch[1]) : 20;
   const ocfChangePct = ocfDollarDropMatch

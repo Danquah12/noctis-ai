@@ -107,7 +107,7 @@ function buildRmfSystemPrompt(opts: {
 }
 
 function unwrapLatexCommand(expr: string, command: string): string {
-  const re = new RegExp(`\\\\${command}\\{([^{}]*)\\}`, "g");
+  const re = new RegExp(`\\\\${command}\\s*\\{([^{}]*)\\}`, "g");
   let next = expr;
   for (let i = 0; i < 4; i++) {
     const replaced = next.replace(re, "$1");
@@ -117,22 +117,51 @@ function unwrapLatexCommand(expr: string, command: string): string {
   return next;
 }
 
+function unwrapLatexFractions(expr: string): string {
+  const re = /\\frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g;
+  let next = expr;
+  for (let i = 0; i < 4; i++) {
+    const replaced = next.replace(re, "($1 / $2)");
+    if (replaced === next) break;
+    next = replaced;
+  }
+  return next;
+}
+
 function cleanLatexExpression(rawExpr: string): string {
   let out = rawExpr;
-  out = unwrapLatexCommand(out, "text");
-  out = unwrapLatexCommand(out, "mathrm");
-  out = unwrapLatexCommand(out, "textbf");
+  for (const cmd of ["text", "mathrm", "textbf", "mathbf", "mathit", "mathsf", "mathtt", "operatorname"]) {
+    out = unwrapLatexCommand(out, cmd);
+  }
+  out = unwrapLatexFractions(out);
   out = out
+    .replace(/\\sqrt\s*\{([^{}]*)\}/g, "sqrt($1)")
+    .replace(/_\{([^{}]*)\}/g, "_$1")
+    .replace(/\^\{([^{}]*)\}/g, "^$1")
+    .replace(/\\\$/g, "$")
+    .replace(/\\%/g, "%")
     .replace(/\\\{/g, "{")
     .replace(/\\\}/g, "}")
     .replace(/\\leq\b|\\le\b/g, "<=")
     .replace(/\\geq\b|\\ge\b/g, ">=")
+    .replace(/\\neq\b|\\ne\b/g, "≠")
     .replace(/\\times\b/g, "×")
-    .replace(/\\rightarrow\b|\\to\b/g, "->")
+    .replace(/\\rightarrow\b|\\to\b|\\Rightarrow\b/g, "->")
     .replace(/\\approx\b/g, "≈")
     .replace(/\\pm\b/g, "±")
     .replace(/\\cdot\b/g, "·")
     .replace(/\\div\b/g, "/")
+    .replace(/\\Delta\b/g, "Δ")
+    .replace(/\\alpha\b/g, "α")
+    .replace(/\\beta\b/g, "β")
+    .replace(/\\gamma\b/g, "γ")
+    .replace(/\\eta\b/g, "η")
+    .replace(/\\mu\b/g, "μ")
+    .replace(/\\rho\b/g, "ρ")
+    .replace(/\\sigma\b/g, "σ")
+    .replace(/\\Omega\b/g, "Ω")
+    .replace(/\\pi\b/g, "π")
+    .replace(/\\infty\b/g, "∞")
     .replace(/\\(?:quad|qquad|,|;|:)/g, " ")
     .replace(/`/g, "")
     .replace(/\s+/g, " ")
@@ -170,15 +199,20 @@ export function sanitizeRmfMarkdownFormatting(markdown: string): string {
       const cleanedSymbols = part
         .replace(/\$\s*\\(?:geq|ge)\s*\$/g, "≥")
         .replace(/\$\s*\\(?:leq|le)\s*\$/g, "≤")
+        .replace(/\$\s*\\(?:neq|ne)\s*\$/g, "≠")
         .replace(/\$\s*\\approx\s*\$/g, "≈")
         .replace(/\$\s*\\pm\s*\$/g, "±")
         .replace(/\$\s*\\times\s*\$/g, "×")
+        .replace(/\$\s*\\(?:rightarrow|to|Rightarrow)\s*\$/g, "→")
+        .replace(/\(\s*\$\s*=\s*([^$\n]+?)\s*\$\s*\)/g, "(= $1)")
+        .replace(/\$\s*\\\$([\d,]+(?:\.\d+)?)\s*\$/g, "$$$1")
+        .replace(/\$\s*([+-]?\d+(?:\.\d+)?)\s*\\%\s*\$/g, "$1%")
         .replace(/\$\s*([<>]=?)\s*(\d+(?:\.\d+)?)\s*\$/g, "$1 $2");
       return cleanedSymbols
         .replace(/\$\$([\s\S]*?)\$\$/g, formatMatch)
         .replace(/\\\[([\s\S]*?)\\\]/g, formatMatch)
         .replace(
-          /\$([^\n$]*\\(?:text|mathrm|textbf|leq|le|geq|ge|times|rightarrow|to|approx|pm|cdot|div|\{|\})[^\n$]*)\$/g,
+          /\$((?:\\\$|[^\n$])*\\(?:text|mathrm|textbf|mathbf|mathit|mathsf|mathtt|operatorname|frac|sqrt|leq|le|geq|ge|neq|ne|times|rightarrow|to|Rightarrow|approx|pm|cdot|div|Delta|alpha|beta|gamma|eta|mu|rho|sigma|Omega|pi|infty|%|\\\$|\{|\})(?:\\\$|[^\n$])*)\$/g,
           formatMatch,
         );
     })

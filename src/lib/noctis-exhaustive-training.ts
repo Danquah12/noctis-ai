@@ -177,6 +177,7 @@ import {
   isCyberSecurityReport,
   isValidPlainLanguageOutput,
 } from "./noctis-plain-language.ts";
+import { runMultiDomainVerifierSelfTest } from "./noctis-domain-verifier.server.ts";
 
 import { NOCTIS_MASTER_TRAINING_QUESTIONS } from "./noctis-training-catalog.ts";
 import {
@@ -853,6 +854,7 @@ export function executeRemainingNoctisTrainingDomains(): ExhaustiveTrainingDomai
     const archPlain = buildDeterministicPlainLanguage(archRaw);
 
     const toolHit = matchSovereignTool("Evaluate tokamak plasma Greenwald density limit and Kruskal-Shafranov safety factor");
+    const multiDomainGate = runMultiDomainVerifierSelfTest();
 
     const extraChecks = [
       parsedStamp?.routeId === "general_chat",
@@ -865,8 +867,8 @@ export function executeRemainingNoctisTrainingDomains(): ExhaustiveTrainingDomai
       Boolean(toolHit),
     ];
     return {
-      total: NOCTIS_SLASH_ROUTES.length + NOCTIS_PANELS.length + extraChecks.length,
-      passed: slashOk + panelsOk + extraChecks.filter(Boolean).length,
+      total: NOCTIS_SLASH_ROUTES.length + NOCTIS_PANELS.length + extraChecks.length + multiDomainGate.total,
+      passed: slashOk + panelsOk + extraChecks.filter(Boolean).length + multiDomainGate.passed,
     };
   });
   results.push({
@@ -875,7 +877,7 @@ export function executeRemainingNoctisTrainingDomains(): ExhaustiveTrainingDomai
     scenariosCount: routeOut.total,
     invariantsPassed: routeOut.passed,
     durationMs: routeMs,
-    detail: "Plain Language Translator & Routing Registry: Slash Commands, Panel Registry, Stamp Round-Trip, Sovereign Tool Matcher & Topic-Aware Non-Cyber Safeguards",
+    detail: "Plain Language Translator, Routing Registry & 5-Domain Neuro-Symbolic Verifier (Legal IRAC, Quant DCF/ASC 606, Cyber SAST/OWASP, Automotive Fuel-Trim, Bible Exegesis)",
   });
 
   // Step 140: Master Training Catalog (39 Q&As), 42 Professions & Risk Dimensions

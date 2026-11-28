@@ -248,6 +248,109 @@ const CASES: LiveEvalCase[] = [
       { label: "No unsupported ISO 14971 / IEC 62304 claim", re: /\b(?:iso\s*14971|iec\s*62304)\b/i },
     ],
   },
+  {
+    id: "EVAL-15",
+    name: "Legal Multi-Claim IRAC Audit (FAR 52.212-4 Cure Notice + Delaware DGCL 102(b)(7) + FRCP 56 Celotex + APA Loper Bright)",
+    prompt:
+      "Conduct a multi-claim IRAC legal audit on a Markdown table: (1) A federal Contracting Officer terminated our commercial contract for default under FAR 52.212-4 / FAR 49.607 prior to expiration without issuing a 10-day written Cure Notice; (2) Delaware corporate directors invoke a DGCL § 102(b)(7) charter exculpation clause to dismiss a breach of the fiduciary duty of loyalty and bad-faith Caremark oversight claim; (3) Plaintiff moves for trial on breach of contract with zero documentary evidence of damages under FRCP 56 (Celotex); and (4) A federal agency claims Chevron deference still governs statutory interpretation under APA 5 U.S.C. § 706 after Loper Bright.",
+    expectedRoutes: ["legal"],
+    mustContainRegex: [
+      { label: "FAR 49.607 Cure Notice & Termination for Convenience", re: /49\.607[\s\S]*Termination\s+for\s+Convenience/i },
+      { label: "Delaware DGCL 102(b)(7) Duty of Loyalty Non-Exculpation", re: /102\(b\)\(7\)[\s\S]*duty\s+of\s+loyalty/i },
+      { label: "FRCP 56 Celotex 477 U.S. 317", re: /Celotex[\s\S]*477\s+U\.S\.\s+317/i },
+      { label: "Loper Bright 144 S. Ct. 2244 De Novo Review", re: /Loper\s+Bright[\s\S]*144\s+S\.\s+Ct\.\s+2244/i },
+      { label: "Markdown Table", re: /\|[^\n]+\|\r?\n\|[\s:|-]+\|/m },
+    ],
+    mustNotContainRegex: [
+      { label: "No leaked <think>", re: /<\/?think>/i },
+      { label: "No raw <br> inside Markdown table", re: /\|[^\n]*<br\s*\/?>/i },
+    ],
+  },
+  {
+    id: "EVAL-16",
+    name: "Quant Finance Working-Capital Divergence + Gordon Growth DCF Terminal Value + ASC 606 Audit (Zero Raw LaTeX)",
+    prompt:
+      "Audit this SEC 10-K earnings-quality & valuation scenario on a Markdown table: Revenue grew +24% YoY while operating cash flow (OCF) declined -18%, accounts receivable jumped +55%, and inventory rose +40%. Also compute the deterministic Gordon Growth DCF terminal value for Free Cash Flow (FCF) of $45 million, WACC of 10%, and terminal growth rate (g) of 2.5%, and evaluate under ASC 606 revenue recognition.",
+    expectedRoutes: ["invest"],
+    mustContainRegex: [
+      { label: "42 pct pts Revenue-to-OCF divergence", re: /42(?:\.0+)?\s*(?:pct\s*pts|percentage\s*points)/i },
+      { label: "Implied DSO expansion 1.25x (+25%)", re: /1\.25\s*x/i },
+      { label: "Deterministic DCF Terminal Value $615.00 Million", re: /615(?:\.00)?\s*Million/i },
+      { label: "ASC 606 5-Step Audit", re: /ASC\s*606/i },
+      { label: "Markdown Table", re: /\|[^\n]+\|\r?\n\|[\s:|-]+\|/m },
+    ],
+    mustNotContainRegex: [
+      { label: "No leaked <think>", re: /<\/?think>/i },
+      { label: "No raw LaTeX \\mathbf or \\frac", re: /\\(?:mathbf|frac|text)\b/ },
+      { label: "No raw <br> inside Markdown table", re: /\|[^\n]*<br\s*\/?>/i },
+    ],
+  },
+  {
+    id: "EVAL-17",
+    name: "Cyber SAST, OWASP & DFIR Multi-Vulnerability Audit (CWE-89 SQLi + CWE-639 BOLA + CWE-798 JWT + CWE-918 SSRF IMDSv1)",
+    prompt:
+      "Perform a SAST and OWASP Top 10 audit of a Node.js billing endpoint that concatenates user input into a SQL query (SQL injection), fails to check tenant ownership on invoice IDs (BOLA / IDOR), signs tokens with a hardcoded JWT secret accepting alg=none, and fetches user-supplied webhook URLs allowing SSRF to 169.254.169.254 (Cloud IMDSv1). Map CWE IDs, OWASP categories, and MITRE ATT&CK techniques on a Markdown table and provide defensive TypeScript remediation code.",
+    expectedRoutes: ["cve_cyber"],
+    mustContainRegex: [
+      { label: "CWE-89 SQLi", re: /CWE-89/i },
+      { label: "CWE-639 / OWASP API1:2023 BOLA", re: /CWE-639|API1:2023/i },
+      { label: "CWE-798 Hardcoded JWT Secret", re: /CWE-798/i },
+      { label: "CWE-918 SSRF & MITRE T1552.005 IMDS", re: /CWE-918[\s\S]*T1552\.005/i },
+      { label: "Defensive TypeScript Remediation Code", re: /```typescript[\s\S]*SELECT[\s\S]*\$1[\s\S]*\$2/i },
+      { label: "Markdown Table", re: /\|[^\n]+\|\r?\n\|[\s:|-]+\|/m },
+    ],
+    mustNotContainRegex: [
+      { label: "No leaked <think>", re: /<\/?think>/i },
+    ],
+  },
+  {
+    id: "EVAL-18",
+    name: "Automotive OBD-II Idle vs 2,500 RPM Fuel-Trim Physics & Zero Premature Part Condemnation (P0171 + P0300)",
+    prompt:
+      "Diagnose a 2019 2.4L 4-cylinder gasoline sedan with OBD-II codes P0171 (System Too Lean Bank 1) and P0300 (Random/Multiple Cylinder Misfire). Freeze-frame and live scan-tool data show STFT +18% and LTFT +21% at 750 RPM warm idle, which drops to STFT +2% and LTFT +4% at 2,500 RPM cruise. Rank competing hypotheses on a Markdown table and enforce the zero premature part condemnation gate.",
+    expectedRoutes: ["automotive"],
+    mustContainRegex: [
+      { label: "Idle total fuel trim +39%", re: /\+39%/i },
+      { label: "2,500 RPM total fuel trim +6%", re: /\+6%/i },
+      { label: "Unmetered Air / Intake Vacuum Leak Downstream of MAF", re: /Vacuum\s+Leak/i },
+      { label: "Zero Premature Part Condemnation (confirmed_root_cause = null)", re: /confirmed_root_cause\s*=\s*null/i },
+      { label: "Markdown Table", re: /\|[^\n]+\|\r?\n\|[\s:|-]+\|/m },
+    ],
+    mustNotContainRegex: [
+      { label: "No leaked <think>", re: /<\/?think>/i },
+      { label: "No raw <br> inside Markdown table", re: /\|[^\n]*<br\s*\/?>/i },
+      { label: "No raw \\rightarrow LaTeX", re: /\\rightarrow/ },
+    ],
+  },
+  {
+    id: "EVAL-19",
+    name: "Bible Historical-Grammatical Exegesis & Greek/Hebrew Lexical Matrix (Ephesians 2:8-10 & Genesis 50:20)",
+    prompt:
+      "Provide a historical-grammatical exegesis of Ephesians 2:8-10 and Genesis 50:20, including a Markdown table of the original Koine Greek (chariti, pisteos, doron, poiema) and Biblical Hebrew (chashav, lehachyot) lexical terms, morphology, and Christian tradition synthesis.",
+    expectedRoutes: ["bible"],
+    mustContainRegex: [
+      { label: "Koine Greek chariti (grace)", re: /cháriti|χάριτι/i },
+      { label: "Koine Greek poiema (workmanship)", re: /poiēma|ποίημα/i },
+      { label: "Biblical Hebrew chashav (intended/devised)", re: /chashav|חֲשַׁבְתֶּם/i },
+      { label: "Markdown Table", re: /\|[^\n]+\|\r?\n\|[\s:|-]+\|/m },
+    ],
+    mustNotContainRegex: [
+      { label: "No leaked <think>", re: /<\/?think>/i },
+    ],
+  },
+  {
+    id: "EVAL-20",
+    name: "Deterministic Science Physics & Chemistry Formula Verification (Schwarzschild Radius of 20 Solar Mass Black Hole)",
+    prompt: "Calculate the Schwarzschild event horizon radius of a 20 solar mass black hole using deterministic physical constants.",
+    expectedRoutes: ["science"],
+    mustContainRegex: [
+      { label: "Schwarzschild radius ~59.08 km", re: /59\.0[5-9]\s*km/i },
+      { label: "Gravitational constant G / speed of light c", re: /2GM\/c|6\.674/i },
+    ],
+    mustNotContainRegex: [
+      { label: "No leaked <think>", re: /<\/?think>/i },
+    ],
+  },
 ];
 
 async function runLiveEval() {
