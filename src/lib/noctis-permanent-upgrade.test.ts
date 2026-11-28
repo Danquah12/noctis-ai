@@ -8,8 +8,9 @@ import {
 import { runComposableComplianceTools } from "./noctis-composable-orchestrator.server.ts";
 import { buildRmfGroundingPacket, verifyRmfResponseAgainstDb } from "./noctis-rmf-db.ts";
 import { evaluateMp6SanitizationRule } from "./noctis-rmf-rules.ts";
-import { executeUniversalRmfReasoning, renderDeterministicRmfFallback } from "./noctis-rmf-reasoning.server.ts";
+import { executeUniversalRmfReasoning, renderDeterministicRmfFallback, sanitizeRmfMarkdownFormatting } from "./noctis-rmf-reasoning.server.ts";
 import { parseThinkEnvelope } from "./noctis-engine-registry.ts";
+import { extractAndEvaluateRmfRulesFromText } from "./noctis-rmf-rules.ts";
 
 describe("Noctis Permanent 4-Pillar Upgrade (Escalation + Structured JSON + Composable Tools + Strict Verifier)", () => {
   it("Pillar #3: keeps casual prompts on fast tier and escalates multi-constraint audits to reasoning tier", () => {
@@ -175,5 +176,39 @@ Examine, Interview, Test procedures covered under AC-2.
     const visible = parseThinkEnvelope(out).body;
     assert.ok(visible.includes("AC-2") && visible.includes("AU-6") && visible.includes("FIPS 203"));
     assert.ok(/\|[^\n]+\|\r?\n\|[\s:|-]+\|/m.test(visible));
+
+    // Omitting AC-13 completely when prompt asked about AC-13 MUST be caught
+    const omittedAc13 = `
+### MP-6 — Media Sanitization
+Scenario Verdict: FAIL. Purge required under SP 800-88. FIPS 203 (ML-KEM) required.
+Examine, Interview, Test procedures covered.
+| Control | Verdict |
+| :--- | :--- |
+| MP-6 | FAIL |
+`;
+    const missingAc13Audit = verifyRmfResponseAgainstDb(q, omittedAc13, packet);
+    assert.equal(missingAc13Audit.passed, false);
+    assert.ok(missingAc13Audit.violations.some((v) => v.includes("MISSING_REQUESTED_WITHDRAWN_CONTROL")));
+
+    // Fenced ```markdown tables unwrap cleanly
+    const fenced = "### Table\n\n```markdown\n| Control | Verdict |\n| :--- | :--- |\n| AC-2 | FAIL |\n```\n";
+    const unwrapped = sanitizeRmfMarkdownFormatting(fenced);
+    assert.ok(!unwrapped.includes("```markdown"));
+    assert.ok(/\| Control \| Verdict \|\r?\n\| :--- \| :--- \|/m.test(unwrapped));
+  });
+
+  it("handles EVAL-02 fired/left-active 52h paraphrase and EVAL-08 Okta+bastion same-domain MFA in regex rules", () => {
+    const eval02 = extractAndEvaluateRmfRulesFromText(
+      "Our FedRAMP High cloud EHR fired a sysadmin on Tuesday and left his Okta active for 52 hours.",
+    );
+    const ac2 = eval02.find((r) => r.controlId === "AC-2");
+    assert.equal(ac2?.verdict, "FAIL");
+    assert.ok(ac2?.variance.includes("+28 hours"));
+
+    const eval08 = extractAndEvaluateRmfRulesFromText(
+      "Evaluate IA-2 for FedRAMP High: privileged admins authenticate via a centralized Okta IdP enforcing FIDO2 phishing-resistant MFA to an upstream bastion, then use static SSH keys inside the same domain with direct SSH bypass blocked.",
+    );
+    const ia2 = eval08.find((r) => r.controlId === "IA-2");
+    assert.equal(ia2?.verdict, "MANUAL_REVIEW_REQUIRED");
   });
 });

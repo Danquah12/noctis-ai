@@ -31,6 +31,7 @@ export type StructuredExtractorChatFn = (
     maxTokens?: number;
     temperature?: number;
     json?: boolean;
+    preferredProvider?: "openai" | "gemini" | "xai" | "groq" | "noctis";
     thinkingLevel?: "minimal" | "low" | "medium" | "high";
     tier?: "fast" | "reasoning";
   },
@@ -154,7 +155,8 @@ Rules:
 - For ia2Auth: staticSshKeysInUse=true if using static SSH keys/PEM files without ephemeral certs; phishingResistant=false if lacking FIDO2/PIV/CAC/hardware MFA; mfaEnforcedPrivileged=false if logging in without MFA.
 - For mediaSanitization: mediaType ("NVME_SSD"|"SSD_FLASH"|"HDD_MAGNETIC"|"PAPER"|"OTHER"|"UNKNOWN"), proposedMethod ("CLEAR_OVERWRITE" for single logical overwrite/wipe/quick-format, "PURGE_CRYPTO_ERASE", "PURGE_SANITIZE", "DEGAUSS", "DESTROY"), dataSensitivity ("HIGH_PHI_ITAR" if PHI/HIPAA/ITAR/CUI/FedRAMP High, "SECRET", "TS_SCI", "MODERATE", "LOW").
 - For fips199: confidentiality/integrity/availability if stated or clearly implied by FedRAMP baseline (HIGH/MODERATE/LOW), plus informationTypes (e.g., "PHI", "ITAR_TECHNICAL_DATA", "CUI").
-- Output valid JSON ONLY matching keys: ac2Termination, ia2Auth, mediaSanitization, fips199, citedControls, citedRmfTasks, citedStandards, requestsTable, requestsAtoIssuance, claimsPoamStatutory.`;
+- Output valid JSON ONLY matching this exact template:
+{"ac2Termination":{"mentioned":false,"elapsedHours":null,"policyThresholdHours":null,"inactiveAccountDays":null},"ia2Auth":{"mentioned":false,"staticSshKeysInUse":null,"mfaEnforcedPrivileged":null,"phishingResistant":null,"upstreamBastionMfaEnforced":null,"idpFederationPhishingResistant":null,"ephemeralSshCertificates":null,"directSshBypassBlocked":null},"mediaSanitization":{"mentioned":false,"mediaType":"UNKNOWN","proposedMethod":"UNKNOWN","dataSensitivity":"UNKNOWN"},"fips199":{"mentioned":false,"confidentiality":null,"integrity":null,"availability":null,"informationTypes":[],"isNationalSecuritySystem":false},"citedControls":[],"citedRmfTasks":[],"citedStandards":[],"requestsTable":false,"requestsAtoIssuance":false,"claimsPoamStatutory":false}`;
 
 function parseJsonObjectLoose(raw: string): unknown {
   const cleaned = raw
@@ -185,7 +187,7 @@ export async function extractStructuredComplianceFacts(
     chatFn = mod.modelChat as unknown as StructuredExtractorChatFn;
   }
 
-  const timeoutMs = opts.timeoutMs ?? 10000;
+  const timeoutMs = opts.timeoutMs ?? 12000;
   try {
     const res = await Promise.race([
       chatFn(
@@ -195,10 +197,11 @@ export async function extractStructuredComplianceFacts(
         ],
         {
           temperature: 0.0,
-          maxTokens: 900,
+          maxTokens: 700,
           json: true,
+          preferredProvider: "openai",
           thinkingLevel: "minimal",
-          tier: "fast",
+          tier: "reasoning",
         },
       ),
       new Promise<{ error: string }>((resolve) => {
@@ -301,20 +304,30 @@ export function mergeStructuredFactsIntoRmfPacket(
     ensureCtrlAndAuth("IA-2");
     ensureCtrlAndAuth("IA-2(1)");
     ensureCtrlAndAuth("IA-2(6)");
-    upsertRule(
-      evaluateIa2AuthRule({
-        baseline,
-        staticSshKeysInUse: facts.ia2Auth.staticSshKeysInUse,
-        mfaEnforcedPrivileged: facts.ia2Auth.mfaEnforcedPrivileged,
-        phishingResistant: facts.ia2Auth.phishingResistant,
-        upstreamBastionMfaEnforced: facts.ia2Auth.upstreamBastionMfaEnforced,
-        idpFederationPhishingResistant: facts.ia2Auth.idpFederationPhishingResistant,
-        ephemeralSshCertificates: facts.ia2Auth.ephemeralSshCertificates,
-        directSshBypassBlocked: facts.ia2Auth.directSshBypassBlocked,
-        assessmentMode: "SCENARIO_ASSUMPTION",
-        evidenceVerified: false,
-      }),
-    );
+    const nextIa2 = evaluateIa2AuthRule({
+      baseline,
+      staticSshKeysInUse: facts.ia2Auth.staticSshKeysInUse,
+      mfaEnforcedPrivileged: facts.ia2Auth.mfaEnforcedPrivileged,
+      phishingResistant: facts.ia2Auth.phishingResistant,
+      upstreamBastionMfaEnforced: facts.ia2Auth.upstreamBastionMfaEnforced,
+      idpFederationPhishingResistant: facts.ia2Auth.idpFederationPhishingResistant,
+      ephemeralSshCertificates: facts.ia2Auth.ephemeralSshCertificates,
+      directSshBypassBlocked: facts.ia2Auth.directSshBypassBlocked,
+      assessmentMode: "SCENARIO_ASSUMPTION",
+      evidenceVerified: false,
+    });
+    const existingIa2Idx = ruleEvaluations.findIndex((r) => r.controlId === "IA-2");
+    const hasUpstreamUpgrade =
+      (facts.ia2Auth.upstreamBastionMfaEnforced === true || facts.ia2Auth.idpFederationPhishingResistant === true) &&
+      existingIa2Idx !== -1 &&
+      ruleEvaluations[existingIa2Idx]!.observedFacts.upstreamBastionMfaEnforced !== true &&
+      ruleEvaluations[existingIa2Idx]!.observedFacts.idpFederationPhishingResistant !== true;
+    if (hasUpstreamUpgrade) {
+      ruleEvaluations[existingIa2Idx] = nextIa2;
+      addedNotes.push(`Structured extraction detected upstream IdP/bastion MFA path for IA-2 => ${nextIa2.verdict}`);
+    } else {
+      upsertRule(nextIa2);
+    }
   }
 
   // 3. MP-6 / SP 800-88 Media Sanitization

@@ -2171,6 +2171,7 @@ async function composeVibeReply(
   const { isDodIcQuery, executeDodIcReasoning } = await import("@/lib/dod-ic/dod-ic-reasoning.server");
   const preClassificationGate = evaluateClassificationGate({ text: fullQuestion });
   if (preClassificationGate.action === "FAIL_CLOSED_BLOCK") {
+    setResolvedRoute("dod_ic");
     const blockedReply = await executeDodIcReasoning(fullQuestion, {
       shouldThink,
       language: languageNow(question, style.language || ""),

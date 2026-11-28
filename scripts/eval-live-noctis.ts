@@ -76,7 +76,7 @@ const CASES: LiveEvalCase[] = [
     mustContainRegex: [
       { label: "AC-13 withdrawn", re: /\bAC-13\b[\s\S]*\bwithdrawn\b/i },
       { label: "AC-2 & AU-6 replacement", re: /\bAC-2\b[\s\S]*\bAU-6\b/i },
-      { label: "AU-15 -> AU-5(5)", re: /\bAU-5\(5\)\b/i },
+      { label: "AU-15 -> AU-5(5)", re: /\bAU-5\(5\)/i },
     ],
   },
   {

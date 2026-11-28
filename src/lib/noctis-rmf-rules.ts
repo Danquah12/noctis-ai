@@ -1423,9 +1423,9 @@ export function evaluateMp6SanitizationRule(input: Mp6SanitizationInput): RmfRul
 
 export function extractAc2ElapsedHours(q: string): number | null {
   const patterns: RegExp[] = [
-    /(?:remained\s+(?:active|enabled|open|provisioned)|stayed\s+(?:active|enabled|open)|(?:kept|left)\s+(?:active|enabled|open)|not\s+(?:disabled|removed|deprovisioned|revoked))\s*(?:for|over|after)?\s*(\d+(?:\.\d+)?)\s*(hours?|hrs?|days?|d\b)/i,
+    /(?:remained\s+(?:active|enabled|open|provisioned)|stayed\s+(?:active|enabled|open)|(?:kept|left)\s+(?:[\w'’-]+\s+){0,3}(?:active|enabled|open)|not\s+(?:disabled|removed|deprovisioned|revoked))\s*(?:for|over|after)?\s*(\d+(?:\.\d+)?)\s*(hours?|hrs?|days?|d\b)/i,
     /(?:elapsed(?:\s+time)?|deprovision(?:ed|ing)\s+took|disabled\s+after|removed\s+after|revoked\s+after|delayed(?:\s+by)?|lag(?:ged)?(?:\s+by)?|took)\s*(?:time\s*[:=]?\s*)?(\d+(?:\.\d+)?)\s*(hours?|hrs?|days?|d\b)/i,
-    /(?:account|access)\s+(?:was\s+)?(?:still\s+)?(?:active|enabled|open)\s+for\s+(\d+(?:\.\d+)?)\s*(hours?|hrs?|days?|d\b)/i,
+    /(?:account|access|okta|sso|ad|login)\s+(?:was\s+)?(?:still\s+)?(?:active|enabled|open)\s+for\s+(\d+(?:\.\d+)?)\s*(hours?|hrs?|days?|d\b)/i,
   ];
   for (const re of patterns) {
     const m = q.match(re);
@@ -1451,13 +1451,13 @@ export function extractAndEvaluateRmfRulesFromText(question: string): RmfRuleEva
   const assessmentMode: RmfAssessmentMode = evidenceVerified ? "FORMAL_EVIDENCE_AUDIT" : "SCENARIO_ASSUMPTION";
 
   const hasEvalIntent =
-    /\b(evaluat\w*|assess\w*|check|verif\w*|compliant|compliance|verdict|audit|pass|fail|gap|poa&m|poam|disabled|terminated|termination|missing\s+evidence|no\s+evidence|remained\s+active|without\s+(?:hardware|phishing-resistant)?\s*mfa)\b/i.test(
+    /\b(evaluat\w*|assess\w*|check|verif\w*|compliant|compliance|verdict|audit|pass|fail|gap|poa&m|poam|disabled|terminated|termination|fired|offboarded|missing\s+evidence|no\s+evidence|remained\s+active|stayed\s+active|without\s+(?:hardware|phishing-resistant)?\s*mfa)\b/i.test(
       q,
     );
 
   // AC-2 / Termination or inactivity timestamps
   if (
-    /\bAC-2(?:\(\d+\))?\b|\bterminat\w*(?:\s+[\w'’-]+){0,3}\s+accounts?|\b(?:remained|stayed|kept|left)\s+(?:active|enabled|open)\s+for\s+\d+|\bdisabled\s+(?:within|at|after)|\binactive\s+accounts?\b/i.test(
+    /\bAC-2(?:\(\d+\))?\b|\b(?:terminat\w*|fired|offboard\w*|separated)(?:\s+[\w'’-]+){0,3}\s+(?:accounts?|sysadmin|admin|employee|user)|\b(?:remained|stayed|kept|left)\s+(?:[\w'’-]+\s+){0,3}(?:active|enabled|open)\s+for\s+\d+|\bdisabled\s+(?:within|at|after)|\binactive\s+accounts?\b/i.test(
       q,
     )
   ) {
@@ -1470,7 +1470,7 @@ export function extractAndEvaluateRmfRulesFromText(question: string): RmfRuleEva
 
     const startTime = parseDayTimeHours(
       q,
-      /(?:terminat(?:ed|ion)|revoked|offboarded|separated)[^.\n]{0,45}?\b(?:(?:\d{1,2}(?::\d{2})?\s*(?:am|pm)?\s*(?:on\s+)?(?:sunday|monday|tuesday|wednesday|thursday|friday|saturday))|(?:(?:sunday|monday|tuesday|wednesday|thursday|friday|saturday)\s*(?:at\s+)?\d{1,2}(?::\d{2})?\s*(?:am|pm)?))/i,
+      /(?:terminat(?:ed|ion)|fired|revoked|offboarded|separated)[^.\n]{0,45}?\b(?:(?:\d{1,2}(?::\d{2})?\s*(?:am|pm)?\s*(?:on\s+)?(?:sunday|monday|tuesday|wednesday|thursday|friday|saturday))|(?:(?:sunday|monday|tuesday|wednesday|thursday|friday|saturday)\s*(?:at\s+)?\d{1,2}(?::\d{2})?\s*(?:am|pm)?))/i,
     );
     const endTime = parseDayTimeHours(
       q,
@@ -1490,7 +1490,7 @@ export function extractAndEvaluateRmfRulesFromText(question: string): RmfRuleEva
     if (
       elapsedHours != null ||
       inactiveDaysMatch ||
-      /\bterminat\w*/i.test(q) ||
+      /\b(?:terminat\w*|fired|offboard\w*|separated)\b/i.test(q) ||
       (/\bAC-2(?:\(\d+\))?\b/i.test(q) && hasEvalIntent)
     ) {
       results.push(
@@ -1577,7 +1577,7 @@ export function extractAndEvaluateRmfRulesFromText(question: string): RmfRuleEva
 
     const noMfa = mfaNegated
       ? false
-      : /\b(?:enforces?|requires?|using)\s+(?:[\w-]+\s+){0,2}(?:phishing[- ]resistant|hardware|fido2|piv)\s+(?:mfa|multi[- ]factor)\b/i.test(q)
+      : /\b(?:enforc(?:es?|ing|ed)|requir(?:es?|ing|ed)|using)\s+(?:[\w/-]+\s+){0,3}(?:phishing[- ]resistant|hardware|fido2|piv)\s+(?:mfa|multi[- ]factor)\b/i.test(q)
       ? true
       : null;
 
@@ -1588,7 +1588,7 @@ export function extractAndEvaluateRmfRulesFromText(question: string): RmfRuleEva
         ? true
         : null;
 
-    const upstreamBastionMfaEnforced = /\bbastion\b[^.\n]{0,70}\b(?:enforces?|requires?|with)\s+(?:[\w-]+\s+){0,2}(?:phishing[- ]resistant|hardware|fido2|piv)?\s*mfa\b|\bmfa\s+(?:enforced|required)\s+(?:at|on)\s+(?:the\s+)?bastion\b/i.test(
+    const upstreamBastionMfaEnforced = /\bbastion\b[^.\n]{0,70}\b(?:enforc(?:es?|ing|ed)|requir(?:es?|ing|ed)|with)\s+(?:[\w/-]+\s+){0,3}(?:phishing[- ]resistant|hardware|fido2|piv)?\s*mfa\b|\bmfa\s+(?:enforced|required|to|at|on)[^.\n]{0,35}\b(?:upstream\s+)?bastion\b/i.test(
       q,
     )
       ? true
@@ -1596,7 +1596,7 @@ export function extractAndEvaluateRmfRulesFromText(question: string): RmfRuleEva
       ? false
       : null;
 
-    const idpFederationPhishingResistant = /\b(?:idp|identity\s+provider|sso|okta|entra)\b[^.\n]{0,70}\b(?:enforces?|requires?|with)\s+(?:[\w-]+\s+){0,2}(?:phishing[- ]resistant|hardware|fido2|piv)\b/i.test(
+    const idpFederationPhishingResistant = /\b(?:idp|identity\s+provider|sso|okta|entra)\b[^.\n]{0,70}\b(?:enforc(?:es?|ing|ed)|requir(?:es?|ing|ed)|with)\s+(?:[\w/-]+\s+){0,3}(?:phishing[- ]resistant|hardware|fido2|piv)\b/i.test(
       q,
     )
       ? true
@@ -1606,9 +1606,9 @@ export function extractAndEvaluateRmfRulesFromText(question: string): RmfRuleEva
       ? true
       : null;
 
-    const directSshBypassBlocked = /\bdirect\s+ssh\s+(?:is\s+)?(?:blocked|disabled|prohibited|denied)\b|\bno\s+direct\s+ssh\b/i.test(q)
+    const directSshBypassBlocked = /\bdirect\s+ssh\s+(?:bypass\s+)?(?:is\s+)?(?:blocked|disabled|prohibited|denied)\b|\bno\s+direct\s+ssh\b/i.test(q)
       ? true
-      : /\bdirect\s+ssh\s+(?:is\s+)?(?:allowed|permitted|enabled|exposed)\b/i.test(q)
+      : /\bdirect\s+ssh\s+(?:bypass\s+)?(?:is\s+)?(?:allowed|permitted|enabled|exposed)\b/i.test(q)
       ? false
       : null;
 

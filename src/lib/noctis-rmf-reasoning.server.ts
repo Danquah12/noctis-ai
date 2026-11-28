@@ -139,7 +139,12 @@ function cleanLatexExpression(rawExpr: string): string {
 
 export function sanitizeRmfMarkdownFormatting(markdown: string): string {
   if (!markdown) return markdown;
-  const fencedParts = markdown.split(/(```[\s\S]*?```)/g);
+  // Unwrap accidental ```markdown / ```md code fences wrapping a Markdown table
+  const unwrappedTables = markdown.replace(
+    /```(?:markdown|md)\s*\r?\n([\s\S]*?\|[^\n]+\|\r?\n\|[\s:|-]+\|[\s\S]*?)\r?\n```/gi,
+    "$1",
+  );
+  const fencedParts = unwrappedTables.split(/(```[\s\S]*?```)/g);
   return fencedParts
     .map((part, idx) => {
       if (idx % 2 === 1) return part;

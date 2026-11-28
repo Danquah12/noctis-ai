@@ -560,12 +560,12 @@ export function buildRmfGroundingPacket(question: string): RmfGroundingPacket {
   };
   if (
     includedIds.has("AC-2") ||
-    /\b(?:terminat\w*(?:\s+[\w'’-]+){0,3}\s+accounts?|(?:remained|stayed|kept|left)\s+(?:active|enabled|open)\s+for\s+\d+)\b/i.test(
+    /\b(?:(?:terminat\w*|fired|offboard\w*|separated)(?:\s+[\w'’-]+){0,3}\s+(?:accounts?|sysadmin|admin|employee|user)|(?:remained|stayed|kept|left)\s+(?:[\w'’-]+\s+){0,3}(?:active|enabled|open)\s+for\s+\d+)\b/i.test(
       q,
     )
   ) {
     ensureControl("AC-2");
-    if (/\b(?:fedramp|terminat\w*|disabl\w*|inactiv\w*|deprovision\w*|active\s+for)\b/i.test(q)) {
+    if (/\b(?:fedramp|terminat\w*|fired|offboard\w*|disabl\w*|inactiv\w*|deprovision\w*|active\s+for)\b/i.test(q)) {
       ensureControl("AC-2(3)");
     }
   }
@@ -1231,6 +1231,15 @@ export function verifyRmfResponseAgainstDb(
       } else if (!conflatedReplacement) {
         withdrawnNotices.push(`${cid} -> ${ctrl.withdrawnInto.join(", ")}`);
       }
+    }
+  }
+
+  // Enforce coverage of any withdrawn control explicitly requested in the prompt (e.g. AC-13)
+  for (const reqWithdrawn of packet.controls.filter((c) => c.withdrawn)) {
+    if (!citedIds.includes(reqWithdrawn.id)) {
+      violations.push(
+        `MISSING_REQUESTED_WITHDRAWN_CONTROL: Prompt explicitly referenced withdrawn control "${reqWithdrawn.id}". Must explicitly state that ${reqWithdrawn.id} is WITHDRAWN in Rev. 5 and cite ALL official replacement control(s): ${reqWithdrawn.withdrawnInto.join(", ") || "N/A"}.`,
+      );
     }
   }
 
