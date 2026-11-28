@@ -46,7 +46,7 @@ const CASES: LiveEvalCase[] = [
       { label: "AC-13 Withdrawn -> AC-2 & AU-6", re: /\bAC-13\b[\s\S]*\bAU-6\b/i },
       { label: "FIPS 203 / ML-KEM", re: /\b(?:FIPS\s*203|ML-KEM)\b/i },
       { label: "Examine/Interview/Test", re: /\bExamine\b[\s\S]*\bInterview\b[\s\S]*\bTest\b/i },
-      { label: "Non-statutory POA&M", re: /\b(?:not\s+(?:a\s+)?(?:universal\s+)?(?:federal\s+)?statut|non-statutory|program\s+guidance)\b/i },
+      { label: "Non-statutory POA&M", re: /\b(?:not\s+(?:a\s+)?(?:universal\s+)?(?:federal\s+)?statut(?:e|ory)|non-statutory|program\s+guidance)\b/i },
       { label: "Authorizing Official AO", re: /\bAuthorizing\s+Official\b/i },
     ],
     mustNotContainRegex: [
