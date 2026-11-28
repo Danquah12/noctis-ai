@@ -962,6 +962,15 @@ export function verifyDodIcResponse(
     }
   }
 
+  if (
+    /\b(?:markdown\s+table|on\s+a\s+table|in\s+a\s+table)\b/i.test(_question) &&
+    !/\|[^\n]+\|\r?\n\|[\s:|-]+\|/m.test(draftBody)
+  ) {
+    violations.push(
+      "MISSING_REQUESTED_TABLE: Prompt explicitly requested a Markdown table, but draft omitted a valid Markdown table.",
+    );
+  }
+
   return { passed: violations.length === 0, violations };
 }
 
@@ -1151,6 +1160,18 @@ export function renderDeterministicDodIcFallback(
 
   if (ruleResults.length > 0) {
     out.push("## Deterministic Rule Evaluations");
+    const escapeCell = (s: string) => s.replace(/\|/g, "\\|").replace(/\s+/g, " ").trim();
+    out.push(
+      "| Rule ID & Title | Jurisdiction | Scenario Verdict | Formal Determination | Controlling Threshold & Directive Effective Date | Summary & Variance |",
+    );
+    out.push("| :--- | :--- | :--- | :--- | :--- | :--- |");
+    for (const r of ruleResults) {
+      const cites = r.authorityCitations.map((a) => `${a.id} (${a.effectiveDate})`).join(", ");
+      out.push(
+        `| **${escapeCell(r.title)}** (\`${r.ruleId}\`) | \`${r.jurisdiction}\` | **${r.verdict}** | \`${r.formalDetermination}\` | ${escapeCell(r.threshold)}${cites ? ` [${escapeCell(cites)}]` : ""} | ${escapeCell(r.summary)} (${escapeCell(r.variance)}) |`,
+      );
+    }
+    out.push("");
     for (const r of ruleResults) {
       out.push(`### ${r.title} (\`${r.ruleId}\` · Jurisdiction: \`${r.jurisdiction}\`)`);
       out.push(`- **Scenario / Rule Verdict:** **${r.verdict}** *(Mode: \`${r.assessmentMode}\`)*`);
