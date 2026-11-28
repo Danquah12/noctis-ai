@@ -28,6 +28,7 @@ import {
   verifyDodIcResponse,
   executeDodIcReasoning,
 } from "./dod-ic-reasoning.server.ts";
+import { cleanMarkdownTables } from "../noctis-rmf-reasoning.server.ts";
 import { handleDodIcV2Request } from "./api-handler.server.ts";
 
 describe("Noctis DoD RMF (DoDI 8510.01) + IC Security (ICD 503/502/501/CNSSI 1253) + Classification Gateway (NDIMP Wave 1)", () => {
@@ -238,5 +239,39 @@ describe("Noctis DoD RMF (DoDI 8510.01) + IC Security (ICD 503/502/501/CNSSI 125
     };
     assert.equal(replayJson.persistedInSql, true);
     assert.equal(replayJson.replayVerification.reproducible, true);
+  });
+
+  it("evaluates all 7 rules cleanly on full Stress Test #3 including hyphenated high-confidence and offline telemetry", () => {
+    const stress3 = [
+      "Our defense contractor holds an active DoD IL5 ATO (DoDI 8510.01) and wants automatic reciprocity for an Intelligence Community TS/SCI system under ODNI ICD 503. Under CNSSI 1253 we categorized it as Confidentiality High, Integrity Moderate, Availability Low. Audit these 4 facts on a Markdown table with exact directive effective dates:",
+      "",
+      "Privileged admins use their daily CAC (no separate ALT token) with OCSP revocation checks set to fail-open (soft-fail).",
+      "We route TS/SCI traffic across a single-layer commercial TLS VPN claiming NSA CSfC compliance.",
+      "We plan to run a single logical Clear/format on a retired TS/SCI SSD for unclassified release under SP 800-88 Rev. 2.",
+      "A single uncorroborated F6 OSINT report claims high-confidence \"no intrusion\" even though EDR and NetFlow logs were offline.",
+    ].join("\n");
+
+    const rules = extractAndEvaluateDodIcRulesFromText(stress3);
+    const byId = new Map(rules.map((r) => [r.ruleId, r.verdict]));
+
+    assert.equal(byId.get("CNSSI-1253-CAT-001"), "PASS");
+    assert.equal(byId.get("IC-RECIP-001"), "FAIL");
+    assert.equal(byId.get("DOD-ICAM-PKI-001"), "FAIL");
+    assert.equal(byId.get("DOD-COMSEC-CSFC-001"), "FAIL");
+    assert.equal(byId.get("DOD-SANITIZE-88-001"), "FAIL");
+    assert.equal(byId.get("IC-ICD203-ACH-001"), "FAIL");
+    assert.equal(byId.get("DOD-DCO-DET-001"), "FAIL");
+
+    const rawTable = [
+      "```markdown",
+      "| Rule | Finding |",
+      "| --- | --- |",
+      "| IC-RECIP-001 | FAIL<br/>DoDI 8510.01 != ICD 503 |",
+      "```",
+    ].join("\n");
+    const cleaned = cleanMarkdownTables(rawTable);
+    assert.ok(!cleaned.includes("<br"));
+    assert.ok(!cleaned.includes("```markdown"));
+    assert.ok(cleaned.includes("FAIL · DoDI 8510.01 != ICD 503"));
   });
 });

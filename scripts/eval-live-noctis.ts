@@ -2,7 +2,7 @@
  * Noctis Live Pre-Deploy / Post-Deploy Evaluation Gate (Pillar #4)
  *
  * Hits the real production (or local preview) `/api/noctis` endpoint across
- * 12 multi-domain, adversarial, paraphrased, and non-regression prompts to
+ * 13 multi-domain, multi-turn, adversarial, paraphrased, and non-regression prompts to
  * catch live LLM routing, truncation, and compliance failures automatically.
  *
  * Usage:
@@ -10,10 +10,16 @@
  *   NOCTIS_EVAL_BASE_URL=http://localhost:8080 npm run eval:live
  */
 
+interface LiveEvalTurn {
+  role: "user" | "assistant";
+  content: string;
+}
+
 interface LiveEvalCase {
   id: string;
   name: string;
   prompt: string;
+  turns?: LiveEvalTurn[];
   expectedRoutes: string[];
   mustContainRegex: { label: string; re: RegExp }[];
   mustNotContainRegex?: { label: string; re: RegExp }[];
@@ -178,21 +184,65 @@ const CASES: LiveEvalCase[] = [
       { label: "No leaked <think>", re: /<\/?think>/i },
     ],
   },
+  {
+    id: "EVAL-13",
+    name: "Multi-Turn Stress Test #3 (DoD/IC Reciprocity + 4 Audit Facts After RMF Turn)",
+    turns: [
+      {
+        role: "user",
+        content:
+          "We run a FedRAMP High cloud EHR storing Clinical PHI and CUI (SP 800-171 Rev. 3) and want to migrate TLS/VPN key exchange to FIPS 203. Audit our Okta 52h offboarding, bastion FIDO2 MFA + SSH key hop, NVMe degauss, and AU-15 / BOD 22-01 claims.",
+      },
+      {
+        role: "assistant",
+        content:
+          "Federal RMF Compliance & Security Assessment Report: AC-2 FAIL (52h > 24h), IA-2(12) PASS inside same user domain with bastion MFA enforced, MP-6(3) FAIL for magnetic degaussing on NVMe SSD, AU-15 withdrawn (use AU-4(1)/AU-9), BOD 22-01 does not grant a 60-day POA&M waiver.",
+      },
+    ],
+    prompt: [
+      "Our defense contractor holds an active DoD IL5 ATO (DoDI 8510.01) and wants automatic reciprocity for an Intelligence Community TS/SCI system under ODNI ICD 503. Under CNSSI 1253 we categorized it as Confidentiality High, Integrity Moderate, Availability Low. Audit these 4 facts on a Markdown table with exact directive effective dates:",
+      "",
+      "Privileged admins use their daily CAC (no separate ALT token) with OCSP revocation checks set to fail-open (soft-fail).",
+      "We route TS/SCI traffic across a single-layer commercial TLS VPN claiming NSA CSfC compliance.",
+      "We plan to run a single logical Clear/format on a retired TS/SCI SSD for unclassified release under SP 800-88 Rev. 2.",
+      "A single uncorroborated F6 OSINT report claims high-confidence \"no intrusion\" even though EDR and NetFlow logs were offline.",
+    ].join("\n"),
+    expectedRoutes: ["dod_ic"],
+    mustContainRegex: [
+      { label: "CNSSI 1253", re: /CNSSI[\s-]*1253/i },
+      { label: "CAC / ALT / OCSP", re: /ALT|OCSP|fail[- ]?open/i },
+      { label: "NSA CSfC two-layer", re: /CSfC/i },
+      { label: "SP 800-88 sanitization", re: /800-88/i },
+      { label: "F6 / ICD 203 / EDR / NetFlow", re: /F6|ICD[\s-]*203|EDR|NetFlow/i },
+      { label: "Markdown table", re: /\|[^\n]+\|\r?\n\|[\s:|-]+\|/ },
+      { label: "Directive effective dates", re: /2022-07-19|July 19, 2022|2024-10-25|October 25, 2024/i },
+    ],
+    mustNotContainRegex: [
+      { label: "No leaked <think>", re: /<\/?think>/i },
+      { label: "No raw <br> inside Markdown table", re: /\|[^\n]*<br\s*\/?>/i },
+    ],
+  },
 ];
 
 async function runLiveEval() {
-  console.log(`\nRunning Noctis Live Eval Gate (12 cases) against: ${BASE_URL}/api/noctis\n`);
+  console.log(`\nRunning Noctis Live Eval Gate (${CASES.length} cases) against: ${BASE_URL}/api/noctis\n`);
   let passed = 0;
   let failed = 0;
 
   for (const c of CASES) {
     const start = Date.now();
     try {
+      const payloadTurns = c.turns ? [...c.turns, { role: "user", content: c.prompt }] : undefined;
       const res = await fetch(`${BASE_URL}/api/noctis`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         signal: AbortSignal.timeout(75000),
-        body: JSON.stringify({ prompt: c.prompt, model: "Noctis Ultra", think: true }),
+        body: JSON.stringify({
+          prompt: c.prompt,
+          ...(payloadTurns ? { turns: payloadTurns } : {}),
+          model: "Noctis Ultra",
+          think: true,
+        }),
       });
       const elapsedMs = Date.now() - start;
       const json = (await res.json()) as {

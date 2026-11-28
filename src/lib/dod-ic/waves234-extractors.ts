@@ -211,16 +211,36 @@ export function extractWaves234FromText(
   }
 
   // Wave 2 Step 2: DCO Detection / Forensics / Insider Threat
+  const missingEdr =
+    /\b(?:no|missing|without)\s+edr\b/i.test(q) ||
+    /\bedr\b[^.\n]{0,60}\b(?:were|was|are|is)?\s*(?:offline|down|disabled|missing|unavailable|absent|not\s+collecting)\b/i.test(q);
+  const missingDns =
+    /\b(?:no|missing|without)\s+dns\s+logs?\b/i.test(q) ||
+    /\bdns(?:\s+logs?)?\b[^.\n]{0,60}\b(?:were|was|are|is)?\s*(?:offline|down|disabled|missing|unavailable|absent|not\s+collecting)\b/i.test(q);
+  const missingNetflow =
+    /\b(?:no|missing|without)\s+(?:netflow|firewall)\b/i.test(q) ||
+    /\b(?:netflow|firewall)(?:\s+logs?)?\b[^.\n]{0,60}\b(?:were|was|are|is)?\s*(?:offline|down|disabled|missing|unavailable|absent|not\s+collecting)\b/i.test(q);
+  const missingSiem =
+    /\b(?:no|missing|without)\s+siem\b/i.test(q) ||
+    /\bsiem\b[^.\n]{0,60}\b(?:were|was|are|is)?\s*(?:offline|down|disabled|missing|unavailable|absent|not\s+collecting)\b/i.test(q);
+  const claimsClean = /\b(?:no\s+intrusion|confirm\s+no\s+compromise|clean\s+bill(?:\s+of\s+health)?)\b/i.test(q);
+  const anyTelemetryOfflineOrMissing =
+    missingEdr ||
+    missingDns ||
+    missingNetflow ||
+    missingSiem ||
+    /\b(?:no|missing|without)\s+(?:telemetry|logs?)\b/i.test(q) ||
+    /\b(?:telemetry|logs?)\b[^.\n]{0,60}\b(?:were|was|are|is)?\s*(?:offline|down|disabled|missing|unavailable|absent|not\s+collecting)\b/i.test(q);
   if (
-    /\b(?:no\s+intrusion|clean\s+bill\s+of\s+health)\b[^.\n]{0,60}\b(?:missing|without|no)\s+(?:edr|dns|netflow|siem|logs?|telemetry)\b/i.test(q) ||
-    (/\b(?:dco\b|soc\s+telemetry)\b/i.test(q) && /\b(?:missing|no)\s+(?:edr|dns|netflow|siem|logs?)\b/i.test(q))
+    (claimsClean && anyTelemetryOfflineOrMissing) ||
+    (/\b(?:dco\b|soc\s+telemetry)\b/i.test(q) && anyTelemetryOfflineOrMissing)
   ) {
     ctx.dcoDetection = evaluateDcoSocDetectionCoverage({
-      edrTelemetryPresent: /\b(?:no|missing|without)\s+edr\b/i.test(q) ? false : null,
-      dnsLogsPresent: /\b(?:no|missing|without)\s+dns\s+logs?\b/i.test(q) ? false : null,
-      netflowOrFirewallLogsPresent: /\b(?:no|missing|without)\s+(?:netflow|firewall)\b/i.test(q) ? false : null,
-      siemCorrelationActive: /\b(?:no|missing|without)\s+siem\b/i.test(q) ? false : null,
-      claimsNoIntrusionOccurred: /\b(?:no\s+intrusion|confirm\s+no\s+compromise|clean\s+bill)\b/i.test(q),
+      edrTelemetryPresent: missingEdr ? false : null,
+      dnsLogsPresent: missingDns ? false : null,
+      netflowOrFirewallLogsPresent: missingNetflow ? false : null,
+      siemCorrelationActive: missingSiem ? false : null,
+      claimsNoIntrusionOccurred: claimsClean,
       assessmentMode,
       evidenceVerified,
     });
@@ -331,12 +351,12 @@ export function extractWaves234FromText(
       q.match(/(?:rated|grade[d]?|admiralty|nato|source(?:\s+code)?)\s+([A-F][1-6])\b/i) ||
       q.match(/\b([A-F][1-6])\s+(?:source|reporting|intel)\b/i) ||
       q.match(/\b(F6|E5|E6|F5)\b/i);
-    const highConf = /\bhigh\s+confidence\b/i.test(q);
+    const highConf = /\bhigh[- ]confidence\b/i.test(q);
     const singleSource = /\b(?:single[- ]source|uncorroborated|one\s+unverified)\b/i.test(q);
     ctx.icd203Ach = evaluateIcd203AndAchAnalysis({
       admiraltyCodes: codeMatch ? [codeMatch[1]!.toUpperCase()] : [],
       sourceCount: singleSource ? 1 : null,
-      claimedConfidence: highConf ? "HIGH" : /\bmoderate\s+confidence\b/i.test(q) ? "MODERATE" : /\blow\s+confidence\b/i.test(q) ? "LOW" : null,
+      claimedConfidence: highConf ? "HIGH" : /\bmoderate[- ]confidence\b/i.test(q) ? "MODERATE" : /\blow[- ]confidence\b/i.test(q) ? "LOW" : null,
       alternativesConsidered: /\b(?:no|without|ignored)\s+alternative\s+hypothes/i.test(q) ? false : true,
       assessmentMode,
       evidenceVerified,

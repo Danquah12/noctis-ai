@@ -11,6 +11,7 @@
  */
 
 import { parseThinkEnvelope } from "../noctis-engine-registry.ts";
+import { cleanMarkdownTables } from "../noctis-rmf-reasoning.server.ts";
 import { fetchLiveCisaKevCatalog } from "../rmf-v2/cyber-intelligence.ts";
 import { type ZtPillarScore } from "../rmf-v2/cyber-intelligence.ts";
 import { createExplanationBundle, replayExplanationBundle, type ExplanationBundle } from "../rmf-v2/graph-and-trace.ts";
@@ -1654,6 +1655,7 @@ export async function executeDodIcReasoning(
   if (!finalBody || !audit.passed) {
     finalBody = renderDeterministicDodIcFallback(q, policies, rules, ctx);
   }
+  finalBody = cleanMarkdownTables(finalBody);
 
   let persistedSql = false;
   if (opts.persistTrace !== false) {

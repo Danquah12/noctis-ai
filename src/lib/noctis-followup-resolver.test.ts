@@ -280,4 +280,33 @@ describe("Noctis Conversational Follow-Up Resolver", () => {
     ]);
     assert.equal(cleanedTurns[1]!.content, "Mutual TLS verifies both client and server certificates.");
   });
+
+  it("treats full multi-clause audit prompt after prior RMF turn as standalone without 240-char truncation", () => {
+    const turn1User =
+      "We run a FedRAMP High cloud EHR storing Clinical PHI and CUI (SP 800-171 Rev. 3) and want to migrate TLS/VPN key exchange to FIPS 203.";
+    const turn1Assistant =
+      "Federal RMF Compliance & Security Assessment Report: AC-2 FAIL, IA-2(12) PASS via bastion within single domain, MP-6(3) FAIL for degauss on NVMe SSD.";
+    const turn2Stress3 = [
+      "Our defense contractor holds an active DoD IL5 ATO (DoDI 8510.01) and wants automatic reciprocity for an Intelligence Community TS/SCI system under ODNI ICD 503. Under CNSSI 1253 we categorized it as Confidentiality High, Integrity Moderate, Availability Low. Audit these 4 facts on a Markdown table with exact directive effective dates:",
+      "",
+      "Privileged admins use their daily CAC (no separate ALT token) with OCSP revocation checks set to fail-open (soft-fail).",
+      "We route TS/SCI traffic across a single-layer commercial TLS VPN claiming NSA CSfC compliance.",
+      "We plan to run a single logical Clear/format on a retired TS/SCI SSD for unclassified release under SP 800-88 Rev. 2.",
+      "A single uncorroborated F6 OSINT report claims high-confidence \"no intrusion\" even though EDR and NetFlow logs were offline.",
+    ].join("\n");
+
+    const resolution = resolveFollowUpContext(
+      [
+        { role: "user", content: turn1User },
+        { role: "assistant", content: turn1Assistant },
+        { role: "user", content: turn2Stress3 },
+      ],
+      turn2Stress3,
+    );
+
+    assert.equal(resolution.isFollowUp, false);
+    assert.equal(resolution.relation, "standalone");
+    assert.equal(resolution.standaloneQuery.length, turn2Stress3.length);
+    assert.equal(resolution.standaloneQuery, turn2Stress3);
+  });
 });

@@ -674,14 +674,14 @@ function buildStandaloneQuery(
 
     if (replaced) {
       const combined = `${rewritten}${pointSuffix}`.trim();
-      return combined.slice(0, 240);
+      return combined.slice(0, 12000);
     }
 
     const prefix = referencedPoint ? `${subjectCore} — ${referencedPoint.title}` : subjectCore;
-    return `${prefix}: ${cleanQ}`.slice(0, 240);
+    return `${prefix}: ${cleanQ}`.slice(0, 12000);
   }
 
-  return `${cleanQ}${pointSuffix}`.slice(0, 240);
+  return `${cleanQ}${pointSuffix}`.slice(0, 12000);
 }
 
 function buildContinuityDirective(opts: {
@@ -942,12 +942,20 @@ export function resolveFollowUpContext(
   ) {
     relation = "continuation";
   } else if (
-    hasAnaphoricPronoun(cleanCurrent) ||
-    (/^(?:and|but|so|also|what\s+about|how\s+about|why|how|when|where|can\s+it|does\s+it|will\s+it|compare\s+with)\b/i.test(
-      cleanCurrent,
+    !(
+      cleanCurrent.length >= 200 &&
+      (cleanCurrent.split(/\r?\n/).filter((l) => l.trim().length > 0).length >= 2 ||
+        /[.!?]\s+[A-Z]/.test(cleanCurrent)) &&
+      !/\b(?:the\s+(?:previous|above|prior|last)\s+(?:answer|response|output|report|finding|prompt)|from\s+above|what\s+we\s+just|expand\s+on\s+(?:point|step|item))\b/i.test(
+        cleanCurrent,
+      )
     ) &&
-      cleanCurrent.split(/\s+/).length <= 14 &&
-      !hasSubstantiveUnrelatedTopic(cleanCurrent, priorContextSample, baseEntities, priorEntities, baseDomain, priorDomain))
+    (hasAnaphoricPronoun(cleanCurrent) ||
+      (/^(?:and|but|so|also|what\s+about|how\s+about|why|how|when|where|can\s+it|does\s+it|will\s+it|compare\s+with)\b/i.test(
+        cleanCurrent,
+      ) &&
+        cleanCurrent.split(/\s+/).length <= 14 &&
+        !hasSubstantiveUnrelatedTopic(cleanCurrent, priorContextSample, baseEntities, priorEntities, baseDomain, priorDomain)))
   ) {
     relation = "coreference";
   }
