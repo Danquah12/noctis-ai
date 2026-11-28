@@ -17,6 +17,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run typecheck
+      - run: node --experimental-strip-types --test src/lib/assistant/benchmark-outcome.test.ts
       - run: npm run build
         env:
           VITE_AUTH_ENABLED: "true"

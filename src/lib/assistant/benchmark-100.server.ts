@@ -1,12 +1,14 @@
 /**
- * Noctis 100-Task Real Executable Benchmark (`Section 7 Recommendation`)
+ * Noctis 100-Task Application Component Check (`Section 7 Recommendation`)
  *
- * Executes 100 representative real tasks (10 domains x 10 tasks) against live
- * Noctis engines, verifies deterministic correctness and fail-closed safety invariants,
- * measures pass/partial/fail rates & latency, and persists results to SQL (`enterprise.benchmark_runs`).
+ * Executes 100 in-process checks of application functions and deterministic engines.
+ * This does NOT invoke a single selected model on held-out prompts and is not
+ * evidence of model parity, trained weights, general intelligence or clinical safety.
+ * Records component pass/partial/fail rates and persists results to SQL.
  */
 
 import { sha256Sync } from "../universal-crypto.ts";
+import { classifyComponentTaskOutcome, COMPONENT_BENCHMARK_PROVENANCE } from "./benchmark-outcome.ts";
 import {
   buildDocxDocumentBuffer,
   buildPdfDocumentBuffer,
@@ -99,14 +101,14 @@ async function runSingle(
   const t0 = Date.now();
   try {
     const res = await fn();
-    const status: BenchmarkTaskResult["status"] = res === "PARTIAL" ? "PARTIAL" : "PASS";
+    const { status, evidence } = classifyComponentTaskOutcome(res);
     return {
       taskId,
       category,
       name,
       status,
       latencyMs: Math.max(1, Date.now() - t0),
-      evidence: typeof res === "string" && res !== "PARTIAL" ? res : "Verified",
+      evidence,
     };
   } catch (err) {
     return {
@@ -739,5 +741,6 @@ export async function run100TaskBenchmark(opts: { persist?: boolean; executedBy?
     avgLatencyMs,
     categoryScores,
     tasks,
+    ...COMPONENT_BENCHMARK_PROVENANCE,
   };
 }
