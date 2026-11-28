@@ -99,9 +99,18 @@ export interface DodIcReasoningOptions {
   persistTrace?: boolean;
 }
 
+const CIVILIAN_FEDRAMP_RMF_RE =
+  /\b(?:fedramp|sp\s*800-53a?|nist\s+(?:sp\s*)?800-53a?|sp\s*800-37|sp\s*800-60|fips\s*199|3pao|poa&m|poam)\b/i;
+
+const EXPLICIT_DOD_IC_AUTHORITY_RE =
+  /<(?:NessusClientData_v2|ReportHost|CHECKLIST|STIG_INFO|(?:[a-zA-Z0-9_.-]+:)?rule-result)\b|\b(?:replay|verify|inspect|show)\s+(?:explanation\s+)?(?:trace\s+)?EXPL-[A-Z0-9]+\b|\b(?:ndimp\b|CCI-\d{4,6}|DISA\s+(?:CCIs?|STIG)|dodi?\s*8510(?:\.01)?|dodi?\s*853[01](?:\.\d+)?|dodi?\s*8540(?:\.\d+)?|dodi?\s*8520(?:\.0[23])?|dodi?\s*8523(?:\.\d+)?|dodi?\s*5205\.16|dodd?\s*5205\.16|dodd?\s*3000\.09|dodi?\s*3020\.45|dodd?\s*3020\.40|dodi?\s*4650\.01|dodi?\s*5000\.97|dodm\s*5200(?:\.01)?|eo\s*13526|eo\s*13587|nsm[- ]?8|omb\s+m-?22-?09|cisa\s+ztmm|\bztmm\b|fy\s*2027|dod\s+zero\s+trust|dod\s+rmf|dod\s+ato|dod\s+reciproc\w*|dod\s+il[2456]\b|dow\s+il[2456]\b|dod\s+pki|emass\b|iatt\b|dato\b|atowc\b|icd\s*50[123]|icd\s*705|ics\s*705|icd\s*20[36]|ic\s+ie\b|ic\s+rmf|ic\s+ato|ic\s+reciproc\w*|ic\s+cloud|ic\s+security|odni\b|cnssi?\s*1253|cnssi?\s*4005|cnssp\s*15|cnssam\s+tempest|national\s+security\s+system|cross[- ]?domain\s+(?:solution|transfer|guard|governance)|ncdsmo\b|ts\/?sci\b|\bscif\b|\bsipr\b|\bjwics\b|\bcomsec\b|\bcsfc\b|cnsa\s*2\.0|\btempest\b|red\/?black|\bctta\b|degauss\w*|800-88\s*(?:r2|rev\.?\s*2)|classified\s+(?:spillage|system|systems|enclave|handling|payload|cable|material|ssd|media|data)|\bsecret\b[^.\n]{0,30}(?:enclave|system|ssd|hdd|media|network|classified|data)|cc\s*srg|\bcsp\s+pa\b|mission\s+owner\s+ato|32\s+cfr\s*(?:part\s*)?(?:170|117)|\bcmmc\b|dfars\s*252\.204|nispom|\bfoci\b|spd-?5|space\s+policy\s+directive|\btt&c\b|\bmbse\b|stig\b|scap\b|xccdf\b|\.ckl\b|acas\b|nessus\b|iava\b|iavm\b|iavb\b|cssp\b|jfhq-?dodin|\bcac\b|alt\s+token|ocsp\b|npe\s+cert\w*|ic-?pe\b|\bcato\b|continuous\s+ato|800-218|\bssdf\b|800-207|800-86|autonomous\s+weapon|admiralty|nato\s+6x6|competing\s+hypothes|multi[- ]?int|geoint\b|sigint\b|rhel\s*9\s+stig|windows\s*server\s*2022\s+stig|postgresql\s+stig|asd\s+stig)\b/i;
+
 export function isDodIcQuery(question: string): boolean {
   const q = (question || "").trim();
   if (!q) return false;
+  if (CIVILIAN_FEDRAMP_RMF_RE.test(q) && !EXPLICIT_DOD_IC_AUTHORITY_RE.test(q)) {
+    return false;
+  }
   return (
     /<(?:NessusClientData_v2|ReportHost|CHECKLIST|STIG_INFO|(?:[a-zA-Z0-9_.-]+:)?rule-result)\b/i.test(q) ||
     /\b(?:replay|verify|inspect|show)\s+(?:explanation\s+)?(?:trace\s+)?EXPL-[A-Z0-9]+\b/i.test(q) ||
@@ -1177,7 +1186,7 @@ function buildDodIcSystemPrompt(lang: string, shouldThink: boolean): string {
     "You are Noctis Defense & Intelligence Community Security Architect (NDIMP Waves 1–4 Complete), strictly grounded in verified public DoD Directives, ODNI ICDs, CNSS Directives, NIST Standards, and Federal Regulations.",
     "",
     shouldThink
-      ? "Begin with a concise `<think>...</think>` block verifying policy effective dates, DoD-vs-IC reciprocity boundaries, CNSSI 1253 C/I/A vectors, DISA CCI crosswalks, ACAS/STIG invariants, Zero Trust/ICAM, Classified Systems (SCIF/CSfC/CNSA 2.0/TEMPEST/SP 800-88 R2), DCO/DevSecOps/CC SRG, Defense AI (DoDD 3000.09), ICD 203/ACH, Mission Assurance DAG, CMMC 32 CFR 170, and Space SPD-5 rules before writing the Markdown response."
+      ? "Begin with a concise `<think>...</think>` block (strictly 3-5 brief bullet lines, under 120 words) verifying policy effective dates, DoD-vs-IC reciprocity boundaries, CNSSI 1253 C/I/A vectors, DISA CCI crosswalks, ACAS/STIG invariants, Zero Trust/ICAM, Classified Systems (SCIF/CSfC/CNSA 2.0/TEMPEST/SP 800-88 R2), DCO/DevSecOps/CC SRG, Defense AI (DoDD 3000.09), ICD 203/ACH, Mission Assurance DAG, CMMC 32 CFR 170, and Space SPD-5 rules. Always close `</think>` immediately before writing the full Markdown response."
       : "Respond concisely with no raw XML tags.",
     "",
     "NON-NEGOTIABLE INVARIANTS:",
@@ -1599,13 +1608,13 @@ export async function executeDodIcReasoning(
         ...(opts.turns || []).slice(-4, -1).map((t) => ({ role: t.role, content: t.content.slice(0, 1500) })),
         { role: "user", content: `QUESTION:\n${q}\n\nIMMUTABLE DOD/IC PACKET:\n${packetText}` },
       ],
-      { temperature: 0.0, maxTokens: 2800, thinkingLevel: shouldThink ? "high" : "medium", brain: opts.brain },
+      { temperature: 0.0, maxTokens: 8192, thinkingLevel: "medium", brain: opts.brain },
     );
 
     if ("text" in first && first.text.trim()) {
       const parsed = parseThinkEnvelope(first.text);
       activeThought = parsed.thought;
-      if (parsed.body.length >= 25) {
+      if (parsed.body.length >= 120 && !/<\/?think>/i.test(parsed.body)) {
         finalBody = parsed.body;
         audit = verifyDodIcResponse(q, finalBody, rules);
         if (!audit.passed) {
@@ -1617,11 +1626,11 @@ export async function executeDodIcReasoning(
                 content: `Fix ALL violations:\n${audit.violations.join("\n")}\n\nPACKET:\n${packetText}\n\nDRAFT:\n${finalBody}`,
               },
             ],
-            { temperature: 0.0, maxTokens: 2800, thinkingLevel: "high", brain: opts.brain },
+            { temperature: 0.0, maxTokens: 8192, thinkingLevel: "medium", brain: opts.brain },
           );
           if ("text" in repaired && repaired.text.trim()) {
             const p2 = parseThinkEnvelope(repaired.text);
-            if (p2.body.length >= 25) {
+            if (p2.body.length >= 120 && !/<\/?think>/i.test(p2.body)) {
               const a2 = verifyDodIcResponse(q, p2.body, rules);
               if (a2.passed) {
                 finalBody = p2.body;

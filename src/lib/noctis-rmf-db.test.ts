@@ -29,6 +29,10 @@ import {
 } from "./noctis-rmf-rules.ts";
 import { executeUniversalRmfReasoning, sanitizeRmfMarkdownFormatting } from "./noctis-rmf-reasoning.server.ts";
 import { buildContextualFollowUps } from "./noctis-followups.ts";
+import { isRmfGrcQuery } from "./noctis-rmf-engine.ts";
+import { classifyNoctisIntent } from "./noctis-intent-router.server.ts";
+import { parseThinkEnvelope } from "./noctis-engine-registry.ts";
+import { executeDodIcReasoning, isDodIcQuery } from "./dod-ic/dod-ic-reasoning.server.ts";
 
 describe("Deterministic RMF Knowledge DB (NIST SP 800-53 Rev. 5.2.0 + 800-53A + 800-53B + 800-171 + CSF 2.0 + MITRE ATT&CK)", () => {
   it("loads complete authoritative NIST 5.2.0, baselines, 800-171 Rev. 3, CSF 2.0, and ATT&CK v16.1 datasets with SHA-256 provenance", () => {
@@ -403,5 +407,82 @@ Use Examine only for the assessment.
     assert.ok(packet.sp80060InfoTypesReferenced.some((it) => it.code === "D.18.1"));
     assert.ok(packet.markdownContext.includes("### 7B. NIST SP 800-37 REV. 2 OFFICIAL TASKS REFERENCED"));
     assert.ok(packet.markdownContext.includes("### 7C. SUPPORTING NIST SP / FIPS PUBLICATIONS GROUNDING"));
+  });
+
+  it("handles parseThinkEnvelope cleanly for closed and unclosed truncated <think> envelopes", () => {
+    const unclosed = parseThinkEnvelope("<think>\n\nPOLICY & DIRECTIVE VERIFICATION\nDoDI 8520.03 (May 19, 202");
+    assert.equal(unclosed.body, "");
+    assert.ok(unclosed.thought.includes("POLICY & DIRECTIVE VERIFICATION"));
+
+    const closed = parseThinkEnvelope("<think>Checked AC-2</think>\n\nFinal answer body.");
+    assert.equal(closed.thought, "Checked AC-2");
+    assert.equal(closed.body, "Final answer body.");
+  });
+
+  it("routes the FedRAMP High + ITAR + PHI Stress Test #1 prompt to rmf_grc (NOT dod_ic) and recovers deterministically from truncated unclosed <think>", async () => {
+    const stressPrompt = [
+      "Evaluate our FedRAMP High cloud healthcare system (processing Clinical PHI + ITAR defense technical data) under FIPS 199, NIST SP 800-60, SP 800-37 Rev. 2 (Tasks P-11, C-2, M-7), SP 800-53 Rev. 5, SP 800-53A, SP 800-88 Rev. 1, and FIPS 203.",
+      "",
+      "Audit these exact facts:",
+      "1) A terminated administrator's account stayed active for 39 hours after HR separation.",
+      "2) Privileged admins log into production Linux hosts via static SSH keys without hardware FIDO2/PIV AAL3 MFA.",
+      "3) We plan to sanitize retired NVMe SSDs holding PHI/ITAR data by running a single logical overwrite (\"Clear\") and cite AC-13 in our SSP.",
+      "4) Management claims FedRAMP's 30-day High POA&M deadline is a universal federal statute and wants Noctis to issue our ATO today.",
+      "",
+      "Put the findings, deterministic verdicts, SP 800-53A Examine/Interview/Test procedures, MITRE ATT&CK mappings, and remediation plan on a Markdown table.",
+    ].join("\n");
+
+    assert.equal(isDodIcQuery(stressPrompt), false, "Civilian FedRAMP High RMF prompt must NOT hijack into dod_ic");
+    assert.equal(isRmfGrcQuery(stressPrompt), true);
+    assert.equal(classifyNoctisIntent(stressPrompt).routeId, "rmf_grc");
+
+    const packet = buildRmfGroundingPacket(stressPrompt);
+    assert.equal(packet.fips199?.overallImpact, "HIGH");
+    assert.ok(packet.ruleEvaluations.some((r) => r.controlId === "AC-2" && r.verdict === "FAIL" && r.variance.includes("+15 hours")));
+    assert.ok(packet.ruleEvaluations.some((r) => r.controlId === "IA-2" && r.verdict === "FAIL"));
+    assert.ok(packet.controls.some((c) => c.id === "AC-13" && c.withdrawn && c.withdrawnInto.includes("AC-2") && c.withdrawnInto.includes("AU-6")));
+    assert.ok(packet.controls.some((c) => c.id === "MP-6"));
+    for (const tid of ["P-11", "C-2", "M-7"]) {
+      assert.ok(packet.rmfTasksReferenced.some((t) => t.taskId === tid), `Missing SP 800-37 Task ${tid}`);
+    }
+    assert.ok(packet.nistPublicationsReferenced.some((p) => p.sourceId === "SP-800-88r1"));
+    assert.ok(packet.nistPublicationsReferenced.some((p) => p.sourceId === "FIPS-203-204-205"));
+    assert.ok(packet.markdownContext.includes("RMF-007 ATO READINESS INVARIANT"));
+
+    const truncatedThinkMock = async () => ({
+      text: "<think>\n\nPOLICY & DIRECTIVE VERIFICATION\nDoDI 8520.03 (May 19, 202",
+    });
+
+    const out = await executeUniversalRmfReasoning(stressPrompt, {
+      shouldThink: true,
+      persistTrace: false,
+      modelChatFn: truncatedThinkMock,
+    });
+
+    const visibleBody = parseThinkEnvelope(out).body;
+    assert.ok(visibleBody.length > 500, `Expected full deterministic body, got ${visibleBody.length} chars`);
+    assert.ok(!/<\/?think>/i.test(visibleBody), "Visible body must NEVER contain leaked <think> tags");
+    assert.ok(visibleBody.includes("| Finding / Control | Deterministic Verdict |"));
+    assert.ok(visibleBody.includes("+15 hours over deadline"));
+    assert.ok(visibleBody.includes("WITHDRAWN"));
+    assert.ok(visibleBody.includes("NVMe SSD"));
+    assert.ok(visibleBody.includes("Purge"));
+    assert.ok(visibleBody.includes("P-11") && visibleBody.includes("C-2") && visibleBody.includes("M-7"));
+    assert.ok(visibleBody.includes("FIPS 203"));
+    assert.ok(visibleBody.includes("Examine") && visibleBody.includes("Interview") && visibleBody.includes("Test"));
+    assert.ok(visibleBody.includes("Authorizing Official (AO)"));
+
+    const bodyOnlyAudit = verifyRmfResponseAgainstDb(stressPrompt, visibleBody.split("\n\n---\n**Deterministic RMF Verification**")[0]!, packet);
+    assert.equal(bodyOnlyAudit.passed, true, `Fallback body audit failed: ${bodyOnlyAudit.violations.join(" | ")}`);
+
+    // Also confirm DoD/IC engine recovers cleanly from truncated unclosed <think>
+    const dodFallbackOut = await executeDodIcReasoning(
+      "Can a DoD ATO under DoDI 8510.01 automatically satisfy an IC ICD 503 authorization?",
+      { shouldThink: true, persistTrace: false, modelChatFn: truncatedThinkMock },
+    );
+    const dodBody = parseThinkEnvelope(dodFallbackOut).body;
+    assert.ok(dodBody.length > 300);
+    assert.ok(!/<\/?think>/i.test(dodBody));
+    assert.ok(dodBody.includes("FAIL"));
   });
 });

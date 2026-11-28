@@ -393,11 +393,19 @@ function parseFips199FromQuestion(question: string): Fips199Result | null {
   const hasSensitiveType = /\b(itar|cui|phi|hipaa)\b/i.test(q);
   if (!cMatch && !iMatch && !aMatch && !hasSensitiveType) return null;
 
-  const toImpact = (v?: string): ImpactLevel => {
+  const inferredFloor: ImpactLevel =
+    /\b(?:fedramp\s+high|itar|classified|high[- ]impact)\b/i.test(q)
+      ? "HIGH"
+      : /\b(?:fedramp\s+moderate|phi|hipaa|cui)\b/i.test(q)
+      ? "MODERATE"
+      : "LOW";
+
+  const toImpact = (v: string | undefined, fallback: ImpactLevel = "LOW"): ImpactLevel => {
     const low = (v || "").toLowerCase();
     if (low === "high") return "HIGH";
     if (low === "moderate") return "MODERATE";
-    return "LOW";
+    if (low === "low") return "LOW";
+    return fallback;
   };
 
   const infoTypes: string[] = [];
@@ -407,9 +415,9 @@ function parseFips199FromQuestion(question: string): Fips199Result | null {
 
   return evaluateFips199SecurityCategorization({
     systemName: "Target System",
-    confidentialityImpact: toImpact(cMatch?.[1]),
-    integrityImpact: toImpact(iMatch?.[1]),
-    availabilityImpact: toImpact(aMatch?.[1]),
+    confidentialityImpact: toImpact(cMatch?.[1], inferredFloor),
+    integrityImpact: toImpact(iMatch?.[1], inferredFloor),
+    availabilityImpact: toImpact(aMatch?.[1], /\bfedramp\s+high\b/i.test(q) ? "HIGH" : /\b(?:phi|hipaa)\b/i.test(q) ? "MODERATE" : "LOW"),
     informationTypes: infoTypes,
     isNationalSecuritySystem: /\b(nss|cnssi\s*1253|itar|classified)\b/i.test(q),
   });
@@ -550,12 +558,32 @@ export function buildRmfGroundingPacket(question: string): RmfGroundingPacket {
       controls.push(c);
     }
   };
-  if (includedIds.has("AC-2") && /\b(?:fedramp|terminat\w*|disabl\w*|inactiv\w*|deprovision\w*|active\s+for)\b/i.test(q)) {
-    ensureControl("AC-2(3)");
+  if (
+    includedIds.has("AC-2") ||
+    /\b(?:terminat\w*(?:\s+[\w'’-]+){0,3}\s+accounts?|(?:remained|stayed|kept|left)\s+(?:active|enabled|open)\s+for\s+\d+)\b/i.test(
+      q,
+    )
+  ) {
+    ensureControl("AC-2");
+    if (/\b(?:fedramp|terminat\w*|disabl\w*|inactiv\w*|deprovision\w*|active\s+for)\b/i.test(q)) {
+      ensureControl("AC-2(3)");
+    }
   }
-  if (includedIds.has("IA-2") && /\b(?:fedramp|mfa|ssh|bastion|privileged|hardware|phishing|key)\b/i.test(q)) {
-    ensureControl("IA-2(1)");
-    ensureControl("IA-2(6)");
+  if (
+    includedIds.has("IA-2") ||
+    /\b(?:static\s+(?:[\w/-]+\s+){0,2}(?:ssh\s+)?keys?|fido2|aal3)\b/i.test(q)
+  ) {
+    ensureControl("IA-2");
+    if (/\b(?:fedramp|mfa|ssh|bastion|privileged|hardware|phishing|key|fido2|piv|aal3)\b/i.test(q)) {
+      ensureControl("IA-2(1)");
+      ensureControl("IA-2(6)");
+    }
+  }
+  if (/\b(?:800-88|sanitiz\w*|nvme|ssd|media\s+(?:clear|purge|destroy|disposal))\b/i.test(q)) {
+    ensureControl("MP-6");
+  }
+  if (/\b(?:fips\s*20[345]|ml-?kem|ml-?dsa|post[- ]?quantum|cryptograph\w*)\b/i.test(q)) {
+    ensureControl("SC-13");
   }
 
   // Add top keyword-matched controls up to 8 total
@@ -810,15 +838,19 @@ export function buildRmfGroundingPacket(question: string): RmfGroundingPacket {
   }
 
   // SP 800-37 Tasks, Supporting NIST SP Publications & SP 800-60 Information Types
-  const catalogHits = searchNistSpCatalog(q, 14);
+  const catalogHits = searchNistSpCatalog(q, 18);
   const rmfTasksReferenced: NistRmfTask[] = [];
   const seenTasks = new Set<string>();
   const addTask = (t: NistRmfTask) => {
-    if (!seenTasks.has(t.taskId) && rmfTasksReferenced.length < 10) {
+    if (!seenTasks.has(t.taskId) && rmfTasksReferenced.length < 12) {
       seenTasks.add(t.taskId);
       rmfTasksReferenced.push(t);
     }
   };
+  for (const m of q.match(/\b(?:P-(?:1[0-8]|[1-9])|C-[1-3]|S-[1-6]|I-[1-2]|A-[1-6]|R-[1-5]|M-[1-7])\b/gi) || []) {
+    const exactTask = lookupRmfTask(m);
+    if (exactTask) addTask(exactTask);
+  }
   for (const hit of catalogHits) {
     if (hit.kind === "rmf_task" && hit.task) addTask(hit.task);
   }
@@ -828,14 +860,40 @@ export function buildRmfGroundingPacket(question: string): RmfGroundingPacket {
     }
   }
 
-  const nistPublicationsReferenced: NistSpPublication[] = catalogHits
-    .filter((h): h is typeof h & { publication: NistSpPublication } => h.kind === "publication" && Boolean(h.publication))
-    .slice(0, 4)
-    .map((h) => h.publication);
+  const nistPublicationsReferenced: NistSpPublication[] = [];
+  const seenPubs = new Set<string>();
+  const addPub = (pub: NistSpPublication | null | undefined) => {
+    if (pub && !seenPubs.has(pub.sourceId) && nistPublicationsReferenced.length < 8) {
+      seenPubs.add(pub.sourceId);
+      nistPublicationsReferenced.push(pub);
+    }
+  };
+  const pubPatterns: [RegExp, string][] = [
+    [/\bfips\s*199\b/i, "FIPS-199"],
+    [/\bfips\s*200\b/i, "FIPS-200"],
+    [/\b800-60\b/i, "SP-800-60v1v2"],
+    [/\b800-37\b/i, "SP-800-37r2"],
+    [/\b800-53a\b/i, "SP-800-53Ar5"],
+    [/\b800-53b\b/i, "SP-800-53B"],
+    [/\b800-53\b/i, "SP-800-53r5"],
+    [/\b800-88\b|\bsanitiz\w*\b|\bnvme\b/i, "SP-800-88r1"],
+    [/\bfips\s*20[345]\b|\bml-?kem\b|\bml-?dsa\b/i, "FIPS-203-204-205"],
+    [/\b800-171\b/i, "SP-800-171r3"],
+    [/\b800-63\b|\baal[123]\b|\bfido2\b/i, "SP-800-63-4"],
+    [/\b800-30\b/i, "SP-800-30r1"],
+    [/\b800-137\b/i, "SP-800-137"],
+    [/\b800-207\b/i, "SP-800-207"],
+  ];
+  for (const [re, id] of pubPatterns) {
+    if (re.test(q)) addPub(lookupNistPublication(id));
+  }
+  for (const hit of catalogHits) {
+    if (hit.kind === "publication" && hit.publication) addPub(hit.publication);
+  }
 
   const sp80060InfoTypesReferenced: Sp80060InfoType[] = catalogHits
     .filter((h): h is typeof h & { infoType: Sp80060InfoType } => h.kind === "sp800_60_info_type" && Boolean(h.infoType))
-    .slice(0, 4)
+    .slice(0, 6)
     .map((h) => h.infoType);
 
   if (rmfTasksReferenced.length > 0) {
@@ -926,7 +984,11 @@ export function buildRmfGroundingPacket(question: string): RmfGroundingPacket {
   }
 
   // RMF-007 ATO Readiness Gate Reminder
-  if (/\b(?:ato\s+readiness|ready\s+for\s+ato|authorization\s+package|authorization\s+readiness)\b/i.test(q)) {
+  if (
+    /\b(?:ato\s+readiness|ready\s+for\s+ato|authorization\s+package|authorization\s+readiness|(?:issue|grant|approve|sign)\s+(?:our\s+|an?\s+|the\s+)?ato)\b/i.test(
+      q,
+    )
+  ) {
     const readiness = evaluateAtoReadiness({
       system_id: "chat-system",
       package_id: "chat-pkg",
@@ -1199,15 +1261,22 @@ export function verifyRmfResponseAgainstDb(
     }
   }
 
-  // Enforce Authority Accuracy: prevent labeling POA&M timelines "statutory"
-  if (
-    /\bstatutory\b[^.\n]{0,70}\b(?:30[- ]?day|poa&m|poam|remediation\s+(?:deadline|sla|timeline))\b|\b(?:30[- ]?day|poa&m|poam)\b[^.\n]{0,70}\bstatutory\b/i.test(
-      draftBody,
-    )
-  ) {
-    violations.push(
-      "AUTHORITY_MISREPRESENTATION: FedRAMP 30-day POA&M timelines are program guidance / RA-5(d) vulnerability ODPs (subject to AO tailoring), not a universal statutory requirement.",
-    );
+  // Enforce Authority Accuracy: prevent affirmative labeling of POA&M timelines as "statutory"
+  for (const sentence of draftBody.split(/(?<=[.!?])\s+|\n+/)) {
+    const claimsStatutory =
+      /\bstatutory\b[^.\n]{0,70}\b(?:30[- ]?day|poa&m|poam|remediation\s+(?:deadline|sla|timeline))\b|\b(?:30[- ]?day|poa&m|poam)\b[^.\n]{0,70}\bstatutory\b/i.test(
+        sentence,
+      );
+    const negatedStatutory =
+      /\b(?:not|never|no|non)\s+(?:a\s+|universal\s+|federal\s+){0,3}statutory\b|\bnon-statutory\b|\b(?:not|never)\b[^.\n]{0,35}\bstatut(?:ory|e)\b/i.test(
+        sentence,
+      );
+    if (claimsStatutory && !negatedStatutory) {
+      violations.push(
+        "AUTHORITY_MISREPRESENTATION: FedRAMP 30-day POA&M timelines are program guidance / RA-5(d) vulnerability ODPs (subject to AO tailoring), not a universal statutory requirement.",
+      );
+      break;
+    }
   }
 
   // Enforce FIPS 199 High-Water Mark fidelity

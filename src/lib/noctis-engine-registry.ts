@@ -662,11 +662,21 @@ export function mapWorkspaceModelToEngineId(label: string, fallbackWorkspaceId =
 export function parseThinkEnvelope(raw: string): { thought: string; body: string } {
   const text = typeof raw === "string" ? raw : "";
   const match = text.match(/<think>([\s\S]*?)<\/think>/i);
-  if (!match) return { thought: "", body: text.trim() };
-  return {
-    thought: match[1].trim(),
-    body: text.replace(/<think>[\s\S]*?<\/think>/gi, "").trim(),
-  };
+  if (match) {
+    return {
+      thought: match[1].trim(),
+      body: text.replace(/<think>[\s\S]*?<\/think>/gi, "").replace(/<\/?think>/gi, "").trim(),
+    };
+  }
+  const openMatch = text.match(/<think>([\s\S]*)$/i);
+  if (openMatch) {
+    const beforeOpen = text.slice(0, openMatch.index ?? 0).replace(/<\/?think>/gi, "").trim();
+    return {
+      thought: openMatch[1].trim(),
+      body: beforeOpen,
+    };
+  }
+  return { thought: "", body: text.replace(/<\/?think>/gi, "").trim() };
 }
 
 export function buildStructuredDeepThinkTrace(

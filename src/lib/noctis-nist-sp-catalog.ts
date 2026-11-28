@@ -1280,7 +1280,7 @@ export const NIST_SP_PUBLICATIONS: readonly NistSpPublication[] = [
     summary: "Comprehensive catalog of 20 integrated security and privacy control families (324 base controls, 872 enhancements) plus Organization-Defined Parameters (ODPs).",
     keyConcepts: ["20 Control Families (AC..SR including PT Privacy & SR Supply Chain)", "Base Controls vs. Enhancements", "Withdrawn Control Lineage", "Outcome-Based Control Language"],
     deliverables: ["Control Implementation Matrix", "ODP Values Specification"],
-    invariants: ["Never cite withdrawn Rev. 4/Rev. 5 controls (e.g., AC-13, AU-15, CM-4(1)) without explicitly citing their Rev. 5 replacements."],
+    invariants: ["Never cite withdrawn Rev. 4/Rev. 5 controls without explicitly stating they are WITHDRAWN and citing their official Rev. 5 replacement controls."],
     crossReferences: ["NIST SP 800-53A Rev. 5", "NIST SP 800-53B", "FedRAMP Rev. 5"],
     sections: [
       {

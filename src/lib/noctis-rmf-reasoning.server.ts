@@ -50,11 +50,8 @@ export interface RmfReasoningOptions {
 
 function cleanThinkOutput(raw: string): { thought: string; body: string } {
   const parsed = parseThinkEnvelope(raw);
-  if (parsed.thought) {
-    return { thought: parsed.thought, body: parsed.body };
-  }
-  const strippedUnclosed = raw.replace(/<think>[\s\S]*$/gi, "").trim();
-  return { thought: "", body: strippedUnclosed };
+  const cleanBody = parsed.body.replace(/<\/?think>/gi, "").trim();
+  return { thought: parsed.thought, body: cleanBody };
 }
 
 function stripThinkFromTurn(text: string): string {
@@ -79,7 +76,7 @@ function buildRmfSystemPrompt(opts: {
     `You are Noctis RMF Intelligence (${opts.engineName || "Noctis Ultra"}), acting as an expert Federal RMF Specialist, ISSO, ISSM, Security Control Assessor (SCA / 3PAO), and Federal Cloud Security Architect (Option B: Federal RMF + FedRAMP + Continuous Monitoring).`,
     "",
     opts.shouldThink !== false
-      ? "MANDATORY PRE-RESPONSE DELIBERATION: Begin your response with a concise `<think>...</think>` reasoning block verifying cited control IDs against the Knowledge Packet, checking any withdrawn controls, checking deterministic verdicts, and ensuring Examine/Interview/Test coverage when requested. Always close `</think>` cleanly before writing the response body."
+      ? "MANDATORY PRE-RESPONSE DELIBERATION: Begin your response with a concise `<think>...</think>` reasoning block (strictly 3-5 brief bullet lines, under 120 words) verifying cited control IDs against the Knowledge Packet, checking any withdrawn controls, checking deterministic verdicts, and ensuring Examine/Interview/Test coverage when requested. Always close `</think>` immediately before writing the full Markdown response."
       : "Respond concisely with no raw XML tags.",
     "",
     "STRICT GROUNDING & DETERMINISTIC GOVERNANCE INVARIANTS (NON-NEGOTIABLE):",
@@ -94,7 +91,8 @@ function buildRmfSystemPrompt(opts: {
     "9. ACCURATE POA&M & BOD 22-01 AUTHORITY SCOPE: NEVER call a 30-day POA&M deadline a 'statutory requirement'. Explain accurately from the packet that High <= 30d / Moderate <= 90d / Low <= 180d come from FedRAMP `RA-5(d)` ODP `ra-05_odp.03` (for vulnerability-scan findings) and FedRAMP Continuous Monitoring / POA&M program guidance (subject to Agency/JAB AO tailoring and Deviation Requests). State explicitly that CISA BOD 22-01 governs KEV-listed vulnerabilities, NOT automatically AC-2 or IA-2 control weaknesses.",
     "10. FACTS VS ESTIMATES: Explicitly distinguish **Stipulated Scenario Assumptions**, **Verified Audit Evidence** (when present), **Deterministic Rule Verdicts**, and **Analytical Estimates** (stating assumptions & uncertainty).",
     "11. FORMATTING (NO RAW LATEX): NEVER output raw LaTeX delimiters (`$$...$$`, `\\[...\\]`, `\\text{...}`, `\\{`, `\\}`). Express formulas in clean Markdown inline code.",
-    `12. LANGUAGE: ${langDirective}`,
+    "12. TABLES, MEDIA SANITIZATION & PQC: When the user requests a Markdown table, include a complete GitHub-Flavored Markdown audit table summarizing findings, deterministic verdicts, SP 800-53A Examine/Interview/Test methods, MITRE ATT&CK mitigations, and remediation plans alongside per-control sections. For NVMe/SSD sanitization holding PHI/ITAR or High-impact data under NIST SP 800-88 Rev. 1 & MP-6, explain why a single logical overwrite (`Clear`) is INSUFFICIENT due to flash wear-leveling, over-provisioning, and remapped sectors, requiring `Purge` (NVMe Format Cryptographic Erase / Sanitize) or physical `Destroy`. Cite FIPS 203 (`ML-KEM`) for quantum-resistant key encapsulation when asked.",
+    `13. LANGUAGE: ${langDirective}`,
   ].join("\n");
 }
 
@@ -187,10 +185,65 @@ function buildRmfRepairPrompt(
 
 export function renderDeterministicRmfFallback(packet: RmfGroundingPacket): string {
   const out: string[] = [];
+  const wantsTable = /\btable\b/i.test(packet.question);
+  const escapeCell = (v: string): string => v.replace(/\|/g, "\\|").replace(/\s+/g, " ").trim();
+  const findCtrl = (id: string) => packet.controls.find((c) => c.id === id);
+
   out.push(
     `# Noctis Deterministic RMF Assessment (NIST SP 800-53 Rev. ${packet.manifest.nistVersion} · FedRAMP Rev. 5 ${packet.manifest.fedrampVersion || "fedramp2.1.0-oscal1.0.4"})`,
   );
   out.push(`**Scope:** ${packet.targetBaseline}\n`);
+
+  if (wantsTable) {
+    out.push("## Audit Findings, Verdicts, SP 800-53A & Remediation Matrix");
+    out.push("| Finding / Control | Deterministic Verdict | Authority / ODP Basis | SP 800-53A (Examine / Interview / Test) | MITRE ATT&CK | Remediation Plan |");
+    out.push("| :--- | :--- | :--- | :--- | :--- | :--- |");
+
+    for (const r of packet.ruleEvaluations) {
+      const ctrl = findCtrl(r.controlId) || findCtrl(`${r.controlId}(3)`) || findCtrl(`${r.controlId}(1)`);
+      const att =
+        packet.attackByControl[r.controlId]?.map((t) => `${t.id} (${t.name})`).join(", ") ||
+        packet.relatedAttackHints[r.controlId]?.map((h) => `${h.viaControl}→${h.id} (${h.name})`).join(", ") ||
+        "Control-specific ATT&CK mitigation mapping verified in packet";
+      const eit = ctrl
+        ? `**Examine:** ${ctrl.methods.examine || "Policies & system configs"}; **Interview:** ${ctrl.methods.interview || "ISSO & admins"}; **Test:** ${ctrl.methods.test || "Technical verification"}`
+        : "**Examine:** Policies, logs, configs; **Interview:** ISSO & operators; **Test:** Automated & manual verification";
+      const rem = r.draftPoam
+        ? `${r.draftPoam.remediationPlan} (Program Guidance Timeline: ${r.draftPoam.slaDays}d — NOT statutory)`
+        : r.missingEvidence.join("; ") || "Remediate control gap and collect verified artifacts";
+      out.push(
+        `| **${escapeCell(r.controlId)} — ${escapeCell(r.controlTitle)}** | **${r.verdict}** *(Formal: ${r.formalDetermination || r.verdict}; ${escapeCell(r.variance)})* | ${escapeCell(r.threshold)} | ${escapeCell(eit)} | ${escapeCell(att)} | ${escapeCell(rem)} |`,
+      );
+    }
+
+    const withdrawnCtrls = packet.controls.filter((c) => c.withdrawn);
+    const hasNvmeSanitize = /\b(?:800-88|sanitiz\w*|nvme|ssd|clear)\b/i.test(packet.question);
+    if (withdrawnCtrls.length > 0 || hasNvmeSanitize) {
+      const mp6 = findCtrl("MP-6");
+      const mp6Att =
+        (mp6 && packet.attackByControl[mp6.id]?.map((t) => `${t.id} (${t.name})`).join(", ")) ||
+        (mp6 && packet.relatedAttackHints[mp6.id]?.map((h) => `${h.viaControl}→${h.id} (${h.name})`).join(", ")) ||
+        "T1005 / T1530 / Media Exposure Mitigations";
+      const ac13Note = withdrawnCtrls
+        .map((c) => `${c.id} is **WITHDRAWN** in Rev. 5 -> replaced by **${c.withdrawnInto.join(", ")}**`)
+        .join("; ");
+      const sanNote = hasNvmeSanitize
+        ? "Single logical overwrite (`Clear`) on retired NVMe SSDs holding Clinical PHI/ITAR is **INSUFFICIENT / BLOCKED** due to flash wear-leveling, over-provisioning & bad-block remapping; **Purge** (NVMe Format Cryptographic Erase / Sanitize) or physical **Destroy** required."
+        : "";
+      out.push(
+        `| **MP-6 / Media Sanitization & ${withdrawnCtrls.map((c) => c.id).join(", ") || "SSP Citations"}** | **FAIL / BLOCKED** *(Withdrawn Citation & NVMe Clear Rejected)* | NIST SP 800-88 Rev. 1 (Clear vs. Purge/Destroy) & NIST SP 800-53 Rev. 5 MP-6 | **Examine:** Sanitization SOPs, NVMe certificates & SSP (AC-2/AU-6); **Interview:** Custodian/ISSO; **Test:** Verify NVMe Crypto Erase/Sanitize or physical destruction | ${escapeCell(mp6Att)} | ${escapeCell([ac13Note, sanNote, "Replace AC-13 in SSP with AC-2 & AU-6; execute SP 800-88 Purge or Destroy with signed Certificates of Sanitization."].filter(Boolean).join(" "))} |`,
+      );
+    }
+
+    if (/\b(?:poa&m|poam|statutory|issue.*ato|grant.*ato|ato\s+today)\b/i.test(packet.question)) {
+      out.push(
+        `| **Governance: FedRAMP POA&M Authority & ATO Issuance** | **FAIL / DENIED** *(Cannot Auto-Issue ATO)* | FedRAMP Rev. 5 ConMon / ` +
+          "`RA-5(d)`" +
+          ` ODP Guidance (NOT federal statute) & SP 800-37 Rev. 2 Step 5 | **Examine:** SAR, POA&M & Authorization Package; **Interview:** ISSM, 3PAO & AO; **Test:** Independent 3PAO validation | Governance / Risk Acceptance Boundary | Correct SSP (30d High POA&M timeline is FedRAMP program guidance, subject to AO tailoring, NOT universal statute); remediate FAIL findings before submitting package to the human **Authorizing Official (AO)** for ATO decision. |`,
+      );
+    }
+    out.push("");
+  }
 
   if (packet.ruleEvaluations.length > 0) {
     out.push("## Deterministic Rule Evaluation Verdicts");
@@ -300,8 +353,41 @@ export function renderDeterministicRmfFallback(packet: RmfGroundingPacket): stri
     out.push("");
   }
 
+  if (packet.rmfTasksReferenced.length > 0) {
+    out.push("## NIST SP 800-37 Rev. 2 Official Tasks");
+    for (const t of packet.rmfTasksReferenced) {
+      out.push(`- **Task ${t.taskId} — ${t.title}** (Step ${t.stepNumber} ${t.stepCode}, ${t.level}): ${t.description} *Outputs:* ${t.expectedOutputs.join("; ")}.`);
+    }
+    out.push("");
+  }
+
+  if (packet.nistPublicationsReferenced.length > 0) {
+    out.push("## Supporting NIST SP & FIPS Standards Grounding");
+    for (const pub of packet.nistPublicationsReferenced) {
+      out.push(`- **${pub.docNumber} — ${pub.title}** (${pub.version}): ${pub.summary} *Mandatory Invariant:* ${pub.invariants[0] || ""}`);
+      if (pub.sourceId === "SP-800-88r1") {
+        out.push("  - **NVMe SSD Flash Caution:** Logical overwrite (`Clear`) does NOT reach wear-leveled spare blocks, over-provisioning, or remapped sectors on NVMe SSDs holding PHI/ITAR data; execute `Purge` (Cryptographic Erase / NVMe Sanitize) or physical `Destroy`.");
+      }
+    }
+    out.push("");
+  }
+
+  if (packet.sp80060InfoTypesReferenced.length > 0) {
+    out.push("## NIST SP 800-60 Vol. 2 Provisional Categorization");
+    for (const it of packet.sp80060InfoTypesReferenced) {
+      out.push(`- **${it.code} (${it.name}):** C=${it.confidentiality}, I=${it.integrity}, A=${it.availability} -> High-Watermark **${it.highWatermark}**. ${it.tailoringNotes}`);
+    }
+    out.push("");
+  }
+
+  if (/\b(?:poa&m|poam|statutory|30-day)\b/i.test(packet.question)) {
+    out.push("## POA&M Timeline Authority & Governance Correction");
+    out.push("- **Program Guidance vs. Statute:** FedRAMP's 30-day High / 90-day Moderate / 180-day Low POA&M remediation timelines come from FedRAMP Continuous Monitoring / `RA-5(d)` ODP (`ra-05_odp.03`) program guidance subject to Agency/JAB Authorizing Official (AO) tailoring and Deviation Requests — they are **NOT** a universal federal statute.");
+    out.push("");
+  }
+
   out.push(
-    "> **Governance Boundary:** Automated checks verify explicit rules against documented evidence; interviews, compensating-control rationale, and formal ATO risk acceptance remain the exclusive responsibility of the designated **Authorizing Official (AO)**.",
+    "> **Governance Boundary:** Automated checks verify explicit rules against documented evidence; interviews, compensating-control rationale, and formal ATO risk acceptance remain the exclusive responsibility of the designated **Authorizing Official (AO)** — Noctis cannot issue or grant an ATO.",
   );
   return out.join("\n");
 }
@@ -407,8 +493,8 @@ export async function executeUniversalRmfReasoning(
       ],
       {
         temperature: 0.0,
-        maxTokens: 3200,
-        thinkingLevel: opts.shouldThink === false ? "medium" : "high",
+        maxTokens: 8192,
+        thinkingLevel: opts.shouldThink === false ? "low" : "medium",
         brain: opts.brain,
       },
     );
@@ -416,7 +502,7 @@ export async function executeUniversalRmfReasoning(
     if ("text" in first && first.text.trim()) {
       const parsed = cleanThinkOutput(first.text);
       activeThought = parsed.thought;
-      if (parsed.body.length >= 25) {
+      if (parsed.body.length >= 25 && !/<\/?think>/i.test(parsed.body)) {
         finalBody = parsed.body;
         audit = verifyRmfResponseAgainstDb(question, finalBody, packet);
 
@@ -429,8 +515,8 @@ export async function executeUniversalRmfReasoning(
             ],
             {
               temperature: 0.0,
-              maxTokens: 3200,
-              thinkingLevel: opts.shouldThink === false ? "medium" : "high",
+              maxTokens: 8192,
+              thinkingLevel: opts.shouldThink === false ? "low" : "medium",
               brain: opts.brain,
             },
           );
@@ -438,7 +524,7 @@ export async function executeUniversalRmfReasoning(
           if ("text" in repaired && repaired.text.trim()) {
             const parsedRepair = cleanThinkOutput(repaired.text);
             if (parsedRepair.thought) activeThought = parsedRepair.thought;
-            if (parsedRepair.body.length >= 25) {
+            if (parsedRepair.body.length >= 25 && !/<\/?think>/i.test(parsedRepair.body)) {
               const repairedAudit = verifyRmfResponseAgainstDb(question, parsedRepair.body, packet);
               if (repairedAudit.passed || repairedAudit.violations.length < audit.violations.length) {
                 finalBody = parsedRepair.body;

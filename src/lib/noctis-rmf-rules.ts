@@ -1327,7 +1327,11 @@ export function extractAndEvaluateRmfRulesFromText(question: string): RmfRuleEva
     );
 
   // AC-2 / Termination or inactivity timestamps
-  if (/\bAC-2(?:\(\d+\))?\b|\bterminat\w*(?:\s+\w+){0,2}\s+account|\bdisabled\s+(?:within|at|after)|\binactive\s+accounts?\b/i.test(q)) {
+  if (
+    /\bAC-2(?:\(\d+\))?\b|\bterminat\w*(?:\s+[\w'’-]+){0,3}\s+accounts?|\b(?:remained|stayed|kept|left)\s+(?:active|enabled|open)\s+for\s+\d+|\bdisabled\s+(?:within|at|after)|\binactive\s+accounts?\b/i.test(
+      q,
+    )
+  ) {
     const thresholdMatch = q.match(/(?:within|threshold|deadline|limit|requirement|sla)[^\d]{0,18}(\d+(?:\.\d+)?)\s*(hours?|hrs?|h\b|days?|d\b)/i);
     let policyThresholdHours: number | null = null;
     if (thresholdMatch) {
@@ -1417,23 +1421,28 @@ export function extractAndEvaluateRmfRulesFromText(question: string): RmfRuleEva
   }
 
   // IA-2 (End-to-end privileged MFA, phishing resistance, SSH bastion / IdP path)
+  const hasExplicitSshMfaSignal =
+    /\bstatic\s+(?:[\w/-]+\s+){0,2}(?:ssh\s+)?keys?\b/i.test(q) ||
+    /\b(?:without|no|lacks?|missing|not\s+enforcing|not\s+using)\s+(?:[\w/-]+\s+){0,4}(?:mfa|multi[- ]factor|2fa|fido2|piv|aal3|phishing[- ]resistant)\b/i.test(
+      q,
+    );
   if (
-    /\bIA-2(?:\(\d+\))?\b/i.test(q) &&
-    (hasEvalIntent ||
-      /\b(?:static\s+(?:[\w-]+\s+){0,2}(?:ssh\s+)?keys?|(?:without|no|lacks?|missing)\s+(?:[\w-]+\s+){0,3}mfa|bastion|ephemeral\s+(?:ssh\s+)?cert|phishing[- ]resistant)\b/i.test(
-        q,
-      ))
+    (/\bIA-2(?:\(\d+\))?\b/i.test(q) &&
+      (hasEvalIntent ||
+        hasExplicitSshMfaSignal ||
+        /\b(?:bastion|ephemeral\s+(?:ssh\s+)?cert|phishing[- ]resistant)\b/i.test(q))) ||
+    (hasEvalIntent && hasExplicitSshMfaSignal)
   ) {
-    const staticKey = /\bstatic\s+(?:[\w-]+\s+){0,2}(?:ssh\s+)?keys?\b/i.test(q)
+    const staticKey = /\bstatic\s+(?:[\w/-]+\s+){0,2}(?:ssh\s+)?keys?\b/i.test(q)
       ? true
-      : /\b(?:zero|no)\s+static\s+(?:[\w-]+\s+){0,2}(?:ssh\s+)?keys?\b/i.test(q)
+      : /\b(?:zero|no)\s+static\s+(?:[\w/-]+\s+){0,2}(?:ssh\s+)?keys?\b/i.test(q)
       ? false
       : null;
 
-    const mfaNegated = /\b(?:without|no|lacks?|missing|not\s+enforcing|not\s+using|bypass(?:ing|es)?)\s+(?:[\w-]+\s+){0,3}(?:mfa|multi[- ]factor|2fa)\b/i.test(
+    const mfaNegated = /\b(?:without|no|lacks?|missing|not\s+enforcing|not\s+using|bypass(?:ing|es)?)\s+(?:[\w/-]+\s+){0,4}(?:mfa|multi[- ]factor|2fa)\b/i.test(
       q,
     );
-    const phishingResistantNegated = /\b(?:without|no|lacks?|missing|not\s+(?:using|enforcing))\s+(?:[\w-]+\s+){0,2}(?:hardware[- ]?(?:backed|token)?|phishing[- ]resistant|fido2|piv|webauthn)\b/i.test(
+    const phishingResistantNegated = /\b(?:without|no|lacks?|missing|not\s+(?:using|enforcing))\s+(?:[\w/-]+\s+){0,3}(?:hardware[- ]?(?:backed|token)?|phishing[- ]resistant|fido2|piv|aal3|webauthn)\b/i.test(
       q,
     );
 
