@@ -16,7 +16,7 @@ describe("Noctis Multi-Domain Neuro-Symbolic Verifier & Universal Formatter", ()
     const raw = [
       "<think>Internal check $x \\ge 1$</think>",
       "",
-      "Prose with $\\mathbf{\\$120,000\\text{/year}}$, ratio $\\frac{\\text{Debt}}{\\text{EBITDA}} = \\mathbf{2.50\\times}$, threshold $\\ge 65$, and $99\\%$ CVaR plus normal currency $250 to $500.",
+      "Prose with $\\mathbf{\\$120,000\\text{/year}}$, ratio $\\frac{1 + g_{\\text{AR}}}{1 + g_{\\text{Rev}}} = \\mathbf{2.50\\times}$, threshold $\\ge 65$, and $99\\%$ CVaR plus normal currency $250 to $500.",
       "",
       "| Finding | Outcome |",
       "| :--- | :--- |",

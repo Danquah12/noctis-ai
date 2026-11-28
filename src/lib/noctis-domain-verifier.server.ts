@@ -60,16 +60,17 @@ function unwrapLatexFracs(expr: string): string {
 
 function cleanLatexExpr(rawExpr: string): string {
   let out = rawExpr;
-  for (let pass = 0; pass < 3; pass++) {
+  for (let pass = 0; pass < 4; pass++) {
     for (const cmd of ["text", "mathrm", "textbf", "mathbf", "mathit", "mathsf", "mathtt", "operatorname"]) {
       out = unwrapLatexCmd(out, cmd);
     }
+    out = out
+      .replace(/\\sqrt\s*\{([^{}]*)\}/g, "sqrt($1)")
+      .replace(/_\{([^{}]*)\}/g, "_$1")
+      .replace(/\^\{([^{}]*)\}/g, "^$1");
     out = unwrapLatexFracs(out);
   }
   out = out
-    .replace(/\\sqrt\s*\{([^{}]*)\}/g, "sqrt($1)")
-    .replace(/_\{([^{}]*)\}/g, "_$1")
-    .replace(/\^\{([^{}]*)\}/g, "^$1")
     .replace(/\\\$/g, "$")
     .replace(/\\%/g, "%")
     .replace(/\\\{/g, "{")
