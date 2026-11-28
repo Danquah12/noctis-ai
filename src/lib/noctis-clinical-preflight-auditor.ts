@@ -15,6 +15,7 @@
 
 import {
   buildClinicalScratchpad,
+  isProhibitionOrRefusalContext,
   validateCrossSectionClinicalConsistency,
   type NeuroSymbolicClinicalScratchpad,
 } from "./noctis-clinical-scratchpad.ts";
@@ -140,11 +141,15 @@ export function auditAndEnforceClinicalDossier(
   if (scratchpad.sentinels.isWeightMissing) {
     // Check for any remaining reference to assumed 70 kg weight
     const assumedWeightRegex = /\b(?:assuming\s+(?:an?\s+)?(?:average\s+)?(?:adult\s+)?(?:weight\s+of\s+)?70\s*kg|70\s*kg\s*(?:adult|patient)|weight\s*[:=]?\s*70\s*kg)\b/gi;
-    if (assumedWeightRegex.test(text)) {
-      text = text.replace(
-        assumedWeightRegex,
-        "[Patient body weight UNMEASURED / NOT PROVIDED — weight-dependent calculations deferred]"
-      );
+    let hadAssumedWeight = false;
+    text = text.replace(assumedWeightRegex, (match, offset: number, fullStr: string) => {
+      if (isProhibitionOrRefusalContext(fullStr, offset, match.length)) {
+        return match;
+      }
+      hadAssumedWeight = true;
+      return "[Patient body weight UNMEASURED / NOT PROVIDED — weight-dependent calculations deferred]";
+    });
+    if (hadAssumedWeight) {
       violations.push({
         ruleId: "GATE-WEIGHT-FABRICATION-VETO",
         description: "Patient weight was unprovided; assumed 70 kg reference was detected and neutralized.",
@@ -184,11 +189,15 @@ export function auditAndEnforceClinicalDossier(
   // 3. Strict Chloride Sentinel Enforcement (INV-002)
   if (scratchpad.sentinels.isChlorideMissing) {
     const fakeAgRegex = /\b(?:anion\s+gap\s*[:=]?\s*(?:18|19|20|elevated\s+at\s+19)|estimated\s+anion\s+gap\s*[:=]?\s*19)\b/gi;
-    if (fakeAgRegex.test(text)) {
-      text = text.replace(
-        fakeAgRegex,
-        "Anion Gap: Cannot calculate — chloride unavailable (Serum Chloride UNMEASURED)"
-      );
+    let hadFakeAg = false;
+    text = text.replace(fakeAgRegex, (match, offset: number, fullStr: string) => {
+      if (isProhibitionOrRefusalContext(fullStr, offset, match.length)) {
+        return match;
+      }
+      hadFakeAg = true;
+      return "Anion Gap: Cannot calculate — chloride unavailable (Serum Chloride UNMEASURED)";
+    });
+    if (hadFakeAg) {
       violations.push({
         ruleId: "GATE-CHLORIDE-SUBSTITUTION-VETO",
         description: "Anion gap calculated or estimated without measured serum chloride.",

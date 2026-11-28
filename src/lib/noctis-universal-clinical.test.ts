@@ -546,4 +546,44 @@ describe("Universal 3-Stage Neuro-Symbolic Clinical Pipeline (executeUniversalCl
     assert.ok(lockedOut.includes("CLINICAL_VALIDATION_FAILED — SAFETY_INVARIANT_VIOLATION"));
     assert.ok(!lockedOut.includes("APPROVED FOR CLINICAL DECISION SUPPORT"));
   });
+
+  it("allows prohibition/refusal phrasing for unmeasured reference chloride 98 mmol/L while still blocking affirmative anion gap fabrication", async () => {
+    const prompt =
+      "A 68-year-old male (175 cm tall, actual body weight 118 kg) with severe ARDS (PaO2/FiO2 88) and septic shock has K+ 7.1 mEq/L, HR 32 bpm, BP 74/42 mmHg, and peaked T waves on ECG. Audit every order immediately.";
+
+    const refusalEchoDraft = [
+      "# Noctis Patient Diagnostic & Triage Intelligence Dossier (Clinical Decision Support)",
+      "**Triage Urgency:** P0 IMMEDIATE EMERGENCY",
+      "68-year-old male (175 cm, 118 kg) with BP 74/42 mmHg (MAP 52.7 mmHg), HR 32 bpm, K+ 7.1 mmol/L, severe ARDS (PaO2/FiO2 88).",
+      "Anion Gap: Cannot calculate — chloride unavailable (do not substitute reference chloride 98 mmol/L; assuming a normal reference chloride of 98 mmol/L is strictly prohibited). Order IV Calcium Gluconate first, norepinephrine, tidal volume 424 mL (6 mL/kg PBW 70.6 kg), and verify deep sedation prior to cisatracurium.",
+      "### Missing Clinical Data Gaps\n- Serum chloride [UNMEASURED], creatinine [UNMEASURED], ABG [UNMEASURED], lactate [UNMEASURED], glucose [UNMEASURED], urine output [UNMEASURED].",
+      "### Independent Fact-Reconciliation Matrix\n| Parameter | Status |\n|---|---|\n| Electrolytes | K+ 7.1 mmol/L; Cl- [UNMEASURED] |",
+      "### SOAP Note\n- Subjective: ICU emergency.\n- Objective: 118 kg, 175 cm, BP 74/42 mmHg (MAP 52.7 mmHg), HR 32 bpm, K+ 7.1 mmol/L.\n- Assessment: Septic shock, severe ARDS, critical hyperkalemia.\n- Plan: IV Calcium first, norepinephrine, tidal volume 424 mL, verify deep sedation before cisatracurium.",
+    ].join("\n\n");
+
+    const approvedRefusalOut = await executeUniversalClinicalReasoning(prompt, {
+      modelChatFn: async () => ({ text: refusalEchoDraft }),
+    });
+    assert.ok(approvedRefusalOut);
+    assert.ok(
+      approvedRefusalOut.includes("APPROVED FOR CLINICAL DECISION SUPPORT"),
+      `Expected approval when echoing prohibition on reference chloride 98, got:\n${approvedRefusalOut}`,
+    );
+
+    const affirmativeAgDraft = [
+      "# Noctis Patient Diagnostic & Triage Intelligence Dossier (Clinical Decision Support)",
+      "68-year-old male (175 cm, 118 kg) with BP 74/42 mmHg (MAP 52.7 mmHg), HR 32 bpm, K+ 7.1 mmol/L.",
+      "Estimated anion gap: 19 assuming normal reference chloride of 98 mmol/L.",
+      "### Missing Clinical Data Gaps\n- Creatinine [UNMEASURED].",
+      "### Independent Fact-Reconciliation Matrix\n| Parameter | Value |\n|---|---|\n| Anion Gap | 19 |",
+      "### SOAP Note\n- Subjective: ICU.\n- Objective: K+ 7.1.\n- Assessment: Shock.\n- Plan: Treat.",
+    ].join("\n\n");
+
+    const blockedAffirmativeOut = await executeUniversalClinicalReasoning(prompt, {
+      modelChatFn: async () => ({ text: affirmativeAgDraft }),
+    });
+    assert.ok(blockedAffirmativeOut);
+    assert.ok(blockedAffirmativeOut.includes("CLINICAL_VALIDATION_FAILED — SAFETY_INVARIANT_VIOLATION"));
+    assert.ok(!blockedAffirmativeOut.includes("APPROVED FOR CLINICAL DECISION SUPPORT"));
+  });
 });

@@ -16,6 +16,7 @@
  * 12. VAL-NO-FAB-SOAP: Zero Clinical Fabrication Gate (No invented caregiver, sternal rub, or exam findings)
  */
 
+import { isProhibitionOrRefusalContext } from "./noctis-clinical-scratchpad.ts";
 import { sha256Sync } from "./universal-crypto.ts";
 
 export interface ClinicalSafetyViolation {
@@ -520,11 +521,15 @@ export function validateClinicalEvidenceIntegrity(
   const mentionsWeight = /\b(?:weight|\bkg\b|\blbs?\b|weighs)\b/i.test(inputLower);
   if (!mentionsWeight) {
     const inventedWeightRegex = /\b(?:assuming\s+(?:an?\s+)?(?:average\s+)?(?:adult\s+)?(?:weight\s+of\s+)?70\s*kg|70\s*kg\s*(?:adult|patient)|0\.18\s*ml\/kg\/h)\b/gi;
-    if (inventedWeightRegex.test(sanitized)) {
-      sanitized = sanitized.replace(
-        inventedWeightRegex,
-        "[Patient body weight UNMEASURED / NOT PROVIDED — weight-normalized calculations deferred]"
-      );
+    let hadInventedWeight = false;
+    sanitized = sanitized.replace(inventedWeightRegex, (match, offset: number, fullStr: string) => {
+      if (isProhibitionOrRefusalContext(fullStr, offset, match.length)) {
+        return match;
+      }
+      hadInventedWeight = true;
+      return "[Patient body weight UNMEASURED / NOT PROVIDED — weight-normalized calculations deferred]";
+    });
+    if (hadInventedWeight) {
       violations.push({
         ruleId: "VAL-WEIGHT-FABRICATION",
         ruleName: "Zero Clinical Fabrication Gate (Invented Patient Weight)",
@@ -540,11 +545,15 @@ export function validateClinicalEvidenceIntegrity(
   const mentionsChloride = /\b(?:chloride|cl\s*[-=:]?\s*\d+)\b/i.test(inputLower);
   if (!mentionsChloride) {
     const substitutedChlorideRegex = /\b(?:estimated\s+anion\s+gap\s*[:=]?\s*19|assuming\s+(?:normal\s+)?reference\s+chloride|chloride\s*(?:≈|~|\bof\b)?\s*98)\b/gi;
-    if (substitutedChlorideRegex.test(sanitized)) {
-      sanitized = sanitized.replace(
-        substitutedChlorideRegex,
-        "[Serum Chloride UNMEASURED — Anion Gap CANNOT be calculated]"
-      );
+    let hadSubstitutedChloride = false;
+    sanitized = sanitized.replace(substitutedChlorideRegex, (match, offset: number, fullStr: string) => {
+      if (isProhibitionOrRefusalContext(fullStr, offset, match.length)) {
+        return match;
+      }
+      hadSubstitutedChloride = true;
+      return "[Serum Chloride UNMEASURED — Anion Gap CANNOT be calculated]";
+    });
+    if (hadSubstitutedChloride) {
       violations.push({
         ruleId: "VAL-CHLORIDE-SUBSTITUTION",
         ruleName: "Zero Clinical Fabrication Gate (Substituted Electrolyte in Anion Gap)",

@@ -1607,6 +1607,43 @@ export function buildClinicalScratchpad(
 }
 
 /**
+ * Detects whether a regex match occurs inside a clinical prohibition/refusal sentence
+ * (e.g. "do not substitute reference chloride 98 mmol/L" or "... is strictly prohibited")
+ * so safety instructions echoing guardrails do not self-trigger fabrication lockouts.
+ */
+export function isProhibitionOrRefusalContext(
+  text: string,
+  index: number,
+  length: number,
+): boolean {
+  const preWindow = text.slice(Math.max(0, index - 90), index);
+  const lastPreSep = Math.max(
+    preWindow.lastIndexOf("."),
+    preWindow.lastIndexOf("!"),
+    preWindow.lastIndexOf("?"),
+    preWindow.lastIndexOf("\n"),
+  );
+  const pre = lastPreSep >= 0 ? preWindow.slice(lastPreSep + 1) : preWindow;
+
+  const postStart = index + length;
+  const postWindow = text.slice(postStart, postStart + 90);
+  const postSepMatch = postWindow.search(/[.!?\n]/);
+  const post = postSepMatch >= 0 ? postWindow.slice(0, postSepMatch) : postWindow;
+
+  if (
+    /\b(?:do\s+not|don'?t|never|cannot|can'?t|must\s+not|prohibit(?:ed|ing)?|forbid(?:den|s)?|refus(?:e|ed|ing)|avoid(?:ing)?|without|not\s+(?:permitted|allowed|substituted|assumed|estimated)|rather\s+than|instead\s+of|no\s+(?:assumed|hypothetical|substituted))\b/i.test(
+      pre,
+    )
+  ) {
+    return true;
+  }
+
+  return /\b(?:is\s+(?:strictly\s+)?(?:prohibited|forbidden|not\s+(?:permitted|allowed|valid))|must\s+not|cannot\s+be\s+(?:used|calculated|substituted|assumed)|should\s+not\s+be)\b/i.test(
+    post,
+  );
+}
+
+/**
  * ============================================================================
  * INV-007: CROSS-SECTION CLINICAL CONSISTENCY VALIDATOR
  *
@@ -2074,7 +2111,10 @@ export function validateCrossSectionClinicalConsistency(
 
   // Check 8: Weight Sentinel Consistency (INV-003)
   if (scratchpad.sentinels.isWeightMissing) {
-    if (/\b(?:weight\s*[:=]?\s*70\s*kg|assumed\s+70\s*kg|standard\s+70\s*kg|patient\s+weighs\s+70\s*kg)\b/i.test(dossierText)) {
+    const assumedWeightMatches = [
+      ...dossierText.matchAll(/\b(?:weight\s*[:=]?\s*70\s*kg|assumed\s+70\s*kg|standard\s+70\s*kg|patient\s+weighs\s+70\s*kg)\b/gi),
+    ];
+    if (assumedWeightMatches.some((m) => !isProhibitionOrRefusalContext(dossierText, m.index ?? 0, m[0].length))) {
       violations.push({
         item: "Patient Body Weight",
         sectionA: "Neuro-Symbolic Scratchpad (Unmeasured)",
@@ -2086,7 +2126,10 @@ export function validateCrossSectionClinicalConsistency(
 
   // Check 9: Chloride & Anion Gap Consistency (INV-002)
   if (scratchpad.sentinels.isChlorideMissing) {
-    if (/\b(?:estimated\s+anion\s+gap\s*[:=]?\s*19|anion\s+gap\s*[:=]?\s*19|reference\s+chloride\s*(?:of\s*)?98)\b/i.test(dossierText)) {
+    const substitutedClMatches = [
+      ...dossierText.matchAll(/\b(?:estimated\s+anion\s+gap\s*[:=]?\s*19|anion\s+gap\s*[:=]?\s*19|reference\s+chloride\s*(?:of\s*)?98)\b/gi),
+    ];
+    if (substitutedClMatches.some((m) => !isProhibitionOrRefusalContext(dossierText, m.index ?? 0, m[0].length))) {
       violations.push({
         item: "Serum Chloride & Anion Gap",
         sectionA: "Neuro-Symbolic Scratchpad (Unmeasured Chloride)",
@@ -2381,9 +2424,13 @@ export function validateCrossSectionClinicalConsistency(
     rx: RegExp,
     skipBefore?: RegExp,
     skipAfter?: RegExp,
+    ignoreProhibitions: boolean = false,
   ): boolean => {
     for (const m of haystack.matchAll(rx)) {
       const idx = m.index ?? 0;
+      if (ignoreProhibitions && isProhibitionOrRefusalContext(haystack, idx, m[0].length)) {
+        continue;
+      }
       if (skipBefore) {
         const pre = haystack.slice(Math.max(0, idx - 35), idx);
         if (skipBefore.test(pre)) continue;
@@ -2416,7 +2463,7 @@ export function validateCrossSectionClinicalConsistency(
     for (const pm of documentedParamMonitors) {
       if (
         hasUnguardedParamMatch(scratchPart, pm.unmeasuredRegex, pm.skipBefore) &&
-        hasUnguardedParamMatch(narrativePart, pm.measuredRegex, pm.measuredSkipBefore ?? pm.skipBefore, pm.skipAfter)
+        hasUnguardedParamMatch(narrativePart, pm.measuredRegex, pm.measuredSkipBefore ?? pm.skipBefore, pm.skipAfter, true)
       ) {
         violations.push({
           item: `Narrative-vs-Scratchpad Contradiction (${pm.label})`,
