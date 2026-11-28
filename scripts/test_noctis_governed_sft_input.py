@@ -9,7 +9,7 @@ import tempfile
 import unittest
 
 from noctis_governed_sft_input import InputBlocked, load_governed_export
-from noctis_sft_job_binding import prepare_job, canonical
+from noctis_sft_job_binding import prepare_job, canonical, prepare_finite_sft_datasets
 
 
 def sha(data):
@@ -213,6 +213,77 @@ class GovernedInputTests(unittest.TestCase):
         raw = b'{"schema":"noctis.sft.job.v1","schema":"noctis.sft.job.v1"}'
         with self.assertRaisesRegex(InputBlocked, "duplicate_json_key"):
             prepare_job(self.root, raw, sha(raw))
+
+
+    def finite(self, tokenizer=None, factory=list, config=None):
+        class LocalTemplateStub:
+            def apply_chat_template(self, messages, **kwargs):
+                if kwargs != {"tokenize": True, "add_generation_prompt": len(messages) == 1,
+                              "truncation": False, "return_dict": False}:
+                    raise AssertionError("unexpected tokenization flags")
+                prefix = [1] + list(messages[0]["content"].encode()) + [2]
+                if len(messages) == 1:
+                    return prefix
+                return prefix + list(messages[1]["content"].encode()) + [3]
+        raw = canonical(self.job_config() if config is None else config)
+        return prepare_finite_sft_datasets(self.root, raw, sha(raw),
+                                           tokenizer=tokenizer or LocalTemplateStub(),
+                                           dataset_from_list=factory)
+
+    def test_finite_partitions_preserve_prompt_completion_and_no_training_claim(self):
+        train, dev, record = self.finite()
+        self.assertEqual(train, [{"prompt": [{"role": "user", "content": "What is 2 + 3?"}],
+                                  "completion": [{"role": "assistant", "content": "5"}]}])
+        self.assertEqual(dev[0]["completion"][0]["content"], "Blue")
+        self.assertEqual(record["dataset_format"], "conversational_prompt_completion")
+        self.assertGreater(record["train_max_template_tokens"], 0)
+        for key in ("heldout_contents_loaded", "tokenizer_identity_verified",
+                    "completion_loss_mask_verified", "trainer_compatibility_verified",
+                    "training_executed", "execution_authorized"):
+            self.assertFalse(record[key])
+
+    def test_finite_rejects_long_development_example_before_factory(self):
+        self.write_split("development", [row("New question", "A" * 100)])
+        self.pin = self.save_manifest()
+        config = self.job_config()
+        config["max_sequence_length"] = 64
+        calls = []
+        with self.assertRaisesRegex(InputBlocked, "example_exceeds_sequence_limit"):
+            self.finite(factory=lambda rows: calls.append(rows) or rows, config=config)
+        self.assertEqual(calls, [])
+
+    def test_finite_rejects_nonprefix_template(self):
+        class BadTemplate:
+            def apply_chat_template(self, messages, **kwargs):
+                return [1, 2] if len(messages) == 1 else [1, 3, 4]
+        with self.assertRaisesRegex(InputBlocked, "chat_template_completion_boundary_mismatch"):
+            self.finite(tokenizer=BadTemplate())
+
+    def test_finite_rejects_empty_or_invalid_template_tokens(self):
+        for output in ([], [True], [-1], "text"):
+            class InvalidTemplate:
+                def apply_chat_template(self, messages, **kwargs):
+                    return output
+            with self.subTest(output=output), self.assertRaisesRegex(InputBlocked, "invalid_chat_template_tokens"):
+                self.finite(tokenizer=InvalidTemplate())
+
+    def test_finite_rejects_template_failure_without_example_disclosure(self):
+        class FailingTemplate:
+            def apply_chat_template(self, messages, **kwargs):
+                raise RuntimeError("private example")
+        with self.assertRaisesRegex(InputBlocked, "^chat_template_failed$"):
+            self.finite(tokenizer=FailingTemplate())
+
+    def test_finite_rejects_factory_row_loss(self):
+        with self.assertRaisesRegex(InputBlocked, "finite_dataset_count_mismatch"):
+            self.finite(factory=lambda rows: [])
+
+    def test_finite_rejects_heldout_file_before_factory(self):
+        self.write_private("heldout.jsonl", b"never read")
+        calls = []
+        with self.assertRaisesRegex(InputBlocked, "unexpected_export_files"):
+            self.finite(factory=lambda rows: calls.append(rows) or rows)
+        self.assertEqual(calls, [])
 
 
 if __name__ == "__main__":
