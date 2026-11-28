@@ -52,7 +52,7 @@ export async function runComposableComplianceTools(
     sections.push("### TOOL OUTPUT [tool_withdrawn_control_lineage] — MANDATORY SEPARATION");
     for (const c of withdrawnCtrls) {
       sections.push(
-        `- **${c.id} (${c.title}) is WITHDRAWN in NIST SP 800-53 Rev. 5.** Its ONLY official replacement controls are **${c.withdrawnInto.join(" and ")}**. NEVER state that MP-6 (Media Sanitization) or any other control replaces ${c.id}; keep MP-6 (for SP 800-88 media sanitization) strictly separate from ${c.id} -> ${c.withdrawnInto.join(", ")} (for account supervision/audit review).`,
+        `- **${c.id} (${c.title}) is WITHDRAWN in NIST SP 800-53 Rev. 5.** Its ONLY official replacement controls are **${c.withdrawnInto.join(" and ")}**. Keep **MP-6 (Media Sanitization under SP 800-88)** strictly separate from **${c.id} -> ${c.withdrawnInto.join(", ")} (account supervision and audit review)**.`,
       );
     }
     sections.push("");

@@ -131,7 +131,7 @@ describe("Noctis Permanent 4-Pillar Upgrade (Escalation + Structured JSON + Comp
     assert.ok(tools.toolsInvoked.includes("tool_pqc_fips203"));
     assert.ok(tools.toolsInvoked.includes("tool_dod_ic_overlay"));
     assert.ok(tools.markdownAppendix.includes("AC-2 and AU-6"));
-    assert.ok(tools.markdownAppendix.includes("NEVER state that MP-6"));
+    assert.ok(tools.markdownAppendix.includes("strictly separate"));
     assert.ok(tools.markdownAppendix.includes("FIPS 203"));
   });
 
